@@ -1,0 +1,51 @@
+{
+  "schema_version": "videoforge.v2-07-deterministic-image-definition/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-20T09:54:13.749Z",
+  "provider_mutation": false,
+  "publication": false,
+  "gpu_use": false,
+  "external_spend_usd": 0,
+  "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+  "parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+  "source_commit": "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c",
+  "source_path": "workers/image-media/mage_serverless.py",
+  "source_sha256": "sha256:5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
+  "created": "2026-08-20T09:39:31Z",
+  "overlay": {
+    "kind": "source-only-overlay-v2",
+    "destination": "/opt/videoforge/mage_serverless.py",
+    "file_count": 1,
+    "layer_diff_id": "sha256:554ac0a35755bfec64d70707512eee81ae57af62d596fbbd49e53e4140dece8d",
+    "layer_sha256": "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e3",
+    "layer_size_bytes": 7495,
+    "config_sha256": "sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e",
+    "config_size_bytes": 15698,
+    "manifest_sha256": "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+    "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+    "os": "linux",
+    "architecture": "amd64"
+  },
+  "candidate_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+  "candidate_tag": "v2-07-inline-wire-a52e7e4",
+  "derivation": {
+    "builder": "workers/image-media/build_mage_oci_overlay.py",
+    "publisher": "workers/image-media/publish_mage_oci_overlay.py",
+    "parent_manifest_bound_to_parent_digest": true,
+    "parent_config_bound_to_manifest_descriptor": true,
+    "base_layer_descriptors_preserved": true,
+    "publisher_default_mode": "VALIDATE_ONLY_NO_NETWORK",
+    "publisher_mutation_switch": "--publish",
+    "publisher_refuses_existing_tag": true,
+    "publisher_exact_manifest_readback_required": true
+  },
+  "independent_reproduction": {
+    "reproduced_at": "2026-08-20T09:54:13.749Z",
+    "manifest_sha256_match": true,
+    "config_sha256_match": true,
+    "layer_sha256_match": true,
+    "publisher_validation_only_pass": true
+  },
+  "publication_state": "NOT_AUTHORIZED_NOT_PUBLISHED"
+}

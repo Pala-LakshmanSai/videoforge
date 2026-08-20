@@ -1,0 +1,155 @@
+{
+  "schema_version": "videoforge.v2-07-amended-combined-live-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-20T09:54:13.749Z",
+  "authority_mode": "PENDING_EXACT_CHANGED_IMAGE_APPROVAL",
+  "reason_for_amendment": "attempt 12 exposed an inline wire-shape bug; the repaired handler bytes require a different immutable image identity",
+  "user_approval": {
+    "low_eu_ro_1_availability_approved": true,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "cap_unchanged": true,
+    "changed_image_and_repeated_operations_approved": false
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_write_policy": "APPLICATION_READ_ONLY",
+    "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "repaired_source_commit": "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c",
+    "repaired_source_sha256": "sha256:5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
+    "image_config_sha256": "sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e",
+    "image_layer_sha256": "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e3",
+    "final_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+    "publication_tag": "v2-07-inline-wire-a52e7e4",
+    "image_definition_evidence": "definition.json"
+  },
+  "image_publication": {
+    "operation": "upload_exact_precomputed_config_layer_and_schema2_manifest_then_digest_readback",
+    "publisher": "workers/image-media/publish_mage_oci_overlay.py --publish",
+    "build_platform": "linux/amd64",
+    "runtime_smoke_definition": "workers/image-media/Dockerfile.mage.repair",
+    "manifest_repacking_allowed": false,
+    "tag_overwrite_allowed": false,
+    "stop_if": [
+      "source or parent byte mismatch",
+      "smoke test failure",
+      "config layer or manifest digest mismatch",
+      "registry tag already exists",
+      "registry readback changes exact manifest bytes"
+    ]
+  },
+  "staged_endpoint_configs": [
+    {
+      "stage": "initial_qualification",
+      "definition_path": "staged-config-max1.json",
+      "definition_sha256": "sha256:90af3b03a7dc1871f7470ec9484561a2ece248f2ba124777f814cacdd7cf675d",
+      "workers_min": 0,
+      "workers_max": 1,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "gpu_count": 1,
+      "compute_type": "GPU",
+      "flex_only": true,
+      "runtime_hash_policy": "compute and persist after exact endpoint and template IDs plus ephemeral values exist; require before first dispatch"
+    },
+    {
+      "stage": "bounded_concurrent_reader_proof_only",
+      "definition_path": "staged-config-max2.json",
+      "definition_sha256": "sha256:9a19e173b452bf95b2ef1573206de46bbe73d42fb72c9920d1c14305056b4787",
+      "workers_min": 0,
+      "workers_max": 2,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "gpu_count_per_worker": 1,
+      "compute_type": "GPU",
+      "flex_only": true,
+      "scope": "two simultaneous read-only workers only; restore max one after proof",
+      "runtime_hash_policy": "compute and persist separately after exact endpoint and template IDs plus ephemeral values exist; require before reader dispatch"
+    }
+  ],
+  "approved_if_user_confirms_operations": [
+    "publish_exact_changed_immutable_image",
+    "create_exact_private_template",
+    "create_or_update_initial_max_one_endpoint",
+    "submit_owned_samples_and_realistic_complete_32_image_batch_cold_and_warm",
+    "status_reconcile_until_terminal_and_verify_private_durable_outputs",
+    "exercise_duplicate_delivery_cancellation_and_timeout",
+    "apply_separately_hashed_max_two_reader_configuration",
+    "submit_two_simultaneous_read_only_complete_batches",
+    "status_reconcile_readers_and_verify_sealed_manifest_unchanged",
+    "restore_workers_max_one_and_scale_down_to_workers_zero",
+    "retain_endpoint_template_and_both_existing_volumes_on_success",
+    "delete_only_disposable_endpoint_and_template_if_failed"
+  ],
+  "artifact_and_measurement_proof": [
+    "signed VideoForge v3 authority provenance and artifact commit receipts",
+    "durable per-item R2 readback before provider result expiry",
+    "output SHA-256 byte length PNG probe and exact object-key lineage",
+    "real initialization load warm inference and upload timings",
+    "peak VRAM plus exact RTX 4090 and CUDA 13 runtime probe",
+    "duplicate cancellation timeout and terminal status reconciliation",
+    "settled variable compute cost under the cumulative cap",
+    "sealed manifest hash before and after plus no model-volume writes",
+    "independent zero workers after drain with endpoint template and two intended volumes retained"
+  ],
+  "current_read_only_truth": {
+    "inventory_checked_at": "2026-08-20T09:53:44.849Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "intended_volume_count": 2,
+    "route_status": 404,
+    "route_code": "V207_ROUTE_DISABLED",
+    "availability_checked_at": "2026-08-20T09:54:13.749Z",
+    "rtx4090_global_or_regional_offering": "NVIDIA GeForce RTX 4090",
+    "rtx4090_eu_ro_1_availability": "LOW",
+    "provider_mutations": 0,
+    "external_spend_usd": 0
+  },
+  "rates_cost_and_retention": {
+    "serverless_flex_rtx4090_usd_per_hour": 1.1,
+    "authenticated_eu_ro_1_secure_pod_reference_usd_per_hour": 0.74,
+    "public_general_secure_pod_rtx4090_usd_per_hour": 0.69,
+    "network_volume_usd_per_gb_month": 0.07,
+    "existing_volume_charge_usd_per_month_each": 3.5,
+    "existing_two_volume_charge_usd_per_month_total": 7,
+    "retained_volume_charge_is_outside_finite_cap": true,
+    "checkpoint_cumulative_spend_observed_usd": 0.03891922265756875,
+    "billing_settlement_state": "PROVISIONAL_PROVIDER_BILLING_MAY_LAG",
+    "remaining_cumulative_cap_observed_usd": 3.9610807773424312,
+    "remaining_finite_variable_compute_estimate_usd": 2.2,
+    "projected_cumulative_finite_spend_usd": 2.2389192226575687,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "serverless_pricing_source": "https://docs.runpod.io/serverless/pricing",
+    "gpu_pricing_source": "https://www.runpod.io/pricing",
+    "network_volume_pricing_source": "https://docs.runpod.io/storage/network-volumes"
+  },
+  "cleanup_rollback_and_stop_conditions": {
+    "success": "prove all outputs and receipts, restore max one, drain independently to zero workers, retain endpoint template and both intended volumes",
+    "failure": "cancel owned jobs where safe, prove terminal drain, delete only the disposable endpoint and template, roll back signer and generated objects, retain both volumes",
+    "stop_if": [
+      "identity response or attestation mismatch",
+      "missing failed or non-durable output or receipt",
+      "sealed manifest change model-volume write or cache escape",
+      "unplanned duplicate compute or uncertain cancellation",
+      "uncertain output rollback endpoint cleanup signer rollback or worker drain",
+      "current or projected cumulative spend risks 4 USD",
+      "GPU region volume image rate capacity or endpoint configuration changes outside this proposal"
+    ]
+  },
+  "forbidden": [
+    "model download preparation quantization or volume mutation",
+    "retained volume rebuild delete cross-mount or write",
+    "GPU or region fallback",
+    "public sample publication",
+    "V2-08 or successor work",
+    "cumulative finite spend above 4 USD"
+  ],
+  "authorization_boundary": "LOW availability and the USD 4 cap are already confirmed, but changed-image publication and repeated provider operations remain blocked until the user explicitly approves this exact amended proposal hash."
+}

@@ -115,8 +115,8 @@ gates:
     blocks: mage_serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
-    last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json"
-    result: open_pod_artifact_proof_preserved_serverless_handler_endpoint_concurrency_pending
+    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-12.json"
+    result: open_attempt12_inline_wire_failure_cleaned_exact_candidate_ready_amended_authority_and_live_acceptance_pending
 
   GATE_SERVERLESS_SOULX_001:
     status: open
