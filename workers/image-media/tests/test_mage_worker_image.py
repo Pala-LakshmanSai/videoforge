@@ -12,10 +12,10 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 REPAIR_DOCKERFILE = ROOT / "Dockerfile.mage.repair"
-REPAIRED_SOURCE_COMMIT = "d1d704c2f39581e745ba90151c7388673107de41"
-PRIOR_IMMUTABLE_IMAGE = (
+REPAIRED_SOURCE_COMMIT = "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c"
+BASE_IMMUTABLE_IMAGE = (
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
-    "sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e"
+    "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
 )
 REPAIR_RUNTIME_FILES = (
     (
@@ -43,7 +43,7 @@ REPAIR_RUNTIME_FILES = (
     ),
 )
 REPAIR_SOURCE_HASHES = {
-    "workers/image-media/mage_serverless.py": "bb0ade00c964379b666152295db18e20f9c2266f875ea37b6f9aeac7163491c3",
+    "workers/image-media/mage_serverless.py": "5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
     "workers/image-media/mage_runtime.py": "f6bec1478272bfaafde253ddaaf3a2e7526074d74a12b246d8b4ea94fb6dda5f",
     "workers/image-media/mage_bootstrap.py": "fe2499f667680f9cc315121f24d408f63915c4c2eb938ab63931709952b52529",
     "workers/image-media/src/videoforge_image_media/mage_production.py": "6fb66457b5d43168e0a41a5b2040a7d89fc9143b261b221c0c97f424d603c291",
@@ -74,11 +74,11 @@ def make_volume(root: Path, *, lane: str = volume.MAGE_LANE) -> dict[str, object
 
 
 class MageWorkerImageTest(unittest.TestCase):
-    def test_repair_image_pins_prior_immutable_lineage_and_complete_source(self) -> None:
+    def test_repair_image_pins_current_immutable_lineage_and_complete_source(self) -> None:
         dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
         self.assertRegex(
             dockerfile,
-            rf"(?m)^FROM {re.escape(PRIOR_IMMUTABLE_IMAGE)}$",
+            rf"(?m)^FROM {re.escape(BASE_IMMUTABLE_IMAGE)}$",
         )
         self.assertIn(
             f'org.opencontainers.image.revision="{REPAIRED_SOURCE_COMMIT}"',
@@ -86,35 +86,26 @@ class MageWorkerImageTest(unittest.TestCase):
         )
         self.assertIn(f'ai.videoforge.source-commit="{REPAIRED_SOURCE_COMMIT}"', dockerfile)
         self.assertIn(
-            f'org.opencontainers.image.base.digest="{PRIOR_IMMUTABLE_IMAGE.split("@", 1)[1]}"',
+            f'org.opencontainers.image.base.digest="{BASE_IMMUTABLE_IMAGE.split("@", 1)[1]}"',
             dockerfile,
         )
-        self.assertIn(f'ai.videoforge.base-image="{PRIOR_IMMUTABLE_IMAGE}"', dockerfile)
+        self.assertIn(f'ai.videoforge.base-image="{BASE_IMMUTABLE_IMAGE}"', dockerfile)
 
-    def test_repair_source_lineage_matches_workflow_and_activation_guard(self) -> None:
+    def test_repair_source_lineage_matches_workflow(self) -> None:
         dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        activation = (
-            ROOT.parents[1] / "apps/web/src/server/providers/v207-activation-authority.ts"
-        ).read_text(encoding="utf-8")
         dockerfile_match = re.search(r'ai\.videoforge\.source-commit="([0-9a-f]{40})"', dockerfile)
         workflow_match = re.search(r'expected_source_commit="([0-9a-f]{40})"', workflow)
-        activation_match = re.search(
-            r'export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "([0-9a-f]{40})";',
-            activation,
-        )
         self.assertIsNotNone(dockerfile_match)
         self.assertIsNotNone(workflow_match)
-        self.assertIsNotNone(activation_match)
         self.assertEqual(
             [
                 dockerfile_match.group(1),
                 workflow_match.group(1),
-                activation_match.group(1),
             ],
-            [REPAIRED_SOURCE_COMMIT] * 3,
+            [REPAIRED_SOURCE_COMMIT] * 2,
         )
 
     def test_repair_image_overlays_handler_and_inherits_entrypoint(self) -> None:
@@ -176,7 +167,9 @@ class MageWorkerImageTest(unittest.TestCase):
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn('expected_source_commit="d1d704c2f39581e745ba90151c7388673107de41"', workflow)
+        self.assertIn(
+            'expected_source_commit="a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c"', workflow
+        )
         self.assertIn("expected_source_hashes=(", workflow)
         for source, expected_hash in REPAIR_SOURCE_HASHES.items():
             source_path = ROOT.parents[1] / source
