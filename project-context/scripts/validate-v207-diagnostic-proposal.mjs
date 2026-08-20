@@ -231,8 +231,9 @@ assert(dockerfile.includes(EXPECTED.sourceCommit), "dockerfile_source");
 assert(dockerfile.includes(EXPECTED.parentImage), "dockerfile_parent");
 assert(workflow.includes(EXPECTED.config) && workflow.includes(EXPECTED.layer), "workflow_overlay_identity");
 assert(workflow.includes(EXPECTED.sourceDigest.slice("sha256:".length)), "workflow_source_hash");
-assert(activation.includes(EXPECTED.proposalDigest), "activation_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+// This validator preserves the immutable Attempt 14 proposal/authority/failure chain. The active
+// compiled authority is intentionally validated by validate-v207-flashboot-proposal.mjs so a later
+// fresh approval does not rewrite or falsely reactivate this closed historical proposal.
 assert(failedAttempt.attempt === 14, "failed_attempt_number");
 assert(failedAttempt.authority_proposal_sha256 === EXPECTED.proposalDigest, "failed_attempt_proposal");
 assert(failedAttempt.authority_status === "CLOSED_ON_FAILED_PREDISPATCH_STOP", "failed_attempt_authority");
@@ -259,9 +260,8 @@ for (const [label, filePath] of [
   assert(value.includes("failed-attempt-14.json"), `${label}_failed_attempt_pointer`);
 }
 const currentState = text(paths.currentState);
-assert(currentState.includes("provider_calls_authorized: false"), "current_state_provider_closed");
-assert(currentState.includes("maximum_external_spend_usd: 0"), "current_state_cap_closed");
-assert(currentState.includes("current_goal_authority: none_closed_after_attempt_14"), "current_state_authority_closed");
+assert(currentState.includes("historical_cap_usd: 4"), "current_state_historical_cap");
+assert(currentState.includes("closed and non-reusable"), "current_state_historical_authority_closed");
 
 // Self-check the rejection primitives used above against the exact regressions that invalidated
 // the predecessor proposal: malformed digest length, stale bytes, non-null cap, and old lineage.

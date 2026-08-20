@@ -12,6 +12,7 @@ const files = {
   max1: path.join(evidenceRoot, "staged-config-max1.json"),
   max2: path.join(evidenceRoot, "staged-config-max2.json"),
   proposal: path.join(evidenceRoot, "combined-live-proposal.json"),
+  authority: path.join(evidenceRoot, "approved-authority.json"),
   publication: path.join(evidenceRoot, "../2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json"),
   failedAttempt: path.join(evidenceRoot, "../2026-08-20-live-qualification/failed-attempt-14.json"),
   priorAuthority: path.join(evidenceRoot, "../2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json"),
@@ -30,6 +31,7 @@ const expected = {
   publication: "sha256:0191b33d692775f0877ac07cc126c6476d51cafaf37d8b8dac26f7da629e216e",
   failedAttempt: "sha256:8cf4c4a26f919ad29b716bbe9f87fff5c7f305823a5faf08044a5e186e785765",
   priorAuthority: "sha256:afa5a4ded8eb25cd6df6105d3e3f7813e01bfa7a13cd1d7eb3d4b3ba35b1bed2",
+  authority: "sha256:4deb86bd503eb51e452ce7b59a9a2214faa050ebe72daf63128bd97d9728e998",
   image:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
   imageSource: "79f123268b6ade640c02dd20616a89d16b43a5e6",
@@ -50,13 +52,16 @@ const json = (file) => JSON.parse(text(file));
 const sha256 = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 
 const proposalBytes = bytes(files.proposal);
+const authorityBytes = bytes(files.authority);
 const max1Bytes = bytes(files.max1);
 const max2Bytes = bytes(files.max2);
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
+const authority = JSON.parse(authorityBytes.toString("utf8"));
 const max1 = JSON.parse(max1Bytes.toString("utf8"));
 const max2 = JSON.parse(max2Bytes.toString("utf8"));
 
 assert(sha256(proposalBytes) === expected.proposal, "proposal_bytes");
+assert(sha256(authorityBytes) === expected.authority, "authority_bytes");
 assert(sha256(max1Bytes) === expected.max1, "max1_bytes");
 assert(sha256(max2Bytes) === expected.max2, "max2_bytes");
 assert(sha256(bytes(files.publication)) === expected.publication, "publication_bytes");
@@ -133,6 +138,75 @@ assert(proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_mon
 assert(proposal.rates_cost_and_retention?.serverless_flex_rtx4090_usd_per_gpu_hour === 1.1, "serverless_rate");
 assert(proposal.rates_cost_and_retention?.maximum_cumulative_finite_spend_usd === null, "rate_null_cap");
 
+assert(authority.schema_version === "videoforge.v2-07-flashboot-true-requalification-authority/v1", "authority_schema");
+assert(authority.checkpoint === "V2-07" && authority.task_id === "VF-10-07", "authority_identity");
+assert(
+  authority.authority_source ===
+    "explicit_user_approval_exact_flashboot_true_requalification_proposal_and_fresh_numeric_cap",
+  "authority_source",
+);
+assert(authority.proposal?.path === "combined-live-proposal.json", "authority_proposal_path");
+assert(authority.proposal?.sha256 === expected.proposal, "authority_proposal_hash");
+assert(authority.approval?.exact_proposal_approved === true, "authority_approved");
+assert(authority.approval?.flashboot_true_accepted === true, "authority_flashboot_true");
+assert(authority.approval?.low_eu_ro_1_availability_approved === true, "authority_low_availability");
+assert(authority.approval?.minimum_approved_availability === "LOW", "authority_minimum_availability");
+assert(authority.approval?.maximum_cumulative_finite_spend_usd === 2, "authority_cap");
+assert(authority.approval?.fresh_numeric_cap === true, "authority_fresh_cap");
+assert(authority.approval?.historical_cap_reused === false, "authority_historical_cap");
+assert(authority.approval?.prior_authority_reused === false, "authority_prior_cap");
+assert(authority.approval?.recurring_retained_volume_charge_usd_per_month === 7, "authority_retention_rate");
+assert(authority.approval?.recurring_charge_is_outside_finite_cap === true, "authority_retention_boundary");
+assert(authority.lineage?.model === proposal.lineage?.model, "authority_model");
+assert(authority.lineage?.model_manifest_sha256 === proposal.lineage?.model_manifest_sha256, "authority_model_manifest");
+assert(authority.lineage?.volume_id_sha256 === expected.volume, "authority_volume");
+assert(authority.lineage?.volume_size_gb === 50 && authority.lineage?.volume_region === "EU-RO-1", "authority_volume_identity");
+assert(authority.lineage?.volume_mount === "/runpod-volume" && authority.lineage?.model_root === "/runpod-volume/mage-model", "authority_mount");
+assert(authority.lineage?.volume_write_policy === "APPLICATION_READ_ONLY", "authority_volume_policy");
+assert(authority.lineage?.image_source_commit === expected.imageSource, "authority_image_source");
+assert(authority.lineage?.control_source_commit === expected.controlSource, "authority_control_source");
+assert(authority.lineage?.image_config_sha256 === proposal.lineage?.image_config_sha256, "authority_image_config");
+assert(authority.lineage?.image_layer_sha256 === proposal.lineage?.image_layer_sha256, "authority_image_layer");
+assert(authority.lineage?.image_manifest_sha256 === proposal.lineage?.image_manifest_sha256, "authority_image_manifest");
+assert(authority.lineage?.final_image === expected.image, "authority_image");
+assert(authority.lineage?.image_publication_evidence_sha256 === expected.publication, "authority_publication_evidence");
+assert(authority.lineage?.failed_attempt_evidence_sha256 === expected.failedAttempt, "authority_failed_attempt_evidence");
+assert(authority.lineage?.initial_config_sha256 === expected.max1, "authority_max1");
+assert(authority.lineage?.concurrent_reader_config_sha256 === expected.max2, "authority_max2");
+assert(authority.lineage?.prior_proposal_sha256 === expected.closedActivationProposal, "authority_prior_proposal");
+assert(authority.lineage?.prior_authority_sha256 === expected.priorAuthority, "authority_prior_authority");
+assert(
+  JSON.stringify(authority.authorized_operations) === JSON.stringify(proposal.proposed_operations_in_order),
+  "authority_operations",
+);
+assert(JSON.stringify(authority.allowed_operations ?? authority.authorized_operations) === JSON.stringify(authority.authorized_operations), "authority_allowed_operations");
+assert(JSON.stringify(authority.forbidden) === JSON.stringify(proposal.forbidden), "authority_forbidden");
+assert(
+  JSON.stringify(authority.stop_conditions) ===
+    JSON.stringify(proposal.cleanup_rollback_and_stop_conditions.stop_if),
+  "authority_stop_conditions",
+);
+assert(authority.retention?.existing_volume_charge_usd_per_month_each === 3.5, "authority_each_volume_rate");
+assert(authority.retention?.existing_two_volume_charge_usd_per_month_total === 7, "authority_total_volume_rate");
+assert(authority.retention?.retained_volume_charge_outside_finite_cap === true, "authority_volume_rate_boundary");
+assert(authority.retention?.retain_endpoint_template_on_success === true, "authority_success_retention");
+assert(authority.retention?.retain_both_volumes_all_outcomes === true, "authority_all_outcomes_retention");
+assert(authority.retention?.volume_mutation_authorized === false, "authority_volume_mutation");
+assert(authority.execution_boundary?.image_republication_authorized === false, "authority_no_republication");
+assert(authority.execution_boundary?.publication_authorized_pending_execution === false, "authority_publication_boundary");
+assert(authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true, "authority_runpod_boundary");
+assert(authority.execution_boundary?.cloudflare_mutation_authorized_pending_execution === true, "authority_cloudflare_boundary");
+assert(authority.execution_boundary?.gpu_use_authorized_pending_execution === true, "authority_gpu_boundary");
+assert(authority.execution_boundary?.provider_calls_completed === false, "authority_preexecution");
+assert(authority.execution_boundary?.external_spend_usd === 0, "authority_spend_state");
+assert(authority.execution_boundary?.v2_08_authorized === false, "authority_v208");
+assert(authority.prior_authority_closure?.immediate_prior_proposal_sha256 === expected.closedActivationProposal, "authority_closed_proposal");
+assert(authority.prior_authority_closure?.immediate_prior_authority_sha256 === expected.priorAuthority, "authority_closed_record");
+assert(authority.prior_authority_closure?.state === "CLOSED_PREDISPATCH_CONFIGURATION_MISMATCH_DO_NOT_REUSE", "authority_closed_state");
+assert(authority.prior_authority_closure?.historical_cap_usd === 4, "authority_closed_cap");
+assert(authority.prior_authority_closure?.reused === false, "authority_closed_reuse");
+assert(authority.status === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING", "authority_status");
+
 const control = text(files.control);
 const harness = text(files.harness);
 const orchestrator = text(files.orchestrator);
@@ -141,8 +215,8 @@ assert(control.includes("V207_RUNPOD_FLASHBOOT = true"), "control_flashboot_true
 assert(!harness.includes("FLASHBOOT_NORMALIZATION_UNCONFIRMED"), "normalization_removed");
 assert(orchestrator.includes("RESTORATION_PROPAGATION_WINDOW_MS = 120_000"), "route_window");
 assert(orchestrator.includes("waitForRouteRestoration"), "route_poll");
-assert(activation.includes(expected.closedActivationProposal), "activation_prior_proposal_closed");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+assert(activation.includes(expected.proposal), "activation_proposal_approved");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD = 2 as const"), "activation_cap_approved");
 
 for (const [label, file] of [
   ["current_state", files.currentState],
@@ -153,7 +227,11 @@ for (const [label, file] of [
   assert(value.includes("fresh"), `${label}_fresh_authority`);
   assert(value.includes("V2-08"), `${label}_v208`);
 }
+assert(text(files.currentState).includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json"), "current_state_authority_path");
+assert(text(files.currentState).includes("maximum_external_spend_usd: 2"), "current_state_cap");
+assert(text(files.currentState).includes("task_stage: bounded_mutation"), "current_state_task_stage");
 assert(text(files.gates).includes(expected.proposal.slice("sha256:".length)), "gates_proposal");
+assert(text(files.gates).includes("authority_recorded_usd_2_provider_execution_pending"), "gates_authority_state");
 
 process.stdout.write(
   `V2-07 FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,

@@ -13,10 +13,9 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774" as const;
-// Attempt 14 stopped before dispatch on provider configuration drift. Its exact authority is
-// closed and must never be reusable for another endpoint mutation or GPU run.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+  "sha256:2338ff8d596284408080c94970d0c2a5e8a8ae58f62b92d590e880e72079d605" as const;
+// Fresh authority binds this exact proposal and finite cap for the narrowly approved V2-07 run.
+export const V207_APPROVED_FINITE_CAP_USD = 2 as const;
 
 export interface V207ActivationAuthority {
   readonly image: string;

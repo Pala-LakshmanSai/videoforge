@@ -37,9 +37,9 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
+      "sha256:2338ff8d596284408080c94970d0c2a5e8a8ae58f62b92d590e880e72079d605",
     );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(2);
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -69,12 +69,28 @@ describe("V2-07 activation authority", () => {
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: "sha256:" + "0".repeat(64),
+        V207_FINITE_CAP_USD: "2",
       }),
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects every cap after the failed attempt closes authority", () => {
-    for (const cap of ["", "0.01", "44", "1000"]) {
+  it("accepts only the exact freshly approved proposal and finite cap", () => {
+    expect(
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_FINITE_CAP_USD: "2",
+      }),
+    ).toEqual({
+      image,
+      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
+      capUsd: 2,
+    });
+  });
+
+  it("rejects every cap other than the exact fresh approval", () => {
+    for (const cap of ["", "0.01", "1", "4", "44", "1000"]) {
       expect(() =>
         parseV207ActivationAuthority({
           V207_IMAGE: image,
@@ -82,7 +98,7 @@ describe("V2-07 activation authority", () => {
           V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
           V207_FINITE_CAP_USD: cap,
         }),
-      ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+      ).toThrow(cap === "" ? "V207_FINITE_CAP_REQUIRED" : "V207_FINITE_CAP_MISMATCH");
     }
   });
 
@@ -93,7 +109,7 @@ describe("V2-07 activation authority", () => {
           "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
-        V207_FINITE_CAP_USD: "4",
+        V207_FINITE_CAP_USD: "2",
       }),
     ).toThrow("V207_IMAGE_DIGEST_REQUIRED");
   });
