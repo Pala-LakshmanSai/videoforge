@@ -770,7 +770,7 @@ export class RunPodControlClient {
       computeType: "GPU",
       allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
       executionTimeoutMs: policy.executionTimeoutMs,
-      flashboot: V207_RUNPOD_FLASHBOOT,
+      flashboot: strictV207 ? V207_RUNPOD_FLASHBOOT : false,
       gpuCount: policy.gpuCount,
       gpuTypeIds,
       idleTimeout: policy.idleTimeout,
@@ -808,7 +808,7 @@ export class RunPodControlClient {
       (strictV207 &&
         (!exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
           value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
-          value.flashboot !== V207_RUNPOD_FLASHBOOT ||
+          value.flashboot !== request.flashboot ||
           value.idleTimeout !== request.idleTimeout ||
           value.executionTimeoutMs !== request.executionTimeoutMs)) ||
       value.workersMin !== 0 ||

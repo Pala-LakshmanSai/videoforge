@@ -255,6 +255,77 @@ describe("V2-07 live orchestrator", () => {
     expect(calls.flatMap((call) => call.args)).not.toContain(NONCE);
   });
 
+  it("hard-stops route restoration when the deadline aborts an injected stalled sleep", async () => {
+    const files = await fixture();
+    let signerSecretPresent = false;
+    let rollbackSeen = false;
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) {
+        return result(
+          JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("put")) {
+        signerSecretPresent = true;
+        return result();
+      }
+      if (request.args.includes("secret") && request.args.includes("delete")) {
+        signerSecretPresent = false;
+        return result();
+      }
+      if (request.args.includes("rollback")) rollbackSeen = true;
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () => {
+      if (signerSecretPresent) {
+        return new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
+          status: 403,
+        });
+      }
+      return new Response(
+        JSON.stringify({
+          error: { code: rollbackSeen ? "V207_ROUTE_DISABLED" : "HOSTED_ROUTE_NOT_COMPOSED" },
+        }),
+        { status: rollbackSeen ? 404 : 503 },
+      );
+    };
+    const startedAt = Date.now();
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        nonceFactory: () => NONCE,
+        sleepImpl: async () => new Promise<void>(() => undefined),
+        routeRestorationSignal: AbortSignal.timeout(25),
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_CLEANUP_UNCERTAIN" });
+
+    expect(Date.now() - startedAt).toBeLessThan(500);
+    expect(signerSecretPresent).toBe(false);
+    expect(rollbackSeen).toBe(true);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
+    expect(evidence).toContain("V207_ROUTE_RESTORATION_UNCONFIRMED");
+    expect(evidence).not.toContain('"event": "restored_route_confirmed"');
+  });
+
   it("propagates SIGTERM to the installed tsx child", async () => {
     const root = await mkdtemp("/tmp/vf-v207-child-");
     roots.push(root);

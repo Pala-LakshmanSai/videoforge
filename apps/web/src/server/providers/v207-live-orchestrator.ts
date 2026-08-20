@@ -64,6 +64,8 @@ export interface V207LiveOrchestratorOptions {
   readonly nonceFactory?: () => string;
   /** Test-only dependency injection for the bounded secret-propagation poll. */
   readonly sleepImpl?: (milliseconds: number) => Promise<void>;
+  /** Test-only hard deadline for route restoration; production uses a fresh 120-second signal. */
+  readonly routeRestorationSignal?: AbortSignal;
   /** Test-only filesystem headroom override; production always reads statfs. */
   readonly diskAvailableBytes?: number;
   /** Tests disable process signal registration; production leaves it enabled. */
@@ -465,20 +467,26 @@ async function waitForRouteRestoration(
   routeUrl: string,
   expected: RouteFingerprint,
   sleepImpl: (milliseconds: number) => Promise<void>,
-  signal?: AbortSignal,
+  signal: AbortSignal,
 ): Promise<RouteFingerprint> {
-  const deadline = AbortSignal.timeout(RESTORATION_PROPAGATION_WINDOW_MS);
-  const pollSignal = signal === undefined ? deadline : AbortSignal.any([signal, deadline]);
   for (let attempt = 1; attempt <= RESTORATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
+    if (signal.aborted) break;
     try {
-      const observed = await readRouteFingerprint(fetchImpl, routeUrl, pollSignal);
+      const observed = await readRouteFingerprint(fetchImpl, routeUrl, signal);
       if (observed.status === expected.status && observed.code === expected.code) return observed;
     } catch {
       // Cleanup tolerates only bounded transient reachability failure. The exact captured
       // fingerprint is still required before cleanup can be called confirmed.
     }
+    if (signal.aborted) break;
     if (attempt < RESTORATION_PROPAGATION_MAX_ATTEMPTS) {
-      await sleepImpl(RESTORATION_PROPAGATION_DELAY_MS);
+      await Promise.race([
+        sleepImpl(RESTORATION_PROPAGATION_DELAY_MS),
+        new Promise<void>((resolveAbort) => {
+          if (signal.aborted) resolveAbort();
+          else signal.addEventListener("abort", () => resolveAbort(), { once: true });
+        }),
+      ]);
     }
   }
   throw new V207LiveOrchestratorError("V207_ROUTE_RESTORATION_UNCONFIRMED");
@@ -999,6 +1007,8 @@ export async function runV207LiveOrchestration(
               routeUrl,
               preMutationRoute,
               sleepImpl,
+              options.routeRestorationSignal ??
+                AbortSignal.timeout(RESTORATION_PROPAGATION_WINDOW_MS),
             );
             await record("restored_route_confirmed", {
               status: restoredRoute.status,
