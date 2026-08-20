@@ -74,9 +74,7 @@ class MageWorkerImageTest(unittest.TestCase):
             r"/opt/videoforge/mage_serverless\.py$",
         )
         copy_lines = [
-            line.strip()
-            for line in dockerfile.splitlines()
-            if line.strip().startswith("COPY ")
+            line.strip() for line in dockerfile.splitlines() if line.strip().startswith("COPY ")
         ]
         self.assertEqual(
             copy_lines,
