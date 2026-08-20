@@ -27,7 +27,11 @@ assert(authority.approval.historical_cap_reused === false, "historical_cap_reuse
 assert(authority.approval.recurring_retained_volume_charge_usd_per_month === 7, "retention_rate");
 assert(authority.lineage.repaired_source_commit === proposal.lineage.repaired_source_commit, "source");
 assert(authority.lineage.base_image_digest === proposal.lineage.base_image_digest, "base_image");
-assert(authority.lineage.final_repaired_image_digest === null, "unpublished_digest");
+assert(
+  authority.lineage.final_repaired_image_digest ===
+    "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+  "published_digest",
+);
 assert(authority.lineage.model === proposal.lineage.model, "model");
 assert(authority.lineage.model_manifest_sha256 === proposal.lineage.model_manifest_sha256, "manifest");
 assert(authority.lineage.volume_id_sha256 === proposal.lineage.volume_id_sha256, "volume");
@@ -41,6 +45,6 @@ assert(
 );
 assert(authority.rates_at_proposal.serverless_flex_rtx4090_usd_per_hour === 1.1, "rate");
 assert(authority.rates_at_proposal.finite_variable_compute_estimate_usd === 2.2, "estimate");
-assert(authority.status === "ACTIVE_PREPUBLICATION_PREFLIGHT", "status");
+assert(authority.status === "ACTIVE_PREENDPOINT_MUTATION", "status");
 
 process.stdout.write("V2-07 live authority validation PASS\n");

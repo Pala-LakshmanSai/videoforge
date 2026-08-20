@@ -1,0 +1,68 @@
+{
+  "schema_version": "videoforge.v2-07-image-publication/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "published_at": "2026-08-20T04:03:12Z",
+  "workflow": {
+    "run_id": 32330272028,
+    "job_id": 96309434791,
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/32330272028",
+    "head_sha": "5ab37a678a233c9556255d161e5f26dd66b0b087",
+    "head_branch": "codex/serverless-v2-roadmap",
+    "input_publish": true,
+    "conclusion": "success",
+    "started_at": "2026-08-20T04:00:28Z",
+    "completed_at": "2026-08-20T04:03:14Z"
+  },
+  "image": {
+    "immutable_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "manifest_digest": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "manifest_size_bytes": 4719,
+    "config_digest": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "os": "linux",
+    "architecture": "amd64",
+    "entrypoint": ["python", "/opt/videoforge/mage-serverless-entrypoint.py"],
+    "source_commit_label": "d1d704c2f39581e745ba90151c7388673107de41",
+    "base_digest_label": "sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
+    "model_revision_label": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+    "comfyui_revision_label": "26d7f8556822d9d08c2d3e1878636ac3b4969af9",
+    "precision_label": "int8-convrot",
+    "offline_environment": {
+      "HF_HUB_OFFLINE": "1",
+      "TRANSFORMERS_OFFLINE": "1",
+      "DIFFUSERS_OFFLINE": "1",
+      "MAGE_MODEL_ROOT": "/runpod-volume"
+    }
+  },
+  "smoke": {
+    "source_byte_hashes_verified": true,
+    "base_digest_verified": true,
+    "model_and_comfy_import": "PASS",
+    "repaired_handler_import": "PASS",
+    "compileall": "PASS"
+  },
+  "prepublication_runpod_snapshot": {
+    "checked_at": "2026-08-20T03:59:47.262Z",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "retained_network_volumes": 2,
+    "rtx4090_eu_ro_1_availability": "HIGH",
+    "secure_pod_reference_rate_usd_per_hour": 0.74
+  },
+  "current_rates": {
+    "serverless_flex_rtx4090_usd_per_hour": 1.1,
+    "network_volume_usd_per_gb_month": 0.07,
+    "existing_two_volume_charge_usd_per_month": 7
+  },
+  "provider_state": {
+    "github_publication_mutations": 1,
+    "runpod_mutations": 0,
+    "gpu_allocations": 0,
+    "finite_spend_usd": 0,
+    "retained_volume_mutation": false
+  },
+  "result": "PASS_IMMUTABLE_IMAGE_PUBLISHED"
+}

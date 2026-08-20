@@ -19,7 +19,7 @@
   "lineage": {
     "repaired_source_commit": "d1d704c2f39581e745ba90151c7388673107de41",
     "base_image_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
-    "final_repaired_image_digest": null,
+    "final_repaired_image_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
     "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
     "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
     "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
@@ -65,5 +65,5 @@
     "finite_cap_risk",
     "unplanned_GPU_region_volume_image_or_rate_change"
   ],
-  "status": "ACTIVE_PREPUBLICATION_PREFLIGHT"
+  "status": "ACTIVE_PREENDPOINT_MUTATION"
 }
