@@ -98,6 +98,7 @@ interface EvidenceDocument {
   readonly authority: {
     readonly image_digest: string;
     readonly source_commit: string;
+    readonly proposal_sha256: string;
     readonly cap_usd: number;
   };
   readonly events: EvidenceEvent[];
@@ -685,6 +686,7 @@ function commandEnvironment(
   child.V207_WRANGLER_CONFIG = configPath;
   child.V207_IMAGE = environment.V207_IMAGE;
   child.V207_IMAGE_SOURCE_COMMIT = environment.V207_IMAGE_SOURCE_COMMIT;
+  child.V207_PROPOSAL_SHA256 = environment.V207_PROPOSAL_SHA256;
   child.V207_FINITE_CAP_USD = environment.V207_FINITE_CAP_USD;
   if (preflightOnly) child.V207_PREFLIGHT_ONLY = "1";
   else delete child.V207_PREFLIGHT_ONLY;
@@ -728,6 +730,7 @@ export async function runV207LiveOrchestration(
     authority: {
       image_digest: imageDigest(authority.image),
       source_commit: sourceCommit,
+      proposal_sha256: authority.proposalSha256,
       cap_usd: authority.capUsd,
     },
     events,

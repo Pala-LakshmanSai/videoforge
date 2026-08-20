@@ -4,15 +4,18 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  V207_AMENDED_PROPOSAL_SHA256,
   V207_REPAIRED_IMAGE,
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
 } from "./v207-activation-authority";
 
 const previousV207Image = process.env.V207_IMAGE;
 const previousV207SourceCommit = process.env.V207_IMAGE_SOURCE_COMMIT;
+const previousV207Proposal = process.env.V207_PROPOSAL_SHA256;
 const previousV207Cap = process.env.V207_FINITE_CAP_USD;
 process.env.V207_IMAGE = V207_REPAIRED_IMAGE;
 process.env.V207_IMAGE_SOURCE_COMMIT = V207_REPAIRED_IMAGE_SOURCE_COMMIT;
+process.env.V207_PROPOSAL_SHA256 = V207_AMENDED_PROPOSAL_SHA256;
 process.env.V207_FINITE_CAP_USD = "4";
 const {
   assertV207ItemCount,
@@ -25,6 +28,8 @@ if (previousV207Image === undefined) delete process.env.V207_IMAGE;
 else process.env.V207_IMAGE = previousV207Image;
 if (previousV207SourceCommit === undefined) delete process.env.V207_IMAGE_SOURCE_COMMIT;
 else process.env.V207_IMAGE_SOURCE_COMMIT = previousV207SourceCommit;
+if (previousV207Proposal === undefined) delete process.env.V207_PROPOSAL_SHA256;
+else process.env.V207_PROPOSAL_SHA256 = previousV207Proposal;
 if (previousV207Cap === undefined) delete process.env.V207_FINITE_CAP_USD;
 else process.env.V207_FINITE_CAP_USD = previousV207Cap;
 
@@ -36,6 +41,9 @@ const source = await readFile(
 describe("V2-07 live qualification runner safety", () => {
   it("pins the repaired registry attestation and rejects the fixture artifact plane", () => {
     expect(source).toContain("V207_IMAGE_CONFIG_DIGEST_MISMATCH");
+    expect(source).toContain("V207_IMAGE_LAYER_DIGEST_MISMATCH");
+    expect(source).toContain("V207_REPAIRED_IMAGE_CONFIG_DIGEST");
+    expect(source).toContain("V207_REPAIRED_IMAGE_LAYER_DIGEST");
     expect(source).toContain("org.opencontainers.image.revision");
     expect(source).toContain("V207_REPAIRED_IMAGE_SOURCE_COMMIT");
     expect(source).not.toContain("FakeR2ArtifactPlane");

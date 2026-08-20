@@ -24,6 +24,9 @@ import { loadSujalRunPodApiKeyFromKeychain, SUJAL_RUNPOD_ACCOUNT_ID_SHA256 } fro
 import { assertSujalRunPodAccount } from "./runpod-account";
 import {
   parseV207ActivationAuthority,
+  V207_REPAIRED_IMAGE_BASE_DIGEST,
+  V207_REPAIRED_IMAGE_CONFIG_DIGEST,
+  V207_REPAIRED_IMAGE_LAYER_DIGEST,
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
 } from "./v207-activation-authority";
 const MANIFEST = "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b";
@@ -74,9 +77,9 @@ const ROUTE =
   "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port";
 const RESULT_PATH = "/tmp/videoforge-v207-live-result.json";
 const BILLING_START = "2026-08-20T00:00:00.000Z";
-const IMAGE_CONFIG_DIGEST =
-  "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2";
-const IMAGE_BASE_DIGEST = "sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e";
+const IMAGE_CONFIG_DIGEST = V207_REPAIRED_IMAGE_CONFIG_DIGEST;
+const IMAGE_LAYER_DIGEST = V207_REPAIRED_IMAGE_LAYER_DIGEST;
+const IMAGE_BASE_DIGEST = V207_REPAIRED_IMAGE_BASE_DIGEST;
 const ACTIVATION = parseV207ActivationAuthority(process.env);
 const IMAGE = ACTIVATION.image;
 const finiteCapUsd = ACTIVATION.capUsd;
@@ -589,6 +592,14 @@ async function attestPublishedImage(): Promise<AnyRecord> {
   const manifest = (await manifestResponse.json()) as AnyRecord;
   if (manifest.config?.digest !== IMAGE_CONFIG_DIGEST) {
     throw new Error("V207_IMAGE_CONFIG_DIGEST_MISMATCH");
+  }
+  const layers = manifest.layers;
+  if (
+    !Array.isArray(layers) ||
+    layers.length === 0 ||
+    (layers[layers.length - 1] as AnyRecord | undefined)?.digest !== IMAGE_LAYER_DIGEST
+  ) {
+    throw new Error("V207_IMAGE_LAYER_DIGEST_MISMATCH");
   }
   const configResponse = await ghcrGet(
     `${repository}/blobs/${IMAGE_CONFIG_DIGEST}`,

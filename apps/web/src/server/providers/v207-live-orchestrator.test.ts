@@ -13,10 +13,14 @@ import {
   type V207CommandRequest,
   type V207CommandResult,
 } from "./v207-live-orchestrator";
+import {
+  V207_AMENDED_PROPOSAL_SHA256,
+  V207_REPAIRED_IMAGE,
+  V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+} from "./v207-activation-authority";
 
-const IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497";
-const SOURCE_COMMIT = "d1d704c2f39581e745ba90151c7388673107de41";
+const IMAGE = V207_REPAIRED_IMAGE;
+const SOURCE_COMMIT = V207_REPAIRED_IMAGE_SOURCE_COMMIT;
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGED_VERSION_ID = "22222222-2222-4222-8222-222222222222";
 const DEPLOYMENT_ID = "33333333-3333-4333-8333-333333333333";
@@ -53,6 +57,7 @@ async function fixture() {
     environment: {
       V207_IMAGE: IMAGE,
       V207_IMAGE_SOURCE_COMMIT: SOURCE_COMMIT,
+      V207_PROPOSAL_SHA256: V207_AMENDED_PROPOSAL_SHA256,
       V207_FINITE_CAP_USD: "4",
       V207_WRANGLER_CONFIG: configPath,
       RUNPOD_KEY,
@@ -217,6 +222,8 @@ describe("V2-07 live orchestrator", () => {
     expect(liveRunner?.args).toEqual(["src/server/providers/v207-live-qualification.ts"]);
     expect(liveRunner?.cwd).toBe(join(resolve(process.cwd(), "../.."), "apps/web"));
     expect(liveRunner?.env.V207_AUTHORITY_NONCE).toBe(NONCE);
+    expect(liveRunner?.env.V207_PROPOSAL_SHA256).toBe(V207_AMENDED_PROPOSAL_SHA256);
+    expect(preflightRunner?.env.V207_PROPOSAL_SHA256).toBe(V207_AMENDED_PROPOSAL_SHA256);
     expect(liveRunner?.env.RUNPOD_KEY).toBe(RUNPOD_KEY);
     expect(liveRunner?.env.V207_PREFLIGHT_ONLY).toBeUndefined();
     expect(calls.indexOf(preflightRunner as V207CommandRequest)).toBeLessThan(
