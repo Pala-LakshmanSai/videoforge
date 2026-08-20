@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T02:03:02Z",
+  "recorded_at": "2026-08-20T02:05:44Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -81,6 +81,7 @@
     ]
   },
   "requirement_matrix": "requirement-matrix.json",
+  "combined_live_proposal": "combined-live-proposal.json",
   "verification": [
     {
       "commit": "20695bb",

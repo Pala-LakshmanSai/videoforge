@@ -122,6 +122,7 @@
     "old_finite_cap_usd_closed": 4,
     "new_finite_cap_usd": null,
     "next_required": [
+      "combined-live-proposal.json with fresh user cap pending",
       "hosted repaired image build and exact immutable digest",
       "one combined exact external proposal",
       "fresh numeric maximum cumulative finite spend cap"
