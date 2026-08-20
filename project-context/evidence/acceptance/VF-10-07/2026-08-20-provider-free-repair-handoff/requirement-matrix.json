@@ -1,0 +1,118 @@
+{
+  "schema_version": "videoforge.v2-07-provider-free-requirement-matrix/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-20T00:19:34Z",
+  "authority_mode": "provider_free",
+  "requirements": [
+    {
+      "id": "handler_complete_batch",
+      "requirement": "Queue handler accepts one complete video image batch with durable per-unit resume.",
+      "evidence": [
+        "workers/image-media/mage_serverless.py",
+        "workers/image-media/tests/test_mage_serverless.py",
+        "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts"
+      ],
+      "status": "PASS_PROVIDER_FREE",
+      "live_gap": "A real durable R2 signer and provider batch remain required."
+    },
+    {
+      "id": "sealed_volume_and_runtime_policy",
+      "requirement": "Verify the sealed manifest, read only from /runpod-volume, warm during initialization, and keep mutable bytes in job-local scratch.",
+      "evidence": [
+        "workers/image-media/src/mage_volume.py",
+        "workers/image-media/src/mage_runtime.py",
+        "workers/image-media/tests/test_mage_worker_image.py",
+        "workers/image-media/tests/test_secure_scratch.py",
+        "workers/image-media/tests/test_serverless_envelope.py"
+      ],
+      "status": "PASS_PROVIDER_FREE",
+      "live_gap": "No provider worker was started for this repaired lineage."
+    },
+    {
+      "id": "scoped_ports_and_v3_receipt",
+      "requirement": "Use scoped R2 ports, exact generated-output authority, v3 provenance receipt, and terminal cleanup.",
+      "evidence": [
+        "workers/image-media/tests/test_mage_serverless.py",
+        "workers/image-media/tests/test_serverless_envelope.py",
+        "apps/web/src/server/hosted/v207-output-ports.test.ts",
+        "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts"
+      ],
+      "status": "PASS_PROVIDER_FREE",
+      "live_gap": "Durable hosted R2 output acceptance is not proven without the live signer."
+    },
+    {
+      "id": "negative_contracts",
+      "requirement": "Fail closed for wrong bytes/path/volume/GPU/region, model-volume writes, cache escape, malformed authority, duplicate delivery, cancel, timeout, and two readers.",
+      "evidence": [
+        "workers/image-media/tests/test_mage_serverless.py",
+        "workers/image-media/tests/test_mage_worker_image.py",
+        "workers/image-media/tests/test_serverless_envelope.py",
+        "workers/image-media/tests/test_secure_scratch.py",
+        "apps/web/src/server/providers/v207-activation-authority.test.ts",
+        "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts"
+      ],
+      "status": "PASS_PROVIDER_FREE",
+      "live_gap": "Provider duplicate/cancel/timeout behavior still requires the approved live run."
+    },
+    {
+      "id": "immutable_image_definition",
+      "requirement": "Define a repaired immutable image without changing model bytes or runtime dependencies.",
+      "evidence": [
+        "workers/image-media/Dockerfile.mage.repair",
+        ".github/workflows/mage-image.yml",
+        "workers/image-media/tests/test_mage_worker_image.py",
+        "5f075b2",
+        "57bd915"
+      ],
+      "status": "PASS_PROVIDER_FREE_DEFINITION",
+      "live_gap": "Hosted build has not been triggered; no final repaired digest exists."
+    },
+    {
+      "id": "staged_endpoint_configs",
+      "requirement": "Pin EU-RO-1, exact Mage volume, RTX 4090 only, min 0, max 1, request-count 1, handler concurrency 1, then a separately hashed max 2 reader proof.",
+      "evidence": [
+        "apps/web/src/server/providers/runpod-v207-qualification-harness.ts",
+        "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts",
+        "apps/web/src/server/providers/runpod-control.ts",
+        "ee69c95"
+      ],
+      "status": "PASS_PROVIDER_FREE_DEFINITION",
+      "live_gap": "Endpoint/template mutation requires the exact digest and fresh proposal approval."
+    },
+    {
+      "id": "live_qualification_measurements",
+      "requirement": "Prove cold/warm complete batches, two simultaneous read-only workers, output durability, timings, peak VRAM, settled cost, and workers=0 after drain.",
+      "evidence": [
+        "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md",
+        "project-context/tasks/VF-10-07.md"
+      ],
+      "status": "UNPROVEN_LIVE_REQUIRED",
+      "live_gap": "Publication, GPU allocation, /run, and spend are intentionally blocked pending fresh exact authority and a new numeric cap."
+    },
+    {
+      "id": "v2_06_predecessor",
+      "requirement": "V2-06 is committed and independently green before V2-07 qualification.",
+      "evidence": [
+        "project-context/evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json",
+        "project-context/CURRENT_STATE.yaml"
+      ],
+      "status": "PASS_INDEPENDENT_ACCEPTANCE",
+      "live_gap": null
+    }
+  ],
+  "boundary": {
+    "provider_mutation": false,
+    "publication": false,
+    "gpu_use": false,
+    "spend_usd": 0,
+    "retained_volumes_unchanged": true,
+    "old_finite_cap_usd_closed": 4,
+    "new_finite_cap_usd": null,
+    "next_required": [
+      "hosted repaired image build and exact immutable digest",
+      "one combined exact external proposal",
+      "fresh numeric maximum cumulative finite spend cap"
+    ]
+  }
+}
