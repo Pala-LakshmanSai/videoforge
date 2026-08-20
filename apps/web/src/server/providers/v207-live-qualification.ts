@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { chmod, readFile, rename, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -97,6 +97,174 @@ const sortedJson = (value: unknown): string => {
 };
 
 const SAFE_PROVIDER_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
+
+export class V207QualificationCancelled extends Error {
+  readonly code = "V207_QUALIFICATION_CANCELLED" as const;
+
+  constructor() {
+    super("V207_QUALIFICATION_CANCELLED");
+    this.name = "V207QualificationCancelled";
+  }
+}
+
+export interface V207Cancellation {
+  readonly requested: boolean;
+  request(): void;
+  throwIfRequested(): void;
+}
+
+/**
+ * Keep signal handling synchronous and side-effect free.  The main qualification loop observes
+ * this state at bounded phase/status boundaries, then enters its existing rollback path.
+ */
+export function createV207Cancellation(): V207Cancellation {
+  let requested = false;
+  return {
+    get requested() {
+      return requested;
+    },
+    request(): void {
+      requested = true;
+    },
+    throwIfRequested(): void {
+      if (requested) throw new V207QualificationCancelled();
+    },
+  };
+}
+
+type SignalTarget = Pick<NodeJS.Process, "on" | "off">;
+
+/** Install removable handlers so SIGINT/SIGTERM cannot bypass catch/finally cleanup. */
+export function installV207SignalHandlers(
+  cancellation: V207Cancellation,
+  target: SignalTarget = process,
+): () => void {
+  const signals: readonly NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
+  const handlers = new Map<NodeJS.Signals, () => void>();
+  for (const signal of signals) {
+    const handler = (): void => {
+      cancellation.request();
+      console.error("v207:cancellation-requested");
+    };
+    handlers.set(signal, handler);
+    target.on(signal, handler);
+  }
+  return (): void => {
+    for (const signal of signals) {
+      const handler = handlers.get(signal);
+      if (handler) target.off(signal, handler);
+    }
+  };
+}
+
+const SAFE_EVIDENCE_KEYS = new Set([
+  "schema_version",
+  "phase",
+  "event",
+  "kind",
+  "status",
+  "result",
+  "code",
+  "source_commit",
+  "base_digest",
+  "manifest_digest",
+  "config_digest",
+  "image_digest",
+  "imageDigest",
+  "model_revision",
+  "comfyui_revision",
+  "precision",
+  "region",
+  "volume_mount",
+  "volume_write_policy",
+  "attestation_scope",
+  "billing_settlement",
+  "generated_output_rollback",
+  "cancel_status",
+  "cancel_output_cleanup",
+]);
+
+/**
+ * Persist only bounded qualification facts.  Unknown strings are removed rather than relying on
+ * every future provider/error shape to remember the secret/URL/raw-ID rules.
+ */
+export function redactV207LiveEvidence(value: unknown): AnyRecord {
+  const visit = (candidate: unknown, key: string | null, depth: number): unknown => {
+    if (depth > 10) return "[REDACTED_DEPTH]";
+    if (typeof candidate === "string") {
+      if (/^https?:\/\//u.test(candidate)) return "[REDACTED_URL]";
+      const hashKey = key !== null && /(?:hash|sha256|digest)$/iu.test(key);
+      if (hashKey) {
+        return /^sha256:[a-f0-9]{64}$/u.test(candidate) ? candidate : "[REDACTED]";
+      }
+      if (
+        key !== null &&
+        /_at$/iu.test(key) &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u.test(candidate)
+      ) {
+        return candidate;
+      }
+      if (key === "os" && /^(?:linux|windows|darwin)$/iu.test(candidate)) return candidate;
+      if (key === "architecture" && /^(?:amd64|arm64|x86_64)$/iu.test(candidate)) {
+        return candidate;
+      }
+      if (
+        key !== null &&
+        (/(?:api[_-]?key|authorization|password|secret|cookie|capability|nonce|token)/iu.test(
+          key,
+        ) ||
+          /(?:^|_)(?:url|uri|id|reservation_id|job_id|endpoint_id|template_id|volume_id)$/iu.test(
+            key,
+          ) ||
+          /id$/iu.test(key))
+      ) {
+        return "[REDACTED]";
+      }
+      if (key === "run_tag")
+        return /^202[0-9]-[0-9]{8,32}$/u.test(candidate) ? candidate : "[REDACTED]";
+      if (key !== null && SAFE_EVIDENCE_KEYS.has(key)) {
+        if (/^[0-9a-f]{40}$/u.test(candidate) || SAFE_PROVIDER_CODE.test(candidate)) {
+          return candidate;
+        }
+        if (/^(?:[A-Za-z0-9._-]{1,120})$/u.test(candidate)) return candidate;
+      }
+      return SAFE_PROVIDER_CODE.test(candidate) ? candidate : "[REDACTED]";
+    }
+    if (typeof candidate === "number" || typeof candidate === "boolean" || candidate === null) {
+      return candidate;
+    }
+    if (Array.isArray(candidate)) return candidate.map((entry) => visit(entry, null, depth + 1));
+    if (candidate && typeof candidate === "object") {
+      const output: AnyRecord = {};
+      for (const [entryKey, entry] of Object.entries(candidate as AnyRecord)) {
+        output[entryKey] = visit(entry, entryKey, depth + 1);
+      }
+      return output;
+    }
+    return "[REDACTED]";
+  };
+  const result = visit(value, null, 0);
+  return (
+    result && typeof result === "object" && !Array.isArray(result) ? result : { value: result }
+  ) as AnyRecord;
+}
+
+const RESULT_TEMP_PATH = `${RESULT_PATH}.tmp`;
+
+async function writeV207EvidenceCheckpoint(value: AnyRecord): Promise<void> {
+  const redacted = redactV207LiveEvidence(value);
+  try {
+    await writeFile(RESULT_TEMP_PATH, JSON.stringify(redacted, null, 2), {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+    await chmod(RESULT_TEMP_PATH, 0o600);
+    await rename(RESULT_TEMP_PATH, RESULT_PATH);
+    await chmod(RESULT_PATH, 0o600);
+  } catch {
+    throw new Error("V207_EVIDENCE_CHECKPOINT_WRITE_FAILED");
+  }
+}
 
 /** Extract only a bounded error code from RunPod's provider-level error field. */
 function providerErrorCode(value: unknown): string {
@@ -480,6 +648,7 @@ async function createBatch(
   attemptId: string,
   nonce: string,
   workerToken: string,
+  abortCheck?: () => void,
 ): Promise<{
   readonly input: RunPodV207DispatchBatchInput;
   readonly objectKeys: readonly string[];
@@ -493,6 +662,7 @@ async function createBatch(
   const reservationIds: string[] = [];
   try {
     for (let index = 0; index < 32; index += 1) {
+      abortCheck?.();
       const objectKey = `${outputPrefix}/artifact/scene-${String(index + 1).padStart(2, "0")}`;
       objectKeys.push(objectKey);
       const signed = await routePort(
@@ -508,6 +678,7 @@ async function createBatch(
         },
         nonce,
       );
+      abortCheck?.();
       const authority = signed.authority as AnyRecord;
       if (
         !authority ||
@@ -914,294 +1085,378 @@ async function verifyBatchWithDiagnostic(
 }
 
 async function main(): Promise<void> {
-  if (process.env.V207_PREFLIGHT_ONLY === "1") {
-    const summary = await runV207PreflightOnly();
-    console.error(
-      `v207:preflight-ok=${JSON.stringify({
-        schema_version: summary.schema_version,
-        image_attestation: summary.image_attestation,
-        runpod_account_id_sha256: summary.runpod_account_id_sha256,
-        baseline_endpoint_spend_usd: summary.baseline_endpoint_spend_usd,
-        route_authority: summary.route_authority,
-        inventory: summary.inventory,
-      })}`,
-    );
-    return;
-  }
-  const apiKey = process.env.RUNPOD_KEY ?? (await loadSujalRunPodApiKeyFromKeychain());
-  let nonce = process.env.V207_AUTHORITY_NONCE?.trim() ?? "";
-  if (!nonce) {
-    const wranglerConfigPath =
-      process.env.V207_WRANGLER_CONFIG ??
-      "dist-staging/videoforge_v2_06_staging/v207-wrangler.json";
-    const wranglerConfig = JSON.parse(await readFile(wranglerConfigPath, "utf8")) as AnyRecord;
-    nonce = String(wranglerConfig.vars?.VIDEOFORGE_V207_AUTHORITY_NONCE ?? "");
-  }
-  if (!/^[a-f0-9]{64}$/u.test(nonce)) throw new Error("V207_NONCE_MISSING");
-  const imageAttestation = await attestPublishedImage();
-  const receiptKeyId = "v207-qualification-20260820";
-  const receiptSecret = randomBytes(32);
-  const workerToken = randomBytes(32).toString("hex");
-  const account = await assertSujalRunPodAccount(apiKey);
-  if (account.accountIdHash !== SUJAL_RUNPOD_ACCOUNT_ID_SHA256) {
-    throw new Error("V207_RUNPOD_ACCOUNT_MISMATCH");
-  }
-  const baseline = await billingAmount(apiKey);
-  const spendSnapshotUsd = async (): Promise<number> => {
-    const current = await billingAmount(apiKey);
-    const delta = Math.max(0, current - baseline);
-    if (delta > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
-    return delta;
-  };
-  const settledSpendSnapshotUsd = async (): Promise<number> => {
-    let previous: number | null = null;
-    let stableReads = 0;
-    for (let poll = 0; poll < 18; poll += 1) {
-      const current = await spendSnapshotUsd();
-      stableReads =
-        previous !== null && Math.abs(current - previous) < 0.000_001 ? stableReads + 1 : 0;
-      previous = current;
-      if (stableReads >= 2) return current;
-      if ((poll + 1) % 3 === 0) console.error(`v207:billing-settlement-poll-${poll + 1}`);
-      await sleep(10_000);
-    }
-    throw new Error("V207_BILLING_SETTLEMENT_UNCONFIRMED");
-  };
-  const control = new RunPodControlClient({ apiKey });
-  const placement: RunPodV207Placement = {
-    networkVolumeId: VOLUME_ID,
-    dataCenterIds: [V207_RUNPOD_REGION],
-  };
-  const harness = new RunPodV207QualificationHarness({
-    control,
-    apiKey,
-    templateName: "videoforge_mage_v207_20260820",
-    endpointName: "videoforge_mage_v207_20260820",
-    imageName: IMAGE,
-    containerDiskInGb: 120,
-    templateEnvironment: {
-      MAGE_MODEL_ROOT: V207_RUNPOD_MODEL_ROOT,
-      HF_HUB_OFFLINE: "1",
-      TRANSFORMERS_OFFLINE: "1",
-      DIFFUSERS_OFFLINE: "1",
-      VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE,
-      VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
-      VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
-      VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
-      VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
-      RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
-      VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
-      VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: receiptSecret.toString("hex"),
-    },
-    placement,
-    initialPolicy: {
-      workersMin: 0,
-      workersMax: 1,
-      gpuCount: 1,
-      idleTimeout: 5,
-      executionTimeoutMs: V207_RUNPOD_EXECUTION_TIMEOUT_MS,
-    },
-    concurrentReaderPolicy: {
-      workersMin: 0,
-      workersMax: 2,
-      gpuCount: 1,
-      idleTimeout: 5,
-      executionTimeoutMs: V207_RUNPOD_EXECUTION_TIMEOUT_MS,
-    },
-    finiteSpendCapUsd: finiteCapUsd,
-    spendSnapshotUsd,
-    pollIntervalMs: 10_000,
-    maxPolls: 180,
-    sleep,
-  });
-  const evidence: AnyRecord = {
-    schema_version: "videoforge.v2-07-live-qualification/v1",
-    started_at: nowIso(),
-    approved_finite_spend_cap_usd: finiteCapUsd,
-    runpod_account_id_sha256: account.accountIdHash,
-    baseline_endpoint_spend_usd: baseline,
-    image_digest: IMAGE.slice(IMAGE.indexOf("@") + 1),
-    manifest_sha256: MANIFEST,
-    volume_id_sha256: VOLUME,
-    volume_id_hash: hashText(VOLUME_ID),
-    image_attestation: imageAttestation,
-    batches: [],
-  };
-  const runTag = `20260820-${randomBytes(6).toString("hex")}`;
-  evidence.run_tag = runTag;
-  let success = false;
-  const generatedObjectKeys: string[] = [];
+  const cancellation = createV207Cancellation();
+  const removeSignalHandlers = installV207SignalHandlers(cancellation);
   try {
-    await harness.create();
-    console.error("v207:create-ready");
-    const createdIdentity = await harness.evidence();
-    if (!createdIdentity.endpointIdHash || !createdIdentity.templateIdHash) {
-      throw new Error("V207_CREATED_IDENTITY_MISSING");
+    cancellation.throwIfRequested();
+    if (process.env.V207_PREFLIGHT_ONLY === "1") {
+      const summary = await runV207PreflightOnly();
+      console.error(
+        `v207:preflight-ok=${JSON.stringify({
+          schema_version: summary.schema_version,
+          image_attestation: summary.image_attestation,
+          runpod_account_id_sha256: summary.runpod_account_id_sha256,
+          baseline_endpoint_spend_usd: summary.baseline_endpoint_spend_usd,
+          route_authority: summary.route_authority,
+          inventory: summary.inventory,
+        })}`,
+      );
+      return;
     }
-    const coldAttemptId = `v207-cold-${runTag}`;
-    const cold = await createBatch(coldAttemptId, nonce, workerToken);
-    generatedObjectKeys.push(...cold.objectKeys);
-    console.error("v207:cold-ports-ready");
-    const coldJob = await harness.dispatchBatch(cold.input);
-    console.error("v207:cold-dispatched");
-    const coldResult = await harness.reconcile(coldJob.id);
-    console.error("v207:cold-terminal");
-    const coldEvidence = await verifyBatchWithDiagnostic(
-      harness,
-      coldResult,
-      coldAttemptId,
-      cold.objectKeys,
-      cold.input.outputAuthority.authorities as readonly AnyRecord[],
-      createdIdentity.endpointIdHash,
-      nonce,
-      receiptKeyId,
-      receiptSecret,
-    );
-    (evidence.batches as AnyRecord[]).push({ kind: "cold", ...coldEvidence });
-    const duplicate = await harness.dispatchBatch(cold.input);
-    if (duplicate.id !== coldJob.id) throw new Error("V207_DUPLICATE_DELIVERY_NOT_FENCED");
-    evidence.duplicate_delivery_same_job = true;
-    await harness.confirmWarmIdle();
-    const warmAttemptId = `v207-warm-${runTag}`;
-    const warm = await createBatch(warmAttemptId, nonce, workerToken);
-    generatedObjectKeys.push(...warm.objectKeys);
-    console.error("v207:warm-ports-ready");
-    const warmJob = await harness.dispatchBatch(warm.input);
-    const warmResult = await harness.reconcile(warmJob.id);
-    console.error("v207:warm-terminal");
-    const warmEvidence = await verifyBatchWithDiagnostic(
-      harness,
-      warmResult,
-      warmAttemptId,
-      warm.objectKeys,
-      warm.input.outputAuthority.authorities as readonly AnyRecord[],
-      createdIdentity.endpointIdHash,
-      nonce,
-      receiptKeyId,
-      receiptSecret,
-    );
-    (evidence.batches as AnyRecord[]).push({ kind: "warm", ...warmEvidence });
-    await harness.confirmWarmIdle();
-    harness.markInitialQualificationComplete();
-    evidence.concurrent_config_sha256 = await harness.applyConcurrentReaderPolicy();
-    const readerAAttemptId = `v207-reader-a-${runTag}`;
-    const readerBAttemptId = `v207-reader-b-${runTag}`;
-    const readerA = await createBatch(readerAAttemptId, nonce, workerToken);
-    generatedObjectKeys.push(...readerA.objectKeys);
-    const readerB = await createBatch(readerBAttemptId, nonce, workerToken);
-    generatedObjectKeys.push(...readerB.objectKeys);
-    const readerJobs = await harness.dispatchConcurrentReaders([readerA.input, readerB.input]);
-    const readerResults = await harness.reconcileConcurrentReaders([
-      readerJobs[0].id,
-      readerJobs[1].id,
-    ]);
-    const readerEvidenceA = await verifyBatchWithDiagnostic(
-      harness,
-      readerResults[0],
-      readerAAttemptId,
-      readerA.objectKeys,
-      readerA.input.outputAuthority.authorities as readonly AnyRecord[],
-      createdIdentity.endpointIdHash,
-      nonce,
-      receiptKeyId,
-      receiptSecret,
-    );
-    const readerEvidenceB = await verifyBatchWithDiagnostic(
-      harness,
-      readerResults[1],
-      readerBAttemptId,
-      readerB.objectKeys,
-      readerB.input.outputAuthority.authorities as readonly AnyRecord[],
-      createdIdentity.endpointIdHash,
-      nonce,
-      receiptKeyId,
-      receiptSecret,
-    );
-    (evidence.batches as AnyRecord[]).push({ kind: "reader_a", ...readerEvidenceA });
-    (evidence.batches as AnyRecord[]).push({ kind: "reader_b", ...readerEvidenceB });
-    await harness.drain();
-    await harness.scaleDownToInitial();
-    const cancel = await createBatch(`v207-cancel-${runTag}`, nonce, workerToken);
-    generatedObjectKeys.push(...cancel.objectKeys);
-    const cancelJob = await harness.dispatchBatch(cancel.input);
-    const cancelled = await harness.cancel(cancelJob.id);
-    if (cancelled.status !== "CANCELLED") throw new Error("V207_CANCEL_UNCONFIRMED");
-    evidence.cancel_status = cancelled.status;
-    await deleteGeneratedObjects(cancel.objectKeys, nonce);
-    evidence.cancel_output_cleanup = "CONFIRMED";
-    await harness.scaleDownToInitial();
-    await harness.cleanup({ deleteIfFailed: false, failed: false });
-    const finalInventory = await control.inventory();
-    const endpoint = finalInventory.endpoints.find(
-      (candidate) => candidate.idHash === createdIdentity.endpointIdHash,
-    );
-    const retainedVolumes = [...finalInventory.networkVolumes].sort((left, right) =>
-      left.idHash.localeCompare(right.idHash),
-    );
-    const expectedVolumeHashes = [SOULX_VOLUME, VOLUME].sort();
-    if (
-      finalInventory.pods.length !== 0 ||
-      finalInventory.runningPodCount !== 0 ||
-      finalInventory.activeServerlessWorkerCount !== 0 ||
-      finalInventory.endpoints.length !== 1 ||
-      !endpoint ||
-      endpoint.workersMin !== 0 ||
-      endpoint.workersMax !== 1 ||
-      endpoint.activeWorkerCount !== 0 ||
-      endpoint.workerStatuses.some((status) => status === "RUNNING") ||
-      finalInventory.privateTemplateCount !== 1 ||
-      JSON.stringify(retainedVolumes.map((volume) => volume.idHash)) !==
-        JSON.stringify(expectedVolumeHashes) ||
-      retainedVolumes.some(
-        (volume) => volume.sizeGb !== 50 || volume.dataCenterId !== V207_RUNPOD_REGION,
-      )
-    ) {
-      throw new Error("V207_FINAL_INVENTORY_INVALID");
+    const apiKey = process.env.RUNPOD_KEY ?? (await loadSujalRunPodApiKeyFromKeychain());
+    let nonce = process.env.V207_AUTHORITY_NONCE?.trim() ?? "";
+    if (!nonce) {
+      const wranglerConfigPath =
+        process.env.V207_WRANGLER_CONFIG ??
+        "dist-staging/videoforge_v2_06_staging/v207-wrangler.json";
+      const wranglerConfig = JSON.parse(await readFile(wranglerConfigPath, "utf8")) as AnyRecord;
+      nonce = String(wranglerConfig.vars?.VIDEOFORGE_V207_AUTHORITY_NONCE ?? "");
     }
-    evidence.final_inventory = {
-      checked_at: finalInventory.checkedAt,
-      pod_count: finalInventory.pods.length,
-      endpoint_count: finalInventory.endpoints.length,
-      endpoint_id_hash: endpoint.idHash,
-      workers_min: endpoint.workersMin,
-      workers_max: endpoint.workersMax,
-      active_workers: finalInventory.activeServerlessWorkerCount,
-      private_template_count: finalInventory.privateTemplateCount,
-      volume_id_hashes: retainedVolumes.map((volume) => volume.idHash),
-      volume_sizes_gb: retainedVolumes.map((volume) => volume.sizeGb),
-      volume_regions: retainedVolumes.map((volume) => volume.dataCenterId),
+    if (!/^[a-f0-9]{64}$/u.test(nonce)) throw new Error("V207_NONCE_MISSING");
+    const imageAttestation = await attestPublishedImage();
+    const receiptKeyId = "v207-qualification-20260820";
+    const receiptSecret = randomBytes(32);
+    const workerToken = randomBytes(32).toString("hex");
+    const account = await assertSujalRunPodAccount(apiKey);
+    if (account.accountIdHash !== SUJAL_RUNPOD_ACCOUNT_ID_SHA256) {
+      throw new Error("V207_RUNPOD_ACCOUNT_MISMATCH");
+    }
+    const baseline = await billingAmount(apiKey);
+    const spendSnapshotUsd = async (): Promise<number> => {
+      const current = await billingAmount(apiKey);
+      const delta = Math.max(0, current - baseline);
+      if (delta > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
+      return delta;
     };
-    evidence.spend_usd = await settledSpendSnapshotUsd();
-    evidence.billing_settlement = "STABLE_THREE_READS";
-    success = true;
-  } catch (error) {
-    evidence.error = error instanceof Error ? error.message : String(error);
+    const settledSpendSnapshotUsd = async (): Promise<number> => {
+      let previous: number | null = null;
+      let stableReads = 0;
+      for (let poll = 0; poll < 18; poll += 1) {
+        const current = await spendSnapshotUsd();
+        stableReads =
+          previous !== null && Math.abs(current - previous) < 0.000_001 ? stableReads + 1 : 0;
+        previous = current;
+        if (stableReads >= 2) return current;
+        if ((poll + 1) % 3 === 0) console.error(`v207:billing-settlement-poll-${poll + 1}`);
+        await sleep(10_000);
+      }
+      throw new Error("V207_BILLING_SETTLEMENT_UNCONFIRMED");
+    };
+    const control = new RunPodControlClient({ apiKey });
+    const placement: RunPodV207Placement = {
+      networkVolumeId: VOLUME_ID,
+      dataCenterIds: [V207_RUNPOD_REGION],
+    };
+    const evidence: AnyRecord = {
+      schema_version: "videoforge.v2-07-live-qualification/v1",
+      started_at: nowIso(),
+      approved_finite_spend_cap_usd: finiteCapUsd,
+      runpod_account_id_sha256: account.accountIdHash,
+      baseline_endpoint_spend_usd: baseline,
+      image_digest: IMAGE.slice(IMAGE.indexOf("@") + 1),
+      manifest_sha256: MANIFEST,
+      volume_id_sha256: VOLUME,
+      volume_id_hash: hashText(VOLUME_ID),
+      image_attestation: imageAttestation,
+      batches: [],
+    };
+    const runTag = `20260820-${randomBytes(6).toString("hex")}`;
+    evidence.run_tag = runTag;
+    let latestHarnessEvidence: AnyRecord | null = null;
+    const checkpointEvents: AnyRecord[] = [];
+    let checkpointWrite: Promise<void> = Promise.resolve();
+    const persistCheckpoint = (phase: string, event?: AnyRecord): Promise<void> => {
+      if (event) checkpointEvents.push({ phase, ...event });
+      evidence.phase = phase;
+      evidence.checkpoint_events = checkpointEvents;
+      if (latestHarnessEvidence) evidence.harness = latestHarnessEvidence;
+      // Two reader reconciliations can report status concurrently. Serialize the atomic replace so
+      // one status checkpoint cannot race another through the shared result temp path.
+      checkpointWrite = checkpointWrite.then(
+        () => writeV207EvidenceCheckpoint(evidence),
+        () => writeV207EvidenceCheckpoint(evidence),
+      );
+      return checkpointWrite;
+    };
+    const refreshHarnessCheckpoint = async (phase: string): Promise<void> => {
+      latestHarnessEvidence = (await harness.evidence()) as unknown as AnyRecord;
+      await persistCheckpoint(phase);
+    };
+    const harness = new RunPodV207QualificationHarness({
+      control,
+      apiKey,
+      templateName: "videoforge_mage_v207_20260820",
+      endpointName: "videoforge_mage_v207_20260820",
+      imageName: IMAGE,
+      containerDiskInGb: 120,
+      templateEnvironment: {
+        MAGE_MODEL_ROOT: V207_RUNPOD_MODEL_ROOT,
+        HF_HUB_OFFLINE: "1",
+        TRANSFORMERS_OFFLINE: "1",
+        DIFFUSERS_OFFLINE: "1",
+        VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE,
+        VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
+        VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
+        VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
+        VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
+        RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
+        VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
+        VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: receiptSecret.toString("hex"),
+      },
+      placement,
+      initialPolicy: {
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        idleTimeout: 5,
+        executionTimeoutMs: V207_RUNPOD_EXECUTION_TIMEOUT_MS,
+      },
+      concurrentReaderPolicy: {
+        workersMin: 0,
+        workersMax: 2,
+        gpuCount: 1,
+        idleTimeout: 5,
+        executionTimeoutMs: V207_RUNPOD_EXECUTION_TIMEOUT_MS,
+      },
+      finiteSpendCapUsd: finiteCapUsd,
+      spendSnapshotUsd,
+      pollIntervalMs: 10_000,
+      maxPolls: 180,
+      sleep,
+      abortCheck: cancellation.throwIfRequested,
+      onStatusCheckpoint: async (status) => {
+        await persistCheckpoint("status", {
+          event: "provider_status",
+          status: status.status,
+          job_id_hash: status.idHash,
+          delay_time_ms: status.delayTimeMs,
+          execution_time_ms: status.executionTimeMs,
+        });
+      },
+    });
+    let success = false;
+    const generatedObjectKeys: string[] = [];
     try {
-      await deleteGeneratedObjects(generatedObjectKeys, nonce);
-      evidence.generated_output_rollback = "CONFIRMED";
-    } catch (rollbackError) {
-      evidence.generated_output_rollback = "UNCERTAIN";
-      evidence.generated_output_rollback_error =
-        rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+      cancellation.throwIfRequested();
+      await harness.create();
+      console.error("v207:create-ready");
+      const createdIdentity = await harness.evidence();
+      latestHarnessEvidence = createdIdentity as unknown as AnyRecord;
+      if (!createdIdentity.endpointIdHash || !createdIdentity.templateIdHash) {
+        throw new Error("V207_CREATED_IDENTITY_MISSING");
+      }
+      await persistCheckpoint("create");
+      const coldAttemptId = `v207-cold-${runTag}`;
+      const cold = await createBatch(
+        coldAttemptId,
+        nonce,
+        workerToken,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...cold.objectKeys);
+      console.error("v207:cold-ports-ready");
+      await persistCheckpoint("cold-ports");
+      cancellation.throwIfRequested();
+      const coldJob = await harness.dispatchBatch(cold.input);
+      console.error("v207:cold-dispatched");
+      await persistCheckpoint("cold-dispatch");
+      const coldResult = await harness.reconcile(coldJob.id);
+      console.error("v207:cold-terminal");
+      const coldEvidence = await verifyBatchWithDiagnostic(
+        harness,
+        coldResult,
+        coldAttemptId,
+        cold.objectKeys,
+        cold.input.outputAuthority.authorities as readonly AnyRecord[],
+        createdIdentity.endpointIdHash,
+        nonce,
+        receiptKeyId,
+        receiptSecret,
+      );
+      (evidence.batches as AnyRecord[]).push({ kind: "cold", ...coldEvidence });
+      await persistCheckpoint("cold-terminal");
+      const duplicate = await harness.dispatchBatch(cold.input);
+      if (duplicate.id !== coldJob.id) throw new Error("V207_DUPLICATE_DELIVERY_NOT_FENCED");
+      evidence.duplicate_delivery_same_job = true;
+      await harness.confirmWarmIdle();
+      await persistCheckpoint("cold-warm-idle");
+      const warmAttemptId = `v207-warm-${runTag}`;
+      const warm = await createBatch(
+        warmAttemptId,
+        nonce,
+        workerToken,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...warm.objectKeys);
+      console.error("v207:warm-ports-ready");
+      await persistCheckpoint("warm-ports");
+      cancellation.throwIfRequested();
+      const warmJob = await harness.dispatchBatch(warm.input);
+      await persistCheckpoint("warm-dispatch");
+      const warmResult = await harness.reconcile(warmJob.id);
+      console.error("v207:warm-terminal");
+      const warmEvidence = await verifyBatchWithDiagnostic(
+        harness,
+        warmResult,
+        warmAttemptId,
+        warm.objectKeys,
+        warm.input.outputAuthority.authorities as readonly AnyRecord[],
+        createdIdentity.endpointIdHash,
+        nonce,
+        receiptKeyId,
+        receiptSecret,
+      );
+      (evidence.batches as AnyRecord[]).push({ kind: "warm", ...warmEvidence });
+      await persistCheckpoint("warm-terminal");
+      await harness.confirmWarmIdle();
+      harness.markInitialQualificationComplete();
+      cancellation.throwIfRequested();
+      evidence.concurrent_config_sha256 = await harness.applyConcurrentReaderPolicy();
+      await refreshHarnessCheckpoint("concurrent-policy");
+      const readerAAttemptId = `v207-reader-a-${runTag}`;
+      const readerBAttemptId = `v207-reader-b-${runTag}`;
+      const readerA = await createBatch(
+        readerAAttemptId,
+        nonce,
+        workerToken,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...readerA.objectKeys);
+      const readerB = await createBatch(
+        readerBAttemptId,
+        nonce,
+        workerToken,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...readerB.objectKeys);
+      await persistCheckpoint("reader-ports");
+      const readerJobs = await harness.dispatchConcurrentReaders([readerA.input, readerB.input]);
+      await persistCheckpoint("reader-dispatch");
+      const readerResults = await harness.reconcileConcurrentReaders([
+        readerJobs[0].id,
+        readerJobs[1].id,
+      ]);
+      const readerEvidenceA = await verifyBatchWithDiagnostic(
+        harness,
+        readerResults[0],
+        readerAAttemptId,
+        readerA.objectKeys,
+        readerA.input.outputAuthority.authorities as readonly AnyRecord[],
+        createdIdentity.endpointIdHash,
+        nonce,
+        receiptKeyId,
+        receiptSecret,
+      );
+      const readerEvidenceB = await verifyBatchWithDiagnostic(
+        harness,
+        readerResults[1],
+        readerBAttemptId,
+        readerB.objectKeys,
+        readerB.input.outputAuthority.authorities as readonly AnyRecord[],
+        createdIdentity.endpointIdHash,
+        nonce,
+        receiptKeyId,
+        receiptSecret,
+      );
+      (evidence.batches as AnyRecord[]).push({ kind: "reader_a", ...readerEvidenceA });
+      (evidence.batches as AnyRecord[]).push({ kind: "reader_b", ...readerEvidenceB });
+      await persistCheckpoint("reader-terminal");
+      await harness.drain();
+      cancellation.throwIfRequested();
+      await harness.scaleDownToInitial();
+      await persistCheckpoint("reader-drained");
+      const cancel = await createBatch(
+        `v207-cancel-${runTag}`,
+        nonce,
+        workerToken,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...cancel.objectKeys);
+      await persistCheckpoint("cancel-ports");
+      cancellation.throwIfRequested();
+      const cancelJob = await harness.dispatchBatch(cancel.input);
+      await persistCheckpoint("cancel-dispatch");
+      const cancelled = await harness.cancel(cancelJob.id);
+      if (cancelled.status !== "CANCELLED") throw new Error("V207_CANCEL_UNCONFIRMED");
+      evidence.cancel_status = cancelled.status;
+      await deleteGeneratedObjects(cancel.objectKeys, nonce);
+      evidence.cancel_output_cleanup = "CONFIRMED";
+      await persistCheckpoint("cancel-terminal");
+      await harness.scaleDownToInitial();
+      await harness.cleanup({ deleteIfFailed: false, failed: false });
+      const finalInventory = await control.inventory();
+      const endpoint = finalInventory.endpoints.find(
+        (candidate) => candidate.idHash === createdIdentity.endpointIdHash,
+      );
+      const retainedVolumes = [...finalInventory.networkVolumes].sort((left, right) =>
+        left.idHash.localeCompare(right.idHash),
+      );
+      const expectedVolumeHashes = [SOULX_VOLUME, VOLUME].sort();
+      if (
+        finalInventory.pods.length !== 0 ||
+        finalInventory.runningPodCount !== 0 ||
+        finalInventory.activeServerlessWorkerCount !== 0 ||
+        finalInventory.endpoints.length !== 1 ||
+        !endpoint ||
+        endpoint.workersMin !== 0 ||
+        endpoint.workersMax !== 1 ||
+        endpoint.activeWorkerCount !== 0 ||
+        endpoint.workerStatuses.some((status) => status === "RUNNING") ||
+        finalInventory.privateTemplateCount !== 1 ||
+        JSON.stringify(retainedVolumes.map((volume) => volume.idHash)) !==
+          JSON.stringify(expectedVolumeHashes) ||
+        retainedVolumes.some(
+          (volume) => volume.sizeGb !== 50 || volume.dataCenterId !== V207_RUNPOD_REGION,
+        )
+      ) {
+        throw new Error("V207_FINAL_INVENTORY_INVALID");
+      }
+      evidence.final_inventory = {
+        checked_at: finalInventory.checkedAt,
+        pod_count: finalInventory.pods.length,
+        endpoint_count: finalInventory.endpoints.length,
+        endpoint_id_hash: endpoint.idHash,
+        workers_min: endpoint.workersMin,
+        workers_max: endpoint.workersMax,
+        active_workers: finalInventory.activeServerlessWorkerCount,
+        private_template_count: finalInventory.privateTemplateCount,
+        volume_id_hashes: retainedVolumes.map((volume) => volume.idHash),
+        volume_sizes_gb: retainedVolumes.map((volume) => volume.sizeGb),
+        volume_regions: retainedVolumes.map((volume) => volume.dataCenterId),
+      };
+      evidence.spend_usd = await settledSpendSnapshotUsd();
+      evidence.billing_settlement = "STABLE_THREE_READS";
+      success = true;
+    } catch (error) {
+      evidence.error = safeQualificationError(error);
+      try {
+        await deleteGeneratedObjects(generatedObjectKeys, nonce);
+        evidence.generated_output_rollback = "CONFIRMED";
+      } catch (rollbackError) {
+        evidence.generated_output_rollback = "UNCERTAIN";
+        evidence.generated_output_rollback_error = safeQualificationError(rollbackError);
+      }
+      try {
+        await harness.cleanup({ deleteIfFailed: true, failed: true });
+      } catch (cleanupError) {
+        evidence.cleanup_error = safeQualificationError(cleanupError);
+      }
+      throw error;
+    } finally {
+      evidence.finished_at = nowIso();
+      evidence.success = success;
+      evidence.harness = (await harness.evidence()) as unknown as AnyRecord;
+      await writeV207EvidenceCheckpoint(evidence);
     }
-    try {
-      await harness.cleanup({ deleteIfFailed: true, failed: true });
-    } catch (cleanupError) {
-      evidence.cleanup_error =
-        cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
-    }
-    throw error;
   } finally {
-    evidence.finished_at = nowIso();
-    evidence.success = success;
-    evidence.harness = await harness.evidence();
-    await writeFile(RESULT_PATH, JSON.stringify(evidence, null, 2), { mode: 0o600 });
+    removeSignalHandlers();
   }
 }
 
 function safeQualificationError(error: unknown): string {
   const candidate = error instanceof Error ? error.message : "";
-  return /^[A-Z][A-Z0-9_.:-]{2,160}$/u.test(candidate) ? candidate : "V207_QUALIFICATION_FAILED";
+  const code = candidate.match(/^[A-Z][A-Z0-9_.-]{2,80}/u)?.[0];
+  return code && SAFE_PROVIDER_CODE.test(code) ? code : "V207_QUALIFICATION_FAILED";
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

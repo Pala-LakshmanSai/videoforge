@@ -117,6 +117,15 @@ export interface RunPodV207QualificationHarnessOptions {
   readonly pollIntervalMs?: number;
   readonly maxPolls?: number;
   readonly sleep?: (milliseconds: number) => Promise<void>;
+  /** Optional bounded cancellation hook used by the live runner between provider reads. */
+  readonly abortCheck?: () => void;
+  /** Optional redacted status checkpoint hook; it must not receive raw provider identifiers. */
+  readonly onStatusCheckpoint?: (status: {
+    readonly idHash: string;
+    readonly status: string;
+    readonly executionTimeMs: number | null;
+    readonly delayTimeMs: number | null;
+  }) => Promise<void>;
 }
 
 export interface RunPodV207HarnessEvidence {
@@ -246,6 +255,10 @@ export class RunPodV207QualificationHarness {
 
   private mark(event: string, detail: RecordValue = {}): void {
     this.#events.push(Object.freeze({ event, ...detail }));
+  }
+
+  private checkAbort(): void {
+    this.#options.abortCheck?.();
   }
 
   private async assertSpendWithinCap(): Promise<number> {
@@ -414,6 +427,7 @@ export class RunPodV207QualificationHarness {
           // ready/idle worker with an empty queue is a safe update baseline; requiring total
           // zero here would wait for the very worker whose flashboot setting we are disabling.
           await this.#jobs.confirmWarmIdle(300, 250);
+          this.checkAbort();
           this.mark("flashboot_normalization_warm_idle", {
             endpoint_id_hash: sha256(endpoint.id),
           });
@@ -424,6 +438,7 @@ export class RunPodV207QualificationHarness {
             this.#options.placement,
             this.#guard,
           );
+          this.checkAbort();
           const readback = await this.#options.control.inventoryDisposableResources();
           const readbackEndpoint =
             readback.endpoints.length === 1 && readback.endpoints[0]?.id === endpoint.id
@@ -455,6 +470,7 @@ export class RunPodV207QualificationHarness {
         }
       }
       await this.#jobs.confirmDrained();
+      this.checkAbort();
       await this.#options.control.deleteEndpoint(endpoint.id, this.#guard);
       await this.#options.control.deleteTemplate(template.id);
       this.mark("ambiguous_create_resources_reconciled_and_deleted", {
@@ -493,11 +509,13 @@ export class RunPodV207QualificationHarness {
     // as an impossible transition and waits forever for zero workers. This also reopens the
     // guard from the zero state after a successful flashboot normalization readback.
     this.#guard.markActive();
+    this.checkAbort();
     try {
       // RunPod can briefly expose a ready-idle worker at endpoint creation even with
       // workersMin=0. Capture that queue-empty baseline immediately; waiting for strict zero
       // first can let the provider recycle the worker back into throttled startup.
       await this.#jobs.confirmWarmIdle(300, 250);
+      this.checkAbort();
       console.error("v207:harness-warm-idle");
       this.mark("provider_warm_idle_baseline");
     } catch (error) {
@@ -508,6 +526,7 @@ export class RunPodV207QualificationHarness {
         throw error;
       }
       await this.#jobs.confirmDrained(90);
+      this.checkAbort();
     }
     // Endpoint creation may briefly start a billed warm worker even with workersMin=0.
     // Re-read settled spend after the provider baseline before allowing any dispatch or
@@ -579,6 +598,7 @@ export class RunPodV207QualificationHarness {
     if (this.#endpoint || this.#template) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_ALREADY_CREATED");
     }
+    this.checkAbort();
     console.error("v207:harness-inventory");
     const inventory = await this.#options.control.inventory();
     this.assertRetainedMageVolume(inventory);
@@ -593,6 +613,7 @@ export class RunPodV207QualificationHarness {
     }
     this.#guard.confirmZero(0, 0);
     await this.assertSpendWithinCap();
+    this.checkAbort();
     let mutationPhase: "template" | "endpoint" | "endpoint_health" = "template";
     try {
       mutationPhase = "template";
@@ -603,6 +624,7 @@ export class RunPodV207QualificationHarness {
         this.#options.templateEnvironment,
         true,
       );
+      this.checkAbort();
       console.error("v207:harness-template-created");
       this.mark("template_created", { template_id_hash: this.#template!.idHash });
       mutationPhase = "endpoint";
@@ -617,6 +639,7 @@ export class RunPodV207QualificationHarness {
       console.error("v207:harness-endpoint-created");
       mutationPhase = "endpoint_health";
       await this.initializeEndpointAfterCreate();
+      this.checkAbort();
     } catch (error) {
       const needsResourceReconciliation =
         error instanceof RunPodControlError &&
@@ -662,6 +685,7 @@ export class RunPodV207QualificationHarness {
 
   async dispatchBatch(input: RunPodV207DispatchBatchInput): Promise<RunPodJobResult> {
     this.assertCreated();
+    this.checkAbort();
     this.assertPrimaryDispatchAllowed();
     if (!ID.test(input.requestKey) || !ID.test(input.attemptId)) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_ATTEMPT_INVALID");
@@ -716,6 +740,7 @@ export class RunPodV207QualificationHarness {
     });
     await this.assertSpendWithinCap();
     const job = await this.#jobs!.dispatch(input.requestKey, request);
+    this.checkAbort();
     await this.assertSpendWithinCap();
     this.mark("job_dispatched", { job_id_hash: job.idHash, attempt_id: input.attemptId });
     return job;
@@ -730,6 +755,7 @@ export class RunPodV207QualificationHarness {
       ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
     let latest: RunPodJobResult | null = null;
     for (let poll = 0; poll < maxPolls; poll += 1) {
+      this.checkAbort();
       await this.assertSpendWithinCap();
       latest = await this.#jobs!.status(jobId);
       this.mark("job_status", {
@@ -738,6 +764,13 @@ export class RunPodV207QualificationHarness {
         delay_time_ms: latest.delayTimeMs,
         execution_time_ms: latest.executionTimeMs,
         ...(latest.error === undefined ? {} : { provider_error_present: true }),
+      });
+      this.checkAbort();
+      await this.#options.onStatusCheckpoint?.({
+        idHash: latest.idHash,
+        status: latest.status,
+        delayTimeMs: latest.delayTimeMs,
+        executionTimeMs: latest.executionTimeMs,
       });
       if (TERMINAL_STATUSES.has(latest.status)) return latest;
       if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
@@ -748,6 +781,7 @@ export class RunPodV207QualificationHarness {
   /** Capture only the provider's bounded status tuple after a terminal failure. */
   async diagnostic(jobId: string): Promise<RunPodJobDiagnostic> {
     this.assertCreated();
+    this.checkAbort();
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
     const value = await this.#jobs!.diagnostic(jobId);
     this.mark("job_diagnostic", { job_id_hash: sha256(jobId), ...value });
@@ -756,15 +790,18 @@ export class RunPodV207QualificationHarness {
 
   async confirmWarmIdle(): Promise<void> {
     this.assertCreated();
+    this.checkAbort();
     if (this.#guard.snapshot() !== "active" && this.#guard.snapshot() !== "warm_idle") {
       throw new RunPodControlError("RUNPOD_WARM_IDLE_NOT_ALLOWED");
     }
     await this.#jobs!.confirmWarmIdle(300, 250);
+    this.checkAbort();
     this.mark("warm_idle_confirmed");
   }
 
   async cancel(jobId: string): Promise<RunPodJobResult> {
     this.assertCreated();
+    this.checkAbort();
     if (this.#concurrentReaderFence) {
       throw new RunPodControlError("RUNPOD_CONCURRENT_READER_FENCE_ACTIVE");
     }
@@ -779,6 +816,7 @@ export class RunPodV207QualificationHarness {
 
   async applyConcurrentReaderPolicy(): Promise<string> {
     this.assertCreated();
+    this.checkAbort();
     if (
       this.#concurrentReaderFence ||
       this.#concurrentReaderDispatchClaimed ||
@@ -801,6 +839,7 @@ export class RunPodV207QualificationHarness {
       this.#options.placement,
       this.#guard,
     );
+    this.checkAbort();
     await this.assertSpendWithinCap();
     this.#concurrentReaderConfigHash = hashRunPodV207EndpointConfiguration(
       jsonValue({
@@ -847,6 +886,7 @@ export class RunPodV207QualificationHarness {
     inputs: readonly [RunPodV207DispatchBatchInput, RunPodV207DispatchBatchInput],
   ): Promise<readonly [RunPodJobResult, RunPodJobResult]> {
     this.assertCreated();
+    this.checkAbort();
     if (inputs.length !== 2) {
       throw new RunPodControlError("RUNPOD_CONCURRENT_READER_INPUT_INVALID");
     }
@@ -932,6 +972,7 @@ export class RunPodV207QualificationHarness {
         return clients[index]!.dispatch(input.requestKey, request);
       }),
     );
+    this.checkAbort();
     await this.assertSpendWithinCap();
     const first = results[0]!;
     const second = results[1]!;
@@ -964,6 +1005,7 @@ export class RunPodV207QualificationHarness {
     const reconcile = async (client: RunPodServerlessJobClient, jobId: string) => {
       let latest: RunPodJobResult | null = null;
       for (let poll = 0; poll < maxPolls; poll += 1) {
+        this.checkAbort();
         await this.assertSpendWithinCap();
         latest = await client.status(jobId);
         this.mark("concurrent_reader_job_status", {
@@ -972,6 +1014,13 @@ export class RunPodV207QualificationHarness {
           delay_time_ms: latest.delayTimeMs,
           execution_time_ms: latest.executionTimeMs,
           ...(latest.error === undefined ? {} : { provider_error_present: true }),
+        });
+        this.checkAbort();
+        await this.#options.onStatusCheckpoint?.({
+          idHash: latest.idHash,
+          status: latest.status,
+          delayTimeMs: latest.delayTimeMs,
+          executionTimeMs: latest.executionTimeMs,
         });
         if (TERMINAL_STATUSES.has(latest.status)) return latest;
         if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
@@ -1009,6 +1058,7 @@ export class RunPodV207QualificationHarness {
 
   async scaleDownToInitial(): Promise<void> {
     this.assertCreated();
+    this.checkAbort();
     await this.drain();
     await this.assertSpendWithinCap();
     await this.#options.control.enforceV207EndpointPolicy(
@@ -1018,6 +1068,7 @@ export class RunPodV207QualificationHarness {
       this.#options.placement,
       this.#guard,
     );
+    this.checkAbort();
     this.mark("scaled_down_to_max_one");
   }
 

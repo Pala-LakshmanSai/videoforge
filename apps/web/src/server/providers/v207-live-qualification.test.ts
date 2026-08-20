@@ -14,7 +14,12 @@ const previousV207Cap = process.env.V207_FINITE_CAP_USD;
 process.env.V207_IMAGE = V207_REPAIRED_IMAGE;
 process.env.V207_IMAGE_SOURCE_COMMIT = V207_REPAIRED_IMAGE_SOURCE_COMMIT;
 process.env.V207_FINITE_CAP_USD = "4";
-const { isAllowedV207GhcrBlobRedirect } = await import("./v207-live-qualification");
+const {
+  createV207Cancellation,
+  installV207SignalHandlers,
+  isAllowedV207GhcrBlobRedirect,
+  redactV207LiveEvidence,
+} = await import("./v207-live-qualification");
 if (previousV207Image === undefined) delete process.env.V207_IMAGE;
 else process.env.V207_IMAGE = previousV207Image;
 if (previousV207SourceCommit === undefined) delete process.env.V207_IMAGE_SOURCE_COMMIT;
@@ -89,5 +94,67 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("V207_RUNPOD_VOLUME_MOUNT");
     expect(source).toContain("MAGE_MODEL_ROOT: V207_RUNPOD_MODEL_ROOT");
     expect(source).not.toContain("MAGE_MODEL_ROOT: V207_RUNPOD_VOLUME_MOUNT");
+  });
+
+  it("keeps cancellation inside bounded cleanup and removes signal handlers", () => {
+    const cancellation = createV207Cancellation();
+    const listeners = new Map<string, () => void>();
+    const target = {
+      on(signal: string, handler: () => void): void {
+        listeners.set(signal, handler);
+      },
+      off(signal: string, handler: () => void): void {
+        if (listeners.get(signal) === handler) listeners.delete(signal);
+      },
+    } as never;
+    const remove = installV207SignalHandlers(cancellation, target);
+    expect(listeners.has("SIGINT")).toBe(true);
+    expect(listeners.has("SIGTERM")).toBe(true);
+    listeners.get("SIGTERM")?.();
+    expect(cancellation.requested).toBe(true);
+    expect(() => cancellation.throwIfRequested()).toThrow("V207_QUALIFICATION_CANCELLED");
+    remove();
+    expect(listeners.size).toBe(0);
+    expect(source).toContain("abortCheck: cancellation.throwIfRequested");
+    expect(source).toContain("await harness.cleanup({ deleteIfFailed: true, failed: true })");
+    expect(source).toContain('const signals: readonly NodeJS.Signals[] = ["SIGINT", "SIGTERM"]');
+  });
+
+  it("persists only redacted checkpoint evidence with no raw provider material", () => {
+    const hash = "sha256:" + "a".repeat(64);
+    const redacted = redactV207LiveEvidence({
+      run_tag: "20260820-abcdef012345",
+      endpoint_id: "endpoint-raw",
+      job_id: "job-raw",
+      reservation_id: "reservation-raw",
+      nonce: "nonce-raw",
+      token: "token-raw",
+      url: "https://signed.example/private?sig=secret",
+      endpoint_id_hash: hash,
+      endpointIdHash: hash,
+      manifest_sha256: hash,
+      started_at: "2026-08-20T12:30:00.000Z",
+      os: "linux",
+      architecture: "amd64",
+      status: "COMPLETED",
+    });
+    const serialized = JSON.stringify(redacted);
+    expect(serialized).not.toContain("endpoint-raw");
+    expect(serialized).not.toContain("job-raw");
+    expect(serialized).not.toContain("reservation-raw");
+    expect(serialized).not.toContain("nonce-raw");
+    expect(serialized).not.toContain("token-raw");
+    expect(serialized).not.toContain("signed.example");
+    expect(redacted.endpoint_id_hash).toBe(hash);
+    expect(redacted.endpointIdHash).toBe(hash);
+    expect(redacted.manifest_sha256).toBe(hash);
+    expect(redacted.started_at).toBe("2026-08-20T12:30:00.000Z");
+    expect(redacted.os).toBe("linux");
+    expect(redacted.architecture).toBe("amd64");
+    expect(redacted.status).toBe("COMPLETED");
+    expect(source).toContain("writeV207EvidenceCheckpoint");
+    expect(source).toContain("mode: 0o600");
+    expect(source).toContain('await persistCheckpoint("create")');
+    expect(source).toContain('event: "provider_status"');
   });
 });
