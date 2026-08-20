@@ -341,6 +341,10 @@ export class RunPodV207QualificationHarness {
         }
         await this.#jobs!.confirmDrained(90);
       }
+      // Endpoint creation may briefly start a billed warm worker even with workersMin=0.
+      // Re-read settled spend after the provider baseline before allowing any dispatch or
+      // configuration transition to continue.
+      await this.assertSpendWithinCap();
       this.#initialConfigHash = hashRunPodV207EndpointConfiguration(
         jsonValue({
           region: "EU-RO-1",

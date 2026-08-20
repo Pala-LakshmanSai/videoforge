@@ -226,6 +226,28 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
+  it("fails closed when endpoint baseline spend exceeds the cap", async () => {
+    const fetch = harnessFetch();
+    const spendSnapshotUsd = vi
+      .fn<() => Promise<number>>()
+      .mockResolvedValueOnce(0) // pre-mutation guard
+      .mockResolvedValueOnce(5); // post-baseline guard
+    const instance = makeHarness(fetch, spendSnapshotUsd);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_FINITE_SPEND_CAP_EXCEEDED");
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" &&
+          new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01"),
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(([url]) =>
+        new URL(String(url)).pathname.endsWith("/templates/template_01"),
+      ),
+    ).toHaveLength(1);
+  });
+
   it("requires exact generated-output authority and records a bounded lifecycle", async () => {
     const fetch = harnessFetch();
     const instance = makeHarness(fetch);
@@ -314,6 +336,7 @@ describe("V2-07 qualification harness", () => {
     const spendSnapshotUsd = vi
       .fn<() => Promise<number>>()
       .mockResolvedValueOnce(0) // create
+      .mockResolvedValueOnce(0) // endpoint warm-idle baseline
       .mockResolvedValueOnce(0) // max-two policy update
       .mockResolvedValueOnce(0) // reader one preflight
       .mockResolvedValueOnce(0) // reader two preflight
