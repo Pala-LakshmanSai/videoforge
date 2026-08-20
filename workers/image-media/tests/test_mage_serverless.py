@@ -126,6 +126,49 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             items=(SimpleNamespace(scene_id="scene-a"),),
         )
 
+    @staticmethod
+    def _inline_source_job(*, width: int = 1280) -> SimpleNamespace:
+        positive_prompt = "A quiet documentary portrait in a neutral studio"
+        negative_prompt = "text, letters, logo, watermark"
+        return SimpleNamespace(
+            attempt_id="attempt-a",
+            model_revision="a" * 40,
+            items=(
+                SimpleNamespace(
+                    scene_id="scene-a",
+                    positive_prompt=positive_prompt,
+                    positive_prompt_sha256="sha256:"
+                    + hashlib.sha256(positive_prompt.encode()).hexdigest(),
+                    negative_prompt=negative_prompt,
+                    negative_prompt_sha256="sha256:"
+                    + hashlib.sha256(negative_prompt.encode()).hexdigest(),
+                    seed=1,
+                    width=width,
+                    height=720,
+                ),
+            ),
+        )
+
+    def test_inline_item_returns_exact_runtime_wire_mapping(self) -> None:
+        value = mage_serverless._inline_item(self._inline_source_job(), 0)
+        self.assertEqual(
+            set(value), {"mode", "attempt_id", "model_revision", "items"}
+        )
+        self.assertEqual(value["mode"], "INLINE_QUALIFICATION_V1")
+        self.assertIsInstance(value["items"], list)
+        self.assertIsInstance(value["items"][0], dict)
+        mage_serverless.MageInlineJob.from_value(value)
+
+    def test_inline_item_rejects_invalid_native_size_before_runtime(self) -> None:
+        with self.assertRaisesRegex(ValueError, "MAGE_INLINE_SIZE_INVALID"):
+            mage_serverless._inline_item(self._inline_source_job(width=1296), 0)
+
+    def test_inline_dataclass_projection_is_rejected_by_wire_validator(self) -> None:
+        value = mage_serverless._inline_item(self._inline_source_job(), 0)
+        parsed = mage_serverless.MageInlineJob.from_value(value)
+        with self.assertRaisesRegex(ValueError, "MAGE_INLINE_SCOPE_INVALID"):
+            mage_serverless.MageInlineJob.from_value(parsed.__dict__)
+
     def test_rejects_malformed_authority_before_runtime_startup(self) -> None:
         result = asyncio.run(mage_serverless.handler({"input": {}}))
         self.assertEqual(result["status"], "FAILED")
@@ -403,7 +446,11 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                 patch.object(
                     mage_serverless.MageJob, "from_value", return_value=self._fake_mage_job()
                 ),
-                patch.object(mage_serverless, "_inline_item", return_value=SimpleNamespace()),
+                patch.object(
+                    mage_serverless,
+                    "_inline_item",
+                    return_value=mage_serverless._inline_item(self._inline_source_job(), 0),
+                ),
                 patch.object(
                     mage_serverless, "_ready_runtime", new=AsyncMock(return_value=runtime)
                 ),
@@ -429,6 +476,9 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                 ),
             ):
                 result = asyncio.run(mage_serverless.handler(job))
+        runtime.generate.assert_awaited_once_with(
+            mage_serverless._inline_item(self._inline_source_job(), 0)
+        )
         self.assertEqual(result["status"], "SUCCEEDED")
         self.assertEqual(result["items"][0]["output_port_reservation_id"], "reservation-generated")
         self.assertEqual(result["items"][0]["output_sha256"], checksum)

@@ -423,27 +423,34 @@ def _authority_expectations(envelope: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def _inline_item(job: MageJob, index: int) -> MageInlineJob:
+def _inline_item(job: MageJob, index: int) -> dict[str, object]:
+    """Build and validate the exact wire mapping consumed by ``MageRuntime.generate``.
+
+    ``MageInlineJob`` is the typed validation boundary, but its frozen dataclass projection
+    contains a tuple of ``MageItem`` instances.  Runtime.generate intentionally reparses the
+    wire contract, so pass the validated mapping through unchanged instead of serializing the
+    dataclass with ``__dict__``.
+    """
     item = job.items[index]
-    return MageInlineJob.from_value(
-        {
-            "mode": "INLINE_QUALIFICATION_V1",
-            "attempt_id": job.attempt_id,
-            "model_revision": job.model_revision,
-            "items": [
-                {
-                    "scene_id": item.scene_id,
-                    "positive_prompt": item.positive_prompt,
-                    "positive_prompt_sha256": item.positive_prompt_sha256,
-                    "negative_prompt": item.negative_prompt,
-                    "negative_prompt_sha256": item.negative_prompt_sha256,
-                    "seed": item.seed,
-                    "width": item.width,
-                    "height": item.height,
-                }
-            ],
-        }
-    )
+    value: dict[str, object] = {
+        "mode": "INLINE_QUALIFICATION_V1",
+        "attempt_id": job.attempt_id,
+        "model_revision": job.model_revision,
+        "items": [
+            {
+                "scene_id": item.scene_id,
+                "positive_prompt": item.positive_prompt,
+                "positive_prompt_sha256": item.positive_prompt_sha256,
+                "negative_prompt": item.negative_prompt,
+                "negative_prompt_sha256": item.negative_prompt_sha256,
+                "seed": item.seed,
+                "width": item.width,
+                "height": item.height,
+            }
+        ],
+    }
+    MageInlineJob.from_value(value)
+    return value
 
 
 async def handler(job: dict[str, Any]) -> dict[str, Any]:
@@ -515,7 +522,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             for port, input_url in zip(input_ports, input_urls, strict=True):
                 _download_input(port, input_url, worker_io)
             for index, item in enumerate(mage_job.items):
-                generated = await runtime.generate(_inline_item(mage_job, index).__dict__)
+                generated = await runtime.generate(_inline_item(mage_job, index))
                 output = base64.b64decode(generated.pop("output_base64"), validate=True)
                 output_path = worker_io.scratch.safe_path(f"outputs/{item.scene_id}.png")
                 output_path.write_bytes(output)
