@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T02:05:44Z",
+  "recorded_at": "2026-08-20T02:06:19Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -343,6 +343,11 @@
       "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts src/server/providers/v207-activation-authority.test.ts src/server/hosted/v207-output-ports.test.ts && pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint && pnpm format:check",
       "exit_code": 0,
       "result": "45 focused web tests passed; TypeScript, lint, and formatting passed"
+    },
+    {
+      "command": "node project-context/scripts/validate-v207-combined-proposal.mjs",
+      "exit_code": 0,
+      "result": "proposal boundary, both staged identities, and required operations validated; cap remains null"
     }
   ],
   "read_only_runpod_snapshot": {
