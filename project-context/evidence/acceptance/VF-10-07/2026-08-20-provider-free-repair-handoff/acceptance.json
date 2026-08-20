@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:04:00Z",
+  "recorded_at": "2026-08-20T01:22:18Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -65,6 +65,8 @@
     "exact_retained_mage_volume_identity_guard": "ee69c95",
     "concurrent_reader_spend_cap_guard": "ee69c95",
     "concurrent_reader_config_hash_includes_template_and_image_lineage": true,
+    "strict_staged_endpoint_identity": "PASS: V2-07 mutation paths require exact Mage image repository, 120 GB container disk, template environment values, EU-RO-1, GPU compute, CUDA 13, flashboot false, exact timing, exact template ID, and the exact retained volume binding",
+    "staged_config_hash_includes_runtime_controls": true,
     "durable_per_unit_resume": "PASS: accepted-unit resume carries only unresolved items and never regenerates accepted units",
     "negative_coverage": [
       "wrong authority bytes/path/volume/GPU/region",
@@ -250,6 +252,26 @@
       "command": "pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint && pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-v207-qualification-harness.test.ts src/server/hosted/v207-output-ports.test.ts src/server/providers/v207-activation-authority.test.ts",
       "exit_code": 0,
       "result": "TypeScript, lint, and 18 focused tests passed"
+    },
+    {
+      "commit": "d67e83e",
+      "area": "strict V2-07 staged endpoint identity requires exact Mage image repository, 120 GB container disk, template environment, CUDA 13, EU-RO-1, flashboot false, exact timing, exact template ID, and exact volume binding; config hashes include runtime controls",
+      "result": "PASS_PROVIDER_FREE_DEFINITION"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts src/server/providers/v207-activation-authority.test.ts src/server/hosted/v207-output-ports.test.ts",
+      "exit_code": 0,
+      "result": "37 passed"
+    },
+    {
+      "command": "pnpm test:workers",
+      "exit_code": 0,
+      "result": "six explicit Python 3.12 worker suites passed"
+    },
+    {
+      "command": "node --test packages/control-plane/tests/tenant-artifact-plane.test.mjs",
+      "exit_code": 0,
+      "result": "10 provider-free artifact-plane tests passed, including V2-07 commit receipt/readback"
     }
   ],
   "read_only_runpod_snapshot": {

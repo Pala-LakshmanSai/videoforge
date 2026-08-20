@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-requirement-matrix/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:04:00Z",
+  "recorded_at": "2026-08-20T01:22:18Z",
   "authority_mode": "provider_free",
   "requirements": [
     {
@@ -78,10 +78,11 @@
         "apps/web/src/server/providers/runpod-v207-qualification-harness.ts",
         "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts",
         "apps/web/src/server/providers/runpod-control.ts",
-        "ee69c95"
+        "ee69c95",
+        "d67e83e"
       ],
       "status": "PASS_PROVIDER_FREE_DEFINITION",
-      "live_gap": "Endpoint/template mutation requires the exact digest and fresh proposal approval."
+      "live_gap": "Endpoint/template mutation requires the exact repaired digest and fresh proposal approval; the strict response contract is provider-free only until a real RunPod response proves it."
     },
     {
       "id": "live_qualification_measurements",
