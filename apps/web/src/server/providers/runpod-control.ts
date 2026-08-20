@@ -228,8 +228,14 @@ const assertV207Placement = (placement: RunPodV207Placement): void => {
 };
 
 export class RunPodDrainGuard {
-  private state: "unknown" | "active" | "warm_idle" | "draining" | "queue_empty" | "zero" =
-    "unknown";
+  private state:
+    | "unknown"
+    | "active"
+    | "warm_idle"
+    | "quiescent"
+    | "draining"
+    | "queue_empty"
+    | "zero" = "unknown";
 
   markActive(): void {
     this.state = "active";
@@ -263,6 +269,44 @@ export class RunPodDrainGuard {
     this.state = "warm_idle";
   }
 
+  confirmQuiescent(
+    idleWorkerCount: number,
+    readyWorkerCount: number,
+    throttledWorkerCount: number,
+    runningWorkerCount: number,
+    initializingWorkerCount: number,
+    unhealthyWorkerCount: number,
+    queuedJobCount: number,
+  ): void {
+    if (
+      (this.state !== "active" && this.state !== "unknown") ||
+      !Number.isSafeInteger(idleWorkerCount) ||
+      !Number.isSafeInteger(readyWorkerCount) ||
+      !Number.isSafeInteger(throttledWorkerCount) ||
+      !Number.isSafeInteger(runningWorkerCount) ||
+      !Number.isSafeInteger(initializingWorkerCount) ||
+      !Number.isSafeInteger(unhealthyWorkerCount) ||
+      !Number.isSafeInteger(queuedJobCount) ||
+      idleWorkerCount < 0 ||
+      idleWorkerCount > 1 ||
+      readyWorkerCount < 0 ||
+      readyWorkerCount > 1 ||
+      throttledWorkerCount < 0 ||
+      throttledWorkerCount > 1 ||
+      idleWorkerCount + throttledWorkerCount > 1 ||
+      runningWorkerCount !== 0 ||
+      initializingWorkerCount !== 0 ||
+      unhealthyWorkerCount !== 0 ||
+      queuedJobCount !== 0
+    ) {
+      this.state = "unknown";
+      throw new RunPodControlError("RUNPOD_QUIESCENT_NOT_CONFIRMED");
+    }
+    // Quiescent is deliberately policy-update-only: a throttled worker may exist, but no job
+    // dispatch can be admitted until a normal warm-idle or zero state is re-established.
+    this.state = "quiescent";
+  }
+
   confirmZero(activeWorkerCount: number, queuedJobCount: number): void {
     if (
       !Number.isSafeInteger(activeWorkerCount) ||
@@ -294,8 +338,14 @@ export class RunPodDrainGuard {
     }
   }
 
+  assertPolicyUpdateAllowed(): void {
+    if (this.state !== "zero" && this.state !== "warm_idle" && this.state !== "quiescent") {
+      throw new RunPodControlError("RUNPOD_POLICY_UPDATE_BLOCKED");
+    }
+  }
+
   assertTerminationAllowed(): void {
-    if (this.state !== "queue_empty" && this.state !== "zero") {
+    if (this.state !== "queue_empty" && this.state !== "quiescent" && this.state !== "zero") {
       throw new RunPodControlError("RUNPOD_TERMINATION_BLOCKED");
     }
   }
@@ -493,6 +543,7 @@ export class RunPodControlClient {
     policy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
     placement: RunPodV207Placement,
     guard: RunPodDrainGuard,
+    options: { readonly allowFlashbootPending?: boolean } = {},
   ): Promise<void> {
     if (!ID.test(endpointId) || !ID.test(templateId)) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
@@ -500,7 +551,7 @@ export class RunPodControlClient {
     if (policy.workersMax === 1) assertRunPodEndpointPolicy(policy);
     else assertRunPodV207ConcurrentReaderPolicy(policy);
     assertV207Placement(placement);
-    guard.assertDispatchAllowed();
+    guard.assertPolicyUpdateAllowed();
     if (
       policy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
       policy.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS
@@ -544,7 +595,8 @@ export class RunPodControlClient {
       value.templateId !== templateId ||
       !exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
       value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
-      value.flashboot !== false ||
+      (value.flashboot !== false &&
+        !(options.allowFlashbootPending === true && value.flashboot === true)) ||
       value.idleTimeout !== request.idleTimeout ||
       value.executionTimeoutMs !== request.executionTimeoutMs ||
       value.scalerType !== V207_RUNPOD_SCALER ||
@@ -1154,6 +1206,65 @@ export class RunPodServerlessJobClient {
       if (attempt + 1 < maxAttempts) await this.sleep(pollIntervalMs);
     }
     this.options.guard.confirmWarmIdle(Number.NaN, Number.NaN, Number.NaN);
+  }
+
+  async confirmQuiescent(maxAttempts = 90, pollIntervalMs = 2_000): Promise<void> {
+    if (
+      !Number.isSafeInteger(maxAttempts) ||
+      maxAttempts < 1 ||
+      maxAttempts > 600 ||
+      !Number.isSafeInteger(pollIntervalMs) ||
+      pollIntervalMs < 100 ||
+      pollIntervalMs > 2_000
+    ) {
+      throw new RunPodControlError("RUNPOD_QUIESCENT_POLICY_INVALID");
+    }
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const value = await this.request("GET", "/health");
+      const workers = healthWorkerCounts(record(value.workers));
+      const jobs = record(value.jobs);
+      const queued =
+        (numberOrNull(jobs?.inQueue) ?? Number.NaN) +
+        (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+      if (
+        Number.isSafeInteger(workers.idle) &&
+        Number.isSafeInteger(workers.ready) &&
+        Number.isSafeInteger(workers.throttled) &&
+        Number.isSafeInteger(workers.running) &&
+        Number.isSafeInteger(workers.initializing) &&
+        Number.isSafeInteger(workers.unhealthy) &&
+        Number.isSafeInteger(queued) &&
+        workers.idle <= 1 &&
+        workers.ready <= 1 &&
+        workers.throttled <= 1 &&
+        workers.idle + workers.throttled <= 1 &&
+        workers.running === 0 &&
+        workers.initializing === 0 &&
+        workers.unhealthy === 0 &&
+        queued === 0
+      ) {
+        this.options.guard.confirmQuiescent(
+          workers.idle,
+          workers.ready,
+          workers.throttled,
+          workers.running,
+          workers.initializing,
+          workers.unhealthy,
+          queued,
+        );
+        return;
+      }
+      if (attempt + 1 < maxAttempts) await this.sleep(pollIntervalMs);
+    }
+    this.options.guard.confirmQuiescent(
+      Number.NaN,
+      Number.NaN,
+      Number.NaN,
+      Number.NaN,
+      Number.NaN,
+      Number.NaN,
+      Number.NaN,
+    );
   }
 
   async confirmQueueEmpty(): Promise<void> {

@@ -1,0 +1,72 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 7,
+  "started_at": "2026-08-20T07:16:59.775Z",
+  "stopped_at": "2026-08-20T07:23:58.055Z",
+  "authority_proposal_sha256": "sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b",
+  "approved_finite_spend_cap_usd": 4,
+  "approved_minimum_availability": "MEDIUM",
+  "pre_mutation_availability": "HIGH",
+  "result": "FAILED_BEFORE_JOB_DISPATCH_ON_FLASHBOOT_NORMALIZATION",
+  "failure": {
+    "code": "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
+    "root_cause": "FLASHBOOT_WORKER_REMAINED_THROTTLED_WITH_AN_EMPTY_QUEUE_BEFORE_POLICY_UPDATE",
+    "provider_flashboot_drift": true,
+    "approved_flashboot": false,
+    "policy_update_reached": false,
+    "job_dispatch_reached": false,
+    "r2_reservation_reached": false,
+    "model_initialization_reached": false,
+    "gpu_inference_reached": false,
+    "completed_output_count": 0
+  },
+  "resource_identity": {
+    "endpoint_id_sha256": "sha256:d54cb66af4d23d7cff61e5480b8f04d70891c89c9ebbd58d63826084c115f6c9",
+    "template_id_sha256": "sha256:2b2c5cec0e05f46f660f833a24914bc01ff3b4896e24f9077fe71b3a7713cf25",
+    "image_digest": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "retained_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+  },
+  "generated_output_rollback": "CONFIRMED",
+  "settled_finite_spend_usd_observed": 0,
+  "billing_observations_utc": [
+    "2026-08-20T07:24:02Z",
+    "2026-08-20T07:24:04Z",
+    "2026-08-20T07:24:05Z"
+  ],
+  "cleanup": {
+    "pre_delete_observed_at": "2026-08-20T07:23:53.169Z",
+    "pre_delete_queue": 0,
+    "pre_delete_in_progress": 0,
+    "pre_delete_running": 0,
+    "pre_delete_initializing": 0,
+    "pre_delete_throttled": 1,
+    "endpoint_deleted": true,
+    "endpoint_absence_verified_at": "2026-08-20T07:23:55.289Z",
+    "endpoint_absence_verified_before_template_delete": true,
+    "linked_template_deleted": true,
+    "template_absence_verified_at": "2026-08-20T07:23:57.068Z",
+    "final_inventory_observed_at": "2026-08-20T07:23:58.055Z",
+    "runpod_pod_count": 0,
+    "runpod_endpoint_count": 0,
+    "runpod_private_template_count": 0,
+    "runpod_active_worker_count": 0,
+    "intended_volume_count": 2,
+    "intended_volumes_unchanged": true,
+    "cloudflare_worker_version": "e69971c9-922d-4605-b8ec-592110f3759a",
+    "cloudflare_worker_version_percentage": 100,
+    "cloudflare_worker_version_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "temporary_signer_secret_present": false,
+    "public_post_route_status": 404,
+    "public_post_route_code": "V207_ROUTE_DISABLED"
+  },
+  "required_before_retry": [
+    "quiescent_throttled_flashboot_policy_update_isolated_from_dispatch",
+    "bounded_flashboot_false_readback",
+    "focused_tests_green",
+    "clean_worktree",
+    "fresh_rate_availability_inventory_and_remaining_cap_within_authority"
+  ]
+}

@@ -420,35 +420,73 @@ export class RunPodV207QualificationHarness {
         guard: this.#guard,
         fetch: this.#options.fetch,
         baseUrl: this.#options.baseUrl,
+        sleep: this.#options.sleep,
       });
       if (flashbootNeedsNormalization) {
         try {
           // RunPod may create a flashboot worker before returning the endpoint.  A single
           // ready/idle worker with an empty queue is a safe update baseline; requiring total
           // zero here would wait for the very worker whose flashboot setting we are disabling.
-          await this.#jobs.confirmWarmIdle(300, 250);
-          this.checkAbort();
-          this.mark("flashboot_normalization_warm_idle", {
-            endpoint_id_hash: sha256(endpoint.id),
-          });
+          try {
+            await this.#jobs.confirmWarmIdle(300, 250);
+            this.checkAbort();
+            this.mark("flashboot_normalization_warm_idle", {
+              endpoint_id_hash: sha256(endpoint.id),
+            });
+          } catch (error) {
+            if (
+              !(error instanceof RunPodControlError) ||
+              error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED"
+            ) {
+              throw error;
+            }
+            // A provider-created FlashBoot worker can remain throttled indefinitely even with
+            // workersMin=0.  Exact identity plus this separate zero-job/no-running-worker proof
+            // authorizes only the policy correction and cleanup; it never authorizes dispatch.
+            await this.#jobs.confirmQuiescent(12, 250);
+            this.checkAbort();
+            this.mark("flashboot_normalization_quiescent", {
+              endpoint_id_hash: sha256(endpoint.id),
+            });
+          }
           await this.#options.control.enforceV207EndpointPolicy(
             endpoint.id,
             template.id,
             this.#options.initialPolicy,
             this.#options.placement,
             this.#guard,
+            { allowFlashbootPending: true },
           );
           this.checkAbort();
-          const readback = await this.#options.control.inventoryDisposableResources();
-          const readbackEndpoint =
-            readback.endpoints.length === 1 && readback.endpoints[0]?.id === endpoint.id
-              ? readback.endpoints[0]
-              : null;
-          if (
-            !readbackEndpoint ||
-            !this.endpointIdentityMatches(readbackEndpoint, template.id) ||
-            readbackEndpoint.raw.flashboot !== false
-          ) {
+          const sleep =
+            this.#options.sleep ??
+            ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+          let normalized = false;
+          for (let attempt = 0; attempt < 30; attempt += 1) {
+            const readback = await this.#options.control.inventoryDisposableResources();
+            const readbackEndpoint =
+              readback.endpoints.length === 1 && readback.endpoints[0]?.id === endpoint.id
+                ? readback.endpoints[0]
+                : null;
+            if (
+              readbackEndpoint &&
+              this.endpointIdentityMatches(readbackEndpoint, template.id) &&
+              readbackEndpoint.raw.flashboot === false
+            ) {
+              normalized = true;
+              break;
+            }
+            if (
+              !readbackEndpoint ||
+              !this.endpointIdentityMatches(readbackEndpoint, template.id, true) ||
+              readbackEndpoint.raw.flashboot !== true
+            ) {
+              break;
+            }
+            this.checkAbort();
+            if (attempt + 1 < 30) await sleep(250);
+          }
+          if (!normalized) {
             throw new RunPodControlError(
               "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
             );
@@ -502,6 +540,7 @@ export class RunPodV207QualificationHarness {
         guard: this.#guard,
         fetch: this.#options.fetch,
         baseUrl: this.#options.baseUrl,
+        sleep: this.#options.sleep,
       });
     }
     // Endpoint creation is the first live provider state. Mark it active before accepting
@@ -920,6 +959,7 @@ export class RunPodV207QualificationHarness {
         guard,
         fetch: this.#options.fetch,
         baseUrl: this.#options.baseUrl,
+        sleep: this.#options.sleep,
       });
       this.#readerJobs.push(client);
       return client;

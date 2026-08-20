@@ -94,6 +94,39 @@ describe("RunPod scale-zero control", () => {
     }
   });
 
+  it("keeps a quiescent throttled worker policy-only and fails closed on active health", () => {
+    const guard = new RunPodDrainGuard();
+    guard.markActive();
+    guard.confirmQuiescent(0, 1, 1, 0, 0, 0, 0);
+    expect(guard.snapshot()).toBe("quiescent");
+    expect(() => guard.assertPolicyUpdateAllowed()).not.toThrow();
+    expect(() => guard.assertTerminationAllowed()).not.toThrow();
+    expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");
+
+    for (const counts of [
+      [1, 1, 1, 0, 0, 0, 0],
+      [0, 1, 1, 1, 0, 0, 0],
+      [0, 1, 1, 0, 1, 0, 0],
+      [0, 1, 1, 0, 0, 1, 0],
+      [0, 1, 1, 0, 0, 0, 1],
+    ] as const) {
+      const rejected = new RunPodDrainGuard();
+      rejected.markActive();
+      expect(() =>
+        rejected.confirmQuiescent(
+          counts[0],
+          counts[1],
+          counts[2],
+          counts[3],
+          counts[4],
+          counts[5],
+          counts[6],
+        ),
+      ).toThrow("RUNPOD_QUIESCENT_NOT_CONFIRMED");
+      expect(rejected.snapshot()).toBe("unknown");
+    }
+  });
+
   it("returns redacted live-shaped inventory and preserves the bearer only in transport", async () => {
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${key}`);

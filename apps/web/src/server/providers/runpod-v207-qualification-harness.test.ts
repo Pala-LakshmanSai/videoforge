@@ -406,6 +406,64 @@ describe("V2-07 qualification harness", () => {
     ).toBe(true);
   });
 
+  it("normalizes flashboot from a zero-job throttled worker without authorizing dispatch", async () => {
+    const baseFetch = harnessFetch();
+    let resourcesVisible = false;
+    let policyUpdated = false;
+    let endpointReadsAfterUpdate = 0;
+    let healthReadsBeforeUpdate = 0;
+    const providerShapeEndpoint = { ...reconciledEndpoint };
+    delete (providerShapeEndpoint as Record<string, unknown>).computeType;
+    delete (providerShapeEndpoint as Record<string, unknown>).dataCenterIds;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const body = init?.body === undefined ? null : JSON.parse(String(init.body));
+      if (path === "/endpoints" && init?.method === "POST") {
+        resourcesVisible = true;
+        throw new Error("ambiguous endpoint response");
+      }
+      if (path === "/endpoint_01/health") {
+        if (!policyUpdated) healthReadsBeforeUpdate += 1;
+        return jsonResponse({
+          workers: policyUpdated
+            ? { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 0, unhealthy: 0 }
+            : { idle: 0, running: 0, initializing: 0, ready: 1, throttled: 1, unhealthy: 0 },
+          jobs: { inQueue: 0, inProgress: 0 },
+        });
+      }
+      if (path === "/endpoints/endpoint_01/update") {
+        expect(body?.flashboot).toBe(false);
+        policyUpdated = true;
+        return jsonResponse({ ...providerShapeEndpoint, flashboot: true });
+      }
+      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
+        if (policyUpdated) endpointReadsAfterUpdate += 1;
+        return jsonResponse([
+          {
+            ...providerShapeEndpoint,
+            flashboot: policyUpdated && endpointReadsAfterUpdate >= 2 ? false : true,
+          },
+        ]);
+      }
+      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).resolves.toBeUndefined();
+    expect(healthReadsBeforeUpdate).toBeGreaterThanOrEqual(301);
+    expect(endpointReadsAfterUpdate).toBe(2);
+    expect(
+      (await instance.evidence()).events.some(
+        (event) => event.event === "flashboot_normalization_quiescent",
+      ),
+    ).toBe(true);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
   it("fails closed when flashboot normalization readback stays enabled", async () => {
     const baseFetch = harnessFetch();
     let resourcesVisible = false;
