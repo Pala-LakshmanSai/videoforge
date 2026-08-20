@@ -283,9 +283,18 @@ class MageRuntime:
                 if self.job_environment:
                     for value_path in self.job_environment.values():
                         Path(value_path).mkdir(mode=0o700, parents=True, exist_ok=True)
-                result = await asyncio.to_thread(
-                    run_inline_job, job, model_root, base_url=COMFY_URL
-                )
+                previous_environment = {key: os.environ.get(key) for key in self.job_environment}
+                os.environ.update(self.job_environment)
+                try:
+                    result = await asyncio.to_thread(
+                        run_inline_job, job, model_root, base_url=COMFY_URL
+                    )
+                finally:
+                    for key, previous in previous_environment.items():
+                        if previous is None:
+                            os.environ.pop(key, None)
+                        else:
+                            os.environ[key] = previous
             finally:
                 stop.set()
                 peak_vram_used_bytes = await sampler
