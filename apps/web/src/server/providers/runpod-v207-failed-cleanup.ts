@@ -157,7 +157,11 @@ function validateEndpoint(resource: RunPodNamedResource, template: RunPodNamedRe
     !optionalExactStringArray(raw.dataCenterIds, [V207_RUNPOD_REGION]) ||
     !exactStringArray(raw.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
     raw.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
-    raw.flashboot !== false ||
+    // The qualification path fails closed when RunPod forces flashboot=true despite the staged
+    // false policy. Failure cleanup must still be able to delete that exact disposable endpoint;
+    // accepting either boolean here authorizes no dispatch or policy update and remains fenced by
+    // every other exact identity/config field plus two stable terminal worker/Pod snapshots.
+    typeof raw.flashboot !== "boolean" ||
     raw.idleTimeout !== 5 ||
     raw.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS ||
     raw.scalerType !== V207_RUNPOD_SCALER ||

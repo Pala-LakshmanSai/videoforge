@@ -196,6 +196,15 @@ describe("V2-07 failed-resource cleanup", () => {
     expect(result.finalDisposableResourcesAbsent).toBe(true);
   });
 
+  it("deletes the exact failed endpoint when the provider forced FlashBoot on", async () => {
+    const { fixture, result } = await cleanupFixture({ endpointPatch: { flashboot: true } });
+    expect(result.finalDisposableResourcesAbsent).toBe(true);
+    expect(fixture.calls.filter((call) => call.method === "DELETE")).toEqual([
+      { method: "DELETE", path: "/endpoints/endpoint_10" },
+      { method: "DELETE", path: "/templates/template_10" },
+    ]);
+  });
+
   it.each([
     ["image", { templatePatch: { imageName: "ghcr.io/wrong/image@sha256:" + "c".repeat(64) } }],
     ["GPU", { endpointPatch: { gpuTypeIds: ["NVIDIA GeForce RTX 5090"] } }],
@@ -203,7 +212,6 @@ describe("V2-07 failed-resource cleanup", () => {
     ["volume", { endpointPatch: { networkVolumeId: "other_volume" } }],
     ["region", { endpointPatch: { dataCenterIds: ["US-KS-2"] } }],
     ["policy", { endpointPatch: { workersMax: 2 } }],
-    ["FlashBoot", { endpointPatch: { flashboot: true } }],
   ] as const)("fails closed for exact %s drift before mutation", async (_label, options) => {
     const fixture = makeFixture(options);
     await expect(
