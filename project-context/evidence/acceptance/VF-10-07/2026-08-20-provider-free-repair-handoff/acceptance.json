@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T00:40:00Z",
+  "recorded_at": "2026-08-20T00:55:00Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -208,6 +208,11 @@
     {
       "commit": "767a27b",
       "area": "nonce-fenced exact-key generated-output DELETE rollback is locally covered and failed qualification tracks rollback confirmation",
+      "result": "PASS_PROVIDER_FREE_REPAIR"
+    },
+    {
+      "commit": "c09ad5f",
+      "area": "rollback route formatting and final TypeScript/lint reconciliation",
       "result": "PASS_PROVIDER_FREE_REPAIR"
     }
   ],
