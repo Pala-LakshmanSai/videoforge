@@ -92,7 +92,9 @@
       "requirement": "Prove cold/warm complete batches, two simultaneous read-only workers, output durability, timings, peak VRAM, settled cost, and workers=0 after drain.",
       "evidence": [
         "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md",
-        "project-context/tasks/VF-10-07.md"
+        "project-context/tasks/VF-10-07.md",
+        "2b90d7e",
+        "bd461f7"
       ],
       "status": "UNPROVEN_LIVE_REQUIRED",
       "live_gap": "Publication, GPU allocation, /run, and spend are intentionally blocked pending fresh exact authority and a new numeric cap."

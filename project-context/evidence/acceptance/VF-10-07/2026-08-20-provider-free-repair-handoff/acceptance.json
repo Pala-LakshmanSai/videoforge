@@ -292,6 +292,16 @@
       "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts src/server/providers/v207-activation-authority.test.ts src/server/hosted/v207-output-ports.test.ts && pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint",
       "exit_code": 0,
       "result": "42 focused tests passed; TypeScript typecheck and lint passed"
+    },
+    {
+      "commit": "2b90d7e",
+      "area": "live qualification runner shares the authoritative request TTL constant with the endpoint control layer",
+      "result": "PASS_PROVIDER_FREE_DEFINITION"
+    },
+    {
+      "commit": "bd461f7",
+      "area": "live qualification runner shares authoritative region, GPU, mount, init, and execution constants with the endpoint control layer",
+      "result": "PASS_PROVIDER_FREE_DEFINITION"
     }
   ],
   "read_only_runpod_snapshot": {
