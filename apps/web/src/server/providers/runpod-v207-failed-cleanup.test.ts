@@ -37,18 +37,6 @@ const templateEnvironment = {
   VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: "b".repeat(64),
 };
 
-const health = {
-  workers: {
-    idle: 0,
-    running: 0,
-    initializing: 0,
-    ready: 0,
-    throttled: 0,
-    unhealthy: 0,
-  },
-  jobs: { inQueue: 0, inProgress: 0 },
-};
-
 type FixtureOptions = {
   readonly endpointPatch?: Record<string, unknown>;
   readonly templatePatch?: Record<string, unknown>;
