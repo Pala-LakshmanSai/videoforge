@@ -28,6 +28,13 @@ function identity(scope, suffix = "same-name") {
   };
 }
 
+function mageIdentity(scope, suffix = "mage-generated") {
+  return {
+    ...identity(scope, suffix),
+    lane: "MAGE_IMAGE",
+  };
+}
+
 function options(overrides = {}) {
   return {
     contentType: "image/png",
@@ -283,6 +290,107 @@ test("generated output authority remains bounded by expiry, tenant, and revocati
       checksumSha256: `sha256:${"b".repeat(64)}`,
       now: NOW,
     }),
+  );
+});
+
+test("provider-free V2-07 generated readback commits an exact receipt and downloads idempotently", () => {
+  const plane = new FakeR2ArtifactPlane(new Uint8Array(32).fill(15));
+  const artifact = mageIdentity(scopeA, "v207-readback");
+  const generatedBytes = new TextEncoder().encode("provider-readback-bytes");
+  const generatedHash = `sha256:${createHash("sha256").update(generatedBytes).digest("hex")}`;
+  const authority = plane.reserveGeneratedUpload(artifact, {
+    contentType: "image/png",
+    maxContentLength: 4_096,
+    now: NOW,
+    maxUses: 1,
+    retentionClass: "PROJECT",
+  });
+
+  const port = plane.finalizeGeneratedUpload(authority, {
+    contentLength: generatedBytes.byteLength,
+    checksumSha256: generatedHash,
+    now: NOW,
+  });
+  assert.equal(validateContract("artifactTransferPortV3", port).success, true);
+  expectCode("GENERATED_OUTPUT_ALREADY_FINALIZED", () =>
+    plane.finalizeGeneratedUpload(authority, {
+      contentLength: generatedBytes.byteLength,
+      checksumSha256: hash,
+      now: NOW,
+    }),
+  );
+
+  const mismatchPlane = new FakeR2ArtifactPlane(new Uint8Array(32).fill(16));
+  const mismatchAuthority = mismatchPlane.reserveGeneratedUpload(artifact, {
+    contentType: "image/png",
+    maxContentLength: 4_096,
+    now: NOW,
+    maxUses: 1,
+    retentionClass: "PROJECT",
+  });
+  const mismatchPort = mismatchPlane.finalizeGeneratedUpload(mismatchAuthority, {
+    contentLength: generatedBytes.byteLength,
+    checksumSha256: generatedHash,
+    now: NOW,
+  });
+  const wrongBytes = generatedBytes.slice();
+  wrongBytes[0] ^= 0xff;
+  expectCode("HASH_MISMATCH", () =>
+    mismatchPlane.upload(mismatchPort, {
+      path: mismatchPort.path,
+      contentType: mismatchPort.content_type,
+      contentLength: mismatchPort.content_length,
+      checksumSha256: mismatchPort.checksum_sha256,
+      body: wrongBytes,
+      now: NOW,
+    }),
+  );
+  plane.upload(port, {
+    path: port.path,
+    contentType: port.content_type,
+    contentLength: port.content_length,
+    checksumSha256: port.checksum_sha256,
+    body: generatedBytes,
+    now: NOW,
+  });
+
+  const receipt = plane.commitUpload(
+    scopeA,
+    port.reservation_id,
+    "v207-readback-callback",
+    { width: 1280, height: 720, decoded: true, source: "PROVIDER_FREE_READBACK" },
+    NOW,
+  );
+  assert.equal(receipt.schema_version, "artifact-commit-receipt/v3");
+  assert.equal(receipt.object_key, deriveArtifactObjectKey(artifact));
+  assert.equal(receipt.content_length, generatedBytes.byteLength);
+  assert.equal(receipt.checksum_sha256, generatedHash);
+  assert.equal(validateContract("artifactCommitReceiptV3", receipt).success, true);
+  assert.equal(
+    plane.commitUpload(scopeA, port.reservation_id, "v207-readback-callback", {}, NOW),
+    receipt,
+  );
+  expectCode("DUPLICATE_CALLBACK", () =>
+    plane.commitUpload(scopeA, port.reservation_id, "v207-readback-replay", {}, NOW),
+  );
+
+  const download = plane.reserveDownload(artifact, {
+    contentType: port.content_type,
+    contentLength: generatedBytes.byteLength,
+    checksumSha256: generatedHash,
+    now: NOW,
+    maxUses: 1,
+    retentionClass: "PROJECT",
+  });
+  assert.deepEqual(
+    plane.download(download, {
+      path: download.path,
+      contentType: download.content_type,
+      contentLength: download.content_length,
+      checksumSha256: download.checksum_sha256,
+      now: NOW,
+    }),
+    generatedBytes,
   );
 });
 
