@@ -1,0 +1,78 @@
+{
+  "schema_version": "videoforge.v2-07-amended-live-authority/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "authorized_at": "2026-08-20T12:46:25Z",
+  "authority_source": "explicit_user_approval_exact_amended_proposal",
+  "proposal": {
+    "path": "amended-live-proposal.json",
+    "sha256": "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
+  },
+  "approval": {
+    "exact_proposal_approved": true,
+    "low_eu_ro_1_availability_approved": true,
+    "minimum_approved_availability": "LOW",
+    "maximum_cumulative_finite_spend_usd": 4,
+    "historical_cap_reused": false,
+    "recurring_retained_volume_charge_usd_per_month": 7,
+    "recurring_charge_is_outside_finite_cap": true
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_write_policy": "APPLICATION_READ_ONLY",
+    "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "repaired_source_commit": "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c",
+    "repaired_source_sha256": "sha256:5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
+    "image_config_sha256": "sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e",
+    "image_layer_sha256": "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e",
+    "final_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+    "publication_tag": "v2-07-inline-wire-a52e7e4"
+  },
+  "authorized_operations": [
+    "publish_exact_changed_immutable_image",
+    "create_exact_private_template",
+    "create_or_update_initial_max_one_endpoint",
+    "submit_owned_samples_and_realistic_complete_32_image_batch_cold_and_warm",
+    "status_reconcile_until_terminal_and_verify_private_durable_outputs",
+    "exercise_duplicate_delivery_cancellation_and_timeout",
+    "apply_separately_hashed_max_two_reader_configuration",
+    "submit_two_simultaneous_read_only_complete_batches",
+    "status_reconcile_readers_and_verify_sealed_manifest_unchanged",
+    "restore_workers_max_one_and_scale_down_to_workers_zero",
+    "retain_endpoint_template_and_both_existing_volumes_on_success",
+    "delete_only_disposable_endpoint_and_template_if_failed"
+  ],
+  "execution_boundary": {
+    "publication_authorized_pending_execution": true,
+    "runpod_mutation_authorized_pending_execution": true,
+    "gpu_use_authorized_pending_execution": true,
+    "provider_calls_completed": false,
+    "external_spend_usd": 0,
+    "v2_08_authorized": false
+  },
+  "forbidden": [
+    "model_download_preparation_quantization_or_volume_mutation",
+    "retained_volume_rebuild_delete_cross_mount_or_write",
+    "unqualified_gpu_or_region_fallback",
+    "public_sample_publication",
+    "V2-08_or_successor_work",
+    "cumulative_finite_spend_above_4_usd"
+  ],
+  "stop_conditions": [
+    "identity_response_or_attestation_mismatch",
+    "missing_failed_or_non_durable_output_or_receipt",
+    "sealed_manifest_change_model_volume_write_or_cache_escape",
+    "unplanned_duplicate_compute_or_uncertain_cancellation",
+    "uncertain_output_rollback_endpoint_cleanup_signer_rollback_or_worker_drain",
+    "current_or_projected_cumulative_spend_risks_4_usd",
+    "GPU_region_volume_image_rate_capacity_or_endpoint_configuration_changes_outside_proposal"
+  ],
+  "status": "APPROVED_PREEXECUTION"
+}

@@ -34,6 +34,8 @@ const EXPECTED = {
     "sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e",
   manifestDigest:
     "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+  proposalDigest:
+    "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55",
   candidateImage:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
   candidateTag: "v2-07-inline-wire-a52e7e4",
@@ -65,11 +67,13 @@ const commit = (value, label) => {
 
 const definitionPath = path.join(candidateDir, "definition.json");
 const proposalPath = path.join(candidateDir, "amended-live-proposal.json");
+const authorityPath = path.join(candidateDir, "approved-authority.json");
 const maxOnePath = path.join(candidateDir, "staged-config-max1.json");
 const maxTwoPath = path.join(candidateDir, "staged-config-max2.json");
 const definition = readJson(definitionPath, "definition");
 const proposalBytes = readBytes(proposalPath);
 const proposal = readJson(proposalPath, "amended_live_proposal");
+const authority = readJson(authorityPath, "approved_authority");
 const maxOneBytes = readBytes(maxOnePath);
 const maxTwoBytes = readBytes(maxTwoPath);
 const maxOne = readJson(maxOnePath, "staged_config_max1");
@@ -177,14 +181,51 @@ for (const [index, stage] of proposal.staged_endpoint_configs.entries()) {
 const currentState = readBytes(currentStatePath).toString("utf8");
 const task = readBytes(taskPath).toString("utf8");
 const proposalDigest = sha256(proposalBytes);
+assert(proposalDigest === EXPECTED.proposalDigest, "proposal_bytes_changed");
+assert(authority.schema_version === "videoforge.v2-07-amended-live-authority/v1", "authority_schema");
+assert(authority.checkpoint === "V2-07" && authority.task_id === "VF-10-07", "authority_identity");
+assert(authority.authority_source === "explicit_user_approval_exact_amended_proposal", "authority_source");
+assert(authority.proposal?.path === "amended-live-proposal.json", "authority_proposal_path");
+assert(authority.proposal?.sha256 === proposalDigest, "authority_proposal_hash_binding");
+assert(authority.approval?.exact_proposal_approved === true, "authority_approval");
+assert(authority.approval?.low_eu_ro_1_availability_approved === true, "authority_low_availability");
+assert(authority.approval?.minimum_approved_availability === "LOW", "authority_minimum_availability");
+assert(authority.approval?.maximum_cumulative_finite_spend_usd === 4, "authority_cap");
+assert(authority.approval?.historical_cap_reused === false, "authority_historical_cap");
+assert(authority.approval?.recurring_retained_volume_charge_usd_per_month === 7, "authority_retention_rate");
+assert(authority.approval?.recurring_charge_is_outside_finite_cap === true, "authority_retention_boundary");
+assert(authority.lineage?.model === EXPECTED.model, "authority_model");
+assert(authority.lineage?.model_manifest_sha256 === EXPECTED.modelManifest, "authority_manifest");
+assert(authority.lineage?.volume_id_sha256 === EXPECTED.volumeId, "authority_volume");
+assert(authority.lineage?.volume_size_gb === 50 && authority.lineage?.volume_region === EXPECTED.region, "authority_volume_identity");
+assert(authority.lineage?.volume_mount === "/runpod-volume" && authority.lineage?.model_root === "/runpod-volume/mage-model", "authority_mount");
+assert(authority.lineage?.volume_write_policy === "APPLICATION_READ_ONLY", "authority_volume_write_policy");
+assert(authority.lineage?.parent_image === EXPECTED.parentImage, "authority_parent_image");
+assert(authority.lineage?.parent_config_sha256 === EXPECTED.parentConfig, "authority_parent_config");
+assert(authority.lineage?.repaired_source_commit === EXPECTED.sourceCommit, "authority_source_commit");
+assert(authority.lineage?.repaired_source_sha256 === EXPECTED.sourceSha256, "authority_source_hash");
+assert(authority.lineage?.image_config_sha256 === EXPECTED.configDigest, "authority_config");
+assert(authority.lineage?.image_layer_sha256 === EXPECTED.layerDigest, "authority_layer");
+assert(authority.lineage?.final_image === EXPECTED.candidateImage, "authority_image");
+assert(authority.lineage?.publication_tag === EXPECTED.candidateTag, "authority_tag");
+assert(JSON.stringify(authority.authorized_operations) === JSON.stringify(proposal.approved_if_user_confirms_operations), "authority_operations");
+assert(authority.execution_boundary?.publication_authorized_pending_execution === true, "authority_publication_boundary");
+assert(authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true, "authority_runpod_boundary");
+assert(authority.execution_boundary?.gpu_use_authorized_pending_execution === true, "authority_gpu_boundary");
+assert(authority.execution_boundary?.provider_calls_completed === false, "authority_execution_state");
+assert(authority.execution_boundary?.external_spend_usd === 0, "authority_spend_state");
+assert(authority.execution_boundary?.v2_08_authorized === false, "authority_successor_boundary");
+assert(authority.status === "APPROVED_PREEXECUTION", "authority_status");
 assert(
-  currentState.includes(`pending_proposal_sha256_${proposalDigest.slice("sha256:".length)}`),
+  currentState.includes(`approved_proposal_sha256_${proposalDigest.slice("sha256:".length)}`),
   "current_state_proposal_hash_drift",
 );
 assert(currentState.includes(`Amended proposal ${proposalDigest}`), "current_state_proposal_note_drift");
+assert(currentState.includes("approved-authority.json"), "current_state_authority_path_drift");
 assert(currentState.includes(`layer ${layerDigest}`), "current_state_layer_hash_drift");
 assert(task.includes(proposalDigest), "task_proposal_hash_drift");
 assert(task.includes(layerDigest), "task_layer_hash_drift");
+assert(task.includes("approved-authority.json"), "task_authority_path_drift");
 
 process.stdout.write(
   `V2-07 amended proposal validation PASS (${proposalDigest}; ${definition.candidate_image})\n`,
