@@ -99,7 +99,7 @@ class MageWorkerImageTest(unittest.TestCase):
             self.assertIn(f"COPY {source} {destination}", normalized)
             source_path = ROOT / Path(source).relative_to("workers/image-media")
             source_text = source_path.read_text(encoding="utf-8")
-            for sentinel in (sentinels if isinstance(sentinels, tuple) else (sentinels,)):
+            for sentinel in sentinels if isinstance(sentinels, tuple) else (sentinels,):
                 self.assertIn(sentinel, source_text)
         copy_lines = [
             line.strip() for line in dockerfile.splitlines() if line.strip().startswith("COPY ")

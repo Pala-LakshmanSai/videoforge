@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-requirement-matrix/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T00:57:00Z",
+  "recorded_at": "2026-08-20T01:04:00Z",
   "authority_mode": "provider_free",
   "requirements": [
     {
@@ -63,11 +63,13 @@
         ".github/workflows/mage-image.yml",
         "workers/image-media/tests/test_mage_worker_image.py",
         "5f075b2",
+        "b0f696c",
+        "e80640b",
         "57bd915"
       ],
       "status": "PASS_PROVIDER_FREE_DEFINITION",
       "build_constraints": ["linux/amd64", "OS=linux", "architecture=amd64"],
-      "live_gap": "Hosted build has not been triggered; no final repaired digest exists."
+      "live_gap": "Hosted build has not been triggered; no final repaired digest exists. The candidate now overlays every changed runtime-hygiene module, not only the handler."
     },
     {
       "id": "staged_endpoint_configs",

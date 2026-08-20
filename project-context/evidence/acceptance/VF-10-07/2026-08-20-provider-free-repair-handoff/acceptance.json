@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T00:57:00Z",
+  "recorded_at": "2026-08-20T01:04:00Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -23,15 +23,20 @@
     "gpu": "NVIDIA GeForce RTX 4090",
     "published_image_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
     "published_image_source_commit": "39541d57ca3c2270c7872ab49387f2484ab1a6e9",
-    "unpublished_repair_source_commit": "431198333a22d66ad1929244bf92662c53be5a6b",
+    "unpublished_repair_source_commit": "d1d704c2f39581e745ba90151c7388673107de41",
     "repair_image_definition": {
       "dockerfile": "workers/image-media/Dockerfile.mage.repair",
-      "commit": "5f075b2",
-      "strategy": "digest_pinned_source_only_overlay",
+      "commit": "b0f696c",
+      "strategy": "digest_pinned_source_only_runtime_hygiene_overlay",
       "base_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
-      "repaired_source_commit": "431198333a22d66ad1929244bf92662c53be5a6b",
+      "repaired_source_commit": "d1d704c2f39581e745ba90151c7388673107de41",
       "entrypoint_inherited": ["python", "/opt/videoforge/mage-serverless-entrypoint.py"],
-      "copy_only": "workers/image-media/mage_serverless.py -> /opt/videoforge/mage_serverless.py",
+      "copy_only": [
+        "workers/image-media/mage_serverless.py -> /opt/videoforge/mage_serverless.py",
+        "workers/image-media/mage_runtime.py -> /opt/videoforge/mage_runtime.py",
+        "workers/image-media/mage_bootstrap.py -> /opt/videoforge/mage_bootstrap.py",
+        "workers/image-media/src/videoforge_image_media/mage_production.py -> /opt/videoforge/src/videoforge_image_media/mage_production.py"
+      ],
       "hosted_build_workflow": ".github/workflows/mage-image.yml",
       "workflow_commit": "57bd915",
       "publication_triggered": false
@@ -49,7 +54,7 @@
   "local_repairs": {
     "failure_code_repair": "1623fa1",
     "fresh_authority_guard": "024547b",
-    "fresh_authority_required_source_commit": "431198333a22d66ad1929244bf92662c53be5a6b",
+    "fresh_authority_required_source_commit": "d1d704c2f39581e745ba90151c7388673107de41",
     "exact_generated_output_prefix_and_single_use_guard": "b40af35 + 4311983",
     "generated_output_prefix_binding": true,
     "generated_output_max_uses": 1,
@@ -220,6 +225,21 @@
       "commit": "270cf95",
       "area": "generated-output rollback is bound to a per-object HMAC token, reuses the exact R2 key grammar, and fails closed unless post-delete head absence is proven",
       "result": "PASS_PROVIDER_FREE_REPAIR"
+    },
+    {
+      "commit": "b0f696c",
+      "area": "repaired image overlay includes the handler, runtime scratch/environment, bootstrap evidence, and Comfy output cleanup modules while inheriting the pinned base entrypoint and sealed-volume policy",
+      "result": "PASS_PROVIDER_FREE_REPAIR"
+    },
+    {
+      "commit": "e80640b",
+      "area": "activation authority and image labels pin the complete runtime-hygiene source lineage d1d704c2f39581e745ba90151c7388673107de41",
+      "result": "PASS_PROVIDER_FREE_REPAIR"
+    },
+    {
+      "command": "python3 -m unittest discover -s workers/image-media/tests -p 'test_mage_worker_image.py' && pnpm --filter @videoforge/web exec vitest run src/server/providers/v207-activation-authority.test.ts src/server/hosted/v207-output-ports.test.ts && pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint",
+      "exit_code": 0,
+      "result": "18 image-definition tests, 9 focused web tests, TypeScript, and lint passed"
     },
     {
       "command": "pnpm --filter @videoforge/web exec vitest run src/server/hosted/v207-output-ports.test.ts",
