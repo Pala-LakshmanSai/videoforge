@@ -7,6 +7,7 @@ import {
   RunPodControlClient,
   type RunPodJobResult,
   type RunPodV207Placement,
+  V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
 } from "./runpod-control";
 import {
   RunPodV207QualificationHarness,
@@ -27,7 +28,6 @@ const ROUTE =
   "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port";
 const RESULT_PATH = "/tmp/videoforge-v207-live-result.json";
 const BILLING_START = "2026-08-20T00:00:00.000Z";
-const REQUEST_AUTHORITY_TTL_SECONDS = 7_200;
 const ACTIVATION = parseV207ActivationAuthority(process.env);
 const IMAGE = ACTIVATION.image;
 const finiteCapUsd = ACTIVATION.capUsd;
@@ -238,7 +238,9 @@ async function createBatch(
     };
   });
   const batch = { attempt_id: attemptId, model_revision: MODEL_REVISION, items };
-  const expiresAt = new Date(Date.now() + REQUEST_AUTHORITY_TTL_SECONDS * 1_000).toISOString();
+  const expiresAt = new Date(
+    Date.now() + V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS * 1_000,
+  ).toISOString();
   const envelope = {
     schema: "serverless-worker-job-envelope/v3",
     dispatch_token: `dispatch-${attemptId}-${randomBytes(8).toString("hex")}`,
