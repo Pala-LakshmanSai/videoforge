@@ -224,12 +224,12 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
         return "[REDACTED]";
       }
       if (key === "run_tag")
-        return /^202[0-9]-[0-9]{8,32}$/u.test(candidate) ? candidate : "[REDACTED]";
+        return /^202[0-9]{5}-[a-f0-9]{12}$/u.test(candidate) ? candidate : "[REDACTED]";
       if (key !== null && SAFE_EVIDENCE_KEYS.has(key)) {
         if (/^[0-9a-f]{40}$/u.test(candidate) || SAFE_PROVIDER_CODE.test(candidate)) {
           return candidate;
         }
-        if (/^(?:[A-Za-z0-9._-]{1,120})$/u.test(candidate)) return candidate;
+        if (/^(?:[A-Za-z0-9._/-]{1,120})$/u.test(candidate)) return candidate;
       }
       return SAFE_PROVIDER_CODE.test(candidate) ? candidate : "[REDACTED]";
     }
@@ -1459,6 +1459,7 @@ async function main(): Promise<void> {
 
 function safeQualificationError(error: unknown): string {
   const candidate = error instanceof Error ? error.message : "";
+  if (SAFE_PROVIDER_CODE.test(candidate)) return candidate;
   const code = candidate.match(/^[A-Z][A-Z0-9_.-]{2,80}/u)?.[0];
   return code && SAFE_PROVIDER_CODE.test(code) ? code : "V207_QUALIFICATION_FAILED";
 }

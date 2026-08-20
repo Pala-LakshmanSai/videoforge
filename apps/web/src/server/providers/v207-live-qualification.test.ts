@@ -147,6 +147,7 @@ describe("V2-07 live qualification runner safety", () => {
     expect(serialized).not.toContain("nonce-raw");
     expect(serialized).not.toContain("token-raw");
     expect(serialized).not.toContain("signed.example");
+    expect(redacted.run_tag).toBe("20260820-abcdef012345");
     expect(redacted.endpoint_id_hash).toBe(hash);
     expect(redacted.endpointIdHash).toBe(hash);
     expect(redacted.manifest_sha256).toBe(hash);
@@ -156,6 +157,7 @@ describe("V2-07 live qualification runner safety", () => {
     expect(redacted.os).toBe("linux");
     expect(redacted.architecture).toBe("amd64");
     expect(redacted.status).toBe("COMPLETED");
+    expect(source).toContain("if (SAFE_PROVIDER_CODE.test(candidate)) return candidate");
     expect(source).toContain("writeV207EvidenceCheckpoint");
     expect(source).toContain("mode: 0o600");
     expect(source).toContain('await persistCheckpoint("initialized")');
