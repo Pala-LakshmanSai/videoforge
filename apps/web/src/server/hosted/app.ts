@@ -4,7 +4,6 @@ import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { handleHostedProductRequest } from "./product";
-import { handleV207GeneratedOutputPort } from "./v207-output-ports";
 import {
   deleteHostedR2ObjectsAndVerify,
   hostedCompleteAttemptArtifactKeys,
@@ -937,8 +936,6 @@ export async function handleHostedRequest(
     executionContext,
   );
   if (personalWorkerResponse) return personalWorkerResponse;
-  const v207PortResponse = await handleV207GeneratedOutputPort(request, config, environment);
-  if (v207PortResponse) return v207PortResponse;
   const productResponse = await handleHostedProductRequest(
     request,
     environment,

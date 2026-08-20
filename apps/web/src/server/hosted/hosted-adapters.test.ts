@@ -266,6 +266,15 @@ describe("V2-06 hosted adapters", () => {
     expect(port.maxContentLength).toBe(4 * 1024 * 1024);
     expect(port.requiredHeaders["content-type"]).toBe("image/png");
     expect(decodeURIComponent(port.url)).toContain("X-Amz-SignedHeaders=content-type;host");
+    const qualificationPort = await new HostedR2Signer(config.r2).signGenerated({
+      objectKey:
+        "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/mage-image/job/job-a/artifact/scene-b",
+      contentType: "image/png",
+      maxContentLength: 4 * 1024 * 1024,
+      lifetimeSeconds: 7_200,
+      now: new Date("2026-08-16T00:00:00.000Z"),
+    });
+    expect(qualificationPort.url).toContain("X-Amz-Expires=7200");
     await expect(
       new HostedR2Signer(config.r2).signGenerated({
         objectKey: "tenant/account-a",
@@ -274,6 +283,15 @@ describe("V2-06 hosted adapters", () => {
         lifetimeSeconds: 300,
       }),
     ).rejects.toThrow(/exact tenant lineage/u);
+    await expect(
+      new HostedR2Signer(config.r2).signGenerated({
+        objectKey:
+          "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/mage-image/job/job-a/artifact/scene-c",
+        contentType: "image/png",
+        maxContentLength: 4 * 1024 * 1024,
+        lifetimeSeconds: 7_201,
+      }),
+    ).rejects.toThrow(/generated PUT port lifetime/u);
   });
 
   it("accepts exact Avatar Hub profile-version storage keys", async () => {

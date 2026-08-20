@@ -6,6 +6,7 @@ const EXACT_KEY =
   /^(?:tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/(?:input|mage-image|soulx-avatar|render|provenance)\/job\/[A-Za-z0-9._:-]+\/artifact\/[A-Za-z0-9._:-]+|tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/avatar-profile\/[A-Za-z0-9._:-]+\/version\/[A-Za-z0-9._:-]+\/(?:original|canonical|thumbnail)\/[A-Za-z0-9._:-]+)$/u;
 const HOSTED_JOB_ARTIFACT_PREFIX =
   /^tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/(?:input|render)\/job\/[A-Za-z0-9._:-]+\/artifact\/$/u;
+const MAX_GENERATED_OUTPUT_LIFETIME_SECONDS = 7_200;
 
 /** Exact single-artifact key grammar shared by signed ports and rollback operations. */
 export function isExactHostedR2ObjectKey(value: string): boolean {
@@ -256,9 +257,11 @@ export class HostedR2Signer {
     if (
       !Number.isSafeInteger(input.lifetimeSeconds) ||
       input.lifetimeSeconds < 1 ||
-      input.lifetimeSeconds > 900
+      input.lifetimeSeconds > MAX_GENERATED_OUTPUT_LIFETIME_SECONDS
     ) {
-      throw new RangeError("R2 generated PUT port lifetime must be between 1 and 900 seconds.");
+      throw new RangeError(
+        `R2 generated PUT port lifetime must be between 1 and ${MAX_GENERATED_OUTPUT_LIFETIME_SECONDS} seconds.`,
+      );
     }
     const now = input.now ?? new Date();
     const target = new URL(

@@ -16,6 +16,8 @@ if (
 )
   fail("staging build is not bound to its hosted Worker configuration");
 if (wrangler.name !== "videoforge-v2-06-staging") fail("unexpected Worker name");
+if (wrangler.main !== "./worker/staging-index.ts")
+  fail("staging qualification routes must stay outside the production Worker entrypoint");
 if (wrangler.account_id !== "__V2_06_CLOUDFLARE_ACCOUNT_ID__")
   fail("staging deploy must pin the approved Cloudflare account placeholder");
 if (wrangler.vars?.VIDEOFORGE_PROVIDER_MODE !== "staging") fail("Worker must be staging-only");

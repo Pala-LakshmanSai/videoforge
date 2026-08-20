@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-20T04:03:14Z"
+updated_at: "2026-08-20T04:47:22Z"
 
 phase: serverless_v2_v2_07_live_qualification_authorized
 implementation_authorized_in_current_task: true
@@ -183,11 +183,11 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "39541d57ca3c2270c7872ab49387f2484ab1a6e9"
-  current_source_head_semantics: deployed_executable_source_identity_not_documentation_head
+  current_source_head: "d1d704c2f39581e745ba90151c7388673107de41"
+  current_source_head_semantics: published_repaired_mage_image_source_identity_not_documentation_head
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "V2-07 deployed executable source is 39541d5 and remains the immutable published digest source. The current branch contains local repair ancestor b40af35 (itself including failure-surface repair 1623fa1), complete repaired source commit d1d704c with exact generated-output path guard and runtime hygiene, complete-source authority guard now pinned to d1d704c2f39581e745ba90151c7388673107de41, canonical formatting/lint commit 1c9b0de, provider-free harness hardening ee69c95, digest-pinned source-only overlay 5f075b2, complete runtime-hygiene overlay b0f696c, hosted-runner build/smoke workflow 57bd915, explicit linux/amd64 image metadata guard 3f7a894, exact overlay-byte hash pin dadef6a, provider-free runtime hygiene repairs a4c6070/d1d704c, exact generated-output rollback repair 767a27b, per-object HMAC rollback plus post-delete absence proof 270cf95, lineage reconciliation e80640b, strict staged endpoint identity repair d67e83e, complete endpoint-control hash repair d1b75ab, transport/drain negative hardening 6db83c8, and live-runner identity constant reconciliation 2b90d7e/bd461f7. The repaired source is not published and the workflow has not been triggered. Multiple exact corrected-image 32-item batches reached terminal output status FAILED with output keys limited to status and no accepted output or provider error; a later exact attempt reached throttled before dispatch. Fresh read-only catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW. The envelope and endpoint template both pin RUNPOD_INIT_TIMEOUT=800. The harness now proves the exact Mage volume hash/50 GB/EU-RO-1 before mutation and cap-fences the separately hashed max-two reader proof, with distinct reader attempts. Runtime cache/input/output cleanup and handler mutation/cancel/timeout coverage are provider-free only, the attempt environment is applied during serialized generation, and failed qualification rollback deletes exact generated objects only with per-object authority and observed absence. Temporary signer capability was disabled; all disposable endpoint/template resources were deleted and both retained volumes remained untouched. Strict provider response validation now requires exact template, volume, region, CUDA, timing, and image identity; request-key replay, status/cancel job identity, contradictory volume bindings, and ambiguous drain all fail closed; config hashes include complete runtime controls. Fresh exact-image authority and a new numeric finite cap are required before any publication or GPU work."
-  v2_07_latest_local_repair: "Fresh user authority at 2026-08-20T03:56:06Z binds a USD 4 cap to the exact proposal hash and repaired source. Hosted workflow run 32330272028 published and smoke-tested ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497 as linux/amd64 with exact source/base/offline labels; RunPod remained at zero compute and zero mutation through publication."
+  current_source_head_note: "Hosted workflow run 32330272028 published and smoke-tested the repaired Mage executable source d1d704c at ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497. The prior 39541d5/ab504371 image remains historical failed-attempt evidence only. Fresh USD 4 authority is active for exact endpoint qualification. The staging-only signer now has durable R2 reservation/finalize/delete, full PNG decode validation, v3 commit receipts, exact activation rollback, and lifecycle recovery gates; it remains disabled until the bounded live orchestration starts. No RunPod endpoint/template or GPU mutation has occurred under the fresh cap yet."
+  v2_07_latest_local_repair: "Fresh user authority at 2026-08-20T03:56:06Z binds a USD 4 cap to the exact proposal hash and repaired source. Hosted workflow run 32330272028 published and smoke-tested ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497 as linux/amd64 with exact source/base/offline labels. The pre-dispatch repair adds durable real-R2 output authority and v3 receipts, exact PNG decode/readback, unique attempts, terminal cancel polling, max-two reader fencing, ambiguous-create cleanup, account-wide final inventory, and a staging-only signer activation/rollback wrapper. Focused V2-07 tests are 83/83 and canonical verification including installed Chrome 44/44 is green; RunPod remains unmutated under the fresh cap."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -274,7 +274,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: provider_free_repair_handoff_requires_fresh_exact_image_authority
+  V2-07: live_qualification_authorized_predispatch_green
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
@@ -321,9 +321,9 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: serverless_image_published_dynamic_output_contract_repaired_handler_terminal_failure_unqualified
+    status: repaired_serverless_image_published_predispatch_gate_green_live_qualification_pending
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
-    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e"
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
     manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
     selected_model_bytes: 13379919280
     retained_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
@@ -331,7 +331,7 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
-    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-19-provider-activation-blocked/acceptance.json
+    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/authority.json
   soulx:
     status: pod_technical_pass_serverless_visual_crop_license_and_settlement_gates_open
     exact_source: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
@@ -401,7 +401,7 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: live_qualification_authorized_prepublish_preflight
+  status: live_qualification_authorized_predispatch_green
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: exact_repaired_image_live_qualification_authorized
   task_stage: bounded_mutation
@@ -477,11 +477,11 @@ recommended_next_task:
   application_code_changes_authorized: true
   authority_note: "Fresh user authority at 2026-08-20T03:56:06Z approves proposal sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b with a USD 4 cumulative finite cap for repaired source d1d704c2f39581e745ba90151c7388673107de41. The historical USD 4 cap remains closed and is not reused. Existing Mage/SoulX volumes remain retained separately; no volume mutation, public sample publication, or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: live_qualification_authorized_prepublish_preflight
+  execution_status: live_qualification_authorized_predispatch_green
   execution_blocker: null
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_image_published_handler_terminal_failure_unqualified
+  state: v2_06_complete_green_independently_audited_v2_07_repaired_image_published_predispatch_green
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"

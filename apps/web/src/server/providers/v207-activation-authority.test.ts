@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseV207ActivationAuthority,
+  V207_REPAIRED_IMAGE,
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
 } from "./v207-activation-authority";
 
-const image = "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:" + "a".repeat(64);
+const image = V207_REPAIRED_IMAGE;
 
 describe("V2-07 activation authority", () => {
   it("pins a complete 40-character repaired source commit", () => {
@@ -44,5 +45,16 @@ describe("V2-07 activation authority", () => {
         V207_FINITE_CAP_USD: "4.25",
       }),
     ).toEqual({ image, capUsd: 4.25 });
+  });
+
+  it("rejects the prior immutable digest even with the repaired source commit", () => {
+    expect(() =>
+      parseV207ActivationAuthority({
+        V207_IMAGE:
+          "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_FINITE_CAP_USD: "4",
+      }),
+    ).toThrow("V207_IMAGE_DIGEST_REQUIRED");
   });
 });

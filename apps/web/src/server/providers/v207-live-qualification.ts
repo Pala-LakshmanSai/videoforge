@@ -1,7 +1,6 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
-
-import { FakeR2ArtifactPlane } from "@videoforge/control-plane";
+import { pathToFileURL } from "node:url";
 
 import {
   RunPodControlClient,
@@ -10,6 +9,7 @@ import {
   V207_RUNPOD_EXECUTION_TIMEOUT_MS,
   V207_RUNPOD_GPU,
   V207_RUNPOD_INIT_TIMEOUT_SECONDS,
+  V207_RUNPOD_MIN_CUDA_VERSION,
   V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
   V207_RUNPOD_REGION,
   V207_RUNPOD_VOLUME_MOUNT,
@@ -19,9 +19,15 @@ import {
   type RunPodV207DispatchBatchInput,
   type RunPodV207OutputAuthority,
 } from "./runpod-v207-qualification-harness";
-import { parseV207ActivationAuthority } from "./v207-activation-authority";
+import { loadSujalRunPodApiKeyFromKeychain, SUJAL_RUNPOD_ACCOUNT_ID_SHA256 } from "./keychain";
+import { assertSujalRunPodAccount } from "./runpod-account";
+import {
+  parseV207ActivationAuthority,
+  V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+} from "./v207-activation-authority";
 const MANIFEST = "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b";
 const VOLUME = "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
+const SOULX_VOLUME = "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
 const VOLUME_ID = "c7kg89brtj";
 const ACCOUNT = "account-a";
 const WORKSPACE = "workspace-a";
@@ -29,10 +35,47 @@ const PROJECT = "project-a";
 const REVISION = "revision-a";
 const MODEL_REVISION = "d8c99241f6fa80fbd453014234af2bf337ea21e6";
 const OUTPUT_LIMIT = 4 * 1024 * 1024;
+const QUALIFICATION_SCENES = [
+  "A documentary photograph of a small mixed farm at sunrise, wide environmental context",
+  "Close documentary photograph of weathered hands testing dark soil in a field",
+  "A farmer planting vegetable seeds in straight rows, natural morning light",
+  "Drip irrigation watering young green crops, realistic agricultural detail",
+  "A woman farmer inspecting healthy leaves for pests, candid documentary framing",
+  "A compact tractor moving slowly between crop rows, rural landscape behind it",
+  "Two farm workers harvesting ripe red apples into wooden crates",
+  "Macro documentary photograph of a fresh red apple with natural skin texture",
+  "Harvested vegetables being washed with clean water at a farm packing table",
+  "Hands sorting tomatoes by ripeness into reusable plain crates",
+  "A refrigerated farm truck being loaded at a rural distribution shed",
+  "Wide photograph of a wholesale produce market opening before dawn",
+  "A market vendor arranging colorful fresh produce at a simple stall",
+  "A parent and child choosing fresh vegetables at a neighborhood market",
+  "Reusable grocery bags filled with unbranded fruit and vegetables on a kitchen counter",
+  "Hands rinsing leafy greens in a bright home kitchen sink",
+  "Close photograph of a cook safely chopping carrots on a wooden board",
+  "Vegetables simmering in a plain metal pan, realistic steam and texture",
+  "A family sharing a home-cooked vegetable meal at a modest dining table",
+  "Kitchen scraps being collected in a small countertop compost container",
+  "A gardener turning mature compost into raised garden soil",
+  "Inside a working greenhouse with rows of plants and diffused daylight",
+  "A honeybee pollinating a white orchard blossom, sharp macro evidence",
+  "A field technician checking a simple weather sensor beside crops",
+  "Farmers sheltering harvested crates from a sudden rain shower",
+  "Wide dry field showing the practical effect of drought on crops",
+  "A community water tank supplying irrigation lines to small farms",
+  "Historical documentary-style scene of farmers using hand tools in the 1940s, no signage",
+  "Modern agricultural researchers examining plant samples in a clean laboratory",
+  "A split-safe portrait of a farmer standing on the left beside an open field",
+  "Aerial documentary view of patchwork farms connected to a nearby town",
+  "Fresh produce served on a plain table beside a window, quiet closing image",
+] as const;
 const ROUTE =
   "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port";
 const RESULT_PATH = "/tmp/videoforge-v207-live-result.json";
 const BILLING_START = "2026-08-20T00:00:00.000Z";
+const IMAGE_CONFIG_DIGEST =
+  "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2";
+const IMAGE_BASE_DIGEST = "sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e";
 const ACTIVATION = parseV207ActivationAuthority(process.env);
 const IMAGE = ACTIVATION.image;
 const finiteCapUsd = ACTIVATION.capUsd;
@@ -97,9 +140,11 @@ async function routePort(body: AnyRecord, nonce: string): Promise<AnyRecord> {
       signal: AbortSignal.timeout(15_000),
     });
     const value = (await response.json()) as AnyRecord;
-    if (response.ok && typeof value.url === "string" && /^https:\/\//u.test(value.url)) {
-      return value;
-    }
+    const signedPort = typeof value.url === "string" && /^https:\/\//u.test(value.url);
+    const finalized =
+      body.operation === "FINALIZE" &&
+      value.schema_version === "videoforge-v207-generated-output-finalization/v1";
+    if (response.ok && (signedPort || finalized)) return value;
     if (response.status !== 503 || attempt === 2) {
       throw new Error(`V207_OUTPUT_PORT_${response.status}`);
     }
@@ -172,9 +217,94 @@ async function billingAmount(apiKey: string): Promise<number> {
   return amount;
 }
 
+async function ghcrGet(path: string, accept: string): Promise<Response> {
+  const url = `https://ghcr.io${path}`;
+  const first = await fetch(url, {
+    headers: { accept },
+    redirect: "error",
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (first.status !== 401) return first;
+  const challenge = first.headers.get("www-authenticate") ?? "";
+  const fields = new Map<string, string>();
+  for (const match of challenge.matchAll(/([a-z]+)="([^"]+)"/gu)) {
+    if (match[1] && match[2] && !fields.has(match[1])) fields.set(match[1], match[2]);
+  }
+  if (
+    !challenge.startsWith("Bearer ") ||
+    fields.get("realm") !== "https://ghcr.io/token" ||
+    fields.get("service") !== "ghcr.io" ||
+    fields.get("scope") !== "repository:pala-lakshmansai/videoforge-mage-v2-07:pull"
+  ) {
+    throw new Error("V207_IMAGE_REGISTRY_AUTH_INVALID");
+  }
+  const tokenUrl = new URL(fields.get("realm")!);
+  tokenUrl.searchParams.set("service", fields.get("service")!);
+  tokenUrl.searchParams.set("scope", fields.get("scope")!);
+  const tokenResponse = await fetch(tokenUrl, { signal: AbortSignal.timeout(30_000) });
+  const tokenValue = tokenResponse.ok ? ((await tokenResponse.json()) as AnyRecord).token : null;
+  if (typeof tokenValue !== "string" || tokenValue.length < 20 || /\s/u.test(tokenValue)) {
+    throw new Error("V207_IMAGE_REGISTRY_TOKEN_INVALID");
+  }
+  return fetch(url, {
+    headers: { accept, authorization: `Bearer ${tokenValue}` },
+    redirect: "error",
+    signal: AbortSignal.timeout(30_000),
+  });
+}
+
+async function attestPublishedImage(): Promise<AnyRecord> {
+  const digest = IMAGE.slice(IMAGE.indexOf("@") + 1);
+  const repository = "/v2/pala-lakshmansai/videoforge-mage-v2-07";
+  const manifestResponse = await ghcrGet(
+    `${repository}/manifests/${digest}`,
+    "application/vnd.oci.image.manifest.v1+json",
+  );
+  if (!manifestResponse.ok || manifestResponse.headers.get("docker-content-digest") !== digest) {
+    throw new Error("V207_IMAGE_MANIFEST_ATTESTATION_FAILED");
+  }
+  const manifest = (await manifestResponse.json()) as AnyRecord;
+  if (manifest.config?.digest !== IMAGE_CONFIG_DIGEST) {
+    throw new Error("V207_IMAGE_CONFIG_DIGEST_MISMATCH");
+  }
+  const configResponse = await ghcrGet(
+    `${repository}/blobs/${IMAGE_CONFIG_DIGEST}`,
+    "application/vnd.oci.image.config.v1+json",
+  );
+  if (!configResponse.ok) throw new Error("V207_IMAGE_CONFIG_ATTESTATION_FAILED");
+  const config = (await configResponse.json()) as AnyRecord;
+  const labels = config.config?.Labels as AnyRecord;
+  const env = new Set<string>(Array.isArray(config.config?.Env) ? config.config.Env : []);
+  if (
+    config.os !== "linux" ||
+    config.architecture !== "amd64" ||
+    JSON.stringify(config.config?.Entrypoint) !==
+      JSON.stringify(["python", "/opt/videoforge/mage-serverless-entrypoint.py"]) ||
+    labels?.["org.opencontainers.image.revision"] !== V207_REPAIRED_IMAGE_SOURCE_COMMIT ||
+    labels?.["ai.videoforge.source-commit"] !== V207_REPAIRED_IMAGE_SOURCE_COMMIT ||
+    labels?.["org.opencontainers.image.base.digest"] !== IMAGE_BASE_DIGEST ||
+    !env.has("HF_HUB_OFFLINE=1") ||
+    !env.has("TRANSFORMERS_OFFLINE=1") ||
+    !env.has("DIFFUSERS_OFFLINE=1") ||
+    !env.has("MAGE_MODEL_ROOT=/runpod-volume")
+  ) {
+    throw new Error("V207_IMAGE_CONFIG_IDENTITY_MISMATCH");
+  }
+  return {
+    manifest_digest: digest,
+    config_digest: IMAGE_CONFIG_DIGEST,
+    source_commit: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+    base_digest: IMAGE_BASE_DIGEST,
+    os: config.os,
+    architecture: config.architecture,
+    offline: true,
+  };
+}
+
 async function createBatch(
   attemptId: string,
   nonce: string,
+  workerToken: string,
 ): Promise<{
   readonly input: RunPodV207DispatchBatchInput;
   readonly objectKeys: readonly string[];
@@ -182,53 +312,51 @@ async function createBatch(
   const outputPrefix =
     `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}` +
     `/lane/mage-image/job/${attemptId}`;
-  const plane = new FakeR2ArtifactPlane(randomBytes(32));
   const authorities: AnyRecord[] = [];
   const outputPutUrls: string[] = [];
   const objectKeys: string[] = [];
   const reservationIds: string[] = [];
-  const portNow = new Date();
-  for (let index = 0; index < 32; index += 1) {
-    const authority = plane.reserveGeneratedUpload(
-      {
-        scope: { accountId: ACCOUNT, workspaceId: WORKSPACE } as any,
-        projectId: PROJECT,
-        projectRevisionId: REVISION,
-        lane: "MAGE_IMAGE",
-        jobId: attemptId,
-        artifactId: `scene-${String(index + 1).padStart(2, "0")}`,
-      },
-      {
-        contentType: "image/png",
-        maxContentLength: OUTPUT_LIMIT,
-        now: portNow,
-        lifetimeMs: 10 * 60 * 1_000,
-        maxUses: 1,
-        retentionClass: "PROJECT",
-      },
-    );
-    const objectKey = authority.path.slice(1);
-    const signed = await routePort(
-      {
-        schema_version: "videoforge-v207-generated-output-port-request/v1",
-        operation: "PUT",
-        account_id: ACCOUNT,
-        workspace_id: WORKSPACE,
-        object_key: objectKey,
-        content_type: "image/png",
-        max_content_length: OUTPUT_LIMIT,
-        lifetime_seconds: 600,
-      },
-      nonce,
-    );
-    authorities.push(authority);
-    outputPutUrls.push(signed.url);
-    objectKeys.push(objectKey);
-    reservationIds.push(authority.reservation_id);
-    if ((index + 1) % 8 === 0) console.error(`v207:ports-${attemptId}-${index + 1}`);
+  try {
+    for (let index = 0; index < 32; index += 1) {
+      const objectKey = `${outputPrefix}/artifact/scene-${String(index + 1).padStart(2, "0")}`;
+      objectKeys.push(objectKey);
+      const signed = await routePort(
+        {
+          schema_version: "videoforge-v207-generated-output-port-request/v1",
+          operation: "PUT",
+          account_id: ACCOUNT,
+          workspace_id: WORKSPACE,
+          object_key: objectKey,
+          content_type: "image/png",
+          max_content_length: OUTPUT_LIMIT,
+          lifetime_seconds: V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+        },
+        nonce,
+      );
+      const authority = signed.authority as AnyRecord;
+      if (
+        !authority ||
+        authority.schema_version !== "artifact-generated-output-authority/v1" ||
+        authority.path !== `/${objectKey}` ||
+        authority.max_uses !== 1 ||
+        typeof authority.reservation_id !== "string"
+      ) {
+        throw new Error("V207_OUTPUT_AUTHORITY_INVALID");
+      }
+      authorities.push(authority);
+      outputPutUrls.push(signed.url);
+      reservationIds.push(authority.reservation_id);
+      if ((index + 1) % 8 === 0) console.error(`v207:ports-${attemptId}-${index + 1}`);
+    }
+  } catch (error) {
+    try {
+      await deleteGeneratedObjects(objectKeys, nonce);
+    } catch {
+      throw new Error("V207_BATCH_PORT_ROLLBACK_UNCERTAIN", { cause: error });
+    }
+    throw error;
   }
-  const items = Array.from({ length: 32 }, (_, index) => {
-    const positivePrompt = `A documentary photograph of a red apple on a wooden table, scene ${index + 1}`;
+  const items = QUALIFICATION_SCENES.map((positivePrompt, index) => {
     const negativePrompt = "text, letters, logo, watermark, malformed objects";
     return {
       scene_id: `scene-${String(index + 1).padStart(2, "0")}`,
@@ -246,7 +374,7 @@ async function createBatch(
   const expiresAt = new Date(
     Date.now() + V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS * 1_000,
   ).toISOString();
-  const envelope = {
+  const envelopeBody = {
     schema: "serverless-worker-job-envelope/v3",
     dispatch_token: `dispatch-${attemptId}-${randomBytes(8).toString("hex")}`,
     tenant: { account_id: ACCOUNT, workspace_id: WORKSPACE },
@@ -290,11 +418,21 @@ async function createBatch(
       pod_lifecycle_permitted: false,
       queue_purge_permitted: false,
     },
-    authority_sha256: hashText(`authority-${attemptId}`),
+  };
+  const authoritySha256 = hashText(sortedJson(envelopeBody));
+  const signaturePreimage = sortedJson({
+    key_id: "worker-key-1",
+    authority_sha256: authoritySha256,
+  });
+  const envelope = {
+    ...envelopeBody,
+    authority_sha256: authoritySha256,
     signature: {
       algorithm: "HMAC-SHA256",
       key_id: "worker-key-1",
-      value: "0".repeat(64),
+      value: createHmac("sha256", Buffer.from(workerToken, "hex"))
+        .update(signaturePreimage)
+        .digest("hex"),
     },
   };
   const outputAuthority: RunPodV207OutputAuthority = {
@@ -319,7 +457,10 @@ async function createBatch(
 
 async function verifyBatch(
   job: RunPodJobResult,
+  expectedAttemptId: string,
   objectKeys: readonly string[],
+  authorities: readonly AnyRecord[],
+  expectedEndpointIdHash: string,
   nonce: string,
   receiptKeyId: string,
   receiptSecret: Buffer,
@@ -354,6 +495,10 @@ async function verifyBatch(
               : "UNKNOWN";
     throw new Error(`MAGE_OUTPUT_NOT_SUCCEEDED:${String(output?.status ?? "MISSING")}:${code}`);
   }
+  if (output.items.length !== 32 || output.items.length !== objectKeys.length) {
+    throw new Error("MAGE_OUTPUT_ITEM_COUNT_INVALID");
+  }
+  if (authorities.length !== objectKeys.length) throw new Error("MAGE_AUTHORITY_COUNT_INVALID");
   const receipt = output.provenance_receipt as AnyRecord;
   if (!receipt || receipt.schema_version !== "serverless-provenance-receipt/v1") {
     throw new Error("MAGE_RECEIPT_MISSING");
@@ -374,25 +519,90 @@ async function verifyBatch(
     throw new Error("MAGE_RECEIPT_SIGNATURE_INVALID");
   }
   const deployment = receipt.deployment as AnyRecord;
+  const runtimeProbe = receipt.runtime_probe as AnyRecord;
   const volumeVerification = receipt.volume_verification as AnyRecord;
+  const modelReady = receipt.model_ready_evidence as AnyRecord;
+  const scratchCleanup = receipt.scratch_cleanup as AnyRecord;
+  const receiptItems = receipt.items as AnyRecord[];
+  const timings = receipt.timings as AnyRecord;
+  const requiredTimings = [
+    "allocation_ms",
+    "container_ready_ms",
+    "volume_verified_ms",
+    "model_load_ms",
+    "warmup_ms",
+    "first_inference_ms",
+    "upload_ms",
+    "total_ms",
+  ] as const;
   if (
+    receipt.attempt_id !== expectedAttemptId ||
+    receipt.provider_job_id !== job.id ||
     deployment?.container_digest !== IMAGE.slice(IMAGE.indexOf("@") + 1) ||
+    deployment?.endpoint_id_sha256 !== expectedEndpointIdHash ||
     deployment?.intended_volume_id_sha256 !== VOLUME ||
     deployment?.intended_region !== V207_RUNPOD_REGION ||
+    deployment?.model_manifest_sha256 !== MANIFEST ||
+    runtimeProbe?.gpu_name !== V207_RUNPOD_GPU ||
+    runtimeProbe?.gpu_count !== 1 ||
+    runtimeProbe?.cuda_version !== V207_RUNPOD_MIN_CUDA_VERSION ||
+    volumeVerification?.manifest_sha256_before !== MANIFEST ||
+    volumeVerification?.manifest_sha256_after !== MANIFEST ||
     volumeVerification?.mutation_detected !== false ||
-    volumeVerification?.cross_mount_detected !== false
+    volumeVerification?.cross_mount_detected !== false ||
+    modelReady?.state !== "MODEL_READY" ||
+    modelReady?.warmup_completed !== true ||
+    !/^sha256:[0-9a-f]{64}$/u.test(String(modelReady?.warmup_output_sha256 ?? "")) ||
+    scratchCleanup?.removed !== true ||
+    scratchCleanup?.scratch_on_model_volume !== false ||
+    !Array.isArray(receiptItems) ||
+    receiptItems.length !== objectKeys.length ||
+    !timings ||
+    requiredTimings.some(
+      (key) => !Number.isSafeInteger(timings[key]) || Number(timings[key]) < 0,
+    ) ||
+    timings.first_inference_ms < 1 ||
+    timings.total_ms < 1
   ) {
     throw new Error("MAGE_RECEIPT_IDENTITY_INVALID");
   }
   const readbacks: AnyRecord[] = [];
+  const commitReceipts: AnyRecord[] = [];
   let peakVram = 0;
   for (const [index, itemValue] of output.items.entries()) {
     const item = itemValue as AnyRecord;
+    const authority = authorities[index] as AnyRecord;
+    const receiptItem = receiptItems[index] as AnyRecord;
+    const runtimeEvidence = item.runtime_evidence as AnyRecord;
+    const gpu = runtimeEvidence?.gpu as AnyRecord;
     if (
       item.output_object_key !== objectKeys[index] ||
-      typeof item.output_sha256 !== "string" ||
+      !/^sha256:[0-9a-f]{64}$/u.test(String(item.output_sha256 ?? "")) ||
       !Number.isSafeInteger(item.output_bytes) ||
-      item.output_bytes < 1
+      item.output_bytes < 1 ||
+      item.output_bytes > OUTPUT_LIMIT ||
+      item.width !== 1280 ||
+      item.height !== 720 ||
+      authority?.path !== `/${objectKeys[index]}` ||
+      receiptItem?.item_id !== `scene-${String(index + 1).padStart(2, "0")}` ||
+      receiptItem?.state !== "SUCCEEDED" ||
+      receiptItem?.output_object_key !== item.output_object_key ||
+      receiptItem?.output_sha256 !== item.output_sha256 ||
+      receiptItem?.output_bytes !== item.output_bytes ||
+      receiptItem?.probe?.width !== 1280 ||
+      receiptItem?.probe?.height !== 720 ||
+      receiptItem?.probe?.format !== "png" ||
+      runtimeEvidence?.schema_version !== "videoforge.mage-runtime-evidence/v3" ||
+      runtimeEvidence?.volume_id_hash !== VOLUME ||
+      runtimeEvidence?.worker_image_digest !== IMAGE ||
+      runtimeEvidence?.model_revision !== MODEL_REVISION ||
+      runtimeEvidence?.comfyui_revision !== "26d7f8556822d9d08c2d3e1878636ac3b4969af9" ||
+      runtimeEvidence?.precision !== "int8-convrot" ||
+      gpu?.name !== V207_RUNPOD_GPU ||
+      gpu?.device_count !== 1 ||
+      gpu?.cuda_version !== V207_RUNPOD_MIN_CUDA_VERSION ||
+      !Number.isSafeInteger(gpu?.peak_vram_used_bytes) ||
+      Number(gpu?.peak_vram_used_bytes) < 1
     ) {
       throw new Error("MAGE_OUTPUT_LINEAGE_INVALID");
     }
@@ -411,22 +621,71 @@ async function verifyBatch(
       },
       nonce,
     );
-    const response = await fetch(getPort.url);
+    const response = await fetch(getPort.url, { signal: AbortSignal.timeout(30_000) });
     if (!response.ok) throw new Error("MAGE_OUTPUT_READBACK_FAILED");
     const bytes = new Uint8Array(await response.arrayBuffer());
-    const checksum = hashText(Buffer.from(bytes).toString("binary"));
     const byteHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
     if (bytes.byteLength !== item.output_bytes || byteHash !== item.output_sha256) {
       throw new Error("MAGE_OUTPUT_DURABILITY_MISMATCH");
     }
-    if (bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47) {
+    const png = Buffer.from(bytes);
+    if (
+      png.length < 24 ||
+      png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
+      png.subarray(12, 16).toString("ascii") !== "IHDR" ||
+      png.readUInt32BE(16) !== 1280 ||
+      png.readUInt32BE(20) !== 720
+    ) {
       throw new Error("MAGE_OUTPUT_NOT_PNG");
     }
-    const evidence = item.runtime_evidence as AnyRecord | undefined;
-    const itemPeak = Number(evidence?.gpu?.peak_vram_used_bytes ?? 0);
-    if (Number.isFinite(itemPeak)) peakVram = Math.max(peakVram, itemPeak);
+    const finalizationRequest = {
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "FINALIZE",
+      account_id: ACCOUNT,
+      workspace_id: WORKSPACE,
+      object_key: item.output_object_key,
+      content_type: "image/png",
+      content_length: item.output_bytes,
+      checksum_sha256: item.output_sha256,
+      reservation_id: authority.reservation_id,
+      capability_handle: authority.capability_handle,
+      callback_id: `callback-${expectedAttemptId}-${String(index + 1).padStart(2, "0")}`,
+    };
+    const finalized = await routePort(finalizationRequest, nonce);
+    const commitReceipt = finalized.receipt as AnyRecord;
+    const commitReceiptBody = { ...commitReceipt };
+    delete commitReceiptBody.schema_version;
+    delete commitReceiptBody.receipt_id;
+    delete commitReceiptBody.receipt_sha256;
+    if (
+      finalized.schema_version !== "videoforge-v207-generated-output-finalization/v1" ||
+      commitReceipt?.schema_version !== "artifact-commit-receipt/v3" ||
+      commitReceipt?.reservation_id !== authority.reservation_id ||
+      commitReceipt?.object_key !== item.output_object_key ||
+      commitReceipt?.content_type !== "image/png" ||
+      commitReceipt?.content_length !== item.output_bytes ||
+      commitReceipt?.checksum_sha256 !== item.output_sha256 ||
+      commitReceipt?.probe?.width !== 1280 ||
+      commitReceipt?.probe?.height !== 720 ||
+      commitReceipt?.probe?.format !== "png" ||
+      commitReceipt?.probe?.decoded !== true ||
+      !/^sha256:[0-9a-f]{64}$/u.test(String(commitReceipt?.receipt_sha256 ?? "")) ||
+      commitReceipt.receipt_sha256 !== hashText(sortedJson(commitReceiptBody))
+    ) {
+      throw new Error("MAGE_COMMIT_RECEIPT_INVALID");
+    }
+    const replayed = await routePort(finalizationRequest, nonce);
+    if (replayed.receipt?.receipt_sha256 !== commitReceipt.receipt_sha256) {
+      throw new Error("MAGE_COMMIT_RECEIPT_REPLAY_INVALID");
+    }
+    const itemPeak = Number(gpu.peak_vram_used_bytes);
+    peakVram = Math.max(peakVram, itemPeak);
     readbacks.push({ bytes: bytes.byteLength, sha256: byteHash });
-    void checksum;
+    commitReceipts.push({
+      receipt_sha256: commitReceipt.receipt_sha256,
+      reservation_id: commitReceipt.reservation_id,
+      replay_confirmed: true,
+    });
   }
   return {
     provider_job_id_hash: hashText(job.id),
@@ -436,21 +695,34 @@ async function verifyBatch(
     item_count: output.items.length,
     peak_vram_used_bytes: peakVram,
     readbacks,
+    commit_receipts: commitReceipts,
     receipt_sha256: receipt.receipt_sha256,
-    timings: receipt.timings,
+    timings,
   };
 }
 
 async function verifyBatchWithDiagnostic(
   harness: RunPodV207QualificationHarness,
   job: RunPodJobResult,
+  expectedAttemptId: string,
   objectKeys: readonly string[],
+  authorities: readonly AnyRecord[],
+  expectedEndpointIdHash: string,
   nonce: string,
   receiptKeyId: string,
   receiptSecret: Buffer,
 ): Promise<AnyRecord> {
   try {
-    return await verifyBatch(job, objectKeys, nonce, receiptKeyId, receiptSecret);
+    return await verifyBatch(
+      job,
+      expectedAttemptId,
+      objectKeys,
+      authorities,
+      expectedEndpointIdHash,
+      nonce,
+      receiptKeyId,
+      receiptSecret,
+    );
   } catch (error) {
     try {
       const diagnostic = await harness.diagnostic(job.id);
@@ -467,23 +739,44 @@ async function verifyBatchWithDiagnostic(
 }
 
 async function main(): Promise<void> {
-  const apiKey = process.env.RUNPOD_KEY;
-  if (!apiKey) throw new Error("RUNPOD_KEY_MISSING");
-  const wranglerConfigPath =
-    process.env.V207_WRANGLER_CONFIG ?? "dist-staging/videoforge_v2_06_staging/v207-wrangler.json";
-  const wranglerConfig = JSON.parse(await readFile(wranglerConfigPath, "utf8")) as AnyRecord;
-  const nonce = String(
-    process.env.V207_AUTHORITY_NONCE ?? wranglerConfig.vars?.VIDEOFORGE_V207_AUTHORITY_NONCE ?? "",
-  );
+  const apiKey = process.env.RUNPOD_KEY ?? (await loadSujalRunPodApiKeyFromKeychain());
+  let nonce = process.env.V207_AUTHORITY_NONCE?.trim() ?? "";
+  if (!nonce) {
+    const wranglerConfigPath =
+      process.env.V207_WRANGLER_CONFIG ??
+      "dist-staging/videoforge_v2_06_staging/v207-wrangler.json";
+    const wranglerConfig = JSON.parse(await readFile(wranglerConfigPath, "utf8")) as AnyRecord;
+    nonce = String(wranglerConfig.vars?.VIDEOFORGE_V207_AUTHORITY_NONCE ?? "");
+  }
   if (!/^[a-f0-9]{64}$/u.test(nonce)) throw new Error("V207_NONCE_MISSING");
+  const imageAttestation = await attestPublishedImage();
   const receiptKeyId = "v207-qualification-20260820";
   const receiptSecret = randomBytes(32);
+  const workerToken = randomBytes(32).toString("hex");
+  const account = await assertSujalRunPodAccount(apiKey);
+  if (account.accountIdHash !== SUJAL_RUNPOD_ACCOUNT_ID_SHA256) {
+    throw new Error("V207_RUNPOD_ACCOUNT_MISMATCH");
+  }
   const baseline = await billingAmount(apiKey);
   const spendSnapshotUsd = async (): Promise<number> => {
     const current = await billingAmount(apiKey);
     const delta = Math.max(0, current - baseline);
     if (delta > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
     return delta;
+  };
+  const settledSpendSnapshotUsd = async (): Promise<number> => {
+    let previous: number | null = null;
+    let stableReads = 0;
+    for (let poll = 0; poll < 18; poll += 1) {
+      const current = await spendSnapshotUsd();
+      stableReads =
+        previous !== null && Math.abs(current - previous) < 0.000_001 ? stableReads + 1 : 0;
+      previous = current;
+      if (stableReads >= 2) return current;
+      if ((poll + 1) % 3 === 0) console.error(`v207:billing-settlement-poll-${poll + 1}`);
+      await sleep(10_000);
+    }
+    throw new Error("V207_BILLING_SETTLEMENT_UNCONFIRMED");
   };
   const control = new RunPodControlClient({ apiKey });
   const placement: RunPodV207Placement = {
@@ -505,7 +798,7 @@ async function main(): Promise<void> {
       VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE,
       VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
       VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
-      VIDEOFORGE_MAGE_WORKER_TOKEN: randomBytes(32).toString("hex"),
+      VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
       VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
       RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
       VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
@@ -536,19 +829,28 @@ async function main(): Promise<void> {
     schema_version: "videoforge.v2-07-live-qualification/v1",
     started_at: nowIso(),
     approved_finite_spend_cap_usd: finiteCapUsd,
+    runpod_account_id_sha256: account.accountIdHash,
     baseline_endpoint_spend_usd: baseline,
     image_digest: IMAGE.slice(IMAGE.indexOf("@") + 1),
     manifest_sha256: MANIFEST,
     volume_id_sha256: VOLUME,
     volume_id_hash: hashText(VOLUME_ID),
+    image_attestation: imageAttestation,
     batches: [],
   };
+  const runTag = `20260820-${randomBytes(6).toString("hex")}`;
+  evidence.run_tag = runTag;
   let success = false;
   const generatedObjectKeys: string[] = [];
   try {
     await harness.create();
     console.error("v207:create-ready");
-    const cold = await createBatch("v207-cold-20260820", nonce);
+    const createdIdentity = await harness.evidence();
+    if (!createdIdentity.endpointIdHash || !createdIdentity.templateIdHash) {
+      throw new Error("V207_CREATED_IDENTITY_MISSING");
+    }
+    const coldAttemptId = `v207-cold-${runTag}`;
+    const cold = await createBatch(coldAttemptId, nonce, workerToken);
     generatedObjectKeys.push(...cold.objectKeys);
     console.error("v207:cold-ports-ready");
     const coldJob = await harness.dispatchBatch(cold.input);
@@ -558,7 +860,10 @@ async function main(): Promise<void> {
     const coldEvidence = await verifyBatchWithDiagnostic(
       harness,
       coldResult,
+      coldAttemptId,
       cold.objectKeys,
+      cold.input.outputAuthority.authorities as readonly AnyRecord[],
+      createdIdentity.endpointIdHash,
       nonce,
       receiptKeyId,
       receiptSecret,
@@ -568,7 +873,8 @@ async function main(): Promise<void> {
     if (duplicate.id !== coldJob.id) throw new Error("V207_DUPLICATE_DELIVERY_NOT_FENCED");
     evidence.duplicate_delivery_same_job = true;
     await harness.confirmWarmIdle();
-    const warm = await createBatch("v207-warm-20260820", nonce);
+    const warmAttemptId = `v207-warm-${runTag}`;
+    const warm = await createBatch(warmAttemptId, nonce, workerToken);
     generatedObjectKeys.push(...warm.objectKeys);
     console.error("v207:warm-ports-ready");
     const warmJob = await harness.dispatchBatch(warm.input);
@@ -577,7 +883,10 @@ async function main(): Promise<void> {
     const warmEvidence = await verifyBatchWithDiagnostic(
       harness,
       warmResult,
+      warmAttemptId,
       warm.objectKeys,
+      warm.input.outputAuthority.authorities as readonly AnyRecord[],
+      createdIdentity.endpointIdHash,
       nonce,
       receiptKeyId,
       receiptSecret,
@@ -586,9 +895,12 @@ async function main(): Promise<void> {
     await harness.confirmWarmIdle();
     harness.markInitialQualificationComplete();
     evidence.concurrent_config_sha256 = await harness.applyConcurrentReaderPolicy();
-    const readerA = await createBatch("v207-reader-a-20260820", nonce);
-    const readerB = await createBatch("v207-reader-b-20260820", nonce);
-    generatedObjectKeys.push(...readerA.objectKeys, ...readerB.objectKeys);
+    const readerAAttemptId = `v207-reader-a-${runTag}`;
+    const readerBAttemptId = `v207-reader-b-${runTag}`;
+    const readerA = await createBatch(readerAAttemptId, nonce, workerToken);
+    generatedObjectKeys.push(...readerA.objectKeys);
+    const readerB = await createBatch(readerBAttemptId, nonce, workerToken);
+    generatedObjectKeys.push(...readerB.objectKeys);
     const readerJobs = await harness.dispatchConcurrentReaders([readerA.input, readerB.input]);
     const readerResults = await harness.reconcileConcurrentReaders([
       readerJobs[0].id,
@@ -597,7 +909,10 @@ async function main(): Promise<void> {
     const readerEvidenceA = await verifyBatchWithDiagnostic(
       harness,
       readerResults[0],
+      readerAAttemptId,
       readerA.objectKeys,
+      readerA.input.outputAuthority.authorities as readonly AnyRecord[],
+      createdIdentity.endpointIdHash,
       nonce,
       receiptKeyId,
       receiptSecret,
@@ -605,7 +920,10 @@ async function main(): Promise<void> {
     const readerEvidenceB = await verifyBatchWithDiagnostic(
       harness,
       readerResults[1],
+      readerBAttemptId,
       readerB.objectKeys,
+      readerB.input.outputAuthority.authorities as readonly AnyRecord[],
+      createdIdentity.endpointIdHash,
       nonce,
       receiptKeyId,
       receiptSecret,
@@ -614,15 +932,58 @@ async function main(): Promise<void> {
     (evidence.batches as AnyRecord[]).push({ kind: "reader_b", ...readerEvidenceB });
     await harness.drain();
     await harness.scaleDownToInitial();
-    const cancel = await createBatch("v207-cancel-20260820", nonce);
+    const cancel = await createBatch(`v207-cancel-${runTag}`, nonce, workerToken);
     generatedObjectKeys.push(...cancel.objectKeys);
     const cancelJob = await harness.dispatchBatch(cancel.input);
     const cancelled = await harness.cancel(cancelJob.id);
     if (cancelled.status !== "CANCELLED") throw new Error("V207_CANCEL_UNCONFIRMED");
     evidence.cancel_status = cancelled.status;
+    await deleteGeneratedObjects(cancel.objectKeys, nonce);
+    evidence.cancel_output_cleanup = "CONFIRMED";
     await harness.scaleDownToInitial();
-    evidence.spend_usd = await spendSnapshotUsd();
     await harness.cleanup({ deleteIfFailed: false, failed: false });
+    const finalInventory = await control.inventory();
+    const endpoint = finalInventory.endpoints.find(
+      (candidate) => candidate.idHash === createdIdentity.endpointIdHash,
+    );
+    const retainedVolumes = [...finalInventory.networkVolumes].sort((left, right) =>
+      left.idHash.localeCompare(right.idHash),
+    );
+    const expectedVolumeHashes = [SOULX_VOLUME, VOLUME].sort();
+    if (
+      finalInventory.pods.length !== 0 ||
+      finalInventory.runningPodCount !== 0 ||
+      finalInventory.activeServerlessWorkerCount !== 0 ||
+      finalInventory.endpoints.length !== 1 ||
+      !endpoint ||
+      endpoint.workersMin !== 0 ||
+      endpoint.workersMax !== 1 ||
+      endpoint.activeWorkerCount !== 0 ||
+      endpoint.workerStatuses.some((status) => status === "RUNNING") ||
+      finalInventory.privateTemplateCount !== 1 ||
+      JSON.stringify(retainedVolumes.map((volume) => volume.idHash)) !==
+        JSON.stringify(expectedVolumeHashes) ||
+      retainedVolumes.some(
+        (volume) => volume.sizeGb !== 50 || volume.dataCenterId !== V207_RUNPOD_REGION,
+      )
+    ) {
+      throw new Error("V207_FINAL_INVENTORY_INVALID");
+    }
+    evidence.final_inventory = {
+      checked_at: finalInventory.checkedAt,
+      pod_count: finalInventory.pods.length,
+      endpoint_count: finalInventory.endpoints.length,
+      endpoint_id_hash: endpoint.idHash,
+      workers_min: endpoint.workersMin,
+      workers_max: endpoint.workersMax,
+      active_workers: finalInventory.activeServerlessWorkerCount,
+      private_template_count: finalInventory.privateTemplateCount,
+      volume_id_hashes: retainedVolumes.map((volume) => volume.idHash),
+      volume_sizes_gb: retainedVolumes.map((volume) => volume.sizeGb),
+      volume_regions: retainedVolumes.map((volume) => volume.dataCenterId),
+    };
+    evidence.spend_usd = await settledSpendSnapshotUsd();
+    evidence.billing_settlement = "STABLE_THREE_READS";
     success = true;
   } catch (error) {
     evidence.error = error instanceof Error ? error.message : String(error);
@@ -649,4 +1010,4 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
