@@ -16,6 +16,9 @@ const REPOSITORY_ROOT = process.cwd().endsWith("/apps/web")
   ? resolve(process.cwd(), "../..")
   : resolve(process.cwd());
 const MAX_CAPTURE_BYTES = 128 * 1024;
+const ACTIVATION_PROPAGATION_MAX_ATTEMPTS = 30;
+const ACTIVATION_PROPAGATION_DELAY_MS = 2_000;
+const ACTIVATION_PROPAGATION_WINDOW_MS = 60_000;
 const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const NONCE = /^[a-f0-9]{64}$/u;
 const SOURCE_COMMIT = /^[0-9a-f]{40}$/u;
@@ -50,6 +53,8 @@ export interface V207LiveOrchestratorOptions {
   readonly commandRunner?: V207CommandRunner;
   readonly fetchImpl?: typeof fetch;
   readonly nonceFactory?: () => string;
+  /** Test-only dependency injection for the bounded secret-propagation poll. */
+  readonly sleepImpl?: (milliseconds: number) => Promise<void>;
   /** Tests disable process signal registration; production leaves it enabled. */
   readonly installSignalHandlers?: boolean;
 }
@@ -404,14 +409,16 @@ const SAFE_ROUTE_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 async function readRouteFingerprint(
   fetchImpl: typeof fetch,
   routeUrl: string,
+  signal?: AbortSignal,
 ): Promise<RouteFingerprint> {
   let response: Response;
   try {
+    const timeout = AbortSignal.timeout(15_000);
     response = await fetchImpl(routeUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",
-      signal: AbortSignal.timeout(15_000),
+      signal: signal === undefined ? timeout : AbortSignal.any([signal, timeout]),
     });
   } catch {
     throw new V207LiveOrchestratorError("V207_ROUTE_PROBE_FAILED");
@@ -435,29 +442,47 @@ async function readRouteFingerprint(
   return { status: response.status, code: error.code };
 }
 
-async function probeRoute(
-  fetchImpl: typeof fetch,
-  routeUrl: string,
-  expectedStatus: number,
-  expectedCode: string,
-): Promise<RouteFingerprint> {
-  const observed = await readRouteFingerprint(fetchImpl, routeUrl);
-  if (observed.status !== expectedStatus || observed.code !== expectedCode) {
-    throw new V207LiveOrchestratorError(`V207_ROUTE_EXPECTED_${expectedCode}`);
-  }
-  return observed;
-}
-
 async function verifyRouteFingerprint(
   fetchImpl: typeof fetch,
   routeUrl: string,
   expected: RouteFingerprint,
+  signal?: AbortSignal,
 ): Promise<RouteFingerprint> {
-  const observed = await readRouteFingerprint(fetchImpl, routeUrl);
+  const observed = await readRouteFingerprint(fetchImpl, routeUrl, signal);
   if (observed.status !== expected.status || observed.code !== expected.code) {
     throw new V207LiveOrchestratorError("V207_ROUTE_RESTORATION_UNCONFIRMED");
   }
   return observed;
+}
+
+async function waitForSignerRouteActivation(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  sleepImpl: (milliseconds: number) => Promise<void>,
+  signal?: AbortSignal,
+): Promise<{ readonly attempts: number; readonly status: 403 }> {
+  const deadline = AbortSignal.timeout(ACTIVATION_PROPAGATION_WINDOW_MS);
+  const pollSignal = signal === undefined ? deadline : AbortSignal.any([signal, deadline]);
+  for (let attempt = 1; attempt <= ACTIVATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
+    let observed: RouteFingerprint;
+    try {
+      observed = await readRouteFingerprint(fetchImpl, routeUrl, pollSignal);
+    } catch {
+      // Only the exact transient disabled response is retryable. A network,
+      // malformed, or unexpected response fails closed without persisting it.
+      throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
+    }
+    if (observed.status === 403 && observed.code === "V207_AUTHORITY_REJECTED") {
+      return { attempts: attempt, status: 403 };
+    }
+    if (observed.status !== 404 || observed.code !== "V207_ROUTE_DISABLED") {
+      throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
+    }
+    if (attempt < ACTIVATION_PROPAGATION_MAX_ATTEMPTS) {
+      await sleepImpl(ACTIVATION_PROPAGATION_DELAY_MS);
+    }
+  }
+  throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
 }
 
 function evidencePath(options: V207LiveOrchestratorOptions, environment: Environment): string {
@@ -680,6 +705,10 @@ export async function runV207LiveOrchestration(
   const run = options.commandRunner ?? spawnV207Command;
   const fetchImpl = options.fetchImpl ?? fetch;
   const nonceFactory = options.nonceFactory ?? (() => randomBytes(32).toString("hex"));
+  const sleepImpl =
+    options.sleepImpl ??
+    ((milliseconds: number): Promise<void> =>
+      new Promise<void>((resolveSleep) => setTimeout(resolveSleep, milliseconds)));
   const events: EvidenceEvent[] = [];
   const evidence: EvidenceDocument = {
     schema_version: "videoforge-v207-live-orchestrator/v1",
@@ -753,7 +782,7 @@ export async function runV207LiveOrchestration(
     // Capture the exact pre-mutation route semantics. The restored V2-06 Worker may legitimately
     // answer 503 (HOSTED_ROUTE_NOT_COMPOSED), so cleanup must compare against this fingerprint
     // instead of assuming the V2-07 route is always a 404 before/after the run.
-    preMutationRoute = await readRouteFingerprint(fetchImpl, routeUrl);
+    preMutationRoute = await readRouteFingerprint(fetchImpl, routeUrl, abortController.signal);
     await record("captured_pre_mutation_route", {
       status: preMutationRoute.status,
       code: preMutationRoute.code,
@@ -834,8 +863,20 @@ export async function runV207LiveOrchestration(
       throw new V207LiveOrchestratorError("V207_SIGNER_SECRET_PRESENCE_UNCONFIRMED");
     }
     await record("signer_secret_activated");
-    await probeRoute(fetchImpl, routeUrl, 403, "V207_AUTHORITY_REJECTED");
-    await record("active_route_rejected_missing_header", { status: 403 });
+    const activation = await waitForSignerRouteActivation(
+      fetchImpl,
+      routeUrl,
+      sleepImpl,
+      abortController.signal,
+    );
+    await record("signer_route_activation_confirmed", {
+      attempts: activation.attempts,
+      status: activation.status,
+    });
+    await record("active_route_rejected_missing_header", {
+      attempts: activation.attempts,
+      status: activation.status,
+    });
 
     if (abortRequested) throw new V207LiveOrchestratorError("V207_OPERATOR_ABORT");
     const preflight = requireSuccessful(
@@ -931,6 +972,7 @@ export async function runV207LiveOrchestration(
               fetchImpl,
               routeUrl,
               preMutationRoute,
+              abortController.signal,
             );
             await record("restored_route_confirmed", {
               status: restoredRoute.status,

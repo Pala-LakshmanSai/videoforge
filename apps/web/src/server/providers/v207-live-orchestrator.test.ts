@@ -111,6 +111,7 @@ describe("V2-07 live orchestrator", () => {
     const files = await fixture();
     const calls: V207CommandRequest[] = [];
     let signerSecretPresent = false;
+    let activeRouteProbeCalls = 0;
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       calls.push(request);
       if (request.command === "git") return result();
@@ -142,11 +143,19 @@ describe("V2-07 live orchestrator", () => {
     const fetchImpl: typeof fetch = async () =>
       new Response(
         JSON.stringify(
-          signerSecretPresent
-            ? { error: { code: "V207_AUTHORITY_REJECTED" } }
-            : { error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } },
+          signerSecretPresent && activeRouteProbeCalls++ === 0
+            ? { error: { code: "V207_ROUTE_DISABLED" } }
+            : signerSecretPresent
+              ? { error: { code: "V207_AUTHORITY_REJECTED" } }
+              : { error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } },
         ),
-        { status: signerSecretPresent ? 403 : 503 },
+        {
+          status: signerSecretPresent
+            ? activeRouteProbeCalls === 1
+              ? 404
+              : 403
+            : 503,
+        },
       );
 
     const orchestration = await runV207LiveOrchestration({
@@ -157,6 +166,7 @@ describe("V2-07 live orchestrator", () => {
       commandRunner,
       fetchImpl,
       nonceFactory: () => NONCE,
+      sleepImpl: async () => undefined,
       installSignalHandlers: false,
     });
 
@@ -172,6 +182,8 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"event": "captured_pre_mutation_route"');
     expect(evidence).toContain('"event": "restored_route_confirmed"');
     expect(evidence).toContain('"event": "live_preflight_completed"');
+    expect(evidence).toContain('"event": "signer_route_activation_confirmed"');
+    expect(evidence).toContain('"attempts": 2');
     expect(evidence).toContain('"code": "HOSTED_ROUTE_NOT_COMPOSED"');
     expect(evidence).not.toContain(NONCE);
     expect(evidence).not.toContain(RUNPOD_KEY);
@@ -201,6 +213,68 @@ describe("V2-07 live orchestrator", () => {
     expect(rollback?.args).toContain(VERSION_ID);
     expect(rollback?.args).not.toContain(DEPLOYMENT_ID);
     expect(calls.flatMap((call) => call.args)).not.toContain(NONCE);
+  });
+
+  it("fails closed when the signer route never propagates beyond the disabled response", async () => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    let signerSecretPresent = false;
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments"))
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      if (request.args.includes("secret") && request.args.includes("list")) {
+        return result(
+          JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("put")) {
+        signerSecretPresent = true;
+        return result();
+      }
+      if (request.args.includes("secret") && request.args.includes("delete")) {
+        signerSecretPresent = false;
+        return result();
+      }
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () =>
+      new Response(
+        JSON.stringify(
+          signerSecretPresent
+            ? { error: { code: "V207_ROUTE_DISABLED" } }
+            : { error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } },
+        ),
+        { status: signerSecretPresent ? 404 : 503 },
+      );
+
+    await expect(
+      runV207LiveOrchestration({
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        commandRunner,
+        fetchImpl,
+        nonceFactory: () => NONCE,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_AUTHORITY_PROPAGATION_UNCONFIRMED" });
+    expect(signerSecretPresent).toBe(false);
+    expect(calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts")))).toBe(
+      false,
+    );
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
+    expect(evidence).not.toContain('"event": "live_preflight_completed"');
+    expect(evidence).not.toContain(NONCE);
   });
 
   it("does not require RUNPOD_KEY when the live runner uses its configured Keychain", async () => {
