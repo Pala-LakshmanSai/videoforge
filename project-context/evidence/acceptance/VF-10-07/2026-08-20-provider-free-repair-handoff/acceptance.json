@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T00:07:32Z",
+  "recorded_at": "2026-08-20T00:40:00Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -35,6 +35,15 @@
       "hosted_build_workflow": ".github/workflows/mage-image.yml",
       "workflow_commit": "57bd915",
       "publication_triggered": false
+    },
+    "runtime_hygiene_repair": {
+      "commit": "a4c6070",
+      "input_get_download": "bounded_https_length_and_sha256_to_attempt_scratch",
+      "scratch_roots": "cache_config_temp_output_lock_roots_outside_runpod_volume",
+      "comfy_output_cleanup": "exact_file_removed_in_finally_after_read",
+      "handler_mutation_detection": true,
+      "handler_cancel_timeout_cleanup": true,
+      "two_reader_simulation": "distinct_attempt_scratch_and_authorities"
     }
   },
   "local_repairs": {
@@ -57,6 +66,8 @@
       "malformed authority and scoped ports",
       "duplicate delivery and duplicate reservation",
       "generated-output replay bound",
+      "scoped input GET URL length/hash and scratch cleanup",
+      "handler-level sealed-volume mutation detection",
       "cancel and timeout scratch cleanup",
       "two-reader scope"
     ]
@@ -173,6 +184,21 @@
       "commit": "3f7a894",
       "area": "hosted repaired-image build explicitly pins linux/amd64 and asserts image OS/architecture before optional publication",
       "result": "PASS_PROVIDER_FREE_DEFINITION"
+    },
+    {
+      "commit": "a4c6070",
+      "area": "provider-free runtime hygiene: scoped input downloads, scratch/cache/output isolation, exact Comfy cleanup, handler mutation/cancel/timeout coverage, and distinct two-reader simulation",
+      "result": "PASS_PROVIDER_FREE_REPAIR"
+    },
+    {
+      "command": "pnpm test:workers",
+      "exit_code": 0,
+      "result": "six worker suites passed; image-media 85 tests"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web typecheck",
+      "exit_code": 0,
+      "result": "TypeScript application and worker projects pass"
     }
   ],
   "read_only_runpod_snapshot": {
