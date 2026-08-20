@@ -599,4 +599,49 @@ describe("RunPod scale-zero control", () => {
       ),
     ).resolves.toBeUndefined();
   });
+
+  it("fails closed when a V2-07 endpoint response changes the template identity", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async () =>
+      response({
+        id: "endpoint_01",
+        templateId: "template_wrong",
+        computeType: "GPU",
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        allowedCudaVersions: ["13.0"],
+        minCudaVersion: "13.0",
+        flashboot: false,
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
+        idleTimeout: 5,
+        executionTimeoutMs: 2_400_000,
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+      }),
+    );
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.enforceV207EndpointPolicy(
+        "endpoint_01",
+        "template_01",
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        guard,
+      ),
+    ).rejects.toThrow("RUNPOD_SCALE_ZERO_UNCONFIRMED");
+  });
 });
