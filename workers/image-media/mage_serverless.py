@@ -163,6 +163,42 @@ def _validate_output_url(url: object) -> None:
         raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_URL_INVALID")
 
 
+def _download_input(port: dict[str, Any], url: object, worker_io: Any) -> Path:
+    """Fetch one exact scoped input into this attempt's scratch tree."""
+    try:
+        _validate_output_url(url)
+    except ServerlessMageError as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_INPUT_URL_INVALID") from error
+    expected_length = port["content_length"]
+    request = Request(str(url), method="GET")
+    try:
+        with urlopen(request, timeout=60) as response:
+            if response.status != 200:
+                raise ServerlessMageError("MAGE_SERVERLESS_INPUT_DOWNLOAD_FAILED")
+            header_length = response.headers.get("Content-Length")
+            if header_length is not None:
+                try:
+                    if int(header_length) != expected_length:
+                        raise ServerlessMageError("MAGE_SERVERLESS_INPUT_LENGTH_MISMATCH")
+                except ValueError as error:
+                    raise ServerlessMageError("MAGE_SERVERLESS_INPUT_LENGTH_MISMATCH") from error
+            body = response.read(expected_length + 1)
+    except ServerlessMageError:
+        raise
+    except Exception as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_INPUT_DOWNLOAD_FAILED") from error
+    if len(body) != expected_length:
+        raise ServerlessMageError("MAGE_SERVERLESS_INPUT_LENGTH_MISMATCH")
+    checksum = "sha256:" + hashlib.sha256(body).hexdigest()
+    if checksum != port["checksum_sha256"]:
+        raise ServerlessMageError("MAGE_SERVERLESS_INPUT_CHECKSUM_MISMATCH")
+    worker_io.scratch.safe_path("inputs", directory=True)
+    path = worker_io.scratch.safe_path(f"inputs/{port['reservation_id']}.bin")
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path.write_bytes(body)
+    return path
+
+
 def _required(value: Any, key: str) -> dict[str, Any]:
     if not isinstance(value, dict) or not isinstance(value.get(key), dict):
         raise ServerlessMageError("MAGE_SERVERLESS_JOB_SHAPE_INVALID")
@@ -287,9 +323,11 @@ def _validate_scoped_ports(
     if len(output_ports) == 0 and len(generated_authorities) == 0:
         raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_PORT_COUNT_INVALID")
     expected_ids = tuple(accepted["artifacts"]["transfer_port_reservation_ids"])
-    actual_ids = tuple(port.get("reservation_id") for port in output_ports) + tuple(
+    input_ids = tuple(port.get("reservation_id") for port in input_ports)
+    output_ids = tuple(port.get("reservation_id") for port in output_ports) + tuple(
         authority.get("reservation_id") for authority in generated_authorities
     )
+    actual_ids = input_ids + output_ids if input_ports else output_ids
     if actual_ids != expected_ids:
         raise ServerlessMageError("MAGE_SERVERLESS_PORT_AUTHORITY_MISMATCH")
     seen_ids: set[str] = set()
@@ -443,6 +481,14 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_URLS_INVALID")
         for output_url in output_urls:
             _validate_output_url(output_url)
+        input_urls = payload.get("input_get_urls", [])
+        if not isinstance(input_urls, list) or len(input_urls) != len(input_ports):
+            raise ServerlessMageError("MAGE_SERVERLESS_INPUT_URLS_INVALID")
+        for input_url in input_urls:
+            try:
+                _validate_output_url(input_url)
+            except ServerlessMageError as error:
+                raise ServerlessMageError("MAGE_SERVERLESS_INPUT_URL_INVALID") from error
         await _claim_delivery(mage_job.attempt_id)
         runtime = await _ready_runtime()
         scratch_root = Path(os.environ.get("VIDEOFORGE_JOB_SCRATCH_ROOT", "/tmp/videoforge-jobs"))
@@ -462,6 +508,12 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         ) as worker_io:
             # RunPod cancellation interrupts this coroutine; context cleanup removes all scratch.
             worker_io.scratch.safe_path("outputs", directory=True)
+            worker_io.scratch.safe_path("inputs", directory=True)
+            configure_job_environment = getattr(runtime, "configure_job_environment", None)
+            if callable(configure_job_environment):
+                configure_job_environment(worker_io.environment())
+            for port, input_url in zip(input_ports, input_urls, strict=True):
+                _download_input(port, input_url, worker_io)
             for index, item in enumerate(mage_job.items):
                 generated = await runtime.generate(_inline_item(mage_job, index).__dict__)
                 output = base64.b64decode(generated.pop("output_base64"), validate=True)

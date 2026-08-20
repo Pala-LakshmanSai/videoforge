@@ -355,6 +355,28 @@ def _request_bytes(base_url: str, path: str) -> bytes:
         raise MageContractError("MAGE_COMFY_OUTPUT_FETCH_FAILED") from error
 
 
+def _cleanup_comfy_output(image: dict[str, object]) -> None:
+    """Remove only the exact Comfy output file after its bytes are read."""
+    root_value = os.environ.get("VIDEOFORGE_COMFY_OUTPUT_ROOT", "")
+    if not root_value:
+        return
+    root = Path(root_value).resolve(strict=False)
+    model_root = Path("/runpod-volume")
+    if root == model_root or model_root in root.parents:
+        raise MageContractError("MAGE_COMFY_OUTPUT_ON_MODEL_VOLUME")
+    filename = image.get("filename")
+    subfolder = image.get("subfolder")
+    if not isinstance(filename, str) or not isinstance(subfolder, str):
+        raise MageContractError("MAGE_COMFY_HISTORY_INVALID")
+    candidate = (root / subfolder / filename).resolve(strict=False)
+    if candidate != root and root not in candidate.parents:
+        raise MageContractError("MAGE_COMFY_OUTPUT_PATH_ESCAPE")
+    try:
+        candidate.unlink(missing_ok=True)
+    except OSError as error:
+        raise MageContractError("MAGE_COMFY_OUTPUT_CLEANUP_FAILED") from error
+
+
 def run_inline_job(
     job: MageInlineJob,
     _model_root: Path,
@@ -394,7 +416,10 @@ def run_inline_job(
     query = urlencode(
         {"filename": image["filename"], "subfolder": image["subfolder"], "type": image["type"]}
     )
-    output = _request_bytes(base, f"/view?{query}")
+    try:
+        output = _request_bytes(base, f"/view?{query}")
+    finally:
+        _cleanup_comfy_output(image)
     item = job.items[0]
     width, height = probe_png_bytes(output, item.width, item.height)
     duration_ms = round((time.monotonic() - started) * 1000)

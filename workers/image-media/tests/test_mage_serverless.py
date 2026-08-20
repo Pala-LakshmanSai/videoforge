@@ -62,6 +62,15 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         }
 
     @staticmethod
+    def _input_port(attempt_id: str = "attempt-a", body: bytes = b"in") -> dict[str, object]:
+        port = MageServerlessBoundaryTest._port(method="GET", attempt_id=attempt_id)
+        port["reservation_id"] = "reservation-input"
+        port["path"] = port["path"].replace("artifact/scene-a", "artifact/input-a")
+        port["content_length"] = len(body)
+        port["checksum_sha256"] = "sha256:" + hashlib.sha256(body).hexdigest()
+        return port
+
+    @staticmethod
     def _generated_authority(
         *,
         attempt_id: str = "attempt-a",
@@ -305,6 +314,57 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         self.assertEqual(request.get_header("Content-length"), str(len(body)))
         self.assertEqual(request.get_header("Content-type"), "image/png")
 
+    def test_input_get_download_binds_exact_length_hash_and_scratch(self) -> None:
+        body = b"input-bytes"
+        port = self._input_port(body=body)
+        with tempfile.TemporaryDirectory() as temporary:
+            with mage_serverless._terminal_worker_io(
+                root=Path(temporary).resolve(),
+                account_id="account-a",
+                workspace_id="workspace-a",
+                job_id="attempt-a",
+                input_ports=(port,),
+                output_ports=(),
+                now=datetime(2026, 8, 19, tzinfo=UTC),
+            ) as worker_io:
+                with patch.object(mage_serverless, "urlopen") as urlopen:
+                    response = urlopen.return_value.__enter__.return_value
+                    response.status = 200
+                    response.headers = {"Content-Length": str(len(body))}
+                    response.read.return_value = body
+                    path = mage_serverless._download_input(
+                        port, "https://r2.example.test/input", worker_io
+                    )
+                self.assertEqual(path.read_bytes(), body)
+                self.assertTrue(path.is_relative_to(worker_io.scratch.path))
+            self.assertFalse(path.exists())
+
+    def test_input_get_download_rejects_wrong_bytes(self) -> None:
+        body = b"expected"
+        port = self._input_port(body=body)
+        with tempfile.TemporaryDirectory() as temporary:
+            with mage_serverless._terminal_worker_io(
+                root=Path(temporary).resolve(),
+                account_id="account-a",
+                workspace_id="workspace-a",
+                job_id="attempt-a",
+                input_ports=(port,),
+                output_ports=(),
+                now=datetime(2026, 8, 19, tzinfo=UTC),
+            ) as worker_io:
+                with patch.object(mage_serverless, "urlopen") as urlopen:
+                    response = urlopen.return_value.__enter__.return_value
+                    response.status = 200
+                    response.headers = {"Content-Length": str(len(body))}
+                    response.read.return_value = b"tampered"
+                    with self.assertRaisesRegex(
+                        mage_serverless.ServerlessMageError,
+                        "MAGE_SERVERLESS_INPUT_CHECKSUM_MISMATCH",
+                    ):
+                        mage_serverless._download_input(
+                            port, "https://r2.example.test/input", worker_io
+                        )
+
     def test_generated_output_handler_emits_actual_metadata_in_receipt(self) -> None:
         body = b"png"
         checksum = "sha256:" + hashlib.sha256(body).hexdigest()
@@ -376,6 +436,52 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         self.assertEqual(result["provenance_receipt"]["items"][0]["output_sha256"], checksum)
         self.assertEqual(result["provenance_receipt"]["items"][0]["output_bytes"], len(body))
 
+    def test_handler_detects_model_volume_manifest_mutation_before_receipt(self) -> None:
+        body = b"png"
+        checksum = "sha256:" + hashlib.sha256(body).hexdigest()
+        accepted = self._accepted()
+        accepted["artifacts"]["transfer_port_reservation_ids"] = ["reservation-generated"]
+        authority = self._generated_authority()
+        job = self._job(
+            ports={"inputs": [], "outputs": []},
+            generated_output_authorities=[authority],
+        )
+        generated = {
+            "output_base64": base64.b64encode(body).decode("ascii"),
+            "output_sha256": checksum,
+            "bytes": len(body),
+            "width": 1280,
+            "height": 720,
+            "seed": 1,
+            "positive_prompt_sha256": "sha256:" + "1" * 64,
+            "negative_prompt_sha256": "sha256:" + "2" * 64,
+            "source_revision": "a" * 40,
+            "model_revision": "b" * 40,
+            "renderer_source_profile": "mage-landscape-native-1280x720-v1",
+            "generation_duration_ms": 12,
+        }
+        runtime = SimpleNamespace(ready=True, generate=AsyncMock(return_value=generated))
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.dict(
+                mage_serverless.os.environ,
+                {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(temporary).resolve())},
+            ),
+            patch.object(mage_serverless, "validate_envelope", return_value=accepted),
+            patch.object(mage_serverless.MageJob, "from_value", return_value=self._fake_mage_job()),
+            patch.object(mage_serverless, "_inline_item", return_value=SimpleNamespace()),
+            patch.object(mage_serverless, "_ready_runtime", new=AsyncMock(return_value=runtime)),
+            patch.object(mage_serverless, "_put_generated_output", return_value=(123, checksum)),
+            patch.object(
+                mage_serverless,
+                "verify_model_root",
+                return_value={"manifest_sha256": "sha256:" + "9" * 64},
+            ),
+        ):
+            result = asyncio.run(mage_serverless.handler(job))
+        self.assertEqual(result["failure_code"], "MAGE_SERVERLESS_VOLUME_MUTATION_DETECTED")
+        self.assertFalse((Path(temporary) / "jobs" / "attempt-a").exists())
+
     def test_duplicate_delivery_fails_closed_without_second_runtime_start(self) -> None:
         accepted = self._accepted()
         job = self._job()
@@ -418,6 +524,91 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                         raise terminal_error
                 self.assertFalse(scratch_path.exists())
                 self.assertFalse((root / "jobs" / "attempt-a").exists())
+
+    def test_handler_timeout_cleans_attempt_scratch(self) -> None:
+        accepted = self._accepted()
+        job = self._job()
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.dict(
+                mage_serverless.os.environ,
+                {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(temporary).resolve())},
+            ),
+            patch.object(mage_serverless, "validate_envelope", return_value=accepted),
+            patch.object(mage_serverless.MageJob, "from_value", return_value=self._fake_mage_job()),
+            patch.object(mage_serverless, "_inline_item", return_value=SimpleNamespace()),
+            patch.object(
+                mage_serverless,
+                "_ready_runtime",
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        ready=True,
+                        generate=AsyncMock(side_effect=TimeoutError()),
+                    )
+                ),
+            ),
+        ):
+            result = asyncio.run(mage_serverless.handler(job))
+        self.assertEqual(result["failure_code"], "MAGE_SERVERLESS_TIMEOUT")
+        self.assertFalse((Path(temporary) / "jobs" / "attempt-a").exists())
+
+    def test_handler_cancel_propagates_and_cleans_attempt_scratch(self) -> None:
+        accepted = self._accepted()
+        job = self._job()
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.dict(
+                mage_serverless.os.environ,
+                {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(temporary).resolve())},
+            ),
+            patch.object(mage_serverless, "validate_envelope", return_value=accepted),
+            patch.object(mage_serverless.MageJob, "from_value", return_value=self._fake_mage_job()),
+            patch.object(mage_serverless, "_inline_item", return_value=SimpleNamespace()),
+            patch.object(
+                mage_serverless,
+                "_ready_runtime",
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        ready=True,
+                        generate=AsyncMock(side_effect=asyncio.CancelledError()),
+                    )
+                ),
+            ),
+        ):
+            with self.assertRaises(asyncio.CancelledError):
+                asyncio.run(mage_serverless.handler(job))
+        self.assertFalse((Path(temporary) / "jobs" / "attempt-a").exists())
+
+    def test_two_independent_readers_use_distinct_scratch_and_authorities(self) -> None:
+        async def reader(attempt_id: str) -> tuple[Path, dict[str, str]]:
+            port = self._port(attempt_id=attempt_id)
+            with tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                with mage_serverless._terminal_worker_io(
+                    root=root.resolve(),
+                    account_id="account-a",
+                    workspace_id="workspace-a",
+                    job_id=attempt_id,
+                    input_ports=(),
+                    output_ports=(port,),
+                    now=datetime(2026, 8, 19, tzinfo=UTC),
+                ) as worker_io:
+                    worker_io.scratch.safe_path("outputs", directory=True)
+                    output = worker_io.scratch.safe_path(f"outputs/{attempt_id}.png")
+                    output.write_bytes(attempt_id.encode())
+                    environment = worker_io.environment()
+                    await asyncio.sleep(0)
+                    self.assertTrue(output.is_file())
+                    self.assertNotIn("/runpod-volume", str(output))
+                self.assertFalse(output.exists())
+                return output, environment
+
+        async def run_readers() -> tuple[tuple[Path, dict[str, str]], tuple[Path, dict[str, str]]]:
+            return await asyncio.gather(reader("reader-a"), reader("reader-b"))
+
+        first, second = asyncio.run(run_readers())
+        self.assertNotEqual(first[0], second[0])
+        self.assertNotEqual(first[1]["VIDEOFORGE_OUTPUT_ROOT"], second[1]["VIDEOFORGE_OUTPUT_ROOT"])
 
     def test_handler_is_serialized_through_one_runtime_instance(self) -> None:
         self.assertIsNone(mage_serverless._runtime)

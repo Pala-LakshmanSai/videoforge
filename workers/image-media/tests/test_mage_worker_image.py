@@ -198,6 +198,32 @@ class MageWorkerImageTest(unittest.TestCase):
             with self.assertRaisesRegex(volume.MageVolumeError, "MAGE_VOLUME_FILE_SET_MISMATCH"):
                 volume.verify_model_root(root)
 
+    def test_volume_verifier_rejects_tampered_bytes_and_wrong_volume_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            marker = make_volume(root)
+            with patch.object(
+                volume,
+                "sha256_file",
+                side_effect=["0" * 64, *(item.sha256 for item in volume.MAGE_MODEL_FILES[1:])],
+            ):
+                with self.assertRaisesRegex(volume.MageVolumeError, "MAGE_VOLUME_FILE_INVALID"):
+                    volume.verify_model_root(root, expected_volume_id_hash=marker["volume_id_hash"])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            make_volume(root)
+            with self.assertRaisesRegex(volume.MageVolumeError, "MAGE_VOLUME_ID_MISMATCH"):
+                volume.verify_model_root(root, expected_volume_id_hash="sha256:" + "0" * 64)
+
+    def test_runtime_job_io_cannot_escape_or_use_model_volume(self) -> None:
+        runtime = MageRuntime()
+        environment = runtime._default_worker_environment()
+        runtime.configure_job_environment(environment)
+        invalid = dict(environment)
+        invalid["TMPDIR"] = "/runpod-volume/job-tmp"
+        with self.assertRaisesRegex(RuntimeError, "MAGE_RUNTIME_IO_ON_MODEL_VOLUME"):
+            runtime.configure_job_environment(invalid)
+
     def test_preparation_requires_exact_confirmation_before_network_import(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             with self.assertRaisesRegex(RuntimeError, "MAGE_PREPARATION_CONFIRMATION_INVALID"):

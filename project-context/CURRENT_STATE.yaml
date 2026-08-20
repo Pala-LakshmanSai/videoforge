@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-20T00:23:00Z"
+updated_at: "2026-08-20T00:40:00Z"
 
 phase: serverless_v2_v2_07_repair_handoff_requires_fresh_authority
 implementation_authorized_in_current_task: true
@@ -364,7 +364,7 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: dynamic_contract_repaired_handler_terminal_failure_unqualified
+  status: provider_free_runtime_hygiene_hardened_unqualified
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: fresh_exact_image_authority_required
   task_stage: provider_free_repair_handoff
@@ -404,8 +404,8 @@ recommended_next_task:
   application_code_changes_authorized: true
   authority_note: "The prior USD 4 proposal covered the old immutable image and is closed after terminal handler failures and cleanup. The repaired image digest is a scope change; fresh exact-image authority with a new numeric finite cap is required. Existing Mage/SoulX volumes remain retained separately; no volume mutation or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: blocked_after_repeated_handler_terminal_failure_and_throttle
-  execution_blocker: "Dynamic output authority/finalize and scoped hosted R2 signer are repaired and locally green. Multiple exact CUDA-13-pinned 32-item batches reached terminal provider status COMPLETED but handler output status FAILED with output keys limited to status, no provider error code, no durable output, and no signed receipt; a later exact attempt reached throttled before dispatch. Local commit 1623fa1 adds a bounded non-reserved failure_code and the live verifier prefers it, but the published digest remains unchanged. Provider-free hardening ee69c95 now proves the exact retained Mage volume hash/50 GB/EU-RO-1 before mutation, includes full image/template lineage in the separate max-two config hash, and fences concurrent dispatch/reconciliation against the finite cap. The source-only overlay 5f075b2, hosted-runner smoke/publish workflow 57bd915, and explicit linux/amd64 image metadata guard 3f7a894 are provider-free and green; the requirement matrix at evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/requirement-matrix.json separates local passes from unproven live proof. No final repaired digest has been produced or published. Fresh catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW, but this does not qualify the runtime. All disposable resources were deleted, signer route disabled, retained volumes unchanged, and no output was accepted. The old USD 4 authority is closed; fresh exact-image authority with a new numeric finite cap is required."
+  execution_status: provider_free_runtime_hygiene_green_live_qualification_unqualified
+  execution_blocker: "Dynamic output authority/finalize and scoped hosted R2 signer are repaired and locally green. Multiple exact CUDA-13-pinned 32-item batches reached terminal provider status COMPLETED but handler output status FAILED with output keys limited to status, no provider error code, no durable output, and no signed receipt; a later exact attempt reached throttled before dispatch. Local commit 1623fa1 adds a bounded non-reserved failure_code and the live verifier prefers it, but the published digest remains unchanged. Provider-free hardening now binds every declared input GET to a scoped URL with exact length/hash, keeps cache/config/temp/output/lock roots outside /runpod-volume, removes exact Comfy output files, detects handler-level manifest mutation, and covers timeout/cancel and two independent readers. The source-only overlay 5f075b2, hosted-runner smoke/publish workflow 57bd915, explicit linux/amd64 image metadata guard 3f7a894, and local runtime hygiene repair are provider-free and green; the requirement matrix at evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/requirement-matrix.json separates local passes from unproven live proof. No final repaired digest has been produced or published. Fresh catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW, but this does not qualify the runtime. All disposable resources were deleted, signer route disabled, retained volumes unchanged, and no output was accepted. The old USD 4 authority is closed; fresh exact-image authority with a new numeric finite cap is required."
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_image_published_handler_terminal_failure_unqualified

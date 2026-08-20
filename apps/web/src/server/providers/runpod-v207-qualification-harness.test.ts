@@ -23,20 +23,25 @@ const image = "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:" + "a".rep
 const outputPrefix =
   "tenant/account_a/workspace/workspace_a/project/project_a/revision/revision_a/lane/mage-image/job/attempt_a";
 
-const authority = (): RunPodV207OutputAuthority => ({
+const authority = (
+  attemptId = "attempt_a",
+  reservationId = "reservation_a",
+): RunPodV207OutputAuthority => {
+  const prefix = outputPrefix.replace("attempt_a", attemptId);
+  return {
   schemaVersion: "artifact-generated-output-authority/v1",
-  attemptId: "attempt_a",
+  attemptId,
   accountId: "account_a",
   workspaceId: "workspace_a",
-  outputPrefix,
+  outputPrefix: prefix,
   authorities: [
     {
       schema_version: "artifact-generated-output-authority/v1",
-      reservation_id: "reservation_a",
+      reservation_id: reservationId,
       account_id: "account_a",
       workspace_id: "workspace_a",
       method: "PUT",
-      path: `/${outputPrefix}/artifact/scene_a`,
+      path: `/${prefix}/artifact/scene_a`,
       content_type: "image/png",
       max_content_length: 4 * 1024 * 1024,
       expires_at: "2099-01-01T00:00:00.000Z",
@@ -45,7 +50,8 @@ const authority = (): RunPodV207OutputAuthority => ({
     },
   ],
   outputPutUrls: ["https://r2.example.test/put?signature=opaque"],
-});
+  };
+};
 
 function harnessFetch(
   volume: { readonly id: string; readonly size: number; readonly dataCenterId?: string } = {
@@ -266,10 +272,24 @@ describe("V2-07 qualification harness", () => {
       },
       batch: { items: [{ scene_id: "scene_a" }] },
     };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
     await expect(
       instance.dispatchConcurrentReaders([
         { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
-        { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+        {
+          requestKey: "attempt_b",
+          attemptId: "attempt_b",
+          input: inputB,
+          outputAuthority: authority("attempt_b", "reservation_b"),
+        },
       ]),
     ).rejects.toThrow("RUNPOD_FINITE_SPEND_CAP_EXCEEDED");
     expect(
@@ -300,10 +320,24 @@ describe("V2-07 qualification harness", () => {
       },
       batch: { items: [{ scene_id: "scene_a" }] },
     };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
     await expect(
       instance.dispatchConcurrentReaders([
         { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
-        { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+        {
+          requestKey: "attempt_b",
+          attemptId: "attempt_b",
+          input: inputB,
+          outputAuthority: authority("attempt_b", "reservation_b"),
+        },
       ]),
     ).rejects.toThrow("RUNPOD_FINITE_SPEND_CAP_EXCEEDED");
     expect(

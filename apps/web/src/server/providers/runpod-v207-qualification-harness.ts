@@ -83,6 +83,7 @@ export interface RunPodV207DispatchBatchInput {
   readonly attemptId: string;
   readonly input: RecordValue;
   readonly inputPorts?: readonly RecordValue[];
+  readonly inputGetUrls?: readonly string[];
   readonly outputAuthority: RunPodV207OutputAuthority;
 }
 
@@ -395,6 +396,8 @@ export class RunPodV207QualificationHarness {
     const itemCount = Array.isArray(batch?.items) ? batch.items.length : null;
     const outputPrefix = artifacts?.output_prefix ?? input.outputAuthority.outputPrefix;
     const reservationIds = artifacts?.transfer_port_reservation_ids;
+    const inputPorts = input.inputPorts ?? [];
+    const inputGetUrls = input.inputGetUrls ?? [];
     if (
       itemCount === null ||
       typeof outputPrefix !== "string" ||
@@ -402,9 +405,22 @@ export class RunPodV207QualificationHarness {
       reservationIds.some((value) => typeof value !== "string") ||
       !input.input.envelope ||
       Object.hasOwn(input.input, "ports") ||
-      Object.hasOwn(input.input, "output_put_urls")
+      Object.hasOwn(input.input, "output_put_urls") ||
+      inputGetUrls.length !== inputPorts.length ||
+      inputGetUrls.some((value) => {
+        try {
+          validateUrl(value);
+          return false;
+        } catch {
+          return true;
+        }
+      })
     ) {
-      throw new RunPodControlError("RUNPOD_QUALIFICATION_INPUT_INVALID");
+      throw new RunPodControlError(
+        inputGetUrls.length !== inputPorts.length
+          ? "RUNPOD_INPUT_URLS_INVALID"
+          : "RUNPOD_QUALIFICATION_INPUT_INVALID",
+      );
     }
     assertAuthority(input.outputAuthority, {
       attemptId: input.attemptId,
@@ -415,9 +431,10 @@ export class RunPodV207QualificationHarness {
     const request = jsonValue({
       ...input.input,
       ports: {
-        inputs: input.inputPorts ?? [],
+        inputs: inputPorts,
         outputs: [],
       },
+      input_get_urls: inputGetUrls,
       generated_output_authorities: input.outputAuthority.authorities,
       output_put_urls: input.outputAuthority.outputPutUrls,
     });
@@ -555,6 +572,8 @@ export class RunPodV207QualificationHarness {
         const batch = asRecord(input.input.batch);
         const itemCount = Array.isArray(batch?.items) ? batch.items.length : 0;
         const authority = input.outputAuthority;
+        const inputPorts = input.inputPorts ?? [];
+        const inputGetUrls = input.inputGetUrls ?? [];
         const envelope = asRecord(input.input.envelope);
         const artifacts = asRecord(envelope?.artifacts);
         const reservationIds = artifacts?.transfer_port_reservation_ids;
@@ -573,9 +592,23 @@ export class RunPodV207QualificationHarness {
               : authority.outputPrefix,
           reservationIds: reservationIds as readonly string[],
         });
+        if (
+          inputGetUrls.length !== inputPorts.length ||
+          inputGetUrls.some((value) => {
+            try {
+              validateUrl(value);
+              return false;
+            } catch {
+              return true;
+            }
+          })
+        ) {
+          throw new RunPodControlError("RUNPOD_INPUT_URLS_INVALID");
+        }
         const request = jsonValue({
           ...input.input,
-          ports: { inputs: input.inputPorts ?? [], outputs: [] },
+          ports: { inputs: inputPorts, outputs: [] },
+          input_get_urls: inputGetUrls,
           generated_output_authorities: authority.authorities,
           output_put_urls: authority.outputPutUrls,
         });

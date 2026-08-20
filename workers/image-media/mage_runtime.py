@@ -40,6 +40,54 @@ class MageRuntime:
         self.warmup_output_sha256: str | None = None
         self.comfy_process: subprocess.Popen[bytes] | None = None
         self.generation_lock = asyncio.Lock()
+        self.worker_environment: dict[str, str] = {}
+        self.job_environment: dict[str, str] = {}
+
+    @staticmethod
+    def _validate_io_environment(environment: dict[str, str]) -> dict[str, str]:
+        required = {
+            "HF_HOME",
+            "TRANSFORMERS_CACHE",
+            "DIFFUSERS_CACHE",
+            "XDG_CACHE_HOME",
+            "XDG_CONFIG_HOME",
+            "TMPDIR",
+            "TEMP",
+            "TMP",
+            "VIDEOFORGE_OUTPUT_ROOT",
+            "VIDEOFORGE_LOCK_ROOT",
+        }
+        if set(environment) != required:
+            raise RuntimeError("MAGE_RUNTIME_IO_ENV_INVALID")
+        normalized: dict[str, str] = {}
+        model_root = Path("/runpod-volume")
+        for key, raw in environment.items():
+            path = Path(raw)
+            if not path.is_absolute() or model_root == path or model_root in path.parents:
+                raise RuntimeError("MAGE_RUNTIME_IO_ON_MODEL_VOLUME")
+            normalized[key] = str(path)
+        return normalized
+
+    def configure_job_environment(self, environment: dict[str, str]) -> None:
+        self.job_environment = self._validate_io_environment(dict(environment))
+
+    def _default_worker_environment(self) -> dict[str, str]:
+        root = Path(os.environ.get("VIDEOFORGE_WORKER_SCRATCH_ROOT", "/tmp/videoforge-worker"))
+        root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        return self._validate_io_environment(
+            {
+                "HF_HOME": str(root / "cache" / "huggingface"),
+                "TRANSFORMERS_CACHE": str(root / "cache" / "transformers"),
+                "DIFFUSERS_CACHE": str(root / "cache" / "diffusers"),
+                "XDG_CACHE_HOME": str(root / "cache"),
+                "XDG_CONFIG_HOME": str(root / "config"),
+                "TMPDIR": str(root / "tmp"),
+                "TEMP": str(root / "tmp"),
+                "TMP": str(root / "tmp"),
+                "VIDEOFORGE_OUTPUT_ROOT": str(root / "outputs"),
+                "VIDEOFORGE_LOCK_ROOT": str(root / "locks"),
+            }
+        )
 
     def transition(self, phase: str) -> None:
         now = time.monotonic()
@@ -49,6 +97,9 @@ class MageRuntime:
 
     async def startup(self) -> None:
         try:
+            self.worker_environment = self._default_worker_environment()
+            for value in self.worker_environment.values():
+                Path(value).mkdir(mode=0o700, parents=True, exist_ok=True)
             self.verify_runtime_identity()
             self.transition("storage")
             model_root = Path(os.environ.get("MAGE_MODEL_ROOT", "/runpod-volume"))
@@ -144,8 +195,11 @@ class MageRuntime:
                 "HF_HUB_OFFLINE": "1",
                 "TRANSFORMERS_OFFLINE": "1",
                 "DIFFUSERS_OFFLINE": "1",
+                **self.worker_environment,
             }
         )
+        output_root = self.worker_environment["VIDEOFORGE_OUTPUT_ROOT"]
+        environment["VIDEOFORGE_COMFY_OUTPUT_ROOT"] = output_root
         self.comfy_process = subprocess.Popen(
             [
                 sys.executable,
@@ -155,7 +209,7 @@ class MageRuntime:
                 "--port",
                 "8188",
                 "--output-directory",
-                "/tmp/comfy-output",
+                output_root,
                 "--disable-auto-launch",
                 "--disable-metadata",
             ],
@@ -226,6 +280,9 @@ class MageRuntime:
             stop = asyncio.Event()
             sampler = asyncio.create_task(self.sample_peak_vram_used(stop))
             try:
+                if self.job_environment:
+                    for value_path in self.job_environment.values():
+                        Path(value_path).mkdir(mode=0o700, parents=True, exist_ok=True)
                 result = await asyncio.to_thread(
                     run_inline_job, job, model_root, base_url=COMFY_URL
                 )

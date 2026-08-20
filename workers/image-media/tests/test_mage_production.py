@@ -3,6 +3,7 @@ import struct
 import sys
 import unittest
 import zlib
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -163,6 +164,30 @@ class MageProductionContractTest(unittest.TestCase):
         self.assertEqual((result["width"], result["height"]), (1280, 720))
         self.assertGreaterEqual(result["generation_duration_ms"], 0)
         self.assertEqual(result["negative_prompt_sha256"], digest(parsed.items[0].negative_prompt))
+
+    def test_inline_runner_removes_exact_comfy_output_after_read(self) -> None:
+        parsed = mage.MageInlineJob.from_value(inline())
+        output = png(1280, 720)
+        responses = [
+            {"prompt_id": "p1"},
+            {
+                "p1": {
+                    "outputs": {
+                        "9": {"images": [{"filename": "x.png", "subfolder": "", "type": "output"}]}
+                    }
+                }
+            },
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            output_path = Path(temporary) / "x.png"
+            output_path.write_bytes(output)
+            with (
+                patch.object(mage, "_request_json", side_effect=responses),
+                patch.object(mage, "_request_bytes", return_value=output),
+                patch.dict("os.environ", {"VIDEOFORGE_COMFY_OUTPUT_ROOT": temporary}),
+            ):
+                mage.run_inline_job(parsed, Path("/models"))
+            self.assertFalse(output_path.exists())
 
     def test_png_rejects_wrong_profile_and_metadata(self) -> None:
         mage.probe_png_bytes(png(1280, 720), 1280, 720)

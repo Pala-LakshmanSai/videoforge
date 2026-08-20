@@ -13,8 +13,8 @@
         "workers/image-media/tests/test_mage_serverless.py",
         "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts"
       ],
-      "status": "PASS_PROVIDER_FREE",
-      "live_gap": "A real durable R2 signer and provider batch remain required."
+    "status": "PASS_PROVIDER_FREE_CONTRACT",
+    "live_gap": "A real durable R2 signer, artifact-commit-receipt/v3 finalize, and provider batch remain required."
     },
     {
       "id": "sealed_volume_and_runtime_policy",
@@ -26,7 +26,7 @@
         "workers/image-media/tests/test_secure_scratch.py",
         "workers/image-media/tests/test_serverless_envelope.py"
       ],
-      "status": "PASS_PROVIDER_FREE",
+    "status": "PASS_PROVIDER_FREE",
       "live_gap": "No provider worker was started for this repaired lineage."
     },
     {
@@ -38,8 +38,8 @@
         "apps/web/src/server/hosted/v207-output-ports.test.ts",
         "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts"
       ],
-      "status": "PASS_PROVIDER_FREE",
-      "live_gap": "Durable hosted R2 output acceptance is not proven without the live signer."
+    "status": "PASS_PROVIDER_FREE_CONTRACT",
+    "live_gap": "Durable hosted R2 output acceptance, artifact-commit-receipt/v3 finalize, and generated-object rollback are not proven without the live signer."
     },
     {
       "id": "negative_contracts",

@@ -45,7 +45,15 @@ def bootstrap(model_root: Path, comfy_root: Path) -> dict[str, object]:
         "completed_unix_ms": completed_unix_ms,
         "duration_ms": completed_unix_ms - started_unix_ms,
     }
-    evidence_path = Path(os.environ.get("MAGE_BOOTSTRAP_EVIDENCE", "/tmp/mage-bootstrap.json"))
+    evidence_path = Path(
+        os.environ.get(
+            "MAGE_BOOTSTRAP_EVIDENCE",
+            "/tmp/videoforge-worker/bootstrap/mage-bootstrap.json",
+        )
+    )
+    if evidence_path == Path("/runpod-volume") or Path("/runpod-volume") in evidence_path.parents:
+        raise RuntimeError("MAGE_BOOTSTRAP_EVIDENCE_ON_MODEL_VOLUME")
+    evidence_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     evidence_path.write_text(json.dumps(evidence, sort_keys=True), encoding="utf-8")
     return evidence
 
