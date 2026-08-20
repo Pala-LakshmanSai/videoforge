@@ -51,7 +51,8 @@
         "workers/image-media/tests/test_secure_scratch.py",
         "apps/web/src/server/providers/v207-activation-authority.test.ts",
         "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts",
-        "6db83c8"
+        "6db83c8",
+        "c53e773"
       ],
       "status": "PASS_PROVIDER_FREE",
       "live_gap": "Provider duplicate/cancel/timeout behavior still requires the approved live run."
@@ -86,7 +87,7 @@
         "6db83c8"
       ],
       "status": "PASS_PROVIDER_FREE_DEFINITION",
-      "live_gap": "Endpoint/template mutation requires the exact repaired digest and fresh proposal approval; the strict response contract is provider-free only until a real RunPod response proves it."
+      "live_gap": "Endpoint/template mutation requires the exact repaired digest and fresh proposal approval; the strict response contract and post-baseline cap fence are provider-free only until a real RunPod response proves them."
     },
     {
       "id": "live_qualification_measurements",

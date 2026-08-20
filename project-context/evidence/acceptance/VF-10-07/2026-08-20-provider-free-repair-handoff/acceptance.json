@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:54:17Z",
+  "recorded_at": "2026-08-20T01:57:26Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -317,6 +317,16 @@
       "command": "python3 -m unittest discover -s workers/image-media/tests -p 'test_mage_worker_image.py' && pnpm python:lint && git diff --check",
       "exit_code": 0,
       "result": "20 image-definition tests passed; Python formatting/lint and diff checks passed"
+    },
+    {
+      "commit": "c53e773",
+      "area": "qualification harness rechecks settled spend immediately after endpoint warm-idle/drained baseline before configuration or dispatch",
+      "result": "PASS_PROVIDER_FREE_CAP_FENCE"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-v207-qualification-harness.test.ts && pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint && pnpm format:check",
+      "exit_code": 0,
+      "result": "11 harness tests passed; TypeScript, lint, and repository formatting passed"
     }
   ],
   "read_only_runpod_snapshot": {
