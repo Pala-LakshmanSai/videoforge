@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  hashRunPodV207EndpointIdentity,
   RunPodControlClient,
   RunPodDrainGuard,
   RunPodServerlessJobClient,
@@ -999,6 +1000,117 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).resolves.toBeUndefined();
+  });
+
+  it("binds the allocated endpoint hash through an exact PATCH and readback", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const endpointHash = hashRunPodV207EndpointIdentity("endpoint_01");
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      expect(path).toBe("/endpoints/endpoint_01");
+      const body =
+        init?.body === undefined
+          ? null
+          : (JSON.parse(String(init.body)) as Record<string, unknown>);
+      const value =
+        init?.method === "PATCH"
+          ? body!
+          : {
+              computeType: "GPU",
+              allowedCudaVersions: ["13.0"],
+              executionTimeoutMs: 2_400_000,
+              flashboot: false,
+              gpuCount: 1,
+              gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+              idleTimeout: 5,
+              minCudaVersion: "13.0",
+              dataCenterIds: ["EU-RO-1"],
+              networkVolumeId: "volume_01",
+              scalerType: "REQUEST_COUNT",
+              scalerValue: 1,
+              templateId: "template_01",
+              workersMax: 1,
+              workersMin: 0,
+              env: {
+                LOG_LEVEL: "INFO",
+                RUNPOD_INIT_TIMEOUT: "800",
+                STATIC_SETTING: "exact",
+                VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointHash,
+              },
+            };
+      return response({ ...value, id: "endpoint_01" });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.bindV207EndpointIdentity(
+        "endpoint_01",
+        "template_01",
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        { STATIC_SETTING: "exact" },
+        guard,
+      ),
+    ).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const patchBody = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)) as {
+      env: Record<string, string>;
+    };
+    expect(patchBody.env.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH).toBe(endpointHash);
+  });
+
+  it.each([
+    ["missing hash", (value: Record<string, unknown>) => ({ ...value, env: {} })],
+    [
+      "wrong hash",
+      (value: Record<string, unknown>) => ({
+        ...value,
+        env: {
+          ...(value.env as Record<string, string>),
+          VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: `sha256:${"0".repeat(64)}`,
+        },
+      }),
+    ],
+    ["configuration drift", (value: Record<string, unknown>) => ({ ...value, workersMax: 2 })],
+  ] as const)("rejects endpoint identity binding with %s", async (_label, mutate) => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return response({ ...mutate(body), id: "endpoint_01" });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.bindV207EndpointIdentity(
+        "endpoint_01",
+        "template_01",
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        {},
+        guard,
+      ),
+    ).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("rejects contradictory strict V2-07 volume bindings", async () => {

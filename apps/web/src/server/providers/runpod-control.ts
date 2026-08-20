@@ -145,6 +145,12 @@ const strictCounter = (source: JsonRecord | null, key: string): number => {
 const hashId = (value: string): string =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 
+/** Hash the exact endpoint identity that the worker must echo in its provenance receipt. */
+export function hashRunPodV207EndpointIdentity(endpointId: string): string {
+  if (!ID.test(endpointId)) throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
+  return hashId(endpointId);
+}
+
 function assertV207TimeoutPolicy(value: unknown): asserts value is RunPodV207TimeoutPolicy {
   const candidate = record(value);
   if (
@@ -260,6 +266,76 @@ const assertV207Placement = (placement: RunPodV207Placement): void => {
   ) {
     throw new RunPodControlError("RUNPOD_ENDPOINT_PLACEMENT_INVALID");
   }
+};
+
+const expectedV207EndpointEnvironment = (
+  endpointId: string,
+  environment: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> => {
+  const endpointIdHash = hashRunPodV207EndpointIdentity(endpointId);
+  if (
+    (environment.LOG_LEVEL !== undefined && environment.LOG_LEVEL !== "INFO") ||
+    (environment.RUNPOD_INIT_TIMEOUT !== undefined &&
+      environment.RUNPOD_INIT_TIMEOUT !== String(V207_RUNPOD_INIT_TIMEOUT_SECONDS)) ||
+    (environment.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH !== undefined &&
+      environment.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH !== endpointIdHash)
+  ) {
+    throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_ENVIRONMENT_INVALID");
+  }
+  return Object.freeze({
+    LOG_LEVEL: "INFO",
+    RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
+    ...environment,
+    VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointIdHash,
+  });
+};
+
+const exactEnvironmentMatches = (
+  value: unknown,
+  expected: Readonly<Record<string, string>>,
+): boolean => {
+  const actual = record(value);
+  return (
+    actual !== null &&
+    Object.keys(actual).length === Object.keys(expected).length &&
+    Object.entries(expected).every(([key, expectedValue]) => actual[key] === expectedValue)
+  );
+};
+
+const v207EndpointBindingMatches = (
+  value: JsonRecord | null,
+  expected: {
+    readonly endpointId: string;
+    readonly templateId: string;
+    readonly policy: RunPodEndpointPolicy;
+    readonly placement: RunPodV207Placement;
+    readonly environment: Readonly<Record<string, string>>;
+  },
+): boolean => {
+  const networkVolumeIds = value?.networkVolumeIds;
+  const volumeBindingMatches =
+    value?.networkVolumeId === expected.placement.networkVolumeId &&
+    (networkVolumeIds === undefined ||
+      exactStringArray(networkVolumeIds, [expected.placement.networkVolumeId]));
+  return (
+    value?.id === expected.endpointId &&
+    value.templateId === expected.templateId &&
+    value.computeType === "GPU" &&
+    value.workersMin === expected.policy.workersMin &&
+    value.workersMax === expected.policy.workersMax &&
+    value.gpuCount === expected.policy.gpuCount &&
+    exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) &&
+    exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
+    value.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
+    value.flashboot === false &&
+    volumeBindingMatches &&
+    exactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) &&
+    value.idleTimeout === expected.policy.idleTimeout &&
+    value.executionTimeoutMs === expected.policy.executionTimeoutMs &&
+    value.scalerType === V207_RUNPOD_SCALER &&
+    value.scalerValue === V207_RUNPOD_SCALER_VALUE &&
+    exactEnvironmentMatches(value.env, expected.environment)
+  );
 };
 
 export class RunPodDrainGuard {
@@ -448,7 +524,11 @@ export class RunPodControlClient {
     }
   }
 
-  private async mutate(method: "POST" | "DELETE", path: string, body?: string): Promise<unknown> {
+  private async mutate(
+    method: "POST" | "PATCH" | "DELETE",
+    path: string,
+    body?: string,
+  ): Promise<unknown> {
     let response: Response;
     try {
       response = await this.fetch(`${this.baseUrl}${path}`, {
@@ -739,6 +819,69 @@ export class RunPodControlClient {
       throw new RunPodControlError("RUNPOD_SCALE_ZERO_UNCONFIRMED");
     }
     return Object.freeze({ id: value.id, idHash: hashId(value.id) });
+  }
+
+  /**
+   * Bind the endpoint identity into the worker environment after the provider allocates its id.
+   * The full endpoint configuration is repeated in the PATCH so an environment-only release
+   * cannot silently alter the pinned GPU, volume, region, scaler, or timing policy.
+   */
+  async bindV207EndpointIdentity(
+    endpointId: string,
+    templateId: string,
+    policy: RunPodEndpointPolicy,
+    placement: RunPodV207Placement,
+    environment: Readonly<Record<string, string>>,
+    guard: RunPodDrainGuard,
+  ): Promise<void> {
+    if (!ID.test(endpointId) || !ID.test(templateId)) {
+      throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
+    }
+    assertRunPodEndpointPolicy(policy);
+    assertV207Placement(placement);
+    if (
+      policy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
+      policy.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS
+    ) {
+      throw new RunPodControlError("RUNPOD_V207_TIMING_POLICY_INVALID");
+    }
+    guard.assertPolicyUpdateAllowed();
+    const expectedEnvironment = expectedV207EndpointEnvironment(endpointId, environment);
+    const request = {
+      computeType: "GPU",
+      allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
+      executionTimeoutMs: policy.executionTimeoutMs,
+      flashboot: false,
+      gpuCount: policy.gpuCount,
+      gpuTypeIds: [V207_RUNPOD_GPU],
+      idleTimeout: policy.idleTimeout,
+      minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
+      dataCenterIds: placement.dataCenterIds,
+      networkVolumeId: placement.networkVolumeId,
+      scalerType: V207_RUNPOD_SCALER,
+      scalerValue: V207_RUNPOD_SCALER_VALUE,
+      templateId,
+      workersMax: policy.workersMax,
+      workersMin: policy.workersMin,
+      env: expectedEnvironment,
+    } as const;
+    const expected = {
+      endpointId,
+      templateId,
+      policy,
+      placement,
+      environment: expectedEnvironment,
+    };
+    const responseValue = record(
+      await this.mutate("PATCH", `/endpoints/${endpointId}`, canonicalizeJson(request)),
+    );
+    if (!v207EndpointBindingMatches(responseValue, expected)) {
+      throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
+    }
+    const readbackValue = record(await this.read(`/endpoints/${endpointId}`));
+    if (!v207EndpointBindingMatches(readbackValue, expected)) {
+      throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED");
+    }
   }
 
   async createNetworkVolume(

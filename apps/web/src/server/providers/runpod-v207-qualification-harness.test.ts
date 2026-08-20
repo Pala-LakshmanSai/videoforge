@@ -65,6 +65,7 @@ function harnessFetch(
 ) {
   let runCount = 0;
   let statusCount = 0;
+  let endpointEnvironment: Record<string, string> | null = null;
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
     const path = url.pathname;
@@ -112,6 +113,31 @@ function harnessFetch(
         },
         201,
       );
+    }
+    if (path === "/endpoints/endpoint_01" && init?.method === "PATCH") {
+      endpointEnvironment = body.env;
+      return jsonResponse({ ...body, id: "endpoint_01" });
+    }
+    if (path === "/endpoints/endpoint_01" && init?.method === undefined) {
+      return jsonResponse({
+        id: "endpoint_01",
+        templateId: "template_01",
+        computeType: "GPU",
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        allowedCudaVersions: ["13.0"],
+        minCudaVersion: "13.0",
+        flashboot: false,
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
+        idleTimeout: 5,
+        executionTimeoutMs: 2_400_000,
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+        env: endpointEnvironment,
+      });
     }
     if (path === "/endpoints/endpoint_01/update") {
       return jsonResponse({
@@ -244,6 +270,24 @@ function makeHarness(
     sleep: async () => undefined,
   });
 }
+
+it("deletes only the disposable endpoint and template when identity binding fails", async () => {
+  const baseFetch = harnessFetch();
+  const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname;
+    if (path === "/endpoints/endpoint_01" && init?.method === "PATCH") {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return jsonResponse({ ...body, id: "endpoint_01", env: {} });
+    }
+    return baseFetch(input, init);
+  });
+  const harness = makeHarness(fetch);
+  await expect(harness.create()).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
+  const deletes = fetch.mock.calls
+    .filter(([, init]) => init?.method === "DELETE")
+    .map(([input]) => new URL(String(input)).pathname);
+  expect(deletes).toEqual(["/endpoints/endpoint_01", "/templates/template_01"]);
+});
 
 const reconciledTemplate = {
   id: "template_01",
@@ -758,6 +802,9 @@ describe("V2-07 qualification harness", () => {
     let spend = 0;
     const instance = makeHarness(fetch, async () => spend);
     await instance.create();
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "endpoint_identity_bound" }),
+    );
     await instance.drain();
     instance.markInitialQualificationComplete();
     spend = 5;

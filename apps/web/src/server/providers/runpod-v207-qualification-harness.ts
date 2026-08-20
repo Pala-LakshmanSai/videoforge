@@ -223,6 +223,7 @@ export class RunPodV207QualificationHarness {
   #template: { readonly id: string; readonly idHash: string } | null = null;
   #endpoint: { readonly id: string; readonly idHash: string } | null = null;
   #jobs: RunPodServerlessJobClient | null = null;
+  #endpointIdentityBound = false;
   #initialConfigHash: string | null = null;
   #concurrentReaderConfigHash: string | null = null;
   #initialQualificationComplete = false;
@@ -711,10 +712,42 @@ export class RunPodV207QualificationHarness {
     return "CLEANED";
   }
 
+  /** Bind the provider-allocated endpoint id into the exact worker environment before startup. */
+  private async bindEndpointIdentity(): Promise<void> {
+    if (!this.#template || !this.#endpoint) {
+      throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
+    }
+    if (!this.#jobs) {
+      this.#jobs = new RunPodServerlessJobClient({
+        apiKey: this.#options.apiKey,
+        endpointId: this.#endpoint.id,
+        guard: this.#guard,
+        fetch: this.#options.fetch,
+        baseUrl: this.#options.baseUrl,
+        sleep: this.#options.sleep,
+      });
+    }
+    await this.#options.control.bindV207EndpointIdentity(
+      this.#endpoint.id,
+      this.#template.id,
+      this.#options.initialPolicy,
+      this.#options.placement,
+      this.#options.templateEnvironment ?? {},
+      this.#guard,
+    );
+    this.#endpointIdentityBound = true;
+    this.mark("endpoint_identity_bound", {
+      endpoint_id_hash: this.#endpoint.idHash,
+    });
+  }
+
   /** Establish the endpoint health baseline and immutable initial configuration hash. */
   private async initializeEndpointAfterCreate(): Promise<void> {
     if (!this.#template || !this.#endpoint) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
+    }
+    if (!this.#endpointIdentityBound) {
+      throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_REQUIRED");
     }
     if (!this.#jobs) {
       this.#jobs = new RunPodServerlessJobClient({
@@ -846,7 +879,8 @@ export class RunPodV207QualificationHarness {
     this.#guard.confirmZero(0, 0);
     await this.assertSpendWithinCap();
     this.checkAbort();
-    let mutationPhase: "template" | "endpoint" | "endpoint_health" = "template";
+    let mutationPhase: "template" | "endpoint" | "endpoint_identity" | "endpoint_health" =
+      "template";
     try {
       mutationPhase = "template";
       this.#template = await this.#options.control.createServerlessTemplate(
@@ -869,12 +903,16 @@ export class RunPodV207QualificationHarness {
         true,
       );
       console.error("v207:harness-endpoint-created");
+      mutationPhase = "endpoint_identity";
+      await this.bindEndpointIdentity();
+      this.checkAbort();
       mutationPhase = "endpoint_health";
       await this.initializeEndpointAfterCreate();
       this.checkAbort();
     } catch (error) {
       const needsResourceReconciliation =
         error instanceof RunPodControlError &&
+        mutationPhase !== "endpoint_identity" &&
         mutationPhase !== "endpoint_health" &&
         [
           "RUNPOD_MUTATION_AMBIGUOUS",
@@ -885,11 +923,19 @@ export class RunPodV207QualificationHarness {
         try {
           const outcome = await this.reconcileAmbiguousCreate();
           if (outcome === "ADOPTED") {
+            mutationPhase = "endpoint_identity";
+            await this.bindEndpointIdentity();
             mutationPhase = "endpoint_health";
             await this.initializeEndpointAfterCreate();
             return;
           }
         } catch (reconciliationError) {
+          if (
+            reconciliationError instanceof RunPodControlError &&
+            reconciliationError.code.startsWith("RUNPOD_ENDPOINT_ID_BINDING_")
+          ) {
+            return await this.cleanupFailedCreate(reconciliationError);
+          }
           // A normalization/readback failure leaves #endpoint/#template populated so the caller's
           // failure cleanup can drain and delete exactly the attributable resources.
           this.mark("ambiguous_create_reconciliation_uncertain", {
