@@ -2,6 +2,7 @@ import ast
 import hashlib
 import json
 import os
+import re
 import sys
 import tempfile
 import types
@@ -10,6 +11,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
+REPAIR_DOCKERFILE = ROOT / "Dockerfile.mage.repair"
+REPAIRED_SOURCE_COMMIT = "431198333a22d66ad1929244bf92662c53be5a6b"
+PRIOR_IMMUTABLE_IMAGE = (
+    "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
+    "sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e"
+)
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
 import mage_volume as volume  # noqa: E402
@@ -36,6 +43,58 @@ def make_volume(root: Path, *, lane: str = volume.MAGE_LANE) -> dict[str, object
 
 
 class MageWorkerImageTest(unittest.TestCase):
+    def test_repair_image_pins_prior_immutable_lineage_and_complete_source(self) -> None:
+        dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
+        self.assertRegex(
+            dockerfile,
+            rf"(?m)^FROM {re.escape(PRIOR_IMMUTABLE_IMAGE)}$",
+        )
+        self.assertIn(
+            f'org.opencontainers.image.revision="{REPAIRED_SOURCE_COMMIT}"',
+            dockerfile,
+        )
+        self.assertIn(f'ai.videoforge.source-commit="{REPAIRED_SOURCE_COMMIT}"', dockerfile)
+        self.assertIn(
+            f'org.opencontainers.image.base.digest="{PRIOR_IMMUTABLE_IMAGE.split("@", 1)[1]}"',
+            dockerfile,
+        )
+        self.assertIn(f'ai.videoforge.base-image="{PRIOR_IMMUTABLE_IMAGE}"', dockerfile)
+
+    def test_repair_image_overlays_handler_and_inherits_entrypoint(self) -> None:
+        dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
+        original = (ROOT / "Dockerfile.mage").read_text(encoding="utf-8")
+        self.assertIn(
+            'ENTRYPOINT ["python", "/opt/videoforge/mage-serverless-entrypoint.py"]',
+            original,
+        )
+        self.assertNotRegex(dockerfile, r"(?m)^\s*(?:ENTRYPOINT|CMD)\b")
+        self.assertRegex(
+            dockerfile,
+            r"(?m)^COPY workers/image-media/mage_serverless\.py "
+            r"/opt/videoforge/mage_serverless\.py$",
+        )
+        copy_lines = [
+            line.strip()
+            for line in dockerfile.splitlines()
+            if line.strip().startswith("COPY ")
+        ]
+        self.assertEqual(
+            copy_lines,
+            ["COPY workers/image-media/mage_serverless.py /opt/videoforge/mage_serverless.py"],
+        )
+
+    def test_repair_image_has_no_volume_mutation_or_download_instruction(self) -> None:
+        dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
+        for instruction in ("ADD", "ARG", "ENV", "RUN", "VOLUME", "WORKDIR"):
+            self.assertNotRegex(dockerfile, rf"(?m)^\s*{instruction}(?:\s|$)")
+        for forbidden in ("apt-get", "curl", "git clone", "hf_hub_download", "pip install", "wget"):
+            self.assertNotIn(forbidden, dockerfile)
+        self.assertNotIn("MAGE_MODEL_ROOT=", dockerfile)
+        repaired_source = (ROOT / "mage_serverless.py").read_text(encoding="utf-8")
+        self.assertIn("verify_model_root", repaired_source)
+        self.assertIn('Path(os.environ.get("MAGE_MODEL_ROOT", "/runpod-volume"))', repaired_source)
+        self.assertNotIn("hf_hub_download", repaired_source)
+
     def test_generate_contract_accepts_json_body_not_query_value(self) -> None:
         tree = ast.parse((ROOT / "mage_api.py").read_text(encoding="utf-8"))
         generate = next(
