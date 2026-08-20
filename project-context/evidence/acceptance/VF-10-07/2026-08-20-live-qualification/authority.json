@@ -17,12 +17,14 @@
     "recurring_charge_is_outside_finite_cap": true
   },
   "capacity_amendment": {
-    "authorized_at": "2026-08-20T06:00:07Z",
-    "authority_source": "explicit_user_go_with_medium",
-    "minimum_approved_availability": "MEDIUM",
+    "authorized_at": "2026-08-20T08:41:45Z",
+    "authority_source": "explicit_user_approve_low_availability_for_v2_07",
+    "minimum_approved_availability": "LOW",
+    "prior_minimum_approved_availability": "MEDIUM",
     "maximum_cumulative_finite_spend_usd_unchanged": 4,
     "operations_and_identity_unchanged": true,
-    "latest_pre_mutation_observed_availability": "HIGH"
+    "latest_pre_mutation_observed_global_availability": "MEDIUM",
+    "latest_pre_mutation_observed_eu_ro_1_availability": "LOW"
   },
   "lineage": {
     "repaired_source_commit": "d1d704c2f39581e745ba90151c7388673107de41",
