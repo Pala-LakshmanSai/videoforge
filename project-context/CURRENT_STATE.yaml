@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-20T02:15:35Z"
+updated_at: "2026-08-20T02:16:21Z"
 
 phase: serverless_v2_v2_07_repair_handoff_requires_fresh_authority
 implementation_authorized_in_current_task: true
@@ -315,7 +315,7 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-20T01:54:17.476Z"
+  checked_at: "2026-08-20T02:16:21.212Z"
   basis: authenticated_sujal_runpod_redacted_api_inventory_after_disposable_endpoint_cleanup
   evidence: evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/acceptance.json
   current_live_refresh_permitted_now: true
@@ -344,7 +344,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "The latest 2026-08-20T01:54:17.476Z redacted REST refresh after exact endpoint/template cleanup shows zero Pods, endpoints, active Serverless workers, and private templates plus exactly the two expected 50 GB EU-RO-1 retained volumes. The first immutable image's exact 32-item batches failed status-only because RunPod SDK 1.7.0 SLS-Core strips the reserved handler error field. Local source repair commit 1623fa1 emits bounded failure_code and the reconciler prefers it; b40af35 additionally binds generated output authorities to the exact batch prefix with max_uses=1 and aligns the v3 envelope init timeout to the pinned 800 seconds; successor 4311983 closes the exact artifact-path guard; ee69c95 adds exact retained-volume identity proof and concurrent cap fencing; 5f075b2 adds the initial digest-pinned overlay, b0f696c adds every runtime-hygiene module to the candidate, 57bd915 adds an untriggered hosted-runner build/smoke path, and d67e83e requires exact V2-07 image/template/endpoint/volume/region/CUDA/timing identity with runtime-control fields in both staged config hashes. The published digest remains unchanged, so republish requires fresh exact-image authority for complete source d1d704c2f39581e745ba90151c7388673107de41."
+  note: "The latest 2026-08-20T02:16:21.212Z redacted REST refresh after exact endpoint/template cleanup shows zero Pods, endpoints, active Serverless workers, and private templates plus exactly the two expected 50 GB EU-RO-1 retained volumes. The first immutable image's exact 32-item batches failed status-only because RunPod SDK 1.7.0 SLS-Core strips the reserved handler error field. Local source repair commit 1623fa1 emits bounded failure_code and the reconciler prefers it; b40af35 additionally binds generated output authorities to the exact batch prefix with max_uses=1 and aligns the v3 envelope init timeout to the pinned 800 seconds; successor 4311983 closes the exact artifact-path guard; ee69c95 adds exact retained-volume identity proof and concurrent cap fencing; 5f075b2 adds the initial digest-pinned overlay, b0f696c adds every runtime-hygiene module to the candidate, 57bd915 adds an untriggered hosted-runner build/smoke path, and d67e83e requires exact V2-07 image/template/endpoint/volume/region/CUDA/timing identity with runtime-control fields in both staged config hashes. The published digest remains unchanged, so republish requires fresh exact-image authority for complete source d1d704c2f39581e745ba90151c7388673107de41."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001

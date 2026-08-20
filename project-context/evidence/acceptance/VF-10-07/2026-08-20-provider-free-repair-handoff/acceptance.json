@@ -353,6 +353,11 @@
       "command": "CI=1 TURBO_FORCE=true pnpm verify",
       "exit_code": 0,
       "result": "canonical verification passed: 28 unique tasks, 52 web files (384 passed, 1 skipped), six worker suites, context and secret checks, and installed Chrome 44/44"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec tsx src/server/providers/runpod-live-inventory.ts",
+      "exit_code": 0,
+      "result": "read-only identity/inventory refresh passed: zero Pods, endpoints, private templates, and active workers; exactly two 50 GB EU-RO-1 volumes; no provider mutation or spend"
     }
   ],
   "read_only_runpod_snapshot": {
@@ -391,7 +396,7 @@
     "provider_mutation": false
   },
   "latest_read_only_runpod_inventory_refresh": {
-    "checked_at": "2026-08-20T01:54:17.476Z",
+    "checked_at": "2026-08-20T02:16:21.212Z",
     "pods": 0,
     "endpoints": 0,
     "private_templates": 0,
@@ -403,7 +408,8 @@
     "selected_secure_rtx4090_rate_usd_per_hour": 0.74,
     "selected_secure_rtx4090_availability": "HIGH",
     "provider_mutation": false,
-    "external_spend_usd": 0
+    "external_spend_usd": 0,
+    "inventory_command": "pnpm --filter @videoforge/web exec tsx src/server/providers/runpod-live-inventory.ts"
   },
   "latest_official_rate_refresh": {
     "checked_at": "2026-08-20T01:54:17.476Z",
