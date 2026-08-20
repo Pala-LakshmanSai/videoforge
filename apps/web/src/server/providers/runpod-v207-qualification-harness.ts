@@ -316,10 +316,11 @@ export class RunPodV207QualificationHarness {
   private endpointIdentityMatches(
     resource: { readonly name: string; readonly raw: RecordValue },
     templateId: string,
+    allowFlashbootTrue = false,
   ): boolean {
     // The Serverless endpoint list/detail shape currently omits computeType and dataCenterIds;
-    // absence is tolerated only for those provider-unreported fields. Explicit values, including
-    // flashboot, remain strict so a provider-normalized mismatch cannot be qualified silently.
+    // absence is tolerated only for those provider-unreported fields. Explicit values remain
+    // strict, except for the one-time flashboot=true normalization path owned by reconciliation.
     const networkVolumeId = resource.raw.networkVolumeId;
     const networkVolumeIds = resource.raw.networkVolumeIds;
     const volumeBindingMatches =
@@ -338,6 +339,8 @@ export class RunPodV207QualificationHarness {
       (Array.isArray(value) &&
         value.length === expected.length &&
         value.every((entry, index) => entry === expected[index]));
+    const flashbootMatches =
+      resource.raw.flashboot === false || (allowFlashbootTrue && resource.raw.flashboot === true);
     return (
       resource.name === this.#options.endpointName &&
       resource.raw.templateId === templateId &&
@@ -350,7 +353,7 @@ export class RunPodV207QualificationHarness {
       exactStrings(resource.raw.dataCenterIds, [V207_RUNPOD_REGION]) &&
       exactStrings(resource.raw.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
       resource.raw.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
-      resource.raw.flashboot === false &&
+      flashbootMatches &&
       resource.raw.idleTimeout === this.#options.initialPolicy.idleTimeout &&
       resource.raw.executionTimeoutMs === this.#options.initialPolicy.executionTimeoutMs &&
       resource.raw.scalerType === "REQUEST_COUNT" &&
@@ -363,7 +366,7 @@ export class RunPodV207QualificationHarness {
    * with the complete intended identity may be drained/deleted; unknown or drifted resources are
    * deliberately left untouched and reported as uncertain.
    */
-  private async reconcileAmbiguousCreate(): Promise<void> {
+  private async reconcileAmbiguousCreate(): Promise<"ADOPTED" | "CLEANED"> {
     const endpointCreationAttempted = this.#template !== null;
     const resources: RunPodDisposableResourceInventory =
       await this.#options.control.inventoryDisposableResources();
@@ -388,10 +391,11 @@ export class RunPodV207QualificationHarness {
       if (endpoint.name !== this.#options.endpointName) {
         throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_NAME_DRIFT");
       }
-      if (endpoint.raw.flashboot !== undefined && endpoint.raw.flashboot !== false) {
-        throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_MISMATCH");
-      }
-      if (!this.endpointIdentityMatches(endpoint, template.id)) {
+      const flashbootNeedsNormalization = endpoint.raw.flashboot === true;
+      if (!this.endpointIdentityMatches(endpoint, template.id, flashbootNeedsNormalization)) {
+        if (flashbootNeedsNormalization) {
+          throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_MISMATCH");
+        }
         throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_IDENTITY_MISMATCH");
       }
       this.#template = { id: template.id, idHash: sha256(template.id) };
@@ -405,6 +409,46 @@ export class RunPodV207QualificationHarness {
         baseUrl: this.#options.baseUrl,
       });
       await this.#jobs.confirmDrained();
+      if (flashbootNeedsNormalization) {
+        try {
+          await this.#options.control.enforceV207EndpointPolicy(
+            endpoint.id,
+            template.id,
+            this.#options.initialPolicy,
+            this.#options.placement,
+            this.#guard,
+          );
+          const readback = await this.#options.control.inventoryDisposableResources();
+          const readbackEndpoint =
+            readback.endpoints.length === 1 && readback.endpoints[0]?.id === endpoint.id
+              ? readback.endpoints[0]
+              : null;
+          if (
+            !readbackEndpoint ||
+            !this.endpointIdentityMatches(readbackEndpoint, template.id) ||
+            readbackEndpoint.raw.flashboot !== false
+          ) {
+            throw new RunPodControlError(
+              "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
+            );
+          }
+          await this.#jobs.confirmDrained();
+          this.mark("endpoint_flashboot_normalized", {
+            endpoint_id_hash: sha256(endpoint.id),
+          });
+          return "ADOPTED";
+        } catch (error) {
+          if (
+            error instanceof RunPodControlError &&
+            error.code === "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED"
+          ) {
+            throw error;
+          }
+          throw new RunPodControlError(
+            "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
+          );
+        }
+      }
       await this.#options.control.deleteEndpoint(endpoint.id, this.#guard);
       await this.#options.control.deleteTemplate(template.id);
       this.mark("ambiguous_create_resources_reconciled_and_deleted", {
@@ -421,6 +465,108 @@ export class RunPodV207QualificationHarness {
     this.#template = null;
     this.#endpoint = null;
     this.#jobs = null;
+    return "CLEANED";
+  }
+
+  /** Establish the endpoint health baseline and immutable initial configuration hash. */
+  private async initializeEndpointAfterCreate(): Promise<void> {
+    if (!this.#template || !this.#endpoint) {
+      throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
+    }
+    if (!this.#jobs) {
+      this.#jobs = new RunPodServerlessJobClient({
+        apiKey: this.#options.apiKey,
+        endpointId: this.#endpoint!.id,
+        guard: this.#guard,
+        fetch: this.#options.fetch,
+        baseUrl: this.#options.baseUrl,
+      });
+    }
+    // Endpoint creation is the first live provider state. Mark it active before accepting
+    // the provider's ready-idle baseline; the drain guard otherwise rejects a valid baseline
+    // as an impossible transition and waits forever for zero workers. This also reopens the
+    // guard from the zero state after a successful flashboot normalization readback.
+    this.#guard.markActive();
+    try {
+      // RunPod can briefly expose a ready-idle worker at endpoint creation even with
+      // workersMin=0. Capture that queue-empty baseline immediately; waiting for strict zero
+      // first can let the provider recycle the worker back into throttled startup.
+      await this.#jobs.confirmWarmIdle(300, 250);
+      console.error("v207:harness-warm-idle");
+      this.mark("provider_warm_idle_baseline");
+    } catch (error) {
+      if (
+        !(error instanceof RunPodControlError) ||
+        error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED"
+      ) {
+        throw error;
+      }
+      await this.#jobs.confirmDrained(90);
+    }
+    // Endpoint creation may briefly start a billed warm worker even with workersMin=0.
+    // Re-read settled spend after the provider baseline before allowing any dispatch or
+    // configuration transition to continue.
+    await this.assertSpendWithinCap();
+    this.#initialConfigHash = hashRunPodV207EndpointConfiguration(
+      jsonValue({
+        region: "EU-RO-1",
+        computeType: "GPU",
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        gpuCount: 1,
+        minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
+        allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
+        networkVolumeIdHash: sha256(this.#options.placement.networkVolumeId),
+        networkVolumeSizeGb: V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
+        networkVolumeRegion: V207_RUNPOD_REGION,
+        workersMin: this.#options.initialPolicy.workersMin,
+        workersMax: this.#options.initialPolicy.workersMax,
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+        flashboot: false,
+        volumeMount: "/runpod-volume",
+        idleTimeout: this.#options.initialPolicy.idleTimeout,
+        executionTimeoutMs: this.#options.initialPolicy.executionTimeoutMs,
+        containerDiskInGb: this.#options.containerDiskInGb,
+        handlerConcurrency: V207_RUNPOD_HANDLER_CONCURRENCY,
+        runpodInitTimeoutSeconds: V207_RUNPOD_INIT_TIMEOUT_SECONDS,
+        requestAuthorityTtlSeconds: V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+        templateEnvironment: this.#options.templateEnvironment ?? {},
+        templateIdHash: this.#template!.idHash,
+        endpointIdHash: this.#endpoint!.idHash,
+        image: this.#options.imageName,
+      }),
+    );
+    this.mark("endpoint_created_and_zero_confirmed", {
+      endpoint_id_hash: this.#endpoint!.idHash,
+      endpoint_config_sha256: this.#initialConfigHash,
+    });
+  }
+
+  private async cleanupFailedCreate(error: unknown): Promise<never> {
+    // A failed endpoint create can leave disposable resources. Never delete the retained model
+    // volume here: it is intentionally outside this harness's mutation surface.
+    let endpointCleanupComplete = this.#endpoint === null;
+    if (this.#endpoint) {
+      try {
+        if (!this.#jobs) throw new RunPodControlError("RUNPOD_CLEANUP_UNCERTAIN");
+        await this.#jobs.confirmDrained();
+        await this.#options.control.deleteEndpoint(this.#endpoint.id, this.#guard);
+        endpointCleanupComplete = true;
+      } catch {
+        endpointCleanupComplete = false;
+        this.mark("endpoint_cleanup_uncertain");
+      }
+    }
+    if (this.#template && endpointCleanupComplete) {
+      try {
+        await this.#options.control.deleteTemplate(this.#template.id);
+      } catch {
+        this.mark("template_cleanup_uncertain");
+      }
+    } else if (this.#template) {
+      this.mark("template_cleanup_deferred_endpoint_uncertain");
+    }
+    throw error;
   }
 
   async create(): Promise<void> {
@@ -464,70 +610,7 @@ export class RunPodV207QualificationHarness {
       );
       console.error("v207:harness-endpoint-created");
       mutationPhase = "endpoint_health";
-      this.#jobs = new RunPodServerlessJobClient({
-        apiKey: this.#options.apiKey,
-        endpointId: this.#endpoint!.id,
-        guard: this.#guard,
-        fetch: this.#options.fetch,
-        baseUrl: this.#options.baseUrl,
-      });
-      // Endpoint creation is the first live provider state. Mark it active before accepting
-      // the provider's ready-idle baseline; the drain guard otherwise rejects a valid baseline
-      // as an impossible transition and waits forever for zero workers.
-      this.#guard.markActive();
-      try {
-        // RunPod can briefly expose a ready-idle worker at endpoint creation even with
-        // workersMin=0. Capture that queue-empty baseline immediately; waiting for strict zero
-        // first can let the provider recycle the worker back into throttled startup.
-        await this.#jobs!.confirmWarmIdle(300, 250);
-        console.error("v207:harness-warm-idle");
-        this.mark("provider_warm_idle_baseline");
-      } catch (error) {
-        if (
-          !(error instanceof RunPodControlError) ||
-          error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED"
-        ) {
-          throw error;
-        }
-        await this.#jobs!.confirmDrained(90);
-      }
-      // Endpoint creation may briefly start a billed warm worker even with workersMin=0.
-      // Re-read settled spend after the provider baseline before allowing any dispatch or
-      // configuration transition to continue.
-      await this.assertSpendWithinCap();
-      this.#initialConfigHash = hashRunPodV207EndpointConfiguration(
-        jsonValue({
-          region: "EU-RO-1",
-          computeType: "GPU",
-          gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
-          gpuCount: 1,
-          minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
-          allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
-          networkVolumeIdHash: sha256(this.#options.placement.networkVolumeId),
-          networkVolumeSizeGb: V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
-          networkVolumeRegion: V207_RUNPOD_REGION,
-          workersMin: this.#options.initialPolicy.workersMin,
-          workersMax: this.#options.initialPolicy.workersMax,
-          scalerType: "REQUEST_COUNT",
-          scalerValue: 1,
-          flashboot: false,
-          volumeMount: "/runpod-volume",
-          idleTimeout: this.#options.initialPolicy.idleTimeout,
-          executionTimeoutMs: this.#options.initialPolicy.executionTimeoutMs,
-          containerDiskInGb: this.#options.containerDiskInGb,
-          handlerConcurrency: V207_RUNPOD_HANDLER_CONCURRENCY,
-          runpodInitTimeoutSeconds: V207_RUNPOD_INIT_TIMEOUT_SECONDS,
-          requestAuthorityTtlSeconds: V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
-          templateEnvironment: this.#options.templateEnvironment ?? {},
-          templateIdHash: this.#template!.idHash,
-          endpointIdHash: this.#endpoint!.idHash,
-          image: this.#options.imageName,
-        }),
-      );
-      this.mark("endpoint_created_and_zero_confirmed", {
-        endpoint_id_hash: this.#endpoint!.idHash,
-        endpoint_config_sha256: this.#initialConfigHash,
-      });
+      await this.initializeEndpointAfterCreate();
     } catch (error) {
       const needsResourceReconciliation =
         error instanceof RunPodControlError &&
@@ -539,8 +622,15 @@ export class RunPodV207QualificationHarness {
         ].includes(error.code);
       if (needsResourceReconciliation) {
         try {
-          await this.reconcileAmbiguousCreate();
+          const outcome = await this.reconcileAmbiguousCreate();
+          if (outcome === "ADOPTED") {
+            mutationPhase = "endpoint_health";
+            await this.initializeEndpointAfterCreate();
+            return;
+          }
         } catch (reconciliationError) {
+          // A normalization/readback failure leaves #endpoint/#template populated so the caller's
+          // failure cleanup can drain and delete exactly the attributable resources.
           this.mark("ambiguous_create_reconciliation_uncertain", {
             error_code:
               reconciliationError instanceof RunPodControlError
@@ -551,30 +641,7 @@ export class RunPodV207QualificationHarness {
         }
         throw error;
       }
-      // A failed endpoint create can leave disposable resources. Never delete the retained model
-      // volume here: it is intentionally outside this harness's mutation surface.
-      let endpointCleanupComplete = this.#endpoint === null;
-      if (this.#endpoint) {
-        try {
-          if (!this.#jobs) throw new RunPodControlError("RUNPOD_CLEANUP_UNCERTAIN");
-          await this.#jobs.confirmDrained();
-          await this.#options.control.deleteEndpoint(this.#endpoint.id, this.#guard);
-          endpointCleanupComplete = true;
-        } catch {
-          endpointCleanupComplete = false;
-          this.mark("endpoint_cleanup_uncertain");
-        }
-      }
-      if (this.#template && endpointCleanupComplete) {
-        try {
-          await this.#options.control.deleteTemplate(this.#template!.id);
-        } catch {
-          this.mark("template_cleanup_uncertain");
-        }
-      } else if (this.#template) {
-        this.mark("template_cleanup_deferred_endpoint_uncertain");
-      }
-      throw error;
+      return await this.cleanupFailedCreate(error);
     }
   }
 

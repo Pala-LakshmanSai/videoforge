@@ -345,7 +345,50 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
-  it("fails closed when the provider explicitly enables flashboot", async () => {
+  it("normalizes one explicit flashboot=true create and continues after false readback", async () => {
+    const baseFetch = harnessFetch();
+    let resourcesVisible = false;
+    let flashboot = true;
+    const providerShapeEndpoint = { ...reconciledEndpoint };
+    delete (providerShapeEndpoint as Record<string, unknown>).computeType;
+    delete (providerShapeEndpoint as Record<string, unknown>).dataCenterIds;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const body = init?.body === undefined ? null : JSON.parse(String(init.body));
+      if (path === "/endpoints" && init?.method === "POST") {
+        resourcesVisible = true;
+        throw new Error("ambiguous endpoint response");
+      }
+      if (path === "/endpoints/endpoint_01/update") {
+        expect(body?.flashboot).toBe(false);
+        flashboot = false;
+        return jsonResponse({ ...providerShapeEndpoint, flashboot });
+      }
+      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([{ ...providerShapeEndpoint, flashboot }]);
+      }
+      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).resolves.toBeUndefined();
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "POST" &&
+          new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
+      ),
+    ).toHaveLength(1);
+    expect(
+      (await instance.evidence()).events.some(
+        (event) => event.event === "endpoint_flashboot_normalized",
+      ),
+    ).toBe(true);
+  });
+
+  it("fails closed when flashboot normalization readback stays enabled", async () => {
     const baseFetch = harnessFetch();
     let resourcesVisible = false;
     const driftedEndpoint = { ...reconciledEndpoint, flashboot: true };
@@ -365,8 +408,16 @@ describe("V2-07 qualification harness", () => {
     });
     const instance = makeHarness(fetch);
     await expect(instance.create()).rejects.toThrow(
-      "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_MISMATCH",
+      "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
     );
+    expect((await instance.evidence()).endpointIdHash).toMatch(/^sha256:/u);
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "POST" &&
+          new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
+      ),
+    ).toHaveLength(1);
     expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
   });
 
