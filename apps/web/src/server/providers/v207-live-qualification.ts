@@ -453,6 +453,7 @@ type V207PreflightSummary = Readonly<{
   readonly image_attestation: AnyRecord;
   readonly runpod_account_id_sha256: string;
   readonly baseline_endpoint_spend_usd: number;
+  readonly remaining_cumulative_cap_usd: number;
   readonly route_authority: Readonly<{ readonly status: number; readonly code: string }>;
   readonly inventory: Readonly<{
     readonly checked_at: string;
@@ -548,6 +549,7 @@ export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
     throw new Error("V207_RUNPOD_ACCOUNT_MISMATCH");
   }
   const baseline = await billingAmount(apiKey);
+  if (baseline > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
   const control = new RunPodControlClient({ apiKey });
   const inventory = await control.inventory();
   assertV207PreflightInventory(inventory);
@@ -557,6 +559,7 @@ export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
     image_attestation: imageAttestation,
     runpod_account_id_sha256: account.accountIdHash,
     baseline_endpoint_spend_usd: baseline,
+    remaining_cumulative_cap_usd: Math.max(0, finiteCapUsd - baseline),
     route_authority: routeAuthority,
     inventory: Object.freeze({
       checked_at: inventory.checkedAt,
@@ -1076,6 +1079,7 @@ async function main(): Promise<void> {
           image_attestation: summary.image_attestation,
           runpod_account_id_sha256: summary.runpod_account_id_sha256,
           baseline_endpoint_spend_usd: summary.baseline_endpoint_spend_usd,
+          remaining_cumulative_cap_usd: summary.remaining_cumulative_cap_usd,
           route_authority: summary.route_authority,
           inventory: summary.inventory,
         })}`,
@@ -1101,10 +1105,11 @@ async function main(): Promise<void> {
       throw new Error("V207_RUNPOD_ACCOUNT_MISMATCH");
     }
     const baseline = await billingAmount(apiKey);
+    if (baseline > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
     const spendSnapshotUsd = async (): Promise<number> => {
       const current = await billingAmount(apiKey);
+      if (current > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
       const delta = Math.max(0, current - baseline);
-      if (delta > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
       return delta;
     };
     const settledSpendSnapshotUsd = async (): Promise<number> => {
@@ -1132,6 +1137,7 @@ async function main(): Promise<void> {
       approved_finite_spend_cap_usd: finiteCapUsd,
       runpod_account_id_sha256: account.accountIdHash,
       baseline_endpoint_spend_usd: baseline,
+      remaining_cumulative_cap_at_start_usd: Math.max(0, finiteCapUsd - baseline),
       image_digest: IMAGE.slice(IMAGE.indexOf("@") + 1),
       manifest_sha256: MANIFEST,
       volume_id_sha256: VOLUME,
@@ -1459,6 +1465,7 @@ async function main(): Promise<void> {
         volume_regions: retainedVolumes.map((volume) => volume.dataCenterId),
       };
       evidence.spend_usd = await settledSpendSnapshotUsd();
+      evidence.cumulative_endpoint_spend_usd = baseline + evidence.spend_usd;
       evidence.billing_settlement = "STABLE_THREE_READS";
       success = true;
     } catch (error) {
