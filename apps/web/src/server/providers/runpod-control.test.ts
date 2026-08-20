@@ -155,6 +155,34 @@ describe("RunPod scale-zero control", () => {
     expect(fetch).toHaveBeenCalledTimes(4);
   });
 
+  it("reads only named disposable resources during ambiguous-create recovery", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/endpoints")) {
+        return response([{ id: "endpoint_01", name: "vf_endpoint", workers: [] }]);
+      }
+      if (path.endsWith("/templates")) {
+        return response([{ id: "template_01", name: "vf_template", imageName: "opaque" }]);
+      }
+      throw new Error(`unexpected recovery inventory path: ${path}`);
+    });
+    const inventory = await new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    }).inventoryDisposableResources();
+    expect(inventory).toMatchObject({
+      endpoints: [{ id: "endpoint_01", name: "vf_endpoint" }],
+      templates: [{ id: "template_01", name: "vf_template" }],
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(
+      fetch.mock.calls.some(([input]) =>
+        new URL(String(input)).pathname.includes("/networkvolumes"),
+      ),
+    ).toBe(false);
+  });
+
   it("maps auth, malformed data, and network ambiguity to secret-free codes", async () => {
     for (const [fetch, code] of [
       [async () => response({}, 401), "RUNPOD_AUTH_REJECTED"],
@@ -178,10 +206,19 @@ describe("RunPod scale-zero control", () => {
   it("replays exact dispatch once, confirms cancellation, and requires health-proven drain", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
+    let statusReads = 0;
     const fetch = vi.fn(async (input: string | URL | Request) => {
       const path = new URL(String(input)).pathname;
       if (path.endsWith("/run")) return response({ id: "job_01", status: "IN_QUEUE" });
       if (path.includes("/cancel/")) return response({ id: "job_01", status: "CANCELLED" });
+      if (path.endsWith("/status/job_01")) {
+        statusReads += 1;
+        return response(
+          statusReads === 1
+            ? { id: "job_01", status: "IN_PROGRESS", delayTime: 1200, executionTime: 3400 }
+            : { id: "job_01", status: "CANCELLED" },
+        );
+      }
       if (path.endsWith("/health"))
         return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
       return response({
@@ -213,6 +250,70 @@ describe("RunPod scale-zero control", () => {
     expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");
     await client.confirmDrained();
     expect(() => guard.assertDispatchAllowed()).not.toThrow();
+  });
+
+  it("polls the requested job until the provider reports terminal cancellation", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    let statusReads = 0;
+    const sleep = vi.fn(async () => undefined);
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/cancel/job_01")) {
+        return response({ id: "job_01", status: "CANCELLED" });
+      }
+      if (path.endsWith("/status/job_01")) {
+        statusReads += 1;
+        return response({
+          id: "job_01",
+          status: statusReads === 1 ? "IN_PROGRESS" : "CANCELLED",
+        });
+      }
+      return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      cancelConfirmMaxPolls: 3,
+      cancelConfirmPollIntervalMs: 100,
+      sleep,
+    });
+    await expect(client.cancel("job_01")).resolves.toMatchObject({
+      id: "job_01",
+      status: "CANCELLED",
+    });
+    expect(statusReads).toBe(2);
+    expect(sleep).toHaveBeenCalledWith(100);
+  });
+
+  it("rejects cancellation when exact status reaches another terminal state", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/cancel/job_01")) {
+        return response({ id: "job_01", status: "CANCELLED" });
+      }
+      if (path.endsWith("/status/job_01")) {
+        return response({ id: "job_01", status: "COMPLETED" });
+      }
+      return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      cancelConfirmMaxPolls: 1,
+      cancelConfirmPollIntervalMs: 100,
+    });
+    await expect(client.cancel("job_01")).rejects.toMatchObject({
+      code: "RUNPOD_CANCEL_UNCONFIRMED",
+    });
   });
 
   it("rejects a changed payload under an already claimed request key", async () => {

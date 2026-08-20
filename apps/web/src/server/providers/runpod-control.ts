@@ -84,6 +84,21 @@ export interface RunPodResourceIdentity {
   readonly idHash: string;
 }
 
+/**
+ * Raw identities are used only during same-process recovery of an ambiguous create mutation.
+ * They never enter persisted qualification evidence; ordinary inventory remains redacted.
+ */
+export interface RunPodNamedResource {
+  readonly id: string;
+  readonly name: string;
+  readonly raw: JsonRecord;
+}
+
+export interface RunPodDisposableResourceInventory {
+  readonly templates: readonly RunPodNamedResource[];
+  readonly endpoints: readonly RunPodNamedResource[];
+}
+
 export class RunPodControlError extends Error {
   constructor(readonly code: string) {
     super(code);
@@ -742,6 +757,40 @@ export class RunPodControlClient {
       ).length,
     });
   }
+
+  /**
+   * Read the named disposable resources needed to recover an ambiguous create mutation.
+   * This intentionally does not read or return network volumes; retained model volumes are
+   * outside the recovery/deletion surface.
+   */
+  async inventoryDisposableResources(): Promise<RunPodDisposableResourceInventory> {
+    const [endpointValue, templateValue] = await Promise.all([
+      this.read("/endpoints?includeTemplate=true&includeWorkers=true"),
+      this.read("/templates?includeEndpointBoundTemplates=true"),
+    ]);
+    const parse = (value: unknown): readonly RunPodNamedResource[] => {
+      if (!Array.isArray(value)) throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+      return Object.freeze(
+        value.map((candidate) => {
+          const resource = record(candidate);
+          if (
+            !resource ||
+            typeof resource.id !== "string" ||
+            !ID.test(resource.id) ||
+            typeof resource.name !== "string" ||
+            !ID.test(resource.name)
+          ) {
+            throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+          }
+          return Object.freeze({ id: resource.id, name: resource.name, raw: resource });
+        }),
+      );
+    };
+    return Object.freeze({
+      endpoints: parse(endpointValue),
+      templates: parse(templateValue),
+    });
+  }
 }
 
 export interface RunPodJobResult {
@@ -833,7 +882,13 @@ export interface RunPodServerlessJobClientOptions {
   readonly readRetryDelaysMs?: readonly number[];
   readonly sleep?: (milliseconds: number) => Promise<void>;
   readonly signal?: AbortSignal;
+  /** Bound cancellation reconciliation so an uncertain provider never becomes an unbounded wait. */
+  readonly cancelConfirmMaxPolls?: number;
+  readonly cancelConfirmPollIntervalMs?: number;
 }
+
+const DEFAULT_CANCEL_CONFIRM_MAX_POLLS = 30;
+const DEFAULT_CANCEL_CONFIRM_POLL_INTERVAL_MS = 2_000;
 
 export class RunPodServerlessJobClient {
   private readonly fetch: FetchPort;
@@ -841,6 +896,8 @@ export class RunPodServerlessJobClient {
   private readonly timeoutMs: number;
   private readonly readRetryDelaysMs: readonly number[];
   private readonly sleep: (milliseconds: number) => Promise<void>;
+  private readonly cancelConfirmMaxPolls: number;
+  private readonly cancelConfirmPollIntervalMs: number;
   private readonly replays = new Map<
     string,
     { readonly inputHash: string; readonly promise: Promise<RunPodJobResult> }
@@ -864,11 +921,20 @@ export class RunPodServerlessJobClient {
     this.sleep =
       options.sleep ??
       ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    this.cancelConfirmMaxPolls = options.cancelConfirmMaxPolls ?? DEFAULT_CANCEL_CONFIRM_MAX_POLLS;
+    this.cancelConfirmPollIntervalMs =
+      options.cancelConfirmPollIntervalMs ?? DEFAULT_CANCEL_CONFIRM_POLL_INTERVAL_MS;
     if (
       this.readRetryDelaysMs.length > 4 ||
       this.readRetryDelaysMs.some(
         (delay) => !Number.isSafeInteger(delay) || delay < 0 || delay > 10_000,
-      )
+      ) ||
+      !Number.isSafeInteger(this.cancelConfirmMaxPolls) ||
+      this.cancelConfirmMaxPolls < 1 ||
+      this.cancelConfirmMaxPolls > 180 ||
+      !Number.isSafeInteger(this.cancelConfirmPollIntervalMs) ||
+      this.cancelConfirmPollIntervalMs < 100 ||
+      this.cancelConfirmPollIntervalMs > 10_000
     ) {
       throw new RunPodControlError("RUNPOD_READ_RETRY_POLICY_INVALID");
     }
@@ -1001,12 +1067,19 @@ export class RunPodServerlessJobClient {
   async cancel(jobId: string): Promise<RunPodJobResult> {
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
     const value = await this.request("POST", `/cancel/${jobId}`);
-    if (value.status !== "CANCELLED") {
-      throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
+    const requested = jobResult(value);
+    if (requested.id !== jobId) throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
+    for (let attempt = 0; attempt < this.cancelConfirmMaxPolls; attempt += 1) {
+      const observed = await this.status(jobId);
+      if (observed.status === "CANCELLED") return observed;
+      if (["COMPLETED", "FAILED", "TIMED_OUT"].includes(observed.status)) {
+        throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
+      }
+      if (attempt + 1 < this.cancelConfirmMaxPolls) {
+        await this.sleep(this.cancelConfirmPollIntervalMs);
+      }
     }
-    const result = jobResult(value);
-    if (result.id !== jobId) throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
-    return result;
+    throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
   }
 
   async confirmDrained(maxAttempts = 30): Promise<void> {

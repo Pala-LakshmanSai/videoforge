@@ -17,12 +17,16 @@ import {
   V207_RUNPOD_IDLE_TIMEOUT_SECONDS,
   V207_RUNPOD_INIT_TIMEOUT_SECONDS,
   V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+  V207_RUNPOD_GPU,
+  V207_RUNPOD_VOLUME_MOUNT,
   type RunPodEndpointPolicy,
+  type RunPodDisposableResourceInventory,
   type RunPodInventory,
   type RunPodJobResult,
   type RunPodV207ConcurrentReaderPolicy,
   type RunPodV207Placement,
 } from "./runpod-control";
+import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const PORT_CAPABILITY = /^[A-Za-z0-9._:-]{32,512}$/u;
@@ -207,6 +211,10 @@ export class RunPodV207QualificationHarness {
   #initialConfigHash: string | null = null;
   #concurrentReaderConfigHash: string | null = null;
   #initialQualificationComplete = false;
+  /** Blocks the primary client until every independently guarded reader has drained. */
+  #concurrentReaderFence = false;
+  /** Claims the one allowed two-reader dispatch while its primary fence is active. */
+  #concurrentReaderDispatchClaimed = false;
 
   constructor(options: RunPodV207QualificationHarnessOptions) {
     if (
@@ -214,9 +222,7 @@ export class RunPodV207QualificationHarness {
       options.endpointName.trim() !== options.endpointName ||
       !ID.test(options.templateName) ||
       !ID.test(options.endpointName) ||
-      !/^ghcr\.io\/pala-lakshmansai\/videoforge-mage-v2-07@sha256:[a-f0-9]{64}$/u.test(
-        options.imageName,
-      ) ||
+      options.imageName !== V207_REPAIRED_IMAGE ||
       !Number.isSafeInteger(options.containerDiskInGb) ||
       options.containerDiskInGb !== 120 ||
       options.initialPolicy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
@@ -275,6 +281,139 @@ export class RunPodV207QualificationHarness {
     if (!this.#template || !this.#endpoint || !this.#jobs) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
     }
+  }
+
+  private assertPrimaryDispatchAllowed(): void {
+    if (this.#concurrentReaderFence) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_FENCE_ACTIVE");
+    }
+  }
+
+  private templateIdentityMatches(resource: {
+    readonly name: string;
+    readonly raw: RecordValue;
+  }): boolean {
+    const environment = asRecord(resource.raw.env);
+    const expectedEnvironment = {
+      LOG_LEVEL: "INFO",
+      RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
+      ...(this.#options.templateEnvironment ?? {}),
+    };
+    return (
+      resource.name === this.#options.templateName &&
+      resource.raw.imageName === this.#options.imageName &&
+      resource.raw.containerDiskInGb === this.#options.containerDiskInGb &&
+      (resource.raw.isPublic === undefined || resource.raw.isPublic === false) &&
+      resource.raw.isServerless === true &&
+      (resource.raw.volumeInGb === undefined || resource.raw.volumeInGb === 0) &&
+      (resource.raw.volumeMountPath === "/workspace" ||
+        resource.raw.volumeMountPath === V207_RUNPOD_VOLUME_MOUNT) &&
+      environment !== null &&
+      Object.entries(expectedEnvironment).every(([key, value]) => environment[key] === value)
+    );
+  }
+
+  private endpointIdentityMatches(
+    resource: { readonly name: string; readonly raw: RecordValue },
+    templateId: string,
+  ): boolean {
+    const networkVolumeId = resource.raw.networkVolumeId;
+    const networkVolumeIds = resource.raw.networkVolumeIds;
+    const volumeBindingMatches =
+      (networkVolumeId === undefined ||
+        networkVolumeId === this.#options.placement.networkVolumeId) &&
+      (networkVolumeIds === undefined ||
+        (Array.isArray(networkVolumeIds) &&
+          networkVolumeIds.length === 1 &&
+          networkVolumeIds[0] === this.#options.placement.networkVolumeId)) &&
+      (networkVolumeId === this.#options.placement.networkVolumeId ||
+        (Array.isArray(networkVolumeIds) &&
+          networkVolumeIds.length === 1 &&
+          networkVolumeIds[0] === this.#options.placement.networkVolumeId));
+    const exactStrings = (value: unknown, expected: readonly string[]): boolean =>
+      Array.isArray(value) &&
+      value.length === expected.length &&
+      value.every((entry, index) => entry === expected[index]);
+    return (
+      resource.name === this.#options.endpointName &&
+      resource.raw.templateId === templateId &&
+      resource.raw.computeType === "GPU" &&
+      resource.raw.workersMin === 0 &&
+      resource.raw.workersMax === this.#options.initialPolicy.workersMax &&
+      resource.raw.gpuCount === 1 &&
+      exactStrings(resource.raw.gpuTypeIds, [V207_RUNPOD_GPU]) &&
+      volumeBindingMatches &&
+      exactStrings(resource.raw.dataCenterIds, [V207_RUNPOD_REGION]) &&
+      exactStrings(resource.raw.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
+      resource.raw.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
+      resource.raw.flashboot === false &&
+      resource.raw.idleTimeout === this.#options.initialPolicy.idleTimeout &&
+      resource.raw.executionTimeoutMs === this.#options.initialPolicy.executionTimeoutMs &&
+      resource.raw.scalerType === "REQUEST_COUNT" &&
+      resource.raw.scalerValue === 1
+    );
+  }
+
+  /**
+   * Recover a create mutation whose response was ambiguous. Only a unique, exact-name resource
+   * with the complete intended identity may be drained/deleted; unknown or drifted resources are
+   * deliberately left untouched and reported as uncertain.
+   */
+  private async reconcileAmbiguousCreate(): Promise<void> {
+    const endpointCreationAttempted = this.#template !== null;
+    const resources: RunPodDisposableResourceInventory =
+      await this.#options.control.inventoryDisposableResources();
+    if (resources.templates.length > 1 || resources.endpoints.length > 1) {
+      throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_AMBIGUOUS");
+    }
+    const template = resources.templates[0];
+    const endpoint = resources.endpoints[0];
+    if (!endpointCreationAttempted && endpoint) {
+      throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_UNEXPECTED_ENDPOINT");
+    }
+    if (endpointCreationAttempted && !endpoint) {
+      throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_ENDPOINT_MISSING");
+    }
+    if (!template || template.name !== this.#options.templateName) {
+      throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_NAME_DRIFT");
+    }
+    if (!this.templateIdentityMatches(template)) {
+      throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_IDENTITY_MISMATCH");
+    }
+    if (endpoint) {
+      if (endpoint.name !== this.#options.endpointName) {
+        throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_NAME_DRIFT");
+      }
+      if (!this.endpointIdentityMatches(endpoint, template.id)) {
+        throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_IDENTITY_MISMATCH");
+      }
+      this.#template = { id: template.id, idHash: sha256(template.id) };
+      this.#endpoint = { id: endpoint.id, idHash: sha256(endpoint.id) };
+      this.#guard.markActive();
+      this.#jobs = new RunPodServerlessJobClient({
+        apiKey: this.#options.apiKey,
+        endpointId: endpoint.id,
+        guard: this.#guard,
+        fetch: this.#options.fetch,
+        baseUrl: this.#options.baseUrl,
+      });
+      await this.#jobs.confirmDrained();
+      await this.#options.control.deleteEndpoint(endpoint.id, this.#guard);
+      await this.#options.control.deleteTemplate(template.id);
+      this.mark("ambiguous_create_resources_reconciled_and_deleted", {
+        endpoint_id_hash: sha256(endpoint.id),
+        template_id_hash: sha256(template.id),
+      });
+    } else {
+      this.#template = { id: template.id, idHash: sha256(template.id) };
+      await this.#options.control.deleteTemplate(template.id);
+      this.mark("ambiguous_template_reconciled_and_deleted", {
+        template_id_hash: sha256(template.id),
+      });
+    }
+    this.#template = null;
+    this.#endpoint = null;
+    this.#jobs = null;
   }
 
   async create(): Promise<void> {
@@ -379,6 +518,27 @@ export class RunPodV207QualificationHarness {
         endpoint_config_sha256: this.#initialConfigHash,
       });
     } catch (error) {
+      const needsResourceReconciliation =
+        error instanceof RunPodControlError &&
+        [
+          "RUNPOD_MUTATION_AMBIGUOUS",
+          "RUNPOD_RESPONSE_INVALID",
+          "RUNPOD_SCALE_ZERO_UNCONFIRMED",
+        ].includes(error.code);
+      if (needsResourceReconciliation) {
+        try {
+          await this.reconcileAmbiguousCreate();
+        } catch (reconciliationError) {
+          this.mark("ambiguous_create_reconciliation_uncertain", {
+            error_code:
+              reconciliationError instanceof RunPodControlError
+                ? reconciliationError.code
+                : "RUNPOD_RESOURCE_RECONCILIATION_FAILED",
+          });
+          throw reconciliationError;
+        }
+        throw error;
+      }
       // A failed endpoint create can leave disposable resources. Never delete the retained model
       // volume here: it is intentionally outside this harness's mutation surface.
       if (this.#endpoint && this.#jobs) {
@@ -411,6 +571,7 @@ export class RunPodV207QualificationHarness {
 
   async dispatchBatch(input: RunPodV207DispatchBatchInput): Promise<RunPodJobResult> {
     this.assertCreated();
+    this.assertPrimaryDispatchAllowed();
     if (!ID.test(input.requestKey) || !ID.test(input.attemptId)) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_ATTEMPT_INVALID");
     }
@@ -513,6 +674,9 @@ export class RunPodV207QualificationHarness {
 
   async cancel(jobId: string): Promise<RunPodJobResult> {
     this.assertCreated();
+    if (this.#concurrentReaderFence) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_FENCE_ACTIVE");
+    }
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
     if (this.#guard.snapshot() === "active" || this.#guard.snapshot() === "warm_idle") {
       this.#guard.beginDrain();
@@ -524,9 +688,19 @@ export class RunPodV207QualificationHarness {
 
   async applyConcurrentReaderPolicy(): Promise<string> {
     this.assertCreated();
+    if (
+      this.#concurrentReaderFence ||
+      this.#concurrentReaderDispatchClaimed ||
+      this.#readerJobs.length > 0
+    ) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_FENCE_ACTIVE");
+    }
     if (!this.#initialQualificationComplete) {
       throw new RunPodControlError("RUNPOD_INITIAL_QUALIFICATION_REQUIRED");
     }
+    // The max-two endpoint is a distinct proof phase. Claim the primary fence before the first
+    // asynchronous health/cap read and keep it until drain proves both reader clients are gone.
+    this.#concurrentReaderFence = true;
     if (this.#guard.snapshot() === "active") await this.#jobs!.confirmWarmIdle();
     await this.assertSpendWithinCap();
     await this.#options.control.enforceV207EndpointPolicy(
@@ -582,13 +756,30 @@ export class RunPodV207QualificationHarness {
     inputs: readonly [RunPodV207DispatchBatchInput, RunPodV207DispatchBatchInput],
   ): Promise<readonly [RunPodJobResult, RunPodJobResult]> {
     this.assertCreated();
+    if (inputs.length !== 2) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_INPUT_INVALID");
+    }
     if (!this.#concurrentReaderConfigHash) {
       throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_REQUIRED");
     }
+    if (this.#concurrentReaderDispatchClaimed || this.#readerJobs.length > 0) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_FENCE_ACTIVE");
+    }
+    if (!this.#concurrentReaderFence) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_REQUIRED");
+    }
+    // Claim the one allowed reader dispatch before the first asynchronous cap read. This keeps a
+    // third caller out during preflight; the primary fence remains until drain proves zero.
+    this.#concurrentReaderDispatchClaimed = true;
     // Check each reader before any /run request. A single shared check would allow the second
     // reader to enter after a concurrent billing read crossed the approved finite cap.
-    await this.assertSpendWithinCap();
-    await this.assertSpendWithinCap();
+    try {
+      await this.assertSpendWithinCap();
+      await this.assertSpendWithinCap();
+    } catch (error) {
+      this.#concurrentReaderDispatchClaimed = false;
+      throw error;
+    }
     const clients = inputs.map(() => {
       const guard = new RunPodDrainGuard();
       guard.confirmZero(0, 0);
@@ -663,7 +854,11 @@ export class RunPodV207QualificationHarness {
     jobIds: readonly [string, string],
   ): Promise<readonly [RunPodJobResult, RunPodJobResult]> {
     this.assertCreated();
-    if (!this.#concurrentReaderConfigHash || this.#readerJobs.length < 2) {
+    if (
+      !this.#concurrentReaderConfigHash ||
+      !this.#concurrentReaderFence ||
+      this.#readerJobs.length < 2
+    ) {
       throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_REQUIRED");
     }
     if (jobIds.some((jobId) => !ID.test(jobId))) {
@@ -715,6 +910,9 @@ export class RunPodV207QualificationHarness {
       }
     }
     await this.#jobs!.confirmDrained();
+    this.#readerJobs.length = 0;
+    this.#concurrentReaderDispatchClaimed = false;
+    this.#concurrentReaderFence = false;
     this.mark("workers_zero_confirmed");
   }
 
@@ -738,7 +936,11 @@ export class RunPodV207QualificationHarness {
     readonly failed: boolean;
   }): Promise<void> {
     if (!this.#endpoint || !this.#jobs || !this.#template) return;
-    if (this.#guard.snapshot() === "active" || this.#guard.snapshot() === "warm_idle") {
+    if (
+      this.#concurrentReaderFence ||
+      this.#readerJobs.length > 0 ||
+      ["active", "warm_idle", "draining", "queue_empty"].includes(this.#guard.snapshot())
+    ) {
       try {
         await this.drain();
       } catch {

@@ -6,6 +6,7 @@ import {
   redactRunPodEvidence,
   type RunPodV207OutputAuthority,
 } from "./runpod-v207-qualification-harness";
+import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
 
 const apiKey = "runpod-test-key-at-least-twenty-characters";
 const jsonResponse = (value: unknown, status = 200): Response =>
@@ -19,7 +20,7 @@ const placement: RunPodV207Placement = {
   dataCenterIds: ["EU-RO-1"],
 };
 
-const image = "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:" + "a".repeat(64);
+const image = V207_REPAIRED_IMAGE;
 const outputPrefix =
   "tenant/account_a/workspace/workspace_a/project/project_a/revision/revision_a/lane/mage-image/job/attempt_a";
 
@@ -195,6 +196,39 @@ function makeHarness(
   });
 }
 
+const reconciledTemplate = {
+  id: "template_01",
+  name: "vf_mage_v207_test",
+  imageName: image,
+  containerDiskInGb: 120,
+  isPublic: false,
+  isServerless: true,
+  env: { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800" },
+  volumeInGb: 0,
+  volumeMountPath: "/runpod-volume",
+};
+
+const reconciledEndpoint = {
+  id: "endpoint_01",
+  name: "vf_mage_v207_test",
+  templateId: "template_01",
+  computeType: "GPU",
+  workersMin: 0,
+  workersMax: 1,
+  gpuCount: 1,
+  gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+  allowedCudaVersions: ["13.0"],
+  minCudaVersion: "13.0",
+  flashboot: false,
+  networkVolumeId: "volume_01",
+  dataCenterIds: ["EU-RO-1"],
+  idleTimeout: 5,
+  executionTimeoutMs: 2_400_000,
+  scalerType: "REQUEST_COUNT",
+  scalerValue: 1,
+  workers: [],
+};
+
 describe("V2-07 qualification harness", () => {
   it.each([
     ["wrong id", { id: "volume_other", size: 50, dataCenterId: "EU-RO-1" }],
@@ -206,6 +240,147 @@ describe("V2-07 qualification harness", () => {
     const instance = makeHarness(fetch);
     await expect(instance.create()).rejects.toThrow("RUNPOD_MAGE_VOLUME_IDENTITY_UNCONFIRMED");
     expect(fetch.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it("reconciles an ambiguous template create by exact-name read and deletes only that template", async () => {
+    const baseFetch = harnessFetch();
+    let templateVisible = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/templates" && init?.method === "POST") {
+        templateVisible = true;
+        throw new Error("ambiguous template response");
+      }
+      if (path === "/templates" && init?.method === undefined && templateVisible) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_MUTATION_AMBIGUOUS");
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" &&
+          new URL(String(url)).pathname.endsWith("/templates/template_01"),
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" && new URL(String(url)).pathname.includes("/networkvolumes/"),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("reconciles an ambiguous endpoint create, drains it, and deletes exact endpoint and template", async () => {
+    const baseFetch = harnessFetch();
+    let resourcesVisible = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints" && init?.method === "POST") {
+        resourcesVisible = true;
+        throw new Error("ambiguous endpoint response");
+      }
+      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledEndpoint]);
+      }
+      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_MUTATION_AMBIGUOUS");
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" &&
+          new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01"),
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" &&
+          new URL(String(url)).pathname.endsWith("/templates/template_01"),
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" && new URL(String(url)).pathname.includes("/networkvolumes/"),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("fails closed on name drift during ambiguous endpoint recovery", async () => {
+    const baseFetch = harnessFetch();
+    let resourcesVisible = false;
+    const driftedEndpoint = { ...reconciledEndpoint, name: "vf_mage_v207_other" };
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints" && init?.method === "POST") {
+        resourcesVisible = true;
+        throw new Error("ambiguous endpoint response");
+      }
+      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([driftedEndpoint]);
+      }
+      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_RESOURCE_RECONCILIATION_NAME_DRIFT");
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
+  });
+
+  it("fails closed when an endpoint create is ambiguous but inventory cannot prove the endpoint", async () => {
+    const baseFetch = harnessFetch();
+    let endpointCreateAttempted = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints" && init?.method === "POST") {
+        endpointCreateAttempted = true;
+        throw new Error("ambiguous endpoint response");
+      }
+      if (path === "/endpoints" && init?.method === undefined && endpointCreateAttempted) {
+        return jsonResponse([]);
+      }
+      if (path === "/templates" && init?.method === undefined && endpointCreateAttempted) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow(
+      "RUNPOD_RESOURCE_RECONCILIATION_ENDPOINT_MISSING",
+    );
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
+  });
+
+  it("fails closed when ambiguous-create inventory contains multiple disposable endpoints", async () => {
+    const baseFetch = harnessFetch();
+    let resourcesVisible = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints" && init?.method === "POST") {
+        resourcesVisible = true;
+        throw new Error("ambiguous endpoint response");
+      }
+      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledEndpoint, { ...reconciledEndpoint, id: "endpoint_02" }]);
+      }
+      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_RESOURCE_RECONCILIATION_AMBIGUOUS");
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
   });
 
   it("checks the finite cap before applying max-two reader policy", async () => {
@@ -435,6 +610,67 @@ describe("V2-07 qualification harness", () => {
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(2);
     await instance.drain();
+  });
+
+  it("keeps the primary dispatch fence active until both reader guards drain", async () => {
+    const fetch = harnessFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    await expect(
+      instance.dispatchBatch({
+        requestKey: "attempt_primary_before_readers",
+        attemptId: "attempt_primary_before_readers",
+        input,
+        outputAuthority: authority("attempt_primary_before_readers", "reservation_a"),
+      }),
+    ).rejects.toThrow("RUNPOD_CONCURRENT_READER_FENCE_ACTIVE");
+    await instance.dispatchConcurrentReaders([
+      { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      {
+        requestKey: "attempt_b",
+        attemptId: "attempt_b",
+        input: inputB,
+        outputAuthority: authority("attempt_b", "reservation_b"),
+      },
+    ]);
+    await expect(
+      instance.dispatchBatch({
+        requestKey: "attempt_primary",
+        attemptId: "attempt_primary",
+        input,
+        outputAuthority: authority("attempt_primary", "reservation_a"),
+      }),
+    ).rejects.toThrow("RUNPOD_CONCURRENT_READER_FENCE_ACTIVE");
+    await instance.drain();
+    await expect(
+      instance.dispatchBatch({
+        requestKey: "attempt_a",
+        attemptId: "attempt_a",
+        input,
+        outputAuthority: authority(),
+      }),
+    ).resolves.toMatchObject({ status: "IN_QUEUE" });
   });
 
   it("fails closed when a concurrent reader drain is ambiguous", async () => {
