@@ -163,6 +163,11 @@
       "command": "CI=1 TURBO_FORCE=true pnpm verify",
       "exit_code": 0,
       "result": "28 turbo tasks; Cloudflare parity 1/1; web 52 files with 373 passed and 1 skipped; six worker suites; context/secret checks; installed Chrome 44/44"
+    },
+    {
+      "command": "python3 -m unittest discover -s workers/image-media/tests -p 'test_mage_worker_image.py'",
+      "exit_code": 0,
+      "result": "16 passed, including hosted linux/amd64 image metadata guard"
     }
   ],
   "read_only_runpod_snapshot": {

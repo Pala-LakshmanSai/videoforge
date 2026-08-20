@@ -66,6 +66,7 @@
         "57bd915"
       ],
       "status": "PASS_PROVIDER_FREE_DEFINITION",
+      "build_constraints": ["linux/amd64", "OS=linux", "architecture=amd64"],
       "live_gap": "Hosted build has not been triggered; no final repaired digest exists."
     },
     {

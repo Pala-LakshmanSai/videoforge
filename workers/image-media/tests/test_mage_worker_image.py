@@ -93,6 +93,21 @@ class MageWorkerImageTest(unittest.TestCase):
         self.assertIn('Path(os.environ.get("MAGE_MODEL_ROOT", "/runpod-volume"))', repaired_source)
         self.assertNotIn("hf_hub_download", repaired_source)
 
+    def test_hosted_build_pins_linux_amd64_image_metadata_before_publish(self) -> None:
+        workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "docker build --platform linux/amd64 --file workers/image-media/Dockerfile.mage.repair",
+            workflow,
+        )
+        self.assertIn(
+            'architecture="$(docker image inspect --format=\'{{.Architecture}}\' "$image")"',
+            workflow,
+        )
+        self.assertIn('test "$architecture" = "amd64"', workflow)
+        self.assertIn('test "$operating_system" = "linux"', workflow)
+
     def test_generate_contract_accepts_json_body_not_query_value(self) -> None:
         tree = ast.parse((ROOT / "mage_api.py").read_text(encoding="utf-8"))
         generate = next(

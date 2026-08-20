@@ -45,7 +45,11 @@ jobs:
           set -euo pipefail
           test "$RUNNER_ARCH" = "X64"
           image="videoforge-mage-v2-07:${GITHUB_SHA}"
-          docker build --file workers/image-media/Dockerfile.mage.repair --tag "$image" .
+          docker build --platform linux/amd64 --file workers/image-media/Dockerfile.mage.repair --tag "$image" .
+          architecture="$(docker image inspect --format='{{.Architecture}}' "$image")"
+          operating_system="$(docker image inspect --format='{{.Os}}' "$image")"
+          test "$architecture" = "amd64"
+          test "$operating_system" = "linux"
           source_commit="$(docker image inspect --format='{{index .Config.Labels "ai.videoforge.source-commit"}}' "$image")"
           test "$source_commit" = "431198333a22d66ad1929244bf92662c53be5a6b"
           base_digest="$(docker image inspect --format='{{index .Config.Labels "org.opencontainers.image.base.digest"}}' "$image")"
