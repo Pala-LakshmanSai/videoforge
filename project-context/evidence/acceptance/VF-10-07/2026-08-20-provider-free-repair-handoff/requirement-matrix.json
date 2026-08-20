@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-requirement-matrix/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:54:17Z",
+  "recorded_at": "2026-08-20T02:16:21Z",
   "authority_mode": "provider_free",
   "requirements": [
     {
@@ -127,5 +127,15 @@
       "one combined exact external proposal",
       "fresh numeric maximum cumulative finite spend cap"
     ]
+  },
+  "latest_provider_free_verification": {
+    "repository_head": "fa976f1",
+    "canonical_command": "CI=1 TURBO_FORCE=true pnpm verify",
+    "canonical_result": "28 unique tasks; 52 web files (384 passed, 1 skipped); six worker suites; context/secret checks; installed Chrome 44/44",
+    "proposal_validator": "node project-context/scripts/validate-v207-combined-proposal.mjs",
+    "proposal_validator_result": "PASS; cap remains null",
+    "inventory_command": "pnpm --filter @videoforge/web exec tsx src/server/providers/runpod-live-inventory.ts",
+    "inventory_checked_at": "2026-08-20T02:16:21.212Z",
+    "inventory_result": "zero Pods, endpoints, private templates, and active workers; exactly two 50 GB EU-RO-1 retained volumes; external spend 0"
   }
 }
