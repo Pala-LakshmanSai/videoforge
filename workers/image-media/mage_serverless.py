@@ -663,3 +663,13 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             "failure_code": code,
             "error": {"code": code},
         }
+    except Exception:
+        # Keep unexpected application failures terminal and non-secret.  RunPod may move the
+        # reserved `error` field outside `output`, so the stable failure code is duplicated in
+        # the durable output fields used by the control-plane reconciler.
+        code = "MAGE_SERVERLESS_HANDLER_UNEXPECTED"
+        return {
+            "status": "FAILED",
+            "failure_code": code,
+            "error": {"code": code, "message": code},
+        }

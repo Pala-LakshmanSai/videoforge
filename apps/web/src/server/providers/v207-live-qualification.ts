@@ -100,6 +100,7 @@ const sortedJson = (value: unknown): string => {
 };
 
 const SAFE_PROVIDER_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
+const V207_PROVIDER_ERROR_MAX_BYTES = 4 * 1024;
 
 export class V207QualificationCancelled extends Error {
   readonly code = "V207_QUALIFICATION_CANCELLED" as const;
@@ -255,6 +256,57 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
   return (
     result && typeof result === "object" && !Array.isArray(result) ? result : { value: result }
   ) as AnyRecord;
+}
+
+/**
+ * Preserve the provider's bounded root job error for a failed qualification without allowing
+ * stream text, URLs, identifiers, or unexpectedly large provider payloads into diagnostics.
+ */
+export function redactV207ProviderJobError(error: unknown): AnyRecord {
+  if (error === undefined) return {};
+  const redacted = redactV207LiveEvidence({ provider_error: error });
+  const providerError = redacted.provider_error;
+  let serialized: string | undefined;
+  try {
+    serialized = JSON.stringify(providerError);
+  } catch {
+    return { provider_error: "[REDACTED]" };
+  }
+  if (
+    typeof serialized !== "string" ||
+    Buffer.byteLength(serialized, "utf8") > V207_PROVIDER_ERROR_MAX_BYTES
+  ) {
+    return { provider_error: "[REDACTED_SIZE]" };
+  }
+  return { provider_error: providerError };
+}
+
+const findV207ProviderErrorCode = (value: unknown, depth = 0): string | null => {
+  if (depth > 5) return null;
+  if (typeof value === "string") return SAFE_PROVIDER_CODE.test(value) ? value : null;
+  if (Array.isArray(value)) {
+    for (const entry of value.slice(0, 32)) {
+      const code = findV207ProviderErrorCode(entry, depth + 1);
+      if (code) return code;
+    }
+    return null;
+  }
+  if (!value || typeof value !== "object") return null;
+  const record = value as AnyRecord;
+  for (const key of ["code", "error_code", "errorCode", "failure_code"]) {
+    const code = findV207ProviderErrorCode(record[key], depth + 1);
+    if (code) return code;
+  }
+  for (const entry of Object.values(record).slice(0, 32)) {
+    const code = findV207ProviderErrorCode(entry, depth + 1);
+    if (code) return code;
+  }
+  return null;
+};
+
+/** Prefer a bounded root `/status` error, then fall back to a handler output error code. */
+export function extractV207ProviderJobErrorCode(jobError: unknown, output: unknown): string | null {
+  return findV207ProviderErrorCode(jobError) ?? findV207ProviderErrorCode(output);
 }
 
 const RESULT_TEMP_PATH = `${RESULT_PATH}.tmp`;
@@ -831,10 +883,7 @@ async function verifyBatch(
       typeof output?.status === "string" && SAFE_PROVIDER_CODE.test(output.status)
         ? output.status
         : "MISSING";
-    const failureCode =
-      typeof output?.failure_code === "string" && SAFE_PROVIDER_CODE.test(output.failure_code)
-        ? output.failure_code
-        : "UNKNOWN";
+    const failureCode = extractV207ProviderJobErrorCode(job.error, output) ?? "UNKNOWN";
     throw new Error(`MAGE_OUTPUT_NOT_SUCCEEDED:${outputStatus}:${failureCode}`);
   }
   if (output.items.length !== itemCount || objectKeys.length !== itemCount) {
@@ -1068,9 +1117,16 @@ async function verifyBatchWithDiagnostic(
       receiptSecret,
     );
   } catch (error) {
+    const providerJobError = redactV207ProviderJobError(job.error);
+    if (Object.keys(providerJobError).length > 0) {
+      console.error(`v207:provider-job-error=${JSON.stringify(providerJobError)}`);
+    }
     try {
       const diagnostic = await harness.diagnostic(job.id);
-      console.error(`v207:provider-diagnostic=${JSON.stringify(diagnostic)}`);
+      const redactedDiagnostic = redactV207LiveEvidence({
+        provider_diagnostic: diagnostic,
+      }).provider_diagnostic;
+      console.error(`v207:provider-diagnostic=${JSON.stringify(redactedDiagnostic)}`);
     } catch (diagnosticError) {
       console.error(
         `v207:provider-diagnostic-unavailable=${

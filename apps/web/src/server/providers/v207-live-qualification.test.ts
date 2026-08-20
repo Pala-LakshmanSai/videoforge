@@ -20,9 +20,11 @@ process.env.V207_FINITE_CAP_USD = "4";
 const {
   assertV207ItemCount,
   createV207Cancellation,
+  extractV207ProviderJobErrorCode,
   installV207SignalHandlers,
   isAllowedV207GhcrBlobRedirect,
   redactV207LiveEvidence,
+  redactV207ProviderJobError,
 } = await import("./v207-live-qualification");
 if (previousV207Image === undefined) delete process.env.V207_IMAGE;
 else process.env.V207_IMAGE = previousV207Image;
@@ -206,5 +208,44 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain('await persistCheckpoint("initialized")');
     expect(source).toContain('await persistCheckpoint("create")');
     expect(source).toContain('event: "provider_status"');
+  });
+
+  it("retains only a bounded, redacted root provider job error for failed output diagnostics", () => {
+    const redacted = redactV207ProviderJobError({
+      code: "MAGE_SERVERLESS_HANDLER_UNEXPECTED",
+      message: "signed URL and secret must not escape",
+      job_id: "job-raw",
+    });
+    expect(redacted).toEqual({
+      provider_error: {
+        code: "MAGE_SERVERLESS_HANDLER_UNEXPECTED",
+        message: "[REDACTED]",
+        job_id: "[REDACTED]",
+      },
+    });
+    expect(redactV207ProviderJobError(new Array(1_000).fill("MAGE_PROVIDER_ERROR"))).toEqual({
+      provider_error: "[REDACTED_SIZE]",
+    });
+    expect(redactV207ProviderJobError(undefined)).toEqual({});
+    expect(source).toContain("job.error");
+    expect(source).toContain("v207:provider-job-error=");
+  });
+
+  it("uses the root provider job.error code when output is missing or failed", () => {
+    expect(
+      extractV207ProviderJobErrorCode({ code: "MAGE_SERVERLESS_HANDLER_UNEXPECTED" }, undefined),
+    ).toBe("MAGE_SERVERLESS_HANDLER_UNEXPECTED");
+    expect(
+      extractV207ProviderJobErrorCode(
+        { code: "MAGE_ROOT_ERROR" },
+        { status: "FAILED", failure_code: "MAGE_OUTPUT_ERROR" },
+      ),
+    ).toBe("MAGE_ROOT_ERROR");
+    expect(
+      extractV207ProviderJobErrorCode(undefined, {
+        status: "FAILED",
+        failure_code: "MAGE_OUTPUT_ERROR",
+      }),
+    ).toBe("MAGE_OUTPUT_ERROR");
   });
 });

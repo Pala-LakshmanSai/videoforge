@@ -185,6 +185,35 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             },
         )
 
+    def test_unexpected_handler_exceptions_return_stable_non_secret_failure(self) -> None:
+        for unexpected in (OSError("private path secret"), TypeError("private type secret")):
+            with (
+                self.subTest(exception=type(unexpected).__name__),
+                patch.object(mage_serverless, "_required", side_effect=unexpected),
+            ):
+                result = asyncio.run(mage_serverless.handler({"input": {}}))
+            self.assertEqual(result["status"], "FAILED")
+            self.assertEqual(result["failure_code"], "MAGE_SERVERLESS_HANDLER_UNEXPECTED")
+            self.assertEqual(
+                result["error"],
+                {
+                    "code": "MAGE_SERVERLESS_HANDLER_UNEXPECTED",
+                    "message": "MAGE_SERVERLESS_HANDLER_UNEXPECTED",
+                },
+            )
+            self.assertNotIn("private", str(result))
+
+    def test_endpoint_identity_fails_closed_without_bound_runtime_identity(self) -> None:
+        with patch.dict(
+            mage_serverless.os.environ,
+            {"VIDEOFORGE_MAGE_ENDPOINT_ID_HASH": "", "RUNPOD_ENDPOINT_ID": ""},
+            clear=False,
+        ):
+            with self.assertRaisesRegex(
+                mage_serverless.ServerlessMageError, "MAGE_SERVERLESS_ENDPOINT_ID_MISSING"
+            ):
+                mage_serverless._endpoint_id_hash()
+
     def test_malformed_authority_is_failure_before_runtime_startup(self) -> None:
         job = self._job()
         job["input"]["envelope"] = {"tenant": None, "runtime": []}
