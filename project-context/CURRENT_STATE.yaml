@@ -1,45 +1,81 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-20T02:16:21Z"
+updated_at: "2026-08-20T03:56:06Z"
 
-phase: serverless_v2_v2_07_repair_handoff_requires_fresh_authority
+phase: serverless_v2_v2_07_live_qualification_authorized
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
 current_wave: v2_07_bounded_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_repair_handoff
+task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
+provider_calls_authorized: true
 read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 0
+maximum_external_spend_usd: 4
 
 current_goal_boundary:
-  mode: v2_07_provider_free_repair_handoff
-  live_provider_calls: false
-  remote_mutation: false
-  deployment_or_publication: false
+  mode: v2_07_live_qualification
+  live_provider_calls: true
+  remote_mutation: true
+  deployment_or_publication: true
   credential_value_access: false
-  paid_requests_or_spend: false
-  runpod_mutation_or_gpu: false
-  v2_07_action: provider_free_repair_only
-  note: "The prior USD 4 proposal was used only for the old immutable image and is closed after terminal handler failures and cleanup. The repaired failure_code source changes the image digest; do not reuse that cap. Fresh exact-image authority with a new numeric finite cap is required before publication, endpoint mutation, or GPU work. Existing two 50 GB volumes remain retained and separate at USD 7/month; no model download/preparation, volume write/rebuild/delete, cross-mount, GPU fallback, V2-08, or successor work is authorized."
+  paid_requests_or_spend: true
+  runpod_mutation_or_gpu: true
+  v2_07_action: exact_repaired_image_live_qualification
+  note: "Fresh user authority at 2026-08-20T03:56:06Z binds USD 4 maximum cumulative finite spend to proposal sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b and repaired source d1d704c2f39581e745ba90151c7388673107de41. The historical USD 4 cap remains closed and is not reused. Existing two 50 GB volumes remain retained and separate at USD 7/month; no model download/preparation, volume write/rebuild/delete, cross-mount, GPU fallback, public sample publication, V2-08, or successor work is authorized."
 
 provider_authority:
-  mode: none
-  provider: null
-  cap_usd: 0
+  mode: paid
+  provider: github+runpod+cloudflare_r2
+  cap_usd: 4
   historical_cap_usd: 4
   recurring_r2_ceiling_usd_per_month: 0
-  model_id: null
+  model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
   non_transferable: true
-  source: fresh_exact_image_authority_required
-  authorized_by_user_at: null
-  resources: []
-  authorized_operations: []
+  source: explicit_user_repaired_image_v2_07_combined_proposal_grant
+  authorized_by_user_at: "2026-08-20T03:56:06Z"
+  resources:
+    - github_ghcr_videoforge_mage_v2_07_repaired_digest
+    - runpod_sujal_account_sha256_ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c
+    - runpod_eu_ro_1_exact_mage_serverless_endpoint_and_private_template
+    - runpod_volume_sha256_eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619_read_only
+    - cloudflare_videoforge_v2_06_staging_private_r2_exact_scoped_ports
+  authorized_operations:
+    - publish_repaired_immutable_image
+    - create_private_template
+    - create_or_update_initial_max_one_endpoint
+    - submit_owned_samples_and_complete_32_image_batch
+    - status_reconcile_until_terminal_and_verify_durable_outputs
+    - exercise_duplicate_delivery_and_cancellation
+    - apply_hashed_max_two_reader_configuration
+    - submit_two_simultaneous_read_only_reader_batches
+    - status_reconcile_readers_and_verify_manifest_unchanged
+    - scale_down_to_workers_zero_then_restore_max_one
+    - retain_endpoint_template_and_both_existing_volumes_on_success
+    - delete_only_disposable_endpoint_and_template_if_failed
   allowed_operations:
-    []
-  rate_snapshot: []
+    - publish_repaired_immutable_image
+    - create_private_template
+    - create_or_update_initial_max_one_endpoint
+    - submit_owned_samples_and_complete_32_image_batch
+    - status_reconcile_until_terminal_and_verify_durable_outputs
+    - exercise_duplicate_delivery_and_cancellation
+    - apply_hashed_max_two_reader_configuration
+    - submit_two_simultaneous_read_only_reader_batches
+    - status_reconcile_readers_and_verify_manifest_unchanged
+    - scale_down_to_workers_zero_then_restore_max_one
+    - retain_endpoint_template_and_both_existing_volumes_on_success
+    - delete_only_disposable_endpoint_and_template_if_failed
+  rate_snapshot:
+    - resource_id: runpod_serverless_flex_rtx4090
+      billing_unit: gpu_hour
+      usd_per_unit: 1.1
+      checked_at: "2026-08-20"
+    - resource_id: runpod_network_volume
+      billing_unit: gb_month
+      usd_per_unit: 0.07
+      checked_at: "2026-08-20"
 
 historical_v2_06_completion_authority:
   mode: paid
@@ -120,13 +156,13 @@ historical_v2_06_final_live_closure_authority:
   actual_spend_usd: 0
   new_recurring_resources_created: 0
 
-credential_access_authorized: false
+credential_access_authorized: true
 credential_value_read_authorized: false
-remote_or_cloud_mutations_authorized: false
+remote_or_cloud_mutations_authorized: true
 model_downloads_authorized: false
-worker_image_publication_authorized: false
+worker_image_publication_authorized: true
 sample_output_publication_authorized: false
-gpu_use_authorized: false
+gpu_use_authorized: true
 retained_volume_mutation_authorized: false
 
 runpod_account_scope:
@@ -134,10 +170,10 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: none_requires_fresh_exact_image_authority
-  mutation_authorized: false
-  gpu_use_authorized: false
-  spend_authorized_usd: 0
+  current_authority: exact_repaired_image_v2_07_bounded_qualification
+  mutation_authorized: true
+  gpu_use_authorized: true
+  spend_authorized_usd: 4
 
 repository:
   initialized: true
@@ -151,7 +187,7 @@ repository:
   current_source_head_semantics: deployed_executable_source_identity_not_documentation_head
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
   current_source_head_note: "V2-07 deployed executable source is 39541d5 and remains the immutable published digest source. The current branch contains local repair ancestor b40af35 (itself including failure-surface repair 1623fa1), complete repaired source commit d1d704c with exact generated-output path guard and runtime hygiene, complete-source authority guard now pinned to d1d704c2f39581e745ba90151c7388673107de41, canonical formatting/lint commit 1c9b0de, provider-free harness hardening ee69c95, digest-pinned source-only overlay 5f075b2, complete runtime-hygiene overlay b0f696c, hosted-runner build/smoke workflow 57bd915, explicit linux/amd64 image metadata guard 3f7a894, exact overlay-byte hash pin dadef6a, provider-free runtime hygiene repairs a4c6070/d1d704c, exact generated-output rollback repair 767a27b, per-object HMAC rollback plus post-delete absence proof 270cf95, lineage reconciliation e80640b, strict staged endpoint identity repair d67e83e, complete endpoint-control hash repair d1b75ab, transport/drain negative hardening 6db83c8, and live-runner identity constant reconciliation 2b90d7e/bd461f7. The repaired source is not published and the workflow has not been triggered. Multiple exact corrected-image 32-item batches reached terminal output status FAILED with output keys limited to status and no accepted output or provider error; a later exact attempt reached throttled before dispatch. Fresh read-only catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW. The envelope and endpoint template both pin RUNPOD_INIT_TIMEOUT=800. The harness now proves the exact Mage volume hash/50 GB/EU-RO-1 before mutation and cap-fences the separately hashed max-two reader proof, with distinct reader attempts. Runtime cache/input/output cleanup and handler mutation/cancel/timeout coverage are provider-free only, the attempt environment is applied during serialized generation, and failed qualification rollback deletes exact generated objects only with per-object authority and observed absence. Temporary signer capability was disabled; all disposable endpoint/template resources were deleted and both retained volumes remained untouched. Strict provider response validation now requires exact template, volume, region, CUDA, timing, and image identity; request-key replay, status/cancel job identity, contradictory volume bindings, and ambiguous drain all fail closed; config hashes include complete runtime controls. Fresh exact-image authority and a new numeric finite cap are required before any publication or GPU work."
-  v2_07_latest_local_repair: "c53e773 adds a settled-spend cap check immediately after endpoint warm-idle/drained baseline; e147aff extends it after max-two policy update and single dispatch. 13 harness tests, 45 focused web tests, TypeScript, lint, and formatting pass. The exact non-authorizing combined proposal is recorded at evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/combined-live-proposal.json with user cap null."
+  v2_07_latest_local_repair: "c53e773 adds a settled-spend cap check immediately after endpoint warm-idle/drained baseline; e147aff extends it after max-two policy update and single dispatch. 13 harness tests, 45 focused web tests, TypeScript, lint, and formatting pass. Fresh user authority at 2026-08-20T03:56:06Z binds a USD 4 cap to the exact proposal hash and repaired source; live qualification is in prepublication preflight."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -166,10 +202,10 @@ live_development:
   chrome_route: null
   fixture_scenario: v2_00_roadmap_reset_audit
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "Provider-free repaired-handler handoff only; fresh exact-image authority and a new numeric finite cap are required before any publication, endpoint mutation, or GPU work."
+  provider_mode: staging
+  provider_calls_authorized: true
+  authorized_spend_usd: 4
+  provider_authority_scope: "Exact repaired-image V2-07 qualification only under proposal sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b; stop before V2-08."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -365,48 +401,84 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: provider_free_runtime_hygiene_hardened_unqualified
+  status: live_qualification_authorized_prepublish_preflight
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: fresh_exact_image_authority_required
-  task_stage: provider_free_repair_handoff
-  current_goal_authority: fresh_exact_image_authority_required
+  authorization_status: exact_repaired_image_live_qualification_authorized
+  task_stage: bounded_mutation
+  current_goal_authority: exact_repaired_image_v2_07_bounded_qualification
   provider_authority:
-    mode: none
-    provider: null
-    cap_usd: 0
+    mode: paid
+    provider: github+runpod+cloudflare_r2
+    cap_usd: 4
     historical_cap_usd: 4
     recurring_r2_ceiling_usd_per_month: 0
-    model_id: null
+    model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
     non_transferable: true
-    source: fresh_exact_image_authority_required
-    authorized_by_user_at: null
-    resources: []
-    authorized_operations: []
+    source: explicit_user_repaired_image_v2_07_combined_proposal_grant
+    authorized_by_user_at: "2026-08-20T03:56:06Z"
+    resources:
+      - github_ghcr_videoforge_mage_v2_07_repaired_digest
+      - runpod_sujal_account_sha256_ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c
+      - runpod_eu_ro_1_exact_mage_serverless_endpoint_and_private_template
+      - runpod_volume_sha256_eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619_read_only
+      - cloudflare_videoforge_v2_06_staging_private_r2_exact_scoped_ports
+    authorized_operations:
+      - publish_repaired_immutable_image
+      - create_private_template
+      - create_or_update_initial_max_one_endpoint
+      - submit_owned_samples_and_complete_32_image_batch
+      - status_reconcile_until_terminal_and_verify_durable_outputs
+      - exercise_duplicate_delivery_and_cancellation
+      - apply_hashed_max_two_reader_configuration
+      - submit_two_simultaneous_read_only_reader_batches
+      - status_reconcile_readers_and_verify_manifest_unchanged
+      - scale_down_to_workers_zero_then_restore_max_one
+      - retain_endpoint_template_and_both_existing_volumes_on_success
+      - delete_only_disposable_endpoint_and_template_if_failed
     allowed_operations:
-      []
-    rate_snapshot: []
+      - publish_repaired_immutable_image
+      - create_private_template
+      - create_or_update_initial_max_one_endpoint
+      - submit_owned_samples_and_complete_32_image_batch
+      - status_reconcile_until_terminal_and_verify_durable_outputs
+      - exercise_duplicate_delivery_and_cancellation
+      - apply_hashed_max_two_reader_configuration
+      - submit_two_simultaneous_read_only_reader_batches
+      - status_reconcile_readers_and_verify_manifest_unchanged
+      - scale_down_to_workers_zero_then_restore_max_one
+      - retain_endpoint_template_and_both_existing_volumes_on_success
+      - delete_only_disposable_endpoint_and_template_if_failed
+    rate_snapshot:
+      - resource_id: runpod_serverless_flex_rtx4090
+        billing_unit: gpu_hour
+        usd_per_unit: 1.1
+        checked_at: "2026-08-20"
+      - resource_id: runpod_network_volume
+        billing_unit: gb_month
+        usd_per_unit: 0.07
+        checked_at: "2026-08-20"
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Complete provider-free repair handoff for the exact Mage Serverless lane; obtain fresh exact-image authority before any publication or GPU work and stop before V2-08."
-  provider_calls_authorized: false
+  goal: "Publish and qualify the exact repaired Mage Serverless lane under the hashed combined proposal and USD 4 cumulative finite cap; retain the endpoint/template and intended volumes on success, and stop before V2-08."
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  maximum_external_spend_usd: 4
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
   credential_value_read_authorized: false
   model_downloads_authorized: false
-  worker_image_publication_authorized: false
+  worker_image_publication_authorized: true
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "The prior USD 4 proposal covered the old immutable image and is closed after terminal handler failures and cleanup. The repaired image digest is a scope change; fresh exact-image authority with a new numeric finite cap is required. Existing Mage/SoulX volumes remain retained separately; no volume mutation or V2-08 authority exists."
+  authority_note: "Fresh user authority at 2026-08-20T03:56:06Z approves proposal sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b with a USD 4 cumulative finite cap for repaired source d1d704c2f39581e745ba90151c7388673107de41. The historical USD 4 cap remains closed and is not reused. Existing Mage/SoulX volumes remain retained separately; no volume mutation, public sample publication, or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: provider_free_runtime_hygiene_green_live_qualification_unqualified
-  execution_blocker: "Dynamic output authority/finalize and scoped hosted R2 signer are repaired and locally green. Multiple exact CUDA-13-pinned 32-item batches reached terminal provider status COMPLETED but handler output status FAILED with output keys limited to status, no provider error code, no durable output, and no signed receipt; a later exact attempt reached throttled before dispatch. Local commit 1623fa1 adds a bounded non-reserved failure_code and the live verifier prefers it, but the published digest remains unchanged. Provider-free hardening now binds every declared input GET to a scoped URL with exact length/hash, keeps cache/config/temp/output/lock roots outside /runpod-volume, removes exact Comfy output files, detects handler-level manifest mutation, and covers timeout/cancel and two independent readers. Commits d67e83e/d1b75ab add strict V2-07 image/template/endpoint/volume/region/CUDA/timing response identity and include compute type, flashboot, volume mount, container disk, handler concurrency, init timeout, request TTL, template environment, and full lineage in both staged config hashes. Commit 6db83c8 rejects request-key replay drift, status/cancel job identity drift, contradictory volume bindings, and ambiguous concurrent-reader drain. The source-only overlay 5f075b2, hosted-runner smoke/publish workflow 57bd915, explicit linux/amd64 image metadata guard 3f7a894, and local runtime hygiene repair are provider-free and green; the requirement matrix at evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/requirement-matrix.json separates local passes from unproven live proof. No final repaired digest has been produced or published. Fresh catalog data reports RTX 4090/CUDA 13.0 globally HIGH and EU-RO-1 LOW, but this does not qualify the runtime. All disposable resources were deleted, signer route disabled, retained volumes unchanged, and no output was accepted. The old USD 4 authority is closed; fresh exact-image authority with a new numeric finite cap is required."
+  execution_status: live_qualification_authorized_prepublish_preflight
+  execution_blocker: null
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_image_published_handler_terminal_failure_unqualified

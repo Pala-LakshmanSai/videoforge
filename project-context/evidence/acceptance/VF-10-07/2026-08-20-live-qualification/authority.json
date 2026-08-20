@@ -1,0 +1,69 @@
+{
+  "schema_version": "videoforge.v2-07-live-authority/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "authorized_at": "2026-08-20T03:56:06Z",
+  "authority_source": "explicit_user_repaired_image_v2_07_combined_proposal_grant",
+  "proposal": {
+    "path": "../2026-08-20-provider-free-repair-handoff/combined-live-proposal.json",
+    "sha256": "sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b"
+  },
+  "approval": {
+    "exact_proposal_approved": true,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "historical_cap_usd_closed": 4,
+    "historical_cap_reused": false,
+    "recurring_retained_volume_charge_usd_per_month": 7,
+    "recurring_charge_is_outside_finite_cap": true
+  },
+  "lineage": {
+    "repaired_source_commit": "d1d704c2f39581e745ba90151c7388673107de41",
+    "base_image_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
+    "final_repaired_image_digest": null,
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "gpu": "NVIDIA GeForce RTX 4090"
+  },
+  "approved_operations": [
+    "publish_repaired_immutable_image",
+    "create_private_template",
+    "create_or_update_initial_max_one_endpoint",
+    "submit_owned_samples_and_complete_32_image_batch",
+    "status_reconcile_until_terminal_and_verify_durable_outputs",
+    "exercise_duplicate_delivery_and_cancellation",
+    "apply_hashed_max_two_reader_configuration",
+    "submit_two_simultaneous_read_only_reader_batches",
+    "status_reconcile_readers_and_verify_manifest_unchanged",
+    "scale_down_to_workers_zero_then_restore_max_one",
+    "retain_endpoint_template_and_both_existing_volumes_on_success",
+    "delete_only_disposable_endpoint_and_template_if_failed"
+  ],
+  "rates_at_proposal": {
+    "serverless_flex_rtx4090_usd_per_hour": 1.1,
+    "secure_pod_rtx4090_reference_usd_per_hour": 0.74,
+    "network_volume_usd_per_gb_month": 0.07,
+    "finite_variable_compute_estimate_usd": 2.2
+  },
+  "forbidden": [
+    "model_download_or_preparation",
+    "retained_volume_write_rebuild_delete_or_cross_mount",
+    "unqualified_gpu_or_region_fallback",
+    "public_sample_output_publication",
+    "V2-08_or_successor_work",
+    "cumulative_finite_spend_above_4_usd"
+  ],
+  "stop_conditions": [
+    "identity_or_response_mismatch",
+    "missing_or_failed_durable_output_or_receipt",
+    "manifest_hash_change_or_model_volume_write",
+    "duplicate_compute_or_uncertain_cancellation",
+    "uncertain_cleanup_or_worker_drain",
+    "finite_cap_risk",
+    "unplanned_GPU_region_volume_image_or_rate_change"
+  ],
+  "status": "ACTIVE_PREPUBLICATION_PREFLIGHT"
+}
