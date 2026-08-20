@@ -271,6 +271,7 @@ function validateTerminalInventory(
       endpoint: {
         idHash: hashText(endpoint.id),
         templateIdHash: hashText(template.id),
+        flashboot: endpoint.raw.flashboot,
         workersMin: endpointInventory.workersMin,
         workersMax: endpointInventory.workersMax,
         workerStatuses: endpointInventory.workerStatuses,

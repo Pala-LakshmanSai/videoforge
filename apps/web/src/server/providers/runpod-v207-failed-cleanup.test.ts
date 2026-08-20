@@ -44,6 +44,7 @@ type FixtureOptions = {
   readonly workerStatus?: string;
   readonly keepEndpointAfterDelete?: boolean;
   readonly keepTemplateAfterDelete?: boolean;
+  readonly unstableFlashboot?: boolean;
   readonly unstableWorkers?: boolean;
 };
 
@@ -100,7 +101,7 @@ function makeFixture(options: FixtureOptions = {}) {
           gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
           allowedCudaVersions: ["13.0"],
           minCudaVersion: "13.0",
-          flashboot: false,
+          flashboot: options.unstableFlashboot && endpointReads >= 4 ? true : false,
           networkVolumeId: V207_FAILED_CLEANUP_VOLUME_ID,
           dataCenterIds: ["EU-RO-1"],
           idleTimeout: 5,
@@ -228,6 +229,7 @@ describe("V2-07 failed-resource cleanup", () => {
 
   it.each([
     ["active worker", { workerStatus: "RUNNING" }],
+    ["unstable FlashBoot snapshots", { unstableFlashboot: true }],
     ["unstable terminal snapshots", { unstableWorkers: true }],
     ["missing worker records", { endpointPatch: { workers: undefined } }],
     [

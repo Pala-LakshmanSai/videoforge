@@ -953,6 +953,51 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
+  it("prevalidates both concurrent reader inputs before either reader dispatches", async () => {
+    const fetch = harnessFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    const invalidAuthority = {
+      ...authority("attempt_b", "reservation_b"),
+      outputPutUrls: ["not-a-url"],
+    };
+    await expect(
+      instance.dispatchConcurrentReaders([
+        { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+        {
+          requestKey: "attempt_b",
+          attemptId: "attempt_b",
+          input: inputB,
+          outputAuthority: invalidAuthority,
+        },
+      ]),
+    ).rejects.toThrow("RUNPOD_OUTPUT_URL_INVALID");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
   it("blocks concurrent readers when the max-two endpoint is only quiescent", async () => {
     const baseFetch = harnessFetch();
     let maxTwoApplied = false;

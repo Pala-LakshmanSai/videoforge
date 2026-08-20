@@ -209,6 +209,61 @@ const assertAuthority = (
   }
 };
 
+function buildDispatchRequest(input: RunPodV207DispatchBatchInput): JsonValue {
+  if (!ID.test(input.requestKey) || !ID.test(input.attemptId)) {
+    throw new RunPodControlError("RUNPOD_QUALIFICATION_ATTEMPT_INVALID");
+  }
+  const batch = asRecord(input.input.batch);
+  const envelope = asRecord(input.input.envelope);
+  const artifacts = asRecord(envelope?.artifacts);
+  const itemCount = Array.isArray(batch?.items) ? batch.items.length : null;
+  const outputPrefix = artifacts?.output_prefix ?? input.outputAuthority.outputPrefix;
+  const reservationIds = artifacts?.transfer_port_reservation_ids;
+  const inputPorts = input.inputPorts ?? [];
+  const inputGetUrls = input.inputGetUrls ?? [];
+  if (
+    itemCount === null ||
+    typeof outputPrefix !== "string" ||
+    !Array.isArray(reservationIds) ||
+    reservationIds.some((value) => typeof value !== "string") ||
+    Object.hasOwn(input.input, "policy") ||
+    !input.input.envelope ||
+    Object.hasOwn(input.input, "ports") ||
+    Object.hasOwn(input.input, "output_put_urls") ||
+    inputGetUrls.length !== inputPorts.length ||
+    inputGetUrls.some((value) => {
+      try {
+        validateUrl(value);
+        return false;
+      } catch {
+        return true;
+      }
+    })
+  ) {
+    throw new RunPodControlError(
+      inputGetUrls.length !== inputPorts.length
+        ? "RUNPOD_INPUT_URLS_INVALID"
+        : "RUNPOD_QUALIFICATION_INPUT_INVALID",
+    );
+  }
+  assertAuthority(input.outputAuthority, {
+    attemptId: input.attemptId,
+    itemCount,
+    outputPrefix,
+    reservationIds: reservationIds as readonly string[],
+  });
+  return jsonValue({
+    ...input.input,
+    ports: {
+      inputs: inputPorts,
+      outputs: [],
+    },
+    input_get_urls: inputGetUrls,
+    generated_output_authorities: input.outputAuthority.authorities,
+    output_put_urls: input.outputAuthority.outputPutUrls,
+  });
+}
+
 /**
  * Bounded V2-07 lifecycle harness. It deliberately accepts output authorities from a separate
  * artifact control plane; it never fabricates a checksum, URL, capability, or reservation. This
@@ -888,58 +943,7 @@ export class RunPodV207QualificationHarness {
     this.assertCreated();
     this.checkAbort();
     this.assertPrimaryDispatchAllowed();
-    if (!ID.test(input.requestKey) || !ID.test(input.attemptId)) {
-      throw new RunPodControlError("RUNPOD_QUALIFICATION_ATTEMPT_INVALID");
-    }
-    const batch = asRecord(input.input.batch);
-    const envelope = asRecord(input.input.envelope);
-    const artifacts = asRecord(envelope?.artifacts);
-    const itemCount = Array.isArray(batch?.items) ? batch.items.length : null;
-    const outputPrefix = artifacts?.output_prefix ?? input.outputAuthority.outputPrefix;
-    const reservationIds = artifacts?.transfer_port_reservation_ids;
-    const inputPorts = input.inputPorts ?? [];
-    const inputGetUrls = input.inputGetUrls ?? [];
-    if (
-      itemCount === null ||
-      typeof outputPrefix !== "string" ||
-      !Array.isArray(reservationIds) ||
-      reservationIds.some((value) => typeof value !== "string") ||
-      Object.hasOwn(input.input, "policy") ||
-      !input.input.envelope ||
-      Object.hasOwn(input.input, "ports") ||
-      Object.hasOwn(input.input, "output_put_urls") ||
-      inputGetUrls.length !== inputPorts.length ||
-      inputGetUrls.some((value) => {
-        try {
-          validateUrl(value);
-          return false;
-        } catch {
-          return true;
-        }
-      })
-    ) {
-      throw new RunPodControlError(
-        inputGetUrls.length !== inputPorts.length
-          ? "RUNPOD_INPUT_URLS_INVALID"
-          : "RUNPOD_QUALIFICATION_INPUT_INVALID",
-      );
-    }
-    assertAuthority(input.outputAuthority, {
-      attemptId: input.attemptId,
-      itemCount,
-      outputPrefix,
-      reservationIds: reservationIds as readonly string[],
-    });
-    const request = jsonValue({
-      ...input.input,
-      ports: {
-        inputs: inputPorts,
-        outputs: [],
-      },
-      input_get_urls: inputGetUrls,
-      generated_output_authorities: input.outputAuthority.authorities,
-      output_put_urls: input.outputAuthority.outputPutUrls,
-    });
+    const request = buildDispatchRequest(input);
     await this.assertSpendWithinCap();
     const job =
       policy === undefined
@@ -1155,6 +1159,13 @@ export class RunPodV207QualificationHarness {
     if (this.#guard.snapshot() !== "warm_idle" && this.#guard.snapshot() !== "zero") {
       throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
     }
+    // Fully validate both inputs before claiming the dispatch or constructing either client. This
+    // prevents one malformed reader from allowing its sibling to reach /run first.
+    const requests: readonly [JsonValue, JsonValue] = [
+      buildDispatchRequest(inputs[0]),
+      buildDispatchRequest(inputs[1]),
+    ];
+    this.checkAbort();
     // Claim the one allowed reader dispatch before the first asynchronous cap read. This keeps a
     // third caller out during preflight; the primary fence remains until drain proves zero.
     this.#concurrentReaderDispatchClaimed = true;
@@ -1183,49 +1194,7 @@ export class RunPodV207QualificationHarness {
     }) as [RunPodServerlessJobClient, RunPodServerlessJobClient];
     const results = await Promise.all(
       inputs.map((input, index) => {
-        const batch = asRecord(input.input.batch);
-        const itemCount = Array.isArray(batch?.items) ? batch.items.length : 0;
-        const authority = input.outputAuthority;
-        const inputPorts = input.inputPorts ?? [];
-        const inputGetUrls = input.inputGetUrls ?? [];
-        const envelope = asRecord(input.input.envelope);
-        const artifacts = asRecord(envelope?.artifacts);
-        const reservationIds = artifacts?.transfer_port_reservation_ids;
-        if (
-          !Array.isArray(reservationIds) ||
-          reservationIds.some((value) => typeof value !== "string")
-        ) {
-          throw new RunPodControlError("RUNPOD_OUTPUT_AUTHORITY_INVALID");
-        }
-        assertAuthority(authority, {
-          attemptId: input.attemptId,
-          itemCount,
-          outputPrefix:
-            typeof artifacts?.output_prefix === "string"
-              ? artifacts.output_prefix
-              : authority.outputPrefix,
-          reservationIds: reservationIds as readonly string[],
-        });
-        if (
-          inputGetUrls.length !== inputPorts.length ||
-          inputGetUrls.some((value) => {
-            try {
-              validateUrl(value);
-              return false;
-            } catch {
-              return true;
-            }
-          })
-        ) {
-          throw new RunPodControlError("RUNPOD_INPUT_URLS_INVALID");
-        }
-        const request = jsonValue({
-          ...input.input,
-          ports: { inputs: inputPorts, outputs: [] },
-          input_get_urls: inputGetUrls,
-          generated_output_authorities: authority.authorities,
-          output_put_urls: authority.outputPutUrls,
-        });
+        const request = requests[index]!;
         return clients[index]!.dispatch(input.requestKey, request).then((job) => {
           this.#ownedJobs.set(job.id, clients[index]!);
           return job;
