@@ -168,6 +168,11 @@
       "command": "python3 -m unittest discover -s workers/image-media/tests -p 'test_mage_worker_image.py'",
       "exit_code": 0,
       "result": "16 passed, including hosted linux/amd64 image metadata guard"
+    },
+    {
+      "commit": "3f7a894",
+      "area": "hosted repaired-image build explicitly pins linux/amd64 and asserts image OS/architecture before optional publication",
+      "result": "PASS_PROVIDER_FREE_DEFINITION"
     }
   ],
   "read_only_runpod_snapshot": {
