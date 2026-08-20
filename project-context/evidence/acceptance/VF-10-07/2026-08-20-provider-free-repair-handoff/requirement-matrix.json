@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-requirement-matrix/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:22:18Z",
+  "recorded_at": "2026-08-20T01:32:39Z",
   "authority_mode": "provider_free",
   "requirements": [
     {
@@ -50,7 +50,8 @@
         "workers/image-media/tests/test_serverless_envelope.py",
         "workers/image-media/tests/test_secure_scratch.py",
         "apps/web/src/server/providers/v207-activation-authority.test.ts",
-        "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts"
+        "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts",
+        "6db83c8"
       ],
       "status": "PASS_PROVIDER_FREE",
       "live_gap": "Provider duplicate/cancel/timeout behavior still requires the approved live run."
@@ -79,7 +80,9 @@
         "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts",
         "apps/web/src/server/providers/runpod-control.ts",
         "ee69c95",
-        "d67e83e"
+        "d67e83e",
+        "d1b75ab",
+        "6db83c8"
       ],
       "status": "PASS_PROVIDER_FREE_DEFINITION",
       "live_gap": "Endpoint/template mutation requires the exact repaired digest and fresh proposal approval; the strict response contract is provider-free only until a real RunPod response proves it."

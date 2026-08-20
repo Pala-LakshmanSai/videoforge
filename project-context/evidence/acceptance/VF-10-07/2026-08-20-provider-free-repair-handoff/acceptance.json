@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:22:18Z",
+  "recorded_at": "2026-08-20T01:32:39Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -272,6 +272,26 @@
       "command": "node --test packages/control-plane/tests/tenant-artifact-plane.test.mjs",
       "exit_code": 0,
       "result": "10 provider-free artifact-plane tests passed, including V2-07 commit receipt/readback"
+    },
+    {
+      "commit": "2f566f7",
+      "area": "strict V2-07 response negative coverage rejects template identity drift",
+      "result": "PASS_PROVIDER_FREE_NEGATIVE"
+    },
+    {
+      "commit": "d1b75ab",
+      "area": "initial and max-two endpoint configuration hashes include compute type, flashboot, volume mount, and runtime controls",
+      "result": "PASS_PROVIDER_FREE_DEFINITION"
+    },
+    {
+      "commit": "6db83c8",
+      "area": "request-key replay mismatch, status/cancel job identity, contradictory volume bindings, and ambiguous concurrent-reader drain fail closed",
+      "result": "PASS_PROVIDER_FREE_NEGATIVE"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts src/server/providers/v207-activation-authority.test.ts src/server/hosted/v207-output-ports.test.ts && pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint",
+      "exit_code": 0,
+      "result": "42 focused tests passed; TypeScript typecheck and lint passed"
     }
   ],
   "read_only_runpod_snapshot": {
