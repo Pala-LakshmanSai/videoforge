@@ -314,6 +314,62 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
+  it("reconciles the provider endpoint shape when compute type and region are omitted", async () => {
+    const baseFetch = harnessFetch();
+    let resourcesVisible = false;
+    const providerShapeEndpoint = { ...reconciledEndpoint };
+    delete (providerShapeEndpoint as Record<string, unknown>).computeType;
+    delete (providerShapeEndpoint as Record<string, unknown>).dataCenterIds;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints" && init?.method === "POST") {
+        resourcesVisible = true;
+        throw new Error("ambiguous endpoint response");
+      }
+      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([providerShapeEndpoint]);
+      }
+      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_MUTATION_AMBIGUOUS");
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" &&
+          new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01"),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("fails closed when the provider explicitly enables flashboot", async () => {
+    const baseFetch = harnessFetch();
+    let resourcesVisible = false;
+    const driftedEndpoint = { ...reconciledEndpoint, flashboot: true };
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints" && init?.method === "POST") {
+        resourcesVisible = true;
+        throw new Error("ambiguous endpoint response");
+      }
+      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([driftedEndpoint]);
+      }
+      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
+        return jsonResponse([reconciledTemplate]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow(
+      "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_MISMATCH",
+    );
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
+  });
+
   it("fails closed on name drift during ambiguous endpoint recovery", async () => {
     const baseFetch = harnessFetch();
     let resourcesVisible = false;

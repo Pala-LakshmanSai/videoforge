@@ -693,6 +693,50 @@ describe("RunPod scale-zero control", () => {
     ).toThrow("RUNPOD_CONCURRENT_READER_POLICY_INVALID");
   });
 
+  it("accepts the provider endpoint read shape when compute type and region are omitted", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      expect(new URL(String(input)).pathname).toBe("/endpoints");
+      return response({
+        id: "endpoint_01",
+        templateId: "template_01",
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        allowedCudaVersions: ["13.0"],
+        minCudaVersion: "13.0",
+        flashboot: false,
+        networkVolumeId: "volume_01",
+        networkVolumeIds: ["volume_01"],
+        idleTimeout: 5,
+        executionTimeoutMs: 2_400_000,
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+      });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.createScaleZeroEndpoint(
+        "vf_mage_v207",
+        "template_01",
+        ["NVIDIA GeForce RTX 4090"],
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        true,
+      ),
+    ).resolves.toMatchObject({ id: "endpoint_01" });
+  });
+
   it("updates the endpoint with the exact max-two proof identity", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);

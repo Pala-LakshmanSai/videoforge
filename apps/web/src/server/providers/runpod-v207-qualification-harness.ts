@@ -317,6 +317,9 @@ export class RunPodV207QualificationHarness {
     resource: { readonly name: string; readonly raw: RecordValue },
     templateId: string,
   ): boolean {
+    // The Serverless endpoint list/detail shape currently omits computeType and dataCenterIds;
+    // absence is tolerated only for those provider-unreported fields. Explicit values, including
+    // flashboot, remain strict so a provider-normalized mismatch cannot be qualified silently.
     const networkVolumeId = resource.raw.networkVolumeId;
     const networkVolumeIds = resource.raw.networkVolumeIds;
     const volumeBindingMatches =
@@ -331,13 +334,14 @@ export class RunPodV207QualificationHarness {
           networkVolumeIds.length === 1 &&
           networkVolumeIds[0] === this.#options.placement.networkVolumeId));
     const exactStrings = (value: unknown, expected: readonly string[]): boolean =>
-      Array.isArray(value) &&
-      value.length === expected.length &&
-      value.every((entry, index) => entry === expected[index]);
+      value === undefined ||
+      (Array.isArray(value) &&
+        value.length === expected.length &&
+        value.every((entry, index) => entry === expected[index]));
     return (
       resource.name === this.#options.endpointName &&
       resource.raw.templateId === templateId &&
-      resource.raw.computeType === "GPU" &&
+      (resource.raw.computeType === undefined || resource.raw.computeType === "GPU") &&
       resource.raw.workersMin === 0 &&
       resource.raw.workersMax === this.#options.initialPolicy.workersMax &&
       resource.raw.gpuCount === 1 &&
@@ -383,6 +387,9 @@ export class RunPodV207QualificationHarness {
     if (endpoint) {
       if (endpoint.name !== this.#options.endpointName) {
         throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_NAME_DRIFT");
+      }
+      if (endpoint.raw.flashboot !== undefined && endpoint.raw.flashboot !== false) {
+        throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_MISMATCH");
       }
       if (!this.endpointIdentityMatches(endpoint, template.id)) {
         throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_IDENTITY_MISMATCH");

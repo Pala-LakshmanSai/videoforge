@@ -132,6 +132,16 @@ const exactStringArray = (value: unknown, expected: readonly string[]): boolean 
   value.length === expected.length &&
   value.every((candidate, index) => candidate === expected[index]);
 
+/**
+ * RunPod's REST read shapes omit a few fields that are accepted on create/update (currently
+ * computeType and dataCenterIds).  An omitted field is not evidence of drift; an explicitly
+ * returned value still has to match the pinned request exactly.
+ */
+const optionalExactString = (value: unknown, expected: string): boolean =>
+  value === undefined || value === expected;
+const optionalExactStringArray = (value: unknown, expected: readonly string[]): boolean =>
+  value === undefined || exactStringArray(value, expected);
+
 const healthWorkerCounts = (
   workers: JsonRecord | null,
 ): {
@@ -527,8 +537,8 @@ export class RunPodControlClient {
       value.gpuCount !== 1 ||
       !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
       !volumeBindingMatches ||
-      !exactStringArray(responseDataCenters, [V207_RUNPOD_REGION]) ||
-      value.computeType !== "GPU" ||
+      !optionalExactStringArray(responseDataCenters, [V207_RUNPOD_REGION]) ||
+      !optionalExactString(value.computeType, "GPU") ||
       value.templateId !== templateId ||
       !exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
       value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
@@ -611,14 +621,14 @@ export class RunPodControlClient {
       !value ||
       typeof value.id !== "string" ||
       !ID.test(value.id) ||
-      (strictV207 && value.computeType !== request.computeType) ||
+      (strictV207 && !optionalExactString(value.computeType, request.computeType)) ||
       typeof value.templateId !== "string" ||
       !ID.test(value.templateId) ||
       (strictV207 && value.templateId !== request.templateId) ||
       value.gpuCount !== request.gpuCount ||
       !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
       !volumeBindingMatches ||
-      (strictV207 && !exactStringArray(responseDataCenters, [V207_RUNPOD_REGION])) ||
+      (strictV207 && !optionalExactStringArray(responseDataCenters, [V207_RUNPOD_REGION])) ||
       (strictV207 &&
         (!exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
           value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
