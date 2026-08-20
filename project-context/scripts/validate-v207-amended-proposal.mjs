@@ -16,10 +16,24 @@ const EXPECTED = {
   model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
   parentImage:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+  parentConfig:
+    "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
   sourceCommit: "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c",
+  sourceSha256:
+    "sha256:5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
   sourcePath: "workers/image-media/mage_serverless.py",
+  modelManifest:
+    "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
   volumeId:
     "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  layerDiffId:
+    "sha256:554ac0a35755bfec64d70707512eee81ae57af62d596fbbd49e53e4140dece8d",
+  layerDigest:
+    "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e",
+  configDigest:
+    "sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e",
+  manifestDigest:
+    "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
   candidateImage:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
   candidateTag: "v2-07-inline-wire-a52e7e4",
@@ -67,10 +81,11 @@ assert(definition.provider_mutation === false, "definition_provider_mutation");
 assert(definition.publication === false, "definition_publication");
 assert(definition.gpu_use === false && definition.external_spend_usd === 0, "definition_spend_boundary");
 assert(definition.parent_image === EXPECTED.parentImage, "definition_parent_image");
-digest(definition.parent_config_sha256, "definition_parent_config");
+assert(digest(definition.parent_config_sha256, "definition_parent_config") === EXPECTED.parentConfig, "definition_parent_config_identity");
 assert(definition.source_commit === EXPECTED.sourceCommit, "definition_source_commit");
 assert(definition.source_path === EXPECTED.sourcePath, "definition_source_path");
 const sourceDigest = digest(definition.source_sha256, "definition_source");
+assert(sourceDigest === EXPECTED.sourceSha256, "definition_source_identity");
 assert(sourceDigest === sha256(readBytes(sourcePath)), "definition_source_hash_drift");
 
 const overlay = definition.overlay;
@@ -80,6 +95,10 @@ const layerDiffDigest = digest(overlay.layer_diff_id, "overlay_layer_diff");
 const layerDigest = digest(overlay.layer_sha256, "overlay_layer");
 const configDigest = digest(overlay.config_sha256, "overlay_config");
 const manifestDigest = digest(overlay.manifest_sha256, "overlay_manifest");
+assert(layerDiffDigest === EXPECTED.layerDiffId, "overlay_layer_diff_identity");
+assert(layerDigest === EXPECTED.layerDigest, "overlay_layer_identity");
+assert(configDigest === EXPECTED.configDigest, "overlay_config_identity");
+assert(manifestDigest === EXPECTED.manifestDigest, "overlay_manifest_identity");
 assert(overlay.layer_size_bytes === 7495, "overlay_layer_size");
 assert(overlay.config_size_bytes === 15698, "overlay_config_size");
 assert(overlay.media_type === "application/vnd.docker.distribution.manifest.v2+json", "overlay_media_type");
@@ -106,7 +125,7 @@ assert(proposal.user_approval?.changed_image_and_repeated_operations_approved ==
 
 const lineage = proposal.lineage;
 assert(lineage?.model === EXPECTED.model, "proposal_model");
-digest(lineage.model_manifest_sha256, "proposal_model_manifest");
+assert(digest(lineage.model_manifest_sha256, "proposal_model_manifest") === EXPECTED.modelManifest, "proposal_model_manifest_identity");
 assert(lineage.volume_id_sha256 === EXPECTED.volumeId, "proposal_volume");
 assert(lineage.volume_size_gb === 50 && lineage.volume_region === EXPECTED.region, "proposal_volume_identity");
 assert(lineage.volume_mount === "/runpod-volume" && lineage.model_root === "/runpod-volume/mage-model", "proposal_mount");
