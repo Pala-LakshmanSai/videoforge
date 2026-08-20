@@ -408,9 +408,15 @@ export class RunPodV207QualificationHarness {
         fetch: this.#options.fetch,
         baseUrl: this.#options.baseUrl,
       });
-      await this.#jobs.confirmDrained();
       if (flashbootNeedsNormalization) {
         try {
+          // RunPod may create a flashboot worker before returning the endpoint.  A single
+          // ready/idle worker with an empty queue is a safe update baseline; requiring total
+          // zero here would wait for the very worker whose flashboot setting we are disabling.
+          await this.#jobs.confirmWarmIdle(300, 250);
+          this.mark("flashboot_normalization_warm_idle", {
+            endpoint_id_hash: sha256(endpoint.id),
+          });
           await this.#options.control.enforceV207EndpointPolicy(
             endpoint.id,
             template.id,
@@ -432,7 +438,6 @@ export class RunPodV207QualificationHarness {
               "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
             );
           }
-          await this.#jobs.confirmDrained();
           this.mark("endpoint_flashboot_normalized", {
             endpoint_id_hash: sha256(endpoint.id),
           });
@@ -449,6 +454,7 @@ export class RunPodV207QualificationHarness {
           );
         }
       }
+      await this.#jobs.confirmDrained();
       await this.#options.control.deleteEndpoint(endpoint.id, this.#guard);
       await this.#options.control.deleteTemplate(template.id);
       this.mark("ambiguous_create_resources_reconciled_and_deleted", {

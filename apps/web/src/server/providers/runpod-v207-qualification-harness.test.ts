@@ -359,6 +359,19 @@ describe("V2-07 qualification harness", () => {
         resourcesVisible = true;
         throw new Error("ambiguous endpoint response");
       }
+      if (path === "/endpoint_01/health") {
+        return jsonResponse({
+          workers: {
+            idle: 1,
+            running: 0,
+            initializing: 0,
+            ready: 1,
+            throttled: 0,
+            unhealthy: 0,
+          },
+          jobs: { inQueue: 0, inProgress: 0 },
+        });
+      }
       if (path === "/endpoints/endpoint_01/update") {
         expect(body?.flashboot).toBe(false);
         flashboot = false;
@@ -381,6 +394,11 @@ describe("V2-07 qualification harness", () => {
           new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
       ),
     ).toHaveLength(1);
+    expect(
+      (await instance.evidence()).events.some(
+        (event) => event.event === "flashboot_normalization_warm_idle",
+      ),
+    ).toBe(true);
     expect(
       (await instance.evidence()).events.some(
         (event) => event.event === "endpoint_flashboot_normalized",
