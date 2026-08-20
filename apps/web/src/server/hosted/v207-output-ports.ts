@@ -42,16 +42,16 @@ function exactKeySet(value: Record<string, unknown>, operation: Operation): bool
         ]
       : operation === "GET"
         ? [
-          "account_id",
-          "checksum_sha256",
-          "content_length",
-          "content_type",
-          "lifetime_seconds",
-          "max_content_length",
-          "object_key",
-          "operation",
-          "schema_version",
-          "workspace_id",
+            "account_id",
+            "checksum_sha256",
+            "content_length",
+            "content_type",
+            "lifetime_seconds",
+            "max_content_length",
+            "object_key",
+            "operation",
+            "schema_version",
+            "workspace_id",
           ]
         : ["account_id", "object_key", "operation", "schema_version", "workspace_id"];
   return Object.keys(value).sort().join(",") === expected.sort().join(",");
@@ -128,7 +128,8 @@ export async function handleV207GeneratedOutputPort(
   }
   try {
     if (operation === "DELETE") {
-      if (!environment.PRIVATE_ARTIFACTS) return json({ error: { code: "V207_DELETE_UNAVAILABLE" } }, 503);
+      if (!environment.PRIVATE_ARTIFACTS)
+        return json({ error: { code: "V207_DELETE_UNAVAILABLE" } }, 503);
       await environment.PRIVATE_ARTIFACTS.delete(value.object_key);
       return json({
         schema_version: "videoforge-v207-generated-output-delete/v1",

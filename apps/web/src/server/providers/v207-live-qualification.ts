@@ -122,7 +122,10 @@ async function deleteGeneratedObject(objectKey: string, nonce: string): Promise<
   });
   if (!response.ok) throw new Error(`V207_OUTPUT_DELETE_${response.status}`);
   const value = (await response.json()) as AnyRecord;
-  if (value.schema_version !== "videoforge-v207-generated-output-delete/v1" || value.deleted !== true) {
+  if (
+    value.schema_version !== "videoforge-v207-generated-output-delete/v1" ||
+    value.deleted !== true
+  ) {
     throw new Error("V207_OUTPUT_DELETE_UNCONFIRMED");
   }
 }
