@@ -39,7 +39,7 @@ describe("V2-07 activation authority", () => {
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
       "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
     );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -73,8 +73,20 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("fails closed for every numeric cap until fresh authority is compiled", () => {
-    for (const cap of ["0.01", "4", "44", "1000"]) {
+  it("accepts only the exact fresh numeric cap", () => {
+    expect(
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_FINITE_CAP_USD: "4",
+      }),
+    ).toEqual({
+      image,
+      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
+      capUsd: 4,
+    });
+    for (const cap of ["", "0.01", "44", "1000"]) {
       expect(() =>
         parseV207ActivationAuthority({
           V207_IMAGE: image,
@@ -82,7 +94,7 @@ describe("V2-07 activation authority", () => {
           V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
           V207_FINITE_CAP_USD: cap,
         }),
-      ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+      ).toThrow(cap === "" ? "V207_FINITE_CAP_REQUIRED" : "V207_FINITE_CAP_MISMATCH");
     }
   });
 

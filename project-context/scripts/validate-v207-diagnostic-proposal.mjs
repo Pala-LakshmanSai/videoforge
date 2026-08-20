@@ -13,6 +13,7 @@ const paths = {
   max1: path.join(evidenceRoot, "staged-config-max1.json"),
   max2: path.join(evidenceRoot, "staged-config-max2.json"),
   proposal: path.join(evidenceRoot, "combined-live-proposal.json"),
+  authority: path.join(evidenceRoot, "approved-authority.json"),
   source: path.join(repoRoot, "workers/image-media/mage_serverless.py"),
   workflow: path.join(repoRoot, ".github/workflows/mage-image.yml"),
   dockerfile: path.join(repoRoot, "workers/image-media/Dockerfile.mage.repair"),
@@ -62,10 +63,12 @@ const definitionBytes = bytes(paths.definition);
 const max1Bytes = bytes(paths.max1);
 const max2Bytes = bytes(paths.max2);
 const proposalBytes = bytes(paths.proposal);
+const authorityBytes = bytes(paths.authority);
 const definition = JSON.parse(definitionBytes.toString("utf8"));
 const max1 = JSON.parse(max1Bytes.toString("utf8"));
 const max2 = JSON.parse(max2Bytes.toString("utf8"));
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
+const authority = JSON.parse(authorityBytes.toString("utf8"));
 
 assert(sha256(definitionBytes) === EXPECTED.definitionDigest, "definition_bytes");
 assert(sha256(max1Bytes) === EXPECTED.max1Digest, "max1_bytes");
@@ -160,6 +163,53 @@ assert(
 );
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "proposal_v208_boundary");
 
+assert(authority.proposal?.sha256 === EXPECTED.proposalDigest, "authority_proposal");
+assert(sha256(proposalBytes) === authority.proposal.sha256, "authority_proposal_bytes");
+assert(authority.approval?.exact_proposal_approved === true, "authority_approval");
+assert(authority.approval?.maximum_cumulative_finite_spend_usd === 4, "authority_cap");
+assert(authority.approval?.fresh_numeric_cap === true, "authority_fresh_cap");
+assert(authority.approval?.historical_cap_reused === false, "authority_no_reuse");
+assert(authority.lineage?.final_image === EXPECTED.image, "authority_image");
+assert(authority.lineage?.repaired_source_commit === EXPECTED.sourceCommit, "authority_source");
+assert(authority.lineage?.repaired_source_sha256 === EXPECTED.sourceDigest, "authority_source_hash");
+assert(authority.lineage?.model === proposal.lineage.model, "authority_model");
+assert(authority.lineage?.model_manifest_sha256 === proposal.lineage.model_manifest_sha256, "authority_model_manifest");
+assert(authority.lineage?.volume_id_sha256 === proposal.lineage.volume_id_sha256, "authority_volume");
+assert(authority.lineage?.volume_size_gb === proposal.lineage.volume_size_gb, "authority_volume_size");
+assert(authority.lineage?.volume_region === proposal.lineage.volume_region, "authority_region");
+assert(authority.lineage?.volume_mount === proposal.lineage.volume_mount, "authority_mount");
+assert(authority.lineage?.model_root === proposal.lineage.model_root, "authority_model_root");
+assert(authority.lineage?.volume_write_policy === proposal.lineage.volume_write_policy, "authority_volume_policy");
+assert(authority.lineage?.parent_image === proposal.lineage.parent_image, "authority_parent");
+assert(authority.lineage?.parent_config_sha256 === proposal.lineage.parent_config_sha256, "authority_parent_config");
+assert(authority.lineage?.image_config_sha256 === EXPECTED.config, "authority_config");
+assert(authority.lineage?.image_layer_sha256 === EXPECTED.layer, "authority_layer");
+assert(authority.lineage?.image_manifest_sha256 === EXPECTED.manifest, "authority_manifest");
+assert(authority.lineage?.publication_tag === EXPECTED.tag, "authority_tag");
+assert(authority.lineage?.image_definition_evidence === "definition.json", "authority_definition_path");
+assert(authority.lineage?.image_definition_sha256 === EXPECTED.definitionDigest, "authority_definition_hash");
+assert(authority.lineage?.initial_config_sha256 === EXPECTED.max1Digest, "authority_max1");
+assert(authority.lineage?.concurrent_reader_config_sha256 === EXPECTED.max2Digest, "authority_max2");
+assert(
+  JSON.stringify(authority.authorized_operations) === JSON.stringify(proposal.proposed_operations_in_order),
+  "authority_operations",
+);
+assert(JSON.stringify(authority.forbidden) === JSON.stringify(proposal.forbidden), "authority_forbidden");
+assert(
+  JSON.stringify(authority.stop_conditions) ===
+    JSON.stringify(proposal.cleanup_rollback_and_stop_conditions.stop_if),
+  "authority_stop_conditions",
+);
+assert(authority.approval?.low_eu_ro_1_availability_approved === true, "authority_low_availability");
+assert(authority.approval?.recurring_retained_volume_charge_usd_per_month === 7, "authority_volume_charge");
+assert(authority.approval?.recurring_charge_is_outside_finite_cap === true, "authority_volume_charge_boundary");
+assert(authority.execution_boundary?.publication_authorized_pending_execution === true, "authority_publication");
+assert(authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true, "authority_mutation");
+assert(authority.execution_boundary?.gpu_use_authorized_pending_execution === true, "authority_gpu");
+assert(authority.execution_boundary?.provider_calls_completed === false, "authority_preexecution");
+assert(authority.execution_boundary?.v2_08_authorized === false, "authority_v208");
+assert(authority.status === "APPROVED_PREEXECUTION", "authority_status");
+
 for (const [label, filePath] of [
   ["workflow", paths.workflow],
   ["activation", paths.activation],
@@ -176,7 +226,7 @@ assert(dockerfile.includes(EXPECTED.parentImage), "dockerfile_parent");
 assert(workflow.includes(EXPECTED.config) && workflow.includes(EXPECTED.layer), "workflow_overlay_identity");
 assert(workflow.includes(EXPECTED.sourceDigest.slice("sha256:".length)), "workflow_source_hash");
 assert(activation.includes(EXPECTED.proposalDigest), "activation_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_cap");
 
 for (const [label, filePath] of [
   ["current_state", paths.currentState],
@@ -185,14 +235,15 @@ for (const [label, filePath] of [
   const value = text(filePath);
   assert(value.includes(EXPECTED.proposalDigest), `${label}_proposal_pointer`);
   assert(value.includes(EXPECTED.image), `${label}_candidate_pointer`);
-  assert(value.includes("fresh numeric"), `${label}_fresh_cap_boundary`);
+  assert(value.includes("approved-authority.json"), `${label}_authority_pointer`);
 }
 
 // Self-check the rejection primitives used above against the exact regressions that invalidated
 // the predecessor proposal: malformed digest length, stale bytes, non-null cap, and old lineage.
 assert(!validDigest(`${EXPECTED.layer}0`), "negative_malformed_digest_not_rejected");
 assert(sha256(Buffer.from("stale")) !== EXPECTED.max1Digest, "negative_stale_stage_not_rejected");
-assert(proposal.user_approval.maximum_cumulative_finite_spend_usd !== 4, "negative_reused_cap_not_rejected");
+assert(proposal.user_approval.maximum_cumulative_finite_spend_usd === null, "negative_proposal_bytes_mutated");
+assert(authority.approval.historical_cap_reused === false, "negative_reused_cap_not_rejected");
 assert(proposal.lineage.final_image !== proposal.lineage.failed_predecessor_image, "negative_old_lineage_not_rejected");
 
 process.stdout.write(

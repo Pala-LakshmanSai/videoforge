@@ -14,7 +14,7 @@ export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
   "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774" as const;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 
 export interface V207ActivationAuthority {
   readonly image: string;
