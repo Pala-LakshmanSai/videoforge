@@ -287,6 +287,30 @@
     "network_volume_rate_usd_per_gb_month": 0.07,
     "provider_mutation": false
   },
+  "latest_read_only_runpod_inventory_refresh": {
+    "checked_at": "2026-08-20T01:07:22.089Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "retained_network_volumes": [
+      {"id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be", "size_gb": 50, "region": "EU-RO-1"},
+      {"id_sha256": "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "size_gb": 50, "region": "EU-RO-1"}
+    ],
+    "selected_secure_rtx4090_rate_usd_per_hour": 0.74,
+    "selected_secure_rtx4090_availability": "HIGH",
+    "provider_mutation": false,
+    "external_spend_usd": 0
+  },
+  "latest_official_rate_refresh": {
+    "checked_at": "2026-08-20T01:07:22.089Z",
+    "serverless_flex_rtx4090_usd_per_hour": 1.1,
+    "secure_rtx4090_usd_per_hour": 0.74,
+    "network_volume_rate_usd_per_gb_month": 0.07,
+    "serverless_pricing_source": "https://docs.runpod.io/serverless/pricing",
+    "gpu_pricing_source": "https://www.runpod.io/pricing",
+    "provider_mutation": false
+  },
   "authority_boundary": {
     "current_mode": "none",
     "old_finite_cap_usd_closed": 4,

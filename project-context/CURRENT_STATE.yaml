@@ -314,9 +314,9 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-19T21:50:19Z"
+  checked_at: "2026-08-20T01:07:22.089Z"
   basis: authenticated_sujal_runpod_redacted_api_inventory_after_disposable_endpoint_cleanup
-  evidence: evidence/acceptance/VF-10-07/2026-08-19-provider-activation-blocked/acceptance.json
+  evidence: evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/acceptance.json
   current_live_refresh_permitted_now: true
   stale_until_current_authorized_read_only_inventory_succeeds: false
   pods: 0
