@@ -26,6 +26,7 @@ from typing import Any, Mapping
 DOCKER_MANIFEST_MEDIA_TYPE = "application/vnd.docker.distribution.manifest.v2+json"
 DOCKER_CONFIG_MEDIA_TYPE = "application/vnd.docker.container.image.v1+json"
 DOCKER_LAYER_MEDIA_TYPE = "application/vnd.docker.image.rootfs.diff.tar.gzip"
+DOCKER_BLOB_CONTENT_TYPE = "application/octet-stream"
 SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 REPOSITORY = re.compile(r"^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+$")
 TAG = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
@@ -147,6 +148,8 @@ class RegistryClient:
             raise PublishError("registry returned an unexpected upload host")
         request = urllib.request.Request(url, data=body or None, method=method)
         request.add_header("Authorization", f"Bearer {self.token}")
+        if content_type == DOCKER_BLOB_CONTENT_TYPE:
+            request.add_header("Content-Length", str(len(body)))
         if content_type:
             request.add_header("Content-Type", content_type)
         if accept:
@@ -160,6 +163,12 @@ class RegistryClient:
             raise PublishError(f"registry {method} request failed with HTTP {exc.code}") from exc
         except (urllib.error.URLError, TimeoutError) as exc:
             raise PublishError(f"registry {method} request could not complete") from exc
+
+    def _upload_completion_url(self, location: str, digest: str) -> str:
+        if not urllib.parse.urlparse(location).scheme:
+            location = urllib.parse.urljoin(self._url("blobs/uploads/"), location)
+        separator = "&" if "?" in location else "?"
+        return f"{location}{separator}digest={urllib.parse.quote(digest, safe=':')}"
 
     def _blob_exists(self, digest: str) -> bool:
         try:
@@ -181,13 +190,18 @@ class RegistryClient:
         location = headers.get("Location")
         if not location:
             raise PublishError("registry upload start omitted Location")
-        if not urllib.parse.urlparse(location).scheme:
-            location = urllib.parse.urljoin(self._url(""), location)
-        separator = "&" if "?" in location else "?"
-        location = f"{location}{separator}digest={urllib.parse.quote(digest, safe=':')}"
-        status, response_headers, _body = self._request_url("PUT", location, body=body)
+        location = self._upload_completion_url(location, digest)
+        try:
+            status, response_headers, _body = self._request_url(
+                "PUT",
+                location,
+                body=body,
+                content_type=DOCKER_BLOB_CONTENT_TYPE,
+            )
+        except PublishError as exc:
+            raise PublishError(f"blob upload completion: {exc}") from exc
         if status != 201:
-            raise PublishError("registry did not complete blob upload")
+            raise PublishError(f"registry blob upload completion returned HTTP {status}")
         returned_digest = response_headers.get("Docker-Content-Digest")
         if returned_digest and returned_digest != digest:
             raise PublishError("registry returned a different blob digest")
@@ -215,7 +229,7 @@ class RegistryClient:
             accept=DOCKER_MANIFEST_MEDIA_TYPE,
         )
         if status != 201:
-            raise PublishError("registry did not accept the image manifest")
+            raise PublishError(f"registry manifest publication returned HTTP {status}")
         returned_digest = headers.get("Docker-Content-Digest")
         if returned_digest and returned_digest != artifacts["manifest_digest"]:
             raise PublishError("registry returned a different manifest digest")

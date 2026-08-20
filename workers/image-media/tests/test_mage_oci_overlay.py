@@ -6,7 +6,9 @@ import sys
 import tarfile
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -267,7 +269,10 @@ class MageOciOverlayTest(unittest.TestCase):
                     if method == "HEAD" and path.startswith("blobs/"):
                         raise PublishError("registry HEAD request failed with HTTP 404")
                     if method == "POST" and path == "blobs/uploads/":
-                        return 202, {"Location": "https://ghcr.io/upload/session"}, b""
+                        # Distribution permits a relative Location.  Resolve
+                        # it against the upload-start URL, preserving the
+                        # registry state query while adding the digest.
+                        return 202, {"Location": "session?_state=opaque"}, b""
                     if method == "PUT" and path.startswith("manifests/"):
                         self.assert_exact(body, artifacts["manifest_bytes"])
                         return 201, {"Docker-Content-Digest": artifacts["manifest_digest"]}, b""
@@ -280,7 +285,19 @@ class MageOciOverlayTest(unittest.TestCase):
                     raise AssertionError((method, path, content_type, accept))
 
                 def _request_url(self, method, url, *, body=b"", content_type=None, accept=None):
-                    digest = url.rsplit("digest=", 1)[1]
+                    parsed = urllib.parse.urlparse(url)
+                    self_outer.assertEqual(
+                        parsed.path,
+                        "/v2/example/repository/blobs/uploads/session",
+                    )
+                    query = urllib.parse.parse_qs(parsed.query)
+                    digest = query["digest"][0]
+                    self_outer.assertEqual(
+                        parsed.query,
+                        "_state=opaque&digest=sha256:" + digest.split(":", 1)[1],
+                    )
+                    self_outer.assertEqual(query["_state"], ["opaque"])
+                    self_outer.assertEqual(content_type, "application/octet-stream")
                     self.uploaded[digest] = body
                     return 201, {"Docker-Content-Digest": digest}, b""
 
@@ -298,6 +315,37 @@ class MageOciOverlayTest(unittest.TestCase):
                     artifacts["layer_digest"]: artifacts["layer_bytes"],
                 },
             )
+
+    def test_blob_completion_request_sets_exact_http_headers(self) -> None:
+        class Response:
+            status = 201
+            headers = {}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b""
+
+        registry = RegistryClient(host="ghcr.io", repository="example/repository", token="hidden")
+        with patch(
+            "publish_mage_oci_overlay.urllib.request.urlopen", return_value=Response()
+        ) as urlopen:
+            registry._request_url(
+                "PUT",
+                "https://ghcr.io/v2/example/repository/blobs/uploads/session?digest=sha256%3A"
+                + "a" * 64,
+                body=b"abc",
+                content_type="application/octet-stream",
+            )
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_method(), "PUT")
+        self.assertEqual(request.headers["Authorization"], "Bearer hidden")
+        self.assertEqual(request.headers["Content-length"], "3")
+        self.assertEqual(request.headers["Content-type"], "application/octet-stream")
 
     def test_candidate_verifier_extracts_and_binds_exact_runtime_payload(self) -> None:
         _, _, config_bytes, manifest_bytes = _fixture()
