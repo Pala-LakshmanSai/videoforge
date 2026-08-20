@@ -9,7 +9,7 @@ const CHECKSUM = /^sha256:[0-9a-f]{64}$/u;
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_OUTPUT_BYTES = 10_737_418_240;
 
-type Operation = "PUT" | "GET";
+type Operation = "PUT" | "GET" | "DELETE";
 
 function json(value: unknown, status = 200): Response {
   return Response.json(value, {
@@ -40,7 +40,8 @@ function exactKeySet(value: Record<string, unknown>, operation: Operation): bool
           "schema_version",
           "workspace_id",
         ]
-      : [
+      : operation === "GET"
+        ? [
           "account_id",
           "checksum_sha256",
           "content_length",
@@ -51,7 +52,8 @@ function exactKeySet(value: Record<string, unknown>, operation: Operation): bool
           "operation",
           "schema_version",
           "workspace_id",
-        ];
+          ]
+        : ["account_id", "object_key", "operation", "schema_version", "workspace_id"];
   return Object.keys(value).sort().join(",") === expected.sort().join(",");
 }
 
@@ -91,8 +93,8 @@ function invalid(code: string): Response {
 /**
  * Short-lived activation seam for the approved V2-07 qualification.  The route is inert unless
  * an operator supplies the exact ephemeral nonce in the Worker environment.  It signs direct R2
- * PUT URLs for generated outputs and checksum-bound GET URLs for post-upload durability checks;
- * it never lists, deletes, or broadens the tenant-owned object namespace.
+ * PUT URLs for generated outputs, checksum-bound GET URLs for post-upload durability checks, and
+ * one exact-key DELETE rollback operation; it never lists or broadens the tenant-owned namespace.
  */
 export async function handleV207GeneratedOutputPort(
   request: Request,
@@ -109,7 +111,9 @@ export async function handleV207GeneratedOutputPort(
   const value = await readJson(request);
   if (!isRecord(value)) return invalid("V207_REQUEST_INVALID");
   const operation = value.operation;
-  if (operation !== "PUT" && operation !== "GET") return invalid("V207_REQUEST_INVALID");
+  if (operation !== "PUT" && operation !== "GET" && operation !== "DELETE") {
+    return invalid("V207_REQUEST_INVALID");
+  }
   if (!exactKeySet(value, operation)) return invalid("V207_REQUEST_INVALID");
   if (
     value.schema_version !== "videoforge-v207-generated-output-port-request/v1" ||
@@ -118,21 +122,33 @@ export async function handleV207GeneratedOutputPort(
     typeof value.workspace_id !== "string" ||
     !ID.test(value.workspace_id) ||
     typeof value.object_key !== "string" ||
-    !objectKeyMatchesScope(value.object_key, value.account_id, value.workspace_id) ||
-    typeof value.content_type !== "string" ||
-    !CONTENT_TYPE.test(value.content_type) ||
-    typeof value.max_content_length !== "number" ||
-    !Number.isSafeInteger(value.max_content_length) ||
-    value.max_content_length < 1 ||
-    value.max_content_length > MAX_OUTPUT_BYTES ||
-    typeof value.lifetime_seconds !== "number" ||
-    !Number.isSafeInteger(value.lifetime_seconds) ||
-    value.lifetime_seconds < 1 ||
-    value.lifetime_seconds > 900
+    !objectKeyMatchesScope(value.object_key, value.account_id, value.workspace_id)
   ) {
     return invalid("V207_REQUEST_INVALID");
   }
   try {
+    if (operation === "DELETE") {
+      if (!environment.PRIVATE_ARTIFACTS) return json({ error: { code: "V207_DELETE_UNAVAILABLE" } }, 503);
+      await environment.PRIVATE_ARTIFACTS.delete(value.object_key);
+      return json({
+        schema_version: "videoforge-v207-generated-output-delete/v1",
+        deleted: true,
+      });
+    }
+    if (
+      typeof value.content_type !== "string" ||
+      !CONTENT_TYPE.test(value.content_type) ||
+      typeof value.max_content_length !== "number" ||
+      !Number.isSafeInteger(value.max_content_length) ||
+      value.max_content_length < 1 ||
+      value.max_content_length > MAX_OUTPUT_BYTES ||
+      typeof value.lifetime_seconds !== "number" ||
+      !Number.isSafeInteger(value.lifetime_seconds) ||
+      value.lifetime_seconds < 1 ||
+      value.lifetime_seconds > 900
+    ) {
+      return invalid("V207_REQUEST_INVALID");
+    }
     const signer = new HostedR2Signer(config.r2);
     if (operation === "PUT") {
       const port = await signer.signGenerated({

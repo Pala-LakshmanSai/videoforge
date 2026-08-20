@@ -164,4 +164,47 @@ describe("V2-07 hosted generated-output port", () => {
       )?.status,
     ).toBe(400);
   });
+
+  it("deletes one exact generated object only with the activation nonce", async () => {
+    const deleted: string[] = [];
+    const runtime = environment();
+    runtime.PRIVATE_ARTIFACTS!.delete = async (key) => {
+      deleted.push(...(Array.isArray(key) ? key : [key]));
+    };
+    const response = await handleV207GeneratedOutputPort(
+      request({
+        schema_version: "videoforge-v207-generated-output-port-request/v1",
+        operation: "DELETE",
+        account_id: "account-a",
+        workspace_id: "workspace-a",
+        object_key: objectKey,
+      }),
+      config,
+      runtime,
+    );
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({
+      schema_version: "videoforge-v207-generated-output-delete/v1",
+      deleted: true,
+    });
+    expect(deleted).toEqual([objectKey]);
+    expect(
+      (
+        await handleV207GeneratedOutputPort(
+          request(
+            {
+              schema_version: "videoforge-v207-generated-output-port-request/v1",
+              operation: "DELETE",
+              account_id: "account-a",
+              workspace_id: "workspace-a",
+              object_key: objectKey,
+            },
+            "b".repeat(64),
+          ),
+          config,
+          runtime,
+        )
+      )?.status,
+    ).toBe(403);
+  });
 });

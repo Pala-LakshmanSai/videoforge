@@ -103,6 +103,36 @@ async function routePort(body: AnyRecord, nonce: string): Promise<AnyRecord> {
   throw new Error("V207_OUTPUT_PORT_UNREACHABLE");
 }
 
+async function deleteGeneratedObject(objectKey: string, nonce: string): Promise<void> {
+  const response = await fetch(ROUTE, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      connection: "close",
+      "x-videoforge-v207-authority": nonce,
+    },
+    body: JSON.stringify({
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "DELETE",
+      account_id: ACCOUNT,
+      workspace_id: WORKSPACE,
+      object_key: objectKey,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error(`V207_OUTPUT_DELETE_${response.status}`);
+  const value = (await response.json()) as AnyRecord;
+  if (value.schema_version !== "videoforge-v207-generated-output-delete/v1" || value.deleted !== true) {
+    throw new Error("V207_OUTPUT_DELETE_UNCONFIRMED");
+  }
+}
+
+async function deleteGeneratedObjects(objectKeys: readonly string[], nonce: string): Promise<void> {
+  for (const objectKey of [...new Set(objectKeys)].sort()) {
+    await deleteGeneratedObject(objectKey, nonce);
+  }
+}
+
 async function billingAmount(apiKey: string): Promise<number> {
   const query = new URLSearchParams({
     bucketSize: "hour",
@@ -503,10 +533,12 @@ async function main(): Promise<void> {
     batches: [],
   };
   let success = false;
+  const generatedObjectKeys: string[] = [];
   try {
     await harness.create();
     console.error("v207:create-ready");
     const cold = await createBatch("v207-cold-20260820", nonce);
+    generatedObjectKeys.push(...cold.objectKeys);
     console.error("v207:cold-ports-ready");
     const coldJob = await harness.dispatchBatch(cold.input);
     console.error("v207:cold-dispatched");
@@ -526,6 +558,7 @@ async function main(): Promise<void> {
     evidence.duplicate_delivery_same_job = true;
     await harness.confirmWarmIdle();
     const warm = await createBatch("v207-warm-20260820", nonce);
+    generatedObjectKeys.push(...warm.objectKeys);
     console.error("v207:warm-ports-ready");
     const warmJob = await harness.dispatchBatch(warm.input);
     const warmResult = await harness.reconcile(warmJob.id);
@@ -544,6 +577,7 @@ async function main(): Promise<void> {
     evidence.concurrent_config_sha256 = await harness.applyConcurrentReaderPolicy();
     const readerA = await createBatch("v207-reader-a-20260820", nonce);
     const readerB = await createBatch("v207-reader-b-20260820", nonce);
+    generatedObjectKeys.push(...readerA.objectKeys, ...readerB.objectKeys);
     const readerJobs = await harness.dispatchConcurrentReaders([readerA.input, readerB.input]);
     const readerResults = await harness.reconcileConcurrentReaders([
       readerJobs[0].id,
@@ -570,6 +604,7 @@ async function main(): Promise<void> {
     await harness.drain();
     await harness.scaleDownToInitial();
     const cancel = await createBatch("v207-cancel-20260820", nonce);
+    generatedObjectKeys.push(...cancel.objectKeys);
     const cancelJob = await harness.dispatchBatch(cancel.input);
     const cancelled = await harness.cancel(cancelJob.id);
     if (cancelled.status !== "CANCELLED") throw new Error("V207_CANCEL_UNCONFIRMED");
@@ -580,6 +615,14 @@ async function main(): Promise<void> {
     success = true;
   } catch (error) {
     evidence.error = error instanceof Error ? error.message : String(error);
+    try {
+      await deleteGeneratedObjects(generatedObjectKeys, nonce);
+      evidence.generated_output_rollback = "CONFIRMED";
+    } catch (rollbackError) {
+      evidence.generated_output_rollback = "UNCERTAIN";
+      evidence.generated_output_rollback_error =
+        rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+    }
     try {
       await harness.cleanup({ deleteIfFailed: true, failed: true });
     } catch (cleanupError) {
