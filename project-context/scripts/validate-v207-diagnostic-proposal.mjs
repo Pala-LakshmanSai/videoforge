@@ -14,6 +14,10 @@ const paths = {
   max2: path.join(evidenceRoot, "staged-config-max2.json"),
   proposal: path.join(evidenceRoot, "combined-live-proposal.json"),
   authority: path.join(evidenceRoot, "approved-authority.json"),
+  failedAttempt: path.join(
+    repoRoot,
+    "project-context/evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-14.json",
+  ),
   source: path.join(repoRoot, "workers/image-media/mage_serverless.py"),
   workflow: path.join(repoRoot, ".github/workflows/mage-image.yml"),
   dockerfile: path.join(repoRoot, "workers/image-media/Dockerfile.mage.repair"),
@@ -64,11 +68,13 @@ const max1Bytes = bytes(paths.max1);
 const max2Bytes = bytes(paths.max2);
 const proposalBytes = bytes(paths.proposal);
 const authorityBytes = bytes(paths.authority);
+const failedAttemptBytes = bytes(paths.failedAttempt);
 const definition = JSON.parse(definitionBytes.toString("utf8"));
 const max1 = JSON.parse(max1Bytes.toString("utf8"));
 const max2 = JSON.parse(max2Bytes.toString("utf8"));
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
 const authority = JSON.parse(authorityBytes.toString("utf8"));
+const failedAttempt = JSON.parse(failedAttemptBytes.toString("utf8"));
 
 assert(sha256(definitionBytes) === EXPECTED.definitionDigest, "definition_bytes");
 assert(sha256(max1Bytes) === EXPECTED.max1Digest, "max1_bytes");
@@ -226,7 +232,21 @@ assert(dockerfile.includes(EXPECTED.parentImage), "dockerfile_parent");
 assert(workflow.includes(EXPECTED.config) && workflow.includes(EXPECTED.layer), "workflow_overlay_identity");
 assert(workflow.includes(EXPECTED.sourceDigest.slice("sha256:".length)), "workflow_source_hash");
 assert(activation.includes(EXPECTED.proposalDigest), "activation_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_cap");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+assert(failedAttempt.attempt === 14, "failed_attempt_number");
+assert(failedAttempt.authority_proposal_sha256 === EXPECTED.proposalDigest, "failed_attempt_proposal");
+assert(failedAttempt.authority_status === "CLOSED_ON_FAILED_PREDISPATCH_STOP", "failed_attempt_authority");
+assert(failedAttempt.stop_reason?.job_dispatch_reached === false, "failed_attempt_no_dispatch");
+assert(failedAttempt.stop_reason?.batch_count === 0, "failed_attempt_no_batch");
+assert(
+  failedAttempt.stop_reason?.code ===
+    "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
+  "failed_attempt_code",
+);
+assert(failedAttempt.cleanup?.final_disposable_resources_absent === true, "failed_cleanup_absence");
+assert(failedAttempt.cleanup?.route_restoration_confirmed === false, "failed_route_uncertainty");
+assert(failedAttempt.qualification_boundaries?.v2_07 === "NOT_QUALIFIED", "failed_gate_open");
+assert(failedAttempt.qualification_boundaries?.v2_08_authorized === false, "failed_v208_boundary");
 
 for (const [label, filePath] of [
   ["current_state", paths.currentState],
@@ -236,7 +256,12 @@ for (const [label, filePath] of [
   assert(value.includes(EXPECTED.proposalDigest), `${label}_proposal_pointer`);
   assert(value.includes(EXPECTED.image), `${label}_candidate_pointer`);
   assert(value.includes("approved-authority.json"), `${label}_authority_pointer`);
+  assert(value.includes("failed-attempt-14.json"), `${label}_failed_attempt_pointer`);
 }
+const currentState = text(paths.currentState);
+assert(currentState.includes("provider_calls_authorized: false"), "current_state_provider_closed");
+assert(currentState.includes("maximum_external_spend_usd: 0"), "current_state_cap_closed");
+assert(currentState.includes("current_goal_authority: none_closed_after_attempt_14"), "current_state_authority_closed");
 
 // Self-check the rejection primitives used above against the exact regressions that invalidated
 // the predecessor proposal: malformed digest length, stale bytes, non-null cap, and old lineage.
