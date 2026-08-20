@@ -4,10 +4,12 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  assertV207DiskHeadroom,
   extractV207WorkerVersionId,
   runV207LiveOrchestration,
   spawnV207Command,
   V207_ORCHESTRATOR_SECRET_NAME,
+  V207_ORCHESTRATOR_MIN_FREE_BYTES,
   type V207CommandRequest,
   type V207CommandResult,
 } from "./v207-live-orchestrator";
@@ -63,6 +65,13 @@ afterEach(async () => {
 });
 
 describe("V2-07 live orchestrator", () => {
+  it("fails before orchestration when local disk cannot safely persist evidence", () => {
+    expect(() => assertV207DiskHeadroom(V207_ORCHESTRATOR_MIN_FREE_BYTES - 1)).toThrow(
+      "V207_LOCAL_DISK_HEADROOM_INSUFFICIENT",
+    );
+    expect(() => assertV207DiskHeadroom(V207_ORCHESTRATOR_MIN_FREE_BYTES)).not.toThrow();
+  });
+
   it("extracts only a Worker version UUID from nested Wrangler status JSON", () => {
     expect(
       extractV207WorkerVersionId({
@@ -151,11 +160,7 @@ describe("V2-07 live orchestrator", () => {
               : { error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } },
         ),
         {
-          status: signerSecretPresent
-            ? activeRouteProbeCalls === 1
-              ? 404
-              : 403
-            : 503,
+          status: signerSecretPresent ? (activeRouteProbeCalls === 1 ? 404 : 403) : 503,
         },
       );
 
@@ -190,9 +195,10 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).not.toContain(RUNPOD_KEY);
     expect((await stat(files.evidencePath)).mode & 0o077).toBe(0);
 
-    const liveRunner = calls.find((call) =>
-      call.args.some((argument) => argument.endsWith("v207-live-qualification.ts")) &&
-      call.env.V207_PREFLIGHT_ONLY !== "1",
+    const liveRunner = calls.find(
+      (call) =>
+        call.args.some((argument) => argument.endsWith("v207-live-qualification.ts")) &&
+        call.env.V207_PREFLIGHT_ONLY !== "1",
     );
     const preflightRunner = calls.find(
       (call) =>
@@ -372,9 +378,9 @@ describe("V2-07 live orchestrator", () => {
       }),
     ).rejects.toMatchObject({ code: "V207_AUTHORITY_PROPAGATION_UNCONFIRMED" });
     expect(signerSecretPresent).toBe(false);
-    expect(calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts")))).toBe(
-      false,
-    );
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
     expect(evidence).not.toContain('"event": "live_preflight_completed"');

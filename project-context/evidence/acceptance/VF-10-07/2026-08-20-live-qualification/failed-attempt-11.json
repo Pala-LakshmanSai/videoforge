@@ -1,0 +1,40 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 11,
+  "started_at": "2026-08-20T09:12:34.784Z",
+  "authority_proposal_sha256": "sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b",
+  "approved_finite_spend_cap_usd": 4,
+  "approved_minimum_availability": "LOW",
+  "result": "STOPPED_LOCALLY_BEFORE_EXTERNAL_MUTATION",
+  "stop_reason": {
+    "code": "V207_LOCAL_DISK_HEADROOM_EXHAUSTED_DURING_EVIDENCE_WRITE",
+    "observed_free_bytes_after_failure_approximate": 130023424,
+    "worker_version_capture_reached": false,
+    "cloudflare_mutation_reached": false,
+    "runpod_mutation_reached": false,
+    "job_dispatch_reached": false,
+    "gpu_worker_allocation_reached": false,
+    "settled_spend_increment_usd": 0
+  },
+  "cleanup": {
+    "runpod_pod_count": 0,
+    "runpod_endpoint_count": 0,
+    "runpod_private_template_count": 0,
+    "runpod_active_worker_count": 0,
+    "intended_volume_count": 2,
+    "cloudflare_worker_mutated": false,
+    "temporary_signer_secret_created": false,
+    "public_post_route_status": 404,
+    "public_post_route_code": "V207_ROUTE_DISABLED"
+  },
+  "repair": {
+    "recoverable_cache_bytes_released_approximate": 2550136832,
+    "post_cleanup_available_bytes": 2666319872,
+    "minimum_orchestrator_free_bytes": 2147483648,
+    "pre_mutation_disk_headroom_fence_added": true,
+    "focused_tests_passed": 38,
+    "web_typecheck_passed": true
+  }
+}

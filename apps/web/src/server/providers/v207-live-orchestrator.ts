@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { chmod, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, statfs, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 
 import { parseV207ActivationAuthority } from "./v207-activation-authority";
@@ -22,6 +22,7 @@ const ACTIVATION_PROPAGATION_WINDOW_MS = 60_000;
 const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const NONCE = /^[a-f0-9]{64}$/u;
 const SOURCE_COMMIT = /^[0-9a-f]{40}$/u;
+export const V207_ORCHESTRATOR_MIN_FREE_BYTES = 2 * 1024 * 1024 * 1024;
 
 type Environment = Readonly<Record<string, string | undefined>>;
 
@@ -64,6 +65,12 @@ export interface V207LiveOrchestratorResult {
   readonly capturedVersionIdHash: string;
   readonly runnerExitCode: number;
   readonly cleanedUp: true;
+}
+
+export function assertV207DiskHeadroom(availableBytes: number): void {
+  if (!Number.isSafeInteger(availableBytes) || availableBytes < V207_ORCHESTRATOR_MIN_FREE_BYTES) {
+    throw new V207LiveOrchestratorError("V207_LOCAL_DISK_HEADROOM_INSUFFICIENT");
+  }
 }
 
 interface JsonRecord {
@@ -732,7 +739,10 @@ export async function runV207LiveOrchestration(
     await writeEvidence(evidenceFile, evidence);
   };
 
-  await record("orchestration_started");
+  const filesystem = await statfs(cwd);
+  const availableBytes = Math.floor(Number(filesystem.bavail) * Number(filesystem.bsize));
+  assertV207DiskHeadroom(availableBytes);
+  await record("orchestration_started", { local_disk_available_bytes: availableBytes });
   const abortController = new AbortController();
   let abortRequested = false;
   const signalHandlers: Array<[NodeJS.Signals, () => void]> = [];
