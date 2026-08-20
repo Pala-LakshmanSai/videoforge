@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:35:00Z",
+  "recorded_at": "2026-08-20T01:39:39Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -345,7 +345,7 @@
     "provider_mutation": false
   },
   "latest_read_only_runpod_inventory_refresh": {
-    "checked_at": "2026-08-20T01:07:22.089Z",
+    "checked_at": "2026-08-20T01:39:39.779Z",
     "pods": 0,
     "endpoints": 0,
     "private_templates": 0,
@@ -360,7 +360,7 @@
     "external_spend_usd": 0
   },
   "latest_official_rate_refresh": {
-    "checked_at": "2026-08-20T01:07:22.089Z",
+    "checked_at": "2026-08-20T01:39:39.779Z",
     "serverless_flex_rtx4090_usd_per_hour": 1.1,
     "secure_rtx4090_usd_per_hour": 0.74,
     "network_volume_rate_usd_per_gb_month": 0.07,
