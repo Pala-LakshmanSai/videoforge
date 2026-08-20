@@ -434,7 +434,9 @@ export class RunPodV207QualificationHarness {
     }
     this.#guard.confirmZero(0, 0);
     await this.assertSpendWithinCap();
+    let mutationPhase: "template" | "endpoint" | "endpoint_health" = "template";
     try {
+      mutationPhase = "template";
       this.#template = await this.#options.control.createServerlessTemplate(
         this.#options.templateName,
         this.#options.imageName,
@@ -444,6 +446,7 @@ export class RunPodV207QualificationHarness {
       );
       console.error("v207:harness-template-created");
       this.mark("template_created", { template_id_hash: this.#template!.idHash });
+      mutationPhase = "endpoint";
       this.#endpoint = await this.#options.control.createScaleZeroEndpoint(
         this.#options.endpointName,
         this.#template!.id,
@@ -453,6 +456,7 @@ export class RunPodV207QualificationHarness {
         true,
       );
       console.error("v207:harness-endpoint-created");
+      mutationPhase = "endpoint_health";
       this.#jobs = new RunPodServerlessJobClient({
         apiKey: this.#options.apiKey,
         endpointId: this.#endpoint!.id,
@@ -520,6 +524,7 @@ export class RunPodV207QualificationHarness {
     } catch (error) {
       const needsResourceReconciliation =
         error instanceof RunPodControlError &&
+        mutationPhase !== "endpoint_health" &&
         [
           "RUNPOD_MUTATION_AMBIGUOUS",
           "RUNPOD_RESPONSE_INVALID",
@@ -541,20 +546,26 @@ export class RunPodV207QualificationHarness {
       }
       // A failed endpoint create can leave disposable resources. Never delete the retained model
       // volume here: it is intentionally outside this harness's mutation surface.
-      if (this.#endpoint && this.#jobs) {
+      let endpointCleanupComplete = this.#endpoint === null;
+      if (this.#endpoint) {
         try {
+          if (!this.#jobs) throw new RunPodControlError("RUNPOD_CLEANUP_UNCERTAIN");
           await this.#jobs.confirmDrained();
           await this.#options.control.deleteEndpoint(this.#endpoint.id, this.#guard);
+          endpointCleanupComplete = true;
         } catch {
+          endpointCleanupComplete = false;
           this.mark("endpoint_cleanup_uncertain");
         }
       }
-      if (this.#template) {
+      if (this.#template && endpointCleanupComplete) {
         try {
           await this.#options.control.deleteTemplate(this.#template!.id);
         } catch {
           this.mark("template_cleanup_uncertain");
         }
+      } else if (this.#template) {
+        this.mark("template_cleanup_deferred_endpoint_uncertain");
       }
       throw error;
     }

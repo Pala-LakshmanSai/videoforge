@@ -423,6 +423,32 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
+  it("does not delete a template when an endpoint drain is uncertain", async () => {
+    const baseFetch = harnessFetch();
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/health")) return new Response("bad-json");
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_RESPONSE_INVALID");
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" && new URL(String(url)).pathname.includes("/endpoints/"),
+      ),
+    ).toHaveLength(0);
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" && new URL(String(url)).pathname.includes("/templates/"),
+      ),
+    ).toHaveLength(0);
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "template_cleanup_deferred_endpoint_uncertain" }),
+    );
+  });
+
   it("requires exact generated-output authority and records a bounded lifecycle", async () => {
     const fetch = harnessFetch();
     const instance = makeHarness(fetch);
