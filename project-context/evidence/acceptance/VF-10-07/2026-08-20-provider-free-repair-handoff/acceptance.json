@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:57:26Z",
+  "recorded_at": "2026-08-20T01:59:59Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -327,6 +327,11 @@
       "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-v207-qualification-harness.test.ts && pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint && pnpm format:check",
       "exit_code": 0,
       "result": "11 harness tests passed; TypeScript, lint, and repository formatting passed"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-control.test.ts src/server/providers/runpod-v207-qualification-harness.test.ts src/server/providers/v207-activation-authority.test.ts src/server/hosted/v207-output-ports.test.ts && pnpm test:workers && node --test packages/control-plane/tests/tenant-artifact-plane.test.mjs",
+      "exit_code": 0,
+      "result": "43 focused web tests, six worker suites (87/40/4/17/31/10), and 10 artifact-plane tests passed"
     }
   ],
   "read_only_runpod_snapshot": {
