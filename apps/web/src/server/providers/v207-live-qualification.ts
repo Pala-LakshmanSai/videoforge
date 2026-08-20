@@ -7,7 +7,12 @@ import {
   RunPodControlClient,
   type RunPodJobResult,
   type RunPodV207Placement,
+  V207_RUNPOD_EXECUTION_TIMEOUT_MS,
+  V207_RUNPOD_GPU,
+  V207_RUNPOD_INIT_TIMEOUT_SECONDS,
   V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+  V207_RUNPOD_REGION,
+  V207_RUNPOD_VOLUME_MOUNT,
 } from "./runpod-control";
 import {
   RunPodV207QualificationHarness,
@@ -260,11 +265,11 @@ async function createBatch(
       container_digest: IMAGE.slice(IMAGE.indexOf("@") + 1),
       model_manifest_sha256: MANIFEST,
       volume_id_sha256: VOLUME,
-      volume_mount: "/runpod-volume",
+      volume_mount: V207_RUNPOD_VOLUME_MOUNT,
       volume_write_policy: "APPLICATION_READ_ONLY",
       scratch_root_policy: "JOB_LOCAL_SCRATCH_OUTSIDE_MODEL_VOLUME",
-      gpu_allowlist: ["NVIDIA GeForce RTX 4090"],
-      region: "EU-RO-1",
+      gpu_allowlist: [V207_RUNPOD_GPU],
+      region: V207_RUNPOD_REGION,
     },
     artifacts: {
       input_manifest_sha256: hashText(`input-${attemptId}`),
@@ -276,8 +281,8 @@ async function createBatch(
       max_items: 64,
       max_input_bytes: 268_435_456,
       max_output_bytes: 2_147_483_648,
-      execution_timeout_seconds: 2_400,
-      init_timeout_seconds: 800,
+      execution_timeout_seconds: V207_RUNPOD_EXECUTION_TIMEOUT_MS / 1_000,
+      init_timeout_seconds: V207_RUNPOD_INIT_TIMEOUT_SECONDS,
     },
     policy: {
       model_download_permitted: false,
@@ -373,7 +378,7 @@ async function verifyBatch(
   if (
     deployment?.container_digest !== IMAGE.slice(IMAGE.indexOf("@") + 1) ||
     deployment?.intended_volume_id_sha256 !== VOLUME ||
-    deployment?.intended_region !== "EU-RO-1" ||
+    deployment?.intended_region !== V207_RUNPOD_REGION ||
     volumeVerification?.mutation_detected !== false ||
     volumeVerification?.cross_mount_detected !== false
   ) {
@@ -483,7 +488,7 @@ async function main(): Promise<void> {
   const control = new RunPodControlClient({ apiKey });
   const placement: RunPodV207Placement = {
     networkVolumeId: VOLUME_ID,
-    dataCenterIds: ["EU-RO-1"],
+    dataCenterIds: [V207_RUNPOD_REGION],
   };
   const harness = new RunPodV207QualificationHarness({
     control,
@@ -493,7 +498,7 @@ async function main(): Promise<void> {
     imageName: IMAGE,
     containerDiskInGb: 120,
     templateEnvironment: {
-      MAGE_MODEL_ROOT: "/runpod-volume",
+      MAGE_MODEL_ROOT: V207_RUNPOD_VOLUME_MOUNT,
       HF_HUB_OFFLINE: "1",
       TRANSFORMERS_OFFLINE: "1",
       DIFFUSERS_OFFLINE: "1",
@@ -501,8 +506,8 @@ async function main(): Promise<void> {
       VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
       VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
       VIDEOFORGE_MAGE_WORKER_TOKEN: randomBytes(32).toString("hex"),
-      VIDEOFORGE_MAGE_GPU_OFFERING_ID: "NVIDIA GeForce RTX 4090",
-      RUNPOD_INIT_TIMEOUT: "800",
+      VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
+      RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
       VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
       VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: receiptSecret.toString("hex"),
     },
@@ -512,14 +517,14 @@ async function main(): Promise<void> {
       workersMax: 1,
       gpuCount: 1,
       idleTimeout: 5,
-      executionTimeoutMs: 2_400_000,
+      executionTimeoutMs: V207_RUNPOD_EXECUTION_TIMEOUT_MS,
     },
     concurrentReaderPolicy: {
       workersMin: 0,
       workersMax: 2,
       gpuCount: 1,
       idleTimeout: 5,
-      executionTimeoutMs: 2_400_000,
+      executionTimeoutMs: V207_RUNPOD_EXECUTION_TIMEOUT_MS,
     },
     finiteSpendCapUsd: finiteCapUsd,
     spendSnapshotUsd,
