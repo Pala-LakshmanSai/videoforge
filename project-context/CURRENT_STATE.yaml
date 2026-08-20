@@ -23,7 +23,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: approve_exact_inline_wire_repaired_image_proposal
-  note: "Attempt 12 failed on the inline wire-shape contract and was fully cleaned. LOW availability and the USD 4 cumulative cap remain user-confirmed, but the old proposal/image authority cannot authorize source a52e7e4 or candidate digest sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3. Exact amended proposal sha256:4c0832da2e6f6b85c7fa64a4356440817c2fa378a24aa89a0e08e46d70ec96d2 is pending explicit approval. Both retained volumes remain separate at USD 7/month; no publication, RunPod mutation, GPU use, volume mutation, public sample publication, V2-08, or successor work is authorized meanwhile."
+  note: "Attempt 12 failed on the inline wire-shape contract and was fully cleaned. LOW availability and the USD 4 cumulative cap remain user-confirmed, but the old proposal/image authority cannot authorize source a52e7e4 or candidate digest sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3. Exact amended proposal sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 is pending explicit approval. Both retained volumes remain separate at USD 7/month; no publication, RunPod mutation, GPU use, volume mutation, public sample publication, V2-08, or successor work is authorized meanwhile."
 
 provider_authority:
   mode: read_only
@@ -164,7 +164,7 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: pending_proposal_sha256_4c0832da2e6f6b85c7fa64a4356440817c2fa378a24aa89a0e08e46d70ec96d2
+  current_authority: pending_proposal_sha256_56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55
   mutation_authorized: false
   gpu_use_authorized: false
   spend_authorized_usd: 0
@@ -181,7 +181,7 @@ repository:
   current_source_head_semantics: exact_unpublished_inline_wire_repaired_mage_image_source_identity_not_documentation_head
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
   current_source_head_note: "Attempt 12 used the historical published image sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497 and stopped on FAILED:MAGE_INLINE_SCOPE_INVALID with zero outputs. Cleanup proves zero Pods/endpoints/templates/workers, two unchanged retained volumes, and the signer route disabled. Source a52e7e4 fixes the exact wire-shape bug. A deterministic one-file overlay derives unpublished linux/amd64 candidate sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3; publication and GPU use await explicit amended proposal approval."
-  v2_07_latest_local_repair: "Source a52e7e4 passes the validated raw INLINE_QUALIFICATION_V1 mapping directly to MageRuntime.generate. Deterministic builder/publisher commit df9b312 binds the exact parent manifest/config and emits config sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e, layer sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e3, and manifest sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3. Publisher validation is provider-free and exact-byte readback is mandatory. Amended proposal sha256:4c0832da2e6f6b85c7fa64a4356440817c2fa378a24aa89a0e08e46d70ec96d2 is pending."
+  v2_07_latest_local_repair: "Source a52e7e4 passes the validated raw INLINE_QUALIFICATION_V1 mapping directly to MageRuntime.generate. Deterministic builder/publisher commit df9b312 binds the exact parent manifest/config and emits config sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e, layer sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e, and manifest sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3. Publisher validation is provider-free and exact-byte readback is mandatory. Amended proposal sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 is pending."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -199,7 +199,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: "Read-only V2-07 preflight only while exact amended proposal sha256:4c0832da2e6f6b85c7fa64a4356440817c2fa378a24aa89a0e08e46d70ec96d2 awaits approval; stop before V2-08."
+  provider_authority_scope: "Read-only V2-07 preflight only while exact amended proposal sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 awaits approval; stop before V2-08."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -399,7 +399,7 @@ recommended_next_task:
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: amended_exact_image_proposal_pending
   task_stage: read_only_preflight
-  current_goal_authority: pending_proposal_sha256_4c0832da2e6f6b85c7fa64a4356440817c2fa378a24aa89a0e08e46d70ec96d2
+  current_goal_authority: pending_proposal_sha256_56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55
   provider_authority:
     mode: read_only
     provider: github+runpod+cloudflare_r2
@@ -463,7 +463,7 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "LOW availability and the USD 4 cumulative cap are user-confirmed. The old exact image authority is not transferable to repaired source a52e7e4. Amended proposal sha256:4c0832da2e6f6b85c7fa64a4356440817c2fa378a24aa89a0e08e46d70ec96d2 awaits explicit changed-image and repeated-operation approval. Existing Mage/SoulX volumes remain retained separately; no publication, RunPod mutation, volume mutation, public sample publication, or V2-08 authority exists."
+  authority_note: "LOW availability and the USD 4 cumulative cap are user-confirmed. The old exact image authority is not transferable to repaired source a52e7e4. Amended proposal sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 awaits explicit changed-image and repeated-operation approval. Existing Mage/SoulX volumes remain retained separately; no publication, RunPod mutation, volume mutation, public sample publication, or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   execution_status: provider_free_exact_candidate_ready
   execution_blocker: exact_amended_image_and_repeated_operations_approval_required

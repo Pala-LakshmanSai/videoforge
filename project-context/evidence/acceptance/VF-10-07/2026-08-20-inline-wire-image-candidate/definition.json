@@ -18,7 +18,7 @@
     "destination": "/opt/videoforge/mage_serverless.py",
     "file_count": 1,
     "layer_diff_id": "sha256:554ac0a35755bfec64d70707512eee81ae57af62d596fbbd49e53e4140dece8d",
-    "layer_sha256": "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e3",
+    "layer_sha256": "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e",
     "layer_size_bytes": 7495,
     "config_sha256": "sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e",
     "config_size_bytes": 15698,

@@ -25,7 +25,7 @@
     "repaired_source_commit": "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c",
     "repaired_source_sha256": "sha256:5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
     "image_config_sha256": "sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e",
-    "image_layer_sha256": "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e3",
+    "image_layer_sha256": "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e",
     "final_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
     "publication_tag": "v2-07-inline-wire-a52e7e4",
     "image_definition_evidence": "definition.json"
