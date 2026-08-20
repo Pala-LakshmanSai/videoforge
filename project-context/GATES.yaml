@@ -116,7 +116,7 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
     last_run: "evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/combined-live-proposal.json"
-    result: NOT_QUALIFIED_diagnostic_candidate_unpublished_exact_authority_recorded_fresh_4_usd_cap_execution_pending
+    result: NOT_QUALIFIED_diagnostic_candidate_published_exact_digest_readback_pass_live_execution_pending
 
   GATE_SERVERLESS_SOULX_001:
     status: open

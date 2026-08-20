@@ -1,0 +1,59 @@
+{
+  "schema_version": "videoforge.v2-07-diagnostic-image-publication/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-20T15:07:35Z",
+  "authority": {
+    "proposal_sha256": "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
+    "record": "approved-authority.json",
+    "maximum_cumulative_finite_spend_usd": 4
+  },
+  "workflow": {
+    "repository": "Pala-LakshmanSai/videoforge",
+    "workflow": ".github/workflows/mage-image.yml",
+    "run_id": 32383853926,
+    "job_id": 96473385523,
+    "head_sha": "26d555b4e08e119089a8d0a75b225891780e1d66",
+    "started_at": "2026-08-20T15:03:36Z",
+    "completed_at": "2026-08-20T15:07:34Z",
+    "conclusion": "success"
+  },
+  "publication": {
+    "tag": "v2-07-diagnostics-79f1232",
+    "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "manifest_sha256": "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
+    "overlay_layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
+    "source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "source_sha256": "sha256:be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68",
+    "platform": "linux/amd64",
+    "hosted_runtime_smoke": "PASS",
+    "exact_candidate_payload_smoke": "PASS",
+    "tag_digest_readback": "PASS",
+    "manifest_body_sha256_readback": "PASS",
+    "config_descriptor_readback": "PASS",
+    "overlay_layer_descriptor_readback": "PASS"
+  },
+  "read_only_preflight": {
+    "checked_at": "2026-08-20T15:03:22.734Z",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "retained_volume_count": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "rtx4090_availability": "LOW",
+    "secure_pod_reference_usd_per_hour": 0.74,
+    "serverless_flex_usd_per_gpu_hour": 1.1
+  },
+  "provider_boundary": {
+    "runpod_mutations": 0,
+    "runpod_gpu_workers_started": 0,
+    "external_spend_usd_for_publication": 0,
+    "retained_volume_mutation": false,
+    "v2_08_authorized": false
+  },
+  "result": "PASS_EXACT_IMAGE_PUBLISHED_LIVE_QUALIFICATION_PENDING"
+}

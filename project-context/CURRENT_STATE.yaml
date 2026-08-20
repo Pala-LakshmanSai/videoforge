@@ -350,7 +350,7 @@ model_runtime_evidence:
     status: diagnostic_endpoint_bound_candidate_unpublished_authority_recorded_pre_execution_attempt13_failed_output_preserved
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
-    immutable_image_publication_state: AUTHORIZED_PENDING_PUBLICATION
+    immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_PASS
     manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
     selected_model_bytes: 13379919280
     retained_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
@@ -360,7 +360,7 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
     v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/combined-live-proposal.json
     v2_07_proposal_sha256: "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774"
-    v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
+    v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
     v2_07_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
@@ -916,6 +916,7 @@ audit_evidence:
   v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/combined-live-proposal.json
   v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
   v2_07_current_candidate_definition: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/definition.json
+  v2_07_current_image_publication: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
   v2_07_historical_amended_proposal: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
   v2_07_historical_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
   v2_07_historical_image_publication: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
