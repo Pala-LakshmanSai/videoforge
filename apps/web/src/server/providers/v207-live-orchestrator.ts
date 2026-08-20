@@ -22,6 +22,9 @@ const MAX_CAPTURE_BYTES = 128 * 1024;
 const ACTIVATION_PROPAGATION_MAX_ATTEMPTS = 30;
 const ACTIVATION_PROPAGATION_DELAY_MS = 2_000;
 const ACTIVATION_PROPAGATION_WINDOW_MS = 60_000;
+const RESTORATION_PROPAGATION_MAX_ATTEMPTS = 60;
+const RESTORATION_PROPAGATION_DELAY_MS = 2_000;
+const RESTORATION_PROPAGATION_WINDOW_MS = 120_000;
 const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const NONCE = /^[a-f0-9]{64}$/u;
 const SOURCE_COMMIT = /^[0-9a-f]{40}$/u;
@@ -457,17 +460,28 @@ async function readRouteFingerprint(
   return { status: response.status, code: error.code };
 }
 
-async function verifyRouteFingerprint(
+async function waitForRouteRestoration(
   fetchImpl: typeof fetch,
   routeUrl: string,
   expected: RouteFingerprint,
+  sleepImpl: (milliseconds: number) => Promise<void>,
   signal?: AbortSignal,
 ): Promise<RouteFingerprint> {
-  const observed = await readRouteFingerprint(fetchImpl, routeUrl, signal);
-  if (observed.status !== expected.status || observed.code !== expected.code) {
-    throw new V207LiveOrchestratorError("V207_ROUTE_RESTORATION_UNCONFIRMED");
+  const deadline = AbortSignal.timeout(RESTORATION_PROPAGATION_WINDOW_MS);
+  const pollSignal = signal === undefined ? deadline : AbortSignal.any([signal, deadline]);
+  for (let attempt = 1; attempt <= RESTORATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const observed = await readRouteFingerprint(fetchImpl, routeUrl, pollSignal);
+      if (observed.status === expected.status && observed.code === expected.code) return observed;
+    } catch {
+      // Cleanup tolerates only bounded transient reachability failure. The exact captured
+      // fingerprint is still required before cleanup can be called confirmed.
+    }
+    if (attempt < RESTORATION_PROPAGATION_MAX_ATTEMPTS) {
+      await sleepImpl(RESTORATION_PROPAGATION_DELAY_MS);
+    }
   }
-  return observed;
+  throw new V207LiveOrchestratorError("V207_ROUTE_RESTORATION_UNCONFIRMED");
 }
 
 async function waitForSignerRouteActivation(
@@ -980,11 +994,11 @@ export async function runV207LiveOrchestration(
           if (preMutationRoute === undefined) {
             cleanupErrors.push("V207_ROUTE_RESTORATION_FINGERPRINT_MISSING");
           } else {
-            const restoredRoute = await verifyRouteFingerprint(
+            const restoredRoute = await waitForRouteRestoration(
               fetchImpl,
               routeUrl,
               preMutationRoute,
-              abortController.signal,
+              sleepImpl,
             );
             await record("restored_route_confirmed", {
               status: restoredRoute.status,

@@ -132,6 +132,8 @@ describe("V2-07 live orchestrator", () => {
     const calls: V207CommandRequest[] = [];
     let signerSecretPresent = false;
     let activeRouteProbeCalls = 0;
+    let rollbackSeen = false;
+    let restorationProbeCalls = 0;
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       calls.push(request);
       if (request.command === "git") return result();
@@ -158,21 +160,29 @@ describe("V2-07 live orchestrator", () => {
         signerSecretPresent = false;
         return result();
       }
+      if (request.args.includes("rollback")) rollbackSeen = true;
       return result();
     };
-    const fetchImpl: typeof fetch = async () =>
-      new Response(
-        JSON.stringify(
-          signerSecretPresent && activeRouteProbeCalls++ === 0
-            ? { error: { code: "V207_ROUTE_DISABLED" } }
-            : signerSecretPresent
-              ? { error: { code: "V207_AUTHORITY_REJECTED" } }
-              : { error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } },
-        ),
-        {
-          status: signerSecretPresent ? (activeRouteProbeCalls === 1 ? 404 : 403) : 503,
-        },
-      );
+    const fetchImpl: typeof fetch = async () => {
+      if (signerSecretPresent && activeRouteProbeCalls++ === 0) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      if (signerSecretPresent) {
+        return new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
+          status: 403,
+        });
+      }
+      if (rollbackSeen && restorationProbeCalls++ < 2) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
+        status: 503,
+      });
+    };
 
     const orchestration = await runV207LiveOrchestration({
       authorityParser: parseFixtureAuthority,
@@ -203,6 +213,7 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"event": "signer_route_activation_confirmed"');
     expect(evidence).toContain('"attempts": 2');
     expect(evidence).toContain('"code": "HOSTED_ROUTE_NOT_COMPOSED"');
+    expect(restorationProbeCalls).toBe(3);
     expect(evidence).not.toContain(NONCE);
     expect(evidence).not.toContain(RUNPOD_KEY);
     expect((await stat(files.evidencePath)).mode & 0o077).toBe(0);

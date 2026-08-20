@@ -17,6 +17,7 @@ import {
   V207_RUNPOD_IDLE_TIMEOUT_SECONDS,
   V207_RUNPOD_INIT_TIMEOUT_SECONDS,
   V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+  V207_RUNPOD_FLASHBOOT,
   V207_RUNPOD_GPU,
   V207_RUNPOD_VOLUME_MOUNT,
   V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
@@ -378,13 +379,12 @@ export class RunPodV207QualificationHarness {
   private endpointIdentityMatches(
     resource: { readonly name: string; readonly raw: RecordValue },
     templateId: string,
-    allowFlashbootTrue = false,
     expectedPolicy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy = this.#options
       .initialPolicy,
   ): boolean {
     // The Serverless endpoint list/detail shape currently omits computeType and dataCenterIds;
     // absence is tolerated only for those provider-unreported fields. Explicit values remain
-    // strict, except for the one-time flashboot=true normalization path owned by reconciliation.
+    // strict, including the provider-observed FlashBoot=true policy pinned after Attempt 14.
     const networkVolumeId = resource.raw.networkVolumeId;
     const networkVolumeIds = resource.raw.networkVolumeIds;
     const volumeBindingMatches =
@@ -404,8 +404,6 @@ export class RunPodV207QualificationHarness {
       value.every((entry, index) => entry === expected[index]);
     const optionalExactStrings = (value: unknown, expected: readonly string[]): boolean =>
       value === undefined || requiredExactStrings(value, expected);
-    const flashbootMatches =
-      resource.raw.flashboot === false || (allowFlashbootTrue && resource.raw.flashboot === true);
     return (
       resource.name === this.#options.endpointName &&
       resource.raw.templateId === templateId &&
@@ -418,7 +416,7 @@ export class RunPodV207QualificationHarness {
       optionalExactStrings(resource.raw.dataCenterIds, [V207_RUNPOD_REGION]) &&
       requiredExactStrings(resource.raw.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
       resource.raw.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
-      flashbootMatches &&
+      resource.raw.flashboot === V207_RUNPOD_FLASHBOOT &&
       resource.raw.idleTimeout === expectedPolicy.idleTimeout &&
       resource.raw.executionTimeoutMs === expectedPolicy.executionTimeoutMs &&
       resource.raw.scalerType === "REQUEST_COUNT" &&
@@ -502,13 +500,8 @@ export class RunPodV207QualificationHarness {
             (status, index) =>
               terminalStatuses.has(status) && status === endpointInventory.workerStatuses[index],
           ) &&
-          this.endpointIdentityMatches(
-            endpointResource,
-            templateResource.id,
-            false,
-            expectedPolicy,
-          ) &&
-          endpointResource.raw.flashboot === false;
+          this.endpointIdentityMatches(endpointResource, templateResource.id, expectedPolicy) &&
+          endpointResource.raw.flashboot === V207_RUNPOD_FLASHBOOT;
         if (!exactTerminalInventory || !endpointInventory) {
           throw new RunPodControlError("RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED");
         }
@@ -588,11 +581,7 @@ export class RunPodV207QualificationHarness {
       if (endpoint.name !== this.#options.endpointName) {
         throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_NAME_DRIFT");
       }
-      const flashbootNeedsNormalization = endpoint.raw.flashboot === true;
-      if (!this.endpointIdentityMatches(endpoint, template.id, flashbootNeedsNormalization)) {
-        if (flashbootNeedsNormalization) {
-          throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_MISMATCH");
-        }
+      if (!this.endpointIdentityMatches(endpoint, template.id)) {
         throw new RunPodControlError("RUNPOD_RESOURCE_RECONCILIATION_IDENTITY_MISMATCH");
       }
       this.#template = { id: template.id, idHash: sha256(template.id) };
@@ -606,91 +595,6 @@ export class RunPodV207QualificationHarness {
         baseUrl: this.#options.baseUrl,
         sleep: this.#options.sleep,
       });
-      if (flashbootNeedsNormalization) {
-        try {
-          // RunPod may create a flashboot worker before returning the endpoint.  A single
-          // ready/idle worker with an empty queue is a safe update baseline; requiring total
-          // zero here would wait for the very worker whose flashboot setting we are disabling.
-          try {
-            await this.#jobs.confirmWarmIdle(300, 250);
-            this.checkAbort();
-            this.mark("flashboot_normalization_warm_idle", {
-              endpoint_id_hash: sha256(endpoint.id),
-            });
-          } catch (error) {
-            if (
-              !(error instanceof RunPodControlError) ||
-              error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED"
-            ) {
-              throw error;
-            }
-            // A provider-created FlashBoot worker can remain throttled indefinitely even with
-            // workersMin=0.  Exact identity plus this separate zero-job/no-running-worker proof
-            // authorizes only the policy correction and cleanup; it never authorizes dispatch.
-            await this.#jobs.confirmQuiescent(12, 250);
-            this.checkAbort();
-            this.mark("flashboot_normalization_quiescent", {
-              endpoint_id_hash: sha256(endpoint.id),
-            });
-          }
-          await this.#options.control.enforceV207EndpointPolicy(
-            endpoint.id,
-            template.id,
-            this.#options.initialPolicy,
-            this.#options.placement,
-            this.#guard,
-            { allowFlashbootPending: true },
-          );
-          this.checkAbort();
-          const sleep =
-            this.#options.sleep ??
-            ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
-          let normalized = false;
-          for (let attempt = 0; attempt < 30; attempt += 1) {
-            const readback = await this.#options.control.inventoryDisposableResources();
-            const readbackEndpoint =
-              readback.endpoints.length === 1 && readback.endpoints[0]?.id === endpoint.id
-                ? readback.endpoints[0]
-                : null;
-            if (
-              readbackEndpoint &&
-              this.endpointIdentityMatches(readbackEndpoint, template.id) &&
-              readbackEndpoint.raw.flashboot === false
-            ) {
-              normalized = true;
-              break;
-            }
-            if (
-              !readbackEndpoint ||
-              !this.endpointIdentityMatches(readbackEndpoint, template.id, true) ||
-              readbackEndpoint.raw.flashboot !== true
-            ) {
-              break;
-            }
-            this.checkAbort();
-            if (attempt + 1 < 30) await sleep(250);
-          }
-          if (!normalized) {
-            throw new RunPodControlError(
-              "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
-            );
-          }
-          this.mark("endpoint_flashboot_normalized", {
-            endpoint_id_hash: sha256(endpoint.id),
-          });
-          return "ADOPTED";
-        } catch (error) {
-          if (
-            error instanceof RunPodControlError &&
-            error.code === "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED"
-          ) {
-            throw error;
-          }
-          throw new RunPodControlError(
-            "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
-          );
-        }
-      }
       await this.#jobs.confirmDrained();
       this.checkAbort();
       await this.#options.control.deleteEndpoint(endpoint.id, this.#guard);
@@ -762,7 +666,7 @@ export class RunPodV207QualificationHarness {
     // Endpoint creation is the first live provider state. Mark it active before accepting
     // the provider's ready-idle baseline; the drain guard otherwise rejects a valid baseline
     // as an impossible transition and waits forever for zero workers. This also reopens the
-    // guard from the zero state after a successful flashboot normalization readback.
+    // guard from the zero state after a previous exact policy transition.
     this.#guard.markActive();
     this.checkAbort();
     try {
@@ -805,7 +709,7 @@ export class RunPodV207QualificationHarness {
         workersMax: this.#options.initialPolicy.workersMax,
         scalerType: "REQUEST_COUNT",
         scalerValue: 1,
-        flashboot: false,
+        flashboot: V207_RUNPOD_FLASHBOOT,
         volumeMount: "/runpod-volume",
         idleTimeout: this.#options.initialPolicy.idleTimeout,
         executionTimeoutMs: this.#options.initialPolicy.executionTimeoutMs,
@@ -1205,7 +1109,7 @@ export class RunPodV207QualificationHarness {
         workersMax: this.#options.concurrentReaderPolicy.workersMax,
         scalerType: "REQUEST_COUNT",
         scalerValue: 1,
-        flashboot: false,
+        flashboot: V207_RUNPOD_FLASHBOOT,
         volumeMount: "/runpod-volume",
         idleTimeout: this.#options.concurrentReaderPolicy.idleTimeout,
         executionTimeoutMs: this.#options.concurrentReaderPolicy.executionTimeoutMs,

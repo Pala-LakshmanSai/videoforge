@@ -20,6 +20,8 @@ export const V207_RUNPOD_EXECUTION_TIMEOUT_MS = 2_400_000 as const;
 export const V207_RUNPOD_INIT_TIMEOUT_SECONDS = 800 as const;
 export const V207_RUNPOD_HANDLER_CONCURRENCY = 1 as const;
 export const V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS = 7_200 as const;
+/** Attempt 14 proved RunPod creates this Serverless endpoint with FlashBoot enabled. */
+export const V207_RUNPOD_FLASHBOOT = true as const;
 /** The published Mage image is CUDA 13.0; do not let provider placement fall back to CUDA 12. */
 export const V207_RUNPOD_MIN_CUDA_VERSION = "13.0" as const;
 
@@ -327,7 +329,7 @@ const v207EndpointBindingMatches = (
     exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) &&
     exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
     value.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
-    value.flashboot === false &&
+    value.flashboot === V207_RUNPOD_FLASHBOOT &&
     volumeBindingMatches &&
     exactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) &&
     value.idleTimeout === expected.policy.idleTimeout &&
@@ -665,7 +667,6 @@ export class RunPodControlClient {
     policy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
     placement: RunPodV207Placement,
     guard: RunPodDrainGuard,
-    options: { readonly allowFlashbootPending?: boolean } = {},
   ): Promise<void> {
     if (!ID.test(endpointId) || !ID.test(templateId)) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
@@ -687,7 +688,7 @@ export class RunPodControlClient {
       gpuTypeIds: [V207_RUNPOD_GPU],
       allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
       minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
-      flashboot: false,
+      flashboot: V207_RUNPOD_FLASHBOOT,
       networkVolumeId: placement.networkVolumeId,
       scalerType: V207_RUNPOD_SCALER,
       scalerValue: V207_RUNPOD_SCALER_VALUE,
@@ -717,8 +718,7 @@ export class RunPodControlClient {
       value.templateId !== templateId ||
       !exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
       value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
-      (value.flashboot !== false &&
-        !(options.allowFlashbootPending === true && value.flashboot === true)) ||
+      value.flashboot !== V207_RUNPOD_FLASHBOOT ||
       value.idleTimeout !== request.idleTimeout ||
       value.executionTimeoutMs !== request.executionTimeoutMs ||
       value.scalerType !== V207_RUNPOD_SCALER ||
@@ -770,7 +770,7 @@ export class RunPodControlClient {
       computeType: "GPU",
       allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
       executionTimeoutMs: policy.executionTimeoutMs,
-      flashboot: false,
+      flashboot: V207_RUNPOD_FLASHBOOT,
       gpuCount: policy.gpuCount,
       gpuTypeIds,
       idleTimeout: policy.idleTimeout,
@@ -808,7 +808,7 @@ export class RunPodControlClient {
       (strictV207 &&
         (!exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
           value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
-          value.flashboot !== false ||
+          value.flashboot !== V207_RUNPOD_FLASHBOOT ||
           value.idleTimeout !== request.idleTimeout ||
           value.executionTimeoutMs !== request.executionTimeoutMs)) ||
       value.workersMin !== 0 ||
@@ -851,7 +851,7 @@ export class RunPodControlClient {
       computeType: "GPU",
       allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
       executionTimeoutMs: policy.executionTimeoutMs,
-      flashboot: false,
+      flashboot: V207_RUNPOD_FLASHBOOT,
       gpuCount: policy.gpuCount,
       gpuTypeIds: [V207_RUNPOD_GPU],
       idleTimeout: policy.idleTimeout,

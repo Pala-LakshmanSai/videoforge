@@ -212,6 +212,7 @@ describe("V2-07 failed-resource cleanup", () => {
     ["volume", { endpointPatch: { networkVolumeId: "other_volume" } }],
     ["region", { endpointPatch: { dataCenterIds: ["US-KS-2"] } }],
     ["policy", { endpointPatch: { workersMax: 2 } }],
+    ["malformed FlashBoot", { endpointPatch: { flashboot: "true" } }],
   ] as const)("fails closed for exact %s drift before mutation", async (_label, options) => {
     const fixture = makeFixture(options);
     await expect(
@@ -235,6 +236,22 @@ describe("V2-07 failed-resource cleanup", () => {
     ],
   ] as const)("does not delete on %s", async (_label, options) => {
     const fixture = makeFixture(options);
+    await expect(
+      cleanupFailedV207Resources({
+        apiKey,
+        control: makeControl(fixture.fetch),
+        fetch: fixture.fetch,
+        sleep: async () => undefined,
+      }),
+    ).rejects.toThrow();
+    expect(fixture.calls.some((call) => call.method === "DELETE")).toBe(false);
+  });
+
+  it("does not delete a FlashBoot endpoint while its attributable worker is active", async () => {
+    const fixture = makeFixture({
+      workerStatus: "RUNNING",
+      endpointPatch: { flashboot: true },
+    });
     await expect(
       cleanupFailedV207Resources({
         apiKey,

@@ -103,7 +103,7 @@ function harnessFetch(
           gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
           allowedCudaVersions: ["13.0"],
           minCudaVersion: "13.0",
-          flashboot: false,
+          flashboot: true,
           networkVolumeId: "volume_01",
           dataCenterIds: ["EU-RO-1"],
           idleTimeout: body.idleTimeout,
@@ -129,7 +129,7 @@ function harnessFetch(
         gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
         allowedCudaVersions: ["13.0"],
         minCudaVersion: "13.0",
-        flashboot: false,
+        flashboot: true,
         networkVolumeId: "volume_01",
         dataCenterIds: ["EU-RO-1"],
         idleTimeout: 5,
@@ -150,7 +150,7 @@ function harnessFetch(
         gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
         allowedCudaVersions: ["13.0"],
         minCudaVersion: "13.0",
-        flashboot: false,
+        flashboot: true,
         networkVolumeId: "volume_01",
         dataCenterIds: ["EU-RO-1"],
         idleTimeout: body.idleTimeout,
@@ -312,7 +312,7 @@ const reconciledEndpoint = {
   gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
   allowedCudaVersions: ["13.0"],
   minCudaVersion: "13.0",
-  flashboot: false,
+  flashboot: true,
   networkVolumeId: "volume_01",
   dataCenterIds: ["EU-RO-1"],
   idleTimeout: 5,
@@ -576,129 +576,10 @@ describe("V2-07 qualification harness", () => {
     },
   );
 
-  it("normalizes one explicit flashboot=true create and continues after false readback", async () => {
+  it("fails closed without policy update or dispatch when FlashBoot differs from the exact true config", async () => {
     const baseFetch = harnessFetch();
     let resourcesVisible = false;
-    let flashboot = true;
-    const providerShapeEndpoint = { ...reconciledEndpoint };
-    delete (providerShapeEndpoint as Record<string, unknown>).computeType;
-    delete (providerShapeEndpoint as Record<string, unknown>).dataCenterIds;
-    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const path = new URL(String(input)).pathname;
-      const body = init?.body === undefined ? null : JSON.parse(String(init.body));
-      if (path === "/endpoints" && init?.method === "POST") {
-        resourcesVisible = true;
-        throw new Error("ambiguous endpoint response");
-      }
-      if (path === "/endpoint_01/health") {
-        return jsonResponse({
-          workers: {
-            idle: 1,
-            running: 0,
-            initializing: 0,
-            ready: 0,
-            throttled: 0,
-            unhealthy: 0,
-          },
-          jobs: { inQueue: 0, inProgress: 0 },
-        });
-      }
-      if (path === "/endpoints/endpoint_01/update") {
-        expect(body?.flashboot).toBe(false);
-        flashboot = false;
-        return jsonResponse({ ...providerShapeEndpoint, flashboot });
-      }
-      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
-        return jsonResponse([{ ...providerShapeEndpoint, flashboot }]);
-      }
-      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
-        return jsonResponse([reconciledTemplate]);
-      }
-      return baseFetch(input, init);
-    });
-    const instance = makeHarness(fetch);
-    await expect(instance.create()).resolves.toBeUndefined();
-    expect(
-      fetch.mock.calls.filter(
-        ([url, init]) =>
-          init?.method === "POST" &&
-          new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
-      ),
-    ).toHaveLength(1);
-    expect(
-      (await instance.evidence()).events.some(
-        (event) => event.event === "flashboot_normalization_warm_idle",
-      ),
-    ).toBe(true);
-    expect(
-      (await instance.evidence()).events.some(
-        (event) => event.event === "endpoint_flashboot_normalized",
-      ),
-    ).toBe(true);
-  });
-
-  it("normalizes flashboot from a zero-job throttled worker without authorizing dispatch", async () => {
-    const baseFetch = harnessFetch();
-    let resourcesVisible = false;
-    let policyUpdated = false;
-    let endpointReadsAfterUpdate = 0;
-    let healthReadsBeforeUpdate = 0;
-    const providerShapeEndpoint = { ...reconciledEndpoint };
-    delete (providerShapeEndpoint as Record<string, unknown>).computeType;
-    delete (providerShapeEndpoint as Record<string, unknown>).dataCenterIds;
-    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const path = new URL(String(input)).pathname;
-      const body = init?.body === undefined ? null : JSON.parse(String(init.body));
-      if (path === "/endpoints" && init?.method === "POST") {
-        resourcesVisible = true;
-        throw new Error("ambiguous endpoint response");
-      }
-      if (path === "/endpoint_01/health") {
-        if (!policyUpdated) healthReadsBeforeUpdate += 1;
-        return jsonResponse({
-          workers: policyUpdated
-            ? { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 0, unhealthy: 0 }
-            : { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 1, unhealthy: 0 },
-          jobs: { inQueue: 0, inProgress: 0 },
-        });
-      }
-      if (path === "/endpoints/endpoint_01/update") {
-        expect(body?.flashboot).toBe(false);
-        policyUpdated = true;
-        return jsonResponse({ ...providerShapeEndpoint, flashboot: true });
-      }
-      if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
-        if (policyUpdated) endpointReadsAfterUpdate += 1;
-        return jsonResponse([
-          {
-            ...providerShapeEndpoint,
-            flashboot: policyUpdated && endpointReadsAfterUpdate >= 2 ? false : true,
-          },
-        ]);
-      }
-      if (path === "/templates" && init?.method === undefined && resourcesVisible) {
-        return jsonResponse([reconciledTemplate]);
-      }
-      return baseFetch(input, init);
-    });
-    const instance = makeHarness(fetch);
-    await expect(instance.create()).resolves.toBeUndefined();
-    expect(healthReadsBeforeUpdate).toBeGreaterThanOrEqual(301);
-    expect(endpointReadsAfterUpdate).toBe(2);
-    expect(
-      (await instance.evidence()).events.some(
-        (event) => event.event === "flashboot_normalization_quiescent",
-      ),
-    ).toBe(true);
-    expect(
-      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
-    ).toHaveLength(0);
-  });
-
-  it("fails closed when flashboot normalization readback stays enabled", async () => {
-    const baseFetch = harnessFetch();
-    let resourcesVisible = false;
-    const driftedEndpoint = { ...reconciledEndpoint, flashboot: true };
+    const driftedEndpoint = { ...reconciledEndpoint, flashboot: false };
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       if (path === "/endpoints" && init?.method === "POST") {
@@ -715,16 +596,18 @@ describe("V2-07 qualification harness", () => {
     });
     const instance = makeHarness(fetch);
     await expect(instance.create()).rejects.toThrow(
-      "RUNPOD_RESOURCE_RECONCILIATION_FLASHBOOT_NORMALIZATION_UNCONFIRMED",
+      "RUNPOD_RESOURCE_RECONCILIATION_IDENTITY_MISMATCH",
     );
-    expect((await instance.evidence()).endpointIdHash).toMatch(/^sha256:/u);
     expect(
       fetch.mock.calls.filter(
         ([url, init]) =>
           init?.method === "POST" &&
           new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
     expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
   });
 
@@ -1153,7 +1036,7 @@ describe("V2-07 qualification harness", () => {
     ["extra template", { extraTemplate: true }],
     ["worker-limit drift", { endpointDrift: { workersMax: 2 } }],
     ["missing worker records", { endpointDrift: { workers: undefined } }],
-    ["flashboot drift", { endpointDrift: { flashboot: true } }],
+    ["flashboot drift", { endpointDrift: { flashboot: false } }],
     ["GPU drift", { endpointDrift: { gpuTypeIds: ["NVIDIA A40"] } }],
   ] as const)("rejects terminal scale-zero proof with %s", async (_label, options) => {
     const fetch = terminalScaleZeroFetch(options);
