@@ -1,0 +1,74 @@
+{
+  "schema_version": "videoforge.v2-07-provider-free-diagnostic-candidate-handoff/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-20T14:22:30.000Z",
+  "result": "PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "qualification_status": "NOT_QUALIFIED",
+  "provider_boundary": {
+    "provider_calls": false,
+    "provider_mutations": false,
+    "image_publication": false,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "retained_volume_mutation": false,
+    "v2_08_authorized": false
+  },
+  "candidate": {
+    "source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "source_sha256": "sha256:be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "publication_state": "NOT_AUTHORIZED_NOT_PUBLISHED",
+    "definition_sha256": "sha256:aea8bda03ee085d82c446c250bcb4151070a099cf49daae64fbcb8673316fa70",
+    "staged_max1_sha256": "sha256:b3234e068316916cea126b4d48898f09e222d5ced876fa1e1599a9b8944e6e91",
+    "staged_max2_sha256": "sha256:1fa59927098ac1468d9d900246fc00b4dab96b4bb98d7fdba4404e0a718354c3",
+    "proposal_sha256": "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
+    "proposal_approved": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "runtime_authority_gate": "CLOSED_FRESH_AUTHORITY_REQUIRED"
+  },
+  "local_verification": {
+    "diagnostic_proposal_validator": "PASS_WITH_NEGATIVE_INVARIANTS",
+    "historical_amended_proposal_validator": "PASS_HISTORICAL_BYTES_PRESERVED",
+    "focused_web_tests": {
+      "result": "PASS",
+      "files": 5,
+      "tests": 122
+    },
+    "worker_tests": {
+      "result": "PASS",
+      "tests": 208
+    },
+    "web_typecheck": "PASS",
+    "web_lint": "PASS",
+    "context_validation": "PASS_254_JSON_122_REFERENCES",
+    "secret_scan": "PASS_1234_TRACKED_FILES",
+    "format_check": "PASS",
+    "git_diff_check": "PASS",
+    "canonical_verify": {
+      "result": "ENVIRONMENT_LIMITED_NOT_PRODUCT_FAILURE",
+      "cloudflare_runtime_parity": "PASS_1_TEST",
+      "build_lint_typecheck_tasks": "PASS_21_OF_21",
+      "web_tests_before_disk_failure": "481_PASS_1_SKIP",
+      "failed_unrelated_tests": 4,
+      "failed_surfaces": [
+        "V2-05 runtime-backed queue routes",
+        "V2-05 application runtime cutover"
+      ],
+      "failure": "PGlite could not extend file because the system data volume had no space",
+      "serial_external_temp_retry": "TERMINATED_AFTER_NO_OUTPUT",
+      "v2_07_focused_tests_remain_green": true
+    }
+  },
+  "preserved_live_truth": {
+    "attempt_13_evidence": "../2026-08-20-live-qualification/failed-attempt-13.json",
+    "accepted_durable_batches": 0,
+    "runpod_cleanup": "COMPLETE_ZERO_PODS_ENDPOINTS_PRIVATE_TEMPLATES_ACTIVE_WORKERS",
+    "cloudflare_route_restoration": "UNCONFIRMED_503_HOSTED_ROUTE_NOT_COMPOSED",
+    "post_run_volume_content_hash": "UNPROVEN",
+    "post_run_model_volume_write_absence": "UNPROVEN",
+    "observed_cumulative_endpoint_spend_usd": 0.10264860291499645,
+    "historical_four_dollar_authority": "CLOSED_DO_NOT_REUSE"
+  },
+  "next_boundary": "Ask once for explicit approval of the exact fresh proposal hash and a fresh positive numeric maximum cumulative finite spend. Do not publish, mutate provider state, use GPU, or spend before both are recorded."
+}

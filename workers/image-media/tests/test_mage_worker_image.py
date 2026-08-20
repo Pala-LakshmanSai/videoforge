@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 REPAIR_DOCKERFILE = ROOT / "Dockerfile.mage.repair"
-REPAIRED_SOURCE_COMMIT = "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c"
+REPAIRED_SOURCE_COMMIT = "79f123268b6ade640c02dd20616a89d16b43a5e6"
 BASE_IMMUTABLE_IMAGE = (
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
     "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
@@ -25,7 +25,7 @@ REPAIR_RUNTIME_FILES = (
     ),
 )
 REPAIR_SOURCE_HASHES = {
-    "workers/image-media/mage_serverless.py": "5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
+    "workers/image-media/mage_serverless.py": "be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68",
 }
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
@@ -146,7 +146,7 @@ class MageWorkerImageTest(unittest.TestCase):
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn('expected_source_commit="a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c"', workflow)
+        self.assertIn(f'expected_source_commit="{REPAIRED_SOURCE_COMMIT}"', workflow)
         self.assertIn("expected_source_hashes=(", workflow)
         for source, expected_hash in REPAIR_SOURCE_HASHES.items():
             source_path = ROOT.parents[1] / source
@@ -157,7 +157,7 @@ class MageWorkerImageTest(unittest.TestCase):
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        expected = "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3"
+        expected = "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
         self.assertIn(f'expected_manifest_digest="{expected}"', workflow)
         self.assertIn("build_mage_oci_overlay.py", workflow)
         self.assertIn("publish_mage_oci_overlay.py", workflow)

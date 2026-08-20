@@ -1,0 +1,56 @@
+{
+  "schema_version": "videoforge.v2-07-deterministic-image-definition/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-20T14:22:30.000Z",
+  "provider_mutation": false,
+  "publication": false,
+  "gpu_use": false,
+  "external_spend_usd": 0,
+  "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+  "parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+  "source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+  "source_path": "workers/image-media/mage_serverless.py",
+  "source_sha256": "sha256:be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68",
+  "created": "2026-08-20T14:22:30Z",
+  "overlay": {
+    "kind": "source-only-overlay-v2",
+    "destination": "/opt/videoforge/mage_serverless.py",
+    "file_count": 1,
+    "layer_diff_id": "sha256:cd6fb8381533d93d1b933d932bbab4f3e38bc814e48412ac50ad5d82a1c24db7",
+    "layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
+    "layer_size_bytes": 7613,
+    "config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
+    "config_size_bytes": 15698,
+    "manifest_sha256": "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+    "os": "linux",
+    "architecture": "amd64"
+  },
+  "candidate_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+  "candidate_tag": "v2-07-diagnostics-79f1232",
+  "diagnostic_repairs": [
+    "bounded redacted provider and worker failure diagnostics",
+    "stable unexpected handler failure code without exception text",
+    "fail-closed exact endpoint identity hash binding before dispatch"
+  ],
+  "derivation": {
+    "builder": "workers/image-media/build_mage_oci_overlay.py",
+    "publisher": "workers/image-media/publish_mage_oci_overlay.py",
+    "parent_manifest_bound_to_parent_digest": true,
+    "parent_config_bound_to_manifest_descriptor": true,
+    "base_layer_descriptors_preserved": true,
+    "publisher_default_mode": "VALIDATE_ONLY_NO_NETWORK",
+    "publisher_mutation_switch": "--publish",
+    "publisher_refuses_existing_tag": true,
+    "publisher_exact_manifest_readback_required": true
+  },
+  "independent_reproduction": {
+    "reproduced_at": "2026-08-20T14:22:30.000Z",
+    "manifest_sha256_match": true,
+    "config_sha256_match": true,
+    "layer_sha256_match": true,
+    "publisher_validation_only_pass": true
+  },
+  "publication_state": "NOT_AUTHORIZED_NOT_PUBLISHED"
+}

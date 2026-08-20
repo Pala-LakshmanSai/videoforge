@@ -1,29 +1,29 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-20T13:53:54Z"
+updated_at: "2026-08-20T14:22:30Z"
 
-phase: serverless_v2_v2_07_failed_output_authority_closed
+phase: serverless_v2_v2_07_diagnostic_candidate_pending_fresh_authority
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
 current_wave: v2_07_bounded_qualification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_requalification_handoff
+task_stage: provider_free_candidate_ready
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_failed_output_authority_closed
+  mode: v2_07_diagnostic_candidate_pending_fresh_authority
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: provider_free_requalification_handoff
-  note: "Attempt 13 reached provider terminal COMPLETED but strict output verification found zero accepted durable batches; the exact amended authority sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 is closed on the failed-output stop. Historical authority binding: approved_proposal_sha256_56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55. Amended proposal sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 remains preserved with approved-authority.json. The exact candidate image publication remains committed evidence. The orchestrator restored the exact Worker version and deleted the signer secret; RunPod endpoint/template cleanup succeeded, while Cloudflare route-fingerprint restoration remained unconfirmed. Fresh exact proposal and fresh numeric finite cap are required before another paid run. Both retained volumes remain retained separately at USD 7/month; their post-run content hash and model-volume write absence are unproven. No V2-08 or successor work is authorized."
+  v2_07_action: provider_free_diagnostic_candidate_handoff
+  note: "Attempt 13 reached provider terminal COMPLETED but strict output verification accepted zero durable batches; the exact amended authority sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 is closed and preserved historically with approved-authority.json. Source 79f123268b6ade640c02dd20616a89d16b43a5e6 preserves bounded redacted failures and binds sha256(raw endpoint id) through full PATCH plus exact GET readback before dispatch. Its provider-free deterministic candidate is ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5 and remains unpublished. Fresh proposal sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774 has no approval and no cap; fresh exact approval plus a fresh numeric maximum cumulative finite spend are required. The application authority gate is compiled closed. RunPod cleanup remains complete, Cloudflare route-fingerprint restoration remains unconfirmed, and both retained volumes remain retained at USD 7/month separately with post-run content hash and write absence unproven. No V2-08 or successor work is authorized."
 
 provider_authority:
   mode: none
@@ -144,11 +144,11 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c"
-  current_source_head_semantics: exact_published_inline_wire_repaired_mage_image_source_identity_not_documentation_head
+  current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
+  current_source_head_semantics: provider_free_diagnostic_handler_and_endpoint_identity_candidate_source_not_publication_or_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt 13 used the exact published candidate sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3 and reached provider terminal COMPLETED, but strict output verification accepted zero durable batches. RunPod identity-locked cleanup deleted the disposable endpoint/template and final inventory was zero Pods/endpoints/templates/workers; both retained volumes were observed by identity, size, and region only, so post-run content hash and model-volume write absence remain unproven. The exact Worker version was restored and the signer secret was absent, while Cloudflare route-fingerprint restoration remained unconfirmed. The amended proposal and USD 4 authority are closed; fresh exact proposal and numeric cap are required before another paid run."
-  v2_07_latest_local_repair: "Source a52e7e4 passes the validated raw INLINE_QUALIFICATION_V1 mapping directly to MageRuntime.generate. Deterministic builder/publisher commit df9b312 binds the exact parent manifest/config and emits config sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e, layer sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e, and manifest sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3. Exact publication is committed and read back. Attempt 13 reached terminal COMPLETED but strict output verification accepted zero durable batches; the amended proposal sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 and its USD 4 authority are closed."
+  current_source_head_note: "Attempt 13 used published predecessor sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3 and accepted zero durable batches. RunPod identity-locked cleanup deleted the disposable endpoint/template and final inventory was zero Pods/endpoints/templates/workers; both retained volumes were observed by identity, size, and region only, so post-run content hash and model-volume write absence remain unproven. The exact Worker version was restored and the signer secret was absent, while Cloudflare route-fingerprint restoration remained unconfirmed. Source 79f1232 adds bounded diagnostic preservation and fail-closed endpoint identity PATCH plus GET binding; the new deterministic candidate sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5 is provider-free and unpublished. Fresh exact proposal and fresh numeric cap are required before another paid run."
+  v2_07_latest_local_repair: "Source 79f123268b6ade640c02dd20616a89d16b43a5e6 keeps exception text and provider diagnostics bounded/redacted, returns stable unexpected handler failure codes, and requires exact endpoint identity hash binding through full environment PATCH and GET readback before any dispatch. Deterministic reproduction emits config sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de, layer sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38, and manifest sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5. Candidate publication is false. Proposal sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774 is pending fresh exact approval and a fresh numeric finite cap; runtime activation fails closed until then."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -166,7 +166,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Provider-free requalification handoff only. The prior exact amended authority sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 is closed after failed strict output verification; obtain a fresh exact proposal and fresh numeric finite cap before another paid run, and stop before V2-08."
+  provider_authority_scope: "Provider-free diagnostic candidate handoff only. The prior exact amended authority sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55 is closed. Proposal sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774 is unapproved with a null cap; obtain fresh exact approval and a fresh numeric finite cap before publication or provider execution, and stop before V2-08."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -282,9 +282,10 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: exact_candidate_published_attempt13_failed_strict_output_not_qualified_runpod_cleanup_complete_route_restoration_unconfirmed
+    status: diagnostic_endpoint_bound_candidate_unpublished_pending_fresh_authority_attempt13_failed_output_preserved
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
-    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3"
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
+    immutable_image_publication_state: NOT_AUTHORIZED_NOT_PUBLISHED
     manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
     selected_model_bytes: 13379919280
     retained_volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
@@ -292,9 +293,11 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
-    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
+    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/combined-live-proposal.json
+    v2_07_proposal_sha256: "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774"
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
-    v2_07_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
+    v2_07_authority: null
+    v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-13.json
     v2_07_observed_cumulative_endpoint_spend_usd: 0.10264860291499645
     v2_07_attempt_13_increment_usd: 0.041994297411292796
@@ -346,7 +349,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "Attempt 13 final identity-locked failed cleanup observed zero Pods, endpoints, private templates, and active Serverless workers; both intended 50 GB EU-RO-1 volumes remained present by identity, size, and region. Their post-run content hash and model-volume write absence are unproven. The exact Worker version was restored and the temporary signer secret was absent. Cloudflare route-fingerprint restoration remained unconfirmed because the final independent route probe returned HTTP 503 HOSTED_ROUTE_NOT_COMPOSED. Observed cumulative endpoint billing is USD 0.10264860291499645, including USD 0.041994297411292796 for attempt 13 from the USD 0.060654305503703654 baseline, below the closed USD 4 authority. Fresh exact proposal and fresh numeric cap are required before another paid run; V2-08 remains forbidden."
+  note: "Attempt 13 final identity-locked failed cleanup observed zero Pods, endpoints, private templates, and active Serverless workers; both intended 50 GB EU-RO-1 volumes remained present by identity, size, and region. Their post-run content hash and model-volume write absence are unproven. The exact Worker version was restored and the temporary signer secret was absent. Cloudflare route-fingerprint restoration remained unconfirmed because the final independent route probe returned HTTP 503 HOSTED_ROUTE_NOT_COMPOSED. Observed cumulative endpoint billing is USD 0.10264860291499645, including USD 0.041994297411292796 for attempt 13 from the USD 0.060654305503703654 baseline, below the now-closed USD 4 authority. Provider-free proposal sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774 binds the unpublished diagnostic candidate but has no approval and no numeric cap. Fresh exact approval and fresh numeric maximum cumulative finite spend are required; V2-08 remains forbidden."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -409,7 +412,7 @@ recommended_next_task:
   execution_blocker: fresh_exact_proposal_and_numeric_cap_required_after_failed_output
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt13_failed_strict_output_authority_closed
+  state: v2_06_complete_green_independently_audited_v2_07_diagnostic_candidate_provider_free_only_pending_fresh_authority
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"

@@ -3,7 +3,10 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { chmod, lstat, mkdir, readFile, statfs, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 
-import { parseV207ActivationAuthority } from "./v207-activation-authority";
+import {
+  parseV207ActivationAuthority,
+  type V207ActivationAuthority,
+} from "./v207-activation-authority";
 
 export const V207_ORCHESTRATOR_WORKER_NAME = "videoforge-v2-06-staging" as const;
 export const V207_ORCHESTRATOR_SECRET_NAME = "VIDEOFORGE_V207_AUTHORITY_NONCE" as const;
@@ -47,6 +50,8 @@ export type V207CommandRunner = (request: V207CommandRequest) => Promise<V207Com
 export interface V207LiveOrchestratorOptions {
   /** Test-only dependency injection; production uses process.env. */
   readonly environment?: Environment;
+  /** Test-only authority injection; production always parses the compiled exact authority. */
+  readonly authorityParser?: (environment: Environment) => V207ActivationAuthority;
   readonly cwd?: string;
   readonly configPath?: string;
   readonly routeUrl?: string;
@@ -698,7 +703,7 @@ export async function runV207LiveOrchestration(
   options: V207LiveOrchestratorOptions = {},
 ): Promise<V207LiveOrchestratorResult> {
   const environment = options.environment ?? process.env;
-  const authority = parseV207ActivationAuthority(environment);
+  const authority = (options.authorityParser ?? parseV207ActivationAuthority)(environment);
   const sourceCommit = environment.V207_IMAGE_SOURCE_COMMIT ?? "";
   if (!SOURCE_COMMIT.test(sourceCommit)) {
     throw new V207LiveOrchestratorError("V207_IMAGE_SOURCE_COMMIT_MISSING");

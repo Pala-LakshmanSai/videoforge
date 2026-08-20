@@ -14,13 +14,18 @@ import {
   type V207CommandResult,
 } from "./v207-live-orchestrator";
 import {
-  V207_AMENDED_PROPOSAL_SHA256,
+  V207_PENDING_PROPOSAL_SHA256,
   V207_REPAIRED_IMAGE,
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
 } from "./v207-activation-authority";
 
 const IMAGE = V207_REPAIRED_IMAGE;
 const SOURCE_COMMIT = V207_REPAIRED_IMAGE_SOURCE_COMMIT;
+const parseFixtureAuthority = () => ({
+  image: IMAGE,
+  proposalSha256: V207_PENDING_PROPOSAL_SHA256,
+  capUsd: 4,
+});
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGED_VERSION_ID = "22222222-2222-4222-8222-222222222222";
 const DEPLOYMENT_ID = "33333333-3333-4333-8333-333333333333";
@@ -57,7 +62,7 @@ async function fixture() {
     environment: {
       V207_IMAGE: IMAGE,
       V207_IMAGE_SOURCE_COMMIT: SOURCE_COMMIT,
-      V207_PROPOSAL_SHA256: V207_AMENDED_PROPOSAL_SHA256,
+      V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
       V207_FINITE_CAP_USD: "4",
       V207_WRANGLER_CONFIG: configPath,
       RUNPOD_KEY,
@@ -170,6 +175,7 @@ describe("V2-07 live orchestrator", () => {
       );
 
     const orchestration = await runV207LiveOrchestration({
+      authorityParser: parseFixtureAuthority,
       environment: files.environment,
       cwd: resolve(process.cwd(), "../.."),
       configPath: files.configPath,
@@ -222,8 +228,8 @@ describe("V2-07 live orchestrator", () => {
     expect(liveRunner?.args).toEqual(["src/server/providers/v207-live-qualification.ts"]);
     expect(liveRunner?.cwd).toBe(join(resolve(process.cwd(), "../.."), "apps/web"));
     expect(liveRunner?.env.V207_AUTHORITY_NONCE).toBe(NONCE);
-    expect(liveRunner?.env.V207_PROPOSAL_SHA256).toBe(V207_AMENDED_PROPOSAL_SHA256);
-    expect(preflightRunner?.env.V207_PROPOSAL_SHA256).toBe(V207_AMENDED_PROPOSAL_SHA256);
+    expect(liveRunner?.env.V207_PROPOSAL_SHA256).toBe(V207_PENDING_PROPOSAL_SHA256);
+    expect(preflightRunner?.env.V207_PROPOSAL_SHA256).toBe(V207_PENDING_PROPOSAL_SHA256);
     expect(liveRunner?.env.RUNPOD_KEY).toBe(RUNPOD_KEY);
     expect(liveRunner?.env.V207_PREFLIGHT_ONLY).toBeUndefined();
     expect(calls.indexOf(preflightRunner as V207CommandRequest)).toBeLessThan(
@@ -312,6 +318,7 @@ describe("V2-07 live orchestrator", () => {
 
     await expect(
       runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
         environment: files.environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -375,6 +382,7 @@ describe("V2-07 live orchestrator", () => {
 
     await expect(
       runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
         environment: files.environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -445,6 +453,7 @@ describe("V2-07 live orchestrator", () => {
     delete (environment as { RUNPOD_KEY?: string }).RUNPOD_KEY;
     await expect(
       runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
         environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -470,6 +479,7 @@ describe("V2-07 live orchestrator", () => {
     const calls: V207CommandRequest[] = [];
     await expect(
       runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
         environment: files.environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -520,6 +530,7 @@ describe("V2-07 live orchestrator", () => {
     };
     await expect(
       runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
         environment: files.environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -583,6 +594,7 @@ describe("V2-07 live orchestrator", () => {
       );
     await expect(
       runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
         environment: files.environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,

@@ -6,10 +6,10 @@ FROM ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee09
 
 LABEL org.opencontainers.image.title="VideoForge Mage Serverless Worker (repaired)" \
       org.opencontainers.image.version="v2-07-serverless-repair" \
-      org.opencontainers.image.revision="a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c" \
+      org.opencontainers.image.revision="79f123268b6ade640c02dd20616a89d16b43a5e6" \
       org.opencontainers.image.base.name="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07" \
       org.opencontainers.image.base.digest="sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497" \
-      ai.videoforge.source-commit="a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c" \
+      ai.videoforge.source-commit="79f123268b6ade640c02dd20616a89d16b43a5e6" \
       ai.videoforge.repair.kind="source-only-overlay" \
       ai.videoforge.base-image="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
 

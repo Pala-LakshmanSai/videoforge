@@ -24,6 +24,7 @@ import { loadSujalRunPodApiKeyFromKeychain, SUJAL_RUNPOD_ACCOUNT_ID_SHA256 } fro
 import { assertSujalRunPodAccount } from "./runpod-account";
 import {
   parseV207ActivationAuthority,
+  V207_REPAIRED_IMAGE,
   V207_REPAIRED_IMAGE_BASE_DIGEST,
   V207_REPAIRED_IMAGE_CONFIG_DIGEST,
   V207_REPAIRED_IMAGE_LAYER_DIGEST,
@@ -80,9 +81,8 @@ const BILLING_START = "2026-08-20T00:00:00.000Z";
 const IMAGE_CONFIG_DIGEST = V207_REPAIRED_IMAGE_CONFIG_DIGEST;
 const IMAGE_LAYER_DIGEST = V207_REPAIRED_IMAGE_LAYER_DIGEST;
 const IMAGE_BASE_DIGEST = V207_REPAIRED_IMAGE_BASE_DIGEST;
-const ACTIVATION = parseV207ActivationAuthority(process.env);
-const IMAGE = ACTIVATION.image;
-const finiteCapUsd = ACTIVATION.capUsd;
+let IMAGE: string = V207_REPAIRED_IMAGE;
+let finiteCapUsd = 0;
 
 type AnyRecord = Record<string, any>;
 
@@ -1139,6 +1139,9 @@ async function verifyBatchWithDiagnostic(
 }
 
 async function main(): Promise<void> {
+  const activation = parseV207ActivationAuthority(process.env);
+  IMAGE = activation.image;
+  finiteCapUsd = activation.capUsd;
   const cancellation = createV207Cancellation();
   const removeSignalHandlers = installV207SignalHandlers(cancellation);
   try {

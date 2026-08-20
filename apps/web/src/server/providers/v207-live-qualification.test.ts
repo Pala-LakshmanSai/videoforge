@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
-  V207_AMENDED_PROPOSAL_SHA256,
+  V207_PENDING_PROPOSAL_SHA256,
   V207_REPAIRED_IMAGE,
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
 } from "./v207-activation-authority";
@@ -15,7 +15,7 @@ const previousV207Proposal = process.env.V207_PROPOSAL_SHA256;
 const previousV207Cap = process.env.V207_FINITE_CAP_USD;
 process.env.V207_IMAGE = V207_REPAIRED_IMAGE;
 process.env.V207_IMAGE_SOURCE_COMMIT = V207_REPAIRED_IMAGE_SOURCE_COMMIT;
-process.env.V207_PROPOSAL_SHA256 = V207_AMENDED_PROPOSAL_SHA256;
+process.env.V207_PROPOSAL_SHA256 = V207_PENDING_PROPOSAL_SHA256;
 process.env.V207_FINITE_CAP_USD = "4";
 const {
   assertV207ItemCount,
