@@ -151,9 +151,7 @@ class MageServerlessBoundaryTest(unittest.TestCase):
 
     def test_inline_item_returns_exact_runtime_wire_mapping(self) -> None:
         value = mage_serverless._inline_item(self._inline_source_job(), 0)
-        self.assertEqual(
-            set(value), {"mode", "attempt_id", "model_revision", "items"}
-        )
+        self.assertEqual(set(value), {"mode", "attempt_id", "model_revision", "items"})
         self.assertEqual(value["mode"], "INLINE_QUALIFICATION_V1")
         self.assertIsInstance(value["items"], list)
         self.assertIsInstance(value["items"][0], dict)

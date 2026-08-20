@@ -35,8 +35,7 @@ GIT_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 
 DEFAULT_DESTINATION = "/opt/videoforge/mage_serverless.py"
 DEFAULT_CREATED_BY = (
-    "COPY workers/image-media/mage_serverless.py "
-    "/opt/videoforge/mage_serverless.py"
+    "COPY workers/image-media/mage_serverless.py /opt/videoforge/mage_serverless.py"
 )
 DEFAULT_OVERLAY_KIND = "source-only-overlay-v2"
 
@@ -59,8 +58,7 @@ def _canonical_json(value: Mapping[str, Any]) -> bytes:
     """Return the exact JSON byte representation used for OCI blobs."""
 
     return (
-        json.dumps(value, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
-        + "\n"
+        json.dumps(value, ensure_ascii=True, separators=(",", ":"), sort_keys=True) + "\n"
     ).encode("utf-8")
 
 
@@ -101,7 +99,9 @@ def _validate_manifest(manifest: Mapping[str, Any]) -> None:
             raise OverlayError(f"base layer {index} has an invalid size")
 
 
-def _validate_config(config: Mapping[str, Any], config_bytes: bytes, descriptor: Mapping[str, Any]) -> None:
+def _validate_config(
+    config: Mapping[str, Any], config_bytes: bytes, descriptor: Mapping[str, Any]
+) -> None:
     expected_digest = _descriptor_digest(descriptor, "base config")
     actual_digest = "sha256:" + _sha256(config_bytes)
     if actual_digest != expected_digest:

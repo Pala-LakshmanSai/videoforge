@@ -39,6 +39,51 @@ jobs:
           docker system prune --all --force
           df -h /
 
+      - name: Derive exact deterministic V2-07 OCI overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          parent_digest="sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
+          parent_config_digest="sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2"
+          expected_manifest_digest="sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3"
+          expected_config_digest="sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e"
+          expected_layer_digest="sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e3"
+          overlay_dir="$RUNNER_TEMP/v207-mage-oci-overlay"
+          mkdir -p "$overlay_dir/input" "$overlay_dir/output"
+          registry_token="$(
+            curl -fsSL \
+              'https://ghcr.io/token?service=ghcr.io&scope=repository:pala-lakshmansai/videoforge-mage-v2-07:pull' \
+              | jq -r '.token'
+          )"
+          test -n "$registry_token"
+          curl -fsSL \
+            -H "Authorization: Bearer $registry_token" \
+            -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
+            "https://ghcr.io/v2/pala-lakshmansai/videoforge-mage-v2-07/manifests/$parent_digest" \
+            -o "$overlay_dir/input/manifest.json"
+          curl -fsSL \
+            -H "Authorization: Bearer $registry_token" \
+            "https://ghcr.io/v2/pala-lakshmansai/videoforge-mage-v2-07/blobs/$parent_config_digest" \
+            -o "$overlay_dir/input/config.json"
+          unset registry_token
+          python3 workers/image-media/build_mage_oci_overlay.py \
+            --base-manifest "$overlay_dir/input/manifest.json" \
+            --base-config "$overlay_dir/input/config.json" \
+            --source workers/image-media/mage_serverless.py \
+            --source-commit a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c \
+            --parent-image "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@$parent_digest" \
+            --created 2026-08-20T09:39:31Z \
+            --output-dir "$overlay_dir/output"
+          test "$(jq -r '.manifest_digest' "$overlay_dir/output/identity.json")" = "$expected_manifest_digest"
+          test "$(jq -r '.config_digest' "$overlay_dir/output/identity.json")" = "$expected_config_digest"
+          test "$(jq -r '.layer_digest' "$overlay_dir/output/identity.json")" = "$expected_layer_digest"
+          python3 workers/image-media/publish_mage_oci_overlay.py \
+            --output-dir "$overlay_dir/output" \
+            --repository pala-lakshmansai/videoforge-mage-v2-07 \
+            --tag v2-07-inline-wire-a52e7e4
+          echo "MAGE_OCI_OUTPUT_DIR=$overlay_dir/output" >> "$GITHUB_ENV"
+          echo "candidate_manifest_digest=$expected_manifest_digest" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build and smoke V2-07 repaired Mage INT8 Serverless candidate
         shell: bash
         run: |
@@ -50,9 +95,6 @@ jobs:
           # labels alone would allow a later checkout to silently drift.
           expected_source_hashes=(
             "workers/image-media/mage_serverless.py|5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97"
-            "workers/image-media/mage_runtime.py|f6bec1478272bfaafde253ddaaf3a2e7526074d74a12b246d8b4ea94fb6dda5f"
-            "workers/image-media/mage_bootstrap.py|fe2499f667680f9cc315121f24d408f63915c4c2eb938ab63931709952b52529"
-            "workers/image-media/src/videoforge_image_media/mage_production.py|6fb66457b5d43168e0a41a5b2040a7d89fc9143b261b221c0c97f424d603c291"
           )
           for source_entry in "${expected_source_hashes[@]}"; do
             source_path="${source_entry%%|*}"
@@ -79,24 +121,24 @@ jobs:
           echo "image_id=$image_id" >> "$GITHUB_STEP_SUMMARY"
           echo "publication_requested=${{ inputs.publish }}" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Authenticate GHCR
+      - name: Publish exact smoke-tested immutable image
+        id: publish
         if: ${{ inputs.publish }}
         shell: bash
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
-
-      - name: Publish smoke-tested immutable image
-        id: publish
-        if: ${{ inputs.publish }}
-        shell: bash
         run: |
           set -euo pipefail
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          image="ghcr.io/${owner}/videoforge-mage-v2-07:${GITHUB_SHA}"
-          docker tag "$LOCAL_IMAGE" "$image"
-          docker push "$image"
-          immutable_image="$(docker inspect --format='{{index .RepoDigests 0}}' "$image")"
-          [[ "$immutable_image" =~ ^ghcr\.io/[a-z0-9_-]+/videoforge-mage-v2-07@sha256:[a-f0-9]{64}$ ]]
+          test "${GITHUB_REPOSITORY_OWNER,,}" = "pala-lakshmansai"
+          publication="$(
+            python3 workers/image-media/publish_mage_oci_overlay.py \
+              --output-dir "$MAGE_OCI_OUTPUT_DIR" \
+              --repository pala-lakshmansai/videoforge-mage-v2-07 \
+              --tag v2-07-inline-wire-a52e7e4 \
+              --publish
+          )"
+          test "$(jq -r '.manifest_digest' <<<"$publication")" = \
+            "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3"
+          immutable_image="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3"
           echo "immutable_image=$immutable_image" >> "$GITHUB_OUTPUT"
           echo "immutable_image=$immutable_image" >> "$GITHUB_STEP_SUMMARY"

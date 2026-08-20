@@ -4,6 +4,7 @@ import io
 import json
 import sys
 import tarfile
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,7 +17,13 @@ from build_mage_oci_overlay import (  # noqa: E402
     DOCKER_LAYER_MEDIA_TYPE,
     DOCKER_MANIFEST_MEDIA_TYPE,
     OverlayError,
+    _write_output,
     build_overlay,
+)
+from publish_mage_oci_overlay import (  # noqa: E402
+    PublishError,
+    RegistryClient,
+    _validate_artifacts,
 )
 
 
@@ -56,6 +63,21 @@ def _fixture() -> tuple[dict, dict, bytes, bytes]:
     }
     manifest_bytes = json.dumps(manifest, separators=(",", ":"), sort_keys=True).encode() + b"\n"
     return manifest, config, config_bytes, manifest_bytes
+
+
+def _overlay_result() -> dict:
+    manifest, config, config_bytes, manifest_bytes = _fixture()
+    parent_image = PARENT_REPOSITORY + "@sha256:" + hashlib.sha256(manifest_bytes).hexdigest()
+    return build_overlay(
+        base_manifest=manifest,
+        base_manifest_bytes=manifest_bytes,
+        base_config=config,
+        base_config_bytes=config_bytes,
+        source_bytes=b"repaired handler bytes",
+        source_commit="a" * 40,
+        parent_image=parent_image,
+        created="2026-08-20T09:39:31Z",
+    )
 
 
 class MageOciOverlayTest(unittest.TestCase):
@@ -100,7 +122,9 @@ class MageOciOverlayTest(unittest.TestCase):
         )
         with tarfile.open(fileobj=io.BytesIO(result["layer_tar_bytes"]), mode="r:") as archive:
             members = archive.getmembers()
-            self.assertEqual([member.name for member in members], ["opt/videoforge/mage_serverless.py"])
+            self.assertEqual(
+                [member.name for member in members], ["opt/videoforge/mage_serverless.py"]
+            )
             self.assertEqual(archive.extractfile(members[0]).read(), b"new handler bytes")
             self.assertEqual(members[0].uid, 0)
             self.assertEqual(members[0].gid, 0)
@@ -156,10 +180,12 @@ class MageOciOverlayTest(unittest.TestCase):
         manifest, config, config_bytes, manifest_bytes = _fixture()
         extra_manifest = copy.deepcopy(manifest)
         extra_manifest["layers"].append(copy.deepcopy(extra_manifest["layers"][0]))
-        extra_manifest_bytes = json.dumps(
-            extra_manifest, separators=(",", ":"), sort_keys=True
-        ).encode() + b"\n"
-        parent_image = PARENT_REPOSITORY + "@sha256:" + hashlib.sha256(extra_manifest_bytes).hexdigest()
+        extra_manifest_bytes = (
+            json.dumps(extra_manifest, separators=(",", ":"), sort_keys=True).encode() + b"\n"
+        )
+        parent_image = (
+            PARENT_REPOSITORY + "@sha256:" + hashlib.sha256(extra_manifest_bytes).hexdigest()
+        )
         with self.assertRaisesRegex(OverlayError, "layer count mismatch"):
             build_overlay(
                 base_manifest=extra_manifest,
@@ -198,6 +224,67 @@ class MageOciOverlayTest(unittest.TestCase):
                 source_commit="e" * 40,
                 parent_image=parent_image,
                 created="2026-08-20T09:39:31Z",
+            )
+
+    def test_publisher_rejects_any_artifact_byte_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            _write_output(_overlay_result(), output)
+            (output / "layer.tar.gz").write_bytes(
+                (output / "layer.tar.gz").read_bytes() + b"tampered"
+            )
+            with self.assertRaisesRegex(PublishError, "layer bytes do not match"):
+                _validate_artifacts(output)
+
+    def test_publisher_sends_exact_blobs_and_manifest_then_verifies_readback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            _write_output(_overlay_result(), output)
+            artifacts = _validate_artifacts(output)
+
+            class ExactRegistry(RegistryClient):
+                def __init__(self) -> None:
+                    super().__init__(
+                        host="ghcr.io", repository="example/repository", token="hidden"
+                    )
+                    self.uploaded: dict[str, bytes] = {}
+
+                def _request(self, method, path, *, body=b"", content_type=None, accept=None):
+                    if method == "HEAD" and path.startswith("manifests/"):
+                        raise PublishError("registry HEAD request failed with HTTP 404")
+                    if method == "HEAD" and path.startswith("blobs/"):
+                        raise PublishError("registry HEAD request failed with HTTP 404")
+                    if method == "POST" and path == "blobs/uploads/":
+                        return 202, {"Location": "https://ghcr.io/upload/session"}, b""
+                    if method == "PUT" and path.startswith("manifests/"):
+                        self.assert_exact(body, artifacts["manifest_bytes"])
+                        return 201, {"Docker-Content-Digest": artifacts["manifest_digest"]}, b""
+                    if method == "GET" and path.startswith("manifests/"):
+                        return (
+                            200,
+                            {"Docker-Content-Digest": artifacts["manifest_digest"]},
+                            artifacts["manifest_bytes"],
+                        )
+                    raise AssertionError((method, path, content_type, accept))
+
+                def _request_url(self, method, url, *, body=b"", content_type=None, accept=None):
+                    digest = url.rsplit("digest=", 1)[1]
+                    self.uploaded[digest] = body
+                    return 201, {"Docker-Content-Digest": digest}, b""
+
+                def assert_exact(self, actual: bytes, expected: bytes) -> None:
+                    self_outer.assertEqual(actual, expected)
+
+            self_outer = self
+            registry = ExactRegistry()
+            published = registry.publish(tag="candidate", artifacts=artifacts)
+            self.assertEqual(published["manifest_digest"], artifacts["manifest_digest"])
+            self.assertEqual(
+                registry.uploaded,
+                {
+                    artifacts["config_digest"]: artifacts["config_bytes"],
+                    artifacts["layer_digest"]: artifacts["layer_bytes"],
+                },
             )
 
 

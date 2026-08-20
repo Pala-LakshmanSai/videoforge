@@ -23,30 +23,9 @@ REPAIR_RUNTIME_FILES = (
         "/opt/videoforge/mage_serverless.py",
         "MAGE_SERVERLESS_GENERATED_OUTPUT_PATH_MISMATCH",
     ),
-    (
-        "workers/image-media/mage_runtime.py",
-        "/opt/videoforge/mage_runtime.py",
-        (
-            "MAGE_RUNTIME_IO_ON_MODEL_VOLUME",
-            "os.environ.update(self.job_environment)",
-        ),
-    ),
-    (
-        "workers/image-media/mage_bootstrap.py",
-        "/opt/videoforge/mage_bootstrap.py",
-        "MAGE_BOOTSTRAP_EVIDENCE_ON_MODEL_VOLUME",
-    ),
-    (
-        "workers/image-media/src/videoforge_image_media/mage_production.py",
-        "/opt/videoforge/src/videoforge_image_media/mage_production.py",
-        "MAGE_COMFY_OUTPUT_ON_MODEL_VOLUME",
-    ),
 )
 REPAIR_SOURCE_HASHES = {
     "workers/image-media/mage_serverless.py": "5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
-    "workers/image-media/mage_runtime.py": "f6bec1478272bfaafde253ddaaf3a2e7526074d74a12b246d8b4ea94fb6dda5f",
-    "workers/image-media/mage_bootstrap.py": "fe2499f667680f9cc315121f24d408f63915c4c2eb938ab63931709952b52529",
-    "workers/image-media/src/videoforge_image_media/mage_production.py": "6fb66457b5d43168e0a41a5b2040a7d89fc9143b261b221c0c97f424d603c291",
 }
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
@@ -129,10 +108,10 @@ class MageWorkerImageTest(unittest.TestCase):
         ]
         self.assertEqual(len(copy_lines), len(REPAIR_RUNTIME_FILES))
         self.assertEqual(
-            copy_lines[:3],
+            copy_lines,
             [
                 f"COPY {source} {destination}"
-                for source, destination, _sentinel in REPAIR_RUNTIME_FILES[:3]
+                for source, destination, _sentinel in REPAIR_RUNTIME_FILES
             ],
         )
 
@@ -167,14 +146,24 @@ class MageWorkerImageTest(unittest.TestCase):
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn(
-            'expected_source_commit="a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c"', workflow
-        )
+        self.assertIn('expected_source_commit="a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c"', workflow)
         self.assertIn("expected_source_hashes=(", workflow)
         for source, expected_hash in REPAIR_SOURCE_HASHES.items():
             source_path = ROOT.parents[1] / source
             self.assertEqual(hashlib.sha256(source_path.read_bytes()).hexdigest(), expected_hash)
             self.assertIn(f'"{source}|{expected_hash}"', workflow)
+
+    def test_hosted_publication_uses_exact_precomputed_manifest_not_docker_push(self) -> None:
+        workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
+            encoding="utf-8"
+        )
+        expected = "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3"
+        self.assertIn(f'expected_manifest_digest="{expected}"', workflow)
+        self.assertIn("build_mage_oci_overlay.py", workflow)
+        self.assertIn("publish_mage_oci_overlay.py", workflow)
+        self.assertIn("--publish", workflow)
+        self.assertIn(f"videoforge-mage-v2-07@{expected}", workflow)
+        self.assertNotIn("docker push", workflow)
 
     def test_generate_contract_accepts_json_body_not_query_value(self) -> None:
         tree = ast.parse((ROOT / "mage_api.py").read_text(encoding="utf-8"))

@@ -61,9 +61,14 @@ def _validate_artifacts(output_dir: Path) -> dict[str, Any]:
     config_bytes = (output_dir / "config.json").read_bytes()
     layer_bytes = (output_dir / "layer.tar.gz").read_bytes()
     manifest = _read_json(output_dir / "manifest.json", "overlay manifest")
-    if _sha256(manifest_bytes) != _digest(identity.get("manifest_digest"), "identity manifest digest"):
+    if _sha256(manifest_bytes) != _digest(
+        identity.get("manifest_digest"), "identity manifest digest"
+    ):
         raise PublishError("manifest bytes do not match identity digest")
-    if manifest.get("schemaVersion") != 2 or manifest.get("mediaType") != DOCKER_MANIFEST_MEDIA_TYPE:
+    if (
+        manifest.get("schemaVersion") != 2
+        or manifest.get("mediaType") != DOCKER_MANIFEST_MEDIA_TYPE
+    ):
         raise PublishError("overlay manifest is not Docker schema-2")
     config = manifest.get("config")
     layers = manifest.get("layers")
@@ -229,15 +234,18 @@ class RegistryClient:
 
 def _registry_token(*, host: str, repository: str, actor: str, secret: str) -> str:
     credentials = base64.b64encode(f"{actor}:{secret}".encode("utf-8")).decode("ascii")
-    query = urllib.parse.urlencode(
-        {"service": host, "scope": f"repository:{repository}:pull,push"}
-    )
+    query = urllib.parse.urlencode({"service": host, "scope": f"repository:{repository}:pull,push"})
     request = urllib.request.Request(f"https://{host}/token?{query}")
     request.add_header("Authorization", f"Basic {credentials}")
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             value = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        TimeoutError,
+        json.JSONDecodeError,
+    ) as exc:
         raise PublishError("registry token exchange failed") from exc
     token = value.get("token") if isinstance(value, dict) else None
     if not isinstance(token, str) or not token:
