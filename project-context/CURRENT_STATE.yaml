@@ -928,6 +928,8 @@ verification:
       r2_inventory_sha256_after_cleanup: "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
 
 audit_evidence:
+  v2_07_latest_predispatch_safety_repair: evidence/acceptance/VF-10-07/2026-08-20-pre-dispatch-safety-repair/acceptance.json
+  v2_07_live_authority: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/authority.json
   v2_07_latest_provider_free_handoff: evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/acceptance.json
   v2_06_final_live_closure_authority: evidence/acceptance/VF-10-06/2026-08-19-final-live-closure-authority/acceptance.json
   v2_06_final_live_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json

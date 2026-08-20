@@ -1,0 +1,104 @@
+{
+  "schema_version": "videoforge.v2-07-pre-dispatch-safety-repair/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-20T04:47:22Z",
+  "result": "PASS_LIVE_QUALIFICATION_NOT_YET_RUN",
+  "commits": {
+    "lifecycle_recovery": "742835d",
+    "cleanup_ownership": "257c77f",
+    "durable_output_and_activation_boundary": "ab50ab2"
+  },
+  "authority": {
+    "record": "../2026-08-20-live-qualification/authority.json",
+    "proposal_sha256": "sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b",
+    "maximum_cumulative_finite_spend_usd": 4,
+    "historical_cap_reused": false,
+    "status": "ACTIVE_PREENDPOINT_MUTATION"
+  },
+  "lineage": {
+    "repaired_source_commit": "d1d704c2f39581e745ba90151c7388673107de41",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "image_config_digest": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "region": "EU-RO-1",
+    "mount": "/runpod-volume",
+    "gpu": "NVIDIA GeForce RTX 4090"
+  },
+  "repairs": {
+    "durable_output_plane": [
+      "nonce-bound R2 reservation persisted under exact provenance lineage",
+      "7200-second generated PUT authority with one use",
+      "exact R2 byte length, content type, SHA-256, PNG chunk CRC, zlib, 1280x720 scanline, and filter validation",
+      "artifact-commit-receipt/v3 durable idempotent finalization",
+      "exact output, reservation, and receipt rollback with absence proof"
+    ],
+    "live_runner": [
+      "exact repaired registry manifest/config/source/base/offline attestation",
+      "unique attempt and object lineage for cold, warm, two readers, and cancel",
+      "exact complete 32-item output and provenance receipt verification",
+      "bounded R2 readback and v3 receipt replay",
+      "account-wide final zero-worker and intended-volume inventory proof",
+      "stable three-read billing settlement under the finite cap"
+    ],
+    "runpod_lifecycle": [
+      "exact-name and exact-identity ambiguous-create reconciliation",
+      "cancel response followed by status polling to terminal CANCELLED",
+      "primary dispatch fence retained through two-reader drain",
+      "phase-aware cleanup never deletes a template while endpoint ownership or drain is uncertain"
+    ],
+    "activation": [
+      "qualification route isolated to the explicit staging Worker entrypoint",
+      "clean-worktree and protected-config preconditions",
+      "ephemeral signer nonce written only over stdin",
+      "captured Worker version rollback on success, failure, or signal",
+      "secret absence and disabled-route proof after cleanup",
+      "redacted mode-0600 local evidence"
+    ]
+  },
+  "verification": [
+    {
+      "command": "focused V2-07 Vitest suite",
+      "result": "PASS 83/83"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web typecheck",
+      "result": "PASS"
+    },
+    {
+      "command": "pnpm test:workers && pnpm python:lint",
+      "result": "PASS six explicit Python 3.12 suites and lint"
+    },
+    {
+      "command": "pnpm context:validate && node project-context/scripts/validate-v207-live-authority.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web build && pnpm --filter @videoforge/web build:staging",
+      "result": "PASS production quarantine and staging qualification build"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "result": "PASS web 407 passed and 1 skipped; Cloudflare parity 1/1; installed Chrome 44/44; script tests 70/70; six worker suites"
+    }
+  ],
+  "provider_truth": {
+    "runpod_calls_during_repair": 0,
+    "cloudflare_mutations_during_repair": 0,
+    "gpu_workers_started_during_repair": 0,
+    "new_spend_usd_during_repair": 0,
+    "retained_volume_mutations": 0,
+    "signer_status": "DISABLED",
+    "live_inventory_refresh_required_before_mutation": true
+  },
+  "remaining": [
+    "fresh read-only exact RunPod inventory and rate/capacity preflight",
+    "bounded staging signer activation and rollback",
+    "exact endpoint/template creation and live cold/warm/two-reader/cancel qualification",
+    "durable output, unchanged manifest, timing, VRAM, settled cost, and workers-zero evidence",
+    "final V2-07 evidence and context closure"
+  ]
+}
