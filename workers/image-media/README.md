@@ -31,3 +31,23 @@ single NVIDIA GPU, performs a real warm-up, and reports `ready` only afterward.
 The RunPod request is 50 GB (the provider API and billing unit), derived from 13,379,919,280 exact
 model bytes plus at least 36,620,080,720 bytes (34.11 GiB) of headroom. It does not claim the mounted
 filesystem exposes an exact binary capacity. The Mage volume is never shared with Echo or ImageForge.
+
+## Deterministic Serverless source overlay
+
+`build_mage_oci_overlay.py` derives a publishable Docker schema-2 manifest from
+an already fetched immutable parent manifest/config and the repaired
+`mage_serverless.py` bytes. It creates one reproducible gzip-tar replacement
+layer at `/opt/videoforge/mage_serverless.py`, updates only the image config
+lineage/history, and never invokes Docker, downloads base/model layers, or
+contacts a registry. Pass an explicit UTC `--created` value; omitting a clock
+input is intentional so the resulting config and manifest digests can be
+reviewed before publication.
+
+The output directory contains `layer.tar.gz`, `config.json`, `manifest.json`,
+and a redacted `identity.json`. The final `manifest_digest` is the exact
+immutable image identity; uploading these three blobs is a separate, approved
+publication action. `publish_mage_oci_overlay.py` validates those bytes and is
+dry-run by default; its explicit `--publish` mode uploads only missing config
+and layer blobs, refuses to overwrite an existing tag, PUTs the exact manifest
+bytes, and performs a digest readback. It requires the already configured
+`GHCR_TOKEN`/`GITHUB_ACTOR` environment and never prints either value.
