@@ -701,6 +701,7 @@ export async function runV207LiveOrchestration(
   const routeUrl = validateRouteUrl(
     options.routeUrl ?? environment.V207_ROUTE_URL ?? V207_ORCHESTRATOR_ROUTE,
   );
+  const qualificationCommand = resolve(cwd, "apps/web/node_modules/.bin/tsx");
   const evidenceFile = evidencePath(options, environment);
   const run = options.commandRunner ?? spawnV207Command;
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -882,14 +883,8 @@ export async function runV207LiveOrchestration(
     const preflight = requireSuccessful(
       "V207_LIVE_PREFLIGHT",
       await run({
-        command: "pnpm",
-        args: [
-          "--filter",
-          "@videoforge/web",
-          "exec",
-          "tsx",
-          "src/server/providers/v207-live-qualification.ts",
-        ],
+        command: qualificationCommand,
+        args: ["src/server/providers/v207-live-qualification.ts"],
         cwd: resolve(cwd, "apps/web"),
         env: commandEnvironment(environment, nonce, configPath, true),
         signal: abortController.signal,
@@ -900,14 +895,8 @@ export async function runV207LiveOrchestration(
     const runner = requireSuccessful(
       "V207_LIVE_RUNNER",
       await run({
-        command: "pnpm",
-        args: [
-          "--filter",
-          "@videoforge/web",
-          "exec",
-          "tsx",
-          "src/server/providers/v207-live-qualification.ts",
-        ],
+        command: qualificationCommand,
+        args: ["src/server/providers/v207-live-qualification.ts"],
         cwd: resolve(cwd, "apps/web"),
         env: commandEnvironment(environment, nonce, configPath),
         signal: abortController.signal,

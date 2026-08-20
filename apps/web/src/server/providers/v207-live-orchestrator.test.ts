@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   extractV207WorkerVersionId,
   runV207LiveOrchestration,
+  spawnV207Command,
   V207_ORCHESTRATOR_SECRET_NAME,
   type V207CommandRequest,
   type V207CommandResult,
@@ -199,6 +200,14 @@ describe("V2-07 live orchestrator", () => {
         call.env.V207_PREFLIGHT_ONLY === "1",
     );
     expect(preflightRunner).toBeDefined();
+    expect(preflightRunner?.command).toBe(
+      join(resolve(process.cwd(), "../.."), "apps/web/node_modules/.bin/tsx"),
+    );
+    expect(preflightRunner?.args).toEqual(["src/server/providers/v207-live-qualification.ts"]);
+    expect(liveRunner?.command).toBe(
+      join(resolve(process.cwd(), "../.."), "apps/web/node_modules/.bin/tsx"),
+    );
+    expect(liveRunner?.args).toEqual(["src/server/providers/v207-live-qualification.ts"]);
     expect(liveRunner?.cwd).toBe(join(resolve(process.cwd(), "../.."), "apps/web"));
     expect(liveRunner?.env.V207_AUTHORITY_NONCE).toBe(NONCE);
     expect(liveRunner?.env.RUNPOD_KEY).toBe(RUNPOD_KEY);
@@ -213,6 +222,101 @@ describe("V2-07 live orchestrator", () => {
     expect(rollback?.args).toContain(VERSION_ID);
     expect(rollback?.args).not.toContain(DEPLOYMENT_ID);
     expect(calls.flatMap((call) => call.args)).not.toContain(NONCE);
+  });
+
+  it("propagates SIGTERM to the installed tsx child", async () => {
+    const root = await mkdtemp("/tmp/vf-v207-child-");
+    roots.push(root);
+    const scriptPath = join(root, "signal-handler.ts");
+    await writeFile(
+      scriptPath,
+      'process.on("SIGTERM", () => { process.stdout.write("SIGTERM_HANDLED"); process.exit(0); });\nsetInterval(() => {}, 1000);\n',
+    );
+    const controller = new AbortController();
+    const child = spawnV207Command({
+      command: join(resolve(process.cwd(), "../.."), "apps/web/node_modules/.bin/tsx"),
+      args: [scriptPath],
+      cwd: join(resolve(process.cwd(), "../.."), "apps/web"),
+      env: { PATH: process.env.PATH },
+      signal: controller.signal,
+    });
+    await new Promise<void>((resolveSleep) => setTimeout(resolveSleep, 500));
+    controller.abort();
+    const childResult = await child;
+    expect(childResult.exitCode).toBe(0);
+    expect(childResult.signal).toBeNull();
+    expect(childResult.stdout).toBe("SIGTERM_HANDLED");
+  });
+
+  it("runs rollback and secret cleanup after the qualification child is SIGTERM-terminated", async () => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    let signerSecretPresent = false;
+    const qualificationCommand = join(
+      resolve(process.cwd(), "../.."),
+      "apps/web/node_modules/.bin/tsx",
+    );
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments"))
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      if (request.args.includes("secret") && request.args.includes("list")) {
+        return result(
+          JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("put")) {
+        signerSecretPresent = true;
+        return result();
+      }
+      if (request.args.includes("secret") && request.args.includes("delete")) {
+        signerSecretPresent = false;
+        return result();
+      }
+      if (request.command === qualificationCommand) {
+        expect(request.args).toEqual(["src/server/providers/v207-live-qualification.ts"]);
+        if (request.env.V207_PREFLIGHT_ONLY === "1") return result();
+        return { exitCode: null, signal: "SIGTERM", stdout: "", stderr: "" };
+      }
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () =>
+      new Response(
+        JSON.stringify(
+          signerSecretPresent
+            ? { error: { code: "V207_AUTHORITY_REJECTED" } }
+            : { error: { code: "V207_ROUTE_DISABLED" } },
+        ),
+        { status: signerSecretPresent ? 403 : 404 },
+      );
+
+    await expect(
+      runV207LiveOrchestration({
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        commandRunner,
+        fetchImpl,
+        nonceFactory: () => NONCE,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_LIVE_RUNNER_FAILED" });
+    expect(signerSecretPresent).toBe(false);
+    expect(calls.some((call) => call.args.includes("rollback"))).toBe(true);
+    expect(calls.some((call) => call.args.includes("delete"))).toBe(true);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain('"event": "signer_secret_deleted"');
+    expect(evidence).toContain('"event": "worker_rolled_back"');
+    expect(evidence).toContain('"result": "FAILED"');
+    expect(evidence).not.toContain(NONCE);
   });
 
   it("fails closed when the signer route never propagates beyond the disabled response", async () => {
