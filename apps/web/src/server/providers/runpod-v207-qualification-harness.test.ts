@@ -236,6 +236,111 @@ const reconciledEndpoint = {
   workers: [],
 };
 
+function terminalScaleZeroFetch(
+  options: {
+    readonly workerStatus?: string;
+    readonly workerStatusAfterDispatch?: string;
+    readonly workerCurrentStatus?: string;
+    readonly podStatus?: string;
+    readonly podStatusAfterDispatch?: string;
+    readonly podCurrentStatus?: string;
+    readonly podEndpointId?: string | null;
+    readonly extraEndpoint?: boolean;
+    readonly extraTemplate?: boolean;
+    readonly endpointDrift?: Readonly<Record<string, unknown>>;
+    readonly healthAfterFirstSnapshot?: Readonly<Record<string, number>>;
+  } = {},
+) {
+  const baseFetch = harnessFetch();
+  let created = false;
+  let dispatched = false;
+  let terminalInventoryReads = 0;
+  let workersMax = 1;
+  return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname;
+    const body = init?.body === undefined ? null : JSON.parse(String(init.body));
+    if (path === "/endpoints" && init?.method === "POST") {
+      created = true;
+      workersMax = body.workersMax;
+      return baseFetch(input, init);
+    }
+    if (path === "/endpoints/endpoint_01/update") {
+      workersMax = body.workersMax;
+      return baseFetch(input, init);
+    }
+    if (path.endsWith("/run")) {
+      dispatched = true;
+      return baseFetch(input, init);
+    }
+    if (created && path === "/endpoint_01/health") {
+      return jsonResponse({
+        workers:
+          terminalInventoryReads > 0 && options.healthAfterFirstSnapshot
+            ? options.healthAfterFirstSnapshot
+            : {
+                idle: 0,
+                running: 0,
+                initializing: 0,
+                ready: 0,
+                throttled: 1,
+                unhealthy: 0,
+              },
+        jobs: { inQueue: 0, inProgress: 0 },
+      });
+    }
+    if (created && path === "/pods" && init?.method === undefined) {
+      terminalInventoryReads += 1;
+      return jsonResponse([
+        {
+          id: "pod_01",
+          ...(options.podEndpointId === null
+            ? {}
+            : { endpointId: options.podEndpointId ?? "endpoint_01" }),
+          desiredStatus:
+            (dispatched ? options.podStatusAfterDispatch : undefined) ??
+            options.podStatus ??
+            "EXITED",
+          ...(options.podCurrentStatus === undefined ? {} : { status: options.podCurrentStatus }),
+        },
+      ]);
+    }
+    if (created && path === "/endpoints" && init?.method === undefined) {
+      const endpoint = {
+        ...reconciledEndpoint,
+        workersMax,
+        workers: [
+          {
+            desiredStatus:
+              (dispatched ? options.workerStatusAfterDispatch : undefined) ??
+              options.workerStatus ??
+              "EXITED",
+            ...(options.workerCurrentStatus === undefined
+              ? {}
+              : { status: options.workerCurrentStatus }),
+          },
+        ],
+        ...options.endpointDrift,
+      };
+      return jsonResponse(
+        options.extraEndpoint
+          ? [endpoint, { ...endpoint, id: "endpoint_02", name: "vf_mage_v207_extra" }]
+          : [endpoint],
+      );
+    }
+    if (created && path === "/templates" && init?.method === undefined) {
+      return jsonResponse(
+        options.extraTemplate
+          ? [
+              reconciledTemplate,
+              { ...reconciledTemplate, id: "template_02", name: "vf_mage_v207_extra" },
+            ]
+          : [reconciledTemplate],
+      );
+    }
+    return baseFetch(input, init);
+  });
+}
+
 describe("V2-07 qualification harness", () => {
   it.each([
     ["wrong id", { id: "volume_other", size: 50, dataCenterId: "EU-RO-1" }],
@@ -793,7 +898,218 @@ describe("V2-07 qualification harness", () => {
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(0);
+    await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).rejects.toThrow(
+      "RUNPOD_CLEANUP_UNCERTAIN",
+    );
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
+  });
+
+  it("promotes ghost-throttled health to initial scale-zero only with terminal exact inventory", async () => {
+    const fetch = terminalScaleZeroFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    await expect(
+      instance.dispatchBatch({
+        requestKey: "attempt_a",
+        attemptId: "attempt_a",
+        input,
+        outputAuthority: authority(),
+      }),
+    ).resolves.toMatchObject({ status: "IN_QUEUE" });
+    expect(
+      (await instance.evidence()).events.some(
+        (event) => event.event === "provider_terminal_worker_scale_zero_baseline",
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["running worker", { workerStatus: "RUNNING" }],
+    ["unknown worker", { workerStatus: "UNKNOWN" }],
+    ["conflicting worker status", { workerStatus: "EXITED", workerCurrentStatus: "RUNNING" }],
+    ["running pod", { podStatus: "RUNNING" }],
+    ["conflicting pod status", { podStatus: "EXITED", podCurrentStatus: "RUNNING" }],
+    ["unattributed pod", { podEndpointId: null }],
+    ["wrong endpoint pod", { podEndpointId: "endpoint_02" }],
+    ["extra endpoint", { extraEndpoint: true }],
+    ["extra template", { extraTemplate: true }],
+    ["worker-limit drift", { endpointDrift: { workersMax: 2 } }],
+    ["missing worker records", { endpointDrift: { workers: undefined } }],
+    ["flashboot drift", { endpointDrift: { flashboot: true } }],
+    ["GPU drift", { endpointDrift: { gpuTypeIds: ["NVIDIA A40"] } }],
+  ] as const)("rejects terminal scale-zero proof with %s", async (_label, options) => {
+    const fetch = terminalScaleZeroFetch(options);
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
+  it("rejects terminal promotion when the delayed second health snapshot becomes active", async () => {
+    const fetch = terminalScaleZeroFetch({
+      healthAfterFirstSnapshot: {
+        idle: 0,
+        running: 1,
+        initializing: 0,
+        ready: 0,
+        throttled: 0,
+        unhealthy: 0,
+      },
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_QUIESCENT_NOT_CONFIRMED");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
+  it("permits max-two dispatch only after a second exact terminal scale-zero proof", async () => {
+    const fetch = terminalScaleZeroFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await expect(instance.applyConcurrentReaderPolicy()).resolves.toMatch(/^sha256:/u);
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    await expect(
+      instance.dispatchConcurrentReaders([
+        { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+        {
+          requestKey: "attempt_b",
+          attemptId: "attempt_b",
+          input: inputB,
+          outputAuthority: authority("attempt_b", "reservation_b"),
+        },
+      ]),
+    ).resolves.toHaveLength(2);
+    expect(
+      (await instance.evidence()).events.some(
+        (event) => event.event === "concurrent_reader_terminal_worker_scale_zero_baseline",
+      ),
+    ).toBe(true);
+  });
+
+  it("proves terminal max-two drain, restores max-one, and retains intended resources", async () => {
+    const fetch = terminalScaleZeroFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    const jobs = await instance.dispatchConcurrentReaders([
+      { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      {
+        requestKey: "attempt_b",
+        attemptId: "attempt_b",
+        input: inputB,
+        outputAuthority: authority("attempt_b", "reservation_b"),
+      },
+    ]);
+    await instance.reconcileConcurrentReaders([jobs[0].id, jobs[1].id]);
+    await instance.drain();
+    await instance.scaleDownToInitial();
+    await instance.cleanup({ deleteIfFailed: false, failed: false });
+    const updateWorkersMax = fetch.mock.calls
+      .filter(([url]) => new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"))
+      .map(([, init]) => JSON.parse(String(init?.body)).workersMax);
+    expect(updateWorkersMax).toEqual([2, 1]);
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
+    const events = (await instance.evidence()).events;
+    expect(events).toContainEqual(expect.objectContaining({ event: "workers_zero_confirmed" }));
+    expect(events).toContainEqual(expect.objectContaining({ event: "scaled_down_to_max_one" }));
+    expect(events).toContainEqual(
+      expect.objectContaining({ event: "resources_retained_after_drain" }),
+    );
+  });
+
+  it("blocks max-one restore and deletion when post-reader terminal inventory is active", async () => {
+    const fetch = terminalScaleZeroFetch({
+      workerStatusAfterDispatch: "RUNNING",
+      podStatusAfterDispatch: "RUNNING",
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    await instance.dispatchConcurrentReaders([
+      { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      {
+        requestKey: "attempt_b",
+        attemptId: "attempt_b",
+        input: inputB,
+        outputAuthority: authority("attempt_b", "reservation_b"),
+      },
+    ]);
+    await expect(instance.scaleDownToInitial()).rejects.toThrow(
+      "RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN",
+    );
+    const updateWorkersMax = fetch.mock.calls
+      .filter(([url]) => new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"))
+      .map(([, init]) => JSON.parse(String(init?.body)).workersMax);
+    expect(updateWorkersMax).toEqual([2]);
     await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).resolves.toBeUndefined();
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
   });
 
   it("fails closed when a single dispatch crosses the cap", async () => {

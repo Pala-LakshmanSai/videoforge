@@ -330,6 +330,8 @@ export class RunPodV207QualificationHarness {
     resource: { readonly name: string; readonly raw: RecordValue },
     templateId: string,
     allowFlashbootTrue = false,
+    expectedPolicy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy = this.#options
+      .initialPolicy,
   ): boolean {
     // The Serverless endpoint list/detail shape currently omits computeType and dataCenterIds;
     // absence is tolerated only for those provider-unreported fields. Explicit values remain
@@ -360,7 +362,7 @@ export class RunPodV207QualificationHarness {
       resource.raw.templateId === templateId &&
       (resource.raw.computeType === undefined || resource.raw.computeType === "GPU") &&
       resource.raw.workersMin === 0 &&
-      resource.raw.workersMax === this.#options.initialPolicy.workersMax &&
+      resource.raw.workersMax === expectedPolicy.workersMax &&
       resource.raw.gpuCount === 1 &&
       requiredExactStrings(resource.raw.gpuTypeIds, [V207_RUNPOD_GPU]) &&
       volumeBindingMatches &&
@@ -368,11 +370,143 @@ export class RunPodV207QualificationHarness {
       requiredExactStrings(resource.raw.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
       resource.raw.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
       flashbootMatches &&
-      resource.raw.idleTimeout === this.#options.initialPolicy.idleTimeout &&
-      resource.raw.executionTimeoutMs === this.#options.initialPolicy.executionTimeoutMs &&
+      resource.raw.idleTimeout === expectedPolicy.idleTimeout &&
+      resource.raw.executionTimeoutMs === expectedPolicy.executionTimeoutMs &&
       resource.raw.scalerType === "REQUEST_COUNT" &&
       resource.raw.scalerValue === 1
     );
+  }
+
+  /**
+   * RunPod can retain a stale throttled=1 health counter after the attributable worker and Pod
+   * have both reached EXITED. Quiescent health alone never admits work. This method promotes that
+   * state to true scale-zero only when a second provider inventory independently proves that every
+   * attributable worker/Pod is terminal and the sole endpoint/template still have exact identity.
+   */
+  private async confirmTerminalScaleZeroBaseline(
+    expectedPolicy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
+    event: string,
+  ): Promise<void> {
+    if (!this.#template || !this.#endpoint || !this.#jobs) {
+      throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
+    }
+    try {
+      await this.#jobs.confirmQuiescent(12, 250);
+      this.checkAbort();
+      const terminalStatuses = new Set(["EXITED", "TERMINATED"]);
+      const readAndValidate = async (): Promise<{
+        readonly inventory: RunPodInventory;
+        readonly signature: string;
+      }> => {
+        const [inventory, resources] = await Promise.all([
+          this.#options.control.inventory(),
+          this.#options.control.inventoryDisposableResources(),
+        ]);
+        this.assertRetainedMageVolume(inventory);
+        const endpointInventory = inventory.endpoints[0];
+        const endpointResource = resources.endpoints[0];
+        const templateResource = resources.templates[0];
+        const rawWorkers = Array.isArray(endpointResource?.raw.workers)
+          ? endpointResource.raw.workers
+          : null;
+        const rawWorkerStatuses =
+          rawWorkers === null
+            ? null
+            : rawWorkers.map((worker) => {
+                const value = asRecord(worker);
+                const desired =
+                  typeof value?.desiredStatus === "string" ? value.desiredStatus : null;
+                const current = typeof value?.status === "string" ? value.status : null;
+                if (desired && current && desired !== current) return "CONFLICT";
+                return desired ?? current ?? "UNKNOWN";
+              });
+        const exactTerminalInventory =
+          inventory.runningPodCount === 0 &&
+          inventory.activeServerlessWorkerCount === 0 &&
+          inventory.pods.every(
+            (pod) =>
+              pod.endpointWorker &&
+              pod.endpointIdHash === this.#endpoint!.idHash &&
+              terminalStatuses.has(pod.desiredStatus) &&
+              pod.observedStatuses.length > 0 &&
+              pod.observedStatuses.every((status) => terminalStatuses.has(status)),
+          ) &&
+          inventory.endpoints.length === 1 &&
+          endpointInventory?.idHash === this.#endpoint!.idHash &&
+          endpointInventory.workersMin === expectedPolicy.workersMin &&
+          endpointInventory.workersMax === expectedPolicy.workersMax &&
+          endpointInventory.workerRecordsReported &&
+          endpointInventory.activeWorkerCount === 0 &&
+          endpointInventory.workerRecordCount === endpointInventory.exitedWorkerCount &&
+          endpointInventory.workerStatuses.every((status) => terminalStatuses.has(status)) &&
+          inventory.privateTemplateCount === 1 &&
+          resources.endpoints.length === 1 &&
+          endpointResource?.id === this.#endpoint!.id &&
+          resources.templates.length === 1 &&
+          templateResource?.id === this.#template!.id &&
+          templateResource !== undefined &&
+          this.templateIdentityMatches(templateResource) &&
+          endpointResource !== undefined &&
+          rawWorkerStatuses !== null &&
+          rawWorkerStatuses.length === endpointInventory?.workerRecordCount &&
+          rawWorkerStatuses.every(
+            (status, index) =>
+              terminalStatuses.has(status) && status === endpointInventory.workerStatuses[index],
+          ) &&
+          this.endpointIdentityMatches(
+            endpointResource,
+            templateResource.id,
+            false,
+            expectedPolicy,
+          ) &&
+          endpointResource.raw.flashboot === false;
+        if (!exactTerminalInventory || !endpointInventory) {
+          throw new RunPodControlError("RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED");
+        }
+        return {
+          inventory,
+          signature: canonicalizeJson({
+            pods: inventory.pods.map((pod) => ({
+              idHash: pod.idHash,
+              endpointIdHash: pod.endpointIdHash,
+              observedStatuses: pod.observedStatuses,
+            })),
+            endpoint: {
+              idHash: endpointInventory.idHash,
+              workersMin: endpointInventory.workersMin,
+              workersMax: endpointInventory.workersMax,
+              workerStatuses: endpointInventory.workerStatuses,
+            },
+            endpointResourceIdHash: sha256(endpointResource.id),
+            templateResourceIdHash: sha256(templateResource.id),
+          }),
+        };
+      };
+      const first = await readAndValidate();
+      this.checkAbort();
+      const sleep =
+        this.#options.sleep ??
+        ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+      await sleep(250);
+      this.checkAbort();
+      await this.#jobs.confirmQuiescent(1, 250);
+      this.checkAbort();
+      const second = await readAndValidate();
+      if (first.signature !== second.signature) {
+        throw new RunPodControlError("RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED");
+      }
+      const endpointInventory = second.inventory.endpoints[0]!;
+      this.#guard.confirmZero(0, 0);
+      this.mark(event, {
+        endpoint_id_hash: this.#endpoint.idHash,
+        endpoint_worker_record_count: endpointInventory.workerRecordCount,
+        terminal_pod_record_count: second.inventory.pods.length,
+        stable_terminal_snapshot_count: 2,
+      });
+    } catch (error) {
+      this.#guard.invalidate();
+      throw error;
+    }
   }
 
   /**
@@ -565,7 +699,10 @@ export class RunPodV207QualificationHarness {
       ) {
         throw error;
       }
-      await this.#jobs.confirmDrained(90);
+      await this.confirmTerminalScaleZeroBaseline(
+        this.#options.initialPolicy,
+        "provider_terminal_worker_scale_zero_baseline",
+      );
       this.checkAbort();
     }
     // Endpoint creation may briefly start a billed warm worker even with workersMin=0.
@@ -614,7 +751,14 @@ export class RunPodV207QualificationHarness {
     if (this.#endpoint) {
       try {
         if (!this.#jobs) throw new RunPodControlError("RUNPOD_CLEANUP_UNCERTAIN");
-        await this.#jobs.confirmDrained();
+        try {
+          await this.#jobs.confirmDrained();
+        } catch {
+          await this.confirmTerminalScaleZeroBaseline(
+            this.#options.initialPolicy,
+            "failed_create_terminal_worker_scale_zero",
+          );
+        }
         await this.#options.control.deleteEndpoint(this.#endpoint.id, this.#guard);
         endpointCleanupComplete = true;
       } catch {
@@ -880,8 +1024,14 @@ export class RunPodV207QualificationHarness {
         ) {
           throw error;
         }
-        await this.#jobs!.confirmQuiescent(12, 250);
-        throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
+        try {
+          await this.confirmTerminalScaleZeroBaseline(
+            this.#options.initialPolicy,
+            "pre_concurrent_policy_terminal_worker_scale_zero",
+          );
+        } catch {
+          throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
+        }
       }
     }
     if (this.#guard.snapshot() !== "warm_idle" && this.#guard.snapshot() !== "zero") {
@@ -907,8 +1057,14 @@ export class RunPodV207QualificationHarness {
       ) {
         throw error;
       }
-      await this.#jobs!.confirmQuiescent(12, 250);
-      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
+      try {
+        await this.confirmTerminalScaleZeroBaseline(
+          this.#options.concurrentReaderPolicy,
+          "concurrent_reader_terminal_worker_scale_zero_baseline",
+        );
+      } catch {
+        throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
+      }
     }
     this.checkAbort();
     this.mark("concurrent_reader_warm_idle_baseline");
@@ -1051,6 +1207,7 @@ export class RunPodV207QualificationHarness {
     await this.assertSpendWithinCap();
     const first = results[0]!;
     const second = results[1]!;
+    this.#guard.markActive();
     this.mark("two_concurrent_readers_dispatched", {
       job_id_hashes: [first.idHash, second.idHash],
     });
@@ -1121,10 +1278,30 @@ export class RunPodV207QualificationHarness {
         await reader.confirmDrained();
       } catch {
         this.mark("concurrent_reader_drain_uncertain");
-        throw new RunPodControlError("RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN");
+        try {
+          await this.confirmTerminalScaleZeroBaseline(
+            this.#options.concurrentReaderPolicy,
+            "concurrent_reader_terminal_worker_drain_confirmed",
+          );
+          break;
+        } catch {
+          throw new RunPodControlError("RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN");
+        }
       }
     }
-    await this.#jobs!.confirmDrained();
+    if (this.#guard.snapshot() !== "zero") {
+      try {
+        await this.#jobs!.confirmDrained();
+      } catch {
+        const expectedPolicy = this.#concurrentReaderConfigHash
+          ? this.#options.concurrentReaderPolicy
+          : this.#options.initialPolicy;
+        await this.confirmTerminalScaleZeroBaseline(
+          expectedPolicy,
+          "provider_terminal_worker_drain_confirmed",
+        );
+      }
+    }
     this.#readerJobs.length = 0;
     this.#concurrentReaderDispatchClaimed = false;
     this.#concurrentReaderFence = false;

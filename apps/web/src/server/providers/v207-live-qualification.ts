@@ -1414,16 +1414,26 @@ async function main(): Promise<void> {
         left.idHash.localeCompare(right.idHash),
       );
       const expectedVolumeHashes = [SOULX_VOLUME, VOLUME].sort();
+      const terminalWorkerStatuses = new Set(["EXITED", "TERMINATED"]);
       if (
-        finalInventory.pods.length !== 0 ||
         finalInventory.runningPodCount !== 0 ||
         finalInventory.activeServerlessWorkerCount !== 0 ||
+        finalInventory.pods.some(
+          (pod) =>
+            !pod.endpointWorker ||
+            pod.endpointIdHash !== createdIdentity.endpointIdHash ||
+            !terminalWorkerStatuses.has(pod.desiredStatus) ||
+            pod.observedStatuses.length === 0 ||
+            pod.observedStatuses.some((status) => !terminalWorkerStatuses.has(status)),
+        ) ||
         finalInventory.endpoints.length !== 1 ||
         !endpoint ||
         endpoint.workersMin !== 0 ||
         endpoint.workersMax !== 1 ||
+        !endpoint.workerRecordsReported ||
         endpoint.activeWorkerCount !== 0 ||
-        endpoint.workerStatuses.some((status) => status === "RUNNING") ||
+        endpoint.workerRecordCount !== endpoint.exitedWorkerCount ||
+        endpoint.workerStatuses.some((status) => !terminalWorkerStatuses.has(status)) ||
         finalInventory.privateTemplateCount !== 1 ||
         JSON.stringify(retainedVolumes.map((volume) => volume.idHash)) !==
           JSON.stringify(expectedVolumeHashes) ||
@@ -1441,6 +1451,8 @@ async function main(): Promise<void> {
         workers_min: endpoint.workersMin,
         workers_max: endpoint.workersMax,
         active_workers: finalInventory.activeServerlessWorkerCount,
+        endpoint_worker_statuses: endpoint.workerStatuses,
+        terminal_pod_statuses: finalInventory.pods.map((pod) => pod.observedStatuses),
         private_template_count: finalInventory.privateTemplateCount,
         volume_id_hashes: retainedVolumes.map((volume) => volume.idHash),
         volume_sizes_gb: retainedVolumes.map((volume) => volume.sizeGb),

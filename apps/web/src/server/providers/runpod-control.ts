@@ -57,13 +57,16 @@ export interface RunPodInventory {
   readonly pods: readonly {
     readonly idHash: string;
     readonly desiredStatus: string;
+    readonly observedStatuses: readonly string[];
     readonly endpointWorker: boolean;
+    readonly endpointIdHash: string | null;
     readonly costPerHourUsd: number | null;
   }[];
   readonly endpoints: readonly {
     readonly idHash: string;
     readonly workersMin: number | null;
     readonly workersMax: number | null;
+    readonly workerRecordsReported: boolean;
     readonly workerRecordCount: number;
     readonly activeWorkerCount: number;
     readonly exitedWorkerCount: number;
@@ -285,7 +288,10 @@ export class RunPodDrainGuard {
     queuedJobCount: number,
   ): void {
     if (
-      (this.state !== "active" && this.state !== "unknown") ||
+      (this.state !== "active" &&
+        this.state !== "unknown" &&
+        this.state !== "queue_empty" &&
+        this.state !== "quiescent") ||
       !Number.isSafeInteger(idleWorkerCount) ||
       !Number.isSafeInteger(readyWorkerCount) ||
       !Number.isSafeInteger(throttledWorkerCount) ||
@@ -324,6 +330,10 @@ export class RunPodDrainGuard {
       throw new RunPodControlError("RUNPOD_ZERO_NOT_CONFIRMED");
     }
     this.state = "zero";
+  }
+
+  invalidate(): void {
+    this.state = "unknown";
   }
 
   confirmQueueEmpty(queuedJobCount: number): void {
@@ -767,10 +777,18 @@ export class RunPodControlClient {
       if (!pod || typeof pod.id !== "string" || !ID.test(pod.id)) {
         throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
       }
+      const desiredStatus = typeof pod.desiredStatus === "string" ? pod.desiredStatus : "UNKNOWN";
+      const observedStatuses = [pod.desiredStatus, pod.status].filter(
+        (status): status is string => typeof status === "string",
+      );
+      const endpointId =
+        typeof pod.endpointId === "string" && ID.test(pod.endpointId) ? pod.endpointId : null;
       return Object.freeze({
         idHash: hashId(pod.id),
-        desiredStatus: typeof pod.desiredStatus === "string" ? pod.desiredStatus : "UNKNOWN",
-        endpointWorker: typeof pod.endpointId === "string" && pod.endpointId.length > 0,
+        desiredStatus,
+        observedStatuses: Object.freeze(observedStatuses),
+        endpointWorker: endpointId !== null,
+        endpointIdHash: endpointId === null ? null : hashId(endpointId),
         costPerHourUsd: numberOrNull(pod.adjustedCostPerHr ?? pod.costPerHr),
       });
     });
@@ -780,19 +798,20 @@ export class RunPodControlClient {
       }
       const workersMin = numberOrNull(endpoint.workersMin);
       const workersMax = numberOrNull(endpoint.workersMax);
+      const workerRecordsReported = Array.isArray(endpoint.workers);
       const workers = Array.isArray(endpoint.workers) ? endpoint.workers : [];
       const workerStatuses = workers.map((worker) => {
         const value = record(worker);
-        return typeof value?.desiredStatus === "string"
-          ? value.desiredStatus
-          : typeof value?.status === "string"
-            ? value.status
-            : "UNKNOWN";
+        const desiredStatus = typeof value?.desiredStatus === "string" ? value.desiredStatus : null;
+        const currentStatus = typeof value?.status === "string" ? value.status : null;
+        if (desiredStatus && currentStatus && desiredStatus !== currentStatus) return "CONFLICT";
+        return desiredStatus ?? currentStatus ?? "UNKNOWN";
       });
       return Object.freeze({
         idHash: hashId(endpoint.id),
         workersMin,
         workersMax,
+        workerRecordsReported,
         workerRecordCount: workers.length,
         activeWorkerCount: workerStatuses.filter((status) => status === "RUNNING").length,
         exitedWorkerCount: workerStatuses.filter(
