@@ -11,6 +11,10 @@ import {
 const key = "runpod-test-key-at-least-twenty-characters";
 const response = (value: unknown, status = 200): Response =>
   new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
+const health = (idle = 0) => ({
+  workers: { idle, running: 0, initializing: 0, ready: 0, throttled: 0, unhealthy: 0 },
+  jobs: { inQueue: 0, inProgress: 0 },
+});
 
 describe("RunPod scale-zero control", () => {
   it("accepts only the bounded zero-idle endpoint policy", () => {
@@ -53,10 +57,7 @@ describe("RunPod scale-zero control", () => {
       const path = new URL(String(input)).pathname;
       if (path.endsWith("/run"))
         return response({ id: `job_${fetch.mock.calls.length}`, status: "IN_QUEUE" });
-      return response({
-        workers: { idle: 1, running: 0 },
-        jobs: { inQueue: 0, inProgress: 0 },
-      });
+      return response(health(1));
     });
     const client = new RunPodServerlessJobClient({
       apiKey: key,
@@ -94,21 +95,83 @@ describe("RunPod scale-zero control", () => {
     }
   });
 
+  it.each([
+    ["excess ready", { ...health(0), workers: { ...health(0).workers, ready: 2 } }],
+    [
+      "omitted ready",
+      {
+        ...health(0),
+        workers: {
+          idle: 0,
+          running: 0,
+          initializing: 0,
+          throttled: 0,
+          unhealthy: 0,
+        },
+      },
+    ],
+    ["malformed ready", { ...health(0), workers: { ...health(0).workers, ready: "0" } }],
+    ["omitted queue", { workers: health(0).workers, jobs: { inProgress: 0 } }],
+  ] as const)("rejects a warm-idle response with %s", async (_label, snapshot) => {
+    const guard = new RunPodDrainGuard();
+    guard.markActive();
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () => response(snapshot),
+      baseUrl: "http://127.0.0.1:43123",
+      sleep: async () => undefined,
+    });
+    await expect(client.confirmWarmIdle(1, 100)).rejects.toThrow("RUNPOD_WARM_IDLE_NOT_CONFIRMED");
+  });
+
+  it("rejects incomplete drain and queue-empty health", async () => {
+    const incomplete = {
+      workers: { idle: 0, running: 0, initializing: 0, throttled: 0, unhealthy: 0 },
+      jobs: { inProgress: 0 },
+    };
+    const drainedGuard = new RunPodDrainGuard();
+    drainedGuard.markActive();
+    const drainedClient = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard: drainedGuard,
+      fetch: async () => response(incomplete),
+      baseUrl: "http://127.0.0.1:43123",
+      sleep: async () => undefined,
+    });
+    await expect(drainedClient.confirmDrained(1)).rejects.toThrow("RUNPOD_ZERO_NOT_CONFIRMED");
+
+    const queueGuard = new RunPodDrainGuard();
+    queueGuard.markActive();
+    queueGuard.beginDrain();
+    const queueClient = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard: queueGuard,
+      fetch: async () => response(incomplete),
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(queueClient.confirmQueueEmpty()).rejects.toThrow("RUNPOD_QUEUE_NOT_DRAINED");
+  });
+
   it("keeps a quiescent throttled worker policy-only and fails closed on active health", () => {
     const guard = new RunPodDrainGuard();
     guard.markActive();
-    guard.confirmQuiescent(0, 1, 1, 0, 0, 0, 0);
+    guard.confirmQuiescent(0, 0, 1, 0, 0, 0, 0);
     expect(guard.snapshot()).toBe("quiescent");
     expect(() => guard.assertPolicyUpdateAllowed()).not.toThrow();
     expect(() => guard.assertTerminationAllowed()).not.toThrow();
     expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");
 
     for (const counts of [
-      [1, 1, 1, 0, 0, 0, 0],
-      [0, 1, 1, 1, 0, 0, 0],
-      [0, 1, 1, 0, 1, 0, 0],
-      [0, 1, 1, 0, 0, 1, 0],
-      [0, 1, 1, 0, 0, 0, 1],
+      [1, 0, 1, 0, 0, 0, 0],
+      [0, 1, 1, 0, 0, 0, 0],
+      [0, 0, 1, 1, 0, 0, 0],
+      [0, 0, 1, 0, 1, 0, 0],
+      [0, 0, 1, 0, 0, 1, 0],
+      [0, 0, 1, 0, 0, 0, 1],
     ] as const) {
       const rejected = new RunPodDrainGuard();
       rejected.markActive();
@@ -125,6 +188,59 @@ describe("RunPod scale-zero control", () => {
       ).toThrow("RUNPOD_QUIESCENT_NOT_CONFIRMED");
       expect(rejected.snapshot()).toBe("unknown");
     }
+  });
+
+  it.each([
+    ["omitted", { idle: 0, running: 0, initializing: 0, throttled: 1, unhealthy: 0 }],
+    ["null", { idle: 0, ready: null, running: 0, initializing: 0, throttled: 1, unhealthy: 0 }],
+    ["malformed", { idle: 0, ready: "0", running: 0, initializing: 0, throttled: 1, unhealthy: 0 }],
+  ] as const)(
+    "rejects a quiescent health response with a %s worker counter",
+    async (_label, workers) => {
+      const guard = new RunPodDrainGuard();
+      guard.markActive();
+      const client = new RunPodServerlessJobClient({
+        apiKey: key,
+        endpointId: "endpoint_01",
+        guard,
+        fetch: async () => response({ workers, jobs: { inQueue: 0, inProgress: 0 } }),
+        baseUrl: "http://127.0.0.1:43123",
+        sleep: async () => undefined,
+      });
+      await expect(client.confirmQuiescent(1, 100)).rejects.toThrow(
+        "RUNPOD_QUIESCENT_NOT_CONFIRMED",
+      );
+      expect(guard.snapshot()).toBe("unknown");
+    },
+  );
+
+  it.each([
+    ["omitted", { inProgress: 0 }],
+    ["null", { inQueue: null, inProgress: 0 }],
+    ["malformed", { inQueue: "0", inProgress: 0 }],
+  ] as const)("rejects a quiescent health response with a %s job counter", async (_label, jobs) => {
+    const guard = new RunPodDrainGuard();
+    guard.markActive();
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () =>
+        response({
+          workers: {
+            idle: 0,
+            ready: 0,
+            throttled: 1,
+            running: 0,
+            initializing: 0,
+            unhealthy: 0,
+          },
+          jobs,
+        }),
+      baseUrl: "http://127.0.0.1:43123",
+      sleep: async () => undefined,
+    });
+    await expect(client.confirmQuiescent(1, 100)).rejects.toThrow("RUNPOD_QUIESCENT_NOT_CONFIRMED");
   });
 
   it("returns redacted live-shaped inventory and preserves the bearer only in transport", async () => {
@@ -252,8 +368,7 @@ describe("RunPod scale-zero control", () => {
             : { id: "job_01", status: "CANCELLED" },
         );
       }
-      if (path.endsWith("/health"))
-        return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+      if (path.endsWith("/health")) return response(health());
       return response({
         id: "job_01",
         status: "IN_PROGRESS",
@@ -302,7 +417,7 @@ describe("RunPod scale-zero control", () => {
           status: statusReads === 1 ? "IN_PROGRESS" : "CANCELLED",
         });
       }
-      return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+      return response(health());
     });
     const client = new RunPodServerlessJobClient({
       apiKey: key,
@@ -333,7 +448,7 @@ describe("RunPod scale-zero control", () => {
       if (path.endsWith("/status/job_01")) {
         return response({ id: "job_01", status: "COMPLETED" });
       }
-      return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+      return response(health());
     });
     const client = new RunPodServerlessJobClient({
       apiKey: key,
@@ -355,7 +470,7 @@ describe("RunPod scale-zero control", () => {
     const fetch = vi.fn(async (input: string | URL | Request) => {
       const path = new URL(String(input)).pathname;
       if (path.endsWith("/run")) return response({ id: "job_01", status: "IN_QUEUE" });
-      return response({ workers: { idle: 1, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+      return response(health(1));
     });
     const client = new RunPodServerlessJobClient({
       apiKey: key,
@@ -384,7 +499,7 @@ describe("RunPod scale-zero control", () => {
         return response({ id: "job_other", status: "COMPLETED" });
       if (path.endsWith("/cancel/job_01"))
         return response({ id: "job_other", status: "CANCELLED" });
-      return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+      return response(health());
     });
     const client = new RunPodServerlessJobClient({
       apiKey: key,

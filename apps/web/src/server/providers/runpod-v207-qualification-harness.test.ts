@@ -146,7 +146,14 @@ function harnessFetch(
     }
     if (path.endsWith("/health")) {
       return jsonResponse({
-        workers: { idle: 0, running: 0 },
+        workers: {
+          idle: 0,
+          running: 0,
+          initializing: 0,
+          ready: 0,
+          throttled: 0,
+          unhealthy: 0,
+        },
         jobs: { inQueue: 0, inProgress: 0 },
       });
     }
@@ -345,6 +352,39 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
+  it.each(["gpuTypeIds", "allowedCudaVersions"] as const)(
+    "rejects an ambiguous endpoint readback that omits %s",
+    async (field) => {
+      const baseFetch = harnessFetch();
+      let resourcesVisible = false;
+      const incompleteEndpoint = { ...reconciledEndpoint } as Record<string, unknown>;
+      delete incompleteEndpoint[field];
+      const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const path = new URL(String(input)).pathname;
+        if (path === "/endpoints" && init?.method === "POST") {
+          resourcesVisible = true;
+          throw new Error("ambiguous endpoint response");
+        }
+        if (path === "/endpoints" && init?.method === undefined && resourcesVisible) {
+          return jsonResponse([incompleteEndpoint]);
+        }
+        if (path === "/templates" && init?.method === undefined && resourcesVisible) {
+          return jsonResponse([reconciledTemplate]);
+        }
+        return baseFetch(input, init);
+      });
+      const instance = makeHarness(fetch);
+      await expect(instance.create()).rejects.toThrow(
+        "RUNPOD_RESOURCE_RECONCILIATION_IDENTITY_MISMATCH",
+      );
+      expect(
+        fetch.mock.calls.filter(([url]) =>
+          new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
+        ),
+      ).toHaveLength(0);
+    },
+  );
+
   it("normalizes one explicit flashboot=true create and continues after false readback", async () => {
     const baseFetch = harnessFetch();
     let resourcesVisible = false;
@@ -365,7 +405,7 @@ describe("V2-07 qualification harness", () => {
             idle: 1,
             running: 0,
             initializing: 0,
-            ready: 1,
+            ready: 0,
             throttled: 0,
             unhealthy: 0,
           },
@@ -427,7 +467,7 @@ describe("V2-07 qualification harness", () => {
         return jsonResponse({
           workers: policyUpdated
             ? { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 0, unhealthy: 0 }
-            : { idle: 0, running: 0, initializing: 0, ready: 1, throttled: 1, unhealthy: 0 },
+            : { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 1, unhealthy: 0 },
           jobs: { inQueue: 0, inProgress: 0 },
         });
       }
@@ -716,6 +756,46 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
+  it("blocks concurrent readers when the max-two endpoint is only quiescent", async () => {
+    const baseFetch = harnessFetch();
+    let maxTwoApplied = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints/endpoint_01/update") {
+        const body = init?.body === undefined ? null : JSON.parse(String(init.body));
+        const response = await baseFetch(input, init);
+        if (body?.workersMax === 2) maxTwoApplied = true;
+        return response;
+      }
+      if (path === "/endpoint_01/health" && maxTwoApplied) {
+        return jsonResponse({
+          workers: {
+            idle: 0,
+            running: 0,
+            initializing: 0,
+            ready: 0,
+            throttled: 1,
+            unhealthy: 0,
+          },
+          jobs: { inQueue: 0, inProgress: 0 },
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    await expect(instance.applyConcurrentReaderPolicy()).rejects.toThrow(
+      "RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED",
+    );
+    expect((await instance.evidence()).concurrentReaderConfigHash).toBeNull();
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+    await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).resolves.toBeUndefined();
+  });
+
   it("fails closed when a single dispatch crosses the cap", async () => {
     const fetch = harnessFetch();
     const spendSnapshotUsd = vi
@@ -884,11 +964,14 @@ describe("V2-07 qualification harness", () => {
 
   it("fails closed when a concurrent reader drain is ambiguous", async () => {
     const baseFetch = harnessFetch();
-    let healthReads = 0;
+    let dispatched = false;
+    let healthReadsAfterDispatch = 0;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      if (new URL(String(input)).pathname.endsWith("/health")) {
-        healthReads += 1;
-        if (healthReads >= 3) throw new Error("ambiguous reader health");
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/run")) dispatched = true;
+      if (path.endsWith("/health") && dispatched) {
+        healthReadsAfterDispatch += 1;
+        if (healthReadsAfterDispatch >= 2) throw new Error("ambiguous reader health");
       }
       return baseFetch(input, init);
     });

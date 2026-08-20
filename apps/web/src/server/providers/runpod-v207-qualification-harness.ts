@@ -347,11 +347,12 @@ export class RunPodV207QualificationHarness {
         (Array.isArray(networkVolumeIds) &&
           networkVolumeIds.length === 1 &&
           networkVolumeIds[0] === this.#options.placement.networkVolumeId));
-    const exactStrings = (value: unknown, expected: readonly string[]): boolean =>
-      value === undefined ||
-      (Array.isArray(value) &&
-        value.length === expected.length &&
-        value.every((entry, index) => entry === expected[index]));
+    const requiredExactStrings = (value: unknown, expected: readonly string[]): boolean =>
+      Array.isArray(value) &&
+      value.length === expected.length &&
+      value.every((entry, index) => entry === expected[index]);
+    const optionalExactStrings = (value: unknown, expected: readonly string[]): boolean =>
+      value === undefined || requiredExactStrings(value, expected);
     const flashbootMatches =
       resource.raw.flashboot === false || (allowFlashbootTrue && resource.raw.flashboot === true);
     return (
@@ -361,10 +362,10 @@ export class RunPodV207QualificationHarness {
       resource.raw.workersMin === 0 &&
       resource.raw.workersMax === this.#options.initialPolicy.workersMax &&
       resource.raw.gpuCount === 1 &&
-      exactStrings(resource.raw.gpuTypeIds, [V207_RUNPOD_GPU]) &&
+      requiredExactStrings(resource.raw.gpuTypeIds, [V207_RUNPOD_GPU]) &&
       volumeBindingMatches &&
-      exactStrings(resource.raw.dataCenterIds, [V207_RUNPOD_REGION]) &&
-      exactStrings(resource.raw.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
+      optionalExactStrings(resource.raw.dataCenterIds, [V207_RUNPOD_REGION]) &&
+      requiredExactStrings(resource.raw.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
       resource.raw.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
       flashbootMatches &&
       resource.raw.idleTimeout === this.#options.initialPolicy.idleTimeout &&
@@ -869,7 +870,23 @@ export class RunPodV207QualificationHarness {
     // The max-two endpoint is a distinct proof phase. Claim the primary fence before the first
     // asynchronous health/cap read and keep it until drain proves both reader clients are gone.
     this.#concurrentReaderFence = true;
-    if (this.#guard.snapshot() === "active") await this.#jobs!.confirmWarmIdle();
+    if (this.#guard.snapshot() === "active") {
+      try {
+        await this.#jobs!.confirmWarmIdle();
+      } catch (error) {
+        if (
+          !(error instanceof RunPodControlError) ||
+          error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED"
+        ) {
+          throw error;
+        }
+        await this.#jobs!.confirmQuiescent(12, 250);
+        throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
+      }
+    }
+    if (this.#guard.snapshot() !== "warm_idle" && this.#guard.snapshot() !== "zero") {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
+    }
     await this.assertSpendWithinCap();
     await this.#options.control.enforceV207EndpointPolicy(
       this.#endpoint!.id,
@@ -880,6 +897,21 @@ export class RunPodV207QualificationHarness {
     );
     this.checkAbort();
     await this.assertSpendWithinCap();
+    this.#guard.markActive();
+    try {
+      await this.#jobs!.confirmWarmIdle();
+    } catch (error) {
+      if (
+        !(error instanceof RunPodControlError) ||
+        error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED"
+      ) {
+        throw error;
+      }
+      await this.#jobs!.confirmQuiescent(12, 250);
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
+    }
+    this.checkAbort();
+    this.mark("concurrent_reader_warm_idle_baseline");
     this.#concurrentReaderConfigHash = hashRunPodV207EndpointConfiguration(
       jsonValue({
         region: "EU-RO-1",
@@ -937,6 +969,9 @@ export class RunPodV207QualificationHarness {
     }
     if (!this.#concurrentReaderFence) {
       throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_REQUIRED");
+    }
+    if (this.#guard.snapshot() !== "warm_idle" && this.#guard.snapshot() !== "zero") {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
     }
     // Claim the one allowed reader dispatch before the first asynchronous cap read. This keeps a
     // third caller out during preflight; the primary fence remains until drain proves zero.
@@ -1119,7 +1154,6 @@ export class RunPodV207QualificationHarness {
   }): Promise<void> {
     if (!this.#endpoint || !this.#jobs || !this.#template) return;
     if (
-      this.#concurrentReaderFence ||
       this.#readerJobs.length > 0 ||
       ["active", "warm_idle", "draining", "queue_empty"].includes(this.#guard.snapshot())
     ) {

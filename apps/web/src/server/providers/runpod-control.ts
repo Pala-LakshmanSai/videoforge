@@ -118,6 +118,13 @@ const numberOrNull = (value: unknown): number | null => {
   return Number.isFinite(candidate) && candidate >= 0 ? candidate : null;
 };
 
+const strictCounter = (source: JsonRecord | null, key: string): number => {
+  const candidate = source?.[key];
+  return typeof candidate === "number" && Number.isSafeInteger(candidate) && candidate >= 0
+    ? candidate
+    : Number.NaN;
+};
+
 const hashId = (value: string): string =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 
@@ -166,13 +173,12 @@ const healthWorkerCounts = (
       total: Number.NaN,
     };
   }
-  const count = (key: string): number => numberOrNull(workers[key]) ?? 0;
-  const idle = count("idle");
-  const running = count("running");
-  const initializing = count("initializing");
-  const ready = count("ready");
-  const throttled = count("throttled");
-  const unhealthy = count("unhealthy");
+  const idle = strictCounter(workers, "idle");
+  const running = strictCounter(workers, "running");
+  const initializing = strictCounter(workers, "initializing");
+  const ready = strictCounter(workers, "ready");
+  const throttled = strictCounter(workers, "throttled");
+  const unhealthy = strictCounter(workers, "unhealthy");
   return {
     idle,
     running,
@@ -293,7 +299,7 @@ export class RunPodDrainGuard {
       readyWorkerCount > 1 ||
       throttledWorkerCount < 0 ||
       throttledWorkerCount > 1 ||
-      idleWorkerCount + throttledWorkerCount > 1 ||
+      idleWorkerCount + readyWorkerCount + throttledWorkerCount > 1 ||
       runningWorkerCount !== 0 ||
       initializingWorkerCount !== 0 ||
       unhealthyWorkerCount !== 0 ||
@@ -1154,9 +1160,7 @@ export class RunPodServerlessJobClient {
       const value = await this.request("GET", "/health");
       const workers = healthWorkerCounts(record(value.workers));
       const jobs = record(value.jobs);
-      const queuedJobs =
-        (numberOrNull(jobs?.inQueue) ?? Number.NaN) +
-        (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+      const queuedJobs = strictCounter(jobs, "inQueue") + strictCounter(jobs, "inProgress");
       if (workers.total === 0 && queuedJobs === 0) {
         this.options.guard.confirmZero(0, 0);
         return;
@@ -1183,9 +1187,7 @@ export class RunPodServerlessJobClient {
       const jobs = record(value.jobs);
       const idle = workers.idle;
       const running = workers.running;
-      const queued =
-        (numberOrNull(jobs?.inQueue) ?? Number.NaN) +
-        (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+      const queued = strictCounter(jobs, "inQueue") + strictCounter(jobs, "inProgress");
       if (attempt === 0) {
         console.error(
           `v207:health-baseline=${JSON.stringify({ idle, running, initializing: workers.initializing, ready: workers.ready, throttled: workers.throttled, unhealthy: workers.unhealthy, queued })}`,
@@ -1193,7 +1195,10 @@ export class RunPodServerlessJobClient {
       }
       if (
         Number.isSafeInteger(idle) &&
+        Number.isSafeInteger(workers.ready) &&
         idle <= 1 &&
+        workers.ready <= 1 &&
+        idle + workers.ready <= 1 &&
         running === 0 &&
         workers.initializing === 0 &&
         workers.throttled === 0 &&
@@ -1221,36 +1226,46 @@ export class RunPodServerlessJobClient {
     }
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const value = await this.request("GET", "/health");
-      const workers = healthWorkerCounts(record(value.workers));
+      const rawWorkers = record(value.workers);
       const jobs = record(value.jobs);
-      const queued =
-        (numberOrNull(jobs?.inQueue) ?? Number.NaN) +
-        (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+      const workers = {
+        idle: strictCounter(rawWorkers, "idle"),
+        running: strictCounter(rawWorkers, "running"),
+        initializing: strictCounter(rawWorkers, "initializing"),
+        ready: strictCounter(rawWorkers, "ready"),
+        throttled: strictCounter(rawWorkers, "throttled"),
+        unhealthy: strictCounter(rawWorkers, "unhealthy"),
+      };
+      const { idle, running, initializing, ready, throttled, unhealthy } = workers;
+      const inQueue = strictCounter(jobs, "inQueue");
+      const inProgress = strictCounter(jobs, "inProgress");
       if (
-        Number.isSafeInteger(workers.idle) &&
-        Number.isSafeInteger(workers.ready) &&
-        Number.isSafeInteger(workers.throttled) &&
-        Number.isSafeInteger(workers.running) &&
-        Number.isSafeInteger(workers.initializing) &&
-        Number.isSafeInteger(workers.unhealthy) &&
-        Number.isSafeInteger(queued) &&
-        workers.idle <= 1 &&
-        workers.ready <= 1 &&
-        workers.throttled <= 1 &&
-        workers.idle + workers.throttled <= 1 &&
-        workers.running === 0 &&
-        workers.initializing === 0 &&
-        workers.unhealthy === 0 &&
-        queued === 0
+        Number.isSafeInteger(idle) &&
+        Number.isSafeInteger(ready) &&
+        Number.isSafeInteger(throttled) &&
+        Number.isSafeInteger(running) &&
+        Number.isSafeInteger(initializing) &&
+        Number.isSafeInteger(unhealthy) &&
+        Number.isSafeInteger(inQueue) &&
+        Number.isSafeInteger(inProgress) &&
+        idle <= 1 &&
+        ready <= 1 &&
+        throttled <= 1 &&
+        idle + ready + throttled <= 1 &&
+        running === 0 &&
+        initializing === 0 &&
+        unhealthy === 0 &&
+        inQueue === 0 &&
+        inProgress === 0
       ) {
         this.options.guard.confirmQuiescent(
-          workers.idle,
-          workers.ready,
-          workers.throttled,
-          workers.running,
-          workers.initializing,
-          workers.unhealthy,
-          queued,
+          idle,
+          ready,
+          throttled,
+          running,
+          initializing,
+          unhealthy,
+          0,
         );
         return;
       }
@@ -1270,8 +1285,7 @@ export class RunPodServerlessJobClient {
   async confirmQueueEmpty(): Promise<void> {
     const value = await this.request("GET", "/health");
     const jobs = record(value.jobs);
-    const queuedJobs =
-      (numberOrNull(jobs?.inQueue) ?? Number.NaN) + (numberOrNull(jobs?.inProgress) ?? Number.NaN);
+    const queuedJobs = strictCounter(jobs, "inQueue") + strictCounter(jobs, "inProgress");
     this.options.guard.confirmQueueEmpty(queuedJobs);
   }
 }
