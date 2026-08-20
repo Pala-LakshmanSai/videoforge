@@ -269,32 +269,6 @@ async function writeV207EvidenceCheckpoint(value: AnyRecord): Promise<void> {
   }
 }
 
-/** Extract only a bounded error code from RunPod's provider-level error field. */
-function providerErrorCode(value: unknown): string {
-  const candidates: unknown[] = [value];
-  if (typeof value === "string") {
-    try {
-      candidates.push(JSON.parse(value));
-    } catch {
-      // The provider may return a plain error string; never persist it verbatim.
-    }
-  }
-  for (const candidate of candidates) {
-    if (typeof candidate === "string") {
-      const match = candidate.match(/[A-Z][A-Z0-9_.:-]{2,160}/u)?.[0];
-      if (match && SAFE_PROVIDER_CODE.test(match)) return match;
-      continue;
-    }
-    if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
-      for (const key of ["code", "error_code", "errorCode", "error_type"]) {
-        const found = (candidate as AnyRecord)[key];
-        if (typeof found === "string" && SAFE_PROVIDER_CODE.test(found)) return found;
-      }
-    }
-  }
-  return "PROVIDER_ERROR_PRESENT";
-}
-
 const nowIso = (): string => new Date().toISOString();
 const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -647,15 +621,23 @@ async function attestPublishedImage(): Promise<AnyRecord> {
   };
 }
 
+export function assertV207ItemCount(itemCount: number): void {
+  if (!Number.isSafeInteger(itemCount) || itemCount < 1 || itemCount > 32) {
+    throw new Error("V207_BATCH_ITEM_COUNT_INVALID");
+  }
+}
+
 async function createBatch(
   attemptId: string,
   nonce: string,
   workerToken: string,
+  itemCount: number,
   abortCheck?: () => void,
 ): Promise<{
   readonly input: RunPodV207DispatchBatchInput;
   readonly objectKeys: readonly string[];
 }> {
+  assertV207ItemCount(itemCount);
   const outputPrefix =
     `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}` +
     `/lane/mage-image/job/${attemptId}`;
@@ -664,7 +646,7 @@ async function createBatch(
   const objectKeys: string[] = [];
   const reservationIds: string[] = [];
   try {
-    for (let index = 0; index < 32; index += 1) {
+    for (let index = 0; index < itemCount; index += 1) {
       abortCheck?.();
       const objectKey = `${outputPrefix}/artifact/scene-${String(index + 1).padStart(2, "0")}`;
       objectKeys.push(objectKey);
@@ -705,7 +687,7 @@ async function createBatch(
     }
     throw error;
   }
-  const items = QUALIFICATION_SCENES.map((positivePrompt, index) => {
+  const items = QUALIFICATION_SCENES.slice(0, itemCount).map((positivePrompt, index) => {
     const negativePrompt = "text, letters, logo, watermark, malformed objects";
     return {
       scene_id: `scene-${String(index + 1).padStart(2, "0")}`,
@@ -734,7 +716,7 @@ async function createBatch(
       attempt_id: attemptId,
       lane: "mage_image",
       items_manifest_sha256: hashText(JSON.stringify(items)),
-      item_count: 32,
+      item_count: itemCount,
     },
     runtime: {
       endpoint_profile_id: "mage-serverless-v1",
@@ -809,11 +791,13 @@ async function verifyBatch(
   expectedAttemptId: string,
   objectKeys: readonly string[],
   authorities: readonly AnyRecord[],
+  itemCount: number,
   expectedEndpointIdHash: string,
   nonce: string,
   receiptKeyId: string,
   receiptSecret: Buffer,
 ): Promise<AnyRecord> {
+  assertV207ItemCount(itemCount);
   if (job.status !== "COMPLETED") throw new Error(`RUNPOD_JOB_${job.status}`);
   const output = job.output as AnyRecord;
   if (!output || output.status !== "SUCCEEDED" || !Array.isArray(output.items)) {
@@ -824,30 +808,20 @@ async function verifyBatch(
         output_keys: output && typeof output === "object" ? Object.keys(output).sort() : [],
       })}`,
     );
-    const failureCode = output?.failure_code;
-    const errorValue = output?.error;
-    const code =
-      typeof failureCode === "string" && SAFE_PROVIDER_CODE.test(failureCode)
-        ? failureCode
-        : typeof errorValue === "string"
-          ? errorValue.slice(0, 160)
-          : errorValue && typeof errorValue === "object"
-            ? JSON.stringify(
-                Object.fromEntries(
-                  Object.entries(errorValue as AnyRecord).filter(([, value]) =>
-                    ["string", "number", "boolean"].includes(typeof value),
-                  ),
-                ),
-              ).slice(0, 240)
-            : job.error !== undefined
-              ? providerErrorCode(job.error)
-              : "UNKNOWN";
-    throw new Error(`MAGE_OUTPUT_NOT_SUCCEEDED:${String(output?.status ?? "MISSING")}:${code}`);
+    const outputStatus =
+      typeof output?.status === "string" && SAFE_PROVIDER_CODE.test(output.status)
+        ? output.status
+        : "MISSING";
+    const failureCode =
+      typeof output?.failure_code === "string" && SAFE_PROVIDER_CODE.test(output.failure_code)
+        ? output.failure_code
+        : "UNKNOWN";
+    throw new Error(`MAGE_OUTPUT_NOT_SUCCEEDED:${outputStatus}:${failureCode}`);
   }
-  if (output.items.length !== 32 || output.items.length !== objectKeys.length) {
+  if (output.items.length !== itemCount || objectKeys.length !== itemCount) {
     throw new Error("MAGE_OUTPUT_ITEM_COUNT_INVALID");
   }
-  if (authorities.length !== objectKeys.length) throw new Error("MAGE_AUTHORITY_COUNT_INVALID");
+  if (authorities.length !== itemCount) throw new Error("MAGE_AUTHORITY_COUNT_INVALID");
   const receipt = output.provenance_receipt as AnyRecord;
   if (!receipt || receipt.schema_version !== "serverless-provenance-receipt/v1") {
     throw new Error("MAGE_RECEIPT_MISSING");
@@ -1056,6 +1030,7 @@ async function verifyBatchWithDiagnostic(
   expectedAttemptId: string,
   objectKeys: readonly string[],
   authorities: readonly AnyRecord[],
+  itemCount: number,
   expectedEndpointIdHash: string,
   nonce: string,
   receiptKeyId: string,
@@ -1067,6 +1042,7 @@ async function verifyBatchWithDiagnostic(
       expectedAttemptId,
       objectKeys,
       authorities,
+      itemCount,
       expectedEndpointIdHash,
       nonce,
       receiptKeyId,
@@ -1237,12 +1213,12 @@ async function main(): Promise<void> {
         });
       },
     });
-  let success = false;
-  const generatedObjectKeys: string[] = [];
-  try {
-    await persistCheckpoint("initialized");
-    cancellation.throwIfRequested();
-    await harness.create();
+    let success = false;
+    const generatedObjectKeys: string[] = [];
+    try {
+      await persistCheckpoint("initialized");
+      cancellation.throwIfRequested();
+      await harness.create();
       console.error("v207:create-ready");
       const createdIdentity = await harness.evidence();
       latestHarnessEvidence = createdIdentity as unknown as AnyRecord;
@@ -1250,11 +1226,45 @@ async function main(): Promise<void> {
         throw new Error("V207_CREATED_IDENTITY_MISSING");
       }
       await persistCheckpoint("create");
+      const probeAttemptId = `v207-probe-${runTag}`;
+      const probe = await createBatch(
+        probeAttemptId,
+        nonce,
+        workerToken,
+        1,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...probe.objectKeys);
+      console.error("v207:probe-ports-ready");
+      await persistCheckpoint("probe-ports");
+      cancellation.throwIfRequested();
+      const probeJob = await harness.dispatchBatch(probe.input);
+      console.error("v207:probe-dispatched");
+      await persistCheckpoint("probe-dispatch");
+      const probeResult = await harness.reconcile(probeJob.id);
+      console.error("v207:probe-terminal");
+      const probeEvidence = await verifyBatchWithDiagnostic(
+        harness,
+        probeResult,
+        probeAttemptId,
+        probe.objectKeys,
+        probe.input.outputAuthority.authorities as readonly AnyRecord[],
+        1,
+        createdIdentity.endpointIdHash,
+        nonce,
+        receiptKeyId,
+        receiptSecret,
+      );
+      (evidence.batches as AnyRecord[]).push({ kind: "owned_probe", ...probeEvidence });
+      await persistCheckpoint("probe-terminal");
+      await harness.confirmWarmIdle();
+      await persistCheckpoint("probe-warm-idle");
       const coldAttemptId = `v207-cold-${runTag}`;
       const cold = await createBatch(
         coldAttemptId,
         nonce,
         workerToken,
+        32,
         cancellation.throwIfRequested,
       );
       generatedObjectKeys.push(...cold.objectKeys);
@@ -1272,6 +1282,7 @@ async function main(): Promise<void> {
         coldAttemptId,
         cold.objectKeys,
         cold.input.outputAuthority.authorities as readonly AnyRecord[],
+        32,
         createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
@@ -1289,6 +1300,7 @@ async function main(): Promise<void> {
         warmAttemptId,
         nonce,
         workerToken,
+        32,
         cancellation.throwIfRequested,
       );
       generatedObjectKeys.push(...warm.objectKeys);
@@ -1305,6 +1317,7 @@ async function main(): Promise<void> {
         warmAttemptId,
         warm.objectKeys,
         warm.input.outputAuthority.authorities as readonly AnyRecord[],
+        32,
         createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
@@ -1323,6 +1336,7 @@ async function main(): Promise<void> {
         readerAAttemptId,
         nonce,
         workerToken,
+        32,
         cancellation.throwIfRequested,
       );
       generatedObjectKeys.push(...readerA.objectKeys);
@@ -1330,6 +1344,7 @@ async function main(): Promise<void> {
         readerBAttemptId,
         nonce,
         workerToken,
+        32,
         cancellation.throwIfRequested,
       );
       generatedObjectKeys.push(...readerB.objectKeys);
@@ -1346,6 +1361,7 @@ async function main(): Promise<void> {
         readerAAttemptId,
         readerA.objectKeys,
         readerA.input.outputAuthority.authorities as readonly AnyRecord[],
+        32,
         createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
@@ -1357,6 +1373,7 @@ async function main(): Promise<void> {
         readerBAttemptId,
         readerB.objectKeys,
         readerB.input.outputAuthority.authorities as readonly AnyRecord[],
+        32,
         createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
@@ -1373,6 +1390,7 @@ async function main(): Promise<void> {
         `v207-cancel-${runTag}`,
         nonce,
         workerToken,
+        32,
         cancellation.throwIfRequested,
       );
       generatedObjectKeys.push(...cancel.objectKeys);

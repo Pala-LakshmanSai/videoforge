@@ -15,6 +15,7 @@ process.env.V207_IMAGE = V207_REPAIRED_IMAGE;
 process.env.V207_IMAGE_SOURCE_COMMIT = V207_REPAIRED_IMAGE_SOURCE_COMMIT;
 process.env.V207_FINITE_CAP_USD = "4";
 const {
+  assertV207ItemCount,
   createV207Cancellation,
   installV207SignalHandlers,
   isAllowedV207GhcrBlobRedirect,
@@ -48,11 +49,27 @@ describe("V2-07 live qualification runner safety", () => {
   });
 
   it("requires one exact 32-image 1280x720 PNG batch with full receipts", () => {
-    expect(source).toContain("output.items.length !== 32");
+    expect(source).toContain("assertV207ItemCount(itemCount)");
+    expect(source).toContain("output.items.length !== itemCount");
     expect(source).toContain("receiptItems.length !== objectKeys.length");
     expect(source).toContain("png.readUInt32BE(16) !== 1280");
     expect(source).toContain("png.readUInt32BE(20) !== 720");
     expect(source).toContain("MAGE_RECEIPT_IDENTITY_INVALID");
+  });
+
+  it("validates one-to-32 item counts and gates full batches behind the owned probe", () => {
+    expect(() => assertV207ItemCount(0)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
+    expect(() => assertV207ItemCount(33)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
+    expect(() => assertV207ItemCount(1.5)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
+    expect(() => assertV207ItemCount(1)).not.toThrow();
+    expect(() => assertV207ItemCount(32)).not.toThrow();
+    expect(source).toContain("QUALIFICATION_SCENES.slice(0, itemCount)");
+    expect(source).toContain("item_count: itemCount");
+    expect(source).toContain("const probe = await createBatch(");
+    expect(source).toContain("workerToken,\n        1,");
+    expect(source).toContain('kind: "owned_probe"');
+    expect(source).toContain("workerToken,\n        32,");
+    expect(source).toContain("MAGE_OUTPUT_NOT_SUCCEEDED:${outputStatus}:${failureCode}");
   });
 
   it("uses unique attempt lineage, bounded reads, and account-wide final drain proof", () => {
