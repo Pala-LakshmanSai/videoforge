@@ -1237,11 +1237,12 @@ async function main(): Promise<void> {
         });
       },
     });
-    let success = false;
-    const generatedObjectKeys: string[] = [];
-    try {
-      cancellation.throwIfRequested();
-      await harness.create();
+  let success = false;
+  const generatedObjectKeys: string[] = [];
+  try {
+    await persistCheckpoint("initialized");
+    cancellation.throwIfRequested();
+    await harness.create();
       console.error("v207:create-ready");
       const createdIdentity = await harness.evidence();
       latestHarnessEvidence = createdIdentity as unknown as AnyRecord;

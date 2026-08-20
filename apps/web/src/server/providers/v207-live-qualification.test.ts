@@ -158,6 +158,7 @@ describe("V2-07 live qualification runner safety", () => {
     expect(redacted.status).toBe("COMPLETED");
     expect(source).toContain("writeV207EvidenceCheckpoint");
     expect(source).toContain("mode: 0o600");
+    expect(source).toContain('await persistCheckpoint("initialized")');
     expect(source).toContain('await persistCheckpoint("create")');
     expect(source).toContain('event: "provider_status"');
   });
