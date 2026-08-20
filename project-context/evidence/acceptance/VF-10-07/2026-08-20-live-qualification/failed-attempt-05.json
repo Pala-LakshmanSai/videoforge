@@ -1,0 +1,81 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 5,
+  "started_at": "2026-08-20T06:37:31.490Z",
+  "operator_stop_at": "2026-08-20T06:44:10Z",
+  "authority_proposal_sha256": "sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b",
+  "approved_finite_spend_cap_usd": 4,
+  "approved_minimum_availability": "MEDIUM",
+  "pre_mutation_availability": "HIGH",
+  "result": "OPERATOR_STOPPED_ON_UNPROVEN_REPEATED_WORKER_EXIT",
+  "last_durable_orchestrator_event": {
+    "event": "live_preflight_completed",
+    "at": "2026-08-20T06:38:21.338Z",
+    "exit_code": 0
+  },
+  "observed_provider_state": {
+    "endpoint_id_sha256": "sha256:d86bee6774ff04d147612b57a5229b09f7dc5219db36db732aef4f5849f54535",
+    "template_id_sha256": "sha256:d1c3a8a5b590c04e913e9e83a29f576e719b2d298e0029a30eb5b3cf25d15522",
+    "workers_min": 0,
+    "workers_max": 1,
+    "exited_worker_records_observed": 3,
+    "active_worker_count_at_stop": 0,
+    "running_pod_count_at_stop": 0,
+    "raw_job_id_recovered": false,
+    "job_dispatch_proven": false,
+    "r2_reservation_phase_proven": false,
+    "model_initialization_result_proven": false,
+    "gpu_inference_reached": false,
+    "completed_output_count": 0
+  },
+  "diagnosis": {
+    "checked_in_model_root_repair": "/runpod-volume/mage-model",
+    "handled_mage_failure_code_observed": false,
+    "provider_job_stream_recovered": false,
+    "specific_root_cause": "UNPROVEN",
+    "safe_conclusion": "provider-side worker teardown or external process termination cannot be distinguished after the forced interrupt",
+    "blind_retry_allowed": false
+  },
+  "settled_finite_spend_usd_observed": 0,
+  "billing_observation_at": "2026-08-20T06:49:10.025Z",
+  "cleanup": {
+    "pre_delete_queue": 0,
+    "pre_delete_in_progress": 0,
+    "pre_delete_running": 0,
+    "endpoint_deleted": true,
+    "endpoint_absence_verified_before_template_delete": true,
+    "linked_template_deleted": true,
+    "runpod_pod_count": 0,
+    "runpod_endpoint_count": 0,
+    "runpod_private_template_count": 0,
+    "runpod_active_worker_count": 0,
+    "intended_volume_count": 2,
+    "intended_volumes_unchanged": true,
+    "cloudflare_worker_version": "e69971c9-922d-4605-b8ec-592110f3759a",
+    "cloudflare_worker_version_percentage": 100,
+    "temporary_signer_secret_present": false,
+    "public_post_route_status": 404,
+    "public_post_route_code": "V207_ROUTE_DISABLED"
+  },
+  "r2_read_only_audit": {
+    "bucket_object_count": 53,
+    "bucket_total_size_provider_display": "55.6 MB",
+    "exact_attempt_prefix_recovered": false,
+    "exact_attempt_residue_proven_absent": false,
+    "reason": "no raw attempt tag or deployed exact-prefix list surface survived the forced interrupt"
+  },
+  "repair_commits": [
+    "c05c547",
+    "21138d4",
+    "588e6b9"
+  ],
+  "required_before_retry": [
+    "incremental_redacted_live_evidence",
+    "graceful_signal_cleanup_path",
+    "focused_tests_green",
+    "clean_worktree",
+    "fresh_rate_availability_inventory_and_remaining_cap_within_authority"
+  ]
+}
