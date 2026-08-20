@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-requirement-matrix/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T00:55:00Z",
+  "recorded_at": "2026-08-20T00:57:00Z",
   "authority_mode": "provider_free",
   "requirements": [
     {
@@ -39,7 +39,7 @@
         "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts"
       ],
     "status": "PASS_PROVIDER_FREE_CONTRACT",
-    "live_gap": "Durable hosted R2 output acceptance and artifact-commit-receipt/v3 finalize remain unproven; the exact-key rollback route is locally covered but still requires the approved live deployment/run."
+    "live_gap": "Durable hosted R2 output acceptance and artifact-commit-receipt/v3 finalize remain unproven; the per-object HMAC rollback route and post-delete absence proof are locally covered but still require the approved live deployment/run."
     },
     {
       "id": "negative_contracts",

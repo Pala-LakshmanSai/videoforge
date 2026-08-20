@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T00:55:00Z",
+  "recorded_at": "2026-08-20T00:57:00Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -53,6 +53,7 @@
     "exact_generated_output_prefix_and_single_use_guard": "b40af35 + 4311983",
     "generated_output_prefix_binding": true,
     "generated_output_max_uses": 1,
+    "generated_output_rollback_authority": "per-object HMAC token derived from the ephemeral nonce and exact object key; DELETE proves post-delete head absence",
     "request_authority_ttl_seconds": 7200,
     "envelope_init_timeout_seconds": 800,
     "endpoint_template_init_timeout_seconds": 800,
@@ -214,6 +215,21 @@
       "commit": "c09ad5f",
       "area": "rollback route formatting and final TypeScript/lint reconciliation",
       "result": "PASS_PROVIDER_FREE_REPAIR"
+    },
+    {
+      "commit": "270cf95",
+      "area": "generated-output rollback is bound to a per-object HMAC token, reuses the exact R2 key grammar, and fails closed unless post-delete head absence is proven",
+      "result": "PASS_PROVIDER_FREE_REPAIR"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web exec vitest run src/server/hosted/v207-output-ports.test.ts",
+      "exit_code": 0,
+      "result": "6 passed"
+    },
+    {
+      "command": "pnpm --filter @videoforge/web typecheck && pnpm --filter @videoforge/web lint && pnpm --filter @videoforge/web exec vitest run src/server/providers/runpod-v207-qualification-harness.test.ts src/server/hosted/v207-output-ports.test.ts src/server/providers/v207-activation-authority.test.ts",
+      "exit_code": 0,
+      "result": "TypeScript, lint, and 18 focused tests passed"
     }
   ],
   "read_only_runpod_snapshot": {
