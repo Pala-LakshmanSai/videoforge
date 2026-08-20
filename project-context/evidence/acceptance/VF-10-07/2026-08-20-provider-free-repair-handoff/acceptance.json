@@ -204,6 +204,11 @@
       "commit": "d1d704c",
       "area": "attempt scratch environment is applied during serialized runtime generation and restored after the call",
       "result": "PASS_PROVIDER_FREE_REPAIR"
+    },
+    {
+      "commit": "767a27b",
+      "area": "nonce-fenced exact-key generated-output DELETE rollback is locally covered and failed qualification tracks rollback confirmation",
+      "result": "PASS_PROVIDER_FREE_REPAIR"
     }
   ],
   "read_only_runpod_snapshot": {
