@@ -625,7 +625,10 @@ async function attestPublishedImage(): Promise<AnyRecord> {
 }
 
 export function assertV207ItemCount(itemCount: number): void {
-  if (!Number.isSafeInteger(itemCount) || itemCount < 1 || itemCount > 32) {
+  // The sealed worker accepts remote batches in the 32-64 range, but this qualification
+  // intentionally owns one exact 32-scene video batch. Keep the local runner narrower so
+  // it cannot claim 64 authorities while QUALIFICATION_SCENES supplies only 32 items.
+  if (!Number.isSafeInteger(itemCount) || itemCount !== 32) {
     throw new Error("V207_BATCH_ITEM_COUNT_INVALID");
   }
 }
@@ -1237,7 +1240,7 @@ async function main(): Promise<void> {
         probeAttemptId,
         nonce,
         workerToken,
-        1,
+        32,
         cancellation.throwIfRequested,
       );
       generatedObjectKeys.push(...probe.objectKeys);
@@ -1255,7 +1258,7 @@ async function main(): Promise<void> {
         probeAttemptId,
         probe.objectKeys,
         probe.input.outputAuthority.authorities as readonly AnyRecord[],
-        1,
+        32,
         createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,

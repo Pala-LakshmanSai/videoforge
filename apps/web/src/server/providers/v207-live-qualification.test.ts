@@ -57,19 +57,27 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("MAGE_RECEIPT_IDENTITY_INVALID");
   });
 
-  it("validates one-to-32 item counts and gates full batches behind the owned probe", () => {
-    expect(() => assertV207ItemCount(0)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
-    expect(() => assertV207ItemCount(33)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
+  it("narrows the sealed worker's remote contract to one exact 32-item video batch", () => {
+    for (const itemCount of [0, 1, 16, 31, 33, 64, 65]) {
+      expect(() => assertV207ItemCount(itemCount)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
+    }
     expect(() => assertV207ItemCount(1.5)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
-    expect(() => assertV207ItemCount(1)).not.toThrow();
     expect(() => assertV207ItemCount(32)).not.toThrow();
     expect(source).toContain("QUALIFICATION_SCENES.slice(0, itemCount)");
     expect(source).toContain("item_count: itemCount");
-    expect(source).toContain("const probe = await createBatch(");
-    expect(source).toContain("workerToken,\n        1,");
-    expect(source).toContain('kind: "owned_probe"');
-    expect(source).toContain("workerToken,\n        32,");
     expect(source).toContain("MAGE_OUTPUT_NOT_SUCCEEDED:${outputStatus}:${failureCode}");
+  });
+
+  it("regresses Attempt 10 by making the owned probe a complete 32-item batch", () => {
+    const liveBatchCounts = [
+      ...source.matchAll(
+        /(?:probe|cold|warm|readerA|readerB|cancel) = await createBatch\([\s\S]*?workerToken,\s+(\d+),/g,
+      ),
+    ].map((match) => match[1]);
+    expect(liveBatchCounts).toEqual(["32", "32", "32", "32", "32", "32"]);
+    expect(source).toContain('kind: "owned_probe"');
+    expect(source).not.toContain("workerToken,\n        1,");
+    expect(() => assertV207ItemCount(31)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
   });
 
   it("uses unique attempt lineage, bounded reads, and account-wide final drain proof", () => {
