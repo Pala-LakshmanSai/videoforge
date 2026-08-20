@@ -42,6 +42,12 @@ REPAIR_RUNTIME_FILES = (
         "MAGE_COMFY_OUTPUT_ON_MODEL_VOLUME",
     ),
 )
+REPAIR_SOURCE_HASHES = {
+    "workers/image-media/mage_serverless.py": "bb0ade00c964379b666152295db18e20f9c2266f875ea37b6f9aeac7163491c3",
+    "workers/image-media/mage_runtime.py": "f6bec1478272bfaafde253ddaaf3a2e7526074d74a12b246d8b4ea94fb6dda5f",
+    "workers/image-media/mage_bootstrap.py": "fe2499f667680f9cc315121f24d408f63915c4c2eb938ab63931709952b52529",
+    "workers/image-media/src/videoforge_image_media/mage_production.py": "6fb66457b5d43168e0a41a5b2040a7d89fc9143b261b221c0c97f424d603c291",
+}
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
 import mage_volume as volume  # noqa: E402
@@ -94,7 +100,7 @@ class MageWorkerImageTest(unittest.TestCase):
             ROOT.parents[1] / "apps/web/src/server/providers/v207-activation-authority.ts"
         ).read_text(encoding="utf-8")
         dockerfile_match = re.search(r'ai\.videoforge\.source-commit="([0-9a-f]{40})"', dockerfile)
-        workflow_match = re.search(r'test "\$source_commit" = "([0-9a-f]{40})"', workflow)
+        workflow_match = re.search(r'expected_source_commit="([0-9a-f]{40})"', workflow)
         activation_match = re.search(
             r'export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "([0-9a-f]{40})";',
             activation,
@@ -165,6 +171,17 @@ class MageWorkerImageTest(unittest.TestCase):
         )
         self.assertIn('test "$architecture" = "amd64"', workflow)
         self.assertIn('test "$operating_system" = "linux"', workflow)
+
+    def test_hosted_build_pins_exact_repair_overlay_bytes_before_publish(self) -> None:
+        workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('expected_source_commit="d1d704c2f39581e745ba90151c7388673107de41"', workflow)
+        self.assertIn("expected_source_hashes=(", workflow)
+        for source, expected_hash in REPAIR_SOURCE_HASHES.items():
+            source_path = ROOT.parents[1] / source
+            self.assertEqual(hashlib.sha256(source_path.read_bytes()).hexdigest(), expected_hash)
+            self.assertIn(f'"{source}|{expected_hash}"', workflow)
 
     def test_generate_contract_accepts_json_body_not_query_value(self) -> None:
         tree = ast.parse((ROOT / "mage_api.py").read_text(encoding="utf-8"))

@@ -44,6 +44,21 @@ jobs:
         run: |
           set -euo pipefail
           test "$RUNNER_ARCH" = "X64"
+          expected_source_commit="d1d704c2f39581e745ba90151c7388673107de41"
+          # The checkout may be newer than the source commit that defines the
+          # repaired overlay.  Pin the bytes copied into the image explicitly;
+          # labels alone would allow a later checkout to silently drift.
+          expected_source_hashes=(
+            "workers/image-media/mage_serverless.py|bb0ade00c964379b666152295db18e20f9c2266f875ea37b6f9aeac7163491c3"
+            "workers/image-media/mage_runtime.py|f6bec1478272bfaafde253ddaaf3a2e7526074d74a12b246d8b4ea94fb6dda5f"
+            "workers/image-media/mage_bootstrap.py|fe2499f667680f9cc315121f24d408f63915c4c2eb938ab63931709952b52529"
+            "workers/image-media/src/videoforge_image_media/mage_production.py|6fb66457b5d43168e0a41a5b2040a7d89fc9143b261b221c0c97f424d603c291"
+          )
+          for source_entry in "${expected_source_hashes[@]}"; do
+            source_path="${source_entry%%|*}"
+            expected_hash="${source_entry#*|}"
+            test "$(sha256sum "$source_path" | awk '{print $1}')" = "$expected_hash"
+          done
           image="videoforge-mage-v2-07:${GITHUB_SHA}"
           docker build --platform linux/amd64 --file workers/image-media/Dockerfile.mage.repair --tag "$image" .
           architecture="$(docker image inspect --format='{{.Architecture}}' "$image")"
@@ -51,7 +66,7 @@ jobs:
           test "$architecture" = "amd64"
           test "$operating_system" = "linux"
           source_commit="$(docker image inspect --format='{{index .Config.Labels "ai.videoforge.source-commit"}}' "$image")"
-          test "$source_commit" = "d1d704c2f39581e745ba90151c7388673107de41"
+          test "$source_commit" = "$expected_source_commit"
           base_digest="$(docker image inspect --format='{{index .Config.Labels "org.opencontainers.image.base.digest"}}' "$image")"
           test "$base_digest" = "sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e"
           docker run --rm --entrypoint python "$image" -c \
