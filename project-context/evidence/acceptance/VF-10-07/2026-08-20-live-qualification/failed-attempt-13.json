@@ -1,0 +1,113 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 13,
+  "orchestrator_started_at": "2026-08-20T13:34:02.942Z",
+  "started_at": "2026-08-20T13:35:04.845Z",
+  "runner_stopped_at": "2026-08-20T13:53:33.247Z",
+  "cleanup_finished_at": "2026-08-20T13:53:54.465Z",
+  "authority_proposal_sha256": "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55",
+  "approved_finite_spend_cap_usd": 4,
+  "approved_minimum_availability": "LOW",
+  "run_tag": "20260820-8b016eab06e3",
+  "result": "NOT_QUALIFIED",
+  "authority_status": "CLOSED_ON_FAILED_OUTPUT_STOP",
+  "stop_reason": {
+    "code": "V207_STRICT_OUTPUT_VERIFICATION_FAILED",
+    "root_cause": "The owned probe reached provider terminal COMPLETED, but strict output verification found no accepted durable batch output or receipt; qualification stopped before durable acceptance.",
+    "job_dispatch_reached": true,
+    "dispatched_job_count": 1,
+    "provider_terminal_status": "COMPLETED",
+    "provider_delay_time_ms": 202476,
+    "provider_execution_time_ms": 190043,
+    "provider_diagnostic": {
+      "status": "COMPLETED",
+      "code": null,
+      "message": null,
+      "reason": null
+    },
+    "completed_output_count": 0,
+    "accepted_batch_count": 0,
+    "durable_output_acceptance": false,
+    "generated_output_rollback": "CONFIRMED",
+    "cold_batch_reached": false,
+    "warm_batch_reached": false,
+    "concurrent_reader_proof_reached": false
+  },
+  "resource_identity": {
+    "endpoint_id_sha256": "sha256:b1326ac1442dc9bc1054c137513ef2e42b8f7cc0ef057a18ccbc7d4c1502c6bd",
+    "template_id_sha256": "sha256:93f0d772b8f8acae0e7cfa62b98a4b40b604e3b07f7bd377dda53b90b0c3eb0a",
+    "endpoint_config_sha256": "sha256:7ea3e96db551761f9bb50ab4c1aaad4c80b40d51e3cea9cf46019811fd89557c",
+    "image_digest": "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+    "image_source_commit": "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c",
+    "manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "retained_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "retained_volume_size_gb": 50,
+    "retained_volume_region": "EU-RO-1",
+    "gpu": "NVIDIA GeForce RTX 4090"
+  },
+  "provider_reachability": {
+    "live_preflight_passed": true,
+    "template_created": true,
+    "endpoint_created": true,
+    "endpoint_flashboot_normalized": true,
+    "retained_volume_identity_observed": true,
+    "owned_probe_dispatched": true,
+    "worker_gpu_execution_reached": true
+  },
+  "billing": {
+    "baseline_cumulative_endpoint_spend_usd": 0.060654305503703654,
+    "attempt_increment_usd_observed": 0.041994297411292796,
+    "checkpoint_cumulative_endpoint_spend_usd_observed": 0.10264860291499645,
+    "remaining_cumulative_cap_usd_observed": 3.8973513970850036,
+    "approved_finite_cap_usd": 4,
+    "cap_exceeded": false,
+    "settlement_state": "OBSERVED_PROVIDER_BILLING_MAY_LAG"
+  },
+  "cleanup": {
+    "orchestrator_result": "CLEANUP_UNCERTAIN",
+    "cleanup_uncertainty_code": "V207_ROUTE_RESTORATION_UNCONFIRMED",
+    "cleanup_uncertainty_scope": "Cloudflare staging route fingerprint restoration",
+    "identity_locked_failed_cleanup_succeeded": true,
+    "endpoint_deleted": true,
+    "linked_template_deleted": true,
+    "runpod_pod_count": 0,
+    "runpod_endpoint_count": 0,
+    "runpod_private_template_count": 0,
+    "runpod_active_worker_count": 0,
+    "workers_zero_confirmed": true,
+    "temporary_signer_secret_present": false,
+    "temporary_signer_secret_deleted": true,
+    "captured_worker_version_id_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "restored_worker_version_id_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "worker_version_restored": true,
+    "pre_mutation_route_fingerprint": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "route_restoration_confirmed": false,
+    "final_route_probe": {
+      "status": 503,
+      "code": "HOSTED_ROUTE_NOT_COMPOSED"
+    },
+    "generated_output_rollback": "CONFIRMED",
+    "intended_volume_count": 2,
+    "intended_volumes_identity_observed": true,
+    "intended_volumes_content_hash_unchanged": null,
+    "model_volume_content_hash_after_run": "UNPROVEN",
+    "model_volume_write_proof": "UNPROVEN"
+  },
+  "publication": {
+    "exact_candidate_publication": "PASS_COMMITTED_PRIOR_TO_ATTEMPT",
+    "evidence": "../2026-08-20-inline-wire-image-candidate/image-publication.json",
+    "immutable_image_digest": "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3"
+  },
+  "required_before_retry": [
+    "close_the_failed_exact_authority_and_do_not_reuse_proposal_or_cap",
+    "obtain_a_fresh_exact_proposal_and_fresh_numeric_finite_cap",
+    "re-establish_strict_output_and_durable_receipt_proof_before_any_paid_retry",
+    "do_not_mutate_or_delete_either_retained_volume",
+    "stop_before_v2_08"
+  ]
+}
