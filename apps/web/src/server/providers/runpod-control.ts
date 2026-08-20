@@ -10,6 +10,8 @@ const IMMUTABLE_IMAGE = /^[a-z0-9][a-z0-9./_-]{0,190}@sha256:[a-f0-9]{64}$/u;
 export const V207_RUNPOD_REGION = "EU-RO-1" as const;
 export const V207_RUNPOD_GPU = "NVIDIA GeForce RTX 4090" as const;
 export const V207_RUNPOD_VOLUME_MOUNT = "/runpod-volume" as const;
+/** CP-06 sealed the exact Mage marker and weights beneath `mage-model/` on the volume. */
+export const V207_RUNPOD_MODEL_ROOT = "/runpod-volume/mage-model" as const;
 export const V207_RUNPOD_MAGE_VOLUME_SIZE_GB = 50 as const;
 export const V207_RUNPOD_SCALER = "REQUEST_COUNT" as const;
 export const V207_RUNPOD_SCALER_VALUE = 1 as const;

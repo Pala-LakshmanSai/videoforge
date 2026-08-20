@@ -84,4 +84,10 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("V207_PREFLIGHT_INVENTORY_UNEXPECTED");
     expect(source).toContain("V207_ROUTE_AUTHORITY_UNVERIFIED");
   });
+
+  it("mounts the sealed volume at its fixed path and reads the CP-06 model subdirectory", () => {
+    expect(source).toContain("V207_RUNPOD_VOLUME_MOUNT");
+    expect(source).toContain("MAGE_MODEL_ROOT: V207_RUNPOD_MODEL_ROOT");
+    expect(source).not.toContain("MAGE_MODEL_ROOT: V207_RUNPOD_VOLUME_MOUNT");
+  });
 });
