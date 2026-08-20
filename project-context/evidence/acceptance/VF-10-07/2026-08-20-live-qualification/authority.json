@@ -16,6 +16,14 @@
     "recurring_retained_volume_charge_usd_per_month": 7,
     "recurring_charge_is_outside_finite_cap": true
   },
+  "capacity_amendment": {
+    "authorized_at": "2026-08-20T06:00:07Z",
+    "authority_source": "explicit_user_go_with_medium",
+    "minimum_approved_availability": "MEDIUM",
+    "maximum_cumulative_finite_spend_usd_unchanged": 4,
+    "operations_and_identity_unchanged": true,
+    "latest_pre_mutation_observed_availability": "HIGH"
+  },
   "lineage": {
     "repaired_source_commit": "d1d704c2f39581e745ba90151c7388673107de41",
     "base_image_digest": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e",
