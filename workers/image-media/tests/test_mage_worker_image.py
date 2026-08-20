@@ -85,6 +85,32 @@ class MageWorkerImageTest(unittest.TestCase):
         )
         self.assertIn(f'ai.videoforge.base-image="{PRIOR_IMMUTABLE_IMAGE}"', dockerfile)
 
+    def test_repair_source_lineage_matches_workflow_and_activation_guard(self) -> None:
+        dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
+        workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
+            encoding="utf-8"
+        )
+        activation = (
+            ROOT.parents[1] / "apps/web/src/server/providers/v207-activation-authority.ts"
+        ).read_text(encoding="utf-8")
+        dockerfile_match = re.search(r'ai\.videoforge\.source-commit="([0-9a-f]{40})"', dockerfile)
+        workflow_match = re.search(r'test "\$source_commit" = "([0-9a-f]{40})"', workflow)
+        activation_match = re.search(
+            r'export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "([0-9a-f]{40})";',
+            activation,
+        )
+        self.assertIsNotNone(dockerfile_match)
+        self.assertIsNotNone(workflow_match)
+        self.assertIsNotNone(activation_match)
+        self.assertEqual(
+            [
+                dockerfile_match.group(1),
+                workflow_match.group(1),
+                activation_match.group(1),
+            ],
+            [REPAIRED_SOURCE_COMMIT] * 3,
+        )
+
     def test_repair_image_overlays_handler_and_inherits_entrypoint(self) -> None:
         dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
         original = (ROOT / "Dockerfile.mage").read_text(encoding="utf-8")
