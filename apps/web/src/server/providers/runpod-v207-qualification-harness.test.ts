@@ -359,6 +359,53 @@ describe("V2-07 qualification harness", () => {
     await instance.drain();
   });
 
+  it("fails closed when a concurrent reader drain is ambiguous", async () => {
+    const baseFetch = harnessFetch();
+    let healthReads = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (new URL(String(input)).pathname.endsWith("/health")) {
+        healthReads += 1;
+        if (healthReads >= 3) throw new Error("ambiguous reader health");
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    await instance.dispatchConcurrentReaders([
+      { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      {
+        requestKey: "attempt_b",
+        attemptId: "attempt_b",
+        input: inputB,
+        outputAuthority: authority("attempt_b", "reservation_b"),
+      },
+    ]);
+    await expect(instance.drain()).rejects.toThrow("RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN");
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "concurrent_reader_drain_uncertain" }),
+    );
+  });
+
   it("redacts secrets and signed URLs from evidence", () => {
     const redacted = redactRunPodEvidence({
       apiKey,

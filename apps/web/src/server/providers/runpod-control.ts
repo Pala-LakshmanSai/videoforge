@@ -498,8 +498,12 @@ export class RunPodControlClient {
     const responseDataCenters = value?.dataCenterIds;
     const responseVolumeIds = value?.networkVolumeIds;
     const volumeBindingMatches =
-      value?.networkVolumeId === placement.networkVolumeId ||
-      exactStringArray(responseVolumeIds, [placement.networkVolumeId]);
+      (value?.networkVolumeId === undefined ||
+        value.networkVolumeId === placement.networkVolumeId) &&
+      (responseVolumeIds === undefined ||
+        exactStringArray(responseVolumeIds, [placement.networkVolumeId])) &&
+      (value?.networkVolumeId === placement.networkVolumeId ||
+        exactStringArray(responseVolumeIds, [placement.networkVolumeId]));
     if (
       !value ||
       value.id !== endpointId ||
@@ -583,8 +587,11 @@ export class RunPodControlClient {
     const responseDataCenters = value?.dataCenterIds;
     const responseVolumeIds = value?.networkVolumeIds;
     const volumeBindingMatches =
-      value?.networkVolumeId === request.networkVolumeId ||
-      exactStringArray(responseVolumeIds, [request.networkVolumeId]);
+      (value?.networkVolumeId === undefined || value.networkVolumeId === request.networkVolumeId) &&
+      (responseVolumeIds === undefined ||
+        exactStringArray(responseVolumeIds, [request.networkVolumeId])) &&
+      (value?.networkVolumeId === request.networkVolumeId ||
+        exactStringArray(responseVolumeIds, [request.networkVolumeId]));
     if (
       !value ||
       typeof value.id !== "string" ||
@@ -834,7 +841,10 @@ export class RunPodServerlessJobClient {
   private readonly timeoutMs: number;
   private readonly readRetryDelaysMs: readonly number[];
   private readonly sleep: (milliseconds: number) => Promise<void>;
-  private readonly replays = new Map<string, Promise<RunPodJobResult>>();
+  private readonly replays = new Map<
+    string,
+    { readonly inputHash: string; readonly promise: Promise<RunPodJobResult> }
+  >();
 
   constructor(private readonly options: RunPodServerlessJobClientOptions) {
     if (options.apiKey.trim() !== options.apiKey || options.apiKey.length < 20) {
@@ -928,19 +938,26 @@ export class RunPodServerlessJobClient {
     if (Buffer.byteLength(inputBytes, "utf8") > 10 * 1024 * 1024) {
       throw new RunPodControlError("RUNPOD_REQUEST_TOO_LARGE");
     }
-    const requestHash = hashId(`${requestKey}:${inputBytes}`);
-    const replay = this.replays.get(requestHash);
-    if (replay) return replay;
+    const inputHash = hashId(inputBytes);
+    const replay = this.replays.get(requestKey);
+    if (replay) {
+      if (replay.inputHash !== inputHash) {
+        throw new RunPodControlError("RUNPOD_REQUEST_REPLAY_MISMATCH");
+      }
+      return replay.promise;
+    }
     this.options.guard.assertDispatchAllowed();
     this.options.guard.markActive();
     const pending = this.request("POST", "/run", inputBytes).then(jobResult);
-    this.replays.set(requestHash, pending);
+    this.replays.set(requestKey, { inputHash, promise: pending });
     return pending;
   }
 
   async status(jobId: string): Promise<RunPodJobResult> {
     if (!ID.test(jobId)) throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
-    return jobResult(await this.request("GET", `/status/${jobId}`));
+    const result = jobResult(await this.request("GET", `/status/${jobId}`));
+    if (result.id !== jobId) throw new RunPodControlError("RUNPOD_JOB_ID_MISMATCH");
+    return result;
   }
 
   async diagnostic(jobId: string): Promise<RunPodJobDiagnostic> {
@@ -987,7 +1004,9 @@ export class RunPodServerlessJobClient {
     if (value.status !== "CANCELLED") {
       throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
     }
-    return jobResult(value);
+    const result = jobResult(value);
+    if (result.id !== jobId) throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
+    return result;
   }
 
   async confirmDrained(maxAttempts = 30): Promise<void> {

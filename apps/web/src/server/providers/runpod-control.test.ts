@@ -215,6 +215,58 @@ describe("RunPod scale-zero control", () => {
     expect(() => guard.assertDispatchAllowed()).not.toThrow();
   });
 
+  it("rejects a changed payload under an already claimed request key", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/run")) return response({ id: "job_01", status: "IN_QUEUE" });
+      return response({ workers: { idle: 1, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(client.dispatch("attempt_01", { value: "first" })).resolves.toMatchObject({
+      id: "job_01",
+    });
+    expect(() => client.dispatch("attempt_01", { value: "tampered" })).toThrow(
+      "RUNPOD_REQUEST_REPLAY_MISMATCH",
+    );
+    expect(
+      fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("binds status and cancellation responses to the requested job", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/status/job_01"))
+        return response({ id: "job_other", status: "COMPLETED" });
+      if (path.endsWith("/cancel/job_01"))
+        return response({ id: "job_other", status: "CANCELLED" });
+      return response({ workers: { idle: 0, running: 0 }, jobs: { inQueue: 0, inProgress: 0 } });
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(client.status("job_01")).rejects.toMatchObject({
+      code: "RUNPOD_JOB_ID_MISMATCH",
+    });
+    await expect(client.cancel("job_01")).rejects.toMatchObject({
+      code: "RUNPOD_CANCEL_UNCONFIRMED",
+    });
+  });
+
   it("keeps provider stream diagnostics redacted to the terminal status tuple", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
@@ -598,6 +650,56 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).resolves.toBeUndefined();
+  });
+
+  it("rejects contradictory strict V2-07 volume bindings", async () => {
+    const policy = {
+      workersMin: 0 as const,
+      workersMax: 1 as const,
+      gpuCount: 1 as const,
+      idleTimeout: 5,
+      executionTimeoutMs: 2_400_000,
+    };
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints") {
+        return response({
+          id: "endpoint_01",
+          templateId: "template_01",
+          computeType: "GPU",
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+          allowedCudaVersions: ["13.0"],
+          minCudaVersion: "13.0",
+          flashboot: false,
+          networkVolumeId: "volume_01",
+          networkVolumeIds: ["volume_other"],
+          dataCenterIds: ["EU-RO-1"],
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+          scalerType: "REQUEST_COUNT",
+          scalerValue: 1,
+        });
+      }
+      throw new Error(`unexpected request ${path}`);
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.createScaleZeroEndpoint(
+        "vf_mage_v207",
+        "template_01",
+        ["NVIDIA GeForce RTX 4090"],
+        policy,
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        true,
+      ),
+    ).rejects.toThrow("RUNPOD_SCALE_ZERO_UNCONFIRMED");
   });
 
   it("fails closed when a V2-07 endpoint response changes the template identity", async () => {
