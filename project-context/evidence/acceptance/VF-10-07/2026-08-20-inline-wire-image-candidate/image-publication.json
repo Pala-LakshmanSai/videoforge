@@ -1,0 +1,152 @@
+{
+  "schema_version": "videoforge.v2-07-image-publication/v2",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_from_commit": "bcf1b6baf3ec95267e8fd5ecc923de1cf72b71a6",
+  "recorded_at": "2026-08-20",
+  "result": "PASS_EXACT_IMMUTABLE_CANDIDATE_PUBLISHED",
+  "authority": {
+    "proposal_path": "amended-live-proposal.json",
+    "proposal_sha256": "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55",
+    "approval_path": "approved-authority.json",
+    "finite_cap_usd": 4,
+    "availability": "LOW",
+    "region": "EU-RO-1",
+    "publication_was_authorized": true,
+    "proposal_bytes_changed": false
+  },
+  "failed_publication_attempt": {
+    "workflow": {
+      "run_id": 32371796242,
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/32371796242",
+      "head_sha": "3954c87ca49e70da4bc613a43d342950cb9cad05",
+      "head_branch": "codex/serverless-v2-roadmap",
+      "input_publish": true,
+      "conclusion": "failure"
+    },
+    "prepublication_smoke": {
+      "candidate_derivation": "PASS",
+      "source_and_base_smoke": "PASS",
+      "manifest_config_layer_payload_smoke": "PASS"
+    },
+    "failure": {
+      "phase": "first blob upload completion PUT",
+      "http_status": 404,
+      "root_cause": "the publisher did not set the OCI blob completion Content-Type to application/octet-stream",
+      "repair_commit": "bcf1b6baf3ec95267e8fd5ecc923de1cf72b71a6"
+    },
+    "partial_registry_state_after_failure": {
+      "candidate_config_blob_present": true,
+      "candidate_layer_blob_present": false,
+      "candidate_tag_present": false,
+      "note": "The exact candidate config blob was subsequently uploaded with the required content type; the layer and tag were left for the repaired publication run."
+    },
+    "runpod_mutation": false,
+    "gpu_allocation": false,
+    "external_spend_usd": 0
+  },
+  "successful_publication_attempt": {
+    "workflow": {
+      "run_id": 32373571521,
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/32373571521",
+      "head_sha": "bcf1b6baf3ec95267e8fd5ecc923de1cf72b71a6",
+      "head_branch": "codex/serverless-v2-roadmap",
+      "input_publish": true,
+      "conclusion": "success"
+    },
+    "smoke": {
+      "candidate_derivation": "PASS",
+      "source_byte_hashes": "PASS",
+      "parent_manifest_and_config_binding": "PASS",
+      "linux_amd64_source_base_runtime_smoke": "PASS",
+      "exact_config_layer_manifest_publication": "PASS",
+      "exact_manifest_tag_readback": "PASS"
+    },
+    "registry": {
+      "repository": "pala-lakshmansai/videoforge-mage-v2-07",
+      "tag": "v2-07-inline-wire-a52e7e4",
+      "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+      "tag_resolves_to_manifest_sha256": "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+      "manifest_bytes_readback_exact": true,
+      "config_layer_descriptors_match_candidate": true,
+      "config_layer_bytes_validated_exact_before_upload": true,
+      "config_blob_bytes_independent_readback": false,
+      "layer_blob_bytes_independent_readback": false
+    }
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "source_commit": "a52e7e49b8e9cb945e6c5df5412b3f08fa5fff1c",
+    "source_path": "workers/image-media/mage_serverless.py",
+    "source_sha256": "sha256:5bf88ccf9b7c14ca2247b990578bfe081dca950a30f694a90f40195f9dee0a97",
+    "candidate_tag": "v2-07-inline-wire-a52e7e4",
+    "candidate_manifest_sha256": "sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
+    "candidate_config_sha256": "sha256:38b7633f199017ea66d39cc5b10d4d5a86ae34885f9e23e20fc20ea0be90cf5e",
+    "candidate_layer_sha256": "sha256:7dc5be30ec2116ff0729b524b1e5bea5e54c38f7e86132a95518fcda0e53470e",
+    "candidate_layer_diff_id": "sha256:554ac0a35755bfec64d70707512eee81ae57af62d596fbbd49e53e4140dece8d",
+    "definition_path": "definition.json",
+    "definition_sha256": "sha256:d788e494ff51c274c6c39493e16bd2aa61c959952940eb6672e9a00f16089540",
+    "staged_config_max1_sha256": "sha256:90af3b03a7dc1871f7470ec9484561a2ece248f2ba124777f814cacdd7cf675d",
+    "staged_config_max2_sha256": "sha256:9a19e173b452bf95b2ef1573206de46bbe73d42fb72c9920d1c14305056b4787",
+    "platform": "linux/amd64",
+    "image_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_write_policy": "APPLICATION_READ_ONLY"
+  },
+  "independent_local_readback": {
+    "performed": true,
+    "registry_tag_exists": true,
+    "tag_manifest_digest_matches_candidate": true,
+    "manifest_digest_matches_candidate": true,
+    "config_descriptor_matches_candidate": true,
+    "layer_descriptor_matches_candidate": true,
+    "config_layer_bytes_recomputed_and_validated_before_upload": true,
+    "config_layer_blob_bytes_read_back_independently": false,
+    "source_and_parent_lineage_matches_definition": true,
+    "readback_preserved_exact_manifest_bytes": true,
+    "secrets_or_credentials_recorded": false
+  },
+  "provider_state_after_publication": {
+    "runpod_mutation": false,
+    "gpu_allocation": false,
+    "external_spend_usd": 0,
+    "retained_volume_mutation": false,
+    "basis": "pre-execution-preflight.json remains the latest authorized RunPod truth; publication was GHCR-only",
+    "runpod_inventory": {
+      "pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_serverless_workers": 0,
+      "retained_network_volumes": 2,
+      "intended_volumes_unchanged": true
+    }
+  },
+  "qualification_boundary": {
+    "status": "NOT_QUALIFIED",
+    "gate": "GATE_SERVERLESS_MAGE_001",
+    "live_qualification_started": false,
+    "remaining_live_timeout_gate": {
+      "init_timeout_seconds": 800,
+      "execution_timeout_seconds": 2400,
+      "request_authority_ttl_seconds": 7200,
+      "idle_timeout_seconds": 5,
+      "status": "UNPROVEN_LIVE"
+    },
+    "still_unproven": [
+      "real endpoint/template identity and workersMax=1 qualification",
+      "cold and warm complete image batch output durability and receipt readback",
+      "duplicate delivery cancellation and timeout reconciliation",
+      "separately hashed workersMax=2 concurrent read-only proof",
+      "sealed manifest and no model-volume-write proof during live workers",
+      "peak VRAM timings settled cost and independent zero-worker drain"
+    ],
+    "next_action": "Proceed only with the exact approved endpoint/template and bounded qualification proposal; stop before V2-08."
+  }
+}
