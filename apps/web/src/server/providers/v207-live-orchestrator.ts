@@ -25,6 +25,9 @@ const ACTIVATION_PROPAGATION_WINDOW_MS = 60_000;
 const RESTORATION_PROPAGATION_MAX_ATTEMPTS = 60;
 const RESTORATION_PROPAGATION_DELAY_MS = 2_000;
 const RESTORATION_PROPAGATION_WINDOW_MS = 120_000;
+// The first exact probe plus 15 two-second intervals establishes a 30-second
+// exact-fingerprint stability window, while the surrounding deadline remains 120 seconds.
+const RESTORATION_REQUIRED_CONSECUTIVE_MATCHES = 16;
 const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const NONCE = /^[a-f0-9]{64}$/u;
 const SOURCE_COMMIT = /^[0-9a-f]{40}$/u;
@@ -469,14 +472,34 @@ async function waitForRouteRestoration(
   sleepImpl: (milliseconds: number) => Promise<void>,
   signal: AbortSignal,
 ): Promise<RouteFingerprint> {
+  let consecutiveMatches = 0;
   for (let attempt = 1; attempt <= RESTORATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
     if (signal.aborted) break;
+    let observed: RouteFingerprint | undefined;
     try {
-      const observed = await readRouteFingerprint(fetchImpl, routeUrl, signal);
-      if (observed.status === expected.status && observed.code === expected.code) return observed;
+      observed = await readRouteFingerprint(fetchImpl, routeUrl, signal);
     } catch {
-      // Cleanup tolerates only bounded transient reachability failure. The exact captured
-      // fingerprint is still required before cleanup can be called confirmed.
+      if (consecutiveMatches > 0) {
+        // Once the captured fingerprint has appeared, a probe error is an unproven
+        // alternation rather than a stable restoration. Fail closed instead of
+        // accepting a later isolated match.
+        throw new V207LiveOrchestratorError("V207_ROUTE_RESTORATION_UNCONFIRMED");
+      }
+      // Cleanup tolerates bounded transient reachability failure before the exact
+      // fingerprint first appears. The captured fingerprint is still required before
+      // cleanup can be called confirmed.
+      consecutiveMatches = 0;
+    }
+    if (observed !== undefined) {
+      const matches = observed.status === expected.status && observed.code === expected.code;
+      if (matches) {
+        consecutiveMatches += 1;
+        if (consecutiveMatches >= RESTORATION_REQUIRED_CONSECUTIVE_MATCHES) return observed;
+      } else if (consecutiveMatches > 0) {
+        // A matching probe followed by a different status/code is the exact
+        // 404/503 flap seen during Attempt 16. Do not reset and later accept it.
+        throw new V207LiveOrchestratorError("V207_ROUTE_RESTORATION_UNCONFIRMED");
+      }
     }
     if (signal.aborted) break;
     if (attempt < RESTORATION_PROPAGATION_MAX_ATTEMPTS) {

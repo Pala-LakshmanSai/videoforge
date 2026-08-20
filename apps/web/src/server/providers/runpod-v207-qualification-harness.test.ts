@@ -114,8 +114,11 @@ function harnessFetch(
         201,
       );
     }
-    if (path === "/endpoints/endpoint_01" && init?.method === "PATCH") {
+    if (path === "/templates/template_01/update" && init?.method === "POST") {
       endpointEnvironment = body.env;
+      return jsonResponse({ id: "template_01", env: endpointEnvironment });
+    }
+    if (path === "/endpoints/endpoint_01" && init?.method === "PATCH") {
       return jsonResponse({ ...body, id: "endpoint_01" });
     }
     if (path === "/endpoints/endpoint_01" && init?.method === undefined) {
@@ -275,14 +278,14 @@ it("deletes only the disposable endpoint and template when identity binding fail
   const baseFetch = harnessFetch();
   const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const path = new URL(String(input)).pathname;
-    if (path === "/endpoints/endpoint_01" && init?.method === "PATCH") {
+    if (path === "/templates/template_01/update" && init?.method === "POST") {
       const body = JSON.parse(String(init.body)) as Record<string, unknown>;
-      return jsonResponse({ ...body, id: "endpoint_01", env: {} });
+      return jsonResponse({ ...body, id: "template_01", env: {} });
     }
     return baseFetch(input, init);
   });
   const harness = makeHarness(fetch);
-  await expect(harness.create()).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
+  await expect(harness.create()).rejects.toThrow("RUNPOD_TEMPLATE_ENVIRONMENT_UPDATE_UNCONFIRMED");
   const deletes = fetch.mock.calls
     .filter(([, init]) => init?.method === "DELETE")
     .map(([input]) => new URL(String(input)).pathname);

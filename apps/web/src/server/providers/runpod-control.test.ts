@@ -1002,44 +1002,61 @@ describe("RunPod scale-zero control", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("binds the allocated endpoint hash through an exact PATCH and readback", async () => {
+  it("binds the allocated endpoint hash through a template update, endpoint PATCH, and readback", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
     const endpointHash = hashRunPodV207EndpointIdentity("endpoint_01");
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
-      expect(path).toBe("/endpoints/endpoint_01");
       const body =
         init?.body === undefined
           ? null
           : (JSON.parse(String(init.body)) as Record<string, unknown>);
-      const value =
-        init?.method === "PATCH"
-          ? body!
-          : {
-              computeType: "GPU",
-              allowedCudaVersions: ["13.0"],
-              executionTimeoutMs: 2_400_000,
-              flashboot: true,
-              gpuCount: 1,
-              gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
-              idleTimeout: 5,
-              minCudaVersion: "13.0",
-              dataCenterIds: ["EU-RO-1"],
-              networkVolumeId: "volume_01",
-              scalerType: "REQUEST_COUNT",
-              scalerValue: 1,
-              templateId: "template_01",
-              workersMax: 1,
-              workersMin: 0,
-              env: {
-                LOG_LEVEL: "INFO",
-                RUNPOD_INIT_TIMEOUT: "800",
-                STATIC_SETTING: "exact",
-                VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointHash,
-              },
-            };
-      return response({ ...value, id: "endpoint_01" });
+      const endpointConfig = {
+        computeType: "GPU",
+        allowedCudaVersions: ["13.0"],
+        executionTimeoutMs: 2_400_000,
+        flashboot: true,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        idleTimeout: 5,
+        minCudaVersion: "13.0",
+        dataCenterIds: ["EU-RO-1"],
+        networkVolumeId: "volume_01",
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+        templateId: "template_01",
+        workersMax: 1,
+        workersMin: 0,
+      };
+      if (path === "/templates/template_01/update") {
+        expect(init?.method).toBe("POST");
+        if (body === null) throw new Error("missing template update body");
+        expect(body).toEqual({
+          env: {
+            LOG_LEVEL: "INFO",
+            RUNPOD_INIT_TIMEOUT: "800",
+            STATIC_SETTING: "exact",
+            VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointHash,
+          },
+        });
+        return response({ id: "template_01", env: body.env });
+      }
+      expect(path).toBe("/endpoints/endpoint_01");
+      if (init?.method === "PATCH") {
+        expect(body).not.toHaveProperty("env");
+        return response({ id: "endpoint_01", ...endpointConfig });
+      }
+      return response({
+        id: "endpoint_01",
+        ...endpointConfig,
+        env: {
+          LOG_LEVEL: "INFO",
+          RUNPOD_INIT_TIMEOUT: "800",
+          STATIC_SETTING: "exact",
+          VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointHash,
+        },
+      });
     });
     const client = new RunPodControlClient({
       apiKey: key,
@@ -1062,32 +1079,94 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).resolves.toBeUndefined();
-    expect(fetch).toHaveBeenCalledTimes(2);
-    const patchBody = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)) as {
-      env: Record<string, string>;
-    };
-    expect(patchBody.env.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH).toBe(endpointHash);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(new URL(String(fetch.mock.calls[0]?.[0])).pathname).toBe(
+      "/templates/template_01/update",
+    );
+    expect(new URL(String(fetch.mock.calls[1]?.[0])).pathname).toBe("/endpoints/endpoint_01");
+    const patchBody = JSON.parse(String(fetch.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
+    expect(patchBody).not.toHaveProperty("env");
+    expect(new URL(String(fetch.mock.calls[2]?.[0])).pathname).toBe("/endpoints/endpoint_01");
   });
 
   it.each([
-    ["missing hash", (value: Record<string, unknown>) => ({ ...value, env: {} })],
     [
-      "wrong hash",
-      (value: Record<string, unknown>) => ({
+      "missing hash",
+      (value: Record<string, string>) => ({
         ...value,
-        env: {
-          ...(value.env as Record<string, string>),
-          VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: `sha256:${"0".repeat(64)}`,
-        },
+        VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: undefined,
       }),
     ],
-    ["configuration drift", (value: Record<string, unknown>) => ({ ...value, workersMax: 2 })],
-  ] as const)("rejects endpoint identity binding with %s", async (_label, mutate) => {
+    [
+      "wrong hash",
+      (value: Record<string, string>) => ({
+        ...value,
+        VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: `sha256:${"0".repeat(64)}`,
+      }),
+    ],
+  ] as const)("rejects template environment binding with %s", async (_label, mutate) => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
-    const fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(new URL(String(input)).pathname).toBe("/templates/template_01/update");
+      const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+      return response({ id: "template_01", env: mutate(body.env) });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.bindV207EndpointIdentity(
+        "endpoint_01",
+        "template_01",
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        {},
+        guard,
+      ),
+    ).rejects.toThrow("RUNPOD_TEMPLATE_ENVIRONMENT_UPDATE_UNCONFIRMED");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects endpoint configuration drift after an exact template environment update", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/templates/template_01/update") {
+        const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        return response({ id: "template_01", env: body.env });
+      }
+      expect(path).toBe("/endpoints/endpoint_01");
+      expect(init?.method).toBe("PATCH");
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      return response({ ...mutate(body), id: "endpoint_01" });
+      expect(body).not.toHaveProperty("env");
+      return response({
+        id: "endpoint_01",
+        templateId: "template_01",
+        computeType: "GPU",
+        workersMin: 0,
+        workersMax: 2,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        allowedCudaVersions: ["13.0"],
+        minCudaVersion: "13.0",
+        flashboot: true,
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
+        idleTimeout: 5,
+        executionTimeoutMs: 2_400_000,
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+      });
     });
     const client = new RunPodControlClient({
       apiKey: key,
@@ -1110,7 +1189,69 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects endpoint readback environment drift after an exact endpoint PATCH", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/templates/template_01/update") {
+        const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        return response({ id: "template_01", env: body.env });
+      }
+      expect(path).toBe("/endpoints/endpoint_01");
+      const endpoint = {
+        id: "endpoint_01",
+        templateId: "template_01",
+        computeType: "GPU",
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        allowedCudaVersions: ["13.0"],
+        minCudaVersion: "13.0",
+        flashboot: true,
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["EU-RO-1"],
+        idleTimeout: 5,
+        executionTimeoutMs: 2_400_000,
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+      };
+      if (init?.method === "PATCH") return response(endpoint);
+      return response({
+        ...endpoint,
+        env: {
+          LOG_LEVEL: "INFO",
+          RUNPOD_INIT_TIMEOUT: "800",
+          VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: `sha256:${"0".repeat(64)}`,
+        },
+      });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.bindV207EndpointIdentity(
+        "endpoint_01",
+        "template_01",
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        {},
+        guard,
+      ),
+    ).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED");
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it("rejects contradictory strict V2-07 volume bindings", async () => {

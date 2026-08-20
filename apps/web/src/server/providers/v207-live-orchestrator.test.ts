@@ -213,7 +213,9 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"event": "signer_route_activation_confirmed"');
     expect(evidence).toContain('"attempts": 2');
     expect(evidence).toContain('"code": "HOSTED_ROUTE_NOT_COMPOSED"');
-    expect(restorationProbeCalls).toBe(3);
+    // Two transient mismatches are tolerated before the first exact match, then
+    // 16 exact 2-second probes establish the documented 30-second window.
+    expect(restorationProbeCalls).toBe(18);
     expect(evidence).not.toContain(NONCE);
     expect(evidence).not.toContain(RUNPOD_KEY);
     expect((await stat(files.evidencePath)).mode & 0o077).toBe(0);
@@ -320,6 +322,90 @@ describe("V2-07 live orchestrator", () => {
     expect(Date.now() - startedAt).toBeLessThan(500);
     expect(signerSecretPresent).toBe(false);
     expect(rollbackSeen).toBe(true);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
+    expect(evidence).toContain("V207_ROUTE_RESTORATION_UNCONFIRMED");
+    expect(evidence).not.toContain('"event": "restored_route_confirmed"');
+  });
+
+  it("fails closed when the restored route alternates after its first exact fingerprint", async () => {
+    const files = await fixture();
+    let signerSecretPresent = false;
+    let activeRouteProbeCalls = 0;
+    let rollbackSeen = false;
+    let restorationProbeCalls = 0;
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) {
+        return result(
+          JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("put")) {
+        signerSecretPresent = true;
+        return result();
+      }
+      if (request.args.includes("secret") && request.args.includes("delete")) {
+        signerSecretPresent = false;
+        return result();
+      }
+      if (request.args.includes("rollback")) rollbackSeen = true;
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () => {
+      if (signerSecretPresent && activeRouteProbeCalls++ === 0) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      if (signerSecretPresent) {
+        return new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
+          status: 403,
+        });
+      }
+      if (!rollbackSeen) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      if (restorationProbeCalls++ === 0) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
+        status: 503,
+      });
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        nonceFactory: () => NONCE,
+        sleepImpl: async () => undefined,
+        routeRestorationSignal: AbortSignal.timeout(1_000),
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_CLEANUP_UNCERTAIN" });
+
+    expect(signerSecretPresent).toBe(false);
+    expect(rollbackSeen).toBe(true);
+    expect(restorationProbeCalls).toBe(2);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
     expect(evidence).toContain("V207_ROUTE_RESTORATION_UNCONFIRMED");
@@ -550,6 +636,7 @@ describe("V2-07 live orchestrator", () => {
         },
         fetchImpl,
         nonceFactory: () => NONCE,
+        sleepImpl: async () => undefined,
         installSignalHandlers: false,
       }),
     ).resolves.toBeTruthy();
@@ -621,6 +708,7 @@ describe("V2-07 live orchestrator", () => {
         commandRunner,
         fetchImpl: async () =>
           new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), { status: 404 }),
+        sleepImpl: async () => undefined,
         installSignalHandlers: false,
       }),
     ).rejects.toMatchObject({ code: "V207_STAGING_BUILD_FAILED" });

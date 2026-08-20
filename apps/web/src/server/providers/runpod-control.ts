@@ -304,14 +304,13 @@ const exactEnvironmentMatches = (
   );
 };
 
-const v207EndpointBindingMatches = (
+const v207EndpointConfigMatches = (
   value: JsonRecord | null,
   expected: {
     readonly endpointId: string;
     readonly templateId: string;
     readonly policy: RunPodEndpointPolicy;
     readonly placement: RunPodV207Placement;
-    readonly environment: Readonly<Record<string, string>>;
   },
 ): boolean => {
   const networkVolumeIds = value?.networkVolumeIds;
@@ -335,10 +334,22 @@ const v207EndpointBindingMatches = (
     value.idleTimeout === expected.policy.idleTimeout &&
     value.executionTimeoutMs === expected.policy.executionTimeoutMs &&
     value.scalerType === V207_RUNPOD_SCALER &&
-    value.scalerValue === V207_RUNPOD_SCALER_VALUE &&
-    exactEnvironmentMatches(value.env, expected.environment)
+    value.scalerValue === V207_RUNPOD_SCALER_VALUE
   );
 };
+
+const v207EndpointBindingMatches = (
+  value: JsonRecord | null,
+  expected: {
+    readonly endpointId: string;
+    readonly templateId: string;
+    readonly policy: RunPodEndpointPolicy;
+    readonly placement: RunPodV207Placement;
+    readonly environment: Readonly<Record<string, string>>;
+  },
+): boolean =>
+  v207EndpointConfigMatches(value, expected) &&
+  exactEnvironmentMatches(value?.env, expected.environment);
 
 export class RunPodDrainGuard {
   private state:
@@ -863,7 +874,6 @@ export class RunPodControlClient {
       templateId,
       workersMax: policy.workersMax,
       workersMin: policy.workersMin,
-      env: expectedEnvironment,
     } as const;
     const expected = {
       endpointId,
@@ -872,10 +882,11 @@ export class RunPodControlClient {
       placement,
       environment: expectedEnvironment,
     };
+    await this.updateV207TemplateEnvironment(templateId, expectedEnvironment);
     const responseValue = record(
       await this.mutate("PATCH", `/endpoints/${endpointId}`, canonicalizeJson(request)),
     );
-    if (!v207EndpointBindingMatches(responseValue, expected)) {
+    if (!v207EndpointConfigMatches(responseValue, expected)) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
     }
     const readbackValue = record(await this.read(`/endpoints/${endpointId}`));
@@ -924,6 +935,27 @@ export class RunPodControlClient {
   async deleteTemplate(templateId: string): Promise<void> {
     if (!ID.test(templateId)) throw new RunPodControlError("RUNPOD_TEMPLATE_ID_INVALID");
     await this.mutate("DELETE", `/templates/${templateId}`);
+  }
+
+  /**
+   * RunPod's REST template update accepts the worker environment. Keep this separate from the
+   * endpoint PATCH: the endpoint update schema intentionally has no `env` field.
+   */
+  private async updateV207TemplateEnvironment(
+    templateId: string,
+    environment: Readonly<Record<string, string>>,
+  ): Promise<void> {
+    if (!ID.test(templateId)) throw new RunPodControlError("RUNPOD_TEMPLATE_ID_INVALID");
+    const value = record(
+      await this.mutate(
+        "POST",
+        `/templates/${templateId}/update`,
+        canonicalizeJson({ env: environment }),
+      ),
+    );
+    if (!value || value.id !== templateId || !exactEnvironmentMatches(value.env, environment)) {
+      throw new RunPodControlError("RUNPOD_TEMPLATE_ENVIRONMENT_UPDATE_UNCONFIRMED");
+    }
   }
 
   async inventory(now = new Date()): Promise<RunPodInventory> {
