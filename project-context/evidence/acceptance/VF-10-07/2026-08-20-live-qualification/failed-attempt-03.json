@@ -1,0 +1,66 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 3,
+  "started_at": "2026-08-20T06:06:20.097Z",
+  "stopped_at": "2026-08-20T06:07:28.626Z",
+  "authority_proposal_sha256": "sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b",
+  "approved_finite_spend_cap_usd": 4,
+  "approved_minimum_availability": "MEDIUM",
+  "result": "STOPPED_BEFORE_JOB_DISPATCH",
+  "failure": {
+    "code": "RUNPOD_RESOURCE_RECONCILIATION_IDENTITY_MISMATCH",
+    "root_cause": "RUNPOD_CREATED_ENDPOINT_WITH_FLASHBOOT_TRUE_DESPITE_FALSE_CREATE_REQUEST",
+    "approved_flashboot": false,
+    "observed_flashboot": true
+  },
+  "official_sources": [
+    "https://docs.runpod.io/api-reference/endpoints/POST/endpoints",
+    "https://docs.runpod.io/serverless/endpoints/endpoint-configurations"
+  ],
+  "reachability": {
+    "live_preflight_passed": true,
+    "template_created": true,
+    "endpoint_created": true,
+    "r2_reservation_reached": false,
+    "job_dispatch_reached": false,
+    "gpu_inference_reached": false
+  },
+  "created_resource_identity": {
+    "template_id_sha256": "sha256:815e34598adf5e05aad1aab34b1b1d0389f6ff1669d93ce85bc6ce8f8a04c0f4",
+    "endpoint_id_sha256": "sha256:8237c63239d53e3eb78c51f26a5df52a716ed968d06e40948f52fbed68a93ece",
+    "exact_names_image_template_volume_gpu_cuda_and_timings": true,
+    "provider_omitted_compute_type_and_region_on_read": true,
+    "provider_flashboot_drift": true
+  },
+  "settled_finite_spend_usd": 0,
+  "cleanup": {
+    "completed_at": "2026-08-20T06:14:17Z",
+    "endpoint_health_queue": 0,
+    "endpoint_health_in_progress": 0,
+    "endpoint_health_running_workers": 0,
+    "endpoint_deleted": true,
+    "template_deleted_after_endpoint_absence": true,
+    "runpod_pod_count": 0,
+    "runpod_endpoint_count": 0,
+    "runpod_private_template_count": 0,
+    "runpod_active_worker_count": 0,
+    "intended_volume_count": 2,
+    "intended_volumes_unchanged": true,
+    "r2_output_residue": "IMPOSSIBLE_BY_REACHABILITY",
+    "cloudflare_worker_restored": true,
+    "temporary_signer_secret_present": false
+  },
+  "repair_commits": [
+    "3d7ab7c",
+    "9c52387",
+    "936170e"
+  ],
+  "retry_allowed_only_after": [
+    "focused_tests_green",
+    "clean_worktree",
+    "exact_flashboot_false_normalization_before_dispatch",
+    "rate_availability_inventory_and_remaining_cap_within_authority"
+  ]
+}
