@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T02:06:19Z",
+  "recorded_at": "2026-08-20T02:15:35Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -348,6 +348,11 @@
       "command": "node project-context/scripts/validate-v207-combined-proposal.mjs",
       "exit_code": 0,
       "result": "proposal boundary, both staged identities, and required operations validated; cap remains null"
+    },
+    {
+      "command": "CI=1 TURBO_FORCE=true pnpm verify",
+      "exit_code": 0,
+      "result": "canonical verification passed: 28 unique tasks, 52 web files (384 passed, 1 skipped), six worker suites, context and secret checks, and installed Chrome 44/44"
     }
   ],
   "read_only_runpod_snapshot": {
