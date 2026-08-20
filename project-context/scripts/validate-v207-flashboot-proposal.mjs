@@ -34,6 +34,8 @@ const expected = {
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
   imageSource: "79f123268b6ade640c02dd20616a89d16b43a5e6",
   controlSource: "8694f474f98bbcdd6d84a79614cda6ef907c7b9e",
+  closedActivationProposal:
+    "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
 };
 const fail = (label) => {
@@ -139,6 +141,7 @@ assert(control.includes("V207_RUNPOD_FLASHBOOT = true"), "control_flashboot_true
 assert(!harness.includes("FLASHBOOT_NORMALIZATION_UNCONFIRMED"), "normalization_removed");
 assert(orchestrator.includes("RESTORATION_PROPAGATION_WINDOW_MS = 120_000"), "route_window");
 assert(orchestrator.includes("waitForRouteRestoration"), "route_poll");
+assert(activation.includes(expected.closedActivationProposal), "activation_prior_proposal_closed");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
 
 for (const [label, file] of [
