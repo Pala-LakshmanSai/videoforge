@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-20T17:33:00Z"
+updated_at: "2026-08-20T17:40:14.091Z"
 
 phase: serverless_v2_v2_07_flashboot_true_authority_recorded
 implementation_authorized_in_current_task: true
@@ -342,7 +342,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: flashboot_true_exact_authority_recorded_provider_execution_pending_not_qualified
+    status: flashboot_true_attempt15_startup_failed_authority_open_one_exact_retry_not_qualified
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
     immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_PASS
@@ -360,9 +360,10 @@ model_runtime_evidence:
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
-    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-14.json
+    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-15.json
     v2_07_observed_cumulative_endpoint_spend_usd: 0.12480033212341368
     v2_07_attempt_14_increment_usd_observed: 0
+    v2_07_attempt_15_increment_usd_observed: 0
   soulx:
     status: pod_technical_pass_serverless_visual_crop_license_and_settlement_gates_open
     exact_source: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
@@ -918,7 +919,7 @@ audit_evidence:
   v2_07_historical_amended_proposal: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
   v2_07_historical_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
   v2_07_historical_image_publication: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
-  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-14.json
+  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-15.json
   v2_07_latest_predispatch_safety_repair: evidence/acceptance/VF-10-07/2026-08-20-pre-dispatch-safety-repair/acceptance.json
   v2_07_historical_live_authority: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/authority.json
   v2_07_latest_provider_free_handoff: evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/acceptance.json
@@ -930,6 +931,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_flashboot_true_authority_recorded_provider_execution_pending
+  current_goal_scope: v2_07_flashboot_true_attempt15_startup_failed_authority_open_one_exact_retry
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_flashboot_true_authority_recorded_pre_execution
+  v2_07_status: NOT_QUALIFIED_attempt15_cloudflare_10021_startup_cpu_validation_failed_route_restored_authority_open_one_exact_retry
