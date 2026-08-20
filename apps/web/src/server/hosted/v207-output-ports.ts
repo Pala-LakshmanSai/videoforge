@@ -1,9 +1,10 @@
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
-import { HostedR2Signer } from "./r2";
+import { HostedR2Signer, isExactHostedR2ObjectKey } from "./r2";
 
 const ROUTE = "/api/v2/v207/generated-output-port";
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const TOKEN = /^[A-Fa-f0-9]{64}$/u;
+const ROLLBACK_TOKEN = /^[a-f0-9]{64}$/u;
 const CONTENT_TYPE = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/u;
 const CHECKSUM = /^sha256:[0-9a-f]{64}$/u;
 const MAX_BODY_BYTES = 64 * 1024;
@@ -53,8 +54,28 @@ function exactKeySet(value: Record<string, unknown>, operation: Operation): bool
             "schema_version",
             "workspace_id",
           ]
-        : ["account_id", "object_key", "operation", "schema_version", "workspace_id"];
+        : [
+            "account_id",
+            "object_key",
+            "operation",
+            "rollback_token",
+            "schema_version",
+            "workspace_id",
+          ];
   return Object.keys(value).sort().join(",") === expected.sort().join(",");
+}
+
+/** Bind a rollback operation to the one exact object key being cleaned up. */
+export async function v207RollbackToken(nonce: string, objectKey: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(nonce),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(objectKey));
+  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function objectKeyMatchesScope(objectKey: string, accountId: string, workspaceId: string): boolean {
@@ -122,15 +143,31 @@ export async function handleV207GeneratedOutputPort(
     typeof value.workspace_id !== "string" ||
     !ID.test(value.workspace_id) ||
     typeof value.object_key !== "string" ||
+    !isExactHostedR2ObjectKey(value.object_key) ||
     !objectKeyMatchesScope(value.object_key, value.account_id, value.workspace_id)
   ) {
     return invalid("V207_REQUEST_INVALID");
+  }
+  if (
+    operation === "DELETE" &&
+    (typeof value.rollback_token !== "string" ||
+      !ROLLBACK_TOKEN.test(value.rollback_token) ||
+      value.rollback_token !== (await v207RollbackToken(nonce, value.object_key)))
+  ) {
+    return json({ error: { code: "V207_ROLLBACK_AUTHORITY_REJECTED" } }, 403);
   }
   try {
     if (operation === "DELETE") {
       if (!environment.PRIVATE_ARTIFACTS)
         return json({ error: { code: "V207_DELETE_UNAVAILABLE" } }, 503);
-      await environment.PRIVATE_ARTIFACTS.delete(value.object_key);
+      try {
+        await environment.PRIVATE_ARTIFACTS.delete(value.object_key);
+        if ((await environment.PRIVATE_ARTIFACTS.head(value.object_key)) !== null) {
+          return json({ error: { code: "V207_DELETE_UNCONFIRMED" } }, 503);
+        }
+      } catch {
+        return json({ error: { code: "V207_DELETE_VERIFY_FAILED" } }, 503);
+      }
       return json({
         schema_version: "videoforge-v207-generated-output-delete/v1",
         deleted: true,

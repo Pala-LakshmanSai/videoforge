@@ -7,6 +7,11 @@ const EXACT_KEY =
 const HOSTED_JOB_ARTIFACT_PREFIX =
   /^tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/(?:input|render)\/job\/[A-Za-z0-9._:-]+\/artifact\/$/u;
 
+/** Exact single-artifact key grammar shared by signed ports and rollback operations. */
+export function isExactHostedR2ObjectKey(value: string): boolean {
+  return EXACT_KEY.test(value);
+}
+
 export interface HostedR2DeletionVerification {
   readonly schemaVersion: "videoforge-r2-post-delete-verification/v1";
   readonly objectPrefix: string;

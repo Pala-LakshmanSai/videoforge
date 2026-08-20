@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
-import { handleV207GeneratedOutputPort } from "./v207-output-ports";
+import { handleV207GeneratedOutputPort, v207RollbackToken } from "./v207-output-ports";
 
 const nonce = "a".repeat(64);
 const objectKey =
@@ -178,6 +178,7 @@ describe("V2-07 hosted generated-output port", () => {
         account_id: "account-a",
         workspace_id: "workspace-a",
         object_key: objectKey,
+        rollback_token: await v207RollbackToken(nonce, objectKey),
       }),
       config,
       runtime,
@@ -198,6 +199,7 @@ describe("V2-07 hosted generated-output port", () => {
               account_id: "account-a",
               workspace_id: "workspace-a",
               object_key: objectKey,
+              rollback_token: await v207RollbackToken("b".repeat(64), objectKey),
             },
             "b".repeat(64),
           ),
@@ -206,5 +208,98 @@ describe("V2-07 hosted generated-output port", () => {
         )
       )?.status,
     ).toBe(403);
+  });
+
+  it("rejects nested, cross-scope, and malformed DELETE targets", async () => {
+    const base = {
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "DELETE",
+      account_id: "account-a",
+      workspace_id: "workspace-a",
+      object_key: objectKey,
+      rollback_token: await v207RollbackToken(nonce, objectKey),
+    };
+    const invalidKeys = [`${objectKey}/nested`, objectKey.replace("scene-a", "scene-b/other")];
+    for (const invalidKey of invalidKeys) {
+      const response = await handleV207GeneratedOutputPort(
+        request({
+          ...base,
+          object_key: invalidKey,
+          rollback_token: await v207RollbackToken(nonce, invalidKey),
+        }),
+        config,
+        environment(),
+      );
+      expect(response?.status).toBe(400);
+    }
+    for (const crossScopeKey of [
+      objectKey.replace("project-a", "project-b"),
+      objectKey.replace("revision-a", "revision-b"),
+      objectKey.replace("attempt-a", "attempt-b"),
+      objectKey.replace("scene-a", "scene-b"),
+    ]) {
+      const response = await handleV207GeneratedOutputPort(
+        request({ ...base, object_key: crossScopeKey }),
+        config,
+        environment(),
+      );
+      expect(response?.status).toBe(403);
+    }
+    const malformed = await handleV207GeneratedOutputPort(
+      request({ ...base, unexpected: true }),
+      config,
+      environment(),
+    );
+    expect(malformed?.status).toBe(400);
+  });
+
+  it("fails closed when DELETE binding is unavailable or absence cannot be verified", async () => {
+    const body = {
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "DELETE",
+      account_id: "account-a",
+      workspace_id: "workspace-a",
+      object_key: objectKey,
+      rollback_token: await v207RollbackToken(nonce, objectKey),
+    };
+    const unavailable: HostedRuntimeEnvironment = {
+      ...environment(),
+      PRIVATE_ARTIFACTS: undefined,
+    };
+    const unavailableResponse = await handleV207GeneratedOutputPort(
+      request(body),
+      config,
+      unavailable,
+    );
+    expect(unavailableResponse?.status).toBe(503);
+    await expect(unavailableResponse?.json()).resolves.toMatchObject({
+      error: { code: "V207_DELETE_UNAVAILABLE" },
+    });
+
+    const stillPresent = environment();
+    stillPresent.PRIVATE_ARTIFACTS!.head = async () => ({ size: 1 });
+    const unconfirmedResponse = await handleV207GeneratedOutputPort(
+      request(body),
+      config,
+      stillPresent,
+    );
+    expect(unconfirmedResponse?.status).toBe(503);
+    await expect(unconfirmedResponse?.json()).resolves.toMatchObject({
+      error: { code: "V207_DELETE_UNCONFIRMED" },
+    });
+
+    const verificationFailure = environment();
+    verificationFailure.PRIVATE_ARTIFACTS!.head = async () => {
+      throw new Error("head unavailable");
+    };
+    const failedResponse = await handleV207GeneratedOutputPort(
+      request(body),
+      config,
+      verificationFailure,
+    );
+    expect(failedResponse?.status).toBe(503);
+    await expect(failedResponse?.json()).resolves.toMatchObject({
+      error: { code: "V207_DELETE_VERIFY_FAILED" },
+    });
   });
 });

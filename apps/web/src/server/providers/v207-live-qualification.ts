@@ -117,6 +117,7 @@ async function deleteGeneratedObject(objectKey: string, nonce: string): Promise<
       account_id: ACCOUNT,
       workspace_id: WORKSPACE,
       object_key: objectKey,
+      rollback_token: createHmac("sha256", nonce).update(objectKey).digest("hex"),
     }),
     signal: AbortSignal.timeout(15_000),
   });
