@@ -71,6 +71,11 @@ interface EvidenceEvent {
   readonly detail?: Readonly<Record<string, string | number | boolean | null>>;
 }
 
+interface RouteFingerprint {
+  readonly status: number;
+  readonly code: string;
+}
+
 interface EvidenceDocument {
   readonly schema_version: "videoforge-v207-live-orchestrator/v1";
   readonly worker_name: typeof V207_ORCHESTRATOR_WORKER_NAME;
@@ -225,45 +230,102 @@ function asRecord(value: unknown): JsonRecord | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : null;
 }
 
-/** Extract only a Cloudflare Worker version UUID from Wrangler's status JSON. */
+/**
+ * Extract the active Cloudflare Worker version UUID from Wrangler status JSON.
+ *
+ * `wrangler deployments status --json` returns a deployment envelope whose `id`
+ * is a deployment ID, not a Worker version ID. The version to pass to
+ * `wrangler rollback` is nested under `versions[].version_id` (normally with
+ * `percentage: 100`). Treating the envelope ID as the version makes rollback
+ * fail after the Worker has already been mutated, which leaves cleanup
+ * incorrectly reported as uncertain. Prefer explicit/active version fields and
+ * only accept a bare `id` when no deployment `versions` collection is present.
+ */
 export function extractV207WorkerVersionId(value: unknown): string {
-  const prioritizedKeys = new Set([
+  const versionKeys = [
     "version_id",
     "versionId",
     "current_version_id",
     "currentVersionId",
     "latest_version_id",
     "latestVersionId",
-    "deployment_id",
-    "deploymentId",
-  ]);
-  const visit = (candidate: unknown, keyHint?: string): string | null => {
-    if (typeof candidate === "string" && VERSION_ID.test(candidate)) {
-      if (keyHint === undefined || prioritizedKeys.has(keyHint) || keyHint === "id")
-        return candidate;
-      return null;
+    "active_version_id",
+    "activeVersionId",
+  ] as const;
+  const versionKeySet = new Set<string>(versionKeys);
+
+  const readVersionField = (record: JsonRecord): string | null => {
+    for (const key of versionKeys) {
+      const candidate = record[key];
+      if (typeof candidate === "string" && VERSION_ID.test(candidate)) return candidate;
     }
+    return null;
+  };
+
+  const versionFromEntry = (entry: unknown): string | null => {
+    const record = asRecord(entry);
+    if (!record) return null;
+    // A versions entry is expected to carry version_id. Never fall back to its
+    // generic id field: that field is a deployment id in Wrangler envelopes.
+    return readVersionField(record);
+  };
+
+  const activeVersionFromList = (entries: unknown[]): string | null => {
+    const records = entries.filter((entry): entry is JsonRecord => asRecord(entry) !== null);
+    if (records.length === 0) return null;
+    const active = records.filter((record) => {
+      if (record.is_active === true || record.active === true) return true;
+      const percentage = Number(record.percentage ?? record.traffic_percent);
+      return Number.isFinite(percentage) && percentage === 100;
+    });
+    const candidates = active.length === 1 ? active : records.length === 1 ? records : [];
+    if (candidates.length !== 1) return null;
+    return versionFromEntry(candidates[0]);
+  };
+
+  const visit = (candidate: unknown): string | null => {
     if (Array.isArray(candidate)) {
+      // Arrays at the root are commonly the deployments list. Examine each
+      // envelope independently so an envelope's `id` never wins over its
+      // nested active version.
       for (const entry of candidate) {
-        const found = visit(entry, keyHint);
+        const found = visit(entry);
         if (found) return found;
       }
       return null;
     }
     const record = asRecord(candidate);
     if (!record) return null;
-    for (const key of prioritizedKeys) {
-      const found = visit(record[key], key);
-      if (found) return found;
+
+    const explicit = readVersionField(record);
+    if (explicit) return explicit;
+
+    if (Array.isArray(record.versions)) {
+      const active = activeVersionFromList(record.versions);
+      if (active) return active;
+      // An envelope with an ambiguous/malformed versions list must not fall
+      // through to its deployment id. Continue only into non-id metadata.
+      for (const [key, entry] of Object.entries(record)) {
+        if (key === "id" || key === "versions" || versionKeySet.has(key)) continue;
+        const found = visit(entry);
+        if (found) return found;
+      }
+      return null;
     }
-    const directId = visit(record.id, "id");
-    if (directId) return directId;
+
+    // Wrangler's status command can also emit a bare `{ id: <version> }` in
+    // older/alternate shapes. This fallback is safe only without a deployment
+    // versions collection (handled above).
+    if (typeof record.id === "string" && VERSION_ID.test(record.id)) return record.id;
+
     for (const [key, entry] of Object.entries(record)) {
-      const found = visit(entry, key);
+      if (versionKeySet.has(key) || key === "id") continue;
+      const found = visit(entry);
       if (found) return found;
     }
     return null;
   };
+
   const found = visit(value);
   if (!found) throw new V207LiveOrchestratorError("V207_WORKER_VERSION_ID_MISSING");
   return found;
@@ -337,12 +399,12 @@ function validateRouteUrl(value: string): string {
   return url.toString();
 }
 
-async function probeRoute(
+const SAFE_ROUTE_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
+
+async function readRouteFingerprint(
   fetchImpl: typeof fetch,
   routeUrl: string,
-  expectedStatus: number,
-  expectedCode: string,
-): Promise<void> {
+): Promise<RouteFingerprint> {
   let response: Response;
   try {
     response = await fetchImpl(routeUrl, {
@@ -361,9 +423,41 @@ async function probeRoute(
     throw new V207LiveOrchestratorError("V207_ROUTE_PROBE_INVALID");
   }
   const error = asRecord(asRecord(value)?.error);
-  if (response.status !== expectedStatus || error?.code !== expectedCode) {
+  if (
+    !Number.isInteger(response.status) ||
+    response.status < 400 ||
+    response.status > 599 ||
+    typeof error?.code !== "string" ||
+    !SAFE_ROUTE_CODE.test(error.code)
+  ) {
+    throw new V207LiveOrchestratorError("V207_ROUTE_PROBE_INVALID");
+  }
+  return { status: response.status, code: error.code };
+}
+
+async function probeRoute(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  expectedStatus: number,
+  expectedCode: string,
+): Promise<RouteFingerprint> {
+  const observed = await readRouteFingerprint(fetchImpl, routeUrl);
+  if (observed.status !== expectedStatus || observed.code !== expectedCode) {
     throw new V207LiveOrchestratorError(`V207_ROUTE_EXPECTED_${expectedCode}`);
   }
+  return observed;
+}
+
+async function verifyRouteFingerprint(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  expected: RouteFingerprint,
+): Promise<RouteFingerprint> {
+  const observed = await readRouteFingerprint(fetchImpl, routeUrl);
+  if (observed.status !== expected.status || observed.code !== expected.code) {
+    throw new V207LiveOrchestratorError("V207_ROUTE_RESTORATION_UNCONFIRMED");
+  }
+  return observed;
 }
 
 function evidencePath(options: V207LiveOrchestratorOptions, environment: Environment): string {
@@ -627,6 +721,8 @@ export async function runV207LiveOrchestration(
   // have happened and the captured version must be restored. Earlier failures did not mutate the
   // Worker, so they must not be reported as an unresolvable rollback-target failure.
   let workerMutationMayExist = false;
+  let workerRollbackVerified = false;
+  let preMutationRoute: RouteFingerprint | undefined;
   let runnerExitCode: number | undefined;
   let primaryError: unknown;
   const cleanupErrors: string[] = [];
@@ -651,6 +747,14 @@ export async function runV207LiveOrchestration(
       abortController.signal,
     );
     await record("captured_worker_version", { version_id_hash: sha256(capturedVersionId) });
+    // Capture the exact pre-mutation route semantics. The restored V2-06 Worker may legitimately
+    // answer 503 (HOSTED_ROUTE_NOT_COMPOSED), so cleanup must compare against this fingerprint
+    // instead of assuming the V2-07 route is always a 404 before/after the run.
+    preMutationRoute = await readRouteFingerprint(fetchImpl, routeUrl);
+    await record("captured_pre_mutation_route", {
+      status: preMutationRoute.status,
+      code: preMutationRoute.code,
+    });
 
     const beforeSecrets = await secretNames(
       run,
@@ -780,6 +884,7 @@ export async function runV207LiveOrchestration(
     if (workerMutationMayExist && capturedVersionId !== undefined) {
       try {
         await rollbackAndVerify(run, cwd, configPath, environment, capturedVersionId);
+        workerRollbackVerified = true;
         await record("worker_rolled_back", { version_id_hash: sha256(capturedVersionId) });
       } catch (error) {
         cleanupErrors.push(safeErrorCode(error));
@@ -794,11 +899,26 @@ export async function runV207LiveOrchestration(
       }
     }
     if (workerMutationMayExist) {
-      try {
-        await probeRoute(fetchImpl, routeUrl, 404, "V207_ROUTE_DISABLED");
-        await record("disabled_route_confirmed", { status: 404 });
-      } catch (error) {
-        cleanupErrors.push(safeErrorCode(error));
+      if (!workerRollbackVerified) {
+        cleanupErrors.push("V207_ROUTE_RESTORATION_SKIPPED_ROLLBACK_UNCONFIRMED");
+      } else {
+        try {
+          if (preMutationRoute === undefined) {
+            cleanupErrors.push("V207_ROUTE_RESTORATION_FINGERPRINT_MISSING");
+          } else {
+            const restoredRoute = await verifyRouteFingerprint(
+              fetchImpl,
+              routeUrl,
+              preMutationRoute,
+            );
+            await record("restored_route_confirmed", {
+              status: restoredRoute.status,
+              code: restoredRoute.code,
+            });
+          }
+        } catch (error) {
+          cleanupErrors.push(safeErrorCode(error));
+        }
       }
     } else {
       try {
@@ -810,7 +930,12 @@ export async function runV207LiveOrchestration(
     if (cleanupErrors.length > 0) {
       evidence.result = "CLEANUP_UNCERTAIN";
       try {
-        await record("cleanup_uncertain", { error_count: cleanupErrors.length });
+        await record("cleanup_uncertain", {
+          error_count: cleanupErrors.length,
+          // Every entry is produced by safeErrorCode or a fixed bounded code; never persist child
+          // stderr/stdout, provider response bodies, credentials, or signed material.
+          cleanup_error_codes: cleanupErrors.join(","),
+        });
       } catch {
         // Evidence persistence failure is itself covered by the nonzero cleanup result.
       }

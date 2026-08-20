@@ -16,6 +16,7 @@ const IMAGE =
 const SOURCE_COMMIT = "d1d704c2f39581e745ba90151c7388673107de41";
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGED_VERSION_ID = "22222222-2222-4222-8222-222222222222";
+const DEPLOYMENT_ID = "33333333-3333-4333-8333-333333333333";
 const NONCE = "a".repeat(64);
 const RUNPOD_KEY = "runpod-key-must-not-be-written";
 const roots: string[] = [];
@@ -72,6 +73,40 @@ describe("V2-07 live orchestrator", () => {
     );
   });
 
+  it("selects versions[].version_id instead of the deployment envelope id", () => {
+    expect(
+      extractV207WorkerVersionId({
+        id: DEPLOYMENT_ID,
+        versions: [{ version_id: VERSION_ID, percentage: 100 }],
+      }),
+    ).toBe(VERSION_ID);
+    expect(
+      extractV207WorkerVersionId({
+        deployments: [
+          {
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          },
+        ],
+      }),
+    ).toBe(VERSION_ID);
+    expect(() =>
+      extractV207WorkerVersionId({
+        id: DEPLOYMENT_ID,
+        versions: [{ id: DEPLOYMENT_ID, percentage: 100 }],
+      }),
+    ).toThrow("V207_WORKER_VERSION_ID_MISSING");
+    expect(() =>
+      extractV207WorkerVersionId({
+        id: DEPLOYMENT_ID,
+        versions: [
+          { version_id: VERSION_ID, percentage: 50 },
+          { version_id: CHANGED_VERSION_ID, percentage: 50 },
+        ],
+      }),
+    ).toThrow("V207_WORKER_VERSION_ID_MISSING");
+  });
+
   it("runs the full flow with mocked commands, optional RunPod key, and redacted evidence", async () => {
     const files = await fixture();
     const calls: V207CommandRequest[] = [];
@@ -80,7 +115,12 @@ describe("V2-07 live orchestrator", () => {
       calls.push(request);
       if (request.command === "git") return result();
       if (request.args.includes("deployments")) {
-        return result(JSON.stringify({ deployments: [{ version_id: VERSION_ID }] }));
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
       }
       if (request.args.includes("secret") && request.args.includes("list")) {
         return result(
@@ -104,9 +144,9 @@ describe("V2-07 live orchestrator", () => {
         JSON.stringify(
           signerSecretPresent
             ? { error: { code: "V207_AUTHORITY_REJECTED" } }
-            : { error: { code: "V207_ROUTE_DISABLED" } },
+            : { error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } },
         ),
-        { status: signerSecretPresent ? 403 : 404 },
+        { status: signerSecretPresent ? 403 : 503 },
       );
 
     const orchestration = await runV207LiveOrchestration({
@@ -129,6 +169,9 @@ describe("V2-07 live orchestrator", () => {
     expect(signerSecretPresent).toBe(false);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain('"result": "SUCCEEDED"');
+    expect(evidence).toContain('"event": "captured_pre_mutation_route"');
+    expect(evidence).toContain('"event": "restored_route_confirmed"');
+    expect(evidence).toContain('"code": "HOSTED_ROUTE_NOT_COMPOSED"');
     expect(evidence).not.toContain(NONCE);
     expect(evidence).not.toContain(RUNPOD_KEY);
     expect((await stat(files.evidencePath)).mode & 0o077).toBe(0);
@@ -142,6 +185,9 @@ describe("V2-07 live orchestrator", () => {
     expect(calls.some((call) => call.args.includes("build:staging"))).toBe(true);
     expect(calls.some((call) => call.args.includes("deploy"))).toBe(true);
     expect(calls.some((call) => call.args.includes("rollback"))).toBe(true);
+    const rollback = calls.find((call) => call.args.includes("rollback"));
+    expect(rollback?.args).toContain(VERSION_ID);
+    expect(rollback?.args).not.toContain(DEPLOYMENT_ID);
     expect(calls.flatMap((call) => call.args)).not.toContain(NONCE);
   });
 
@@ -151,7 +197,13 @@ describe("V2-07 live orchestrator", () => {
     let signerSecretPresent = false;
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       if (request.command === "git") return result();
-      if (request.args.includes("deployments")) return result(JSON.stringify({ id: VERSION_ID }));
+      if (request.args.includes("deployments"))
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
       if (request.args.includes("secret") && request.args.includes("list")) {
         return result(
           JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
@@ -236,7 +288,13 @@ describe("V2-07 live orchestrator", () => {
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       calls.push(request);
       if (request.command === "git") return result();
-      if (request.args.includes("deployments")) return result(JSON.stringify({ id: VERSION_ID }));
+      if (request.args.includes("deployments"))
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
       if (request.args.includes("secret") && request.args.includes("list")) {
         return result(
           JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
@@ -275,7 +333,17 @@ describe("V2-07 live orchestrator", () => {
       if (request.command === "git") return result();
       if (request.args.includes("deployments")) {
         statusCalls += 1;
-        return result(JSON.stringify({ id: statusCalls === 1 ? VERSION_ID : CHANGED_VERSION_ID }));
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [
+              {
+                version_id: statusCalls === 1 ? VERSION_ID : CHANGED_VERSION_ID,
+                percentage: 100,
+              },
+            ],
+          }),
+        );
       }
       if (request.args.includes("secret") && request.args.includes("list")) {
         return result(
@@ -317,5 +385,7 @@ describe("V2-07 live orchestrator", () => {
     expect(signerSecretPresent).toBe(false);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
+    expect(evidence).toContain("V207_ROUTE_RESTORATION_SKIPPED_ROLLBACK_UNCONFIRMED");
+    expect(evidence).not.toContain('"event": "restored_route_confirmed"');
   });
 });
