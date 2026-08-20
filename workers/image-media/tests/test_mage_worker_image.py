@@ -165,6 +165,20 @@ class MageWorkerImageTest(unittest.TestCase):
         self.assertIn(f"videoforge-mage-v2-07@{expected}", workflow)
         self.assertNotIn("docker push", workflow)
 
+    def test_hosted_smoke_binds_exact_candidate_layer_payload(self) -> None:
+        workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("verify_mage_oci_overlay.py", workflow)
+        self.assertIn("--extract-source", workflow)
+        self.assertIn("MAGE_OCI_BASE_MANIFEST", workflow)
+        self.assertIn("MAGE_OCI_BASE_CONFIG", workflow)
+        self.assertIn(
+            '--mount "type=bind,src=$candidate_source,dst=/opt/videoforge/mage_serverless.py,readonly"',
+            workflow,
+        )
+        self.assertIn("exact_candidate_manifest_smoke=passed", workflow)
+
     def test_generate_contract_accepts_json_body_not_query_value(self) -> None:
         tree = ast.parse((ROOT / "mage_api.py").read_text(encoding="utf-8"))
         generate = next(

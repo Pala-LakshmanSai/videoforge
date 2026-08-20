@@ -25,6 +25,7 @@ from publish_mage_oci_overlay import (  # noqa: E402
     RegistryClient,
     _validate_artifacts,
 )
+from verify_mage_oci_overlay import CandidateError, verify_candidate  # noqa: E402
 
 
 PARENT_REPOSITORY = "ghcr.io/example/videoforge-mage-v2-07"
@@ -37,7 +38,18 @@ def _fixture() -> tuple[dict, dict, bytes, bytes]:
         "architecture": "amd64",
         "config": {
             "Entrypoint": ["python", "/opt/videoforge/mage-serverless-entrypoint.py"],
-            "Labels": {"ai.videoforge.source-commit": "0" * 40},
+            "Env": [
+                "HF_HUB_OFFLINE=1",
+                "TRANSFORMERS_OFFLINE=1",
+                "DIFFUSERS_OFFLINE=1",
+                "MAGE_MODEL_ROOT=/runpod-volume",
+            ],
+            "Labels": {
+                "ai.videoforge.source-commit": "0" * 40,
+                "org.opencontainers.image.base.digest": "sha256:" + "0" * 64,
+                "ai.videoforge.base-image": PARENT_REPOSITORY + "@sha256:" + "0" * 64,
+                "ai.videoforge.overlay-parent": PARENT_REPOSITORY + "@sha256:" + "0" * 64,
+            },
         },
         "history": [{"created_by": "parent"}],
         "os": "linux",
@@ -73,7 +85,7 @@ def _overlay_result() -> dict:
         base_manifest_bytes=manifest_bytes,
         base_config=config,
         base_config_bytes=config_bytes,
-        source_bytes=b"repaired handler bytes",
+        source_bytes=b"x = 1\n",
         source_commit="a" * 40,
         parent_image=parent_image,
         created="2026-08-20T09:39:31Z",
@@ -286,6 +298,65 @@ class MageOciOverlayTest(unittest.TestCase):
                     artifacts["layer_digest"]: artifacts["layer_bytes"],
                 },
             )
+
+    def test_candidate_verifier_extracts_and_binds_exact_runtime_payload(self) -> None:
+        _, _, config_bytes, manifest_bytes = _fixture()
+        result = _overlay_result()
+        parent_image = result["identity"]["parent_image"]
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "overlay"
+            output.mkdir()
+            _write_output(result, output)
+            parent_manifest = Path(temporary) / "parent-manifest.json"
+            parent_config = Path(temporary) / "parent-config.json"
+            parent_manifest.write_bytes(manifest_bytes)
+            parent_config.write_bytes(config_bytes)
+            extracted = Path(temporary) / "candidate-mage_serverless.py"
+            verified = verify_candidate(
+                output_dir=output,
+                base_manifest_path=parent_manifest,
+                base_config_path=parent_config,
+                expected_manifest_digest=result["identity"]["manifest_digest"],
+                expected_config_digest=result["identity"]["config_digest"],
+                expected_layer_digest=result["identity"]["layer_digest"],
+                expected_source_commit=result["identity"]["source_commit"],
+                expected_source_sha256=result["identity"]["source_sha256"],
+                expected_parent_image=parent_image,
+                extract_source=extracted,
+            )
+            self.assertEqual(verified["manifest_digest"], result["identity"]["manifest_digest"])
+            self.assertEqual(extracted.read_bytes(), b"x = 1\n")
+            self.assertTrue(verified["handler_extracted"])
+
+    def test_candidate_verifier_rejects_parent_descriptor_drift(self) -> None:
+        manifest, config, config_bytes, manifest_bytes = _fixture()
+        result = _overlay_result()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "overlay"
+            output.mkdir()
+            _write_output(result, output)
+            parent_manifest = copy.deepcopy(manifest)
+            parent_manifest["layers"][0]["size"] += 1
+            parent_manifest_path = root / "parent-manifest.json"
+            parent_manifest_path.write_text(
+                json.dumps(parent_manifest, separators=(",", ":"), sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            parent_config_path = root / "parent-config.json"
+            parent_config_path.write_bytes(config_bytes)
+            with self.assertRaisesRegex(CandidateError, "parent manifest bytes"):
+                verify_candidate(
+                    output_dir=output,
+                    base_manifest_path=parent_manifest_path,
+                    base_config_path=parent_config_path,
+                    expected_manifest_digest=result["identity"]["manifest_digest"],
+                    expected_config_digest=result["identity"]["config_digest"],
+                    expected_layer_digest=result["identity"]["layer_digest"],
+                    expected_source_commit=result["identity"]["source_commit"],
+                    expected_source_sha256=result["identity"]["source_sha256"],
+                    expected_parent_image=result["identity"]["parent_image"],
+                )
 
 
 if __name__ == "__main__":

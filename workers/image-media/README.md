@@ -51,3 +51,9 @@ dry-run by default; its explicit `--publish` mode uploads only missing config
 and layer blobs, refuses to overwrite an existing tag, PUTs the exact manifest
 bytes, and performs a digest readback. It requires the already configured
 `GHCR_TOKEN`/`GITHUB_ACTOR` environment and never prints either value.
+
+`verify_mage_oci_overlay.py` performs the matching provider-free candidate
+attestation and extracts the handler layer. The hosted workflow mounts that
+extracted file read-only into the pinned local runtime for import/compile smoke,
+so the smoke result is bound to the exact candidate payload and manifest
+identity rather than only to the Dockerfile source copy.
