@@ -253,6 +253,26 @@ class MageWorkerImageTest(unittest.TestCase):
                 )
             self.assertEqual(observed["precision"], "int8-convrot")
 
+    def test_serverless_mount_uses_the_sealed_mage_model_subdirectory(self) -> None:
+        # CP-06 prepared the retained volume at /workspace/mage-model.  The Serverless
+        # endpoint keeps its mount at /runpod-volume, so the application root must be the
+        # equivalent nested directory rather than the mount root itself.
+        with tempfile.TemporaryDirectory() as temporary:
+            mount_root = Path(temporary) / "runpod-volume"
+            model_root = mount_root / "mage-model"
+            marker = make_volume(model_root)
+            with patch.object(
+                volume,
+                "sha256_file",
+                side_effect=[item.sha256 for item in volume.MAGE_MODEL_FILES],
+            ):
+                observed = volume.verify_model_root(
+                    model_root, expected_volume_id_hash=marker["volume_id_hash"]
+                )
+            self.assertEqual(observed["manifest_sha256"], marker["manifest_sha256"])
+            with self.assertRaisesRegex(volume.MageVolumeError, "MAGE_VOLUME_MARKER_INVALID"):
+                volume.verify_model_root(mount_root)
+
     def test_missing_wrong_and_cross_lane_volumes_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
