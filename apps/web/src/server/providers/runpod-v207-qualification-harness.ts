@@ -344,6 +344,7 @@ export class RunPodV207QualificationHarness {
       this.#initialConfigHash = hashRunPodV207EndpointConfiguration(
         jsonValue({
           region: "EU-RO-1",
+          computeType: "GPU",
           gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
           gpuCount: 1,
           minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
@@ -355,6 +356,8 @@ export class RunPodV207QualificationHarness {
           workersMax: this.#options.initialPolicy.workersMax,
           scalerType: "REQUEST_COUNT",
           scalerValue: 1,
+          flashboot: false,
+          volumeMount: "/runpod-volume",
           idleTimeout: this.#options.initialPolicy.idleTimeout,
           executionTimeoutMs: this.#options.initialPolicy.executionTimeoutMs,
           containerDiskInGb: this.#options.containerDiskInGb,
@@ -531,6 +534,7 @@ export class RunPodV207QualificationHarness {
     this.#concurrentReaderConfigHash = hashRunPodV207EndpointConfiguration(
       jsonValue({
         region: "EU-RO-1",
+        computeType: "GPU",
         gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
         gpuCount: 1,
         minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
@@ -542,6 +546,8 @@ export class RunPodV207QualificationHarness {
         workersMax: this.#options.concurrentReaderPolicy.workersMax,
         scalerType: "REQUEST_COUNT",
         scalerValue: 1,
+        flashboot: false,
+        volumeMount: "/runpod-volume",
         idleTimeout: this.#options.concurrentReaderPolicy.idleTimeout,
         executionTimeoutMs: this.#options.concurrentReaderPolicy.executionTimeoutMs,
         containerDiskInGb: this.#options.containerDiskInGb,
@@ -699,6 +705,7 @@ export class RunPodV207QualificationHarness {
         await reader.confirmDrained();
       } catch {
         this.mark("concurrent_reader_drain_uncertain");
+        throw new RunPodControlError("RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN");
       }
     }
     await this.#jobs!.confirmDrained();
