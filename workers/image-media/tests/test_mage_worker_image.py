@@ -17,6 +17,31 @@ PRIOR_IMMUTABLE_IMAGE = (
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
     "sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e"
 )
+REPAIR_RUNTIME_FILES = (
+    (
+        "workers/image-media/mage_serverless.py",
+        "/opt/videoforge/mage_serverless.py",
+        "MAGE_SERVERLESS_GENERATED_OUTPUT_PATH_MISMATCH",
+    ),
+    (
+        "workers/image-media/mage_runtime.py",
+        "/opt/videoforge/mage_runtime.py",
+        (
+            "MAGE_RUNTIME_IO_ON_MODEL_VOLUME",
+            "os.environ.update(self.job_environment)",
+        ),
+    ),
+    (
+        "workers/image-media/mage_bootstrap.py",
+        "/opt/videoforge/mage_bootstrap.py",
+        "MAGE_BOOTSTRAP_EVIDENCE_ON_MODEL_VOLUME",
+    ),
+    (
+        "workers/image-media/src/videoforge_image_media/mage_production.py",
+        "/opt/videoforge/src/videoforge_image_media/mage_production.py",
+        "MAGE_COMFY_OUTPUT_ON_MODEL_VOLUME",
+    ),
+)
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
 import mage_volume as volume  # noqa: E402
@@ -68,17 +93,24 @@ class MageWorkerImageTest(unittest.TestCase):
             original,
         )
         self.assertNotRegex(dockerfile, r"(?m)^\s*(?:ENTRYPOINT|CMD)\b")
-        self.assertRegex(
-            dockerfile,
-            r"(?m)^COPY workers/image-media/mage_serverless\.py "
-            r"/opt/videoforge/mage_serverless\.py$",
-        )
+        normalized = re.sub(r"\\\s*\n\s*", " ", dockerfile)
+        normalized = re.sub(r"\s+", " ", normalized)
+        for source, destination, sentinels in REPAIR_RUNTIME_FILES:
+            self.assertIn(f"COPY {source} {destination}", normalized)
+            source_path = ROOT / Path(source).relative_to("workers/image-media")
+            source_text = source_path.read_text(encoding="utf-8")
+            for sentinel in (sentinels if isinstance(sentinels, tuple) else (sentinels,)):
+                self.assertIn(sentinel, source_text)
         copy_lines = [
             line.strip() for line in dockerfile.splitlines() if line.strip().startswith("COPY ")
         ]
+        self.assertEqual(len(copy_lines), len(REPAIR_RUNTIME_FILES))
         self.assertEqual(
-            copy_lines,
-            ["COPY workers/image-media/mage_serverless.py /opt/videoforge/mage_serverless.py"],
+            copy_lines[:3],
+            [
+                f"COPY {source} {destination}"
+                for source, destination, _sentinel in REPAIR_RUNTIME_FILES[:3]
+            ],
         )
 
     def test_repair_image_has_no_volume_mutation_or_download_instruction(self) -> None:

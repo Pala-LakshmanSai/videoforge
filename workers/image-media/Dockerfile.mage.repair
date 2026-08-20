@@ -13,6 +13,11 @@ LABEL org.opencontainers.image.title="VideoForge Mage Serverless Worker (repaire
       ai.videoforge.repair.kind="source-only-overlay" \
       ai.videoforge.base-image="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:ab5043715f422c20ad1190f063c4f9e66f0d73907738c1ff185ab4d37a57af4e"
 
-# Keep the base image's ENV, ENTRYPOINT, and all sealed-volume safeguards.  This
-# is the only changed payload in the repaired image.
+# Keep the base image's ENV, ENTRYPOINT, and all sealed-volume safeguards.  These
+# are the only changed payload files in the repaired image.  The runtime
+# hygiene overlay is intentionally kept separate from model preparation.
 COPY workers/image-media/mage_serverless.py /opt/videoforge/mage_serverless.py
+COPY workers/image-media/mage_runtime.py /opt/videoforge/mage_runtime.py
+COPY workers/image-media/mage_bootstrap.py /opt/videoforge/mage_bootstrap.py
+COPY workers/image-media/src/videoforge_image_media/mage_production.py \
+     /opt/videoforge/src/videoforge_image_media/mage_production.py
