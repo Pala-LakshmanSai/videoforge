@@ -1,0 +1,80 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 6,
+  "started_at": "2026-08-20T07:05:33.210Z",
+  "stopped_at": "2026-08-20T07:10:03.397Z",
+  "authority_proposal_sha256": "sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b",
+  "approved_finite_spend_cap_usd": 4,
+  "approved_minimum_availability": "MEDIUM",
+  "pre_mutation_availability": "HIGH",
+  "result": "FAILED_ON_FIRST_BATCH_OUTPUT_CONTRACT",
+  "initial_endpoint_config_sha256": "sha256:8842b65624d2d75a0a78b0df920554d9ac509f6a50e0e03e5c31b66d056f280d",
+  "resource_identity": {
+    "endpoint_id_sha256": "sha256:5fabe28e46076bbb299fe491f88853acd1b24db24a0797a7f7afaac6a5c318f3",
+    "template_id_sha256": "sha256:b6fb71f6c0814981d7dcb4ffe6f5dbb22c9a2ae6db865d2fabdc9a0d52b086ad",
+    "job_id_sha256": "sha256:3b0634d01ea8cd73afc950b768b3152858c2c417d2c9d2e0a6e84c176c4ba384",
+    "image_digest": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "retained_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+  },
+  "provider_job": {
+    "status_sequence": ["IN_QUEUE", "IN_PROGRESS", "COMPLETED"],
+    "delay_time_ms": 6879,
+    "execution_time_ms": 35408,
+    "single_job_hash_stable": true,
+    "duplicate_job_id_observed": false
+  },
+  "failure": {
+    "code": "MAGE_OUTPUT_NOT_SUCCEEDED",
+    "worker_output_status": "UNRECOVERED",
+    "worker_failure_code": "UNRECOVERED",
+    "provider_stream_diagnostic": {
+      "status": "COMPLETED",
+      "code": null,
+      "message": null,
+      "reason": null
+    },
+    "batch_evidence_recorded": false,
+    "specific_root_cause": "UNPROVEN",
+    "reason": "the previous bounded error serializer retained only the leading code and child output was not persisted"
+  },
+  "generated_output_rollback": "CONFIRMED",
+  "settled_finite_spend_usd_observed": 0,
+  "billing_observations_utc": [
+    "2026-08-20T07:13:58.799Z",
+    "2026-08-20T07:14:05.143Z",
+    "2026-08-20T07:14:11.123Z"
+  ],
+  "cleanup": {
+    "pre_delete_queue": 0,
+    "pre_delete_in_progress": 0,
+    "pre_delete_running": 0,
+    "endpoint_deleted": true,
+    "endpoint_absence_verified_before_template_delete": true,
+    "linked_template_deleted": true,
+    "runpod_pod_count": 0,
+    "runpod_endpoint_count": 0,
+    "runpod_private_template_count": 0,
+    "runpod_active_worker_count": 0,
+    "intended_volume_count": 2,
+    "intended_volumes_unchanged": true,
+    "cloudflare_worker_version": "e69971c9-922d-4605-b8ec-592110f3759a",
+    "cloudflare_worker_version_percentage": 100,
+    "temporary_signer_secret_present": false,
+    "public_post_route_status_reads": [404, 404, 404],
+    "public_post_route_code": "V207_ROUTE_DISABLED"
+  },
+  "repair_commits": [
+    "a60a804",
+    "efcf121"
+  ],
+  "required_before_retry": [
+    "one_image_owned_probe_precedes_complete_batch",
+    "bounded_full_worker_failure_code_persistence",
+    "focused_tests_green",
+    "clean_worktree",
+    "fresh_rate_availability_inventory_and_remaining_cap_within_authority"
+  ]
+}
