@@ -214,6 +214,8 @@ export class RunPodV207QualificationHarness {
   readonly #guard = new RunPodDrainGuard();
   readonly #events: RecordValue[] = [];
   readonly #readerJobs: RunPodServerlessJobClient[] = [];
+  /** Every acknowledged job remains owned until a terminal status is observed. */
+  readonly #ownedJobs = new Map<string, RunPodServerlessJobClient>();
   #template: { readonly id: string; readonly idHash: string } | null = null;
   #endpoint: { readonly id: string; readonly idHash: string } | null = null;
   #jobs: RunPodServerlessJobClient | null = null;
@@ -259,6 +261,48 @@ export class RunPodV207QualificationHarness {
 
   private checkAbort(): void {
     this.#options.abortCheck?.();
+  }
+
+  /**
+   * Reconcile/cancel every acknowledged non-terminal job before endpoint drain. This is deliberately
+   * separate from the normal success path: an operator abort or bounded reconciliation timeout can
+   * interrupt a caller while the provider job is still running, and deleting the endpoint without
+   * fencing that exact job would create an unplanned duplicate/cleanup race.
+   */
+  private async cancelOwnedJobs(): Promise<void> {
+    if (this.#ownedJobs.size === 0) return;
+    if (this.#guard.snapshot() === "active" || this.#guard.snapshot() === "warm_idle") {
+      this.#guard.beginDrain();
+    }
+    const failures: string[] = [];
+    for (const [jobId, client] of [...this.#ownedJobs.entries()]) {
+      try {
+        const observed = await client.status(jobId);
+        this.mark("owned_job_cleanup_status", {
+          job_id_hash: observed.idHash,
+          status: observed.status,
+        });
+        if (!TERMINAL_STATUSES.has(observed.status)) {
+          const cancelled = await client.cancel(jobId);
+          if (cancelled.status !== "CANCELLED") {
+            throw new RunPodControlError("RUNPOD_OWNED_JOB_CANCEL_UNCONFIRMED");
+          }
+          this.mark("owned_job_cleanup_cancelled", {
+            job_id_hash: cancelled.idHash,
+            status: cancelled.status,
+          });
+        }
+        this.#ownedJobs.delete(jobId);
+      } catch (error) {
+        failures.push(
+          error instanceof RunPodControlError ? error.code : "RUNPOD_OWNED_JOB_CLEANUP_FAILED",
+        );
+      }
+    }
+    if (failures.length > 0) {
+      this.mark("owned_job_cleanup_uncertain", { error_count: failures.length });
+      throw new RunPodControlError("RUNPOD_OWNED_JOB_CLEANUP_UNCERTAIN");
+    }
   }
 
   private async assertSpendWithinCap(): Promise<number> {
@@ -924,6 +968,7 @@ export class RunPodV207QualificationHarness {
     });
     await this.assertSpendWithinCap();
     const job = await this.#jobs!.dispatch(input.requestKey, request);
+    this.#ownedJobs.set(job.id, this.#jobs!);
     this.checkAbort();
     await this.assertSpendWithinCap();
     this.mark("job_dispatched", { job_id_hash: job.idHash, attempt_id: input.attemptId });
@@ -956,7 +1001,10 @@ export class RunPodV207QualificationHarness {
         delayTimeMs: latest.delayTimeMs,
         executionTimeMs: latest.executionTimeMs,
       });
-      if (TERMINAL_STATUSES.has(latest.status)) return latest;
+      if (TERMINAL_STATUSES.has(latest.status)) {
+        this.#ownedJobs.delete(jobId);
+        return latest;
+      }
       if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
     }
     throw new RunPodControlError("RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT");
@@ -994,6 +1042,7 @@ export class RunPodV207QualificationHarness {
       this.#guard.beginDrain();
     }
     const result = await this.#jobs!.cancel(jobId);
+    if (result.status === "CANCELLED") this.#ownedJobs.delete(jobId);
     this.mark("job_cancelled", { job_id_hash: result.idHash });
     return result;
   }
@@ -1200,7 +1249,10 @@ export class RunPodV207QualificationHarness {
           generated_output_authorities: authority.authorities,
           output_put_urls: authority.outputPutUrls,
         });
-        return clients[index]!.dispatch(input.requestKey, request);
+        return clients[index]!.dispatch(input.requestKey, request).then((job) => {
+          this.#ownedJobs.set(job.id, clients[index]!);
+          return job;
+        });
       }),
     );
     this.checkAbort();
@@ -1254,7 +1306,10 @@ export class RunPodV207QualificationHarness {
           delayTimeMs: latest.delayTimeMs,
           executionTimeMs: latest.executionTimeMs,
         });
-        if (TERMINAL_STATUSES.has(latest.status)) return latest;
+        if (TERMINAL_STATUSES.has(latest.status)) {
+          this.#ownedJobs.delete(jobId);
+          return latest;
+        }
         if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
       }
       throw new RunPodControlError("RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT");
@@ -1330,8 +1385,15 @@ export class RunPodV207QualificationHarness {
     readonly failed: boolean;
   }): Promise<void> {
     if (!this.#endpoint || !this.#jobs || !this.#template) return;
+    try {
+      await this.cancelOwnedJobs();
+    } catch {
+      this.mark("cleanup_owned_job_uncertain");
+      return;
+    }
     if (
       this.#readerJobs.length > 0 ||
+      this.#ownedJobs.size > 0 ||
       ["active", "warm_idle", "draining", "queue_empty"].includes(this.#guard.snapshot())
     ) {
       try {

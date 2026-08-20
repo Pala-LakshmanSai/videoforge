@@ -79,10 +79,10 @@ describe("V2-07 live qualification runner safety", () => {
   it("regresses Attempt 10 by making the owned probe a complete 32-item batch", () => {
     const liveBatchCounts = [
       ...source.matchAll(
-        /(?:probe|cold|warm|readerA|readerB|cancel) = await createBatch\([\s\S]*?workerToken,\s+(\d+),/g,
+        /(?:probe|cold|warm|readerA|readerB|cancel|timeout) = await createBatch\([\s\S]*?workerToken,\s+(\d+),/g,
       ),
     ].map((match) => match[1]);
-    expect(liveBatchCounts).toEqual(["32", "32", "32", "32", "32", "32"]);
+    expect(liveBatchCounts).toEqual(["32", "32", "32", "32", "32", "32", "32"]);
     expect(source).toContain('kind: "owned_probe"');
     expect(source).not.toContain("workerToken,\n        1,");
     expect(() => assertV207ItemCount(31)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
@@ -151,6 +151,15 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("abortCheck: cancellation.throwIfRequested");
     expect(source).toContain("await harness.cleanup({ deleteIfFailed: true, failed: true })");
     expect(source).toContain('const signals: readonly NodeJS.Signals[] = ["SIGINT", "SIGTERM"]');
+  });
+
+  it("owns a separate real provider timeout attempt and rejects local/failed substitutes", () => {
+    expect(source).toContain("const timeoutAttemptId = `v207-timeout-${runTag}`");
+    expect(source).toContain("const timeoutResult = await harness.reconcile(timeoutJob.id)");
+    expect(source).toContain('timeoutResult.status !== "TIMED_OUT"');
+    expect(source).toContain('throw new Error("V207_TIMEOUT_NOT_OBSERVED")');
+    expect(source).toContain('event: "provider_timeout_terminal"');
+    expect(source).toContain('evidence.timeout_output_cleanup = "CONFIRMED"');
   });
 
   it("persists only redacted checkpoint evidence with no raw provider material", () => {

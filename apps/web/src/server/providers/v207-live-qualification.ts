@@ -185,6 +185,8 @@ const SAFE_EVIDENCE_KEYS = new Set([
   "generated_output_rollback",
   "cancel_status",
   "cancel_output_cleanup",
+  "timeout_status",
+  "timeout_output_cleanup",
 ]);
 
 /**
@@ -1424,6 +1426,37 @@ async function main(): Promise<void> {
       await deleteGeneratedObjects(cancel.objectKeys, nonce);
       evidence.cancel_output_cleanup = "CONFIRMED";
       await persistCheckpoint("cancel-terminal");
+      await harness.scaleDownToInitial();
+
+      // Deliberately own one separate timeout attempt under the approved max-one endpoint. The
+      // provider must report its exact terminal TIMED_OUT state; a local reconciliation timeout,
+      // FAILED result, or successful output is not substituted for this proof and fails closed.
+      const timeoutAttemptId = `v207-timeout-${runTag}`;
+      const timeout = await createBatch(
+        timeoutAttemptId,
+        nonce,
+        workerToken,
+        32,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...timeout.objectKeys);
+      await persistCheckpoint("timeout-ports");
+      cancellation.throwIfRequested();
+      const timeoutJob = await harness.dispatchBatch(timeout.input);
+      await persistCheckpoint("timeout-dispatch");
+      const timeoutResult = await harness.reconcile(timeoutJob.id);
+      evidence.timeout_status = timeoutResult.status;
+      await persistCheckpoint("timeout-terminal", {
+        event: "provider_timeout_terminal",
+        status: timeoutResult.status,
+        job_id_hash: timeoutResult.idHash,
+      });
+      if (timeoutResult.status !== "TIMED_OUT") {
+        throw new Error("V207_TIMEOUT_NOT_OBSERVED");
+      }
+      await deleteGeneratedObjects(timeout.objectKeys, nonce);
+      evidence.timeout_output_cleanup = "CONFIRMED";
+      await persistCheckpoint("timeout-output-cleanup");
       await harness.scaleDownToInitial();
       await harness.cleanup({ deleteIfFailed: false, failed: false });
       const finalInventory = await control.inventory();

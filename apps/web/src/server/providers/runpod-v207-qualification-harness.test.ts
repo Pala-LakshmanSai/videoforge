@@ -162,6 +162,41 @@ function harnessFetch(
   });
 }
 
+function timeoutTerminalFetch() {
+  const baseFetch = harnessFetch();
+  return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname;
+    if (path.includes("/status/")) {
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      return jsonResponse({
+        id: jobId,
+        status: "TIMED_OUT",
+        executionTime: 2_400_000,
+        delayTime: 0,
+      });
+    }
+    return baseFetch(input, init);
+  });
+}
+
+function cleanupCancellationFetch() {
+  const baseFetch = harnessFetch();
+  let cancellationRequested = false;
+  const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname;
+    if (path.includes("/cancel/")) {
+      cancellationRequested = true;
+      return baseFetch(input, init);
+    }
+    if (cancellationRequested && path.includes("/status/")) {
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      return jsonResponse({ id: jobId, status: "CANCELLED", executionTime: null, delayTime: null });
+    }
+    return baseFetch(input, init);
+  });
+  return { fetch, cancellationRequested: () => cancellationRequested };
+}
+
 function makeHarness(
   fetch: typeof globalThis.fetch,
   spendSnapshotUsd: () => Promise<number> = async () => 0,
@@ -816,6 +851,79 @@ describe("V2-07 qualification harness", () => {
     expect(evidence.concurrentReaderConfigHash).toMatch(/^sha256:/u);
     expect(evidence.measuredSpendUsd).toBe(0);
     expect(JSON.stringify(evidence)).not.toContain("opaque");
+  });
+
+  it("records a provider TIMED_OUT terminal and cleans only the disposable endpoint/template", async () => {
+    const fetch = timeoutTerminalFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const job = await instance.dispatchBatch({
+      requestKey: "attempt_a",
+      attemptId: "attempt_a",
+      input,
+      outputAuthority: authority(),
+    });
+    await expect(instance.reconcile(job.id)).resolves.toMatchObject({ status: "TIMED_OUT" });
+    await instance.cleanup({ deleteIfFailed: true, failed: true });
+    const events = (await instance.evidence()).events;
+    expect(events).toContainEqual(
+      expect.objectContaining({ event: "job_status", status: "TIMED_OUT" }),
+    );
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" && new URL(String(url)).pathname.endsWith("/endpoint_01"),
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" && new URL(String(url)).pathname.endsWith("/template_01"),
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.some(([url]) => new URL(String(url)).pathname.includes("/networkvolumes/")),
+    ).toBe(false);
+  });
+
+  it("cancels an acknowledged in-flight job before drain without redispatch", async () => {
+    const cancellation = cleanupCancellationFetch();
+    const instance = makeHarness(cancellation.fetch);
+    await instance.create();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    await instance.dispatchBatch({
+      requestKey: "attempt_a",
+      attemptId: "attempt_a",
+      input,
+      outputAuthority: authority(),
+    });
+    await instance.cleanup({ deleteIfFailed: true, failed: true });
+    expect(cancellation.cancellationRequested()).toBe(true);
+    expect(
+      cancellation.fetch.mock.calls.filter(([url]) =>
+        new URL(String(url)).pathname.endsWith("/run"),
+      ),
+    ).toHaveLength(1);
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "owned_job_cleanup_cancelled", status: "CANCELLED" }),
+    );
   });
 
   it("checks the finite cap before concurrent reader dispatch", async () => {
