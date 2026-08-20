@@ -1,0 +1,48 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 2,
+  "started_at": "2026-08-20T06:00:28.991Z",
+  "stopped_at": "2026-08-20T06:01:15.849Z",
+  "authority_proposal_sha256": "sha256:e09c62846c9dd1a11577297016e156b2c739d6002b2c94bc36e214ccdf352c8b",
+  "approved_finite_spend_cap_usd": 4,
+  "approved_minimum_availability": "MEDIUM",
+  "result": "STOPPED_BEFORE_RUNPOD_MUTATION",
+  "failure": {
+    "code": "V207_ROUTE_EXPECTED_V207_AUTHORITY_REJECTED",
+    "root_cause": "CLOUDFLARE_SECRET_EDGE_PROPAGATION_NOT_COMPLETE_AT_FIRST_PROBE",
+    "secret_control_plane_to_route_probe_milliseconds": 1182
+  },
+  "reachability": {
+    "signer_secret_control_plane_confirmed": true,
+    "signer_route_activation_confirmed": false,
+    "live_preflight_reached": false,
+    "runpod_create_reached": false,
+    "r2_reservation_reached": false,
+    "gpu_dispatch_reached": false
+  },
+  "settled_finite_spend_usd": 0,
+  "cleanup": {
+    "completed_at": "2026-08-20T06:03:02Z",
+    "captured_worker_version_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "captured_worker_version_restored_percent": 100,
+    "temporary_signer_secret_present": false,
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED",
+    "runpod_pod_count": 0,
+    "runpod_endpoint_count": 0,
+    "runpod_private_template_count": 0,
+    "runpod_active_worker_count": 0,
+    "intended_volume_count": 2,
+    "intended_volumes_unchanged": true,
+    "r2_output_residue": "IMPOSSIBLE_BY_REACHABILITY"
+  },
+  "repair_commit": "071c9d1",
+  "retry_allowed_only_after": [
+    "focused_tests_green",
+    "clean_worktree",
+    "bounded_activation_propagation_barrier_present",
+    "rate_availability_and_inventory_within_authority"
+  ]
+}
