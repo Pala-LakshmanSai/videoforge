@@ -23,6 +23,20 @@ export const V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS = 7_200 as const;
 /** The published Mage image is CUDA 13.0; do not let provider placement fall back to CUDA 12. */
 export const V207_RUNPOD_MIN_CUDA_VERSION = "13.0" as const;
 
+/**
+ * The deliberate V2-07 timeout negative proof is the only request allowed to override the
+ * endpoint execution timeout.  TTL starts at submission, so it must cover the full approved
+ * request lifetime even when the worker is queued; the short execution timeout still forces the
+ * provider terminal TIMED_OUT result after pickup.
+ */
+export const V207_TIMEOUT_EXECUTION_TIMEOUT_MS = 5_000 as const;
+export const V207_TIMEOUT_TTL_MS = 7_200_000 as const;
+
+export type RunPodV207TimeoutPolicy = Readonly<{
+  readonly executionTimeout: typeof V207_TIMEOUT_EXECUTION_TIMEOUT_MS;
+  readonly ttl: typeof V207_TIMEOUT_TTL_MS;
+}>;
+
 type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type JsonRecord = Readonly<Record<string, unknown>>;
 
@@ -130,6 +144,18 @@ const strictCounter = (source: JsonRecord | null, key: string): number => {
 
 const hashId = (value: string): string =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+
+function assertV207TimeoutPolicy(value: unknown): asserts value is RunPodV207TimeoutPolicy {
+  const candidate = record(value);
+  if (
+    !candidate ||
+    Object.keys(candidate).length !== 2 ||
+    candidate.executionTimeout !== V207_TIMEOUT_EXECUTION_TIMEOUT_MS ||
+    candidate.ttl !== V207_TIMEOUT_TTL_MS
+  ) {
+    throw new RunPodControlError("RUNPOD_TIMEOUT_POLICY_INVALID");
+  }
+}
 
 /**
  * Hash the exact provider request used to select a V2-07 endpoint.  Provider identifiers may be
@@ -1087,13 +1113,13 @@ export class RunPodServerlessJobClient {
     }
   }
 
-  dispatch(requestKey: string, input: JsonValue): Promise<RunPodJobResult> {
+  private dispatchRequest(requestKey: string, request: JsonValue): Promise<RunPodJobResult> {
     if (!ID.test(requestKey)) throw new RunPodControlError("RUNPOD_REQUEST_KEY_INVALID");
-    const inputBytes = canonicalizeJson({ input });
-    if (Buffer.byteLength(inputBytes, "utf8") > 10 * 1024 * 1024) {
+    const requestBytes = canonicalizeJson(request);
+    if (Buffer.byteLength(requestBytes, "utf8") > 10 * 1024 * 1024) {
       throw new RunPodControlError("RUNPOD_REQUEST_TOO_LARGE");
     }
-    const inputHash = hashId(inputBytes);
+    const inputHash = hashId(requestBytes);
     const replay = this.replays.get(requestKey);
     if (replay) {
       if (replay.inputHash !== inputHash) {
@@ -1103,9 +1129,37 @@ export class RunPodServerlessJobClient {
     }
     this.options.guard.assertDispatchAllowed();
     this.options.guard.markActive();
-    const pending = this.request("POST", "/run", inputBytes).then(jobResult);
+    const pending = this.request("POST", "/run", requestBytes).then(jobResult);
     this.replays.set(requestKey, { inputHash, promise: pending });
     return pending;
+  }
+
+  /** Dispatches the ordinary worker payload with no per-job policy override. */
+  dispatch(requestKey: string, input: JsonValue): Promise<RunPodJobResult> {
+    return this.dispatchRequest(requestKey, { input });
+  }
+
+  /**
+   * Dispatches the one bounded V2-07 timeout proof.  The policy is serialized at the RunPod
+   * request's top level, and the exact request body (including policy) is replay-hashed.
+   */
+  dispatchWithPolicy(
+    requestKey: string,
+    input: JsonValue,
+    policy: RunPodV207TimeoutPolicy,
+  ): Promise<RunPodJobResult> {
+    assertV207TimeoutPolicy(policy);
+    const inputRecord = record(input);
+    if (inputRecord && Object.hasOwn(inputRecord, "policy")) {
+      throw new RunPodControlError("RUNPOD_TIMEOUT_POLICY_INVALID");
+    }
+    return this.dispatchRequest(requestKey, {
+      input,
+      policy: {
+        executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+        ttl: V207_TIMEOUT_TTL_MS,
+      },
+    });
   }
 
   async status(jobId: string): Promise<RunPodJobResult> {

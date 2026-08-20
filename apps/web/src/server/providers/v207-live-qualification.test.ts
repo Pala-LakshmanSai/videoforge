@@ -155,6 +155,7 @@ describe("V2-07 live qualification runner safety", () => {
 
   it("owns a separate real provider timeout attempt and rejects local/failed substitutes", () => {
     expect(source).toContain("const timeoutAttemptId = `v207-timeout-${runTag}`");
+    expect(source).toContain("await harness.dispatchTimeoutBatch(timeout.input)");
     expect(source).toContain("const timeoutResult = await harness.reconcile(timeoutJob.id)");
     expect(source).toContain('timeoutResult.status !== "TIMED_OUT"');
     expect(source).toContain('throw new Error("V207_TIMEOUT_NOT_OBSERVED")');

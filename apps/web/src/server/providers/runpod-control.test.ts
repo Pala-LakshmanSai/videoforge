@@ -6,6 +6,8 @@ import {
   RunPodServerlessJobClient,
   assertRunPodEndpointPolicy,
   assertRunPodV207ConcurrentReaderPolicy,
+  V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+  V207_TIMEOUT_TTL_MS,
 } from "./runpod-control";
 
 const key = "runpod-test-key-at-least-twenty-characters";
@@ -488,6 +490,60 @@ describe("RunPod scale-zero control", () => {
     expect(
       fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith("/run")),
     ).toHaveLength(1);
+  });
+
+  it("binds the bounded timeout policy at top level and keeps ordinary dispatch policy-free", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const runBodies: unknown[] = [];
+    let runCount = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/run")) {
+        runBodies.push(JSON.parse(String(init?.body)) as unknown);
+        runCount += 1;
+        return response({ id: `job_0${runCount}`, status: "IN_QUEUE" });
+      }
+      if (path.endsWith("/health")) return response(health(1));
+      return response(health());
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+
+    await client.dispatch("attempt_ordinary", { value: "normal" });
+    await client.confirmWarmIdle();
+    await client.dispatchWithPolicy(
+      "attempt_timeout",
+      { value: "timeout" },
+      {
+        executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+        ttl: V207_TIMEOUT_TTL_MS,
+      },
+    );
+    expect(runBodies).toEqual([
+      { input: { value: "normal" } },
+      {
+        input: { value: "timeout" },
+        policy: {
+          executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+          ttl: V207_TIMEOUT_TTL_MS,
+        },
+      },
+    ]);
+    expect(() => client.dispatch("attempt_timeout", { value: "timeout" })).toThrow(
+      "RUNPOD_REQUEST_REPLAY_MISMATCH",
+    );
+    expect(() =>
+      client.dispatchWithPolicy("attempt_invalid", { value: "invalid" }, {
+        executionTimeout: 5_001,
+        ttl: V207_TIMEOUT_TTL_MS,
+      } as never),
+    ).toThrow("RUNPOD_TIMEOUT_POLICY_INVALID");
   });
 
   it("binds status and cancellation responses to the requested job", async () => {

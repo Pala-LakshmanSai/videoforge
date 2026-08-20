@@ -4,6 +4,8 @@ import { RunPodControlClient, type RunPodV207Placement } from "./runpod-control"
 import {
   RunPodV207QualificationHarness,
   redactRunPodEvidence,
+  V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+  V207_TIMEOUT_TTL_MS,
   type RunPodV207OutputAuthority,
 } from "./runpod-v207-qualification-harness";
 import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
@@ -164,8 +166,12 @@ function harnessFetch(
 
 function timeoutTerminalFetch() {
   const baseFetch = harnessFetch();
-  return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+  const runBodies: Record<string, unknown>[] = [];
+  const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const path = new URL(String(input)).pathname;
+    if (path.endsWith("/run")) {
+      runBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    }
     if (path.includes("/status/")) {
       const jobId = path.split("/").at(-1) ?? "job_01";
       return jsonResponse({
@@ -177,6 +183,7 @@ function timeoutTerminalFetch() {
     }
     return baseFetch(input, init);
   });
+  return { fetch, runBodies };
 }
 
 function cleanupCancellationFetch() {
@@ -854,8 +861,8 @@ describe("V2-07 qualification harness", () => {
   });
 
   it("records a provider TIMED_OUT terminal and cleans only the disposable endpoint/template", async () => {
-    const fetch = timeoutTerminalFetch();
-    const instance = makeHarness(fetch);
+    const timeout = timeoutTerminalFetch();
+    const instance = makeHarness(timeout.fetch);
     await instance.create();
     const input = {
       envelope: {
@@ -866,33 +873,80 @@ describe("V2-07 qualification harness", () => {
       },
       batch: { items: [{ scene_id: "scene_a" }] },
     };
-    const job = await instance.dispatchBatch({
+    const job = await instance.dispatchTimeoutBatch({
       requestKey: "attempt_a",
       attemptId: "attempt_a",
       input,
       outputAuthority: authority(),
     });
     await expect(instance.reconcile(job.id)).resolves.toMatchObject({ status: "TIMED_OUT" });
+    expect(timeout.runBodies[0]).toMatchObject({
+      policy: {
+        executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+        ttl: V207_TIMEOUT_TTL_MS,
+      },
+    });
+    expect(timeout.runBodies[0]).not.toHaveProperty("input.policy");
+    await expect(
+      instance.dispatchBatch({
+        requestKey: "attempt_a",
+        attemptId: "attempt_a",
+        input,
+        outputAuthority: authority(),
+      }),
+    ).rejects.toThrow("RUNPOD_REQUEST_REPLAY_MISMATCH");
     await instance.cleanup({ deleteIfFailed: true, failed: true });
     const events = (await instance.evidence()).events;
     expect(events).toContainEqual(
       expect.objectContaining({ event: "job_status", status: "TIMED_OUT" }),
     );
     expect(
-      fetch.mock.calls.filter(
+      timeout.fetch.mock.calls.filter(
         ([url, init]) =>
           init?.method === "DELETE" && new URL(String(url)).pathname.endsWith("/endpoint_01"),
       ),
     ).toHaveLength(1);
     expect(
-      fetch.mock.calls.filter(
+      timeout.fetch.mock.calls.filter(
         ([url, init]) =>
           init?.method === "DELETE" && new URL(String(url)).pathname.endsWith("/template_01"),
       ),
     ).toHaveLength(1);
     expect(
-      fetch.mock.calls.some(([url]) => new URL(String(url)).pathname.includes("/networkvolumes/")),
+      timeout.fetch.mock.calls.some(([url]) =>
+        new URL(String(url)).pathname.includes("/networkvolumes/"),
+      ),
     ).toBe(false);
+  });
+
+  it("rejects timeout policy injection on ordinary dispatch", async () => {
+    const fetch = harnessFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const input = {
+      policy: {
+        executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+        ttl: V207_TIMEOUT_TTL_MS,
+      },
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    await expect(
+      instance.dispatchBatch({
+        requestKey: "attempt_a",
+        attemptId: "attempt_a",
+        input,
+        outputAuthority: authority(),
+      }),
+    ).rejects.toThrow("RUNPOD_QUALIFICATION_INPUT_INVALID");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
   });
 
   it("cancels an acknowledged in-flight job before drain without redispatch", async () => {

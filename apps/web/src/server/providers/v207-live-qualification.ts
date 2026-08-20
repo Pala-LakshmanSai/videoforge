@@ -1442,7 +1442,7 @@ async function main(): Promise<void> {
       generatedObjectKeys.push(...timeout.objectKeys);
       await persistCheckpoint("timeout-ports");
       cancellation.throwIfRequested();
-      const timeoutJob = await harness.dispatchBatch(timeout.input);
+      const timeoutJob = await harness.dispatchTimeoutBatch(timeout.input);
       await persistCheckpoint("timeout-dispatch");
       const timeoutResult = await harness.reconcile(timeoutJob.id);
       evidence.timeout_status = timeoutResult.status;

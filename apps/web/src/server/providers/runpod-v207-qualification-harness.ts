@@ -19,13 +19,17 @@ import {
   V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
   V207_RUNPOD_GPU,
   V207_RUNPOD_VOLUME_MOUNT,
+  V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+  V207_TIMEOUT_TTL_MS,
   type RunPodEndpointPolicy,
   type RunPodDisposableResourceInventory,
   type RunPodInventory,
   type RunPodJobResult,
+  type RunPodV207TimeoutPolicy,
   type RunPodV207ConcurrentReaderPolicy,
   type RunPodV207Placement,
 } from "./runpod-control";
+export { V207_TIMEOUT_EXECUTION_TIMEOUT_MS, V207_TIMEOUT_TTL_MS } from "./runpod-control";
 import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
@@ -912,6 +916,25 @@ export class RunPodV207QualificationHarness {
   }
 
   async dispatchBatch(input: RunPodV207DispatchBatchInput): Promise<RunPodJobResult> {
+    return this.dispatchBatchWithPolicy(input);
+  }
+
+  /**
+   * The only bounded per-request policy path. RunPod accepts this top-level override for one job;
+   * keep it out of ordinary dispatches so the approved endpoint's 2,400,000ms policy remains the
+   * normal runtime and so the request-key replay hash includes the exact timeout policy.
+   */
+  async dispatchTimeoutBatch(input: RunPodV207DispatchBatchInput): Promise<RunPodJobResult> {
+    return this.dispatchBatchWithPolicy(input, {
+      executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+      ttl: V207_TIMEOUT_TTL_MS,
+    });
+  }
+
+  private async dispatchBatchWithPolicy(
+    input: RunPodV207DispatchBatchInput,
+    policy?: RunPodV207TimeoutPolicy,
+  ): Promise<RunPodJobResult> {
     this.assertCreated();
     this.checkAbort();
     this.assertPrimaryDispatchAllowed();
@@ -931,6 +954,7 @@ export class RunPodV207QualificationHarness {
       typeof outputPrefix !== "string" ||
       !Array.isArray(reservationIds) ||
       reservationIds.some((value) => typeof value !== "string") ||
+      Object.hasOwn(input.input, "policy") ||
       !input.input.envelope ||
       Object.hasOwn(input.input, "ports") ||
       Object.hasOwn(input.input, "output_put_urls") ||
@@ -967,7 +991,10 @@ export class RunPodV207QualificationHarness {
       output_put_urls: input.outputAuthority.outputPutUrls,
     });
     await this.assertSpendWithinCap();
-    const job = await this.#jobs!.dispatch(input.requestKey, request);
+    const job =
+      policy === undefined
+        ? await this.#jobs!.dispatch(input.requestKey, request)
+        : await this.#jobs!.dispatchWithPolicy(input.requestKey, request, policy);
     this.#ownedJobs.set(job.id, this.#jobs!);
     this.checkAbort();
     await this.assertSpendWithinCap();
