@@ -24,16 +24,16 @@ const files = {
   task: path.join(repoRoot, "project-context/tasks/VF-10-07.md"),
 };
 const expected = {
-  proposal: "sha256:a2bb603aa97661d11b29335049449b36a4ed8542e183fbb55b96c16e5461843f",
-  max1: "sha256:b350c68fabebd5ada39e48e6aec0e7d04f3abd53a805c61d70f87f53ac171838",
-  max2: "sha256:8a6f643fcf8f90b3f698e54623246fa9f4abe2833be9f807359a93415bb70e9e",
+  proposal: "sha256:2338ff8d596284408080c94970d0c2a5e8a8ae58f62b92d590e880e72079d605",
+  max1: "sha256:5952e7f8d0f1512301d9863e52d399d724c2081c5ab6be52c4458c89cc2566f2",
+  max2: "sha256:34af811c7489dba9a3a8ec81f36325d547b140dea4d7af30b7591bd44415c6f2",
   publication: "sha256:0191b33d692775f0877ac07cc126c6476d51cafaf37d8b8dac26f7da629e216e",
   failedAttempt: "sha256:8cf4c4a26f919ad29b716bbe9f87fff5c7f305823a5faf08044a5e186e785765",
   priorAuthority: "sha256:afa5a4ded8eb25cd6df6105d3e3f7813e01bfa7a13cd1d7eb3d4b3ba35b1bed2",
   image:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
   imageSource: "79f123268b6ade640c02dd20616a89d16b43a5e6",
-  controlSource: "ad2e2e0ad31bc259b3010ebef8f70cf8f79d1d68",
+  controlSource: "8694f474f98bbcdd6d84a79614cda6ef907c7b9e",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
 };
 const fail = (label) => {

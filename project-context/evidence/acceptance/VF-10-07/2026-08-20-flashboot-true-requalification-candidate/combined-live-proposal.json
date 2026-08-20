@@ -22,7 +22,7 @@
     "model_root": "/runpod-volume/mage-model",
     "volume_write_policy": "APPLICATION_READ_ONLY",
     "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
-    "control_source_commit": "ad2e2e0ad31bc259b3010ebef8f70cf8f79d1d68",
+    "control_source_commit": "8694f474f98bbcdd6d84a79614cda6ef907c7b9e",
     "image_config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
     "image_layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
     "image_manifest_sha256": "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -37,7 +37,7 @@
     {
       "stage": "initial_qualification",
       "definition_path": "staged-config-max1.json",
-      "definition_sha256": "sha256:b350c68fabebd5ada39e48e6aec0e7d04f3abd53a805c61d70f87f53ac171838",
+      "definition_sha256": "sha256:5952e7f8d0f1512301d9863e52d399d724c2081c5ab6be52c4458c89cc2566f2",
       "workers_min": 0,
       "workers_max": 1,
       "gpu": "NVIDIA GeForce RTX 4090",
@@ -51,7 +51,7 @@
     {
       "stage": "bounded_concurrent_reader_proof_only",
       "definition_path": "staged-config-max2.json",
-      "definition_sha256": "sha256:8a6f643fcf8f90b3f698e54623246fa9f4abe2833be9f807359a93415bb70e9e",
+      "definition_sha256": "sha256:34af811c7489dba9a3a8ec81f36325d547b140dea4d7af30b7591bd44415c6f2",
       "workers_min": 0,
       "workers_max": 2,
       "gpu": "NVIDIA GeForce RTX 4090",

@@ -4,7 +4,7 @@
   "region": "EU-RO-1",
   "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
   "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
-  "control_source_commit": "ad2e2e0ad31bc259b3010ebef8f70cf8f79d1d68",
+  "control_source_commit": "8694f474f98bbcdd6d84a79614cda6ef907c7b9e",
   "network_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
   "network_volume_size_gb": 50,
   "network_volume_region": "EU-RO-1",
