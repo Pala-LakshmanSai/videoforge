@@ -39,7 +39,7 @@
         "apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts"
       ],
     "status": "PASS_PROVIDER_FREE_CONTRACT",
-    "live_gap": "Durable hosted R2 output acceptance, artifact-commit-receipt/v3 finalize, and generated-object rollback are not proven without the live signer."
+    "live_gap": "Durable hosted R2 output acceptance and artifact-commit-receipt/v3 finalize remain unproven; the exact-key rollback route is locally covered but still requires the approved live deployment/run."
     },
     {
       "id": "negative_contracts",
