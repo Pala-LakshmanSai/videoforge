@@ -12,21 +12,28 @@ const files = {
   max1: path.join(evidenceRoot, "staged-config-max1.json"),
   max2: path.join(evidenceRoot, "staged-config-max2.json"),
   proposal: path.join(evidenceRoot, "combined-live-proposal.json"),
+  publication: path.join(evidenceRoot, "../2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json"),
+  failedAttempt: path.join(evidenceRoot, "../2026-08-20-live-qualification/failed-attempt-14.json"),
+  priorAuthority: path.join(evidenceRoot, "../2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json"),
   control: path.join(repoRoot, "apps/web/src/server/providers/runpod-control.ts"),
   harness: path.join(repoRoot, "apps/web/src/server/providers/runpod-v207-qualification-harness.ts"),
   orchestrator: path.join(repoRoot, "apps/web/src/server/providers/v207-live-orchestrator.ts"),
   activation: path.join(repoRoot, "apps/web/src/server/providers/v207-activation-authority.ts"),
   currentState: path.join(repoRoot, "project-context/CURRENT_STATE.yaml"),
+  gates: path.join(repoRoot, "project-context/GATES.yaml"),
   task: path.join(repoRoot, "project-context/tasks/VF-10-07.md"),
 };
 const expected = {
-  proposal: "sha256:592dab944bad844b8f6312c911fb56eadabc1ecbd0b0762dfd8fdb8261d7ca8a",
-  max1: "sha256:456102948206cac79aea9dad7d43e90157fb520038df45d36c415f5bb534b155",
-  max2: "sha256:81b879a7ca2f5d878eb8006bff33947c633ded6fbf499e8f73fc65b59921f816",
+  proposal: "sha256:a2bb603aa97661d11b29335049449b36a4ed8542e183fbb55b96c16e5461843f",
+  max1: "sha256:b350c68fabebd5ada39e48e6aec0e7d04f3abd53a805c61d70f87f53ac171838",
+  max2: "sha256:8a6f643fcf8f90b3f698e54623246fa9f4abe2833be9f807359a93415bb70e9e",
+  publication: "sha256:0191b33d692775f0877ac07cc126c6476d51cafaf37d8b8dac26f7da629e216e",
+  failedAttempt: "sha256:8cf4c4a26f919ad29b716bbe9f87fff5c7f305823a5faf08044a5e186e785765",
+  priorAuthority: "sha256:afa5a4ded8eb25cd6df6105d3e3f7813e01bfa7a13cd1d7eb3d4b3ba35b1bed2",
   image:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
   imageSource: "79f123268b6ade640c02dd20616a89d16b43a5e6",
-  controlSource: "148045c0ed73e10b874bf9ddd4044723248ee063",
+  controlSource: "ad2e2e0ad31bc259b3010ebef8f70cf8f79d1d68",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
 };
 const fail = (label) => {
@@ -50,6 +57,9 @@ const max2 = JSON.parse(max2Bytes.toString("utf8"));
 assert(sha256(proposalBytes) === expected.proposal, "proposal_bytes");
 assert(sha256(max1Bytes) === expected.max1, "max1_bytes");
 assert(sha256(max2Bytes) === expected.max2, "max2_bytes");
+assert(sha256(bytes(files.publication)) === expected.publication, "publication_bytes");
+assert(sha256(bytes(files.failedAttempt)) === expected.failedAttempt, "failed_attempt_bytes");
+assert(sha256(bytes(files.priorAuthority)) === expected.priorAuthority, "prior_authority_bytes");
 assert(proposal.authority_mode === "PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP", "authority_mode");
 assert(proposal.user_approval?.maximum_cumulative_finite_spend_usd === null, "null_cap");
 assert(proposal.user_approval?.exact_proposal_approved === false, "not_approved");
@@ -72,14 +82,30 @@ for (const [index, [stage, digest, workersMax]] of [
   assert(stage.control_source_commit === expected.controlSource, `stage_${index}_control`);
   assert(stage.network_volume_id_sha256 === expected.volume, `stage_${index}_volume`);
   assert(stage.network_volume_size_gb === 50 && stage.network_volume_mount === "/runpod-volume", `stage_${index}_mount`);
+  assert(stage.model_root === "/runpod-volume/mage-model", `stage_${index}_model_root`);
+  assert(stage.volume_write_policy === "APPLICATION_READ_ONLY", `stage_${index}_read_only`);
   assert(JSON.stringify(stage.gpu_type_ids) === '["NVIDIA GeForce RTX 4090"]', `stage_${index}_gpu`);
+  assert((index === 0 ? stage.gpu_count : stage.gpu_count_per_worker) === 1, `stage_${index}_gpu_count`);
+  assert(stage.compute_type === "GPU" && stage.flex_only === true, `stage_${index}_flex`);
   assert(stage.scaler_type === "REQUEST_COUNT" && stage.scaler_value === 1, `stage_${index}_scaler`);
   assert(stage.handler_concurrency === 1, `stage_${index}_concurrency`);
   assert(stage.idle_timeout_seconds === 5, `stage_${index}_idle`);
   assert(stage.init_timeout_seconds === 800, `stage_${index}_init`);
   assert(stage.execution_timeout_seconds === 2400, `stage_${index}_execution`);
   assert(stage.request_authority_ttl_seconds === 7200, `stage_${index}_ttl`);
+  assert(
+    JSON.stringify(stage.offline_environment) ===
+      '{"HF_HUB_OFFLINE":"1","TRANSFORMERS_OFFLINE":"1","DIFFUSERS_OFFLINE":"1"}',
+    `stage_${index}_offline`,
+  );
+  assert(
+    stage.ephemeral_secret_values ===
+      "injected_at_execution_and_excluded_from_this_public_definition",
+    `stage_${index}_secret_metadata`,
+  );
   assert(proposalStage.definition_sha256 === digest, `stage_${index}_hash`);
+  assert(proposalStage.compute_type === "GPU" && proposalStage.flex_only === true, `proposal_stage_${index}_flex`);
+  assert((index === 0 ? proposalStage.gpu_count : proposalStage.gpu_count_per_worker) === 1, `proposal_stage_${index}_gpu_count`);
 }
 
 const operations = proposal.proposed_operations_in_order ?? [];
@@ -124,6 +150,7 @@ for (const [label, file] of [
   assert(value.includes("fresh"), `${label}_fresh_authority`);
   assert(value.includes("V2-08"), `${label}_v208`);
 }
+assert(text(files.gates).includes(expected.proposal.slice("sha256:".length)), "gates_proposal");
 
 process.stdout.write(
   `V2-07 FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,
