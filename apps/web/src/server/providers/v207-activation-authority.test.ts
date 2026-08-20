@@ -16,6 +16,13 @@ describe("V2-07 activation authority", () => {
     expect(() => parseV207ActivationAuthority({})).toThrow("V207_IMAGE_DIGEST_REQUIRED");
     expect(() =>
       parseV207ActivationAuthority({
+        V207_IMAGE: image.replace("videoforge-mage-v2-07", "other-image"),
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_FINITE_CAP_USD: "1",
+      }),
+    ).toThrow("V207_IMAGE_DIGEST_REQUIRED");
+    expect(() =>
+      parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: "39541d57ca3c2270c7872ab49387f2484ab1a6e9",
         V207_FINITE_CAP_USD: "4",

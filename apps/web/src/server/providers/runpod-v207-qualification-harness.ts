@@ -12,6 +12,11 @@ import {
   V207_RUNPOD_MIN_CUDA_VERSION,
   V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
   V207_RUNPOD_REGION,
+  V207_RUNPOD_EXECUTION_TIMEOUT_MS,
+  V207_RUNPOD_HANDLER_CONCURRENCY,
+  V207_RUNPOD_IDLE_TIMEOUT_SECONDS,
+  V207_RUNPOD_INIT_TIMEOUT_SECONDS,
+  V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
   type RunPodEndpointPolicy,
   type RunPodInventory,
   type RunPodJobResult,
@@ -209,10 +214,15 @@ export class RunPodV207QualificationHarness {
       options.endpointName.trim() !== options.endpointName ||
       !ID.test(options.templateName) ||
       !ID.test(options.endpointName) ||
-      !/^ghcr\.io\/[a-z0-9][a-z0-9./_-]+@sha256:[a-f0-9]{64}$/u.test(options.imageName) ||
+      !/^ghcr\.io\/pala-lakshmansai\/videoforge-mage-v2-07@sha256:[a-f0-9]{64}$/u.test(
+        options.imageName,
+      ) ||
       !Number.isSafeInteger(options.containerDiskInGb) ||
-      options.containerDiskInGb < 80 ||
-      options.containerDiskInGb > 120 ||
+      options.containerDiskInGb !== 120 ||
+      options.initialPolicy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
+      options.initialPolicy.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS ||
+      options.concurrentReaderPolicy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
+      options.concurrentReaderPolicy.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS ||
       !Number.isFinite(options.finiteSpendCapUsd) ||
       options.finiteSpendCapUsd <= 0 ||
       options.finiteSpendCapUsd > 1_000 ||
@@ -291,6 +301,7 @@ export class RunPodV207QualificationHarness {
         this.#options.imageName,
         this.#options.containerDiskInGb,
         this.#options.templateEnvironment,
+        true,
       );
       console.error("v207:harness-template-created");
       this.mark("template_created", { template_id_hash: this.#template!.idHash });
@@ -300,6 +311,7 @@ export class RunPodV207QualificationHarness {
         ["NVIDIA GeForce RTX 4090"],
         this.#options.initialPolicy,
         this.#options.placement,
+        true,
       );
       console.error("v207:harness-endpoint-created");
       this.#jobs = new RunPodServerlessJobClient({
@@ -345,6 +357,11 @@ export class RunPodV207QualificationHarness {
           scalerValue: 1,
           idleTimeout: this.#options.initialPolicy.idleTimeout,
           executionTimeoutMs: this.#options.initialPolicy.executionTimeoutMs,
+          containerDiskInGb: this.#options.containerDiskInGb,
+          handlerConcurrency: V207_RUNPOD_HANDLER_CONCURRENCY,
+          runpodInitTimeoutSeconds: V207_RUNPOD_INIT_TIMEOUT_SECONDS,
+          requestAuthorityTtlSeconds: V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+          templateEnvironment: this.#options.templateEnvironment ?? {},
           templateIdHash: this.#template!.idHash,
           endpointIdHash: this.#endpoint!.idHash,
           image: this.#options.imageName,
@@ -506,6 +523,7 @@ export class RunPodV207QualificationHarness {
     await this.assertSpendWithinCap();
     await this.#options.control.enforceV207EndpointPolicy(
       this.#endpoint!.id,
+      this.#template!.id,
       this.#options.concurrentReaderPolicy,
       this.#options.placement,
       this.#guard,
@@ -526,6 +544,11 @@ export class RunPodV207QualificationHarness {
         scalerValue: 1,
         idleTimeout: this.#options.concurrentReaderPolicy.idleTimeout,
         executionTimeoutMs: this.#options.concurrentReaderPolicy.executionTimeoutMs,
+        containerDiskInGb: this.#options.containerDiskInGb,
+        handlerConcurrency: V207_RUNPOD_HANDLER_CONCURRENCY,
+        runpodInitTimeoutSeconds: V207_RUNPOD_INIT_TIMEOUT_SECONDS,
+        requestAuthorityTtlSeconds: V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+        templateEnvironment: this.#options.templateEnvironment ?? {},
         templateIdHash: this.#template!.idHash,
         image: this.#options.imageName,
         endpointIdHash: this.#endpoint!.idHash,
@@ -688,6 +711,7 @@ export class RunPodV207QualificationHarness {
     await this.assertSpendWithinCap();
     await this.#options.control.enforceV207EndpointPolicy(
       this.#endpoint!.id,
+      this.#template!.id,
       this.#options.initialPolicy,
       this.#options.placement,
       this.#guard,

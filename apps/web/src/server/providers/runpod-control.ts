@@ -13,6 +13,11 @@ export const V207_RUNPOD_VOLUME_MOUNT = "/runpod-volume" as const;
 export const V207_RUNPOD_MAGE_VOLUME_SIZE_GB = 50 as const;
 export const V207_RUNPOD_SCALER = "REQUEST_COUNT" as const;
 export const V207_RUNPOD_SCALER_VALUE = 1 as const;
+export const V207_RUNPOD_IDLE_TIMEOUT_SECONDS = 5 as const;
+export const V207_RUNPOD_EXECUTION_TIMEOUT_MS = 2_400_000 as const;
+export const V207_RUNPOD_INIT_TIMEOUT_SECONDS = 800 as const;
+export const V207_RUNPOD_HANDLER_CONCURRENCY = 1 as const;
+export const V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS = 7_200 as const;
 /** The published Mage image is CUDA 13.0; do not let provider placement fall back to CUDA 12. */
 export const V207_RUNPOD_MIN_CUDA_VERSION = "13.0" as const;
 
@@ -385,14 +390,26 @@ export class RunPodControlClient {
     imageName: string,
     containerDiskInGb: number,
     environment: Readonly<Record<string, string>> = {},
+    strictV207 = false,
   ): Promise<RunPodResourceIdentity> {
     if (!ID.test(name) || !IMMUTABLE_IMAGE.test(imageName)) {
       throw new RunPodControlError("RUNPOD_TEMPLATE_INPUT_INVALID");
     }
     if (
+      strictV207 &&
+      ((environment.LOG_LEVEL !== undefined && environment.LOG_LEVEL !== "INFO") ||
+        (environment.RUNPOD_INIT_TIMEOUT !== undefined &&
+          environment.RUNPOD_INIT_TIMEOUT !== String(V207_RUNPOD_INIT_TIMEOUT_SECONDS)))
+    ) {
+      throw new RunPodControlError("RUNPOD_TEMPLATE_ENVIRONMENT_INVALID");
+    }
+    if (
       !Number.isSafeInteger(containerDiskInGb) ||
       containerDiskInGb < 80 ||
-      containerDiskInGb > 120
+      containerDiskInGb > 120 ||
+      (strictV207 && containerDiskInGb !== 120) ||
+      (strictV207 &&
+        !/^ghcr\.io\/pala-lakshmansai\/videoforge-mage-v2-07@sha256:[a-f0-9]{64}$/u.test(imageName))
     ) {
       throw new RunPodControlError("RUNPOD_TEMPLATE_DISK_INVALID");
     }
@@ -415,6 +432,7 @@ export class RunPodControlClient {
     // RunPod's template API reports its generic Pod mount (`/workspace`) even for a
     // Serverless template. The attached Serverless network volume is independently
     // documented and verified at `/runpod-volume` on the endpoint.
+    const responseEnvironment = record(value?.env);
     if (
       !value ||
       typeof value.id !== "string" ||
@@ -425,7 +443,12 @@ export class RunPodControlClient {
       (value.isPublic !== undefined && value.isPublic !== false) ||
       value.isServerless !== true ||
       (value.volumeInGb !== undefined && value.volumeInGb !== 0) ||
-      (value.volumeMountPath !== "/workspace" && value.volumeMountPath !== V207_RUNPOD_VOLUME_MOUNT)
+      (value.volumeMountPath !== "/workspace" &&
+        value.volumeMountPath !== V207_RUNPOD_VOLUME_MOUNT) ||
+      (strictV207 &&
+        (!responseEnvironment ||
+          responseEnvironment.LOG_LEVEL !== "INFO" ||
+          responseEnvironment.RUNPOD_INIT_TIMEOUT !== String(V207_RUNPOD_INIT_TIMEOUT_SECONDS)))
     ) {
       throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
     }
@@ -439,15 +462,24 @@ export class RunPodControlClient {
    */
   async enforceV207EndpointPolicy(
     endpointId: string,
+    templateId: string,
     policy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
     placement: RunPodV207Placement,
     guard: RunPodDrainGuard,
   ): Promise<void> {
-    if (!ID.test(endpointId)) throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
+    if (!ID.test(endpointId) || !ID.test(templateId)) {
+      throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
+    }
     if (policy.workersMax === 1) assertRunPodEndpointPolicy(policy);
     else assertRunPodV207ConcurrentReaderPolicy(policy);
     assertV207Placement(placement);
     guard.assertDispatchAllowed();
+    if (
+      policy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
+      policy.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS
+    ) {
+      throw new RunPodControlError("RUNPOD_V207_TIMING_POLICY_INVALID");
+    }
     const request = {
       ...policy,
       dataCenterIds: placement.dataCenterIds,
@@ -455,6 +487,7 @@ export class RunPodControlClient {
       gpuTypeIds: [V207_RUNPOD_GPU],
       allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
       minCudaVersion: V207_RUNPOD_MIN_CUDA_VERSION,
+      flashboot: false,
       networkVolumeId: placement.networkVolumeId,
       scalerType: V207_RUNPOD_SCALER,
       scalerValue: V207_RUNPOD_SCALER_VALUE,
@@ -475,8 +508,14 @@ export class RunPodControlClient {
       value.gpuCount !== 1 ||
       !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
       !volumeBindingMatches ||
-      (responseDataCenters !== undefined &&
-        !exactStringArray(responseDataCenters, [V207_RUNPOD_REGION])) ||
+      !exactStringArray(responseDataCenters, [V207_RUNPOD_REGION]) ||
+      value.computeType !== "GPU" ||
+      value.templateId !== templateId ||
+      !exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
+      value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
+      value.flashboot !== false ||
+      value.idleTimeout !== request.idleTimeout ||
+      value.executionTimeoutMs !== request.executionTimeoutMs ||
       value.scalerType !== V207_RUNPOD_SCALER ||
       value.scalerValue !== V207_RUNPOD_SCALER_VALUE
     ) {
@@ -493,8 +532,16 @@ export class RunPodControlClient {
       readonly networkVolumeId?: string;
       readonly dataCenterIds?: readonly string[];
     } = {},
+    strictV207 = false,
   ): Promise<RunPodResourceIdentity> {
     assertRunPodEndpointPolicy(policy);
+    if (
+      strictV207 &&
+      (policy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
+        policy.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS)
+    ) {
+      throw new RunPodControlError("RUNPOD_V207_TIMING_POLICY_INVALID");
+    }
     if (
       !ID.test(name) ||
       !ID.test(templateId) ||
@@ -542,14 +589,20 @@ export class RunPodControlClient {
       !value ||
       typeof value.id !== "string" ||
       !ID.test(value.id) ||
-      (value.computeType !== undefined && value.computeType !== request.computeType) ||
+      (strictV207 && value.computeType !== request.computeType) ||
       typeof value.templateId !== "string" ||
       !ID.test(value.templateId) ||
+      (strictV207 && value.templateId !== request.templateId) ||
       value.gpuCount !== request.gpuCount ||
       !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) ||
       !volumeBindingMatches ||
-      (responseDataCenters !== undefined &&
-        !exactStringArray(responseDataCenters, [V207_RUNPOD_REGION])) ||
+      (strictV207 && !exactStringArray(responseDataCenters, [V207_RUNPOD_REGION])) ||
+      (strictV207 &&
+        (!exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
+          value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
+          value.flashboot !== false ||
+          value.idleTimeout !== request.idleTimeout ||
+          value.executionTimeoutMs !== request.executionTimeoutMs)) ||
       value.workersMin !== 0 ||
       value.workersMax !== request.workersMax ||
       value.scalerType !== V207_RUNPOD_SCALER ||

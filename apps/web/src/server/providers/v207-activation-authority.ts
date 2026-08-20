@@ -1,4 +1,4 @@
-const IMMUTABLE_IMAGE = /^ghcr\.io\/[a-z0-9][a-z0-9./_-]+@sha256:[a-f0-9]{64}$/u;
+const IMMUTABLE_IMAGE = /^ghcr\.io\/pala-lakshmansai\/videoforge-mage-v2-07@sha256:[a-f0-9]{64}$/u;
 
 export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "d1d704c2f39581e745ba90151c7388673107de41";
 
