@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-07-provider-free-repair-handoff/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "recorded_at": "2026-08-20T01:39:39Z",
+  "recorded_at": "2026-08-20T01:45:34Z",
   "result": "NOT_QUALIFIED_FRESH_AUTHORITY_REQUIRED",
   "scope": {
     "provider_calls": false,
@@ -307,6 +307,16 @@
       "command": "pnpm test:workers && node --test packages/control-plane/tests/tenant-artifact-plane.test.mjs",
       "exit_code": 0,
       "result": "six worker suites and 10 artifact-plane receipt/readback tests passed"
+    },
+    {
+      "commit": "dadef6a",
+      "area": "hosted image workflow pins the exact SHA-256 bytes of all four repaired runtime overlay files before build or publication",
+      "result": "PASS_PROVIDER_FREE_DEFINITION"
+    },
+    {
+      "command": "python3 -m unittest discover -s workers/image-media/tests -p 'test_mage_worker_image.py' && pnpm python:lint && git diff --check",
+      "exit_code": 0,
+      "result": "20 image-definition tests passed; Python formatting/lint and diff checks passed"
     }
   ],
   "read_only_runpod_snapshot": {
