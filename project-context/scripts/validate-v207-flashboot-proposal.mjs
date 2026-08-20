@@ -215,8 +215,16 @@ assert(control.includes("V207_RUNPOD_FLASHBOOT = true"), "control_flashboot_true
 assert(!harness.includes("FLASHBOOT_NORMALIZATION_UNCONFIRMED"), "normalization_removed");
 assert(orchestrator.includes("RESTORATION_PROPAGATION_WINDOW_MS = 120_000"), "route_window");
 assert(orchestrator.includes("waitForRouteRestoration"), "route_poll");
-assert(activation.includes(expected.proposal), "activation_proposal_approved");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD = 2 as const"), "activation_cap_approved");
+assert(
+  activation.includes(
+    "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c",
+  ),
+  "activation_rebound_to_successor_proposal",
+);
+assert(
+  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+  "activation_cap_closed",
+);
 
 for (const [label, file] of [
   ["current_state", files.currentState],
@@ -227,11 +235,20 @@ for (const [label, file] of [
   assert(value.includes("fresh"), `${label}_fresh_authority`);
   assert(value.includes("V2-08"), `${label}_v208`);
 }
-assert(text(files.currentState).includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json"), "current_state_authority_path");
-assert(text(files.currentState).includes("maximum_external_spend_usd: 2"), "current_state_cap");
-assert(text(files.currentState).includes("task_stage: bounded_mutation"), "current_state_task_stage");
-assert(text(files.gates).includes(expected.proposal.slice("sha256:".length)), "gates_proposal");
-assert(text(files.gates).includes("authority_recorded_usd_2_provider_execution_pending"), "gates_authority_state");
+assert(
+  text(files.currentState).includes("v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json"),
+  "current_state_historical_authority_path",
+);
+assert(text(files.currentState).includes("v2_07_current_approved_authority: null"), "current_state_no_current_authority");
+assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_cap_closed");
+assert(text(files.currentState).includes("task_stage: provider_free_requalification_handoff"), "current_state_task_stage");
+assert(text(files.gates).includes("failed-attempt-16.json"), "gates_latest_attempt");
+assert(
+  text(files.gates).includes(
+    "6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c",
+  ),
+  "gates_successor_proposal",
+);
 
 process.stdout.write(
   `V2-07 FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,

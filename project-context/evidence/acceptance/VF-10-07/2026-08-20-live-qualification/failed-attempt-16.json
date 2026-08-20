@@ -1,0 +1,169 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 16,
+  "orchestrator_started_at": "2026-08-20T17:49:00.339Z",
+  "runner_started_at": "2026-08-20T17:49:53.609Z",
+  "runner_stopped_at": "2026-08-20T17:51:17.467Z",
+  "orchestrator_cleanup_observed_at": "2026-08-20T17:51:36.746Z",
+  "independent_runpod_cleanup_observed_at": "2026-08-20T17:57:51.022Z",
+  "billing_settlement_observed_at": "2026-08-20T17:58:29.841Z",
+  "authority_proposal_sha256": "sha256:2338ff8d596284408080c94970d0c2a5e8a8ae58f62b92d590e880e72079d605",
+  "approved_authority": {
+    "path": "../2026-08-20-flashboot-true-requalification-candidate/approved-authority.json",
+    "sha256": "sha256:4deb86bd503eb51e452ce7b59a9a2214faa050ebe72daf63128bd97d9728e998"
+  },
+  "approved_finite_spend_cap_usd": 2,
+  "approved_minimum_availability": "LOW",
+  "result": "NOT_QUALIFIED_ENDPOINT_IDENTITY_BINDING_MUTATION_FAILED_AUTHORITY_CLOSED",
+  "authority_status": "CLOSED_EXACT_RETRY_CONSUMED_DO_NOT_REUSE",
+  "raw_evidence": {
+    "orchestrator": {
+      "path": "/private/tmp/videoforge-v207-live-orchestrator-50301.json",
+      "sha256": "sha256:579fcdf70b4f643a5a85f135f283e1a4a56fadfb02eb56ddbcc09cdcabcbdc31",
+      "schema_version": "videoforge-v207-live-orchestrator/v1"
+    },
+    "qualification": {
+      "path": "/private/tmp/videoforge-v207-live-result.json",
+      "sha256": "sha256:74f525720e4b7563df173cbcbebd316d1b14c50aeac4a5e6c3f0e6c54d0d695a",
+      "schema_version": "videoforge.v2-07-live-qualification/v1"
+    },
+    "final_runpod_inventory": {
+      "path": "/private/tmp/v207-attempt16-final-runpod-inventory.json",
+      "sha256": "sha256:1eb9faadb9f0e76839c98cf57013bfb0ff36b3693d08a039ddaf71e6190ce3d2",
+      "schema_version": "videoforge.runpod-live-inventory/v2"
+    },
+    "billing_settlement": {
+      "path": "/private/tmp/v207-attempt16-billing-settlement.json",
+      "sha256": "sha256:82efe68785e830f03cb48d1229ab499a529a153e5a61cacd541e11d5f40ee9a1",
+      "schema_version": "videoforge.v207-billing-settlement/v1"
+    },
+    "cloudflare_deployment_status": {
+      "path": "/private/tmp/v207-attempt16-deployments-status.json",
+      "sha256": "sha256:adf043d0c3c29d53331f547f9f0f5724974bebb8cdd15f94937eb493b4713d9e"
+    },
+    "cloudflare_secret_name_inventory": {
+      "path": "/private/tmp/v207-attempt16-secret-list.json",
+      "sha256": "sha256:3499b7e5a7baec48ddf18de88deff18813c4f05ded73d5bcbd36841e2d515a9a"
+    },
+    "eventual_route_probe": {
+      "path": "/private/tmp/v207-attempt16-route-probes-later.json",
+      "sha256": "sha256:56ca7fbbc3ec7bc88fa264d787e0f51cce1f30071244526ba6dcdd6c2ee1b8f7",
+      "schema_version": "videoforge.v207-route-probes/v1"
+    }
+  },
+  "resource_identity": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_digest": "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "control_source_commit": "8694f474f98bbcdd6d84a79614cda6ef907c7b9e",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "retained_soulx_volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "workers_min": 0,
+    "workers_max": 1,
+    "flashboot": true
+  },
+  "stop_reason": {
+    "code": "RUNPOD_MUTATION_FAILED",
+    "phase": "post_endpoint_create_pre_identity_binding_readback",
+    "template_created": true,
+    "endpoint_created": true,
+    "endpoint_identity_bound": false,
+    "initial_config_hash_created": false,
+    "job_dispatch_reached": false,
+    "provider_job_id_observed": false,
+    "batch_count": 0,
+    "completed_output_count": 0,
+    "accepted_batch_count": 0,
+    "durable_output_acceptance": false,
+    "inference_reached": false,
+    "terminal_endpoint_worker_record_count": 1,
+    "terminal_pod_record_count": 1,
+    "gpu_or_volume_attachment_during_endpoint_startup": "UNPROVEN",
+    "duplicate_compute_observed": false
+  },
+  "root_cause": {
+    "classification": "ENDPOINT_IDENTITY_BINDING_PATCH_CONTRACT_MISMATCH",
+    "observed": "The exact endpoint was allocated, then the first identity-binding mutation returned a non-success response before endpoint_identity_bound or configuration read-back evidence existed.",
+    "provider_error_detail": "NOT_RETAINED_BY_FAIL_CLOSED_TRANSPORT",
+    "official_contract_finding": "The pinned RunPod REST PATCH endpoint request schema does not list env as an accepted request field; environment mutation belongs to the template update surface while endpoint responses expose the effective environment.",
+    "provider_free_repair_required": true,
+    "fresh_exact_proposal_required_after_repair": true
+  },
+  "billing": {
+    "baseline_cumulative_endpoint_spend_usd": 0.12480033212341368,
+    "post_attempt_cumulative_endpoint_spend_usd": 0.12480033212341368,
+    "attempt_increment_usd_settled": 0,
+    "approved_finite_cap_usd": 2,
+    "cap_exceeded": false,
+    "settlement_state": "STABLE_THREE_READS",
+    "settlement_reads": 3,
+    "existing_retained_volume_charge_usd_per_month": 7,
+    "retained_volume_charge_outside_finite_cap": true
+  },
+  "runpod_cleanup": {
+    "orchestrator_cleanup_result": "RUNPOD_CLEANUP_UNCERTAIN",
+    "independent_read_only_reconciliation": "CONFIRMED_ABSENT",
+    "pods": 0,
+    "running_pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "retained_volume_identity_size_region": "CONFIRMED",
+    "retained_volume_content_hash_unchanged": "UNPROVEN",
+    "model_volume_write_absence": "UNPROVEN"
+  },
+  "cloudflare_cleanup": {
+    "captured_worker_version_id_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "current_worker_version_id_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "worker_version_restored": true,
+    "temporary_signer_secret_present": false,
+    "orchestrator_pre_mutation_route": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "orchestrator_immediate_final_route": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "later_read_only_route_probes": {
+      "count": 5,
+      "status": 503,
+      "code": "HOSTED_ROUTE_NOT_COMPOSED",
+      "internally_consistent": true
+    },
+    "route_restoration": "CROSS_WINDOW_FINGERPRINT_UNSTABLE_STOPPED"
+  },
+  "authority_closure": {
+    "status": "CLOSED_EXACT_RETRY_CONSUMED",
+    "retry_opened_by_attempt_15": 1,
+    "retry_consumed_by_attempt_16": 1,
+    "fresh_cap_required": true,
+    "fresh_proposal_required": true,
+    "scope_reuse_forbidden": true,
+    "further_provider_mutation_authorized": false,
+    "further_gpu_use_authorized": false
+  },
+  "qualification_boundaries": {
+    "cold_batch": "UNPROVEN",
+    "warm_batch": "UNPROVEN",
+    "complete_32_image_batch": "UNPROVEN",
+    "durable_outputs": "UNPROVEN",
+    "duplicate_cancel_timeout": "UNPROVEN_LIVE",
+    "two_simultaneous_readers": "UNPROVEN",
+    "peak_vram_and_timings": "UNPROVEN",
+    "unchanged_volume_content": "UNPROVEN",
+    "v2_07": "NOT_QUALIFIED",
+    "v2_08_authorized": false
+  }
+}

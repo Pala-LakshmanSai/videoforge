@@ -115,8 +115,8 @@ gates:
     blocks: mage_serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
-    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-15.json"
-    result: NOT_QUALIFIED_attempt15_cloudflare_10021_startup_cpu_validation_failed_exact_worker_version_and_404_route_restored_no_runpod_authority_open_one_exact_retry_proposal_sha256_2338ff8d596284408080c94970d0c2a5e8a8ae58f62b92d590e880e72079d605_authority_recorded_usd_2_provider_execution_pending
+    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-16.json"
+    result: NOT_QUALIFIED_attempt16_endpoint_identity_binding_failed_zero_outputs_runpod_clean_billing_zero_increment_provider_free_template_update_and_30_second_route_stability_repaired_proposal_sha256_6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c_pending_fresh_authority_and_cap
 
   GATE_SERVERLESS_SOULX_001:
     status: open
