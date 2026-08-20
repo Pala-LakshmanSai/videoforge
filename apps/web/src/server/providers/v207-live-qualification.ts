@@ -193,7 +193,7 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
     if (depth > 10) return "[REDACTED_DEPTH]";
     if (typeof candidate === "string") {
       if (/^https?:\/\//u.test(candidate)) return "[REDACTED_URL]";
-      const hashKey = key !== null && /(?:hash|sha256|digest)$/iu.test(key);
+      const hashKey = key !== null && /(?:hash|hashes|sha256|digest|digests)$/iu.test(key);
       if (hashKey) {
         return /^sha256:[a-f0-9]{64}$/u.test(candidate) ? candidate : "[REDACTED]";
       }
@@ -206,6 +206,9 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
       }
       if (key === "os" && /^(?:linux|windows|darwin)$/iu.test(candidate)) return candidate;
       if (key === "architecture" && /^(?:amd64|arm64|x86_64)$/iu.test(candidate)) {
+        return candidate;
+      }
+      if (key !== null && /(?:region|regions)$/iu.test(key) && candidate === V207_RUNPOD_REGION) {
         return candidate;
       }
       if (
@@ -233,7 +236,7 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
     if (typeof candidate === "number" || typeof candidate === "boolean" || candidate === null) {
       return candidate;
     }
-    if (Array.isArray(candidate)) return candidate.map((entry) => visit(entry, null, depth + 1));
+    if (Array.isArray(candidate)) return candidate.map((entry) => visit(entry, key, depth + 1));
     if (candidate && typeof candidate === "object") {
       const output: AnyRecord = {};
       for (const [entryKey, entry] of Object.entries(candidate as AnyRecord)) {

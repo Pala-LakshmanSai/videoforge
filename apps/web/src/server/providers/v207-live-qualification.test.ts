@@ -133,6 +133,8 @@ describe("V2-07 live qualification runner safety", () => {
       endpoint_id_hash: hash,
       endpointIdHash: hash,
       manifest_sha256: hash,
+      volume_id_hashes: [hash],
+      volume_regions: ["EU-RO-1"],
       started_at: "2026-08-20T12:30:00.000Z",
       os: "linux",
       architecture: "amd64",
@@ -148,6 +150,8 @@ describe("V2-07 live qualification runner safety", () => {
     expect(redacted.endpoint_id_hash).toBe(hash);
     expect(redacted.endpointIdHash).toBe(hash);
     expect(redacted.manifest_sha256).toBe(hash);
+    expect(redacted.volume_id_hashes).toEqual([hash]);
+    expect(redacted.volume_regions).toEqual(["EU-RO-1"]);
     expect(redacted.started_at).toBe("2026-08-20T12:30:00.000Z");
     expect(redacted.os).toBe("linux");
     expect(redacted.architecture).toBe("amd64");
