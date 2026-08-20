@@ -37,7 +37,7 @@
       "publication_triggered": false
     },
     "runtime_hygiene_repair": {
-      "commit": "a4c6070",
+      "commit": "a4c6070 + d1d704c",
       "input_get_download": "bounded_https_length_and_sha256_to_attempt_scratch",
       "scratch_roots": "cache_config_temp_output_lock_roots_outside_runpod_volume",
       "comfy_output_cleanup": "exact_file_removed_in_finally_after_read",
@@ -199,6 +199,11 @@
       "command": "pnpm --filter @videoforge/web typecheck",
       "exit_code": 0,
       "result": "TypeScript application and worker projects pass"
+    },
+    {
+      "commit": "d1d704c",
+      "area": "attempt scratch environment is applied during serialized runtime generation and restored after the call",
+      "result": "PASS_PROVIDER_FREE_REPAIR"
     }
   ],
   "read_only_runpod_snapshot": {
