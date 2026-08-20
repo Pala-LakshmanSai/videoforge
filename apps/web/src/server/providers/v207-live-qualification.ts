@@ -26,7 +26,7 @@ import {
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
 } from "./v207-activation-authority";
 const MANIFEST = "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b";
-const VOLUME = "sha256:eae4e1ece86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
+const VOLUME = "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const SOULX_VOLUME = "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
 const VOLUME_ID = "c7kg89brtj";
 const ACCOUNT = "account-a";
@@ -217,13 +217,66 @@ async function billingAmount(apiKey: string): Promise<number> {
   return amount;
 }
 
-async function ghcrGet(path: string, accept: string): Promise<Response> {
-  const url = `https://ghcr.io${path}`;
+const GHCR_BLOB_REDIRECT_HOST = "pkg-containers.githubusercontent.com" as const;
+
+/**
+ * GHCR serves private blob content through a short-lived, signed redirect.  Follow exactly one
+ * HTTPS redirect to the GitHub blob host, never forward the registry bearer token, and reject
+ * every other redirect shape.  This keeps image attestation deterministic without allowing an
+ * attacker-controlled URL or credential forwarding to enter the qualification process.
+ */
+export function isAllowedV207GhcrBlobRedirect(target: URL, expectedDigest: string): boolean {
+  return (
+    target.protocol === "https:" &&
+    target.hostname === GHCR_BLOB_REDIRECT_HOST &&
+    target.username === "" &&
+    target.password === "" &&
+    target.hash === "" &&
+    target.searchParams.has("se") &&
+    target.searchParams.has("sig") &&
+    new RegExp(
+      `^/ghcrblobs[^/]+/blobs/${expectedDigest.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}$`,
+      "u",
+    ).test(target.pathname)
+  );
+}
+
+async function ghcrFetch(
+  url: string,
+  headers: Readonly<Record<string, string>>,
+  expectedDigest?: string,
+): Promise<Response> {
   const first = await fetch(url, {
-    headers: { accept },
+    headers,
+    redirect: "manual",
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (first.status < 300 || first.status >= 400) return first;
+  if (expectedDigest === undefined) throw new Error("V207_IMAGE_REGISTRY_REDIRECT_INVALID");
+  const location = first.headers.get("location");
+  if (!location) throw new Error("V207_IMAGE_REGISTRY_REDIRECT_INVALID");
+  let redirect: URL;
+  try {
+    redirect = new URL(location, url);
+  } catch {
+    throw new Error("V207_IMAGE_REGISTRY_REDIRECT_INVALID");
+  }
+  if (!isAllowedV207GhcrBlobRedirect(redirect, expectedDigest)) {
+    throw new Error("V207_IMAGE_REGISTRY_REDIRECT_INVALID");
+  }
+  // The signed URL is self-authorizing.  Deliberately send only Accept, never Authorization.
+  return fetch(redirect, {
+    headers: { accept: headers.accept ?? "application/octet-stream" },
     redirect: "error",
     signal: AbortSignal.timeout(30_000),
   });
+}
+
+async function ghcrGet(path: string, accept: string): Promise<Response> {
+  const url = `https://ghcr.io${path}`;
+  const blobMatch = path.match(/\/blobs\/(sha256:[a-f0-9]{64})$/u);
+  const expectedDigest = blobMatch?.[1];
+  const first = await ghcrFetch(url, { accept }, expectedDigest);
   if (first.status !== 401) return first;
   const challenge = first.headers.get("www-authenticate") ?? "";
   const fields = new Map<string, string>();
@@ -246,10 +299,131 @@ async function ghcrGet(path: string, accept: string): Promise<Response> {
   if (typeof tokenValue !== "string" || tokenValue.length < 20 || /\s/u.test(tokenValue)) {
     throw new Error("V207_IMAGE_REGISTRY_TOKEN_INVALID");
   }
-  return fetch(url, {
-    headers: { accept, authorization: `Bearer ${tokenValue}` },
-    redirect: "error",
-    signal: AbortSignal.timeout(30_000),
+  return ghcrFetch(url, { accept, authorization: `Bearer ${tokenValue}` }, expectedDigest);
+}
+
+type V207PreflightSummary = Readonly<{
+  readonly schema_version: "videoforge.v2-07-preflight/v1";
+  readonly image_attestation: AnyRecord;
+  readonly runpod_account_id_sha256: string;
+  readonly baseline_endpoint_spend_usd: number;
+  readonly route_authority: Readonly<{ readonly status: number; readonly code: string }>;
+  readonly inventory: Readonly<{
+    readonly checked_at: string;
+    readonly pod_count: number;
+    readonly endpoint_count: number;
+    readonly private_template_count: number;
+    readonly active_serverless_workers: number;
+    readonly volume_id_hashes: readonly string[];
+  }>;
+}>;
+
+/**
+ * Check the exact live boundary without creating a template, endpoint, worker, job, or R2
+ * reservation.  This mode exists to diagnose provider-free startup failures (for example, an
+ * image-registry attestation failure) before the mutation boundary is crossed.
+ */
+async function preflightRouteAuthority(): Promise<{
+  readonly status: number;
+  readonly code: string;
+}> {
+  let response: Response;
+  try {
+    response = await fetch(ROUTE, {
+      method: "POST",
+      headers: { "content-type": "application/json", connection: "close" },
+      body: "{}",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    throw new Error("V207_ROUTE_PROBE_FAILED");
+  }
+  let value: unknown;
+  try {
+    value = (await response.json()) as unknown;
+  } catch {
+    throw new Error("V207_ROUTE_PROBE_INVALID");
+  }
+  const error =
+    value && typeof value === "object" && !Array.isArray(value) ? (value as AnyRecord).error : null;
+  const code =
+    error &&
+    typeof error === "object" &&
+    !Array.isArray(error) &&
+    typeof (error as AnyRecord).code === "string"
+      ? (error as AnyRecord).code
+      : "V207_ROUTE_ERROR_UNBOUNDED";
+  if (
+    !(
+      (response.status === 403 && code === "V207_AUTHORITY_REJECTED") ||
+      (response.status === 404 && code === "V207_ROUTE_DISABLED")
+    )
+  ) {
+    throw new Error("V207_ROUTE_AUTHORITY_UNVERIFIED");
+  }
+  return Object.freeze({ status: response.status, code });
+}
+
+export function assertV207PreflightInventory(
+  inventory: Awaited<ReturnType<RunPodControlClient["inventory"]>>,
+): void {
+  const volumeIdHashes = [...inventory.networkVolumes]
+    .sort((left, right) => left.idHash.localeCompare(right.idHash))
+    .map((volume) => volume.idHash);
+  const expectedVolumeHashes = [SOULX_VOLUME, VOLUME].sort();
+  const mismatchCodes: string[] = [];
+  if (inventory.pods.length !== 0 || inventory.runningPodCount !== 0) mismatchCodes.push("PODS");
+  if (inventory.endpoints.length !== 0) mismatchCodes.push("ENDPOINTS");
+  if (inventory.privateTemplateCount !== 0) mismatchCodes.push("TEMPLATES");
+  if (inventory.activeServerlessWorkerCount !== 0) mismatchCodes.push("WORKERS");
+  if (JSON.stringify(volumeIdHashes) !== JSON.stringify(expectedVolumeHashes)) {
+    mismatchCodes.push("VOLUMES");
+  }
+  if (
+    inventory.networkVolumes.some(
+      (volume) =>
+        volume.sizeGb !== 50 ||
+        volume.dataCenterId !== V207_RUNPOD_REGION ||
+        !expectedVolumeHashes.includes(volume.idHash),
+    )
+  ) {
+    mismatchCodes.push("VOLUME_IDENTITY");
+  }
+  if (mismatchCodes.length > 0) {
+    throw new Error(`V207_PREFLIGHT_INVENTORY_UNEXPECTED_${mismatchCodes.join("_")}`);
+  }
+}
+
+export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
+  const imageAttestation = await attestPublishedImage();
+  const apiKey = process.env.RUNPOD_KEY ?? (await loadSujalRunPodApiKeyFromKeychain());
+  const account = await assertSujalRunPodAccount(apiKey);
+  if (account.accountIdHash !== SUJAL_RUNPOD_ACCOUNT_ID_SHA256) {
+    throw new Error("V207_RUNPOD_ACCOUNT_MISMATCH");
+  }
+  const baseline = await billingAmount(apiKey);
+  const control = new RunPodControlClient({ apiKey });
+  const inventory = await control.inventory();
+  assertV207PreflightInventory(inventory);
+  const routeAuthority = await preflightRouteAuthority();
+  return Object.freeze({
+    schema_version: "videoforge.v2-07-preflight/v1",
+    image_attestation: imageAttestation,
+    runpod_account_id_sha256: account.accountIdHash,
+    baseline_endpoint_spend_usd: baseline,
+    route_authority: routeAuthority,
+    inventory: Object.freeze({
+      checked_at: inventory.checkedAt,
+      pod_count: inventory.pods.length,
+      endpoint_count: inventory.endpoints.length,
+      private_template_count: inventory.privateTemplateCount,
+      active_serverless_workers: inventory.activeServerlessWorkerCount,
+      volume_id_hashes: Object.freeze(
+        [...inventory.networkVolumes]
+          .sort((left, right) => left.idHash.localeCompare(right.idHash))
+          .map((volume) => volume.idHash),
+      ),
+    }),
   });
 }
 
@@ -739,6 +913,20 @@ async function verifyBatchWithDiagnostic(
 }
 
 async function main(): Promise<void> {
+  if (process.env.V207_PREFLIGHT_ONLY === "1") {
+    const summary = await runV207PreflightOnly();
+    console.error(
+      `v207:preflight-ok=${JSON.stringify({
+        schema_version: summary.schema_version,
+        image_attestation: summary.image_attestation,
+        runpod_account_id_sha256: summary.runpod_account_id_sha256,
+        baseline_endpoint_spend_usd: summary.baseline_endpoint_spend_usd,
+        route_authority: summary.route_authority,
+        inventory: summary.inventory,
+      })}`,
+    );
+    return;
+  }
   const apiKey = process.env.RUNPOD_KEY ?? (await loadSujalRunPodApiKeyFromKeychain());
   let nonce = process.env.V207_AUTHORITY_NONCE?.trim() ?? "";
   if (!nonce) {
@@ -1010,4 +1198,18 @@ async function main(): Promise<void> {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+function safeQualificationError(error: unknown): string {
+  const candidate = error instanceof Error ? error.message : "";
+  return /^[A-Z][A-Z0-9_.:-]{2,160}$/u.test(candidate) ? candidate : "V207_QUALIFICATION_FAILED";
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (error) {
+    // The orchestrator captures child output, but direct invocation must also remain bounded and
+    // must never print provider diagnostics, signed URLs, or credentials.
+    console.error(safeQualificationError(error));
+    process.exitCode = 1;
+  }
+}
