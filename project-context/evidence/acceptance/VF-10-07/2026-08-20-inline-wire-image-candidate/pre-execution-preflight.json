@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-07-pre-execution-read-only-preflight/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "proposal_sha256": "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55",
+  "authority_path": "approved-authority.json",
+  "provider_mutation": false,
+  "publication": false,
+  "gpu_use": false,
+  "external_spend_usd_this_preflight": 0,
+  "runpod": {
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "inventory_checked_at": "2026-08-20T12:46:39.077Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "intended_volume_count": 2,
+    "volumes": [
+      {
+        "purpose": "mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "unchanged": true
+      },
+      {
+        "purpose": "soulx",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "unchanged": true
+      }
+    ],
+    "catalog_checked_at": "2026-08-20T12:46:52.790Z",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_vram_gb": 24,
+    "region": "EU-RO-1",
+    "secure": true,
+    "availability": "LOW",
+    "secure_pod_reference_usd_per_hour": 0.74,
+    "billing_checked_at": "2026-08-20T12:47:06.801Z",
+    "checkpoint_cumulative_endpoint_spend_usd": 0.0606543055,
+    "remaining_cumulative_cap_usd": 3.9393456945,
+    "billing_settlement_state": "PROVISIONAL_PROVIDER_BILLING_MAY_LAG"
+  },
+  "signer_route": {
+    "checked_at": "2026-08-20T12:47:40.632Z",
+    "http_status": 404,
+    "verified_code": "V207_ROUTE_DISABLED"
+  },
+  "local_disk": {
+    "initial_result": "BLOCKED_BELOW_2_GIB",
+    "cleanup_scope": "regenerable_local_dependency_browser_and_compile_caches_only",
+    "rechecked_at": "2026-08-20T12:53:13Z",
+    "available_bytes": 2730594304,
+    "required_minimum_bytes": 2147483648,
+    "result": "PASS"
+  },
+  "result": "PASS_SAFE_TO_PUBLISH_EXACT_APPROVED_IMAGE"
+}

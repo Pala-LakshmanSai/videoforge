@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-20T09:54:13Z"
+updated_at: "2026-08-20T12:53:13Z"
 
 phase: serverless_v2_v2_07_exact_amended_authority_recorded
 implementation_authorized_in_current_task: true
@@ -89,7 +89,7 @@ provider_authority:
     - resource_id: runpod_eu_ro_1_secure_pod_rtx4090_reference
       billing_unit: gpu_hour
       usd_per_unit: 0.74
-      checked_at: "2026-08-20T09:54:13.749Z"
+      checked_at: "2026-08-20T12:46:52.790Z"
     - resource_id: runpod_network_volume
       billing_unit: gb_month
       usd_per_unit: 0.07
@@ -370,9 +370,9 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-20T09:53:44.849Z"
-  basis: authenticated_sujal_runpod_redacted_read_only_preflight_after_attempt12_cleanup
-  evidence: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
+  checked_at: "2026-08-20T12:46:39.077Z"
+  basis: authenticated_sujal_runpod_redacted_pre_execution_read_only_preflight
+  evidence: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/pre-execution-preflight.json
   current_live_refresh_permitted_now: true
   stale_until_current_authorized_read_only_inventory_succeeds: false
   pods: 0
@@ -399,7 +399,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0
   auto_pay: DISABLED
-  note: "The 2026-08-20T09:53:44.849Z authenticated redacted preflight shows zero Pods, endpoints, private templates, and active Serverless workers plus exactly the two intended 50 GB EU-RO-1 volumes; the signer route is disabled. Attempt 12 is terminal and cleaned. Billing readback is cumulative USD 0.03891922265756875 and remains provisional. The authenticated regional catalog at 2026-08-20T09:54:13.749Z reports exact RTX 4090 LOW availability at USD 0.74/hour Pod reference; official Serverless Flex remains USD 1.10/hour. Exact amended proposal approval is recorded separately; no publication, RunPod mutation, or GPU execution has occurred yet."
+  note: "The 2026-08-20T12:46:39.077Z authenticated redacted preflight shows zero Pods, endpoints, private templates, and active Serverless workers plus exactly the two intended unchanged 50 GB EU-RO-1 volumes; the signer route was verified disabled at 2026-08-20T12:47:40.632Z. Billing readback through 2026-08-20T12:47:06.801Z is cumulative USD 0.0606543055 and remains provisional, leaving USD 3.9393456945 below the approved cumulative cap. The authenticated regional catalog at 2026-08-20T12:46:52.790Z reports exact RTX 4090 LOW availability at USD 0.74/hour Pod reference; official Serverless Flex remains USD 1.10/hour. Local disk was restored above the 2 GiB dispatch floor. Exact amended proposal approval is recorded separately; no publication, RunPod mutation, or GPU execution has occurred yet."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -489,7 +489,7 @@ recommended_next_task:
       - resource_id: runpod_eu_ro_1_secure_pod_rtx4090_reference
         billing_unit: gpu_hour
         usd_per_unit: 0.74
-        checked_at: "2026-08-20T09:54:13.749Z"
+        checked_at: "2026-08-20T12:46:52.790Z"
       - resource_id: runpod_network_volume
         billing_unit: gb_month
         usd_per_unit: 0.07
