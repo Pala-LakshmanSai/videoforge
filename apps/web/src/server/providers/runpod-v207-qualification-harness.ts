@@ -464,6 +464,7 @@ export class RunPodV207QualificationHarness {
     });
     await this.assertSpendWithinCap();
     const job = await this.#jobs!.dispatch(input.requestKey, request);
+    await this.assertSpendWithinCap();
     this.mark("job_dispatched", { job_id_hash: job.idHash, attempt_id: input.attemptId });
     return job;
   }
@@ -535,6 +536,7 @@ export class RunPodV207QualificationHarness {
       this.#options.placement,
       this.#guard,
     );
+    await this.assertSpendWithinCap();
     this.#concurrentReaderConfigHash = hashRunPodV207EndpointConfiguration(
       jsonValue({
         region: "EU-RO-1",

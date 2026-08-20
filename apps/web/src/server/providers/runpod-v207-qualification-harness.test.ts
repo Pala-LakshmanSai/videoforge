@@ -332,12 +332,67 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
+  it("fails closed when a single dispatch crosses the cap", async () => {
+    const fetch = harnessFetch();
+    const spendSnapshotUsd = vi
+      .fn<() => Promise<number>>()
+      .mockResolvedValueOnce(0) // pre-mutation guard
+      .mockResolvedValueOnce(0) // endpoint warm-idle baseline
+      .mockResolvedValueOnce(0) // pre-dispatch guard
+      .mockResolvedValueOnce(5); // post-dispatch guard
+    const instance = makeHarness(fetch, spendSnapshotUsd);
+    await instance.create();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    await expect(
+      instance.dispatchBatch({
+        requestKey: "attempt_a",
+        attemptId: "attempt_a",
+        input,
+        outputAuthority: authority(),
+      }),
+    ).rejects.toThrow("RUNPOD_FINITE_SPEND_CAP_EXCEEDED");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("fails closed when the max-two policy update crosses the cap", async () => {
+    const fetch = harnessFetch();
+    const spendSnapshotUsd = vi
+      .fn<() => Promise<number>>()
+      .mockResolvedValueOnce(0) // pre-mutation guard
+      .mockResolvedValueOnce(0) // endpoint warm-idle baseline
+      .mockResolvedValueOnce(0) // pre-policy guard
+      .mockResolvedValueOnce(5); // post-policy guard
+    const instance = makeHarness(fetch, spendSnapshotUsd);
+    await instance.create();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    await expect(instance.applyConcurrentReaderPolicy()).rejects.toThrow(
+      "RUNPOD_FINITE_SPEND_CAP_EXCEEDED",
+    );
+    expect(
+      fetch.mock.calls.filter(([url]) =>
+        new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
+      ),
+    ).toHaveLength(1);
+  });
+
   it("checks the finite cap after concurrent reader dispatch", async () => {
     const spendSnapshotUsd = vi
       .fn<() => Promise<number>>()
       .mockResolvedValueOnce(0) // create
       .mockResolvedValueOnce(0) // endpoint warm-idle baseline
-      .mockResolvedValueOnce(0) // max-two policy update
+      .mockResolvedValueOnce(0) // max-two policy preflight
+      .mockResolvedValueOnce(0) // max-two policy postflight
       .mockResolvedValueOnce(0) // reader one preflight
       .mockResolvedValueOnce(0) // reader two preflight
       .mockResolvedValueOnce(5); // post-dispatch guard
