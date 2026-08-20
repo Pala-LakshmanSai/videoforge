@@ -107,12 +107,16 @@ def _assert_parent_binding(
     _repository, parent_digest = _immutable_image_parts(parent_image, "parent image")
     if _sha256(parent_manifest_bytes) != parent_digest:
         raise CandidateError("parent manifest bytes do not match the immutable parent digest")
-    if parent_manifest.get("schemaVersion") != 2 or not isinstance(parent_manifest.get("layers"), list):
+    if parent_manifest.get("schemaVersion") != 2 or not isinstance(
+        parent_manifest.get("layers"), list
+    ):
         raise CandidateError("parent manifest is not a valid Docker schema-2 manifest")
     parent_descriptor = parent_manifest.get("config")
     if not isinstance(parent_descriptor, dict):
         raise CandidateError("parent manifest config descriptor is missing")
-    if _digest(parent_descriptor.get("digest"), "parent config descriptor") != _sha256(parent_config_bytes):
+    if _digest(parent_descriptor.get("digest"), "parent config descriptor") != _sha256(
+        parent_config_bytes
+    ):
         raise CandidateError("parent config bytes do not match the parent manifest descriptor")
     if parent_descriptor.get("size") != len(parent_config_bytes):
         raise CandidateError("parent config size does not match its descriptor")
@@ -205,7 +209,9 @@ def verify_candidate(
         raise CandidateError("candidate OCI revision label mismatch")
     if labels.get("ai.videoforge.source-commit") != expected_source_commit:
         raise CandidateError("candidate source label mismatch")
-    _parent_repository, parent_digest = _immutable_image_parts(expected_parent_image, "parent image")
+    _parent_repository, parent_digest = _immutable_image_parts(
+        expected_parent_image, "parent image"
+    )
     if labels.get("org.opencontainers.image.base.digest") != parent_digest:
         raise CandidateError("candidate base digest label mismatch")
     if labels.get("ai.videoforge.base-image") != expected_parent_image:
