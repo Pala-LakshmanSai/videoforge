@@ -286,7 +286,8 @@ assert(
       gates.includes("attempt24_bounded_mutation_authorized") ||
       gates.includes("none_attempt24_consumed") ||
       gates.includes("none_attempt25_pending_fresh_approval") ||
-      gates.includes("attempt25_bounded_mutation_authorized")),
+      gates.includes("attempt25_bounded_mutation_authorized") ||
+      gates.includes("none_attempt25_consumed")),
   "gate_authorized",
 );
 assert(task.includes("Attempt 22") && task.includes(EXPECTED.authority), "task_authority");

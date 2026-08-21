@@ -206,6 +206,9 @@ assert(
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate") &&
       state.includes("provider_calls_authorized: false") &&
       state.includes("maximum_external_spend_usd: 0")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt25_closed") &&
+      state.includes("provider_calls_authorized: false") &&
+      state.includes("maximum_external_spend_usd: 0")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
       state.includes("provider_calls_authorized: true") &&
       state.includes("maximum_external_spend_usd: 4")),
@@ -259,7 +262,10 @@ assert(
     (gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json\"") &&
       gates.includes("pending_authority_sha256: \"sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c\"") &&
       gates.includes("pending_numeric_cap_usd: 4") &&
-      gates.includes("attempt25_bounded_mutation_authorized")),
+      gates.includes("attempt25_bounded_mutation_authorized")) ||
+    (gates.includes("closed_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json\"") &&
+      gates.includes("pending_numeric_cap_usd: null") &&
+      gates.includes("authority_mode: none_attempt25_consumed")),
   "gate_authority",
 );
 assert(task.includes("Attempt23 output-contract diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority), "task_authority_pointer");

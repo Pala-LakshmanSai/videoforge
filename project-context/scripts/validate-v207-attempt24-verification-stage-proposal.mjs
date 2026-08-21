@@ -140,7 +140,8 @@ assert(
   (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") && state.includes("maximum_external_spend_usd: 4")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt24_closed") && state.includes("maximum_external_spend_usd: 0")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate") && state.includes("maximum_external_spend_usd: 0")) ||
-    (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") && state.includes("maximum_external_spend_usd: 4")),
+    (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") && state.includes("maximum_external_spend_usd: 4")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt25_closed") && state.includes("maximum_external_spend_usd: 0")),
   "state_phase",
 );
 assert(
@@ -173,7 +174,10 @@ assert(
       gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json\"") &&
       gates.includes("pending_authority_sha256: \"sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c\"") &&
       gates.includes("authority_mode: attempt25_bounded_mutation_authorized") &&
-      gates.includes("pending_numeric_cap_usd: 4"))) &&
+      gates.includes("pending_numeric_cap_usd: 4")) ||
+    (gates.includes("historical_attempt24_proposal:") &&
+      gates.includes("historical_attempt24_authority:") &&
+      gates.includes("authority_mode: none_attempt25_consumed"))) &&
   gates.includes(EXPECTED.proposal) &&
   gates.includes(EXPECTED.authority),
   "gate_pointer",
