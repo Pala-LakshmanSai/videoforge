@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const evidenceRoot = resolve(root, "project-context/evidence/acceptance/VF-10-07");
@@ -125,6 +126,8 @@ const attempt27ClosedGate =
     'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
   ) &&
   gates.includes("pending_numeric_cap_usd: null");
+const attempt28State = isAttempt28State(state);
+const attempt28Gate = isAttempt28Gate(gates);
 
 for (const [label, bytes, expected] of [
   ["closure", closureBytes, EXPECTED.closure],
@@ -208,7 +211,8 @@ assert(
     attempt26ClosedState ||
     attempt27CandidateState ||
     attempt27AuthorizedState ||
-    attempt27ClosedState,
+    attempt27ClosedState ||
+    attempt28State,
   "state_closed",
 );
 assert(
@@ -217,7 +221,8 @@ assert(
       state.includes("provider_calls_authorized: true") &&
       state.includes("provider_mutations_authorized: true") &&
       state.includes("gpu_use_authorized: true")) ||
-    attempt27AuthorizedState,
+    attempt27AuthorizedState ||
+    attempt28State,
   "state_no_authority",
 );
 assert(
@@ -226,7 +231,8 @@ assert(
       state.includes("spend_authorized_usd: 4")) ||
     (attempt27AuthorizedState &&
       state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json") &&
-      state.includes("spend_authorized_usd: 4")),
+      state.includes("spend_authorized_usd: 4")) ||
+    attempt28State,
   "state_current_authority_null",
 );
 assert(
@@ -245,7 +251,8 @@ assert(
     attempt26ClosedGate ||
     attempt27CandidateGate ||
     attempt27AuthorizedGate ||
-    attempt27ClosedGate,
+    attempt27ClosedGate ||
+    attempt28Gate,
   "gate_closed",
 );
 assert(task.includes("Attempt 24 closure") && task.includes("fresh exact proposal and fresh positive numeric cap are required"), "task_closure");
@@ -254,7 +261,8 @@ assert(
   activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4")) ||
-    (attempt27AuthorizedState && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4")),
+    (attempt27AuthorizedState && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4")) ||
+    (attempt28State && isAttempt28Activation(activation)),
   "activation_closed",
 );
 

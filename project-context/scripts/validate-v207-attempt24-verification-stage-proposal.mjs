@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const candidate = resolve(
@@ -184,6 +185,8 @@ const attempt27ClosedGate =
     'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
   ) &&
   gates.includes("pending_numeric_cap_usd: null");
+const attempt28State = isAttempt28State(state);
+const attempt28Gate = isAttempt28Gate(gates);
 assert(
   (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") && state.includes("maximum_external_spend_usd: 4")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt24_closed") && state.includes("maximum_external_spend_usd: 0")) ||
@@ -194,7 +197,8 @@ assert(
     attempt26ClosedState ||
     attempt27CandidateState ||
     attempt27AuthorizedState ||
-    attempt27ClosedState,
+    attempt27ClosedState ||
+    attempt28State,
   "state_phase",
 );
 assert(
@@ -237,7 +241,8 @@ assert(
     (attempt26ClosedGate ||
       attempt27CandidateGate ||
       attempt27AuthorizedGate ||
-      attempt27ClosedGate)) &&
+      attempt27ClosedGate ||
+      attempt28Gate)) &&
   gates.includes(EXPECTED.proposal) &&
   gates.includes(EXPECTED.authority),
   "gate_pointer",
@@ -250,7 +255,8 @@ assert(
     (activation.includes(EXPECTED.proposal) ||
       activation.includes("sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946") ||
       activation.includes("sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632") ||
-      activation.includes("sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae")) &&
+      activation.includes("sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae") ||
+      isAttempt28Activation(activation)) &&
     (activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") ||
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")),
   "activation_approved",

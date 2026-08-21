@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { access, readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const candidate = resolve(
@@ -241,6 +242,8 @@ const attempt27ClosedGate =
     'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
   ) &&
   gates.includes("pending_numeric_cap_usd: null");
+const attempt28State = isAttempt28State(state);
+const attempt28Gate = isAttempt28Gate(gates);
 assert(
   (state.includes("phase: serverless_v2_v2_07_attempt23_authorized") && state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") &&
@@ -266,7 +269,8 @@ assert(
     attempt26ClosedState ||
     attempt27CandidateState ||
     attempt27AuthorizedState ||
-    attempt27ClosedState,
+    attempt27ClosedState ||
+    attempt28State,
   "state_authorized",
 );
 assert(state.includes("2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json") && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control), "state_candidate_pointer");
@@ -285,7 +289,8 @@ assert(
       state.includes("mutation_authorized: true") &&
       state.includes("gpu_use_authorized: true") &&
       state.includes("spend_authorized_usd: 4")) ||
-    (state.includes("current_authority: null") && state.includes("mutation_authorized: false") && state.includes("gpu_use_authorized: false") && state.includes("spend_authorized_usd: 0")),
+    (state.includes("current_authority: null") && state.includes("mutation_authorized: false") && state.includes("gpu_use_authorized: false") && state.includes("spend_authorized_usd: 0")) ||
+    attempt28State,
   "state_authority",
 );
 assert(
@@ -306,7 +311,8 @@ assert(
     attempt26ClosedGate ||
     attempt27CandidateGate ||
     attempt27AuthorizedGate ||
-    attempt27ClosedGate,
+    attempt27ClosedGate ||
+    attempt28Gate,
   "gate_candidate_pointer",
 );
 assert(
@@ -336,7 +342,8 @@ assert(
     attempt26ClosedGate ||
     attempt27CandidateGate ||
     attempt27AuthorizedGate ||
-    attempt27ClosedGate,
+    attempt27ClosedGate ||
+    attempt28Gate,
   "gate_authority",
 );
 assert(task.includes("Attempt23 output-contract diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority), "task_authority_pointer");

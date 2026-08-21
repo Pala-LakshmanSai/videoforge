@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const candidate = resolve(
@@ -243,7 +244,8 @@ for (const [label, value] of [["state", state], ["task", task]]) {
 }
 assert(
   state.includes(EXPECTED.authority) &&
-    (gates.includes("failed-attempt-21.json") || gates.includes("failed-attempt-23.json") || gates.includes("failed-attempt-24.json")),
+    (gates.includes("failed-attempt-21.json") || gates.includes("failed-attempt-23.json") || gates.includes("failed-attempt-24.json")) ||
+    isAttempt28Gate(gates),
   "gates_proposal_pointer",
 );
 assert(start.includes("failed-attempt-22.json"), "start_proposal_pointer");
@@ -264,7 +266,8 @@ assert(
     gates.includes("NOT_QUALIFIED_attempt25") ||
     gates.includes("NOT_QUALIFIED_attempt26") ||
     gates.includes("NOT_QUALIFIED_attempt27") ||
-    gates.includes("APPROVED_PREEXECUTION_attempt23")) &&
+    gates.includes("APPROVED_PREEXECUTION_attempt23") ||
+    isAttempt28Gate(gates)) &&
     task.includes("NOT_QUALIFIED") &&
     start.includes("NOT_QUALIFIED"),
   "gate_open",

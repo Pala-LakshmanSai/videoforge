@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));

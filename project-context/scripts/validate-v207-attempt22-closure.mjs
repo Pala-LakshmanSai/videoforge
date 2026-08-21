@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const closurePath = resolve(
@@ -67,6 +68,7 @@ const attempt27ClosedGate =
     'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
   ) &&
   gates.includes("pending_numeric_cap_usd: null");
+const attempt28Gate = isAttempt28Gate(gates);
 
 assert(hash(closureBytes) === expected.closure, "closure_hash");
 assert(hash(authorityBytes) === expected.authority, "authority_hash");
@@ -102,7 +104,8 @@ assert(
       state.includes("maximum_external_spend_usd: 4")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
       state.includes("maximum_external_spend_usd: 4")) ||
-    attempt27AuthorizedState,
+    attempt27AuthorizedState ||
+    isAttempt28State(state),
   "state_closed",
 );
 assert(
@@ -118,13 +121,14 @@ assert(
     gates.includes("none_attempt25_consumed") ||
     gates.includes("none_attempt26_pending_fresh_approval") ||
     attempt26ClosedGate ||
-    (attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate)) &&
-    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt27") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
+    (attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate || attempt28Gate)) &&
+    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt27") || gates.includes("NOT_QUALIFIED_attempt28") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );
 assert(
   activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") ||
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") ||
+    isAttempt28Activation(activation),
   "compiled_authority_closed",
 );
 

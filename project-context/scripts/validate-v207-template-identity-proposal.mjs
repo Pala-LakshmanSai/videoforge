@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -311,7 +312,7 @@ assert(
     ) ||
     activation.includes(
       "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae",
-    ),
+    ) || isAttempt28Activation(activation),
   "activation_current_proposal",
 );
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "activation_current_closed");
@@ -348,7 +349,11 @@ assert(
     currentState.includes(`v2_07_action: diagnose_attempt26_finalize_response_invalid_provider_free_and_require_fresh_exact_proposal_before_any_retry`) ||
     currentState.includes(`v2_07_action: validate_attempt27_hosted_png_crc32_repair_candidate_provider_free_then_require_fresh_exact_approval_and_cap`) ||
     currentState.includes(`v2_07_action: execute_exact_attempt27_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`) ||
-    currentState.includes(`v2_07_action: diagnose_attempt27_warm_idle_failure_provider_free_and_prepare_fresh_uncapped_proposal_only_if_repair_is_proven`),
+    currentState.includes(`v2_07_action: diagnose_attempt27_warm_idle_failure_provider_free_and_prepare_fresh_uncapped_proposal_only_if_repair_is_proven`) ||
+    (isAttempt28State(currentState) &&
+      currentState.includes(
+        "v2_07_action: request_exact_attempt28_proposal_approval_and_fresh_positive_numeric_cap_before_any_provider_retry",
+      )),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -379,7 +384,8 @@ assert(
     recommendedTask.includes("Diagnose and repair the exact Attempt26 FINALIZE invalid-response path") ||
     recommendedTask.includes("Validate the exact Attempt27 hosted PNG CRC32 finalization repair") ||
     recommendedTask.includes("Execute and reconcile the exact approved Attempt27 hosted PNG CRC32 finalization repair") ||
-    recommendedTask.includes("Diagnose RUNPOD_WARM_IDLE_NOT_CONFIRMED provider-free"),
+    recommendedTask.includes("Diagnose RUNPOD_WARM_IDLE_NOT_CONFIRMED provider-free") ||
+    (isAttempt28State(currentState) && recommendedTask.includes("Obtain exact approval for Attempt28 proposal")),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation") || recommendedTask.includes("task_stage: provider_free"), "state_recommended_stage");
@@ -397,7 +403,8 @@ assert(
     recommendedTask.includes("current_goal_authority: none_attempt26_consumed") ||
     recommendedTask.includes("current_goal_authority: none_attempt27_pending_fresh_approval") ||
     recommendedTask.includes("current_goal_authority: exact_attempt27_authority_recorded") ||
-    recommendedTask.includes("current_goal_authority: none_attempt27_closed_fresh_authority_required"),
+    recommendedTask.includes("current_goal_authority: none_attempt27_closed_fresh_authority_required") ||
+    recommendedTask.includes("current_goal_authority: none_attempt28_unapproved_fresh_authority_required"),
   "state_recommended_authority",
 );
 assert(

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const evidenceRoot = resolve(root, "project-context/evidence/acceptance/VF-10-07");
@@ -328,6 +329,8 @@ const attempt27ClosedGate =
     'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
   ) &&
   gates.includes("pending_numeric_cap_usd: null");
+const attempt28State = isAttempt28State(state);
+const attempt28Gate = isAttempt28Gate(gates);
 
 for (const [label, value] of [
   ["state", state],
@@ -337,15 +340,15 @@ for (const [label, value] of [
 ]) {
   assert(
     (value.includes("failed-attempt-25.json") && value.includes(closureHash)) ||
-      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate)),
+      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate || attempt28Gate)),
     `${label}_closure_pointer`,
   );
   assert(
     (value.includes(EXPECTED.proposal) && value.includes(EXPECTED.authority)) ||
-      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate)),
+      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate || attempt28Gate)),
     `${label}_attempt25_lineage`,
   );
-  assert(value.includes("NOT_QUALIFIED") && (((value.includes("fresh exact proposal") || value.includes("fresh exact approval") || value.includes("fresh exact Attempt26 proposal")) && value.includes("fresh positive numeric cap")) || value.includes("bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05")), `${label}_fresh_boundary`);
+  assert(value.includes("NOT_QUALIFIED") && (((value.includes("fresh exact proposal") || value.includes("fresh exact approval") || value.includes("fresh exact Attempt26 proposal")) && value.includes("fresh positive numeric cap")) || value.includes("bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05") || (label === "gates" && attempt28Gate)), `${label}_fresh_boundary`);
 }
 
 assert(
@@ -355,7 +358,8 @@ assert(
     attempt26ClosedState ||
     attempt27CandidateState ||
     attempt27AuthorizedState ||
-    attempt27ClosedState,
+    attempt27ClosedState ||
+    attempt28State,
   "state_closed",
 );
 assert(
@@ -367,7 +371,8 @@ assert(
     attempt26ClosedGate ||
     attempt27CandidateGate ||
     attempt27AuthorizedGate ||
-    attempt27ClosedGate,
+    attempt27ClosedGate ||
+    attempt28Gate,
   "gate_closed",
 );
 assert(state.includes(`v2_07_attempt25_candidate_sha256: "${acceptanceHash}"`), "state_acceptance_hash");

@@ -147,17 +147,17 @@ gates:
     closure_evidence_sha256: "sha256:ffd622c4ee0a6a37311a51f191ce9c3ccbb0ae91620e51f64a03dfef932fb20d"
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt27-cleanup-observation.json"
     cleanup_evidence_sha256: "sha256:9aa51ccb29b6a9568534c6f79eaa07b46fbcdf1fd9137f9b21cb87404ac3686d"
-    pending_proposal: null
-    pending_proposal_sha256: null
-    pending_control_source_commit: null
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"
+    pending_control_source_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
     pending_authority: null
     pending_authority_sha256: null
-    authority_mode: none_attempt27_consumed
+    authority_mode: none_attempt28_unapproved
     pending_numeric_cap_usd: null
     pending_flashboot: true
-    pending_availability: LOW
-    result: "NOT_QUALIFIED_attempt27_closed_warm_idle_failure"
-    next_boundary: "provider-free diagnose RUNPOD_WARM_IDLE_NOT_CONFIRMED without weakening health-first drain safety; any provider retry requires a fresh exact proposal and fresh positive numeric cap; V2-08 forbidden"
+    pending_availability: MEDIUM
+    result: "NOT_QUALIFIED_attempt28_proposal_ready_fresh_authority_required"
+    next_boundary: "request exact approval for Attempt28 proposal sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf and a fresh positive numeric cap; no provider retry before both; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:

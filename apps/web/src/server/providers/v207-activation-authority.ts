@@ -13,12 +13,12 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae" as const;
+  "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "b8666dd8b8bc12578ffae8925f6ce73dbf53a841" as const;
-// Attempt 27 is consumed and closed; any further execution requires a fresh exact authority and cap.
+  "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14" as const;
+// Attempt 28 is provider-free and unapproved; execution requires exact authority and a fresh cap.
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {

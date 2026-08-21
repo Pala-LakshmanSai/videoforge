@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const candidate = resolve(
@@ -169,6 +170,7 @@ const attempt27ClosedGate =
     'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
   ) &&
   gates.includes("pending_numeric_cap_usd: null");
+const attempt28Gate = isAttempt28Gate(gates);
 
 assert(hash(proposalBytes) === EXPECTED.proposal, "proposal_hash");
 assert(hash(max1Bytes) === EXPECTED.configs[0], "max1_hash");
@@ -305,7 +307,8 @@ for (const [label, value] of [["state", state], ["gates", gates], ["task", task]
       value.includes("63517e605d441fa23020bea8bff2987cc4bc99c5") ||
       value.includes("bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9") ||
       value.includes("b8666dd8b8bc12578ffae8925f6ce73dbf53a841") ||
-      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate)),
+      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate || attempt28Gate)) ||
+      (label === "gates" && attempt28Gate && value.includes("0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14")),
     `${label}_control_pointer`,
   );
   assert(value.includes("failed-attempt-22.json"), `${label}_attempt21_pointer`);
@@ -320,7 +323,8 @@ assert(
       state.includes("maximum_external_spend_usd: 4")) ||
     attempt26ClosedState ||
     attempt27CandidateState ||
-    attempt27AuthorizedState,
+    attempt27AuthorizedState ||
+    isAttempt28State(state),
   "state_authorized",
 );
 assert(
@@ -348,7 +352,8 @@ assert(
       attempt26ClosedGate ||
       attempt27CandidateGate ||
       attempt27AuthorizedGate ||
-      attempt27ClosedGate),
+      attempt27ClosedGate ||
+      attempt28Gate),
   "gate_authorized",
 );
 assert(task.includes("Attempt 22") && task.includes(EXPECTED.authority), "task_authority");

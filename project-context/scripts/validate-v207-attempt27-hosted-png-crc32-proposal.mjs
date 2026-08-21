@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const candidate = resolve(
@@ -556,6 +557,32 @@ if (candidateReady) {
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
     "closed_activation_boundary",
   );
+} else if (isAttempt28State(state) && isAttempt28Gate(gates) && isAttempt28Activation(activation)) {
+  assert(
+    state.includes(EXPECTED.proposal) &&
+      state.includes(EXPECTED.authority) &&
+      state.includes(EXPECTED.attempt27Closure) &&
+      state.includes(EXPECTED.hostedRepair),
+    "attempt28_preserves_attempt27_lineage",
+  );
+  assert(
+    gates.includes(`latest_closed_proposal_sha256: "${EXPECTED.proposal}"`) &&
+      gates.includes(`latest_closed_authority_sha256: "${EXPECTED.authority}"`) &&
+      gates.includes(`closure_evidence_sha256: "${EXPECTED.attempt27Closure}"`),
+    "attempt28_preserves_attempt27_gate_lineage",
+  );
+  for (const [label, value] of [
+    ["task", task],
+    ["start", start],
+  ]) {
+    assert(
+      value.includes(EXPECTED.proposal) &&
+        value.includes(EXPECTED.authority) &&
+        value.includes(EXPECTED.attempt27Closure) &&
+        value.includes(EXPECTED.hostedRepair),
+      `${label}_attempt28_preserves_attempt27_lineage`,
+    );
+  }
 } else {
   fail("state_mode");
 }

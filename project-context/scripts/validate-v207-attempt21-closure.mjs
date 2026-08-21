@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const evidencePath = resolve(
@@ -144,7 +145,8 @@ assert(
     attempt26Closed ||
     attempt27Candidate ||
     attempt27Authorized ||
-    attempt27Closed,
+    attempt27Closed ||
+    isAttempt28State(state),
   "state_phase",
 );
 assert(state.includes("historical_v2_07_attempt21_authority:") && state.includes("consumed: true"), "state_closed");
@@ -155,7 +157,8 @@ assert(
   (gates.includes("previous_attempt: \"evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json\"") ||
     gates.includes("failed-attempt-23.json") ||
     gates.includes("failed-attempt-24.json")) &&
-    state.includes(EXPECTED.evidence),
+    state.includes(EXPECTED.evidence) ||
+    isAttempt28Gate(gates),
   "gate_evidence",
 );
 assert(

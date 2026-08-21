@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
 
 const repoRoot = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const evidenceRoot = path.join(
@@ -226,7 +227,8 @@ assert(
     activation.includes("sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137") ||
     activation.includes("sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946") ||
     activation.includes("sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632") ||
-    activation.includes("sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"),
+    activation.includes("sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae") ||
+    isAttempt28Activation(activation),
   "activation_current_successor_proposal",
 );
 assert(

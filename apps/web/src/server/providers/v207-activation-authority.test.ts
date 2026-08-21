@@ -18,7 +18,7 @@ import {
 const image = V207_REPAIRED_IMAGE;
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete Attempt27 hosted PNG CRC32 repair lineage", () => {
+  it("pins the complete Attempt28 terminal scale-zero repair lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -39,10 +39,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae",
+      "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("b8666dd8b8bc12578ffae8925f6ce73dbf53a841");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14");
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
 
