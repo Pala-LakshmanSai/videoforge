@@ -1640,4 +1640,24 @@ export class RunPodServerlessJobClient {
     const queuedJobs = strictCounter(jobs, "inQueue") + strictCounter(jobs, "inProgress");
     this.options.guard.confirmQueueEmpty(queuedJobs);
   }
+
+  /**
+   * Proves only that the provider reports no queued or in-progress jobs.
+   *
+   * Startup terminal-inventory recovery intentionally cannot use confirmQueueEmpty(): that
+   * guard transition is valid only while draining an already-used endpoint.  This independent
+   * read is allowed before the first owned job and does not inspect worker counters, which may
+   * be stale or incomplete during FlashBoot startup.  Both job fields must be present strict
+   * non-negative integers and exactly zero; any missing, malformed, queued, or in-progress value
+   * fails closed.
+   */
+  async confirmStartupQueueEmpty(): Promise<void> {
+    const value = await this.request("GET", "/health");
+    const jobs = record(value.jobs);
+    const inQueue = strictCounter(jobs, "inQueue");
+    const inProgress = strictCounter(jobs, "inProgress");
+    if (inQueue !== 0 || inProgress !== 0) {
+      throw new RunPodControlError("RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED");
+    }
+  }
 }

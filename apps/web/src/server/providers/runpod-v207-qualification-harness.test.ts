@@ -352,6 +352,8 @@ function terminalScaleZeroFetch(
     readonly extraTemplate?: boolean;
     readonly endpointDrift?: Readonly<Record<string, unknown>>;
     readonly healthWorkers?: Readonly<Record<string, unknown>>;
+    readonly healthJobs?: Readonly<Record<string, unknown>>;
+    readonly healthJobsAfterFirstSnapshot?: Readonly<Record<string, unknown>>;
     readonly healthAfterFirstSnapshot?: Readonly<Record<string, number>>;
   } = {},
 ) {
@@ -389,7 +391,14 @@ function terminalScaleZeroFetch(
                 throttled: 1,
                 unhealthy: 0,
               }),
-        jobs: { inQueue: 0, inProgress: 0 },
+        jobs:
+          terminalInventoryReads > 0
+            ? (options.healthJobsAfterFirstSnapshot ??
+              options.healthJobs ?? {
+                inQueue: 0,
+                inProgress: 0,
+              })
+            : (options.healthJobs ?? { inQueue: 0, inProgress: 0 }),
       });
     }
     if (created && path === "/pods" && init?.method === undefined) {
@@ -486,6 +495,25 @@ describe("V2-07 qualification harness", () => {
         ([url, init]) =>
           init?.method === "DELETE" && new URL(String(url)).pathname.includes("/networkvolumes/"),
       ),
+    ).toHaveLength(0);
+  });
+
+  it("rechecks startup queue emptiness before the second terminal snapshot", async () => {
+    const fetch = terminalScaleZeroFetch({
+      healthWorkers: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        throttled: 1,
+        unhealthy: 0,
+      },
+      healthJobs: { inQueue: 0, inProgress: 0 },
+      healthJobsAfterFirstSnapshot: { inQueue: 0, inProgress: 1 },
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(0);
   });
 
@@ -1110,6 +1138,29 @@ describe("V2-07 qualification harness", () => {
         stable_terminal_snapshot_count: 2,
       }),
     );
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
+  it.each([
+    ["queued job", { inQueue: 1, inProgress: 0 }],
+    ["in-progress job", { inQueue: 0, inProgress: 1 }],
+    ["missing inQueue counter", { inProgress: 0 }],
+    ["unknown inQueue counter", { inQueue: "0", inProgress: 0 }],
+  ] as const)("fails startup inventory fallback closed with %s", async (_label, jobs) => {
+    const fetch = terminalScaleZeroFetch({
+      healthWorkers: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        throttled: 1,
+        unhealthy: 0,
+      },
+      healthJobs: jobs,
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).rejects.toThrow("RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED");
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(0);

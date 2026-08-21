@@ -513,6 +513,10 @@ export class RunPodV207QualificationHarness {
         readonly inventory: RunPodInventory;
         readonly signature: string;
       }> => {
+        // Bracket each inventory snapshot with an independent queue-only health read. Worker
+        // counters can remain stale during FlashBoot startup, but a queued/in-progress job must
+        // never be hidden by the terminal-record fallback.
+        if (mode === "startup_inventory_only") await this.#jobs!.confirmStartupQueueEmpty();
         const [inventory, resources] = await Promise.all([
           this.#options.control.inventory(),
           this.#options.control.inventoryDisposableResources(),

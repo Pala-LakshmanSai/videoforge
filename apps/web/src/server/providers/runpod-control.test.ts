@@ -233,6 +233,42 @@ describe("RunPod scale-zero control", () => {
     await expect(queueClient.confirmQueueEmpty()).rejects.toThrow("RUNPOD_QUEUE_NOT_DRAINED");
   });
 
+  it.each([
+    ["queued", { inQueue: 1, inProgress: 0 }],
+    ["in progress", { inQueue: 0, inProgress: 1 }],
+    ["missing", { inProgress: 0 }],
+    ["unknown", { inQueue: "0", inProgress: 0 }],
+  ] as const)("fails the startup queue-only proof closed for %s counters", async (_label, jobs) => {
+    const guard = new RunPodDrainGuard();
+    guard.markActive();
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () => response({ workers: { stale: "ignored" }, jobs }),
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(client.confirmStartupQueueEmpty()).rejects.toThrow(
+      "RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED",
+    );
+    expect(guard.snapshot()).toBe("active");
+  });
+
+  it("accepts startup queue-only proof with stale or incomplete worker counters", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.markActive();
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () =>
+        response({ workers: { throttled: "unknown" }, jobs: { inQueue: 0, inProgress: 0 } }),
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(client.confirmStartupQueueEmpty()).resolves.toBeUndefined();
+    expect(guard.snapshot()).toBe("active");
+  });
+
   it("keeps a quiescent throttled worker policy-only and fails closed on active health", () => {
     const guard = new RunPodDrainGuard();
     guard.markActive();
