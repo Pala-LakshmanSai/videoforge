@@ -338,6 +338,46 @@ const v207EndpointConfigMatches = (
   );
 };
 
+const matchesIfPresent = (value: unknown, expected: unknown): boolean =>
+  value === undefined || value === expected;
+
+const exactStringArrayIfPresent = (value: unknown, expected: readonly string[]): boolean =>
+  value === undefined || exactStringArray(value, expected);
+
+/**
+ * RunPod may acknowledge an endpoint PATCH with only the endpoint identity. Treat omitted fields as
+ * unconfirmed until the mandatory GET, but fail closed if any returned field contradicts the exact
+ * staged configuration.
+ */
+const v207EndpointPatchAcknowledgementMatches = (
+  value: JsonRecord | null,
+  expected: {
+    readonly endpointId: string;
+    readonly templateId: string;
+    readonly policy: RunPodEndpointPolicy;
+    readonly placement: RunPodV207Placement;
+    readonly environment: Readonly<Record<string, string>>;
+  },
+): boolean =>
+  value?.id === expected.endpointId &&
+  matchesIfPresent(value.templateId, expected.templateId) &&
+  matchesIfPresent(value.computeType, "GPU") &&
+  matchesIfPresent(value.workersMin, expected.policy.workersMin) &&
+  matchesIfPresent(value.workersMax, expected.policy.workersMax) &&
+  matchesIfPresent(value.gpuCount, expected.policy.gpuCount) &&
+  exactStringArrayIfPresent(value.gpuTypeIds, [V207_RUNPOD_GPU]) &&
+  exactStringArrayIfPresent(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
+  matchesIfPresent(value.minCudaVersion, V207_RUNPOD_MIN_CUDA_VERSION) &&
+  matchesIfPresent(value.flashboot, V207_RUNPOD_FLASHBOOT) &&
+  matchesIfPresent(value.networkVolumeId, expected.placement.networkVolumeId) &&
+  exactStringArrayIfPresent(value.networkVolumeIds, [expected.placement.networkVolumeId]) &&
+  exactStringArrayIfPresent(value.dataCenterIds, [V207_RUNPOD_REGION]) &&
+  matchesIfPresent(value.idleTimeout, expected.policy.idleTimeout) &&
+  matchesIfPresent(value.executionTimeoutMs, expected.policy.executionTimeoutMs) &&
+  matchesIfPresent(value.scalerType, V207_RUNPOD_SCALER) &&
+  matchesIfPresent(value.scalerValue, V207_RUNPOD_SCALER_VALUE) &&
+  (value.env === undefined || exactEnvironmentMatches(value.env, expected.environment));
+
 const v207EndpointBindingMatches = (
   value: JsonRecord | null,
   expected: {
@@ -885,7 +925,7 @@ export class RunPodControlClient {
     const responseValue = record(
       await this.mutate("PATCH", `/endpoints/${endpointId}`, canonicalizeJson(request)),
     );
-    if (!v207EndpointConfigMatches(responseValue, expected)) {
+    if (!v207EndpointPatchAcknowledgementMatches(responseValue, expected)) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
     }
     const readbackValue = record(await this.read(`/endpoints/${endpointId}`));
