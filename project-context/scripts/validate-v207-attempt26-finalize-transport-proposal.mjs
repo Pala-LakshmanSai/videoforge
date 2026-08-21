@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, "../..");
 const candidate = resolve(root, "project-context/evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate");
 const paths = {
   proposal: resolve(candidate, "combined-live-proposal.json"),
+  authority: resolve(candidate, "approved-authority.json"),
   max1: resolve(candidate, "staged-config-max1.json"),
   max2: resolve(candidate, "staged-config-max2.json"),
   closure: resolve(root, "project-context/evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json"),
@@ -17,6 +18,7 @@ const paths = {
 };
 const EXPECTED = {
   proposal: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632",
+  authority: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e",
   max1: "sha256:b64d008bac42fb13ec342028675a1bb498836981c553e884529ad846d6cdf964",
   max2: "sha256:10f887ba47e8a7cac952374eb236fed08cb67962171769b65d96a4f0d3a7acf7",
   closure: "sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2",
@@ -36,14 +38,15 @@ const fail = (label) => { throw new Error(`V207_ATTEMPT26_FINALIZE_TRANSPORT_PRO
 const assert = (condition, label) => { if (!condition) fail(label); };
 const parse = (bytes, label) => { try { return JSON.parse(bytes.toString("utf8")); } catch { fail(`${label}_json`); } };
 
-const [proposalBytes, max1Bytes, max2Bytes, closureBytes, stateBytes, gatesBytes, taskBytes, startBytes, activationBytes] = await Promise.all([
-  readFile(paths.proposal), readFile(paths.max1), readFile(paths.max2), readFile(paths.closure),
+const [proposalBytes, authorityBytes, max1Bytes, max2Bytes, closureBytes, stateBytes, gatesBytes, taskBytes, startBytes, activationBytes] = await Promise.all([
+  readFile(paths.proposal), readFile(paths.authority), readFile(paths.max1), readFile(paths.max2), readFile(paths.closure),
   readFile(paths.state), readFile(paths.gates), readFile(paths.task), readFile(paths.start), readFile(paths.activation),
 ]);
-for (const [label, bytes, expected] of [["proposal", proposalBytes, EXPECTED.proposal], ["max1", max1Bytes, EXPECTED.max1], ["max2", max2Bytes, EXPECTED.max2], ["closure", closureBytes, EXPECTED.closure]]) {
+for (const [label, bytes, expected] of [["proposal", proposalBytes, EXPECTED.proposal], ["authority", authorityBytes, EXPECTED.authority], ["max1", max1Bytes, EXPECTED.max1], ["max2", max2Bytes, EXPECTED.max2], ["closure", closureBytes, EXPECTED.closure]]) {
   assert(hash(bytes) === expected, `${label}_hash`);
 }
 const proposal = parse(proposalBytes, "proposal");
+const authority = parse(authorityBytes, "authority");
 const max1 = parse(max1Bytes, "max1");
 const max2 = parse(max2Bytes, "max2");
 const closure = parse(closureBytes, "closure");
@@ -95,11 +98,18 @@ assert(proposal.rates_cost_and_retention?.serverless_flex_rtx4090_usd_per_gpu_ho
 assert(proposal.execution_boundary?.provider_calls_completed === false && proposal.execution_boundary?.external_spend_usd === 0 && proposal.execution_boundary?.maximum_cumulative_finite_spend_usd === null && proposal.execution_boundary?.v2_08_authorized === false, "execution_boundary");
 assert(closure.attempt === 25 && closure.final_reconciliation_checked_at === "2026-08-21T11:30:30.619Z" && closure.qualification_boundaries?.v2_07 === "NOT_QUALIFIED", "closure_binding");
 
-assert(state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready") && state.includes("task_stage: provider_free_repair") && state.includes("provider_calls_authorized: false") && state.includes("remote_or_cloud_mutations_authorized: false") && state.includes("gpu_use_authorized: false") && state.includes("maximum_external_spend_usd: 0"), "state_boundary");
-assert(state.includes("2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json") && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.repair) && state.includes("current_authority: null"), "state_candidate_pointer");
-assert(gates.includes("pending_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json\"") && gates.includes(`pending_proposal_sha256: \"${EXPECTED.proposal}\"`) && gates.includes(`pending_control_source_commit: \"${EXPECTED.repair}\"`) && gates.includes("pending_authority: null") && gates.includes("authority_mode: none_attempt26_pending_fresh_approval") && gates.includes("pending_numeric_cap_usd: null"), "gate_candidate_pointer");
-assert(task.includes("Attempt26 FINALIZE transport-repair candidate") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.repair) && task.includes("null cap"), "task_candidate_pointer");
-assert(start.includes("Attempt26 provider-free candidate") && start.includes(EXPECTED.proposal) && start.includes(EXPECTED.repair) && start.includes("authority and a null cap"), "start_candidate_pointer");
-assert(activation.includes(`V207_PENDING_PROPOSAL_SHA256`) && activation.includes(EXPECTED.proposal) && activation.includes(`V207_PENDING_CONTROL_SOURCE_COMMIT`) && activation.includes(EXPECTED.repair) && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_candidate_pointer");
+assert(authority.schema_version === "videoforge.v2-07-attempt26-finalize-transport-repair-authority/v1" && authority.checkpoint === "V2-07" && authority.task_id === "VF-10-07" && authority.attempt === 26, "authority_scope");
+assert(authority.proposal?.sha256 === EXPECTED.proposal && authority.approval?.exact_proposal_approved === true && authority.approval?.flashboot_true_accepted === true && authority.approval?.low_eu_ro_1_availability_approved === true && authority.approval?.maximum_cumulative_finite_spend_usd === 4 && authority.approval?.fresh_numeric_cap === true && authority.approval?.historical_cap_reused === false, "authority_approval");
+assert(authority.lineage?.final_image === EXPECTED.image && authority.lineage?.image_source_commit === EXPECTED.imageSource && authority.lineage?.control_source_commit === EXPECTED.repair && authority.lineage?.model === EXPECTED.model && authority.lineage?.model_manifest_sha256 === EXPECTED.manifest && authority.lineage?.volume_id_sha256 === EXPECTED.volume, "authority_lineage");
+assert(authority.lineage?.initial_config_sha256 === EXPECTED.max1 && authority.lineage?.concurrent_reader_config_sha256 === EXPECTED.max2 && authority.lineage?.failed_attempt_evidence_sha256 === EXPECTED.closure, "authority_evidence_lineage");
+assert(authority.execution_boundary?.image_republication_authorized === false && authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true && authority.execution_boundary?.cloudflare_mutation_authorized_pending_execution === true && authority.execution_boundary?.gpu_use_authorized_pending_execution === true && authority.execution_boundary?.provider_calls_completed === false && authority.execution_boundary?.external_spend_usd === 0 && authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4 && authority.execution_boundary?.v2_08_authorized === false, "authority_execution_boundary");
+assert(authority.status === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING" && authority.retention?.retain_both_volumes_all_outcomes === true && authority.retention?.volume_mutation_authorized === false, "authority_status_retention");
 
-process.stdout.write(`V2-07 Attempt26 provider-free FINALIZE transport proposal validation PASS (${EXPECTED.proposal}; control ${EXPECTED.repair}; null cap; no provider calls)\n`);
+assert(state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_authorized") && state.includes("task_stage: bounded_mutation") && state.includes("provider_calls_authorized: true") && state.includes("remote_or_cloud_mutations_authorized: true") && state.includes("gpu_use_authorized: true") && state.includes("maximum_external_spend_usd: 4"), "state_boundary");
+assert(state.includes("2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json") && state.includes("2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json") && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.authority) && state.includes(EXPECTED.repair), "state_authority_pointer");
+assert(gates.includes("pending_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json\"") && gates.includes(`pending_proposal_sha256: \"${EXPECTED.proposal}\"`) && gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json\"") && gates.includes(`pending_authority_sha256: \"${EXPECTED.authority}\"`) && gates.includes("authority_mode: attempt26_bounded_mutation_authorized") && gates.includes("pending_numeric_cap_usd: 4"), "gate_authority_pointer");
+assert(task.includes("Attempt26 FINALIZE transport-repair candidate") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.authority) && task.includes("maximum cumulative finite spend of `$4`"), "task_authority_pointer");
+assert(start.includes("Attempt26 approved pre-execution candidate") && start.includes(EXPECTED.proposal) && start.includes(EXPECTED.authority) && start.includes("fresh `$4` cap"), "start_authority_pointer");
+assert(activation.includes(`V207_PENDING_PROPOSAL_SHA256`) && activation.includes(EXPECTED.proposal) && activation.includes(`V207_PENDING_CONTROL_SOURCE_COMMIT`) && activation.includes(EXPECTED.repair) && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_authority_pointer");
+
+process.stdout.write(`V2-07 Attempt26 FINALIZE transport authority validation PASS (${EXPECTED.proposal}; authority ${EXPECTED.authority}; control ${EXPECTED.repair}; USD 4 cap; pre-execution)\n`);

@@ -340,7 +340,8 @@ assert(
     currentState.includes(`v2_07_action: prepare_attempt25_startup_terminal_inventory_candidate_and_require_fresh_authority`) ||
     currentState.includes(`v2_07_action: execute_exact_approved_attempt25_startup_terminal_inventory_proposal`) ||
     currentState.includes(`v2_07_action: record_attempt25_consumed_provider_free_closure_and_require_fresh_exact_approval`) ||
-    currentState.includes(`v2_07_action: validate_attempt26_finalize_transport_repair_candidate_provider_free_then_stop_for_fresh_approval`),
+    currentState.includes(`v2_07_action: validate_attempt26_finalize_transport_repair_candidate_provider_free_then_stop_for_fresh_approval`) ||
+    currentState.includes(`v2_07_action: execute_exact_attempt26_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -366,7 +367,8 @@ assert(
     recommendedTask.includes("Attempt25 startup-terminal-inventory candidate") ||
     recommendedTask.includes("Attempt25 startup-terminal-inventory proposal") ||
     recommendedTask.includes("Attempt25 output-finalization failure") ||
-    recommendedTask.includes("Attempt26 FINALIZE transport repair candidate"),
+    recommendedTask.includes("Attempt26 FINALIZE transport repair candidate") ||
+    recommendedTask.includes("Execute and qualify exact Attempt26"),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
@@ -379,7 +381,8 @@ assert(
     recommendedTask.includes("current_goal_authority: approved_attempt24_proposal_sha256_be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137") ||
     recommendedTask.includes("current_goal_authority: approved_attempt25_proposal_sha256_c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946") ||
     recommendedTask.includes("current_goal_authority: none_attempt25_consumed") ||
-    recommendedTask.includes("current_goal_authority: none_attempt26_pending_fresh_approval"),
+    recommendedTask.includes("current_goal_authority: none_attempt26_pending_fresh_approval") ||
+    recommendedTask.includes("current_goal_authority: exact_attempt26_authority_recorded"),
   "state_recommended_authority",
 );
 assert(
@@ -399,7 +402,8 @@ assert(
     auditEvidence.includes("v2_07_current_approved_authority: null") ||
     auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json") ||
     auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json") ||
-    auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json"),
+    auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json") ||
+    auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json"),
   "state_audit_authority",
 );
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_attempt17_closed_authority");

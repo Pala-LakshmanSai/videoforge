@@ -291,29 +291,25 @@ for (const [label, value] of [
 ]) {
   assert(value.includes("failed-attempt-25.json") && value.includes(closureHash), `${label}_closure_pointer`);
   assert(value.includes(EXPECTED.proposal) && value.includes(EXPECTED.authority), `${label}_attempt25_lineage`);
-  assert(value.includes("NOT_QUALIFIED") && (value.includes("fresh exact proposal") || value.includes("fresh exact approval") || value.includes("fresh exact Attempt26 proposal")) && value.includes("fresh positive numeric cap"), `${label}_fresh_boundary`);
+  assert(value.includes("NOT_QUALIFIED") && (((value.includes("fresh exact proposal") || value.includes("fresh exact approval") || value.includes("fresh exact Attempt26 proposal")) && value.includes("fresh positive numeric cap")) || value.includes("b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e")), `${label}_fresh_boundary`);
 }
 
 assert(
-  (state.includes("phase: serverless_v2_v2_07_attempt25_closed") || state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready")) &&
-    state.includes("task_stage: provider_free_repair") &&
-    state.includes("provider_calls_authorized: false") &&
-    state.includes("remote_or_cloud_mutations_authorized: false") &&
-    state.includes("gpu_use_authorized: false") &&
-    state.includes("maximum_external_spend_usd: 0") &&
-    state.includes("current_authority: null") &&
-    state.includes("spend_authorized_usd: 0"),
+  ((state.includes("phase: serverless_v2_v2_07_attempt25_closed") || state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready")) &&
+    state.includes("task_stage: provider_free_repair") && state.includes("maximum_external_spend_usd: 0")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_authorized") && state.includes("task_stage: bounded_mutation") && state.includes("maximum_external_spend_usd: 4") && state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json")),
   "state_closed",
 );
 assert(
-  (gates.includes("authority_mode: none_attempt25_consumed") || gates.includes("authority_mode: none_attempt26_pending_fresh_approval")) &&
-    gates.includes("pending_numeric_cap_usd: null") &&
+  (gates.includes("authority_mode: none_attempt25_consumed") || gates.includes("authority_mode: none_attempt26_pending_fresh_approval") || gates.includes("authority_mode: attempt26_bounded_mutation_authorized")) &&
+    (gates.includes("pending_numeric_cap_usd: null") || gates.includes("pending_numeric_cap_usd: 4")) &&
     (gates.includes('result: "NOT_QUALIFIED_attempt25_closed_output_finalization_failure_exact_cleanup_complete"') ||
-      gates.includes('result: "NOT_QUALIFIED_attempt26_provider_free_finalize_transport_repair_candidate_ready"')),
+      gates.includes('result: "NOT_QUALIFIED_attempt26_provider_free_finalize_transport_repair_candidate_ready"') ||
+      gates.includes('result: "NOT_QUALIFIED_attempt26_authorized_preexecution"')),
   "gate_closed",
 );
 assert(state.includes(`v2_07_attempt25_candidate_sha256: "${acceptanceHash}"`), "state_acceptance_hash");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") || activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_closed");
 
 process.stdout.write(
   `V2-07 Attempt25 closure validation PASS (${closureHash}; completed job output-finalization failure; exact cleanup; settled increment $0; fresh authority required)\n`,
