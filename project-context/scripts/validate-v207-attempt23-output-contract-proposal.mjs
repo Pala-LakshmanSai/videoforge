@@ -195,7 +195,10 @@ const candidateNames = await readdir(candidate);
 assert(candidateNames.includes("approved-authority.json"), "authority_record_present");
 assert(
   (state.includes("phase: serverless_v2_v2_07_attempt23_authorized") && state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4")) ||
-    (state.includes("phase: serverless_v2_v2_07_attempt23_closed") && state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0")),
+    ((state.includes("phase: serverless_v2_v2_07_attempt23_closed") ||
+      state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_pending")) &&
+      state.includes("provider_calls_authorized: false") &&
+      state.includes("maximum_external_spend_usd: 0")),
   "state_authorized",
 );
 assert(state.includes("2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json") && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control), "state_candidate_pointer");
@@ -210,7 +213,9 @@ assert(
 );
 assert(
   (gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json\"") && gates.includes("pending_numeric_cap_usd: 4") && gates.includes("attempt23_bounded_mutation_authorized")) ||
-    (gates.includes("closed_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json\"") && gates.includes("pending_numeric_cap_usd: null") && gates.includes("none_attempt23_consumed")),
+    (gates.includes("closed_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json\"") &&
+      gates.includes("pending_numeric_cap_usd: null") &&
+      (gates.includes("none_attempt23_consumed") || gates.includes("none_attempt24_pending_provider_free_candidate"))),
   "gate_authority",
 );
 assert(task.includes("Attempt23 output-contract diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority), "task_authority_pointer");
