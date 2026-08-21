@@ -1274,6 +1274,120 @@ describe("RunPod scale-zero control", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("accepts GET readback that omits provider-optional compute and data-center fields", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/templates/template_01/update") {
+        const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        return response({ id: "template_01", env: body.env });
+      }
+      expect(path).toBe("/endpoints/endpoint_01");
+      if (init?.method === "PATCH") return response({ id: "endpoint_01" });
+      return response({
+        id: "endpoint_01",
+        templateId: "template_01",
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        allowedCudaVersions: ["13.0"],
+        minCudaVersion: "13.0",
+        flashboot: true,
+        networkVolumeId: "volume_01",
+        idleTimeout: 5,
+        executionTimeoutMs: 2_400_000,
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+        env: {
+          LOG_LEVEL: "INFO",
+          RUNPOD_INIT_TIMEOUT: "800",
+          VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: hashRunPodV207EndpointIdentity("endpoint_01"),
+        },
+      });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.bindV207EndpointIdentity(
+        "endpoint_01",
+        "template_01",
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        {},
+        guard,
+      ),
+    ).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("rejects explicit GET drift in provider-optional compute and data-center fields", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/templates/template_01/update") {
+        const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        return response({ id: "template_01", env: body.env });
+      }
+      if (init?.method === "PATCH") return response({ id: "endpoint_01" });
+      return response({
+        id: "endpoint_01",
+        templateId: "template_01",
+        computeType: "CPU",
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+        allowedCudaVersions: ["13.0"],
+        minCudaVersion: "13.0",
+        flashboot: true,
+        networkVolumeId: "volume_01",
+        dataCenterIds: ["US-KS-2"],
+        idleTimeout: 5,
+        executionTimeoutMs: 2_400_000,
+        scalerType: "REQUEST_COUNT",
+        scalerValue: 1,
+        env: {
+          LOG_LEVEL: "INFO",
+          RUNPOD_INIT_TIMEOUT: "800",
+          VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: hashRunPodV207EndpointIdentity("endpoint_01"),
+        },
+      });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.bindV207EndpointIdentity(
+        "endpoint_01",
+        "template_01",
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        {},
+        guard,
+      ),
+    ).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED");
+  });
+
   it("rejects endpoint readback environment drift after an exact endpoint PATCH", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);

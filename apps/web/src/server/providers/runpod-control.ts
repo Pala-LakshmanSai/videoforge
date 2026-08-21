@@ -321,7 +321,7 @@ const v207EndpointConfigMatches = (
   return (
     value?.id === expected.endpointId &&
     value.templateId === expected.templateId &&
-    value.computeType === "GPU" &&
+    optionalExactString(value.computeType, "GPU") &&
     value.workersMin === expected.policy.workersMin &&
     value.workersMax === expected.policy.workersMax &&
     value.gpuCount === expected.policy.gpuCount &&
@@ -330,7 +330,7 @@ const v207EndpointConfigMatches = (
     value.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
     value.flashboot === V207_RUNPOD_FLASHBOOT &&
     volumeBindingMatches &&
-    exactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) &&
+    optionalExactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) &&
     value.idleTimeout === expected.policy.idleTimeout &&
     value.executionTimeoutMs === expected.policy.executionTimeoutMs &&
     value.scalerType === V207_RUNPOD_SCALER &&

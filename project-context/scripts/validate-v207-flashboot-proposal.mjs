@@ -226,8 +226,8 @@ assert(
   "activation_current_successor_proposal",
 );
 assert(
-  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
-  "activation_current_authorized",
+  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+  "activation_current_closed",
 );
 
 for (const [label, file] of [
@@ -247,11 +247,11 @@ assert(
   text(files.currentState).includes(`v2_07_closed_flashboot_authority_sha256: "${expected.authority}"`),
   "current_state_historical_authority_path",
 );
-assert(text(files.currentState).includes(expected.currentAuthority), "current_state_current_authority");
-assert(text(files.currentState).includes("maximum_external_spend_usd: 4"), "current_state_current_cap");
-assert(text(files.currentState).includes("task_stage: bounded_mutation"), "current_state_task_stage");
-assert(text(files.gates).includes("failed-attempt-18.json"), "gates_latest_attempt");
-assert(text(files.gates).includes("partial_patch_acknowledgement_proposal"), "gates_current_proposal");
+assert(text(files.currentState).includes("v2_07_current_approved_authority: null"), "current_state_no_current_authority");
+assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_no_current_cap");
+assert(text(files.currentState).includes("task_stage: provider_free_repair"), "current_state_task_stage");
+assert(text(files.gates).includes("failed-attempt-19.json"), "gates_latest_attempt");
+assert(text(files.gates).includes("attempt19_closed"), "gates_current_boundary");
 
 process.stdout.write(
   `V2-07 historical FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,

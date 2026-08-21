@@ -1,16 +1,13 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 is active but NOT_QUALIFIED after
-Attempt 18 failed before GET readback or dispatch because the endpoint PATCH response did not match
-the complete pinned configuration. Exact cleanup and three stable reads prove zero RunPod
-compute/resources, both intended volumes retained, and USD 0 Attempt 18 spend. Proposal
-`sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be`
-and its USD 4 authority are closed. Provider-free repair `e09a2d0` safely accepts only an exact-ID,
-non-conflicting partial PATCH acknowledgement and still requires complete exact GET readback.
-Fresh proposal `sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde`
-is approved with FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cumulative cap under authority
-`sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2`.
-Provider execution is pending; V2-08 is unauthorized.
+Attempt 19 passed the exact-ID PATCH acknowledgement and failed the required complete GET readback
+before dispatch. Exact cleanup and three stable reads prove zero RunPod disposable resources, both
+intended volumes retained, and USD 0 Attempt 19 spend. Proposal
+`sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde`
+and authority `sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2`
+are consumed and closed. The signer is absent, the Worker is restored, and 16/16 disabled-route
+probes passed. Provider-free diagnosis is active; V2-08 is unauthorized.
 Context schema: `2.0`
 Last updated: `2026-08-21`
 
@@ -258,10 +255,10 @@ proposal `sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715b
 and its USD 4 authority cannot be reused. Provider-free control now accepts only an exact-ID,
 non-conflicting partial PATCH acknowledgement while preserving complete exact GET readback. Fresh
 proposal `sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde`
-is approved under fresh USD 4 authority
-`sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2`;
-image republication, volume mutation, fallback, public sample publication, and V2-08 remain
-forbidden. The ordered
+and its USD 4 authority are consumed after Attempt 19 failed complete GET readback before dispatch.
+Exact cleanup restored zero disposable resources, both retained volumes, unchanged billing, signer
+absence, Worker version, and the disabled route. Image republication, volume mutation, fallback,
+public sample publication, and V2-08 remain forbidden. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
 the working tree.

@@ -115,8 +115,8 @@ gates:
     blocks: mage_serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
-    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-18.json"
-    result: "NOT_QUALIFIED_partial_patch_acknowledgement_proposal_sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde_approved_flashboot_true_low_eu_ro_1_fresh_cap_4_pre_execution_authority_sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2"
+    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-19.json"
+    result: "NOT_QUALIFIED_attempt19_closed_zero_spend_zero_jobs_exact_cleanup_get_readback_field_unproven_provider_free_diagnosis"
 
   GATE_SERVERLESS_SOULX_001:
     status: open

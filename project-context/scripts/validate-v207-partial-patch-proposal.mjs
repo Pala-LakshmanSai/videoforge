@@ -26,9 +26,11 @@ const assert = (condition, label) => {
   if (!condition) throw new Error(`V207_PARTIAL_PATCH_PROPOSAL_INVALID:${label}`);
 };
 
-const [proposalBytes, authorityBytes, state, gate, task, activation, control, controlTest, reconciliation, qualification] = await Promise.all([
+const [proposalBytes, authorityBytes, attempt19Bytes, publicationBytes, state, gate, task, activation, control, controlTest, reconciliation, qualification] = await Promise.all([
   readFile(proposalPath),
   readFile(authorityPath),
+  readFile(resolve(root, "project-context/evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-19.json")),
+  readFile(resolve(root, "project-context/evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json")),
   readFile(resolve(root, "project-context/CURRENT_STATE.yaml"), "utf8"),
   readFile(resolve(root, "project-context/GATES.yaml"), "utf8"),
   readFile(resolve(root, "project-context/tasks/VF-10-07.md"), "utf8"),
@@ -40,6 +42,7 @@ const [proposalBytes, authorityBytes, state, gate, task, activation, control, co
 ]);
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
 const authority = JSON.parse(authorityBytes.toString("utf8"));
+const attempt19 = JSON.parse(attempt19Bytes.toString("utf8"));
 
 assert(hash(proposalBytes) === expectedProposalHash, "proposal_hash");
 assert(proposal.checkpoint === "V2-07" && proposal.task_id === "VF-10-07", "scope");
@@ -88,6 +91,12 @@ assert(attempt.attempt === 18 && attempt.billing?.attempt_increment_usd_settled 
 assert(attempt.runpod_cleanup?.final_disposable_resources_absent === true, "attempt18_cleanup");
 assert(authority.lineage?.failed_attempt_evidence_sha256 === proposal.lineage.failed_attempt_evidence_sha256, "authority_attempt18");
 assert(authority.lineage?.image_publication_state === "ALREADY_PUBLISHED_EXACT_DIGEST_READBACK_PASS_NO_REPUBLICATION", "authority_publication_state");
+assert(authority.lineage?.image_publication_evidence_sha256 !== hash(publicationBytes), "authority_publication_hash_mismatch_preserved");
+assert(attempt19.attempt === 19 && attempt19.authority_status === "CLOSED_EXACT_ATTEMPT_CONSUMED_DO_NOT_REUSE", "attempt19_closed");
+assert(attempt19.failure?.code === "RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED", "attempt19_failure");
+assert(attempt19.runpod_cleanup?.final_disposable_resources_absent === true, "attempt19_cleanup");
+assert(attempt19.billing?.attempt_increment_usd_settled === 0, "attempt19_zero_spend");
+assert(attempt19.cloudflare_cleanup?.worker_version_restored === true, "attempt19_worker_restored");
 
 assert(Array.isArray(proposal.staged_endpoint_configs) && proposal.staged_endpoint_configs.length === 2, "two_configs");
 for (const [index, config] of proposal.staged_endpoint_configs.entries()) {
@@ -146,12 +155,13 @@ assert(qualification.includes("maximumCumulativeFiniteSpendUsd: finiteCapUsd"), 
 
 assert(state.includes(expectedProposalHash), "state_proposal");
 assert(state.includes(expectedAuthorityHash), "state_authority");
-assert(state.includes("task_stage: bounded_mutation"), "state_stage");
-assert(state.includes("provider_calls_authorized: true"), "state_provider_authority");
-assert(state.includes("maximum_external_spend_usd: 4"), "state_cap");
-assert(gate.includes(expectedProposalHash.slice(7)), "gate_proposal");
+assert(state.includes("failed-attempt-19.json"), "state_attempt19");
+assert(state.includes("task_stage: provider_free_repair"), "state_stage");
+assert(state.includes("provider_calls_authorized: false"), "state_provider_closed");
+assert(state.includes("maximum_external_spend_usd: 0"), "state_cap_closed");
+assert(gate.includes("failed-attempt-19.json") && gate.includes("attempt19_closed"), "gate_attempt19");
 assert(task.includes(expectedProposalHash), "task_proposal");
 assert(activation.includes(expectedProposalHash), "activation_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_cap");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
 
 process.stdout.write(`V2-07 partial PATCH acknowledgement proposal validation PASS (${expectedProposalHash})\n`);
