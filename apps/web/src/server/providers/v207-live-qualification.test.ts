@@ -27,6 +27,7 @@ const {
   isAllowedV207GhcrBlobRedirect,
   redactV207LiveEvidence,
   redactV207ProviderJobError,
+  routePort,
   V207OutputContractError,
 } = await import("./v207-live-qualification");
 const { RunPodControlError } = await import("./runpod-control");
@@ -60,6 +61,72 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain('operation: "FINALIZE"');
     expect(source).toContain('schema_version !== "artifact-commit-receipt/v3"');
     expect(source).toContain("MAGE_COMMIT_RECEIPT_REPLAY_INVALID");
+    expect(source).toContain("V207_OUTPUT_PORT_FINALIZE_TRANSPORT");
+    expect(source).toContain("V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID");
+    expect(source).toContain("V207_OUTPUT_PORT_FINALIZE_MAX_ATTEMPTS");
+  });
+
+  it("retries only idempotent FINALIZE transport loss and accepts the later receipt", async () => {
+    let attempts = 0;
+    const fetchImpl: typeof fetch = async () => {
+      attempts += 1;
+      if (attempts < 3) throw new Error("simulated transport timeout");
+      return new Response(
+        JSON.stringify({
+          schema_version: "videoforge-v207-generated-output-finalization/v1",
+          receipt: { receipt_sha256: `sha256:${"a".repeat(64)}` },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const value = await routePort(
+      { operation: "FINALIZE", object_key: "exact-object" },
+      "b".repeat(64),
+      { fetchImpl, sleepImpl: async () => undefined },
+    );
+    expect(attempts).toBe(3);
+    expect(value.schema_version).toBe("videoforge-v207-generated-output-finalization/v1");
+  });
+
+  it("surfaces bounded finalization transport and response codes after retry exhaustion", async () => {
+    let transportAttempts = 0;
+    const transportFetch: typeof fetch = async () => {
+      transportAttempts += 1;
+      throw new Error("simulated transport timeout");
+    };
+    await expect(
+      routePort({ operation: "FINALIZE", object_key: "exact-object" }, "b".repeat(64), {
+        fetchImpl: transportFetch,
+        sleepImpl: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_OUTPUT_PORT_FINALIZE_TRANSPORT");
+    expect(transportAttempts).toBe(3);
+
+    let responseAttempts = 0;
+    const responseFetch: typeof fetch = async () => {
+      responseAttempts += 1;
+      return new Response("not-json", { status: 200 });
+    };
+    await expect(
+      routePort({ operation: "FINALIZE", object_key: "exact-object" }, "b".repeat(64), {
+        fetchImpl: responseFetch,
+        sleepImpl: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID");
+    expect(responseAttempts).toBe(3);
+
+    let putAttempts = 0;
+    const putFetch: typeof fetch = async () => {
+      putAttempts += 1;
+      throw new Error("put transport failure");
+    };
+    await expect(
+      routePort({ operation: "PUT", object_key: "exact-object" }, "b".repeat(64), {
+        fetchImpl: putFetch,
+        sleepImpl: async () => undefined,
+      }),
+    ).rejects.toThrow("put transport failure");
+    expect(putAttempts).toBe(1);
   });
 
   it("requires one exact 32-image 1280x720 PNG batch with full receipts", () => {

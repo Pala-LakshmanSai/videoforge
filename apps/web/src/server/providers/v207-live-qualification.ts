@@ -526,6 +526,18 @@ export function extractV207ProviderJobErrorCode(jobError: unknown, output: unkno
 }
 
 const RESULT_TEMP_PATH = `${RESULT_PATH}.tmp`;
+const V207_OUTPUT_PORT_REQUEST_TIMEOUT_MS = 15_000;
+const V207_OUTPUT_PORT_FINALIZE_TIMEOUT_MS = 30_000;
+const V207_OUTPUT_PORT_FINALIZE_MAX_ATTEMPTS = 3;
+const V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS = 500;
+const V207_OUTPUT_PORT_FINALIZE_TRANSPORT_ERROR = "V207_OUTPUT_PORT_FINALIZE_TRANSPORT" as const;
+const V207_OUTPUT_PORT_FINALIZE_RESPONSE_ERROR =
+  "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID" as const;
+
+export interface V207OutputPortTestOptions {
+  readonly fetchImpl?: typeof fetch;
+  readonly sleepImpl?: (milliseconds: number) => Promise<void>;
+}
 
 async function writeV207EvidenceCheckpoint(value: AnyRecord): Promise<void> {
   const redacted = redactV207LiveEvidence(value);
@@ -546,28 +558,66 @@ const nowIso = (): string => new Date().toISOString();
 const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function routePort(body: AnyRecord, nonce: string): Promise<AnyRecord> {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch(ROUTE, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        connection: "close",
-        "x-videoforge-v207-authority": nonce,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15_000),
-    });
-    const value = (await response.json()) as AnyRecord;
+export async function routePort(
+  body: AnyRecord,
+  nonce: string,
+  options: V207OutputPortTestOptions = {},
+): Promise<AnyRecord> {
+  // FINALIZE is the only retryable POST here: the reservation/callback tuple makes it
+  // idempotent, so a client timeout after the server committed can safely reconcile by replay.
+  const isFinalize = body.operation === "FINALIZE";
+  const maxAttempts = isFinalize ? V207_OUTPUT_PORT_FINALIZE_MAX_ATTEMPTS : 3;
+  const requestTimeoutMs = isFinalize
+    ? V207_OUTPUT_PORT_FINALIZE_TIMEOUT_MS
+    : V207_OUTPUT_PORT_REQUEST_TIMEOUT_MS;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const sleepImpl = options.sleepImpl ?? sleep;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetchImpl(ROUTE, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          connection: "close",
+          "x-videoforge-v207-authority": nonce,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      });
+    } catch (error) {
+      if (!isFinalize || attempt === maxAttempts - 1) {
+        if (isFinalize) throw new Error(V207_OUTPUT_PORT_FINALIZE_TRANSPORT_ERROR);
+        throw error;
+      }
+      await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
+      continue;
+    }
+
+    let value: AnyRecord;
+    try {
+      const parsed: unknown = await response.json();
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("V207_OUTPUT_PORT_RESPONSE_INVALID");
+      }
+      value = parsed as AnyRecord;
+    } catch (error) {
+      if (!isFinalize || attempt === maxAttempts - 1) {
+        if (isFinalize) throw new Error(V207_OUTPUT_PORT_FINALIZE_RESPONSE_ERROR);
+        throw error;
+      }
+      await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
+      continue;
+    }
+
     const signedPort = typeof value.url === "string" && /^https:\/\//u.test(value.url);
     const finalized =
-      body.operation === "FINALIZE" &&
-      value.schema_version === "videoforge-v207-generated-output-finalization/v1";
+      isFinalize && value.schema_version === "videoforge-v207-generated-output-finalization/v1";
     if (response.ok && (signedPort || finalized)) return value;
-    if (response.status !== 503 || attempt === 2) {
+    if (response.status !== 503 || attempt === maxAttempts - 1) {
       throw new Error(`V207_OUTPUT_PORT_${response.status}`);
     }
-    await sleep(500 * (attempt + 1));
+    await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
   }
   throw new Error("V207_OUTPUT_PORT_UNREACHABLE");
 }
