@@ -7,6 +7,7 @@ import {
   RunPodServerlessJobClient,
   assertRunPodEndpointPolicy,
   assertRunPodV207ConcurrentReaderPolicy,
+  type RunPodV207EndpointReadbackMismatchCategory,
   V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
   V207_TIMEOUT_TTL_MS,
 } from "./runpod-control";
@@ -18,6 +19,74 @@ const health = (idle = 0) => ({
   workers: { idle, running: 0, initializing: 0, ready: 0, throttled: 0, unhealthy: 0 },
   jobs: { inQueue: 0, inProgress: 0 },
 });
+
+const assertV207ReadbackCategory = async (
+  mutate: (endpoint: Record<string, unknown>) => Record<string, unknown>,
+  category: RunPodV207EndpointReadbackMismatchCategory,
+): Promise<void> => {
+  const guard = new RunPodDrainGuard();
+  guard.confirmZero(0, 0);
+  const endpointHash = hashRunPodV207EndpointIdentity("endpoint_01");
+  const endpoint: Record<string, unknown> = {
+    id: "endpoint_01",
+    templateId: "template_01",
+    computeType: "GPU",
+    workersMin: 0,
+    workersMax: 1,
+    gpuCount: 1,
+    gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+    allowedCudaVersions: ["13.0"],
+    minCudaVersion: "13.0",
+    flashboot: true,
+    networkVolumeId: "volume_01",
+    networkVolumeIds: ["volume_01"],
+    dataCenterIds: ["EU-RO-1"],
+    idleTimeout: 5,
+    executionTimeoutMs: 2_400_000,
+    scalerType: "REQUEST_COUNT",
+    scalerValue: 1,
+    env: {
+      LOG_LEVEL: "INFO",
+      RUNPOD_INIT_TIMEOUT: "800",
+      VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointHash,
+    },
+  };
+  const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname;
+    if (path === "/templates/template_01/update") {
+      const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+      return response({ id: "template_01", env: body.env });
+    }
+    expect(path).toBe("/endpoints/endpoint_01");
+    if (init?.method === "PATCH") return response({ id: "endpoint_01" });
+    return response(mutate({ ...endpoint }));
+  });
+  const client = new RunPodControlClient({
+    apiKey: key,
+    fetch,
+    baseUrl: "http://127.0.0.1:43123",
+  });
+
+  await expect(
+    client.bindV207EndpointIdentity(
+      "endpoint_01",
+      "template_01",
+      {
+        workersMin: 0,
+        workersMax: 1,
+        gpuCount: 1,
+        idleTimeout: 5,
+        executionTimeoutMs: 2_400_000,
+      },
+      { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+      {},
+      guard,
+    ),
+  ).rejects.toMatchObject({
+    code: "RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED",
+    category,
+  });
+};
 
 describe("RunPod scale-zero control", () => {
   it("accepts only the bounded zero-idle endpoint policy", () => {
@@ -1089,6 +1158,106 @@ describe("RunPod scale-zero control", () => {
     expect(patchBody).not.toHaveProperty("env");
     expect(patchBody).not.toHaveProperty("computeType");
     expect(new URL(String(fetch.mock.calls[2]?.[0])).pathname).toBe("/endpoints/endpoint_01");
+  });
+
+  it.each([
+    [
+      "environment missing",
+      "environment",
+      (endpoint: Record<string, unknown>) => {
+        const next = { ...endpoint };
+        delete next.env;
+        return next;
+      },
+    ],
+    [
+      "environment extra",
+      "environment",
+      (endpoint: Record<string, unknown>) => ({
+        ...endpoint,
+        env: { ...(endpoint.env as Record<string, string>), EXTRA_BINDING: "exact" },
+      }),
+    ],
+    [
+      "environment value drift",
+      "environment",
+      (endpoint: Record<string, unknown>) => ({
+        ...endpoint,
+        env: { ...(endpoint.env as Record<string, string>), LOG_LEVEL: "DEBUG" },
+      }),
+    ],
+    [
+      "FlashBoot omitted",
+      "flashboot",
+      (endpoint: Record<string, unknown>) => {
+        const next = { ...endpoint };
+        delete next.flashboot;
+        return next;
+      },
+    ],
+    [
+      "string region form",
+      "region",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, dataCenterIds: "EU-RO-1" }),
+    ],
+    [
+      "empty CUDA list",
+      "cuda",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, allowedCudaVersions: [] }),
+    ],
+    [
+      "primary volume drift",
+      "volume",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, networkVolumeId: "volume_02" }),
+    ],
+    [
+      "duplicate volume alias drift",
+      "volume",
+      (endpoint: Record<string, unknown>) => ({
+        ...endpoint,
+        networkVolumeIds: ["volume_02"],
+      }),
+    ],
+    [
+      "GPU type drift",
+      "gpu",
+      (endpoint: Record<string, unknown>) => ({
+        ...endpoint,
+        gpuTypeIds: ["NVIDIA L40S"],
+      }),
+    ],
+    [
+      "GPU count drift",
+      "gpu",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, gpuCount: 2 }),
+    ],
+    [
+      "workers policy drift",
+      "workers",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, workersMax: 2 }),
+    ],
+    [
+      "scaler type drift",
+      "scaler",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, scalerType: "QUEUE_DELAY" }),
+    ],
+    [
+      "scaler value drift",
+      "scaler",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, scalerValue: 2 }),
+    ],
+    [
+      "idle timeout drift",
+      "timing",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, idleTimeout: 6 }),
+    ],
+    [
+      "execution timeout drift",
+      "timing",
+      (endpoint: Record<string, unknown>) => ({ ...endpoint, executionTimeoutMs: 2_400_001 }),
+    ],
+  ] as const)("classifies strict GET readback %s safely", async (_label, category, mutate) => {
+    await assertV207ReadbackCategory(mutate, category);
   });
 
   it.each([

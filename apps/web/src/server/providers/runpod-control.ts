@@ -106,6 +106,23 @@ export interface RunPodResourceIdentity {
 }
 
 /**
+ * Redaction-safe categories for the strict post-PATCH endpoint readback.  Categories deliberately
+ * contain no provider values, identifiers, or environment contents; they only tell the caller
+ * which pinned contract family failed.
+ */
+export type RunPodV207EndpointReadbackMismatchCategory =
+  | "identity"
+  | "environment"
+  | "flashboot"
+  | "region"
+  | "cuda"
+  | "volume"
+  | "gpu"
+  | "workers"
+  | "timing"
+  | "scaler";
+
+/**
  * Raw identities are used only during same-process recovery of an ambiguous create mutation.
  * They never enter persisted qualification evidence; ordinary inventory remains redacted.
  */
@@ -121,7 +138,10 @@ export interface RunPodDisposableResourceInventory {
 }
 
 export class RunPodControlError extends Error {
-  constructor(readonly code: string) {
+  constructor(
+    readonly code: string,
+    readonly category?: RunPodV207EndpointReadbackMismatchCategory,
+  ) {
     super(code);
     this.name = "RunPodControlError";
   }
@@ -304,7 +324,7 @@ const exactEnvironmentMatches = (
   );
 };
 
-const v207EndpointConfigMatches = (
+const v207EndpointConfigMismatchCategory = (
   value: JsonRecord | null,
   expected: {
     readonly endpointId: string;
@@ -312,31 +332,71 @@ const v207EndpointConfigMatches = (
     readonly policy: RunPodEndpointPolicy;
     readonly placement: RunPodV207Placement;
   },
-): boolean => {
+): RunPodV207EndpointReadbackMismatchCategory | null => {
+  if (value?.id !== expected.endpointId || value.templateId !== expected.templateId) {
+    return "identity";
+  }
+  if (
+    (value.computeType !== undefined && value.computeType !== "GPU") ||
+    value.gpuCount !== expected.policy.gpuCount ||
+    !exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU])
+  ) {
+    return "gpu";
+  }
+  if (
+    value.workersMin !== expected.policy.workersMin ||
+    value.workersMax !== expected.policy.workersMax
+  ) {
+    return "workers";
+  }
+  if (
+    !exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
+    value.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION
+  ) {
+    return "cuda";
+  }
+  if (value.flashboot !== V207_RUNPOD_FLASHBOOT) {
+    return "flashboot";
+  }
   const networkVolumeIds = value?.networkVolumeIds;
   const volumeBindingMatches =
     value?.networkVolumeId === expected.placement.networkVolumeId &&
     (networkVolumeIds === undefined ||
       exactStringArray(networkVolumeIds, [expected.placement.networkVolumeId]));
-  return (
-    value?.id === expected.endpointId &&
-    value.templateId === expected.templateId &&
-    optionalExactString(value.computeType, "GPU") &&
-    value.workersMin === expected.policy.workersMin &&
-    value.workersMax === expected.policy.workersMax &&
-    value.gpuCount === expected.policy.gpuCount &&
-    exactStringArray(value.gpuTypeIds, [V207_RUNPOD_GPU]) &&
-    exactStringArray(value.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) &&
-    value.minCudaVersion === V207_RUNPOD_MIN_CUDA_VERSION &&
-    value.flashboot === V207_RUNPOD_FLASHBOOT &&
-    volumeBindingMatches &&
-    optionalExactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION]) &&
-    value.idleTimeout === expected.policy.idleTimeout &&
-    value.executionTimeoutMs === expected.policy.executionTimeoutMs &&
-    value.scalerType === V207_RUNPOD_SCALER &&
-    value.scalerValue === V207_RUNPOD_SCALER_VALUE
-  );
+  if (!volumeBindingMatches) return "volume";
+  if (!optionalExactStringArray(value.dataCenterIds, [V207_RUNPOD_REGION])) {
+    return "region";
+  }
+  if (
+    value.idleTimeout !== expected.policy.idleTimeout ||
+    value.executionTimeoutMs !== expected.policy.executionTimeoutMs
+  ) {
+    return "timing";
+  }
+  if (value.scalerType !== V207_RUNPOD_SCALER || value.scalerValue !== V207_RUNPOD_SCALER_VALUE) {
+    return "scaler";
+  }
+  return null;
 };
+
+/**
+ * Classify a strict endpoint GET readback without retaining or exposing provider response data.
+ * The first failing contract family wins deterministically; all categories are bounded literals.
+ */
+export function classifyRunPodV207EndpointReadbackMismatch(
+  value: JsonRecord | null,
+  expected: {
+    readonly endpointId: string;
+    readonly templateId: string;
+    readonly policy: RunPodEndpointPolicy;
+    readonly placement: RunPodV207Placement;
+    readonly environment: Readonly<Record<string, string>>;
+  },
+): RunPodV207EndpointReadbackMismatchCategory | null {
+  const configCategory = v207EndpointConfigMismatchCategory(value, expected);
+  if (configCategory !== null) return configCategory;
+  return exactEnvironmentMatches(value?.env, expected.environment) ? null : "environment";
+}
 
 const matchesIfPresent = (value: unknown, expected: unknown): boolean =>
   value === undefined || value === expected;
@@ -377,19 +437,6 @@ const v207EndpointPatchAcknowledgementMatches = (
   matchesIfPresent(value.scalerType, V207_RUNPOD_SCALER) &&
   matchesIfPresent(value.scalerValue, V207_RUNPOD_SCALER_VALUE) &&
   (value.env === undefined || exactEnvironmentMatches(value.env, expected.environment));
-
-const v207EndpointBindingMatches = (
-  value: JsonRecord | null,
-  expected: {
-    readonly endpointId: string;
-    readonly templateId: string;
-    readonly policy: RunPodEndpointPolicy;
-    readonly placement: RunPodV207Placement;
-    readonly environment: Readonly<Record<string, string>>;
-  },
-): boolean =>
-  v207EndpointConfigMatches(value, expected) &&
-  exactEnvironmentMatches(value?.env, expected.environment);
 
 export class RunPodDrainGuard {
   private state:
@@ -929,8 +976,12 @@ export class RunPodControlClient {
       throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
     }
     const readbackValue = record(await this.read(`/endpoints/${endpointId}`));
-    if (!v207EndpointBindingMatches(readbackValue, expected)) {
-      throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED");
+    const readbackMismatch = classifyRunPodV207EndpointReadbackMismatch(readbackValue, expected);
+    if (readbackMismatch !== null) {
+      throw new RunPodControlError(
+        "RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED",
+        readbackMismatch,
+      );
     }
   }
 
