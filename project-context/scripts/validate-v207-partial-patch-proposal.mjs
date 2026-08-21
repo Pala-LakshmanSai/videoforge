@@ -8,8 +8,11 @@ const candidate = resolve(
   "project-context/evidence/acceptance/VF-10-07/2026-08-21-partial-patch-acknowledgement-candidate",
 );
 const proposalPath = resolve(candidate, "combined-live-proposal.json");
+const authorityPath = resolve(candidate, "approved-authority.json");
 const expectedProposalHash =
   "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde";
+const expectedAuthorityHash =
+  "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2";
 const expectedControlCommit = "9331845d529fd54a8ec3afa5e2406e7c1ebb77bc";
 const expectedImage =
   "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5";
@@ -23,8 +26,9 @@ const assert = (condition, label) => {
   if (!condition) throw new Error(`V207_PARTIAL_PATCH_PROPOSAL_INVALID:${label}`);
 };
 
-const [proposalBytes, state, gate, task, activation, control, controlTest, reconciliation, qualification] = await Promise.all([
+const [proposalBytes, authorityBytes, state, gate, task, activation, control, controlTest, reconciliation, qualification] = await Promise.all([
   readFile(proposalPath),
+  readFile(authorityPath),
   readFile(resolve(root, "project-context/CURRENT_STATE.yaml"), "utf8"),
   readFile(resolve(root, "project-context/GATES.yaml"), "utf8"),
   readFile(resolve(root, "project-context/tasks/VF-10-07.md"), "utf8"),
@@ -35,12 +39,21 @@ const [proposalBytes, state, gate, task, activation, control, controlTest, recon
   readFile(resolve(root, "apps/web/src/server/providers/v207-live-qualification.ts"), "utf8"),
 ]);
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
+const authority = JSON.parse(authorityBytes.toString("utf8"));
 
 assert(hash(proposalBytes) === expectedProposalHash, "proposal_hash");
 assert(proposal.checkpoint === "V2-07" && proposal.task_id === "VF-10-07", "scope");
 assert(proposal.user_approval?.maximum_cumulative_finite_spend_usd === null, "cap_null");
 assert(proposal.user_approval?.fresh_numeric_cap_required === true, "fresh_cap_required");
 assert(proposal.user_approval?.exact_proposal_approved === false, "approval_pending");
+assert(hash(authorityBytes) === expectedAuthorityHash, "authority_hash");
+assert(authority.proposal?.sha256 === expectedProposalHash, "authority_proposal");
+assert(authority.approval?.exact_proposal_approved === true, "authority_approved");
+assert(authority.approval?.flashboot_true_accepted === true, "authority_flashboot");
+assert(authority.approval?.low_eu_ro_1_availability_approved === true, "authority_low_availability");
+assert(authority.approval?.maximum_cumulative_finite_spend_usd === 4, "authority_cap");
+assert(authority.approval?.fresh_numeric_cap === true, "authority_fresh_cap");
+assert(authority.approval?.historical_cap_reused === false, "authority_no_cap_reuse");
 assert(proposal.lineage?.control_source_commit === expectedControlCommit, "control_commit");
 assert(
   proposal.lineage?.model ===
@@ -73,6 +86,8 @@ assert(hash(attemptBytes) === proposal.lineage.failed_attempt_evidence_sha256, "
 const attempt = JSON.parse(attemptBytes.toString("utf8"));
 assert(attempt.attempt === 18 && attempt.billing?.attempt_increment_usd_settled === 0, "attempt18");
 assert(attempt.runpod_cleanup?.final_disposable_resources_absent === true, "attempt18_cleanup");
+assert(authority.lineage?.failed_attempt_evidence_sha256 === proposal.lineage.failed_attempt_evidence_sha256, "authority_attempt18");
+assert(authority.lineage?.image_publication_state === "ALREADY_PUBLISHED_EXACT_DIGEST_READBACK_PASS_NO_REPUBLICATION", "authority_publication_state");
 
 assert(Array.isArray(proposal.staged_endpoint_configs) && proposal.staged_endpoint_configs.length === 2, "two_configs");
 for (const [index, config] of proposal.staged_endpoint_configs.entries()) {
@@ -95,6 +110,17 @@ for (const [index, config] of proposal.staged_endpoint_configs.entries()) {
 }
 assert(proposal.staged_endpoint_configs[0].workers_max === 1, "max_one");
 assert(proposal.staged_endpoint_configs[1].workers_max === 2, "max_two");
+assert(authority.lineage?.control_source_commit === proposal.lineage.control_source_commit, "authority_control_commit");
+assert(authority.lineage?.initial_config_sha256 === proposal.staged_endpoint_configs[0].definition_sha256, "authority_max1");
+assert(authority.lineage?.concurrent_reader_config_sha256 === proposal.staged_endpoint_configs[1].definition_sha256, "authority_max2");
+assert(JSON.stringify(authority.authorized_operations) === JSON.stringify(proposal.proposed_operations_in_order), "authority_operations");
+assert(JSON.stringify(authority.allowed_operations) === JSON.stringify(authority.authorized_operations), "authority_allowed_operations");
+assert(JSON.stringify(authority.forbidden) === JSON.stringify(proposal.forbidden), "authority_forbidden");
+assert(JSON.stringify(authority.stop_conditions) === JSON.stringify(proposal.cleanup_rollback_and_stop_conditions.stop_if), "authority_stop_conditions");
+assert(authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true, "authority_runpod");
+assert(authority.execution_boundary?.cloudflare_mutation_authorized_pending_execution === true, "authority_cloudflare");
+assert(authority.execution_boundary?.gpu_use_authorized_pending_execution === true, "authority_gpu");
+assert(authority.execution_boundary?.v2_08_authorized === false, "authority_no_v208");
 assert(proposal.last_observed_provider_truth?.pods === 0, "zero_pods");
 assert(proposal.last_observed_provider_truth?.endpoints === 0, "zero_endpoints");
 assert(proposal.last_observed_provider_truth?.private_templates === 0, "zero_templates");
@@ -119,11 +145,13 @@ assert(reconciliation.includes("within_approved_cap: true"), "reconciliation_cap
 assert(qualification.includes("maximumCumulativeFiniteSpendUsd: finiteCapUsd"), "qualification_cap_wiring");
 
 assert(state.includes(expectedProposalHash), "state_proposal");
-assert(state.includes("provider_calls_authorized: false"), "state_no_provider");
-assert(state.includes("maximum_external_spend_usd: 0"), "state_zero_cap");
+assert(state.includes(expectedAuthorityHash), "state_authority");
+assert(state.includes("task_stage: bounded_mutation"), "state_stage");
+assert(state.includes("provider_calls_authorized: true"), "state_provider_authority");
+assert(state.includes("maximum_external_spend_usd: 4"), "state_cap");
 assert(gate.includes(expectedProposalHash.slice(7)), "gate_proposal");
 assert(task.includes(expectedProposalHash), "task_proposal");
 assert(activation.includes(expectedProposalHash), "activation_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_cap");
 
 process.stdout.write(`V2-07 partial PATCH acknowledgement proposal validation PASS (${expectedProposalHash})\n`);

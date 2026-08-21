@@ -32,6 +32,8 @@ const expectedAuthorityHash =
   "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c";
 const currentSuccessorProposalHash =
   "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde";
+const currentSuccessorAuthorityHash =
+  "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2";
 const assert = (condition, label) => {
   if (!condition) throw new Error(`V207_PATCH_SCHEMA_PROPOSAL_INVALID:${label}`);
 };
@@ -129,16 +131,17 @@ assert(proposal.rates_cost_and_retention?.serverless_flex_rtx4090_usd_per_gpu_ho
 assert(proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_month_total === 7, "volume_charge");
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v2_08_forbidden");
 assert(
-  state.includes("provider_authority: &v2_07_provider_authority\n  mode: none\n  provider: null\n  cap_usd: 0"),
-  "current_state_closed",
+  state.includes("provider_authority: &v2_07_provider_authority\n  mode: paid\n  provider: runpod+cloudflare_r2\n  cap_usd: 4"),
+  "current_state_successor_authorized",
 );
 assert(state.includes(expectedAuthorityHash), "current_state_historical_authority");
-assert(state.includes("task_stage: provider_free_repair"), "current_state_stage");
-assert(state.includes("provider_calls_authorized: false"), "current_state_provider_boundary");
+assert(state.includes(currentSuccessorAuthorityHash), "current_state_successor_authority");
+assert(state.includes("task_stage: bounded_mutation"), "current_state_stage");
+assert(state.includes("provider_calls_authorized: true"), "current_state_provider_boundary");
 assert(gate.includes("failed-attempt-18.json"), "gate");
 assert(task.includes(expectedProposalHash), "task");
 assert(activation.includes(currentSuccessorProposalHash), "compiled_successor_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "compiled_authority_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "compiled_successor_authority");
 const bindMethod = control.slice(
   control.indexOf("async bindV207EndpointIdentity("),
   control.indexOf("async createNetworkVolume("),

@@ -39,7 +39,7 @@ describe("V2-07 activation authority", () => {
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
       "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde",
     );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -74,15 +74,23 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed USD 4 authority until a fresh proposal is approved", () => {
-    expect(() =>
+  it("accepts only the exact fresh USD 4 authority", () => {
+    expect(
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toEqual({ image, proposalSha256: V207_PENDING_PROPOSAL_SHA256, capUsd: 4 });
+    expect(() =>
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_FINITE_CAP_USD: "2",
+      }),
+    ).toThrow("V207_FINITE_CAP_MISMATCH");
   });
 
   it("rejects the prior immutable digest even with the pending proposal", () => {

@@ -40,6 +40,8 @@ const expected = {
     "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
   currentProposal:
     "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde",
+  currentAuthority:
+    "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
 };
 const fail = (label) => {
@@ -224,8 +226,8 @@ assert(
   "activation_current_successor_proposal",
 );
 assert(
-  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
-  "activation_current_closed",
+  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
+  "activation_current_authorized",
 );
 
 for (const [label, file] of [
@@ -245,9 +247,9 @@ assert(
   text(files.currentState).includes(`v2_07_closed_flashboot_authority_sha256: "${expected.authority}"`),
   "current_state_historical_authority_path",
 );
-assert(text(files.currentState).includes("v2_07_current_approved_authority: null"), "current_state_no_current_authority");
-assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_no_current_cap");
-assert(text(files.currentState).includes("task_stage: provider_free_repair"), "current_state_task_stage");
+assert(text(files.currentState).includes(expected.currentAuthority), "current_state_current_authority");
+assert(text(files.currentState).includes("maximum_external_spend_usd: 4"), "current_state_current_cap");
+assert(text(files.currentState).includes("task_stage: bounded_mutation"), "current_state_task_stage");
 assert(text(files.gates).includes("failed-attempt-18.json"), "gates_latest_attempt");
 assert(text(files.gates).includes("partial_patch_acknowledgement_proposal"), "gates_current_proposal");
 
