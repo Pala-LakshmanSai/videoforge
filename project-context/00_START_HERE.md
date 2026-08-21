@@ -2,17 +2,18 @@
 
 Status: V2-06 is complete and independently audited PASS. V2-07 is active but NOT_QUALIFIED after
 Attempt 20 still failed exact endpoint GET identity binding before `/run`. Provider-free Attempt21
-diagnostic persistence is now committed and its exact proposal is pending fresh authority. Exact cleanup and three
+diagnostic persistence is committed and its exact proposal is now approved under fresh bounded authority. Exact cleanup and three
 stable reads prove zero RunPod disposable resources, both intended 50 GB EU-RO-1 volumes retained,
 unchanged cumulative billing USD 0.12480033212341368, and USD 0 Attempt 20 spend. Proposal
 `sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02`
 and authority `sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d`
 are consumed and closed. The Attempt21 proposal is
 `sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4`, bound to control
-`8d62be71b9b10585ea99d0583a4a4267ed9a5a79`, and has null cap pending fresh exact approval. The signer is absent, the Worker is restored, and 16/16 disabled-route
-probes passed. The exact mismatched GET field remains unproven; provider-free diagnosis is next.
-No provider mutation, GPU use, spend, or V2-08 work is authorized. Any retry requires a new exact
-proposal approval and fresh positive numeric cap.
+`8d62be71b9b10585ea99d0583a4a4267ed9a5a79`, and is approved under authority
+`sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec` with FlashBoot=true,
+LOW EU-RO-1 availability, and a fresh maximum cumulative finite spend of `$4`. The signer is absent,
+the Worker is restored, and 16/16 disabled-route probes passed. The exact mismatched GET field remains
+unproven; execution is bounded to this proposal and stops before dispatch on mismatch. V2-08 remains forbidden.
 
 Attempt21 persists only one of ten bounded redaction-safe `error_category` values (`identity`,
 `environment`, `flashboot`, `region`, `cuda`, `volume`, `gpu`, `workers`, `timing`, or `scaler`)
@@ -20,7 +21,7 @@ and stops before any `/run` dispatch if GET still mismatches. If GET passes, the
 continues complete cold/warm batches, durable receipts, duplicate/cancel/timeout, two-reader,
 volume-integrity, timing, cost, and drain proof. Existing Mage and SoulX volume billing remains
 `$7/month` separately; the finite retry estimate is `$0.90–$1.65` incremental and
-`$1.024800332–$1.774800332` cumulative, with a fresh numeric cap still required.
+`$1.024800332–$1.774800332` cumulative, under the approved fresh `$4` cap.
 
 Canonical candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json`.
 Attempt20 closure evidence: `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-20.json`.
