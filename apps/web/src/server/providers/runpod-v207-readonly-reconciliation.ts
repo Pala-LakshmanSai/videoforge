@@ -91,6 +91,8 @@ export interface V207ReadonlyReconciliationResult {
     readonly baseline_endpoint_spend_usd: number;
     readonly final_endpoint_spend_usd: number;
     readonly incremental_spend_usd: number;
+    readonly maximum_cumulative_finite_spend_usd: number;
+    readonly within_approved_cap: true;
     readonly settlement: "THREE_STABLE_READS";
   };
 }
@@ -98,6 +100,7 @@ export interface V207ReadonlyReconciliationResult {
 export async function reconcileV207Readonly(input: {
   readonly accountIdHash: string;
   readonly baselineEndpointSpendUsd: number;
+  readonly maximumCumulativeFiniteSpendUsd: number;
   readonly inventory: () => Promise<RunPodInventory>;
   readonly billingAmount: () => Promise<number>;
   readonly wait?: (milliseconds: number) => Promise<void>;
@@ -107,6 +110,13 @@ export async function reconcileV207Readonly(input: {
   }
   if (!Number.isFinite(input.baselineEndpointSpendUsd) || input.baselineEndpointSpendUsd < 0) {
     throw new Error("V207_RECONCILIATION_BASELINE_INVALID");
+  }
+  if (
+    !Number.isFinite(input.maximumCumulativeFiniteSpendUsd) ||
+    input.maximumCumulativeFiniteSpendUsd <= 0 ||
+    input.baselineEndpointSpendUsd > input.maximumCumulativeFiniteSpendUsd
+  ) {
+    throw new Error("V207_RECONCILIATION_FINITE_CAP_INVALID");
   }
   const wait = input.wait ?? sleep;
   let finalInventory: RunPodInventory | null = null;
@@ -127,6 +137,9 @@ export async function reconcileV207Readonly(input: {
     if (read < 2) await wait(10_000);
   }
   if (finalInventory === null) throw new Error("V207_RECONCILIATION_INVENTORY_MISSING");
+  if (finalBilling > input.maximumCumulativeFiniteSpendUsd) {
+    throw new Error("V207_RECONCILIATION_FINITE_CAP_EXCEEDED");
+  }
   const result: V207ReadonlyReconciliationResult = {
     schema_version: "videoforge.v2-07-readonly-reconciliation/v2",
     checked_at: finalInventory.checkedAt,
@@ -145,6 +158,8 @@ export async function reconcileV207Readonly(input: {
       baseline_endpoint_spend_usd: input.baselineEndpointSpendUsd,
       final_endpoint_spend_usd: finalBilling,
       incremental_spend_usd: Math.max(0, finalBilling - input.baselineEndpointSpendUsd),
+      maximum_cumulative_finite_spend_usd: input.maximumCumulativeFiniteSpendUsd,
+      within_approved_cap: true,
       settlement: "THREE_STABLE_READS",
     },
   };
@@ -153,6 +168,7 @@ export async function reconcileV207Readonly(input: {
 
 export async function runConfiguredV207ReadonlyReconciliation(input: {
   readonly baselineEndpointSpendUsd: number;
+  readonly maximumCumulativeFiniteSpendUsd: number;
 }): Promise<V207ReadonlyReconciliationResult> {
   const apiKey = await loadSujalRunPodApiKeyFromKeychain();
   const account = await assertSujalRunPodAccount(apiKey);
@@ -160,6 +176,7 @@ export async function runConfiguredV207ReadonlyReconciliation(input: {
   return reconcileV207Readonly({
     accountIdHash: account.accountIdHash,
     baselineEndpointSpendUsd: input.baselineEndpointSpendUsd,
+    maximumCumulativeFiniteSpendUsd: input.maximumCumulativeFiniteSpendUsd,
     inventory: () => control.inventory(),
     billingAmount: () => endpointBillingAmount(apiKey, globalThis.fetch),
   });
@@ -170,7 +187,11 @@ if (
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
   const baseline = Number(process.env.V207_RECONCILIATION_BASELINE_ENDPOINT_SPEND_USD);
-  void runConfiguredV207ReadonlyReconciliation({ baselineEndpointSpendUsd: baseline })
+  const cap = Number(process.env.V207_FINITE_CAP_USD);
+  void runConfiguredV207ReadonlyReconciliation({
+    baselineEndpointSpendUsd: baseline,
+    maximumCumulativeFiniteSpendUsd: cap,
+  })
     .then((result) => process.stdout.write(`${JSON.stringify(result)}\n`))
     .catch((error: unknown) => {
       const code = error instanceof Error ? error.message : "V207_RECONCILIATION_FAILED";

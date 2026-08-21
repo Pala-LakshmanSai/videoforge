@@ -1593,6 +1593,7 @@ async function main(): Promise<void> {
         const reconciliation = await reconcileV207Readonly({
           accountIdHash: account.accountIdHash,
           baselineEndpointSpendUsd: baseline,
+          maximumCumulativeFiniteSpendUsd: finiteCapUsd,
           inventory: () => control.inventory(),
           billingAmount: () => billingAmount(apiKey),
         });
