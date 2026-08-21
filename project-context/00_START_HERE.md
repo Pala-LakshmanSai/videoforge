@@ -1,30 +1,21 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 is active but NOT_QUALIFIED after
-Attempt 20 still failed exact endpoint GET identity binding before `/run`. Provider-free Attempt21
-diagnostic persistence is committed and its exact proposal is now approved under fresh bounded authority. Exact cleanup and three
-stable reads prove zero RunPod disposable resources, both intended 50 GB EU-RO-1 volumes retained,
-unchanged cumulative billing USD 0.12480033212341368, and USD 0 Attempt 20 spend. Proposal
-`sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02`
-and authority `sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d`
-are consumed and closed. The Attempt21 proposal is
-`sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4`, bound to control
-`8d62be71b9b10585ea99d0583a4a4267ed9a5a79`, and is approved under authority
-`sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec` with FlashBoot=true,
-LOW EU-RO-1 availability, and a fresh maximum cumulative finite spend of `$4`. The signer is absent,
-the Worker is restored, and 16/16 disabled-route probes passed. The exact mismatched GET field remains
-unproven; execution is bounded to this proposal and stops before dispatch on mismatch. V2-08 remains forbidden.
-
-Attempt21 persists only one of ten bounded redaction-safe `error_category` values (`identity`,
-`environment`, `flashboot`, `region`, `cuda`, `volume`, `gpu`, `workers`, `timing`, or `scaler`)
-and stops before any `/run` dispatch if GET still mismatches. If GET passes, the same proposal
-continues complete cold/warm batches, durable receipts, duplicate/cancel/timeout, two-reader,
-volume-integrity, timing, cost, and drain proof. Existing Mage and SoulX volume billing remains
-`$7/month` separately; the finite retry estimate is `$0.90–$1.65` incremental and
-`$1.024800332–$1.774800332` cumulative, under the approved fresh `$4` cap.
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
+Attempt 21 failed exact endpoint GET identity binding before `/run` with redaction-safe
+`error_category: environment`. Exact cleanup and three stable reads prove zero RunPod disposable
+resources, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative billing USD
+0.12480033212341368, and USD 0 Attempt 21 spend. Proposal
+`sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4` and authority
+`sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec` are consumed and closed.
+The provider-free control commit was `8d62be71b9b10585ea99d0583a4a4267ed9a5a79`; the prior
+Attempt20 closure remains historical at `failed-attempt-20.json`.
+The signer is absent, the Worker is restored, and 16/16 disabled-route probes passed. Any retry
+requires provider-free diagnosis changes, a new exact proposal, and a fresh positive numeric cap.
+V2-08 remains forbidden.
 
 Canonical candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json`.
-Attempt20 closure evidence: `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-20.json`.
+Attempt21 closure evidence: `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json`.
+Closure evidence SHA-256: `sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68`.
 Context schema: `2.0`
 Last updated: `2026-08-21`
 
@@ -282,6 +273,15 @@ volume mutation, fallback, public sample publication, and V2-08 remain forbidden
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
 the working tree.
+
+Attempt 21 then consumed the exact diagnostic-readback proposal under its fresh USD 4 authority.
+RunPod again stopped before `/run` with `RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED`; only
+the bounded `environment` category was retained. Exact cleanup deleted the disposable endpoint and
+template, both intended 50 GB EU-RO-1 volumes remain retained, cumulative billing stayed
+`USD 0.12480033212341368`, and the Attempt 21 increment was USD 0. Closure evidence is
+`evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json` at
+`sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68`. V2-07 remains
+NOT_QUALIFIED and any retry requires a fresh exact proposal and positive numeric cap.
 
 ## Context navigation
 

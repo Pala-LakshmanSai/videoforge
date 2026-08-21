@@ -231,7 +231,7 @@ assert(qualification.includes("extractV207EndpointReadbackMismatchCategory"), "q
 assert(qualification.includes("evidence.error_category = errorCategory"), "qualification_category_persist");
 assert(qualificationTest.includes("error_category"), "qualification_category_tests");
 
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_cap_approved");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_cap_closed");
 assert(activation.includes("V207_FRESH_AUTHORITY_REQUIRED"), "activation_requires_fresh");
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v208_forbidden");
 assert(proposal.forbidden?.includes("model download preparation quantization or volume mutation"), "volume_forbidden");
@@ -241,9 +241,9 @@ for (const [label, value] of [["state", state], ["gates", gates], ["task", task]
   assert(value.includes("8d62be7"), `${label}_control_pointer`);
   assert(value.includes("failed-attempt-20.json"), `${label}_attempt20_pointer`);
 }
-assert(state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4"), "state_authorized");
+assert(state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0"), "state_closed");
 assert(state.includes("approved-authority.json") && state.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "state_authority");
-assert(gates.includes("APPROVED_PREEXECUTION") && gates.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "gate_authorized");
+assert(gates.includes("NOT_QUALIFIED_attempt21") && gates.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "gate_closed");
 assert(task.includes("Fresh Attempt21 diagnostic authority") && task.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "task_authority");
 assert(start.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "start_authority");
 assert(gates.includes("NOT_QUALIFIED") && task.includes("NOT_QUALIFIED") && start.includes("NOT_QUALIFIED"), "gate_open");
