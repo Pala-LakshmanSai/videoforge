@@ -195,6 +195,9 @@ const candidateNames = await readdir(candidate);
 assert(candidateNames.includes("approved-authority.json"), "authority_record_present");
 assert(
   (state.includes("phase: serverless_v2_v2_07_attempt23_authorized") && state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") &&
+      state.includes("provider_calls_authorized: true") &&
+      state.includes("maximum_external_spend_usd: 4")) ||
     ((state.includes("phase: serverless_v2_v2_07_attempt23_closed") ||
       state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_pending")) &&
       state.includes("provider_calls_authorized: false") &&
@@ -204,18 +207,31 @@ assert(
 assert(state.includes("2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json") && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control), "state_candidate_pointer");
 assert(
   (state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json") && state.includes("mutation_authorized: true") && state.includes("gpu_use_authorized: true") && state.includes("spend_authorized_usd: 4")) ||
+    (state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json") &&
+      state.includes("mutation_authorized: true") &&
+      state.includes("gpu_use_authorized: true") &&
+      state.includes("spend_authorized_usd: 4")) ||
     (state.includes("current_authority: null") && state.includes("mutation_authorized: false") && state.includes("gpu_use_authorized: false") && state.includes("spend_authorized_usd: 0")),
   "state_authority",
 );
 assert(
-  ((gates.includes("pending_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"") || gates.includes("latest_closed_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"")) && gates.includes(EXPECTED.proposal) && gates.includes(EXPECTED.control)),
+  ((gates.includes("pending_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"") ||
+    gates.includes("latest_closed_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"")) &&
+    gates.includes(EXPECTED.proposal) &&
+    gates.includes(EXPECTED.control)) ||
+    (gates.includes("latest_closed_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"") &&
+      gates.includes(EXPECTED.proposal) &&
+      gates.includes("latest_approved_control_source_commit: \"63517e605d441fa23020bea8bff2987cc4bc99c5\"")),
   "gate_candidate_pointer",
 );
 assert(
   (gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json\"") && gates.includes("pending_numeric_cap_usd: 4") && gates.includes("attempt23_bounded_mutation_authorized")) ||
     (gates.includes("closed_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json\"") &&
       gates.includes("pending_numeric_cap_usd: null") &&
-      (gates.includes("none_attempt23_consumed") || gates.includes("none_attempt24_pending_provider_free_candidate"))),
+      (gates.includes("none_attempt23_consumed") || gates.includes("none_attempt24_pending_provider_free_candidate"))) ||
+    (gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json\"") &&
+      gates.includes("pending_numeric_cap_usd: 4") &&
+      gates.includes("attempt24_bounded_mutation_authorized")),
   "gate_authority",
 );
 assert(task.includes("Attempt23 output-contract diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority), "task_authority_pointer");

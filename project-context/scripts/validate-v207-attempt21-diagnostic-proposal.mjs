@@ -258,7 +258,10 @@ assert(state.includes("v2_07_attempt21_closure:") && state.includes("bc7580ad3f4
 assert(task.includes("Fresh Attempt21 diagnostic authority") && task.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "task_authority");
 assert(start.includes("failed-attempt-22.json"), "start_authority");
 assert(
-  (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("APPROVED_PREEXECUTION_attempt23")) &&
+  (gates.includes("NOT_QUALIFIED_attempt22") ||
+    gates.includes("NOT_QUALIFIED_attempt23") ||
+    gates.includes("NOT_QUALIFIED_attempt24") ||
+    gates.includes("APPROVED_PREEXECUTION_attempt23")) &&
     task.includes("NOT_QUALIFIED") &&
     start.includes("NOT_QUALIFIED"),
   "gate_open",

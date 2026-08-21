@@ -122,6 +122,7 @@ assert(
   state.includes("phase: serverless_v2_v2_07_attempt23_output_contract_diagnostic_pending") ||
     state.includes("phase: serverless_v2_v2_07_attempt23_authorized") ||
     state.includes("phase: serverless_v2_v2_07_attempt23_closed") ||
+    state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") ||
     state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_pending"),
   "state_phase",
 );
