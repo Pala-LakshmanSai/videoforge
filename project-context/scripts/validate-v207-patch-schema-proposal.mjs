@@ -30,6 +30,8 @@ const expectedProposalHash =
   "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be";
 const expectedAuthorityHash =
   "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c";
+const currentSuccessorProposalHash =
+  "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e";
 const assert = (condition, label) => {
   if (!condition) throw new Error(`V207_PATCH_SCHEMA_PROPOSAL_INVALID:${label}`);
 };
@@ -70,11 +72,50 @@ assert(authority.execution_boundary?.gpu_use_authorized_pending_execution === tr
 assert(authority.execution_boundary?.v2_08_authorized === false, "authority_no_v208");
 assert(hash(attempt18Bytes) === "sha256:86e0a4a0a8e3afd9fc26f94d5e2c04697a0d6f15dba4b757fa383eae6bc870a4", "attempt18_hash");
 assert(attempt18.attempt === 18, "attempt18_number");
+assert(attempt18.authority_proposal_sha256 === expectedProposalHash, "attempt18_proposal_binding");
+assert(
+  attempt18.approved_authority?.path ===
+    "../2026-08-21-patch-schema-requalification-candidate/approved-authority.json",
+  "attempt18_authority_path",
+);
+assert(attempt18.approved_authority?.sha256 === expectedAuthorityHash, "attempt18_authority_hash");
+assert(attempt18.artifact_lineage?.image === proposal.lineage?.final_image, "attempt18_image");
+assert(
+  attempt18.artifact_lineage?.config_sha256 === proposal.lineage?.image_config_sha256,
+  "attempt18_image_config",
+);
+assert(
+  attempt18.artifact_lineage?.volume_id_sha256 === proposal.lineage?.volume_id_sha256,
+  "attempt18_volume",
+);
 assert(attempt18.authority_status === "CLOSED_EXACT_ATTEMPT_CONSUMED_DO_NOT_REUSE", "attempt18_authority_closed");
 assert(attempt18.failure?.code === "RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED", "attempt18_failure");
 assert(attempt18.failure?.gpu_jobs_submitted === 0 && attempt18.failure?.batch_count === 0, "attempt18_no_dispatch");
 assert(attempt18.runpod_cleanup?.final_disposable_resources_absent === true, "attempt18_cleanup");
+assert(attempt18.runpod_cleanup?.stable_terminal_snapshot_count === 2, "attempt18_terminal_reads");
+assert(attempt18.runpod_cleanup?.retained_volumes?.length === 2, "attempt18_retained_volumes");
+for (const volume of attempt18.runpod_cleanup.retained_volumes) {
+  assert(volume.size_gb === 50 && volume.region === "EU-RO-1", "attempt18_volume_size_region");
+}
+assert(
+  attempt18.runpod_cleanup.retained_volumes.some(
+    (volume) => volume.id_sha256 === proposal.lineage?.volume_id_sha256,
+  ),
+  "attempt18_mage_volume",
+);
 assert(attempt18.billing?.attempt_increment_usd_settled === 0, "attempt18_zero_spend");
+assert(
+  attempt18.billing?.baseline_endpoint_spend_usd === attempt18.billing?.final_endpoint_spend_usd,
+  "attempt18_billing_unchanged",
+);
+assert(attempt18.billing?.settlement_state === "STABLE_THREE_READS", "attempt18_billing_reads");
+assert(attempt18.cloudflare_cleanup?.signer_secret_deleted === true, "attempt18_signer_deleted");
+assert(attempt18.cloudflare_cleanup?.worker_version_restored === true, "attempt18_worker_restored");
+assert(
+  attempt18.cloudflare_cleanup?.route_restoration ===
+    "CONFIRMED_16_CONSECUTIVE_EXACT_FINGERPRINTS_OVER_30_SECONDS_WITHIN_120_SECOND_DEADLINE",
+  "attempt18_route_restored",
+);
 assert(attempt18.qualification_boundaries?.v2_07 === "NOT_QUALIFIED", "attempt18_gate_open");
 const failedAttemptBytes = await readFile(
   resolve(candidate, proposal.lineage.failed_attempt_evidence),
@@ -96,7 +137,7 @@ assert(state.includes("task_stage: provider_free_repair"), "current_state_stage"
 assert(state.includes("provider_calls_authorized: false"), "current_state_provider_boundary");
 assert(gate.includes("failed-attempt-18.json"), "gate");
 assert(task.includes(expectedProposalHash), "task");
-assert(activation.includes(expectedProposalHash), "compiled_proposal");
+assert(activation.includes(currentSuccessorProposalHash), "compiled_successor_proposal");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "compiled_authority_closed");
 const bindMethod = control.slice(
   control.indexOf("async bindV207EndpointIdentity("),

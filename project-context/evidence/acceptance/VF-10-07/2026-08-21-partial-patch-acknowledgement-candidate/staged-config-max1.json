@@ -1,0 +1,64 @@
+{
+  "schema_version": "videoforge.v2-07-staged-endpoint-definition/v5",
+  "stage": "initial_qualification",
+  "region": "EU-RO-1",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+  "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+  "control_source_commit": "e09a2d0bf2cae873eb49ac545241baa427bbfa05",
+  "network_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "network_volume_size_gb": 50,
+  "network_volume_region": "EU-RO-1",
+  "network_volume_mount": "/runpod-volume",
+  "model_root": "/runpod-volume/mage-model",
+  "volume_write_policy": "APPLICATION_READ_ONLY",
+  "gpu_type_ids": [
+    "NVIDIA GeForce RTX 4090"
+  ],
+  "gpu_count": 1,
+  "compute_type": "GPU",
+  "flex_only": true,
+  "workers_min": 0,
+  "workers_max": 1,
+  "scaler_type": "REQUEST_COUNT",
+  "scaler_value": 1,
+  "handler_concurrency": 1,
+  "idle_timeout_seconds": 5,
+  "init_timeout_seconds": 800,
+  "execution_timeout_seconds": 2400,
+  "request_authority_ttl_seconds": 7200,
+  "container_disk_gb": 120,
+  "flashboot": true,
+  "flashboot_basis": "ATTEMPT_18_REQUEST_AND_FAIL_CLOSED_POLICY_RETAINED_STRICT_GET_REQUIRED",
+  "cuda_minimum": "13.0",
+  "cuda_allowed": [
+    "13.0"
+  ],
+  "offline_environment": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "DIFFUSERS_OFFLINE": "1"
+  },
+  "endpoint_identity_binding": {
+    "method": "POST_TEMPLATE_ENVIRONMENT_THEN_PATCH_DOCUMENTED_MUTABLE_FIELDS_ACCEPT_EXACT_ID_PARTIAL_ACK_THEN_GET_COMPLETE_EFFECTIVE_READBACK_BEFORE_DISPATCH",
+    "environment_key": "VIDEOFORGE_MAGE_ENDPOINT_ID_HASH",
+    "value": "sha256(raw allocated endpoint id)",
+    "raw_endpoint_id_persisted": false,
+    "template_update_response_must_match": true,
+    "endpoint_patch_must_exclude_environment": true,
+    "endpoint_patch_must_exclude_compute_type": true,
+    "endpoint_patch_acknowledgement_requires_exact_endpoint_id": true,
+    "endpoint_patch_acknowledgement_omitted_fields_are_unconfirmed": true,
+    "endpoint_patch_acknowledgement_present_known_fields_must_match": true,
+    "endpoint_get_readback_must_match_complete_config_and_environment": true,
+    "configuration_or_environment_drift_fails_closed": true
+  },
+  "cloudflare_route_restoration": {
+    "hard_deadline_seconds": 120,
+    "probe_interval_seconds": 2,
+    "required_consecutive_exact_fingerprints": 16,
+    "minimum_stability_window_seconds": 30,
+    "mismatch_or_probe_error_after_first_match_fails_closed": true
+  },
+  "ephemeral_secret_values": "injected_at_execution_and_excluded_from_this_public_definition",
+  "runtime_config_hash": "computed after exact endpoint/template identities, endpoint hash, and ephemeral values; persisted before dispatch"
+}

@@ -13,9 +13,9 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be" as const;
-// Attempt 18 consumed exact proposal 2752...715be and its USD 4 authority. Keep execution closed
-// until a new exact provider-free repair proposal and fresh positive numeric cap are recorded.
+  "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e" as const;
+// The partial-PATCH acknowledgement proposal is pending. Keep execution closed until this exact
+// proposal and a fresh positive numeric cap are approved.
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {

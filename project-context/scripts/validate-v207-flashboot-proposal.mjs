@@ -39,7 +39,7 @@ const expected = {
   closedActivationProposal:
     "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
   currentProposal:
-    "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be",
+    "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
 };
 const fail = (label) => {
@@ -249,7 +249,7 @@ assert(text(files.currentState).includes("v2_07_current_approved_authority: null
 assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_no_current_cap");
 assert(text(files.currentState).includes("task_stage: provider_free_repair"), "current_state_task_stage");
 assert(text(files.gates).includes("failed-attempt-18.json"), "gates_latest_attempt");
-assert(text(files.gates).includes("patch_response_binding_field_unproven"), "gates_current_failure");
+assert(text(files.gates).includes("partial_patch_acknowledgement_proposal"), "gates_current_proposal");
 
 process.stdout.write(
   `V2-07 historical FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,

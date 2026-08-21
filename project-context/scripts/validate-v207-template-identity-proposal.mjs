@@ -42,7 +42,7 @@ const expected = {
   candidateAuthority:
     "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462",
   currentProposal:
-    "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be",
+    "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e",
   closedProposal:
     "sha256:2338ff8d596284408080c94970d0c2a5e8a8ae58f62b92d590e880e72079d605",
   image:
@@ -272,7 +272,7 @@ const requestStart = bind.indexOf("const request = {");
 const requestEnd = bind.indexOf("} as const;", requestStart);
 assert(requestStart >= 0 && requestEnd > requestStart, "control_endpoint_request");
 assert(!/\benv\s*:/u.test(bind.slice(requestStart, requestEnd)), "control_endpoint_patch_env_leak");
-assert(bind.includes("v207EndpointConfigMatches(responseValue, expected)"), "control_patch_config_readback");
+assert(bind.includes("v207EndpointPatchAcknowledgementMatches(responseValue, expected)"), "control_patch_acknowledgement");
 assert(bind.includes("v207EndpointBindingMatches(readbackValue, expected)"), "control_effective_env_readback");
 const helperStart = control.indexOf("private async updateV207TemplateEnvironment(");
 const helperEnd = control.indexOf("  async inventory(", helperStart);
@@ -311,16 +311,16 @@ const recommendedTask = topLevelBlock(currentState, "recommended_next_task:");
 const auditEvidence = topLevelBlock(currentState, "audit_evidence:");
 assert(providerAuthority.includes("mode: none"), "state_authority_none");
 assert(providerAuthority.includes("cap_usd: 0"), "state_authority_zero_cap");
-assert(currentState.includes(`v2_07_action: diagnose_attempt18_patch_response_binding_provider_free`), "state_action");
+assert(currentState.includes(`v2_07_action: request_fresh_exact_partial_patch_acknowledgement_proposal_and_cap`), "state_action");
 assert(currentState.includes(`v2_07_proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
 assert(currentState.includes("v2_07_authority: null"), "state_no_current_authority");
 assert(currentState.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_attempt17_closed_authority_path");
 assert(currentState.includes("failed-attempt-17.json"), "state_attempt17_path");
 assert(currentState.includes("provider_calls_authorized: false") && currentState.includes("maximum_external_spend_usd: 0"), "state_provider_boundary");
 assert(currentState.includes("gpu_use_authorized: false") && currentState.includes("remote_or_cloud_mutations_authorized: false"), "state_gpu_mutation_boundary");
-assert(recommendedTask.includes("Diagnose Attempt 18 endpoint PATCH response binding mismatch provider-free"), "state_recommended_goal");
+assert(recommendedTask.includes("Obtain exact approval for proposal"), "state_recommended_goal");
 assert(recommendedTask.includes("task_stage: provider_free_repair"), "state_recommended_stage");
-assert(recommendedTask.includes("current_goal_authority: none_attempt18_consumed"), "state_recommended_authority");
+assert(recommendedTask.includes("current_goal_authority: none_partial_patch_acknowledgement_proposal_pending"), "state_recommended_authority");
 assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
 assert(auditEvidence.includes("v2_07_current_approved_authority: null"), "state_audit_no_current_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_attempt17_closed_authority");
@@ -332,7 +332,7 @@ const mageGateEnd = gates.indexOf("\n  GATE_", mageGateStart + 1);
 assert(mageGateStart >= 0 && mageGateEnd > mageGateStart, "gate_mage_block");
 const mageGate = gates.slice(mageGateStart, mageGateEnd);
 assert(mageGate.includes("failed-attempt-18.json"), "gate_attempt_path");
-assert(mageGate.includes("patch_response_binding_field_unproven"), "gate_authority_boundary");
+assert(mageGate.includes("partial_patch_acknowledgement_proposal"), "gate_authority_boundary");
 
 const task = readText(files.task, "task");
 const taskHeader = task.slice(0, task.indexOf("\n## Goal"));

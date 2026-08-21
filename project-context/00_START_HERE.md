@@ -5,8 +5,10 @@ Attempt 18 failed before GET readback or dispatch because the endpoint PATCH res
 the complete pinned configuration. Exact cleanup and three stable reads prove zero RunPod
 compute/resources, both intended volumes retained, and USD 0 Attempt 18 spend. Proposal
 `sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be`
-and its USD 4 authority are closed. Provider-free field-level diagnosis is active; V2-08 is
-unauthorized.
+and its USD 4 authority are closed. Provider-free repair `e09a2d0` safely accepts only an exact-ID,
+non-conflicting partial PATCH acknowledgement and still requires complete exact GET readback.
+Fresh proposal `sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e`
+requires exact approval and a fresh positive numeric cap. V2-08 is unauthorized.
 Context schema: `2.0`
 Last updated: `2026-08-21`
 
@@ -246,15 +248,16 @@ rollback health; Chrome playback; and Windows/macOS worker `0.1.11`. New spend w
 separate USD 1 cap; no recurring resource was created. RunPod stayed read-only at zero compute, with
 two existing 50 GB volumes untouched. The final evidence-only audit passed and closed
 `GATE_HOSTING_001`. Immutable provider evidence is not current authority; live refresh requires a
-new read-only grant. V2-07 Attempt 17 independently reconciled RunPod to zero compute/resources and
-both retained volumes after the endpoint PATCH failed before dispatch. Cloudflare rollback and its
-30-second route-stability window passed; cumulative billing remained USD 0.12480033212341368 for a
-settled USD 0 attempt increment. The consumed proposal
-`sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c` and its USD 4 authority
-cannot be reused. Provider-free control removes the PATCH field absent from the official request
-schema while preserving exact response/readback fences. A fresh exact proposal and fresh cap are
-required; image republication, volume mutation, fallback, public sample publication, and V2-08
-remain forbidden. The ordered
+new read-only grant. V2-07 Attempt 18 independently reconciled RunPod to zero compute/resources and
+both retained volumes after a successful endpoint PATCH response failed the complete matcher before
+GET or dispatch. Cloudflare rollback and its 30-second route-stability window passed; cumulative
+billing remained USD 0.12480033212341368 for a settled USD 0 attempt increment. The consumed
+proposal `sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be`
+and its USD 4 authority cannot be reused. Provider-free control now accepts only an exact-ID,
+non-conflicting partial PATCH acknowledgement while preserving complete exact GET readback. Fresh
+proposal `sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e`
+and a fresh cap are required; image republication, volume mutation, fallback, public sample
+publication, and V2-08 remain forbidden. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
 the working tree.
