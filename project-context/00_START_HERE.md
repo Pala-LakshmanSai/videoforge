@@ -2,8 +2,8 @@
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
 bounded Attempt26; the provider-free Attempt27 hosted PNG CRC32 repair candidate has an exact
-approved preexecution authority recorded, with provider execution pending the authority commit and
-validation. Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
+approved preexecution authority committed and validated, with bounded provider execution now pending.
+Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any
 accepted batch, durable output, or accepted receipt. Exact cleanup deleted only the disposable
@@ -39,8 +39,8 @@ design. The user approved this exact proposal with FlashBoot=true, LOW EU-RO-1 a
 fresh maximum cumulative finite spend of `$4`. Append-only authority
 `evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json`
 is recorded at `sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10`.
-Provider mutation, scoped Cloudflare activation, endpoint/template creation, GPU use, and spend
-remain pending until that authority and the reconciled context are committed and validated. No image
+The authority and reconciled context are committed and validated; provider mutation, scoped Cloudflare
+activation, endpoint/template creation, GPU use, and spend are the next bounded execution. No image
 republication, model download/quantization, retained-volume mutation, fallback GPU/region, public
 sample publication, V2-08, or successor work is authorized.
 

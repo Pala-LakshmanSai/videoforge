@@ -1066,7 +1066,7 @@ recommended_next_task:
   authority_note: "Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 and authority sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05 are consumed. Closure sha256:f2839fefaafbe507ce447a4e374d502a971e75653b466f6703caa1a1f8e7c9ec records exact cleanup, zero compute/resources, both volumes retained, route restoration, and settled USD 0 increment. The user approved exact Attempt27 proposal sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae; authority sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10 binds FlashBoot=true, LOW EU-RO-1, hosted repair 1960ea9307bb7fcb591c842b84fc1c622aec49eb, unchanged RunPod control b8666dd8b8bc12578ffae8925f6ce73dbf53a841, and the fresh USD 4 cap."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   execution_status: attempt27_authorized_provider_execution_pending
-  execution_blocker: authority_commit_and_validation_required_before_provider_execution
+  execution_blocker: null
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt27_authorized_preexecution_not_qualified
