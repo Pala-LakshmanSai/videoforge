@@ -498,7 +498,7 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
-  it("rechecks startup queue emptiness before the second terminal snapshot", async () => {
+  it("rechecks startup queue emptiness after the first terminal snapshot", async () => {
     const fetch = terminalScaleZeroFetch({
       healthWorkers: {
         idle: 0,
@@ -1135,6 +1135,7 @@ describe("V2-07 qualification harness", () => {
       expect.objectContaining({
         event: "provider_terminal_worker_scale_zero_baseline",
         startup_health_proof: "fresh_endpoint_no_owned_job_inventory_only",
+        startup_queue_proof_read_count: 4,
         stable_terminal_snapshot_count: 2,
       }),
     );

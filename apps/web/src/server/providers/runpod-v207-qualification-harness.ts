@@ -508,6 +508,12 @@ export class RunPodV207QualificationHarness {
       // proof below.  Every post-dispatch/post-drain caller remains health-first by default.
       if (mode === "health_first") await this.#jobs.confirmQuiescent(12, 250);
       this.checkAbort();
+      let startupQueueProofReadCount = 0;
+      const confirmStartupQueueEmpty = async (): Promise<void> => {
+        if (mode !== "startup_inventory_only") return;
+        await this.#jobs!.confirmStartupQueueEmpty();
+        startupQueueProofReadCount += 1;
+      };
       const terminalStatuses = new Set(["EXITED", "TERMINATED"]);
       const readAndValidate = async (): Promise<{
         readonly inventory: RunPodInventory;
@@ -516,11 +522,12 @@ export class RunPodV207QualificationHarness {
         // Bracket each inventory snapshot with an independent queue-only health read. Worker
         // counters can remain stale during FlashBoot startup, but a queued/in-progress job must
         // never be hidden by the terminal-record fallback.
-        if (mode === "startup_inventory_only") await this.#jobs!.confirmStartupQueueEmpty();
+        await confirmStartupQueueEmpty();
         const [inventory, resources] = await Promise.all([
           this.#options.control.inventory(),
           this.#options.control.inventoryDisposableResources(),
         ]);
+        await confirmStartupQueueEmpty();
         this.assertRetainedMageVolume(inventory);
         const endpointInventory = inventory.endpoints[0];
         const endpointResource = resources.endpoints[0];
@@ -617,7 +624,10 @@ export class RunPodV207QualificationHarness {
         terminal_pod_record_count: second.inventory.pods.length,
         stable_terminal_snapshot_count: 2,
         ...(mode === "startup_inventory_only"
-          ? { startup_health_proof: "fresh_endpoint_no_owned_job_inventory_only" }
+          ? {
+              startup_health_proof: "fresh_endpoint_no_owned_job_inventory_only",
+              startup_queue_proof_read_count: startupQueueProofReadCount,
+            }
           : {}),
       });
     } catch (error) {
