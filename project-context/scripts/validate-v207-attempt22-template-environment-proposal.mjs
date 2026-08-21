@@ -11,6 +11,7 @@ const paths = {
   proposal: resolve(candidate, "combined-live-proposal.json"),
   max1: resolve(candidate, "staged-config-max1.json"),
   max2: resolve(candidate, "staged-config-max2.json"),
+  authority: resolve(candidate, "approved-authority.json"),
   attempt21: resolve(
     root,
     "project-context/evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json",
@@ -32,6 +33,7 @@ const paths = {
 
 const EXPECTED = {
   proposal: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7",
+  authority: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6",
   control: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df",
   source: "79f123268b6ade640c02dd20616a89d16b43a5e6",
   image:
@@ -83,11 +85,12 @@ const json = (bytes, label) => {
 };
 const exactArray = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
-const [proposalBytes, max1Bytes, max2Bytes, attempt21Bytes, publicationBytes, stateBytes, gateBytes, taskBytes, startBytes, activationBytes, controlBytes, controlTestBytes, qualificationBytes, qualificationTestBytes] =
+const [proposalBytes, max1Bytes, max2Bytes, authorityBytes, attempt21Bytes, publicationBytes, stateBytes, gateBytes, taskBytes, startBytes, activationBytes, controlBytes, controlTestBytes, qualificationBytes, qualificationTestBytes] =
   await Promise.all([
     readFile(paths.proposal),
     readFile(paths.max1),
     readFile(paths.max2),
+    readFile(paths.authority),
     readFile(paths.attempt21),
     readFile(paths.publication),
     readFile(paths.state),
@@ -103,6 +106,7 @@ const [proposalBytes, max1Bytes, max2Bytes, attempt21Bytes, publicationBytes, st
 const proposal = json(proposalBytes, "proposal");
 const max1 = json(max1Bytes, "max1");
 const max2 = json(max2Bytes, "max2");
+const authority = json(authorityBytes, "authority");
 const attempt21 = json(attempt21Bytes, "attempt21");
 const publication = json(publicationBytes, "publication");
 const state = text(stateBytes);
@@ -118,6 +122,7 @@ const qualificationTest = text(qualificationTestBytes);
 assert(hash(proposalBytes) === EXPECTED.proposal, "proposal_hash");
 assert(hash(max1Bytes) === EXPECTED.configs[0], "max1_hash");
 assert(hash(max2Bytes) === EXPECTED.configs[1], "max2_hash");
+assert(hash(authorityBytes) === EXPECTED.authority, "authority_hash");
 assert(hash(attempt21Bytes) === EXPECTED.attempt21, "attempt21_hash");
 assert(hash(publicationBytes) === "sha256:0191b33d692775f0877ac07cc126c6476d51cafaf37d8b8dac26f7da629e216e", "publication_hash");
 
@@ -153,6 +158,26 @@ assert(proposal.diagnostic_readback_policy?.readback_pass_continues_full_qualifi
 assert(proposal.diagnostic_readback_policy?.template_environment_get_required_before_endpoint_patch === true, "template_get_required");
 assert(proposal.diagnostic_readback_policy?.template_environment_get_must_match_exact_identity_and_environment === true, "template_get_exact");
 assert(proposal.diagnostic_readback_policy?.endpoint_environment_omission_allowed_only_after_template_proof === true, "endpoint_env_omission_fence");
+
+assert(authority.schema_version === "videoforge.v2-07-attempt22-template-environment-readback-authority/v1", "authority_schema");
+assert(authority.checkpoint === "V2-07" && authority.task_id === "VF-10-07" && authority.attempt === 22, "authority_scope");
+assert(authority.authority_mode === "bounded_mutation", "authority_mode_record");
+assert(authority.proposal?.sha256 === EXPECTED.proposal && authority.approval?.exact_proposal_approved === true, "authority_proposal");
+assert(authority.approval?.flashboot_true_accepted === true && authority.approval?.minimum_approved_availability === "LOW", "authority_availability");
+assert(authority.approval?.maximum_cumulative_finite_spend_usd === 4 && authority.approval?.fresh_numeric_cap === true, "authority_cap");
+assert(authority.lineage?.control_source_commit === EXPECTED.control && authority.lineage?.image_source_commit === EXPECTED.source, "authority_source");
+assert(authority.lineage?.final_image === EXPECTED.image && authority.lineage?.image_manifest_sha256 === EXPECTED.manifest, "authority_image");
+assert(authority.lineage?.image_config_sha256 === EXPECTED.config && authority.lineage?.image_layer_sha256 === EXPECTED.layer, "authority_image_layers");
+assert(authority.lineage?.volume_id_sha256 === EXPECTED.volume && authority.lineage?.volume_size_gb === 50 && authority.lineage?.volume_region === "EU-RO-1", "authority_volume");
+assert(authority.lineage?.volume_mount === "/runpod-volume" && authority.lineage?.model_root === "/runpod-volume/mage-model", "authority_mount");
+assert(authority.lineage?.initial_config_sha256 === EXPECTED.configs[0] && authority.lineage?.concurrent_reader_config_sha256 === EXPECTED.configs[1], "authority_configs");
+assert(authority.lineage?.prior_proposal_sha256 === proposal.lineage?.prior_proposal_sha256 && authority.lineage?.prior_authority_sha256 === proposal.lineage?.prior_authority_sha256, "authority_prior_lineage");
+assert(authority.retention?.retain_both_volumes_all_outcomes === true && authority.retention?.volume_mutation_authorized === false, "authority_retention");
+assert(Array.isArray(authority.authorized_operations) && JSON.stringify(authority.authorized_operations) === JSON.stringify(authority.allowed_operations), "authority_operations");
+assert(authority.execution_boundary?.provider_calls_only_after_authority_commit === true && authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4, "authority_boundary");
+assert(authority.execution_boundary?.image_republication_authorized === false && authority.execution_boundary?.v2_08_authorized === false, "authority_forbidden_boundary");
+assert(authority.forbidden?.includes("V2-08 or successor work") && authority.forbidden?.includes("model download preparation quantization or volume mutation"), "authority_forbidden");
+assert(authority.status === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING", "authority_status");
 
 for (const [index, [config, bytes]] of [[max1, max1Bytes], [max2, max2Bytes]].entries()) {
   assert(config.schema_version === "videoforge.v2-07-staged-endpoint-definition/v6", `config_${index}_schema`);
@@ -213,8 +238,8 @@ assert(qualification.includes("extractV207EndpointReadbackMismatchCategory"), "q
 assert(qualification.includes("evidence.error_category = errorCategory"), "qualification_category_persist");
 assert(qualificationTest.includes("error_category"), "qualification_category_tests");
 
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_cap_closed");
-assert(activation.includes("V207_FRESH_AUTHORITY_REQUIRED"), "activation_requires_fresh");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD = 4"), "activation_cap_approved");
+assert(!activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_cap_not_closed");
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v208_forbidden");
 assert(proposal.forbidden?.includes("model download preparation quantization or volume mutation"), "volume_forbidden");
 
@@ -223,12 +248,11 @@ for (const [label, value] of [["state", state], ["gates", gates], ["task", task]
   assert(value.includes("54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"), `${label}_control_pointer`);
   assert(value.includes("failed-attempt-21.json"), `${label}_attempt21_pointer`);
 }
-assert(state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0"), "state_closed");
-assert(state.includes("v2_07_current_approved_authority: null") && state.includes("maximum_external_spend_usd: 0"), "state_no_authority");
-assert(gates.includes("NOT_QUALIFIED_attempt22") && gates.includes("fresh_exact_approval_and_numeric_cap_required"), "gate_closed");
-assert(task.includes("Attempt 22") && task.includes("fresh numeric cap"), "task_pending");
-assert(start.includes("Attempt 22") && start.includes("fresh numeric cap"), "start_pending");
-assert(gates.includes("NOT_QUALIFIED") && task.includes("NOT_QUALIFIED") && start.includes("NOT_QUALIFIED"), "gate_open");
+assert(state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4"), "state_authorized");
+assert(state.includes("v2_07_current_approved_authority:") && state.includes(EXPECTED.authority), "state_authority");
+assert(gates.includes(EXPECTED.authority) && gates.includes("bounded_mutation"), "gate_authorized");
+assert(task.includes("Attempt 22") && task.includes(EXPECTED.authority), "task_authority");
+assert(start.includes("Attempt 22") && start.includes(EXPECTED.authority), "start_authority");
 
 assert(!/^sha256:[0-9a-f]{64}0$/u.test(EXPECTED.attempt21), "negative_digest_length");
 assert(proposal.user_approval.maximum_cumulative_finite_spend_usd === null, "negative_cap_mutation");

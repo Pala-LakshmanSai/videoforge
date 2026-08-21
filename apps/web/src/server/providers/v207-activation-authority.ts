@@ -14,9 +14,8 @@ export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
   "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7" as const;
-// Attempt 21 consumed its exact authority. Attempt 22 is a fresh provider-free candidate; keep
-// execution closed until this exact proposal and a fresh positive numeric cap are approved.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+// Attempt 22 is approved for one exact execution under the fresh user-supplied finite cap.
+export const V207_APPROVED_FINITE_CAP_USD = 4 as const;
 
 export interface V207ActivationAuthority {
   readonly image: string;

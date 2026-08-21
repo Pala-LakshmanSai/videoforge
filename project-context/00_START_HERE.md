@@ -1,6 +1,7 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED pending
+the bounded Attempt 22 execution after exact authority recording. Attempt 21 failed
 Attempt 21 failed exact endpoint GET identity binding before `/run` with redaction-safe
 `error_category: environment`. Exact cleanup and three stable reads prove zero RunPod disposable
 resources, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative billing USD
@@ -16,7 +17,9 @@ V2-08 remains forbidden.
 
 Attempt 22 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`.
 Attempt 22 proposal SHA-256: `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`.
-It is provider-free and pending exact approval plus a fresh numeric cap; no authority is recorded.
+The user approved FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cap. Authority is recorded at
+`evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json`
+with SHA-256 `sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6`.
 Canonical historical candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json`.
 Attempt21 closure evidence: `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json`.
 Closure evidence SHA-256: `sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68`.
@@ -285,7 +288,8 @@ template, both intended 50 GB EU-RO-1 volumes remain retained, cumulative billin
 `USD 0.12480033212341368`, and the Attempt 21 increment was USD 0. Closure evidence is
 `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json` at
 `sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68`. V2-07 remains
-NOT_QUALIFIED and any retry requires a fresh exact proposal and positive numeric cap.
+NOT_QUALIFIED until the bounded Attempt22 qualification gates pass; no retry beyond the exact
+approved authority is allowed.
 
 Attempt 22 is the current provider-free candidate. Control `54af72f1e9a29eed7f53e47ecdda9f6a34abb7df`
 POSTs the endpoint-hash environment update, GETs exact template identity/environment, then PATCHes
@@ -293,9 +297,10 @@ documented endpoint fields and requires strict endpoint configuration readback. 
 omission is accepted only after the exact template proof; any present endpoint environment must match.
 The exact candidate is
 `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`
-at `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`, with null cap,
-no authority, no provider calls, no spend, FlashBoot=true and LOW EU-RO-1 proposal fields. A fresh
-exact approval and positive numeric cap are required before provider execution; V2-08 remains forbidden.
+at `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`, with approved
+authority `sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6`, FlashBoot=true,
+LOW EU-RO-1, and a fresh USD 4 cap. Provider execution is bounded to this exact proposal and
+authority; V2-08 remains forbidden.
 
 ## Context navigation
 
