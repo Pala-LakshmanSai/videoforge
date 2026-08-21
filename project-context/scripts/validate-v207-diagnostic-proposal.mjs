@@ -266,7 +266,12 @@ assert(task.includes(EXPECTED.proposalDigest), "task_historical_proposal_pointer
 assert(task.includes(EXPECTED.image), "task_candidate_pointer");
 assert(task.includes("failed-attempt-14.json"), "task_failed_attempt_pointer");
 assert(currentState.includes("historical_cap_usd: 4"), "current_state_historical_cap");
-assert(currentState.includes("closed and non-reusable"), "current_state_historical_authority_closed");
+assert(
+  currentState.includes(
+    'v2_07_closed_diagnostic_authority_sha256: "sha256:afa5a4ded8eb25cd6df6105d3e3f7813e01bfa7a13cd1d7eb3d4b3ba35b1bed2"',
+  ),
+  "current_state_historical_authority_closed",
+);
 
 // Self-check the rejection primitives used above against the exact regressions that invalidated
 // the predecessor proposal: malformed digest length, stale bytes, non-null cap, and old lineage.

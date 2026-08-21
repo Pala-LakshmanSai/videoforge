@@ -42,7 +42,7 @@ const expected = {
   candidateAuthority:
     "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462",
   currentProposal:
-    "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02",
+    "sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4",
   currentAuthority:
     "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2",
   activeAuthority:
@@ -277,7 +277,10 @@ const requestEnd = bind.indexOf("} as const;", requestStart);
 assert(requestStart >= 0 && requestEnd > requestStart, "control_endpoint_request");
 assert(!/\benv\s*:/u.test(bind.slice(requestStart, requestEnd)), "control_endpoint_patch_env_leak");
 assert(bind.includes("v207EndpointPatchAcknowledgementMatches(responseValue, expected)"), "control_patch_acknowledgement");
-assert(bind.includes("v207EndpointBindingMatches(readbackValue, expected)"), "control_effective_env_readback");
+assert(
+  bind.includes("classifyRunPodV207EndpointReadbackMismatch(readbackValue, expected)"),
+  "control_effective_env_readback",
+);
 const helperStart = control.indexOf("private async updateV207TemplateEnvironment(");
 const helperEnd = control.indexOf("  async inventory(", helperStart);
 assert(helperStart >= 0 && helperEnd > helperStart, "control_template_helper");
@@ -315,14 +318,17 @@ const recommendedTask = topLevelBlock(currentState, "recommended_next_task:");
 const auditEvidence = topLevelBlock(currentState, "audit_evidence:");
 assert(providerAuthority.includes("mode: none"), "state_authority_none");
 assert(providerAuthority.includes("cap_usd: 0"), "state_authority_zero_cap");
-assert(currentState.includes(`v2_07_action: diagnose_attempt20_get_readback_mismatch_provider_free`), "state_action");
+assert(
+  currentState.includes(`v2_07_action: prepare_attempt21_diagnostic_readback_retry_provider_free`),
+  "state_action",
+);
 assert(currentState.includes(`v2_07_proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
 assert(currentState.includes("v2_07_authority: null"), "state_no_current_authority");
 assert(currentState.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_attempt17_closed_authority_path");
 assert(currentState.includes("failed-attempt-17.json"), "state_attempt17_path");
 assert(currentState.includes("provider_calls_authorized: false") && currentState.includes("maximum_external_spend_usd: 0"), "state_provider_boundary");
 assert(currentState.includes("gpu_use_authorized: false") && currentState.includes("remote_or_cloud_mutations_authorized: false"), "state_gpu_mutation_boundary");
-assert(recommendedTask.includes("Diagnose Attempt 20 GET readback mismatch"), "state_recommended_goal");
+assert(recommendedTask.includes("Attempt21 diagnostic GET readback classification"), "state_recommended_goal");
 assert(recommendedTask.includes("task_stage: provider_free_repair"), "state_recommended_stage");
 assert(recommendedTask.includes("current_goal_authority: none_attempt20_consumed"), "state_recommended_authority");
 assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
