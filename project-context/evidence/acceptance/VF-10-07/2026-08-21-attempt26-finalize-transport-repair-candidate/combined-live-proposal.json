@@ -120,7 +120,9 @@
     "retained_volume_charge_is_existing_and_outside_finite_cap": true,
     "maximum_cumulative_finite_spend_usd": null,
     "numeric_cap_must_be_supplied_by_user": true,
-    "finite_estimate": "No provider action or spend before fresh positive cap; after approval, bounded endpoint/GPU actions stop before cap risk.",
+    "estimated_cumulative_gpu_hours_ceiling": 2,
+    "estimated_finite_serverless_compute_usd_ceiling": 2.2,
+    "finite_estimate_basis": "At the current USD 1.10/GPU-hour rate, reserve at most 2 cumulative GPU-hours across max-one qualification and the bounded max-two reader proof; stop before either this estimate or the separately approved cap is at risk.",
     "rate_checked_at": "2026-08-21"
   },
   "cleanup_rollback_and_stop_conditions": {

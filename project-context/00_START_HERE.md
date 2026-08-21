@@ -29,7 +29,7 @@ no provider execution remains authorized. No image republication, model or retai
 mutation, fallback GPU/region, public sample publication, V2-08, or successor work is authorized.
 
 Attempt26 provider-free candidate: `evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json`
-at `sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b`. It binds the exact
+at `sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632`. It binds the exact
 published image, Mage model/manifest, sealed 50 GB EU-RO-1 volume at `/runpod-volume`, FlashBoot=true,
 LOW EU-RO-1, RTX 4090, Attempt25 closure `sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2`,
 and local FINALIZE transport repair `b8666dd8b8bc12578ffae8925f6ce73dbf53a841`. Max-one is

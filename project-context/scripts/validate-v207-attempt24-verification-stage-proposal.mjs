@@ -191,7 +191,7 @@ assert(
   activation.includes("V207_PENDING_PROPOSAL_SHA256") &&
     (activation.includes(EXPECTED.proposal) ||
       activation.includes("sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946") ||
-      activation.includes("sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b")) &&
+      activation.includes("sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632")) &&
     (activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") ||
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")),
   "activation_approved",

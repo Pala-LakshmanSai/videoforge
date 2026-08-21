@@ -13,7 +13,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b" as const;
+  "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
   "b8666dd8b8bc12578ffae8925f6ce73dbf53a841" as const;
 // Attempt 26 is a provider-free candidate; fresh exact approval and positive cap remain required.

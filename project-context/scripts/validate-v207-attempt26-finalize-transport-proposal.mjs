@@ -16,7 +16,7 @@ const paths = {
   activation: resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"),
 };
 const EXPECTED = {
-  proposal: "sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b",
+  proposal: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632",
   max1: "sha256:b64d008bac42fb13ec342028675a1bb498836981c553e884529ad846d6cdf964",
   max2: "sha256:10f887ba47e8a7cac952374eb236fed08cb67962171769b65d96a4f0d3a7acf7",
   closure: "sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2",
@@ -91,7 +91,7 @@ for (const operation of ["provider_free_validate_finalize_transport_repair_commi
   assert(proposal.proposed_operations_in_order?.includes(operation), `operation_${operation}`);
 }
 assert(proposal.negative_tests_required?.includes("wrong image bytes") && proposal.negative_tests_required?.includes("wrong path") && proposal.negative_tests_required?.includes("wrong volume") && proposal.negative_tests_required?.includes("wrong GPU") && proposal.negative_tests_required?.includes("wrong region") && proposal.negative_tests_required?.includes("writes") && proposal.negative_tests_required?.includes("cache escape") && proposal.negative_tests_required?.includes("malformed authority") && proposal.negative_tests_required?.includes("duplicate delivery") && proposal.negative_tests_required?.includes("cancel") && proposal.negative_tests_required?.includes("timeout") && proposal.negative_tests_required?.includes("two readers"), "negative_tests");
-assert(proposal.rates_cost_and_retention?.serverless_flex_rtx4090_usd_per_gpu_hour === 1.1 && proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_month_total === 7 && proposal.rates_cost_and_retention?.maximum_cumulative_finite_spend_usd === null && proposal.rates_cost_and_retention?.numeric_cap_must_be_supplied_by_user === true, "rates_cap");
+assert(proposal.rates_cost_and_retention?.serverless_flex_rtx4090_usd_per_gpu_hour === 1.1 && proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_month_total === 7 && proposal.rates_cost_and_retention?.estimated_cumulative_gpu_hours_ceiling === 2 && proposal.rates_cost_and_retention?.estimated_finite_serverless_compute_usd_ceiling === 2.2 && proposal.rates_cost_and_retention?.maximum_cumulative_finite_spend_usd === null && proposal.rates_cost_and_retention?.numeric_cap_must_be_supplied_by_user === true, "rates_cap");
 assert(proposal.execution_boundary?.provider_calls_completed === false && proposal.execution_boundary?.external_spend_usd === 0 && proposal.execution_boundary?.maximum_cumulative_finite_spend_usd === null && proposal.execution_boundary?.v2_08_authorized === false, "execution_boundary");
 assert(closure.attempt === 25 && closure.final_reconciliation_checked_at === "2026-08-21T11:30:30.619Z" && closure.qualification_boundaries?.v2_07 === "NOT_QUALIFIED", "closure_binding");
 
