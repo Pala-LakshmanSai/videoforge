@@ -238,19 +238,18 @@ assert(qualification.includes("extractV207EndpointReadbackMismatchCategory"), "q
 assert(qualification.includes("evidence.error_category = errorCategory"), "qualification_category_persist");
 assert(qualificationTest.includes("error_category"), "qualification_category_tests");
 
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD = 4"), "activation_cap_approved");
-assert(!activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_cap_not_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_cap_approved");
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v208_forbidden");
 assert(proposal.forbidden?.includes("model download preparation quantization or volume mutation"), "volume_forbidden");
 
 for (const [label, value] of [["state", state], ["gates", gates], ["task", task], ["start", start]]) {
   assert(value.includes("2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json"), `${label}_proposal_pointer`);
   assert(value.includes("54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"), `${label}_control_pointer`);
-  assert(value.includes("failed-attempt-21.json"), `${label}_attempt21_pointer`);
+  assert(value.includes("failed-attempt-22.json"), `${label}_attempt21_pointer`);
 }
-assert(state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4"), "state_authorized");
-assert(state.includes("v2_07_current_approved_authority:") && state.includes(EXPECTED.authority), "state_authority");
-assert(gates.includes(EXPECTED.authority) && gates.includes("bounded_mutation"), "gate_authorized");
+assert(state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0"), "state_authorized");
+assert(state.includes("v2_07_current_approved_authority: null") && state.includes(EXPECTED.authority), "state_authority");
+assert(gates.includes(EXPECTED.authority) && gates.includes("none_attempt22_consumed"), "gate_authorized");
 assert(task.includes("Attempt 22") && task.includes(EXPECTED.authority), "task_authority");
 assert(start.includes("Attempt 22") && start.includes(EXPECTED.authority), "start_authority");
 

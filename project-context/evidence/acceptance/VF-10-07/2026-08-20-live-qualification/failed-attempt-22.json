@@ -1,0 +1,148 @@
+{
+  "schema_version": "videoforge.v2-07-live-failed-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 22,
+  "started_at": "2026-08-21T08:10:40.096Z",
+  "qualification_started_at": "2026-08-21T08:11:32.672Z",
+  "qualification_failed_at": "2026-08-21T08:22:21.008Z",
+  "final_route_restoration_checked_at": "2026-08-21T08:23:12.562Z",
+  "final_reconciliation_checked_at": "2026-08-21T08:24:06.416Z",
+  "result": "FAILED_POSTDISPATCH_COMPLETED_JOB_OUTPUT_CONTRACT_UNPROVEN_EXACT_CLEANUP_COMPLETE",
+  "authority_status": "CLOSED_EXACT_ATTEMPT_CONSUMED_DO_NOT_REUSE",
+  "authority_proposal_sha256": "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7",
+  "approved_authority": {
+    "path": "../2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json",
+    "sha256": "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6",
+    "maximum_cumulative_finite_spend_usd": 4,
+    "flashboot": true,
+    "minimum_availability": "LOW",
+    "region": "EU-RO-1"
+  },
+  "artifact_lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "control_source_commit": "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df",
+    "config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
+    "layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
+    "base_sha256": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "max_one_definition_sha256": "sha256:cb3fb55861caefb70aea10670b7be3483cf69ea00b82030f5f64d0f4a8bbe22c",
+    "max_two_definition_sha256": "sha256:9e8ceb943d257f66d336c64d5ffc2f3df349a76fc98d54c391435d0d8cea72bd"
+  },
+  "failure": {
+    "code": "V207_QUALIFICATION_FAILED",
+    "raw_phase": "status",
+    "raw_result": "FAILED",
+    "raw_failure_reconciliation_error": "V207_RECONCILIATION_INVENTORY_MISMATCH",
+    "observed_boundary": "The exact template GET identity and environment proof, endpoint binding, initial zero-worker proof, and one job dispatch succeeded. RunPod reported COMPLETED after 180546 ms execution, but the application accepted no batch and the fail-closed qualification contract rejected the result before durable output or receipt proof.",
+    "exact_rejected_output_contract_field": "UNPROVEN_REDACTION_SAFE_EVIDENCE_RETAINED_ONLY_GENERIC_CODE",
+    "provider_job_status": "COMPLETED",
+    "provider_delay_time_ms": 9887,
+    "provider_execution_time_ms": 180546,
+    "provider_diagnostic_code": null,
+    "provider_diagnostic_message": null,
+    "provider_diagnostic_reason": null,
+    "job_dispatch_reached": true,
+    "gpu_jobs_submitted": 1,
+    "accepted_batch_count": 0,
+    "outputs_accepted": 0,
+    "inference_receipt_accepted": false,
+    "measured_spend_usd": 0
+  },
+  "cloudflare_cleanup": {
+    "captured_worker_version_id_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "pre_mutation_route": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "signer_activation_status": 403,
+    "signer_secret_deleted": true,
+    "worker_version_restored": true,
+    "route_restoration": "CONFIRMED_16_CONSECUTIVE_EXACT_FINGERPRINTS_OVER_30_SECONDS_WITHIN_120_SECOND_DEADLINE",
+    "restored_route": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    }
+  },
+  "runpod_cleanup": {
+    "initial_runner_cleanup": "UNCERTAIN",
+    "narrow_exact_cleanup": "CONFIRMED",
+    "endpoint_id_sha256": "sha256:fdad106fdcb79063521012fcb42559a4d78c2650df2f8d5f5252d36e5a312bc2",
+    "template_id_sha256": "sha256:72376030c5f16fdf64a74129da85b225b14262d056d8a3ee1c1554aa03dfc236",
+    "stable_terminal_snapshot_count": 2,
+    "terminal_endpoint_worker_record_count": 2,
+    "terminal_pod_record_count": 2,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "network_volumes": 2,
+    "retained_volumes": [
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 0.12480033212341368,
+    "final_endpoint_spend_usd": 0.12480033212341368,
+    "attempt_increment_usd_settled": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement_state": "STABLE_THREE_READS",
+    "existing_two_volume_charge_usd_per_month": 7,
+    "existing_volume_charge_outside_finite_cap": true
+  },
+  "output_cleanup": {
+    "generated_output_rollback": "CONFIRMED",
+    "durable_outputs_accepted": 0
+  },
+  "unproven_acceptance": [
+    "complete diagnostic sample and 32-image cold batch",
+    "warm complete batch",
+    "durable outputs and v3 receipts",
+    "duplicate cancellation and timeout live behavior",
+    "two simultaneous read-only workers",
+    "sealed manifest unchanged after worker application",
+    "no model-volume writes after worker application",
+    "peak VRAM and init load warm inference upload timings",
+    "retained endpoint and private template on success"
+  ],
+  "raw_local_evidence": {
+    "orchestrator_path": "/tmp/videoforge-v207-attempt22-orchestrator.json",
+    "orchestrator_sha256": "sha256:924079c479686d1f7f704e7b0e90b0cbbcf750dc0fe2e3d25f77e78b4f5ede0a",
+    "orchestrator_bytes": 2679,
+    "qualification_path": "/tmp/videoforge-v207-live-result.json",
+    "qualification_sha256": "sha256:cab110005f5e0f1127bd975ee03b00b26548325d3598a768e8167969a0287eeb",
+    "qualification_bytes": 13421,
+    "secrets_or_signed_urls_retained": false
+  },
+  "authority_closure": {
+    "proposal_reusable": false,
+    "authority_reusable": false,
+    "fresh_proposal_required": true,
+    "fresh_numeric_cap_required": true
+  },
+  "qualification_boundaries": {
+    "v2_07": "NOT_QUALIFIED",
+    "v2_08_authorized": false,
+    "retained_volume_content_hash_after_attempt": "UNPROVEN_NO_ACCEPTED_WORKER_RECEIPT",
+    "model_volume_write_absence_after_attempt": "UNPROVEN_NO_ACCEPTED_WORKER_RECEIPT"
+  }
+}

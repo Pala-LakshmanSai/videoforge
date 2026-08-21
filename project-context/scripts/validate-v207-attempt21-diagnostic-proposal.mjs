@@ -236,12 +236,13 @@ assert(activation.includes("V207_FRESH_AUTHORITY_REQUIRED"), "activation_require
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v208_forbidden");
 assert(proposal.forbidden?.includes("model download preparation quantization or volume mutation"), "volume_forbidden");
 
-for (const [label, value] of [["state", state], ["task", task], ["start", start]]) {
+for (const [label, value] of [["state", state], ["task", task]]) {
   assert(value.includes(EXPECTED.proposal), `${label}_proposal_pointer`);
   assert(value.includes("8d62be7"), `${label}_control_pointer`);
   assert(value.includes("failed-attempt-20.json"), `${label}_attempt20_pointer`);
 }
-assert(gates.includes(EXPECTED.authority) && gates.includes("failed-attempt-21.json"), "gates_proposal_pointer");
+assert(state.includes(EXPECTED.authority) && gates.includes("failed-attempt-21.json"), "gates_proposal_pointer");
+assert(start.includes("failed-attempt-22.json"), "start_proposal_pointer");
 assert(
   state.includes("historical_v2_07_attempt21_authority:") &&
     state.includes("v2_07_attempt21_closed_authority_sha256:") &&
@@ -249,11 +250,11 @@ assert(
   "state_closed",
 );
 assert(state.includes("approved-authority.json") && state.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "state_authority");
-assert(gates.includes("closure_evidence: \"evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json\"") && gates.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "gate_closed");
+assert(state.includes("v2_07_attempt21_closure:") && state.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "gate_closed");
 assert(task.includes("Fresh Attempt21 diagnostic authority") && task.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "task_authority");
-assert(start.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "start_authority");
+assert(start.includes("failed-attempt-22.json"), "start_authority");
 assert(
-  gates.includes("AUTHORIZED_attempt22_") && task.includes("NOT_QUALIFIED") && start.includes("NOT_QUALIFIED"),
+  gates.includes("NOT_QUALIFIED_attempt22") && task.includes("NOT_QUALIFIED") && start.includes("NOT_QUALIFIED"),
   "gate_open",
 );
 

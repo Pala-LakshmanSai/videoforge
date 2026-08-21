@@ -1,28 +1,25 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED pending
-the bounded Attempt 22 execution after exact authority recording. Attempt 21 failed
-Attempt 21 failed exact endpoint GET identity binding before `/run` with redaction-safe
-`error_category: environment`. Exact cleanup and three stable reads prove zero RunPod disposable
-resources, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative billing USD
-0.12480033212341368, and USD 0 Attempt 21 spend. Proposal
-`sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4` and authority
-`sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec` are consumed and closed.
-The provider-free control commit was `8d62be71b9b10585ea99d0583a4a4267ed9a5a79`; latest template
-environment proof control is `54af72f1e9a29eed7f53e47ecdda9f6a34abb7df`; the prior
-Attempt20 closure remains historical at `failed-attempt-20.json`.
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
+bounded Attempt22. Exact template GET/endpoint binding passed and one job reached RunPod
+`COMPLETED` after 180546 ms, but the application accepted zero batches, outputs, or receipts. The
+exact rejected output-contract field is unproven from retained redaction-safe evidence. Exact
+cleanup and three stable reads prove zero RunPod disposable resources, both intended 50 GB EU-RO-1
+volumes retained, unchanged cumulative billing USD 0.12480033212341368, and USD 0 settled increment.
+Proposal `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`
+and authority `sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6`
+are consumed and closed. Control commit is `54af72f1e9a29eed7f53e47ecdda9f6a34abb7df`.
 The signer is absent, the Worker is restored, and 16/16 disabled-route probes passed. Any retry
 requires provider-free diagnosis changes, a new exact proposal, and a fresh positive numeric cap.
 V2-08 remains forbidden.
 
 Attempt 22 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`.
 Attempt 22 proposal SHA-256: `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`.
-The user approved FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cap. Authority is recorded at
+The user approved FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cap. That consumed authority is at
 `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json`
 with SHA-256 `sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6`.
-Canonical historical candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json`.
-Attempt21 closure evidence: `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json`.
-Closure evidence SHA-256: `sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68`.
+Attempt22 closure evidence: `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json`.
+Closure evidence SHA-256: `sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a`.
 Context schema: `2.0`
 Last updated: `2026-08-21`
 
@@ -288,10 +285,9 @@ template, both intended 50 GB EU-RO-1 volumes remain retained, cumulative billin
 `USD 0.12480033212341368`, and the Attempt 21 increment was USD 0. Closure evidence is
 `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json` at
 `sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68`. V2-07 remains
-NOT_QUALIFIED until the bounded Attempt22 qualification gates pass; no retry beyond the exact
-approved authority is allowed.
+NOT_QUALIFIED. Attempt22 later consumed its exact authority; no retry is currently authorized.
 
-Attempt 22 is the current provider-free candidate. Control `54af72f1e9a29eed7f53e47ecdda9f6a34abb7df`
+Attempt 22 is now historical consumed evidence. Control `54af72f1e9a29eed7f53e47ecdda9f6a34abb7df`
 POSTs the endpoint-hash environment update, GETs exact template identity/environment, then PATCHes
 documented endpoint fields and requires strict endpoint configuration readback. Endpoint environment
 omission is accepted only after the exact template proof; any present endpoint environment must match.
@@ -299,8 +295,9 @@ The exact candidate is
 `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`
 at `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`, with approved
 authority `sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6`, FlashBoot=true,
-LOW EU-RO-1, and a fresh USD 4 cap. Provider execution is bounded to this exact proposal and
-authority; V2-08 remains forbidden.
+LOW EU-RO-1, and the consumed USD 4 cap. One job reached `COMPLETED` but no batch/output receipt was
+accepted. Cleanup and reconciliation are complete; provider-free diagnosis is next and V2-08 remains
+forbidden.
 
 ## Context navigation
 

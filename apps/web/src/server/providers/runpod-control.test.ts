@@ -1309,10 +1309,19 @@ describe("RunPod scale-zero control", () => {
   });
 
   it.each([
-    ["missing template environment", (environment: Record<string, string>): unknown => undefined],
+    [
+      "missing template environment",
+      (environment: Record<string, string>): unknown => {
+        void environment;
+        return undefined;
+      },
+    ],
     [
       "malformed template environment",
-      (_environment: Record<string, string>): unknown => ["not-an-environment"],
+      (environment: Record<string, string>): unknown => {
+        void environment;
+        return ["not-an-environment"];
+      },
     ],
   ] as const)("rejects a template GET readback with %s", async (_label, mutate) => {
     const guard = new RunPodDrainGuard();

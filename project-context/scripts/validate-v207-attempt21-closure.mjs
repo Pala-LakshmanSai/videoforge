@@ -118,17 +118,17 @@ const start = bytes.start.toString("utf8");
 const activation = bytes.activation.toString("utf8");
 const activationTest = bytes.activationTest.toString("utf8");
 assert(
-  state.includes("phase: serverless_v2_v2_07_attempt22_template_environment_readback_candidate"),
+  state.includes("phase: serverless_v2_v2_07_attempt22_closed_output_contract_diagnosis_required"),
   "state_phase",
 );
 assert(state.includes("historical_v2_07_attempt21_authority:") && state.includes("consumed: true"), "state_closed");
 assert(state.includes(`authority_sha256: "${EXPECTED.authority}"`), "state_no_authority");
 assert(state.includes("failed-attempt-21.json") && state.includes(EXPECTED.evidence), "state_evidence");
 assert(state.includes(EXPECTED.proposal) && state.includes(EXPECTED.authority), "state_lineage");
-assert(gates.includes("last_run: \"evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json\"") && gates.includes(EXPECTED.evidence.slice(7)), "gate_evidence");
+assert(gates.includes("previous_attempt: \"evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json\"") && state.includes(EXPECTED.evidence), "gate_evidence");
 assert(
-  gates.includes(`closed_authority_sha256: "${EXPECTED.authority}"`) &&
-    gates.includes(EXPECTED.evidence),
+  state.includes(`v2_07_attempt21_closed_authority_sha256: "${EXPECTED.authority}"`) &&
+    state.includes(EXPECTED.evidence),
   "gate_closed",
 );
 assert(task.includes("## Attempt 21 closure") && task.includes(EXPECTED.evidence), "task_closure");

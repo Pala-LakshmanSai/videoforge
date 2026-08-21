@@ -1,48 +1,48 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-21T07:59:04.000Z"
+updated_at: "2026-08-21T08:24:06.416Z"
 
-phase: serverless_v2_v2_07_attempt22_template_environment_readback_candidate
+phase: serverless_v2_v2_07_attempt22_closed_output_contract_diagnosis_required
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_bounded_qualification
+current_wave: v2_07_provider_free_failure_diagnosis
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: provider_free_repair
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-maximum_external_spend_usd: 4
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt22_template_environment_readback_authorized
+  mode: v2_07_attempt22_consumed_provider_free_diagnosis
   live_provider_calls: false
-  remote_mutation: true
+  remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
-  runpod_mutation_or_gpu: true
-  v2_07_action: execute_attempt22_template_environment_get_proof_then_bounded_qualification
-  note: "Attempt 21 stopped before /run on RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED with redaction-safe error_category environment. Exact cleanup and three stable reads prove zero disposable resources, both intended volumes retained, unchanged cumulative billing USD 0.12480033212341368, and USD 0 incremental spend. Provider-free control commit 54af72f now proves exact template identity/environment by GET after POST update before endpoint PATCH/readback. The user approved exact Attempt22 proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 with FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cap; authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 is recorded. Publication remains forbidden; execution is bounded to this authority, with no volume mutation, V2-08, or successor work."
+  runpod_mutation_or_gpu: false
+  v2_07_action: diagnose_attempt22_completed_job_output_contract_provider_free
+  note: "Attempt 22 passed exact template GET and endpoint identity proof, dispatched one job, and RunPod reported COMPLETED after 180546 ms. The application accepted no batch and retained only redaction-safe V207_QUALIFICATION_FAILED, so the exact rejected output field is unproven. Exact cleanup deleted the endpoint/template after two stable terminal snapshots; three stable reads prove zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative billing USD 0.12480033212341368, and USD 0 settled increment. Proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 and authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 are consumed and non-reusable. Provider-free diagnosis only; V2-08 remains forbidden."
 
 pending_v2_07_attempt22_proposal:
-  mode: approved_attempt22_template_environment_readback_authority
+  mode: closed_consumed_attempt22_output_contract_failure
   proposal_path: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
   control_source_commit: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"
-  failed_attempt_evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json
-  failed_attempt_evidence_sha256: "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68"
+  failed_attempt_evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json
+  failed_attempt_evidence_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
   staged_max1_sha256: "sha256:cb3fb55861caefb70aea10670b7be3483cf69ea00b82030f5f64d0f4a8bbe22c"
   staged_max2_sha256: "sha256:9e8ceb943d257f66d336c64d5ffc2f3df349a76fc98d54c391435d0d8cea72bd"
   flashboot: true
   availability: LOW
   region: EU-RO-1
-  maximum_cumulative_finite_spend_usd: 4
-  fresh_numeric_cap_required: false
-  authority_recorded: true
+  maximum_cumulative_finite_spend_usd: null
+  fresh_numeric_cap_required: true
+  authority_recorded: false
   authority_path: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
   authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   diagnostic_mismatch_categories: [identity, environment, flashboot, region, cuda, volume, gpu, workers, timing, scaler]
 
 pending_v2_07_attempt21_proposal:
@@ -66,6 +66,24 @@ pending_v2_07_attempt21_proposal:
   diagnostic_mismatch_categories: [identity, environment, flashboot, region, cuda, volume, gpu, workers, timing, scaler]
 
 provider_authority: &v2_07_provider_authority
+  mode: none
+  provider: null
+  cap_usd: 0
+  historical_cap_usd: 4
+  recurring_r2_ceiling_usd_per_month: 0
+  non_transferable: true
+  source: none_attempt22_consumed
+  authorized_by_user_at: null
+  authority_evidence: null
+  authority_sha256: null
+  proposal_sha256: null
+  model_id: null
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
+  rate_snapshot: []
+
+historical_v2_07_attempt22_authority:
   mode: paid
   provider: github+runpod+cloudflare_r2
   cap_usd: 4
@@ -77,6 +95,12 @@ provider_authority: &v2_07_provider_authority
   authority_evidence: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
   authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
   proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+  consumed: true
+  closed_at: "2026-08-21T08:24:06.416Z"
+  closure_evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json
+  closure_evidence_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
+  actual_spend_usd: 0
+  gpu_jobs_submitted: 1
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
   resources:
     - runpod_sujal_account_sha256_ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c
@@ -542,13 +566,13 @@ historical_v2_06_final_live_closure_authority:
   actual_spend_usd: 0
   new_recurring_resources_created: 0
 
-credential_access_authorized: true
+credential_access_authorized: false
 credential_value_read_authorized: false
-remote_or_cloud_mutations_authorized: true
+remote_or_cloud_mutations_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
-gpu_use_authorized: true
+gpu_use_authorized: false
 retained_volume_mutation_authorized: false
 
 runpod_account_scope:
@@ -572,7 +596,7 @@ repository:
   current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt 21 used exact published image sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5 and control repair 8d62be7. Cloudflare activation/preflight and rollback passed; RunPod created the exact template/endpoint but GET identity binding still failed before /run with redaction-safe error_category environment. Exact cleanup plus three stable reads proved zero Pods/endpoints/templates/workers, both intended volumes, unchanged cumulative billing USD 0.12480033212341368, and $0 Attempt 21 spend. Provider-free control repair 54af72f now proves exact template identity/environment readback before endpoint PATCH/readback. The user approved Attempt22 proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 under FlashBoot=true, LOW EU-RO-1, and fresh USD 4 cap; authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 is recorded for bounded execution."
+  current_source_head_note: "Attempt 22 used exact published image sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5 and control repair 54af72f. Template GET/endpoint binding passed and one job reached COMPLETED after 180546 ms, but no application batch/output receipt was accepted and the exact rejected output field remains unproven. Exact cleanup plus three stable reads proved zero Pods/endpoints/templates/workers, both intended volumes, unchanged cumulative billing USD 0.12480033212341368, and USD 0 settled increment. Proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 and authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 are consumed. Provider-free diagnosis is next; V2-08 remains forbidden."
   v2_07_latest_local_repair: "Commit 54af72f1e9a29eed7f53e47ecdda9f6a34abb7df proves exact template identity/environment by GET after POST environment update before endpoint PATCH/readback, while retaining strict endpoint fencing and bounded redaction-safe categories. Attempt22 exact proposal and fresh USD 4 authority are recorded; provider execution remains bounded to the approved operations and stops before V2-08."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -588,10 +612,10 @@ live_development:
   chrome_route: null
   fixture_scenario: v2_00_roadmap_reset_audit
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: staging
-  provider_calls_authorized: true
-  authorized_spend_usd: 4
-  provider_authority_scope: "Execute only the approved exact Attempt22 proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 under FlashBoot=true, LOW EU-RO-1, and the fresh USD 4 cap; stop before V2-08."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "Attempt22 authority is consumed and closed. Provider-free diagnosis only; a fresh exact proposal and fresh numeric cap are required for any further provider mutation or spend. V2-08 remains forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -723,11 +747,11 @@ model_runtime_evidence:
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
     v2_07_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
     v2_07_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
-    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/approved-authority.json
+    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
-    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json
+    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json
     v2_07_observed_cumulative_endpoint_spend_usd: 0.12480033212341368
     v2_07_attempt_14_increment_usd_observed: 0
     v2_07_attempt_15_increment_usd_observed: 0
@@ -737,6 +761,7 @@ model_runtime_evidence:
     v2_07_attempt_19_increment_usd_settled: 0
     v2_07_attempt_20_increment_usd_settled: 0
     v2_07_attempt_21_increment_usd_settled: 0
+    v2_07_attempt_22_increment_usd_settled: 0
   soulx:
     status: pod_technical_pass_serverless_visual_crop_license_and_settlement_gates_open
     exact_source: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
@@ -756,9 +781,9 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-21T07:27:54.866Z"
-  basis: attempt_21_exact_cleanup_and_three_read_independent_reconciliation
-  evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json
+  checked_at: "2026-08-21T08:24:06.416Z"
+  basis: attempt_22_exact_cleanup_and_three_read_independent_reconciliation
+  evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json
   current_live_refresh_permitted_now: false
   stale_until_current_authorized_read_only_inventory_succeeds: true
   pods: 0
@@ -785,7 +810,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0.12480033212341368
   auto_pay: DISABLED
-  note: "Attempt 21 failed exact GET endpoint identity binding before dispatch with redaction-safe error_category environment; exact provider mismatch field remains unproven. Narrow cleanup deleted only the disposable endpoint/template after two stable terminal snapshots. Three stable reads prove zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative endpoint billing USD 0.12480033212341368, and USD 0 Attempt 21 spend. Worker rollback, signer deletion, and 16 exact 404 V207_ROUTE_DISABLED fingerprints over 30 seconds are confirmed. Proposal sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4 and authority sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec are consumed and non-reusable. V2-08 remains forbidden."
+  note: "Attempt 22 passed exact template GET/endpoint binding and dispatched one job. RunPod reported COMPLETED after 180546 ms, but no batch/output receipt was accepted; the exact rejected output subfield remains unproven from redaction-safe evidence. Narrow cleanup deleted only the disposable endpoint/template after two stable terminal snapshots. Three stable reads prove zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative endpoint billing USD 0.12480033212341368, and USD 0 settled Attempt 22 increment. Worker rollback, signer deletion, and 16 exact 404 V207_ROUTE_DISABLED fingerprints over 30 seconds are confirmed. Proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 and authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 are consumed and non-reusable. V2-08 remains forbidden."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -806,37 +831,37 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: AUTHORIZED_attempt22_template_environment_readback_pending_execution
+  status: NOT_QUALIFIED_attempt22_closed_provider_free_output_contract_diagnosis
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: exact_attempt22_proposal_approved_bounded_execution_pending
-  task_stage: bounded_mutation
-  current_goal_authority: approved_proposal_sha256_96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7
+  authorization_status: none_attempt22_consumed
+  task_stage: provider_free_repair
+  current_goal_authority: none_attempt22_consumed
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Execute the exact approved Attempt22 template-environment GET proof followed by the bounded V2-07 qualification. V2-08 remains forbidden."
-  provider_calls_authorized: true
+  goal: "Diagnose the Attempt22 completed-job output-contract rejection from retained redaction-safe evidence and prepare a provider-free repair. V2-08 remains forbidden."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 4
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
   credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt 21 proposal sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4 and authority sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec are consumed and closed after a pre-dispatch GET mismatch. The user then approved exact Attempt22 proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 with FlashBoot=true, LOW EU-RO-1, and fresh USD 4 cap; authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 is recorded. Exact template GET identity/environment proof is bound to control 54af72f. Existing volumes remain USD 7/month separately. V2-08 remains forbidden."
+  authority_note: "Attempt22 proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 and authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 are consumed and closed. One job reached COMPLETED after 180546 ms but no batch/output receipt was accepted. Cleanup and three-read reconciliation prove zero disposable compute and USD 0 settled increment; both intended volumes remain. Existing volumes remain USD 7/month separately. Any retry needs a fresh exact proposal and fresh numeric cap. V2-08 remains forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt22_authorized_pending_execution
-  execution_blocker: null
+  execution_status: attempt22_closed_failed_output_contract_unproven
+  execution_blocker: exact_rejected_output_contract_field_unproven_from_redaction_safe_evidence
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt22_authorized_pending_execution
+  state: v2_06_complete_green_independently_audited_v2_07_attempt22_closed_not_qualified
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -1283,10 +1308,10 @@ verification:
       r2_inventory_sha256_after_cleanup: "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
 
 audit_evidence:
-  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
-  v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
-  v2_07_current_approved_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
+  v2_07_current_proposal: null
+  v2_07_current_proposal_sha256: null
+  v2_07_current_approved_authority: null
+  v2_07_current_approved_authority_sha256: null
   v2_07_attempt20_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/combined-live-proposal.json
   v2_07_attempt20_closed_proposal_sha256: "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02"
   v2_07_attempt20_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/approved-authority.json
@@ -1301,19 +1326,25 @@ audit_evidence:
   v2_07_attempt18_closed_proposal_sha256: "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be"
   v2_07_attempt18_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json
   v2_07_attempt18_closed_authority_sha256: "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c"
-  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json
-  v2_07_latest_closed_proposal_sha256: "sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4"
-  v2_07_pending_attempt22_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json
-  v2_07_pending_attempt22_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json
+  v2_07_latest_closed_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+  v2_07_pending_attempt22_proposal: null
+  v2_07_pending_attempt22_proposal_sha256: null
   v2_07_pending_attempt22_control_commit: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"
+  v2_07_attempt22_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json
+  v2_07_attempt22_closed_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+  v2_07_attempt22_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
+  v2_07_attempt22_closed_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
+  v2_07_attempt22_closure: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json
+  v2_07_attempt22_closure_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
   v2_07_attempt21_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json
   v2_07_attempt21_closed_proposal_sha256: "sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4"
   v2_07_attempt21_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/approved-authority.json
   v2_07_attempt21_closed_authority_sha256: "sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"
   v2_07_attempt21_closure: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json
   v2_07_attempt21_closure_sha256: "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68"
-  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/approved-authority.json
-  v2_07_latest_closed_authority_sha256: "sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"
+  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
+  v2_07_latest_closed_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
   v2_07_attempt17_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
   v2_07_attempt17_closed_proposal_sha256: "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c"
   v2_07_attempt17_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
@@ -1331,7 +1362,7 @@ audit_evidence:
   v2_07_historical_amended_proposal: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
   v2_07_historical_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
   v2_07_historical_image_publication: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
-  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json
+  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json
   v2_07_latest_predispatch_safety_repair: evidence/acceptance/VF-10-07/2026-08-20-pre-dispatch-safety-repair/acceptance.json
   v2_07_historical_live_authority: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/authority.json
   v2_07_latest_provider_free_handoff: evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/acceptance.json

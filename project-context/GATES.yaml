@@ -115,31 +115,32 @@ gates:
     blocks: mage_serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
-    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json"
-    last_run_sha256: "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68"
-    previous_attempt: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-20.json"
-    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/approved-authority.json"
-    latest_closed_authority_sha256: "sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d"
-    latest_closed_proposal_sha256: "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02"
-    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json"
-    latest_approved_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
-    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json"
-    latest_approved_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
+    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json"
+    last_run_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
+    previous_attempt: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json"
+    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json"
+    latest_closed_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
+    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json"
+    latest_closed_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+    latest_approved_proposal: null
+    latest_approved_proposal_sha256: null
+    latest_approved_authority: null
+    latest_approved_authority_sha256: null
     latest_approved_control_source_commit: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"
-    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/approved-authority.json"
-    closed_authority_sha256: "sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"
-    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json"
-    closure_evidence_sha256: "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68"
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json"
+    closed_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
+    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json"
+    closure_evidence_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
+    pending_proposal: null
+    pending_proposal_sha256: null
     pending_control_source_commit: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
-    authority_mode: bounded_mutation
-    pending_numeric_cap_usd: 4
-    pending_flashboot: true
-    pending_availability: LOW
-    result: "AUTHORIZED_attempt22_proposal_sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7_flashboot_true_low_eu_ro_1_usd4_bounded_execution_pending"
+    pending_authority: null
+    pending_authority_sha256: null
+    authority_mode: none_attempt22_consumed
+    pending_numeric_cap_usd: null
+    pending_flashboot: null
+    pending_availability: null
+    result: "NOT_QUALIFIED_attempt22_postdispatch_completed_job_output_contract_unproven_exact_cleanup_complete_zero_disposable_compute_zero_settled_increment"
 
   GATE_SERVERLESS_SOULX_001:
     status: open

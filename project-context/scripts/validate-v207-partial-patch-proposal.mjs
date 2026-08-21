@@ -158,10 +158,10 @@ assert(qualification.includes("maximumCumulativeFiniteSpendUsd: finiteCapUsd"), 
 assert(state.includes(expectedProposalHash), "state_proposal");
 assert(state.includes(expectedAuthorityHash), "state_authority");
 assert(state.includes("failed-attempt-19.json"), "state_attempt19");
-assert(state.includes("task_stage: bounded_mutation"), "state_stage");
-assert(state.includes("provider_calls_authorized: true"), "state_provider_closed");
-assert(state.includes("maximum_external_spend_usd: 4"), "state_cap_closed");
-assert(gate.includes("failed-attempt-20.json") && gate.includes(currentSuccessorProposal.slice(7)), "gate_successor");
+assert(state.includes("task_stage: provider_free_repair"), "state_stage");
+assert(state.includes("provider_calls_authorized: false"), "state_provider_closed");
+assert(state.includes("maximum_external_spend_usd: 0"), "state_cap_closed");
+assert(gate.includes("failed-attempt-22.json") && state.includes(currentSuccessorProposal), "gate_successor");
 assert(task.includes(expectedProposalHash), "task_proposal");
 assert(activation.includes("sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"), "activation_successor_proposal");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "activation_closed");

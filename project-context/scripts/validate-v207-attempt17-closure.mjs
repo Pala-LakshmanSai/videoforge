@@ -48,7 +48,7 @@ assert(
     state.includes("sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d"),
   "current_state_successor_closed",
 );
-assert(gate.includes("failed-attempt-20.json"), "gate_successor_pointer");
+assert(gate.includes("failed-attempt-22.json"), "gate_successor_pointer");
 assert(task.includes("Attempt 17 — endpoint PATCH schema failure"), "task_handoff");
 assert(
   activation.includes("V207_APPROVED_FINITE_CAP_USD"),

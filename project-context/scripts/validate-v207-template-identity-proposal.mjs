@@ -316,23 +316,23 @@ const currentState = readText(files.currentState, "current_state");
 const providerAuthority = topLevelBlock(currentState, "provider_authority:");
 const recommendedTask = topLevelBlock(currentState, "recommended_next_task:");
 const auditEvidence = topLevelBlock(currentState, "audit_evidence:");
-assert(providerAuthority.includes("mode: paid"), "state_authority_none");
-assert(providerAuthority.includes("cap_usd: 4"), "state_authority_zero_cap");
+assert(providerAuthority.includes("mode: none"), "state_authority_none");
+assert(providerAuthority.includes("cap_usd: 0"), "state_authority_zero_cap");
 assert(
-  currentState.includes(`v2_07_action: execute_attempt22_template_environment_get_proof_then_bounded_qualification`),
+  currentState.includes(`v2_07_action: diagnose_attempt22_completed_job_output_contract_provider_free`),
   "state_action",
 );
 assert(currentState.includes(`v2_07_proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
 assert(currentState.includes("v2_07_authority:") && currentState.includes("approved-authority.json"), "state_no_current_authority");
 assert(currentState.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_attempt17_closed_authority_path");
 assert(currentState.includes("failed-attempt-17.json"), "state_attempt17_path");
-assert(currentState.includes("provider_calls_authorized: true") && currentState.includes("maximum_external_spend_usd: 4"), "state_provider_boundary");
-assert(currentState.includes("gpu_use_authorized: true") && currentState.includes("remote_or_cloud_mutations_authorized: true"), "state_gpu_mutation_boundary");
-assert(recommendedTask.includes("Attempt22 template-environment GET proof"), "state_recommended_goal");
-assert(recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
-assert(recommendedTask.includes("current_goal_authority: approved_proposal_sha256_96ead659"), "state_recommended_authority");
-assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
-assert(auditEvidence.includes("v2_07_current_approved_authority:"), "state_audit_no_current_authority");
+assert(currentState.includes("provider_calls_authorized: false") && currentState.includes("maximum_external_spend_usd: 0"), "state_provider_boundary");
+assert(currentState.includes("gpu_use_authorized: false") && currentState.includes("remote_or_cloud_mutations_authorized: false"), "state_gpu_mutation_boundary");
+assert(recommendedTask.includes("Attempt22 completed-job output-contract rejection"), "state_recommended_goal");
+assert(recommendedTask.includes("task_stage: provider_free_repair"), "state_recommended_stage");
+assert(recommendedTask.includes("current_goal_authority: none_attempt22_consumed"), "state_recommended_authority");
+assert(auditEvidence.includes(`v2_07_latest_closed_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
+assert(auditEvidence.includes("v2_07_current_approved_authority: null"), "state_audit_no_current_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_attempt17_closed_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority_sha256: "${expected.candidateAuthority}"`), "state_audit_attempt17_closed_authority_hash");
 
@@ -341,7 +341,7 @@ const mageGateStart = gates.indexOf("  GATE_SERVERLESS_MAGE_001:");
 const mageGateEnd = gates.indexOf("\n  GATE_", mageGateStart + 1);
 assert(mageGateStart >= 0 && mageGateEnd > mageGateStart, "gate_mage_block");
 const mageGate = gates.slice(mageGateStart, mageGateEnd);
-assert(mageGate.includes("failed-attempt-20.json"), "gate_attempt_path");
+assert(mageGate.includes("failed-attempt-22.json"), "gate_attempt_path");
 assert(mageGate.includes(expected.currentProposal.slice(7)), "gate_authority_boundary");
 
 const task = readText(files.task, "task");

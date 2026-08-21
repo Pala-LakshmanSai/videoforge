@@ -118,6 +118,19 @@ function harnessFetch(
       endpointEnvironment = body.env;
       return jsonResponse({ id: "template_01", env: endpointEnvironment });
     }
+    if (path === "/templates/template_01" && init?.method === undefined) {
+      return jsonResponse({
+        id: "template_01",
+        name: "vf_mage_v207_test",
+        imageName: image,
+        containerDiskInGb: 120,
+        isPublic: false,
+        isServerless: true,
+        env: endpointEnvironment ?? { LOG_LEVEL: "INFO", RUNPOD_INIT_TIMEOUT: "800" },
+        volumeInGb: 0,
+        volumeMountPath: "/runpod-volume",
+      });
+    }
     if (path === "/endpoints/endpoint_01" && init?.method === "PATCH") {
       expect(body).not.toHaveProperty("computeType");
       return jsonResponse({ ...body, id: "endpoint_01", computeType: "GPU" });
@@ -721,8 +734,10 @@ describe("V2-07 qualification harness", () => {
       ),
     ).toHaveLength(1);
     expect(
-      fetch.mock.calls.filter(([url]) =>
-        new URL(String(url)).pathname.endsWith("/templates/template_01"),
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "DELETE" &&
+          new URL(String(url)).pathname.endsWith("/templates/template_01"),
       ),
     ).toHaveLength(1);
   });
