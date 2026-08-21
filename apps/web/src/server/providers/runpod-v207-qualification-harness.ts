@@ -283,6 +283,8 @@ export class RunPodV207QualificationHarness {
   #initialConfigHash: string | null = null;
   #concurrentReaderConfigHash: string | null = null;
   #initialQualificationComplete = false;
+  /** A direct warm-idle fallback is permitted only immediately after an owned terminal job. */
+  #postJobWarmIdlePending = false;
   /** Blocks the primary client until every independently guarded reader has drained. */
   #concurrentReaderFence = false;
   /** Claims the one allowed two-reader dispatch while its primary fence is active. */
@@ -981,6 +983,7 @@ export class RunPodV207QualificationHarness {
         ? await this.#jobs!.dispatch(input.requestKey, request)
         : await this.#jobs!.dispatchWithPolicy(input.requestKey, request, policy);
     this.#ownedJobs.set(job.id, this.#jobs!);
+    if (TERMINAL_STATUSES.has(job.status)) this.#postJobWarmIdlePending = true;
     this.checkAbort();
     await this.assertSpendWithinCap();
     this.mark("job_dispatched", { job_id_hash: job.idHash, attempt_id: input.attemptId });
@@ -1015,6 +1018,7 @@ export class RunPodV207QualificationHarness {
       });
       if (TERMINAL_STATUSES.has(latest.status)) {
         this.#ownedJobs.delete(jobId);
+        this.#postJobWarmIdlePending = true;
         return latest;
       }
       if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
@@ -1038,8 +1042,36 @@ export class RunPodV207QualificationHarness {
     if (this.#guard.snapshot() !== "active" && this.#guard.snapshot() !== "warm_idle") {
       throw new RunPodControlError("RUNPOD_WARM_IDLE_NOT_ALLOWED");
     }
-    await this.#jobs!.confirmWarmIdle(300, 250);
+    try {
+      await this.#jobs!.confirmWarmIdle(300, 250);
+    } catch (error) {
+      if (
+        !(error instanceof RunPodControlError) ||
+        error.code !== "RUNPOD_WARM_IDLE_NOT_CONFIRMED"
+      ) {
+        throw error;
+      }
+      if (!this.#postJobWarmIdlePending) {
+        throw error;
+      }
+      // After a completed owned job, RunPod can leave a stale throttled counter even when the
+      // attributable worker and Pod are terminal.  Health-first quiescence plus the existing
+      // exact two-snapshot terminal inventory proof may promote that state to zero.  A nonterminal,
+      // mismatched, or unstable inventory remains fail-closed and invalidates dispatch.
+      this.mark("post_job_warm_idle_fallback", {
+        direct_error: error.code,
+        fallback_reason: "post_job_direct_warm_idle_unconfirmed",
+      });
+      await this.confirmTerminalScaleZeroBaseline(
+        this.#options.initialPolicy,
+        "post_job_terminal_worker_scale_zero",
+      );
+      this.checkAbort();
+      this.#postJobWarmIdlePending = false;
+      return;
+    }
     this.checkAbort();
+    this.#postJobWarmIdlePending = false;
     this.mark("warm_idle_confirmed");
   }
 

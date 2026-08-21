@@ -56,6 +56,29 @@ const authority = (
   };
 };
 
+const oneItemInput = (
+  attemptId = "attempt_a",
+  reservationId = "reservation_a",
+): {
+  readonly requestKey: string;
+  readonly attemptId: string;
+  readonly input: Readonly<Record<string, unknown>>;
+  readonly outputAuthority: RunPodV207OutputAuthority;
+} => ({
+  requestKey: attemptId,
+  attemptId,
+  input: {
+    envelope: {
+      artifacts: {
+        output_prefix: outputPrefix.replace("attempt_a", attemptId),
+        transfer_port_reservation_ids: [reservationId],
+      },
+    },
+    batch: { items: [{ scene_id: `${attemptId}_scene` }] },
+  },
+  outputAuthority: authority(attemptId, reservationId),
+});
+
 function harnessFetch(
   volume: { readonly id: string; readonly size: number; readonly dataCenterId?: string } = {
     id: "volume_01",
@@ -348,10 +371,14 @@ function terminalScaleZeroFetch(
     readonly podStatusAfterDispatch?: string;
     readonly podCurrentStatus?: string;
     readonly podEndpointId?: string | null;
+    readonly podEndpointIdAfterDispatch?: string | null;
     readonly extraEndpoint?: boolean;
     readonly extraTemplate?: boolean;
     readonly endpointDrift?: Readonly<Record<string, unknown>>;
+    readonly endpointDriftAfterDispatch?: Readonly<Record<string, unknown>>;
     readonly healthWorkers?: Readonly<Record<string, unknown>>;
+    readonly healthWorkersBeforeDispatch?: Readonly<Record<string, unknown>>;
+    readonly healthWorkersAfterDispatch?: Readonly<Record<string, unknown>>;
     readonly healthJobs?: Readonly<Record<string, unknown>>;
     readonly healthJobsAfterFirstSnapshot?: Readonly<Record<string, unknown>>;
     readonly healthAfterFirstSnapshot?: Readonly<Record<string, number>>;
@@ -383,14 +410,25 @@ function terminalScaleZeroFetch(
         workers:
           terminalInventoryReads > 0 && options.healthAfterFirstSnapshot
             ? options.healthAfterFirstSnapshot
-            : (options.healthWorkers ?? {
-                idle: 0,
-                running: 0,
-                initializing: 0,
-                ready: 0,
-                throttled: 1,
-                unhealthy: 0,
-              }),
+            : dispatched
+              ? (options.healthWorkersAfterDispatch ??
+                options.healthWorkers ?? {
+                  idle: 0,
+                  running: 0,
+                  initializing: 0,
+                  ready: 0,
+                  throttled: 1,
+                  unhealthy: 0,
+                })
+              : (options.healthWorkersBeforeDispatch ??
+                options.healthWorkers ?? {
+                  idle: 0,
+                  running: 0,
+                  initializing: 0,
+                  ready: 0,
+                  throttled: 1,
+                  unhealthy: 0,
+                }),
         jobs:
           terminalInventoryReads > 0
             ? (options.healthJobsAfterFirstSnapshot ??
@@ -406,9 +444,13 @@ function terminalScaleZeroFetch(
       return jsonResponse([
         {
           id: "pod_01",
-          ...(options.podEndpointId === null
+          ...((dispatched ? options.podEndpointIdAfterDispatch : options.podEndpointId) === null
             ? {}
-            : { endpointId: options.podEndpointId ?? "endpoint_01" }),
+            : {
+                endpointId:
+                  (dispatched ? options.podEndpointIdAfterDispatch : options.podEndpointId) ??
+                  "endpoint_01",
+              }),
           desiredStatus:
             (dispatched ? options.podStatusAfterDispatch : undefined) ??
             options.podStatus ??
@@ -433,6 +475,7 @@ function terminalScaleZeroFetch(
           },
         ],
         ...options.endpointDrift,
+        ...(dispatched ? options.endpointDriftAfterDispatch : {}),
       };
       return jsonResponse(
         options.extraEndpoint
@@ -1116,6 +1159,95 @@ describe("V2-07 qualification harness", () => {
       ),
     ).toBe(true);
   });
+
+  it("recovers a post-job stale throttled health read only through two stable terminal snapshots", async () => {
+    const fetch = terminalScaleZeroFetch({
+      healthWorkersBeforeDispatch: {
+        idle: 1,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 0,
+        unhealthy: 0,
+      },
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 1,
+        unhealthy: 0,
+      },
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const job = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(job.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(instance.confirmWarmIdle()).resolves.toBeUndefined();
+
+    const evidence = await instance.evidence();
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "post_job_warm_idle_fallback",
+        direct_error: "RUNPOD_WARM_IDLE_NOT_CONFIRMED",
+        fallback_reason: "post_job_direct_warm_idle_unconfirmed",
+      }),
+    );
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "post_job_terminal_worker_scale_zero",
+        stable_terminal_snapshot_count: 2,
+      }),
+    );
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname === "/pods"),
+    ).toHaveLength(3); // one account-zero preflight plus two post-job terminal snapshots
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    ["nonterminal worker", { workerStatusAfterDispatch: "RUNNING" }],
+    ["endpoint identity drift", { endpointDriftAfterDispatch: { workersMax: 2 } }],
+    ["mismatched pod", { podEndpointIdAfterDispatch: "endpoint_02" }],
+  ] as const)(
+    "fails closed and blocks dispatch on post-job %s inventory",
+    async (_label, options) => {
+      const fetch = terminalScaleZeroFetch({
+        ...options,
+        healthWorkersBeforeDispatch: {
+          idle: 1,
+          running: 0,
+          initializing: 0,
+          ready: 0,
+          throttled: 0,
+          unhealthy: 0,
+        },
+        healthWorkersAfterDispatch: {
+          idle: 0,
+          running: 0,
+          initializing: 0,
+          ready: 0,
+          throttled: 1,
+          unhealthy: 0,
+        },
+      });
+      const instance = makeHarness(fetch);
+      await instance.create();
+      const job = await instance.dispatchBatch(oneItemInput());
+      await expect(instance.reconcile(job.id)).resolves.toMatchObject({ status: "COMPLETED" });
+      await expect(instance.confirmWarmIdle()).rejects.toThrow(
+        "RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED",
+      );
+      await expect(
+        instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
+      ).rejects.toThrow("RUNPOD_DISPATCH_BLOCKED");
+      expect(
+        fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+      ).toHaveLength(1);
+    },
+  );
 
   it("uses exact startup inventory when FlashBoot health counters are incomplete", async () => {
     const fetch = terminalScaleZeroFetch({

@@ -1579,8 +1579,8 @@ audit_evidence:
   v2_07_attempt18_closed_proposal_sha256: "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be"
   v2_07_attempt18_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json
   v2_07_attempt18_closed_authority_sha256: "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c"
-  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json
-  v2_07_latest_closed_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/combined-live-proposal.json
+  v2_07_latest_closed_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"
   v2_07_pending_attempt22_proposal: null
   v2_07_pending_attempt22_proposal_sha256: null
   v2_07_pending_attempt22_control_commit: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"
@@ -1596,8 +1596,8 @@ audit_evidence:
   v2_07_attempt21_closed_authority_sha256: "sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"
   v2_07_attempt21_closure: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json
   v2_07_attempt21_closure_sha256: "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68"
-  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
-  v2_07_latest_closed_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
+  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json
+  v2_07_latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"
   v2_07_attempt17_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
   v2_07_attempt17_closed_proposal_sha256: "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c"
   v2_07_attempt17_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
@@ -1615,7 +1615,7 @@ audit_evidence:
   v2_07_historical_amended_proposal: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
   v2_07_historical_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
   v2_07_historical_image_publication: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
-  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-24.json
+  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-27.json
   v2_07_latest_predispatch_safety_repair: evidence/acceptance/VF-10-07/2026-08-20-pre-dispatch-safety-repair/acceptance.json
   v2_07_historical_live_authority: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/authority.json
   v2_07_latest_provider_free_handoff: evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/acceptance.json
@@ -1627,6 +1627,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt25_startup_terminal_inventory_authorized
+  current_goal_scope: v2_07_attempt27_closed_provider_free_warm_idle_diagnosis
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_attempt25_closed_output_finalization_failure_exact_cleanup_complete
+  v2_07_status: NOT_QUALIFIED_attempt27_closed_warm_idle_failure
