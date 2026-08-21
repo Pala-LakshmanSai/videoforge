@@ -293,6 +293,13 @@ const attempt27AuthorizedState =
   state.includes("task_stage: bounded_mutation") &&
   state.includes("provider_calls_authorized: true") &&
   state.includes("maximum_external_spend_usd: 4");
+const attempt27ClosedState =
+  state.includes("phase: serverless_v2_v2_07_attempt27_warm_idle_failure_closed") &&
+  state.includes("task_stage: provider_free") &&
+  state.includes("provider_calls_authorized: false") &&
+  state.includes("remote_or_cloud_mutations_authorized: false") &&
+  state.includes("gpu_use_authorized: false") &&
+  state.includes("maximum_external_spend_usd: 0");
 const attempt26ClosedGate =
   gates.includes("authority_mode: none_attempt26_consumed") &&
   gates.includes('result: "NOT_QUALIFIED_attempt26_closed_finalize_response_invalid"') &&
@@ -311,6 +318,16 @@ const attempt27AuthorizedGate =
   gates.includes(
     'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
   );
+const attempt27ClosedGate =
+  gates.includes("authority_mode: none_attempt27_consumed") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt27_closed_warm_idle_failure"') &&
+  gates.includes(
+    'latest_closed_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
+  ) &&
+  gates.includes(
+    'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
+  ) &&
+  gates.includes("pending_numeric_cap_usd: null");
 
 for (const [label, value] of [
   ["state", state],
@@ -320,12 +337,12 @@ for (const [label, value] of [
 ]) {
   assert(
     (value.includes("failed-attempt-25.json") && value.includes(closureHash)) ||
-      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate)),
+      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate)),
     `${label}_closure_pointer`,
   );
   assert(
     (value.includes(EXPECTED.proposal) && value.includes(EXPECTED.authority)) ||
-      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate)),
+      (label === "gates" && (attempt26ClosedGate || attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate)),
     `${label}_attempt25_lineage`,
   );
   assert(value.includes("NOT_QUALIFIED") && (((value.includes("fresh exact proposal") || value.includes("fresh exact approval") || value.includes("fresh exact Attempt26 proposal")) && value.includes("fresh positive numeric cap")) || value.includes("bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05")), `${label}_fresh_boundary`);
@@ -337,7 +354,8 @@ assert(
     (state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_authorized") && state.includes("task_stage: bounded_mutation") && state.includes("maximum_external_spend_usd: 4") && state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json")) ||
     attempt26ClosedState ||
     attempt27CandidateState ||
-    attempt27AuthorizedState,
+    attempt27AuthorizedState ||
+    attempt27ClosedState,
   "state_closed",
 );
 assert(
@@ -348,7 +366,8 @@ assert(
       gates.includes('result: "NOT_QUALIFIED_attempt26_authorized_preexecution"')) ||
     attempt26ClosedGate ||
     attempt27CandidateGate ||
-    attempt27AuthorizedGate,
+    attempt27AuthorizedGate ||
+    attempt27ClosedGate,
   "gate_closed",
 );
 assert(state.includes(`v2_07_attempt25_candidate_sha256: "${acceptanceHash}"`), "state_acceptance_hash");

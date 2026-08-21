@@ -158,7 +158,7 @@ assert(qualification.includes("maximumCumulativeFiniteSpendUsd: finiteCapUsd"), 
 assert(state.includes(expectedProposalHash), "state_proposal");
 assert(state.includes(expectedAuthorityHash), "state_authority");
 assert(state.includes("failed-attempt-19.json"), "state_attempt19");
-assert(state.includes("task_stage: provider_free_repair") || state.includes("task_stage: bounded_mutation"), "state_stage");
+assert(state.includes("task_stage: provider_free_repair") || state.includes("task_stage: bounded_mutation") || state.includes("task_stage: provider_free"), "state_stage");
 assert(state.includes("provider_calls_authorized: false") || state.includes("provider_calls_authorized: true"), "state_provider_boundary");
 assert(state.includes("maximum_external_spend_usd: 0") || state.includes("maximum_external_spend_usd: 4"), "state_cap_boundary");
 assert(gate.includes("failed-attempt-22.json") && state.includes(currentSuccessorProposal), "gate_successor");

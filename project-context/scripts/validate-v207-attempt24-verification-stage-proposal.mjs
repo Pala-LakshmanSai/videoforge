@@ -149,6 +149,13 @@ const attempt27AuthorizedState =
   state.includes("task_stage: bounded_mutation") &&
   state.includes("provider_calls_authorized: true") &&
   state.includes("maximum_external_spend_usd: 4");
+const attempt27ClosedState =
+  state.includes("phase: serverless_v2_v2_07_attempt27_warm_idle_failure_closed") &&
+  state.includes("task_stage: provider_free") &&
+  state.includes("provider_calls_authorized: false") &&
+  state.includes("remote_or_cloud_mutations_authorized: false") &&
+  state.includes("gpu_use_authorized: false") &&
+  state.includes("maximum_external_spend_usd: 0");
 const attempt26ClosedGate =
   gates.includes("authority_mode: none_attempt26_consumed") &&
   gates.includes('result: "NOT_QUALIFIED_attempt26_closed_finalize_response_invalid"') &&
@@ -167,6 +174,16 @@ const attempt27AuthorizedGate =
   gates.includes(
     'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
   );
+const attempt27ClosedGate =
+  gates.includes("authority_mode: none_attempt27_consumed") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt27_closed_warm_idle_failure"') &&
+  gates.includes(
+    'latest_closed_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
+  ) &&
+  gates.includes(
+    'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
+  ) &&
+  gates.includes("pending_numeric_cap_usd: null");
 assert(
   (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") && state.includes("maximum_external_spend_usd: 4")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt24_closed") && state.includes("maximum_external_spend_usd: 0")) ||
@@ -176,7 +193,8 @@ assert(
     (state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready") && state.includes("maximum_external_spend_usd: 0")) ||
     attempt26ClosedState ||
     attempt27CandidateState ||
-    attempt27AuthorizedState,
+    attempt27AuthorizedState ||
+    attempt27ClosedState,
   "state_phase",
 );
 assert(
@@ -218,7 +236,8 @@ assert(
         gates.includes("authority_mode: none_attempt26_pending_fresh_approval"))) ||
     (attempt26ClosedGate ||
       attempt27CandidateGate ||
-      attempt27AuthorizedGate)) &&
+      attempt27AuthorizedGate ||
+      attempt27ClosedGate)) &&
   gates.includes(EXPECTED.proposal) &&
   gates.includes(EXPECTED.authority),
   "gate_pointer",

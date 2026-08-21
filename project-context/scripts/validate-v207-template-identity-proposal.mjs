@@ -347,7 +347,8 @@ assert(
     currentState.includes(`v2_07_action: execute_exact_attempt26_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`) ||
     currentState.includes(`v2_07_action: diagnose_attempt26_finalize_response_invalid_provider_free_and_require_fresh_exact_proposal_before_any_retry`) ||
     currentState.includes(`v2_07_action: validate_attempt27_hosted_png_crc32_repair_candidate_provider_free_then_require_fresh_exact_approval_and_cap`) ||
-    currentState.includes(`v2_07_action: execute_exact_attempt27_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`),
+    currentState.includes(`v2_07_action: execute_exact_attempt27_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`) ||
+    currentState.includes(`v2_07_action: diagnose_attempt27_warm_idle_failure_provider_free_and_prepare_fresh_uncapped_proposal_only_if_repair_is_proven`),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -377,10 +378,11 @@ assert(
     recommendedTask.includes("Execute and qualify exact Attempt26") ||
     recommendedTask.includes("Diagnose and repair the exact Attempt26 FINALIZE invalid-response path") ||
     recommendedTask.includes("Validate the exact Attempt27 hosted PNG CRC32 finalization repair") ||
-    recommendedTask.includes("Execute and reconcile the exact approved Attempt27 hosted PNG CRC32 finalization repair"),
+    recommendedTask.includes("Execute and reconcile the exact approved Attempt27 hosted PNG CRC32 finalization repair") ||
+    recommendedTask.includes("Diagnose RUNPOD_WARM_IDLE_NOT_CONFIRMED provider-free"),
   "state_recommended_goal",
 );
-assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
+assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation") || recommendedTask.includes("task_stage: provider_free"), "state_recommended_stage");
 assert(
     recommendedTask.includes("current_goal_authority: none_attempt23_pending_provider_free_candidate") ||
     recommendedTask.includes("current_goal_authority: attempt23_approved_preexecution") ||
@@ -394,11 +396,13 @@ assert(
     recommendedTask.includes("current_goal_authority: exact_attempt26_authority_recorded") ||
     recommendedTask.includes("current_goal_authority: none_attempt26_consumed") ||
     recommendedTask.includes("current_goal_authority: none_attempt27_pending_fresh_approval") ||
-    recommendedTask.includes("current_goal_authority: exact_attempt27_authority_recorded"),
+    recommendedTask.includes("current_goal_authority: exact_attempt27_authority_recorded") ||
+    recommendedTask.includes("current_goal_authority: none_attempt27_closed_fresh_authority_required"),
   "state_recommended_authority",
 );
 assert(
-  auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`) ||
+    auditEvidence.includes("v2_07_current_proposal_sha256: null") ||
+    auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`) ||
     auditEvidence.includes(
       'v2_07_current_proposal_sha256: "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"',
     ) ||

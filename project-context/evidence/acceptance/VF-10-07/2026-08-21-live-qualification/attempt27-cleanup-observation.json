@@ -1,0 +1,19 @@
+{
+  "schema_version": "videoforge.v2-07-failed-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 27,
+  "observed_at": "2026-08-21T16:43:43.688Z",
+  "result": {
+    "schema_version": "videoforge.v2-07-failed-cleanup/v1",
+    "endpoint_id_sha256": "sha256:9734a5312a5bc5250fd1e85a4630e53f1e36a6bfe52a1404d68e7a0bad9a2e15",
+    "template_id_sha256": "sha256:edffb9b9c9b97d9d92fc410bdf59584cab586f8ecf998c2db6a6272fe1e4a580",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 3,
+    "terminal_pod_record_count": 3,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true
+  }
+}

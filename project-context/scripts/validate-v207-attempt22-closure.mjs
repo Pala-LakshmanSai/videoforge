@@ -57,6 +57,16 @@ const attempt27AuthorizedGate =
   gates.includes(
     'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
   );
+const attempt27ClosedGate =
+  gates.includes("authority_mode: none_attempt27_consumed") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt27_closed_warm_idle_failure"') &&
+  gates.includes(
+    'latest_closed_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
+  ) &&
+  gates.includes(
+    'latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"',
+  ) &&
+  gates.includes("pending_numeric_cap_usd: null");
 
 assert(hash(closureBytes) === expected.closure, "closure_hash");
 assert(hash(authorityBytes) === expected.authority, "authority_hash");
@@ -108,7 +118,7 @@ assert(
     gates.includes("none_attempt25_consumed") ||
     gates.includes("none_attempt26_pending_fresh_approval") ||
     attempt26ClosedGate ||
-    (attempt27CandidateGate || attempt27AuthorizedGate)) &&
+    (attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate)) &&
     (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt27") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );

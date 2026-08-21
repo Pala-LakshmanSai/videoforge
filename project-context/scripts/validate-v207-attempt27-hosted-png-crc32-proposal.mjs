@@ -30,6 +30,7 @@ const EXPECTED = {
   max1: "sha256:07749793fe28e158bad4314dbec128c30c6dcb3df52e7912837ec6dd10e27372",
   max2: "sha256:1673a27538aef7796a364e125e812c26dc22c2c9a2b7c7671f615fa5af603a25",
   closure: "sha256:f2839fefaafbe507ce447a4e374d502a971e75653b466f6703caa1a1f8e7c9ec",
+  attempt27Closure: "sha256:ffd622c4ee0a6a37311a51f191ce9c3ccbb0ae91620e51f64a03dfef932fb20d",
   priorProposal: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632",
   priorAuthority: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05",
   hostedRepair: "1960ea9307bb7fcb591c842b84fc1c622aec49eb",
@@ -437,6 +438,9 @@ const candidateReady = state.includes(
 const authorizedPreExecution = state.includes(
   "phase: serverless_v2_v2_07_attempt27_hosted_png_crc32_repair_authorized",
 );
+const closedWarmIdle = state.includes(
+  "phase: serverless_v2_v2_07_attempt27_warm_idle_failure_closed",
+);
 if (candidateReady) {
   assert(
     state.includes("task_stage: provider_free_repair") &&
@@ -511,10 +515,51 @@ if (candidateReady) {
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
     "authorized_activation_boundary",
   );
+} else if (closedWarmIdle) {
+  assert(
+    state.includes("task_stage: provider_free") &&
+      state.includes("provider_calls_authorized: false") &&
+      state.includes("remote_or_cloud_mutations_authorized: false") &&
+      state.includes("gpu_use_authorized: false") &&
+      state.includes("maximum_external_spend_usd: 0") &&
+      state.includes(EXPECTED.proposal) &&
+      state.includes(EXPECTED.authority) &&
+      state.includes(EXPECTED.attempt27Closure) &&
+      state.includes(EXPECTED.hostedRepair),
+    "closed_state_boundary",
+  );
+  assert(
+    gates.includes(`latest_closed_proposal_sha256: "${EXPECTED.proposal}"`) &&
+      gates.includes(`latest_closed_authority_sha256: "${EXPECTED.authority}"`) &&
+      gates.includes(`closure_evidence_sha256: "${EXPECTED.attempt27Closure}"`) &&
+      gates.includes("authority_mode: none_attempt27_consumed") &&
+      gates.includes("pending_numeric_cap_usd: null"),
+    "closed_gates_boundary",
+  );
+  for (const [label, value] of [
+    ["task", task],
+    ["start", start],
+  ]) {
+    assert(
+      value.includes(EXPECTED.proposal) &&
+        value.includes(EXPECTED.authority) &&
+        value.includes(EXPECTED.attempt27Closure) &&
+        value.includes(EXPECTED.hostedRepair) &&
+        value.includes("consumed"),
+      `${label}_closed_pointer`,
+    );
+  }
+  assert(
+    activation.includes(EXPECTED.proposal) &&
+      activation.includes(EXPECTED.hostedRepair) &&
+      activation.includes(EXPECTED.runpodControl) &&
+      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+    "closed_activation_boundary",
+  );
 } else {
   fail("state_mode");
 }
 
 process.stdout.write(
-  `V2-07 Attempt27 hosted PNG CRC32 proposal validation PASS (${EXPECTED.proposal}; authority ${EXPECTED.authority}; max1 ${EXPECTED.max1}; max2 ${EXPECTED.max2}; ${authorizedPreExecution ? "authorized cap 4" : "candidate cap null"})\n`,
+  `V2-07 Attempt27 hosted PNG CRC32 proposal validation PASS (${EXPECTED.proposal}; authority ${EXPECTED.authority}; max1 ${EXPECTED.max1}; max2 ${EXPECTED.max2}; ${closedWarmIdle ? "closed consumed authority" : authorizedPreExecution ? "authorized cap 4" : "candidate cap null"})\n`,
 );

@@ -259,7 +259,8 @@ assert(
 );
 assert(
   text(files.currentState).includes("task_stage: provider_free_repair") ||
-    text(files.currentState).includes("task_stage: bounded_mutation"),
+    text(files.currentState).includes("task_stage: bounded_mutation") ||
+    text(files.currentState).includes("task_stage: provider_free"),
   "current_state_task_stage",
 );
 assert(text(files.gates).includes("failed-attempt-22.json") || text(files.gates).includes("failed-attempt-24.json"), "gates_latest_attempt");

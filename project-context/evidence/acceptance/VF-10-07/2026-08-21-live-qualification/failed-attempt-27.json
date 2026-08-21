@@ -1,0 +1,429 @@
+{
+  "schema_version": "videoforge.v2-07-failed-attempt-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 27,
+  "result": "NOT_QUALIFIED",
+  "closed_at": "2026-08-21T16:43:43.688Z",
+  "proposal_sha256": "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae",
+  "authority_sha256": "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10",
+  "authority_state": "CONSUMED_SINGLE_BOUNDED_EXECUTION_DO_NOT_REUSE",
+  "control_source_commit": "b8666dd8b8bc12578ffae8925f6ce73dbf53a841",
+  "hosted_png_crc32_repair_commit": "1960ea9307bb7fcb591c842b84fc1c622aec49eb",
+  "lineage": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "image_config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
+    "image_layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
+    "image_base_sha256": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "image_parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "region": "EU-RO-1",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flashboot": true,
+    "workers_min": 0,
+    "workers_max": 1,
+    "staged_max_one_sha256": "sha256:07749793fe28e158bad4314dbec128c30c6dcb3df52e7912837ec6dd10e27372",
+    "staged_max_two_sha256": "sha256:1673a27538aef7796a364e125e812c26dc22c2c9a2b7c7671f615fa5af603a25",
+    "provider_applied_initial_config_sha256": "sha256:21bfaf9c52619b001eb80c07a6a47e0102c60fde1ea9efa9d85d80f97f3f410d"
+  },
+  "live_result": {
+    "source_path": "/tmp/videoforge-v207-live-result.json",
+    "source_sha256": "sha256:ee7420b04151f1fc4e4a935d09232ea986366be3689ac8272d9e2ebcb0d72f0c",
+    "stop_reason": "RUNPOD_WARM_IDLE_NOT_CONFIRMED",
+    "stopped_phase": "probe-terminal",
+    "provider_status": "COMPLETED",
+    "queue_delay_ms": 32954,
+    "execution_time_ms": 115855,
+    "accepted_batches": 1,
+    "accepted_outputs": 32,
+    "accepted_receipts": 32,
+    "generated_output_rollback": "NOT_REQUIRED_ACCEPTED_DURABLE_OUTPUTS_RETAINED_PRIVATE",
+    "unplanned_duplicate_compute": false,
+    "intermediate_cleanup_error": "RUNPOD_CLEANUP_DELETE_UNCERTAIN",
+    "intermediate_cleanup_disposition": "Superseded by the successful exact failed-cleanup command and independent THREE_STABLE_READS final reconciliation; it is not final absence proof."
+  },
+  "accepted_probe": {
+    "kind": "owned_probe",
+    "provider_job_id_hash": "sha256:f5c72b7b4bf6a46019b7f71e7bf6819d720f6f67f4286f7012b655a44442ead5",
+    "status": "COMPLETED",
+    "execution_time_ms": 115855,
+    "delay_time_ms": 32954,
+    "item_count": 32,
+    "peak_vram_used_bytes": 14177206272,
+    "readbacks": [
+      {
+        "bytes": 1129931,
+        "sha256": "sha256:9976408a2633a5d55a56ea18b7145c03757a639b2d7d145078cc3ce759576114"
+      },
+      {
+        "bytes": 1250123,
+        "sha256": "sha256:bb2f88b3cc6754da50413f5f8087392a789587acc144b08c1d87bc212e8cf53c"
+      },
+      {
+        "bytes": 1511666,
+        "sha256": "sha256:d9c97b6b8cab61c96096b66aed1d8e8ab24d97eefc4b2f8c99d2a5e0dc734391"
+      },
+      {
+        "bytes": 1386522,
+        "sha256": "sha256:8afe29a035262a6c74c405c220b9ac36005b6bf5135cf2b6e14f3c57797683b5"
+      },
+      {
+        "bytes": 1261085,
+        "sha256": "sha256:f1640d23c073cea049ebbea3331f11848ca29cd4ee671cda8ebbea34b2712d4f"
+      },
+      {
+        "bytes": 1371974,
+        "sha256": "sha256:55051c098397128d24e4cf8718789c4762da2ad1088ff559e3d59e6a834493db"
+      },
+      {
+        "bytes": 1363237,
+        "sha256": "sha256:9601776e9dd5acab5d7792780dd7241857061ba646e206b7e94877fcb962075f"
+      },
+      {
+        "bytes": 1161439,
+        "sha256": "sha256:d26c142c3ca817865a5ef0d182b03359247b4e91f0137aaf7145c8e8c72487b5"
+      },
+      {
+        "bytes": 1230907,
+        "sha256": "sha256:5071620292c18e58655fceecf64f414aa26f0234db7c2ae3007af68afce205b0"
+      },
+      {
+        "bytes": 1153140,
+        "sha256": "sha256:3a448b59e38365fd8a75f2568c116f700ac15e20ee638b8f2f99de5e99aa0482"
+      },
+      {
+        "bytes": 1128515,
+        "sha256": "sha256:5d20b799a3b67e3424bbf20531ce38efc4491c8492618f38fbaeb68a8c473c89"
+      },
+      {
+        "bytes": 1294087,
+        "sha256": "sha256:c96cf8bb982e632c5ae5236197dbc90e0f287b576615f80fa9e5529b0121e426"
+      },
+      {
+        "bytes": 1303112,
+        "sha256": "sha256:df03abd04a8b13823a41d1e0647b579404b5df3360801b9126fd5fbe06947932"
+      },
+      {
+        "bytes": 1276845,
+        "sha256": "sha256:ea8aa3a828bc48a49979dfc86286adf555daf8387b9a57be57e712b64754fb9e"
+      },
+      {
+        "bytes": 1081296,
+        "sha256": "sha256:a7c27aa3bff13a319aa61dd5c7c6de5f4bc4461bf0c2b894d8d318126d957105"
+      },
+      {
+        "bytes": 957047,
+        "sha256": "sha256:b2e84968c7bc8e9d138f9e07d424ee732fb9b0cab6f5fd91948f4328428cec46"
+      },
+      {
+        "bytes": 1070923,
+        "sha256": "sha256:ba5c309c50df5ea70ad3f651d29a29d87786fedafc31be086e86cafe15672e7c"
+      },
+      {
+        "bytes": 1134731,
+        "sha256": "sha256:4397394a559fbefeab7687ba26fb6bdbf9a58db2a566cdf3fb96edf3f8e939cc"
+      },
+      {
+        "bytes": 1063549,
+        "sha256": "sha256:ef8b060df242f28897a02964cc019cdec900fad0d32542f4134531b7c477d39d"
+      },
+      {
+        "bytes": 1051158,
+        "sha256": "sha256:2a78f0831a18dc3971cdbae22d710f4b61dbd07ad9c3703abc09cb8089a50f98"
+      },
+      {
+        "bytes": 1451728,
+        "sha256": "sha256:1d60f9f9416b8796b2a6f6ba8bfe547e7ea407735670bce10ceae48a706ea32d"
+      },
+      {
+        "bytes": 1442713,
+        "sha256": "sha256:c94b784561c9cd7c89fa6da28e703aaf932a295bfa06c95ee665b7062b093bbb"
+      },
+      {
+        "bytes": 1021262,
+        "sha256": "sha256:b36e33fe9887e3a741e6a96a0d823b7e9fb60a3f2de2dee93e34cfdf2e0ec834"
+      },
+      {
+        "bytes": 1064617,
+        "sha256": "sha256:b6bd273bf029f9267fd41e3ec77c4d1aa9efefaabaf4efcc7b42156cad51d727"
+      },
+      {
+        "bytes": 1597384,
+        "sha256": "sha256:5800f32c8fd19e1792cd757625458944e8a5d9fcff067cad4caebaecbc3fe770"
+      },
+      {
+        "bytes": 1723806,
+        "sha256": "sha256:3eb627eec25432a785fb1877e285f85ac71f4929905eda779f9f3ab8923362d4"
+      },
+      {
+        "bytes": 1355567,
+        "sha256": "sha256:22a894ee5adb1c6fd1e14e8f38d7b36eef586020ac052a38ac872a82af3988bd"
+      },
+      {
+        "bytes": 1286531,
+        "sha256": "sha256:5668f7b5d346dc80985704ead8f9212433e38adc7c8a779b72ccffc4de1736ac"
+      },
+      {
+        "bytes": 1071625,
+        "sha256": "sha256:8313b6b92cab16c0ac9ef1f95267ec9cfcd1f373c8a6d358c984430b165df20b"
+      },
+      {
+        "bytes": 1258166,
+        "sha256": "sha256:184749d393fcc5845ba5c51466d41508ccbfb4100d6c447c4a089aea51075cf7"
+      },
+      {
+        "bytes": 1616524,
+        "sha256": "sha256:15796032a2619e0a28f4db62ea9f504a399a5d76144ae751ec1fd3dcdb87c7f9"
+      },
+      {
+        "bytes": 1000928,
+        "sha256": "sha256:1599ccb8e910da09312ac05719d7ab1ee68d4ac70e1f58261b753da590ef7336"
+      }
+    ],
+    "commit_receipts": [
+      {
+        "receipt_sha256": "sha256:e9b57b872f1451a95fca9616cddbb5c79126e92808d8a9899064221800bc9bdc",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:1d0b38fb903ec73a0bfe64fb09c9af66780d71ba3de5e9a9331983cb09877165",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:5243bcb5197fd9a3720d8dae3cb7601d22778182f77cc5aac4943cfe0f1bcb00",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:662e8be127c783462368c6549924fe18e2e6cd80236c5166030a852fea3e003e",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:fad1919061ebd3124aa650df421c21ad35a0374a92f2cd3a8e2b685bb3a5f049",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:3266c9f0f58fe38b41cc0c6dc77f2542068f605efdcc3bc08de33d7b00e87cb2",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:32ff542792e72e439b2c60abf185e97fb03af5d5ead24f2950fbcd0a966bc300",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:9030e536ca9fbd7f396e451ae214cadf6ec4a15ebf7d635df2ef3ccad5c8887a",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:231f83874ca4fdaa82f9c09018b36828a00e539b818e90505ff70fe83da23394",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:a2814aebcd9fce81c981188956389c39e9be900b7f94c3e37e4cdf344d973848",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:66d5fa76ede3fcc245495fe48909423260c9f460795106b7901e75fe81ea97a6",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:9099100871cea1e9979dfb3c8366e7f1563fa5b66f550e53e7a98331c7ffb390",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:cbd7eefabac770882d4b4a1b2fb85edc08440b821ff00dfda6eb82793f6ad654",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:a78baefe80211eceb77a636846ae3a854a9813d4490ba0302f85d874a1a0dc31",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:5f13659090c6b149192d604732e46f63be56caddd90f23302df646f593d7c8ff",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:57094b055ce6b975345a845c556d9db925f676ddd198403f3cf040073066bed2",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:d0f78c349289544f1820177a81e03e1c02aea8085637c2d20818468801f5b14e",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:1d63c29fc0239b7066cfec325791279ff13ffde01dba742ab74ddc3e71f19174",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:0f0092351decd138b474b04b475e91233a3a1353a71140a5a8a79dc0809ccaff",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:4d153ebd1cebcd882b9f0b1fb28fc9269e2f02258cc61dd8fe7a85f861332587",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:ebdf13b7d6a1f2f24e35cfa131ad43480a192cec124732aa716aa69b4ceeb4d0",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:d68b9de378e5b6aa65000ae1e4265e90e0bd04b237e76356ebbd20659ff12814",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:d785af9a092cd2c4f11bf900f335b6449598ff20905eacf867becf5b242dec6c",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:1417692b5d5f7e64337c2b71e1f7e3a0d9fe541ee7d67808fadf150eeabe9d63",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:7a0818166d6b71ba3bc5a3aa81023bda1ee00e5bf47eb0e5a96b3a9d23904195",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:c00dd9437496a23a2428ae02dd1a4cbd9613e54880b467db51f4ecc3ad9576ce",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:677a39a18ca8d72baf00452753f78491c9da4aed00b3a15866b5ca5838c0cd9f",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:5cd4f23a1ebdbb358473059e70095ef8c1e39b621535c2553941dcfb82a01d08",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:12b1e2cbec4c5c0832d4a865a0b9156da807eebc7a327e1cfc728a6efa5a518b",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:2b950399a558e98d7093f06c8af1bda192e335185ab86eea99a2f2e896383412",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:59da48de1cf4bd8691db3cfeb4b80d3c68c592d15e8c96429469f46d9850cf3e",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      },
+      {
+        "receipt_sha256": "sha256:95d3433464fa707965447b39713f28436405d8530e6769b1f4a12a3657c3e67a",
+        "reservation_id": "[REDACTED]",
+        "replay_confirmed": true
+      }
+    ],
+    "receipt_sha256": "sha256:4c212ae731aef3bb4f73fce8e6a61a60334a4e3a21cfed298f58eb27dc6cdb5f",
+    "timings": {
+      "allocation_ms": 0,
+      "container_ready_ms": 0,
+      "first_inference_ms": 763,
+      "model_load_ms": 5858,
+      "total_ms": 84900,
+      "upload_ms": 18572,
+      "volume_verified_ms": 18911,
+      "warmup_ms": 4843
+    }
+  },
+  "orchestrator": {
+    "source_path": "/tmp/videoforge-v207-attempt27-orchestrator.json",
+    "source_sha256": "sha256:285d3ae7d1a6febf0d39d606d422316be82db870b450dbe47c4399408694a3e4",
+    "result": "FAILED",
+    "signer_secret_deleted": true,
+    "captured_worker_version_restored": true,
+    "route_restoration": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED",
+      "stable_fingerprint_window_confirmed": true
+    }
+  },
+  "exact_failed_cleanup": {
+    "schema_version": "videoforge.v2-07-failed-cleanup/v1",
+    "observation_path": "attempt27-cleanup-observation.json",
+    "observation_sha256": "sha256:9aa51ccb29b6a9568534c6f79eaa07b46fbcdf1fd9137f9b21cb87404ac3686d",
+    "raw_stdout_retained": false,
+    "endpoint_id_sha256": "sha256:9734a5312a5bc5250fd1e85a4630e53f1e36a6bfe52a1404d68e7a0bad9a2e15",
+    "template_id_sha256": "sha256:edffb9b9c9b97d9d92fc410bdf59584cab586f8ecf998c2db6a6272fe1e4a580",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 3,
+    "terminal_pod_record_count": 3,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true
+  },
+  "final_reconciliation": {
+    "schema_version": "videoforge.v2-07-readonly-reconciliation/v2",
+    "checked_at": "2026-08-21T16:43:43.688Z",
+    "stable_read_count": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ],
+    "baseline_endpoint_spend_usd": 0.29846311127766967,
+    "final_endpoint_spend_usd": 0.29846311127766967,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "retained_storage_charge_usd_per_month": 7,
+  "qualification_boundaries": {
+    "v2_07": "NOT_QUALIFIED",
+    "v2_08": "FORBIDDEN",
+    "complete_owned_probe": "PASS_32_PRIVATE_DURABLE_OUTPUTS",
+    "complete_cold_batch": "NOT_RUN",
+    "complete_warm_batch": "NOT_RUN",
+    "duplicate_cancel_timeout": "NOT_RUN",
+    "two_reader_proof": "NOT_RUN",
+    "endpoint_retained_on_success": false
+  },
+  "next_boundary": "Provider-free diagnose RUNPOD_WARM_IDLE_NOT_CONFIRMED without weakening health-first drain safety. Any new provider mutation or GPU execution requires a new exact proposal and fresh positive numeric cap."
+}

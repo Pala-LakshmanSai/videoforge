@@ -132,7 +132,7 @@ assert(proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_mon
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v2_08_forbidden");
 assert(state.includes(currentSuccessorProposalHash), "current_state_successor_closed");
 assert(state.includes(expectedAuthorityHash), "current_state_historical_authority");
-assert(state.includes("task_stage: provider_free_repair") || state.includes("task_stage: bounded_mutation"), "current_state_stage");
+assert(state.includes("task_stage: provider_free_repair") || state.includes("task_stage: bounded_mutation") || state.includes("task_stage: provider_free"), "current_state_stage");
 assert(state.includes("provider_calls_authorized: false") || state.includes("provider_calls_authorized: true"), "current_state_provider_boundary");
 assert(gate.includes("failed-attempt-22.json"), "gate");
 assert(task.includes(expectedProposalHash), "task");
