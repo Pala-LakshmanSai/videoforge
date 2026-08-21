@@ -224,8 +224,8 @@ assert(
   "activation_current_successor_proposal",
 );
 assert(
-  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
-  "activation_current_null_cap",
+  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
+  "activation_current_cap",
 );
 
 for (const [label, file] of [
@@ -245,9 +245,9 @@ assert(
   text(files.currentState).includes(`v2_07_closed_flashboot_authority_sha256: "${expected.authority}"`),
   "current_state_historical_authority_path",
 );
-assert(text(files.currentState).includes("v2_07_current_approved_authority: null"), "current_state_no_current_authority");
-assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_no_current_cap");
-assert(text(files.currentState).includes("task_stage: provider_free_requalification_handoff"), "current_state_task_stage");
+assert(text(files.currentState).includes("2026-08-21-patch-schema-requalification-candidate/approved-authority.json"), "current_state_current_authority");
+assert(text(files.currentState).includes("maximum_external_spend_usd: 4"), "current_state_current_cap");
+assert(text(files.currentState).includes("task_stage: bounded_mutation"), "current_state_task_stage");
 assert(text(files.gates).includes("failed-attempt-17.json"), "gates_latest_attempt");
 assert(
   text(files.gates).includes(
@@ -255,6 +255,7 @@ assert(
   ),
   "gates_current_successor_proposal",
 );
+assert(text(files.gates).includes("approved_flashboot_true_low_eu_ro_1_fresh_cap_4_pre_execution"), "gates_current_authority");
 
 process.stdout.write(
   `V2-07 historical FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,

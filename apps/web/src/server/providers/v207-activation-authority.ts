@@ -14,9 +14,9 @@ export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
   "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be" as const;
-// Attempt 17 consumed this exact proposal and cap. Keep execution closed until a new exact
-// provider-free repair proposal and a fresh positive numeric cap are separately recorded.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+// Exact proposal 2752...715be is approved with FlashBoot=true, LOW EU-RO-1 availability, and a
+// fresh USD 4 cumulative finite cap. This authority is non-transferable and V2-08 remains closed.
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 
 export interface V207ActivationAuthority {
   readonly image: string;

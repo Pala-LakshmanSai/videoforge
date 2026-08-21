@@ -292,7 +292,7 @@ assert(orchestrator.includes("A matching probe followed by a different status/co
 
 const activation = readText(files.activation, "activation");
 assert(activation.includes(`V207_PENDING_PROPOSAL_SHA256 =\n  "${expected.currentProposal}"`), "activation_current_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null;"), "activation_null_cap");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4;"), "activation_current_cap");
 assert(activation.includes('throw new Error("V207_FRESH_AUTHORITY_REQUIRED")'), "activation_null_cap_guard");
 assert(!activation.includes(expected.proposal) && !activation.includes(expected.candidateAuthority), "activation_closed_authority_leak");
 
@@ -309,20 +309,20 @@ const currentState = readText(files.currentState, "current_state");
 const providerAuthority = topLevelBlock(currentState, "provider_authority:");
 const recommendedTask = topLevelBlock(currentState, "recommended_next_task:");
 const auditEvidence = topLevelBlock(currentState, "audit_evidence:");
-assert(providerAuthority.includes("mode: none"), "state_authority_none");
-assert(providerAuthority.includes("cap_usd: 0"), "state_authority_zero_cap");
-assert(currentState.includes(`v2_07_action: await_fresh_exact_approval_of_patch_schema_requalification_proposal`), "state_action");
+assert(providerAuthority.includes("mode: paid"), "state_authority_paid");
+assert(providerAuthority.includes("cap_usd: 4"), "state_authority_cap");
+assert(currentState.includes(`v2_07_action: execute_exact_approved_patch_schema_requalification_proposal`), "state_action");
 assert(currentState.includes(`v2_07_proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
-assert(currentState.includes("v2_07_authority: null"), "state_no_current_authority");
+assert(currentState.includes("v2_07_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json"), "state_current_authority");
 assert(currentState.includes(`v2_07_latest_closed_authority: ${expected.candidateAuthorityPath}`), "state_latest_closed_authority_path");
 assert(currentState.includes("failed-attempt-17.json"), "state_attempt17_path");
-assert(currentState.includes("provider_calls_authorized: false") && currentState.includes("maximum_external_spend_usd: 0"), "state_provider_boundary");
-assert(currentState.includes("gpu_use_authorized: false") && currentState.includes("remote_or_cloud_mutations_authorized: false"), "state_gpu_mutation_boundary");
-assert(recommendedTask.includes(`goal: "Await exact approval of proposal ${expected.currentProposal}`), "state_recommended_goal");
-assert(recommendedTask.includes("task_stage: provider_free_requalification_handoff"), "state_recommended_stage");
-assert(recommendedTask.includes("current_goal_authority: none_attempt17_consumed"), "state_recommended_authority");
+assert(currentState.includes("provider_calls_authorized: true") && currentState.includes("maximum_external_spend_usd: 4"), "state_provider_boundary");
+assert(currentState.includes("gpu_use_authorized: true") && currentState.includes("remote_or_cloud_mutations_authorized: true"), "state_gpu_mutation_boundary");
+assert(recommendedTask.includes(`goal: "Execute exact approved proposal ${expected.currentProposal}`), "state_recommended_goal");
+assert(recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
+assert(recommendedTask.includes("current_goal_authority: approved_proposal_sha256_2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be_cap_usd_4"), "state_recommended_authority");
 assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
-assert(auditEvidence.includes("v2_07_current_approved_authority: null"), "state_audit_no_current_authority");
+assert(auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json"), "state_audit_current_authority");
 assert(auditEvidence.includes(`v2_07_latest_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_latest_closed_authority");
 assert(auditEvidence.includes(`v2_07_latest_closed_authority_sha256: "${expected.candidateAuthority}"`), "state_audit_latest_closed_authority_hash");
 
@@ -333,14 +333,14 @@ assert(mageGateStart >= 0 && mageGateEnd > mageGateStart, "gate_mage_block");
 const mageGate = gates.slice(mageGateStart, mageGateEnd);
 assert(mageGate.includes("failed-attempt-17.json"), "gate_attempt_path");
 assert(mageGate.includes(expected.currentProposal.slice("sha256:".length)), "gate_current_proposal_hash");
-assert(mageGate.includes("fresh_approval_and_cap_required"), "gate_authority_boundary");
+assert(mageGate.includes("approved_flashboot_true_low_eu_ro_1_fresh_cap_4_pre_execution"), "gate_authority_boundary");
 
 const task = readText(files.task, "task");
 const taskHeader = task.slice(0, task.indexOf("\n## Goal"));
 const repairSectionStart = task.indexOf("## Provider-free Attempt 16 repair and fresh proposal");
 assert(repairSectionStart >= 0, "task_repair_section");
 const repairSection = task.slice(repairSectionStart);
-assert(taskHeader.includes("closed and non-transferable") && taskHeader.includes("has no authority and no cap"), "task_closed_authority");
+assert(taskHeader.includes("closed and non-transferable") && taskHeader.includes("is approved with FlashBoot=true"), "task_current_authority");
 assert(taskHeader.includes(expected.currentProposal), "task_current_proposal_hash");
 assert(taskHeader.includes("No V2-08"), "task_v208_boundary");
 assert(repairSection.includes("update the exact private template environment"), "task_template_update");
