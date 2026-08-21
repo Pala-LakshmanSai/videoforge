@@ -10,9 +10,9 @@ resources, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative bi
 0.12480033212341368, and USD 0 settled increment. Attempt23 proposal
 `sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9` and authority
 `sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35` are consumed and
-closed. Provider authority is null; a fresh exact proposal and fresh positive numeric cap are
-required for any retry. No image republication, model or retained-volume mutation, fallback
-GPU/region, public sample publication, V2-08, or successor work is authorized.
+closed. Attempt24 is now authorized under its exact recorded proposal and fresh USD 4 cap; no
+image republication, model or retained-volume mutation, fallback GPU/region, public sample
+publication, V2-08, or successor work is authorized.
 
 Attempt 23 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json`.
 Attempt 23 proposal SHA-256: `sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9`.
@@ -39,11 +39,21 @@ at `sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137`. It
 unchanged image/source, exact Mage manifest, sealed 50 GB EU-RO-1 volume at `/runpod-volume`,
 FlashBoot=true, LOW EU-RO-1, RTX 4090, max-one
 `sha256:345072150945c7dfa686c6b90b36565accd65ad5666f5c2917e160d5cf9f308a`, and max-two
-`sha256:173e52dde1443d61f9a678e54ff859f2709797a3f4aa818f0402772887c2be8a`. Cap and authority
-are null; fresh exact approval and a fresh positive numeric cap are required before provider
-mutation, publication, GPU use, or spend. Attempt23 closure is
+`sha256:173e52dde1443d61f9a678e54ff859f2709797a3f4aa818f0402772887c2be8a`. The exact authority
+is recorded below; provider mutation, publication, GPU use, or spend are authorized only after
+the authority commit and within the fresh `$4` cap. Attempt23 closure is
 `failed-attempt-23.json` at
 `sha256:0f48f3bc82b6d0b7fb48e723c4a3fc36a142129de578447acd30d77157e1ca1b`.
+
+Attempt 24 exact authority is recorded at
+`evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json`
+with SHA-256 `sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412`. The user
+approved proposal `sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137`
+with FlashBoot=true, LOW EU-RO-1 availability, and a fresh maximum cumulative finite spend of
+`$4`. The authority binds the unchanged image/source/control, exact Mage volume and manifest,
+RTX 4090, max-one then separately hashed max-two configurations, bounded output diagnostics,
+cleanup/rollback, and V2-08 prohibition. Provider mutation and GPU use are authorized only for
+this exact proposal and cap; V2-07 remains NOT_QUALIFIED until live gates pass.
 
 Attempt 22 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`.
 Attempt 22 proposal SHA-256: `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`.
