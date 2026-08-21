@@ -1,5 +1,5 @@
 schema_version: "2.0"
-updated_at: "2026-08-19"
+updated_at: "2026-08-21"
 evidence_root: "evidence/gates"
 
 # This registry contains only active V2 gates and accepted foundations still used by V2.
@@ -118,7 +118,11 @@ gates:
     last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-20.json"
     latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/approved-authority.json"
     latest_closed_authority_sha256: "sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d"
-    result: "NOT_QUALIFIED_attempt20_proposal_sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02_get_readback_unconfirmed_exact_cleanup_zero_incremental_spend_fresh_proposal_and_cap_required"
+    latest_closed_proposal_sha256: "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02"
+    latest_pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json"
+    latest_pending_proposal_sha256: "sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4"
+    latest_pending_control_source_commit: "8d62be71b9b10585ea99d0583a4a4267ed9a5a79"
+    result: "NOT_QUALIFIED_attempt20_closed_attempt21_diagnostic_category_proposal_pending_fresh_exact_approval_and_numeric_cap"
 
   GATE_SERVERLESS_SOULX_001:
     status: open

@@ -37,7 +37,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02",
+      "sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4",
     );
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });

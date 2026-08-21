@@ -170,7 +170,7 @@ assert(gate.includes(expectedProposal.slice(7)), "gate_proposal");
 assert(gate.includes(expectedAuthority), "gate_authority");
 assert(task.includes(expectedProposal), "task_proposal");
 assert(task.includes(expectedAuthority), "task_authority");
-assert(activation.includes(expectedProposal), "activation_proposal");
+assert(activation.includes("sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4"), "activation_successor_proposal");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
 
 process.stdout.write(`V2-07 Attempt 20 closure validation PASS (${expectedAttempt20})\n`);

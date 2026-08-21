@@ -1,0 +1,68 @@
+{
+  "schema_version": "videoforge.v2-07-attempt21-diagnostic-candidate-handoff/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-21T07:20:00.000Z",
+  "result": "PROVIDER_FREE_DIAGNOSTIC_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_sha256": "sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4",
+    "control_source_commit": "8d62be71b9b10585ea99d0583a4a4267ed9a5a79",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "flashboot": true,
+    "availability": "LOW",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true
+  },
+  "attempt20_closure": {
+    "evidence": "../2026-08-20-live-qualification/failed-attempt-20.json",
+    "sha256": "sha256:82aae2abf02041620c18d6a016719bab0f92ef41ed77430c2239ebfab005a37d",
+    "dispatch_reached": false,
+    "gpu_jobs_submitted": 0,
+    "incremental_spend_usd": 0,
+    "final_disposable_resources_absent": true,
+    "retained_volume_count": 2,
+    "stable_billing_reads": 3
+  },
+  "diagnostic_contract": {
+    "mismatch_categories": [
+      "identity",
+      "environment",
+      "flashboot",
+      "region",
+      "cuda",
+      "volume",
+      "gpu",
+      "workers",
+      "timing",
+      "scaler"
+    ],
+    "evidence_field": "error_category",
+    "provider_body_retained": false,
+    "mismatch_stops_before_dispatch": true,
+    "readback_pass_continues_full_qualification": true
+  },
+  "local_verification": {
+    "attempt21_proposal_validator": "PASS",
+    "focused_web_tests": "PASS_83_TESTS",
+    "context_validation": "PASS_WITH_EXISTING_READ_PROFILE_WORD_WARNING",
+    "secret_scan": "PASS",
+    "format_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "provider_boundary": {
+    "provider_calls": false,
+    "provider_mutations": false,
+    "publication": false,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "retained_volume_mutation": false,
+    "v2_08_authorized": false
+  },
+  "next_boundary": "Ask once for explicit approval of the exact Attempt21 proposal hash and a fresh positive numeric maximum cumulative finite spend; do not publish, mutate provider state, use GPU, or spend before both are recorded."
+}

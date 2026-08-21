@@ -146,7 +146,7 @@ assert(control.includes("const v207EndpointPatchAcknowledgementMatches"), "parti
 assert(control.includes("value?.id === expected.endpointId"), "partial_ack_exact_id");
 assert(control.includes("matchesIfPresent(value.workersMax, expected.policy.workersMax)"), "partial_ack_conflict_check");
 assert(control.includes("const readbackValue = record(await this.read(`/endpoints/${endpointId}`))"), "mandatory_get");
-assert(control.includes("v207EndpointBindingMatches(readbackValue, expected)"), "strict_get_matcher");
+assert(control.includes("classifyRunPodV207EndpointReadbackMismatch(readbackValue, expected)"), "strict_get_matcher");
 assert(controlTest.includes("partial PATCH acknowledgement"), "partial_ack_test");
 assert(controlTest.includes("without the exact endpoint identity"), "missing_id_test");
 assert(controlTest.includes("full GET configuration drift"), "strict_get_test");
@@ -163,7 +163,7 @@ assert(state.includes("provider_calls_authorized: false"), "state_provider_close
 assert(state.includes("maximum_external_spend_usd: 0"), "state_cap_closed");
 assert(gate.includes("failed-attempt-20.json") && gate.includes(currentSuccessorProposal.slice(7)), "gate_successor");
 assert(task.includes(expectedProposalHash), "task_proposal");
-assert(activation.includes(currentSuccessorProposal), "activation_successor_proposal");
+assert(activation.includes("sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4"), "activation_successor_proposal");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
 
 process.stdout.write(`V2-07 partial PATCH acknowledgement proposal validation PASS (${expectedProposalHash})\n`);
