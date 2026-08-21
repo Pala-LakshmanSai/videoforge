@@ -79,6 +79,24 @@ const gates = gatesBytes.toString("utf8");
 const task = taskBytes.toString("utf8");
 const start = startBytes.toString("utf8");
 const activation = activationBytes.toString("utf8");
+const attempt26ClosedState = state.includes(
+  "phase: serverless_v2_v2_07_attempt26_closed_finalize_response_invalid",
+);
+const attempt27CandidateState = state.includes(
+  "phase: serverless_v2_v2_07_attempt27_hosted_png_crc32_repair_candidate_ready",
+);
+const attempt26ClosedGate =
+  gates.includes("authority_mode: none_attempt26_consumed") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt26_closed_finalize_response_invalid"') &&
+  gates.includes(
+    'latest_closed_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"',
+  );
+const attempt27CandidateGate =
+  gates.includes("authority_mode: none_attempt27_pending_fresh_approval") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt27_hosted_png_crc32_repair_candidate_ready"') &&
+  gates.includes(
+    'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
+  );
 
 for (const [label, bytes, expected] of [
   ["closure", closureBytes, EXPECTED.closure],
@@ -158,7 +176,9 @@ assert(
     state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready")) &&
     state.includes("maximum_external_spend_usd: 0") ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
-      state.includes("maximum_external_spend_usd: 4")),
+      state.includes("maximum_external_spend_usd: 4")) ||
+    attempt26ClosedState ||
+    attempt27CandidateState,
   "state_closed",
 );
 assert(
@@ -187,7 +207,9 @@ assert(
       gates.includes('result: "NOT_QUALIFIED_attempt26_provider_free_finalize_transport_repair_candidate_ready"')) ||
     (gates.includes("authority_mode: attempt25_bounded_mutation_authorized") &&
       gates.includes("pending_numeric_cap_usd: 4") &&
-      gates.includes('result: "NOT_QUALIFIED_attempt25_authorized_pre_execution"')),
+      gates.includes('result: "NOT_QUALIFIED_attempt25_authorized_pre_execution"')) ||
+    attempt26ClosedGate ||
+    attempt27CandidateGate,
   "gate_closed",
 );
 assert(task.includes("Attempt 24 closure") && task.includes("fresh exact proposal and fresh positive numeric cap are required"), "task_closure");

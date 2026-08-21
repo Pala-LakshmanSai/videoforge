@@ -1,7 +1,7 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
-bounded Attempt26. Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
+bounded Attempt26; the provider-free Attempt27 hosted PNG CRC32 repair candidate is now ready. Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any
 accepted batch, durable output, or accepted receipt. Exact cleanup deleted only the disposable
@@ -21,8 +21,19 @@ delay and 118362 ms execution, then stopped fail-closed at `output_finalization`
 `sha256:f2839fefaafbe507ce447a4e374d502a971e75653b466f6703caa1a1f8e7c9ec` proves generated-output
 rollback, exact endpoint/template deletion, zero Pods/endpoints/templates/workers, both intended
 50 GB EU-RO-1 volumes retained, signer deletion/Worker rollback/stable disabled route, and `$0`
-settled incremental endpoint spend. Attempt26 authority is consumed and non-reusable. Provider-free
-FINALIZE-route diagnosis is next; any retry requires a new exact proposal and fresh numeric cap.
+settled incremental endpoint spend. Attempt26 authority is consumed and non-reusable. Any retry requires
+a new exact proposal and fresh numeric cap.
+
+Provider-free Attempt27 candidate:
+`evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/combined-live-proposal.json`
+at `sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae`. It binds the unchanged
+published image, Mage model/manifest, sealed 50 GB EU-RO-1 volume at `/runpod-volume`, FlashBoot=true,
+LOW EU-RO-1, RTX 4090 only, max-one `sha256:07749793fe28e158bad4314dbec128c30c6dcb3df52e7912837ec6dd10e27372`,
+and max-two `sha256:1673a27538aef7796a364e125e812c26dc22c2c9a2b7c7671f615fa5af603a25`. It adds the
+provider-free hosted PNG CRC32 table repair `1960ea9307bb7fcb591c842b84fc1c622aec49eb` while preserving
+RunPod control `b8666dd8b8bc12578ffae8925f6ce73dbf53a841`. The candidate has null cap, no authority,
+no provider calls, no GPU use, no mutation, and zero spend; fresh exact approval and a fresh positive
+numeric cap are required before publication, endpoint mutation, or execution. V2-08 remains forbidden.
 
 Historical Attempt24 exact template/endpoint identity work reached the pre-dispatch safety guard,
 but `RUNPOD_QUIESCENT_NOT_CONFIRMED` stopped before `/run/job`; zero jobs and zero batches were

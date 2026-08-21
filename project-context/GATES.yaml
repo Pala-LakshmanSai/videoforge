@@ -145,17 +145,17 @@ gates:
     closed_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-26.json"
     closure_evidence_sha256: "sha256:f2839fefaafbe507ce447a4e374d502a971e75653b466f6703caa1a1f8e7c9ec"
-    pending_proposal: null
-    pending_proposal_sha256: null
-    pending_control_source_commit: null
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"
+    pending_control_source_commit: "b8666dd8b8bc12578ffae8925f6ce73dbf53a841"
     pending_authority: null
     pending_authority_sha256: null
-    authority_mode: none_attempt26_consumed
+    authority_mode: none_attempt27_pending_fresh_approval
     pending_numeric_cap_usd: null
     pending_flashboot: true
     pending_availability: LOW
-    result: "NOT_QUALIFIED_attempt26_closed_finalize_response_invalid"
-    next_boundary: "provider-free diagnose and repair the exact hosted FINALIZE invalid-response path, then require a new exact proposal and fresh positive numeric cap; V2-08 forbidden"
+    result: "NOT_QUALIFIED_attempt27_hosted_png_crc32_repair_candidate_ready"
+    next_boundary: "provider-free validate hosted PNG CRC32 repair 1960ea9307bb7fcb591c842b84fc1c622aec49eb, then require fresh exact proposal approval and fresh positive numeric cap; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:

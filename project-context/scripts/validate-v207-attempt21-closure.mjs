@@ -117,6 +117,12 @@ const task = bytes.task.toString("utf8");
 const start = bytes.start.toString("utf8");
 const activation = bytes.activation.toString("utf8");
 const activationTest = bytes.activationTest.toString("utf8");
+const attempt26Closed = state.includes(
+  "phase: serverless_v2_v2_07_attempt26_closed_finalize_response_invalid",
+);
+const attempt27Candidate = state.includes(
+  "phase: serverless_v2_v2_07_attempt27_hosted_png_crc32_repair_candidate_ready",
+);
 assert(
   state.includes("phase: serverless_v2_v2_07_attempt22_closed_output_contract_diagnosis_required") ||
   state.includes("phase: serverless_v2_v2_07_attempt23_output_contract_diagnostic_pending") ||
@@ -128,7 +134,9 @@ assert(
     state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate") ||
     state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") ||
     state.includes("phase: serverless_v2_v2_07_attempt25_closed") ||
-    state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready"),
+    state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready") ||
+    attempt26Closed ||
+    attempt27Candidate,
   "state_phase",
 );
 assert(state.includes("historical_v2_07_attempt21_authority:") && state.includes("consumed: true"), "state_closed");

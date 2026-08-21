@@ -308,6 +308,9 @@ assert(
     ) ||
     activation.includes(
       "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632",
+    ) ||
+    activation.includes(
+      "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae",
     ),
   "activation_current_proposal",
 );
@@ -341,7 +344,9 @@ assert(
     currentState.includes(`v2_07_action: execute_exact_approved_attempt25_startup_terminal_inventory_proposal`) ||
     currentState.includes(`v2_07_action: record_attempt25_consumed_provider_free_closure_and_require_fresh_exact_approval`) ||
     currentState.includes(`v2_07_action: validate_attempt26_finalize_transport_repair_candidate_provider_free_then_stop_for_fresh_approval`) ||
-    currentState.includes(`v2_07_action: execute_exact_attempt26_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`),
+    currentState.includes(`v2_07_action: execute_exact_attempt26_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`) ||
+    currentState.includes(`v2_07_action: diagnose_attempt26_finalize_response_invalid_provider_free_and_require_fresh_exact_proposal_before_any_retry`) ||
+    currentState.includes(`v2_07_action: validate_attempt27_hosted_png_crc32_repair_candidate_provider_free_then_require_fresh_exact_approval_and_cap`),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -368,7 +373,9 @@ assert(
     recommendedTask.includes("Attempt25 startup-terminal-inventory proposal") ||
     recommendedTask.includes("Attempt25 output-finalization failure") ||
     recommendedTask.includes("Attempt26 FINALIZE transport repair candidate") ||
-    recommendedTask.includes("Execute and qualify exact Attempt26"),
+    recommendedTask.includes("Execute and qualify exact Attempt26") ||
+    recommendedTask.includes("Diagnose and repair the exact Attempt26 FINALIZE invalid-response path") ||
+    recommendedTask.includes("Validate the exact Attempt27 hosted PNG CRC32 finalization repair"),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
@@ -382,7 +389,9 @@ assert(
     recommendedTask.includes("current_goal_authority: approved_attempt25_proposal_sha256_c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946") ||
     recommendedTask.includes("current_goal_authority: none_attempt25_consumed") ||
     recommendedTask.includes("current_goal_authority: none_attempt26_pending_fresh_approval") ||
-    recommendedTask.includes("current_goal_authority: exact_attempt26_authority_recorded"),
+    recommendedTask.includes("current_goal_authority: exact_attempt26_authority_recorded") ||
+    recommendedTask.includes("current_goal_authority: none_attempt26_consumed") ||
+    recommendedTask.includes("current_goal_authority: none_attempt27_pending_fresh_approval"),
   "state_recommended_authority",
 );
 assert(
@@ -395,6 +404,9 @@ assert(
     ) ||
     auditEvidence.includes(
       'v2_07_current_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"',
+    ) ||
+    auditEvidence.includes(
+      'v2_07_current_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
     ),
   "state_audit_current_proposal_hash",
 );

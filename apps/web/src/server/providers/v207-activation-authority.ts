@@ -13,10 +13,12 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632" as const;
+  "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae" as const;
+export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
+  "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
   "b8666dd8b8bc12578ffae8925f6ce73dbf53a841" as const;
-// Attempt 26 is consumed. No provider dispatch is authorized until a fresh exact proposal is approved.
+// Attempt 27 is provider-free and pending fresh exact approval. No provider dispatch is authorized.
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {

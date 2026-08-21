@@ -35,8 +35,17 @@ const [closureBytes, authorityBytes, proposalBytes, state, gates, task, start, a
     readFile(resolve(root, "project-context/tasks/VF-10-07.md"), "utf8"),
     readFile(resolve(root, "project-context/00_START_HERE.md"), "utf8"),
     readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
-  ]);
+]);
 const closure = JSON.parse(closureBytes.toString("utf8"));
+const attempt26ClosedGate =
+  gates.includes("authority_mode: none_attempt26_consumed") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt26_closed_finalize_response_invalid"');
+const attempt27CandidateGate =
+  gates.includes("authority_mode: none_attempt27_pending_fresh_approval") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt27_hosted_png_crc32_repair_candidate_ready"') &&
+  gates.includes(
+    'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
+  );
 
 assert(hash(closureBytes) === expected.closure, "closure_hash");
 assert(hash(authorityBytes) === expected.authority, "authority_hash");
@@ -85,8 +94,10 @@ assert(
     gates.includes("none_attempt25_pending_fresh_approval") ||
     gates.includes("attempt25_bounded_mutation_authorized") ||
     gates.includes("none_attempt25_consumed") ||
-    gates.includes("none_attempt26_pending_fresh_approval")) &&
-    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
+    gates.includes("none_attempt26_pending_fresh_approval") ||
+    attempt26ClosedGate ||
+    attempt27CandidateGate) &&
+    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt27") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );
 assert(

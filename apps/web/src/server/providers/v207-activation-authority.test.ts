@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   V207_APPROVED_FINITE_CAP_USD,
+  V207_HOSTED_PNG_CRC32_REPAIR_COMMIT,
   parseV207ActivationAuthority,
   V207_PENDING_PROPOSAL_SHA256,
   V207_PENDING_CONTROL_SOURCE_COMMIT,
@@ -17,7 +18,7 @@ import {
 const image = V207_REPAIRED_IMAGE;
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete Attempt26 FINALIZE-repair authority lineage", () => {
+  it("pins the complete Attempt27 hosted PNG CRC32 repair lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -38,8 +39,9 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632",
+      "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae",
     );
+    expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
     expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("b8666dd8b8bc12578ffae8925f6ce73dbf53a841");
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
@@ -76,7 +78,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed exact Attempt26 proposal even with its former cap", () => {
+  it("rejects the pending Attempt27 proposal without fresh authority", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -87,7 +89,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects cap drift after Attempt26 consumption at the fresh-authority fence", () => {
+  it("rejects cap drift at the fresh-authority fence", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,

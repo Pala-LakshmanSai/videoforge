@@ -263,6 +263,7 @@ assert(
     gates.includes("NOT_QUALIFIED_attempt24") ||
     gates.includes("NOT_QUALIFIED_attempt25") ||
     gates.includes("NOT_QUALIFIED_attempt26") ||
+    gates.includes("NOT_QUALIFIED_attempt27") ||
     gates.includes("APPROVED_PREEXECUTION_attempt23")) &&
     task.includes("NOT_QUALIFIED") &&
     start.includes("NOT_QUALIFIED"),

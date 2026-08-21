@@ -140,7 +140,8 @@ assert(
   activation.includes(currentSuccessorProposalHash) ||
     activation.includes("sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137") ||
     activation.includes("sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946") ||
-    activation.includes("sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"),
+    activation.includes("sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632") ||
+    activation.includes("sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"),
   "compiled_successor_proposal",
 );
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "compiled_successor_closed");
