@@ -20,12 +20,14 @@ process.env.V207_FINITE_CAP_USD = "4";
 const {
   assertV207ItemCount,
   createV207Cancellation,
+  extractV207EndpointReadbackMismatchCategory,
   extractV207ProviderJobErrorCode,
   installV207SignalHandlers,
   isAllowedV207GhcrBlobRedirect,
   redactV207LiveEvidence,
   redactV207ProviderJobError,
 } = await import("./v207-live-qualification");
+const { RunPodControlError } = await import("./runpod-control");
 if (previousV207Image === undefined) delete process.env.V207_IMAGE;
 else process.env.V207_IMAGE = previousV207Image;
 if (previousV207SourceCommit === undefined) delete process.env.V207_IMAGE_SOURCE_COMMIT;
@@ -247,5 +249,62 @@ describe("V2-07 live qualification runner safety", () => {
         failure_code: "MAGE_OUTPUT_ERROR",
       }),
     ).toBe("MAGE_OUTPUT_ERROR");
+  });
+
+  it("persists only an allow-listed endpoint readback mismatch category", () => {
+    const categories = [
+      "identity",
+      "environment",
+      "flashboot",
+      "region",
+      "cuda",
+      "volume",
+      "gpu",
+      "workers",
+      "timing",
+      "scaler",
+    ] as const;
+    for (const category of categories) {
+      const error = new RunPodControlError(
+        "RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED",
+        category,
+      );
+      expect(extractV207EndpointReadbackMismatchCategory(error)).toBe(category);
+      expect(
+        redactV207LiveEvidence({
+          error: error.code,
+          error_category: category,
+          response_id: "endpoint-raw",
+          env: { SECRET: "must-not-persist" },
+        }),
+      ).toMatchObject({
+        error: error.code,
+        error_category: category,
+      });
+    }
+    expect(extractV207EndpointReadbackMismatchCategory(new RunPodControlError("OTHER"))).toBe(null);
+    expect(extractV207EndpointReadbackMismatchCategory(new Error("environment"))).toBe(null);
+    expect(
+      extractV207EndpointReadbackMismatchCategory(
+        new RunPodControlError(
+          "RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED",
+          "provider-secret" as never,
+        ),
+      ),
+    ).toBe(null);
+    expect(redactV207LiveEvidence({ error_category: "provider-secret" })).toEqual({
+      error_category: "[REDACTED]",
+    });
+    const serialized = JSON.stringify(
+      redactV207LiveEvidence({
+        error_category: "environment",
+        response_id: "endpoint-raw",
+        env: { SECRET: "must-not-persist" },
+      }),
+    );
+    expect(serialized).not.toContain("endpoint-raw");
+    expect(serialized).not.toContain("must-not-persist");
+    expect(source).toContain("evidence.error_category = errorCategory");
+    expect(source).toContain("extractV207EndpointReadbackMismatchCategory(error)");
   });
 });

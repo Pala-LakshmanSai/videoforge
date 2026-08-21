@@ -3,9 +3,11 @@ import { chmod, readFile, rename, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import {
+  RunPodControlError,
   RunPodControlClient,
   type RunPodJobResult,
   type RunPodV207Placement,
+  type RunPodV207EndpointReadbackMismatchCategory,
   V207_RUNPOD_EXECUTION_TIMEOUT_MS,
   V207_RUNPOD_GPU,
   V207_RUNPOD_INIT_TIMEOUT_SECONDS,
@@ -102,6 +104,18 @@ const sortedJson = (value: unknown): string => {
 
 const SAFE_PROVIDER_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 const V207_PROVIDER_ERROR_MAX_BYTES = 4 * 1024;
+const V207_ENDPOINT_READBACK_MISMATCH_CATEGORIES: ReadonlySet<string> = new Set([
+  "identity",
+  "environment",
+  "flashboot",
+  "region",
+  "cuda",
+  "volume",
+  "gpu",
+  "workers",
+  "timing",
+  "scaler",
+]);
 
 export class V207QualificationCancelled extends Error {
   readonly code = "V207_QUALIFICATION_CANCELLED" as const;
@@ -170,6 +184,7 @@ const SAFE_EVIDENCE_KEYS = new Set([
   "status",
   "result",
   "code",
+  "error_category",
   "source_commit",
   "base_digest",
   "manifest_digest",
@@ -233,6 +248,11 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
       if (key === "run_tag")
         return /^202[0-9]{5}-[a-f0-9]{12}$/u.test(candidate) ? candidate : "[REDACTED]";
       if (key !== null && SAFE_EVIDENCE_KEYS.has(key)) {
+        if (key === "error_category") {
+          return V207_ENDPOINT_READBACK_MISMATCH_CATEGORIES.has(candidate)
+            ? candidate
+            : "[REDACTED]";
+        }
         if (/^[0-9a-f]{40}$/u.test(candidate) || SAFE_PROVIDER_CODE.test(candidate)) {
           return candidate;
         }
@@ -257,6 +277,20 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
   return (
     result && typeof result === "object" && !Array.isArray(result) ? result : { value: result }
   ) as AnyRecord;
+}
+
+/**
+ * Extract only the bounded endpoint-readback mismatch family from an in-process control error.
+ * Never inspect or retain provider response fields here; invalid or unrelated categories vanish.
+ */
+export function extractV207EndpointReadbackMismatchCategory(
+  error: unknown,
+): RunPodV207EndpointReadbackMismatchCategory | null {
+  if (!(error instanceof RunPodControlError)) return null;
+  const category = error.category;
+  return typeof category === "string" && V207_ENDPOINT_READBACK_MISMATCH_CATEGORIES.has(category)
+    ? (category as RunPodV207EndpointReadbackMismatchCategory)
+    : null;
 }
 
 /**
@@ -1577,6 +1611,8 @@ async function main(): Promise<void> {
       success = true;
     } catch (error) {
       evidence.error = safeQualificationError(error);
+      const errorCategory = extractV207EndpointReadbackMismatchCategory(error);
+      if (errorCategory !== null) evidence.error_category = errorCategory;
       try {
         await deleteGeneratedObjects(generatedObjectKeys, nonce);
         evidence.generated_output_rollback = "CONFIRMED";
