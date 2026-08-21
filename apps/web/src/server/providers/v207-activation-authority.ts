@@ -13,9 +13,9 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde" as const;
-// Attempt 19 consumed exact proposal ce11...dafde and its USD 4 authority. Keep execution closed
-// until a new exact provider-free repair proposal and fresh positive numeric cap are recorded.
+  "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d" as const;
+// The GET-readback optional-field repair proposal is pending. Keep execution closed until this
+// exact proposal and a fresh positive numeric cap are approved.
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {

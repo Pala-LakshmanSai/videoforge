@@ -37,7 +37,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde",
+      "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d",
     );
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
@@ -74,7 +74,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed USD 4 authority until a fresh proposal is approved", () => {
+  it("rejects all caps until the fresh GET-readback proposal is approved", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,

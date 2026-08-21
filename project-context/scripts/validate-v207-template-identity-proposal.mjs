@@ -42,7 +42,7 @@ const expected = {
   candidateAuthority:
     "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462",
   currentProposal:
-    "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde",
+    "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d",
   currentAuthority:
     "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2",
   closedProposal:
@@ -313,14 +313,14 @@ const recommendedTask = topLevelBlock(currentState, "recommended_next_task:");
 const auditEvidence = topLevelBlock(currentState, "audit_evidence:");
 assert(providerAuthority.includes("mode: none"), "state_authority_none");
 assert(providerAuthority.includes("cap_usd: 0"), "state_authority_zero_cap");
-assert(currentState.includes(`v2_07_action: diagnose_attempt19_endpoint_get_readback_provider_free`), "state_action");
+assert(currentState.includes(`v2_07_action: request_fresh_exact_get_readback_optional_fields_proposal_and_cap`), "state_action");
 assert(currentState.includes(`v2_07_proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
 assert(currentState.includes("v2_07_authority: null"), "state_no_current_authority");
 assert(currentState.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_attempt17_closed_authority_path");
 assert(currentState.includes("failed-attempt-17.json"), "state_attempt17_path");
 assert(currentState.includes("provider_calls_authorized: false") && currentState.includes("maximum_external_spend_usd: 0"), "state_provider_boundary");
 assert(currentState.includes("gpu_use_authorized: false") && currentState.includes("remote_or_cloud_mutations_authorized: false"), "state_gpu_mutation_boundary");
-assert(recommendedTask.includes("Diagnose Attempt 19"), "state_recommended_goal");
+assert(recommendedTask.includes("Obtain exact approval for proposal"), "state_recommended_goal");
 assert(recommendedTask.includes("task_stage: provider_free_repair"), "state_recommended_stage");
 assert(recommendedTask.includes("current_goal_authority: none_attempt19_consumed"), "state_recommended_authority");
 assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
@@ -334,7 +334,7 @@ const mageGateEnd = gates.indexOf("\n  GATE_", mageGateStart + 1);
 assert(mageGateStart >= 0 && mageGateEnd > mageGateStart, "gate_mage_block");
 const mageGate = gates.slice(mageGateStart, mageGateEnd);
 assert(mageGate.includes("failed-attempt-19.json"), "gate_attempt_path");
-assert(mageGate.includes("attempt19_closed"), "gate_authority_boundary");
+assert(mageGate.includes(expected.currentProposal.slice(7)), "gate_authority_boundary");
 
 const task = readText(files.task, "task");
 const taskHeader = task.slice(0, task.indexOf("\n## Goal"));

@@ -13,6 +13,8 @@ const expectedProposalHash =
   "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde";
 const expectedAuthorityHash =
   "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2";
+const currentSuccessorProposal =
+  "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d";
 const expectedControlCommit = "9331845d529fd54a8ec3afa5e2406e7c1ebb77bc";
 const expectedImage =
   "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5";
@@ -159,9 +161,9 @@ assert(state.includes("failed-attempt-19.json"), "state_attempt19");
 assert(state.includes("task_stage: provider_free_repair"), "state_stage");
 assert(state.includes("provider_calls_authorized: false"), "state_provider_closed");
 assert(state.includes("maximum_external_spend_usd: 0"), "state_cap_closed");
-assert(gate.includes("failed-attempt-19.json") && gate.includes("attempt19_closed"), "gate_attempt19");
+assert(gate.includes("failed-attempt-19.json") && gate.includes(currentSuccessorProposal.slice(7)), "gate_successor");
 assert(task.includes(expectedProposalHash), "task_proposal");
-assert(activation.includes(expectedProposalHash), "activation_proposal");
+assert(activation.includes(currentSuccessorProposal), "activation_successor_proposal");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
 
 process.stdout.write(`V2-07 partial PATCH acknowledgement proposal validation PASS (${expectedProposalHash})\n`);

@@ -39,7 +39,7 @@ const expected = {
   closedActivationProposal:
     "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
   currentProposal:
-    "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde",
+    "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d",
   currentAuthority:
     "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
@@ -251,7 +251,7 @@ assert(text(files.currentState).includes("v2_07_current_approved_authority: null
 assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_no_current_cap");
 assert(text(files.currentState).includes("task_stage: provider_free_repair"), "current_state_task_stage");
 assert(text(files.gates).includes("failed-attempt-19.json"), "gates_latest_attempt");
-assert(text(files.gates).includes("attempt19_closed"), "gates_current_boundary");
+assert(text(files.gates).includes(expected.currentProposal.slice(7)), "gates_current_boundary");
 
 process.stdout.write(
   `V2-07 historical FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,
