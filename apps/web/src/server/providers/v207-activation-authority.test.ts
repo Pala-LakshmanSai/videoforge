@@ -4,6 +4,7 @@ import {
   V207_APPROVED_FINITE_CAP_USD,
   parseV207ActivationAuthority,
   V207_PENDING_PROPOSAL_SHA256,
+  V207_PENDING_CONTROL_SOURCE_COMMIT,
   V207_REPAIRED_IMAGE,
   V207_REPAIRED_IMAGE_BASE_DIGEST,
   V207_REPAIRED_IMAGE_CONFIG_DIGEST,
@@ -37,8 +38,9 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946",
+      "sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b",
     );
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("b8666dd8b8bc12578ffae8925f6ce73dbf53a841");
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
 

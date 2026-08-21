@@ -209,6 +209,9 @@ assert(
     (state.includes("phase: serverless_v2_v2_07_attempt25_closed") &&
       state.includes("provider_calls_authorized: false") &&
       state.includes("maximum_external_spend_usd: 0")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready") &&
+      state.includes("provider_calls_authorized: false") &&
+      state.includes("maximum_external_spend_usd: 0")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
       state.includes("provider_calls_authorized: true") &&
       state.includes("maximum_external_spend_usd: 4")),
@@ -236,7 +239,9 @@ assert(
     (gates.includes("latest_closed_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"") &&
       gates.includes(EXPECTED.proposal) &&
       gates.includes("latest_approved_control_source_commit: \"63517e605d441fa23020bea8bff2987cc4bc99c5\"")) ||
-    (gates.includes("historical_attempt23_proposal:") && gates.includes(EXPECTED.proposal) && gates.includes("latest_approved_control_source_commit: \"63517e605d441fa23020bea8bff2987cc4bc99c5\"")) ||
+    (gates.includes("historical_attempt23_proposal:") && gates.includes(EXPECTED.proposal) &&
+      (gates.includes("latest_approved_control_source_commit: \"63517e605d441fa23020bea8bff2987cc4bc99c5\"") ||
+        gates.includes("pending_control_source_commit: \"b8666dd8b8bc12578ffae8925f6ce73dbf53a841\""))) ||
     (gates.includes("latest_approved_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json\"") &&
       gates.includes("latest_approved_proposal_sha256: \"sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946\"") &&
       gates.includes(EXPECTED.proposal) &&
@@ -265,7 +270,8 @@ assert(
       gates.includes("attempt25_bounded_mutation_authorized")) ||
     (gates.includes("closed_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json\"") &&
       gates.includes("pending_numeric_cap_usd: null") &&
-      gates.includes("authority_mode: none_attempt25_consumed")),
+      (gates.includes("authority_mode: none_attempt25_consumed") ||
+        gates.includes("authority_mode: none_attempt26_pending_fresh_approval"))),
   "gate_authority",
 );
 assert(task.includes("Attempt23 output-contract diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority), "task_authority_pointer");

@@ -84,8 +84,9 @@ assert(
     gates.includes("none_attempt24_consumed") ||
     gates.includes("none_attempt25_pending_fresh_approval") ||
     gates.includes("attempt25_bounded_mutation_authorized") ||
-    gates.includes("none_attempt25_consumed")) &&
-    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
+    gates.includes("none_attempt25_consumed") ||
+    gates.includes("none_attempt26_pending_fresh_approval")) &&
+    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );
 assert(

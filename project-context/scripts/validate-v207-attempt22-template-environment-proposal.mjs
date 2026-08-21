@@ -252,7 +252,8 @@ for (const [label, value] of [["state", state], ["gates", gates], ["task", task]
     value.includes("54af72f1e9a29eed7f53e47ecdda9f6a34abb7df") ||
       value.includes("9f5a15c3382c03af675392dacc487b96811674ed") ||
       value.includes("63517e605d441fa23020bea8bff2987cc4bc99c5") ||
-      value.includes("bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"),
+      value.includes("bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9") ||
+      value.includes("b8666dd8b8bc12578ffae8925f6ce73dbf53a841"),
     `${label}_control_pointer`,
   );
   assert(value.includes("failed-attempt-22.json"), `${label}_attempt21_pointer`);
@@ -287,7 +288,8 @@ assert(
       gates.includes("none_attempt24_consumed") ||
       gates.includes("none_attempt25_pending_fresh_approval") ||
       gates.includes("attempt25_bounded_mutation_authorized") ||
-      gates.includes("none_attempt25_consumed")),
+      gates.includes("none_attempt25_consumed") ||
+      gates.includes("none_attempt26_pending_fresh_approval")),
   "gate_authorized",
 );
 assert(task.includes("Attempt 22") && task.includes(EXPECTED.authority), "task_authority");

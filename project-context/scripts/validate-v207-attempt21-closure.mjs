@@ -127,7 +127,8 @@ assert(
     state.includes("phase: serverless_v2_v2_07_attempt24_closed") ||
     state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate") ||
     state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") ||
-    state.includes("phase: serverless_v2_v2_07_attempt25_closed"),
+    state.includes("phase: serverless_v2_v2_07_attempt25_closed") ||
+    state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready"),
   "state_phase",
 );
 assert(state.includes("historical_v2_07_attempt21_authority:") && state.includes("consumed: true"), "state_closed");

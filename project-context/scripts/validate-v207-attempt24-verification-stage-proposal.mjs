@@ -141,7 +141,8 @@ assert(
     (state.includes("phase: serverless_v2_v2_07_attempt24_closed") && state.includes("maximum_external_spend_usd: 0")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate") && state.includes("maximum_external_spend_usd: 0")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") && state.includes("maximum_external_spend_usd: 4")) ||
-    (state.includes("phase: serverless_v2_v2_07_attempt25_closed") && state.includes("maximum_external_spend_usd: 0")),
+    (state.includes("phase: serverless_v2_v2_07_attempt25_closed") && state.includes("maximum_external_spend_usd: 0")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready") && state.includes("maximum_external_spend_usd: 0")),
   "state_phase",
 );
 assert(
@@ -177,7 +178,8 @@ assert(
       gates.includes("pending_numeric_cap_usd: 4")) ||
     (gates.includes("historical_attempt24_proposal:") &&
       gates.includes("historical_attempt24_authority:") &&
-      gates.includes("authority_mode: none_attempt25_consumed"))) &&
+      (gates.includes("authority_mode: none_attempt25_consumed") ||
+        gates.includes("authority_mode: none_attempt26_pending_fresh_approval")))) &&
   gates.includes(EXPECTED.proposal) &&
   gates.includes(EXPECTED.authority),
   "gate_pointer",
@@ -188,7 +190,8 @@ assert((start.includes("Attempt 24 exact authority is recorded") || start.includ
 assert(
   activation.includes("V207_PENDING_PROPOSAL_SHA256") &&
     (activation.includes(EXPECTED.proposal) ||
-      activation.includes("sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946")) &&
+      activation.includes("sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946") ||
+      activation.includes("sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b")) &&
     (activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") ||
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")),
   "activation_approved",

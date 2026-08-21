@@ -305,6 +305,9 @@ assert(
     ) ||
     activation.includes(
       "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946",
+    ) ||
+    activation.includes(
+      "sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b",
     ),
   "activation_current_proposal",
 );
@@ -336,7 +339,8 @@ assert(
     currentState.includes(`v2_07_action: close_attempt24_quiescence_failure_and_require_fresh_authority`) ||
     currentState.includes(`v2_07_action: prepare_attempt25_startup_terminal_inventory_candidate_and_require_fresh_authority`) ||
     currentState.includes(`v2_07_action: execute_exact_approved_attempt25_startup_terminal_inventory_proposal`) ||
-    currentState.includes(`v2_07_action: record_attempt25_consumed_provider_free_closure_and_require_fresh_exact_approval`),
+    currentState.includes(`v2_07_action: record_attempt25_consumed_provider_free_closure_and_require_fresh_exact_approval`) ||
+    currentState.includes(`v2_07_action: validate_attempt26_finalize_transport_repair_candidate_provider_free_then_stop_for_fresh_approval`),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -361,7 +365,8 @@ assert(
     recommendedTask.includes("quiescence failure") ||
     recommendedTask.includes("Attempt25 startup-terminal-inventory candidate") ||
     recommendedTask.includes("Attempt25 startup-terminal-inventory proposal") ||
-    recommendedTask.includes("Attempt25 output-finalization failure"),
+    recommendedTask.includes("Attempt25 output-finalization failure") ||
+    recommendedTask.includes("Attempt26 FINALIZE transport repair candidate"),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
@@ -373,7 +378,8 @@ assert(
     recommendedTask.includes("current_goal_authority: none") ||
     recommendedTask.includes("current_goal_authority: approved_attempt24_proposal_sha256_be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137") ||
     recommendedTask.includes("current_goal_authority: approved_attempt25_proposal_sha256_c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946") ||
-    recommendedTask.includes("current_goal_authority: none_attempt25_consumed"),
+    recommendedTask.includes("current_goal_authority: none_attempt25_consumed") ||
+    recommendedTask.includes("current_goal_authority: none_attempt26_pending_fresh_approval"),
   "state_recommended_authority",
 );
 assert(
@@ -383,6 +389,9 @@ assert(
     ) ||
     auditEvidence.includes(
       'v2_07_current_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"',
+    ) ||
+    auditEvidence.includes(
+      'v2_07_current_proposal_sha256: "sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b"',
     ),
   "state_audit_current_proposal_hash",
 );

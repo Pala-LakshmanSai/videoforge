@@ -154,7 +154,8 @@ for (const [label, value] of [
 assert(
   (state.includes("phase: serverless_v2_v2_07_attempt24_closed") ||
     state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate") ||
-    state.includes("phase: serverless_v2_v2_07_attempt25_closed")) &&
+    state.includes("phase: serverless_v2_v2_07_attempt25_closed") ||
+    state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready")) &&
     state.includes("maximum_external_spend_usd: 0") ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
       state.includes("maximum_external_spend_usd: 4")),
@@ -177,11 +178,13 @@ assert(
 assert(
     (gates.includes("authority_mode: none_attempt24_consumed") ||
     gates.includes("authority_mode: none_attempt25_pending_fresh_approval") ||
-    gates.includes("authority_mode: none_attempt25_consumed")) &&
+    gates.includes("authority_mode: none_attempt25_consumed") ||
+    gates.includes("authority_mode: none_attempt26_pending_fresh_approval")) &&
     gates.includes("pending_numeric_cap_usd: null") &&
     (gates.includes('result: "NOT_QUALIFIED_attempt24_closed_quiescence_failure_exact_cleanup_complete"') ||
       gates.includes('result: "NOT_QUALIFIED_attempt25_startup_terminal_inventory_candidate_pending_fresh_approval"') ||
-      gates.includes('result: "NOT_QUALIFIED_attempt25_closed_output_finalization_failure_exact_cleanup_complete"')) ||
+      gates.includes('result: "NOT_QUALIFIED_attempt25_closed_output_finalization_failure_exact_cleanup_complete"') ||
+      gates.includes('result: "NOT_QUALIFIED_attempt26_provider_free_finalize_transport_repair_candidate_ready"')) ||
     (gates.includes("authority_mode: attempt25_bounded_mutation_authorized") &&
       gates.includes("pending_numeric_cap_usd: 4") &&
       gates.includes('result: "NOT_QUALIFIED_attempt25_authorized_pre_execution"')),

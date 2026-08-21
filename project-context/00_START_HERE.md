@@ -28,6 +28,16 @@ LOW EU-RO-1 availability, and a fresh `$4` cap. Authority
 no provider execution remains authorized. No image republication, model or retained-volume
 mutation, fallback GPU/region, public sample publication, V2-08, or successor work is authorized.
 
+Attempt26 provider-free candidate: `evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json`
+at `sha256:2d7997db91addfdb8b0449a846ed3d272c2ae6450ebe0834b31f3ceb7bfaba4b`. It binds the exact
+published image, Mage model/manifest, sealed 50 GB EU-RO-1 volume at `/runpod-volume`, FlashBoot=true,
+LOW EU-RO-1, RTX 4090, Attempt25 closure `sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2`,
+and local FINALIZE transport repair `b8666dd8b8bc12578ffae8925f6ce73dbf53a841`. Max-one is
+`sha256:b64d008bac42fb13ec342028675a1bb498836981c553e884529ad846d6cdf964`; max-two is
+`sha256:10f887ba47e8a7cac952374eb236fed08cb67962171769b65d96a4f0d3a7acf7`. The candidate has no
+authority and a null cap: no provider calls, endpoint/template mutation, GPU use, publication, or spend
+are authorized. Fresh exact approval and a fresh positive numeric cap are required before any provider action.
+
 Attempt 25 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json`.
 Attempt 25 startup-terminal-inventory candidate was approved and executed once under the exact
 recorded authority and fresh `$4` cap; both are now consumed and non-reusable.

@@ -291,11 +291,11 @@ for (const [label, value] of [
 ]) {
   assert(value.includes("failed-attempt-25.json") && value.includes(closureHash), `${label}_closure_pointer`);
   assert(value.includes(EXPECTED.proposal) && value.includes(EXPECTED.authority), `${label}_attempt25_lineage`);
-  assert(value.includes("NOT_QUALIFIED") && value.includes("fresh exact proposal") && value.includes("fresh positive numeric cap"), `${label}_fresh_boundary`);
+  assert(value.includes("NOT_QUALIFIED") && (value.includes("fresh exact proposal") || value.includes("fresh exact approval") || value.includes("fresh exact Attempt26 proposal")) && value.includes("fresh positive numeric cap"), `${label}_fresh_boundary`);
 }
 
 assert(
-  state.includes("phase: serverless_v2_v2_07_attempt25_closed") &&
+  (state.includes("phase: serverless_v2_v2_07_attempt25_closed") || state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready")) &&
     state.includes("task_stage: provider_free_repair") &&
     state.includes("provider_calls_authorized: false") &&
     state.includes("remote_or_cloud_mutations_authorized: false") &&
@@ -306,9 +306,10 @@ assert(
   "state_closed",
 );
 assert(
-  gates.includes("authority_mode: none_attempt25_consumed") &&
+  (gates.includes("authority_mode: none_attempt25_consumed") || gates.includes("authority_mode: none_attempt26_pending_fresh_approval")) &&
     gates.includes("pending_numeric_cap_usd: null") &&
-    gates.includes('result: "NOT_QUALIFIED_attempt25_closed_output_finalization_failure_exact_cleanup_complete"'),
+    (gates.includes('result: "NOT_QUALIFIED_attempt25_closed_output_finalization_failure_exact_cleanup_complete"') ||
+      gates.includes('result: "NOT_QUALIFIED_attempt26_provider_free_finalize_transport_repair_candidate_ready"')),
   "gate_closed",
 );
 assert(state.includes(`v2_07_attempt25_candidate_sha256: "${acceptanceHash}"`), "state_acceptance_hash");
