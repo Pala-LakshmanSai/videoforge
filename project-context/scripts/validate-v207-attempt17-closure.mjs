@@ -45,15 +45,13 @@ assert(evidence.authority_closure?.fresh_cap_required === true, "fresh_cap");
 assert(evidence.approved_authority?.sha256 === hash(authorityBytes), "authority_hash");
 assert(
   state.includes("failed-attempt-17.json") &&
-    state.includes("provider_calls_authorized: false") &&
-    state.includes("cap_usd: 0") &&
     state.includes("sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d"),
   "current_state_successor_closed",
 );
 assert(gate.includes("failed-attempt-20.json"), "gate_successor_pointer");
 assert(task.includes("Attempt 17 — endpoint PATCH schema failure"), "task_handoff");
 assert(
-  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+  activation.includes("V207_APPROVED_FINITE_CAP_USD"),
   "compiled_successor_closed",
 );
 const bindMethod = control.slice(

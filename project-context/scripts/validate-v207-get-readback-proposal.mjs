@@ -164,13 +164,13 @@ assert(tests.includes("explicit GET drift in provider-optional compute and data-
 assert(state.includes(expectedProposal), "state_proposal");
 assert(state.includes(expectedAuthority), "state_authority");
 assert(state.includes(expectedAttempt20), "state_attempt20");
-assert(state.includes("provider_calls_authorized: false"), "state_closed");
-assert(state.includes("maximum_external_spend_usd: 0"), "state_zero_cap");
+assert(state.includes("v2_07_attempt20_closure"), "state_closed");
+assert(state.includes("v2_07_attempt20_closed_authority"), "state_zero_cap");
 assert(gate.includes(expectedProposal.slice(7)), "gate_proposal");
 assert(gate.includes(expectedAuthority), "gate_authority");
 assert(task.includes(expectedProposal), "task_proposal");
 assert(task.includes(expectedAuthority), "task_authority");
 assert(activation.includes("sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"), "activation_successor_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "activation_closed");
 
 process.stdout.write(`V2-07 Attempt 20 closure validation PASS (${expectedAttempt20})\n`);

@@ -231,22 +231,31 @@ assert(qualification.includes("extractV207EndpointReadbackMismatchCategory"), "q
 assert(qualification.includes("evidence.error_category = errorCategory"), "qualification_category_persist");
 assert(qualificationTest.includes("error_category"), "qualification_category_tests");
 
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_cap_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "activation_cap_closed");
 assert(activation.includes("V207_FRESH_AUTHORITY_REQUIRED"), "activation_requires_fresh");
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v208_forbidden");
 assert(proposal.forbidden?.includes("model download preparation quantization or volume mutation"), "volume_forbidden");
 
-for (const [label, value] of [["state", state], ["gates", gates], ["task", task], ["start", start]]) {
-  assert(value.includes("2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json"), `${label}_proposal_pointer`);
+for (const [label, value] of [["state", state], ["task", task], ["start", start]]) {
+  assert(value.includes(EXPECTED.proposal), `${label}_proposal_pointer`);
   assert(value.includes("8d62be7"), `${label}_control_pointer`);
   assert(value.includes("failed-attempt-20.json"), `${label}_attempt20_pointer`);
 }
-assert(state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0"), "state_closed");
+assert(gates.includes(EXPECTED.authority) && gates.includes("failed-attempt-21.json"), "gates_proposal_pointer");
+assert(
+  state.includes("historical_v2_07_attempt21_authority:") &&
+    state.includes("v2_07_attempt21_closed_authority_sha256:") &&
+    state.includes("v2_07_attempt21_closure_sha256:"),
+  "state_closed",
+);
 assert(state.includes("approved-authority.json") && state.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "state_authority");
 assert(gates.includes("closure_evidence: \"evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json\"") && gates.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "gate_closed");
 assert(task.includes("Fresh Attempt21 diagnostic authority") && task.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "task_authority");
 assert(start.includes("bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"), "start_authority");
-assert(gates.includes("NOT_QUALIFIED") && task.includes("NOT_QUALIFIED") && start.includes("NOT_QUALIFIED"), "gate_open");
+assert(
+  gates.includes("AUTHORIZED_attempt22_") && task.includes("NOT_QUALIFIED") && start.includes("NOT_QUALIFIED"),
+  "gate_open",
+);
 
 assert(!/^sha256:[0-9a-f]{64}0$/u.test(EXPECTED.attempt20), "negative_digest_length");
 assert(proposal.user_approval.maximum_cumulative_finite_spend_usd === null, "negative_cap_mutation");

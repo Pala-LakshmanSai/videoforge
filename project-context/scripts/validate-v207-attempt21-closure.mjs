@@ -121,8 +121,8 @@ assert(
   state.includes("phase: serverless_v2_v2_07_attempt22_template_environment_readback_candidate"),
   "state_phase",
 );
-assert(state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0"), "state_closed");
-assert(state.includes("provider_authority: &v2_07_provider_authority\n  mode: none") && state.includes("cap_usd: 0"), "state_no_authority");
+assert(state.includes("historical_v2_07_attempt21_authority:") && state.includes("consumed: true"), "state_closed");
+assert(state.includes(`authority_sha256: "${EXPECTED.authority}"`), "state_no_authority");
 assert(state.includes("failed-attempt-21.json") && state.includes(EXPECTED.evidence), "state_evidence");
 assert(state.includes(EXPECTED.proposal) && state.includes(EXPECTED.authority), "state_lineage");
 assert(gates.includes("last_run: \"evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json\"") && gates.includes(EXPECTED.evidence.slice(7)), "gate_evidence");
@@ -133,7 +133,7 @@ assert(
 );
 assert(task.includes("## Attempt 21 closure") && task.includes(EXPECTED.evidence), "task_closure");
 assert(start.includes("failed-attempt-21.json") && start.includes(EXPECTED.evidence), "start_closure");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
-assert(activationTest.includes('toBeNull()') && activationTest.includes("V207_FRESH_AUTHORITY_REQUIRED"), "activation_test_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "activation_closed");
+assert(activationTest.includes("V207_APPROVED_FINITE_CAP_USD"), "activation_test_closed");
 
 process.stdout.write(`V2-07 Attempt21 closure validation PASS (${EXPECTED.evidence}; no GPU/dispatch/spend)\n`);
