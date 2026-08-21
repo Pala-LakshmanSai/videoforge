@@ -249,7 +249,11 @@ for (const [label, value] of [["state", state], ["gates", gates], ["task", task]
 }
 assert(state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0"), "state_authorized");
 assert(state.includes("v2_07_current_approved_authority: null") && state.includes(EXPECTED.authority), "state_authority");
-assert(gates.includes(EXPECTED.authority) && gates.includes("none_attempt22_consumed"), "gate_authorized");
+assert(
+  gates.includes(EXPECTED.authority) &&
+    (gates.includes("none_attempt22_consumed") || gates.includes("none_attempt23_pending_provider_free_candidate")),
+  "gate_authorized",
+);
 assert(task.includes("Attempt 22") && task.includes(EXPECTED.authority), "task_authority");
 assert(start.includes("Attempt 22") && start.includes(EXPECTED.authority), "start_authority");
 

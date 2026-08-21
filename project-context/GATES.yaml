@@ -131,16 +131,16 @@ gates:
     closed_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json"
     closure_evidence_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
-    pending_proposal: null
-    pending_proposal_sha256: null
-    pending_control_source_commit: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"
+    pending_control_source_commit: "9f5a15c3382c03af675392dacc487b96811674ed"
     pending_authority: null
     pending_authority_sha256: null
-    authority_mode: none_attempt22_consumed
+    authority_mode: none_attempt23_pending_provider_free_candidate
     pending_numeric_cap_usd: null
-    pending_flashboot: null
-    pending_availability: null
-    result: "NOT_QUALIFIED_attempt22_postdispatch_completed_job_output_contract_unproven_exact_cleanup_complete_zero_disposable_compute_zero_settled_increment"
+    pending_flashboot: true
+    pending_availability: LOW
+    result: "NOT_QUALIFIED_attempt23_provider_free_output_contract_diagnostic_pending_fresh_approval_and_cap"
 
   GATE_SERVERLESS_SOULX_001:
     status: open

@@ -1,12 +1,12 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-21T08:24:06.416Z"
+updated_at: "2026-08-21T08:30:00.000Z"
 
-phase: serverless_v2_v2_07_attempt22_closed_output_contract_diagnosis_required
+phase: serverless_v2_v2_07_attempt23_output_contract_diagnostic_pending
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_provider_free_failure_diagnosis
+current_wave: v2_07_provider_free_output_contract_diagnosis
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: provider_free_repair
 application_code_changes_authorized: true
@@ -15,15 +15,37 @@ read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt22_consumed_provider_free_diagnosis
+  mode: v2_07_attempt23_provider_free_output_contract_diagnostic
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: diagnose_attempt22_completed_job_output_contract_provider_free
-  note: "Attempt 22 passed exact template GET and endpoint identity proof, dispatched one job, and RunPod reported COMPLETED after 180546 ms. The application accepted no batch and retained only redaction-safe V207_QUALIFICATION_FAILED, so the exact rejected output field is unproven. Exact cleanup deleted the endpoint/template after two stable terminal snapshots; three stable reads prove zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative billing USD 0.12480033212341368, and USD 0 settled increment. Proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 and authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 are consumed and non-reusable. Provider-free diagnosis only; V2-08 remains forbidden."
+  v2_07_action: prepare_attempt23_output_contract_diagnostic_provider_free
+  note: "Attempt22 passed exact template GET and endpoint identity proof, dispatched one job, and RunPod reported COMPLETED after 180546 ms. The application accepted no batch and retained only redaction-safe V207_QUALIFICATION_FAILED; the exact rejected output field is unproven. Control commit 9f5a15c now retains only bounded output_contract category, status, failure-code, and shape facts for the first completed-job non-success, then stops without retry. Attempt22 cleanup and three stable reads prove zero Pods/endpoints/templates/workers, both intended EU-RO-1 volumes retained, unchanged cumulative billing USD 0.12480033212341368, and USD 0 settled increment. Attempt23 is provider-free pending a fresh exact proposal approval and positive numeric cap; V2-08 remains forbidden."
+
+pending_v2_07_attempt23_proposal:
+  mode: provider_free_output_contract_diagnostic_candidate
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"
+  control_source_commit: "9f5a15c3382c03af675392dacc487b96811674ed"
+  failed_attempt_evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json
+  failed_attempt_evidence_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
+  staged_max1_sha256: "sha256:45f8d447829d63517b78807ce710af7fbd81a9ff06d67cafe1a5a6bf37a15959"
+  staged_max2_sha256: "sha256:6b02604fd7a58ee98c350429663c038bbc5c93ea2e0786e64ac3a6ef3f476e8b"
+  flashboot: true
+  availability: LOW
+  region: EU-RO-1
+  maximum_cumulative_finite_spend_usd: null
+  fresh_numeric_cap_required: true
+  authority_recorded: false
+  authority_path: null
+  authority_sha256: null
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  output_contract_diagnostic: first_completed_job_non_success_persist_only_bounded_category_status_failure_code_shape_then_stop_without_retry
 
 pending_v2_07_attempt22_proposal:
   mode: closed_consumed_attempt22_output_contract_failure
@@ -72,7 +94,7 @@ provider_authority: &v2_07_provider_authority
   historical_cap_usd: 4
   recurring_r2_ceiling_usd_per_month: 0
   non_transferable: true
-  source: none_attempt22_consumed
+  source: none_attempt23_pending
   authorized_by_user_at: null
   authority_evidence: null
   authority_sha256: null
@@ -580,10 +602,10 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: approved_proposal_sha256_96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7
-  mutation_authorized: true
-  gpu_use_authorized: true
-  spend_authorized_usd: 4
+  current_authority: null
+  mutation_authorized: false
+  gpu_use_authorized: false
+  spend_authorized_usd: 0
 
 repository:
   initialized: true
@@ -596,8 +618,8 @@ repository:
   current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt 22 used exact published image sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5 and control repair 54af72f. Template GET/endpoint binding passed and one job reached COMPLETED after 180546 ms, but no application batch/output receipt was accepted and the exact rejected output field remains unproven. Exact cleanup plus three stable reads proved zero Pods/endpoints/templates/workers, both intended volumes, unchanged cumulative billing USD 0.12480033212341368, and USD 0 settled increment. Proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 and authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 are consumed. Provider-free diagnosis is next; V2-08 remains forbidden."
-  v2_07_latest_local_repair: "Commit 54af72f1e9a29eed7f53e47ecdda9f6a34abb7df proves exact template identity/environment by GET after POST environment update before endpoint PATCH/readback, while retaining strict endpoint fencing and bounded redaction-safe categories. Attempt22 exact proposal and fresh USD 4 authority are recorded; provider execution remains bounded to the approved operations and stops before V2-08."
+  current_source_head_note: "Attempt 22 used exact published image sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5 and control repair 54af72f. Template GET/endpoint binding passed and one job reached COMPLETED after 180546 ms, but no application batch/output receipt was accepted and the exact rejected output field remains unproven. Control repair 9f5a15c retains only bounded output-contract category, status, failure-code, and shape facts, then stops without retry. Attempt23 is a provider-free pending candidate; no authority or provider permission is active; V2-08 remains forbidden."
+  v2_07_latest_local_repair: "Commit 9f5a15c3382c03af675392dacc487b96811674ed retains bounded output-contract diagnostics and rejects unsafe output fields. Attempt23 is a provider-free null-cap candidate; provider execution remains forbidden until exact approval and a fresh positive cap."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -615,7 +637,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Attempt22 authority is consumed and closed. Provider-free diagnosis only; a fresh exact proposal and fresh numeric cap are required for any further provider mutation or spend. V2-08 remains forbidden."
+  provider_authority_scope: "Attempt22 authority is consumed and closed. Attempt23 is provider-free proposal preparation only; no authority, provider mutation, GPU use, or spend is active. A fresh exact approval and positive numeric cap are required. V2-08 remains forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -684,7 +706,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: NOT_QUALIFIED_get_readback_optional_fields_proposal_ready_fresh_authority_required
+  V2-07: NOT_QUALIFIED_attempt23_provider_free_output_contract_diagnostic_pending_fresh_approval_and_cap
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
@@ -731,7 +753,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt22_authorized_template_environment_readback_pending_execution
+    status: attempt23_provider_free_output_contract_diagnostic_pending_fresh_approval_and_cap
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
     immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_PASS
@@ -742,11 +764,11 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
-    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json
-    v2_07_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json
+    v2_07_proposal_sha256: "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
-    v2_07_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
-    v2_07_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
+    v2_07_authority: null
+    v2_07_authority_sha256: null
     v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
@@ -831,15 +853,15 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt22_closed_provider_free_output_contract_diagnosis
+  status: NOT_QUALIFIED_attempt23_provider_free_output_contract_diagnostic_pending_fresh_approval_and_cap
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: none_attempt22_consumed
+  authorization_status: none_attempt23_pending_provider_free_candidate
   task_stage: provider_free_repair
-  current_goal_authority: none_attempt22_consumed
+  current_goal_authority: none_attempt23_pending_provider_free_candidate
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Diagnose the Attempt22 completed-job output-contract rejection from retained redaction-safe evidence and prepare a provider-free repair. V2-08 remains forbidden."
+  goal: "Obtain fresh exact approval and a fresh positive numeric cap for the bounded Attempt23 output-contract diagnostic proposal. V2-08 remains forbidden."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -857,11 +879,11 @@ recommended_next_task:
   application_code_changes_authorized: true
   authority_note: "Attempt22 proposal sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7 and authority sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6 are consumed and closed. One job reached COMPLETED after 180546 ms but no batch/output receipt was accepted. Cleanup and three-read reconciliation prove zero disposable compute and USD 0 settled increment; both intended volumes remain. Existing volumes remain USD 7/month separately. Any retry needs a fresh exact proposal and fresh numeric cap. V2-08 remains forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt22_closed_failed_output_contract_unproven
+  execution_status: attempt23_provider_free_candidate_pending_fresh_authority
   execution_blocker: exact_rejected_output_contract_field_unproven_from_redaction_safe_evidence
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt22_closed_not_qualified
+  state: v2_06_complete_green_independently_audited_v2_07_attempt23_provider_free_candidate_pending
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -1308,10 +1330,18 @@ verification:
       r2_inventory_sha256_after_cleanup: "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
 
 audit_evidence:
-  v2_07_current_proposal: null
-  v2_07_current_proposal_sha256: null
+  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json
+  v2_07_current_proposal_sha256: "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"
   v2_07_current_approved_authority: null
   v2_07_current_approved_authority_sha256: null
+  v2_07_attempt23_pending_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json
+  v2_07_attempt23_pending_proposal_sha256: "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"
+  v2_07_attempt23_pending_control_commit: "9f5a15c3382c03af675392dacc487b96811674ed"
+  v2_07_attempt23_pending_authority: null
+  v2_07_attempt23_pending_authority_sha256: null
+  v2_07_attempt23_pending_cap_usd: null
+  v2_07_attempt23_pending_flashboot: true
+  v2_07_attempt23_pending_availability: LOW
   v2_07_attempt20_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/combined-live-proposal.json
   v2_07_attempt20_closed_proposal_sha256: "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02"
   v2_07_attempt20_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/approved-authority.json
@@ -1374,6 +1404,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt22_template_environment_readback_candidate
+  current_goal_scope: v2_07_attempt23_output_contract_diagnostic_candidate
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: AUTHORIZED_attempt22_template_environment_readback_pending_execution
+  v2_07_status: NOT_QUALIFIED_attempt23_provider_free_output_contract_diagnostic_pending_fresh_approval_and_cap

@@ -42,7 +42,7 @@ const expected = {
   candidateAuthority:
     "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462",
   currentProposal:
-    "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7",
+    "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9",
   currentAuthority:
     "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2",
   activeAuthority:
@@ -319,19 +319,19 @@ const auditEvidence = topLevelBlock(currentState, "audit_evidence:");
 assert(providerAuthority.includes("mode: none"), "state_authority_none");
 assert(providerAuthority.includes("cap_usd: 0"), "state_authority_zero_cap");
 assert(
-  currentState.includes(`v2_07_action: diagnose_attempt22_completed_job_output_contract_provider_free`),
+  currentState.includes(`v2_07_action: prepare_attempt23_output_contract_diagnostic_provider_free`),
   "state_action",
 );
-assert(currentState.includes(`v2_07_proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
+assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
 assert(currentState.includes("v2_07_authority:") && currentState.includes("approved-authority.json"), "state_no_current_authority");
 assert(currentState.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_attempt17_closed_authority_path");
 assert(currentState.includes("failed-attempt-17.json"), "state_attempt17_path");
 assert(currentState.includes("provider_calls_authorized: false") && currentState.includes("maximum_external_spend_usd: 0"), "state_provider_boundary");
 assert(currentState.includes("gpu_use_authorized: false") && currentState.includes("remote_or_cloud_mutations_authorized: false"), "state_gpu_mutation_boundary");
-assert(recommendedTask.includes("Attempt22 completed-job output-contract rejection"), "state_recommended_goal");
+assert(recommendedTask.includes("Attempt23 output-contract diagnostic proposal"), "state_recommended_goal");
 assert(recommendedTask.includes("task_stage: provider_free_repair"), "state_recommended_stage");
-assert(recommendedTask.includes("current_goal_authority: none_attempt22_consumed"), "state_recommended_authority");
-assert(auditEvidence.includes(`v2_07_latest_closed_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
+assert(recommendedTask.includes("current_goal_authority: none_attempt23_pending_provider_free_candidate"), "state_recommended_authority");
+assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
 assert(auditEvidence.includes("v2_07_current_approved_authority: null"), "state_audit_no_current_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_attempt17_closed_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority_sha256: "${expected.candidateAuthority}"`), "state_audit_attempt17_closed_authority_hash");

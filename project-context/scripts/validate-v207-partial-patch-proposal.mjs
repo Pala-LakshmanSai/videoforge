@@ -163,7 +163,7 @@ assert(state.includes("provider_calls_authorized: false"), "state_provider_close
 assert(state.includes("maximum_external_spend_usd: 0"), "state_cap_closed");
 assert(gate.includes("failed-attempt-22.json") && state.includes(currentSuccessorProposal), "gate_successor");
 assert(task.includes(expectedProposalHash), "task_proposal");
-assert(activation.includes("sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"), "activation_successor_proposal");
+assert(activation.includes("sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"), "activation_successor_proposal");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "activation_closed");
 
 process.stdout.write(`V2-07 partial PATCH acknowledgement proposal validation PASS (${expectedProposalHash})\n`);

@@ -1,0 +1,81 @@
+{
+  "schema_version": "videoforge.v2-07-attempt23-output-contract-diagnostic-candidate-handoff/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 23,
+  "recorded_at": "2026-08-21T08:30:00.000Z",
+  "result": "PROVIDER_FREE_OUTPUT_CONTRACT_DIAGNOSTIC_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9",
+    "max1_path": "staged-config-max1.json",
+    "max1_sha256": "sha256:45f8d447829d63517b78807ce710af7fbd81a9ff06d67cafe1a5a6bf37a15959",
+    "max2_path": "staged-config-max2.json",
+    "max2_sha256": "sha256:6b02604fd7a58ee98c350429663c038bbc5c93ea2e0786e64ac3a6ef3f476e8b",
+    "control_source_commit": "9f5a15c3382c03af675392dacc487b96811674ed",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "flashboot": true,
+    "availability": "LOW",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true,
+    "authority_path": null,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false
+  },
+  "prior_attempt22_closure": {
+    "evidence": "../2026-08-20-live-qualification/failed-attempt-22.json",
+    "sha256": "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a",
+    "provider_job_status": "COMPLETED",
+    "accepted_batch_count": 0,
+    "outputs_accepted": 0,
+    "exact_output_contract_field": "UNPROVEN_REDACTION_SAFE_EVIDENCE_RETAINED_ONLY_GENERIC_CODE",
+    "incremental_spend_usd": 0,
+    "final_disposable_resources_absent": true,
+    "retained_volume_count": 2,
+    "stable_billing_reads": 3
+  },
+  "output_contract_diagnostic": {
+    "first_completed_job_non_success_may_retain_only": [
+      "error",
+      "error_category=output_contract",
+      "output_status",
+      "output_failure_code",
+      "output_shape_kind",
+      "output_shape_keys"
+    ],
+    "provider_body_retained": false,
+    "raw_output_retained": false,
+    "stop_immediately": true,
+    "retry_on_failure": false,
+    "warm_batch_after_failure": false,
+    "concurrent_reader_after_failure": false,
+    "duplicate_submission_after_failure": false
+  },
+  "local_verification": {
+    "attempt23_proposal_validator": "PASS",
+    "focused_output_contract_tests": "PASS_AT_CONTROL_COMMIT_9f5a15c",
+    "context_validation": "PASS_WITH_EXISTING_READ_PROFILE_WORD_WARNING",
+    "secret_scan": "PASS",
+    "format_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "provider_boundary": {
+    "provider_calls": false,
+    "provider_mutations": false,
+    "publication": false,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "retained_volume_mutation": false,
+    "v2_08_authorized": false
+  },
+  "next_boundary": "Ask once for explicit approval of the exact Attempt23 proposal hash, FlashBoot=true, LOW EU-RO-1 availability, and a fresh positive numeric maximum cumulative finite spend. Do not create an authority record, publish, mutate provider state, use GPU, or spend before approval and cap are recorded."
+}

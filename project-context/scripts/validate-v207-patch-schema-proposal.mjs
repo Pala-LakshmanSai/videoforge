@@ -31,7 +31,7 @@ const expectedProposalHash =
 const expectedAuthorityHash =
   "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c";
 const currentSuccessorProposalHash =
-  "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7";
+  "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9";
 const currentSuccessorAuthorityHash =
   "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2";
 const assert = (condition, label) => {
