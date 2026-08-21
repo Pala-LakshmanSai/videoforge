@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { isAttempt29CandidateGate, isAttempt29CandidateState } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const evidenceRoot = resolve(root, "project-context/evidence/acceptance/VF-10-07");
@@ -228,29 +229,63 @@ for (const [label, definition, workersMax, hash] of [["max1", max1, 1, expected.
   assert(sha256(bytes[label]) === hash && definition.image === expected.image && definition.control_source_commit === expected.control && definition.network_volume_id_sha256 === expected.volume && definition.region === "EU-RO-1" && definition.workers_min === 0 && definition.workers_max === workersMax && definition.flashboot === true, `${label}_DEFINITION`);
 }
 
-includesAll(state, [
-  expected.closure,
-  expected.cleanup,
-  expected.proposal,
-  expected.authority,
-  "phase: serverless_v2_v2_07_attempt28_closed_quiescence_failure",
-  "task_stage: provider_free",
-  "provider_calls_authorized: false",
-  "remote_or_cloud_mutations_authorized: false",
-  "gpu_use_authorized: false",
-  "maximum_external_spend_usd: 0",
-  "current_authority: null",
-  "current_authority_sha256: null",
-  "mutation_authorized: false",
-  "spend_authorized_usd: 0",
-], "STATE");
-includesAll(gates, [
-  expected.closure,
-  expected.cleanup,
-  "authority_mode: none_attempt28_consumed",
-  "pending_numeric_cap_usd: null",
-  'result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"',
-], "GATES");
+if (isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates)) {
+  includesAll(
+    state,
+    [
+      expected.closure,
+      expected.cleanup,
+      expected.proposal,
+      expected.authority,
+      "phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready",
+      "task_stage: provider_free",
+      "provider_calls_authorized: false",
+      "remote_or_cloud_mutations_authorized: false",
+      "gpu_use_authorized: false",
+      "maximum_external_spend_usd: 0",
+      "current_authority: null",
+      "current_authority_sha256: null",
+      "mutation_authorized: false",
+      "spend_authorized_usd: 0",
+    ],
+    "STATE_ATTEMPT29_SUCCESSOR",
+  );
+  includesAll(
+    gates,
+    [
+      expected.closure,
+      expected.cleanup,
+      "authority_mode: none_attempt29_unapproved",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"',
+    ],
+    "GATES_ATTEMPT29_SUCCESSOR",
+  );
+} else {
+  includesAll(state, [
+    expected.closure,
+    expected.cleanup,
+    expected.proposal,
+    expected.authority,
+    "phase: serverless_v2_v2_07_attempt28_closed_quiescence_failure",
+    "task_stage: provider_free",
+    "provider_calls_authorized: false",
+    "remote_or_cloud_mutations_authorized: false",
+    "gpu_use_authorized: false",
+    "maximum_external_spend_usd: 0",
+    "current_authority: null",
+    "current_authority_sha256: null",
+    "mutation_authorized: false",
+    "spend_authorized_usd: 0",
+  ], "STATE");
+  includesAll(gates, [
+    expected.closure,
+    expected.cleanup,
+    "authority_mode: none_attempt28_consumed",
+    "pending_numeric_cap_usd: null",
+    'result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"',
+  ], "GATES");
+}
 includesAll(task, [expected.closure, expected.cleanup, "RUNPOD_QUIESCENT_NOT_CONFIRMED", "it is consumed", "V2-07 remains `NOT_QUALIFIED`", "V2-08 remains forbidden"], "TASK");
 includesAll(start, [expected.closure, expected.cleanup, "RUNPOD_QUIESCENT_NOT_CONFIRMED", "consumed and non-reusable", "V2-07 remains NOT_QUALIFIED", "V2-08"], "START");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_CAP_CLOSED");

@@ -1,6 +1,6 @@
 // Historical V2-07 validators still verify immutable Attempt17-27 artifacts.
-// These exact predicates permit only the current Attempt28 unapproved or
-// separately authorized successor boundary without weakening historical hashes.
+// These exact predicates permit only the current Attempt28/29 boundaries
+// without weakening historical hashes.
 
 export const ATTEMPT28_PROPOSAL =
   "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf";
@@ -22,8 +22,36 @@ export const ATTEMPT28_CLOSURE =
 export const ATTEMPT28_CLEANUP =
   "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049";
 
+export const ATTEMPT29_PROPOSAL =
+  "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6";
+export const ATTEMPT29_CONTROL = "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b";
+export const ATTEMPT29_PHASE =
+  "serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready";
+export const ATTEMPT29_ACCEPTANCE =
+  "sha256:0123141d53c7652a538d690f2425f8447570b7b46d6ee8c850e22853058a9ed2";
+export const ATTEMPT29_MAX1 =
+  "sha256:115a413d11be895638d3742a512f1a1f2d21a6f613617559c5816aa70bd840aa";
+export const ATTEMPT29_MAX2 =
+  "sha256:f375c3d4d4f67b7021b92d46b01c1e24b44c269280b697430191539a51155a0d";
+
 const hasAll = (text, needles) => needles.every((needle) => text.includes(needle));
 const hasIdentity = (text) => hasAll(text, [ATTEMPT28_PROPOSAL, ATTEMPT28_CONTROL]);
+const hasAttempt29Identity = (text) => hasAll(text, [ATTEMPT29_PROPOSAL, ATTEMPT29_CONTROL]);
+
+export const isAttempt29CandidateState = (state) =>
+  hasAttempt29Identity(state) &&
+  state.includes(`phase: ${ATTEMPT29_PHASE}`) &&
+  hasAll(state, [
+    "task_stage: provider_free",
+    "provider_calls_authorized: false",
+    "remote_or_cloud_mutations_authorized: false",
+    "gpu_use_authorized: false",
+    "maximum_external_spend_usd: 0",
+    "current_authority: null",
+    "current_authority_sha256: null",
+    "mutation_authorized: false",
+    "spend_authorized_usd: 0",
+  ]);
 
 const isAttempt28UnapprovedState = (state) =>
   hasIdentity(state) &&
@@ -57,7 +85,7 @@ export const isAttempt28AuthorizedState = (state) =>
     "spend_authorized_usd: 4",
   ]);
 
-export const isAttempt28ClosedState = (state) =>
+const isAttempt28HistoricalClosedState = (state) =>
   hasIdentity(state) &&
   state.includes(`phase: ${ATTEMPT28_CLOSED_PHASE}`) &&
   hasAll(state, [
@@ -74,8 +102,14 @@ export const isAttempt28ClosedState = (state) =>
     "spend_authorized_usd: 0",
   ]);
 
+export const isAttempt28ClosedState = (state) =>
+  isAttempt28HistoricalClosedState(state) || isAttempt29CandidateState(state);
+
 export const isAttempt28State = (state) =>
-  isAttempt28UnapprovedState(state) || isAttempt28AuthorizedState(state) || isAttempt28ClosedState(state);
+  isAttempt28UnapprovedState(state) ||
+  isAttempt28AuthorizedState(state) ||
+  isAttempt28ClosedState(state) ||
+  isAttempt29CandidateState(state);
 
 const isAttempt28UnapprovedGate = (gates) =>
   hasAll(gates, [
@@ -86,6 +120,17 @@ const isAttempt28UnapprovedGate = (gates) =>
     "authority_mode: none_attempt28_unapproved",
     "pending_numeric_cap_usd: null",
     'result: "NOT_QUALIFIED_attempt28_proposal_ready_fresh_authority_required"',
+  ]);
+
+export const isAttempt29CandidateGate = (gates) =>
+  hasAll(gates, [
+    `pending_proposal_sha256: "${ATTEMPT29_PROPOSAL}"`,
+    `pending_control_source_commit: "${ATTEMPT29_CONTROL}"`,
+    "pending_authority: null",
+    "pending_authority_sha256: null",
+    "authority_mode: none_attempt29_unapproved",
+    "pending_numeric_cap_usd: null",
+    'result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"',
   ]);
 
 export const isAttempt28AuthorizedGate = (gates) =>
@@ -101,7 +146,7 @@ export const isAttempt28AuthorizedGate = (gates) =>
     'result: "NOT_QUALIFIED_attempt28_authorized_preexecution"',
   ]);
 
-export const isAttempt28ClosedGate = (gates) =>
+const isAttempt28HistoricalClosedGate = (gates) =>
   hasAll(gates, [
     ATTEMPT28_CLOSURE,
     ATTEMPT28_CLEANUP,
@@ -110,8 +155,14 @@ export const isAttempt28ClosedGate = (gates) =>
     'result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"',
   ]);
 
+export const isAttempt28ClosedGate = (gates) =>
+  isAttempt28HistoricalClosedGate(gates) || isAttempt29CandidateGate(gates);
+
 export const isAttempt28Gate = (gates) =>
-  isAttempt28UnapprovedGate(gates) || isAttempt28AuthorizedGate(gates) || isAttempt28ClosedGate(gates);
+  isAttempt28UnapprovedGate(gates) ||
+  isAttempt28AuthorizedGate(gates) ||
+  isAttempt28ClosedGate(gates) ||
+  isAttempt29CandidateGate(gates);
 
 export const isAttempt28AuthorizedActivation = (activation) =>
   hasIdentity(activation) &&
@@ -123,4 +174,6 @@ export const isAttempt28AuthorizedActivation = (activation) =>
 export const isAttempt28Activation = (activation) =>
   (hasIdentity(activation) &&
     activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")) ||
-  isAttempt28AuthorizedActivation(activation);
+  isAttempt28AuthorizedActivation(activation) ||
+  (hasAttempt29Identity(activation) &&
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"));

@@ -6,6 +6,7 @@ import {
   isAttempt28ClosedState,
   isAttempt28Gate,
   isAttempt28State,
+  isAttempt29CandidateState,
 } from "./v207-attempt28-compat.mjs";
 import { fileURLToPath } from "node:url";
 
@@ -366,6 +367,10 @@ assert(
     (isAttempt28ClosedState(currentState) &&
       currentState.includes(
         "v2_07_action: retain_attempt28_failure_evidence_and_require_fresh_proposal_and_cap_before_any_retry",
+      )) ||
+    (isAttempt29CandidateState(currentState) &&
+      currentState.includes(
+        "v2_07_action: retain_attempt28_failure_evidence_and_prepare_attempt29_terminal_replay_queue_proof_then_require_fresh_proposal_and_cap",
       )),
   "state_action",
 );
@@ -402,7 +407,9 @@ assert(
     (isAttempt28State(currentState) &&
       recommendedTask.includes("Execute and reconcile the exact approved Attempt28")) ||
     (isAttempt28ClosedState(currentState) &&
-      recommendedTask.includes("Retain exact Attempt28 failure closure")),
+      recommendedTask.includes("Retain exact Attempt28 failure closure")) ||
+    (isAttempt29CandidateState(currentState) &&
+      recommendedTask.includes("Validate and hand off the Attempt29 terminal replay queue-proof candidate")),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation") || recommendedTask.includes("task_stage: provider_free"), "state_recommended_stage");
@@ -423,7 +430,8 @@ assert(
     recommendedTask.includes("current_goal_authority: none_attempt27_closed_fresh_authority_required") ||
     recommendedTask.includes("current_goal_authority: none_attempt28_unapproved_fresh_authority_required") ||
     recommendedTask.includes("current_goal_authority: exact_attempt28_authority_recorded") ||
-    recommendedTask.includes("current_goal_authority: none_attempt28_closed_fresh_authority_required"),
+    recommendedTask.includes("current_goal_authority: none_attempt28_closed_fresh_authority_required") ||
+    recommendedTask.includes("current_goal_authority: none_attempt29_candidate_fresh_authority_required"),
   "state_recommended_authority",
 );
 assert(
@@ -443,6 +451,9 @@ assert(
     ) ||
     auditEvidence.includes(
       'v2_07_current_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"',
+    ) ||
+    auditEvidence.includes(
+      'v2_07_current_proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"',
     ),
   "state_audit_current_proposal_hash",
 );

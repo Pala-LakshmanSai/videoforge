@@ -136,6 +136,12 @@ gates:
     latest_closed_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"
     latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/combined-live-proposal.json"
     latest_closed_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"
+    current_candidate: "evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json"
+    current_candidate_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
+    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/acceptance.json"
+    current_candidate_acceptance_sha256: "sha256:0123141d53c7652a538d690f2425f8447570b7b46d6ee8c850e22853058a9ed2"
+    current_candidate_control_source_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
+    current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
     latest_approved_proposal: null
     latest_approved_proposal_sha256: null
     latest_approved_authority: null
@@ -147,17 +153,17 @@ gates:
     closure_evidence_sha256: "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb"
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt28-cleanup-observation.json"
     cleanup_evidence_sha256: "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049"
-    pending_proposal: null
-    pending_proposal_sha256: null
-    pending_control_source_commit: null
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
+    pending_control_source_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
     pending_authority: null
     pending_authority_sha256: null
-    authority_mode: none_attempt28_consumed
+    authority_mode: none_attempt29_unapproved
     pending_numeric_cap_usd: null
     pending_flashboot: true
-    pending_availability: MEDIUM
-    result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"
-    next_boundary: "provider-free diagnose RUNPOD_QUIESCENT_NOT_CONFIRMED and duplicate delivery without weakening health-first drain safety; any provider retry requires a fresh exact proposal and fresh positive numeric cap; V2-08 forbidden"
+    pending_availability: LOW
+    result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"
+    next_boundary: "obtain fresh exact Attempt29 approval and fresh positive numeric cap before any provider retry; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:

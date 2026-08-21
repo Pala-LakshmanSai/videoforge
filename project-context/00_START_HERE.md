@@ -1,6 +1,7 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt28.
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt28;
+Attempt29 is a provider-free candidate pending fresh exact approval and a fresh positive numeric cap.
 Attempt28 completed one owned probe and one cold 32-image batch, each with 32 private durable
 outputs/readbacks and 32 provenance receipts. Duplicate delivery was detected, and the repair stopped
 fail-closed at `RUNPOD_QUIESCENT_NOT_CONFIRMED` in `cold-terminal`; no unplanned duplicate provider
@@ -17,6 +18,17 @@ spend both `$0.3379560004686937`, and `$0` settled Attempt28 increment. The sign
 Worker version restored, and the route returned to stable `404 V207_ROUTE_DISABLED`. Any retry requires
 a fresh exact proposal and fresh positive numeric cap. No image republication, model/volume mutation,
 fallback GPU/region, public sample publication, V2-08, or successor work is authorized.
+
+Attempt29 candidate `evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json`
+is `sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6` with max-one
+`sha256:115a413d11be895638d3742a512f1a1f2d21a6f613617559c5816aa70bd840aa` and max-two
+`sha256:f375c3d4d4f67b7021b92d46b01c1e24b44c269280b697430191539a51155a0d`. It binds
+terminal request-key replay to the original terminal job, forbids a second provider `/run` and
+duplicate compute, and requires no owned jobs plus bounded exact queue-empty reads bracketing two
+stable terminal inventory snapshots after `RUNPOD_WARM_IDLE_NOT_CONFIRMED`; queued, running,
+malformed, active, nonterminal, mismatched, or unstable state fails closed. The control repair is
+`7ba8e9181fe210858c23a3ba7c5c9aca768ac24b`; no Attempt29 authority is recorded, the proposal cap
+is null, and a fresh exact approval plus positive numeric cap is required before any retry.
 Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any

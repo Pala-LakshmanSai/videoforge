@@ -7,8 +7,10 @@ import {
   isAttempt28AuthorizedState,
   isAttempt28ClosedGate,
   isAttempt28ClosedState,
+  isAttempt29CandidateGate,
   isAttempt28Gate,
   isAttempt28State,
+  isAttempt29CandidateState,
 } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -357,9 +359,10 @@ for (const [label, config, expectedHash, expectedMax] of [["max1", max1, EXPECTE
 const topState = state.split("\n").slice(0, 30).join("\n");
 if (isAttempt28State(state)) {
   assert(
-    topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_repair_candidate_ready") ||
+      topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_repair_candidate_ready") ||
       topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_proposal_ready") ||
       topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized") ||
+      topState.includes("phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready") ||
       (isAttempt28ClosedState(state) && topState.includes("phase: serverless_v2_v2_07_attempt28_closed_quiescence_failure")),
     "state_top_phase_attempt28",
   );
@@ -456,7 +459,16 @@ if (isAttempt28State(state)) {
           "gpu_use_authorized: true",
           "execution_status: attempt28_authorized_provider_execution_pending",
         ]
-      : isAttempt28ClosedState(state)
+      : isAttempt29CandidateState(state)
+        ? [
+            "NOT_QUALIFIED_attempt29_provider_free_candidate_ready",
+            "provider_calls_authorized: false",
+            "maximum_external_spend_usd: 0",
+            "remote_or_cloud_mutations_authorized: false",
+            "gpu_use_authorized: false",
+            "execution_status: attempt29_provider_free_candidate_ready",
+          ]
+        : isAttempt28ClosedState(state)
         ? [
             "NOT_QUALIFIED_attempt28_closed_quiescence_failure",
             "provider_calls_authorized: false",
@@ -481,7 +493,16 @@ if (isAttempt28State(state)) {
 const latestLive = section(state, "latest_live_check:", "GATE_SERVERLESS_SOULX_001:");
 includesAll(
   latestLive,
-  isAttempt28ClosedState(state)
+  isAttempt29CandidateState(state)
+    ? [
+        "sha256:0123141d53c7652a538d690f2425f8447570b7b46d6ee8c850e22853058a9ed2",
+        "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+        "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049",
+        "authority_mode: none_attempt29_unapproved",
+        "pending_numeric_cap_usd: null",
+        'result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"',
+      ]
+    : isAttempt28ClosedState(state)
     ? [
         "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
         "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049",
@@ -507,6 +528,21 @@ if (isAttempt28AuthorizedGate(gates)) {
       'result: "NOT_QUALIFIED_attempt28_authorized_preexecution"',
     ],
     "gate_attempt28_authorized",
+  );
+} else if (isAttempt29CandidateGate(gates)) {
+  includesAll(
+    mageGate,
+    [
+      "status: open",
+      'pending_proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"',
+      'pending_control_source_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"',
+      "pending_authority: null",
+      "pending_authority_sha256: null",
+      "authority_mode: none_attempt29_unapproved",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"',
+    ],
+    "gate_attempt29_candidate",
   );
 } else if (isAttempt28ClosedGate(gates)) {
   includesAll(

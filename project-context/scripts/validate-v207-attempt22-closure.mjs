@@ -122,7 +122,7 @@ assert(
     gates.includes("none_attempt26_pending_fresh_approval") ||
     attempt26ClosedGate ||
     (attempt27CandidateGate || attempt27AuthorizedGate || attempt27ClosedGate || attempt28Gate)) &&
-    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt27") || gates.includes("NOT_QUALIFIED_attempt28") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
+    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt27") || gates.includes("NOT_QUALIFIED_attempt28") || gates.includes("NOT_QUALIFIED_attempt29") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );
 assert(

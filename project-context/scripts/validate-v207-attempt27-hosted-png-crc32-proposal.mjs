@@ -7,6 +7,8 @@ import {
   isAttempt28ClosedState,
   isAttempt28Gate,
   isAttempt28State,
+  isAttempt29CandidateGate,
+  isAttempt29CandidateState,
 } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -563,6 +565,33 @@ if (candidateReady) {
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
     "closed_activation_boundary",
   );
+} else if (isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates) && isAttempt28Activation(activation)) {
+  assert(
+    state.includes("sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf") &&
+      state.includes("sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326") &&
+      state.includes("sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb") &&
+      state.includes("sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049"),
+    "attempt29_preserves_attempt28_closed_lineage",
+  );
+  assert(
+    gates.includes('latest_closed_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"') &&
+      gates.includes('latest_closed_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"') &&
+      gates.includes('closure_evidence_sha256: "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb"') &&
+      gates.includes('cleanup_evidence_sha256: "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049"') &&
+      gates.includes("authority_mode: none_attempt29_unapproved") &&
+      gates.includes('pending_proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"'),
+    "attempt29_candidate_gate_lineage",
+  );
+  for (const [label, value] of [["task", task], ["start", start]]) {
+    assert(
+      value.includes("sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf") &&
+        value.includes("sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326") &&
+        value.includes("sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb") &&
+        value.includes("RUNPOD_QUIESCENT_NOT_CONFIRMED") &&
+        value.includes("consumed"),
+      `${label}_attempt29_preserves_attempt28_closed_lineage`,
+    );
+  }
 } else if (isAttempt28ClosedState(state) && isAttempt28ClosedGate(gates) && isAttempt28Activation(activation)) {
   assert(
     state.includes("sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf") &&

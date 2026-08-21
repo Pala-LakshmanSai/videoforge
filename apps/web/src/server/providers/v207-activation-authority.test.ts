@@ -19,7 +19,7 @@ import {
 const image = V207_REPAIRED_IMAGE;
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete Attempt28 terminal scale-zero repair lineage", () => {
+  it("pins the complete Attempt29 terminal replay queue-proof lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -40,13 +40,11 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf",
+      "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14");
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326",
-    );
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("7ba8e9181fe210858c23a3ba7c5c9aca768ac24b");
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
 
@@ -82,7 +80,19 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed Attempt28 proposal until a fresh authority is recorded", () => {
+  it("rejects the consumed Attempt28 proposal after closure", () => {
+    expect(() =>
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256:
+          "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf",
+        V207_FINITE_CAP_USD: "4",
+      }),
+    ).toThrow("V207_PROPOSAL_MISMATCH");
+  });
+
+  it("rejects the fresh Attempt29 candidate until a new authority is recorded", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
