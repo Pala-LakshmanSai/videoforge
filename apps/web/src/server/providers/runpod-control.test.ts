@@ -27,6 +27,7 @@ const assertV207ReadbackCategory = async (
   const guard = new RunPodDrainGuard();
   guard.confirmZero(0, 0);
   const endpointHash = hashRunPodV207EndpointIdentity("endpoint_01");
+  let templateEnvironment: Record<string, string> | undefined;
   const endpoint: Record<string, unknown> = {
     id: "endpoint_01",
     templateId: "template_01",
@@ -55,7 +56,11 @@ const assertV207ReadbackCategory = async (
     const path = new URL(String(input)).pathname;
     if (path === "/templates/template_01/update") {
       const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+      templateEnvironment = body.env;
       return response({ id: "template_01", env: body.env });
+    }
+    if (path === "/templates/template_01") {
+      return response({ id: "template_01", env: templateEnvironment });
     }
     expect(path).toBe("/endpoints/endpoint_01");
     if (init?.method === "PATCH") return response({ id: "endpoint_01" });
@@ -1075,6 +1080,7 @@ describe("RunPod scale-zero control", () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
     const endpointHash = hashRunPodV207EndpointIdentity("endpoint_01");
+    let templateEnvironment: Record<string, string> | undefined;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       const body =
@@ -1109,7 +1115,11 @@ describe("RunPod scale-zero control", () => {
             VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointHash,
           },
         });
+        templateEnvironment = body.env as Record<string, string>;
         return response({ id: "template_01", env: body.env });
+      }
+      if (path === "/templates/template_01") {
+        return response({ id: "template_01", env: templateEnvironment });
       }
       expect(path).toBe("/endpoints/endpoint_01");
       if (init?.method === "PATCH") {
@@ -1149,27 +1159,18 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).resolves.toBeUndefined();
-    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenCalledTimes(4);
     expect(new URL(String(fetch.mock.calls[0]?.[0])).pathname).toBe(
       "/templates/template_01/update",
     );
-    expect(new URL(String(fetch.mock.calls[1]?.[0])).pathname).toBe("/endpoints/endpoint_01");
-    const patchBody = JSON.parse(String(fetch.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
+    expect(new URL(String(fetch.mock.calls[2]?.[0])).pathname).toBe("/endpoints/endpoint_01");
+    const patchBody = JSON.parse(String(fetch.mock.calls[2]?.[1]?.body)) as Record<string, unknown>;
     expect(patchBody).not.toHaveProperty("env");
     expect(patchBody).not.toHaveProperty("computeType");
-    expect(new URL(String(fetch.mock.calls[2]?.[0])).pathname).toBe("/endpoints/endpoint_01");
+    expect(new URL(String(fetch.mock.calls[3]?.[0])).pathname).toBe("/endpoints/endpoint_01");
   });
 
   it.each([
-    [
-      "environment missing",
-      "environment",
-      (endpoint: Record<string, unknown>) => {
-        const next = { ...endpoint };
-        delete next.env;
-        return next;
-      },
-    ],
     [
       "environment extra",
       "environment",
@@ -1307,14 +1308,63 @@ describe("RunPod scale-zero control", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects endpoint configuration drift after an exact template environment update", async () => {
+  it.each([
+    ["missing template environment", (environment: Record<string, string>): unknown => undefined],
+    [
+      "malformed template environment",
+      (_environment: Record<string, string>): unknown => ["not-an-environment"],
+    ],
+  ] as const)("rejects a template GET readback with %s", async (_label, mutate) => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
+    let templateEnvironment: Record<string, string> | undefined;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       if (path === "/templates/template_01/update") {
         const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        templateEnvironment = body.env;
         return response({ id: "template_01", env: body.env });
+      }
+      expect(path).toBe("/templates/template_01");
+      return response({ id: "template_01", env: mutate(templateEnvironment ?? {}) });
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.bindV207EndpointIdentity(
+        "endpoint_01",
+        "template_01",
+        {
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+        },
+        { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
+        {},
+        guard,
+      ),
+    ).rejects.toThrow("RUNPOD_TEMPLATE_ENVIRONMENT_UPDATE_UNCONFIRMED");
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects endpoint configuration drift after an exact template environment update", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    let templateEnvironment: Record<string, string> | undefined;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/templates/template_01/update") {
+        const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        templateEnvironment = body.env;
+        return response({ id: "template_01", env: body.env });
+      }
+      if (path === "/templates/template_01") {
+        return response({ id: "template_01", env: templateEnvironment });
       }
       expect(path).toBe("/endpoints/endpoint_01");
       expect(init?.method).toBe("PATCH");
@@ -1344,17 +1394,22 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it("rejects a PATCH acknowledgement without the exact endpoint identity", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
+    let templateEnvironment: Record<string, string> | undefined;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       if (path === "/templates/template_01/update") {
         const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        templateEnvironment = body.env;
         return response({ id: "template_01", env: body.env });
+      }
+      if (path === "/templates/template_01") {
+        return response({ id: "template_01", env: templateEnvironment });
       }
       expect(path).toBe("/endpoints/endpoint_01");
       expect(init?.method).toBe("PATCH");
@@ -1381,17 +1436,22 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED");
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it("rejects full GET configuration drift after a partial PATCH acknowledgement", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
+    let templateEnvironment: Record<string, string> | undefined;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       if (path === "/templates/template_01/update") {
         const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        templateEnvironment = body.env;
         return response({ id: "template_01", env: body.env });
+      }
+      if (path === "/templates/template_01") {
+        return response({ id: "template_01", env: templateEnvironment });
       }
       expect(path).toBe("/endpoints/endpoint_01");
       if (init?.method === "PATCH") return response({ id: "endpoint_01" });
@@ -1440,17 +1500,22 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED");
-    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenCalledTimes(4);
   });
 
   it("accepts GET readback that omits provider-optional compute and data-center fields", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
+    let templateEnvironment: Record<string, string> | undefined;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       if (path === "/templates/template_01/update") {
         const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        templateEnvironment = body.env;
         return response({ id: "template_01", env: body.env });
+      }
+      if (path === "/templates/template_01") {
+        return response({ id: "template_01", env: templateEnvironment });
       }
       expect(path).toBe("/endpoints/endpoint_01");
       if (init?.method === "PATCH") return response({ id: "endpoint_01" });
@@ -1469,11 +1534,6 @@ describe("RunPod scale-zero control", () => {
         executionTimeoutMs: 2_400_000,
         scalerType: "REQUEST_COUNT",
         scalerValue: 1,
-        env: {
-          LOG_LEVEL: "INFO",
-          RUNPOD_INIT_TIMEOUT: "800",
-          VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: hashRunPodV207EndpointIdentity("endpoint_01"),
-        },
       });
     });
     const client = new RunPodControlClient({
@@ -1497,17 +1557,22 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).resolves.toBeUndefined();
-    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenCalledTimes(4);
   });
 
   it("rejects explicit GET drift in provider-optional compute and data-center fields", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
+    let templateEnvironment: Record<string, string> | undefined;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       if (path === "/templates/template_01/update") {
         const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        templateEnvironment = body.env;
         return response({ id: "template_01", env: body.env });
+      }
+      if (path === "/templates/template_01") {
+        return response({ id: "template_01", env: templateEnvironment });
       }
       if (init?.method === "PATCH") return response({ id: "endpoint_01" });
       return response({
@@ -1560,11 +1625,16 @@ describe("RunPod scale-zero control", () => {
   it("rejects endpoint readback environment drift after an exact endpoint PATCH", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);
+    let templateEnvironment: Record<string, string> | undefined;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       if (path === "/templates/template_01/update") {
         const body = JSON.parse(String(init?.body)) as { env: Record<string, string> };
+        templateEnvironment = body.env;
         return response({ id: "template_01", env: body.env });
+      }
+      if (path === "/templates/template_01") {
+        return response({ id: "template_01", env: templateEnvironment });
       }
       expect(path).toBe("/endpoints/endpoint_01");
       const endpoint = {
@@ -1616,7 +1686,7 @@ describe("RunPod scale-zero control", () => {
         guard,
       ),
     ).rejects.toThrow("RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED");
-    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenCalledTimes(4);
   });
 
   it("rejects contradictory strict V2-07 volume bindings", async () => {

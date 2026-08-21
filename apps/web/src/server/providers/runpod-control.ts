@@ -391,11 +391,16 @@ export function classifyRunPodV207EndpointReadbackMismatch(
     readonly policy: RunPodEndpointPolicy;
     readonly placement: RunPodV207Placement;
     readonly environment: Readonly<Record<string, string>>;
+    /** The template GET proved the exact environment before endpoint readback. */
+    readonly templateEnvironmentVerified?: boolean;
   },
 ): RunPodV207EndpointReadbackMismatchCategory | null {
   const configCategory = v207EndpointConfigMismatchCategory(value, expected);
   if (configCategory !== null) return configCategory;
-  return exactEnvironmentMatches(value?.env, expected.environment) ? null : "environment";
+  if (value?.env === undefined) {
+    return expected.templateEnvironmentVerified === true ? null : "environment";
+  }
+  return exactEnvironmentMatches(value.env, expected.environment) ? null : "environment";
 }
 
 const matchesIfPresent = (value: unknown, expected: unknown): boolean =>
@@ -967,6 +972,7 @@ export class RunPodControlClient {
       policy,
       placement,
       environment: expectedEnvironment,
+      templateEnvironmentVerified: true,
     };
     await this.updateV207TemplateEnvironment(templateId, expectedEnvironment);
     const responseValue = record(
@@ -1044,6 +1050,14 @@ export class RunPodControlClient {
       ),
     );
     if (!value || value.id !== templateId || !exactEnvironmentMatches(value.env, environment)) {
+      throw new RunPodControlError("RUNPOD_TEMPLATE_ENVIRONMENT_UPDATE_UNCONFIRMED");
+    }
+    const readbackValue = record(await this.read(`/templates/${templateId}`));
+    if (
+      !readbackValue ||
+      readbackValue.id !== templateId ||
+      !exactEnvironmentMatches(readbackValue.env, environment)
+    ) {
       throw new RunPodControlError("RUNPOD_TEMPLATE_ENVIRONMENT_UPDATE_UNCONFIRMED");
     }
   }
