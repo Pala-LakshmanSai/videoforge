@@ -128,29 +128,30 @@ gates:
     historical_attempt23_authority: "sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35"
     historical_attempt23_closure: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-23.json"
     historical_attempt23_closure_sha256: "sha256:0f48f3bc82b6d0b7fb48e723c4a3fc36a142129de578447acd30d77157e1ca1b"
-    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json"
-    latest_closed_authority_sha256: "sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412"
-    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/combined-live-proposal.json"
-    latest_closed_proposal_sha256: "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"
+    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json"
+    latest_closed_authority_sha256: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c"
+    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json"
+    latest_closed_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
     latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json"
     latest_approved_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
     latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json"
     latest_approved_authority_sha256: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c"
     latest_approved_control_source_commit: "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"
-    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json"
-    closed_authority_sha256: "sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412"
-    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-24.json"
-    closure_evidence_sha256: "sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb"
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
-    pending_control_source_commit: "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c"
-    authority_mode: attempt25_bounded_mutation_authorized
-    pending_numeric_cap_usd: 4
+    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json"
+    closed_authority_sha256: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c"
+    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json"
+    closure_evidence_sha256: "sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d"
+    pending_proposal: null
+    pending_proposal_sha256: null
+    pending_control_source_commit: null
+    pending_authority: null
+    pending_authority_sha256: null
+    authority_mode: none_attempt25_consumed
+    pending_numeric_cap_usd: null
     pending_flashboot: true
     pending_availability: LOW
-    result: "NOT_QUALIFIED_attempt25_authorized_pre_execution"
+    result: "NOT_QUALIFIED_attempt25_closed_output_finalization_failure_exact_cleanup_complete"
+    next_boundary: "fresh exact proposal and fresh positive numeric cap required before retry; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:

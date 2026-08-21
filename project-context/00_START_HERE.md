@@ -1,8 +1,18 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
-bounded Attempt24. Attempt25 is authorized for bounded pre-execution under its exact recorded
-authority. Exact template/endpoint identity work reached the pre-dispatch safety guard,
+bounded Attempt25. Attempt25 consumed its exact proposal and authority. Its startup safety proof
+passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
+fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any
+accepted batch, durable output, or accepted receipt. Exact cleanup deleted only the disposable
+endpoint/template after two stable terminal snapshots; three settled reconciliation reads prove
+zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, and `$0`
+incremental endpoint spend. Closure evidence is
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json` at
+`sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d`. A fresh exact proposal
+and fresh positive numeric cap are required before any retry; V2-08 remains forbidden.
+
+Historical Attempt24 exact template/endpoint identity work reached the pre-dispatch safety guard,
 but `RUNPOD_QUIESCENT_NOT_CONFIRMED` stopped before `/run/job`; zero jobs and zero batches were
 submitted. Historical Attempt24 control `63517e6` retains only structurally branded verification-stage diagnostics for
 any future completed-job non-success, then stops without retry. Exact cleanup and three stable
@@ -14,13 +24,13 @@ retained, billing from USD 0.18311072164215147 to USD 0.22078647126909345, and U
 closed. The user approved Attempt25 proposal
 `sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946` with FlashBoot=true,
 LOW EU-RO-1 availability, and a fresh `$4` cap. Authority
-`sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c` is recorded; only
-that exact bounded execution is authorized. No image republication, model or retained-volume
+`sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c` is recorded and consumed;
+no provider execution remains authorized. No image republication, model or retained-volume
 mutation, fallback GPU/region, public sample publication, V2-08, or successor work is authorized.
 
 Attempt 25 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json`.
-Attempt 25 startup-terminal-inventory candidate is approved for bounded execution under the exact
-recorded authority and fresh `$4` cap.
+Attempt 25 startup-terminal-inventory candidate was approved and executed once under the exact
+recorded authority and fresh `$4` cap; both are now consumed and non-reusable.
 Attempt 25 proposal SHA-256: `sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946`.
 It binds control `bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9`, unchanged image/source/model/manifest,
 the sealed Mage volume, FlashBoot=true, LOW EU-RO-1, and RTX 4090 only. The startup fallback is
@@ -30,8 +40,8 @@ concurrent-reader, and drain checks remain health-first. Max-one is
 `sha256:d7a5791c80fa96f997994c70486208af5faea93989a1cc3fe5033a0a911ddacd`; max-two is
 `sha256:e1edf2d61b188428ce16e6f5597ceadc6ce7d58aa50dda4f8a7ea09e96bd0e38`. Authority record:
 `evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json`
-at `sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c`. Provider use is
-bounded to this exact proposal and cap; V2-07 remains NOT_QUALIFIED until live gates pass.
+at `sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c`. That provider authority
+is consumed; V2-07 remains NOT_QUALIFIED and any retry requires fresh authority and cap.
 
 Attempt 23 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json`.
 Attempt 23 proposal SHA-256: `sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9`.

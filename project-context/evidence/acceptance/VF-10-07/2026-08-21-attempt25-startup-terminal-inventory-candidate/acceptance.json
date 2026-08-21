@@ -3,8 +3,8 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 25,
-  "recorded_at": "2026-08-21T10:30:00.000Z",
-  "result": "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING",
+  "recorded_at": "2026-08-21T17:10:00.000Z",
+  "result": "FAILED_POSTDISPATCH_COMPLETED_JOB_OUTPUT_FINALIZATION_UNPROVEN_EXACT_CLEANUP_RECONCILIATION_COMPLETE",
   "qualification_status": "NOT_QUALIFIED",
   "candidate": {
     "proposal_path": "combined-live-proposal.json",
@@ -26,13 +26,15 @@
     "volume_mount": "/runpod-volume",
     "flashboot": true,
     "availability": "LOW",
-    "maximum_cumulative_finite_spend_usd": 4,
-    "fresh_numeric_cap_required": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true,
     "authority_path": "approved-authority.json",
     "authority_sha256": "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c",
-    "provider_calls_authorized": true,
-    "provider_mutations_authorized": true,
-    "gpu_use_authorized": true
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "closure_path": "../2026-08-21-live-qualification/failed-attempt-25.json",
+    "closure_sha256": "sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d"
   },
   "startup_terminal_inventory": {
     "rationale": "Attempt24 warm-idle health counters did not prove quiescence although exact terminal records existed; permit a narrow pre-dispatch fallback.",
@@ -83,10 +85,12 @@
     "local_control_commit": "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9",
     "existing_image_unchanged": true,
     "existing_mage_volume_unchanged": true,
-    "no_provider_calls": true,
-    "no_provider_mutation": true,
-    "no_gpu_use": true,
-    "external_spend_usd": 0
+    "no_provider_calls": false,
+    "no_provider_mutation": false,
+    "no_gpu_use": false,
+    "external_spend_usd": 0,
+    "closure_cleanup_confirmed": true,
+    "closure_reconciliation_evidence_sha256": "sha256:bf19c47747017355c6e1a56894aa2c384ceae0af231ca12631fee28849652fac"
   },
   "local_verification": {
     "proposal_validator": "PASS_PROVIDER_FREE_AND_AUTHORITY_BOUND",
@@ -96,7 +100,7 @@
     "format_check": "PASS",
     "git_diff_check": "PASS"
   },
-  "next_boundary": "Execute only the exact Attempt25 proposal under the recorded authority and fresh USD 4 cap. Do not reuse this authority after closure; stop before V2-08.",
+  "next_boundary": "Attempt25 authority is consumed. Require a fresh exact proposal and fresh positive numeric cap before any retry; stop before V2-08.",
   "unproven_acceptance": [
     "complete diagnostic sample and 32-image cold batch",
     "warm complete batch",
