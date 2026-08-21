@@ -222,7 +222,7 @@ assert(orchestrator.includes("waitForRouteRestoration"), "route_poll");
 assert(
   activation.includes(
     expected.currentProposal,
-  ),
+  ) || activation.includes("sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"),
   "activation_current_successor_proposal",
 );
 assert(

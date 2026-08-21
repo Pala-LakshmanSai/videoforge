@@ -16,7 +16,7 @@ import {
 const image = V207_REPAIRED_IMAGE;
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete Attempt23 output-contract diagnostic candidate lineage", () => {
+  it("pins the complete Attempt24 verification-stage diagnostic candidate lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -37,7 +37,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9",
+      "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137",
     );
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
@@ -74,7 +74,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed Attempt23 proposal until a fresh authority is recorded", () => {
+  it("rejects the pending Attempt24 proposal until a fresh authority is recorded", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -85,7 +85,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects any cap while the exact Attempt23 authority is consumed", () => {
+  it("rejects any cap while the exact Attempt24 authority is absent", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,

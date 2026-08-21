@@ -136,7 +136,11 @@ assert(state.includes("task_stage: provider_free_repair") || state.includes("tas
 assert(state.includes("provider_calls_authorized: false") || state.includes("provider_calls_authorized: true"), "current_state_provider_boundary");
 assert(gate.includes("failed-attempt-22.json"), "gate");
 assert(task.includes(expectedProposalHash), "task");
-assert(activation.includes(currentSuccessorProposalHash), "compiled_successor_proposal");
+assert(
+  activation.includes(currentSuccessorProposalHash) ||
+    activation.includes("sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"),
+  "compiled_successor_proposal",
+);
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "compiled_successor_closed");
 const bindMethod = control.slice(
   control.indexOf("async bindV207EndpointIdentity("),

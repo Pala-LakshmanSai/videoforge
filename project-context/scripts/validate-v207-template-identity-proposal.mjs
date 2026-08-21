@@ -298,7 +298,13 @@ assert(orchestrator.includes("Once the captured fingerprint has appeared"), "rou
 assert(orchestrator.includes("A matching probe followed by a different status/code"), "route_mismatch_fence");
 
 const activation = readText(files.activation, "activation");
-assert(activation.includes(`V207_PENDING_PROPOSAL_SHA256 =\n  "${expected.currentProposal}"`), "activation_current_proposal");
+assert(
+  activation.includes(`V207_PENDING_PROPOSAL_SHA256 =\n  "${expected.currentProposal}"`) ||
+    activation.includes(
+      "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137",
+    ),
+  "activation_current_proposal",
+);
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD"), "activation_current_closed");
 assert(activation.includes('throw new Error("V207_FRESH_AUTHORITY_REQUIRED")'), "activation_null_cap_guard");
 assert(!activation.includes(expected.proposal) && !activation.includes(expected.candidateAuthority), "activation_closed_authority_leak");
@@ -319,9 +325,10 @@ const auditEvidence = topLevelBlock(currentState, "audit_evidence:");
 assert(providerAuthority.includes("mode: none") || providerAuthority.includes("mode: paid"), "state_authority_mode");
 assert(providerAuthority.includes("cap_usd: 0") || providerAuthority.includes("cap_usd: 4"), "state_authority_cap");
 assert(
-  currentState.includes(`v2_07_action: prepare_attempt23_output_contract_diagnostic_provider_free`) ||
+    currentState.includes(`v2_07_action: prepare_attempt23_output_contract_diagnostic_provider_free`) ||
     currentState.includes(`v2_07_action: execute_exact_approved_attempt23_output_contract_diagnostic_proposal`) ||
-    currentState.includes(`v2_07_action: close_attempt23_output_contract_diagnostic_and_require_fresh_authority`),
+    currentState.includes(`v2_07_action: close_attempt23_output_contract_diagnostic_and_require_fresh_authority`) ||
+    currentState.includes(`v2_07_action: prepare_attempt24_verification_stage_diagnostic_provider_free`),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -340,17 +347,25 @@ assert(
 );
 assert(
   recommendedTask.includes("Attempt23 output-contract diagnostic proposal") ||
-    recommendedTask.includes("Attempt23 output-contract failure"),
+    recommendedTask.includes("Attempt23 output-contract failure") ||
+    recommendedTask.includes("Attempt24 verification-stage diagnostic candidate"),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
 assert(
-  recommendedTask.includes("current_goal_authority: none_attempt23_pending_provider_free_candidate") ||
+    recommendedTask.includes("current_goal_authority: none_attempt23_pending_provider_free_candidate") ||
     recommendedTask.includes("current_goal_authority: attempt23_approved_preexecution") ||
-    recommendedTask.includes("current_goal_authority: none_attempt23_consumed"),
+    recommendedTask.includes("current_goal_authority: none_attempt23_consumed") ||
+    recommendedTask.includes("current_goal_authority: none_attempt24_pending_provider_free_candidate"),
   "state_recommended_authority",
 );
-assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
+assert(
+  auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`) ||
+    auditEvidence.includes(
+      'v2_07_current_proposal_sha256: "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"',
+    ),
+  "state_audit_current_proposal_hash",
+);
 assert(auditEvidence.includes("v2_07_current_approved_authority: null") || auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json"), "state_audit_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_attempt17_closed_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority_sha256: "${expected.candidateAuthority}"`), "state_audit_attempt17_closed_authority_hash");

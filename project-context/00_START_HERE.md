@@ -29,6 +29,22 @@ Attempt 23 closure: the authority is consumed, exact cleanup and final reconcili
 V2-07 remains NOT_QUALIFIED, and a fresh exact proposal and fresh positive numeric cap are required
 for any retry. V2-08 remains forbidden.
 
+Attempt 24 verification-stage diagnostic candidate: provider-free control
+`63517e605d441fa23020bea8bff2987cc4bc99c5` retains only structurally branded
+`output_failure_stage`, output status, failure-code, and shape facts from the first completed-job
+non-success; unsafe or unbranded diagnostics fail closed, and no provider body or raw output is
+retained. Candidate:
+`evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/combined-live-proposal.json`
+at `sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137`. It binds the
+unchanged image/source, exact Mage manifest, sealed 50 GB EU-RO-1 volume at `/runpod-volume`,
+FlashBoot=true, LOW EU-RO-1, RTX 4090, max-one
+`sha256:345072150945c7dfa686c6b90b36565accd65ad5666f5c2917e160d5cf9f308a`, and max-two
+`sha256:173e52dde1443d61f9a678e54ff859f2709797a3f4aa818f0402772887c2be8a`. Cap and authority
+are null; fresh exact approval and a fresh positive numeric cap are required before provider
+mutation, publication, GPU use, or spend. Attempt23 closure is
+`failed-attempt-23.json` at
+`sha256:0f48f3bc82b6d0b7fb48e723c4a3fc36a142129de578447acd30d77157e1ca1b`.
+
 Attempt 22 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`.
 Attempt 22 proposal SHA-256: `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`.
 The user approved FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cap. That consumed authority is at

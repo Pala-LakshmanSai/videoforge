@@ -13,8 +13,8 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9" as const;
-// Attempt 23 was consumed and closed; a fresh exact proposal and cap are required.
+  "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137" as const;
+// Attempt 24 is a provider-free verification-stage candidate; fresh exact approval and cap are required.
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {
