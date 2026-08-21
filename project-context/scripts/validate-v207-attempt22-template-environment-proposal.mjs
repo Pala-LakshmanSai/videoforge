@@ -251,7 +251,8 @@ for (const [label, value] of [["state", state], ["gates", gates], ["task", task]
   assert(
     value.includes("54af72f1e9a29eed7f53e47ecdda9f6a34abb7df") ||
       value.includes("9f5a15c3382c03af675392dacc487b96811674ed") ||
-      value.includes("63517e605d441fa23020bea8bff2987cc4bc99c5"),
+      value.includes("63517e605d441fa23020bea8bff2987cc4bc99c5") ||
+      value.includes("bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"),
     `${label}_control_pointer`,
   );
   assert(value.includes("failed-attempt-22.json"), `${label}_attempt21_pointer`);
@@ -260,6 +261,9 @@ assert(
   (state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt23_authorized") && state.includes("maximum_external_spend_usd: 4")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") &&
+      state.includes("maximum_external_spend_usd: 4")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
+      state.includes("provider_calls_authorized: true") &&
       state.includes("maximum_external_spend_usd: 4")),
   "state_authorized",
 );
@@ -267,7 +271,9 @@ assert(
   (state.includes("v2_07_current_approved_authority: null") && state.includes(EXPECTED.authority)) ||
     (state.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json") && state.includes(EXPECTED.authority)) ||
     (state.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json") &&
-      state.includes(EXPECTED.authority)),
+      state.includes(EXPECTED.authority)) ||
+    (state.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json") &&
+      state.includes("sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c")),
   "state_authority",
 );
 assert(
@@ -279,7 +285,8 @@ assert(
       gates.includes("none_attempt24_pending_provider_free_candidate") ||
       gates.includes("attempt24_bounded_mutation_authorized") ||
       gates.includes("none_attempt24_consumed") ||
-      gates.includes("none_attempt25_pending_fresh_approval")),
+      gates.includes("none_attempt25_pending_fresh_approval") ||
+      gates.includes("attempt25_bounded_mutation_authorized")),
   "gate_authorized",
 );
 assert(task.includes("Attempt 22") && task.includes(EXPECTED.authority), "task_authority");

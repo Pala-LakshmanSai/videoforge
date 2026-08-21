@@ -205,13 +205,20 @@ assert(
       state.includes("maximum_external_spend_usd: 0")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate") &&
       state.includes("provider_calls_authorized: false") &&
-      state.includes("maximum_external_spend_usd: 0")),
+      state.includes("maximum_external_spend_usd: 0")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
+      state.includes("provider_calls_authorized: true") &&
+      state.includes("maximum_external_spend_usd: 4")),
   "state_authorized",
 );
 assert(state.includes("2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json") && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control), "state_candidate_pointer");
 assert(
   (state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json") && state.includes("mutation_authorized: true") && state.includes("gpu_use_authorized: true") && state.includes("spend_authorized_usd: 4")) ||
     (state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json") &&
+      state.includes("mutation_authorized: true") &&
+      state.includes("gpu_use_authorized: true") &&
+      state.includes("spend_authorized_usd: 4")) ||
+    (state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json") &&
       state.includes("mutation_authorized: true") &&
       state.includes("gpu_use_authorized: true") &&
       state.includes("spend_authorized_usd: 4")) ||
@@ -226,7 +233,11 @@ assert(
     (gates.includes("latest_closed_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"") &&
       gates.includes(EXPECTED.proposal) &&
       gates.includes("latest_approved_control_source_commit: \"63517e605d441fa23020bea8bff2987cc4bc99c5\"")) ||
-    (gates.includes("historical_attempt23_proposal:") && gates.includes(EXPECTED.proposal) && gates.includes("latest_approved_control_source_commit: \"63517e605d441fa23020bea8bff2987cc4bc99c5\"")),
+    (gates.includes("historical_attempt23_proposal:") && gates.includes(EXPECTED.proposal) && gates.includes("latest_approved_control_source_commit: \"63517e605d441fa23020bea8bff2987cc4bc99c5\"")) ||
+    (gates.includes("latest_approved_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json\"") &&
+      gates.includes("latest_approved_proposal_sha256: \"sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946\"") &&
+      gates.includes(EXPECTED.proposal) &&
+      gates.includes("latest_approved_control_source_commit: \"bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9\"")),
   "gate_candidate_pointer",
 );
 assert(
@@ -244,7 +255,11 @@ assert(
       gates.includes("pending_proposal_sha256: \"sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946\"") &&
       gates.includes("pending_control_source_commit: \"bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9\"") &&
       gates.includes("authority_mode: none_attempt25_pending_fresh_approval") &&
-      gates.includes("pending_numeric_cap_usd: null")),
+      gates.includes("pending_numeric_cap_usd: null")) ||
+    (gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json\"") &&
+      gates.includes("pending_authority_sha256: \"sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c\"") &&
+      gates.includes("pending_numeric_cap_usd: 4") &&
+      gates.includes("attempt25_bounded_mutation_authorized")),
   "gate_authority",
 );
 assert(task.includes("Attempt23 output-contract diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority), "task_authority_pointer");

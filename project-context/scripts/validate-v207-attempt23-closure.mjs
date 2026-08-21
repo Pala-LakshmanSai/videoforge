@@ -161,20 +161,27 @@ assert(
     state.includes("phase: serverless_v2_v2_07_attempt24_closed") ||
     state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate")) &&
     state.includes("maximum_external_spend_usd: 0") ||
-    attempt24Authorized,
+    attempt24Authorized ||
+    (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
+      state.includes("maximum_external_spend_usd: 4")),
   "state_closed",
 );
 assert(
   (state.includes("provider_calls_authorized: false") &&
     state.includes("provider_mutations_authorized: false") &&
     state.includes("gpu_use_authorized: false")) ||
-    (attempt24Authorized && state.includes("provider_mutations_authorized: true") && state.includes("gpu_use_authorized: true")),
+    (attempt24Authorized && state.includes("provider_mutations_authorized: true") && state.includes("gpu_use_authorized: true")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
+      state.includes("provider_mutations_authorized: true") &&
+      state.includes("gpu_use_authorized: true")),
   "state_no_authority",
 );
 assert(
   (state.includes("current_authority: null") && state.includes("spend_authorized_usd: 0")) ||
     (attempt24Authorized &&
       state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json") &&
+      state.includes("spend_authorized_usd: 4")) ||
+    (state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json") &&
       state.includes("spend_authorized_usd: 4")),
   "state_current_authority_null",
 );
@@ -193,14 +200,19 @@ assert(
     (attempt24Authorized &&
       gates.includes("authority_mode: attempt24_bounded_mutation_authorized") &&
       gates.includes("pending_numeric_cap_usd: 4") &&
-      gates.includes('result: "NOT_QUALIFIED_attempt24_authorized_pre_execution"')),
+      gates.includes('result: "NOT_QUALIFIED_attempt24_authorized_pre_execution"')) ||
+    (gates.includes("authority_mode: attempt25_bounded_mutation_authorized") &&
+      gates.includes("pending_numeric_cap_usd: 4") &&
+      gates.includes('result: "NOT_QUALIFIED_attempt25_authorized_pre_execution"')),
   "gate_closed",
 );
 assert(task.includes("Attempt 23 closure") && task.includes("fresh exact proposal and fresh positive numeric cap are required"), "task_closure");
 assert(start.includes("Attempt 23 closure") && start.includes("fresh exact proposal and fresh positive numeric cap are required"), "start_closure");
 assert(
   activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") ||
-    (attempt24Authorized && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4")),
+    (attempt24Authorized && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
+      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4")),
   "activation_closed",
 );
 

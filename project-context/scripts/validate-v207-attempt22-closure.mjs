@@ -69,6 +69,8 @@ assert(
   (state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt23_authorized") && state.includes("maximum_external_spend_usd: 4")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") &&
+      state.includes("maximum_external_spend_usd: 4")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
       state.includes("maximum_external_spend_usd: 4")),
   "state_closed",
 );
@@ -80,8 +82,9 @@ assert(
     gates.includes("none_attempt24_pending_provider_free_candidate") ||
     gates.includes("attempt24_bounded_mutation_authorized") ||
     gates.includes("none_attempt24_consumed") ||
-    gates.includes("none_attempt25_pending_fresh_approval")) &&
-    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
+    gates.includes("none_attempt25_pending_fresh_approval") ||
+    gates.includes("attempt25_bounded_mutation_authorized")) &&
+    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );
 assert(

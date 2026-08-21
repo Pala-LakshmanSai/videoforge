@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -24,6 +24,8 @@ const EXPECTED = {
   proposal: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946",
   max1: "sha256:d7a5791c80fa96f997994c70486208af5faea93989a1cc3fe5033a0a911ddacd",
   max2: "sha256:e1edf2d61b188428ce16e6f5597ceadc6ce7d58aa50dda4f8a7ea09e96bd0e38",
+  acceptance: "sha256:4777072a229bfd2eb51b62b0e0d2415946b4c5ce63bec6b1bbae55bae6298ab2",
+  authority: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c",
   closure: "sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb",
   control: "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9",
   source: "79f123268b6ade640c02dd20616a89d16b43a5e6",
@@ -49,12 +51,13 @@ const json = (bytes, label) => {
   }
 };
 const exact = (left, right) => JSON.stringify(left) === JSON.stringify(right);
-const [proposalBytes, max1Bytes, max2Bytes, acceptanceBytes, closureBytes, stateBytes, gatesBytes, taskBytes, startBytes, activationBytes] =
+const [proposalBytes, max1Bytes, max2Bytes, acceptanceBytes, authorityBytes, closureBytes, stateBytes, gatesBytes, taskBytes, startBytes, activationBytes] =
   await Promise.all([
     readFile(paths.proposal),
     readFile(paths.max1),
     readFile(paths.max2),
     readFile(paths.acceptance),
+    readFile(paths.authority),
     readFile(paths.closure),
     readFile(paths.state),
     readFile(paths.gates),
@@ -66,20 +69,17 @@ for (const [label, bytes, expected] of [
   ["proposal", proposalBytes, EXPECTED.proposal],
   ["max1", max1Bytes, EXPECTED.max1],
   ["max2", max2Bytes, EXPECTED.max2],
+  ["acceptance", acceptanceBytes, EXPECTED.acceptance],
+  ["authority", authorityBytes, EXPECTED.authority],
   ["closure", closureBytes, EXPECTED.closure],
 ]) {
   assert(hash(bytes) === expected, label + "_hash");
-}
-try {
-  await access(paths.authority);
-  fail("authority_must_be_absent");
-} catch (error) {
-  if (error?.message?.includes("authority_must_be_absent")) throw error;
 }
 const proposal = json(proposalBytes, "proposal");
 const max1 = json(max1Bytes, "max1");
 const max2 = json(max2Bytes, "max2");
 const acceptance = json(acceptanceBytes, "acceptance");
+const authority = json(authorityBytes, "authority");
 const closure = json(closureBytes, "closure");
 const state = stateBytes.toString("utf8");
 const gates = gatesBytes.toString("utf8");
@@ -124,14 +124,24 @@ assert(closure.failure?.code === "RUNPOD_QUIESCENT_NOT_CONFIRMED" && closure.fai
 assert(closure.runpod_cleanup?.final_disposable_resources_absent === true && closure.runpod_cleanup?.pods === 0 && closure.runpod_cleanup?.endpoints === 0 && closure.runpod_cleanup?.private_templates === 0 && closure.runpod_cleanup?.active_serverless_workers === 0 && closure.runpod_cleanup?.running_pods === 0 && closure.runpod_cleanup?.network_volumes === 2, "prior_cleanup");
 assert(closure.billing?.attempt_increment_usd_settled === 0.03767574962694198 && closure.billing?.settlement_state === "STABLE_THREE_READS" && closure.billing?.reconciliation_read_count === 3, "prior_billing");
 assert(acceptance.schema_version === "videoforge.v2-07-attempt25-startup-terminal-inventory-candidate-handoff/v1" && acceptance.attempt === 25 && acceptance.qualification_status === "NOT_QUALIFIED", "acceptance_scope");
-assert(acceptance.candidate?.proposal_sha256 === EXPECTED.proposal && acceptance.candidate?.max1_sha256 === EXPECTED.max1 && acceptance.candidate?.max2_sha256 === EXPECTED.max2 && acceptance.candidate?.control_source_commit === EXPECTED.control && acceptance.candidate?.prior_attempt24_closure_sha256 === EXPECTED.closure && acceptance.candidate?.maximum_cumulative_finite_spend_usd === null && acceptance.candidate?.authority_path === null, "acceptance_binding");
+assert(acceptance.candidate?.proposal_sha256 === EXPECTED.proposal && acceptance.candidate?.max1_sha256 === EXPECTED.max1 && acceptance.candidate?.max2_sha256 === EXPECTED.max2 && acceptance.candidate?.control_source_commit === EXPECTED.control && acceptance.candidate?.prior_attempt24_closure_sha256 === EXPECTED.closure && acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4 && acceptance.candidate?.fresh_numeric_cap_required === false && acceptance.candidate?.authority_path === "approved-authority.json" && acceptance.candidate?.authority_sha256 === EXPECTED.authority && acceptance.candidate?.provider_calls_authorized === true && acceptance.candidate?.provider_mutations_authorized === true && acceptance.candidate?.gpu_use_authorized === true, "acceptance_binding");
 assert(acceptance.startup_terminal_inventory?.post_dispatch_or_drain_health_first === true && acceptance.provider_free_exit?.no_provider_calls === true && acceptance.provider_free_exit?.no_gpu_use === true, "acceptance_boundary");
 
+assert(authority.schema_version === "videoforge.v2-07-attempt25-startup-terminal-inventory-authority/v1", "authority_schema");
+assert(authority.checkpoint === "V2-07" && authority.task_id === "VF-10-07" && authority.attempt === 25, "authority_scope");
+assert(authority.authority_mode === "bounded_mutation" && authority.status === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING", "authority_status");
+assert(authority.proposal?.path === "combined-live-proposal.json" && authority.proposal?.sha256 === EXPECTED.proposal, "authority_proposal");
+assert(authority.approval?.exact_proposal_approved === true && authority.approval?.flashboot_true_accepted === true && authority.approval?.low_eu_ro_1_availability_approved === true && authority.approval?.minimum_approved_availability === "LOW" && authority.approval?.maximum_cumulative_finite_spend_usd === 4 && authority.approval?.fresh_numeric_cap === true && authority.approval?.historical_cap_reused === false && authority.approval?.prior_authority_reused === false, "authority_approval");
+assert(authority.lineage?.model === EXPECTED.model && authority.lineage?.model_manifest_sha256 === EXPECTED.manifest && authority.lineage?.final_image === EXPECTED.image && authority.lineage?.image_source_commit === EXPECTED.source && authority.lineage?.control_source_commit === EXPECTED.control && authority.lineage?.volume_id_sha256 === EXPECTED.volume && authority.lineage?.volume_size_gb === 50 && authority.lineage?.volume_region === "EU-RO-1" && authority.lineage?.volume_mount === "/runpod-volume" && authority.lineage?.model_root === "/runpod-volume/mage-model" && authority.lineage?.initial_config_sha256 === EXPECTED.max1 && authority.lineage?.concurrent_reader_config_sha256 === EXPECTED.max2 && authority.lineage?.failed_attempt_evidence_sha256 === EXPECTED.closure, "authority_lineage");
+assert(authority.execution_boundary?.provider_calls_completed === false && authority.execution_boundary?.external_spend_usd === 0 && authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4 && authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true && authority.execution_boundary?.gpu_use_authorized_pending_execution === true && authority.execution_boundary?.v2_08_authorized === false, "authority_boundary");
+assert(authority.startup_terminal_inventory_policy?.allowed_before_dispatch_only === true && authority.startup_terminal_inventory_policy?.allowed_before_any_owned_job === true && authority.startup_terminal_inventory_policy?.post_dispatch_or_drain_fallback_forbidden === true && authority.startup_terminal_inventory_policy?.no_retry_or_duplicate_compute === true, "authority_startup_policy");
+assert(Array.isArray(authority.authorized_operations) && authority.authorized_operations.includes("create_initial_flashboot_true_max_one_endpoint_in_eu_ro_1_on_exact_mage_volume") && authority.authorized_operations.includes("submit_two_simultaneous_read_only_complete_batches") && authority.authorized_operations.includes("retain_both_existing_volumes_in_all_outcomes"), "authority_operations");
+
 const candidatePath = "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json";
-assert(state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate") && state.includes("maximum_external_spend_usd: 0"), "state_phase");
-assert(state.includes(candidatePath) && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control) && state.includes("provider_calls_authorized: false") && state.includes("current_authority: null"), "state_pointer");
-assert(gates.includes("pending_proposal: \"" + candidatePath + "\"") && gates.includes("pending_proposal_sha256: \"" + EXPECTED.proposal + "\"") && gates.includes("pending_control_source_commit: \"" + EXPECTED.control + "\"") && gates.includes("authority_mode: none_attempt25_pending_fresh_approval") && gates.includes("pending_authority: null"), "gate_pointer");
+assert(state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") && state.includes("maximum_external_spend_usd: 4"), "state_phase");
+assert(state.includes(candidatePath) && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control) && state.includes("provider_calls_authorized: true") && state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json") && state.includes(EXPECTED.authority), "state_pointer");
+assert(gates.includes("pending_proposal: \"" + candidatePath + "\"") && gates.includes("pending_proposal_sha256: \"" + EXPECTED.proposal + "\"") && gates.includes("pending_control_source_commit: \"" + EXPECTED.control + "\"") && gates.includes("authority_mode: attempt25_bounded_mutation_authorized") && gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json\"") && gates.includes(EXPECTED.authority) && gates.includes("pending_numeric_cap_usd: 4"), "gate_pointer");
 assert(task.includes("Attempt25 startup-terminal-inventory candidate") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.closure), "task_pointer");
 assert(start.includes("Attempt 25 startup-terminal-inventory candidate") && start.includes(EXPECTED.proposal) && start.includes(EXPECTED.control) && start.includes("fresh positive numeric cap"), "start_pointer");
-assert(activation.includes("V207_PENDING_PROPOSAL_SHA256") && activation.includes(EXPECTED.proposal) && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_pending");
-process.stdout.write("V2-07 Attempt25 startup-terminal-inventory proposal validation PASS (" + EXPECTED.proposal + "; fresh cap required; provider-free)\\n");
+assert(activation.includes("V207_PENDING_PROPOSAL_SHA256") && activation.includes(EXPECTED.proposal) && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_approved");
+process.stdout.write("V2-07 Attempt25 startup-terminal-inventory authority validation PASS (" + EXPECTED.proposal + "; authority " + EXPECTED.authority + "; fresh USD 4 cap recorded; provider execution pending)\n");

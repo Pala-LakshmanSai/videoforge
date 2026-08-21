@@ -4,7 +4,7 @@
   "task_id": "VF-10-07",
   "attempt": 25,
   "recorded_at": "2026-08-21T10:30:00.000Z",
-  "result": "PROVIDER_FREE_STARTUP_TERMINAL_INVENTORY_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "result": "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING",
   "qualification_status": "NOT_QUALIFIED",
   "candidate": {
     "proposal_path": "combined-live-proposal.json",
@@ -26,13 +26,13 @@
     "volume_mount": "/runpod-volume",
     "flashboot": true,
     "availability": "LOW",
-    "maximum_cumulative_finite_spend_usd": null,
-    "fresh_numeric_cap_required": true,
-    "authority_path": null,
-    "authority_sha256": null,
-    "provider_calls_authorized": false,
-    "provider_mutations_authorized": false,
-    "gpu_use_authorized": false
+    "maximum_cumulative_finite_spend_usd": 4,
+    "fresh_numeric_cap_required": false,
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c",
+    "provider_calls_authorized": true,
+    "provider_mutations_authorized": true,
+    "gpu_use_authorized": true
   },
   "startup_terminal_inventory": {
     "rationale": "Attempt24 warm-idle health counters did not prove quiescence although exact terminal records existed; permit a narrow pre-dispatch fallback.",
@@ -89,14 +89,14 @@
     "external_spend_usd": 0
   },
   "local_verification": {
-    "proposal_validator": "PENDING_PROVIDER_FREE_VALIDATION",
-    "staged_definition_hashes": "PENDING_PROVIDER_FREE_VALIDATION",
-    "context_validation": "PENDING_PROVIDER_FREE_VALIDATION",
-    "secret_scan": "PENDING_PROVIDER_FREE_VALIDATION",
-    "format_check": "PENDING_PROVIDER_FREE_VALIDATION",
-    "git_diff_check": "PENDING_PROVIDER_FREE_VALIDATION"
+    "proposal_validator": "PASS_PROVIDER_FREE_AND_AUTHORITY_BOUND",
+    "staged_definition_hashes": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "format_check": "PASS",
+    "git_diff_check": "PASS"
   },
-  "next_boundary": "Ask once for explicit approval of the exact Attempt25 proposal hash, FlashBoot=true, LOW EU-RO-1 availability, and a fresh positive numeric maximum cumulative finite spend. Do not create an authority record, publish, mutate provider state, use GPU, or spend before approval and cap are recorded.",
+  "next_boundary": "Execute only the exact Attempt25 proposal under the recorded authority and fresh USD 4 cap. Do not reuse this authority after closure; stop before V2-08.",
   "unproven_acceptance": [
     "complete diagnostic sample and 32-image cold batch",
     "warm complete batch",

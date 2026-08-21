@@ -14,8 +14,8 @@ export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
   "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946" as const;
-// Attempt 25 is a provider-free startup-terminal-inventory candidate. Fresh approval and cap required.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+// Attempt 25 is approved for bounded execution under the exact recorded authority.
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 
 export interface V207ActivationAuthority {
   readonly image: string;
