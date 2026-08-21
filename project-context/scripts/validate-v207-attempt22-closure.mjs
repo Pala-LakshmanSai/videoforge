@@ -46,6 +46,17 @@ const attempt27CandidateGate =
   gates.includes(
     'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
   );
+const attempt27AuthorizedState =
+  state.includes("phase: serverless_v2_v2_07_attempt27_hosted_png_crc32_repair_authorized") &&
+  state.includes("task_stage: bounded_mutation") &&
+  state.includes("provider_calls_authorized: true") &&
+  state.includes("maximum_external_spend_usd: 4");
+const attempt27AuthorizedGate =
+  gates.includes("authority_mode: attempt27_bounded_mutation_authorized") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt27_authorized_preexecution"') &&
+  gates.includes(
+    'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
+  );
 
 assert(hash(closureBytes) === expected.closure, "closure_hash");
 assert(hash(authorityBytes) === expected.authority, "authority_hash");
@@ -80,7 +91,8 @@ assert(
     (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") &&
       state.includes("maximum_external_spend_usd: 4")) ||
     (state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_authorized") &&
-      state.includes("maximum_external_spend_usd: 4")),
+      state.includes("maximum_external_spend_usd: 4")) ||
+    attempt27AuthorizedState,
   "state_closed",
 );
 assert(
@@ -96,7 +108,7 @@ assert(
     gates.includes("none_attempt25_consumed") ||
     gates.includes("none_attempt26_pending_fresh_approval") ||
     attempt26ClosedGate ||
-    attempt27CandidateGate) &&
+    (attempt27CandidateGate || attempt27AuthorizedGate)) &&
     (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("NOT_QUALIFIED_attempt25") || gates.includes("NOT_QUALIFIED_attempt26") || gates.includes("NOT_QUALIFIED_attempt27") || gates.includes("NOT_QUALIFIED_attempt25_authorized_pre_execution") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );

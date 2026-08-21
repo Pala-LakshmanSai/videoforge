@@ -201,6 +201,11 @@ const attempt27CandidateState =
   state.includes("phase: serverless_v2_v2_07_attempt27_hosted_png_crc32_repair_candidate_ready") &&
   state.includes("provider_calls_authorized: false") &&
   state.includes("maximum_external_spend_usd: 0");
+const attempt27AuthorizedState =
+  state.includes("phase: serverless_v2_v2_07_attempt27_hosted_png_crc32_repair_authorized") &&
+  state.includes("task_stage: bounded_mutation") &&
+  state.includes("provider_calls_authorized: true") &&
+  state.includes("maximum_external_spend_usd: 4");
 const attempt26ClosedGate =
   gates.includes("authority_mode: none_attempt26_consumed") &&
   gates.includes('result: "NOT_QUALIFIED_attempt26_closed_finalize_response_invalid"') &&
@@ -210,6 +215,12 @@ const attempt26ClosedGate =
 const attempt27CandidateGate =
   gates.includes("authority_mode: none_attempt27_pending_fresh_approval") &&
   gates.includes('result: "NOT_QUALIFIED_attempt27_hosted_png_crc32_repair_candidate_ready"') &&
+  gates.includes(
+    'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
+  );
+const attempt27AuthorizedGate =
+  gates.includes("authority_mode: attempt27_bounded_mutation_authorized") &&
+  gates.includes('result: "NOT_QUALIFIED_attempt27_authorized_preexecution"') &&
   gates.includes(
     'pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"',
   );
@@ -236,7 +247,8 @@ assert(
       state.includes("provider_calls_authorized: true") &&
       state.includes("maximum_external_spend_usd: 4")) ||
     attempt26ClosedState ||
-    attempt27CandidateState,
+    attempt27CandidateState ||
+    attempt27AuthorizedState,
   "state_authorized",
 );
 assert(state.includes("2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json") && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control), "state_candidate_pointer");
@@ -247,6 +259,11 @@ assert(
       state.includes("gpu_use_authorized: true") &&
       state.includes("spend_authorized_usd: 4")) ||
     (state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json") &&
+      state.includes("mutation_authorized: true") &&
+      state.includes("gpu_use_authorized: true") &&
+      state.includes("spend_authorized_usd: 4")) ||
+    (attempt27AuthorizedState &&
+      state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json") &&
       state.includes("mutation_authorized: true") &&
       state.includes("gpu_use_authorized: true") &&
       state.includes("spend_authorized_usd: 4")) ||
@@ -269,7 +286,8 @@ assert(
       gates.includes(EXPECTED.proposal) &&
       gates.includes("latest_approved_control_source_commit: \"bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9\"")) ||
     attempt26ClosedGate ||
-    attempt27CandidateGate,
+    attempt27CandidateGate ||
+    attempt27AuthorizedGate,
   "gate_candidate_pointer",
 );
 assert(
@@ -297,7 +315,8 @@ assert(
       (gates.includes("authority_mode: none_attempt25_consumed") ||
         gates.includes("authority_mode: none_attempt26_pending_fresh_approval"))) ||
     attempt26ClosedGate ||
-    attempt27CandidateGate,
+    attempt27CandidateGate ||
+    attempt27AuthorizedGate,
   "gate_authority",
 );
 assert(task.includes("Attempt23 output-contract diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority), "task_authority_pointer");

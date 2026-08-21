@@ -18,8 +18,8 @@ export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
   "b8666dd8b8bc12578ffae8925f6ce73dbf53a841" as const;
-// Attempt 27 is provider-free and pending fresh exact approval. No provider dispatch is authorized.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+// Attempt 27 is approved for one bounded execution under the exact recorded authority and fresh $4 cap.
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 
 export interface V207ActivationAuthority {
   readonly image: string;

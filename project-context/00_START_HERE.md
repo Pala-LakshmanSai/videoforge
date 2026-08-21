@@ -1,7 +1,9 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
-bounded Attempt26; the provider-free Attempt27 hosted PNG CRC32 repair candidate is now ready. Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
+bounded Attempt26; the provider-free Attempt27 hosted PNG CRC32 repair candidate has an exact
+approved preexecution authority recorded, with provider execution pending the authority commit and
+validation. Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any
 accepted batch, durable output, or accepted receipt. Exact cleanup deleted only the disposable
@@ -9,8 +11,9 @@ endpoint/template after two stable terminal snapshots; three settled reconciliat
 zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, and `$0`
 incremental endpoint spend. Closure evidence is
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json` at
-`sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2`. A fresh exact proposal
-and fresh positive numeric cap are required before any retry; V2-08 remains forbidden.
+`sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2`. That closure required a
+fresh exact proposal and cap; Attempt27 now supplies separately recorded authority, while V2-08 remains
+forbidden.
 
 Attempt26 consumed exact proposal `sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632`
 and authority `sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05`.
@@ -21,8 +24,8 @@ delay and 118362 ms execution, then stopped fail-closed at `output_finalization`
 `sha256:f2839fefaafbe507ce447a4e374d502a971e75653b466f6703caa1a1f8e7c9ec` proves generated-output
 rollback, exact endpoint/template deletion, zero Pods/endpoints/templates/workers, both intended
 50 GB EU-RO-1 volumes retained, signer deletion/Worker rollback/stable disabled route, and `$0`
-settled incremental endpoint spend. Attempt26 authority is consumed and non-reusable. Any retry requires
-a new exact proposal and fresh numeric cap.
+settled incremental endpoint spend. Attempt26 authority is consumed and non-reusable. Attempt27's new
+exact proposal and fresh numeric cap are recorded below.
 
 Provider-free Attempt27 candidate:
 `evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/combined-live-proposal.json`
@@ -31,9 +34,15 @@ published image, Mage model/manifest, sealed 50 GB EU-RO-1 volume at `/runpod-vo
 LOW EU-RO-1, RTX 4090 only, max-one `sha256:07749793fe28e158bad4314dbec128c30c6dcb3df52e7912837ec6dd10e27372`,
 and max-two `sha256:1673a27538aef7796a364e125e812c26dc22c2c9a2b7c7671f615fa5af603a25`. It adds the
 provider-free hosted PNG CRC32 table repair `1960ea9307bb7fcb591c842b84fc1c622aec49eb` while preserving
-RunPod control `b8666dd8b8bc12578ffae8925f6ce73dbf53a841`. The candidate has null cap, no authority,
-no provider calls, no GPU use, no mutation, and zero spend; fresh exact approval and a fresh positive
-numeric cap are required before publication, endpoint mutation, or execution. V2-08 remains forbidden.
+RunPod control `b8666dd8b8bc12578ffae8925f6ce73dbf53a841`. The proposal bytes retain a null cap by
+design. The user approved this exact proposal with FlashBoot=true, LOW EU-RO-1 availability, and a
+fresh maximum cumulative finite spend of `$4`. Append-only authority
+`evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json`
+is recorded at `sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10`.
+Provider mutation, scoped Cloudflare activation, endpoint/template creation, GPU use, and spend
+remain pending until that authority and the reconciled context are committed and validated. No image
+republication, model download/quantization, retained-volume mutation, fallback GPU/region, public
+sample publication, V2-08, or successor work is authorized.
 
 Historical Attempt24 exact template/endpoint identity work reached the pre-dispatch safety guard,
 but `RUNPOD_QUIESCENT_NOT_CONFIRMED` stopped before `/run/job`; zero jobs and zero batches were

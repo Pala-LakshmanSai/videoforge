@@ -136,11 +136,11 @@ gates:
     latest_closed_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
     latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json"
     latest_closed_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"
-    latest_approved_proposal: null
-    latest_approved_proposal_sha256: null
-    latest_approved_authority: null
-    latest_approved_authority_sha256: null
-    latest_approved_control_source_commit: null
+    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/combined-live-proposal.json"
+    latest_approved_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"
+    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json"
+    latest_approved_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"
+    latest_approved_control_source_commit: "b8666dd8b8bc12578ffae8925f6ce73dbf53a841"
     closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json"
     closed_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-26.json"
@@ -148,14 +148,14 @@ gates:
     pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/combined-live-proposal.json"
     pending_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"
     pending_control_source_commit: "b8666dd8b8bc12578ffae8925f6ce73dbf53a841"
-    pending_authority: null
-    pending_authority_sha256: null
-    authority_mode: none_attempt27_pending_fresh_approval
-    pending_numeric_cap_usd: null
+    pending_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json"
+    pending_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"
+    authority_mode: attempt27_bounded_mutation_authorized
+    pending_numeric_cap_usd: 4
     pending_flashboot: true
     pending_availability: LOW
-    result: "NOT_QUALIFIED_attempt27_hosted_png_crc32_repair_candidate_ready"
-    next_boundary: "provider-free validate hosted PNG CRC32 repair 1960ea9307bb7fcb591c842b84fc1c622aec49eb, then require fresh exact proposal approval and fresh positive numeric cap; V2-08 forbidden"
+    result: "NOT_QUALIFIED_attempt27_authorized_preexecution"
+    next_boundary: "commit and validate exact Attempt27 authority, then execute and reconcile only proposal sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae under the fresh USD 4 cap; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:

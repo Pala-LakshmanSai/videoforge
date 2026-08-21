@@ -123,6 +123,9 @@ const attempt26Closed = state.includes(
 const attempt27Candidate = state.includes(
   "phase: serverless_v2_v2_07_attempt27_hosted_png_crc32_repair_candidate_ready",
 );
+const attempt27Authorized = state.includes(
+  "phase: serverless_v2_v2_07_attempt27_hosted_png_crc32_repair_authorized",
+);
 assert(
   state.includes("phase: serverless_v2_v2_07_attempt22_closed_output_contract_diagnosis_required") ||
   state.includes("phase: serverless_v2_v2_07_attempt23_output_contract_diagnostic_pending") ||
@@ -136,7 +139,8 @@ assert(
     state.includes("phase: serverless_v2_v2_07_attempt25_closed") ||
     state.includes("phase: serverless_v2_v2_07_attempt26_finalize_transport_repair_candidate_ready") ||
     attempt26Closed ||
-    attempt27Candidate,
+    attempt27Candidate ||
+    attempt27Authorized,
   "state_phase",
 );
 assert(state.includes("historical_v2_07_attempt21_authority:") && state.includes("consumed: true"), "state_closed");
