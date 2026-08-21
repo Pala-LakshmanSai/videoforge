@@ -7,13 +7,17 @@ resources, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative bi
 0.12480033212341368, and USD 0 Attempt 21 spend. Proposal
 `sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4` and authority
 `sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec` are consumed and closed.
-The provider-free control commit was `8d62be71b9b10585ea99d0583a4a4267ed9a5a79`; the prior
+The provider-free control commit was `8d62be71b9b10585ea99d0583a4a4267ed9a5a79`; latest template
+environment proof control is `54af72f1e9a29eed7f53e47ecdda9f6a34abb7df`; the prior
 Attempt20 closure remains historical at `failed-attempt-20.json`.
 The signer is absent, the Worker is restored, and 16/16 disabled-route probes passed. Any retry
 requires provider-free diagnosis changes, a new exact proposal, and a fresh positive numeric cap.
 V2-08 remains forbidden.
 
-Canonical candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json`.
+Attempt 22 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`.
+Attempt 22 proposal SHA-256: `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`.
+It is provider-free and pending exact approval plus a fresh numeric cap; no authority is recorded.
+Canonical historical candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/combined-live-proposal.json`.
 Attempt21 closure evidence: `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json`.
 Closure evidence SHA-256: `sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68`.
 Context schema: `2.0`
@@ -282,6 +286,16 @@ template, both intended 50 GB EU-RO-1 volumes remain retained, cumulative billin
 `evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json` at
 `sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68`. V2-07 remains
 NOT_QUALIFIED and any retry requires a fresh exact proposal and positive numeric cap.
+
+Attempt 22 is the current provider-free candidate. Control `54af72f1e9a29eed7f53e47ecdda9f6a34abb7df`
+POSTs the endpoint-hash environment update, GETs exact template identity/environment, then PATCHes
+documented endpoint fields and requires strict endpoint configuration readback. Endpoint environment
+omission is accepted only after the exact template proof; any present endpoint environment must match.
+The exact candidate is
+`evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`
+at `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`, with null cap,
+no authority, no provider calls, no spend, FlashBoot=true and LOW EU-RO-1 proposal fields. A fresh
+exact approval and positive numeric cap are required before provider execution; V2-08 remains forbidden.
 
 ## Context navigation
 

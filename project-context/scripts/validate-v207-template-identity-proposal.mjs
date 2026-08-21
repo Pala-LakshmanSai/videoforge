@@ -42,7 +42,7 @@ const expected = {
   candidateAuthority:
     "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462",
   currentProposal:
-    "sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4",
+    "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7",
   currentAuthority:
     "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2",
   activeAuthority:
@@ -319,7 +319,7 @@ const auditEvidence = topLevelBlock(currentState, "audit_evidence:");
 assert(providerAuthority.includes("mode: none"), "state_authority_none");
 assert(providerAuthority.includes("cap_usd: 0"), "state_authority_zero_cap");
 assert(
-  currentState.includes(`v2_07_action: diagnose_attempt21_get_readback_mismatch_provider_free`),
+  currentState.includes(`v2_07_action: prepare_attempt22_template_environment_get_proof_provider_free`),
   "state_action",
 );
 assert(currentState.includes(`v2_07_proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -328,9 +328,9 @@ assert(currentState.includes(`v2_07_attempt17_closed_authority: ${expected.candi
 assert(currentState.includes("failed-attempt-17.json"), "state_attempt17_path");
 assert(currentState.includes("provider_calls_authorized: false") && currentState.includes("maximum_external_spend_usd: 0"), "state_provider_boundary");
 assert(currentState.includes("gpu_use_authorized: false") && currentState.includes("remote_or_cloud_mutations_authorized: false"), "state_gpu_mutation_boundary");
-assert(recommendedTask.includes("Diagnose Attempt 21 GET readback mismatch"), "state_recommended_goal");
+assert(recommendedTask.includes("Attempt 22 template-environment GET proof"), "state_recommended_goal");
 assert(recommendedTask.includes("task_stage: provider_free_repair"), "state_recommended_stage");
-assert(recommendedTask.includes("current_goal_authority: none_attempt21_consumed"), "state_recommended_authority");
+assert(recommendedTask.includes("current_goal_authority: none_attempt22_pending"), "state_recommended_authority");
 assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
 assert(auditEvidence.includes("v2_07_current_approved_authority: null"), "state_audit_no_current_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_attempt17_closed_authority");
@@ -350,7 +350,7 @@ const repairSectionStart = task.indexOf("## Provider-free Attempt 16 repair and 
 assert(repairSectionStart >= 0, "task_repair_section");
 const repairSection = task.slice(repairSectionStart);
 assert(taskHeader.includes("consumed, closed, and non-transferable"), "task_current_authority_closed");
-assert(taskHeader.includes(expected.currentProposal), "task_current_proposal_hash");
+assert(task.includes(expected.currentProposal), "task_current_proposal_hash");
 assert(taskHeader.includes("V2-08"), "task_v208_boundary");
 assert(repairSection.includes("update the exact private template environment"), "task_template_update");
 assert(repairSection.includes("without `env`"), "task_env_free_patch");

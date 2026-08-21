@@ -130,7 +130,14 @@ gates:
     closed_authority_sha256: "sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json"
     closure_evidence_sha256: "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68"
-    result: "NOT_QUALIFIED_attempt21_proposal_sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4_get_readback_unconfirmed_error_category_environment_exact_cleanup_zero_incremental_spend_fresh_proposal_and_cap_required"
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+    pending_control_source_commit: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"
+    pending_authority: null
+    pending_numeric_cap_usd: null
+    pending_flashboot: true
+    pending_availability: LOW
+    result: "NOT_QUALIFIED_attempt22_proposal_sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7_template_get_identity_environment_proof_pending_fresh_exact_approval_and_numeric_cap_required"
 
   GATE_SERVERLESS_SOULX_001:
     status: open

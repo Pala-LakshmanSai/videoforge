@@ -1,0 +1,71 @@
+{
+  "schema_version": "videoforge.v2-07-attempt22-template-environment-readback-candidate-handoff/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "recorded_at": "2026-08-21T07:45:00.000Z",
+  "result": "PROVIDER_FREE_DIAGNOSTIC_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_sha256": "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7",
+    "control_source_commit": "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "flashboot": true,
+    "availability": "LOW",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true
+  },
+  "attempt21_closure": {
+    "evidence": "../2026-08-20-live-qualification/failed-attempt-21.json",
+    "sha256": "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68",
+    "dispatch_reached": false,
+    "gpu_jobs_submitted": 0,
+    "incremental_spend_usd": 0,
+    "final_disposable_resources_absent": true,
+    "retained_volume_count": 2,
+    "stable_billing_reads": 3
+  },
+  "diagnostic_contract": {
+    "template_environment_get_required_before_endpoint_patch": true,
+    "template_environment_get_must_match_exact_identity_and_environment": true,
+    "endpoint_environment_omission_allowed_only_after_template_proof": true,
+    "mismatch_categories": [
+      "identity",
+      "environment",
+      "flashboot",
+      "region",
+      "cuda",
+      "volume",
+      "gpu",
+      "workers",
+      "timing",
+      "scaler"
+    ],
+    "evidence_field": "error_category",
+    "provider_body_retained": false,
+    "mismatch_stops_before_dispatch": true,
+    "readback_pass_continues_full_qualification": true
+  },
+  "local_verification": {
+    "attempt22_proposal_validator": "PASS",
+    "focused_web_tests": "PASS_83_TESTS",
+    "context_validation": "PASS_WITH_EXISTING_READ_PROFILE_WORD_WARNING",
+    "secret_scan": "PASS",
+    "format_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "provider_boundary": {
+    "provider_calls": false,
+    "provider_mutations": false,
+    "publication": false,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "retained_volume_mutation": false,
+    "v2_08_authorized": false
+  },
+  "next_boundary": "Ask once for explicit approval of the exact Attempt22 proposal hash and a fresh positive numeric maximum cumulative finite spend; do not publish, mutate provider state, use GPU, or spend before both are recorded."
+}

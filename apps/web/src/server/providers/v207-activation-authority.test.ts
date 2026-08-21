@@ -16,7 +16,7 @@ import {
 const image = V207_REPAIRED_IMAGE;
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete Attempt21 diagnostic candidate lineage", () => {
+  it("pins the complete Attempt22 template-environment candidate lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -37,7 +37,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:13acabaed3c21b3a15fcca203072c211f9002057453d4cd9b0fb5a765444d2d4",
+      "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7",
     );
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
