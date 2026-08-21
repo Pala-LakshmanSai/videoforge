@@ -329,7 +329,8 @@ assert(
     currentState.includes(`v2_07_action: execute_exact_approved_attempt23_output_contract_diagnostic_proposal`) ||
     currentState.includes(`v2_07_action: close_attempt23_output_contract_diagnostic_and_require_fresh_authority`) ||
     currentState.includes(`v2_07_action: prepare_attempt24_verification_stage_diagnostic_provider_free`) ||
-    currentState.includes(`v2_07_action: execute_exact_approved_attempt24_verification_stage_diagnostic`),
+    currentState.includes(`v2_07_action: execute_exact_approved_attempt24_verification_stage_diagnostic`) ||
+    currentState.includes(`v2_07_action: close_attempt24_quiescence_failure_and_require_fresh_authority`),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -350,7 +351,8 @@ assert(
     recommendedTask.includes("Attempt23 output-contract diagnostic proposal") ||
     recommendedTask.includes("Attempt23 output-contract failure") ||
     recommendedTask.includes("Attempt24 verification-stage diagnostic candidate") ||
-    recommendedTask.includes("Attempt24 verification-stage diagnostic proposal"),
+    recommendedTask.includes("Attempt24 verification-stage diagnostic proposal") ||
+    recommendedTask.includes("quiescence failure"),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
@@ -359,6 +361,7 @@ assert(
     recommendedTask.includes("current_goal_authority: attempt23_approved_preexecution") ||
     recommendedTask.includes("current_goal_authority: none_attempt23_consumed") ||
     recommendedTask.includes("current_goal_authority: none_attempt24_pending_provider_free_candidate") ||
+    recommendedTask.includes("current_goal_authority: none") ||
     recommendedTask.includes("current_goal_authority: approved_attempt24_proposal_sha256_be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"),
   "state_recommended_authority",
 );
@@ -384,7 +387,11 @@ const mageGateEnd = gates.indexOf("\n  GATE_", mageGateStart + 1);
 assert(mageGateStart >= 0 && mageGateEnd > mageGateStart, "gate_mage_block");
 const mageGate = gates.slice(mageGateStart, mageGateEnd);
 assert(mageGate.includes("failed-attempt-22.json"), "gate_attempt_path");
-assert(mageGate.includes(expected.currentProposal.slice(7)), "gate_authority_boundary");
+assert(
+  mageGate.includes(expected.currentProposal.slice(7)) ||
+    mageGate.includes("be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"),
+  "gate_authority_boundary",
+);
 
 const task = readText(files.task, "task");
 const taskHeader = task.slice(0, task.indexOf("\n## Goal"));

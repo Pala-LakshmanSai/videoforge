@@ -136,13 +136,36 @@ assert(authority.output_contract_diagnostic_policy?.diagnostic_category === "out
 assert(authority.execution_boundary?.provider_calls_completed === false && authority.execution_boundary?.external_spend_usd === 0 && authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4 && authority.execution_boundary?.v2_08_authorized === false, "authority_boundary");
 
 const candidatePath = "evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/combined-live-proposal.json";
-assert(state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") && state.includes("maximum_external_spend_usd: 4"), "state_phase");
-assert(state.includes(candidatePath) && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control) && state.includes("provider_calls_authorized: true") && state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json") && state.includes(EXPECTED.authority), "state_pointer");
-assert(gates.includes("pending_proposal: \"" + candidatePath + "\"") && gates.includes(EXPECTED.proposal) && gates.includes("pending_control_source_commit: \"" + EXPECTED.control + "\"") && gates.includes("authority_mode: attempt24_bounded_mutation_authorized") && gates.includes(EXPECTED.authority), "gate_pointer");
+assert(
+  (state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") && state.includes("maximum_external_spend_usd: 4")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt24_closed") && state.includes("maximum_external_spend_usd: 0")),
+  "state_phase",
+);
+assert(
+  state.includes(candidatePath) &&
+    state.includes(EXPECTED.proposal) &&
+    state.includes(EXPECTED.control) &&
+    ((state.includes("provider_calls_authorized: true") &&
+      state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json")) ||
+      (state.includes("provider_calls_authorized: false") && state.includes("current_authority: null"))) &&
+    state.includes(EXPECTED.authority),
+  "state_pointer",
+);
+assert(
+  ((gates.includes("pending_proposal: \"" + candidatePath + "\"") &&
+    gates.includes("pending_control_source_commit: \"" + EXPECTED.control + "\"") &&
+    gates.includes("authority_mode: attempt24_bounded_mutation_authorized")) ||
+    (gates.includes("latest_closed_proposal: \"" + candidatePath + "\"") &&
+      gates.includes("latest_approved_control_source_commit: \"" + EXPECTED.control + "\"") &&
+      gates.includes("authority_mode: none_attempt24_consumed"))) &&
+  gates.includes(EXPECTED.proposal) &&
+  gates.includes(EXPECTED.authority),
+  "gate_pointer",
+);
 assert(task.includes("Fresh Attempt24 verification-stage diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority) && task.includes("fresh maximum cumulative finite spend of `$4`"), "task_pointer");
 assert(start.includes("Attempt 24 verification-stage diagnostic candidate") && start.includes(EXPECTED.proposal) && start.includes(EXPECTED.control) && start.includes("fresh positive numeric cap"), "start_pointer");
-assert(start.includes("Attempt 24 exact authority is recorded") && start.includes(EXPECTED.authority) && start.includes("fresh maximum cumulative finite spend of"), "start_authority_pointer");
-assert(activation.includes("V207_PENDING_PROPOSAL_SHA256") && activation.includes(EXPECTED.proposal) && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_approved");
+assert((start.includes("Attempt 24 exact authority is recorded") || start.includes("Attempt 24 exact authority was recorded")) && start.includes(EXPECTED.authority) && start.includes("fresh maximum cumulative finite spend of"), "start_authority_pointer");
+assert(activation.includes("V207_PENDING_PROPOSAL_SHA256") && activation.includes(EXPECTED.proposal) && (activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") || activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")), "activation_approved");
 await access(resolve(candidate, "combined-live-proposal.json"));
 await access(resolve(candidate, "approved-authority.json"));
 process.stdout.write(`V2-07 Attempt24 verification-stage proposal validation PASS (${EXPECTED.proposal}; authority ${EXPECTED.authority}; fresh USD 4 cap recorded; provider execution pending)

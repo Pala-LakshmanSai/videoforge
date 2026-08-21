@@ -78,7 +78,8 @@ assert(
     gates.includes("attempt23_bounded_mutation_authorized") ||
     gates.includes("none_attempt23_consumed") ||
     gates.includes("none_attempt24_pending_provider_free_candidate") ||
-    gates.includes("attempt24_bounded_mutation_authorized")) &&
+    gates.includes("attempt24_bounded_mutation_authorized") ||
+    gates.includes("none_attempt24_consumed")) &&
     (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("NOT_QUALIFIED_attempt24") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );

@@ -123,7 +123,8 @@ assert(
     state.includes("phase: serverless_v2_v2_07_attempt23_authorized") ||
     state.includes("phase: serverless_v2_v2_07_attempt23_closed") ||
     state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_authorized") ||
-    state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_pending"),
+    state.includes("phase: serverless_v2_v2_07_attempt24_verification_stage_diagnostic_pending") ||
+    state.includes("phase: serverless_v2_v2_07_attempt24_closed"),
   "state_phase",
 );
 assert(state.includes("historical_v2_07_attempt21_authority:") && state.includes("consumed: true"), "state_closed");
@@ -132,7 +133,8 @@ assert(state.includes("failed-attempt-21.json") && state.includes(EXPECTED.evide
 assert(state.includes(EXPECTED.proposal) && state.includes(EXPECTED.authority), "state_lineage");
 assert(
   (gates.includes("previous_attempt: \"evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json\"") ||
-    gates.includes("failed-attempt-23.json")) &&
+    gates.includes("failed-attempt-23.json") ||
+    gates.includes("failed-attempt-24.json")) &&
     state.includes(EXPECTED.evidence),
   "gate_evidence",
 );

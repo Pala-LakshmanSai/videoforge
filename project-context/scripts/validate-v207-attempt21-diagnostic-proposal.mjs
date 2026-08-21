@@ -243,7 +243,7 @@ for (const [label, value] of [["state", state], ["task", task]]) {
 }
 assert(
   state.includes(EXPECTED.authority) &&
-    (gates.includes("failed-attempt-21.json") || gates.includes("failed-attempt-23.json")),
+    (gates.includes("failed-attempt-21.json") || gates.includes("failed-attempt-23.json") || gates.includes("failed-attempt-24.json")),
   "gates_proposal_pointer",
 );
 assert(start.includes("failed-attempt-22.json"), "start_proposal_pointer");
