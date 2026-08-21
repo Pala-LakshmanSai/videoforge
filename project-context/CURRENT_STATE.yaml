@@ -34,7 +34,7 @@ pending_v2_07_attempt25_proposal:
   proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
   control_source_commit: "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"
   failed_attempt_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json
-  failed_attempt_evidence_sha256: "sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d"
+  failed_attempt_evidence_sha256: "sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2"
   staged_max1_sha256: "sha256:d7a5791c80fa96f997994c70486208af5faea93989a1cc3fe5033a0a911ddacd"
   staged_max2_sha256: "sha256:e1edf2d61b188428ce16e6f5597ceadc6ce7d58aa50dda4f8a7ea09e96bd0e38"
   flashboot: true
@@ -226,7 +226,7 @@ provider_authority: &v2_07_provider_authority
   consumed: true
   actual_spend_usd: 0
   closure_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json
-  closure_evidence_sha256: "sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d"
+  closure_evidence_sha256: "sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2"
 
 historical_v2_07_attempt22_authority:
   mode: paid
@@ -739,7 +739,7 @@ repository:
   current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt25 authority sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c and proposal sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946 are consumed and closed after one COMPLETED job failed at output_finalization. Closure evidence sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d binds exact cleanup sha256:91c67ac7dd8143589e9bb6d66609d6f793192791bbb0af1c2a5d86ee36e9cd1 and settled USD 0 reconciliation sha256:bf19c47747017355c6e1a56894aa2c384ceae0af231ca12631fee28849652fac. V2-07 remains NOT_QUALIFIED; a fresh exact proposal and fresh positive numeric cap are required."
+  current_source_head_note: "Attempt25 authority sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c and proposal sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946 are consumed and closed after one COMPLETED job failed at output_finalization. Closure evidence sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2 binds exact cleanup sha256:91c67ac7dd8143589e9bb6d66609d6f793192791bbb0af1c2a5d86ee36e9cd1 and settled USD 0 reconciliation sha256:bf19c47747017355c6e1a56894aa2c384ceae0af231ca12631fee28849652fac. V2-07 remains NOT_QUALIFIED; a fresh exact proposal and fresh positive numeric cap are required."
   v2_07_latest_local_repair: "Commit bb9abc03 adds a startup-only exact terminal worker/Pod inventory fallback with explicit health.jobs inQueue/inProgress presence and zero reads bracketing both stable inventory snapshots. Attempt25 then reached one COMPLETED job but failed output_finalization; exact cleanup sha256:91c67ac7dd8143589e9bb6d66609d6f793192791bbb0af1c2a5d86ee36e9cd1 and reconciliation sha256:bf19c47747017355c6e1a56894aa2c384ceae0af231ca12631fee28849652fac prove zero disposable compute, retained volumes, and settled USD 0 increment. Fresh exact approval and positive numeric cap are required."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -758,7 +758,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Attempt25 authority is consumed after the output_finalization failure; closure evidence sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d binds exact cleanup and settled USD 0 reconciliation. Fresh exact proposal and positive numeric cap required; V2-08 remains forbidden."
+  provider_authority_scope: "Attempt25 authority is consumed after the output_finalization failure; closure evidence sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2 binds exact cleanup and settled USD 0 reconciliation. Fresh exact proposal and positive numeric cap required; V2-08 remains forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -1003,7 +1003,7 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt25 authority sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c is consumed after one COMPLETED job failed at output_finalization. Closure evidence sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d binds exact cleanup sha256:91c67ac7dd8143589e9bb6d66609d6f793192791bbb0af1c2a5d86ee36e9cd1 and settled USD 0 reconciliation sha256:bf19c47747017355c6e1a56894aa2c384ceae0af231ca12631fee28849652fac. Fresh exact approval and fresh positive numeric cap are required; image republication, volume mutation, V2-08, and successor work remain forbidden."
+  authority_note: "Attempt25 authority sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c is consumed after one COMPLETED job failed at output_finalization. Closure evidence sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2 binds exact cleanup sha256:91c67ac7dd8143589e9bb6d66609d6f793192791bbb0af1c2a5d86ee36e9cd1 and settled USD 0 reconciliation sha256:bf19c47747017355c6e1a56894aa2c384ceae0af231ca12631fee28849652fac. Fresh exact approval and fresh positive numeric cap are required; image republication, volume mutation, V2-08, and successor work remain forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   execution_status: attempt25_closed_output_finalization_failure
   execution_blocker: fresh_exact_proposal_and_positive_numeric_cap_required
@@ -1467,7 +1467,7 @@ audit_evidence:
   v2_07_attempt24_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json
   v2_07_attempt24_closed_authority_sha256: "sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412"
   v2_07_attempt25_candidate: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/acceptance.json
-  v2_07_attempt25_candidate_sha256: "sha256:12fe5d7281cb82a6ee1d7766c474bdfafac990c204906750afaa205a7ba1d633"
+  v2_07_attempt25_candidate_sha256: "sha256:e20f308d4e33095291978429869877cf81b5b14433bf5ec0f8873bf3683c60a7"
   v2_07_attempt25_control_commit: "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"
   v2_07_attempt23_closure: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-23.json
   v2_07_attempt23_closure_sha256: "sha256:0f48f3bc82b6d0b7fb48e723c4a3fc36a142129de578447acd30d77157e1ca1b"

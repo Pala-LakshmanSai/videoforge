@@ -101,6 +101,7 @@ const acceptanceHash = hash(acceptanceBytes);
 
 assert(closure.schema_version === "videoforge.v2-07-live-failed-attempt/v1", "closure_schema");
 assert(closure.checkpoint === "V2-07" && closure.task_id === "VF-10-07" && closure.attempt === 25, "closure_scope");
+assert(closure.final_reconciliation_checked_at === "2026-08-21T11:30:30.619Z", "reconciliation_timestamp");
 assert(
   closure.result === "FAILED_POSTDISPATCH_COMPLETED_JOB_OUTPUT_FINALIZATION_UNPROVEN_EXACT_CLEANUP_RECONCILIATION_COMPLETE",
   "closure_result",

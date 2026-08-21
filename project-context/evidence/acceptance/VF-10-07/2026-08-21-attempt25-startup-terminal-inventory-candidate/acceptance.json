@@ -34,7 +34,7 @@
     "provider_mutations_authorized": false,
     "gpu_use_authorized": false,
     "closure_path": "../2026-08-21-live-qualification/failed-attempt-25.json",
-    "closure_sha256": "sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d"
+    "closure_sha256": "sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2"
   },
   "startup_terminal_inventory": {
     "rationale": "Attempt24 warm-idle health counters did not prove quiescence although exact terminal records existed; permit a narrow pre-dispatch fallback.",

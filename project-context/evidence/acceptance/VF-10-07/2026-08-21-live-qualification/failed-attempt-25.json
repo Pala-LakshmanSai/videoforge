@@ -6,7 +6,7 @@
   "started_at": "2026-08-21T11:16:31.842Z",
   "qualification_failed_at": "2026-08-21T11:27:19.164Z",
   "final_route_restoration_checked_at": "2026-08-21T11:28:10.750Z",
-  "final_reconciliation_checked_at": null,
+  "final_reconciliation_checked_at": "2026-08-21T11:30:30.619Z",
   "result": "FAILED_POSTDISPATCH_COMPLETED_JOB_OUTPUT_FINALIZATION_UNPROVEN_EXACT_CLEANUP_RECONCILIATION_COMPLETE",
   "authority_status": "CLOSED_EXACT_ATTEMPT25_CONSUMED_DO_NOT_REUSE",
   "authority_commit": "cdb1bfe3e337e7daf05672dc09adae606d293d9a6",

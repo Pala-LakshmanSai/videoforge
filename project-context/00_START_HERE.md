@@ -9,7 +9,7 @@ endpoint/template after two stable terminal snapshots; three settled reconciliat
 zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, and `$0`
 incremental endpoint spend. Closure evidence is
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json` at
-`sha256:2619d1d0679e6cf95e117a54671473e21eedab1c19181e83bceb48dd5639808d`. A fresh exact proposal
+`sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2`. A fresh exact proposal
 and fresh positive numeric cap are required before any retry; V2-08 remains forbidden.
 
 Historical Attempt24 exact template/endpoint identity work reached the pre-dispatch safety guard,
