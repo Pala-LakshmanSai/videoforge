@@ -1,17 +1,15 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 is active but NOT_QUALIFIED after
-Attempt 19 passed the exact-ID PATCH acknowledgement and failed the required complete GET readback
-before dispatch. Exact cleanup and three stable reads prove zero RunPod disposable resources, both
-intended volumes retained, and USD 0 Attempt 19 spend. Proposal
-`sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde`
-and authority `sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2`
-are consumed and closed. The signer is absent, the Worker is restored, and 16/16 disabled-route
-probes passed. Provider-free repair `b35f4a6` permits omitted GET `computeType`/`dataCenterIds` and
-the duplicate `networkVolumeIds` alias while keeping exact values if present, mandatory exact
-primary `networkVolumeId`, and every other strict readback fence. Fresh proposal
+Attempt 20 still failed exact endpoint GET identity binding before `/run`. Exact cleanup and three
+stable reads prove zero RunPod disposable resources, both intended 50 GB EU-RO-1 volumes retained,
+unchanged cumulative billing USD 0.12480033212341368, and USD 0 Attempt 20 spend. Proposal
 `sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02`
-requires exact approval and a fresh positive numeric cap; V2-08 is unauthorized.
+and authority `sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d`
+are consumed and closed. The signer is absent, the Worker is restored, and 16/16 disabled-route
+probes passed. The exact mismatched GET field remains unproven; provider-free diagnosis is next.
+No provider mutation, GPU use, spend, or V2-08 work is authorized. Any retry requires a new exact
+proposal approval and fresh positive numeric cap.
 Context schema: `2.0`
 Last updated: `2026-08-21`
 
@@ -259,10 +257,13 @@ proposal `sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715b
 and its USD 4 authority cannot be reused. Provider-free control now accepts only an exact-ID,
 non-conflicting partial PATCH acknowledgement while preserving complete exact GET readback. Fresh
 proposal `sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde`
-and its USD 4 authority are consumed after Attempt 19 failed complete GET readback before dispatch.
-Exact cleanup restored zero disposable resources, both retained volumes, unchanged billing, signer
-absence, Worker version, and the disabled route. Image republication, volume mutation, fallback,
-public sample publication, and V2-08 remain forbidden. The ordered
+and its USD 4 authority were consumed after Attempt 19. Provider-free repair `b35f4a6` then allowed
+only documented GET omissions. Attempt 20 under proposal
+`sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02`
+still failed GET identity binding before dispatch. Exact cleanup restored zero disposable resources,
+both retained volumes, unchanged billing, signer absence, Worker version, and the disabled route.
+Its USD 4 authority is consumed; no current cap or provider authority exists. Image republication,
+volume mutation, fallback, public sample publication, and V2-08 remain forbidden. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
 the working tree.

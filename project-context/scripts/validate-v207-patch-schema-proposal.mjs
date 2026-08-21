@@ -131,17 +131,17 @@ assert(proposal.rates_cost_and_retention?.serverless_flex_rtx4090_usd_per_gpu_ho
 assert(proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_month_total === 7, "volume_charge");
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v2_08_forbidden");
 assert(
-  state.includes("provider_authority: &v2_07_provider_authority\n  mode: paid\n  provider: runpod+cloudflare_r2\n  cap_usd: 4"),
-  "current_state_successor_authorized",
+  state.includes("provider_authority: &v2_07_provider_authority\n  mode: none\n  provider: null\n  cap_usd: 0"),
+  "current_state_successor_closed",
 );
 assert(state.includes(expectedAuthorityHash), "current_state_historical_authority");
 assert(state.includes(currentSuccessorAuthorityHash), "current_state_successor_authority");
-assert(state.includes("task_stage: bounded_mutation"), "current_state_stage");
-assert(state.includes("provider_calls_authorized: true"), "current_state_provider_boundary");
-assert(gate.includes("failed-attempt-19.json"), "gate");
+assert(state.includes("task_stage: provider_free_repair"), "current_state_stage");
+assert(state.includes("provider_calls_authorized: false"), "current_state_provider_boundary");
+assert(gate.includes("failed-attempt-20.json"), "gate");
 assert(task.includes(expectedProposalHash), "task");
 assert(activation.includes(currentSuccessorProposalHash), "compiled_successor_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "compiled_successor_authorized");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "compiled_successor_closed");
 const bindMethod = control.slice(
   control.indexOf("async bindV207EndpointIdentity("),
   control.indexOf("async createNetworkVolume("),

@@ -11,6 +11,8 @@ const expectedProposal =
   "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02";
 const expectedAuthority =
   "sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d";
+const expectedAttempt20 =
+  "sha256:82aae2abf02041620c18d6a016719bab0f92ef41ed77430c2239ebfab005a37d";
 const expectedControl = "b35f4a60fe99d6b5649797c7aaaae7af4ef1368d";
 const expectedConfigs = [
   "sha256:76a2b5406115f1060cd72b1fccda9e02a2fdccb17450c8e4b1aae73cbea67f13",
@@ -24,6 +26,7 @@ const assert = (condition, label) => {
 const [
   proposalBytes,
   authorityBytes,
+  attempt20Bytes,
   attemptBytes,
   publicationBytes,
   state,
@@ -36,6 +39,12 @@ const [
   await Promise.all([
     readFile(resolve(candidate, "combined-live-proposal.json")),
     readFile(resolve(candidate, "approved-authority.json")),
+    readFile(
+      resolve(
+        root,
+        "project-context/evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-20.json",
+      ),
+    ),
     readFile(
       resolve(
         root,
@@ -57,10 +66,12 @@ const [
   ]);
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
 const authority = JSON.parse(authorityBytes.toString("utf8"));
+const attempt20 = JSON.parse(attempt20Bytes.toString("utf8"));
 const attempt = JSON.parse(attemptBytes.toString("utf8"));
 
 assert(hash(proposalBytes) === expectedProposal, "proposal_hash");
 assert(hash(authorityBytes) === expectedAuthority, "authority_hash");
+assert(hash(attempt20Bytes) === expectedAttempt20, "attempt20_hash");
 assert(proposal.checkpoint === "V2-07" && proposal.task_id === "VF-10-07", "scope");
 assert(proposal.user_approval?.maximum_cumulative_finite_spend_usd === null, "cap_null");
 assert(proposal.user_approval?.exact_proposal_approved === false, "approval_pending");
@@ -78,6 +89,18 @@ assert(authority.lineage?.concurrent_reader_config_sha256 === expectedConfigs[1]
 assert(authority.execution_boundary?.image_republication_authorized === false, "authority_no_republish");
 assert(authority.execution_boundary?.gpu_use_authorized_pending_execution === true, "authority_gpu");
 assert(authority.execution_boundary?.v2_08_authorized === false, "authority_no_v208");
+assert(attempt20.attempt === 20, "attempt20_number");
+assert(attempt20.authority_status === "CLOSED_EXACT_ATTEMPT_CONSUMED_DO_NOT_REUSE", "attempt20_closed");
+assert(attempt20.authority_proposal_sha256 === expectedProposal, "attempt20_proposal");
+assert(attempt20.approved_authority?.sha256 === expectedAuthority, "attempt20_authority");
+assert(attempt20.failure?.code === "RUNPOD_ENDPOINT_ID_BINDING_READBACK_UNCONFIRMED", "attempt20_failure");
+assert(attempt20.failure?.gpu_jobs_submitted === 0, "attempt20_zero_gpu_jobs");
+assert(attempt20.runpod_cleanup?.final_disposable_resources_absent === true, "attempt20_cleanup");
+assert(attempt20.runpod_cleanup?.network_volumes === 2, "attempt20_volumes");
+assert(attempt20.billing?.attempt_increment_usd_settled === 0, "attempt20_zero_spend");
+assert(attempt20.billing?.settlement_state === "STABLE_THREE_READS", "attempt20_settlement");
+assert(attempt20.cloudflare_cleanup?.worker_version_restored === true, "attempt20_worker_restore");
+assert(attempt20.cloudflare_cleanup?.signer_secret_deleted === true, "attempt20_signer_cleanup");
 assert(proposal.lineage?.control_source_commit === expectedControl, "control_commit");
 assert(proposal.lineage?.failed_attempt_evidence_sha256 === hash(attemptBytes), "attempt_hash");
 assert(attempt.attempt === 19 && attempt.billing?.attempt_increment_usd_settled === 0, "attempt19");
@@ -140,13 +163,14 @@ assert(tests.includes("omits provider-optional compute and data-center fields"),
 assert(tests.includes("explicit GET drift in provider-optional compute and data-center fields"), "wrong_fields_test");
 assert(state.includes(expectedProposal), "state_proposal");
 assert(state.includes(expectedAuthority), "state_authority");
-assert(state.includes("provider_calls_authorized: true"), "state_authorized");
-assert(state.includes("maximum_external_spend_usd: 4"), "state_cap");
+assert(state.includes(expectedAttempt20), "state_attempt20");
+assert(state.includes("provider_calls_authorized: false"), "state_closed");
+assert(state.includes("maximum_external_spend_usd: 0"), "state_zero_cap");
 assert(gate.includes(expectedProposal.slice(7)), "gate_proposal");
 assert(gate.includes(expectedAuthority), "gate_authority");
 assert(task.includes(expectedProposal), "task_proposal");
 assert(task.includes(expectedAuthority), "task_authority");
 assert(activation.includes(expectedProposal), "activation_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_cap");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
 
-process.stdout.write(`V2-07 GET readback proposal validation PASS (${expectedProposal})\n`);
+process.stdout.write(`V2-07 Attempt 20 closure validation PASS (${expectedAttempt20})\n`);
