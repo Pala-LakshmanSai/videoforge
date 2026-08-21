@@ -241,7 +241,11 @@ for (const [label, value] of [["state", state], ["task", task]]) {
   assert(value.includes("8d62be7"), `${label}_control_pointer`);
   assert(value.includes("failed-attempt-20.json"), `${label}_attempt20_pointer`);
 }
-assert(state.includes(EXPECTED.authority) && gates.includes("failed-attempt-21.json"), "gates_proposal_pointer");
+assert(
+  state.includes(EXPECTED.authority) &&
+    (gates.includes("failed-attempt-21.json") || gates.includes("failed-attempt-23.json")),
+  "gates_proposal_pointer",
+);
 assert(start.includes("failed-attempt-22.json"), "start_proposal_pointer");
 assert(
   state.includes("historical_v2_07_attempt21_authority:") &&

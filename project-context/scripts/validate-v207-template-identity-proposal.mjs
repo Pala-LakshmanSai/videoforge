@@ -320,7 +320,8 @@ assert(providerAuthority.includes("mode: none") || providerAuthority.includes("m
 assert(providerAuthority.includes("cap_usd: 0") || providerAuthority.includes("cap_usd: 4"), "state_authority_cap");
 assert(
   currentState.includes(`v2_07_action: prepare_attempt23_output_contract_diagnostic_provider_free`) ||
-    currentState.includes(`v2_07_action: execute_exact_approved_attempt23_output_contract_diagnostic_proposal`),
+    currentState.includes(`v2_07_action: execute_exact_approved_attempt23_output_contract_diagnostic_proposal`) ||
+    currentState.includes(`v2_07_action: close_attempt23_output_contract_diagnostic_and_require_fresh_authority`),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -337,9 +338,18 @@ assert(
     (currentState.includes("gpu_use_authorized: true") && currentState.includes("remote_or_cloud_mutations_authorized: true")),
   "state_gpu_mutation_boundary",
 );
-assert(recommendedTask.includes("Attempt23 output-contract diagnostic proposal"), "state_recommended_goal");
+assert(
+  recommendedTask.includes("Attempt23 output-contract diagnostic proposal") ||
+    recommendedTask.includes("Attempt23 output-contract failure"),
+  "state_recommended_goal",
+);
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
-assert(recommendedTask.includes("current_goal_authority: none_attempt23_pending_provider_free_candidate") || recommendedTask.includes("current_goal_authority: attempt23_approved_preexecution"), "state_recommended_authority");
+assert(
+  recommendedTask.includes("current_goal_authority: none_attempt23_pending_provider_free_candidate") ||
+    recommendedTask.includes("current_goal_authority: attempt23_approved_preexecution") ||
+    recommendedTask.includes("current_goal_authority: none_attempt23_consumed"),
+  "state_recommended_authority",
+);
 assert(auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`), "state_audit_current_proposal_hash");
 assert(auditEvidence.includes("v2_07_current_approved_authority: null") || auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json"), "state_audit_authority");
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_attempt17_closed_authority");
@@ -358,7 +368,7 @@ const taskHeader = task.slice(0, task.indexOf("\n## Goal"));
 const repairSectionStart = task.indexOf("## Provider-free Attempt 16 repair and fresh proposal");
 assert(repairSectionStart >= 0, "task_repair_section");
 const repairSection = task.slice(repairSectionStart);
-assert(taskHeader.includes("consumed, closed, and non-transferable"), "task_current_authority_closed");
+assert(/consumed, closed,\s*and non-transferable/u.test(taskHeader), "task_current_authority_closed");
 assert(task.includes(expected.currentProposal), "task_current_proposal_hash");
 assert(taskHeader.includes("V2-08"), "task_v208_boundary");
 assert(repairSection.includes("update the exact private template environment"), "task_template_update");

@@ -193,14 +193,29 @@ assert(acceptance.prior_attempt22_closure?.sha256 === EXPECTED.closure && accept
 
 const candidateNames = await readdir(candidate);
 assert(candidateNames.includes("approved-authority.json"), "authority_record_present");
-assert(state.includes("phase: serverless_v2_v2_07_attempt23_authorized") && state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4"), "state_authorized");
+assert(
+  (state.includes("phase: serverless_v2_v2_07_attempt23_authorized") && state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt23_closed") && state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0")),
+  "state_authorized",
+);
 assert(state.includes("2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json") && state.includes(EXPECTED.proposal) && state.includes(EXPECTED.control), "state_candidate_pointer");
-assert(state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json") && state.includes("mutation_authorized: true") && state.includes("gpu_use_authorized: true") && state.includes("spend_authorized_usd: 4"), "state_authority");
-assert(gates.includes("pending_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"") && gates.includes(EXPECTED.proposal) && gates.includes(EXPECTED.control), "gate_candidate_pointer");
-assert(gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json\"") && gates.includes(EXPECTED.authority) && gates.includes("pending_numeric_cap_usd: 4") && gates.includes("attempt23_bounded_mutation_authorized"), "gate_authority");
+assert(
+  (state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json") && state.includes("mutation_authorized: true") && state.includes("gpu_use_authorized: true") && state.includes("spend_authorized_usd: 4")) ||
+    (state.includes("current_authority: null") && state.includes("mutation_authorized: false") && state.includes("gpu_use_authorized: false") && state.includes("spend_authorized_usd: 0")),
+  "state_authority",
+);
+assert(
+  ((gates.includes("pending_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"") || gates.includes("latest_closed_proposal: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json\"")) && gates.includes(EXPECTED.proposal) && gates.includes(EXPECTED.control)),
+  "gate_candidate_pointer",
+);
+assert(
+  (gates.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json\"") && gates.includes("pending_numeric_cap_usd: 4") && gates.includes("attempt23_bounded_mutation_authorized")) ||
+    (gates.includes("closed_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json\"") && gates.includes("pending_numeric_cap_usd: null") && gates.includes("none_attempt23_consumed")),
+  "gate_authority",
+);
 assert(task.includes("Attempt23 output-contract diagnostic authority") && task.includes(EXPECTED.proposal) && task.includes(EXPECTED.control) && task.includes(EXPECTED.authority), "task_authority_pointer");
 assert(start.includes("Attempt 23 candidate path") && start.includes(EXPECTED.proposal) && start.includes(EXPECTED.control), "start_candidate_pointer");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_cap_approved");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") || activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_cap_approved");
 assert(control.includes("V207OutputContractError") && control.includes("extractV207OutputContractDiagnostics") && control.includes('"output_contract"'), "control_output_diagnostic");
 assert(controlTest.includes("persists bounded output-contract diagnostics") && controlTest.includes("fails closed and redacts unsafe output-contract fields"), "control_output_tests");
 

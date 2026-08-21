@@ -1,28 +1,33 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
-bounded Attempt22, and Attempt23 is approved for bounded pre-execution. Exact template GET/endpoint
-binding passed and one job reached RunPod `COMPLETED` after 180546 ms, but the application accepted
-zero batches, outputs, or receipts. Control `9f5a15c` now retains only bounded output-contract
+bounded Attempt23. Exact template GET/endpoint binding and initial zero-worker proof passed; one
+job reached RunPod `COMPLETED` after 112694 ms execution with 32711 ms delay, but the application
+accepted zero batches, outputs, or receipts. Control `9f5a15c` retains only bounded output-contract
 category, status, failure-code, and shape facts for the first completed-job non-success, then stops
-without retry. Exact cleanup and three stable reads prove zero RunPod disposable resources, both
-intended 50 GB EU-RO-1 volumes retained, unchanged cumulative billing USD 0.12480033212341368,
-and USD 0 settled increment. Attempt23 proposal
-`sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9` is approved with
-FlashBoot=true, LOW EU-RO-1 availability, and a fresh USD 4 cap; authority
-`sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35` is recorded. Provider
-execution remains pending. No image republication, model or retained-volume mutation, fallback
+without retry. Exact cleanup and three stable reconciliation reads prove zero RunPod disposable
+resources, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative billing USD
+0.12480033212341368, and USD 0 settled increment. Attempt23 proposal
+`sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9` and authority
+`sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35` are consumed and
+closed. Provider authority is null; a fresh exact proposal and fresh positive numeric cap are
+required for any retry. No image republication, model or retained-volume mutation, fallback
 GPU/region, public sample publication, V2-08, or successor work is authorized.
 
 Attempt 23 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json`.
 Attempt 23 proposal SHA-256: `sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9`.
-It pins FlashBoot=true, LOW EU-RO-1, the unchanged Mage image/source, exact sealed volume, and
-RTX 4090, with max-one then separately hashed max-two staged definitions. Max-one is
-`sha256:45f8d447829d63517b78807ce710af7fbd81a9ff06d67cafe1a5a6bf37a15959`; max-two is
-`sha256:6b02604fd7a58ee98c350429663c038bbc5c93ea2e0786e64ac3a6ef3f476e8b`. The prior Attempt22
-closure is `failed-attempt-22.json` at
-`sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a`. Fresh exact approval
-and a fresh positive numeric cap are required before any provider mutation or GPU use.
+It pinned FlashBoot=true, LOW EU-RO-1, the unchanged Mage image/source, exact sealed volume, and
+RTX 4090, with max-one then separately hashed max-two staged definitions. Max-one was
+`sha256:45f8d447829d63517b78807ce710af7fbd81a9ff06d67cafe1a5a6bf37a15959`; max-two was
+`sha256:6b02604fd7a58ee98c350429663c038bbc5c93ea2e0786e64ac3a6ef3f476e8b`. Attempt23 closure is
+`failed-attempt-23.json` at
+`sha256:0f48f3bc82b6d0b7fb48e723c4a3fc36a142129de578447acd30d77157e1ca1b`; the output status,
+failure code, and shape remained unproven. Fresh exact approval and a fresh positive numeric cap
+are required before any provider mutation or GPU use.
+
+Attempt 23 closure: the authority is consumed, exact cleanup and final reconciliation are complete,
+V2-07 remains NOT_QUALIFIED, and a fresh exact proposal and fresh positive numeric cap are required
+for any retry. V2-08 remains forbidden.
 
 Attempt 22 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json`.
 Attempt 22 proposal SHA-256: `sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7`.

@@ -115,32 +115,38 @@ gates:
     blocks: mage_serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
-    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json"
-    last_run_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
-    previous_attempt: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json"
-    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json"
-    latest_closed_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
-    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json"
-    latest_closed_proposal_sha256: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
-    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json"
-    latest_approved_proposal_sha256: "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"
-    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json"
-    latest_approved_authority_sha256: "sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35"
+    last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-23.json"
+    last_run_sha256: "sha256:0f48f3bc82b6d0b7fb48e723c4a3fc36a142129de578447acd30d77157e1ca1b"
+    previous_attempt: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json"
+    historical_attempt22_proposal: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
+    historical_attempt22_authority: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
+    historical_attempt22_proposal_path: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json"
+    historical_attempt22_authority_path: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json"
+    historical_attempt22_closure: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json"
+    historical_attempt22_closure_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
+    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json"
+    latest_closed_authority_sha256: "sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35"
+    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json"
+    latest_closed_proposal_sha256: "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"
+    latest_approved_proposal: null
+    latest_approved_proposal_sha256: null
+    latest_approved_authority: null
+    latest_approved_authority_sha256: null
     latest_approved_control_source_commit: "9f5a15c3382c03af675392dacc487b96811674ed"
-    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json"
-    closed_authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
-    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-22.json"
-    closure_evidence_sha256: "sha256:43f9db51e67a39e4a837614be5af14299d91c4fbdd446b9d78ecc51260da517a"
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9"
+    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json"
+    closed_authority_sha256: "sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35"
+    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-23.json"
+    closure_evidence_sha256: "sha256:0f48f3bc82b6d0b7fb48e723c4a3fc36a142129de578447acd30d77157e1ca1b"
+    pending_proposal: null
+    pending_proposal_sha256: null
     pending_control_source_commit: "9f5a15c3382c03af675392dacc487b96811674ed"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35"
-    authority_mode: attempt23_bounded_mutation_authorized
-    pending_numeric_cap_usd: 4
-    pending_flashboot: true
-    pending_availability: LOW
-    result: "APPROVED_PREEXECUTION_attempt23_output_contract_diagnostic_live_proof_pending"
+    pending_authority: null
+    pending_authority_sha256: null
+    authority_mode: none_attempt23_consumed
+    pending_numeric_cap_usd: null
+    pending_flashboot: null
+    pending_availability: null
+    result: "NOT_QUALIFIED_attempt23_closed_output_contract_unproven_exact_cleanup_complete"
 
   GATE_SERVERLESS_SOULX_001:
     status: open
