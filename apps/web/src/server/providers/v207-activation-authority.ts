@@ -13,7 +13,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c" as const;
+  "sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809" as const;
 // Attempt 17 consumed this exact proposal and cap. Keep execution closed until a new exact
 // provider-free repair proposal and a fresh positive numeric cap are separately recorded.
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;

@@ -2,7 +2,7 @@ schema_version: "2.0"
 context_schema_version: "2.0"
 updated_at: "2026-08-21T03:28:33.202Z"
 
-phase: serverless_v2_v2_07_attempt17_closed_provider_free_patch_schema_repair
+phase: serverless_v2_v2_07_patch_schema_requalification_proposal_ready
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
@@ -15,15 +15,15 @@ read_only_provider_calls_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt17_closed_provider_free_patch_schema_repair
+  mode: v2_07_patch_schema_requalification_proposal_ready
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: prepare_fresh_exact_patch_schema_requalification_proposal
-  note: "Attempt 17 consumed exact proposal sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c and its USD 4 authority. Cloudflare activation/preflight and cleanup passed; RunPod created the exact template and endpoint, updated the template identity environment, then endpoint PATCH failed before any /run, GPU job, batch, output, or inference. Exact cleanup plus three stable read-only reconciliations prove zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, cumulative endpoint billing unchanged at USD 0.12480033212341368, and Attempt 17 spend USD 0. The provider-free repair removes computeType from the documented PATCH request schema while retaining exact response/readback checks. No provider mutation, GPU use, spend, or V2-08 work is authorized until a fresh exact proposal and fresh positive numeric cap are approved."
+  v2_07_action: await_fresh_exact_approval_of_patch_schema_requalification_proposal
+  note: "Attempt 17 consumed exact proposal sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c and its USD 4 authority. Cloudflare activation/preflight and cleanup passed; RunPod failed on endpoint PATCH before any /run, GPU job, batch, output, or inference. Exact cleanup plus three stable reconciliations prove zero compute, both intended volumes retained, cumulative endpoint billing unchanged at USD 0.12480033212341368, and Attempt 17 spend USD 0. Provider-free repair commit 0dbf8f3 removes computeType from the documented PATCH request schema while retaining exact response/readback checks. Fresh proposal sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809 is pending exact approval, FlashBoot=true and LOW EU-RO-1 acceptance, and a fresh positive numeric cap. No provider mutation, GPU use, spend, or V2-08 work is authorized."
 
 provider_authority: &v2_07_provider_authority
   mode: none
@@ -32,7 +32,7 @@ provider_authority: &v2_07_provider_authority
   historical_cap_usd: 4
   recurring_r2_ceiling_usd_per_month: 0
   non_transferable: true
-  source: fresh_patch_schema_requalification_proposal_and_numeric_cap_pending
+  source: exact_patch_schema_requalification_proposal_and_fresh_numeric_cap_pending
   authorized_by_user_at: null
   resources: []
   authorized_operations: []
@@ -370,7 +370,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: NOT_QUALIFIED_attempt17_closed_provider_free_patch_schema_repair
+  V2-07: NOT_QUALIFIED_patch_schema_requalification_proposal_ready_fresh_authority_required
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
@@ -417,7 +417,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt17_closed_provider_free_patch_schema_repair_not_qualified
+    status: patch_schema_requalification_proposal_ready_not_qualified
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
     immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_PASS
@@ -428,11 +428,11 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
-    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
-    v2_07_proposal_sha256: "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c"
+    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/combined-live-proposal.json
+    v2_07_proposal_sha256: "sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809"
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
-    v2_07_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
-    v2_07_authority_sha256: "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462"
+    v2_07_authority: null
+    v2_07_authority_sha256: null
     v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
@@ -512,7 +512,7 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt17_closed_provider_free_patch_schema_repair
+  status: NOT_QUALIFIED_patch_schema_requalification_proposal_ready
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: no_live_authority_fresh_exact_proposal_and_cap_required
   task_stage: provider_free_requalification_handoff
@@ -520,7 +520,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Finish provider-free PATCH-schema repair, prepare one fresh exact V2-07 proposal, and await a fresh positive numeric cumulative cap before any retry. Stop before V2-08."
+  goal: "Await exact approval of proposal sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809, explicit FlashBoot=true and LOW EU-RO-1 acceptance, and a fresh positive numeric cumulative cap. Then qualify V2-07 only and stop before V2-08."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -538,11 +538,11 @@ recommended_next_task:
   application_code_changes_authorized: true
   authority_note: "Attempt 17 consumed and closed proposal sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c and its USD 4 cap after a pre-dispatch endpoint PATCH failure. Existing Mage/SoulX volumes remain retained separately at USD 7/month. No provider mutation, GPU use, spend, image republication, volume mutation, fallback, public sample publication, or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: provider_free_repair_in_progress_fresh_exact_proposal_pending
+  execution_status: provider_free_repair_complete_fresh_exact_proposal_and_numeric_cap_pending
   execution_blocker: fresh_exact_proposal_approval_and_positive_numeric_cumulative_cap_required
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt17_closed_provider_free_repair
+  state: v2_06_complete_green_independently_audited_v2_07_patch_schema_proposal_ready
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -989,9 +989,12 @@ verification:
       r2_inventory_sha256_after_cleanup: "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
 
 audit_evidence:
-  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
-  v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
-  v2_07_current_approved_authority_sha256: "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462"
+  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/combined-live-proposal.json
+  v2_07_current_proposal_sha256: "sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809"
+  v2_07_current_approved_authority: null
+  v2_07_current_approved_authority_sha256: null
+  v2_07_attempt17_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
+  v2_07_attempt17_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
   v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/combined-live-proposal.json
   v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json
   v2_07_closed_diagnostic_proposal: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/combined-live-proposal.json
@@ -1013,6 +1016,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt17_closed_provider_free_patch_schema_repair
+  current_goal_scope: v2_07_patch_schema_requalification_proposal_ready
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_attempt17_closed_zero_spend_zero_compute_fresh_exact_proposal_and_cap_required
+  v2_07_status: NOT_QUALIFIED_patch_schema_proposal_sha256_cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809_fresh_approval_and_cap_required
