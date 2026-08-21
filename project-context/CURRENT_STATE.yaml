@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: true
   runpod_mutation_or_gpu: true
   v2_07_action: execute_exact_attempt26_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile
-  note: "The user approved exact Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 with FlashBoot=true, LOW EU-RO-1 availability, and a fresh USD 4 maximum cumulative finite spend. Append-only authority sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e binds the exact image/model/volume/config lineage and FINALIZE repair b8666dd8b8bc12578ffae8925f6ce73dbf53a841. Provider execution is pending and may begin only after this authority state is committed and validated. V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
+  note: "The user approved exact Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 with FlashBoot=true, LOW EU-RO-1 availability, and a fresh USD 4 maximum cumulative finite spend. Append-only authority sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05 binds the exact image/model/volume/config lineage and FINALIZE repair b8666dd8b8bc12578ffae8925f6ce73dbf53a841. Provider execution is pending and may begin only after this authority state is committed and validated. V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
 
 pending_v2_07_attempt25_proposal:
   mode: closed_consumed_attempt25_output_finalization_failure
@@ -67,7 +67,7 @@ pending_v2_07_attempt26_proposal:
   fresh_numeric_cap_required: false
   authority_recorded: true
   authority_path: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json
-  authority_sha256: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e"
+  authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
   provider_calls_authorized: true
   provider_mutations_authorized: true
   gpu_use_authorized: true
@@ -167,7 +167,7 @@ provider_authority: &v2_07_provider_authority
   source: explicit_user_approval_exact_attempt26_finalize_transport_repair_proposal_flashboot_true_low_eu_ro_1_and_fresh_numeric_cap
   authorized_by_user_at: "2026-08-21T14:08:40Z"
   authority_evidence: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json
-  authority_sha256: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e"
+  authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
   proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
   resources:
@@ -745,7 +745,7 @@ runpod_account_scope:
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
   current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json
-  current_authority_sha256: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e"
+  current_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
   mutation_authorized: true
   gpu_use_authorized: true
   spend_authorized_usd: 4
@@ -761,7 +761,7 @@ repository:
   current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt25 is closed at output_finalization with corrected closure sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2. Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 and authority sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e bind control b8666dd8b8bc12578ffae8925f6ce73dbf53a841, unchanged image/model/volume lineage, FlashBoot=true, LOW EU-RO-1, and the fresh USD 4 cap. Provider execution remains pending until the authority commit validates. V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
+  current_source_head_note: "Attempt25 is closed at output_finalization with corrected closure sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2. Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 and authority sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05 bind control b8666dd8b8bc12578ffae8925f6ce73dbf53a841, unchanged image/model/volume lineage, FlashBoot=true, LOW EU-RO-1, and the fresh USD 4 cap. Provider execution remains pending until the authority commit validates. V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
   v2_07_latest_local_repair: "Commit b8666dd8b8bc12578ffae8925f6ce73dbf53a841 adds bounded idempotent FINALIZE transport retries: only FINALIZE transport loss or invalid response retries three times with the same reservation/callback tuple; PUT and non-FINALIZE POST retries remain forbidden. Attempt26 candidate sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 is provider-free and binds corrected Attempt25 closure sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -780,7 +780,7 @@ live_development:
   provider_mode: sandbox
   provider_calls_authorized: true
   authorized_spend_usd: 4
-  provider_authority_scope: "Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 is approved under authority sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e and fresh USD 4 cap; V2-08 remains forbidden."
+  provider_authority_scope: "Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 is approved under authority sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05 and fresh USD 4 cap; V2-08 remains forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -917,7 +917,7 @@ model_runtime_evidence:
     v2_07_current_candidate_max2_sha256: "sha256:10f887ba47e8a7cac952374eb236fed08cb67962171769b65d96a4f0d3a7acf7"
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
     v2_07_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json
-    v2_07_authority_sha256: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e"
+    v2_07_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
     v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json
     v2_07_latest_closed_authority_sha256: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c"
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
@@ -1031,7 +1031,7 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 is approved under authority sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e with FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cap. It binds FINALIZE repair b8666dd8b8bc12578ffae8925f6ce73dbf53a841 and unchanged image/model/volume/config lineage. Provider execution is pending; V2-08 remains forbidden."
+  authority_note: "Attempt26 proposal sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632 is approved under authority sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05 with FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cap. It binds FINALIZE repair b8666dd8b8bc12578ffae8925f6ce73dbf53a841 and unchanged image/model/volume/config lineage. Provider execution is pending; V2-08 remains forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   execution_status: attempt26_authorized_preexecution
   execution_blocker: null
@@ -1487,7 +1487,7 @@ audit_evidence:
   v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json
   v2_07_current_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"
   v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json
-  v2_07_current_approved_authority_sha256: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e"
+  v2_07_current_approved_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
   v2_07_attempt25_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json
   v2_07_attempt25_closed_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
   v2_07_attempt25_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json

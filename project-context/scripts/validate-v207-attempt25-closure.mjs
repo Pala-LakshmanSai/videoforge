@@ -291,7 +291,7 @@ for (const [label, value] of [
 ]) {
   assert(value.includes("failed-attempt-25.json") && value.includes(closureHash), `${label}_closure_pointer`);
   assert(value.includes(EXPECTED.proposal) && value.includes(EXPECTED.authority), `${label}_attempt25_lineage`);
-  assert(value.includes("NOT_QUALIFIED") && (((value.includes("fresh exact proposal") || value.includes("fresh exact approval") || value.includes("fresh exact Attempt26 proposal")) && value.includes("fresh positive numeric cap")) || value.includes("b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e")), `${label}_fresh_boundary`);
+  assert(value.includes("NOT_QUALIFIED") && (((value.includes("fresh exact proposal") || value.includes("fresh exact approval") || value.includes("fresh exact Attempt26 proposal")) && value.includes("fresh positive numeric cap")) || value.includes("bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05")), `${label}_fresh_boundary`);
 }
 
 assert(

@@ -54,6 +54,26 @@
     "image_publication_evidence_sha256": "sha256:0191b33d692775f0877ac07cc126c6476d51cafaf37d8b8dac26f7da629e216e",
     "finalize_transport_repair_commit": "b8666dd8b8bc12578ffae8925f6ce73dbf53a841"
   },
+  "finalize_transport_repair": {
+    "commit": "b8666dd8b8bc12578ffae8925f6ce73dbf53a841",
+    "commit_resolution": "FULL",
+    "retryable_operation_only": "FINALIZE",
+    "max_attempts": 3,
+    "request_timeout_seconds": 30,
+    "retry_backoff_ms": [500, 1000],
+    "transport_error_code": "V207_OUTPUT_PORT_FINALIZE_TRANSPORT",
+    "response_error_code": "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID",
+    "same_reservation_callback_tuple_required": true,
+    "put_retry_forbidden": true,
+    "non_finalize_post_retry_forbidden": true,
+    "provider_body_retained": false,
+    "signed_urls_or_secrets_retained": false,
+    "local_tests": [
+      "transport timeout retries exactly three FINALIZE attempts",
+      "invalid FINALIZE response retries exactly three attempts",
+      "PUT transport failure is not retried"
+    ]
+  },
   "startup_terminal_inventory_policy": {
     "allowed_before_dispatch_only": true,
     "allowed_before_any_owned_job": true,
@@ -231,8 +251,38 @@
     "GPU or region fallback",
     "public sample publication",
     "V2-08 or successor work",
-    "provider mutation GPU use or spend outside this exact approved proposal and USD 4 cap"
+    "provider mutation GPU use or spend outside a separately approved exact proposal and fresh positive cap"
   ],
+  "cleanup_rollback_and_stop_conditions": {
+    "success": [
+      "prove durable outputs and v3 receipts before expiry",
+      "prove sealed manifest and model volume unchanged",
+      "restore workersMax=1",
+      "prove independent workers=0",
+      "retain endpoint/template and both intended volumes",
+      "delete signer secret and restore route"
+    ],
+    "failure": [
+      "cancel only owned jobs",
+      "delete only disposable endpoint/template",
+      "prove zero Pods/endpoints/templates/workers/running Pods",
+      "retain both intended volumes",
+      "delete signer secret and restore route",
+      "reconcile settled spend across three stable reads"
+    ],
+    "stop_if": [
+      "any identity/configuration/image/volume/GPU/region mismatch",
+      "wrong bytes/path/cache escape/model-volume write",
+      "malformed authority",
+      "duplicate delivery or unplanned duplicate compute",
+      "cancel/timeout without terminal reconciliation",
+      "FINALIZE retry tuple drift or retry of PUT/non-FINALIZE POST",
+      "failed output or missing durable receipt",
+      "uncertain cleanup/rollback/route restoration",
+      "cap risk",
+      "V2-08 or successor work"
+    ]
+  },
   "stop_conditions": [
     "any identity/configuration/image/volume/GPU/region mismatch",
     "wrong bytes/path/cache escape/model-volume write",

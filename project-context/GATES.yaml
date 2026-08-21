@@ -139,7 +139,7 @@ gates:
     latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json"
     latest_approved_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"
     latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json"
-    latest_approved_authority_sha256: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e"
+    latest_approved_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
     latest_approved_control_source_commit: "b8666dd8b8bc12578ffae8925f6ce73dbf53a841"
     closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json"
     closed_authority_sha256: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c"
@@ -149,7 +149,7 @@ gates:
     pending_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"
     pending_control_source_commit: "b8666dd8b8bc12578ffae8925f6ce73dbf53a841"
     pending_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e"
+    pending_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
     authority_mode: attempt26_bounded_mutation_authorized
     pending_numeric_cap_usd: 4
     pending_flashboot: true

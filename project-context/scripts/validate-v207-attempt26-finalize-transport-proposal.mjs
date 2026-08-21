@@ -18,7 +18,7 @@ const paths = {
 };
 const EXPECTED = {
   proposal: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632",
-  authority: "sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e",
+  authority: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05",
   max1: "sha256:b64d008bac42fb13ec342028675a1bb498836981c553e884529ad846d6cdf964",
   max2: "sha256:10f887ba47e8a7cac952374eb236fed08cb67962171769b65d96a4f0d3a7acf7",
   closure: "sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2",
@@ -99,9 +99,17 @@ assert(proposal.execution_boundary?.provider_calls_completed === false && propos
 assert(closure.attempt === 25 && closure.final_reconciliation_checked_at === "2026-08-21T11:30:30.619Z" && closure.qualification_boundaries?.v2_07 === "NOT_QUALIFIED", "closure_binding");
 
 assert(authority.schema_version === "videoforge.v2-07-attempt26-finalize-transport-repair-authority/v1" && authority.checkpoint === "V2-07" && authority.task_id === "VF-10-07" && authority.attempt === 26, "authority_scope");
-assert(authority.proposal?.sha256 === EXPECTED.proposal && authority.approval?.exact_proposal_approved === true && authority.approval?.flashboot_true_accepted === true && authority.approval?.low_eu_ro_1_availability_approved === true && authority.approval?.maximum_cumulative_finite_spend_usd === 4 && authority.approval?.fresh_numeric_cap === true && authority.approval?.historical_cap_reused === false, "authority_approval");
+assert(authority.proposal?.path === "combined-live-proposal.json" && authority.proposal?.sha256 === EXPECTED.proposal && authority.approval?.exact_proposal_approved === true && authority.approval?.flashboot_true_accepted === true && authority.approval?.low_eu_ro_1_availability_approved === true && authority.approval?.maximum_cumulative_finite_spend_usd === 4 && authority.approval?.fresh_numeric_cap === true && authority.approval?.historical_cap_reused === false, "authority_approval");
 assert(authority.lineage?.final_image === EXPECTED.image && authority.lineage?.image_source_commit === EXPECTED.imageSource && authority.lineage?.control_source_commit === EXPECTED.repair && authority.lineage?.model === EXPECTED.model && authority.lineage?.model_manifest_sha256 === EXPECTED.manifest && authority.lineage?.volume_id_sha256 === EXPECTED.volume, "authority_lineage");
 assert(authority.lineage?.initial_config_sha256 === EXPECTED.max1 && authority.lineage?.concurrent_reader_config_sha256 === EXPECTED.max2 && authority.lineage?.failed_attempt_evidence_sha256 === EXPECTED.closure, "authority_evidence_lineage");
+assert(JSON.stringify(authority.finalize_transport_repair) === JSON.stringify(proposal.finalize_transport_repair), "authority_finalize_transport_repair");
+assert(JSON.stringify(authority.authorized_operations) === JSON.stringify(proposal.proposed_operations_in_order), "authority_operations");
+assert(JSON.stringify(authority.forbidden) === JSON.stringify(proposal.forbidden), "authority_forbidden");
+assert(JSON.stringify(authority.cleanup_rollback_and_stop_conditions) === JSON.stringify(proposal.cleanup_rollback_and_stop_conditions), "authority_cleanup_stop");
+assert(JSON.stringify(authority.stop_conditions) === JSON.stringify(proposal.cleanup_rollback_and_stop_conditions?.stop_if), "authority_stop_conditions");
+for (const [label, staged, expectedHash, expectedMax] of [["max1", authority.staged_endpoint_configs?.[0], EXPECTED.max1, 1], ["max2", authority.staged_endpoint_configs?.[1], EXPECTED.max2, 2]]) {
+  assert(staged?.sha256 === expectedHash && staged?.gpu === "NVIDIA GeForce RTX 4090" && (staged?.gpu_count === 1 || staged?.gpu_count_per_worker === 1) && staged?.compute_type === "GPU" && staged?.flex_only === true && staged?.workers_min === 0 && staged?.workers_max === expectedMax && staged?.scaler_type === "REQUEST_COUNT" && staged?.scaler_value === 1 && staged?.handler_concurrency === 1 && staged?.flashboot === true && staged?.region === "EU-RO-1" && staged?.volume_id_sha256 === EXPECTED.volume && staged?.volume_mount === "/runpod-volume" && staged?.model_root === "/runpod-volume/mage-model" && staged?.control_source_commit === EXPECTED.repair, `authority_${label}_config`);
+}
 assert(authority.execution_boundary?.image_republication_authorized === false && authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true && authority.execution_boundary?.cloudflare_mutation_authorized_pending_execution === true && authority.execution_boundary?.gpu_use_authorized_pending_execution === true && authority.execution_boundary?.provider_calls_completed === false && authority.execution_boundary?.external_spend_usd === 0 && authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4 && authority.execution_boundary?.v2_08_authorized === false, "authority_execution_boundary");
 assert(authority.status === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING" && authority.retention?.retain_both_volumes_all_outcomes === true && authority.retention?.volume_mutation_authorized === false, "authority_status_retention");
 

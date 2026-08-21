@@ -37,7 +37,7 @@ and local FINALIZE transport repair `b8666dd8b8bc12578ffae8925f6ce73dbf53a841`. 
 `sha256:10f887ba47e8a7cac952374eb236fed08cb67962171769b65d96a4f0d3a7acf7`. The user approved the
 exact proposal with FlashBoot=true, LOW EU-RO-1, and a fresh `$4` cap. Append-only authority
 `evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json`
-is `sha256:b5b559ea7f59bf60943d5e9d88a5516e15ac93437341d990aefc261a63c5474e`. Provider execution is
+is `sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05`. Provider execution is
 pending until that authority state is committed and validated; V2-08 remains forbidden.
 
 Attempt 25 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json`.
