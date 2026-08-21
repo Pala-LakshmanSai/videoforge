@@ -269,6 +269,70 @@ describe("RunPod scale-zero control", () => {
     expect(guard.snapshot()).toBe("active");
   });
 
+  it("proves post-job queue emptiness without trusting stale worker counters", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.invalidate();
+    let reads = 0;
+    const sleep = vi.fn(async () => undefined);
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () => {
+        reads += 1;
+        return response({
+          workers: { throttled: 1, running: 0 },
+          jobs: { inQueue: 0, inProgress: 0 },
+        });
+      },
+      baseUrl: "http://127.0.0.1:43123",
+      sleep,
+    });
+    await expect(client.confirmQueueEmptyReadOnly(2, 100)).resolves.toBeUndefined();
+    expect(reads).toBe(1);
+    expect(sleep).not.toHaveBeenCalled();
+    expect(guard.snapshot()).toBe("unknown");
+  });
+
+  it.each([
+    ["queued", { inQueue: 1, inProgress: 0 }],
+    ["running", { inQueue: 0, inProgress: 1 }],
+  ] as const)("fails closed on post-job %s work after bounded polling", async (_label, jobs) => {
+    const guard = new RunPodDrainGuard();
+    guard.invalidate();
+    const sleep = vi.fn(async () => undefined);
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () => response({ workers: { throttled: 1 }, jobs }),
+      baseUrl: "http://127.0.0.1:43123",
+      sleep,
+    });
+    await expect(client.confirmQueueEmptyReadOnly(2, 100)).rejects.toThrow(
+      "RUNPOD_QUEUE_EMPTY_NOT_CONFIRMED",
+    );
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(guard.snapshot()).toBe("unknown");
+  });
+
+  it.each([
+    ["omitted", { inProgress: 0 }],
+    ["malformed", { inQueue: "0", inProgress: 0 }],
+  ] as const)("fails closed on %s post-job queue counters", async (_label, jobs) => {
+    const guard = new RunPodDrainGuard();
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () => response({ workers: { throttled: 1 }, jobs }),
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(client.confirmQueueEmptyReadOnly(2, 100)).rejects.toThrow(
+      "RUNPOD_QUEUE_EMPTY_NOT_CONFIRMED",
+    );
+  });
+
   it("keeps a quiescent throttled worker policy-only and fails closed on active health", () => {
     const guard = new RunPodDrainGuard();
     guard.markActive();

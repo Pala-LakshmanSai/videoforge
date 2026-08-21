@@ -1207,6 +1207,84 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
+  it("does not resurrect an owned job on exact terminal duplicate replay", async () => {
+    const fetch = terminalScaleZeroFetch({
+      healthWorkersBeforeDispatch: {
+        idle: 1,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 0,
+        unhealthy: 0,
+      },
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 1,
+        unhealthy: 0,
+      },
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const input = oneItemInput();
+    const first = await instance.dispatchBatch(input);
+    await expect(instance.reconcile(first.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    const replay = await instance.dispatchBatch(input);
+    expect(replay).toMatchObject({ id: first.id, status: "IN_QUEUE" });
+    await expect(instance.confirmWarmIdle()).resolves.toBeUndefined();
+
+    const events = (await instance.evidence()).events;
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: "duplicate_delivery_reconciled",
+        replay_same_job: true,
+        no_new_provider_dispatch: true,
+        duplicate_compute: false,
+      }),
+    );
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.includes("/cancel/")),
+    ).toHaveLength(0);
+  });
+
+  it("never uses post-job terminal inventory to hide queued or running work", async () => {
+    const fetch = terminalScaleZeroFetch({
+      healthWorkersBeforeDispatch: {
+        idle: 1,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 0,
+        unhealthy: 0,
+      },
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 1,
+        unhealthy: 0,
+      },
+      healthJobsAfterFirstSnapshot: { inQueue: 0, inProgress: 1 },
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const first = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(first.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(instance.confirmWarmIdle()).rejects.toThrow("RUNPOD_QUEUE_EMPTY_NOT_CONFIRMED");
+    await expect(
+      instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
+    ).rejects.toThrow("RUNPOD_DISPATCH_BLOCKED");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
   it.each([
     ["nonterminal worker", { workerStatusAfterDispatch: "RUNNING" }],
     ["endpoint identity drift", { endpointDriftAfterDispatch: { workersMax: 2 } }],

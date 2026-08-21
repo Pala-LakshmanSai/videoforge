@@ -38,6 +38,7 @@ const PORT_CAPABILITY = /^[A-Za-z0-9._:-]{32,512}$/u;
 const PORT_ID = ID;
 const URL_MAX_LENGTH = 8_192;
 const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
+const POST_JOB_WARM_IDLE_MAX_ATTEMPTS = 12;
 
 type RecordValue = Readonly<Record<string, unknown>>;
 
@@ -276,6 +277,14 @@ export class RunPodV207QualificationHarness {
   readonly #readerJobs: RunPodServerlessJobClient[] = [];
   /** Every acknowledged job remains owned until a terminal status is observed. */
   readonly #ownedJobs = new Map<string, RunPodServerlessJobClient>();
+  /** A terminal observation fences a later exact request-key replay from becoming owned again. */
+  readonly #terminalJobIds = new Set<string>();
+  /** Request/job identity is retained in memory to prove replay identity and reject job reuse. */
+  readonly #requestJobIds = new Map<
+    string,
+    { readonly id: string; readonly client: RunPodServerlessJobClient }
+  >();
+  readonly #jobRequestKeys = new Map<string, string>();
   #template: { readonly id: string; readonly idHash: string } | null = null;
   #endpoint: { readonly id: string; readonly idHash: string } | null = null;
   #jobs: RunPodServerlessJobClient | null = null;
@@ -490,7 +499,7 @@ export class RunPodV207QualificationHarness {
   private async confirmTerminalScaleZeroBaseline(
     expectedPolicy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
     event: string,
-    mode: "health_first" | "startup_inventory_only" = "health_first",
+    mode: "health_first" | "startup_inventory_only" | "post_job_queue_only" = "health_first",
   ): Promise<void> {
     if (!this.#template || !this.#endpoint || !this.#jobs) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
@@ -503,6 +512,11 @@ export class RunPodV207QualificationHarness {
     ) {
       throw new RunPodControlError("RUNPOD_STARTUP_INVENTORY_FALLBACK_INVALID");
     }
+    if (mode === "post_job_queue_only" && this.#ownedJobs.size > 0) {
+      // A queue-only health read cannot account for an acknowledged job whose terminal state was
+      // not observed locally. Never use terminal inventory to hide that still-owned work.
+      throw new RunPodControlError("RUNPOD_POST_JOB_QUEUE_FALLBACK_INVALID");
+    }
     try {
       // A fresh FlashBoot endpoint can leave a terminal worker/Pod record behind while its
       // health counters remain stale or incomplete.  Before the first /run there is no owned
@@ -512,9 +526,15 @@ export class RunPodV207QualificationHarness {
       this.checkAbort();
       let startupQueueProofReadCount = 0;
       const confirmStartupQueueEmpty = async (): Promise<void> => {
-        if (mode !== "startup_inventory_only") return;
-        await this.#jobs!.confirmStartupQueueEmpty();
-        startupQueueProofReadCount += 1;
+        if (mode === "startup_inventory_only") {
+          await this.#jobs!.confirmStartupQueueEmpty();
+          startupQueueProofReadCount += 1;
+          return;
+        }
+        if (mode === "post_job_queue_only") {
+          await this.#jobs!.confirmQueueEmptyReadOnly(12, 250);
+          startupQueueProofReadCount += 1;
+        }
       };
       const terminalStatuses = new Set(["EXITED", "TERMINATED"]);
       const readAndValidate = async (): Promise<{
@@ -630,7 +650,12 @@ export class RunPodV207QualificationHarness {
               startup_health_proof: "fresh_endpoint_no_owned_job_inventory_only",
               startup_queue_proof_read_count: startupQueueProofReadCount,
             }
-          : {}),
+          : mode === "post_job_queue_only"
+            ? {
+                post_job_health_proof: "queue_empty_only_terminal_inventory",
+                post_job_queue_proof_read_count: startupQueueProofReadCount,
+              }
+            : {}),
       });
     } catch (error) {
       this.#guard.invalidate();
@@ -969,6 +994,51 @@ export class RunPodV207QualificationHarness {
     });
   }
 
+  private trackDispatchedJob(
+    input: RunPodV207DispatchBatchInput,
+    job: RunPodJobResult,
+    client: RunPodServerlessJobClient,
+    postJobWarmIdle = false,
+  ): void {
+    const previousRequest = this.#requestJobIds.get(input.requestKey);
+    const previousJobId = previousRequest?.id;
+    const previousRequestKey = this.#jobRequestKeys.get(job.id);
+    if (
+      previousRequest?.client === client &&
+      previousJobId !== undefined &&
+      previousJobId !== job.id
+    ) {
+      throw new RunPodControlError("RUNPOD_REQUEST_REPLAY_ID_DRIFT");
+    }
+    if (previousRequestKey !== undefined && previousRequestKey !== input.requestKey) {
+      throw new RunPodControlError("RUNPOD_JOB_ID_REUSE");
+    }
+    this.#requestJobIds.set(input.requestKey, { id: job.id, client });
+    this.#jobRequestKeys.set(job.id, input.requestKey);
+    const replayedTerminalJob =
+      previousRequest?.client === client &&
+      previousJobId === job.id &&
+      this.#terminalJobIds.has(job.id) &&
+      !TERMINAL_STATUSES.has(job.status);
+    if (TERMINAL_STATUSES.has(job.status)) {
+      this.#terminalJobIds.add(job.id);
+      this.#ownedJobs.delete(job.id);
+      if (postJobWarmIdle) this.#postJobWarmIdlePending = true;
+    } else if (replayedTerminalJob) {
+      // The idempotent client returns the original /run result for an exact request-key replay.
+      // The original job was already reconciled terminal, so do not resurrect it as owned work.
+      this.#ownedJobs.delete(job.id);
+      this.mark("duplicate_delivery_reconciled", {
+        job_id_hash: job.idHash,
+        replay_same_job: true,
+        no_new_provider_dispatch: true,
+        duplicate_compute: false,
+      });
+    } else {
+      this.#ownedJobs.set(job.id, client);
+    }
+  }
+
   private async dispatchBatchWithPolicy(
     input: RunPodV207DispatchBatchInput,
     policy?: RunPodV207TimeoutPolicy,
@@ -982,8 +1052,7 @@ export class RunPodV207QualificationHarness {
       policy === undefined
         ? await this.#jobs!.dispatch(input.requestKey, request)
         : await this.#jobs!.dispatchWithPolicy(input.requestKey, request, policy);
-    this.#ownedJobs.set(job.id, this.#jobs!);
-    if (TERMINAL_STATUSES.has(job.status)) this.#postJobWarmIdlePending = true;
+    this.trackDispatchedJob(input, job, this.#jobs!, true);
     this.checkAbort();
     await this.assertSpendWithinCap();
     this.mark("job_dispatched", { job_id_hash: job.idHash, attempt_id: input.attemptId });
@@ -1018,6 +1087,7 @@ export class RunPodV207QualificationHarness {
       });
       if (TERMINAL_STATUSES.has(latest.status)) {
         this.#ownedJobs.delete(jobId);
+        this.#terminalJobIds.add(jobId);
         this.#postJobWarmIdlePending = true;
         return latest;
       }
@@ -1043,7 +1113,7 @@ export class RunPodV207QualificationHarness {
       throw new RunPodControlError("RUNPOD_WARM_IDLE_NOT_ALLOWED");
     }
     try {
-      await this.#jobs!.confirmWarmIdle(300, 250);
+      await this.#jobs!.confirmWarmIdle(POST_JOB_WARM_IDLE_MAX_ATTEMPTS, 250);
     } catch (error) {
       if (
         !(error instanceof RunPodControlError) ||
@@ -1065,6 +1135,7 @@ export class RunPodV207QualificationHarness {
       await this.confirmTerminalScaleZeroBaseline(
         this.#options.initialPolicy,
         "post_job_terminal_worker_scale_zero",
+        "post_job_queue_only",
       );
       this.checkAbort();
       this.#postJobWarmIdlePending = false;
@@ -1086,7 +1157,10 @@ export class RunPodV207QualificationHarness {
       this.#guard.beginDrain();
     }
     const result = await this.#jobs!.cancel(jobId);
-    if (result.status === "CANCELLED") this.#ownedJobs.delete(jobId);
+    if (result.status === "CANCELLED") {
+      this.#ownedJobs.delete(jobId);
+      this.#terminalJobIds.add(jobId);
+    }
     this.mark("job_cancelled", { job_id_hash: result.idHash });
     return result;
   }
@@ -1259,7 +1333,7 @@ export class RunPodV207QualificationHarness {
       inputs.map((input, index) => {
         const request = requests[index]!;
         return clients[index]!.dispatch(input.requestKey, request).then((job) => {
-          this.#ownedJobs.set(job.id, clients[index]!);
+          this.trackDispatchedJob(input, job, clients[index]!);
           return job;
         });
       }),
@@ -1317,6 +1391,7 @@ export class RunPodV207QualificationHarness {
         });
         if (TERMINAL_STATUSES.has(latest.status)) {
           this.#ownedJobs.delete(jobId);
+          this.#terminalJobIds.add(jobId);
           return latest;
         }
         if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);

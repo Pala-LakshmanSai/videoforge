@@ -1660,4 +1660,35 @@ export class RunPodServerlessJobClient {
       throw new RunPodControlError("RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED");
     }
   }
+
+  /**
+   * Proves only that the provider has no queued or in-progress jobs, without consulting worker
+   * counters or mutating the drain guard. This is used after a terminal job when FlashBoot may
+   * leave a stale worker counter behind. Non-zero queue state is polled for a short bounded
+   * window; malformed or still-busy state always fails closed.
+   */
+  async confirmQueueEmptyReadOnly(maxAttempts = 12, pollIntervalMs = 250): Promise<void> {
+    if (
+      !Number.isSafeInteger(maxAttempts) ||
+      maxAttempts < 1 ||
+      maxAttempts > 60 ||
+      !Number.isSafeInteger(pollIntervalMs) ||
+      pollIntervalMs < 100 ||
+      pollIntervalMs > 2_000
+    ) {
+      throw new RunPodControlError("RUNPOD_QUEUE_EMPTY_POLICY_INVALID");
+    }
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const value = await this.request("GET", "/health");
+      const jobs = record(value.jobs);
+      const inQueue = strictCounter(jobs, "inQueue");
+      const inProgress = strictCounter(jobs, "inProgress");
+      if (!Number.isSafeInteger(inQueue) || !Number.isSafeInteger(inProgress)) {
+        throw new RunPodControlError("RUNPOD_QUEUE_EMPTY_NOT_CONFIRMED");
+      }
+      if (inQueue === 0 && inProgress === 0) return;
+      if (attempt + 1 < maxAttempts) await this.sleep(pollIntervalMs);
+    }
+    throw new RunPodControlError("RUNPOD_QUEUE_EMPTY_NOT_CONFIRMED");
+  }
 }
