@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
+import {
+  isAttempt28Activation,
+  isAttempt28ClosedState,
+  isAttempt28Gate,
+  isAttempt28State,
+} from "./v207-attempt28-compat.mjs";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -357,6 +362,10 @@ assert(
     (isAttempt28State(currentState) &&
       currentState.includes(
         "v2_07_action: execute_exact_attempt28_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile",
+      )) ||
+    (isAttempt28ClosedState(currentState) &&
+      currentState.includes(
+        "v2_07_action: retain_attempt28_failure_evidence_and_require_fresh_proposal_and_cap_before_any_retry",
       )),
   "state_action",
 );
@@ -391,7 +400,9 @@ assert(
     recommendedTask.includes("Diagnose RUNPOD_WARM_IDLE_NOT_CONFIRMED provider-free") ||
     (isAttempt28State(currentState) && recommendedTask.includes("Obtain exact approval for Attempt28 proposal")) ||
     (isAttempt28State(currentState) &&
-      recommendedTask.includes("Execute and reconcile the exact approved Attempt28")),
+      recommendedTask.includes("Execute and reconcile the exact approved Attempt28")) ||
+    (isAttempt28ClosedState(currentState) &&
+      recommendedTask.includes("Retain exact Attempt28 failure closure")),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation") || recommendedTask.includes("task_stage: provider_free"), "state_recommended_stage");
@@ -411,7 +422,8 @@ assert(
     recommendedTask.includes("current_goal_authority: exact_attempt27_authority_recorded") ||
     recommendedTask.includes("current_goal_authority: none_attempt27_closed_fresh_authority_required") ||
     recommendedTask.includes("current_goal_authority: none_attempt28_unapproved_fresh_authority_required") ||
-    recommendedTask.includes("current_goal_authority: exact_attempt28_authority_recorded"),
+    recommendedTask.includes("current_goal_authority: exact_attempt28_authority_recorded") ||
+    recommendedTask.includes("current_goal_authority: none_attempt28_closed_fresh_authority_required"),
   "state_recommended_authority",
 );
 assert(
@@ -455,7 +467,8 @@ assert(mageGate.includes("failed-attempt-22.json"), "gate_attempt_path");
 assert(
   mageGate.includes(expected.currentProposal.slice(7)) ||
     mageGate.includes("be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137") ||
-    mageGate.includes("5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"),
+    mageGate.includes("5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae") ||
+    mageGate.includes("12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"),
   "gate_authority_boundary",
 );
 

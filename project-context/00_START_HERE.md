@@ -1,15 +1,21 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. Attempt27
-accepted one complete 32-image probe with 32 private durable outputs and receipts, then stopped
-fail-closed at `RUNPOD_WARM_IDLE_NOT_CONFIRMED`; its authority is consumed. Provider-free repair
-`0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14` now requires health-first quiescence plus two stable
-exact terminal worker/Pod snapshots before any next dispatch. Fresh Attempt28 proposal
-`sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf` is approved for one
-bounded preexecution under append-only authority
-`sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326`, FlashBoot=true, MEDIUM
-EU-RO-1 accepted at LOW minimum, and fresh maximum cumulative finite spend `$4`. Provider execution
-remains pending the authority commit and validation; no image republication, model/volume mutation,
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt28.
+Attempt28 completed one owned probe and one cold 32-image batch, each with 32 private durable
+outputs/readbacks and 32 provenance receipts. Duplicate delivery was detected, and the repair stopped
+fail-closed at `RUNPOD_QUIESCENT_NOT_CONFIRMED` in `cold-terminal`; no unplanned duplicate provider
+compute occurred. Its exact proposal
+`sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf` and authority
+`sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326` is consumed and
+non-reusable. Closure
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-28.json` is at
+`sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb`; exact cleanup
+`attempt28-cleanup-observation.json` is at
+`sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049`. Three stable reads prove
+zero disposable resources, both intended 50 GB EU-RO-1 volumes retained, baseline and final endpoint
+spend both `$0.3379560004686937`, and `$0` settled Attempt28 increment. The signer was deleted, the
+Worker version restored, and the route returned to stable `404 V207_ROUTE_DISABLED`. Any retry requires
+a fresh exact proposal and fresh positive numeric cap. No image republication, model/volume mutation,
 fallback GPU/region, public sample publication, V2-08, or successor work is authorized.
 Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped

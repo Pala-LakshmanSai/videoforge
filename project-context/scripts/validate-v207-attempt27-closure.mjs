@@ -5,6 +5,8 @@ import {
   isAttempt28Activation,
   isAttempt28AuthorizedGate,
   isAttempt28AuthorizedState,
+  isAttempt28ClosedGate,
+  isAttempt28ClosedState,
   isAttempt28Gate,
   isAttempt28State,
 } from "./v207-attempt28-compat.mjs";
@@ -357,7 +359,8 @@ if (isAttempt28State(state)) {
   assert(
     topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_repair_candidate_ready") ||
       topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_proposal_ready") ||
-      topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized"),
+      topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized") ||
+      (isAttempt28ClosedState(state) && topState.includes("phase: serverless_v2_v2_07_attempt28_closed_quiescence_failure")),
     "state_top_phase_attempt28",
   );
   includesAll(
@@ -405,6 +408,23 @@ if (isAttempt28AuthorizedState(state)) {
     ],
     "provider_authority_attempt28",
   );
+} else if (isAttempt28ClosedState(state)) {
+  includesAll(
+    providerAuthority,
+    [
+      "mode: none",
+      "cap_usd: 0",
+      "historical_cap_usd: 4",
+      "non_transferable: true",
+      "resources: []",
+      "authorized_operations: []",
+      "allowed_operations: []",
+      "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326",
+      "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf",
+      "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
+    ],
+    "provider_authority_attempt28_closed",
+  );
 } else {
   includesAll(providerAuthority, ["mode: none", "cap_usd: 0", "consumed: true", "actual_spend_usd: 0", "resources: []", "authorized_operations: []", "allowed_operations: []"], "provider_authority_closed");
   assert(providerAuthority.includes(EXPECTED.authority) && providerAuthority.includes(EXPECTED.proposal) && providerAuthority.includes(EXPECTED.closure), "provider_authority_lineage");
@@ -436,7 +456,16 @@ if (isAttempt28State(state)) {
           "gpu_use_authorized: true",
           "execution_status: attempt28_authorized_provider_execution_pending",
         ]
-      : [
+      : isAttempt28ClosedState(state)
+        ? [
+            "NOT_QUALIFIED_attempt28_closed_quiescence_failure",
+            "provider_calls_authorized: false",
+            "maximum_external_spend_usd: 0",
+            "remote_or_cloud_mutations_authorized: false",
+            "gpu_use_authorized: false",
+            "execution_status: attempt28_closed_quiescence_failure",
+          ]
+        : [
           "NOT_QUALIFIED",
           "provider_calls_authorized: false",
           "maximum_external_spend_usd: 0",
@@ -450,7 +479,19 @@ if (isAttempt28State(state)) {
   includesAll(recommended, ["NOT_QUALIFIED", "provider_calls_authorized: false", "maximum_external_spend_usd: 0", "remote_or_cloud_mutations_authorized: false", "gpu_use_authorized: false", EXPECTED.closure, "execution_status: attempt27_closed_warm_idle_failure"], "recommended_closed");
 }
 const latestLive = section(state, "latest_live_check:", "GATE_SERVERLESS_SOULX_001:");
-includesAll(latestLive, [EXPECTED.closure, EXPECTED.cleanup, "authority_mode: none_attempt27_consumed", "pending_numeric_cap_usd: null", "result: \"NOT_QUALIFIED_attempt27_closed_warm_idle_failure\""], "latest_live_closed");
+includesAll(
+  latestLive,
+  isAttempt28ClosedState(state)
+    ? [
+        "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
+        "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049",
+        "authority_mode: none_attempt28_consumed",
+        "pending_numeric_cap_usd: null",
+        'result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"',
+      ]
+    : [EXPECTED.closure, EXPECTED.cleanup, "authority_mode: none_attempt27_consumed", "pending_numeric_cap_usd: null", "result: \"NOT_QUALIFIED_attempt27_closed_warm_idle_failure\""],
+  "latest_live_closed",
+);
 
 const mageGate = section(gates, "GATE_SERVERLESS_MAGE_001:", "GATE_SERVERLESS_SOULX_001:");
 if (isAttempt28AuthorizedGate(gates)) {
@@ -466,6 +507,21 @@ if (isAttempt28AuthorizedGate(gates)) {
       'result: "NOT_QUALIFIED_attempt28_authorized_preexecution"',
     ],
     "gate_attempt28_authorized",
+  );
+} else if (isAttempt28ClosedGate(gates)) {
+  includesAll(
+    mageGate,
+    [
+      "status: open",
+      'latest_closed_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"',
+      'latest_closed_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"',
+      'closure_evidence_sha256: "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb"',
+      'cleanup_evidence_sha256: "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049"',
+      "authority_mode: none_attempt28_consumed",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"',
+    ],
+    "gate_attempt28_closed",
   );
 } else if (isAttempt28Gate(gates)) {
   assert(
@@ -484,8 +540,32 @@ if (isAttempt28AuthorizedGate(gates)) {
 }
 assert(!mageGate.includes("authority_mode: attempt27_bounded_mutation_authorized"), "gate_stale_authority");
 assert(isAttempt28AuthorizedGate(gates) || !mageGate.includes("pending_numeric_cap_usd: 4"), "gate_stale_cap");
-includesAll(task, [EXPECTED.closure, "RUNPOD_WARM_IDLE_NOT_CONFIRMED", "it is consumed", "V2-07 remains `NOT_QUALIFIED`", "V2-08 remains forbidden"], "task_closure");
-includesAll(start, [EXPECTED.closure, "RUNPOD_WARM_IDLE_NOT_CONFIRMED", "consumed and non-reusable", "V2-07 remains NOT_QUALIFIED", "V2-08"], "start_closure");
+includesAll(
+  task,
+  isAttempt28ClosedState(state)
+    ? [
+        "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
+        "RUNPOD_QUIESCENT_NOT_CONFIRMED",
+        "it is consumed",
+        "V2-07 remains `NOT_QUALIFIED`",
+        "V2-08 remains forbidden",
+      ]
+    : [EXPECTED.closure, "RUNPOD_WARM_IDLE_NOT_CONFIRMED", "it is consumed", "V2-07 remains `NOT_QUALIFIED`", "V2-08 remains forbidden"],
+  "task_closure",
+);
+includesAll(
+  start,
+  isAttempt28ClosedState(state)
+    ? [
+        "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
+        "RUNPOD_QUIESCENT_NOT_CONFIRMED",
+        "consumed and non-reusable",
+        "V2-07 remains NOT_QUALIFIED",
+        "V2-08",
+      ]
+    : [EXPECTED.closure, "RUNPOD_WARM_IDLE_NOT_CONFIRMED", "consumed and non-reusable", "V2-07 remains NOT_QUALIFIED", "V2-08"],
+  "start_closure",
+);
 includesAll(
   activation,
   [

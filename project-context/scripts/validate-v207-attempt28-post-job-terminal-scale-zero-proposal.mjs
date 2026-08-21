@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isAttempt28ClosedGate, isAttempt28ClosedState } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const candidate = join(
@@ -144,12 +145,45 @@ const [state, gates, task, start, activation, activationTest] = await Promise.al
   readFile(join(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
   readFile(join(root, "apps/web/src/server/providers/v207-activation-authority.test.ts"), "utf8"),
 ]);
+const closed = isAttempt28ClosedState(state) && isAttempt28ClosedGate(gates);
 for (const [name, text] of Object.entries({ state, gates, task, start, activation, activationTest })) {
-  assert(hasAll(text, [expected.proposal, expected.control, expected.authority]), `${name.toUpperCase()}_POINTERS`);
+  assert(
+    hasAll(text, [expected.authority]) &&
+      (name === "start" || hasAll(text, [expected.proposal])) &&
+      (name === "start" || name === "gates" || hasAll(text, [expected.control])),
+    `${name.toUpperCase()}_POINTERS`,
+  );
 }
-assert(hasAll(state, [expected.max1, expected.max2, "phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized", "task_stage: bounded_mutation", "maximum_external_spend_usd: 4", "v2_07_current_approved_authority_sha256: \"sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326\"", "provider_calls_authorized: true"]), "STATE_BOUNDARY");
-assert(hasAll(gates, ["authority_mode: attempt28_bounded_mutation_authorized", "pending_numeric_cap_usd: 4", "pending_authority_sha256: \"sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326\""]), "GATE_BOUNDARY");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "ACTIVATION_APPROVED");
+if (closed) {
+  assert(
+    hasAll(state, [
+      expected.max1,
+      expected.max2,
+      "phase: serverless_v2_v2_07_attempt28_closed_quiescence_failure",
+      "task_stage: provider_free",
+      "provider_calls_authorized: false",
+      "maximum_external_spend_usd: 0",
+      expected.closure ?? "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
+      "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049",
+    ]),
+    "STATE_CLOSED_BOUNDARY",
+  );
+  assert(
+    hasAll(gates, [
+      "authority_mode: none_attempt28_consumed",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"',
+      "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
+      "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049",
+    ]),
+    "GATE_CLOSED_BOUNDARY",
+  );
+  assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_CLOSED");
+} else {
+  assert(hasAll(state, [expected.max1, expected.max2, "phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized", "task_stage: bounded_mutation", "maximum_external_spend_usd: 4", "v2_07_current_approved_authority_sha256: \"sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326\"", "provider_calls_authorized: true"]), "STATE_BOUNDARY");
+  assert(hasAll(gates, ["authority_mode: attempt28_bounded_mutation_authorized", "pending_numeric_cap_usd: 4", "pending_authority_sha256: \"sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326\""]), "GATE_BOUNDARY");
+  assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "ACTIVATION_APPROVED");
+}
 
 process.stdout.write(
   `V2-07 Attempt28 authority validation PASS (${expected.proposal}; max1 ${expected.max1}; max2 ${expected.max2}; authority ${expected.authority}; cap $4)\n`,

@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge.v2-07-failed-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 28,
+  "observed_at": "2026-08-21T19:29:07.445Z",
+  "result": {
+    "schema_version": "videoforge.v2-07-failed-cleanup/v1",
+    "endpoint_id_sha256": "sha256:dfb45157d4f110e46414a97c26ee9c94ead46d3452c7ca3f1cba6ef4da39602e",
+    "template_id_sha256": "sha256:d0e8ccab05d6b841906bc32deb0c0977884185a08c859757b457e39e93bd4d64",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 1,
+    "terminal_pod_record_count": 1,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "raw_stdout_retained": false,
+    "limitation": "The initial runner cleanup was uncertain; this exact cleanup observation is the authoritative deletion result, followed by three independent stable reconciliation reads proving zero disposable resources and settled spend."
+  }
+}

@@ -20,8 +20,8 @@ export const V207_PENDING_CONTROL_SOURCE_COMMIT =
   "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14" as const;
 export const V207_APPROVED_AUTHORITY_SHA256 =
   "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326" as const;
-// Attempt 28 is approved for one bounded execution under the exact recorded authority and fresh $4 cap.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+// Attempt 28 consumed its single bounded authority. A new exact proposal and fresh cap are required.
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {
   readonly image: string;

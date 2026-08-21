@@ -15,6 +15,12 @@ export const ATTEMPT28_PROPOSAL_READY_PHASE =
   "serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_proposal_ready";
 export const ATTEMPT28_AUTHORIZED_PHASE =
   "serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized";
+export const ATTEMPT28_CLOSED_PHASE =
+  "serverless_v2_v2_07_attempt28_closed_quiescence_failure";
+export const ATTEMPT28_CLOSURE =
+  "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb";
+export const ATTEMPT28_CLEANUP =
+  "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049";
 
 const hasAll = (text, needles) => needles.every((needle) => text.includes(needle));
 const hasIdentity = (text) => hasAll(text, [ATTEMPT28_PROPOSAL, ATTEMPT28_CONTROL]);
@@ -51,8 +57,25 @@ export const isAttempt28AuthorizedState = (state) =>
     "spend_authorized_usd: 4",
   ]);
 
+export const isAttempt28ClosedState = (state) =>
+  hasIdentity(state) &&
+  state.includes(`phase: ${ATTEMPT28_CLOSED_PHASE}`) &&
+  hasAll(state, [
+    ATTEMPT28_CLOSURE,
+    ATTEMPT28_CLEANUP,
+    "task_stage: provider_free",
+    "provider_calls_authorized: false",
+    "remote_or_cloud_mutations_authorized: false",
+    "gpu_use_authorized: false",
+    "maximum_external_spend_usd: 0",
+    "current_authority: null",
+    "current_authority_sha256: null",
+    "mutation_authorized: false",
+    "spend_authorized_usd: 0",
+  ]);
+
 export const isAttempt28State = (state) =>
-  isAttempt28UnapprovedState(state) || isAttempt28AuthorizedState(state);
+  isAttempt28UnapprovedState(state) || isAttempt28AuthorizedState(state) || isAttempt28ClosedState(state);
 
 const isAttempt28UnapprovedGate = (gates) =>
   hasAll(gates, [
@@ -78,8 +101,17 @@ export const isAttempt28AuthorizedGate = (gates) =>
     'result: "NOT_QUALIFIED_attempt28_authorized_preexecution"',
   ]);
 
+export const isAttempt28ClosedGate = (gates) =>
+  hasAll(gates, [
+    ATTEMPT28_CLOSURE,
+    ATTEMPT28_CLEANUP,
+    "authority_mode: none_attempt28_consumed",
+    "pending_numeric_cap_usd: null",
+    'result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"',
+  ]);
+
 export const isAttempt28Gate = (gates) =>
-  isAttempt28UnapprovedGate(gates) || isAttempt28AuthorizedGate(gates);
+  isAttempt28UnapprovedGate(gates) || isAttempt28AuthorizedGate(gates) || isAttempt28ClosedGate(gates);
 
 export const isAttempt28AuthorizedActivation = (activation) =>
   hasIdentity(activation) &&

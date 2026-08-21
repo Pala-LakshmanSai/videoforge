@@ -115,9 +115,9 @@ gates:
     blocks: mage_serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
-    last_run: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-27.json"
-    last_run_sha256: "sha256:ffd622c4ee0a6a37311a51f191ce9c3ccbb0ae91620e51f64a03dfef932fb20d"
-    previous_attempt: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-26.json"
+    last_run: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-28.json"
+    last_run_sha256: "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb"
+    previous_attempt: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-27.json"
     historical_attempt22_proposal: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
     historical_attempt22_authority: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
     historical_attempt22_proposal_path: "evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/combined-live-proposal.json"
@@ -132,32 +132,32 @@ gates:
     historical_attempt24_authority: "sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412"
     historical_attempt24_closure: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-24.json"
     historical_attempt24_closure_sha256: "sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb"
-    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json"
-    latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"
-    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/combined-live-proposal.json"
-    latest_closed_proposal_sha256: "sha256:5cb96aa79a4bb6f1fda3e6dadba7d6997421cc87cd2ed27f6a8ed92bee9fe7ae"
-    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/combined-live-proposal.json"
-    latest_approved_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"
-    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json"
-    latest_approved_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"
-    latest_approved_control_source_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
-    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json"
-    closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"
-    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-27.json"
-    closure_evidence_sha256: "sha256:ffd622c4ee0a6a37311a51f191ce9c3ccbb0ae91620e51f64a03dfef932fb20d"
-    cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt27-cleanup-observation.json"
-    cleanup_evidence_sha256: "sha256:9aa51ccb29b6a9568534c6f79eaa07b46fbcdf1fd9137f9b21cb87404ac3686d"
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"
-    pending_control_source_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"
-    authority_mode: attempt28_bounded_mutation_authorized
-    pending_numeric_cap_usd: 4
+    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json"
+    latest_closed_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"
+    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/combined-live-proposal.json"
+    latest_closed_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"
+    latest_approved_proposal: null
+    latest_approved_proposal_sha256: null
+    latest_approved_authority: null
+    latest_approved_authority_sha256: null
+    latest_approved_control_source_commit: null
+    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json"
+    closed_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"
+    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-28.json"
+    closure_evidence_sha256: "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb"
+    cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt28-cleanup-observation.json"
+    cleanup_evidence_sha256: "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049"
+    pending_proposal: null
+    pending_proposal_sha256: null
+    pending_control_source_commit: null
+    pending_authority: null
+    pending_authority_sha256: null
+    authority_mode: none_attempt28_consumed
+    pending_numeric_cap_usd: null
     pending_flashboot: true
     pending_availability: MEDIUM
-    result: "NOT_QUALIFIED_attempt28_authorized_preexecution"
-    next_boundary: "commit and validate exact Attempt28 authority, then execute and reconcile only proposal sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf under the fresh USD 4 cap; V2-08 forbidden"
+    result: "NOT_QUALIFIED_attempt28_closed_quiescence_failure"
+    next_boundary: "provider-free diagnose RUNPOD_QUIESCENT_NOT_CONFIRMED and duplicate delivery without weakening health-first drain safety; any provider retry requires a fresh exact proposal and fresh positive numeric cap; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:
