@@ -9,9 +9,10 @@ const candidate = resolve(
 );
 const proposalPath = resolve(candidate, "combined-live-proposal.json");
 const authorityPath = resolve(candidate, "approved-authority.json");
-const [proposalBytes, authorityBytes, state, gate, task, activation, control, reconciliation, qualification] = await Promise.all([
+const [proposalBytes, authorityBytes, attempt18Bytes, state, gate, task, activation, control, reconciliation, qualification] = await Promise.all([
   readFile(proposalPath),
   readFile(authorityPath),
+  readFile(resolve(root, "project-context/evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-18.json")),
   readFile(resolve(root, "project-context/CURRENT_STATE.yaml"), "utf8"),
   readFile(resolve(root, "project-context/GATES.yaml"), "utf8"),
   readFile(resolve(root, "project-context/tasks/VF-10-07.md"), "utf8"),
@@ -22,6 +23,7 @@ const [proposalBytes, authorityBytes, state, gate, task, activation, control, re
 ]);
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
 const authority = JSON.parse(authorityBytes.toString("utf8"));
+const attempt18 = JSON.parse(attempt18Bytes.toString("utf8"));
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const proposalHash = hash(proposalBytes);
 const expectedProposalHash =
@@ -66,6 +68,14 @@ assert(authority.execution_boundary?.runpod_mutation_authorized_pending_executio
 assert(authority.execution_boundary?.cloudflare_mutation_authorized_pending_execution === true, "authority_cloudflare");
 assert(authority.execution_boundary?.gpu_use_authorized_pending_execution === true, "authority_gpu");
 assert(authority.execution_boundary?.v2_08_authorized === false, "authority_no_v208");
+assert(hash(attempt18Bytes) === "sha256:86e0a4a0a8e3afd9fc26f94d5e2c04697a0d6f15dba4b757fa383eae6bc870a4", "attempt18_hash");
+assert(attempt18.attempt === 18, "attempt18_number");
+assert(attempt18.authority_status === "CLOSED_EXACT_ATTEMPT_CONSUMED_DO_NOT_REUSE", "attempt18_authority_closed");
+assert(attempt18.failure?.code === "RUNPOD_ENDPOINT_ID_BINDING_UNCONFIRMED", "attempt18_failure");
+assert(attempt18.failure?.gpu_jobs_submitted === 0 && attempt18.failure?.batch_count === 0, "attempt18_no_dispatch");
+assert(attempt18.runpod_cleanup?.final_disposable_resources_absent === true, "attempt18_cleanup");
+assert(attempt18.billing?.attempt_increment_usd_settled === 0, "attempt18_zero_spend");
+assert(attempt18.qualification_boundaries?.v2_07 === "NOT_QUALIFIED", "attempt18_gate_open");
 const failedAttemptBytes = await readFile(
   resolve(candidate, proposal.lineage.failed_attempt_evidence),
 );
@@ -77,14 +87,17 @@ assert(proposal.last_observed_provider_truth?.active_serverless_workers === 0, "
 assert(proposal.rates_cost_and_retention?.serverless_flex_rtx4090_usd_per_gpu_hour === 1.1, "rate");
 assert(proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_month_total === 7, "volume_charge");
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v2_08_forbidden");
-assert(state.includes(expectedProposalHash) && state.includes("cap_usd: 4"), "current_state");
-assert(state.includes(expectedAuthorityHash), "current_state_authority");
-assert(state.includes("task_stage: bounded_mutation"), "current_state_stage");
-assert(state.includes("provider_calls_authorized: true"), "current_state_provider_authority");
-assert(gate.includes(expectedProposalHash), "gate");
+assert(
+  state.includes("provider_authority: &v2_07_provider_authority\n  mode: none\n  provider: null\n  cap_usd: 0"),
+  "current_state_closed",
+);
+assert(state.includes(expectedAuthorityHash), "current_state_historical_authority");
+assert(state.includes("task_stage: provider_free_repair"), "current_state_stage");
+assert(state.includes("provider_calls_authorized: false"), "current_state_provider_boundary");
+assert(gate.includes("failed-attempt-18.json"), "gate");
 assert(task.includes(expectedProposalHash), "task");
 assert(activation.includes(expectedProposalHash), "compiled_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "compiled_cap");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "compiled_authority_closed");
 const bindMethod = control.slice(
   control.indexOf("async bindV207EndpointIdentity("),
   control.indexOf("async createNetworkVolume("),
