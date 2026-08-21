@@ -21,11 +21,13 @@ const {
   assertV207ItemCount,
   createV207Cancellation,
   extractV207EndpointReadbackMismatchCategory,
+  extractV207OutputContractDiagnostics,
   extractV207ProviderJobErrorCode,
   installV207SignalHandlers,
   isAllowedV207GhcrBlobRedirect,
   redactV207LiveEvidence,
   redactV207ProviderJobError,
+  V207OutputContractError,
 } = await import("./v207-live-qualification");
 const { RunPodControlError } = await import("./runpod-control");
 if (previousV207Image === undefined) delete process.env.V207_IMAGE;
@@ -77,7 +79,7 @@ describe("V2-07 live qualification runner safety", () => {
     expect(() => assertV207ItemCount(32)).not.toThrow();
     expect(source).toContain("QUALIFICATION_SCENES.slice(0, itemCount)");
     expect(source).toContain("item_count: itemCount");
-    expect(source).toContain("MAGE_OUTPUT_NOT_SUCCEEDED:${outputStatus}:${failureCode}");
+    expect(source).toContain("new V207OutputContractError");
   });
 
   it("regresses Attempt 10 by making the owned probe a complete 32-item batch", () => {
@@ -249,6 +251,47 @@ describe("V2-07 live qualification runner safety", () => {
         failure_code: "MAGE_OUTPUT_ERROR",
       }),
     ).toBe("MAGE_OUTPUT_ERROR");
+  });
+
+  it("persists bounded output-contract diagnostics for a completed non-success", () => {
+    const error = new V207OutputContractError("FAILED", "MAGE_OUTPUT_ERROR", {
+      kind: "object",
+      keys: ["status", "failure_code", "secret_token", "status"],
+    });
+    expect(extractV207OutputContractDiagnostics(error)).toEqual({
+      error: "MAGE_OUTPUT_NOT_SUCCEEDED",
+      error_category: "output_contract",
+      output_status: "FAILED",
+      output_failure_code: "MAGE_OUTPUT_ERROR",
+      output_shape_kind: "object",
+      output_shape_keys: ["failure_code", "status"],
+    });
+    expect(redactV207LiveEvidence(extractV207OutputContractDiagnostics(error))).toEqual(
+      extractV207OutputContractDiagnostics(error),
+    );
+  });
+
+  it("fails closed and redacts unsafe output-contract fields", () => {
+    const error = new V207OutputContractError(
+      "FAILED:secret-body",
+      "MAGE_OUTPUT_ERROR:secret-body",
+      {
+        kind: "provider-secret",
+        keys: ["status", "authorization", "secret_token", "items"],
+      },
+    );
+    expect(extractV207OutputContractDiagnostics(error)).toEqual({
+      error: "MAGE_OUTPUT_NOT_SUCCEEDED",
+      error_category: "output_contract",
+      output_status: "MISSING",
+      output_failure_code: "UNKNOWN",
+      output_shape_kind: "missing",
+      output_shape_keys: ["items", "status"],
+    });
+    expect(extractV207OutputContractDiagnostics(new Error("MAGE_OUTPUT_NOT_SUCCEEDED"))).toBe(null);
+    expect(
+      JSON.stringify(redactV207LiveEvidence(extractV207OutputContractDiagnostics(error))),
+    ).not.toContain("secret");
   });
 
   it("persists only an allow-listed endpoint readback mismatch category", () => {

@@ -116,6 +116,27 @@ const V207_ENDPOINT_READBACK_MISMATCH_CATEGORIES: ReadonlySet<string> = new Set(
   "timing",
   "scaler",
 ]);
+const V207_SAFE_ERROR_CATEGORIES: ReadonlySet<string> = new Set([
+  ...V207_ENDPOINT_READBACK_MISMATCH_CATEGORIES,
+  "output_contract",
+]);
+const V207_OUTPUT_DIAGNOSTIC_CODE = /^[A-Z][A-Z0-9_]{2,63}$/u;
+const V207_OUTPUT_SHAPE_KINDS: ReadonlySet<string> = new Set([
+  "missing",
+  "null",
+  "array",
+  "string",
+  "number",
+  "boolean",
+  "object",
+]);
+const V207_OUTPUT_SHAPE_KEYS: ReadonlySet<string> = new Set([
+  "status",
+  "items",
+  "failure_code",
+  "error",
+  "provenance_receipt",
+]);
 
 export class V207QualificationCancelled extends Error {
   readonly code = "V207_QUALIFICATION_CANCELLED" as const;
@@ -185,6 +206,10 @@ const SAFE_EVIDENCE_KEYS = new Set([
   "result",
   "code",
   "error_category",
+  "output_status",
+  "output_failure_code",
+  "output_shape_kind",
+  "output_shape_keys",
   "source_commit",
   "base_digest",
   "manifest_digest",
@@ -247,11 +272,15 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
       }
       if (key === "run_tag")
         return /^202[0-9]{5}-[a-f0-9]{12}$/u.test(candidate) ? candidate : "[REDACTED]";
+      if (key === "output_shape_kind" && V207_OUTPUT_SHAPE_KINDS.has(candidate)) {
+        return candidate;
+      }
+      if (key === "output_shape_keys" && V207_OUTPUT_SHAPE_KEYS.has(candidate)) {
+        return candidate;
+      }
       if (key !== null && SAFE_EVIDENCE_KEYS.has(key)) {
         if (key === "error_category") {
-          return V207_ENDPOINT_READBACK_MISMATCH_CATEGORIES.has(candidate)
-            ? candidate
-            : "[REDACTED]";
+          return V207_SAFE_ERROR_CATEGORIES.has(candidate) ? candidate : "[REDACTED]";
         }
         if (/^[0-9a-f]{40}$/u.test(candidate) || SAFE_PROVIDER_CODE.test(candidate)) {
           return candidate;
@@ -314,6 +343,81 @@ export function redactV207ProviderJobError(error: unknown): AnyRecord {
     return { provider_error: "[REDACTED_SIZE]" };
   }
   return { provider_error: providerError };
+}
+
+type V207OutputShapeKind =
+  | "missing"
+  | "null"
+  | "array"
+  | "string"
+  | "number"
+  | "boolean"
+  | "object";
+
+interface V207OutputShape {
+  readonly kind: V207OutputShapeKind;
+  readonly keys: readonly string[];
+}
+
+const safeV207OutputDiagnosticCode = (value: unknown, fallback: string): string =>
+  typeof value === "string" && V207_OUTPUT_DIAGNOSTIC_CODE.test(value) ? value : fallback;
+
+const describeV207OutputShape = (output: unknown): V207OutputShape => {
+  if (output === undefined) return { kind: "missing", keys: [] };
+  if (output === null) return { kind: "null", keys: [] };
+  if (Array.isArray(output)) return { kind: "array", keys: [] };
+  if (typeof output !== "object") {
+    return { kind: typeof output as V207OutputShapeKind, keys: [] };
+  }
+  return {
+    kind: "object",
+    keys: Object.keys(output as AnyRecord)
+      .filter((key) => V207_OUTPUT_SHAPE_KEYS.has(key))
+      .sort()
+      .slice(0, 8),
+  };
+};
+
+/**
+ * Carries only bounded output-contract facts across the qualification failure path.  The error
+ * message is intentionally stable; status, failure code, and shape keys are persisted separately
+ * after strict validation so a provider body or secret can never become the failure message.
+ */
+export class V207OutputContractError extends Error {
+  readonly code = "MAGE_OUTPUT_NOT_SUCCEEDED" as const;
+  readonly outputStatus: string;
+  readonly failureCode: string;
+  readonly outputShape: V207OutputShape;
+
+  constructor(outputStatus: unknown, failureCode: unknown, outputShape: unknown) {
+    super("MAGE_OUTPUT_NOT_SUCCEEDED");
+    this.name = "V207OutputContractError";
+    this.outputStatus = safeV207OutputDiagnosticCode(outputStatus, "MISSING");
+    this.failureCode = safeV207OutputDiagnosticCode(failureCode, "UNKNOWN");
+    const shape = outputShape as AnyRecord;
+    const kind = shape?.kind;
+    const keys = Array.isArray(shape?.keys)
+      ? [...new Set(shape.keys.map(String).filter((key) => V207_OUTPUT_SHAPE_KEYS.has(key)))]
+          .sort()
+          .slice(0, 8)
+      : [];
+    this.outputShape = {
+      kind: V207_OUTPUT_SHAPE_KINDS.has(String(kind)) ? (kind as V207OutputShapeKind) : "missing",
+      keys,
+    };
+  }
+}
+
+export function extractV207OutputContractDiagnostics(error: unknown): AnyRecord | null {
+  if (!(error instanceof V207OutputContractError)) return null;
+  return {
+    error: error.code,
+    error_category: "output_contract",
+    output_status: error.outputStatus,
+    output_failure_code: error.failureCode,
+    output_shape_kind: error.outputShape.kind,
+    output_shape_keys: [...error.outputShape.keys],
+  };
 }
 
 const findV207ProviderErrorCode = (value: unknown, depth = 0): string | null => {
@@ -919,7 +1023,7 @@ async function verifyBatch(
         ? output.status
         : "MISSING";
     const failureCode = extractV207ProviderJobErrorCode(job.error, output) ?? "UNKNOWN";
-    throw new Error(`MAGE_OUTPUT_NOT_SUCCEEDED:${outputStatus}:${failureCode}`);
+    throw new V207OutputContractError(outputStatus, failureCode, describeV207OutputShape(output));
   }
   if (output.items.length !== itemCount || objectKeys.length !== itemCount) {
     throw new Error("MAGE_OUTPUT_ITEM_COUNT_INVALID");
@@ -1610,6 +1714,8 @@ async function main(): Promise<void> {
       evidence.billing_settlement = "STABLE_THREE_READS";
       success = true;
     } catch (error) {
+      const outputContractDiagnostics = extractV207OutputContractDiagnostics(error);
+      if (outputContractDiagnostics) Object.assign(evidence, outputContractDiagnostics);
       evidence.error = safeQualificationError(error);
       const errorCategory = extractV207EndpointReadbackMismatchCategory(error);
       if (errorCategory !== null) evidence.error_category = errorCategory;
@@ -1653,6 +1759,7 @@ async function main(): Promise<void> {
 }
 
 function safeQualificationError(error: unknown): string {
+  if (error instanceof V207OutputContractError) return error.code;
   const candidate = error instanceof Error ? error.message : "";
   if (SAFE_PROVIDER_CODE.test(candidate)) return candidate;
   const code = candidate.match(/^[A-Z][A-Z0-9_.-]{2,80}/u)?.[0];
