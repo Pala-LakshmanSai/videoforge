@@ -18,6 +18,20 @@ const RESERVATION_SCHEMA = "artifact-generated-output-reservation/v1" as const;
 const FINALIZE_SCHEMA = "videoforge-v207-generated-output-finalization/v1" as const;
 const RECEIPT_SCHEMA = "artifact-commit-receipt/v3" as const;
 
+// PNG chunk CRCs cover compressed IDAT bytes. A bit-at-a-time CRC
+// loop makes a realistic 1280x720 output need tens of millions of JavaScript
+// iterations before the deflate probe can even start.  Keep the same IEEE
+// CRC-32 polynomial, but use the standard 256-entry lookup table so probing
+// remains bounded on the hosted Worker CPU.
+const PNG_CRC32_TABLE = new Uint32Array(256);
+for (let index = 0; index < PNG_CRC32_TABLE.length; index += 1) {
+  let crc = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  PNG_CRC32_TABLE[index] = crc >>> 0;
+}
+
 type Operation = "PUT" | "RESERVE" | "GET" | "FINALIZE" | "DELETE";
 
 type GeneratedOutputAuthority = {
@@ -300,11 +314,9 @@ function receiptShape(value: Record<string, unknown>): value is ArtifactCommitRe
 
 function pngCrc32(bytes: Uint8Array): number {
   let crc = 0xffffffff;
-  for (const byte of bytes) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit += 1) {
-      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-    }
+  for (let index = 0; index < bytes.byteLength; index += 1) {
+    const byte = bytes[index]!;
+    crc = (crc >>> 8) ^ PNG_CRC32_TABLE[(crc ^ byte) & 0xff]!;
   }
   return (crc ^ 0xffffffff) >>> 0;
 }

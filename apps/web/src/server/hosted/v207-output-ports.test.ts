@@ -127,33 +127,40 @@ function statefulEnvironment(): {
   return { environment: { ...base, PRIVATE_ARTIFACTS: bucket }, objects };
 }
 
-function png1280x720(): Uint8Array {
-  const crc32 = (value: Uint8Array): number => {
-    let crc = 0xffffffff;
-    for (const byte of value) {
-      crc ^= byte;
-      for (let bit = 0; bit < 8; bit += 1) {
-        crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-      }
-    }
-    return (crc ^ 0xffffffff) >>> 0;
-  };
+const pngCrc32Table = new Uint32Array(256);
+for (let index = 0; index < pngCrc32Table.length; index += 1) {
+  let crc = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  pngCrc32Table[index] = crc >>> 0;
+}
+
+function pngCrc32(value: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (let index = 0; index < value.byteLength; index += 1) {
+    const byte = value[index]!;
+    crc = (crc >>> 8) ^ pngCrc32Table[(crc ^ byte) & 0xff]!;
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function png1280x720WithScanlines(scanlines: Uint8Array): Uint8Array {
   const chunk = (type: string, data: Uint8Array): Uint8Array => {
     const result = new Uint8Array(12 + data.byteLength);
     const view = new DataView(result.buffer);
     view.setUint32(0, data.byteLength);
     result.set(new TextEncoder().encode(type), 4);
     result.set(data, 8);
-    view.setUint32(8 + data.byteLength, crc32(result.subarray(4, 8 + data.byteLength)));
+    view.setUint32(8 + data.byteLength, pngCrc32(result.subarray(4, 8 + data.byteLength)));
     return result;
   };
+  const compressed = new Uint8Array(deflateSync(scanlines));
   const header = new Uint8Array(13);
   const headerView = new DataView(header.buffer);
   headerView.setUint32(0, 1280);
   headerView.setUint32(4, 720);
   header.set([8, 2, 0, 0, 0], 8);
-  const scanlines = new Uint8Array((1 + 1280 * 3) * 720);
-  const compressed = new Uint8Array(deflateSync(scanlines));
   const parts = [
     new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk("IHDR", header),
@@ -167,6 +174,21 @@ function png1280x720(): Uint8Array {
     offset += part.byteLength;
   }
   return result;
+}
+
+function png1280x720(): Uint8Array {
+  return png1280x720WithScanlines(new Uint8Array((1 + 1280 * 3) * 720));
+}
+
+function realisticPng1280x720(): Uint8Array {
+  const scanlines = new Uint8Array((1 + 1280 * 3) * 720);
+  let state = 0x12345678;
+  for (let index = 0; index < scanlines.byteLength; index += 1) {
+    if (index % (1 + 1280 * 3) === 0) continue;
+    state = Math.imul(state, 1664525) + 1013904223;
+    scanlines[index] = state >>> 24;
+  }
+  return png1280x720WithScanlines(scanlines);
 }
 
 async function sha256Checksum(bytes: Uint8Array): Promise<string> {
@@ -189,6 +211,10 @@ function request(body: unknown, authority = nonce): Request {
 
 describe("V2-07 hosted generated-output port", () => {
   const config = hostedRuntimeConfiguration(environment());
+
+  it("uses the standard IEEE PNG CRC-32 polynomial exactly", () => {
+    expect(pngCrc32(new TextEncoder().encode("123456789"))).toBe(0xcbf43926);
+  });
 
   it("signs a bounded PUT without predeclaring output bytes", async () => {
     const response = await handleV207GeneratedOutputPort(
@@ -299,6 +325,61 @@ describe("V2-07 hosted generated-output port", () => {
     expect(replayValue.idempotent).toBe(true);
     expect(replayValue.receipt).toEqual(finalizedValue.receipt);
   });
+
+  it("finalizes a realistic high-entropy 1280x720 PNG within the bounded probe time", async () => {
+    const runtime = statefulEnvironment();
+    const putBody = {
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "PUT",
+      account_id: "account-a",
+      workspace_id: "workspace-a",
+      object_key: objectKey,
+      content_type: "image/png",
+      max_content_length: 4 * 1024 * 1024,
+      lifetime_seconds: 7_200,
+    };
+    const put = await handleV207GeneratedOutputPort(request(putBody), config, runtime.environment);
+    const putValue = (await put?.json()) as Record<string, any>;
+    expect(put?.status).toBe(200);
+    const authority = putValue.authority as Record<string, any>;
+    const bytes = realisticPng1280x720();
+    expect(bytes.byteLength).toBeGreaterThan(2_000_000);
+    const checksum = await sha256Checksum(bytes);
+    runtime.objects.set(objectKey, { bytes, contentType: "image/png" });
+    const finalizeBody = {
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "FINALIZE",
+      account_id: "account-a",
+      workspace_id: "workspace-a",
+      object_key: objectKey,
+      content_type: "image/png",
+      content_length: bytes.byteLength,
+      checksum_sha256: checksum,
+      reservation_id: authority.reservation_id,
+      capability_handle: authority.capability_handle,
+      callback_id: "callback-realistic-high-entropy-01",
+    };
+    const startedAt = performance.now();
+    const finalized = await handleV207GeneratedOutputPort(
+      request(finalizeBody),
+      config,
+      runtime.environment,
+    );
+    const elapsedMs = performance.now() - startedAt;
+    expect(finalized?.status, JSON.stringify(await finalized?.clone().json())).toBe(200);
+    expect(elapsedMs).toBeLessThan(3_000);
+    await expect(finalized?.json()).resolves.toMatchObject({
+      schema_version: "videoforge-v207-generated-output-finalization/v1",
+      idempotent: false,
+      receipt: {
+        schema_version: "artifact-commit-receipt/v3",
+        content_type: "image/png",
+        content_length: bytes.byteLength,
+        checksum_sha256: checksum,
+        probe: { width: 1280, height: 720, format: "png", decoded: true },
+      },
+    });
+  }, 15_000);
 
   it("rejects finalize authority and measured-fact mismatches", async () => {
     const runtime = statefulEnvironment();
