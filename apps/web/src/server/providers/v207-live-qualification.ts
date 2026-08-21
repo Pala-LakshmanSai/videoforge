@@ -121,6 +121,24 @@ const V207_SAFE_ERROR_CATEGORIES: ReadonlySet<string> = new Set([
   "output_contract",
 ]);
 const V207_OUTPUT_DIAGNOSTIC_CODE = /^[A-Z][A-Z0-9_]{2,63}$/u;
+const V207_OUTPUT_DIAGNOSTIC_BRAND = "videoforge.v207.output-contract-diagnostic/v1" as const;
+const V207_OUTPUT_FAILURE_STAGES = [
+  "top_level",
+  "item_count",
+  "authority_count",
+  "receipt_presence",
+  "receipt_hash",
+  "receipt_signature",
+  "receipt_identity",
+  "output_lineage",
+  "output_readback",
+  "output_png_probe",
+  "output_finalization",
+  "output_finalization_replay",
+  "unknown",
+] as const;
+type V207OutputFailureStage = (typeof V207_OUTPUT_FAILURE_STAGES)[number];
+const V207_OUTPUT_FAILURE_STAGE_SET: ReadonlySet<string> = new Set(V207_OUTPUT_FAILURE_STAGES);
 const V207_OUTPUT_SHAPE_KINDS: ReadonlySet<string> = new Set([
   "missing",
   "null",
@@ -206,6 +224,7 @@ const SAFE_EVIDENCE_KEYS = new Set([
   "result",
   "code",
   "error_category",
+  "output_failure_stage",
   "output_status",
   "output_failure_code",
   "output_shape_kind",
@@ -272,6 +291,12 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
       }
       if (key === "run_tag")
         return /^202[0-9]{5}-[a-f0-9]{12}$/u.test(candidate) ? candidate : "[REDACTED]";
+      if (key === "output_failure_stage") {
+        return V207_OUTPUT_FAILURE_STAGE_SET.has(candidate) ? candidate : "[REDACTED]";
+      }
+      if (key === "output_status" || key === "output_failure_code") {
+        return V207_OUTPUT_DIAGNOSTIC_CODE.test(candidate) ? candidate : "[REDACTED]";
+      }
       if (key === "output_shape_kind" && V207_OUTPUT_SHAPE_KINDS.has(candidate)) {
         return candidate;
       }
@@ -378,47 +403,99 @@ const describeV207OutputShape = (output: unknown): V207OutputShape => {
   };
 };
 
+const normalizeV207OutputShape = (outputShape: unknown): V207OutputShape => {
+  const shape = outputShape as AnyRecord;
+  const kind = shape?.kind;
+  const keys = Array.isArray(shape?.keys)
+    ? [...new Set(shape.keys.map(String).filter((key) => V207_OUTPUT_SHAPE_KEYS.has(key)))]
+        .sort()
+        .slice(0, 8)
+    : [];
+  return {
+    kind: V207_OUTPUT_SHAPE_KINDS.has(String(kind)) ? (kind as V207OutputShapeKind) : "missing",
+    keys,
+  };
+};
+
+const safeV207OutputFailureStage = (
+  value: unknown,
+  fallback: V207OutputFailureStage,
+): V207OutputFailureStage =>
+  typeof value === "string" && V207_OUTPUT_FAILURE_STAGE_SET.has(value)
+    ? (value as V207OutputFailureStage)
+    : fallback;
+
+type V207OutputContractDiagnosticLike = {
+  readonly diagnosticBrand: typeof V207_OUTPUT_DIAGNOSTIC_BRAND;
+  readonly code: "MAGE_OUTPUT_NOT_SUCCEEDED";
+  readonly outputStatus?: unknown;
+  readonly failureCode?: unknown;
+  readonly failureStage?: unknown;
+  readonly outputShape?: unknown;
+};
+
+/**
+ * Structural brand keeps diagnostics extractable across tsx/bundle/error-realm boundaries.  Only
+ * the brand and stable code are trusted; every other field is normalized again before persistence.
+ */
+const isV207OutputContractDiagnostic = (
+  error: unknown,
+): error is V207OutputContractDiagnosticLike => {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as AnyRecord;
+  return (
+    candidate.diagnosticBrand === V207_OUTPUT_DIAGNOSTIC_BRAND &&
+    candidate.code === "MAGE_OUTPUT_NOT_SUCCEEDED"
+  );
+};
+
 /**
  * Carries only bounded output-contract facts across the qualification failure path.  The error
- * message is intentionally stable; status, failure code, and shape keys are persisted separately
- * after strict validation so a provider body or secret can never become the failure message.
+ * message is intentionally stable; status, stage, failure code, and shape keys are persisted
+ * separately after strict validation so a provider body or secret can never become the message.
  */
 export class V207OutputContractError extends Error {
   readonly code = "MAGE_OUTPUT_NOT_SUCCEEDED" as const;
+  readonly diagnosticBrand = V207_OUTPUT_DIAGNOSTIC_BRAND;
   readonly outputStatus: string;
   readonly failureCode: string;
+  readonly failureStage: V207OutputFailureStage;
   readonly outputShape: V207OutputShape;
 
-  constructor(outputStatus: unknown, failureCode: unknown, outputShape: unknown) {
+  constructor(
+    outputStatus: unknown,
+    failureCode: unknown,
+    outputShape: unknown,
+    failureStage: unknown = "top_level",
+  ) {
     super("MAGE_OUTPUT_NOT_SUCCEEDED");
     this.name = "V207OutputContractError";
     this.outputStatus = safeV207OutputDiagnosticCode(outputStatus, "MISSING");
     this.failureCode = safeV207OutputDiagnosticCode(failureCode, "UNKNOWN");
-    const shape = outputShape as AnyRecord;
-    const kind = shape?.kind;
-    const keys = Array.isArray(shape?.keys)
-      ? [...new Set(shape.keys.map(String).filter((key) => V207_OUTPUT_SHAPE_KEYS.has(key)))]
-          .sort()
-          .slice(0, 8)
-      : [];
-    this.outputShape = {
-      kind: V207_OUTPUT_SHAPE_KINDS.has(String(kind)) ? (kind as V207OutputShapeKind) : "missing",
-      keys,
-    };
+    this.failureStage = safeV207OutputFailureStage(failureStage, "unknown");
+    this.outputShape = normalizeV207OutputShape(outputShape);
   }
 }
 
 export function extractV207OutputContractDiagnostics(error: unknown): AnyRecord | null {
-  if (!(error instanceof V207OutputContractError)) return null;
+  if (!isV207OutputContractDiagnostic(error)) return null;
+  const outputShape = normalizeV207OutputShape(error.outputShape);
   return {
-    error: error.code,
+    error: "MAGE_OUTPUT_NOT_SUCCEEDED",
     error_category: "output_contract",
-    output_status: error.outputStatus,
-    output_failure_code: error.failureCode,
-    output_shape_kind: error.outputShape.kind,
-    output_shape_keys: [...error.outputShape.keys],
+    output_failure_stage: safeV207OutputFailureStage(error.failureStage, "unknown"),
+    output_status: safeV207OutputDiagnosticCode(error.outputStatus, "MISSING"),
+    output_failure_code: safeV207OutputDiagnosticCode(error.failureCode, "UNKNOWN"),
+    output_shape_kind: outputShape.kind,
+    output_shape_keys: [...outputShape.keys],
   };
 }
+
+const boundedV207FailureCode = (error: unknown): string => {
+  const candidate =
+    error instanceof RunPodControlError ? error.code : error instanceof Error ? error.message : "";
+  return safeV207OutputDiagnosticCode(candidate, "UNKNOWN");
+};
 
 const findV207ProviderErrorCode = (value: unknown, depth = 0): string | null => {
   if (depth > 5) return null;
@@ -1010,225 +1087,254 @@ async function verifyBatch(
   assertV207ItemCount(itemCount);
   if (job.status !== "COMPLETED") throw new Error(`RUNPOD_JOB_${job.status}`);
   const output = job.output as AnyRecord;
-  if (!output || output.status !== "SUCCEEDED" || !Array.isArray(output.items)) {
-    console.error(
-      `v207:failed-output-shape=${JSON.stringify({
-        job_keys: Object.keys(job).sort(),
-        output_type: Array.isArray(output) ? "array" : typeof output,
-        output_keys: output && typeof output === "object" ? Object.keys(output).sort() : [],
-      })}`,
-    );
-    const outputStatus =
-      typeof output?.status === "string" && SAFE_PROVIDER_CODE.test(output.status)
-        ? output.status
-        : "MISSING";
-    const failureCode = extractV207ProviderJobErrorCode(job.error, output) ?? "UNKNOWN";
-    throw new V207OutputContractError(outputStatus, failureCode, describeV207OutputShape(output));
-  }
-  if (output.items.length !== itemCount || objectKeys.length !== itemCount) {
-    throw new Error("MAGE_OUTPUT_ITEM_COUNT_INVALID");
-  }
-  if (authorities.length !== itemCount) throw new Error("MAGE_AUTHORITY_COUNT_INVALID");
-  const receipt = output.provenance_receipt as AnyRecord;
-  if (!receipt || receipt.schema_version !== "serverless-provenance-receipt/v1") {
-    throw new Error("MAGE_RECEIPT_MISSING");
-  }
-  const receiptBody = { ...receipt };
-  const signature = receiptBody.signature as AnyRecord;
-  delete receiptBody.receipt_sha256;
-  delete receiptBody.signature;
-  const receiptSha = hashText(sortedJson(receiptBody));
-  if (receipt.receipt_sha256 !== receiptSha) throw new Error("MAGE_RECEIPT_HASH_INVALID");
-  const preimage = sortedJson({ key_id: receiptKeyId, receipt_sha256: receiptSha });
-  const expectedSignature = createHmac("sha256", receiptSecret).update(preimage).digest("hex");
-  if (
-    signature?.algorithm !== "HMAC-SHA256" ||
-    signature.key_id !== receiptKeyId ||
-    signature.value !== expectedSignature
-  ) {
-    throw new Error("MAGE_RECEIPT_SIGNATURE_INVALID");
-  }
-  const deployment = receipt.deployment as AnyRecord;
-  const runtimeProbe = receipt.runtime_probe as AnyRecord;
-  const volumeVerification = receipt.volume_verification as AnyRecord;
-  const modelReady = receipt.model_ready_evidence as AnyRecord;
-  const scratchCleanup = receipt.scratch_cleanup as AnyRecord;
-  const receiptItems = receipt.items as AnyRecord[];
-  const timings = receipt.timings as AnyRecord;
-  const requiredTimings = [
-    "allocation_ms",
-    "container_ready_ms",
-    "volume_verified_ms",
-    "model_load_ms",
-    "warmup_ms",
-    "first_inference_ms",
-    "upload_ms",
-    "total_ms",
-  ] as const;
-  if (
-    receipt.attempt_id !== expectedAttemptId ||
-    receipt.provider_job_id !== job.id ||
-    deployment?.container_digest !== IMAGE.slice(IMAGE.indexOf("@") + 1) ||
-    deployment?.endpoint_id_sha256 !== expectedEndpointIdHash ||
-    deployment?.intended_volume_id_sha256 !== VOLUME ||
-    deployment?.intended_region !== V207_RUNPOD_REGION ||
-    deployment?.model_manifest_sha256 !== MANIFEST ||
-    runtimeProbe?.gpu_name !== V207_RUNPOD_GPU ||
-    runtimeProbe?.gpu_count !== 1 ||
-    runtimeProbe?.cuda_version !== V207_RUNPOD_MIN_CUDA_VERSION ||
-    volumeVerification?.manifest_sha256_before !== MANIFEST ||
-    volumeVerification?.manifest_sha256_after !== MANIFEST ||
-    volumeVerification?.mutation_detected !== false ||
-    volumeVerification?.cross_mount_detected !== false ||
-    modelReady?.state !== "MODEL_READY" ||
-    modelReady?.warmup_completed !== true ||
-    !/^sha256:[0-9a-f]{64}$/u.test(String(modelReady?.warmup_output_sha256 ?? "")) ||
-    scratchCleanup?.removed !== true ||
-    scratchCleanup?.scratch_on_model_volume !== false ||
-    !Array.isArray(receiptItems) ||
-    receiptItems.length !== objectKeys.length ||
-    !timings ||
-    requiredTimings.some(
-      (key) => !Number.isSafeInteger(timings[key]) || Number(timings[key]) < 0,
-    ) ||
-    timings.first_inference_ms < 1 ||
-    timings.total_ms < 1
-  ) {
-    throw new Error("MAGE_RECEIPT_IDENTITY_INVALID");
-  }
-  const readbacks: AnyRecord[] = [];
-  const commitReceipts: AnyRecord[] = [];
-  let peakVram = 0;
-  for (const [index, itemValue] of output.items.entries()) {
-    const item = itemValue as AnyRecord;
-    const authority = authorities[index] as AnyRecord;
-    const receiptItem = receiptItems[index] as AnyRecord;
-    const runtimeEvidence = item.runtime_evidence as AnyRecord;
-    const gpu = runtimeEvidence?.gpu as AnyRecord;
-    if (
-      item.output_object_key !== objectKeys[index] ||
-      !/^sha256:[0-9a-f]{64}$/u.test(String(item.output_sha256 ?? "")) ||
-      !Number.isSafeInteger(item.output_bytes) ||
-      item.output_bytes < 1 ||
-      item.output_bytes > OUTPUT_LIMIT ||
-      item.width !== 1280 ||
-      item.height !== 720 ||
-      authority?.path !== `/${objectKeys[index]}` ||
-      receiptItem?.item_id !== `scene-${String(index + 1).padStart(2, "0")}` ||
-      receiptItem?.state !== "SUCCEEDED" ||
-      receiptItem?.output_object_key !== item.output_object_key ||
-      receiptItem?.output_sha256 !== item.output_sha256 ||
-      receiptItem?.output_bytes !== item.output_bytes ||
-      receiptItem?.probe?.width !== 1280 ||
-      receiptItem?.probe?.height !== 720 ||
-      receiptItem?.probe?.format !== "png" ||
-      runtimeEvidence?.schema_version !== "videoforge.mage-runtime-evidence/v3" ||
-      runtimeEvidence?.volume_id_hash !== VOLUME ||
-      runtimeEvidence?.worker_image_digest !== IMAGE ||
-      runtimeEvidence?.model_revision !== MODEL_REVISION ||
-      runtimeEvidence?.comfyui_revision !== "26d7f8556822d9d08c2d3e1878636ac3b4969af9" ||
-      runtimeEvidence?.precision !== "int8-convrot" ||
-      gpu?.name !== V207_RUNPOD_GPU ||
-      gpu?.device_count !== 1 ||
-      gpu?.cuda_version !== V207_RUNPOD_MIN_CUDA_VERSION ||
-      !Number.isSafeInteger(gpu?.peak_vram_used_bytes) ||
-      Number(gpu?.peak_vram_used_bytes) < 1
-    ) {
-      throw new Error("MAGE_OUTPUT_LINEAGE_INVALID");
+  let failureStage: V207OutputFailureStage = "top_level";
+  try {
+    if (!output || output.status !== "SUCCEEDED" || !Array.isArray(output.items)) {
+      console.error(
+        `v207:failed-output-shape=${JSON.stringify({
+          job_keys: Object.keys(job).sort(),
+          output_type: Array.isArray(output) ? "array" : typeof output,
+          output_keys: output && typeof output === "object" ? Object.keys(output).sort() : [],
+        })}`,
+      );
+      const outputStatus =
+        typeof output?.status === "string" && SAFE_PROVIDER_CODE.test(output.status)
+          ? output.status
+          : "MISSING";
+      const failureCode = extractV207ProviderJobErrorCode(job.error, output) ?? "UNKNOWN";
+      throw new V207OutputContractError(
+        outputStatus,
+        failureCode,
+        describeV207OutputShape(output),
+        failureStage,
+      );
     }
-    const getPort = await routePort(
-      {
+    failureStage = "item_count";
+    if (output.items.length !== itemCount || objectKeys.length !== itemCount) {
+      throw new Error("MAGE_OUTPUT_ITEM_COUNT_INVALID");
+    }
+    failureStage = "authority_count";
+    if (authorities.length !== itemCount) throw new Error("MAGE_AUTHORITY_COUNT_INVALID");
+    failureStage = "receipt_presence";
+    const receipt = output.provenance_receipt as AnyRecord;
+    if (!receipt || receipt.schema_version !== "serverless-provenance-receipt/v1") {
+      throw new Error("MAGE_RECEIPT_MISSING");
+    }
+    failureStage = "receipt_hash";
+    const receiptBody = { ...receipt };
+    const signature = receiptBody.signature as AnyRecord;
+    delete receiptBody.receipt_sha256;
+    delete receiptBody.signature;
+    const receiptSha = hashText(sortedJson(receiptBody));
+    if (receipt.receipt_sha256 !== receiptSha) throw new Error("MAGE_RECEIPT_HASH_INVALID");
+    failureStage = "receipt_signature";
+    const preimage = sortedJson({ key_id: receiptKeyId, receipt_sha256: receiptSha });
+    const expectedSignature = createHmac("sha256", receiptSecret).update(preimage).digest("hex");
+    if (
+      signature?.algorithm !== "HMAC-SHA256" ||
+      signature.key_id !== receiptKeyId ||
+      signature.value !== expectedSignature
+    ) {
+      throw new Error("MAGE_RECEIPT_SIGNATURE_INVALID");
+    }
+    const deployment = receipt.deployment as AnyRecord;
+    const runtimeProbe = receipt.runtime_probe as AnyRecord;
+    const volumeVerification = receipt.volume_verification as AnyRecord;
+    const modelReady = receipt.model_ready_evidence as AnyRecord;
+    const scratchCleanup = receipt.scratch_cleanup as AnyRecord;
+    const receiptItems = receipt.items as AnyRecord[];
+    const timings = receipt.timings as AnyRecord;
+    const requiredTimings = [
+      "allocation_ms",
+      "container_ready_ms",
+      "volume_verified_ms",
+      "model_load_ms",
+      "warmup_ms",
+      "first_inference_ms",
+      "upload_ms",
+      "total_ms",
+    ] as const;
+    failureStage = "receipt_identity";
+    if (
+      receipt.attempt_id !== expectedAttemptId ||
+      receipt.provider_job_id !== job.id ||
+      deployment?.container_digest !== IMAGE.slice(IMAGE.indexOf("@") + 1) ||
+      deployment?.endpoint_id_sha256 !== expectedEndpointIdHash ||
+      deployment?.intended_volume_id_sha256 !== VOLUME ||
+      deployment?.intended_region !== V207_RUNPOD_REGION ||
+      deployment?.model_manifest_sha256 !== MANIFEST ||
+      runtimeProbe?.gpu_name !== V207_RUNPOD_GPU ||
+      runtimeProbe?.gpu_count !== 1 ||
+      runtimeProbe?.cuda_version !== V207_RUNPOD_MIN_CUDA_VERSION ||
+      volumeVerification?.manifest_sha256_before !== MANIFEST ||
+      volumeVerification?.manifest_sha256_after !== MANIFEST ||
+      volumeVerification?.mutation_detected !== false ||
+      volumeVerification?.cross_mount_detected !== false ||
+      modelReady?.state !== "MODEL_READY" ||
+      modelReady?.warmup_completed !== true ||
+      !/^sha256:[0-9a-f]{64}$/u.test(String(modelReady?.warmup_output_sha256 ?? "")) ||
+      scratchCleanup?.removed !== true ||
+      scratchCleanup?.scratch_on_model_volume !== false ||
+      !Array.isArray(receiptItems) ||
+      receiptItems.length !== objectKeys.length ||
+      !timings ||
+      requiredTimings.some(
+        (key) => !Number.isSafeInteger(timings[key]) || Number(timings[key]) < 0,
+      ) ||
+      timings.first_inference_ms < 1 ||
+      timings.total_ms < 1
+    ) {
+      throw new Error("MAGE_RECEIPT_IDENTITY_INVALID");
+    }
+    const readbacks: AnyRecord[] = [];
+    const commitReceipts: AnyRecord[] = [];
+    let peakVram = 0;
+    failureStage = "output_lineage";
+    for (const [index, itemValue] of output.items.entries()) {
+      const item = itemValue as AnyRecord;
+      const authority = authorities[index] as AnyRecord;
+      const receiptItem = receiptItems[index] as AnyRecord;
+      const runtimeEvidence = item.runtime_evidence as AnyRecord;
+      const gpu = runtimeEvidence?.gpu as AnyRecord;
+      if (
+        item.output_object_key !== objectKeys[index] ||
+        !/^sha256:[0-9a-f]{64}$/u.test(String(item.output_sha256 ?? "")) ||
+        !Number.isSafeInteger(item.output_bytes) ||
+        item.output_bytes < 1 ||
+        item.output_bytes > OUTPUT_LIMIT ||
+        item.width !== 1280 ||
+        item.height !== 720 ||
+        authority?.path !== `/${objectKeys[index]}` ||
+        receiptItem?.item_id !== `scene-${String(index + 1).padStart(2, "0")}` ||
+        receiptItem?.state !== "SUCCEEDED" ||
+        receiptItem?.output_object_key !== item.output_object_key ||
+        receiptItem?.output_sha256 !== item.output_sha256 ||
+        receiptItem?.output_bytes !== item.output_bytes ||
+        receiptItem?.probe?.width !== 1280 ||
+        receiptItem?.probe?.height !== 720 ||
+        receiptItem?.probe?.format !== "png" ||
+        runtimeEvidence?.schema_version !== "videoforge.mage-runtime-evidence/v3" ||
+        runtimeEvidence?.volume_id_hash !== VOLUME ||
+        runtimeEvidence?.worker_image_digest !== IMAGE ||
+        runtimeEvidence?.model_revision !== MODEL_REVISION ||
+        runtimeEvidence?.comfyui_revision !== "26d7f8556822d9d08c2d3e1878636ac3b4969af9" ||
+        runtimeEvidence?.precision !== "int8-convrot" ||
+        gpu?.name !== V207_RUNPOD_GPU ||
+        gpu?.device_count !== 1 ||
+        gpu?.cuda_version !== V207_RUNPOD_MIN_CUDA_VERSION ||
+        !Number.isSafeInteger(gpu?.peak_vram_used_bytes) ||
+        Number(gpu?.peak_vram_used_bytes) < 1
+      ) {
+        throw new Error("MAGE_OUTPUT_LINEAGE_INVALID");
+      }
+      failureStage = "output_readback";
+      const getPort = await routePort(
+        {
+          schema_version: "videoforge-v207-generated-output-port-request/v1",
+          operation: "GET",
+          account_id: ACCOUNT,
+          workspace_id: WORKSPACE,
+          object_key: item.output_object_key,
+          content_type: "image/png",
+          max_content_length: OUTPUT_LIMIT,
+          lifetime_seconds: 600,
+          content_length: item.output_bytes,
+          checksum_sha256: item.output_sha256,
+        },
+        nonce,
+      );
+      const response = await fetch(getPort.url, { signal: AbortSignal.timeout(30_000) });
+      if (!response.ok) throw new Error("MAGE_OUTPUT_READBACK_FAILED");
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const byteHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+      if (bytes.byteLength !== item.output_bytes || byteHash !== item.output_sha256) {
+        throw new Error("MAGE_OUTPUT_DURABILITY_MISMATCH");
+      }
+      failureStage = "output_png_probe";
+      const png = Buffer.from(bytes);
+      if (
+        png.length < 24 ||
+        png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
+        png.subarray(12, 16).toString("ascii") !== "IHDR" ||
+        png.readUInt32BE(16) !== 1280 ||
+        png.readUInt32BE(20) !== 720
+      ) {
+        throw new Error("MAGE_OUTPUT_NOT_PNG");
+      }
+      const finalizationRequest = {
         schema_version: "videoforge-v207-generated-output-port-request/v1",
-        operation: "GET",
+        operation: "FINALIZE",
         account_id: ACCOUNT,
         workspace_id: WORKSPACE,
         object_key: item.output_object_key,
         content_type: "image/png",
-        max_content_length: OUTPUT_LIMIT,
-        lifetime_seconds: 600,
         content_length: item.output_bytes,
         checksum_sha256: item.output_sha256,
-      },
-      nonce,
-    );
-    const response = await fetch(getPort.url, { signal: AbortSignal.timeout(30_000) });
-    if (!response.ok) throw new Error("MAGE_OUTPUT_READBACK_FAILED");
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    const byteHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-    if (bytes.byteLength !== item.output_bytes || byteHash !== item.output_sha256) {
-      throw new Error("MAGE_OUTPUT_DURABILITY_MISMATCH");
+        reservation_id: authority.reservation_id,
+        capability_handle: authority.capability_handle,
+        callback_id: `callback-${expectedAttemptId}-${String(index + 1).padStart(2, "0")}`,
+      };
+      failureStage = "output_finalization";
+      const finalized = await routePort(finalizationRequest, nonce);
+      const commitReceipt = finalized.receipt as AnyRecord;
+      const commitReceiptBody = { ...commitReceipt };
+      delete commitReceiptBody.schema_version;
+      delete commitReceiptBody.receipt_id;
+      delete commitReceiptBody.receipt_sha256;
+      if (
+        finalized.schema_version !== "videoforge-v207-generated-output-finalization/v1" ||
+        commitReceipt?.schema_version !== "artifact-commit-receipt/v3" ||
+        commitReceipt?.reservation_id !== authority.reservation_id ||
+        commitReceipt?.object_key !== item.output_object_key ||
+        commitReceipt?.content_type !== "image/png" ||
+        commitReceipt?.content_length !== item.output_bytes ||
+        commitReceipt?.checksum_sha256 !== item.output_sha256 ||
+        commitReceipt?.probe?.width !== 1280 ||
+        commitReceipt?.probe?.height !== 720 ||
+        commitReceipt?.probe?.format !== "png" ||
+        commitReceipt?.probe?.decoded !== true ||
+        !/^sha256:[0-9a-f]{64}$/u.test(String(commitReceipt?.receipt_sha256 ?? "")) ||
+        commitReceipt.receipt_sha256 !== hashText(sortedJson(commitReceiptBody))
+      ) {
+        throw new Error("MAGE_COMMIT_RECEIPT_INVALID");
+      }
+      failureStage = "output_finalization_replay";
+      const replayed = await routePort(finalizationRequest, nonce);
+      if (replayed.receipt?.receipt_sha256 !== commitReceipt.receipt_sha256) {
+        throw new Error("MAGE_COMMIT_RECEIPT_REPLAY_INVALID");
+      }
+      const itemPeak = Number(gpu.peak_vram_used_bytes);
+      peakVram = Math.max(peakVram, itemPeak);
+      readbacks.push({ bytes: bytes.byteLength, sha256: byteHash });
+      commitReceipts.push({
+        receipt_sha256: commitReceipt.receipt_sha256,
+        reservation_id: commitReceipt.reservation_id,
+        replay_confirmed: true,
+      });
     }
-    const png = Buffer.from(bytes);
-    if (
-      png.length < 24 ||
-      png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
-      png.subarray(12, 16).toString("ascii") !== "IHDR" ||
-      png.readUInt32BE(16) !== 1280 ||
-      png.readUInt32BE(20) !== 720
-    ) {
-      throw new Error("MAGE_OUTPUT_NOT_PNG");
-    }
-    const finalizationRequest = {
-      schema_version: "videoforge-v207-generated-output-port-request/v1",
-      operation: "FINALIZE",
-      account_id: ACCOUNT,
-      workspace_id: WORKSPACE,
-      object_key: item.output_object_key,
-      content_type: "image/png",
-      content_length: item.output_bytes,
-      checksum_sha256: item.output_sha256,
-      reservation_id: authority.reservation_id,
-      capability_handle: authority.capability_handle,
-      callback_id: `callback-${expectedAttemptId}-${String(index + 1).padStart(2, "0")}`,
+    return {
+      provider_job_id_hash: hashText(job.id),
+      status: job.status,
+      execution_time_ms: job.executionTimeMs,
+      delay_time_ms: job.delayTimeMs,
+      item_count: output.items.length,
+      peak_vram_used_bytes: peakVram,
+      readbacks,
+      commit_receipts: commitReceipts,
+      receipt_sha256: receipt.receipt_sha256,
+      timings,
     };
-    const finalized = await routePort(finalizationRequest, nonce);
-    const commitReceipt = finalized.receipt as AnyRecord;
-    const commitReceiptBody = { ...commitReceipt };
-    delete commitReceiptBody.schema_version;
-    delete commitReceiptBody.receipt_id;
-    delete commitReceiptBody.receipt_sha256;
-    if (
-      finalized.schema_version !== "videoforge-v207-generated-output-finalization/v1" ||
-      commitReceipt?.schema_version !== "artifact-commit-receipt/v3" ||
-      commitReceipt?.reservation_id !== authority.reservation_id ||
-      commitReceipt?.object_key !== item.output_object_key ||
-      commitReceipt?.content_type !== "image/png" ||
-      commitReceipt?.content_length !== item.output_bytes ||
-      commitReceipt?.checksum_sha256 !== item.output_sha256 ||
-      commitReceipt?.probe?.width !== 1280 ||
-      commitReceipt?.probe?.height !== 720 ||
-      commitReceipt?.probe?.format !== "png" ||
-      commitReceipt?.probe?.decoded !== true ||
-      !/^sha256:[0-9a-f]{64}$/u.test(String(commitReceipt?.receipt_sha256 ?? "")) ||
-      commitReceipt.receipt_sha256 !== hashText(sortedJson(commitReceiptBody))
-    ) {
-      throw new Error("MAGE_COMMIT_RECEIPT_INVALID");
-    }
-    const replayed = await routePort(finalizationRequest, nonce);
-    if (replayed.receipt?.receipt_sha256 !== commitReceipt.receipt_sha256) {
-      throw new Error("MAGE_COMMIT_RECEIPT_REPLAY_INVALID");
-    }
-    const itemPeak = Number(gpu.peak_vram_used_bytes);
-    peakVram = Math.max(peakVram, itemPeak);
-    readbacks.push({ bytes: bytes.byteLength, sha256: byteHash });
-    commitReceipts.push({
-      receipt_sha256: commitReceipt.receipt_sha256,
-      reservation_id: commitReceipt.reservation_id,
-      replay_confirmed: true,
-    });
+  } catch (error) {
+    if (isV207OutputContractDiagnostic(error)) throw error;
+    throw new V207OutputContractError(
+      typeof output?.status === "string" && SAFE_PROVIDER_CODE.test(output.status)
+        ? output.status
+        : "MISSING",
+      boundedV207FailureCode(error),
+      describeV207OutputShape(output),
+      failureStage,
+    );
   }
-  return {
-    provider_job_id_hash: hashText(job.id),
-    status: job.status,
-    execution_time_ms: job.executionTimeMs,
-    delay_time_ms: job.delayTimeMs,
-    item_count: output.items.length,
-    peak_vram_used_bytes: peakVram,
-    readbacks,
-    commit_receipts: commitReceipts,
-    receipt_sha256: receipt.receipt_sha256,
-    timings,
-  };
 }
 
 async function verifyBatchWithDiagnostic(
@@ -1759,7 +1865,7 @@ async function main(): Promise<void> {
 }
 
 function safeQualificationError(error: unknown): string {
-  if (error instanceof V207OutputContractError) return error.code;
+  if (isV207OutputContractDiagnostic(error)) return "MAGE_OUTPUT_NOT_SUCCEEDED";
   const candidate = error instanceof Error ? error.message : "";
   if (SAFE_PROVIDER_CODE.test(candidate)) return candidate;
   const code = candidate.match(/^[A-Z][A-Z0-9_.-]{2,80}/u)?.[0];

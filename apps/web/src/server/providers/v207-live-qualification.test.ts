@@ -261,6 +261,7 @@ describe("V2-07 live qualification runner safety", () => {
     expect(extractV207OutputContractDiagnostics(error)).toEqual({
       error: "MAGE_OUTPUT_NOT_SUCCEEDED",
       error_category: "output_contract",
+      output_failure_stage: "top_level",
       output_status: "FAILED",
       output_failure_code: "MAGE_OUTPUT_ERROR",
       output_shape_kind: "object",
@@ -283,6 +284,7 @@ describe("V2-07 live qualification runner safety", () => {
     expect(extractV207OutputContractDiagnostics(error)).toEqual({
       error: "MAGE_OUTPUT_NOT_SUCCEEDED",
       error_category: "output_contract",
+      output_failure_stage: "top_level",
       output_status: "MISSING",
       output_failure_code: "UNKNOWN",
       output_shape_kind: "missing",
@@ -292,6 +294,84 @@ describe("V2-07 live qualification runner safety", () => {
     expect(
       JSON.stringify(redactV207LiveEvidence(extractV207OutputContractDiagnostics(error))),
     ).not.toContain("secret");
+  });
+
+  it("extracts structurally branded downstream diagnostics without trusting raw fields", () => {
+    const diagnostic = extractV207OutputContractDiagnostics({
+      diagnosticBrand: "videoforge.v207.output-contract-diagnostic/v1",
+      code: "MAGE_OUTPUT_NOT_SUCCEEDED",
+      outputStatus: "SUCCEEDED",
+      failureCode: "MAGE_RECEIPT_MISSING",
+      failureStage: "receipt_presence",
+      outputShape: {
+        kind: "object",
+        keys: ["status", "items", "authorization", "provenance_receipt"],
+      },
+      provider_body: {
+        url: "https://signed.example/private?sig=secret",
+        message: "secret body must not persist",
+      },
+    });
+    expect(diagnostic).toEqual({
+      error: "MAGE_OUTPUT_NOT_SUCCEEDED",
+      error_category: "output_contract",
+      output_failure_stage: "receipt_presence",
+      output_status: "SUCCEEDED",
+      output_failure_code: "MAGE_RECEIPT_MISSING",
+      output_shape_kind: "object",
+      output_shape_keys: ["items", "provenance_receipt", "status"],
+    });
+    expect(JSON.stringify(diagnostic)).not.toContain("signed.example");
+    const redacted = redactV207LiveEvidence({
+      ...diagnostic,
+      provider_body: {
+        url: "https://signed.example/private?sig=secret",
+        body: "secret body",
+      },
+    });
+    expect(JSON.stringify(redacted)).not.toContain("signed.example");
+    expect(JSON.stringify(redacted)).not.toContain("secret body");
+    expect(extractV207OutputContractDiagnostics({ code: "MAGE_OUTPUT_NOT_SUCCEEDED" })).toBe(null);
+  });
+
+  it("covers every bounded verification stage and fails closed for unsafe stages/codes", () => {
+    for (const stage of [
+      "item_count",
+      "authority_count",
+      "receipt_presence",
+      "receipt_hash",
+      "receipt_signature",
+      "receipt_identity",
+      "output_lineage",
+      "output_readback",
+      "output_png_probe",
+      "output_finalization",
+      "output_finalization_replay",
+    ]) {
+      expect(source).toContain(`failureStage = "${stage}"`);
+    }
+    expect(source).toContain('let failureStage: V207OutputFailureStage = "top_level"');
+    expect(source).toContain("diagnosticBrand");
+    expect(source).toContain("isV207OutputContractDiagnostic");
+    expect(source).toContain("boundedV207FailureCode");
+    expect(
+      extractV207OutputContractDiagnostics({
+        diagnosticBrand: "videoforge.v207.output-contract-diagnostic/v1",
+        code: "MAGE_OUTPUT_NOT_SUCCEEDED",
+        outputStatus: "FAILED:secret-body",
+        failureCode: "MAGE_FAILURE:secret-body",
+        failureStage: "provider-secret",
+        outputShape: { kind: "provider-secret", keys: ["authorization", "items"] },
+      }),
+    ).toEqual({
+      error: "MAGE_OUTPUT_NOT_SUCCEEDED",
+      error_category: "output_contract",
+      output_failure_stage: "unknown",
+      output_status: "MISSING",
+      output_failure_code: "UNKNOWN",
+      output_shape_kind: "missing",
+      output_shape_keys: ["items"],
+    });
   });
 
   it("persists only an allow-listed endpoint readback mismatch category", () => {
