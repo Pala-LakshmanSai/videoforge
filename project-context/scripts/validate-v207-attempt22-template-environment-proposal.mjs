@@ -333,7 +333,10 @@ assert(
     (state.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json") &&
       state.includes(EXPECTED.authority)) ||
     (state.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json") &&
-      state.includes("sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c")),
+      state.includes("sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c")) ||
+    (isAttempt28State(state) &&
+      state.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json") &&
+      state.includes("sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326")),
   "state_authority",
 );
 assert(

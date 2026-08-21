@@ -5,9 +5,12 @@ accepted one complete 32-image probe with 32 private durable outputs and receipt
 fail-closed at `RUNPOD_WARM_IDLE_NOT_CONFIRMED`; its authority is consumed. Provider-free repair
 `0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14` now requires health-first quiescence plus two stable
 exact terminal worker/Pod snapshots before any next dispatch. Fresh Attempt28 proposal
-`sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf` is unapproved with a
-null cap. No provider mutation/GPU use/spend is authorized until exact approval and a fresh positive
-numeric cap; V2-08 remains forbidden.
+`sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf` is approved for one
+bounded preexecution under append-only authority
+`sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326`, FlashBoot=true, MEDIUM
+EU-RO-1 accepted at LOW minimum, and fresh maximum cumulative finite spend `$4`. Provider execution
+remains pending the authority commit and validation; no image republication, model/volume mutation,
+fallback GPU/region, public sample publication, V2-08, or successor work is authorized.
 Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any

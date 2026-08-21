@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
+import {
+  isAttempt28Activation,
+  isAttempt28AuthorizedGate,
+  isAttempt28AuthorizedState,
+  isAttempt28Gate,
+  isAttempt28State,
+} from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const evidenceRoot = resolve(root, "project-context/evidence/acceptance/VF-10-07");
@@ -350,17 +356,31 @@ const topState = state.split("\n").slice(0, 30).join("\n");
 if (isAttempt28State(state)) {
   assert(
     topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_repair_candidate_ready") ||
-      topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_proposal_ready"),
+      topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_proposal_ready") ||
+      topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized"),
     "state_top_phase_attempt28",
   );
-  includesAll(topState, [
-    "task_stage: provider_free",
-    "provider_calls_authorized: false",
-    "remote_or_cloud_mutations_authorized: false",
-    "credential_access_authorized: false",
-    "gpu_use_authorized: false",
-    "maximum_external_spend_usd: 0",
-  ], "state_top_attempt28");
+  includesAll(
+    topState,
+    isAttempt28AuthorizedState(state)
+      ? [
+          "task_stage: bounded_mutation",
+          "provider_calls_authorized: true",
+          "remote_or_cloud_mutations_authorized: true",
+          "credential_access_authorized: true",
+          "gpu_use_authorized: true",
+          "maximum_external_spend_usd: 4",
+        ]
+      : [
+          "task_stage: provider_free",
+          "provider_calls_authorized: false",
+          "remote_or_cloud_mutations_authorized: false",
+          "credential_access_authorized: false",
+          "gpu_use_authorized: false",
+          "maximum_external_spend_usd: 0",
+        ],
+    "state_top_attempt28",
+  );
 } else {
   includesAll(topState, [
     "phase: serverless_v2_v2_07_attempt27_warm_idle_failure_closed",
@@ -374,22 +394,56 @@ if (isAttempt28State(state)) {
 }
 includesAll(state, [EXPECTED.proposal, EXPECTED.authority, EXPECTED.closure, EXPECTED.cleanup], "state_evidence");
 const providerAuthority = section(state, "provider_authority: &v2_07_provider_authority", "credential_value_read_authorized:");
-includesAll(providerAuthority, ["mode: none", "cap_usd: 0", "consumed: true", "actual_spend_usd: 0", "resources: []", "authorized_operations: []", "allowed_operations: []"], "provider_authority_closed");
-assert(providerAuthority.includes(EXPECTED.authority) && providerAuthority.includes(EXPECTED.proposal) && providerAuthority.includes(EXPECTED.closure), "provider_authority_lineage");
+if (isAttempt28AuthorizedState(state)) {
+  includesAll(
+    providerAuthority,
+    [
+      "mode: paid",
+      "cap_usd: 4",
+      "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326",
+      "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf",
+    ],
+    "provider_authority_attempt28",
+  );
+} else {
+  includesAll(providerAuthority, ["mode: none", "cap_usd: 0", "consumed: true", "actual_spend_usd: 0", "resources: []", "authorized_operations: []", "allowed_operations: []"], "provider_authority_closed");
+  assert(providerAuthority.includes(EXPECTED.authority) && providerAuthority.includes(EXPECTED.proposal) && providerAuthority.includes(EXPECTED.closure), "provider_authority_lineage");
+}
 const runpodScope = section(state, "runpod_account_scope:", "repository:");
-includesAll(runpodScope, ["current_authority: null", "current_authority_sha256: null", "mutation_authorized: false", "gpu_use_authorized: false", "spend_authorized_usd: 0"], "runpod_scope_closed");
+includesAll(
+  runpodScope,
+  isAttempt28AuthorizedState(state)
+    ? [
+        "current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json",
+        'current_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"',
+        "mutation_authorized: true",
+        "gpu_use_authorized: true",
+        "spend_authorized_usd: 4",
+      ]
+    : ["current_authority: null", "current_authority_sha256: null", "mutation_authorized: false", "gpu_use_authorized: false", "spend_authorized_usd: 0"],
+  "runpod_scope",
+);
 const recommended = section(state, "recommended_next_task:", "verification:");
 if (isAttempt28State(state)) {
   includesAll(
     recommended,
-    [
-      "NOT_QUALIFIED",
-      "provider_calls_authorized: false",
-      "maximum_external_spend_usd: 0",
-      "remote_or_cloud_mutations_authorized: false",
-      "gpu_use_authorized: false",
-      "execution_status: attempt28_provider_free_proposal_ready",
-    ],
+    isAttempt28AuthorizedState(state)
+      ? [
+          "NOT_QUALIFIED_attempt28_authorized_preexecution",
+          "provider_calls_authorized: true",
+          "maximum_external_spend_usd: 4",
+          "remote_or_cloud_mutations_authorized: true",
+          "gpu_use_authorized: true",
+          "execution_status: attempt28_authorized_provider_execution_pending",
+        ]
+      : [
+          "NOT_QUALIFIED",
+          "provider_calls_authorized: false",
+          "maximum_external_spend_usd: 0",
+          "remote_or_cloud_mutations_authorized: false",
+          "gpu_use_authorized: false",
+          "execution_status: attempt28_provider_free_proposal_ready",
+        ],
     "recommended_attempt28",
   );
 } else {
@@ -399,7 +453,21 @@ const latestLive = section(state, "latest_live_check:", "GATE_SERVERLESS_SOULX_0
 includesAll(latestLive, [EXPECTED.closure, EXPECTED.cleanup, "authority_mode: none_attempt27_consumed", "pending_numeric_cap_usd: null", "result: \"NOT_QUALIFIED_attempt27_closed_warm_idle_failure\""], "latest_live_closed");
 
 const mageGate = section(gates, "GATE_SERVERLESS_MAGE_001:", "GATE_SERVERLESS_SOULX_001:");
-if (isAttempt28Gate(gates)) {
+if (isAttempt28AuthorizedGate(gates)) {
+  includesAll(
+    mageGate,
+    [
+      "status: open",
+      'pending_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"',
+      'pending_control_source_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"',
+      'pending_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"',
+      "authority_mode: attempt28_bounded_mutation_authorized",
+      "pending_numeric_cap_usd: 4",
+      'result: "NOT_QUALIFIED_attempt28_authorized_preexecution"',
+    ],
+    "gate_attempt28_authorized",
+  );
+} else if (isAttempt28Gate(gates)) {
   assert(
     mageGate.includes("status: open") &&
       mageGate.includes('pending_proposal_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"') &&
@@ -415,9 +483,19 @@ if (isAttempt28Gate(gates)) {
   includesAll(mageGate, ["status: open", "latest_closed_proposal_sha256: \"" + EXPECTED.proposal + "\"", "latest_closed_authority_sha256: \"" + EXPECTED.authority + "\"", "closure_evidence_sha256: \"" + EXPECTED.closure + "\"", "cleanup_evidence_sha256: \"" + EXPECTED.cleanup + "\"", "authority_mode: none_attempt27_consumed", "pending_numeric_cap_usd: null", "result: \"NOT_QUALIFIED_attempt27_closed_warm_idle_failure\""], "gate_closed");
 }
 assert(!mageGate.includes("authority_mode: attempt27_bounded_mutation_authorized"), "gate_stale_authority");
-assert(!mageGate.includes("pending_numeric_cap_usd: 4"), "gate_stale_cap");
+assert(isAttempt28AuthorizedGate(gates) || !mageGate.includes("pending_numeric_cap_usd: 4"), "gate_stale_cap");
 includesAll(task, [EXPECTED.closure, "RUNPOD_WARM_IDLE_NOT_CONFIRMED", "it is consumed", "V2-07 remains `NOT_QUALIFIED`", "V2-08 remains forbidden"], "task_closure");
 includesAll(start, [EXPECTED.closure, "RUNPOD_WARM_IDLE_NOT_CONFIRMED", "consumed and non-reusable", "V2-07 remains NOT_QUALIFIED", "V2-08"], "start_closure");
-includesAll(activation, ["V207_APPROVED_FINITE_CAP_USD: number | null = null", "V207_PENDING_PROPOSAL_SHA256", "V207_HOSTED_PNG_CRC32_REPAIR_COMMIT"], "activation_closed");
+includesAll(
+  activation,
+  [
+    isAttempt28AuthorizedState(state)
+      ? "V207_APPROVED_FINITE_CAP_USD: number | null = 4"
+      : "V207_APPROVED_FINITE_CAP_USD: number | null = null",
+    "V207_PENDING_PROPOSAL_SHA256",
+    "V207_HOSTED_PNG_CRC32_REPAIR_COMMIT",
+  ],
+  "activation_closed",
+);
 
 process.stdout.write(`V2-07 Attempt27 closure validation PASS (${EXPECTED.closure}; cleanup ${EXPECTED.cleanup}; RUNPOD_WARM_IDLE_NOT_CONFIRMED; 32 durable readbacks/receipts; three stable zero-resource reads; authority consumed)\n`);

@@ -12,6 +12,7 @@ const expected = Object.freeze({
   proposal: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf",
   max1: "sha256:acef5c48b6059fa2401b88bb40ed81e648c9ed795e5fcb3208e117d936f4196d",
   max2: "sha256:45d067e5d7e1b152d25c62eb7e185898bbedd30797d5d9aacc83bb9a48e41836",
+  authority: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326",
   control: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14",
   image:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -34,19 +35,23 @@ const hasAll = (text, values) => values.every((value) => text.includes(value));
 const proposalPath = join(candidate, "combined-live-proposal.json");
 const max1Path = join(candidate, "staged-config-max1.json");
 const max2Path = join(candidate, "staged-config-max2.json");
-const [proposalBytes, max1Bytes, max2Bytes] = await Promise.all([
+const authorityPath = join(candidate, "approved-authority.json");
+const [proposalBytes, max1Bytes, max2Bytes, authorityBytes] = await Promise.all([
   readFile(proposalPath),
   readFile(max1Path),
   readFile(max2Path),
+  readFile(authorityPath),
 ]);
 assert(sha256(proposalBytes) === expected.proposal, "PROPOSAL_HASH_DRIFT");
 assert(sha256(max1Bytes) === expected.max1, "MAX1_HASH_DRIFT");
 assert(sha256(max2Bytes) === expected.max2, "MAX2_HASH_DRIFT");
+assert(sha256(authorityBytes) === expected.authority, "AUTHORITY_HASH_DRIFT");
 
-const [proposal, max1, max2] = await Promise.all([
+const [proposal, max1, max2, authority] = await Promise.all([
   readJson(proposalPath),
   readJson(max1Path),
   readJson(max2Path),
+  readJson(authorityPath),
 ]);
 assert(proposal.attempt === 28, "ATTEMPT");
 assert(proposal.provider_mutation === false && proposal.gpu_use === false, "PROVIDER_BOUNDARY");
@@ -54,6 +59,30 @@ assert(proposal.spend_usd === 0, "SPEND_BOUNDARY");
 assert(proposal.user_approval?.exact_proposal_approved === false, "APPROVAL_BOUNDARY");
 assert(proposal.user_approval?.maximum_cumulative_finite_spend_usd === null, "CAP_MUST_BE_NULL");
 assert(proposal.user_approval?.fresh_numeric_cap_required === true, "FRESH_CAP_REQUIRED");
+assert(authority.schema_version === "videoforge.v2-07-attempt28-post-job-terminal-scale-zero-authority/v1", "AUTHORITY_SCHEMA");
+assert(authority.attempt === 28 && authority.authority_mode === "bounded_mutation", "AUTHORITY_SCOPE");
+assert(authority.proposal?.path === "combined-live-proposal.json", "AUTHORITY_PROPOSAL_PATH");
+assert(authority.proposal?.sha256 === expected.proposal, "AUTHORITY_PROPOSAL_HASH");
+assert(authority.approval?.exact_proposal_approved === true, "AUTHORITY_APPROVAL");
+assert(authority.approval?.flashboot_true_accepted === true, "AUTHORITY_FLASHBOOT");
+assert(authority.approval?.minimum_approved_availability === "LOW", "AUTHORITY_AVAILABILITY_MINIMUM");
+assert(authority.approval?.observed_availability_at_approval === "MEDIUM", "AUTHORITY_AVAILABILITY_OBSERVED");
+assert(authority.approval?.maximum_cumulative_finite_spend_usd === 4, "AUTHORITY_CAP");
+assert(authority.approval?.fresh_numeric_cap === true, "AUTHORITY_FRESH_CAP");
+assert(authority.approval?.historical_cap_reused === false && authority.approval?.prior_authority_reused === false, "AUTHORITY_REUSE");
+assert(authority.execution_boundary?.provider_calls_completed === false, "AUTHORITY_PROVIDER_CALLS");
+assert(authority.execution_boundary?.external_spend_usd === 0, "AUTHORITY_EXTERNAL_SPEND");
+assert(authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4, "AUTHORITY_EXECUTION_CAP");
+assert(authority.execution_boundary?.provider_calls_only_after_authority_commit === true, "AUTHORITY_COMMIT_FENCE");
+assert(authority.execution_boundary?.v2_08_authorized === false, "AUTHORITY_SUCCESSOR_FENCE");
+assert(authority.lineage?.control_source_commit === expected.control, "AUTHORITY_CONTROL");
+assert(authority.lineage?.final_image === expected.image, "AUTHORITY_IMAGE");
+assert(authority.lineage?.model === expected.model, "AUTHORITY_MODEL");
+assert(authority.lineage?.model_manifest_sha256 === expected.manifest, "AUTHORITY_MANIFEST");
+assert(authority.lineage?.volume_id_sha256 === expected.volume, "AUTHORITY_VOLUME");
+assert(authority.lineage?.initial_config_sha256 === expected.max1, "AUTHORITY_MAX1");
+assert(authority.lineage?.concurrent_reader_config_sha256 === expected.max2, "AUTHORITY_MAX2");
+assert(authority.status === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING", "AUTHORITY_STATUS");
 assert(proposal.lineage?.model === expected.model, "MODEL");
 assert(proposal.lineage?.model_manifest_sha256 === expected.manifest, "MANIFEST");
 assert(proposal.lineage?.final_image === expected.image, "IMAGE");
@@ -116,12 +145,12 @@ const [state, gates, task, start, activation, activationTest] = await Promise.al
   readFile(join(root, "apps/web/src/server/providers/v207-activation-authority.test.ts"), "utf8"),
 ]);
 for (const [name, text] of Object.entries({ state, gates, task, start, activation, activationTest })) {
-  assert(hasAll(text, [expected.proposal, expected.control]), `${name.toUpperCase()}_POINTERS`);
+  assert(hasAll(text, [expected.proposal, expected.control, expected.authority]), `${name.toUpperCase()}_POINTERS`);
 }
-assert(hasAll(state, [expected.max1, expected.max2, "maximum_cumulative_finite_spend_usd: null", "provider_calls_authorized: false"]), "STATE_BOUNDARY");
-assert(hasAll(gates, ["authority_mode: none_attempt28_unapproved", "pending_numeric_cap_usd: null"]), "GATE_BOUNDARY");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_CLOSED");
+assert(hasAll(state, [expected.max1, expected.max2, "phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized", "task_stage: bounded_mutation", "maximum_external_spend_usd: 4", "v2_07_current_approved_authority_sha256: \"sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326\"", "provider_calls_authorized: true"]), "STATE_BOUNDARY");
+assert(hasAll(gates, ["authority_mode: attempt28_bounded_mutation_authorized", "pending_numeric_cap_usd: 4", "pending_authority_sha256: \"sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326\""]), "GATE_BOUNDARY");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "ACTIVATION_APPROVED");
 
 process.stdout.write(
-  `V2-07 Attempt28 proposal validation PASS (${expected.proposal}; max1 ${expected.max1}; max2 ${expected.max2}; authority absent; cap null)\n`,
+  `V2-07 Attempt28 authority validation PASS (${expected.proposal}; max1 ${expected.max1}; max2 ${expected.max2}; authority ${expected.authority}; cap $4)\n`,
 );

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  V207_APPROVED_AUTHORITY_SHA256,
   V207_APPROVED_FINITE_CAP_USD,
   V207_HOSTED_PNG_CRC32_REPAIR_COMMIT,
   parseV207ActivationAuthority,
@@ -43,7 +44,10 @@ describe("V2-07 activation authority", () => {
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
     expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14");
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
+      "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326",
+    );
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -78,18 +82,18 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed Attempt27 proposal after closure", () => {
-    expect(() =>
+  it("accepts only the exact approved Attempt28 proposal and fresh $4 cap", () => {
+    expect(
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toEqual({ image, proposalSha256: V207_PENDING_PROPOSAL_SHA256, capUsd: 4 });
   });
 
-  it("rejects cap drift after the Attempt27 authority is consumed", () => {
+  it("rejects cap drift from the approved Attempt28 authority", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -97,7 +101,7 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "2",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_FINITE_CAP_MISMATCH");
   });
 
   it("rejects the consumed Attempt25 proposal after closure", () => {

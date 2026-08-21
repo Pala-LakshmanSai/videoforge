@@ -211,6 +211,8 @@ assert(
         state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json")) ||
       (attempt27AuthorizedState &&
         state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json")) ||
+      (attempt28State &&
+        state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json")) ||
       (state.includes("provider_calls_authorized: false") && state.includes("current_authority: null"))) &&
     state.includes(EXPECTED.authority),
   "state_pointer",
