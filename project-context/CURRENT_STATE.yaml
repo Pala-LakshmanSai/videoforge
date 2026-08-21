@@ -23,7 +23,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: request_fresh_exact_get_readback_optional_fields_proposal_and_cap
-  note: "Attempt 19 is closed with exact cleanup and USD 0 spend. Commit b35f4a6 allows only omitted GET computeType/dataCenterIds while requiring exact values if present and keeping every other config/environment field strict. Fresh proposal sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d has null cap and no authority. No provider mutation, GPU use, spend, or V2-08 work is authorized."
+  note: "Attempt 19 is closed with exact cleanup and USD 0 spend. Commit b35f4a6 allows omitted GET computeType/dataCenterIds plus the duplicate networkVolumeIds alias while requiring exact values if present, mandatory exact primary networkVolumeId, and every other config/environment field. Fresh proposal sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02 has null cap and no authority. No provider mutation, GPU use, spend, or V2-08 work is authorized."
 
 provider_authority: &v2_07_provider_authority
   mode: none
@@ -317,7 +317,7 @@ repository:
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
   current_source_head_note: "Attempt 18 used exact published image sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5. Cloudflare activation/preflight and rollback passed; RunPod created the exact template/endpoint, updated the template identity environment, and returned a PATCH response that failed the complete matcher before GET or dispatch. Exact cleanup plus three stable reads proved zero Pods/endpoints/templates/workers, both intended volumes, unchanged cumulative billing USD 0.12480033212341368, and USD 0 Attempt 18 spend. Proposal 2752...715be and its authority are closed."
-  v2_07_latest_local_repair: "Commit b35f4a6 closes Attempt 19 and makes only GET computeType/dataCenterIds optional when omitted; explicit values must remain exact, and all other configuration plus the complete environment remain strict. Tests cover omitted-field success, explicit drift failure, and existing environment/config drift fences. Fresh proposal sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d and a fresh positive numeric cap are required before retry."
+  v2_07_latest_local_repair: "Commit b35f4a6 closes Attempt 19 and makes GET computeType/dataCenterIds plus the duplicate networkVolumeIds alias optional when omitted; explicit values must remain exact, primary networkVolumeId is mandatory exact, and all other configuration plus the complete environment remain strict. Tests cover omitted-field success, explicit drift failure, and existing environment/config drift fences. Fresh proposal sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02 and a fresh positive numeric cap are required before retry."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -463,21 +463,22 @@ model_runtime_evidence:
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
     v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/combined-live-proposal.json
-    v2_07_proposal_sha256: "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d"
+    v2_07_proposal_sha256: "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02"
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
     v2_07_authority: null
     v2_07_authority_sha256: null
-    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json
+    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-partial-patch-acknowledgement-candidate/approved-authority.json
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
-    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-18.json
+    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-19.json
     v2_07_observed_cumulative_endpoint_spend_usd: 0.12480033212341368
     v2_07_attempt_14_increment_usd_observed: 0
     v2_07_attempt_15_increment_usd_observed: 0
     v2_07_attempt_16_increment_usd_settled: 0
     v2_07_attempt_17_increment_usd_settled: 0
     v2_07_attempt_18_increment_usd_settled: 0
+    v2_07_attempt_19_increment_usd_settled: 0
   soulx:
     status: pod_technical_pass_serverless_visual_crop_license_and_settlement_gates_open
     exact_source: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
@@ -497,9 +498,9 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-21T04:06:12.822Z"
-  basis: attempt_18_exact_cleanup_and_three_read_independent_reconciliation
-  evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-18.json
+  checked_at: "2026-08-21T06:05:52.560Z"
+  basis: attempt_19_exact_cleanup_and_three_read_independent_reconciliation
+  evidence: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-19.json
   current_live_refresh_permitted_now: false
   stale_until_current_authorized_read_only_inventory_succeeds: false
   pods: 0
@@ -526,7 +527,7 @@ last_known_provider_resource_truth:
   current_day_cloud_cpu_usd: 0
   current_day_serverless_usd: 0.12480033212341368
   auto_pay: DISABLED
-  note: "Attempt 18 failed before GET readback or dispatch because the endpoint PATCH response did not match the complete pinned configuration. Exact field is unproven. Narrow cleanup deleted only the disposable endpoint/template after two stable terminal snapshots. Three stable reads prove zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative endpoint billing USD 0.12480033212341368, and USD 0 Attempt 18 spend. Worker rollback, signer deletion, and 16 exact 404 V207_ROUTE_DISABLED fingerprints over 30 seconds are confirmed. Proposal sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be and its authority are closed and non-reusable. V2-08 remains forbidden."
+  note: "Attempt 19 passed exact-ID PATCH acknowledgement and failed complete GET readback before dispatch. Exact field is unproven. Narrow cleanup deleted only the disposable endpoint/template after two stable terminal snapshots. Three stable reads prove zero Pods/endpoints/templates/workers, both intended 50 GB EU-RO-1 volumes retained, unchanged cumulative endpoint billing USD 0.12480033212341368, and USD 0 Attempt 19 spend. Worker rollback, signer deletion, and 16 exact 404 V207_ROUTE_DISABLED fingerprints over 30 seconds are confirmed. Proposal sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde and authority sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2 are closed and non-reusable. V2-08 remains forbidden."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -555,7 +556,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Obtain exact approval for proposal sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d and a fresh positive numeric cap, then execute only that bounded V2-07 qualification. V2-08 remains forbidden."
+  goal: "Obtain exact approval for proposal sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02 and a fresh positive numeric cap, then execute only that bounded V2-07 qualification. V2-08 remains forbidden."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -1025,7 +1026,7 @@ verification:
 
 audit_evidence:
   v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d"
+  v2_07_current_proposal_sha256: "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02"
   v2_07_current_approved_authority: null
   v2_07_current_approved_authority_sha256: null
   v2_07_attempt19_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-partial-patch-acknowledgement-candidate/combined-live-proposal.json
@@ -1036,10 +1037,10 @@ audit_evidence:
   v2_07_attempt18_closed_proposal_sha256: "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be"
   v2_07_attempt18_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json
   v2_07_attempt18_closed_authority_sha256: "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c"
-  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/combined-live-proposal.json
-  v2_07_latest_closed_proposal_sha256: "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be"
-  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json
-  v2_07_latest_closed_authority_sha256: "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c"
+  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-partial-patch-acknowledgement-candidate/combined-live-proposal.json
+  v2_07_latest_closed_proposal_sha256: "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde"
+  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-partial-patch-acknowledgement-candidate/approved-authority.json
+  v2_07_latest_closed_authority_sha256: "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2"
   v2_07_attempt17_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
   v2_07_attempt17_closed_proposal_sha256: "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c"
   v2_07_attempt17_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
@@ -1071,4 +1072,4 @@ audit_evidence:
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
   current_goal_scope: v2_07_get_readback_optional_fields_proposal_ready
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_get_readback_optional_fields_proposal_sha256_9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d_fresh_approval_and_cap_required
+  v2_07_status: NOT_QUALIFIED_get_readback_optional_fields_proposal_sha256_9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02_fresh_approval_and_cap_required

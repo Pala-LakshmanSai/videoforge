@@ -42,7 +42,7 @@ const expected = {
   candidateAuthority:
     "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462",
   currentProposal:
-    "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d",
+    "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02",
   currentAuthority:
     "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2",
   closedProposal:

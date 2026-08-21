@@ -7,9 +7,10 @@ intended volumes retained, and USD 0 Attempt 19 spend. Proposal
 `sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde`
 and authority `sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2`
 are consumed and closed. The signer is absent, the Worker is restored, and 16/16 disabled-route
-probes passed. Provider-free repair `b35f4a6` permits only omitted GET `computeType`/`dataCenterIds`
-while preserving exact values if present and every other strict readback fence. Fresh proposal
-`sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d`
+probes passed. Provider-free repair `b35f4a6` permits omitted GET `computeType`/`dataCenterIds` and
+the duplicate `networkVolumeIds` alias while keeping exact values if present, mandatory exact
+primary `networkVolumeId`, and every other strict readback fence. Fresh proposal
+`sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02`
 requires exact approval and a fresh positive numeric cap; V2-08 is unauthorized.
 Context schema: `2.0`
 Last updated: `2026-08-21`

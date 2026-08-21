@@ -51,7 +51,7 @@
       "compute_type": "GPU",
       "flex_only": true,
       "flashboot": true,
-      "endpoint_identity_policy": "POST exact private-template environment, PATCH documented mutable fields without env or computeType, accept only exact-id partial acknowledgement with no conflicting present known field, then require exact GET environment and all returned config fields while allowing only omitted computeType/dataCenterIds before dispatch",
+      "endpoint_identity_policy": "POST exact private-template environment, PATCH documented mutable fields without env or computeType, accept only exact-id partial acknowledgement with no conflicting present known field, then require exact GET environment and all returned config fields while allowing omitted computeType/dataCenterIds plus the duplicate networkVolumeIds alias only when primary networkVolumeId is exact",
       "runtime_hash_policy": "compute and persist after exact endpoint and template IDs, endpoint hash, and ephemeral values exist; require before first dispatch"
     },
     {
@@ -66,7 +66,7 @@
       "flex_only": true,
       "flashboot": true,
       "scope": "two simultaneous read-only workers only; restore max one after proof",
-      "endpoint_identity_policy": "preserve exact template-bound endpoint identity, accept only exact-id partial PATCH acknowledgement with no conflicting present known field, and require exact GET environment and all returned config fields while allowing only omitted computeType/dataCenterIds",
+      "endpoint_identity_policy": "preserve exact template-bound endpoint identity, accept only exact-id partial PATCH acknowledgement with no conflicting present known field, and require exact GET environment and all returned config fields while allowing omitted computeType/dataCenterIds plus the duplicate networkVolumeIds alias only when primary networkVolumeId is exact",
       "runtime_hash_policy": "compute and persist separately after exact endpoint and template IDs, endpoint hash, and ephemeral values exist; require before reader dispatch"
     }
   ],
@@ -79,7 +79,7 @@
     "create_initial_flashboot_true_max_one_endpoint_in_eu_ro_1_on_exact_mage_volume",
     "update_exact_private_template_environment_with_allocated_endpoint_identity_hash",
     "patch_only_documented_mutable_endpoint_fields_without_environment_or_compute_type_and_accept_only_exact_id_nonconflicting_partial_acknowledgement",
-    "get_endpoint_and_require_exact_effective_environment_and_all_returned_config_with_only_compute_type_and_data_center_ids_optional_if_omitted_exact_if_present",
+    "get_endpoint_and_require_exact_effective_environment_mandatory_primary_volume_and_all_returned_config_with_compute_type_data_center_ids_and_duplicate_volume_alias_optional_if_omitted_exact_if_present",
     "submit_one_owned_diagnostic_sample_then_one_complete_32_image_batch_cold",
     "status_reconcile_until_terminal_and_verify_private_durable_outputs_before_provider_expiry",
     "submit_one_complete_32_image_batch_warm_and_reconcile_outputs",
@@ -145,7 +145,7 @@
     "success": "prove all outputs and receipts, restore max one, drain independently to zero workers, restore the exact pre-mutation Cloudflare route fingerprint continuously for 30 seconds within the 120-second hard deadline, and retain endpoint template plus both intended volumes",
     "failure": "cancel only owned jobs where safe, prove two stable terminal snapshots, delete only the exact disposable endpoint and private template, prove three stable zero-compute and billing reads, roll back signer and generated objects, restore the exact pre-mutation route fingerprint continuously for 30 seconds within the 120-second hard deadline, and retain both volumes",
     "stop_if": [
-      "missing endpoint identity conflicting PATCH acknowledgement malformed response or GET readback drift outside documented computeType/dataCenterIds omissions",
+      "missing endpoint identity conflicting PATCH acknowledgement malformed response mandatory primary networkVolumeId absence or GET readback drift outside documented computeType/dataCenterIds/duplicate networkVolumeIds alias omissions",
       "FlashBoot is not exactly true in request present PATCH field or GET readback",
       "missing failed or non-durable output or receipt",
       "sealed manifest change model-volume write or cache escape",
@@ -165,5 +165,9 @@
     "V2-08 or successor work",
     "provider mutation GPU use or spend before fresh exact approval and numeric cap"
   ],
-  "authorization_boundary": "No provider mutation, publication, GPU use, or spend is authorized. Read-only account, inventory, resource-identity, quota, availability, and rate refreshes remain within the original checkpoint bootstrap. The user must explicitly approve this exact proposal hash, explicitly accept FlashBoot=true and LOW EU-RO-1 availability, and provide a fresh positive numeric maximum cumulative finite spend before execution. The closed USD 4 authority must not be reused."
+  "authorization_boundary": "No provider mutation, publication, GPU use, or spend is authorized. Read-only account, inventory, resource-identity, quota, availability, and rate refreshes remain within the original checkpoint bootstrap. The user must explicitly approve this exact proposal hash, explicitly accept FlashBoot=true and LOW EU-RO-1 availability, and provide a fresh positive numeric maximum cumulative finite spend before execution. The closed USD 4 authority must not be reused.",
+  "readback_alias_policy": {
+    "networkVolumeId": "MANDATORY_EXACT",
+    "networkVolumeIds": "OPTIONAL_DUPLICATE_ALIAS_IF_OMITTED_EXACT_SINGLETON_IF_PRESENT"
+  }
 }

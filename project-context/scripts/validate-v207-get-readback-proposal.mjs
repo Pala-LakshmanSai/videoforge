@@ -8,7 +8,7 @@ const candidate = resolve(
   "project-context/evidence/acceptance/VF-10-07/2026-08-21-get-readback-optional-fields-candidate",
 );
 const expectedProposal =
-  "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d";
+  "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02";
 const expectedControl = "b35f4a60fe99d6b5649797c7aaaae7af4ef1368d";
 const expectedConfigs = [
   "sha256:76a2b5406115f1060cd72b1fccda9e02a2fdccb17450c8e4b1aae73cbea67f13",
@@ -65,6 +65,12 @@ assert(
 );
 assert(proposal.lineage?.prior_authority_state === "CLOSED_EXACT_ATTEMPT_CONSUMED_DO_NOT_REUSE", "prior_closed");
 assert(proposal.staged_endpoint_configs?.length === 2, "two_configs");
+assert(proposal.readback_alias_policy?.networkVolumeId === "MANDATORY_EXACT", "primary_volume_mandatory");
+assert(
+  proposal.readback_alias_policy?.networkVolumeIds ===
+    "OPTIONAL_DUPLICATE_ALIAS_IF_OMITTED_EXACT_SINGLETON_IF_PRESENT",
+  "duplicate_volume_alias",
+);
 for (const [index, config] of proposal.staged_endpoint_configs.entries()) {
   const bytes = await readFile(resolve(candidate, config.definition_path));
   const definition = JSON.parse(bytes.toString("utf8"));

@@ -116,7 +116,7 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
     last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-19.json"
-    result: "NOT_QUALIFIED_get_readback_optional_fields_proposal_sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d_fresh_approval_and_cap_required"
+    result: "NOT_QUALIFIED_get_readback_optional_fields_proposal_sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02_fresh_approval_and_cap_required"
 
   GATE_SERVERLESS_SOULX_001:
     status: open

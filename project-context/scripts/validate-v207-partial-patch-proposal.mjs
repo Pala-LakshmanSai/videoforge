@@ -14,7 +14,7 @@ const expectedProposalHash =
 const expectedAuthorityHash =
   "sha256:b824bea61e30c4ad1b5eda4bf8113c390c0ae0eff0a03c6fb279210e81d9e5c2";
 const currentSuccessorProposal =
-  "sha256:9d3f9ff254692f61b5efbd8ef55659094183b0df15c077db4eb23ce81e30bb5d";
+  "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02";
 const expectedControlCommit = "9331845d529fd54a8ec3afa5e2406e7c1ebb77bc";
 const expectedImage =
   "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5";
