@@ -16,7 +16,7 @@ import {
 const image = V207_REPAIRED_IMAGE;
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete pending diagnostic candidate lineage", () => {
+  it("pins the complete approved template-identity candidate lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -39,7 +39,7 @@ describe("V2-07 activation authority", () => {
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
       "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c",
     );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -74,7 +74,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("keeps the consumed exact proposal closed even when its former cap is supplied", () => {
+  it("rejects the consumed predecessor cap for the fresh exact proposal", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -82,11 +82,20 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "2",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_FINITE_CAP_MISMATCH");
   });
 
-  it("rejects every cap while the compiled authority is closed", () => {
-    for (const cap of ["", "0.01", "1", "4", "44", "1000"]) {
+  it("accepts only the exact fresh USD 4 cap", () => {
+    expect(
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_FINITE_CAP_USD: "4",
+      }),
+    ).toEqual({ image, proposalSha256: V207_PENDING_PROPOSAL_SHA256, capUsd: 4 });
+
+    for (const cap of ["0.01", "1", "2", "44", "1000"]) {
       expect(() =>
         parseV207ActivationAuthority({
           V207_IMAGE: image,
@@ -94,8 +103,16 @@ describe("V2-07 activation authority", () => {
           V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
           V207_FINITE_CAP_USD: cap,
         }),
-      ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+      ).toThrow("V207_FINITE_CAP_MISMATCH");
     }
+    expect(() =>
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_FINITE_CAP_USD: "",
+      }),
+    ).toThrow("V207_FINITE_CAP_REQUIRED");
   });
 
   it("rejects the prior immutable digest even with the pending proposal", () => {
@@ -105,7 +122,7 @@ describe("V2-07 activation authority", () => {
           "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:6318edbc73b59d1a495566a765515831b3ff28302a4dc33c5e09ba52352215e3",
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
-        V207_FINITE_CAP_USD: "2",
+        V207_FINITE_CAP_USD: "4",
       }),
     ).toThrow("V207_IMAGE_DIGEST_REQUIRED");
   });

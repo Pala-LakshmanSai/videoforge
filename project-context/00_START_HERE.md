@@ -2,9 +2,11 @@
 
 Status: V2-06 is complete and independently audited PASS. V2-07 is active but NOT_QUALIFIED after
 Attempt 16 failed before endpoint identity binding; its exact retry and USD 2 authority are closed.
-No live verification, mutation, GPU use, or spend is currently authorized.
+Exact proposal `sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c`
+is now approved for bounded live qualification with FlashBoot=true, LOW EU-RO-1, and a fresh USD 4
+cumulative finite cap. V2-08 remains unauthorized.
 Context schema: `2.0`
-Last updated: `2026-08-20`
+Last updated: `2026-08-21`
 
 VideoForge is an invite-only voiceover-to-video product for 5–10 people. Each admitted account has
 one default workspace. User-created projects, queues, Avatar Profiles, Image Styles, media, manifests,
@@ -245,9 +247,10 @@ two existing 50 GB volumes untouched. The final evidence-only audit passed and c
 new read-only grant. V2-07 Attempt 16 independently reconciled RunPod to zero compute/resources and
 both retained volumes. Endpoint identity binding and a 30-second Cloudflare route-stability window
 are now repaired provider-free. Proposal
-`sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c` awaits fresh exact
-approval and a fresh positive numeric cap. V2-07 has no provider, credential, mutation, publication,
-GPU, or spend authority. Prior authorities are consumed. The ordered
+`sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c` has exact approval under
+FlashBoot=true, LOW EU-RO-1, and a fresh USD 4 cumulative finite cap. Its authority is limited to
+the recorded V2-07 operations; image republication, volume mutation, fallback, public sample
+publication, and V2-08 remain forbidden. Prior authorities are consumed. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git
 history records removed briefs; only evidence required by active foundations and gates remains in
 the working tree.

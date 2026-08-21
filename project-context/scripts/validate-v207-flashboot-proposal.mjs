@@ -222,8 +222,8 @@ assert(
   "activation_rebound_to_successor_proposal",
 );
 assert(
-  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
-  "activation_cap_closed",
+  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
+  "activation_successor_cap",
 );
 
 for (const [label, file] of [
@@ -239,9 +239,9 @@ assert(
   text(files.currentState).includes("v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json"),
   "current_state_historical_authority_path",
 );
-assert(text(files.currentState).includes("v2_07_current_approved_authority: null"), "current_state_no_current_authority");
-assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_cap_closed");
-assert(text(files.currentState).includes("task_stage: provider_free_requalification_handoff"), "current_state_task_stage");
+assert(text(files.currentState).includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json"), "current_state_successor_authority");
+assert(text(files.currentState).includes("maximum_external_spend_usd: 4"), "current_state_successor_cap");
+assert(text(files.currentState).includes("task_stage: bounded_mutation"), "current_state_task_stage");
 assert(text(files.gates).includes("failed-attempt-16.json"), "gates_latest_attempt");
 assert(
   text(files.gates).includes(
