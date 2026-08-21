@@ -9,14 +9,21 @@ const candidate = resolve(
 );
 const proposalPath = resolve(candidate, "combined-live-proposal.json");
 const expectedProposalHash =
-  "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e";
-const expectedControlCommit = "e09a2d0bf2cae873eb49ac545241baa427bbfa05";
+  "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde";
+const expectedControlCommit = "9331845d529fd54a8ec3afa5e2406e7c1ebb77bc";
+const expectedImage =
+  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5";
+const expectedVolume = "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
+const expectedConfigHashes = [
+  "sha256:da2f5a1ee7f412014ecc7b63911131da02b4b313bca1079f9471fef1fb807347",
+  "sha256:889110673da3cfef09d8a534208acfc7bf8d980995ba1ad4ee1eec9c4ac95160",
+];
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const assert = (condition, label) => {
   if (!condition) throw new Error(`V207_PARTIAL_PATCH_PROPOSAL_INVALID:${label}`);
 };
 
-const [proposalBytes, state, gate, task, activation, control, controlTest] = await Promise.all([
+const [proposalBytes, state, gate, task, activation, control, controlTest, reconciliation, qualification] = await Promise.all([
   readFile(proposalPath),
   readFile(resolve(root, "project-context/CURRENT_STATE.yaml"), "utf8"),
   readFile(resolve(root, "project-context/GATES.yaml"), "utf8"),
@@ -24,6 +31,8 @@ const [proposalBytes, state, gate, task, activation, control, controlTest] = awa
   readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
   readFile(resolve(root, "apps/web/src/server/providers/runpod-control.ts"), "utf8"),
   readFile(resolve(root, "apps/web/src/server/providers/runpod-control.test.ts"), "utf8"),
+  readFile(resolve(root, "apps/web/src/server/providers/runpod-v207-readonly-reconciliation.ts"), "utf8"),
+  readFile(resolve(root, "apps/web/src/server/providers/v207-live-qualification.ts"), "utf8"),
 ]);
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
 
@@ -33,6 +42,21 @@ assert(proposal.user_approval?.maximum_cumulative_finite_spend_usd === null, "ca
 assert(proposal.user_approval?.fresh_numeric_cap_required === true, "fresh_cap_required");
 assert(proposal.user_approval?.exact_proposal_approved === false, "approval_pending");
 assert(proposal.lineage?.control_source_commit === expectedControlCommit, "control_commit");
+assert(
+  proposal.lineage?.model ===
+    "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+  "model",
+);
+assert(proposal.lineage?.model_manifest_sha256 === "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b", "model_manifest");
+assert(proposal.lineage?.volume_id_sha256 === expectedVolume, "volume");
+assert(proposal.lineage?.volume_size_gb === 50 && proposal.lineage?.volume_region === "EU-RO-1", "volume_placement");
+assert(proposal.lineage?.volume_mount === "/runpod-volume" && proposal.lineage?.model_root === "/runpod-volume/mage-model", "volume_paths");
+assert(proposal.lineage?.final_image === expectedImage, "image");
+assert(proposal.lineage?.image_manifest_sha256 === "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5", "image_manifest");
+assert(proposal.lineage?.image_config_sha256 === "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de", "image_config");
+assert(proposal.lineage?.image_layer_sha256 === "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38", "image_layer");
+assert(proposal.lineage?.image_base_sha256 === "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497", "image_base");
+assert(proposal.lineage?.image_parent_config_sha256 === "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2", "image_parent_config");
 assert(
   proposal.lineage?.prior_proposal_sha256 ===
     "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be",
@@ -51,13 +75,19 @@ assert(attempt.attempt === 18 && attempt.billing?.attempt_increment_usd_settled 
 assert(attempt.runpod_cleanup?.final_disposable_resources_absent === true, "attempt18_cleanup");
 
 assert(Array.isArray(proposal.staged_endpoint_configs) && proposal.staged_endpoint_configs.length === 2, "two_configs");
-for (const config of proposal.staged_endpoint_configs) {
+for (const [index, config] of proposal.staged_endpoint_configs.entries()) {
+  assert(config.definition_sha256 === expectedConfigHashes[index], `config_expected_hash_${config.stage}`);
   const bytes = await readFile(resolve(candidate, config.definition_path));
   assert(hash(bytes) === config.definition_sha256, `config_hash_${config.stage}`);
   const definition = JSON.parse(bytes.toString("utf8"));
   assert(definition.schema_version === "videoforge.v2-07-staged-endpoint-definition/v5", `config_schema_${config.stage}`);
   assert(definition.control_source_commit === expectedControlCommit, `config_commit_${config.stage}`);
   assert(definition.flashboot === true && definition.region === "EU-RO-1", `config_placement_${config.stage}`);
+  assert(definition.image === expectedImage && definition.network_volume_id_sha256 === expectedVolume, `config_identity_${config.stage}`);
+  assert(definition.compute_type === "GPU" && definition.flex_only === true, `config_compute_${config.stage}`);
+  assert(definition.workers_min === 0 && definition.handler_concurrency === 1, `config_workers_${config.stage}`);
+  assert((definition.gpu_count ?? definition.gpu_count_per_worker) === 1, `config_gpu_count_${config.stage}`);
+  assert(JSON.stringify(definition.gpu_type_ids) === JSON.stringify(["NVIDIA GeForce RTX 4090"]), `config_gpu_${config.stage}`);
   assert(definition.endpoint_identity_binding?.endpoint_patch_acknowledgement_requires_exact_endpoint_id === true, `ack_id_${config.stage}`);
   assert(definition.endpoint_identity_binding?.endpoint_patch_acknowledgement_omitted_fields_are_unconfirmed === true, `ack_omissions_${config.stage}`);
   assert(definition.endpoint_identity_binding?.endpoint_patch_acknowledgement_present_known_fields_must_match === true, `ack_conflicts_${config.stage}`);
@@ -67,7 +97,10 @@ assert(proposal.staged_endpoint_configs[0].workers_max === 1, "max_one");
 assert(proposal.staged_endpoint_configs[1].workers_max === 2, "max_two");
 assert(proposal.last_observed_provider_truth?.pods === 0, "zero_pods");
 assert(proposal.last_observed_provider_truth?.endpoints === 0, "zero_endpoints");
+assert(proposal.last_observed_provider_truth?.private_templates === 0, "zero_templates");
 assert(proposal.last_observed_provider_truth?.active_serverless_workers === 0, "zero_workers");
+assert(proposal.last_observed_provider_truth?.running_pods === 0, "zero_running_pods");
+assert(proposal.last_observed_provider_truth?.intended_volume_count === 2, "two_volumes");
 assert(proposal.rates_cost_and_retention?.serverless_flex_rtx4090_usd_per_gpu_hour === 1.1, "rate");
 assert(proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_month_total === 7, "volume_charge");
 assert(proposal.forbidden?.includes("V2-08 or successor work"), "v2_08_forbidden");
@@ -80,6 +113,10 @@ assert(control.includes("v207EndpointBindingMatches(readbackValue, expected)"), 
 assert(controlTest.includes("partial PATCH acknowledgement"), "partial_ack_test");
 assert(controlTest.includes("without the exact endpoint identity"), "missing_id_test");
 assert(controlTest.includes("full GET configuration drift"), "strict_get_test");
+assert(reconciliation.includes("maximumCumulativeFiniteSpendUsd"), "reconciliation_cap_input");
+assert(reconciliation.includes("V207_RECONCILIATION_FINITE_CAP_EXCEEDED"), "reconciliation_cap_exceeded");
+assert(reconciliation.includes("within_approved_cap: true"), "reconciliation_cap_receipt");
+assert(qualification.includes("maximumCumulativeFiniteSpendUsd: finiteCapUsd"), "qualification_cap_wiring");
 
 assert(state.includes(expectedProposalHash), "state_proposal");
 assert(state.includes("provider_calls_authorized: false"), "state_no_provider");

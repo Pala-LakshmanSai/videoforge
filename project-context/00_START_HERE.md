@@ -7,7 +7,7 @@ compute/resources, both intended volumes retained, and USD 0 Attempt 18 spend. P
 `sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be`
 and its USD 4 authority are closed. Provider-free repair `e09a2d0` safely accepts only an exact-ID,
 non-conflicting partial PATCH acknowledgement and still requires complete exact GET readback.
-Fresh proposal `sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e`
+Fresh proposal `sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde`
 requires exact approval and a fresh positive numeric cap. V2-08 is unauthorized.
 Context schema: `2.0`
 Last updated: `2026-08-21`
@@ -255,7 +255,7 @@ billing remained USD 0.12480033212341368 for a settled USD 0 attempt increment. 
 proposal `sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be`
 and its USD 4 authority cannot be reused. Provider-free control now accepts only an exact-ID,
 non-conflicting partial PATCH acknowledgement while preserving complete exact GET readback. Fresh
-proposal `sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e`
+proposal `sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde`
 and a fresh cap are required; image republication, volume mutation, fallback, public sample
 publication, and V2-08 remain forbidden. The ordered
 checkpoints and copy-ready implementation/audit prompts supersede every removed planning file. Git

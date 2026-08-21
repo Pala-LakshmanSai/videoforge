@@ -116,7 +116,7 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
     last_run: "evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-18.json"
-    result: "NOT_QUALIFIED_partial_patch_acknowledgement_proposal_sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e_fresh_approval_and_cap_required"
+    result: "NOT_QUALIFIED_partial_patch_acknowledgement_proposal_sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde_fresh_approval_and_cap_required"
 
   GATE_SERVERLESS_SOULX_001:
     status: open

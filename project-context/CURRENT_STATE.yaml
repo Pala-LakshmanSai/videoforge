@@ -23,7 +23,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: request_fresh_exact_partial_patch_acknowledgement_proposal_and_cap
-  note: "Attempt 18 and proposal sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be are closed with exact cleanup and USD 0 spend. Provider-free repair e09a2d0 accepts only an exact endpoint-id PATCH acknowledgement, rejects any conflicting present known field, treats omissions as unconfirmed, and still requires complete exact GET environment/config readback before dispatch. Fresh proposal sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e has null cap and no authority. No provider mutation, GPU use, spend, or V2-08 work is authorized."
+  note: "Attempt 18 and proposal sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be are closed with exact cleanup and USD 0 spend. Provider-free repairs e09a2d0 and 9331845 accept only an exact endpoint-id PATCH acknowledgement, reject any conflicting present known field, keep complete exact GET readback mandatory, and enforce the approved cap during final failure reconciliation. Fresh proposal sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde has null cap and no authority. No provider mutation, GPU use, spend, or V2-08 work is authorized."
 
 provider_authority: &v2_07_provider_authority
   mode: none
@@ -300,7 +300,7 @@ repository:
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
   current_source_head_note: "Attempt 18 used exact published image sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5. Cloudflare activation/preflight and rollback passed; RunPod created the exact template/endpoint, updated the template identity environment, and returned a PATCH response that failed the complete matcher before GET or dispatch. Exact cleanup plus three stable reads proved zero Pods/endpoints/templates/workers, both intended volumes, unchanged cumulative billing USD 0.12480033212341368, and USD 0 Attempt 18 spend. Proposal 2752...715be and its authority are closed."
-  v2_07_latest_local_repair: "Commit e09a2d0 separates partial PATCH acknowledgement from authoritative GET validation. PATCH requires exact endpoint id and rejects every conflicting present known field; omitted fields remain unconfirmed. Dispatch remains fenced behind the unchanged complete exact GET config/environment matcher. Tests cover partial success, conflicting field, missing identity, and GET drift. Fresh proposal sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e and a fresh positive numeric cap are required before retry."
+  v2_07_latest_local_repair: "Commits e09a2d0 and 9331845 separate partial PATCH acknowledgement from authoritative GET validation and enforce the approved maximum cumulative cap in three-read failure reconciliation. PATCH requires exact endpoint id and rejects every conflicting present known field; omissions remain unconfirmed. Dispatch remains fenced behind complete exact GET config/environment. Fresh proposal sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde and a fresh positive numeric cap are required before retry."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -318,7 +318,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Attempt 18 authority is closed. Exact proposal sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e is pending fresh approval and a fresh positive numeric cap. V2-08 remains forbidden."
+  provider_authority_scope: "Attempt 18 authority is closed. Exact proposal sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde is pending fresh approval and a fresh positive numeric cap. V2-08 remains forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -446,7 +446,7 @@ model_runtime_evidence:
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
     v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-partial-patch-acknowledgement-candidate/combined-live-proposal.json
-    v2_07_proposal_sha256: "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e"
+    v2_07_proposal_sha256: "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde"
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
     v2_07_authority: null
     v2_07_authority_sha256: null
@@ -538,7 +538,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Obtain exact approval for proposal sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e and a fresh positive numeric cap, then execute only that bounded V2-07 qualification. V2-08 remains forbidden."
+  goal: "Obtain exact approval for proposal sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde and a fresh positive numeric cap, then execute only that bounded V2-07 qualification. V2-08 remains forbidden."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -554,7 +554,7 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt 18 proposal and USD 4 authority are closed. Provider-free repair e09a2d0 preserves strict GET readback after a non-conflicting exact-ID partial PATCH acknowledgement. Fresh proposal sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e has null cap. Existing volumes remain USD 7/month separately. No provider mutation, GPU use, spend, or V2-08 authority exists."
+  authority_note: "Attempt 18 proposal and USD 4 authority are closed. Provider-free repairs e09a2d0 and 9331845 preserve strict GET readback after a non-conflicting exact-ID PATCH acknowledgement and make final failure reconciliation enforce the approved cap. Fresh proposal sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde has null cap. Existing volumes remain USD 7/month separately. No provider mutation, GPU use, spend, or V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   execution_status: partial_patch_acknowledgement_repair_committed_proposal_ready
   execution_blocker: fresh_exact_proposal_approval_and_positive_numeric_cap_required
@@ -1008,7 +1008,7 @@ verification:
 
 audit_evidence:
   v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-partial-patch-acknowledgement-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e"
+  v2_07_current_proposal_sha256: "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde"
   v2_07_current_approved_authority: null
   v2_07_current_approved_authority_sha256: null
   v2_07_attempt18_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/combined-live-proposal.json
@@ -1050,4 +1050,4 @@ audit_evidence:
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
   current_goal_scope: v2_07_partial_patch_acknowledgement_proposal_ready
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_partial_patch_acknowledgement_proposal_sha256_33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e_fresh_approval_and_cap_required
+  v2_07_status: NOT_QUALIFIED_partial_patch_acknowledgement_proposal_sha256_ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde_fresh_approval_and_cap_required

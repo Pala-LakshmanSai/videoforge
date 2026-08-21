@@ -39,7 +39,7 @@ const expected = {
   closedActivationProposal:
     "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
   currentProposal:
-    "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e",
+    "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
 };
 const fail = (label) => {

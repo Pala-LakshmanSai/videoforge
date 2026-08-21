@@ -31,7 +31,7 @@ const expectedProposalHash =
 const expectedAuthorityHash =
   "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c";
 const currentSuccessorProposalHash =
-  "sha256:33ab018224dd452aabb8eeafe22c3895cd89908f2c5251160eec92afecef920e";
+  "sha256:ce11e4efb3b97f47c9ca70f83451ce6535e8467ac506b682527466f9327dafde";
 const assert = (condition, label) => {
   if (!condition) throw new Error(`V207_PATCH_SCHEMA_PROPOSAL_INVALID:${label}`);
 };
