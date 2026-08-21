@@ -1,7 +1,7 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
-bounded Attempt26. Attempt25 consumed its exact proposal and authority. Its startup safety proof
+bounded Attempt26. Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any
 accepted batch, durable output, or accepted receipt. Exact cleanup deleted only the disposable
