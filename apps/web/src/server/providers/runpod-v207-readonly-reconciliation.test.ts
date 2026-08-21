@@ -37,6 +37,7 @@ describe("V2-07 read-only reconciliation", () => {
     const wait = vi.fn(async () => undefined);
     const result = await reconcileV207Readonly({
       accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
+      baselineEndpointSpendUsd: 0.12480033212341368,
       inventory: readInventory,
       billingAmount: readBilling,
       wait,
@@ -52,7 +53,7 @@ describe("V2-07 read-only reconciliation", () => {
         running_pods: 0,
       },
       billing: {
-        attempt_17_incremental_spend_usd: 0,
+        incremental_spend_usd: 0,
         settlement: "THREE_STABLE_READS",
       },
     });
@@ -72,6 +73,7 @@ describe("V2-07 read-only reconciliation", () => {
     await expect(
       reconcileV207Readonly({
         accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
+        baselineEndpointSpendUsd: 0.12480033212341368,
         inventory: async () => inventory(patch as Partial<RunPodInventory>),
         billingAmount: async () => 0.12480033212341368,
         wait: async () => undefined,
@@ -84,10 +86,23 @@ describe("V2-07 read-only reconciliation", () => {
     await expect(
       reconcileV207Readonly({
         accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
+        baselineEndpointSpendUsd: 0.12480033212341368,
         inventory: async () => inventory(),
         billingAmount: async () => amounts.shift() ?? 0.1249,
         wait: async () => undefined,
       }),
     ).rejects.toThrow("V207_RECONCILIATION_BILLING_UNSETTLED");
+  });
+
+  it("rejects a missing or invalid fresh-attempt baseline", async () => {
+    await expect(
+      reconcileV207Readonly({
+        accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
+        baselineEndpointSpendUsd: Number.NaN,
+        inventory: async () => inventory(),
+        billingAmount: async () => 0.12480033212341368,
+        wait: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_RECONCILIATION_BASELINE_INVALID");
   });
 });

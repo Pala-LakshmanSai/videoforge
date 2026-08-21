@@ -20,6 +20,7 @@ import {
   type RunPodV207DispatchBatchInput,
   type RunPodV207OutputAuthority,
 } from "./runpod-v207-qualification-harness";
+import { reconcileV207Readonly } from "./runpod-v207-readonly-reconciliation";
 import { loadSujalRunPodApiKeyFromKeychain, SUJAL_RUNPOD_ACCOUNT_ID_SHA256 } from "./keychain";
 import { assertSujalRunPodAccount } from "./runpod-account";
 import {
@@ -1587,6 +1588,20 @@ async function main(): Promise<void> {
         await harness.cleanup({ deleteIfFailed: true, failed: true });
       } catch (cleanupError) {
         evidence.cleanup_error = safeQualificationError(cleanupError);
+      }
+      try {
+        const reconciliation = await reconcileV207Readonly({
+          accountIdHash: account.accountIdHash,
+          baselineEndpointSpendUsd: baseline,
+          inventory: () => control.inventory(),
+          billingAmount: () => billingAmount(apiKey),
+        });
+        evidence.failure_reconciliation = reconciliation;
+        evidence.spend_usd = reconciliation.billing.incremental_spend_usd;
+        evidence.cumulative_endpoint_spend_usd = reconciliation.billing.final_endpoint_spend_usd;
+        evidence.billing_settlement = reconciliation.billing.settlement;
+      } catch (reconciliationError) {
+        evidence.failure_reconciliation_error = safeQualificationError(reconciliationError);
       }
       throw error;
     } finally {
