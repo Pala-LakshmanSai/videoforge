@@ -351,6 +351,7 @@ function terminalScaleZeroFetch(
     readonly extraEndpoint?: boolean;
     readonly extraTemplate?: boolean;
     readonly endpointDrift?: Readonly<Record<string, unknown>>;
+    readonly healthWorkers?: Readonly<Record<string, unknown>>;
     readonly healthAfterFirstSnapshot?: Readonly<Record<string, number>>;
   } = {},
 ) {
@@ -380,14 +381,14 @@ function terminalScaleZeroFetch(
         workers:
           terminalInventoryReads > 0 && options.healthAfterFirstSnapshot
             ? options.healthAfterFirstSnapshot
-            : {
+            : (options.healthWorkers ?? {
                 idle: 0,
                 running: 0,
                 initializing: 0,
                 ready: 0,
                 throttled: 1,
                 unhealthy: 0,
-              },
+              }),
         jobs: { inQueue: 0, inProgress: 0 },
       });
     }
@@ -1088,6 +1089,32 @@ describe("V2-07 qualification harness", () => {
     ).toBe(true);
   });
 
+  it("uses exact startup inventory when FlashBoot health counters are incomplete", async () => {
+    const fetch = terminalScaleZeroFetch({
+      healthWorkers: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        throttled: 1,
+        unhealthy: 0,
+      },
+    });
+    const instance = makeHarness(fetch);
+    await expect(instance.create()).resolves.toBeUndefined();
+    const evidence = await instance.evidence();
+    expect(evidence.initialConfigHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "provider_terminal_worker_scale_zero_baseline",
+        startup_health_proof: "fresh_endpoint_no_owned_job_inventory_only",
+        stable_terminal_snapshot_count: 2,
+      }),
+    );
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
   it.each([
     ["running worker", { workerStatus: "RUNNING" }],
     ["unknown worker", { workerStatus: "UNKNOWN" }],
@@ -1111,19 +1138,42 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
-  it("rejects terminal promotion when the delayed second health snapshot becomes active", async () => {
-    const fetch = terminalScaleZeroFetch({
-      healthAfterFirstSnapshot: {
-        idle: 0,
-        running: 1,
-        initializing: 0,
-        ready: 0,
-        throttled: 0,
-        unhealthy: 0,
-      },
+  it("keeps post-drain terminal promotion health-first", async () => {
+    const baseFetch = harnessFetch();
+    let healthReads = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/health")) {
+        healthReads += 1;
+        if (healthReads === 1) {
+          return jsonResponse({
+            workers: {
+              idle: 1,
+              running: 0,
+              initializing: 0,
+              ready: 0,
+              throttled: 0,
+              unhealthy: 0,
+            },
+            jobs: { inQueue: 0, inProgress: 0 },
+          });
+        }
+        return jsonResponse({
+          workers: {
+            idle: 0,
+            running: 0,
+            initializing: 0,
+            throttled: 1,
+            unhealthy: 0,
+          },
+          jobs: { inQueue: 0, inProgress: 0 },
+        });
+      }
+      return baseFetch(input, init);
     });
     const instance = makeHarness(fetch);
-    await expect(instance.create()).rejects.toThrow("RUNPOD_QUIESCENT_NOT_CONFIRMED");
+    await instance.create();
+    await expect(instance.drain()).rejects.toThrow("RUNPOD_QUIESCENT_NOT_CONFIRMED");
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(0);

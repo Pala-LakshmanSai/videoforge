@@ -488,12 +488,25 @@ export class RunPodV207QualificationHarness {
   private async confirmTerminalScaleZeroBaseline(
     expectedPolicy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
     event: string,
+    mode: "health_first" | "startup_inventory_only" = "health_first",
   ): Promise<void> {
     if (!this.#template || !this.#endpoint || !this.#jobs) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
     }
+    if (
+      mode === "startup_inventory_only" &&
+      (this.#ownedJobs.size > 0 ||
+        this.#readerJobs.length > 0 ||
+        this.#initialQualificationComplete)
+    ) {
+      throw new RunPodControlError("RUNPOD_STARTUP_INVENTORY_FALLBACK_INVALID");
+    }
     try {
-      await this.#jobs.confirmQuiescent(12, 250);
+      // A fresh FlashBoot endpoint can leave a terminal worker/Pod record behind while its
+      // health counters remain stale or incomplete.  Before the first /run there is no owned
+      // job whose queue state could be hidden, so startup may use the exact terminal inventory
+      // proof below.  Every post-dispatch/post-drain caller remains health-first by default.
+      if (mode === "health_first") await this.#jobs.confirmQuiescent(12, 250);
       this.checkAbort();
       const terminalStatuses = new Set(["EXITED", "TERMINATED"]);
       const readAndValidate = async (): Promise<{
@@ -586,7 +599,7 @@ export class RunPodV207QualificationHarness {
         ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
       await sleep(250);
       this.checkAbort();
-      await this.#jobs.confirmQuiescent(1, 250);
+      if (mode === "health_first") await this.#jobs.confirmQuiescent(1, 250);
       this.checkAbort();
       const second = await readAndValidate();
       if (first.signature !== second.signature) {
@@ -599,6 +612,9 @@ export class RunPodV207QualificationHarness {
         endpoint_worker_record_count: endpointInventory.workerRecordCount,
         terminal_pod_record_count: second.inventory.pods.length,
         stable_terminal_snapshot_count: 2,
+        ...(mode === "startup_inventory_only"
+          ? { startup_health_proof: "fresh_endpoint_no_owned_job_inventory_only" }
+          : {}),
       });
     } catch (error) {
       this.#guard.invalidate();
@@ -742,6 +758,7 @@ export class RunPodV207QualificationHarness {
       await this.confirmTerminalScaleZeroBaseline(
         this.#options.initialPolicy,
         "provider_terminal_worker_scale_zero_baseline",
+        "startup_inventory_only",
       );
       this.checkAbort();
     }
