@@ -141,16 +141,17 @@ gates:
     closed_authority_sha256: "sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-24.json"
     closure_evidence_sha256: "sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb"
-    pending_proposal: null
-    pending_proposal_sha256: null
-    pending_control_source_commit: "63517e605d441fa23020bea8bff2987cc4bc99c5"
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
+    pending_control_source_commit: "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"
     pending_authority: null
     pending_authority_sha256: null
-    authority_mode: none_attempt24_consumed
+    authority_mode: none_attempt25_pending_fresh_approval
     pending_numeric_cap_usd: null
-    pending_flashboot: null
-    pending_availability: null
-    result: "NOT_QUALIFIED_attempt24_closed_quiescence_failure_exact_cleanup_complete"
+    pending_flashboot: true
+    pending_availability: LOW
+    result: "NOT_QUALIFIED_attempt25_startup_terminal_inventory_candidate_pending_fresh_approval"
+    pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:
     status: open

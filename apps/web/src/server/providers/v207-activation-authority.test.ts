@@ -16,7 +16,7 @@ import {
 const image = V207_REPAIRED_IMAGE;
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete Attempt24 verification-stage diagnostic candidate lineage", () => {
+  it("pins the complete Attempt25 startup-terminal-inventory candidate lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -37,7 +37,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137",
+      "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946",
     );
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });

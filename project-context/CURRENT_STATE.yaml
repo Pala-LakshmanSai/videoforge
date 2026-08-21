@@ -1,12 +1,12 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-21T10:20:15.123Z"
+updated_at: "2026-08-21T10:30:00.000Z"
 
-phase: serverless_v2_v2_07_attempt24_closed
+phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_provider_free_failure_diagnosis
+current_wave: v2_07_provider_free_startup_terminal_inventory_repair
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: provider_free_repair
 application_code_changes_authorized: true
@@ -18,15 +18,37 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt24_consumed_provider_free_closure
+  mode: v2_07_attempt25_provider_free_startup_terminal_inventory_candidate
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: close_attempt24_quiescence_failure_and_require_fresh_authority
-  note: "Attempt24 used the exact approved proposal sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137 under authority sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412 and fresh USD 4 cap. Exact template and endpoint identity work reached the pre-dispatch safety guard, but RUNPOD_QUIESCENT_NOT_CONFIRMED stopped the run before /run/job; zero jobs and zero batches were submitted. Generated-output rollback is confirmed. Initial cleanup was uncertain; exact cleanup deleted only the disposable endpoint/template after two stable snapshots covering one terminal worker and one terminal Pod. Final reconciliation at 2026-08-21T10:20:15.123Z proves zero Pods/endpoints/templates/workers/running Pods, both intended 50 GB EU-RO-1 volumes retained, cumulative billing moved from USD 0.18311072164215147 to USD 0.22078647126909345, and settled incremental spend USD 0.03767574962694198 over three reads. Cloudflare signer deletion, Worker restore, and stable 404 V207_ROUTE_DISABLED are confirmed. Attempt24 authority is consumed and non-reusable. V2-07 remains NOT_QUALIFIED, V2-08 remains forbidden, and any retry requires fresh exact approval plus a fresh positive numeric cap."
+  v2_07_action: prepare_attempt25_startup_terminal_inventory_candidate_and_require_fresh_authority
+  note: "Attempt24 used the exact approved proposal sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137 under authority sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412 and fresh USD 4 cap. Exact template and endpoint identity work reached the pre-dispatch safety guard, but RUNPOD_QUIESCENT_NOT_CONFIRMED stopped the run before /run/job; zero jobs and zero batches were submitted. Attempt24 closure sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb proves exact cleanup, zero disposable resources, both retained volumes, and settled incremental spend USD 0.03767574962694198. Provider-free control bb9abc03 adds an Attempt25 startup-only fallback requiring exact endpoint-scoped worker/Pod inventory, health.jobs present with inQueue=0 and inProgress=0 on reads bracketing both stable snapshots, and two stable matching terminal snapshots before any job; health-first proof remains mandatory after dispatch, cancellation, reader proof, and drain. No authority, provider mutation, GPU use, or spend is active; V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
+
+pending_v2_07_attempt25_proposal:
+  mode: provider_free_startup_terminal_inventory_candidate
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
+  control_source_commit: "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"
+  failed_attempt_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-24.json
+  failed_attempt_evidence_sha256: "sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb"
+  staged_max1_sha256: "sha256:d7a5791c80fa96f997994c70486208af5faea93989a1cc3fe5033a0a911ddacd"
+  staged_max2_sha256: "sha256:e1edf2d61b188428ce16e6f5597ceadc6ce7d58aa50dda4f8a7ea09e96bd0e38"
+  flashboot: true
+  availability: LOW
+  region: EU-RO-1
+  maximum_cumulative_finite_spend_usd: null
+  fresh_numeric_cap_required: true
+  authority_recorded: false
+  authority_path: null
+  authority_sha256: null
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  startup_terminal_inventory_fallback: exact_two_stable_terminal_inventory_snapshots_with_health_jobs_in_queue_and_in_progress_present_zero_before_any_owned_job
 
 pending_v2_07_attempt24_proposal:
   mode: closed_consumed_attempt24_quiescence_failure
@@ -119,7 +141,7 @@ provider_authority: &v2_07_provider_authority
   historical_cap_usd: 4
   recurring_r2_ceiling_usd_per_month: 0
   non_transferable: true
-  source: none_attempt24_consumed
+  source: none_attempt25_pending_fresh_approval
   authorized_by_user_at: null
   authority_evidence: null
   authority_sha256: null
@@ -653,8 +675,8 @@ repository:
   current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt24 executed the exact published image sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5, image source 79f123268b6ade640c02dd20616a89d16b43a5e6, and control 63517e605d441fa23020bea8bff2987cc4bc99c5. Exact template and endpoint identity work reached the pre-dispatch safety guard, but RUNPOD_QUIESCENT_NOT_CONFIRMED stopped before /run/job with zero jobs and zero batches. Attempt24 closure is exact evidence sha256:REPLACE_CLOSURE_HASH; final reconciliation at 2026-08-21T10:20:15.123Z proves zero disposable resources, both retained 50 GB EU-RO-1 volumes, and settled incremental spend USD 0.03767574962694198. The proposal and authority are consumed and non-reusable. V2-07 remains NOT_QUALIFIED; V2-08 remains forbidden."
-  v2_07_latest_local_repair: "Commit 63517e605d441fa23020bea8bff2987cc4bc99c5 retains only structurally branded verification-stage diagnostics and rejects unsafe output fields. Attempt24 was stopped before /run/job by the quiescence guard and closed with exact cleanup; any retry requires a fresh exact proposal and fresh positive numeric cap."
+  current_source_head_note: "Attempt25 is a provider-free candidate bound to exact published image sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5, image source 79f123268b6ade640c02dd20616a89d16b43a5e6, and control bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9. It follows Attempt24 closure evidence sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb and adds a startup-only exact terminal inventory fallback requiring health.jobs inQueue and inProgress present and zero on reads bracketing both stable snapshots. No provider authority, mutation, GPU use, or spend is active; V2-07 remains NOT_QUALIFIED."
+  v2_07_latest_local_repair: "Commit bb9abc03 adds a startup-only exact terminal worker/Pod inventory fallback with explicit health.jobs inQueue/inProgress presence and zero reads bracketing both stable inventory snapshots. Health-first quiescence remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain; Attempt25 requires fresh exact approval and a fresh positive numeric cap."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -672,7 +694,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Attempt24 authority is consumed and closed; no provider mutation, GPU use, or spend is authorized. A fresh exact proposal and fresh positive numeric cap are required; V2-08 remains forbidden."
+  provider_authority_scope: "Attempt25 is provider-free and pending fresh exact approval; no provider mutation, GPU use, or spend is authorized. A fresh exact proposal and fresh positive numeric cap are required; V2-08 remains forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -890,15 +912,15 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt24_closed_quiescence_failure
+  status: NOT_QUALIFIED_attempt25_pending_fresh_approval
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: none_attempt24_consumed
-  task_stage: provider_free_repair
+  authorization_status: none_attempt25_pending_fresh_approval
+  task_stage: provider_free_candidate_ready
   current_goal_authority: none
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Preserve Attempt24's exact pre-dispatch quiescence failure and require fresh exact approval plus a fresh positive numeric cap before any retry; stop before V2-08."
+  goal: "Request fresh exact approval and a fresh positive numeric cap for the immutable Attempt25 startup-terminal-inventory proposal; stop before V2-08."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -920,7 +942,7 @@ recommended_next_task:
   execution_blocker: fresh_exact_approval_and_positive_numeric_cap_required
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt24_closed_not_qualified
+  state: v2_06_complete_green_independently_audited_v2_07_attempt25_startup_candidate_pending_fresh_approval_not_qualified
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -1367,8 +1389,8 @@ verification:
       r2_inventory_sha256_after_cleanup: "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
 
 audit_evidence:
-  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"
+  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json
+  v2_07_current_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
   v2_07_current_approved_authority: null
   v2_07_current_approved_authority_sha256: null
   v2_07_attempt24_closure: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-24.json
@@ -1377,6 +1399,9 @@ audit_evidence:
   v2_07_attempt24_closed_proposal_sha256: "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"
   v2_07_attempt24_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json
   v2_07_attempt24_closed_authority_sha256: "sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412"
+  v2_07_attempt25_candidate: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/acceptance.json
+  v2_07_attempt25_candidate_sha256: "sha256:3f341ec79a5c129eb3efe2e198c8a828c781938e5873ccfeace32c75c0372946"
+  v2_07_attempt25_control_commit: "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9"
   v2_07_attempt23_closure: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-23.json
   v2_07_attempt23_closure_sha256: "sha256:0f48f3bc82b6d0b7fb48e723c4a3fc36a142129de578447acd30d77157e1ca1b"
   v2_07_attempt23_closed_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json
@@ -1434,7 +1459,7 @@ audit_evidence:
   v2_07_historical_amended_proposal: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
   v2_07_historical_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
   v2_07_historical_image_publication: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
-  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-23.json
+  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-24.json
   v2_07_latest_predispatch_safety_repair: evidence/acceptance/VF-10-07/2026-08-20-pre-dispatch-safety-repair/acceptance.json
   v2_07_historical_live_authority: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/authority.json
   v2_07_latest_provider_free_handoff: evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/acceptance.json
@@ -1446,6 +1471,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt24_closed_quiescence_failure
+  current_goal_scope: v2_07_attempt25_startup_terminal_inventory_candidate
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_attempt24_closed_quiescence_failure
+  v2_07_status: NOT_QUALIFIED_attempt25_candidate_pending_fresh_approval

@@ -151,10 +151,22 @@ for (const [label, value] of [
   assert(value.includes("NOT_QUALIFIED"), `${label}_not_qualified`);
 }
 
-assert(state.includes("phase: serverless_v2_v2_07_attempt24_closed") && state.includes("maximum_external_spend_usd: 0"), "state_closed");
+assert(
+  (state.includes("phase: serverless_v2_v2_07_attempt24_closed") ||
+    state.includes("phase: serverless_v2_v2_07_attempt25_startup_terminal_inventory_candidate")) &&
+    state.includes("maximum_external_spend_usd: 0"),
+  "state_closed",
+);
 assert(state.includes("provider_calls_authorized: false") && state.includes("provider_mutations_authorized: false") && state.includes("gpu_use_authorized: false"), "state_no_authority");
 assert(state.includes("current_authority: null") && state.includes("spend_authorized_usd: 0"), "state_current_authority_null");
-assert(gates.includes("authority_mode: none_attempt24_consumed") && gates.includes("pending_numeric_cap_usd: null") && gates.includes('result: "NOT_QUALIFIED_attempt24_closed_quiescence_failure_exact_cleanup_complete"'), "gate_closed");
+assert(
+  (gates.includes("authority_mode: none_attempt24_consumed") ||
+    gates.includes("authority_mode: none_attempt25_pending_fresh_approval")) &&
+    gates.includes("pending_numeric_cap_usd: null") &&
+    (gates.includes('result: "NOT_QUALIFIED_attempt24_closed_quiescence_failure_exact_cleanup_complete"') ||
+      gates.includes('result: "NOT_QUALIFIED_attempt25_startup_terminal_inventory_candidate_pending_fresh_approval"')),
+  "gate_closed",
+);
 assert(task.includes("Attempt 24 closure") && task.includes("fresh exact proposal and fresh positive numeric cap are required"), "task_closure");
 assert(start.includes("Attempt 24 closure") && start.includes("fresh exact proposal and fresh positive numeric cap are required"), "start_closure");
 assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");

@@ -1,0 +1,111 @@
+{
+  "schema_version": "videoforge.v2-07-attempt25-startup-terminal-inventory-candidate-handoff/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 25,
+  "recorded_at": "2026-08-21T10:30:00.000Z",
+  "result": "PROVIDER_FREE_STARTUP_TERMINAL_INVENTORY_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946",
+    "max1_path": "staged-config-max1.json",
+    "max1_sha256": "sha256:d7a5791c80fa96f997994c70486208af5faea93989a1cc3fe5033a0a911ddacd",
+    "max2_path": "staged-config-max2.json",
+    "max2_sha256": "sha256:e1edf2d61b188428ce16e6f5597ceadc6ce7d58aa50dda4f8a7ea09e96bd0e38",
+    "control_source_commit": "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9",
+    "prior_attempt24_closure": "../2026-08-21-live-qualification/failed-attempt-24.json",
+    "prior_attempt24_closure_sha256": "sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "flashboot": true,
+    "availability": "LOW",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true,
+    "authority_path": null,
+    "authority_sha256": null,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false
+  },
+  "startup_terminal_inventory": {
+    "rationale": "Attempt24 warm-idle health counters did not prove quiescence although exact terminal records existed; permit a narrow pre-dispatch fallback.",
+    "exact_scope": {
+      "allowed_before_dispatch_only": true,
+      "allowed_before_any_owned_job": true,
+      "allowed_before_initial_qualification": true,
+      "trigger": "fresh_endpoint_health_counters_incomplete_or_stale_after_warm_idle_failure",
+      "exact_inventory_required": [
+        "fresh_endpoint_scoped_worker_inventory",
+        "fresh_endpoint_scoped_pod_inventory",
+        "all_observed_worker_and_pod_records_terminal_EXITED_or_TERMINATED",
+        "no_owned_jobs",
+        "no_in_progress_or_queued_jobs",
+        "exactly_two_stable_inventory_snapshots",
+        "matching_inventory_signatures",
+        "zero_nonterminal_records"
+      ],
+      "worker_health_counters_required_for_startup_fallback": false,
+      "health_jobs_required_for_startup_fallback": {
+        "object_present": true,
+        "in_queue_present": true,
+        "in_queue_exact": 0,
+        "in_progress_present": true,
+        "in_progress_exact": 0
+      },
+      "health_jobs_reads_bracketing_inventory": {
+        "before_first_inventory_snapshot": "required_object_present_and_exact_zero",
+        "after_first_inventory_snapshot": "required_object_present_and_exact_zero",
+        "before_second_inventory_snapshot": "required_object_present_and_exact_zero",
+        "after_second_inventory_snapshot": "required_object_present_and_exact_zero",
+        "job_read_signatures_match": true,
+        "all_reads_required": true
+      },
+      "dispatch_allowed_after_pass": true,
+      "dispatch_forbidden_after_fail": true,
+      "post_dispatch_or_drain_fallback_forbidden": true,
+      "post_drain_policy": "health_first_confirm_quiescent",
+      "cancellation_policy": "health_first_confirm_quiescent",
+      "concurrent_reader_policy": "health_first_confirm_quiescent",
+      "cleanup_policy": "health_first_confirm_quiescent",
+      "no_retry_or_duplicate_compute": true
+    },
+    "post_dispatch_or_drain_health_first": true,
+    "no_retry_or_duplicate_compute": true
+  },
+  "provider_free_exit": {
+    "local_control_commit": "bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9",
+    "existing_image_unchanged": true,
+    "existing_mage_volume_unchanged": true,
+    "no_provider_calls": true,
+    "no_provider_mutation": true,
+    "no_gpu_use": true,
+    "external_spend_usd": 0
+  },
+  "local_verification": {
+    "proposal_validator": "PENDING_PROVIDER_FREE_VALIDATION",
+    "staged_definition_hashes": "PENDING_PROVIDER_FREE_VALIDATION",
+    "context_validation": "PENDING_PROVIDER_FREE_VALIDATION",
+    "secret_scan": "PENDING_PROVIDER_FREE_VALIDATION",
+    "format_check": "PENDING_PROVIDER_FREE_VALIDATION",
+    "git_diff_check": "PENDING_PROVIDER_FREE_VALIDATION"
+  },
+  "next_boundary": "Ask once for explicit approval of the exact Attempt25 proposal hash, FlashBoot=true, LOW EU-RO-1 availability, and a fresh positive numeric maximum cumulative finite spend. Do not create an authority record, publish, mutate provider state, use GPU, or spend before approval and cap are recorded.",
+  "unproven_acceptance": [
+    "complete diagnostic sample and 32-image cold batch",
+    "warm complete batch",
+    "durable outputs and v3 receipts",
+    "duplicate cancellation and timeout live behavior",
+    "two simultaneous read-only workers",
+    "sealed manifest unchanged after worker application",
+    "no model-volume writes after worker application",
+    "peak VRAM and init load warm inference upload timings",
+    "retained endpoint and private template on success"
+  ]
+}

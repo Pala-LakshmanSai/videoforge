@@ -302,6 +302,9 @@ assert(
   activation.includes(`V207_PENDING_PROPOSAL_SHA256 =\n  "${expected.currentProposal}"`) ||
     activation.includes(
       "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137",
+    ) ||
+    activation.includes(
+      "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946",
     ),
   "activation_current_proposal",
 );
@@ -330,7 +333,8 @@ assert(
     currentState.includes(`v2_07_action: close_attempt23_output_contract_diagnostic_and_require_fresh_authority`) ||
     currentState.includes(`v2_07_action: prepare_attempt24_verification_stage_diagnostic_provider_free`) ||
     currentState.includes(`v2_07_action: execute_exact_approved_attempt24_verification_stage_diagnostic`) ||
-    currentState.includes(`v2_07_action: close_attempt24_quiescence_failure_and_require_fresh_authority`),
+    currentState.includes(`v2_07_action: close_attempt24_quiescence_failure_and_require_fresh_authority`) ||
+    currentState.includes(`v2_07_action: prepare_attempt25_startup_terminal_inventory_candidate_and_require_fresh_authority`),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -352,10 +356,12 @@ assert(
     recommendedTask.includes("Attempt23 output-contract failure") ||
     recommendedTask.includes("Attempt24 verification-stage diagnostic candidate") ||
     recommendedTask.includes("Attempt24 verification-stage diagnostic proposal") ||
-    recommendedTask.includes("quiescence failure"),
+    recommendedTask.includes("quiescence failure") ||
+    recommendedTask.includes("Attempt25 startup-terminal-inventory candidate") ||
+    recommendedTask.includes("Attempt25 startup-terminal-inventory proposal"),
   "state_recommended_goal",
 );
-assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
+assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation"), "state_recommended_stage");
 assert(
     recommendedTask.includes("current_goal_authority: none_attempt23_pending_provider_free_candidate") ||
     recommendedTask.includes("current_goal_authority: attempt23_approved_preexecution") ||
@@ -369,6 +375,9 @@ assert(
   auditEvidence.includes(`v2_07_current_proposal_sha256: "${expected.currentProposal}"`) ||
     auditEvidence.includes(
       'v2_07_current_proposal_sha256: "sha256:be17430ce61a48a823a1ac87a128e83e44cfb88b01163331c285280e95274137"',
+    ) ||
+    auditEvidence.includes(
+      'v2_07_current_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"',
     ),
   "state_audit_current_proposal_hash",
 );

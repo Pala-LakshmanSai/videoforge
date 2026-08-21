@@ -1,9 +1,9 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
-bounded Attempt24. Exact template/endpoint identity work reached the pre-dispatch safety guard,
+bounded Attempt24. Attempt25 is a provider-free startup-terminal-inventory candidate. Exact template/endpoint identity work reached the pre-dispatch safety guard,
 but `RUNPOD_QUIESCENT_NOT_CONFIRMED` stopped before `/run/job`; zero jobs and zero batches were
-submitted. Control `63517e6` retains only structurally branded verification-stage diagnostics for
+submitted. Historical Attempt24 control `63517e6` retains only structurally branded verification-stage diagnostics for
 any future completed-job non-success, then stops without retry. Exact cleanup and three stable
 reconciliation reads prove zero RunPod disposable resources, both intended 50 GB EU-RO-1 volumes
 retained, billing from USD 0.18311072164215147 to USD 0.22078647126909345, and USD
@@ -13,6 +13,18 @@ retained, billing from USD 0.18311072164215147 to USD 0.22078647126909345, and U
 closed. No provider authority remains; any retry requires a fresh exact proposal and fresh
 positive numeric cap. No image republication, model or retained-volume mutation, fallback
 GPU/region, public sample publication, V2-08, or successor work is authorized.
+
+Attempt 25 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json`.
+Attempt 25 startup-terminal-inventory candidate is provider-free and pending fresh exact approval.
+Attempt 25 proposal SHA-256: `sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946`.
+It binds control `bb9abc03f286cae56bf874fe47dc1d7ebddb1fe9`, unchanged image/source/model/manifest,
+the sealed Mage volume, FlashBoot=true, LOW EU-RO-1, and RTX 4090 only. The startup fallback is
+allowed only before any owned job when health.jobs is present with inQueue=0 and inProgress=0 and
+two matching terminal worker/Pod inventory snapshots are stable; post-dispatch, cancellation,
+concurrent-reader, and drain checks remain health-first. Max-one is
+`sha256:d7a5791c80fa96f997994c70486208af5faea93989a1cc3fe5033a0a911ddacd`; max-two is
+`sha256:e1edf2d61b188428ce16e6f5597ceadc6ce7d58aa50dda4f8a7ea09e96bd0e38`. No authority or cap
+exists; fresh exact approval and a fresh positive numeric cap are required.
 
 Attempt 23 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt23-output-contract-diagnostic-candidate/combined-live-proposal.json`.
 Attempt 23 proposal SHA-256: `sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9`.
