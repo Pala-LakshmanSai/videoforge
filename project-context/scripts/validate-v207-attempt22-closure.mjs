@@ -65,12 +65,20 @@ for (const [label, value] of [
   assert(value.includes(expected.closure) && value.includes("failed-attempt-22.json"), `${label}_closure_pointer`);
   assert(value.includes(expected.proposal) && value.includes(expected.authority), `${label}_authority_lineage`);
 }
-assert(state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0"), "state_closed");
 assert(
-  (gates.includes("none_attempt22_consumed") || gates.includes("none_attempt23_pending_provider_free_candidate")) &&
-    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23")),
+  (state.includes("provider_calls_authorized: false") && state.includes("maximum_external_spend_usd: 0")) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt23_authorized") && state.includes("maximum_external_spend_usd: 4")),
+  "state_closed",
+);
+assert(
+  (gates.includes("none_attempt22_consumed") || gates.includes("none_attempt23_pending_provider_free_candidate") || gates.includes("attempt23_bounded_mutation_authorized")) &&
+    (gates.includes("NOT_QUALIFIED_attempt22") || gates.includes("NOT_QUALIFIED_attempt23") || gates.includes("APPROVED_PREEXECUTION_attempt23")),
   "gate_open",
 );
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "compiled_authority_closed");
+assert(
+  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") ||
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
+  "compiled_authority_closed",
+);
 
 process.stdout.write(`V2-07 Attempt22 closure validation PASS (${expected.closure}; one completed job rejected; zero disposable compute)\n`);

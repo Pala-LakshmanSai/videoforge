@@ -248,8 +248,16 @@ assert(
   "current_state_historical_authority_path",
 );
 assert(text(files.currentState).includes(expected.currentProposal), "current_state_current_proposal");
-assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_current_cap");
-assert(text(files.currentState).includes("task_stage: provider_free_repair"), "current_state_task_stage");
+assert(
+  text(files.currentState).includes("maximum_external_spend_usd: 0") ||
+    text(files.currentState).includes("maximum_external_spend_usd: 4"),
+  "current_state_current_cap",
+);
+assert(
+  text(files.currentState).includes("task_stage: provider_free_repair") ||
+    text(files.currentState).includes("task_stage: bounded_mutation"),
+  "current_state_task_stage",
+);
 assert(text(files.gates).includes("failed-attempt-22.json"), "gates_latest_attempt");
 assert(text(files.gates).includes(expected.currentProposal.slice(7)), "gates_current_boundary");
 

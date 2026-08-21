@@ -119,7 +119,8 @@ const activation = bytes.activation.toString("utf8");
 const activationTest = bytes.activationTest.toString("utf8");
 assert(
   state.includes("phase: serverless_v2_v2_07_attempt22_closed_output_contract_diagnosis_required") ||
-    state.includes("phase: serverless_v2_v2_07_attempt23_output_contract_diagnostic_pending"),
+  state.includes("phase: serverless_v2_v2_07_attempt23_output_contract_diagnostic_pending") ||
+    state.includes("phase: serverless_v2_v2_07_attempt23_authorized"),
   "state_phase",
 );
 assert(state.includes("historical_v2_07_attempt21_authority:") && state.includes("consumed: true"), "state_closed");
