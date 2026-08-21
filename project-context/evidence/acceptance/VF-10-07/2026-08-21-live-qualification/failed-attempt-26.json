@@ -1,0 +1,118 @@
+{
+  "schema_version": "videoforge.v2-07-failed-attempt-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 26,
+  "result": "NOT_QUALIFIED",
+  "closed_at": "2026-08-21T14:54:54.442Z",
+  "proposal_sha256": "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632",
+  "authority_sha256": "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05",
+  "authority_state": "CONSUMED_SINGLE_BOUNDED_EXECUTION_DO_NOT_REUSE",
+  "control_source_commit": "b8666dd8b8bc12578ffae8925f6ce73dbf53a841",
+  "lineage": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "image_config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
+    "image_layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
+    "image_base_sha256": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "image_parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "region": "EU-RO-1",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flashboot": true,
+    "workers_min": 0,
+    "workers_max": 1,
+    "staged_max_one_sha256": "sha256:b64d008bac42fb13ec342028675a1bb498836981c553e884529ad846d6cdf964",
+    "staged_max_two_sha256": "sha256:10f887ba47e8a7cac952374eb236fed08cb67962171769b65d96a4f0d3a7acf7",
+    "provider_applied_initial_config_sha256": "sha256:fca725a112620fc98c90b303342888563541dac1553a15797d9b1ca3d64c29f6"
+  },
+  "live_result": {
+    "source_path": "/tmp/videoforge-v207-live-result.json",
+    "source_sha256": "sha256:2354f8f0448fb471adcf758dda10a2c8d82cf164b45c11c3f8ff2b3a9f09da7b",
+    "provider_status": "COMPLETED",
+    "output_status": "SUCCEEDED",
+    "output_failure_stage": "output_finalization",
+    "output_failure_code": "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID",
+    "output_shape_kind": "object",
+    "output_shape_keys": ["items", "provenance_receipt", "status"],
+    "queue_delay_ms": 816602,
+    "execution_time_ms": 118362,
+    "accepted_batches": 0,
+    "accepted_outputs": 0,
+    "accepted_receipts": 0,
+    "generated_output_rollback": "CONFIRMED",
+    "unplanned_duplicate_compute": false,
+    "intermediate_failure_reconciliation_error": "V207_RECONCILIATION_INVENTORY_MISMATCH",
+    "intermediate_failure_reconciliation_disposition": "Superseded by the successful exact failed-cleanup command and independent THREE_STABLE_READS final reconciliation; it is not final absence proof."
+  },
+  "orchestrator": {
+    "source_path": "/tmp/videoforge-v207-attempt26-orchestrator.json",
+    "source_sha256": "sha256:7a44dd06f7fecaf2149453c8c01e00569bd55e095dc1e919cce67233c3861b4f",
+    "result": "FAILED",
+    "signer_secret_deleted": true,
+    "captured_worker_version_restored": true,
+    "route_restoration": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED",
+      "stable_fingerprint_window_confirmed": true
+    }
+  },
+  "exact_failed_cleanup": {
+    "schema_version": "videoforge.v2-07-failed-cleanup/v1",
+    "observation_path": "attempt26-cleanup-observation.json",
+    "observation_sha256": "sha256:8ea7c2475ec76740e07cd30eedabfaf4a2606e3092942c97668b92db1f9c7da3",
+    "raw_stdout_retained": false,
+    "endpoint_id_sha256": "sha256:59fc93372fd534e486c189e4a24491138863694d48359abddb3f8d847a6f96ac",
+    "template_id_sha256": "sha256:e910f4cc2ce2b6dbaca3215a57b424767add0b9fa246861a284363c25a3236ad",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 3,
+    "terminal_pod_record_count": 3,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true
+  },
+  "final_reconciliation": {
+    "schema_version": "videoforge.v2-07-readonly-reconciliation/v2",
+    "checked_at": "2026-08-21T14:54:54.442Z",
+    "stable_read_count": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ],
+    "baseline_endpoint_spend_usd": 0.26074580510612577,
+    "final_endpoint_spend_usd": 0.26074580510612577,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "retained_storage_charge_usd_per_month": 7,
+  "qualification_boundaries": {
+    "v2_07": "NOT_QUALIFIED",
+    "v2_08": "FORBIDDEN",
+    "complete_cold_batch": "NOT_RUN",
+    "complete_warm_batch": "NOT_RUN",
+    "duplicate_cancel_timeout": "NOT_RUN",
+    "two_reader_proof": "NOT_RUN",
+    "endpoint_retained_on_success": false
+  },
+  "next_boundary": "Provider-free diagnose and repair the exact hosted FINALIZE invalid-response path. Any new provider mutation or GPU execution requires a new exact proposal and fresh positive numeric cap."
+}

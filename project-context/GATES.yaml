@@ -132,30 +132,30 @@ gates:
     historical_attempt24_authority: "sha256:fccd60a68ee93f522d9e378012c5ccbefb182f6b03e26fde1b5940506ab9c412"
     historical_attempt24_closure: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-24.json"
     historical_attempt24_closure_sha256: "sha256:12ca4be38d063f761537cc4184b387ae83feeaebc6e9bb102260feff6c347bcb"
-    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json"
-    latest_closed_authority_sha256: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c"
-    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json"
-    latest_closed_proposal_sha256: "sha256:c8baa8a45b8e3e108904cac5f04f472ad22da2936dad75daa2a59d23476a8946"
-    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json"
-    latest_approved_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"
-    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json"
-    latest_approved_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
-    latest_approved_control_source_commit: "b8666dd8b8bc12578ffae8925f6ce73dbf53a841"
-    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json"
-    closed_authority_sha256: "sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c"
-    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json"
-    closure_evidence_sha256: "sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2"
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"
-    pending_control_source_commit: "b8666dd8b8bc12578ffae8925f6ce73dbf53a841"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
-    authority_mode: attempt26_bounded_mutation_authorized
-    pending_numeric_cap_usd: 4
+    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json"
+    latest_closed_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
+    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json"
+    latest_closed_proposal_sha256: "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632"
+    latest_approved_proposal: null
+    latest_approved_proposal_sha256: null
+    latest_approved_authority: null
+    latest_approved_authority_sha256: null
+    latest_approved_control_source_commit: null
+    closed_authority: "evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json"
+    closed_authority_sha256: "sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05"
+    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-26.json"
+    closure_evidence_sha256: "sha256:f2839fefaafbe507ce447a4e374d502a971e75653b466f6703caa1a1f8e7c9ec"
+    pending_proposal: null
+    pending_proposal_sha256: null
+    pending_control_source_commit: null
+    pending_authority: null
+    pending_authority_sha256: null
+    authority_mode: none_attempt26_consumed
+    pending_numeric_cap_usd: null
     pending_flashboot: true
     pending_availability: LOW
-    result: "NOT_QUALIFIED_attempt26_authorized_preexecution"
-    next_boundary: "commit and validate exact Attempt26 authority, then execute only the approved bounded qualification and reconcile; V2-08 forbidden"
+    result: "NOT_QUALIFIED_attempt26_closed_finalize_response_invalid"
+    next_boundary: "provider-free diagnose and repair the exact hosted FINALIZE invalid-response path, then require a new exact proposal and fresh positive numeric cap; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:

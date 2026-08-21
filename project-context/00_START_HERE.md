@@ -1,7 +1,7 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
-bounded Attempt25. Attempt25 consumed its exact proposal and authority. Its startup safety proof
+bounded Attempt26. Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any
 accepted batch, durable output, or accepted receipt. Exact cleanup deleted only the disposable
@@ -11,6 +11,18 @@ incremental endpoint spend. Closure evidence is
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-25.json` at
 `sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2`. A fresh exact proposal
 and fresh positive numeric cap are required before any retry; V2-08 remains forbidden.
+
+Attempt26 consumed exact proposal `sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632`
+and authority `sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05`.
+One owned diagnostic job reached provider `COMPLETED` and output `SUCCEEDED` after 816602 ms queue
+delay and 118362 ms execution, then stopped fail-closed at `output_finalization` with
+`V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID`; no batch/output/receipt was accepted. Closure
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-26.json` at
+`sha256:f2839fefaafbe507ce447a4e374d502a971e75653b466f6703caa1a1f8e7c9ec` proves generated-output
+rollback, exact endpoint/template deletion, zero Pods/endpoints/templates/workers, both intended
+50 GB EU-RO-1 volumes retained, signer deletion/Worker rollback/stable disabled route, and `$0`
+settled incremental endpoint spend. Attempt26 authority is consumed and non-reusable. Provider-free
+FINALIZE-route diagnosis is next; any retry requires a new exact proposal and fresh numeric cap.
 
 Historical Attempt24 exact template/endpoint identity work reached the pre-dispatch safety guard,
 but `RUNPOD_QUIESCENT_NOT_CONFIRMED` stopped before `/run/job`; zero jobs and zero batches were
@@ -28,7 +40,7 @@ LOW EU-RO-1 availability, and a fresh `$4` cap. Authority
 no provider execution remains authorized. No image republication, model or retained-volume
 mutation, fallback GPU/region, public sample publication, V2-08, or successor work is authorized.
 
-Attempt26 approved pre-execution candidate: `evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json`
+Historical Attempt26 candidate: `evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/combined-live-proposal.json`
 at `sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632`. It binds the exact
 published image, Mage model/manifest, sealed 50 GB EU-RO-1 volume at `/runpod-volume`, FlashBoot=true,
 LOW EU-RO-1, RTX 4090, Attempt25 closure `sha256:4b1d8b14f24b3e38a672cbe15b772590646bf35fe4e92f7a1046f23f13e5daf2`,
@@ -37,8 +49,8 @@ and local FINALIZE transport repair `b8666dd8b8bc12578ffae8925f6ce73dbf53a841`. 
 `sha256:10f887ba47e8a7cac952374eb236fed08cb67962171769b65d96a4f0d3a7acf7`. The user approved the
 exact proposal with FlashBoot=true, LOW EU-RO-1, and a fresh `$4` cap. Append-only authority
 `evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json`
-is `sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05`. Provider execution is
-pending until that authority state is committed and validated; V2-08 remains forbidden.
+is `sha256:bad94e64eab6fcbc03edf6521f02159ddb2f1c49407a6ca30dfc027fecad2d05`. That authority is now
+consumed by the failed-closed execution above; V2-08 remains forbidden.
 
 Attempt 25 candidate path: `evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/combined-live-proposal.json`.
 Attempt 25 startup-terminal-inventory candidate was approved and executed once under the exact

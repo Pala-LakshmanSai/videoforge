@@ -16,8 +16,8 @@ export const V207_PENDING_PROPOSAL_SHA256 =
   "sha256:0112b0b72254ef286643fc63bee0176fce327edc401ce40de4a3a860a5e68632" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
   "b8666dd8b8bc12578ffae8925f6ce73dbf53a841" as const;
-// Attempt 26 is approved for bounded execution under the exact recorded authority and fresh $4 cap.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+// Attempt 26 is consumed. No provider dispatch is authorized until a fresh exact proposal is approved.
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {
   readonly image: string;

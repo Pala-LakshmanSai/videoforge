@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge.v2-07-cleanup-command-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 26,
+  "observed_at": "2026-08-21T14:54:54.442Z",
+  "command": "pnpm --filter @videoforge/web exec tsx src/server/providers/runpod-v207-failed-cleanup.ts",
+  "command_exit_code": 0,
+  "source": "same-session command result captured before context reconciliation",
+  "raw_stdout_retained": false,
+  "endpoint_id_sha256": "sha256:59fc93372fd534e486c189e4a24491138863694d48359abddb3f8d847a6f96ac",
+  "template_id_sha256": "sha256:e910f4cc2ce2b6dbaca3215a57b424767add0b9fa246861a284363c25a3236ad",
+  "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "stable_terminal_snapshot_count": 2,
+  "endpoint_worker_record_count": 3,
+  "terminal_pod_record_count": 3,
+  "endpoint_deleted": true,
+  "template_deleted": true,
+  "final_disposable_resources_absent": true,
+  "limitation": "The raw command stdout was not retained as a separate file. This record preserves the same-session structured command result; the independent three-read reconciliation is the authoritative final absence and spend proof."
+}
