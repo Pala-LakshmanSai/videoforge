@@ -158,12 +158,12 @@ assert(qualification.includes("maximumCumulativeFiniteSpendUsd: finiteCapUsd"), 
 assert(state.includes(expectedProposalHash), "state_proposal");
 assert(state.includes(expectedAuthorityHash), "state_authority");
 assert(state.includes("failed-attempt-19.json"), "state_attempt19");
-assert(state.includes("task_stage: provider_free_repair"), "state_stage");
-assert(state.includes("provider_calls_authorized: false"), "state_provider_closed");
-assert(state.includes("maximum_external_spend_usd: 0"), "state_cap_closed");
+assert(state.includes("task_stage: bounded_mutation"), "state_stage");
+assert(state.includes("provider_calls_authorized: true"), "state_provider_authorized");
+assert(state.includes("maximum_external_spend_usd: 4"), "state_cap_authorized");
 assert(gate.includes("failed-attempt-19.json") && gate.includes(currentSuccessorProposal.slice(7)), "gate_successor");
 assert(task.includes(expectedProposalHash), "task_proposal");
 assert(activation.includes(currentSuccessorProposal), "activation_successor_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_authorized");
 
 process.stdout.write(`V2-07 partial PATCH acknowledgement proposal validation PASS (${expectedProposalHash})\n`);

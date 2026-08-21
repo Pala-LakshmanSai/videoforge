@@ -9,6 +9,8 @@ const candidate = resolve(
 );
 const expectedProposal =
   "sha256:9e9675dcf6943dce35b4bf6155fdfc39f8dade5e9775bcc3ee9a427980d39e02";
+const expectedAuthority =
+  "sha256:ac8f45bdb3d5429fa3b93e9624f62242f026ced07f19f28d740503dccfd8f56d";
 const expectedControl = "b35f4a60fe99d6b5649797c7aaaae7af4ef1368d";
 const expectedConfigs = [
   "sha256:76a2b5406115f1060cd72b1fccda9e02a2fdccb17450c8e4b1aae73cbea67f13",
@@ -19,9 +21,21 @@ const assert = (condition, label) => {
   if (!condition) throw new Error(`V207_GET_READBACK_PROPOSAL_INVALID:${label}`);
 };
 
-const [proposalBytes, attemptBytes, publicationBytes, state, gate, task, activation, control, tests] =
+const [
+  proposalBytes,
+  authorityBytes,
+  attemptBytes,
+  publicationBytes,
+  state,
+  gate,
+  task,
+  activation,
+  control,
+  tests,
+] =
   await Promise.all([
     readFile(resolve(candidate, "combined-live-proposal.json")),
+    readFile(resolve(candidate, "approved-authority.json")),
     readFile(
       resolve(
         root,
@@ -42,12 +56,28 @@ const [proposalBytes, attemptBytes, publicationBytes, state, gate, task, activat
     readFile(resolve(root, "apps/web/src/server/providers/runpod-control.test.ts"), "utf8"),
   ]);
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
+const authority = JSON.parse(authorityBytes.toString("utf8"));
 const attempt = JSON.parse(attemptBytes.toString("utf8"));
 
 assert(hash(proposalBytes) === expectedProposal, "proposal_hash");
+assert(hash(authorityBytes) === expectedAuthority, "authority_hash");
 assert(proposal.checkpoint === "V2-07" && proposal.task_id === "VF-10-07", "scope");
 assert(proposal.user_approval?.maximum_cumulative_finite_spend_usd === null, "cap_null");
 assert(proposal.user_approval?.exact_proposal_approved === false, "approval_pending");
+assert(authority.checkpoint === "V2-07" && authority.task_id === "VF-10-07", "authority_scope");
+assert(authority.proposal?.sha256 === expectedProposal, "authority_proposal");
+assert(authority.approval?.exact_proposal_approved === true, "authority_approval");
+assert(authority.approval?.flashboot_true_accepted === true, "authority_flashboot");
+assert(authority.approval?.minimum_approved_availability === "LOW", "authority_availability");
+assert(authority.approval?.maximum_cumulative_finite_spend_usd === 4, "authority_cap");
+assert(authority.approval?.fresh_numeric_cap === true, "authority_fresh_cap");
+assert(authority.approval?.historical_cap_reused === false, "authority_cap_not_reused");
+assert(authority.lineage?.control_source_commit === expectedControl, "authority_control");
+assert(authority.lineage?.initial_config_sha256 === expectedConfigs[0], "authority_max1");
+assert(authority.lineage?.concurrent_reader_config_sha256 === expectedConfigs[1], "authority_max2");
+assert(authority.execution_boundary?.image_republication_authorized === false, "authority_no_republish");
+assert(authority.execution_boundary?.gpu_use_authorized_pending_execution === true, "authority_gpu");
+assert(authority.execution_boundary?.v2_08_authorized === false, "authority_no_v208");
 assert(proposal.lineage?.control_source_commit === expectedControl, "control_commit");
 assert(proposal.lineage?.failed_attempt_evidence_sha256 === hash(attemptBytes), "attempt_hash");
 assert(attempt.attempt === 19 && attempt.billing?.attempt_increment_usd_settled === 0, "attempt19");
@@ -109,11 +139,14 @@ assert(
 assert(tests.includes("omits provider-optional compute and data-center fields"), "omitted_fields_test");
 assert(tests.includes("explicit GET drift in provider-optional compute and data-center fields"), "wrong_fields_test");
 assert(state.includes(expectedProposal), "state_proposal");
-assert(state.includes("provider_calls_authorized: false"), "state_closed");
-assert(state.includes("maximum_external_spend_usd: 0"), "state_zero_cap");
+assert(state.includes(expectedAuthority), "state_authority");
+assert(state.includes("provider_calls_authorized: true"), "state_authorized");
+assert(state.includes("maximum_external_spend_usd: 4"), "state_cap");
 assert(gate.includes(expectedProposal.slice(7)), "gate_proposal");
+assert(gate.includes(expectedAuthority), "gate_authority");
 assert(task.includes(expectedProposal), "task_proposal");
+assert(task.includes(expectedAuthority), "task_authority");
 assert(activation.includes(expectedProposal), "activation_proposal");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "activation_closed");
+assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "activation_cap");
 
 process.stdout.write(`V2-07 GET readback proposal validation PASS (${expectedProposal})\n`);
