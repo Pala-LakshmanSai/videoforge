@@ -14,10 +14,9 @@ export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
   "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c" as const;
-// Fresh exact authority recorded at
-// project-context/evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json.
-// The USD 4 cap applies only to proposal sha256:6bc0cef7...d99c and cannot transfer.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+// Attempt 17 consumed this exact proposal and cap. Keep execution closed until a new exact
+// provider-free repair proposal and a fresh positive numeric cap are separately recorded.
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {
   readonly image: string;

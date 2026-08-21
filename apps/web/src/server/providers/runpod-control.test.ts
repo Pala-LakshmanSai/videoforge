@@ -1045,6 +1045,7 @@ describe("RunPod scale-zero control", () => {
       expect(path).toBe("/endpoints/endpoint_01");
       if (init?.method === "PATCH") {
         expect(body).not.toHaveProperty("env");
+        expect(body).not.toHaveProperty("computeType");
         return response({ id: "endpoint_01", ...endpointConfig });
       }
       return response({
@@ -1086,6 +1087,7 @@ describe("RunPod scale-zero control", () => {
     expect(new URL(String(fetch.mock.calls[1]?.[0])).pathname).toBe("/endpoints/endpoint_01");
     const patchBody = JSON.parse(String(fetch.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
     expect(patchBody).not.toHaveProperty("env");
+    expect(patchBody).not.toHaveProperty("computeType");
     expect(new URL(String(fetch.mock.calls[2]?.[0])).pathname).toBe("/endpoints/endpoint_01");
   });
 
@@ -1149,6 +1151,7 @@ describe("RunPod scale-zero control", () => {
       expect(init?.method).toBe("PATCH");
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
       expect(body).not.toHaveProperty("env");
+      expect(body).not.toHaveProperty("computeType");
       return response({
         id: "endpoint_01",
         templateId: "template_01",

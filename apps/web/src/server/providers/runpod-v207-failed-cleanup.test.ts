@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
 import {
   cleanupFailedV207Resources,
@@ -6,6 +7,7 @@ import {
   V207_FAILED_CLEANUP_ENDPOINT_NAME,
   V207_FAILED_CLEANUP_MANIFEST_SHA256,
   V207_FAILED_CLEANUP_RECEIPT_KEY_ID,
+  V207_FAILED_CLEANUP_SOULX_VOLUME_ID_HASH,
   V207_FAILED_CLEANUP_TEMPLATE_NAME,
   V207_FAILED_CLEANUP_VOLUME_ID,
   V207_FAILED_CLEANUP_VOLUME_ID_HASH,
@@ -15,6 +17,7 @@ import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
 
 const apiKey = "runpod-test-key-at-least-twenty-characters";
 const controlBaseUrl = "http://127.0.0.1:43123";
+const endpointIdHash = `sha256:${createHash("sha256").update("endpoint_10").digest("hex")}`;
 const jsonResponse = (value: unknown, status = 200): Response =>
   new Response(JSON.stringify(value), {
     status,
@@ -46,12 +49,17 @@ type FixtureOptions = {
   readonly keepTemplateAfterDelete?: boolean;
   readonly unstableFlashboot?: boolean;
   readonly unstableWorkers?: boolean;
+  readonly unstableEndpointBinding?: boolean;
+  readonly postDeleteBindingDrift?: boolean;
+  readonly keepFinalPod?: boolean;
+  readonly extraVolume?: boolean;
 };
 
 function makeFixture(options: FixtureOptions = {}) {
   let endpointPresent = true;
   let templatePresent = true;
   let endpointReads = 0;
+  let templateReads = 0;
   const calls: Array<{ readonly method: string; readonly path: string }> = [];
   const workerStatus = options.workerStatus ?? "EXITED";
   const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -62,7 +70,7 @@ function makeFixture(options: FixtureOptions = {}) {
 
     if (path === "/pods") {
       return jsonResponse(
-        endpointPresent
+        endpointPresent || options.keepFinalPod
           ? [
               {
                 id: "pod_10",
@@ -80,8 +88,12 @@ function makeFixture(options: FixtureOptions = {}) {
           id: V207_FAILED_CLEANUP_VOLUME_ID,
           size: 50,
           dataCenterId: "EU-RO-1",
+          ...options.volumePatch,
         },
         { id: "soulx_volume", size: 50, dataCenterId: "EU-RO-1" },
+        ...(options.extraVolume
+          ? [{ id: "unexpected_volume", size: 50, dataCenterId: "EU-RO-1" }]
+          : []),
       ]);
     }
     if (path === "/endpoints" && method === "GET") {
@@ -114,7 +126,18 @@ function makeFixture(options: FixtureOptions = {}) {
       ]);
     }
     if (path === "/templates" && method === "GET") {
+      templateReads += 1;
       if (!templatePresent) return jsonResponse([]);
+      const environment: Record<string, unknown> = {
+        ...templateEnvironment,
+        ...asTemplateEnvironment(options.templatePatch?.env),
+      };
+      if (options.unstableEndpointBinding && templateReads >= 4) {
+        environment.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH = endpointIdHash;
+      }
+      if (options.postDeleteBindingDrift && !endpointPresent) {
+        delete environment.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH;
+      }
       return jsonResponse([
         {
           id: "template_10",
@@ -125,8 +148,8 @@ function makeFixture(options: FixtureOptions = {}) {
           isServerless: true,
           volumeInGb: 0,
           volumeMountPath: "/runpod-volume",
-          env: templateEnvironment,
           ...options.templatePatch,
+          env: environment,
         },
       ]);
     }
@@ -143,8 +166,27 @@ function makeFixture(options: FixtureOptions = {}) {
   return { calls, fetch };
 }
 
+function asTemplateEnvironment(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
 function makeControl(fetch: typeof globalThis.fetch): RunPodControlClient {
-  return new RunPodControlClient({ apiKey, fetch, baseUrl: controlBaseUrl });
+  const control = new RunPodControlClient({ apiKey, fetch, baseUrl: controlBaseUrl });
+  const inventory = control.inventory.bind(control);
+  vi.spyOn(control, "inventory").mockImplementation(async () => {
+    const value = await inventory();
+    return {
+      ...value,
+      networkVolumes: value.networkVolumes.map((volume) =>
+        volume.idHash === `sha256:${createHash("sha256").update("soulx_volume").digest("hex")}`
+          ? { ...volume, idHash: V207_FAILED_CLEANUP_SOULX_VOLUME_ID_HASH }
+          : volume,
+      ),
+    };
+  });
+  return control;
 }
 
 async function cleanupFixture(options: FixtureOptions = {}) {
@@ -206,6 +248,87 @@ describe("V2-07 failed-resource cleanup", () => {
     ]);
   });
 
+  it("accepts only the exact template-bound endpoint identity hash", async () => {
+    const { result } = await cleanupFixture({
+      templatePatch: {
+        env: { ...templateEnvironment, VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointIdHash },
+      },
+    });
+    expect(result.finalDisposableResourcesAbsent).toBe(true);
+
+    const wrong = makeFixture({
+      templatePatch: {
+        env: {
+          ...templateEnvironment,
+          VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: `sha256:${"0".repeat(64)}`,
+        },
+      },
+    });
+    await expect(
+      cleanupFailedV207Resources({
+        apiKey,
+        control: makeControl(wrong.fetch),
+        fetch: wrong.fetch,
+        sleep: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_CLEANUP_TEMPLATE_ENDPOINT_IDENTITY_MISMATCH");
+    expect(wrong.calls.some((call) => call.method === "DELETE")).toBe(false);
+  });
+
+  it("rejects endpoint-binding drift between terminal snapshots before deletion", async () => {
+    const fixture = makeFixture({ unstableEndpointBinding: true });
+    await expect(
+      cleanupFailedV207Resources({
+        apiKey,
+        control: makeControl(fixture.fetch),
+        fetch: fixture.fetch,
+        sleep: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_CLEANUP_TERMINAL_INVENTORY_UNSTABLE");
+    expect(fixture.calls.some((call) => call.method === "DELETE")).toBe(false);
+  });
+
+  it("rejects endpoint-binding drift after endpoint deletion before deleting the template", async () => {
+    const fixture = makeFixture({
+      templatePatch: {
+        env: { ...templateEnvironment, VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointIdHash },
+      },
+      postDeleteBindingDrift: true,
+    });
+    await expect(
+      cleanupFailedV207Resources({
+        apiKey,
+        control: makeControl(fixture.fetch),
+        fetch: fixture.fetch,
+        sleep: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_CLEANUP_TEMPLATE_BINDING_UNCONFIRMED");
+    expect(fixture.calls).toContainEqual({ method: "DELETE", path: "/endpoints/endpoint_10" });
+    expect(fixture.calls).not.toContainEqual({
+      method: "DELETE",
+      path: "/templates/template_10",
+    });
+  });
+
+  it.each([
+    ["extra environment key", { env: { ...templateEnvironment, UNPLANNED: "1" } }],
+    [
+      "malformed endpoint identity",
+      { env: { ...templateEnvironment, VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: "sha256:short" } },
+    ],
+  ] as const)("rejects a template with %s before deletion", async (_label, templatePatch) => {
+    const fixture = makeFixture({ templatePatch });
+    await expect(
+      cleanupFailedV207Resources({
+        apiKey,
+        control: makeControl(fixture.fetch),
+        fetch: fixture.fetch,
+        sleep: async () => undefined,
+      }),
+    ).rejects.toThrow(/V207_CLEANUP_TEMPLATE_(?:ENVIRONMENT|ENDPOINT_IDENTITY)_MISMATCH/u);
+    expect(fixture.calls.some((call) => call.method === "DELETE")).toBe(false);
+  });
+
   it.each([
     ["image", { templatePatch: { imageName: "ghcr.io/wrong/image@sha256:" + "c".repeat(64) } }],
     ["GPU", { endpointPatch: { gpuTypeIds: ["NVIDIA GeForce RTX 5090"] } }],
@@ -214,6 +337,8 @@ describe("V2-07 failed-resource cleanup", () => {
     ["region", { endpointPatch: { dataCenterIds: ["US-KS-2"] } }],
     ["policy", { endpointPatch: { workersMax: 2 } }],
     ["malformed FlashBoot", { endpointPatch: { flashboot: "true" } }],
+    ["retained-volume size", { volumePatch: { size: 49 } }],
+    ["unexpected third volume", { extraVolume: true }],
   ] as const)("fails closed for exact %s drift before mutation", async (_label, options) => {
     const fixture = makeFixture(options);
     await expect(
@@ -299,5 +424,21 @@ describe("V2-07 failed-resource cleanup", () => {
     expect(
       fixture.calls.some((call) => call.method === "DELETE" && call.path === "/networkvolumes"),
     ).toBe(false);
+  });
+
+  it("fails closed if a Pod remains after both disposable resources are deleted", async () => {
+    const fixture = makeFixture({ keepFinalPod: true });
+    await expect(
+      cleanupFailedV207Resources({
+        apiKey,
+        control: makeControl(fixture.fetch),
+        fetch: fixture.fetch,
+        sleep: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_CLEANUP_FINAL_RESOURCE_STATE_UNCONFIRMED");
+    expect(fixture.calls.filter((call) => call.method === "DELETE")).toEqual([
+      { method: "DELETE", path: "/endpoints/endpoint_10" },
+      { method: "DELETE", path: "/templates/template_10" },
+    ]);
   });
 });

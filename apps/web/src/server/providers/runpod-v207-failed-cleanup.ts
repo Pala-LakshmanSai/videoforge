@@ -33,6 +33,8 @@ export const V207_FAILED_CLEANUP_TEMPLATE_NAME = "videoforge_mage_v207_20260820"
 export const V207_FAILED_CLEANUP_VOLUME_ID = "c7kg89brtj" as const;
 export const V207_FAILED_CLEANUP_VOLUME_ID_HASH =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619" as const;
+export const V207_FAILED_CLEANUP_SOULX_VOLUME_ID_HASH =
+  "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be" as const;
 export const V207_FAILED_CLEANUP_MANIFEST_SHA256 =
   "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b" as const;
 export const V207_FAILED_CLEANUP_RECEIPT_KEY_ID = "v207-qualification-20260820" as const;
@@ -85,7 +87,7 @@ const throwCleanup = (code: string): never => {
   throw new RunPodControlError(code);
 };
 
-function validateTemplate(resource: RunPodNamedResource): void {
+function validateTemplate(resource: RunPodNamedResource, endpointId?: string): string | null {
   const raw = resource.raw;
   if (
     resource.name !== V207_FAILED_CLEANUP_TEMPLATE_NAME ||
@@ -104,10 +106,19 @@ function validateTemplate(resource: RunPodNamedResource): void {
     throwCleanup("V207_CLEANUP_TEMPLATE_ENVIRONMENT_MISMATCH");
   }
   const validatedEnvironment = environment as JsonRecord;
-  if (
-    !exactStringArray(sortedKeys(validatedEnvironment), [...expectedTemplateEnvironmentKeys].sort())
-  ) {
+  const endpointIdentity = validatedEnvironment.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH;
+  const expectedKeys =
+    endpointIdentity === undefined
+      ? [...expectedTemplateEnvironmentKeys]
+      : [...expectedTemplateEnvironmentKeys, "VIDEOFORGE_MAGE_ENDPOINT_ID_HASH"];
+  if (!exactStringArray(sortedKeys(validatedEnvironment), expectedKeys.sort())) {
     throwCleanup("V207_CLEANUP_TEMPLATE_ENVIRONMENT_MISMATCH");
+  }
+  if (
+    endpointIdentity !== undefined &&
+    (endpointId === undefined || endpointIdentity !== hashText(endpointId))
+  ) {
+    throwCleanup("V207_CLEANUP_TEMPLATE_ENDPOINT_IDENTITY_MISMATCH");
   }
   const expectedEnvironment: Readonly<Record<string, string>> = {
     DIFFUSERS_OFFLINE: "1",
@@ -134,6 +145,7 @@ function validateTemplate(resource: RunPodNamedResource): void {
   ) {
     throwCleanup("V207_CLEANUP_TEMPLATE_SECRET_SHAPE_MISMATCH");
   }
+  return typeof endpointIdentity === "string" ? endpointIdentity : null;
 }
 
 function validateEndpoint(resource: RunPodNamedResource, template: RunPodNamedResource): void {
@@ -196,14 +208,20 @@ const rawWorkerStatuses = (resource: RunPodNamedResource): readonly string[] => 
 };
 
 function validateVolume(inventory: RunPodInventory): void {
-  const matches = inventory.networkVolumes.filter(
-    (volume) => volume.idHash === V207_FAILED_CLEANUP_VOLUME_ID_HASH,
-  );
+  const expectedHashes = [
+    V207_FAILED_CLEANUP_SOULX_VOLUME_ID_HASH,
+    V207_FAILED_CLEANUP_VOLUME_ID_HASH,
+  ].sort();
+  const observedHashes = inventory.networkVolumes.map((volume) => volume.idHash).sort();
   if (
-    matches.length !== 1 ||
-    matches[0]?.idHash !== volumeIdHash ||
-    matches[0]?.sizeGb !== V207_RUNPOD_MAGE_VOLUME_SIZE_GB ||
-    matches[0]?.dataCenterId !== V207_RUNPOD_REGION
+    volumeIdHash !== V207_FAILED_CLEANUP_VOLUME_ID_HASH ||
+    inventory.networkVolumes.length !== 2 ||
+    !exactStringArray(observedHashes, expectedHashes) ||
+    inventory.networkVolumes.some(
+      (volume) =>
+        volume.sizeGb !== V207_RUNPOD_MAGE_VOLUME_SIZE_GB ||
+        volume.dataCenterId !== V207_RUNPOD_REGION,
+    )
   ) {
     throwCleanup("V207_CLEANUP_VOLUME_IDENTITY_MISMATCH");
   }
@@ -216,6 +234,7 @@ function validateTerminalInventory(
   readonly endpoint: RunPodNamedResource;
   readonly template: RunPodNamedResource;
   readonly signature: string;
+  readonly templateEndpointIdHash: string | null;
   readonly endpointWorkerRecordCount: number;
   readonly terminalPodRecordCount: number;
 } {
@@ -229,8 +248,8 @@ function validateTerminalInventory(
   }
   const endpoint = resources.endpoints[0]!;
   const template = resources.templates[0]!;
-  validateTemplate(template);
   validateEndpoint(endpoint, template);
+  const templateEndpointIdHash = validateTemplate(template, endpoint.id);
   validateVolume(inventory);
 
   const endpointInventory = inventory.endpoints[0]!;
@@ -277,6 +296,9 @@ function validateTerminalInventory(
         workerStatuses: endpointInventory.workerStatuses,
         rawWorkerStatuses: endpointWorkerStatuses,
       },
+      template: {
+        endpointIdHash: templateEndpointIdHash,
+      },
       pods: inventory.pods
         .map((pod) => ({
           idHash: pod.idHash,
@@ -298,6 +320,7 @@ function validateTerminalInventory(
     endpoint,
     template,
     signature,
+    templateEndpointIdHash,
     endpointWorkerRecordCount: endpointInventory.workerRecordCount,
     terminalPodRecordCount: inventory.pods.length,
   };
@@ -306,6 +329,8 @@ function validateTerminalInventory(
 function assertTemplateStillBound(
   resources: RunPodDisposableResourceInventory,
   expectedTemplate: RunPodNamedResource,
+  expectedEndpointId: string,
+  expectedEndpointIdHash: string | null,
 ): void {
   if (resources.endpoints.length !== 0 || resources.templates.length !== 1) {
     throwCleanup("V207_CLEANUP_ENDPOINT_ABSENCE_UNCONFIRMED");
@@ -314,7 +339,9 @@ function assertTemplateStillBound(
   if (template.id !== expectedTemplate.id) {
     throwCleanup("V207_CLEANUP_TEMPLATE_BINDING_UNCONFIRMED");
   }
-  validateTemplate(template);
+  if (validateTemplate(template, expectedEndpointId) !== expectedEndpointIdHash) {
+    throwCleanup("V207_CLEANUP_TEMPLATE_BINDING_UNCONFIRMED");
+  }
 }
 
 function assertDisposableResourcesAbsent(resources: RunPodDisposableResourceInventory): void {
@@ -400,8 +427,8 @@ export async function cleanupFailedV207Resources(
   }
   const endpoint = resources.endpoints[0]!;
   const template = resources.templates[0]!;
-  validateTemplate(template);
   validateEndpoint(endpoint, template);
+  validateTemplate(template, endpoint.id);
   // Provider health can retain contradictory idle/ready counters after every attributable
   // Pod and worker record is terminal. This cleanup path never dispatches or updates policy;
   // deletion is authorized only by the two exact, stable inventory/resource snapshots below.
@@ -429,14 +456,25 @@ export async function cleanupFailedV207Resources(
 
   await control.deleteEndpoint(endpoint.id, guard);
   const afterEndpointDelete = await control.inventoryDisposableResources();
-  assertTemplateStillBound(afterEndpointDelete, template);
+  assertTemplateStillBound(
+    afterEndpointDelete,
+    template,
+    endpoint.id,
+    second.templateEndpointIdHash,
+  );
 
   await control.deleteTemplate(template.id);
   const afterTemplateDelete = await control.inventoryDisposableResources();
   assertDisposableResourcesAbsent(afterTemplateDelete);
   const finalInventory = await control.inventory();
   validateVolume(finalInventory);
-  if (finalInventory.endpoints.length !== 0 || finalInventory.privateTemplateCount !== 0) {
+  if (
+    finalInventory.endpoints.length !== 0 ||
+    finalInventory.privateTemplateCount !== 0 ||
+    finalInventory.runningPodCount !== 0 ||
+    finalInventory.activeServerlessWorkerCount !== 0 ||
+    finalInventory.pods.length !== 0
+  ) {
     throwCleanup("V207_CLEANUP_FINAL_RESOURCE_STATE_UNCONFIRMED");
   }
 

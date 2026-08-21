@@ -1,0 +1,162 @@
+{
+  "schema_version": "videoforge.v2-07-live-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 17,
+  "orchestrator_started_at": "2026-08-21T03:15:50.225Z",
+  "runner_started_at": "2026-08-21T03:16:44.915Z",
+  "runner_stopped_at": "2026-08-21T03:18:13.035Z",
+  "orchestrator_cleanup_observed_at": "2026-08-21T03:19:15.204Z",
+  "independent_reconciliation_observed_at": "2026-08-21T03:28:33.202Z",
+  "authority_proposal_sha256": "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c",
+  "approved_authority": {
+    "path": "../2026-08-20-template-identity-requalification-candidate/approved-authority.json",
+    "sha256": "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462"
+  },
+  "approved_finite_spend_cap_usd": 4,
+  "approved_minimum_availability": "LOW",
+  "result": "NOT_QUALIFIED_ENDPOINT_PATCH_MUTATION_FAILED_AUTHORITY_CLOSED",
+  "authority_status": "CLOSED_EXACT_ATTEMPT_CONSUMED_DO_NOT_REUSE",
+  "raw_evidence": {
+    "orchestrator": {
+      "path": "/private/tmp/videoforge-v207-live-orchestrator-61496.json",
+      "sha256": "sha256:eb976a963be3b44969958da61e80f0c65d0156d952268fb6b61201a582951741",
+      "schema_version": "videoforge-v207-live-orchestrator/v1"
+    },
+    "qualification": {
+      "path": "/private/tmp/videoforge-v207-live-result.json",
+      "sha256": "sha256:26cdfe36bfdb1ccd1eecf02192d36ade3f820dacc1c8da0b5bd52eb3d6cd39e8",
+      "schema_version": "videoforge.v2-07-live-qualification/v1"
+    },
+    "final_runpod_and_billing_reconciliation": {
+      "path": "/private/tmp/videoforge-v207-attempt17-reconciliation.json",
+      "sha256": "sha256:a202f86933f6b1e0aa872bea5210d1fdfd5fceba239b5b1746fe5b9dc60c9781",
+      "schema_version": "videoforge.v2-07-readonly-reconciliation/v1"
+    },
+    "final_route_probe": {
+      "path": "/private/tmp/v207-route-post-cleanup-post.json",
+      "sha256": "sha256:1490a5846c031d50707ba106929c3b6d23e8869272ea9cdd70668ee41c75c85d",
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    }
+  },
+  "resource_identity": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_digest": "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
+    "image_layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "control_source_commit": "8a5153ac6e5fb3ad32230e70ade9f854a2e922a5",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "retained_soulx_volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "workers_min": 0,
+    "workers_max": 1,
+    "flashboot": true,
+    "disposable_template_id_sha256": "sha256:b7a1a71b4d47d61438bd84cc02af7f4ce4fb6795f70197f5adf30f65a83b3448",
+    "disposable_endpoint_id_sha256": "sha256:c0d13475d2576c65a72cb00893e609f80791bb8cc727f23040dd4d3edfabfc18"
+  },
+  "stop_reason": {
+    "code": "RUNPOD_MUTATION_FAILED",
+    "phase": "post_template_environment_update_pre_endpoint_identity_binding_readback",
+    "template_created": true,
+    "endpoint_created": true,
+    "template_endpoint_identity_environment_updated": true,
+    "endpoint_identity_bound": false,
+    "initial_config_hash_created": false,
+    "job_dispatch_reached": false,
+    "provider_job_id_observed": false,
+    "batch_count": 0,
+    "completed_output_count": 0,
+    "accepted_batch_count": 0,
+    "durable_output_acceptance": false,
+    "inference_reached": false,
+    "gpu_job_started": false,
+    "duplicate_compute_observed": false
+  },
+  "root_cause": {
+    "classification": "ENDPOINT_PATCH_REQUEST_SCHEMA_MISMATCH",
+    "observed": "The exact template environment update succeeded, then PATCH /endpoints/{endpointId} returned a non-success response before endpoint_identity_bound or any dispatch.",
+    "provider_error_detail": "NOT_RETAINED_BY_FAIL_CLOSED_TRANSPORT",
+    "inference": "The request still included computeType even though the pinned official RunPod PATCH endpoint request schema omits computeType. The provider-free repair removes that field while retaining computeType verification on response/readback.",
+    "official_source": "https://docs.runpod.io/api-reference/endpoints/PATCH/endpoints/endpointId",
+    "inference_not_provider_confirmed": true,
+    "provider_free_repair_required": true,
+    "fresh_exact_proposal_required_after_repair": true
+  },
+  "billing": {
+    "baseline_cumulative_endpoint_spend_usd": 0.12480033212341368,
+    "post_attempt_cumulative_endpoint_spend_usd": 0.12480033212341368,
+    "attempt_increment_usd_settled": 0,
+    "approved_finite_cap_usd": 4,
+    "cap_exceeded": false,
+    "settlement_state": "STABLE_THREE_READS",
+    "settlement_reads": 3,
+    "existing_retained_volume_charge_usd_per_month": 7,
+    "retained_volume_charge_outside_finite_cap": true
+  },
+  "runpod_cleanup": {
+    "orchestrator_cleanup_result": "RUNPOD_CLEANUP_UNCERTAIN",
+    "narrow_exact_cleanup_result": "EXACT_ENDPOINT_THEN_TEMPLATE_DELETED_AFTER_TWO_STABLE_TERMINAL_SNAPSHOTS",
+    "independent_read_only_reconciliation": "THREE_STABLE_READS_CONFIRMED_ABSENT",
+    "pods": 0,
+    "running_pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "retained_volume_identity_size_region": "CONFIRMED",
+    "retained_volume_content_hash_unchanged": "UNPROVEN_NO_GPU_JOB_OR_APPLICATION_START_REACHED",
+    "model_volume_write_absence": "UNPROVEN_NO_GPU_JOB_OR_APPLICATION_START_REACHED"
+  },
+  "cloudflare_cleanup": {
+    "captured_worker_version_id_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "current_worker_version_id_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "worker_version_restored": true,
+    "temporary_signer_secret_present": false,
+    "orchestrator_pre_mutation_route": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "orchestrator_final_route": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED",
+      "consecutive_fingerprints": 16,
+      "stability_window_seconds": 30,
+      "deadline_seconds": 120
+    },
+    "later_read_only_route_probe": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "route_restoration": "CONFIRMED"
+  },
+  "authority_closure": {
+    "status": "CLOSED_EXACT_ATTEMPT_CONSUMED",
+    "attempts_authorized": 1,
+    "attempts_consumed": 1,
+    "fresh_cap_required": true,
+    "fresh_proposal_required": true,
+    "scope_reuse_forbidden": true,
+    "further_provider_mutation_authorized": false,
+    "further_gpu_use_authorized": false
+  },
+  "qualification_boundaries": {
+    "cold_batch": "UNPROVEN",
+    "warm_batch": "UNPROVEN",
+    "complete_32_image_batch": "UNPROVEN",
+    "durable_outputs": "UNPROVEN",
+    "duplicate_cancel_timeout": "UNPROVEN_LIVE",
+    "two_simultaneous_readers": "UNPROVEN",
+    "peak_vram_and_timings": "UNPROVEN",
+    "unchanged_volume_content": "UNPROVEN",
+    "v2_07": "NOT_QUALIFIED",
+    "v2_08_authorized": false
+  }
+}

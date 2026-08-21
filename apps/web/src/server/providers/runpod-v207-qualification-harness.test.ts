@@ -119,7 +119,8 @@ function harnessFetch(
       return jsonResponse({ id: "template_01", env: endpointEnvironment });
     }
     if (path === "/endpoints/endpoint_01" && init?.method === "PATCH") {
-      return jsonResponse({ ...body, id: "endpoint_01" });
+      expect(body).not.toHaveProperty("computeType");
+      return jsonResponse({ ...body, id: "endpoint_01", computeType: "GPU" });
     }
     if (path === "/endpoints/endpoint_01" && init?.method === undefined) {
       return jsonResponse({

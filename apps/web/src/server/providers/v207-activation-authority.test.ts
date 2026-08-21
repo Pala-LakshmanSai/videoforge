@@ -39,7 +39,7 @@ describe("V2-07 activation authority", () => {
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
       "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c",
     );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
+    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -74,45 +74,15 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed predecessor cap for the fresh exact proposal", () => {
+  it("rejects all caps after Attempt 17 consumed the exact authority", () => {
     expect(() =>
-      parseV207ActivationAuthority({
-        V207_IMAGE: image,
-        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
-        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
-        V207_FINITE_CAP_USD: "2",
-      }),
-    ).toThrow("V207_FINITE_CAP_MISMATCH");
-  });
-
-  it("accepts only the exact fresh USD 4 cap", () => {
-    expect(
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toEqual({ image, proposalSha256: V207_PENDING_PROPOSAL_SHA256, capUsd: 4 });
-
-    for (const cap of ["0.01", "1", "2", "44", "1000"]) {
-      expect(() =>
-        parseV207ActivationAuthority({
-          V207_IMAGE: image,
-          V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
-          V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
-          V207_FINITE_CAP_USD: cap,
-        }),
-      ).toThrow("V207_FINITE_CAP_MISMATCH");
-    }
-    expect(() =>
-      parseV207ActivationAuthority({
-        V207_IMAGE: image,
-        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
-        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
-        V207_FINITE_CAP_USD: "",
-      }),
-    ).toThrow("V207_FINITE_CAP_REQUIRED");
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
   it("rejects the prior immutable digest even with the pending proposal", () => {

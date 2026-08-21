@@ -834,8 +834,8 @@ export class RunPodControlClient {
 
   /**
    * Bind the endpoint identity into the worker environment after the provider allocates its id.
-   * The full endpoint configuration is repeated in the PATCH so an environment-only release
-   * cannot silently alter the pinned GPU, volume, region, scaler, or timing policy.
+   * Every documented mutable endpoint field is repeated in the PATCH so a template-environment
+   * update cannot silently alter the pinned GPU, volume, region, scaler, or timing policy.
    */
   async bindV207EndpointIdentity(
     endpointId: string,
@@ -859,7 +859,6 @@ export class RunPodControlClient {
     guard.assertPolicyUpdateAllowed();
     const expectedEnvironment = expectedV207EndpointEnvironment(endpointId, environment);
     const request = {
-      computeType: "GPU",
       allowedCudaVersions: [V207_RUNPOD_MIN_CUDA_VERSION],
       executionTimeoutMs: policy.executionTimeoutMs,
       flashboot: V207_RUNPOD_FLASHBOOT,
