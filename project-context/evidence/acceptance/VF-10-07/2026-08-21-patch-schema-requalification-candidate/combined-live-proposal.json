@@ -4,7 +4,7 @@
   "task_id": "VF-10-07",
   "recorded_at": "2026-08-21T03:35:00.000Z",
   "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
-  "reason_for_fresh_proposal": "Attempt 17 consumed its exact authority and stopped before dispatch because PATCH /endpoints/{endpointId} returned non-success after the template identity environment update. The fail-closed transport retained no provider body. Comparing the request to the pinned official RunPod PATCH schema identifies computeType as the remaining undocumented request field. Provider-free control at commit 0dbf8f387cd274fd39ec4049d066d9add9ef5dc5 removes computeType from the PATCH request while retaining exact GPU compute-type response/readback verification, hardened cleanup, three-read zero-compute reconciliation, billing settlement, and the 30-second route-restoration proof. The closed proposal and USD 4 cap cannot be reused.",
+  "reason_for_fresh_proposal": "Attempt 17 consumed its exact authority and stopped before dispatch because PATCH /endpoints/{endpointId} returned non-success after the template identity environment update. The fail-closed transport retained no provider body. Comparing the request to the pinned official RunPod PATCH schema identifies computeType as the remaining undocumented request field. Provider-free control at commit 253723cf521a77d001fbaa4d165acb79b848415e removes computeType from the PATCH request while retaining exact GPU compute-type response/readback verification, hardened cleanup, fresh-attempt-baseline three-read zero-compute reconciliation wired into the failure path, billing settlement, and the 30-second route-restoration proof. The closed proposal and USD 4 cap cannot be reused.",
   "user_approval": {
     "low_eu_ro_1_availability_previously_approved_for_closed_attempt_only": true,
     "flashboot_true_previously_approved_for_closed_attempt_only": true,
@@ -22,7 +22,7 @@
     "model_root": "/runpod-volume/mage-model",
     "volume_write_policy": "APPLICATION_READ_ONLY",
     "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
-    "control_source_commit": "0dbf8f387cd274fd39ec4049d066d9add9ef5dc5",
+    "control_source_commit": "253723cf521a77d001fbaa4d165acb79b848415e",
     "image_config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
     "image_layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
     "image_manifest_sha256": "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -38,8 +38,8 @@
   "staged_endpoint_configs": [
     {
       "stage": "initial_qualification",
-      "definition_path": "../2026-08-20-template-identity-requalification-candidate/staged-config-max1.json",
-      "definition_sha256": "sha256:d8c4da38c2f5d4516b7eb59cbfc69acdeb6834fcde9d934aa3141a4df89f3d44",
+      "definition_path": "staged-config-max1.json",
+      "definition_sha256": "sha256:c75c3193a32047b5dc7fb47dd20c1bdcd81527be133d41504447a99d2335b865",
       "workers_min": 0,
       "workers_max": 1,
       "gpu": "NVIDIA GeForce RTX 4090",
@@ -52,8 +52,8 @@
     },
     {
       "stage": "bounded_concurrent_reader_proof_only",
-      "definition_path": "../2026-08-20-template-identity-requalification-candidate/staged-config-max2.json",
-      "definition_sha256": "sha256:70f36a5b5140b0c3e1063a775ab0cb5030d7024931a1f8fa57bbabb962a6208b",
+      "definition_path": "staged-config-max2.json",
+      "definition_sha256": "sha256:b72472a69a7ae74202f40591c1e706afdf3c6be3a0cf0e52ebb4462196efeec5",
       "workers_min": 0,
       "workers_max": 2,
       "gpu": "NVIDIA GeForce RTX 4090",

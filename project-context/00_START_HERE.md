@@ -4,7 +4,7 @@ Status: V2-06 is complete and independently audited PASS. V2-07 is active but NO
 Attempt 17 failed on the endpoint PATCH before dispatch; its exact proposal and USD 4 authority are
 closed. Exact cleanup and three stable reads prove zero RunPod compute/resources, both intended
 volumes retained, and USD 0 Attempt 17 spend. Provider-free PATCH-schema repair is complete. Fresh
-proposal `sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809`
+proposal `sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be`
 needs exact approval and a fresh positive numeric cap before retry. V2-08 is unauthorized.
 Context schema: `2.0`
 Last updated: `2026-08-21`

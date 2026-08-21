@@ -249,17 +249,22 @@ assert(failedAttempt.cleanup?.route_restoration_confirmed === false, "failed_rou
 assert(failedAttempt.qualification_boundaries?.v2_07 === "NOT_QUALIFIED", "failed_gate_open");
 assert(failedAttempt.qualification_boundaries?.v2_08_authorized === false, "failed_v208_boundary");
 
-for (const [label, filePath] of [
-  ["current_state", paths.currentState],
-  ["task", paths.task],
-]) {
-  const value = text(filePath);
-  assert(value.includes(EXPECTED.proposalDigest), `${label}_proposal_pointer`);
-  assert(value.includes(EXPECTED.image), `${label}_candidate_pointer`);
-  assert(value.includes("approved-authority.json"), `${label}_authority_pointer`);
-  assert(value.includes("failed-attempt-14.json"), `${label}_failed_attempt_pointer`);
-}
 const currentState = text(paths.currentState);
+const task = text(paths.task);
+assert(
+  currentState.includes(`v2_07_closed_diagnostic_proposal_sha256: "${EXPECTED.proposalDigest}"`),
+  "current_state_historical_proposal_pointer",
+);
+assert(
+  currentState.includes(
+    "v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json",
+  ),
+  "current_state_historical_authority_pointer",
+);
+assert(currentState.includes(EXPECTED.image), "current_state_candidate_pointer");
+assert(task.includes(EXPECTED.proposalDigest), "task_historical_proposal_pointer");
+assert(task.includes(EXPECTED.image), "task_candidate_pointer");
+assert(task.includes("failed-attempt-14.json"), "task_failed_attempt_pointer");
 assert(currentState.includes("historical_cap_usd: 4"), "current_state_historical_cap");
 assert(currentState.includes("closed and non-reusable"), "current_state_historical_authority_closed");
 

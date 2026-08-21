@@ -38,6 +38,8 @@ const expected = {
   controlSource: "8694f474f98bbcdd6d84a79614cda6ef907c7b9e",
   closedActivationProposal:
     "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774",
+  currentProposal:
+    "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
 };
 const fail = (label) => {
@@ -217,13 +219,13 @@ assert(orchestrator.includes("RESTORATION_PROPAGATION_WINDOW_MS = 120_000"), "ro
 assert(orchestrator.includes("waitForRouteRestoration"), "route_poll");
 assert(
   activation.includes(
-    "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c",
+    expected.currentProposal,
   ),
-  "activation_rebound_to_successor_proposal",
+  "activation_current_successor_proposal",
 );
 assert(
-  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
-  "activation_successor_cap",
+  activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+  "activation_current_null_cap",
 );
 
 for (const [label, file] of [
@@ -236,20 +238,24 @@ for (const [label, file] of [
   assert(value.includes("V2-08"), `${label}_v208`);
 }
 assert(
-  text(files.currentState).includes("v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json"),
+  text(files.currentState).includes(`v2_07_closed_flashboot_proposal_sha256: "${expected.proposal}"`),
+  "current_state_historical_proposal_hash",
+);
+assert(
+  text(files.currentState).includes(`v2_07_closed_flashboot_authority_sha256: "${expected.authority}"`),
   "current_state_historical_authority_path",
 );
-assert(text(files.currentState).includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json"), "current_state_successor_authority");
-assert(text(files.currentState).includes("maximum_external_spend_usd: 4"), "current_state_successor_cap");
-assert(text(files.currentState).includes("task_stage: bounded_mutation"), "current_state_task_stage");
-assert(text(files.gates).includes("failed-attempt-16.json"), "gates_latest_attempt");
+assert(text(files.currentState).includes("v2_07_current_approved_authority: null"), "current_state_no_current_authority");
+assert(text(files.currentState).includes("maximum_external_spend_usd: 0"), "current_state_no_current_cap");
+assert(text(files.currentState).includes("task_stage: provider_free_requalification_handoff"), "current_state_task_stage");
+assert(text(files.gates).includes("failed-attempt-17.json"), "gates_latest_attempt");
 assert(
   text(files.gates).includes(
-    "6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c",
+    expected.currentProposal.slice("sha256:".length),
   ),
-  "gates_successor_proposal",
+  "gates_current_successor_proposal",
 );
 
 process.stdout.write(
-  `V2-07 FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,
+  `V2-07 historical FlashBoot=true proposal validation PASS (${expected.proposal}; ${expected.image})\n`,
 );

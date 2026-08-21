@@ -8,19 +8,21 @@ const candidate = resolve(
   "project-context/evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate",
 );
 const proposalPath = resolve(candidate, "combined-live-proposal.json");
-const [proposalBytes, state, gate, task, activation, control] = await Promise.all([
+const [proposalBytes, state, gate, task, activation, control, reconciliation, qualification] = await Promise.all([
   readFile(proposalPath),
   readFile(resolve(root, "project-context/CURRENT_STATE.yaml"), "utf8"),
   readFile(resolve(root, "project-context/GATES.yaml"), "utf8"),
   readFile(resolve(root, "project-context/tasks/VF-10-07.md"), "utf8"),
   readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
   readFile(resolve(root, "apps/web/src/server/providers/runpod-control.ts"), "utf8"),
+  readFile(resolve(root, "apps/web/src/server/providers/runpod-v207-readonly-reconciliation.ts"), "utf8"),
+  readFile(resolve(root, "apps/web/src/server/providers/v207-live-qualification.ts"), "utf8"),
 ]);
 const proposal = JSON.parse(proposalBytes.toString("utf8"));
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const proposalHash = hash(proposalBytes);
 const expectedProposalHash =
-  "sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809";
+  "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be";
 const assert = (condition, label) => {
   if (!condition) throw new Error(`V207_PATCH_SCHEMA_PROPOSAL_INVALID:${label}`);
 };
@@ -29,12 +31,14 @@ assert(proposalHash === expectedProposalHash, "proposal_hash");
 assert(proposal.checkpoint === "V2-07", "checkpoint");
 assert(proposal.user_approval?.maximum_cumulative_finite_spend_usd === null, "cap_null");
 assert(proposal.user_approval?.exact_proposal_approved === false, "approval_pending");
-assert(proposal.lineage?.control_source_commit === "0dbf8f387cd274fd39ec4049d066d9add9ef5dc5", "control_commit");
+assert(proposal.lineage?.control_source_commit === "253723cf521a77d001fbaa4d165acb79b848415e", "control_commit");
 assert(proposal.lineage?.prior_proposal_sha256 === "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c", "prior_proposal");
 assert(proposal.staged_endpoint_configs?.length === 2, "two_configs");
 for (const config of proposal.staged_endpoint_configs) {
   const bytes = await readFile(resolve(candidate, config.definition_path));
   assert(hash(bytes) === config.definition_sha256, `config_hash_${config.stage}`);
+  const definition = JSON.parse(bytes.toString("utf8"));
+  assert(definition.control_source_commit === proposal.lineage.control_source_commit, `config_control_commit_${config.stage}`);
   assert(config.flashboot === true, `flashboot_${config.stage}`);
   assert(config.gpu === "NVIDIA GeForce RTX 4090", `gpu_${config.stage}`);
 }
@@ -60,5 +64,9 @@ const bindMethod = control.slice(
 );
 assert(!bindMethod.includes('computeType: "GPU"'), "patch_compute_type_absent");
 assert(bindMethod.includes('this.mutate("PATCH"'), "patch_present");
+assert(!reconciliation.includes("ATTEMPT_17_BASELINE_ENDPOINT_SPEND_USD"), "no_hardcoded_attempt_baseline");
+assert(reconciliation.includes("baselineEndpointSpendUsd: number"), "fresh_baseline_required");
+assert(qualification.includes("const reconciliation = await reconcileV207Readonly({"), "failure_reconciliation_wired");
+assert(qualification.includes("baselineEndpointSpendUsd: baseline"), "failure_reconciliation_uses_fresh_baseline");
 
 process.stdout.write(`V2-07 patch-schema proposal validation PASS (${proposalHash})\n`);

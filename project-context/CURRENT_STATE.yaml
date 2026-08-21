@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-21T03:28:33.202Z"
+updated_at: "2026-08-21T03:46:29.000Z"
 
 phase: serverless_v2_v2_07_patch_schema_requalification_proposal_ready
 implementation_authorized_in_current_task: true
@@ -23,7 +23,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: await_fresh_exact_approval_of_patch_schema_requalification_proposal
-  note: "Attempt 17 consumed exact proposal sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c and its USD 4 authority. Cloudflare activation/preflight and cleanup passed; RunPod failed on endpoint PATCH before any /run, GPU job, batch, output, or inference. Exact cleanup plus three stable reconciliations prove zero compute, both intended volumes retained, cumulative endpoint billing unchanged at USD 0.12480033212341368, and Attempt 17 spend USD 0. Provider-free repair commit 0dbf8f3 removes computeType from the documented PATCH request schema while retaining exact response/readback checks. Fresh proposal sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809 is pending exact approval, FlashBoot=true and LOW EU-RO-1 acceptance, and a fresh positive numeric cap. No provider mutation, GPU use, spend, or V2-08 work is authorized."
+  note: "Attempt 17 consumed exact proposal sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c and its USD 4 authority. Cloudflare activation/preflight and cleanup passed; RunPod failed on endpoint PATCH before any /run, GPU job, batch, output, or inference. Exact cleanup plus three stable reconciliations prove zero compute, both intended volumes retained, cumulative endpoint billing unchanged at USD 0.12480033212341368, and Attempt 17 spend USD 0. Provider-free repair commit 253723c removes computeType from the documented PATCH request schema, retains exact response/readback checks, and wires failure reconciliation to each fresh attempt baseline. Fresh proposal sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be is pending exact approval, FlashBoot=true and LOW EU-RO-1 acceptance, and a fresh positive numeric cap. No provider mutation, GPU use, spend, or V2-08 work is authorized."
 
 provider_authority: &v2_07_provider_authority
   mode: none
@@ -266,10 +266,10 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: approved_proposal_sha256_6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c_cap_usd_4
-  mutation_authorized: true
-  gpu_use_authorized: true
-  spend_authorized_usd: 4
+  current_authority: none_attempt17_consumed_fresh_exact_proposal_and_cap_required
+  mutation_authorized: false
+  gpu_use_authorized: false
+  spend_authorized_usd: 0
 
 repository:
   initialized: true
@@ -429,11 +429,11 @@ model_runtime_evidence:
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
     v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/combined-live-proposal.json
-    v2_07_proposal_sha256: "sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809"
+    v2_07_proposal_sha256: "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be"
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
     v2_07_authority: null
     v2_07_authority_sha256: null
-    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json
+    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
@@ -520,7 +520,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Await exact approval of proposal sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809, explicit FlashBoot=true and LOW EU-RO-1 acceptance, and a fresh positive numeric cumulative cap. Then qualify V2-07 only and stop before V2-08."
+  goal: "Await exact approval of proposal sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be, explicit FlashBoot=true and LOW EU-RO-1 acceptance, and a fresh positive numeric cumulative cap. Then qualify V2-07 only and stop before V2-08."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -990,15 +990,25 @@ verification:
 
 audit_evidence:
   v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809"
+  v2_07_current_proposal_sha256: "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be"
   v2_07_current_approved_authority: null
   v2_07_current_approved_authority_sha256: null
   v2_07_attempt17_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
+  v2_07_attempt17_closed_proposal_sha256: "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c"
   v2_07_attempt17_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
-  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/combined-live-proposal.json
-  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json
+  v2_07_attempt17_closed_authority_sha256: "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462"
+  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
+  v2_07_latest_closed_proposal_sha256: "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c"
+  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
+  v2_07_latest_closed_authority_sha256: "sha256:7f36db5a22aa3c1b347d45e75199d3e758fdcdc5b4aff788e68e6e9875ee0462"
+  v2_07_closed_flashboot_proposal: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/combined-live-proposal.json
+  v2_07_closed_flashboot_proposal_sha256: "sha256:2338ff8d596284408080c94970d0c2a5e8a8ae58f62b92d590e880e72079d605"
+  v2_07_closed_flashboot_authority: evidence/acceptance/VF-10-07/2026-08-20-flashboot-true-requalification-candidate/approved-authority.json
+  v2_07_closed_flashboot_authority_sha256: "sha256:4deb86bd503eb51e452ce7b59a9a2214faa050ebe72daf63128bd97d9728e998"
   v2_07_closed_diagnostic_proposal: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/combined-live-proposal.json
+  v2_07_closed_diagnostic_proposal_sha256: "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774"
   v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
+  v2_07_closed_diagnostic_authority_sha256: "sha256:afa5a4ded8eb25cd6df6105d3e3f7813e01bfa7a13cd1d7eb3d4b3ba35b1bed2"
   v2_07_current_candidate_definition: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/definition.json
   v2_07_current_image_publication: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
   v2_07_historical_amended_proposal: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
@@ -1018,4 +1028,4 @@ audit_evidence:
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
   current_goal_scope: v2_07_patch_schema_requalification_proposal_ready
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_patch_schema_proposal_sha256_cb520eeabe2a5b9ec91d5a2fa8f759a3be0debf7c36c4fe9dd9cc786e8b7d809_fresh_approval_and_cap_required
+  v2_07_status: NOT_QUALIFIED_patch_schema_proposal_sha256_2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be_fresh_approval_and_cap_required
