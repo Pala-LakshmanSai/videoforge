@@ -1745,7 +1745,17 @@ describe("V2-07 qualification harness", () => {
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(2);
-    expect((await instance.evidence()).events).toContainEqual(
+    const events = (await instance.evidence()).events;
+    const recoveryArmedIndex = events.findIndex(
+      (event) => event.event === "concurrent_reader_terminal_recovery_armed",
+    );
+    expect(recoveryArmedIndex).toBeGreaterThan(-1);
+    expect(
+      events
+        .slice(0, recoveryArmedIndex)
+        .filter((event) => event.event === "concurrent_reader_job_status"),
+    ).toHaveLength(6);
+    expect(events).toContainEqual(
       expect.objectContaining({
         event: "concurrent_reader_terminal_recovery_completed",
         output_verifier_run: true,

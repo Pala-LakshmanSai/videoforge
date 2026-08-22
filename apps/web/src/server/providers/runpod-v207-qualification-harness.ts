@@ -1499,40 +1499,48 @@ export class RunPodV207QualificationHarness {
       }
       throw new RunPodControlError("RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT");
     };
-    let results: readonly [RunPodJobResult, RunPodJobResult];
-    try {
-      results = await Promise.all([
-        reconcile(this.#readerJobs[0]!, jobIds[0]),
-        reconcile(this.#readerJobs[1]!, jobIds[1]),
-      ]);
-    } catch (error) {
-      if (
-        error instanceof RunPodControlError &&
-        error.code === "RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT"
-      ) {
-        this.#concurrentReaderRecoveryArmed = true;
-        this.mark("concurrent_reader_terminal_recovery_armed", {
-          reason: "ordinary_reconciliation_timeout",
-          job_id_hashes: this.#readerJobOrder.map((jobId) => sha256(jobId)),
+    // Join both ordinary pollers before deciding whether recovery is needed. Promise.all would
+    // reject on the first timeout and leave the sibling poller running concurrently with recovery,
+    // allowing late status/checkpoint writes after the one-shot recovery phase had started.
+    const settled = await Promise.allSettled([
+      reconcile(this.#readerJobs[0]!, jobIds[0]),
+      reconcile(this.#readerJobs[1]!, jobIds[1]),
+    ]);
+    const failures = settled.filter(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (failures.length > 0) {
+      const nonTimeout = failures.find(
+        ({ reason }) =>
+          !(reason instanceof RunPodControlError) ||
+          reason.code !== "RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT",
+      );
+      if (nonTimeout !== undefined) throw nonTimeout.reason;
+      this.#concurrentReaderRecoveryArmed = true;
+      this.mark("concurrent_reader_terminal_recovery_armed", {
+        reason: "ordinary_reconciliation_timeout",
+        job_id_hashes: this.#readerJobOrder.map((jobId) => sha256(jobId)),
+      });
+      try {
+        // The qualification runner intentionally has one reconciliation call site. A timeout
+        // therefore enters this one bounded exact-ID recovery automatically; it cannot issue a
+        // new /run and returns completed results for the caller's full output/readback/receipt
+        // verifier when the provider settles just after the ordinary window.
+        return await this.recoverConcurrentReadersAfterTimeout(jobIds, verify);
+      } catch (recoveryError) {
+        this.mark("concurrent_reader_terminal_recovery_failed", {
+          error:
+            recoveryError instanceof RunPodControlError
+              ? recoveryError.code
+              : "RUNPOD_CONCURRENT_READER_RECOVERY_FAILED",
         });
-        try {
-          // The qualification runner intentionally has one reconciliation call site. A timeout
-          // therefore enters this one bounded exact-ID recovery automatically; it cannot issue a
-          // new /run and returns completed results for the caller's full output/readback/receipt
-          // verifier when the provider settles just after the ordinary window.
-          return await this.recoverConcurrentReadersAfterTimeout(jobIds, verify);
-        } catch (recoveryError) {
-          this.mark("concurrent_reader_terminal_recovery_failed", {
-            error:
-              recoveryError instanceof RunPodControlError
-                ? recoveryError.code
-                : "RUNPOD_CONCURRENT_READER_RECOVERY_FAILED",
-          });
-          throw recoveryError;
-        }
+        throw recoveryError;
       }
-      throw error;
     }
+    if (settled[0].status !== "fulfilled" || settled[1].status !== "fulfilled") {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_RECONCILIATION_INVALID");
+    }
+    const results = [settled[0].value, settled[1].value] as const;
     await this.assertSpendWithinCap();
     return [results[0]!, results[1]!];
   }
@@ -1630,6 +1638,7 @@ export class RunPodV207QualificationHarness {
             assertConcurrentReaderOutputOrder(results[1], inputs[1]);
           }
           if (verify) await verify(results, [inputs[0], inputs[1]]);
+          await this.assertSpendWithinCap();
           this.mark("concurrent_reader_terminal_recovery_completed", {
             job_id_hashes: results.map((result) => result.idHash),
             output_verifier_run: verify !== undefined,
