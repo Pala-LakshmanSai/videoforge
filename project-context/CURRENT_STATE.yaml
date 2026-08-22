@@ -1336,8 +1336,8 @@ runpod_account_scope:
   identity_check: required_before_any_future_inventory_or_mutation
   current_authority: null
   current_authority_sha256: null
-  latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/approved-authority.json
-  latest_closed_authority_sha256: "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328"
+  latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/approved-authority.json
+  latest_closed_authority_sha256: "sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37"
   mutation_authorized: false
   gpu_use_authorized: false
   spend_authorized_usd: 0
@@ -1672,31 +1672,31 @@ verification:
     recorded_at_utc: "2026-08-22T18:10:51.860Z"
     evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-35.json
     evidence_sha256: "sha256:d0278822d001fe2639d47920f6923c565882bdbbf6ff11c174b30e72aba6d6fa"
-    proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json
-    proposal_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
-    cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt32-cleanup-observation.json
-    cleanup_evidence_sha256: "sha256:01d91e1216a77ea4d6ac7130c2add5800f67043b3ba34d26ecbecf9422acc51d"
-    authority_mode: none_attempt32_consumed
+    proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/combined-live-proposal.json
+    proposal_sha256: "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c"
+    cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt35-cleanup-observation.json
+    cleanup_evidence_sha256: "sha256:ab3c5d668c7d2817bd0a9b3e40dbeab6bd3623ae92e9439292d1d32662ba57e1"
+    authority_mode: none_attempt35_consumed
     pending_numeric_cap_usd: null
-    authority_path: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/approved-authority.json
-    authority_sha256: "sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114"
-    result: "NOT_QUALIFIED_attempt32_closed_concurrent_reader_drain_failure"
-    stop_reason: RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN
+    authority_path: evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/approved-authority.json
+    authority_sha256: "sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37"
+    result: "NOT_QUALIFIED_attempt35_closed_concurrent_reader_status_reconciliation_failure"
+    stop_reason: CONCURRENT_READER_STATUS_RECONCILIATION
     accepted_complete_probe_outputs: 32
     accepted_complete_cold_batch_outputs: 32
     accepted_complete_warm_batch_outputs: 32
-    accepted_complete_reader_a_outputs: 32
-    accepted_complete_reader_b_outputs: 32
-    accepted_total_outputs: 160
-    accepted_total_durable_readbacks: 160
-    accepted_total_v3_receipts: 160
+    accepted_complete_reader_a_outputs: 0
+    accepted_complete_reader_b_outputs: 0
+    accepted_total_outputs: 96
+    accepted_total_durable_readbacks: 96
+    accepted_total_v3_receipts: 96
     duplicate_delivery_detected: true
     provider_disposable_resources_absent: true
     retained_volume_count: 2
     immediate_post_cleanup_incremental_spend_usd: 0
     settled_incremental_spend_usd: 0
-    final_cumulative_endpoint_spend_usd: 0.9174736385466531
-    concurrent_reader_batches_accepted: 2
+    final_cumulative_endpoint_spend_usd: 1.3100463044829667
+    concurrent_reader_batches_accepted: 0
     independent_reader_drain_proof: false
     cancellation_proof: false
     timeout_proof: false
@@ -2247,8 +2247,8 @@ audit_evidence:
   v2_07_attempt18_closed_proposal_sha256: "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be"
   v2_07_attempt18_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json
   v2_07_attempt18_closed_authority_sha256: "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c"
-  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json
-  v2_07_latest_closed_proposal_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/combined-live-proposal.json
+  v2_07_latest_closed_proposal_sha256: "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c"
   v2_07_pending_attempt22_proposal: null
   v2_07_pending_attempt22_proposal_sha256: null
   v2_07_pending_attempt22_control_commit: "54af72f1e9a29eed7f53e47ecdda9f6a34abb7df"
@@ -2264,8 +2264,8 @@ audit_evidence:
   v2_07_attempt21_closed_authority_sha256: "sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"
   v2_07_attempt21_closure: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json
   v2_07_attempt21_closure_sha256: "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68"
-  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/approved-authority.json
-  v2_07_latest_closed_authority_sha256: "sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114"
+  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/approved-authority.json
+  v2_07_latest_closed_authority_sha256: "sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37"
   v2_07_attempt17_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
   v2_07_attempt17_closed_proposal_sha256: "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c"
   v2_07_attempt17_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
