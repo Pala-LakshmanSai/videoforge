@@ -379,6 +379,27 @@ describe("V2-07 hosted generated-output port", () => {
         probe: { width: 1280, height: 720, format: "png", decoded: true },
       },
     });
+
+    const replayStartedAt = performance.now();
+    const replay = await handleV207GeneratedOutputPort(
+      request(finalizeBody),
+      config,
+      runtime.environment,
+    );
+    const replayElapsedMs = performance.now() - replayStartedAt;
+    expect(replay?.status, JSON.stringify(await replay?.clone().json())).toBe(200);
+    expect(replayElapsedMs).toBeLessThan(1_000);
+    await expect(replay?.json()).resolves.toMatchObject({
+      schema_version: "videoforge-v207-generated-output-finalization/v1",
+      idempotent: true,
+      receipt: {
+        schema_version: "artifact-commit-receipt/v3",
+        content_type: "image/png",
+        content_length: bytes.byteLength,
+        checksum_sha256: checksum,
+        probe: { width: 1280, height: 720, format: "png", decoded: true },
+      },
+    });
   }, 15_000);
 
   it("rejects finalize authority and measured-fact mismatches", async () => {

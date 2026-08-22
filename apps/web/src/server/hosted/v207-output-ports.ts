@@ -788,8 +788,6 @@ export async function handleV207GeneratedOutputPort(
       ) {
         return json({ error: { code: "V207_OUTPUT_FACTS_MISMATCH" } }, 409);
       }
-      const probe = await pngProbe(bytes);
-      if (probe === null) return json({ error: { code: "V207_OUTPUT_PNG_PROBE_FAILED" } }, 409);
       const checksumSha256 = `sha256:${await sha256Hex(bytes)}`;
       if (value.checksum_sha256 !== checksumSha256) {
         return json({ error: { code: "V207_OUTPUT_FACTS_MISMATCH" } }, 409);
@@ -816,6 +814,8 @@ export async function handleV207GeneratedOutputPort(
       if (Date.parse(reservation.expires_at) <= Date.now()) {
         return json({ error: { code: "V207_RESERVATION_EXPIRED" } }, 409);
       }
+      const probe = await pngProbe(bytes);
+      if (probe === null) return json({ error: { code: "V207_OUTPUT_PNG_PROBE_FAILED" } }, 409);
       const receipt = await receiptFor(
         reservation,
         value.callback_id,
