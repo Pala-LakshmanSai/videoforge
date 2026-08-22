@@ -693,8 +693,11 @@ export function extractV207ProviderJobErrorCode(jobError: unknown, output: unkno
 const RESULT_TEMP_PATH = `${RESULT_PATH}.tmp`;
 const V207_OUTPUT_PORT_REQUEST_TIMEOUT_MS = 15_000;
 const V207_OUTPUT_PORT_FINALIZE_TIMEOUT_MS = 30_000;
-const V207_OUTPUT_PORT_FINALIZE_MAX_ATTEMPTS = 3;
-const V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS = 500;
+// Attempt33 observed a valid completed reader payload followed by a short Cloudflare 503 HTML
+// burst on the idempotent FINALIZE callback. Keep retries exclusive to FINALIZE, but give that
+// reservation/callback replay enough bounded backoff to outlive the transient edge failure.
+const V207_OUTPUT_PORT_FINALIZE_MAX_ATTEMPTS = 6;
+const V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS = 1_000;
 const V207_OUTPUT_PORT_FINALIZE_TRANSPORT_ERROR = "V207_OUTPUT_PORT_FINALIZE_TRANSPORT" as const;
 const V207_OUTPUT_PORT_FINALIZE_RESPONSE_ERROR =
   "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID" as const;

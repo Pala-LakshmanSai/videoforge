@@ -100,7 +100,7 @@ describe("V2-07 live qualification runner safety", () => {
         sleepImpl: async () => undefined,
       }),
     ).rejects.toThrow("V207_OUTPUT_PORT_FINALIZE_TRANSPORT");
-    expect(transportAttempts).toBe(3);
+    expect(transportAttempts).toBe(6);
 
     let responseAttempts = 0;
     const responseFetch: typeof fetch = async () => {
@@ -113,7 +113,7 @@ describe("V2-07 live qualification runner safety", () => {
         sleepImpl: async () => undefined,
       }),
     ).rejects.toThrow("V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID");
-    expect(responseAttempts).toBe(3);
+    expect(responseAttempts).toBe(6);
 
     let putAttempts = 0;
     const putFetch: typeof fetch = async () => {
@@ -158,10 +158,10 @@ describe("V2-07 live qualification runner safety", () => {
       } catch (error) {
         thrown = error;
       }
-      expect(attempts).toBe(3);
+      expect(attempts).toBe(6);
       const diagnostic = (thrown as { diagnostic?: unknown } | null)?.diagnostic;
       expect(diagnostic).toEqual({
-        attempt_number: 3,
+        attempt_number: 6,
         http_status: 200,
         content_type_category: contentType.startsWith("application/") ? "json" : "text",
         content_type_value: contentType.split(";", 1)[0],
@@ -206,7 +206,7 @@ describe("V2-07 live qualification runner safety", () => {
     }
     const diagnostic = (thrown as { diagnostic?: unknown } | null)?.diagnostic;
     expect(diagnostic).toEqual({
-      attempt_number: 3,
+      attempt_number: 6,
       http_status: 200,
       content_type_category: "text",
       content_type_value: "text/plain",
@@ -225,6 +225,39 @@ describe("V2-07 live qualification runner safety", () => {
       "failure_category",
       "http_status",
     ]);
+  });
+
+  it("survives the bounded transient 503 burst observed in Attempt33", async () => {
+    let attempts = 0;
+    const delays: number[] = [];
+    const value = await routePort(
+      { operation: "FINALIZE", object_key: "exact-object" },
+      "b".repeat(64),
+      {
+        fetchImpl: async () => {
+          attempts += 1;
+          if (attempts < 6) {
+            return new Response("transient edge failure", {
+              status: 503,
+              headers: { "content-type": "text/html" },
+            });
+          }
+          return new Response(
+            JSON.stringify({
+              schema_version: "videoforge-v207-generated-output-finalization/v1",
+              receipt: { receipt_sha256: `sha256:${"a".repeat(64)}` },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        },
+        sleepImpl: async (milliseconds) => {
+          delays.push(milliseconds);
+        },
+      },
+    );
+    expect(attempts).toBe(6);
+    expect(delays).toEqual([1_000, 2_000, 3_000, 4_000, 5_000]);
+    expect(value.schema_version).toBe("videoforge-v207-generated-output-finalization/v1");
   });
 
   it("requires one exact 32-image 1280x720 PNG batch with full receipts", () => {
