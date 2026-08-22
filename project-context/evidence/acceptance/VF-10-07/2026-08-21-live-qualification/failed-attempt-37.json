@@ -1,0 +1,97 @@
+{
+  "schema_version": "videoforge.v2-07-attempt37-prequalification-safety-stop/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 37,
+  "recorded_at": "2026-08-22T22:34:34.293Z",
+  "result": "NOT_QUALIFIED_PREQUALIFICATION_ACCEPTANCE_GAP_AND_INTERRUPTED_ORCHESTRATION",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal": {
+    "path": "../2026-08-23-attempt37-terminal-reader-result-recovery-candidate/combined-live-proposal.json",
+    "sha256": "sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e",
+    "max1_sha256": "sha256:e6f3d746959b3a5633fd9b7d6035a0dca44cee9f886b1c045e9d55b6dc1e86f0",
+    "max2_sha256": "sha256:1a5ba973d3d97b76efa7ffb0a6f5cfa9427fb830e7fbfc8831659ea910f8e9d5"
+  },
+  "authority": {
+    "path": "../2026-08-23-attempt37-terminal-reader-result-recovery-candidate/approved-authority.json",
+    "sha256": "sha256:812899db3d2225224ea231112d2eba150ffbbd254148e71f94c81a44de32cadf",
+    "maximum_cumulative_finite_spend_usd": 4,
+    "flashboot": true,
+    "minimum_availability": "LOW",
+    "region": "EU-RO-1",
+    "state": "CONSUMED_CLOSED_DO_NOT_REUSE"
+  },
+  "lineage": {
+    "control_source_commit": "6632c4508a1f4127491a598d52157dece41a0560",
+    "handler_source_sha256_at_control_commit": "sha256:be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "mage_volume_size_gb": 50,
+    "mage_volume_region": "EU-RO-1",
+    "mage_volume_mount": "/runpod-volume",
+    "gpu_allowlist": ["NVIDIA GeForce RTX 4090"]
+  },
+  "orchestration": {
+    "redacted_orchestrator_sha256": "sha256:786aa70f4a36e0e9588bd6d62d82b74d91fad653a7dff1fbab34d513e8404734",
+    "incomplete_live_result_sha256": "sha256:e3fcac2bc9479397f897b82680ea4d97532845bbee3e77f7e7370fc49ebabd30",
+    "started_at": "2026-08-22T22:24:02.426Z",
+    "live_runner_started_at": "2026-08-22T22:24:59.559Z",
+    "last_durable_orchestrator_event": "live_preflight_completed",
+    "last_durable_orchestrator_event_at": "2026-08-22T22:24:55.890Z",
+    "signer_disabled_worker_deployed": true,
+    "ephemeral_signer_activated": true,
+    "live_preflight_completed": true,
+    "full_runner_started": true,
+    "full_runner_terminal_result_recorded": false,
+    "interrupt_delivery": "OUTER_LAUNCHER_EXITED_130_BEFORE_ORCHESTRATOR_FINALLY_EVIDENCE",
+    "owned_job_dispatch": "UNPROVEN_DUE_TO_INCOMPLETE_LIVE_RESULT",
+    "accepted_batches": 0,
+    "durable_output_readbacks": 0,
+    "v3_receipts": 0,
+    "duplicate_cancel_timeout_and_two_reader_proofs": "NOT_REACHED",
+    "qualification_claim_forbidden": true
+  },
+  "acceptance_gap": {
+    "category": "P1_PREEXISTING_IMMUTABLE_HANDLER_CONTRACT_GAP",
+    "durable_per_unit_resume": {
+      "required": true,
+      "implemented_in_executed_image": false,
+      "observed_source_behavior": "PROCESS_LOCAL_ATTEMPT_CLAIM_WITH_NO_DURABLE_ACCEPTED_UNIT_REHYDRATION",
+      "risk": "PROCESS_REPLACEMENT_CAN_REGENERATE_ALREADY_ACCEPTED_UNITS"
+    },
+    "timing_provenance": {
+      "required": true,
+      "allocation_ms_in_executed_image": 0,
+      "container_ready_ms_in_executed_image": 0,
+      "truthful_provider_delay_preserved": false
+    },
+    "stop_decision": "STOP_FURTHER_QUALIFICATION_WORK_AND_REPAIR_PROVIDER_FREE"
+  },
+  "provider_result": {
+    "disposable_endpoint_created": true,
+    "disposable_private_template_created": true,
+    "cleanup_endpoint_worker_record_count": 1,
+    "cleanup_terminal_pod_record_count": 1,
+    "gpu_job_count": "UNPROVEN",
+    "model_volume_write": "NOT_OBSERVED_BUT_NOT_LIVE_PROVEN",
+    "unplanned_duplicate_compute": "NOT_OBSERVED_BUT_NOT_PROVEN",
+    "settled_incremental_spend_usd": 0.21460066991858184,
+    "within_approved_cap": true
+  },
+  "cleanup": {
+    "evidence": "attempt37-cleanup-observation.json",
+    "status": "RUNPOD_CLEAN_CLOUDFLARE_ROUTE_FINGERPRINT_UNCERTAIN",
+    "endpoint_deleted": true,
+    "private_template_deleted": true,
+    "signer_secret_deleted": true,
+    "captured_worker_version_restored": true,
+    "route_rollback_exact": false,
+    "route_cleanup_uncertain": true,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false
+  },
+  "next_boundary": "PROVIDER_FREE_HANDLER_REPAIR_AND_EXACT_CLEANUP_RECONCILIATION_ONLY; ANY_NEW_PUBLICATION_OR_PAID_EXECUTION_REQUIRES_A_SEPARATELY_HASHED_PROPOSAL_AND_FRESH_AUTHORITY"
+}

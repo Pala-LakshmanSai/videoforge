@@ -65,10 +65,8 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:812899db3d2225224ea231112d2eba150ffbbd254148e71f94c81a44de32cadf",
-    );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -115,15 +113,15 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("accepts only the exact approved Attempt37 proposal and cap", () => {
-    expect(
+  it("rejects the consumed Attempt37 proposal and cap", () => {
+    expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toEqual({ image, proposalSha256: V207_PENDING_PROPOSAL_SHA256, capUsd: 4 });
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
   it("rejects cap drift from the exact Attempt37 authority", () => {
@@ -134,7 +132,7 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "2",
       }),
-    ).toThrow("V207_FINITE_CAP_MISMATCH");
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
   it("rejects a missing numeric cap at the Attempt37 authority boundary", () => {
@@ -144,7 +142,7 @@ describe("V2-07 activation authority", () => {
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
       }),
-    ).toThrow("V207_FINITE_CAP_REQUIRED");
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
   it("rejects the consumed Attempt31 proposal after closure", () => {

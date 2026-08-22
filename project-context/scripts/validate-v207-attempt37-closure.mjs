@@ -449,7 +449,11 @@ assert(
     && startHeader.includes("V2-08 is forbidden"),
   "START_POINTERS",
 );
-const taskHeader = blockBetween(task, "# VF-10-07 — V2-07 Mage Serverless qualification", "\n## ");
+const taskHeader = blockBetween(
+  task,
+  "## Attempt37 closed prequalification acceptance gap and interrupted orchestration",
+  "\n## Historical Attempt37",
+);
 assert(
   taskHeader.includes(expected.closure) &&
     taskHeader.includes(expected.cleanup) &&

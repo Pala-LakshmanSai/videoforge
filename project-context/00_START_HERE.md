@@ -1,6 +1,23 @@
 # VideoForge: start here
 
-Attempt37 is approved once and pending bounded execution. Repair `6632c4508a1f4127491a598d52157dece41a0560`
+Attempt37 is closed NOT_QUALIFIED. A prequalification safety audit exposed two P1 gaps in the
+already-published immutable handler: no durable accepted-unit resume across process replacement, and
+`allocation_ms` / `container_ready_ms` were hardcoded to zero. The live orchestration reached
+preflight and began the runner before an outer-launcher interrupt; no accepted batch or terminal live
+result was recorded. Closure
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-37.json` is
+`sha256:0a3d9f62f656a7e069f88335cfe09ad5ce94010b7fb2a85b514fb79d38775318`; cleanup
+`attempt37-cleanup-observation.json` is
+`sha256:af1c8d3c1c1f8808c5cb94dda49c09c521b3f853c4560e28365af4a078617054`.
+RunPod cleanup proves zero disposable resources, both exact 50 GB EU-RO-1 volumes retained, and
+three stable billing reads from `$1.3100463044829667` to `$1.5246469744015485` (`$0.21460066991858184`
+increment within the consumed `$4` cap). The signer is deleted and the captured Worker version hash
+is active, but the route returns `503 HOSTED_ROUTE_NOT_COMPOSED` instead of the captured
+`404 V207_ROUTE_DISABLED`, so cleanup remains uncertain. Provider-free handler repair and route
+reconciliation only; any new publication or paid retry requires a separately hashed proposal and
+fresh authority. V2-08 is forbidden.
+
+Historical Attempt37 candidate repair `6632c4508a1f4127491a598d52157dece41a0560`
 adds one bounded status-only recovery after the ordinary two-reader reconciliation timeout. It
 accepts only the exact dispatch-order job tuple, never retries `/run`, returns both `COMPLETED`
 results to the existing full output/readback/v3 receipt verifier, and cancels owned nonterminal work
@@ -10,12 +27,12 @@ The exact proposal is
 at `sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e`;
 max-one/max-two are `sha256:e6f3d746959b3a5633fd9b7d6035a0dca44cee9f886b1c045e9d55b6dc1e86f0`
 and `sha256:1a5ba973d3d97b76efa7ffb0a6f5cfa9427fb830e7fbfc8831659ea910f8e9d5`.
-Authority `sha256:812899db3d2225224ea231112d2eba150ffbbd254148e71f94c81a44de32cadf`
-binds the exact proposal once with FlashBoot=true, LOW-or-better EU-RO-1 availability, and a fresh
-`$4` cumulative finite cap. Read-only inventory at `2026-08-22T18:38:05.635Z` proves zero compute/disposable resources and both
+Consumed authority `sha256:812899db3d2225224ea231112d2eba150ffbbd254148e71f94c81a44de32cadf`
+bound the exact proposal once with FlashBoot=true, LOW-or-better EU-RO-1 availability, and a fresh
+`$4` cumulative finite cap. Historical read-only inventory at `2026-08-22T18:38:05.635Z` proved zero compute/disposable resources and both
 exact retained 50 GB EU-RO-1 volumes. RTX 4090 EU-RO-1 availability remained LOW at
 `2026-08-22T18:38:24.525Z` and the secure-Pod reference remained `$0.74/hour`; Serverless Flex stays
-`$1.10/GPU-hour`. Execute only the approved proposal; retained-volume mutation and V2-08 remain forbidden.
+`$1.10/GPU-hour`. That authority/cap are closed and non-reusable; retained-volume mutation and V2-08 remain forbidden.
 
 Attempt35 is closed fail-safe and V2-07 remains NOT_QUALIFIED. It consumed proposal
 `sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c`, authority

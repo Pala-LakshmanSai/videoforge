@@ -55,5 +55,5 @@ assert(proposal.rates_cost_and_retention?.rate_checked_at === "2026-08-22T18:38:
 const harnessSource = String(readFileSync(resolve(root, "apps/web/src/server/providers/runpod-v207-qualification-harness.ts")));
 assert(harnessSource.includes("return await this.recoverConcurrentReadersAfterTimeout(jobIds, verify)") && harnessSource.includes("RUNPOD_CONCURRENT_READER_JOB_ID_MISMATCH") && harnessSource.includes("RUNPOD_CONCURRENT_READER_RECOVERY_UNCONFIRMED"), "CONTROL_SOURCE");
 const context = ["project-context/CURRENT_STATE.yaml", "project-context/GATES.yaml", "project-context/00_START_HERE.md", "project-context/tasks/VF-10-07.md", "apps/web/src/server/providers/v207-activation-authority.ts"].map((path) => String(readFileSync(resolve(root, path)))).join("\n");
-for (const value of [expected.proposal, expected.acceptance, expected.authority, expected.max1, expected.max2, expected.control, expected.priorClosure, "attempt37_bounded_mutation_authorized", "V207_APPROVED_FINITE_CAP_USD: number | null = 4", "V2-08"]) assert(context.includes(value), `CONTEXT_${value.slice(-8)}`);
-console.log("V2-07 Attempt37 approved proposal and authority validation PASS");
+for (const value of [expected.proposal, expected.acceptance, expected.authority, expected.max1, expected.max2, expected.control, expected.priorClosure, "CONSUMED_CLOSED_DO_NOT_REUSE", "V207_APPROVED_FINITE_CAP_USD: number | null = null", "V2-08"]) assert(context.includes(value), `CONTEXT_${value.slice(-8)}`);
+console.log("V2-07 Attempt37 historical proposal and consumed authority validation PASS");
