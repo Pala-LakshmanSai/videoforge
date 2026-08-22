@@ -32,12 +32,14 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // Attempt29 consumed authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572
 // Attempt30 proposal sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a
 // Attempt30 consumed authority sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131
-// Attempt31 authority/cap were consumed by one bounded execution and cannot be reused.
-// Attempt32 is provider-free until a new exact authority and fresh positive cap are recorded.
+// Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea
+// and its authority/cap were consumed by one bounded execution and cannot be reused.
+// Attempt32 has a fresh exact pre-execution authority and USD 4 finite cap.
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+export const V207_APPROVED_AUTHORITY_SHA256 =
+  "sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114" as const;
+export const V207_APPROVED_FINITE_CAP_USD = 4 as const;
 
 export interface V207ActivationAuthority {
   readonly image: string;

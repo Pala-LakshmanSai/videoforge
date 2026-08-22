@@ -9,11 +9,13 @@ at `sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a`; ma
 `sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080`. Control commit
 `a1da27192c567823f9508ecd6f146f8667e1daac` preserves only bounded FINALIZE response metadata
 (attempt, status, sanitized content type, body length, and category), never body/URL/IDs/secrets,
-while retaining the 30-second/three-attempt FINALIZE-only retry fence. Authority and cap are null;
-provider calls, mutation, GPU use, and spend remain disabled until fresh exact approval and a fresh
-positive numeric cap. Current read-only truth remains zero disposable resources, both intended sealed
+while retaining the 30-second/three-attempt FINALIZE-only retry fence. The exact proposal is approved
+under authority `sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114`,
+FlashBoot=true, LOW-or-better EU-RO-1, and a fresh `$4` cap. Provider mutation and GPU execution are
+pending the committed green authority handoff. Current read-only truth remains zero disposable resources, both intended sealed
 50 GB EU-RO-1 volumes retained, HIGH RTX 4090 availability, `$1.10/GPU-hour` Serverless Flex,
-`$2.20` finite estimate, and existing `$7/month` volume billing separately. V2-08 remains forbidden.
+`$2.20` finite estimate, and existing `$7/month` volume billing separately. The authority is single-use;
+stop on mismatch, cap risk, failure, or uncertain cleanup. V2-08 remains forbidden.
 
 Historical closure: V2-07 remains NOT_QUALIFIED after the
 Attempt31 output-finalization failure. Attempt31 authority

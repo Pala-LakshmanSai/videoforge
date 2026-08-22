@@ -317,8 +317,6 @@ const documentationPointers = [
   expected.max1,
   expected.max2,
   expected.control,
-  expected.closure,
-  expected.cleanup,
   expected.authority,
   acceptanceHash,
 ];
@@ -332,26 +330,23 @@ for (const label of ["activation", "activationTest"]) {
   );
 }
 
-const stateHead = files.state.split("\n").slice(0, 24).join("\n");
 assert(
-  hasAll(stateHead, [
-    "task_stage: bounded_mutation",
-    "provider_calls_authorized: true",
-    "remote_or_cloud_mutations_authorized: true",
-    "gpu_use_authorized: true",
-    "maximum_external_spend_usd: 4",
-  ]) &&
-    stateHead.includes("phase: serverless_v2_v2_07_attempt31_terminal_snapshot_stabilization_authorized"),
-  "STATE_AUTHORIZED_BOUNDARY",
+  hasAll(files.state, [
+    "pending_v2_07_attempt31_proposal:",
+    "mode: closed_consumed_attempt31_output_finalization_failure",
+    expected.closure,
+    expected.cleanup,
+    expected.authority,
+    "result: NOT_QUALIFIED_attempt31_closed_output_finalization_failure",
+  ]),
+  "STATE_HISTORICAL_CLOSURE",
 );
 assert(
-  files.activation.includes(
-    `V207_APPROVED_AUTHORITY_SHA256 =\n  "${expected.authority}"`,
-  ) &&
-    files.activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
+  files.activation.includes("V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256") &&
+    files.activation.includes(expected.authority) &&
     files.activationTest.includes(expected.authority) &&
-    files.activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)"),
-  "ACTIVATION_AUTHORITY_BINDING",
+    files.activationTest.includes("rejects the consumed Attempt31 proposal after closure"),
+  "ACTIVATION_CONSUMED_BINDING",
 );
 
 const gateStart = files.gates.indexOf("GATE_SERVERLESS_MAGE_001:");
@@ -359,12 +354,10 @@ assert(gateStart >= 0, "MAGE_GATE_MISSING");
 const gate = files.gates.slice(gateStart);
 assert(
   gate.includes(authorityRelativePath) &&
-    gate.includes(`pending_authority_sha256: "${expected.authority}"`) &&
-    gate.includes("pending_numeric_cap_usd: 4") &&
-    /authority_mode:\s+[^\n]*attempt31[^\n]*authorized/iu.test(gate) &&
-    /provider_calls_authorized:\s+true/u.test(gate) &&
-    /gpu_use_authorized:\s+true/u.test(gate),
-  "GATE_AUTHORIZED_BOUNDARY",
+    gate.includes(`latest_closed_authority_sha256: "${expected.authority}"`) &&
+    gate.includes(`closure_evidence_sha256: "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490"`) &&
+    gate.includes(`cleanup_evidence_sha256: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"`),
+  "GATE_HISTORICAL_CLOSURE",
 );
 
 process.stdout.write(

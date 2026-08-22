@@ -20,6 +20,7 @@ const expected = Object.freeze({
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
   closure: "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490",
   cleanup: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc",
+  authority: "sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114",
 });
 
 const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
@@ -116,10 +117,10 @@ for (const value of [expected.proposal, expected.acceptance, expected.max1, expe
   assert(joinedContext.includes(value), `CONTEXT_${value.slice(-8)}`);
 }
 assert(String(stateBytes).includes("pending_v2_07_attempt32_proposal"), "STATE_ATTEMPT32");
-assert(String(gatesBytes).includes("authority_mode: none_attempt32_pending_fresh_approval"), "GATE_AUTHORITY_NULL");
+assert(String(gatesBytes).includes("authority_mode: attempt32_bounded_mutation_authorized"), "GATE_AUTHORITY_ACTIVE");
 assert(String(activationBytes).includes(expected.proposal) && String(activationBytes).includes(expected.control), "ACTIVATION_POINTERS");
-assert(String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_CAP_NULL");
-assert(String(activationBytes).includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null"), "ACTIVATION_AUTHORITY_NULL");
+assert(String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD = 4 as const"), "ACTIVATION_CAP");
+assert(String(activationBytes).includes(expected.authority), "ACTIVATION_AUTHORITY");
 
 const requiredNegatives = [
   "wrong bytes",

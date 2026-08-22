@@ -1,0 +1,141 @@
+{
+  "schema_version": "videoforge.v2-07-attempt32-finalize-response-diagnostics-authority/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 32,
+  "authorized_at": "2026-08-22T15:15:56+05:30",
+  "authority_mode": "bounded_mutation",
+  "authority_source": "explicit_user_approval_exact_attempt32_proposal_flashboot_true_low_or_better_eu_ro_1_fresh_numeric_cap",
+  "status": "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING",
+  "proposal": {
+    "path": "combined-live-proposal.json",
+    "sha256": "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+  },
+  "acceptance": {
+    "path": "acceptance.json",
+    "sha256": "sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080"
+  },
+  "approval": {
+    "exact_proposal_approved": true,
+    "flashboot_true_accepted": true,
+    "low_or_better_eu_ro_1_availability_approved": true,
+    "minimum_approved_availability": "LOW",
+    "observed_availability_at_proposal": "HIGH",
+    "maximum_cumulative_finite_spend_usd": 4,
+    "fresh_numeric_cap": true,
+    "historical_cap_reused": false,
+    "prior_authority_reused": false,
+    "recurring_retained_volume_charge_usd_per_month": 7,
+    "recurring_charge_is_outside_finite_cap": true
+  },
+  "lineage": {
+    "control_source_commit": "a1da27192c567823f9508ecd6f146f8667e1daac",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "image_config_sha256": "sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de",
+    "image_layer_sha256": "sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38",
+    "image_parent_sha256": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "image_parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_write_policy": "APPLICATION_READ_ONLY",
+    "initial_config_path": "staged-config-max1.json",
+    "initial_config_sha256": "sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2",
+    "concurrent_reader_config_path": "staged-config-max2.json",
+    "concurrent_reader_config_sha256": "sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a",
+    "prior_attempt": 31,
+    "prior_proposal_sha256": "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea",
+    "prior_authority_sha256": "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
+    "prior_closure_sha256": "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490",
+    "prior_cleanup_sha256": "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"
+  },
+  "runtime_contract": {
+    "offline_sealed_manifest_verification": true,
+    "real_initialization_warmup": true,
+    "application_read_only_model_files": true,
+    "job_local_scratch": "/tmp/videoforge-v2-07/${job_id}",
+    "scoped_r2_output_ports": true,
+    "durable_per_unit_resume": true,
+    "runtime_download_or_quantization": false,
+    "cache_escape_forbidden": true,
+    "finalize_retry_attempts": 3,
+    "finalize_timeout_seconds": 30,
+    "finalize_only_retry": true,
+    "provider_response_body_url_ids_or_secrets_retained": false
+  },
+  "staged_endpoint_configs": [
+    {
+      "definition_sha256": "sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2",
+      "workers_min": 0,
+      "workers_max": 1,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "gpu_count": 1,
+      "compute_type": "GPU",
+      "flex_only": true,
+      "flashboot": true,
+      "region": "EU-RO-1"
+    },
+    {
+      "definition_sha256": "sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a",
+      "workers_min": 0,
+      "workers_max": 2,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "gpu_count_per_worker": 1,
+      "compute_type": "GPU",
+      "flex_only": true,
+      "flashboot": true,
+      "region": "EU-RO-1"
+    }
+  ],
+  "authorized_operations": {
+    "source": "combined-live-proposal.json#proposed_operations_in_order",
+    "count": 34,
+    "canonical_json_sha256": "sha256:03eabbf994356e092eaefc6de83bcdbf2c5d703d71c728f6cdbe872fb3c4c8b8",
+    "publication": "deploy_current_control_source_only; image_republication_forbidden",
+    "create_or_update": "ephemeral signer secret, current Worker, exact private template, exact max-one endpoint, bounded max-two policy",
+    "submit_status_cancel": "owned sample/cold/warm/readers plus duplicate/cancel/timeout proofs only",
+    "scale_down": "restore max-one and independently prove workers zero",
+    "retain_on_success": "endpoint, private template, Mage volume, SoulX volume",
+    "delete_if_failed": "cancel only owned jobs and delete only disposable endpoint/private template",
+    "final_reconciliation": "three stable reads plus settled cost and signer/Worker/route rollback"
+  },
+  "rate_snapshot": {
+    "checked_at": "2026-08-22T08:15:41.362Z",
+    "serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "secure_rtx4090_reference_usd_per_gpu_hour": 0.74,
+    "network_volume_usd_per_gb_month": 0.07,
+    "existing_two_volume_charge_usd_per_month_total": 7,
+    "estimated_cumulative_gpu_hours_ceiling": 2,
+    "estimated_finite_serverless_compute_usd_ceiling": 2.2,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "availability": "HIGH",
+    "minimum_approved_availability": "LOW",
+    "region": "EU-RO-1"
+  },
+  "execution_boundary": {
+    "image_republication_authorized": false,
+    "runpod_mutation_authorized_pending_execution": true,
+    "cloudflare_mutation_authorized_pending_execution": true,
+    "gpu_use_authorized_pending_execution": true,
+    "provider_calls_completed": false,
+    "external_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false
+  },
+  "stop_conditions": [
+    "identity_config_image_model_volume_gpu_or_region_mismatch",
+    "availability_below_LOW",
+    "wrong_bytes_path_write_or_cache_escape",
+    "malformed_authority_or_duplicate_compute",
+    "failed_output_or_missing_durable_receipt",
+    "uncertain_cleanup_rollback_or_route_restoration",
+    "cap_risk",
+    "V2-08_or_successor_work"
+  ]
+}
