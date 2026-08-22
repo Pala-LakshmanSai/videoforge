@@ -524,14 +524,24 @@ const gateSuccessorAuthorized =
   gate.includes("pending_numeric_cap_usd: 4") &&
   /provider_calls_authorized:\s+true/u.test(gate) &&
   /gpu_use_authorized:\s+true/u.test(gate);
-assert(gateAuthorized || gateConsumed || gateSuccessorAuthorized, "GATE_AUTHORITY_LIFECYCLE");
+const gateSuperseded =
+  gate.includes("authority_mode: no_live_authority_attempt34_provider_free_candidate") &&
+  gate.includes("failed-attempt-33.json") &&
+  gate.includes("attempt33-cleanup-observation.json") &&
+  /provider_calls_authorized:\s+false/u.test(gate) &&
+  /gpu_use_authorized:\s+false/u.test(gate);
+assert(
+  gateAuthorized || gateConsumed || gateSuccessorAuthorized || gateSuperseded,
+  "GATE_AUTHORITY_LIFECYCLE",
+);
 for (const [label, text] of Object.entries({ task, start })) {
   assert(hasAll(text, [expected.proposal, expected.max1, expected.max2, acceptanceHash, authorityHash]), `${label.toUpperCase()}_POINTERS`);
 }
 assert(
   hasAll(activation, [expected.proposal, authorityHash]) &&
     (activation.includes(expected.control) ||
-      activation.includes("bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37")) &&
+      activation.includes("bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37") ||
+      activation.includes("96f5e16cf03be7e31049478ce7f6b0c134a8108c")) &&
     (new RegExp(`V207_APPROVED_FINITE_CAP_USD\\s*=\\s*${cap}\\b`).test(activation) ||
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")),
   "ACTIVATION_AUTHORITY_LIFECYCLE",

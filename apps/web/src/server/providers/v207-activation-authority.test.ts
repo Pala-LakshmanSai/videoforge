@@ -30,11 +30,11 @@ const image = V207_REPAIRED_IMAGE;
 // Attempt32 proposal sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a
 // Attempt32 authority sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114
 // Compatibility assertions reject consumed Attempt29/30/31 candidates while the exact
-// Attempt32 proposal/authority/cap are consumed; the provider-free Attempt33 candidate must fail
+// Attempt33 proposal/authority/cap are consumed; the provider-free Attempt34 candidate must fail
 // closed before any dispatch until its own fresh exact authority and positive cap are recorded.
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete provider-free Attempt33 max-two terminal reader drain lineage", () => {
+  it("pins the complete provider-free Attempt34 FINALIZE 503 backoff lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -55,10 +55,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925",
+      "sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("96f5e16cf03be7e31049478ce7f6b0c134a8108c");
     expect(V207_FINALIZE_REPLAY_FAST_PATH_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
     expect(V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT).toBe(
       "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
@@ -66,10 +66,8 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328",
-    );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -116,18 +114,18 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("accepts only the exact approved Attempt33 proposal and cap", () => {
-    expect(
+  it("rejects exact Attempt34 before fresh authority is recorded", () => {
+    expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toEqual({ image, proposalSha256: V207_PENDING_PROPOSAL_SHA256, capUsd: 4 });
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects Attempt33 when the supplied cap differs from the approved cap", () => {
+  it("does not let a guessed cap activate Attempt34", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -135,17 +133,17 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "2",
       }),
-    ).toThrow("V207_FINITE_CAP_MISMATCH");
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects a missing numeric cap for Attempt33", () => {
+  it("rejects a missing numeric cap for Attempt34 at the authority boundary", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
       }),
-    ).toThrow("V207_FINITE_CAP_REQUIRED");
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
   it("rejects the consumed Attempt31 proposal after closure", () => {
