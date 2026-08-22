@@ -1,0 +1,23 @@
+{
+  "schema_version": "videoforge.v2-07-failed-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 30,
+  "observed_at": "2026-08-22T07:36:36.620Z",
+  "result": {
+    "schema_version": "videoforge.v2-07-failed-cleanup/v1",
+    "endpoint_id_sha256": "sha256:22774d440bc44a74d8aec3e45b27d9612abb5343106dad89c577757e1faeb7ba",
+    "template_id_sha256": "sha256:c21b6494aaa33d5b54270a94a8526ac4008a63c511f91b14a2240910864c9f65",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 5,
+    "terminal_pod_record_count": 5,
+    "observed_workers_max": 2,
+    "workers_max_was_separately_approved_stage": true,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "raw_stdout_retained": false,
+    "limitation": "The live runner reported cleanup_delete_uncertain after RunPod had applied the separately approved max-two stage. The exact failure-cleanup guard was repaired to accept only approved workersMax 1 or 2 and then deleted only the bound disposable endpoint/template after two stable terminal snapshots. Three later read-only reconciliation reads are the authoritative final absence and billing proof."
+  }
+}
