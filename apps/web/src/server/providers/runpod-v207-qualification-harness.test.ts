@@ -1599,6 +1599,83 @@ describe("V2-07 qualification harness", () => {
     );
   });
 
+  it("promotes reader jobs observed terminal during cleanup without redispatch", async () => {
+    const baseFetch = terminalScaleZeroFetch({
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+    });
+    let statusReads = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/status/")) {
+        statusReads += 1;
+        const jobId = path.split("/").at(-1) ?? "job_01";
+        return jsonResponse({
+          id: jobId,
+          status: statusReads <= 6 ? "IN_PROGRESS" : "COMPLETED",
+          executionTime: 100,
+          delayTime: 20,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    const jobs = await instance.dispatchConcurrentReaders([
+      { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      {
+        requestKey: "attempt_b",
+        attemptId: "attempt_b",
+        input: inputB,
+        outputAuthority: authority("attempt_b", "reservation_b"),
+      },
+    ]);
+    await expect(instance.reconcileConcurrentReaders([jobs[0].id, jobs[1].id])).rejects.toThrow(
+      "RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT",
+    );
+    await instance.cleanup({ deleteIfFailed: true, failed: true });
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(2);
+    const events = (await instance.evidence()).events;
+    expect(events).toContainEqual(
+      expect.objectContaining({ event: "owned_job_cleanup_status", status: "COMPLETED" }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({ event: "concurrent_reader_terminal_worker_drain_confirmed" }),
+    );
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ event: "cleanup_drain_uncertain" }),
+    );
+  });
+
   it("never uses the max-two terminal inventory fallback to hide queued reader work", async () => {
     const fetch = terminalScaleZeroFetch({
       healthWorkersBeforeDispatch: {

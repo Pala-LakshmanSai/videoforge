@@ -356,11 +356,17 @@ export class RunPodV207QualificationHarness {
           job_id_hash: observed.idHash,
           status: observed.status,
         });
-        if (!TERMINAL_STATUSES.has(observed.status)) {
+        if (TERMINAL_STATUSES.has(observed.status)) {
+          // Cleanup reconciliation is authoritative for the same owned job ID. A bounded
+          // caller timeout may end before RunPod exposes terminal status; preserve the later
+          // terminal observation so max-two drain can prove quiescence without redispatch.
+          this.#terminalJobIds.add(jobId);
+        } else {
           const cancelled = await client.cancel(jobId);
           if (cancelled.status !== "CANCELLED") {
             throw new RunPodControlError("RUNPOD_OWNED_JOB_CANCEL_UNCONFIRMED");
           }
+          this.#terminalJobIds.add(jobId);
           this.mark("owned_job_cleanup_cancelled", {
             job_id_hash: cancelled.idHash,
             status: cancelled.status,
