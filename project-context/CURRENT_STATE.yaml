@@ -238,7 +238,7 @@ pending_v2_07_attempt31_proposal:
   staged_max1_sha256: "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006"
   staged_max2_sha256: "sha256:4013c7b9887994b6de2dfd947f13ea74e622dfc0fe5b5e429c29fffedc69ef9b"
   candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/acceptance.json
-  candidate_acceptance_sha256: "sha256:f278dc8946cc1b6565de5294bfe854639cc7ac8a2b1f774a57b6b8b777eaf7e4"
+  candidate_acceptance_sha256: "sha256:a5eb856de192476501c9cb86eb92641305a0f39498235b7a1cafd624d4c74a6d"
   flashboot: true
   observed_availability: HIGH
   minimum_requested_availability: LOW
@@ -1198,7 +1198,7 @@ model_runtime_evidence:
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
     v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-30.json
     v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/acceptance.json
-    v2_07_current_candidate_acceptance_sha256: "sha256:f278dc8946cc1b6565de5294bfe854639cc7ac8a2b1f774a57b6b8b777eaf7e4"
+    v2_07_current_candidate_acceptance_sha256: "sha256:a5eb856de192476501c9cb86eb92641305a0f39498235b7a1cafd624d4c74a6d"
     v2_07_attempt_30_increment_usd_immediate_post_cleanup: 0
     v2_07_attempt_30_delayed_billing_refresh_required: true
     v2_07_observed_cumulative_endpoint_spend_usd: 0.5883426677901298
@@ -1799,7 +1799,7 @@ audit_evidence:
   v2_07_attempt31_candidate: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json
   v2_07_attempt31_candidate_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
   v2_07_attempt31_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/acceptance.json
-  v2_07_attempt31_candidate_acceptance_sha256: "sha256:f278dc8946cc1b6565de5294bfe854639cc7ac8a2b1f774a57b6b8b777eaf7e4"
+  v2_07_attempt31_candidate_acceptance_sha256: "sha256:a5eb856de192476501c9cb86eb92641305a0f39498235b7a1cafd624d4c74a6d"
   v2_07_attempt31_control_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
   v2_07_attempt31_candidate_max1_sha256: "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006"
   v2_07_attempt31_candidate_max2_sha256: "sha256:4013c7b9887994b6de2dfd947f13ea74e622dfc0fe5b5e429c29fffedc69ef9b"
@@ -1811,7 +1811,7 @@ audit_evidence:
   v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json
   v2_07_current_proposal_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
   v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/acceptance.json
-  v2_07_current_candidate_acceptance_sha256: "sha256:f278dc8946cc1b6565de5294bfe854639cc7ac8a2b1f774a57b6b8b777eaf7e4"
+  v2_07_current_candidate_acceptance_sha256: "sha256:a5eb856de192476501c9cb86eb92641305a0f39498235b7a1cafd624d4c74a6d"
   v2_07_current_approved_authority: null
   v2_07_current_approved_authority_sha256: null
   v2_07_attempt28_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json

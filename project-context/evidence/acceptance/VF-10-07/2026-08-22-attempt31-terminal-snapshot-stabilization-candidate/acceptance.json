@@ -112,7 +112,7 @@
     "terminal_snapshot_stabilization_tests": "PASS_98_OF_98",
     "all_v207_validators": "PASS",
     "context_validation": "PASS",
-    "secret_scan": "PASS_1359_TRACKED_FILES",
+    "secret_scan": "PASS_1364_TRACKED_FILES",
     "format_check": "PASS",
     "git_diff_check": "PASS"
   },

@@ -14,7 +14,7 @@ const expected = Object.freeze({
   proposal:
     "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea",
   acceptance:
-    "sha256:f278dc8946cc1b6565de5294bfe854639cc7ac8a2b1f774a57b6b8b777eaf7e4",
+    "sha256:a5eb856de192476501c9cb86eb92641305a0f39498235b7a1cafd624d4c74a6d",
   max1:
     "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006",
   max2:

@@ -17,7 +17,7 @@ Attempt31 is the provider-free terminal-snapshot-stabilization candidate at
 with proposal `sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea`, max-one
 `sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006`, max-two
 `sha256:4013c7b9887994b6de2dfd947f13ea74e622dfc0fe5b5e429c29fffedc69ef9b`, and acceptance
-`sha256:f278dc8946cc1b6565de5294bfe854639cc7ac8a2b1f774a57b6b8b777eaf7e4`. It pins the exact
+`sha256:a5eb856de192476501c9cb86eb92641305a0f39498235b7a1cafd624d4c74a6d`. It pins the exact
 published Mage image, sealed volume, FlashBoot=true, LOW-or-better EU-RO-1, RTX 4090, and repair
 `f513ac807c6d5e2298092a936495e3c4fc0e6a28`; authority and numeric cap are null until one fresh exact
 approval. V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden.

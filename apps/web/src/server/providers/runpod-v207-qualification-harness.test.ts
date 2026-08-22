@@ -1518,9 +1518,7 @@ describe("V2-07 qualification harness", () => {
     await instance.create();
     instance.markInitialQualificationComplete();
     await expect(instance.applyConcurrentReaderPolicy()).resolves.toMatch(/^sha256:/u);
-    expect(
-      (await instance.evidence()).events,
-    ).toContainEqual(
+    expect((await instance.evidence()).events).toContainEqual(
       expect.objectContaining({
         event: "concurrent_reader_terminal_worker_scale_zero_baseline",
         stable_terminal_snapshot_count: 2,
