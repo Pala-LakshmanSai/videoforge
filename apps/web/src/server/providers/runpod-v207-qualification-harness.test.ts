@@ -1618,7 +1618,7 @@ describe("V2-07 qualification harness", () => {
         const jobId = path.split("/").at(-1) ?? "job_01";
         return jsonResponse({
           id: jobId,
-          status: statusReads <= 6 ? "IN_PROGRESS" : "COMPLETED",
+          status: statusReads <= 12 ? "IN_PROGRESS" : "COMPLETED",
           executionTime: 100,
           delayTime: 20,
         });
@@ -1657,23 +1657,211 @@ describe("V2-07 qualification harness", () => {
       },
     ]);
     await expect(instance.reconcileConcurrentReaders([jobs[0].id, jobs[1].id])).rejects.toThrow(
-      "RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT",
+      "RUNPOD_CONCURRENT_READER_RECOVERY_UNCONFIRMED",
     );
     await instance.cleanup({ deleteIfFailed: true, failed: true });
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(2);
-    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(2);
+    const deletePaths = fetch.mock.calls
+      .filter(([, init]) => init?.method === "DELETE")
+      .map(([url]) => new URL(String(url)).pathname);
+    expect(deletePaths).toEqual(["/endpoints/endpoint_01", "/templates/template_01"]);
     const events = (await instance.evidence()).events;
-    expect(events).toContainEqual(
-      expect.objectContaining({ event: "owned_job_cleanup_status", status: "COMPLETED" }),
-    );
+    const dispatchedReaderHashes = events
+      .filter((event) => event.event === "two_concurrent_readers_dispatched")
+      .flatMap((event) => event.job_id_hashes as string[]);
+    const cleanupReaderHashes = events
+      .filter((event) => event.event === "owned_job_cleanup_status" && event.status === "COMPLETED")
+      .map((event) => event.job_id_hash as string);
+    expect(new Set(cleanupReaderHashes)).toEqual(new Set(dispatchedReaderHashes));
+    expect(cleanupReaderHashes).toHaveLength(2);
     expect(events).toContainEqual(
       expect.objectContaining({ event: "concurrent_reader_terminal_worker_drain_confirmed" }),
     );
     expect(events).not.toContainEqual(
       expect.objectContaining({ event: "cleanup_drain_uncertain" }),
     );
+  });
+
+  it("recovers exact completed readers after ordinary timeout and exposes ordered output verification", async () => {
+    const baseFetch = terminalScaleZeroFetch({
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+    });
+    let statusReads = 0;
+    const outputFor = (attemptId: string) => {
+      const key = String(authority(attemptId).authorities[0]!.path).slice(1);
+      return {
+        status: "SUCCEEDED",
+        items: [{ output_object_key: key }],
+        provenance_receipt: { items: [{ output_object_key: key }] },
+      };
+    };
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/status/")) {
+        statusReads += 1;
+        const jobId = path.split("/").at(-1) ?? "job_01";
+        const attemptId = jobId === "job_01" ? "attempt_a" : "attempt_b";
+        return jsonResponse({
+          id: jobId,
+          status: statusReads <= 6 ? "IN_PROGRESS" : "COMPLETED",
+          ...(statusReads <= 6 ? {} : { output: outputFor(attemptId) }),
+          executionTime: 100,
+          delayTime: 20,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const inputA = oneItemInput("attempt_a", "reservation_a");
+    const inputB = oneItemInput("attempt_b", "reservation_b");
+    const jobs = await instance.dispatchConcurrentReaders([inputA, inputB]);
+    const verified: string[] = [];
+    const recovered = await instance.reconcileConcurrentReaders(
+      [jobs[0].id, jobs[1].id],
+      async (results, inputs) => {
+        verified.push(
+          `${results[0].id}:${results[1].id}:${inputs[0].attemptId}:${inputs[1].attemptId}`,
+        );
+        expect(results.map((result) => result.status)).toEqual(["COMPLETED", "COMPLETED"]);
+        expect((results[0].output as Record<string, unknown>).status).toBe("SUCCEEDED");
+        expect((results[1].output as Record<string, unknown>).status).toBe("SUCCEEDED");
+      },
+    );
+    expect(recovered.map((result) => result.id)).toEqual([jobs[0].id, jobs[1].id]);
+    expect(verified).toEqual(["job_01:job_02:attempt_a:attempt_b"]);
+    await instance.drain();
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({
+        event: "concurrent_reader_terminal_recovery_completed",
+        output_verifier_run: true,
+      }),
+    );
+  });
+
+  it("rejects a reversed or foreign reader tuple without another /run", async () => {
+    const baseFetch = terminalScaleZeroFetch();
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/status/")) {
+        const jobId = path.split("/").at(-1) ?? "job_01";
+        return jsonResponse({
+          id: jobId,
+          status: "IN_PROGRESS",
+          executionTime: 100,
+          delayTime: 20,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const jobs = await instance.dispatchConcurrentReaders([
+      oneItemInput(),
+      oneItemInput("attempt_b", "reservation_b"),
+    ]);
+    await expect(instance.reconcileConcurrentReaders([jobs[1].id, jobs[0].id])).rejects.toThrow(
+      "RUNPOD_CONCURRENT_READER_JOB_ID_MISMATCH",
+    );
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
+  });
+
+  it("cancels and fails closed when exact readers remain nonterminal after recovery", async () => {
+    const baseFetch = terminalScaleZeroFetch();
+    let cancelRequested = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/cancel/")) {
+        cancelRequested = true;
+        return jsonResponse({ id: path.split("/").at(-1), status: "CANCELLED" });
+      }
+      if (path.includes("/status/")) {
+        const jobId = path.split("/").at(-1) ?? "job_01";
+        return jsonResponse({
+          id: jobId,
+          status: cancelRequested ? "CANCELLED" : "IN_PROGRESS",
+          executionTime: 100,
+          delayTime: 20,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const jobs = await instance.dispatchConcurrentReaders([
+      oneItemInput(),
+      oneItemInput("attempt_b", "reservation_b"),
+    ]);
+    await expect(instance.reconcileConcurrentReaders([jobs[0].id, jobs[1].id])).rejects.toThrow(
+      "RUNPOD_CONCURRENT_READER_RECOVERY_UNCONFIRMED",
+    );
+    expect(cancelRequested).toBe(true);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
+  });
+
+  it("rejects completed readers whose output or receipt ordering crosses authorities", async () => {
+    const baseFetch = terminalScaleZeroFetch();
+    let statusReads = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/status/")) {
+        statusReads += 1;
+        const jobId = path.split("/").at(-1) ?? "job_01";
+        const wrongKey = String(authority("attempt_b").authorities[0]!.path).slice(1);
+        return jsonResponse({
+          id: jobId,
+          status: statusReads <= 6 ? "IN_PROGRESS" : "COMPLETED",
+          ...(statusReads <= 6
+            ? {}
+            : {
+                output: {
+                  status: "SUCCEEDED",
+                  items: [{ output_object_key: wrongKey }],
+                  provenance_receipt: { items: [{ output_object_key: wrongKey }] },
+                },
+              }),
+          executionTime: 100,
+          delayTime: 20,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const jobs = await instance.dispatchConcurrentReaders([
+      oneItemInput(),
+      oneItemInput("attempt_b", "reservation_b"),
+    ]);
+    await expect(
+      instance.reconcileConcurrentReaders([jobs[0].id, jobs[1].id], async () => undefined),
+    ).rejects.toThrow("RUNPOD_CONCURRENT_READER_OUTPUT_ORDER_INVALID");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
   });
 
   it("never uses the max-two terminal inventory fallback to hide queued reader work", async () => {

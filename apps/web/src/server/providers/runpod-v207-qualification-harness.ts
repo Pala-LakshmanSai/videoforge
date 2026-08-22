@@ -134,6 +134,17 @@ export interface RunPodV207QualificationHarnessOptions {
   }) => Promise<void>;
 }
 
+/**
+ * Verifies the exact ordered reader results after a bounded terminal recovery.  The harness only
+ * owns provider status and dispatch identity; the caller owns the application output, R2 readback,
+ * and v3 receipt checks.  Inputs are supplied in the same order as results so a reader cannot be
+ * accepted against the sibling reader's authority.
+ */
+export type RunPodV207ConcurrentReaderVerifier = (
+  results: readonly [RunPodJobResult, RunPodJobResult],
+  inputs: readonly [RunPodV207DispatchBatchInput, RunPodV207DispatchBatchInput],
+) => Promise<void>;
+
 export interface RunPodV207HarnessEvidence {
   readonly schemaVersion: "videoforge.v2-07-qualification-harness/v1";
   readonly templateIdHash: string | null;
@@ -266,6 +277,50 @@ function buildDispatchRequest(input: RunPodV207DispatchBatchInput): JsonValue {
 }
 
 /**
+ * Keep the recovery result ordered by the exact generated-output authority tuple.  This is the
+ * small provider-neutral check that prevents a completed reader from being paired with its
+ * sibling's output; the caller's verifier remains responsible for bytes, R2 readbacks, signatures,
+ * and receipt hashes.
+ */
+function assertConcurrentReaderOutputOrder(
+  result: RunPodJobResult,
+  input: RunPodV207DispatchBatchInput,
+): void {
+  const output = asRecord(result.output);
+  const batch = asRecord(input.input.batch);
+  const itemCount = Array.isArray(batch?.items) ? batch.items.length : 0;
+  const items = output?.items;
+  const receipt = asRecord(output?.provenance_receipt);
+  const receiptItems = receipt?.items;
+  if (
+    result.status !== "COMPLETED" ||
+    output?.status !== "SUCCEEDED" ||
+    !Array.isArray(items) ||
+    items.length !== itemCount ||
+    !Array.isArray(receiptItems) ||
+    receiptItems.length !== itemCount
+  ) {
+    throw new RunPodControlError("RUNPOD_CONCURRENT_READER_OUTPUT_INVALID");
+  }
+  for (const index of items.keys()) {
+    const authority = asRecord(input.outputAuthority.authorities[index]);
+    const item = asRecord(items[index]);
+    const receiptItem = asRecord(receiptItems[index]);
+    const expectedObjectKey =
+      typeof authority?.path === "string" && authority.path.startsWith("/")
+        ? authority.path.slice(1)
+        : null;
+    if (
+      expectedObjectKey === null ||
+      item?.output_object_key !== expectedObjectKey ||
+      receiptItem?.output_object_key !== expectedObjectKey
+    ) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_OUTPUT_ORDER_INVALID");
+    }
+  }
+}
+
+/**
  * Bounded V2-07 lifecycle harness. It deliberately accepts output authorities from a separate
  * artifact control plane; it never fabricates a checksum, URL, capability, or reservation. This
  * is the safe seam for a generated-output issuer/finalize implementation.
@@ -277,6 +332,11 @@ export class RunPodV207QualificationHarness {
   readonly #readerJobs: RunPodServerlessJobClient[] = [];
   /** Exact reader job identities that must all be observed terminal before drain fallback. */
   readonly #readerJobIds = new Set<string>();
+  /** Dispatch-order ledger for the two reader jobs and their exact input authorities. */
+  readonly #readerJobOrder: string[] = [];
+  readonly #readerInputs = new Map<string, RunPodV207DispatchBatchInput>();
+  /** Terminal status results are retained in memory for bounded post-timeout verification. */
+  readonly #terminalReaderResults = new Map<string, RunPodJobResult>();
   /** Every acknowledged job remains owned until a terminal status is observed. */
   readonly #ownedJobs = new Map<string, RunPodServerlessJobClient>();
   /** A terminal observation fences a later exact request-key replay from becoming owned again. */
@@ -300,6 +360,8 @@ export class RunPodV207QualificationHarness {
   #concurrentReaderFence = false;
   /** Claims the one allowed two-reader dispatch while its primary fence is active. */
   #concurrentReaderDispatchClaimed = false;
+  /** A timeout arms exactly one post-timeout status recovery; it never permits redispatch. */
+  #concurrentReaderRecoveryArmed = false;
 
   constructor(options: RunPodV207QualificationHarnessOptions) {
     if (
@@ -361,12 +423,14 @@ export class RunPodV207QualificationHarness {
           // caller timeout may end before RunPod exposes terminal status; preserve the later
           // terminal observation so max-two drain can prove quiescence without redispatch.
           this.#terminalJobIds.add(jobId);
+          if (this.#readerJobIds.has(jobId)) this.#terminalReaderResults.set(jobId, observed);
         } else {
           const cancelled = await client.cancel(jobId);
           if (cancelled.status !== "CANCELLED") {
             throw new RunPodControlError("RUNPOD_OWNED_JOB_CANCEL_UNCONFIRMED");
           }
           this.#terminalJobIds.add(jobId);
+          if (this.#readerJobIds.has(jobId)) this.#terminalReaderResults.set(jobId, cancelled);
           this.mark("owned_job_cleanup_cancelled", {
             job_id_hash: cancelled.idHash,
             status: cancelled.status,
@@ -1050,6 +1114,7 @@ export class RunPodV207QualificationHarness {
     if (TERMINAL_STATUSES.has(job.status)) {
       this.#terminalJobIds.add(job.id);
       this.#ownedJobs.delete(job.id);
+      if (this.#readerJobIds.has(job.id)) this.#terminalReaderResults.set(job.id, job);
       if (postJobWarmIdle) this.#postJobWarmIdlePending = true;
     } else if (replayedTerminalJob) {
       // The idempotent client returns the original /run result for an exact request-key replay.
@@ -1115,6 +1180,7 @@ export class RunPodV207QualificationHarness {
       if (TERMINAL_STATUSES.has(latest.status)) {
         this.#ownedJobs.delete(jobId);
         this.#terminalJobIds.add(jobId);
+        if (this.#readerJobIds.has(jobId)) this.#terminalReaderResults.set(jobId, latest);
         this.#postJobWarmIdlePending = true;
         return latest;
       }
@@ -1187,6 +1253,7 @@ export class RunPodV207QualificationHarness {
     if (result.status === "CANCELLED") {
       this.#ownedJobs.delete(jobId);
       this.#terminalJobIds.add(jobId);
+      if (this.#readerJobIds.has(jobId)) this.#terminalReaderResults.set(jobId, result);
     }
     this.mark("job_cancelled", { job_id_hash: result.idHash });
     return result;
@@ -1361,8 +1428,10 @@ export class RunPodV207QualificationHarness {
       inputs.map((input, index) => {
         const request = requests[index]!;
         return clients[index]!.dispatch(input.requestKey, request).then((job) => {
-          this.trackDispatchedJob(input, job, clients[index]!);
           this.#readerJobIds.add(job.id);
+          this.#readerJobOrder[index] = job.id;
+          this.#readerInputs.set(job.id, input);
+          this.trackDispatchedJob(input, job, clients[index]!);
           return job;
         });
       }),
@@ -1380,6 +1449,7 @@ export class RunPodV207QualificationHarness {
 
   async reconcileConcurrentReaders(
     jobIds: readonly [string, string],
+    verify?: RunPodV207ConcurrentReaderVerifier,
   ): Promise<readonly [RunPodJobResult, RunPodJobResult]> {
     this.assertCreated();
     if (
@@ -1392,6 +1462,7 @@ export class RunPodV207QualificationHarness {
     if (jobIds.some((jobId) => !ID.test(jobId))) {
       throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
     }
+    this.assertExactConcurrentReaderJobs(jobIds);
     await this.assertSpendWithinCap();
     await this.assertSpendWithinCap();
     const maxPolls = this.#options.maxPolls ?? 120;
@@ -1421,18 +1492,187 @@ export class RunPodV207QualificationHarness {
         if (TERMINAL_STATUSES.has(latest.status)) {
           this.#ownedJobs.delete(jobId);
           this.#terminalJobIds.add(jobId);
+          this.#terminalReaderResults.set(jobId, latest);
           return latest;
         }
         if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
       }
       throw new RunPodControlError("RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT");
     };
-    const results = await Promise.all([
-      reconcile(this.#readerJobs[0]!, jobIds[0]),
-      reconcile(this.#readerJobs[1]!, jobIds[1]),
-    ]);
+    let results: readonly [RunPodJobResult, RunPodJobResult];
+    try {
+      results = await Promise.all([
+        reconcile(this.#readerJobs[0]!, jobIds[0]),
+        reconcile(this.#readerJobs[1]!, jobIds[1]),
+      ]);
+    } catch (error) {
+      if (
+        error instanceof RunPodControlError &&
+        error.code === "RUNPOD_QUALIFICATION_RECONCILIATION_TIMEOUT"
+      ) {
+        this.#concurrentReaderRecoveryArmed = true;
+        this.mark("concurrent_reader_terminal_recovery_armed", {
+          reason: "ordinary_reconciliation_timeout",
+          job_id_hashes: this.#readerJobOrder.map((jobId) => sha256(jobId)),
+        });
+        try {
+          // The qualification runner intentionally has one reconciliation call site. A timeout
+          // therefore enters this one bounded exact-ID recovery automatically; it cannot issue a
+          // new /run and returns completed results for the caller's full output/readback/receipt
+          // verifier when the provider settles just after the ordinary window.
+          return await this.recoverConcurrentReadersAfterTimeout(jobIds, verify);
+        } catch (recoveryError) {
+          this.mark("concurrent_reader_terminal_recovery_failed", {
+            error:
+              recoveryError instanceof RunPodControlError
+                ? recoveryError.code
+                : "RUNPOD_CONCURRENT_READER_RECOVERY_FAILED",
+          });
+          throw recoveryError;
+        }
+      }
+      throw error;
+    }
     await this.assertSpendWithinCap();
     return [results[0]!, results[1]!];
+  }
+
+  /**
+   * Bounded recovery for a reader pair whose ordinary reconciliation timed out.  This method is
+   * intentionally status-only: it accepts only the exact dispatch-order job tuple, never calls
+   * `/run`, and returns the same ordered results the caller uses for output/readback/receipt
+   * verification.  If both jobs do not become COMPLETED within the bounded window, owned work is
+   * cancelled and the method fails closed.
+   */
+  async recoverConcurrentReadersAfterTimeout(
+    jobIds: readonly [string, string],
+    verify?: RunPodV207ConcurrentReaderVerifier,
+  ): Promise<readonly [RunPodJobResult, RunPodJobResult]> {
+    this.assertCreated();
+    if (
+      !this.#concurrentReaderConfigHash ||
+      !this.#concurrentReaderFence ||
+      this.#readerJobs.length < 2
+    ) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_REQUIRED");
+    }
+    if (jobIds.some((jobId) => !ID.test(jobId))) {
+      throw new RunPodControlError("RUNPOD_JOB_ID_INVALID");
+    }
+    this.assertExactConcurrentReaderJobs(jobIds);
+    if (!this.#concurrentReaderRecoveryArmed) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_RECOVERY_NOT_ARMED");
+    }
+    // Consume the one recovery phase before any status read. A caller cannot extend the window
+    // or replay it with a different tuple after a cancellation/verification failure.
+    this.#concurrentReaderRecoveryArmed = false;
+    const maxPolls = this.#options.maxPolls ?? 120;
+    const sleep =
+      this.#options.sleep ??
+      ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    const recovered = new Map<string, RunPodJobResult>();
+    for (const jobId of this.#readerJobOrder) {
+      const terminal = this.#terminalReaderResults.get(jobId);
+      if (terminal !== undefined) recovered.set(jobId, terminal);
+    }
+    const readReader = async (index: 0 | 1, jobId: string): Promise<RunPodJobResult> => {
+      const existing = recovered.get(jobId);
+      if (existing !== undefined) return existing;
+      const latest = await this.#readerJobs[index]!.status(jobId);
+      this.mark("concurrent_reader_terminal_recovery_status", {
+        job_id_hash: latest.idHash,
+        status: latest.status,
+        delay_time_ms: latest.delayTimeMs,
+        execution_time_ms: latest.executionTimeMs,
+        ...(latest.error === undefined ? {} : { provider_error_present: true }),
+      });
+      await this.#options.onStatusCheckpoint?.({
+        idHash: latest.idHash,
+        status: latest.status,
+        delayTimeMs: latest.delayTimeMs,
+        executionTimeMs: latest.executionTimeMs,
+      });
+      if (TERMINAL_STATUSES.has(latest.status)) {
+        this.#ownedJobs.delete(jobId);
+        this.#terminalJobIds.add(jobId);
+        this.#terminalReaderResults.set(jobId, latest);
+        recovered.set(jobId, latest);
+      }
+      return latest;
+    };
+    try {
+      for (let poll = 0; poll < maxPolls; poll += 1) {
+        this.checkAbort();
+        await this.assertSpendWithinCap();
+        const first = await readReader(0, jobIds[0]);
+        const second = await readReader(1, jobIds[1]);
+        if (first.status === "COMPLETED" && second.status === "COMPLETED") {
+          const results = [first, second] as const;
+          if (
+            results[0].id !== this.#readerJobOrder[0] ||
+            results[1].id !== this.#readerJobOrder[1]
+          ) {
+            throw new RunPodControlError("RUNPOD_CONCURRENT_READER_OUTPUT_ORDER_INVALID");
+          }
+          const inputs = [
+            this.#readerInputs.get(this.#readerJobOrder[0]),
+            this.#readerInputs.get(this.#readerJobOrder[1]),
+          ] as const;
+          if (!inputs[0] || !inputs[1]) {
+            throw new RunPodControlError("RUNPOD_CONCURRENT_READER_INPUT_LEDGER_INVALID");
+          }
+          // The live runner verifies output bytes/readbacks/receipts immediately after this
+          // method returns.  Direct callers may opt into the harness-level ordering fence by
+          // supplying a verifier; the status-only automatic recovery must still return the exact
+          // completed results so the runner can perform its full application check.
+          if (verify) {
+            assertConcurrentReaderOutputOrder(results[0], inputs[0]);
+            assertConcurrentReaderOutputOrder(results[1], inputs[1]);
+          }
+          if (verify) await verify(results, [inputs[0], inputs[1]]);
+          this.mark("concurrent_reader_terminal_recovery_completed", {
+            job_id_hashes: results.map((result) => result.idHash),
+            output_verifier_run: verify !== undefined,
+          });
+          return results;
+        }
+        if (TERMINAL_STATUSES.has(first.status) || TERMINAL_STATUSES.has(second.status)) {
+          throw new RunPodControlError("RUNPOD_CONCURRENT_READER_COMPLETION_UNCONFIRMED");
+        }
+        if (poll + 1 < maxPolls) await sleep(this.#options.pollIntervalMs ?? 15_000);
+      }
+    } catch (error) {
+      if (
+        error instanceof RunPodControlError &&
+        error.code === "RUNPOD_CONCURRENT_READER_COMPLETION_UNCONFIRMED"
+      ) {
+        try {
+          await this.cancelOwnedJobs();
+        } catch {
+          throw new RunPodControlError("RUNPOD_CONCURRENT_READER_RECOVERY_CLEANUP_UNCERTAIN");
+        }
+      }
+      throw error;
+    }
+    try {
+      await this.cancelOwnedJobs();
+    } catch {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_RECOVERY_CLEANUP_UNCERTAIN");
+    }
+    throw new RunPodControlError("RUNPOD_CONCURRENT_READER_RECOVERY_UNCONFIRMED");
+  }
+
+  private assertExactConcurrentReaderJobs(jobIds: readonly [string, string]): void {
+    if (
+      this.#readerJobIds.size !== 2 ||
+      this.#readerJobOrder.length !== 2 ||
+      jobIds[0] !== this.#readerJobOrder[0] ||
+      jobIds[1] !== this.#readerJobOrder[1] ||
+      !this.#readerJobIds.has(jobIds[0]) ||
+      !this.#readerJobIds.has(jobIds[1])
+    ) {
+      throw new RunPodControlError("RUNPOD_CONCURRENT_READER_JOB_ID_MISMATCH");
+    }
   }
 
   async drain(): Promise<void> {
@@ -1483,6 +1723,10 @@ export class RunPodV207QualificationHarness {
     }
     this.#readerJobs.length = 0;
     this.#readerJobIds.clear();
+    this.#readerJobOrder.length = 0;
+    this.#readerInputs.clear();
+    this.#terminalReaderResults.clear();
+    this.#concurrentReaderRecoveryArmed = false;
     this.#concurrentReaderDispatchClaimed = false;
     this.#concurrentReaderFence = false;
     this.mark("workers_zero_confirmed");
