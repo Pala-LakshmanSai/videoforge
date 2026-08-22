@@ -129,6 +129,104 @@ describe("V2-07 live qualification runner safety", () => {
     expect(putAttempts).toBe(1);
   });
 
+  it.each([
+    ["empty", "", "application/json", "json_parse", 0],
+    [
+      "non-JSON",
+      "provider body https://signed.example/secret?sig=raw",
+      "text/plain; charset=utf-8",
+      "json_parse",
+      51,
+    ],
+    ["JSON non-object", JSON.stringify(["provider-secret"]), "application/json", "non_object", 19],
+  ] as const)(
+    "records bounded FINALIZE diagnostics for %s responses",
+    async (_label, body, contentType, failureCategory, bodyByteLength) => {
+      let attempts = 0;
+      let thrown: unknown;
+      try {
+        await routePort({ operation: "FINALIZE", object_key: "exact-object" }, "b".repeat(64), {
+          fetchImpl: async () => {
+            attempts += 1;
+            return new Response(body, {
+              status: 200,
+              headers: { "content-type": contentType },
+            });
+          },
+          sleepImpl: async () => undefined,
+        });
+      } catch (error) {
+        thrown = error;
+      }
+      expect(attempts).toBe(3);
+      const diagnostic = (thrown as { diagnostic?: unknown } | null)?.diagnostic;
+      expect(diagnostic).toEqual({
+        attempt_number: 3,
+        http_status: 200,
+        content_type_category: contentType.startsWith("application/") ? "json" : "text",
+        content_type_value: contentType.split(";", 1)[0],
+        body_byte_length: bodyByteLength,
+        failure_category: failureCategory,
+      });
+      expect(
+        extractV207OutputContractDiagnostics(
+          new V207OutputContractError(
+            "MISSING",
+            "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID",
+            { kind: "missing", keys: [] },
+            "output_finalization",
+            diagnostic,
+          ),
+        ),
+      ).toMatchObject({ finalize_response_diagnostic: diagnostic });
+      expect(redactV207LiveEvidence({ finalize_response_diagnostic: diagnostic })).toEqual({
+        finalize_response_diagnostic: diagnostic,
+      });
+    },
+  );
+
+  it("does not leak FINALIZE response body, URL, nonce, or non-content-type headers", async () => {
+    const secretBody =
+      "secret-body https://signed.example/private?sig=secret nonce-" + "b".repeat(64);
+    let thrown: unknown;
+    try {
+      await routePort({ operation: "FINALIZE", object_key: "exact-object" }, "b".repeat(64), {
+        fetchImpl: async () =>
+          new Response(secretBody, {
+            status: 200,
+            headers: {
+              "content-type": "text/plain; charset=utf-8; secret=must-not-persist",
+              "x-provider-secret": "must-not-persist",
+            },
+          }),
+        sleepImpl: async () => undefined,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    const diagnostic = (thrown as { diagnostic?: unknown } | null)?.diagnostic;
+    expect(diagnostic).toEqual({
+      attempt_number: 3,
+      http_status: 200,
+      content_type_category: "text",
+      content_type_value: "text/plain",
+      body_byte_length: Buffer.byteLength(secretBody),
+      failure_category: "json_parse",
+    });
+    expect(JSON.stringify(diagnostic)).not.toContain("secret-body");
+    expect(JSON.stringify(diagnostic)).not.toContain("signed.example");
+    expect(JSON.stringify(diagnostic)).not.toContain("must-not-persist");
+    expect(JSON.stringify(diagnostic)).not.toContain("bbbbbbbb");
+    expect(Object.keys(diagnostic as object).sort()).toEqual([
+      "attempt_number",
+      "body_byte_length",
+      "content_type_category",
+      "content_type_value",
+      "failure_category",
+      "http_status",
+    ]);
+  });
+
   it("requires one exact 32-image 1280x720 PNG batch with full receipts", () => {
     expect(source).toContain("assertV207ItemCount(itemCount)");
     expect(source).toContain("output.items.length !== itemCount");

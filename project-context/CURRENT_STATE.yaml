@@ -1,32 +1,32 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-22T08:03:36Z"
+updated_at: "2026-08-22T08:55:41Z"
 
-phase: serverless_v2_v2_07_attempt31_terminal_snapshot_stabilization_authorized
+phase: serverless_v2_v2_07_attempt31_output_contract_failure_closed
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt30_closed_attempt31_authorized_preexecution
+current_wave: v2_07_attempt31_closed_output_finalization_failure
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: provider_free_diagnosis
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 4
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
+gpu_use_authorized: false
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt31_terminal_snapshot_stabilization_authorized_bounded_mutation
-  live_provider_calls: true
-  remote_mutation: true
+  mode: v2_07_attempt31_closed_provider_free_diagnosis
+  live_provider_calls: false
+  remote_mutation: false
   deployment_or_publication: false
-  credential_value_access: true
-  paid_requests_or_spend: true
-  runpod_mutation_or_gpu: true
-  v2_07_action: execute_only_exact_approved_attempt31_under_fresh_usd_4_cap_then_reconcile_and_close
-  note: "Attempt30 proposal sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a and authority sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131 are consumed and non-reusable. Closure sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c records three accepted 32-image private batches, durable v3 receipts/readback, and exact duplicate replay without duplicate compute, then a fail-closed stop before concurrent-reader, cancel, or timeout dispatch at RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED. Cleanup sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0 and stable reconciliation prove zero disposable resources and both intended 50 GB EU-RO-1 volumes retained. Provider-free repair f513ac807c6d5e2298092a936495e3c4fc0e6a28 stabilizes the max-two terminal snapshot proof. Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea is approved by fresh authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 under a fresh USD 4 cap; provider boundary remains false until execution begins. V2-07 remains NOT_QUALIFIED; V2-08 remains forbidden."
+  credential_value_access: false
+  paid_requests_or_spend: false
+  runpod_mutation_or_gpu: false
+  v2_07_action: provider_free_diagnose_and_repair_attempt31_output_finalization_contract; require_fresh_exact_proposal_and_positive_cap_before_any_retry
+  note: "Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea and authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 are consumed and non-reusable. Closure sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490 records accepted owned/cold/warm batches, durable v3 receipts/readbacks, exact duplicate replay without duplicate compute, and MAGE_OUTPUT_NOT_SUCCEEDED with a fail-closed output-finalization stop at V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID before reader acceptance. Cleanup sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc proves zero disposable resources and both intended 50 GB EU-RO-1 volumes retained; settled incremental spend was USD 0.05512650031596422 within the consumed USD 4 cap. Provider calls, mutation, GPU use, and spend are disabled; V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
 
 pending_v2_07_attempt25_proposal:
   mode: closed_consumed_attempt25_output_finalization_failure
@@ -228,11 +228,11 @@ pending_v2_07_attempt30_proposal:
   next_boundary: fresh_exact_attempt31_proposal_and_fresh_positive_numeric_cap_required_before_any_retry
 
 pending_v2_07_attempt31_proposal:
-  mode: attempt31_terminal_snapshot_stabilization_authorized_preexecution
+  mode: closed_consumed_attempt31_output_finalization_failure
   proposal_path: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
-  latest_closed_proposal_sha256: "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a"
-  latest_closed_authority_sha256: "sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131"
+  latest_closed_proposal_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
+  latest_closed_authority_sha256: "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5"
   control_source_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
   terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
   staged_max1_sha256: "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006"
@@ -243,24 +243,29 @@ pending_v2_07_attempt31_proposal:
   observed_availability: HIGH
   minimum_requested_availability: LOW
   region: EU-RO-1
-  maximum_cumulative_finite_spend_usd: 4
+  maximum_cumulative_finite_spend_usd: 0
   estimated_finite_serverless_compute_usd_ceiling: 2.2
-  fresh_numeric_cap_required: false
-  authority_recorded: true
+  fresh_numeric_cap_required: true
+  authority_recorded: false
   authority_path: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/approved-authority.json
   authority_sha256: "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5"
-  provider_calls_authorized: true
-  provider_mutations_authorized: true
-  gpu_use_authorized: true
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
   image_republication_authorized: false
   model_download_or_volume_mutation_authorized: false
   v2_08_authorized: false
-  current_read_only_truth_checked_at: "2026-08-22T07:41:44.161Z"
+  current_read_only_truth_checked_at: "2026-08-22T08:49:57.233Z"
   current_rtx4090_availability_checked_at: "2026-08-22T07:41:44.161Z"
   current_rtx4090_availability: HIGH
-  cumulative_endpoint_spend_usd: 0.5883426677901298
-  result: NOT_QUALIFIED_attempt31_authorized_preexecution
-  next_boundary: execute_exact_attempt31_under_fresh_usd_4_cap_then_reconcile_and_close; V2-08 forbidden
+  cumulative_endpoint_spend_usd: 0.6856819738168269
+  failed_attempt_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-31.json
+  failed_attempt_evidence_sha256: "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490"
+  cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt31-cleanup-observation.json
+  cleanup_evidence_sha256: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"
+  settled_incremental_spend_usd: 0.05512650031596422
+  result: NOT_QUALIFIED_attempt31_closed_output_finalization_failure
+  next_boundary: provider_free_diagnose_and_repair_output_finalization_contract; fresh_exact_proposal_and_fresh_positive_numeric_cap_required_before_any_retry; V2-08 forbidden
 
 pending_v2_07_attempt24_proposal:
   mode: closed_consumed_attempt24_quiescence_failure
@@ -347,9 +352,9 @@ pending_v2_07_attempt21_proposal:
   diagnostic_mismatch_categories: [identity, environment, flashboot, region, cuda, volume, gpu, workers, timing, scaler]
 
 provider_authority: &v2_07_provider_authority
-  mode: paid
-  provider: runpod_serverless_and_scoped_cloudflare_signer
-  cap_usd: 4
+  mode: none
+  provider: null
+  cap_usd: 0
   historical_cap_usd: 4
   recurring_r2_ceiling_usd_per_month: 0
   non_transferable: true
@@ -360,20 +365,18 @@ provider_authority: &v2_07_provider_authority
   proposal_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
   latest_closed_proposal_sha256: "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a"
   latest_closed_authority_sha256: "sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131"
-  closed_at: null
-  closure_sha256: null
-  cleanup_sha256: null
+  authority_state: CONSUMED_SINGLE_BOUNDED_EXECUTION_DO_NOT_REUSE
+  closed_at: "2026-08-22T08:47:57.022Z"
+  closure_sha256: "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490"
+  cleanup_sha256: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  external_spend_usd: 0.05512650031596422
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  resources:
-    - ghcr_exact_mage_image_sha256_bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5_readback_only
-    - runpod_sujal_account_sha256_ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c
-    - runpod_sujal_eu_ro_1_exact_mage_serverless_endpoint_private_template_rtx4090_flashboot_true
-    - runpod_volume_sha256_eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619_50gb_application_read_only
-    - cloudflare_videoforge_v2_06_staging_scoped_ephemeral_signer
-  authorized_operations:
-    - exact_attempt31_operations_in_approved_authority_json_only
-  allowed_operations:
-    - exact_attempt31_operations_in_approved_authority_json_only
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
   legacy_historical_resources:
     - github_ghcr_videoforge_mage_v2_07_immutable_digest_readback_only
     - runpod_sujal_account_sha256_ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c
@@ -1016,11 +1019,11 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/approved-authority.json
-  current_authority_sha256: "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5"
-  mutation_authorized: true
-  gpu_use_authorized: true
-  spend_authorized_usd: 4
+  current_authority: null
+  current_authority_sha256: null
+  mutation_authorized: false
+  gpu_use_authorized: false
+  spend_authorized_usd: 0
 
 repository:
   initialized: true
@@ -1033,8 +1036,8 @@ repository:
   current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt30 is closed by sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c after three accepted 32-image batches, 96 durable readbacks/receipts, and exact duplicate replay without duplicate compute. It failed closed before concurrent-reader, cancel, or timeout dispatch at RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED. Exact cleanup and stable reconciliation prove zero disposable compute/resources and both intended volumes retained. Attempt30 authority/cap are consumed and non-reusable. Attempt31 is freshly approved under authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 and fresh USD 4 cap; execute only its exact proposal after this context commit."
-  v2_07_latest_local_repair: "Commit f513ac807c6d5e2298092a936495e3c4fc0e6a28 allows exact cleanup at either separately approved workersMax stage and requires a bounded max-two stabilization window ending in two consecutive exact terminal snapshots with queue-empty reads before reader dispatch. Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea is approved under authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 and fresh USD 4 cap; provider boundary remains false until execution."
+  current_source_head_note: "Attempt31 is closed NOT_QUALIFIED by sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490 after owned/cold/warm 32-image batches completed durable readbacks/receipts and exact duplicate replay without duplicate compute, while max-two reader jobs reached provider terminal status but no reader batch was accepted. The stop code is V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID at output_finalization. Cleanup sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc proves zero disposable resources and both intended volumes retained; settled incremental spend was USD 0.05512650031596422. Attempt31 authority/cap are consumed and non-reusable; provider-free diagnosis/repair is next."
+  v2_07_latest_local_repair: "Commit f513ac807c6d5e2298092a936495e3c4fc0e6a28 supplied the terminal-snapshot stabilization fence used by Attempt31. Attempt31 is now closed on the output-finalization response contract; no provider boundary is active, and any retry requires a fresh exact proposal, authority, and positive cap."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -1049,10 +1052,10 @@ live_development:
   chrome_route: null
   fixture_scenario: v2_00_roadmap_reset_audit
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: staging
-  provider_calls_authorized: true
-  authorized_spend_usd: 4
-  provider_authority_scope: "Exact Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea and authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 under fresh USD 4 cumulative cap only; FlashBoot=true, LOW-or-better EU-RO-1, exact RTX4090/image/volume; provider boundary remains false until execution; V2-08 forbidden."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "No active provider authority. Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea and authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 were consumed by failed closure sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490; provider-free diagnosis/repair only; V2-08 forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -1245,9 +1248,9 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-22T07:41:44.161Z"
-  basis: attempt_30_exact_cleanup_three_read_reconciliation_and_fresh_read_only_catalog_inventory
-  evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-30.json
+  checked_at: "2026-08-22T08:49:57.233Z"
+  basis: attempt_31_exact_cleanup_three_stable_read_reconciliation
+  evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt31-cleanup-observation.json
   current_live_refresh_permitted_now: false
   stale_until_current_authorized_read_only_inventory_succeeds: false
   rtx4090_eu_ro_1_availability: HIGH
@@ -1276,10 +1279,10 @@ last_known_provider_resource_truth:
   full_day_network_storage_charge_usd: 0.233
   current_day_cloud_gpu_usd: 0
   current_day_cloud_cpu_usd: 0
-  current_day_serverless_usd: 0.5883426677901298
+  current_day_serverless_usd: 0.6856819738168269
   auto_pay: DISABLED
-  cumulative_endpoint_spend_usd: 0.5883426677901298
-  note: "Attempt30 accepted owned, cold, and warm 32-image batches with 96 durable readbacks and replay-confirmed v3 receipts; exact duplicate delivery caused no second provider dispatch or duplicate compute. It failed closed before concurrent-reader, cancel, or timeout dispatch at RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED. Cleanup and three stable reads at 2026-08-22T07:36:36.620Z prove zero Pods/endpoints/templates/workers/running Pods, both intended 50 GB EU-RO-1 volumes retained, and immediate endpoint spend unchanged at USD 0.5883426677901298; delayed provider billing may supersede. A fresh read-only lookup at 2026-08-22T07:41:44.161Z observed RTX4090 EU-RO-1 availability HIGH. Attempt30 authority/cap are consumed; V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
+  cumulative_endpoint_spend_usd: 0.6856819738168269
+  note: "Attempt31 failed closed at output_finalization with V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID after owned/cold/warm batches produced 96 durable readbacks and replay-confirmed v3 receipts; exact duplicate delivery caused no second provider dispatch or duplicate compute. Two max-two reader jobs reached provider-terminal status but no reader batch was accepted. Three stable reads at 2026-08-22T08:49:57.233Z prove zero Pods/endpoints/templates/workers/running Pods, both intended 50 GB EU-RO-1 volumes retained, and final endpoint spend USD 0.6856819738168269 from baseline USD 0.6305554735008627, a settled incremental USD 0.05512650031596422 within the consumed USD 4 cap. Signer/Worker/route rollback and generated-output rollback passed. Attempt31 authority/cap are consumed; V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -1300,34 +1303,34 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure
+  status: NOT_QUALIFIED_attempt31_closed_output_finalization_failure
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: attempt31_exact_authority_recorded_fresh_usd_4_cap
-  task_stage: bounded_mutation
-  current_goal_authority: attempt31_approved_preexecution
+  authorization_status: attempt31_authority_and_cap_consumed_fresh_proposal_required
+  task_stage: provider_free_diagnosis
+  current_goal_authority: none_attempt31_consumed
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Execute and reconcile only the exact approved Attempt31 terminal-snapshot stabilization proposal under the fresh USD 4 cap; stop before V2-08."
-  provider_calls_authorized: true
+  goal: "Diagnose and repair the Attempt31 output-finalization response contract provider-free; stop before V2-08 and require a fresh exact proposal and positive cap before any retry."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 4
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt30 proposal/authority/cap are consumed and closed by sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c. Cleanup sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0 proves zero disposable resources and both volumes retained. Attempt31 exact proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea is approved under authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 and fresh USD 4 cap; provider boundary remains false until execution."
+  authority_note: "Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea and authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 were consumed by failed closure sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490; cleanup sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc proves zero disposable resources and both volumes retained. No active authority or cap exists; provider-free diagnosis/repair only."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt31_approved_preexecution_pending
-  execution_blocker: none_execute_exact_approved_attempt31_only
+  execution_status: attempt31_closed_provider_free_diagnosis_pending
+  execution_blocker: V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID_provider_free_diagnosis_required
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt30_closed_concurrent_reader_baseline_failure_attempt31_authorized_preexecution_not_qualified

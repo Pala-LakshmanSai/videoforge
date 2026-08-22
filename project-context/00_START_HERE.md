@@ -1,19 +1,25 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt30;
-its exact authority and fresh `$4` cap are consumed. Attempt31 is freshly authorized for bounded
-pre-execution under authority `sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5`,
-but provider-boundary calls remain false until execution begins. Attempt30 accepted an owned probe plus cold and warm complete 32-image batches:
-96 durable readbacks and 96 replay-confirmed v3 receipts. RunPod then applied the separately approved
-max-two stage, but the concurrent-reader baseline failed before either reader was dispatched at
-`RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED`. Closure
-`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-30.json` is
-`sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c`; exact cleanup is
-`sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0`. The max-two cleanup
-fence was repaired in `f513ac807c6d5e2298092a936495e3c4fc0e6a28`; cleanup then proved zero disposable
-resources and both intended sealed 50 GB EU-RO-1 volumes retained. V2-08 remains forbidden.
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after the
+Attempt31 output-finalization failure. Attempt31 authority
+`sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5`, proposal
+`sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea`, and its fresh `$4`
+cap are consumed and non-reusable. The owned probe, cold, and warm 32-image batches each completed
+32 durable readbacks and replay-confirmed v3 receipts; duplicate delivery caused no second dispatch
+or duplicate compute. The bounded max-two reader jobs reached provider terminal status, but no reader
+batch was accepted. The run reported `MAGE_OUTPUT_NOT_SUCCEEDED` and stopped at
+`V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID` in
+`output_finalization` and did not qualify V2-07. Closure
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-31.json` is
+`sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490`; exact cleanup
+`attempt31-cleanup-observation.json` is `sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc`. Three stable
+reconciliation reads prove zero disposable Pods/endpoints/templates/workers/running Pods, both
+intended sealed 50 GB EU-RO-1 volumes retained, and settled incremental spend `$0.05512650031596422`
+within the consumed `$4` cap. Signer deletion, Worker rollback, route restoration, and generated-output
+rollback passed. Provider calls, GPU use, mutation, and spend are now disabled; only provider-free
+diagnosis/repair is allowed. V2-08 remains forbidden.
 
-Attempt31 is the approved pre-execution terminal-snapshot-stabilization candidate at
+Historical Attempt31 pre-execution terminal-snapshot-stabilization candidate at
 `evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json`
 with proposal `sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea`, max-one
 `sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006`, max-two
@@ -66,8 +72,9 @@ cap are consumed and cannot be reused. Its FINALIZE fast-path control was
 `bf26c3a86ec6a48f619c39613d425da816eeae4d`. Its closure and cleanup are recorded above; V2-07 remains
 NOT_QUALIFIED and V2-08 remains forbidden.
 
-Attempt31 is the current approved pre-execution candidate described above. Execute only its exact
-proposal under the fresh `$4` cap; provider calls remain blocked until the authority/context commit.
+Attempt31 is now closed consumed evidence described above. Do not execute or reuse its proposal,
+authority, or `$4` cap; any retry requires a new exact proposal, fresh approval, and fresh positive
+numeric cap after provider-free diagnosis/repair.
 Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any

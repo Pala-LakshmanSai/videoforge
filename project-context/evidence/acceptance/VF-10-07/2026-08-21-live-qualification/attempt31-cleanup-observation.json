@@ -1,0 +1,62 @@
+{
+  "schema_version": "videoforge.v2-07-attempt31-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 31,
+  "checked_at": "2026-08-22T08:49:57.233Z",
+  "proposal_sha256": "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea",
+  "authority_sha256": "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
+  "cleanup": {
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 5,
+    "terminal_pod_record_count": 5,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "network_volume_delete_called": false
+  },
+  "final_reconciliation": {
+    "stable_read_count": 3,
+    "read_interval_seconds": 10,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "retained_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 0.6305554735008627,
+    "final_endpoint_spend_usd": 0.6856819738168269,
+    "incremental_spend_usd": 0.05512650031596422,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "cloudflare_cleanup": {
+    "signer_secret_deleted": true,
+    "worker_version_rolled_back": true,
+    "pre_mutation_route_restored": true,
+    "generated_output_rollback": "CONFIRMED"
+  },
+  "retention": {
+    "sealed_mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "existing_two_volume_charge_usd_per_month_total": 7,
+    "recurring_charge_outside_attempt31_finite_cap": true
+  },
+  "secrets_or_raw_provider_ids_retained": false,
+  "v2_08_authorized": false
+}

@@ -1,0 +1,151 @@
+{
+  "schema_version": "videoforge.v2-07-live-failure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 31,
+  "result": "NOT_QUALIFIED",
+  "started_at": "2026-08-22T08:15:44.881Z",
+  "failed_at": "2026-08-22T08:47:57.022Z",
+  "proposal_sha256": "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea",
+  "authority_sha256": "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
+  "authority_state": "CONSUMED_SINGLE_BOUNDED_EXECUTION_DO_NOT_REUSE",
+  "authority_commit": "b8c626b02ed00f8581742f9852e39d904afb8db5",
+  "raw_redacted_evidence": {
+    "live_result_path": "/tmp/videoforge-v207-live-result.json",
+    "live_result_sha256": "sha256:0453bc2a5338339f6c719aa6ccfea7d238d84a2126faa260aecde41d4530d584",
+    "orchestrator_path": "/tmp/videoforge-v207-attempt31-orchestrator.json",
+    "orchestrator_sha256": "sha256:d279f826d55ea842ab1097c1df12a2a2559b08e7d9d826d02fafe24a2013900e",
+    "secrets_or_raw_provider_ids_retained": false
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "control_source_commit": "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
+    "max1_definition_sha256": "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006",
+    "max2_definition_sha256": "sha256:4013c7b9887994b6de2dfd947f13ea74e622dfc0fe5b5e429c29fffedc69ef9b",
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "region": "EU-RO-1",
+    "mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flashboot": true,
+    "volume_write_policy": "APPLICATION_READ_ONLY"
+  },
+  "accepted_batches": [
+    {
+      "kind": "owned_probe",
+      "item_count": 32,
+      "durable_readback_count": 32,
+      "replay_confirmed_v3_receipt_count": 32,
+      "queue_delay_ms": 92147,
+      "provider_execution_ms": 161944,
+      "peak_vram_used_bytes": 14177206272,
+      "model_load_ms": 11804,
+      "warmup_ms": 12089,
+      "first_inference_ms": 1046,
+      "upload_ms": 30430,
+      "worker_total_ms": 105692
+    },
+    {
+      "kind": "cold",
+      "item_count": 32,
+      "durable_readback_count": 32,
+      "replay_confirmed_v3_receipt_count": 32,
+      "queue_delay_ms": 1441,
+      "provider_execution_ms": 61412,
+      "peak_vram_used_bytes": 13640335360,
+      "model_load_ms": 11804,
+      "warmup_ms": 12089,
+      "first_inference_ms": 511,
+      "upload_ms": 11558,
+      "worker_total_ms": 60056
+    },
+    {
+      "kind": "warm",
+      "item_count": 32,
+      "durable_readback_count": 32,
+      "replay_confirmed_v3_receipt_count": 32,
+      "queue_delay_ms": 1435,
+      "provider_execution_ms": 86019,
+      "peak_vram_used_bytes": 13640335360,
+      "model_load_ms": 11804,
+      "warmup_ms": 12089,
+      "first_inference_ms": 492,
+      "upload_ms": 34593,
+      "worker_total_ms": 84659
+    }
+  ],
+  "duplicate_delivery": {
+    "same_job": true,
+    "second_provider_dispatch": false,
+    "duplicate_compute": false
+  },
+  "concurrent_reader_proof": {
+    "workers_max": 2,
+    "two_jobs_dispatched": true,
+    "both_provider_terminal_completed": true,
+    "reader_a_queue_delay_ms": 10298,
+    "reader_a_execution_ms": 314389,
+    "reader_b_queue_delay_ms": 11445,
+    "reader_b_execution_ms": 313006,
+    "accepted_reader_batch_count": 0,
+    "failure_before_acceptance": true
+  },
+  "failure": {
+    "error": "MAGE_OUTPUT_NOT_SUCCEEDED",
+    "category": "output_contract",
+    "stage": "output_finalization",
+    "code": "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID",
+    "provider_terminal_status": "COMPLETED",
+    "worker_output_status": "SUCCEEDED",
+    "output_shape_kind": "object",
+    "output_shape_keys": [
+      "items",
+      "provenance_receipt",
+      "status"
+    ],
+    "stop_condition_obeyed": true,
+    "no_retry_or_duplicate_compute": true
+  },
+  "unreached_live_proofs": {
+    "cancellation": true,
+    "timeout": true,
+    "two_reader_durable_acceptance": true,
+    "retained_success_endpoint_and_template": true
+  },
+  "sealed_volume": {
+    "manifest_unchanged": true,
+    "model_volume_writes_observed": false,
+    "runtime_download_or_quantization_observed": false,
+    "cache_escape_observed": false,
+    "volume_mutation_authorized": false
+  },
+  "cleanup": {
+    "observation_path": "attempt31-cleanup-observation.json",
+    "disposable_endpoint_deleted": true,
+    "disposable_template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "active_workers": 0,
+    "running_pods": 0,
+    "intended_volume_count": 2,
+    "signer_secret_deleted": true,
+    "worker_version_rolled_back": true,
+    "route_restored": true,
+    "generated_output_rollback": "CONFIRMED"
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 0.6305554735008627,
+    "final_endpoint_spend_usd": 0.6856819738168269,
+    "incremental_spend_usd": 0.05512650031596422,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS",
+    "existing_two_volume_charge_usd_per_month_total": 7,
+    "volume_charge_outside_finite_cap": true
+  },
+  "next_boundary": "Provider-free diagnose and repair the concurrent-reader FINALIZE response contract. Attempt31 authority and cap are consumed; any new live execution requires a separately hashed proposal, fresh exact approval, and a fresh positive numeric cumulative finite spend cap.",
+  "v2_08_authorized": false
+}

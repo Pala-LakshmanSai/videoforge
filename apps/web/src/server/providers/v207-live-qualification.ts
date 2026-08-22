@@ -122,6 +122,154 @@ const V207_SAFE_ERROR_CATEGORIES: ReadonlySet<string> = new Set([
 ]);
 const V207_OUTPUT_DIAGNOSTIC_CODE = /^[A-Z][A-Z0-9_]{2,63}$/u;
 const V207_OUTPUT_DIAGNOSTIC_BRAND = "videoforge.v207.output-contract-diagnostic/v1" as const;
+const V207_OUTPUT_PORT_FINALIZE_FAILURE_CATEGORIES = new Set([
+  "transport",
+  "json_parse",
+  "non_object",
+] as const);
+const V207_OUTPUT_PORT_CONTENT_TYPE_CATEGORIES = new Set([
+  "json",
+  "text",
+  "other",
+  "missing",
+  "invalid",
+] as const);
+const V207_OUTPUT_PORT_CONTENT_TYPE_VALUE = /^[a-z0-9!#$&^_.+-]{1,63}\/[a-z0-9!#$&^_.+-]{1,63}$/u;
+type V207OutputPortFinalizeFailureCategory = "transport" | "json_parse" | "non_object";
+type V207OutputPortContentTypeCategory = "json" | "text" | "other" | "missing" | "invalid";
+
+/**
+ * The FINALIZE response diagnostic is deliberately a small metadata tuple.  It must never carry
+ * the response body, URL, provider identifiers, nonce, or arbitrary headers into evidence.
+ */
+export interface V207OutputPortFinalizeResponseDiagnostic {
+  readonly attempt_number: number;
+  readonly http_status: number | null;
+  readonly content_type_category: V207OutputPortContentTypeCategory;
+  readonly content_type_value: string | null;
+  readonly body_byte_length: number;
+  readonly failure_category: V207OutputPortFinalizeFailureCategory;
+}
+
+const sanitizeV207OutputPortContentType = (
+  value: string | null,
+): Pick<
+  V207OutputPortFinalizeResponseDiagnostic,
+  "content_type_category" | "content_type_value"
+> => {
+  if (value === null || value.trim() === "") {
+    return { content_type_category: "missing", content_type_value: null };
+  }
+  // Parameters are not evidence.  Keep only a lower-case media type and reject anything that
+  // cannot be represented by the bounded MIME token grammar.
+  const mediaType = value.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  if (!V207_OUTPUT_PORT_CONTENT_TYPE_VALUE.test(mediaType)) {
+    return { content_type_category: "invalid", content_type_value: null };
+  }
+  const category =
+    mediaType === "application/json" || mediaType.endsWith("+json")
+      ? "json"
+      : mediaType.startsWith("text/")
+        ? "text"
+        : "other";
+  return { content_type_category: category, content_type_value: mediaType };
+};
+
+const makeV207OutputPortFinalizeResponseDiagnostic = (
+  attemptNumber: number,
+  response: Response | null,
+  failureCategory: V207OutputPortFinalizeFailureCategory,
+  bodyByteLength = 0,
+): V207OutputPortFinalizeResponseDiagnostic => {
+  const contentType = sanitizeV207OutputPortContentType(
+    response?.headers?.get("content-type") ?? null,
+  );
+  return {
+    attempt_number: Number.isSafeInteger(attemptNumber) && attemptNumber > 0 ? attemptNumber : 1,
+    http_status:
+      response &&
+      Number.isInteger(response.status) &&
+      response.status >= 100 &&
+      response.status <= 599
+        ? response.status
+        : null,
+    ...contentType,
+    body_byte_length:
+      Number.isSafeInteger(bodyByteLength) && bodyByteLength >= 0 ? bodyByteLength : 0,
+    failure_category: failureCategory,
+  };
+};
+
+/** Normalize an in-process diagnostic before it can cross into persisted evidence. */
+export function normalizeV207OutputPortFinalizeResponseDiagnostic(
+  value: unknown,
+): V207OutputPortFinalizeResponseDiagnostic | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as AnyRecord;
+  const attemptNumber = candidate.attempt_number;
+  const httpStatus = candidate.http_status;
+  const bodyByteLength = candidate.body_byte_length;
+  const failureCategory = candidate.failure_category;
+  const contentTypeCategory = candidate.content_type_category;
+  const contentTypeValue = candidate.content_type_value;
+  if (
+    !Number.isSafeInteger(attemptNumber) ||
+    attemptNumber < 1 ||
+    !(
+      httpStatus === null ||
+      (Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599)
+    ) ||
+    !Number.isSafeInteger(bodyByteLength) ||
+    bodyByteLength < 0 ||
+    typeof failureCategory !== "string" ||
+    !V207_OUTPUT_PORT_FINALIZE_FAILURE_CATEGORIES.has(failureCategory as never) ||
+    typeof contentTypeCategory !== "string" ||
+    !V207_OUTPUT_PORT_CONTENT_TYPE_CATEGORIES.has(contentTypeCategory as never) ||
+    !(
+      contentTypeValue === null ||
+      (typeof contentTypeValue === "string" &&
+        V207_OUTPUT_PORT_CONTENT_TYPE_VALUE.test(contentTypeValue))
+    )
+  ) {
+    return null;
+  }
+  const normalizedContentType = sanitizeV207OutputPortContentType(contentTypeValue);
+  if (
+    normalizedContentType.content_type_category !== contentTypeCategory ||
+    normalizedContentType.content_type_value !== contentTypeValue
+  ) {
+    return null;
+  }
+  return {
+    attempt_number: attemptNumber,
+    http_status: httpStatus,
+    ...normalizedContentType,
+    body_byte_length: bodyByteLength,
+    failure_category: failureCategory as V207OutputPortFinalizeFailureCategory,
+  };
+}
+
+class V207OutputPortFinalizeResponseError extends Error {
+  readonly code = V207_OUTPUT_PORT_FINALIZE_RESPONSE_ERROR;
+  readonly diagnostic: V207OutputPortFinalizeResponseDiagnostic;
+
+  constructor(diagnostic: V207OutputPortFinalizeResponseDiagnostic) {
+    super(V207_OUTPUT_PORT_FINALIZE_RESPONSE_ERROR);
+    this.name = "V207OutputPortFinalizeResponseError";
+    this.diagnostic = diagnostic;
+  }
+}
+
+class V207OutputPortFinalizeTransportError extends Error {
+  readonly code = V207_OUTPUT_PORT_FINALIZE_TRANSPORT_ERROR;
+  readonly diagnostic: V207OutputPortFinalizeResponseDiagnostic;
+
+  constructor(diagnostic: V207OutputPortFinalizeResponseDiagnostic) {
+    super(V207_OUTPUT_PORT_FINALIZE_TRANSPORT_ERROR);
+    this.name = "V207OutputPortFinalizeTransportError";
+    this.diagnostic = diagnostic;
+  }
+}
 const V207_OUTPUT_FAILURE_STAGES = [
   "top_level",
   "item_count",
@@ -248,6 +396,7 @@ const SAFE_EVIDENCE_KEYS = new Set([
   "cancel_output_cleanup",
   "timeout_status",
   "timeout_output_cleanup",
+  "finalize_response_diagnostic",
 ]);
 
 /**
@@ -316,6 +465,9 @@ export function redactV207LiveEvidence(value: unknown): AnyRecord {
     }
     if (typeof candidate === "number" || typeof candidate === "boolean" || candidate === null) {
       return candidate;
+    }
+    if (key === "finalize_response_diagnostic") {
+      return normalizeV207OutputPortFinalizeResponseDiagnostic(candidate) ?? "[REDACTED]";
     }
     if (Array.isArray(candidate)) return candidate.map((entry) => visit(entry, key, depth + 1));
     if (candidate && typeof candidate === "object") {
@@ -432,6 +584,7 @@ type V207OutputContractDiagnosticLike = {
   readonly failureCode?: unknown;
   readonly failureStage?: unknown;
   readonly outputShape?: unknown;
+  readonly finalizeResponseDiagnostic?: unknown;
 };
 
 /**
@@ -461,12 +614,14 @@ export class V207OutputContractError extends Error {
   readonly failureCode: string;
   readonly failureStage: V207OutputFailureStage;
   readonly outputShape: V207OutputShape;
+  readonly finalizeResponseDiagnostic: V207OutputPortFinalizeResponseDiagnostic | null;
 
   constructor(
     outputStatus: unknown,
     failureCode: unknown,
     outputShape: unknown,
     failureStage: unknown = "top_level",
+    finalizeResponseDiagnostic: unknown = null,
   ) {
     super("MAGE_OUTPUT_NOT_SUCCEEDED");
     this.name = "V207OutputContractError";
@@ -474,13 +629,16 @@ export class V207OutputContractError extends Error {
     this.failureCode = safeV207OutputDiagnosticCode(failureCode, "UNKNOWN");
     this.failureStage = safeV207OutputFailureStage(failureStage, "unknown");
     this.outputShape = normalizeV207OutputShape(outputShape);
+    this.finalizeResponseDiagnostic = normalizeV207OutputPortFinalizeResponseDiagnostic(
+      finalizeResponseDiagnostic,
+    );
   }
 }
 
 export function extractV207OutputContractDiagnostics(error: unknown): AnyRecord | null {
   if (!isV207OutputContractDiagnostic(error)) return null;
   const outputShape = normalizeV207OutputShape(error.outputShape);
-  return {
+  const diagnostic: AnyRecord = {
     error: "MAGE_OUTPUT_NOT_SUCCEEDED",
     error_category: "output_contract",
     output_failure_stage: safeV207OutputFailureStage(error.failureStage, "unknown"),
@@ -489,6 +647,13 @@ export function extractV207OutputContractDiagnostics(error: unknown): AnyRecord 
     output_shape_kind: outputShape.kind,
     output_shape_keys: [...outputShape.keys],
   };
+  const finalizeResponseDiagnostic = normalizeV207OutputPortFinalizeResponseDiagnostic(
+    error.finalizeResponseDiagnostic,
+  );
+  if (finalizeResponseDiagnostic) {
+    diagnostic.finalize_response_diagnostic = finalizeResponseDiagnostic;
+  }
+  return diagnostic;
 }
 
 const boundedV207FailureCode = (error: unknown): string => {
@@ -587,7 +752,11 @@ export async function routePort(
       });
     } catch (error) {
       if (!isFinalize || attempt === maxAttempts - 1) {
-        if (isFinalize) throw new Error(V207_OUTPUT_PORT_FINALIZE_TRANSPORT_ERROR);
+        if (isFinalize) {
+          throw new V207OutputPortFinalizeTransportError(
+            makeV207OutputPortFinalizeResponseDiagnostic(attempt + 1, null, "transport"),
+          );
+        }
         throw error;
       }
       await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
@@ -595,19 +764,56 @@ export async function routePort(
     }
 
     let value: AnyRecord;
-    try {
+    if (isFinalize) {
+      let diagnostic: V207OutputPortFinalizeResponseDiagnostic;
+      try {
+        const body = await response.arrayBuffer();
+        const bodyByteLength = body.byteLength;
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(new TextDecoder().decode(body));
+        } catch {
+          diagnostic = makeV207OutputPortFinalizeResponseDiagnostic(
+            attempt + 1,
+            response,
+            "json_parse",
+            bodyByteLength,
+          );
+          throw new V207OutputPortFinalizeResponseError(diagnostic);
+        }
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          diagnostic = makeV207OutputPortFinalizeResponseDiagnostic(
+            attempt + 1,
+            response,
+            "non_object",
+            bodyByteLength,
+          );
+          throw new V207OutputPortFinalizeResponseError(diagnostic);
+        }
+        value = parsed as AnyRecord;
+      } catch (error) {
+        if (error instanceof V207OutputPortFinalizeResponseError) {
+          diagnostic = error.diagnostic;
+        } else {
+          diagnostic = makeV207OutputPortFinalizeResponseDiagnostic(
+            attempt + 1,
+            response,
+            "transport",
+          );
+        }
+        if (attempt === maxAttempts - 1) {
+          if (error instanceof V207OutputPortFinalizeResponseError) throw error;
+          throw new V207OutputPortFinalizeTransportError(diagnostic);
+        }
+        await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+    } else {
       const parsed: unknown = await response.json();
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         throw new Error("V207_OUTPUT_PORT_RESPONSE_INVALID");
       }
       value = parsed as AnyRecord;
-    } catch (error) {
-      if (!isFinalize || attempt === maxAttempts - 1) {
-        if (isFinalize) throw new Error(V207_OUTPUT_PORT_FINALIZE_RESPONSE_ERROR);
-        throw error;
-      }
-      await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
-      continue;
     }
 
     const signedPort = typeof value.url === "string" && /^https:\/\//u.test(value.url);
@@ -1383,6 +1589,10 @@ async function verifyBatch(
       boundedV207FailureCode(error),
       describeV207OutputShape(output),
       failureStage,
+      error instanceof V207OutputPortFinalizeResponseError ||
+      error instanceof V207OutputPortFinalizeTransportError
+        ? error.diagnostic
+        : null,
     );
   }
 }
