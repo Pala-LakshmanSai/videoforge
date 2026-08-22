@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+import json
 import os
 import re
 import time
 from contextlib import contextmanager
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -32,7 +33,6 @@ _runtime: MageRuntime | None = None
 _startup_lock = asyncio.Lock()
 _delivery_lock = asyncio.Lock()
 _claimed_deliveries: set[str] = set()
-_PROCESS_STARTED_MONOTONIC = time.monotonic()
 
 _GENERATED_OUTPUT_SCHEMA = "artifact-generated-output-authority/v1"
 _GENERATED_OUTPUT_KEYS = frozenset(
@@ -55,76 +55,134 @@ _CONTENT_TYPE = re.compile(r"^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$")
 _CAPABILITY = re.compile(r"^[A-Za-z0-9._:-]{32,512}$")
 _FAILURE_CODE = re.compile(r"^[A-Z][A-Z0-9_.:-]{2,120}$")
 _RESUME_SCHEMA = "serverless-unit-resume/v1"
-_RESUME_KEYS = frozenset({"schema_version", "accepted_units"})
+_EXECUTION_SCHEMA = "serverless-execution-subset/v1"
+_PLAN_MANIFEST_SCHEMA = "videoforge-v207-plan-manifest/v1"
+_EXECUTION_KEYS = frozenset({"schema_version", "plan_manifest_sha256", "item_ids"})
+_RESUME_KEYS = frozenset(
+    {"schema_version", "plan_manifest", "plan_manifest_sha256", "accepted_units"}
+)
 _RESUME_UNIT_KEYS = frozenset(
     {
+        "tenant",
+        "project_id",
+        "revision_id",
+        "lane",
+        "plan_manifest",
+        "plan_manifest_sha256",
+        "source_attempt_id",
         "item_id",
         "output_object_key",
         "output_sha256",
         "output_bytes",
+        "artifact_commit_receipt_sha256",
+        "signed_provenance_receipt_sha256",
         "readback_port",
         "readback_get_url",
     }
 )
 _TIMING_MAX_MS = 86_400_000
+_SIGNED_AUTHORITY_TTL_SECONDS = 7_200
 
 
-def _bounded_timing_ms(value: object, *, fallback: int | None = None) -> int:
-    """Return a truthful, finite timing measurement or fail closed.
+def _exact_utf8_sha256(value: object, *, max_bytes: int) -> str:
+    if not isinstance(value, str):
+        raise ServerlessMageError("MAGE_SERVERLESS_CANONICAL_JSON_INVALID")
+    try:
+        encoded = value.encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_CANONICAL_JSON_INVALID") from error
+    if len(encoded) < 2 or len(encoded) > max_bytes:
+        raise ServerlessMageError("MAGE_SERVERLESS_CANONICAL_JSON_INVALID")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
-    Provider allocation is not observable from inside a RunPod handler.  The worker therefore
-    records a lower-bound process-start measurement for allocation/container readiness and
-    accepts an explicit bounded integer only when the platform injects one.  Zero is never used
-    as a placeholder: a sub-millisecond observation is represented as one millisecond.
-    """
-    candidate = value if value is not None else fallback
-    if isinstance(candidate, bool) or not isinstance(candidate, int):
+
+def _plan_manifest_for_job(mage_job: MageJob) -> dict[str, Any]:
+    """Rebuild the complete immutable plan from the validated Mage wire contract."""
+    return {
+        "schema_version": _PLAN_MANIFEST_SCHEMA,
+        "tenant": {"account_id": "account-a", "workspace_id": "workspace-a"},
+        "project_id": "project-a",
+        "revision_id": "revision-a",
+        "lane": "mage-image",
+        "model_revision": mage_job.model_revision,
+        "items": [
+            {
+                "scene_id": item.scene_id,
+                "positive_prompt": item.positive_prompt,
+                "positive_prompt_sha256": item.positive_prompt_sha256,
+                "negative_prompt": item.negative_prompt,
+                "negative_prompt_sha256": item.negative_prompt_sha256,
+                "seed": item.seed,
+                "width": item.width,
+                "height": item.height,
+                "output_put_url": item.output_put_url,
+            }
+            for item in mage_job.items
+        ],
+    }
+
+
+def _bounded_timing_ms(value: object) -> int:
+    """Return a truthful, finite timing measurement or fail closed."""
+    if isinstance(value, bool) or not isinstance(value, int):
         raise ServerlessMageError("MAGE_SERVERLESS_TIMING_INVALID")
-    if candidate < 0 or candidate > _TIMING_MAX_MS:
+    if value < 0 or value > _TIMING_MAX_MS:
         raise ServerlessMageError("MAGE_SERVERLESS_TIMING_INVALID")
-    return max(1, candidate)
+    return max(1, value)
 
 
-def _process_elapsed_ms(at: float | None = None) -> int:
-    observed = (time.monotonic() if at is None else at) - _PROCESS_STARTED_MONOTONIC
-    # Monotonic time is trusted, but clamp the emitted fact to a finite bounded measurement so a
-    # suspended/reused process cannot create an unbounded receipt value.
-    return _bounded_timing_ms(min(_TIMING_MAX_MS, max(0, round(observed * 1000))))
+def _signed_envelope_issued_at(accepted: dict[str, Any]) -> datetime:
+    """Read the explicit signed dispatch boundary and require the exact fixed TTL."""
+    limits = accepted.get("limits")
+    expires_at = limits.get("expires_at") if isinstance(limits, dict) else None
+    issued_at = limits.get("issued_at") if isinstance(limits, dict) else None
+    if not isinstance(expires_at, str) or not isinstance(issued_at, str):
+        raise ServerlessMageError("MAGE_SERVERLESS_TIMING_ISSUED_AT_INVALID")
+    try:
+        expires = datetime.fromisoformat(expires_at.replace("Z", "+00:00")).astimezone(UTC)
+        issued = datetime.fromisoformat(issued_at.replace("Z", "+00:00")).astimezone(UTC)
+    except ValueError as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_TIMING_ISSUED_AT_INVALID") from error
+    if expires - issued != timedelta(seconds=_SIGNED_AUTHORITY_TTL_SECONDS):
+        raise ServerlessMageError("MAGE_SERVERLESS_TIMING_ISSUED_AT_INVALID")
+    return issued
 
 
 def _startup_timings(
-    runtime: Any, *, ready_at: float, handler_started_at: float
-) -> tuple[int, int]:
-    """Derive allocation/container-ready timings without inventing provider-side timestamps."""
-    runtime_started = getattr(runtime, "started", handler_started_at)
-    if not isinstance(runtime_started, (int, float)):
-        runtime_started = handler_started_at
+    runtime: Any, *, accepted: dict[str, Any], ready_at: float, handler_started_at: float
+) -> tuple[int, int, str]:
+    """Measure signed-dispatch-to-local-process and signed-dispatch-to-ready boundaries.
 
-    def override(name: str) -> int | None:
-        raw = os.environ.get(name)
-        if raw is None or raw == "":
-            return None
-        try:
-            parsed = int(raw, 10)
-        except ValueError as error:
-            raise ServerlessMageError("MAGE_SERVERLESS_TIMING_INVALID") from error
-        return parsed
-
-    allocation_override = override("VIDEOFORGE_MAGE_ALLOCATION_MS")
-    container_override = override("VIDEOFORGE_MAGE_CONTAINER_READY_MS")
-    allocation_fallback = _process_elapsed_ms(float(runtime_started))
-    container_fallback = _process_elapsed_ms(ready_at)
-    allocation_ms = _bounded_timing_ms(
-        allocation_override,
-        fallback=allocation_fallback,
-    )
-    container_ready_ms = _bounded_timing_ms(
-        container_override,
-        fallback=max(allocation_ms, container_fallback),
-    )
-    if container_ready_ms < allocation_ms:
+    RunPod allocation is not observable from inside the worker.  The returned legacy timing
+    slots are therefore explicitly derived from the signed envelope issue boundary to two local
+    monotonic boundaries.  The accompanying output provenance labels them as worker-local; the
+    live verifier uses RunPod's status ``delayTimeMs``/``executionTimeMs`` for provider timing.
+    """
+    runtime_started = getattr(runtime, "started", None)
+    if not isinstance(runtime_started, (int, float)) or isinstance(runtime_started, bool):
+        raise ServerlessMageError("MAGE_SERVERLESS_TIMING_INVALID")
+    now_monotonic = time.monotonic()
+    now_epoch = time.time()
+    if runtime_started > ready_at or ready_at > now_monotonic or handler_started_at > ready_at:
+        raise ServerlessMageError("MAGE_SERVERLESS_TIMING_INVALID")
+    issued_at = _signed_envelope_issued_at(accepted)
+    # Translate the two locally observed monotonic boundaries into the current wall-clock domain
+    # only to compare them with the signed UTC issue instant.  No caller or provider env value is
+    # accepted, and the measured interval is bounded before it enters the signed receipt.
+    # A warm worker process may predate the signed request.  In that case the handler admission
+    # boundary is the defensible local lower bound; never emit a negative interval or pretend a
+    # pre-existing process start was provider allocation.
+    process_boundary = max(runtime_started, handler_started_at)
+    runtime_started_epoch = now_epoch - (now_monotonic - process_boundary)
+    ready_epoch = now_epoch - (now_monotonic - ready_at)
+    allocation_delta_ms = round((runtime_started_epoch - issued_at.timestamp()) * 1000)
+    ready_delta_ms = round((ready_epoch - issued_at.timestamp()) * 1000)
+    if allocation_delta_ms < 0 or ready_delta_ms < allocation_delta_ms:
         raise ServerlessMageError("MAGE_SERVERLESS_TIMING_ORDER_INVALID")
-    return allocation_ms, container_ready_ms
+    # Oversized intervals are invalid evidence.  Never clamp them into a plausible-looking value.
+    allocation_ms = _bounded_timing_ms(allocation_delta_ms)
+    container_ready_ms = _bounded_timing_ms(ready_delta_ms)
+    return allocation_ms, container_ready_ms, issued_at.isoformat().replace("+00:00", "Z")
 
 
 def _endpoint_id_hash() -> str:
@@ -445,6 +503,11 @@ def _validate_scoped_ports(
 
 def _resume_source_attempt_id(port: dict[str, Any]) -> str:
     """Extract the exact attempt binding from a prior accepted output GET port."""
+    return _resume_path_lineage(port)["source_attempt_id"]
+
+
+def _resume_path_lineage(port: dict[str, Any]) -> dict[str, str]:
+    """Parse all immutable lineage segments from a durable readback authority path."""
     path = port.get("path")
     if not isinstance(path, str):
         raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_PATH_INVALID")
@@ -468,30 +531,98 @@ def _resume_source_attempt_id(port: dict[str, Any]) -> str:
         or not _IDENTIFIER.fullmatch(parts[14])
     ):
         raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_PATH_INVALID")
-    return parts[12]
+    return {
+        "account_id": parts[2],
+        "workspace_id": parts[4],
+        "project_id": parts[6],
+        "revision_id": parts[8],
+        "lane": parts[10],
+        "source_attempt_id": parts[12],
+        "item_id": parts[14],
+    }
+
+
+def _accepted_output_prefix_lineage(accepted: dict[str, Any]) -> dict[str, str]:
+    """Parse the current signed output prefix to bind resume records to this job."""
+    output_prefix = accepted.get("artifacts", {}).get("output_prefix")
+    if not isinstance(output_prefix, str):
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_LINEAGE_INVALID")
+    try:
+        lineage = _resume_path_lineage({"path": f"/{output_prefix}/artifact/placeholder"})
+    except ServerlessMageError as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_LINEAGE_INVALID") from error
+    return lineage
 
 
 def _validate_resume_state(
     resume: object,
     *,
+    resume_canonical_json: object = None,
     accepted: dict[str, Any],
     current_item_ids: tuple[str, ...],
+    expected_plan_manifest: dict[str, Any],
     now: datetime,
 ) -> tuple[dict[str, Any], ...]:
     """Validate durable accepted-unit readbacks before any unit can be generated.
 
-    A replacement attempt carries only unresolved ``MageJob`` items.  If a caller accidentally
-    replays an accepted item in the batch, this boundary rejects it rather than regenerating it.
-    Accepted units are additionally bound to exact scoped GET ports whose path, checksum, and
-    byte length match the durable artifact record.  The readback is performed by the caller into
-    job-local scratch; nothing is trusted from caller-authored JSON alone.
+    A replacement attempt carries the original validated item list plus durable accepted units.
+    Accepted IDs are required to be present in that list and are skipped after exact scratch
+    readback, so a process replacement cannot regenerate them.  Every record is bound explicitly
+    to tenant/project/revision/lane/source attempt/item/hash/bytes and its v3 GET authority.
     """
+    artifacts = accepted.get("artifacts")
+    expected_resume_hash = (
+        artifacts.get("resume_manifest_sha256") if isinstance(artifacts, dict) else None
+    )
     if resume is None:
+        if expected_resume_hash is not None or resume_canonical_json is not None:
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_MANIFEST_MISSING")
         return ()
     if not isinstance(resume, dict) or set(resume) != _RESUME_KEYS:
         raise ServerlessMageError("MAGE_SERVERLESS_RESUME_SCHEMA_INVALID")
     if resume.get("schema_version") != _RESUME_SCHEMA:
         raise ServerlessMageError("MAGE_SERVERLESS_RESUME_SCHEMA_INVALID")
+    if not isinstance(expected_resume_hash, str) or not re.fullmatch(
+        r"sha256:[0-9a-f]{64}", expected_resume_hash
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_MANIFEST_MISSING")
+    if _exact_utf8_sha256(resume_canonical_json, max_bytes=4_000_000) != expected_resume_hash:
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_MANIFEST_HASH_INVALID")
+    try:
+        if json.loads(resume_canonical_json) != resume:
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_MANIFEST_HASH_INVALID")
+    except (json.JSONDecodeError, UnicodeEncodeError) as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_MANIFEST_HASH_INVALID") from error
+    plan_manifest = resume.get("plan_manifest")
+    plan_manifest_sha256 = resume.get("plan_manifest_sha256")
+    signed_plan_manifest_sha256 = artifacts.get("plan_manifest_sha256")
+    if (
+        not isinstance(plan_manifest, dict)
+        or set(plan_manifest)
+        != {
+            "schema_version",
+            "tenant",
+            "project_id",
+            "revision_id",
+            "lane",
+            "model_revision",
+            "items",
+        }
+        or plan_manifest.get("schema_version") != _PLAN_MANIFEST_SCHEMA
+        or plan_manifest != expected_plan_manifest
+        or not isinstance(plan_manifest_sha256, str)
+        or not re.fullmatch(r"sha256:[0-9a-f]{64}", plan_manifest_sha256)
+        or plan_manifest_sha256 != signed_plan_manifest_sha256
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_PLAN_MANIFEST_INVALID")
+    if (
+        not isinstance(plan_manifest.get("items"), list)
+        or len(plan_manifest["items"]) != len(current_item_ids)
+        or len(set(current_item_ids)) != len(current_item_ids)
+        or tuple(item.get("scene_id") for item in plan_manifest["items"] if isinstance(item, dict))
+        != current_item_ids
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_PLAN_MANIFEST_INVALID")
     raw_units = resume.get("accepted_units")
     if not isinstance(raw_units, list) or not raw_units or len(raw_units) > 64:
         raise ServerlessMageError("MAGE_SERVERLESS_RESUME_UNITS_INVALID")
@@ -501,15 +632,53 @@ def _validate_resume_state(
     seen_reservations: set[str] = set()
     account_id = accepted["tenant"]["account_id"]
     workspace_id = accepted["tenant"]["workspace_id"]
+    expected_lineage = _accepted_output_prefix_lineage(accepted)
+    current_attempt_id = accepted["work"]["attempt_id"]
     units: list[dict[str, Any]] = []
     for raw_unit in raw_units:
         if not isinstance(raw_unit, dict) or set(raw_unit) != _RESUME_UNIT_KEYS:
             raise ServerlessMageError("MAGE_SERVERLESS_RESUME_UNIT_INVALID")
+        if (
+            raw_unit.get("plan_manifest_sha256") != plan_manifest_sha256
+            or not isinstance(raw_unit.get("plan_manifest"), dict)
+            or raw_unit["plan_manifest"] != plan_manifest
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_PLAN_MANIFEST_INVALID")
+        tenant = raw_unit.get("tenant")
+        if (
+            not isinstance(tenant, dict)
+            or set(tenant) != {"account_id", "workspace_id"}
+            or tenant.get("account_id") != account_id
+            or tenant.get("workspace_id") != workspace_id
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_TENANT_INVALID")
+        project_id = raw_unit.get("project_id")
+        revision_id = raw_unit.get("revision_id")
+        lane = raw_unit.get("lane")
+        source_attempt_id = raw_unit.get("source_attempt_id")
+        if (
+            not isinstance(project_id, str)
+            or not _IDENTIFIER.fullmatch(project_id)
+            or not isinstance(revision_id, str)
+            or not _IDENTIFIER.fullmatch(revision_id)
+            or not isinstance(lane, str)
+            or lane != "mage-image"
+            or not isinstance(source_attempt_id, str)
+            or not _IDENTIFIER.fullmatch(source_attempt_id)
+            or source_attempt_id == current_attempt_id
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_LINEAGE_INVALID")
+        if (
+            project_id != expected_lineage["project_id"]
+            or revision_id != expected_lineage["revision_id"]
+            or lane != expected_lineage["lane"]
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_LINEAGE_INVALID")
         item_id = raw_unit.get("item_id")
         if not isinstance(item_id, str) or not _IDENTIFIER.fullmatch(item_id):
             raise ServerlessMageError("MAGE_SERVERLESS_RESUME_ITEM_INVALID")
-        if item_id in current_ids:
-            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_ITEM_REGENERATED")
+        if item_id not in current_ids:
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_ITEM_NOT_IN_BATCH")
         if item_id in seen_items:
             raise ServerlessMageError("MAGE_SERVERLESS_RESUME_ITEM_DUPLICATE")
         seen_items.add(item_id)
@@ -543,7 +712,17 @@ def _validate_resume_state(
         if not isinstance(readback_port, dict) or not isinstance(readback_url, str):
             raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_INVALID")
         _validate_output_url(readback_url)
-        source_attempt_id = _resume_source_attempt_id(readback_port)
+        path_lineage = _resume_path_lineage(readback_port)
+        if (
+            path_lineage["account_id"] != account_id
+            or path_lineage["workspace_id"] != workspace_id
+            or path_lineage["project_id"] != project_id
+            or path_lineage["revision_id"] != revision_id
+            or path_lineage["lane"] != lane
+            or path_lineage["source_attempt_id"] != source_attempt_id
+            or path_lineage["item_id"] != item_id
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_LINEAGE_INVALID")
         try:
             validate_scoped_port(
                 readback_port,
@@ -563,21 +742,113 @@ def _validate_resume_state(
             or readback_port.get("max_uses") != 1
         ):
             raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_AUTHORITY_MISMATCH")
+        commit_receipt_sha256 = raw_unit.get("artifact_commit_receipt_sha256")
+        if not isinstance(commit_receipt_sha256, str) or not re.fullmatch(
+            r"sha256:[0-9a-f]{64}", commit_receipt_sha256
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_COMMIT_RECEIPT_INVALID")
+        signed_provenance_receipt_sha256 = raw_unit.get("signed_provenance_receipt_sha256")
+        if not isinstance(signed_provenance_receipt_sha256, str) or not re.fullmatch(
+            r"sha256:[0-9a-f]{64}", signed_provenance_receipt_sha256
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_PROVENANCE_RECEIPT_INVALID")
         reservation_id = readback_port.get("reservation_id")
         if not isinstance(reservation_id, str) or reservation_id in seen_reservations:
             raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_REPLAYED")
         seen_reservations.add(reservation_id)
         units.append(
             {
+                "tenant": {
+                    "account_id": account_id,
+                    "workspace_id": workspace_id,
+                },
+                "project_id": project_id,
+                "revision_id": revision_id,
+                "lane": lane,
+                "plan_manifest": plan_manifest,
+                "plan_manifest_sha256": plan_manifest_sha256,
+                "source_attempt_id": source_attempt_id,
                 "item_id": item_id,
                 "output_object_key": object_key,
                 "output_sha256": output_sha256,
                 "output_bytes": output_bytes,
+                "artifact_commit_receipt_sha256": commit_receipt_sha256,
+                "signed_provenance_receipt_sha256": signed_provenance_receipt_sha256,
                 "readback_port": readback_port,
                 "readback_get_url": readback_url,
             }
         )
     return tuple(units)
+
+
+def _validate_execution_subset(
+    execution: object,
+    *,
+    execution_canonical_json: object,
+    plan_manifest_canonical_json: object,
+    accepted: dict[str, Any],
+    current_item_ids: tuple[str, ...],
+    expected_plan_manifest: dict[str, Any],
+    resumed_ids: set[str],
+) -> tuple[str, ...]:
+    """Return the exact signed item subset this invocation may generate."""
+    artifacts = accepted.get("artifacts")
+    expected_hash = (
+        artifacts.get("execution_manifest_sha256") if isinstance(artifacts, dict) else None
+    )
+    if execution is None:
+        if expected_hash is not None or execution_canonical_json is not None:
+            raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_MANIFEST_MISSING")
+        return tuple(item_id for item_id in current_item_ids if item_id not in resumed_ids)
+    if not isinstance(execution, dict) or set(execution) != _EXECUTION_KEYS:
+        raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_SCHEMA_INVALID")
+    if execution.get("schema_version") != _EXECUTION_SCHEMA:
+        raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_SCHEMA_INVALID")
+    if (
+        not isinstance(expected_hash, str)
+        or not re.fullmatch(r"sha256:[0-9a-f]{64}", expected_hash)
+        or _exact_utf8_sha256(execution_canonical_json, max_bytes=1_000_000) != expected_hash
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_MANIFEST_HASH_INVALID")
+    try:
+        if json.loads(execution_canonical_json) != execution:
+            raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_MANIFEST_HASH_INVALID")
+    except (json.JSONDecodeError, UnicodeEncodeError) as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_MANIFEST_HASH_INVALID") from error
+    item_ids = execution.get("item_ids")
+    signed_plan_manifest_sha256 = artifacts.get("plan_manifest_sha256")
+    if (
+        not isinstance(signed_plan_manifest_sha256, str)
+        or not re.fullmatch(r"sha256:[0-9a-f]{64}", signed_plan_manifest_sha256)
+        or execution.get("plan_manifest_sha256") != signed_plan_manifest_sha256
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_PLAN_INVALID")
+    if (
+        _exact_utf8_sha256(plan_manifest_canonical_json, max_bytes=2_000_000)
+        != signed_plan_manifest_sha256
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_PLAN_INVALID")
+    try:
+        if json.loads(plan_manifest_canonical_json) != expected_plan_manifest:
+            raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_PLAN_INVALID")
+    except (json.JSONDecodeError, UnicodeEncodeError) as error:
+        raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_PLAN_INVALID") from error
+    if (
+        not isinstance(item_ids, list)
+        or not item_ids
+        or any(
+            not isinstance(item_id, str) or not _IDENTIFIER.fullmatch(item_id)
+            for item_id in item_ids
+        )
+        or len(set(item_ids)) != len(item_ids)
+        or any(item_id not in current_item_ids or item_id in resumed_ids for item_id in item_ids)
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_ITEMS_INVALID")
+    if resumed_ids:
+        unresolved = tuple(item_id for item_id in current_item_ids if item_id not in resumed_ids)
+        if set(item_ids) != set(unresolved) or len(item_ids) != len(unresolved):
+            raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_ITEMS_INVALID")
+    return tuple(item_ids)
 
 
 def _verify_resume_readbacks(units: tuple[dict[str, Any], ...], worker_io: Any) -> None:
@@ -715,7 +986,37 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             or accepted["work"]["attempt_id"] != mage_job.attempt_id
         ):
             raise ServerlessMageError("MAGE_SERVERLESS_ATTEMPT_MISMATCH")
-        if accepted["work"]["item_count"] != len(mage_job.items):
+        current_item_ids = tuple(item.scene_id for item in mage_job.items)
+        expected_plan_manifest = (
+            _plan_manifest_for_job(mage_job)
+            if payload.get("resume") is not None or payload.get("execution") is not None
+            else {}
+        )
+        resume_units = _validate_resume_state(
+            payload.get("resume"),
+            resume_canonical_json=payload.get("resume_canonical_json"),
+            accepted=accepted,
+            current_item_ids=current_item_ids,
+            expected_plan_manifest=expected_plan_manifest,
+            now=datetime.now(UTC),
+        )
+        resumed_ids = {unit["item_id"] for unit in resume_units}
+        execution_item_ids = _validate_execution_subset(
+            payload.get("execution"),
+            execution_canonical_json=payload.get("execution_canonical_json"),
+            plan_manifest_canonical_json=payload.get("plan_manifest_canonical_json"),
+            accepted=accepted,
+            current_item_ids=current_item_ids,
+            expected_plan_manifest=expected_plan_manifest,
+            resumed_ids=resumed_ids,
+        )
+        execution_id_set = set(execution_item_ids)
+        remaining_items = tuple(
+            (index, item)
+            for index, item in enumerate(mage_job.items)
+            if item.scene_id in execution_id_set
+        )
+        if accepted["work"]["item_count"] != len(remaining_items):
             raise ServerlessMageError("MAGE_SERVERLESS_ITEM_COUNT_MISMATCH")
         input_ports, output_ports, generated_output_authorities = _validate_scoped_ports(
             ports,
@@ -727,10 +1028,14 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         output_targets: tuple[dict[str, Any], ...] = (
             generated_output_authorities if generated_output_authorities else output_ports
         )
-        if len(output_targets) != len(mage_job.items):
+        if len(output_targets) != len(remaining_items):
             raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_PORT_COUNT_INVALID")
+        for target, (_, item) in zip(output_targets, remaining_items, strict=True):
+            expected_path = f"{accepted['artifacts']['output_prefix']}/artifact/{item.scene_id}"
+            if target.get("path") != f"/{expected_path}":
+                raise ServerlessMageError("MAGE_SERVERLESS_EXECUTION_AUTHORITY_MISMATCH")
         output_urls = payload.get("output_put_urls")
-        if not isinstance(output_urls, list) or len(output_urls) != len(mage_job.items):
+        if not isinstance(output_urls, list) or len(output_urls) != len(remaining_items):
             raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_URLS_INVALID")
         for output_url in output_urls:
             _validate_output_url(output_url)
@@ -742,12 +1047,6 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 _validate_output_url(input_url)
             except ServerlessMageError as error:
                 raise ServerlessMageError("MAGE_SERVERLESS_INPUT_URL_INVALID") from error
-        resume_units = _validate_resume_state(
-            payload.get("resume"),
-            accepted=accepted,
-            current_item_ids=tuple(item.scene_id for item in mage_job.items),
-            now=datetime.now(UTC),
-        )
         scratch_root = Path(os.environ.get("VIDEOFORGE_JOB_SCRATCH_ROOT", "/tmp/videoforge-jobs"))
         if resume_units:
             _verify_resume_readbacks_in_scratch(
@@ -782,7 +1081,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 configure_job_environment(worker_io.environment())
             for port, input_url in zip(input_ports, input_urls, strict=True):
                 _download_input(port, input_url, worker_io)
-            for index, item in enumerate(mage_job.items):
+            for result_index, (index, item) in enumerate(remaining_items):
                 generated = await runtime.generate(_inline_item(mage_job, index))
                 output = base64.b64decode(generated.pop("output_base64"), validate=True)
                 output_path = worker_io.scratch.safe_path(f"outputs/{item.scene_id}.png")
@@ -794,14 +1093,16 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 upload_started_ms = round(time.monotonic() * 1000)
                 if generated_output_authorities:
                     _, measured_checksum = _put_generated_output(
-                        generated_output_authorities[index], output_urls[index], output
+                        generated_output_authorities[result_index],
+                        output_urls[result_index],
+                        output,
                     )
                     if measured_checksum != generated["output_sha256"]:
                         raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_HASH_INVALID")
                 else:
-                    _put_output(output_ports[index], output_urls[index], output)
+                    _put_output(output_ports[result_index], output_urls[result_index], output)
                     measured_checksum = generated["output_sha256"]
-                output_target = output_targets[index]
+                output_target = output_targets[result_index]
                 object_key = str(output_target["path"]).removeprefix("/")
                 receipt_items.append(
                     {
@@ -835,8 +1136,9 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             )
             if post_manifest["manifest_sha256"] != accepted["runtime"]["model_manifest_sha256"]:
                 raise ServerlessMageError("MAGE_SERVERLESS_VOLUME_MUTATION_DETECTED")
-            allocation_ms, container_ready_ms = _startup_timings(
+            allocation_ms, container_ready_ms, signed_issued_at = _startup_timings(
                 runtime,
+                accepted=accepted,
                 ready_at=runtime_ready_at,
                 handler_started_at=handler_started_at,
             )
@@ -884,22 +1186,28 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                     "volume_verified_ms": _bounded_timing_ms(
                         runtime.bootstrap_evidence.get("duration_ms")
                         if runtime.bootstrap_evidence
-                        else None,
-                        fallback=1,
+                        else None
                     ),
-                    "model_load_ms": _bounded_timing_ms(
-                        runtime.phase_timings_ms.get("gpu_load"), fallback=1
-                    ),
-                    "warmup_ms": _bounded_timing_ms(
-                        runtime.phase_timings_ms.get("warmup"), fallback=1
-                    ),
+                    "model_load_ms": _bounded_timing_ms(runtime.phase_timings_ms.get("gpu_load")),
+                    "warmup_ms": _bounded_timing_ms(runtime.phase_timings_ms.get("warmup")),
                     "first_inference_ms": _bounded_timing_ms(results[0]["generation_duration_ms"]),
                     "upload_ms": _bounded_timing_ms(
-                        max(0, round(time.monotonic() * 1000) - upload_started_ms), fallback=1
+                        max(0, round(time.monotonic() * 1000) - upload_started_ms)
                     ),
                     "total_ms": _bounded_timing_ms(
-                        max(0, round((time.monotonic() - started_monotonic) * 1000)), fallback=1
+                        max(0, round((time.monotonic() - started_monotonic) * 1000))
                     ),
+                    # This field is inside the signed receipt body.  It labels the two legacy
+                    # startup slots as worker-local boundaries; provider timing is read only from
+                    # RunPod status delayTimeMs/executionTimeMs by the control plane.
+                    "timing_provenance": {
+                        "schema_version": "videoforge-serverless-timing-provenance/v1",
+                        "provider_timing_source": "RUNPOD_STATUS_DELAY_TIME_MS_AND_EXECUTION_TIME_MS",
+                        "worker_timing_source": "SIGNED_ENVELOPE_ISSUED_AT_TO_LOCAL_RUNTIME_BOUNDARIES",
+                        "signed_envelope_issued_at": signed_issued_at,
+                        "process_start_boundary": "MAGE_RUNTIME_STARTED_OR_HANDLER_ADMISSION_MONOTONIC",
+                        "container_ready_boundary": "HANDLER_RUNTIME_READY_MONOTONIC",
+                    },
                 },
                 "items": receipt_items,
                 "scratch_cleanup": {
@@ -916,7 +1224,11 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 key_id=os.environ["VIDEOFORGE_RECEIPT_KEY_ID"],
                 secret=bytes.fromhex(os.environ["VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX"]),
             )
-        return {"status": "SUCCEEDED", "items": results, "provenance_receipt": receipt}
+        return {
+            "status": "SUCCEEDED",
+            "items": results,
+            "provenance_receipt": receipt,
+        }
     except TimeoutError:
         # `error` is a RunPod-reserved result key.  SLS-Core moves it outside the
         # handler output and then keeps only `output`, so retain a bounded diagnostic

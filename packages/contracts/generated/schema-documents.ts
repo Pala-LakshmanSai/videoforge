@@ -1447,6 +1447,15 @@ export const canonicalSchemaDocuments = {
           "output_prefix": {
             "$ref": "#/$defs/objectKey"
           },
+          "plan_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "execution_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "resume_manifest_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
           "transfer_port_reservation_ids": {
             "type": "array",
             "minItems": 1,
@@ -1470,6 +1479,9 @@ export const canonicalSchemaDocuments = {
           "init_timeout_seconds"
         ],
         "properties": {
+          "issued_at": {
+            "$ref": "#/$defs/utc"
+          },
           "expires_at": {
             "$ref": "#/$defs/utc"
           },

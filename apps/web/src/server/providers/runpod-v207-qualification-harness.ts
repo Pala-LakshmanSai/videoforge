@@ -39,6 +39,11 @@ const PORT_ID = ID;
 const URL_MAX_LENGTH = 8_192;
 const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
 const POST_JOB_WARM_IDLE_MAX_ATTEMPTS = 12;
+const V207_RESUME_ACCOUNT = "account-a";
+const V207_RESUME_WORKSPACE = "workspace-a";
+const V207_RESUME_PROJECT = "project-a";
+const V207_RESUME_REVISION = "revision-a";
+const V207_PLAN_MANIFEST_SCHEMA = "videoforge-v207-plan-manifest/v1";
 
 type RecordValue = Readonly<Record<string, unknown>>;
 
@@ -100,6 +105,53 @@ export interface RunPodV207DispatchBatchInput {
   readonly inputPorts?: readonly RecordValue[];
   readonly inputGetUrls?: readonly string[];
   readonly outputAuthority: RunPodV207OutputAuthority;
+}
+
+/** Exact durable artifact commit/readback facts carried into a replacement attempt. */
+export interface RunPodV207AcceptedUnitRecord {
+  readonly tenant: { readonly account_id: string; readonly workspace_id: string };
+  readonly project_id: string;
+  readonly revision_id: string;
+  readonly lane: "mage-image";
+  readonly plan_manifest: RecordValue;
+  readonly plan_manifest_sha256: string;
+  readonly source_attempt_id: string;
+  readonly item_id: string;
+  readonly output_object_key: string;
+  readonly output_sha256: string;
+  readonly output_bytes: number;
+  readonly artifact_commit_receipt_sha256: string;
+  readonly signed_provenance_receipt_sha256: string;
+  readonly readback_port: RecordValue;
+  readonly readback_get_url: string;
+}
+
+/** The complete immutable scene plan carried into every durable accepted-unit fact. */
+export function buildV207PlanManifest(
+  batchItems: readonly unknown[],
+  modelRevision: string,
+): RecordValue {
+  if (
+    typeof modelRevision !== "string" ||
+    !ID.test(modelRevision) ||
+    batchItems.length < 1 ||
+    batchItems.some((item) => asRecord(item) === null)
+  ) {
+    throw new RunPodControlError("RUNPOD_RESUME_PLAN_MANIFEST_INVALID");
+  }
+  return {
+    schema_version: V207_PLAN_MANIFEST_SCHEMA,
+    tenant: { account_id: V207_RESUME_ACCOUNT, workspace_id: V207_RESUME_WORKSPACE },
+    project_id: V207_RESUME_PROJECT,
+    revision_id: V207_RESUME_REVISION,
+    lane: "mage-image",
+    model_revision: modelRevision,
+    items: batchItems.map((item) => jsonValue(item)),
+  };
+}
+
+export function hashV207PlanManifest(planManifest: RecordValue): string {
+  return sha256(canonicalizeJson(planManifest));
 }
 
 export interface RunPodV207QualificationHarnessOptions {
@@ -221,20 +273,203 @@ const assertAuthority = (
   }
 };
 
-function buildDispatchRequest(input: RunPodV207DispatchBatchInput): JsonValue {
+function assertResumeUnits(
+  resumeValue: unknown,
+  input: RunPodV207DispatchBatchInput,
+  batchItems: readonly unknown[],
+): number {
+  if (resumeValue === undefined) return 0;
+  const resume = asRecord(resumeValue);
+  const acceptedUnits = resume?.accepted_units;
+  if (
+    resume?.schema_version !== "serverless-unit-resume/v1" ||
+    !Array.isArray(acceptedUnits) ||
+    acceptedUnits.length < 1 ||
+    acceptedUnits.length >= batchItems.length
+  ) {
+    throw new RunPodControlError("RUNPOD_RESUME_AUTHORITY_INVALID");
+  }
+  const batch = asRecord(input.input.batch);
+  const modelRevision = batch?.model_revision;
+  if (typeof modelRevision !== "string") {
+    throw new RunPodControlError("RUNPOD_RESUME_PLAN_MANIFEST_INVALID");
+  }
+  const expectedPlanManifest = buildV207PlanManifest(batchItems, modelRevision);
+  const expectedPlanManifestSha256 = hashV207PlanManifest(expectedPlanManifest);
+  const resumeCanonicalJson = input.input.resume_canonical_json;
+  if (typeof resumeCanonicalJson !== "string" || resumeCanonicalJson !== canonicalizeJson(resume)) {
+    throw new RunPodControlError("RUNPOD_RESUME_MANIFEST_HASH_INVALID");
+  }
+  const expectedResumeManifestSha256 = sha256(resumeCanonicalJson);
+  const envelope = asRecord(input.input.envelope);
+  const artifacts = asRecord(envelope?.artifacts);
+  if (
+    artifacts?.resume_manifest_sha256 !== expectedResumeManifestSha256 ||
+    artifacts?.plan_manifest_sha256 !== expectedPlanManifestSha256 ||
+    resume?.plan_manifest_sha256 !== expectedPlanManifestSha256 ||
+    canonicalizeJson(resume?.plan_manifest) !== canonicalizeJson(expectedPlanManifest)
+  ) {
+    throw new RunPodControlError("RUNPOD_RESUME_MANIFEST_HASH_INVALID");
+  }
+  const expectedItems = new Map<string, RecordValue>();
+  for (const rawItem of batchItems) {
+    const item = asRecord(rawItem);
+    if (typeof item?.scene_id !== "string") {
+      throw new RunPodControlError("RUNPOD_RESUME_BATCH_INVALID");
+    }
+    expectedItems.set(item.scene_id, item);
+  }
+  const seen = new Set<string>();
+  for (const rawUnit of acceptedUnits) {
+    const unit = asRecord(rawUnit) as Record<string, any> | null;
+    const tenant = asRecord(unit?.tenant) as Record<string, any> | null;
+    const port = asRecord(unit?.readback_port) as Record<string, any> | null;
+    if (
+      !unit ||
+      Object.keys(unit).sort().join(",") !==
+        "artifact_commit_receipt_sha256,item_id,lane,output_bytes,output_object_key,output_sha256,plan_manifest,plan_manifest_sha256,project_id,readback_get_url,readback_port,revision_id,signed_provenance_receipt_sha256,source_attempt_id,tenant" ||
+      !tenant ||
+      Object.keys(tenant).sort().join(",") !== "account_id,workspace_id" ||
+      tenant.account_id !== V207_RESUME_ACCOUNT ||
+      tenant.workspace_id !== V207_RESUME_WORKSPACE ||
+      typeof unit.project_id !== "string" ||
+      unit.project_id !== V207_RESUME_PROJECT ||
+      typeof unit.revision_id !== "string" ||
+      unit.revision_id !== V207_RESUME_REVISION ||
+      unit.lane !== "mage-image" ||
+      canonicalizeJson(unit.plan_manifest) !== canonicalizeJson(expectedPlanManifest) ||
+      unit.plan_manifest_sha256 !== expectedPlanManifestSha256 ||
+      typeof unit.source_attempt_id !== "string" ||
+      unit.source_attempt_id === input.attemptId ||
+      !ID.test(unit.source_attempt_id) ||
+      typeof unit.item_id !== "string" ||
+      !expectedItems.has(unit.item_id) ||
+      seen.has(unit.item_id) ||
+      typeof unit.output_object_key !== "string" ||
+      unit.output_object_key !==
+        `tenant/${V207_RESUME_ACCOUNT}/workspace/${V207_RESUME_WORKSPACE}/project/${V207_RESUME_PROJECT}/revision/${V207_RESUME_REVISION}/lane/mage-image/job/${unit.source_attempt_id}/artifact/${unit.item_id}` ||
+      typeof unit.output_sha256 !== "string" ||
+      !/^sha256:[0-9a-f]{64}$/u.test(unit.output_sha256) ||
+      !Number.isSafeInteger(unit.output_bytes) ||
+      unit.output_bytes < 1 ||
+      unit.output_bytes > 10_737_418_240 ||
+      typeof unit.artifact_commit_receipt_sha256 !== "string" ||
+      !/^sha256:[0-9a-f]{64}$/u.test(unit.artifact_commit_receipt_sha256) ||
+      typeof unit.signed_provenance_receipt_sha256 !== "string" ||
+      !/^sha256:[0-9a-f]{64}$/u.test(unit.signed_provenance_receipt_sha256) ||
+      !port ||
+      port.schema_version !== "artifact-transfer-port/v3" ||
+      port.path !== `/${unit.output_object_key}` ||
+      port.method !== "GET" ||
+      port.account_id !== V207_RESUME_ACCOUNT ||
+      port.workspace_id !== V207_RESUME_WORKSPACE ||
+      port.content_type !== "image/png" ||
+      port.content_length !== unit.output_bytes ||
+      port.checksum_sha256 !== unit.output_sha256 ||
+      port.max_uses !== 1 ||
+      typeof port.reservation_id !== "string" ||
+      typeof port.expires_at !== "string" ||
+      typeof port.capability_handle !== "string" ||
+      !PORT_CAPABILITY.test(port.capability_handle)
+    ) {
+      throw new RunPodControlError("RUNPOD_RESUME_AUTHORITY_INVALID");
+    }
+    validateUrl(unit.readback_get_url);
+    seen.add(unit.item_id);
+  }
+  return acceptedUnits.length;
+}
+
+function assertExecutionSubset(
+  executionValue: unknown,
+  input: RunPodV207DispatchBatchInput,
+  batchItems: readonly unknown[],
+  acceptedUnitCount: number,
+): number {
+  const execution = asRecord(executionValue);
+  const itemIds = execution?.item_ids;
+  const batch = asRecord(input.input.batch);
+  const modelRevision = batch?.model_revision;
+  const envelope = asRecord(input.input.envelope);
+  const artifacts = asRecord(envelope?.artifacts);
+  if (executionValue === undefined && artifacts?.execution_manifest_sha256 === undefined) {
+    return batchItems.length - acceptedUnitCount;
+  }
+  if (
+    execution?.schema_version !== "serverless-execution-subset/v1" ||
+    typeof modelRevision !== "string" ||
+    !Array.isArray(itemIds) ||
+    itemIds.length < 1 ||
+    itemIds.some((itemId) => typeof itemId !== "string" || !ID.test(itemId)) ||
+    new Set(itemIds).size !== itemIds.length
+  ) {
+    throw new RunPodControlError("RUNPOD_EXECUTION_SUBSET_INVALID");
+  }
+  const expectedPlan = buildV207PlanManifest(batchItems, modelRevision);
+  const expectedPlanHash = hashV207PlanManifest(expectedPlan);
+  const planCanonicalJson = input.input.plan_manifest_canonical_json;
+  const executionCanonicalJson = input.input.execution_canonical_json;
+  if (
+    typeof executionCanonicalJson !== "string" ||
+    executionCanonicalJson !== canonicalizeJson(execution) ||
+    typeof planCanonicalJson !== "string" ||
+    planCanonicalJson !== canonicalizeJson(expectedPlan) ||
+    sha256(planCanonicalJson) !== expectedPlanHash
+  ) {
+    throw new RunPodControlError("RUNPOD_EXECUTION_SUBSET_INVALID");
+  }
+  const expectedExecutionHash = sha256(executionCanonicalJson);
+  const plannedIds = new Set(
+    batchItems.map((item) => {
+      const value = asRecord(item);
+      if (typeof value?.scene_id !== "string") {
+        throw new RunPodControlError("RUNPOD_EXECUTION_SUBSET_INVALID");
+      }
+      return value.scene_id;
+    }),
+  );
+  if (
+    execution.plan_manifest_sha256 !== expectedPlanHash ||
+    artifacts?.plan_manifest_sha256 !== expectedPlanHash ||
+    artifacts?.execution_manifest_sha256 !== expectedExecutionHash ||
+    itemIds.some((itemId) => !plannedIds.has(itemId))
+  ) {
+    throw new RunPodControlError("RUNPOD_EXECUTION_SUBSET_INVALID");
+  }
+  if (acceptedUnitCount > 0) {
+    const resume = asRecord(input.input.resume);
+    const accepted = new Set(
+      Array.isArray(resume?.accepted_units)
+        ? resume.accepted_units.map((unit) => asRecord(unit)?.item_id)
+        : [],
+    );
+    const unresolved = [...plannedIds].filter((itemId) => !accepted.has(itemId));
+    if (
+      itemIds.length !== unresolved.length ||
+      itemIds.some((itemId) => accepted.has(itemId)) ||
+      unresolved.some((itemId) => !itemIds.includes(itemId))
+    ) {
+      throw new RunPodControlError("RUNPOD_EXECUTION_SUBSET_INVALID");
+    }
+  }
+  return itemIds.length;
+}
+
+export function buildDispatchRequest(input: RunPodV207DispatchBatchInput): JsonValue {
   if (!ID.test(input.requestKey) || !ID.test(input.attemptId)) {
     throw new RunPodControlError("RUNPOD_QUALIFICATION_ATTEMPT_INVALID");
   }
   const batch = asRecord(input.input.batch);
+  const batchItems = Array.isArray(batch?.items) ? batch.items : [];
   const envelope = asRecord(input.input.envelope);
   const artifacts = asRecord(envelope?.artifacts);
-  const itemCount = Array.isArray(batch?.items) ? batch.items.length : null;
+  const plannedItemCount = Array.isArray(batch?.items) ? batch.items.length : null;
   const outputPrefix = artifacts?.output_prefix ?? input.outputAuthority.outputPrefix;
   const reservationIds = artifacts?.transfer_port_reservation_ids;
   const inputPorts = input.inputPorts ?? [];
   const inputGetUrls = input.inputGetUrls ?? [];
   if (
-    itemCount === null ||
+    plannedItemCount === null ||
     typeof outputPrefix !== "string" ||
     !Array.isArray(reservationIds) ||
     reservationIds.some((value) => typeof value !== "string") ||
@@ -258,6 +493,14 @@ function buildDispatchRequest(input: RunPodV207DispatchBatchInput): JsonValue {
         : "RUNPOD_QUALIFICATION_INPUT_INVALID",
     );
   }
+  const acceptedUnitCount = assertResumeUnits(input.input.resume, input, batchItems);
+  const itemCount = assertExecutionSubset(
+    input.input.execution,
+    input,
+    batchItems,
+    acceptedUnitCount,
+  );
+  if (itemCount < 1) throw new RunPodControlError("RUNPOD_RESUME_AUTHORITY_INVALID");
   assertAuthority(input.outputAuthority, {
     attemptId: input.attemptId,
     itemCount,
@@ -288,7 +531,14 @@ function assertConcurrentReaderOutputOrder(
 ): void {
   const output = asRecord(result.output);
   const batch = asRecord(input.input.batch);
-  const itemCount = Array.isArray(batch?.items) ? batch.items.length : 0;
+  const batchItems = Array.isArray(batch?.items) ? batch.items : [];
+  const acceptedUnitCount = assertResumeUnits(input.input.resume, input, batchItems);
+  const itemCount = assertExecutionSubset(
+    input.input.execution,
+    input,
+    batchItems,
+    acceptedUnitCount,
+  );
   const items = output?.items;
   const receipt = asRecord(output?.provenance_receipt);
   const receiptItems = receipt?.items;

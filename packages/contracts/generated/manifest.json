@@ -53,8 +53,8 @@
     {
       "source": "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
       "destination": "generated/schemas/serverless_worker_job_envelope_v3.schema.json",
-      "bytes": 5054,
-      "sha256": "sha256:8863963de463ff665fe04ccff70e2d4b3212b7f30029a13f9d7ff347195ac962"
+      "bytes": 5287,
+      "sha256": "sha256:cce6fab312222b1068ce1764ed6af2387b8f7f0904fd28270c0148cfdde37a28"
     },
     {
       "source": "project-context/evidence/serverless_provenance_receipt_v1.schema.json",

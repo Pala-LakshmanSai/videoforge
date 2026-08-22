@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { hashV207PlanManifest } from "./runpod-v207-qualification-harness";
+
 import {
   V207_PENDING_PROPOSAL_SHA256,
   V207_REPAIRED_IMAGE,
@@ -25,6 +27,7 @@ const {
   extractV207ProviderJobErrorCode,
   installV207SignalHandlers,
   isAllowedV207GhcrBlobRedirect,
+  mergeV207AcceptedUnits,
   redactV207LiveEvidence,
   redactV207ProviderJobError,
   routePort,
@@ -46,6 +49,35 @@ const source = await readFile(
 );
 
 describe("V2-07 live qualification runner safety", () => {
+  it("merges one durable seed with exactly 31 replacement units and rejects gaps", () => {
+    const items = Array.from({ length: 32 }, (_, index) => ({
+      scene_id: `scene-${String(index + 1).padStart(2, "0")}`,
+    }));
+    const plan = {
+      schema_version: "videoforge-v207-plan-manifest/v1",
+      tenant: { account_id: "account-a", workspace_id: "workspace-a" },
+      project_id: "project-a",
+      revision_id: "revision-a",
+      lane: "mage-image",
+      model_revision: "model-a",
+      items,
+    };
+    const planHash = `sha256:${"a".repeat(64)}`;
+    const units = items.map((item) => ({
+      item_id: item.scene_id,
+      plan_manifest: plan,
+      plan_manifest_sha256: planHash,
+    }));
+    // The merge recomputes the plan hash, so align the records with the exact helper output.
+    const exactHash = hashV207PlanManifest(plan);
+    for (const unit of units) unit.plan_manifest_sha256 = exactHash;
+    expect(
+      mergeV207AcceptedUnits(units.slice(0, 1) as any, units.slice(1) as any, plan),
+    ).toHaveLength(32);
+    expect(() =>
+      mergeV207AcceptedUnits(units.slice(0, 1) as any, units.slice(2) as any, plan),
+    ).toThrow("V207_RESUME_DURABLE_UNIT_INCOMPLETE");
+  });
   it("pins the repaired registry attestation and rejects the fixture artifact plane", () => {
     expect(source).toContain("V207_IMAGE_CONFIG_DIGEST_MISMATCH");
     expect(source).toContain("V207_IMAGE_LAYER_DIGEST_MISMATCH");
@@ -298,6 +330,31 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("MAGE_RECEIPT_IDENTITY_INVALID");
   });
 
+  it("retains timing provenance while separating worker-local and provider status clocks", () => {
+    const redacted = redactV207LiveEvidence({
+      timing_provenance: {
+        schema_version: "videoforge-serverless-timing-provenance/v1",
+        provider_timing_source: "RUNPOD_STATUS_DELAY_TIME_MS_AND_EXECUTION_TIME_MS",
+        worker_timing_source: "SIGNED_ENVELOPE_ISSUED_AT_TO_LOCAL_RUNTIME_BOUNDARIES",
+        signed_envelope_issued_at: "2026-08-23T00:00:00.000Z",
+        process_start_boundary: "MAGE_RUNTIME_STARTED_OR_HANDLER_ADMISSION_MONOTONIC",
+        container_ready_boundary: "HANDLER_RUNTIME_READY_MONOTONIC",
+        provider_delay_time_ms: 123,
+        provider_execution_time_ms: 456,
+      },
+    });
+    expect(redacted.timing_provenance).toMatchObject({
+      schema_version: "videoforge-serverless-timing-provenance/v1",
+      provider_timing_source: "RUNPOD_STATUS_DELAY_TIME_MS_AND_EXECUTION_TIME_MS",
+      worker_timing_source: "SIGNED_ENVELOPE_ISSUED_AT_TO_LOCAL_RUNTIME_BOUNDARIES",
+      signed_envelope_issued_at: "2026-08-23T00:00:00.000Z",
+      process_start_boundary: "MAGE_RUNTIME_STARTED_OR_HANDLER_ADMISSION_MONOTONIC",
+      container_ready_boundary: "HANDLER_RUNTIME_READY_MONOTONIC",
+      provider_delay_time_ms: 123,
+      provider_execution_time_ms: 456,
+    });
+  });
+
   it("narrows the sealed worker's remote contract to one exact 32-item video batch", () => {
     for (const itemCount of [0, 1, 16, 31, 33, 64, 65]) {
       expect(() => assertV207ItemCount(itemCount)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
@@ -305,11 +362,11 @@ describe("V2-07 live qualification runner safety", () => {
     expect(() => assertV207ItemCount(1.5)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
     expect(() => assertV207ItemCount(32)).not.toThrow();
     expect(source).toContain("QUALIFICATION_SCENES.slice(0, itemCount)");
-    expect(source).toContain("item_count: itemCount");
+    expect(source).toContain("item_count: executionItems.length");
     expect(source).toContain("new V207OutputContractError");
   });
 
-  it("regresses Attempt 10 by making the owned probe a complete 32-item batch", () => {
+  it("keeps the full 32-item plan while seeding exactly one durable resume unit", () => {
     const liveBatchCounts = [
       ...source.matchAll(
         /(?:probe|cold|warm|readerA|readerB|cancel|timeout) = await createBatch\([\s\S]*?workerToken,\s+(\d+),/g,
@@ -317,6 +374,9 @@ describe("V2-07 live qualification runner safety", () => {
     ].map((match) => match[1]);
     expect(liveBatchCounts).toEqual(["32", "32", "32", "32", "32", "32", "32"]);
     expect(source).toContain('kind: "owned_probe"');
+    expect(source).toContain('["scene-01"]');
+    expect(source).toContain("V207_PROBE_DURABLE_UNITS_INCOMPLETE");
+    expect(source).toContain("mergedResumeUnits.length !== 32");
     expect(source).not.toContain("workerToken,\n        1,");
     expect(() => assertV207ItemCount(31)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
   });

@@ -1,11 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
+
+import { canonicalizeJson } from "@videoforge/contracts";
 
 import { RunPodControlClient, type RunPodV207Placement } from "./runpod-control";
 import {
+  buildDispatchRequest,
+  buildV207PlanManifest,
+  hashV207PlanManifest,
   RunPodV207QualificationHarness,
   redactRunPodEvidence,
   V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
   V207_TIMEOUT_TTL_MS,
+  type RunPodV207DispatchBatchInput,
   type RunPodV207OutputAuthority,
 } from "./runpod-v207-qualification-harness";
 import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
@@ -2247,5 +2254,172 @@ describe("V2-07 qualification harness", () => {
     expect(JSON.stringify(redacted)).not.toContain(apiKey);
     expect(JSON.stringify(redacted)).not.toContain("signature=secret");
     expect(redacted.endpoint_id_hash).toMatch(/^sha256:/u);
+  });
+
+  it("forwards exact accepted records and allocates only unresolved authorities", () => {
+    const account = "account-a";
+    const workspace = "workspace-a";
+    const project = "project-a";
+    const revision = "revision-a";
+    const attemptId = "replacement-attempt";
+    const sourceAttemptId = "prior-attempt";
+    const outputPrefix =
+      `tenant/${account}/workspace/${workspace}/project/${project}/revision/${revision}` +
+      `/lane/mage-image/job/${attemptId}`;
+    const sourceObjectKey =
+      `tenant/${account}/workspace/${workspace}/project/${project}/revision/${revision}` +
+      `/lane/mage-image/job/${sourceAttemptId}/artifact/scene-01`;
+    const outputHash = `sha256:${"a".repeat(64)}`;
+    const authorities = Array.from({ length: 31 }, (_, index) => {
+      const itemId = `scene-${String(index + 2).padStart(2, "0")}`;
+      return {
+        schema_version: "artifact-generated-output-authority/v1",
+        reservation_id: `resume-reservation-${index + 2}`,
+        account_id: account,
+        workspace_id: workspace,
+        method: "PUT",
+        path: `/${outputPrefix}/artifact/${itemId}`,
+        content_type: "image/png",
+        max_content_length: 4 * 1024 * 1024,
+        expires_at: "2099-01-01T00:00:00.000Z",
+        max_uses: 1,
+        capability_handle: "b".repeat(64),
+      };
+    });
+    const reservationIds = authorities.map((entry) => entry.reservation_id);
+    const planItems = Array.from({ length: 32 }, (_, index) => ({
+      scene_id: `scene-${String(index + 1).padStart(2, "0")}`,
+    }));
+    const planManifest = buildV207PlanManifest(planItems, "model-revision");
+    const planManifestSha256 = hashV207PlanManifest(planManifest);
+    const resume = {
+      schema_version: "serverless-unit-resume/v1",
+      plan_manifest: planManifest,
+      plan_manifest_sha256: planManifestSha256,
+      accepted_units: [
+        {
+          tenant: { account_id: account, workspace_id: workspace },
+          project_id: project,
+          revision_id: revision,
+          lane: "mage-image",
+          plan_manifest: planManifest,
+          plan_manifest_sha256: planManifestSha256,
+          source_attempt_id: sourceAttemptId,
+          item_id: "scene-01",
+          output_object_key: sourceObjectKey,
+          output_sha256: outputHash,
+          output_bytes: 42,
+          artifact_commit_receipt_sha256: `sha256:${"c".repeat(64)}`,
+          signed_provenance_receipt_sha256: `sha256:${"e".repeat(64)}`,
+          readback_port: {
+            schema_version: "artifact-transfer-port/v3",
+            reservation_id: "resume-readback",
+            account_id: account,
+            workspace_id: workspace,
+            method: "GET",
+            path: `/${sourceObjectKey}`,
+            content_type: "image/png",
+            content_length: 42,
+            checksum_sha256: outputHash,
+            expires_at: "2099-01-01T00:00:00.000Z",
+            max_uses: 1,
+            capability_handle: "d".repeat(64),
+          },
+          readback_get_url: "https://r2.example.test/readback",
+        },
+      ],
+    };
+    const execution = {
+      schema_version: "serverless-execution-subset/v1",
+      plan_manifest_sha256: planManifestSha256,
+      item_ids: planItems.slice(1).map((item) => item.scene_id),
+    };
+    const resumeCanonicalJson = canonicalizeJson(resume);
+    const executionCanonicalJson = canonicalizeJson(execution);
+    const input = {
+      requestKey: "request-replacement",
+      attemptId,
+      input: {
+        envelope: {
+          artifacts: {
+            output_prefix: outputPrefix,
+            transfer_port_reservation_ids: reservationIds,
+            plan_manifest_sha256: planManifestSha256,
+            resume_manifest_sha256: `sha256:${createHash("sha256")
+              .update(resumeCanonicalJson)
+              .digest("hex")}`,
+            execution_manifest_sha256: `sha256:${createHash("sha256")
+              .update(executionCanonicalJson)
+              .digest("hex")}`,
+          },
+        },
+        batch: {
+          attempt_id: attemptId,
+          model_revision: "model-revision",
+          items: planItems,
+        },
+        resume,
+        resume_canonical_json: resumeCanonicalJson,
+        plan_manifest_canonical_json: canonicalizeJson(planManifest),
+        execution,
+        execution_canonical_json: executionCanonicalJson,
+      },
+      outputAuthority: {
+        schemaVersion: "artifact-generated-output-authority/v1",
+        attemptId,
+        accountId: account,
+        workspaceId: workspace,
+        outputPrefix,
+        authorities,
+        outputPutUrls: authorities.map(
+          (_, index) => `https://r2.example.test/put/${String(index + 2).padStart(2, "0")}`,
+        ),
+      },
+    };
+    const request = buildDispatchRequest(input as RunPodV207DispatchBatchInput) as Record<
+      string,
+      any
+    >;
+    expect(request.resume).toEqual(resume);
+    expect(request.execution).toEqual(execution);
+    expect(request.generated_output_authorities).toHaveLength(31);
+    expect(request.generated_output_authorities[0].path).toContain("/artifact/scene-02");
+    expect(request.generated_output_authorities.at(-1).path).toContain("/artifact/scene-32");
+
+    const tamperedExecution = structuredClone(input);
+    tamperedExecution.input.execution.item_ids[0] = "scene-01";
+    expect(() => buildDispatchRequest(tamperedExecution as RunPodV207DispatchBatchInput)).toThrow(
+      "RUNPOD_EXECUTION_SUBSET_INVALID",
+    );
+
+    const tamperedCanonicalBytes = structuredClone(input);
+    tamperedCanonicalBytes.input.execution_canonical_json += " ";
+    expect(() =>
+      buildDispatchRequest(tamperedCanonicalBytes as RunPodV207DispatchBatchInput),
+    ).toThrow("RUNPOD_EXECUTION_SUBSET_INVALID");
+  });
+
+  it("rejects tampered durable bytes and same-attempt source records before dispatch", () => {
+    const input = {
+      requestKey: "request-replacement",
+      attemptId: "replacement-attempt",
+      input: {
+        envelope: { artifacts: { output_prefix: "x", transfer_port_reservation_ids: [] } },
+        batch: { items: [] },
+        resume: { schema_version: "serverless-unit-resume/v1", accepted_units: [{}] },
+      },
+      outputAuthority: {
+        schemaVersion: "artifact-generated-output-authority/v1",
+        attemptId: "replacement-attempt",
+        accountId: "account-a",
+        workspaceId: "workspace-a",
+        outputPrefix: "x",
+        authorities: [],
+        outputPutUrls: [],
+      },
+    };
+    expect(() => buildDispatchRequest(input as RunPodV207DispatchBatchInput)).toThrow(
+      "RUNPOD_RESUME_AUTHORITY_INVALID",
+    );
   });
 });

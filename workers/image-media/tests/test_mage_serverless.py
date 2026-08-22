@@ -1,11 +1,13 @@
 import asyncio
 import base64
 import hashlib
+import json
+import subprocess
 import sys
 import tempfile
 import time
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -16,6 +18,20 @@ sys.path[:0] = [str(ROOT), str(ROOT / "src"), str(ROOT.parents[0] / "common")]
 import mage_serverless  # noqa: E402
 
 
+def canonical_json(document: object) -> str:
+    return json.dumps(
+        document,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+
+
+def canonical_json_sha256(document: object) -> str:
+    return "sha256:" + hashlib.sha256(canonical_json(document).encode("utf-8")).hexdigest()
+
+
 class MageServerlessBoundaryTest(unittest.TestCase):
     def setUp(self) -> None:
         mage_serverless._runtime = None
@@ -23,10 +39,21 @@ class MageServerlessBoundaryTest(unittest.TestCase):
 
     @staticmethod
     def _accepted(attempt_id: str = "attempt-a") -> dict[str, object]:
+        issued_at = datetime.now(UTC)
         return {
             "dispatch_token": "dispatch-token-0123456789abcdef0123456789abcdef",
             "tenant": {"account_id": "account-a", "workspace_id": "workspace-a"},
-            "work": {"lane": "mage_image", "attempt_id": attempt_id, "item_count": 1},
+            "work": {
+                "lane": "mage_image",
+                "attempt_id": attempt_id,
+                "item_count": 1,
+            },
+            "limits": {
+                "issued_at": issued_at.isoformat().replace("+00:00", "Z"),
+                "expires_at": (issued_at + timedelta(seconds=7200))
+                .isoformat()
+                .replace("+00:00", "Z"),
+            },
             "runtime": {
                 "deployment_id": "deployment-a",
                 "volume_id_sha256": "sha256:" + "5" * 64,
@@ -40,6 +67,34 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                 ),
                 "transfer_port_reservation_ids": ["reservation-output"],
             },
+        }
+
+    @staticmethod
+    def _plan_manifest(item_ids: tuple[str, ...]) -> dict[str, object]:
+        negative = "negative-" + "|".join(item_ids)
+        items = [
+            {
+                "scene_id": item_id,
+                "positive_prompt": "positive-" + item_id,
+                "positive_prompt_sha256": "sha256:"
+                + hashlib.sha256(("positive-" + item_id).encode()).hexdigest(),
+                "negative_prompt": negative,
+                "negative_prompt_sha256": "sha256:" + hashlib.sha256(negative.encode()).hexdigest(),
+                "seed": 2_000_000 + index,
+                "width": 1280,
+                "height": 720,
+                "output_put_url": "https://unused.example/placeholder",
+            }
+            for index, item_id in enumerate(item_ids)
+        ]
+        return {
+            "schema_version": "videoforge-v207-plan-manifest/v1",
+            "tenant": {"account_id": "account-a", "workspace_id": "workspace-a"},
+            "project_id": "project-a",
+            "revision_id": "revision-a",
+            "lane": "mage-image",
+            "model_revision": "revision-a",
+            "items": items,
         }
 
     @staticmethod
@@ -76,6 +131,7 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         *,
         attempt_id: str = "attempt-a",
         reservation_id: str = "reservation-generated",
+        scene_id: str = "scene-a",
         expires_at: str = "2099-01-01T00:00:00Z",
     ) -> dict[str, object]:
         return {
@@ -86,7 +142,7 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             "method": "PUT",
             "path": (
                 "/tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/"
-                f"lane/mage-image/job/{attempt_id}/artifact/scene-a"
+                f"lane/mage-image/job/{attempt_id}/artifact/{scene_id}"
             ),
             "content_type": "image/png",
             "max_content_length": 8,
@@ -101,7 +157,11 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         item_id: str = "scene-accepted",
         source_attempt_id: str = "attempt-prior",
         body: bytes = b"accepted-output",
+        plan_manifest: dict[str, object] | None = None,
     ) -> dict[str, object]:
+        plan_manifest = plan_manifest or MageServerlessBoundaryTest._plan_manifest(
+            ("scene-accepted", "scene-unresolved")
+        )
         object_key = (
             "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/"
             f"lane/mage-image/job/{source_attempt_id}/artifact/{item_id}"
@@ -117,13 +177,63 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             }
         )
         return {
+            "tenant": {"account_id": "account-a", "workspace_id": "workspace-a"},
+            "project_id": "project-a",
+            "revision_id": "revision-a",
+            "lane": "mage-image",
+            "plan_manifest": plan_manifest,
+            "plan_manifest_sha256": canonical_json_sha256(plan_manifest),
+            "source_attempt_id": source_attempt_id,
             "item_id": item_id,
             "output_object_key": object_key,
             "output_sha256": port["checksum_sha256"],
             "output_bytes": len(body),
+            "artifact_commit_receipt_sha256": "sha256:" + "c" * 64,
+            "signed_provenance_receipt_sha256": "sha256:" + "d" * 64,
             "readback_port": port,
             "readback_get_url": "https://r2.example.test/accepted-output",
         }
+
+    @staticmethod
+    def _resume_document(
+        plan_manifest: dict[str, object],
+        units: list[dict[str, object]],
+        accepted: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        document: dict[str, object] = {
+            "schema_version": "serverless-unit-resume/v1",
+            "plan_manifest": plan_manifest,
+            "plan_manifest_sha256": canonical_json_sha256(plan_manifest),
+            "accepted_units": units,
+        }
+        if accepted is not None:
+            artifacts = accepted["artifacts"]
+            assert isinstance(artifacts, dict)
+            artifacts["plan_manifest_sha256"] = document["plan_manifest_sha256"]
+            artifacts["resume_manifest_sha256"] = canonical_json_sha256(document)
+        return document
+
+    @staticmethod
+    def _canonical_json(document: object) -> str:
+        return canonical_json(document)
+
+    @staticmethod
+    def _execution_document(
+        plan_manifest: dict[str, object],
+        item_ids: list[str],
+        accepted: dict[str, object],
+    ) -> dict[str, object]:
+        plan_sha256 = canonical_json_sha256(plan_manifest)
+        document: dict[str, object] = {
+            "schema_version": "serverless-execution-subset/v1",
+            "plan_manifest_sha256": plan_sha256,
+            "item_ids": item_ids,
+        }
+        artifacts = accepted["artifacts"]
+        assert isinstance(artifacts, dict)
+        artifacts["plan_manifest_sha256"] = plan_sha256
+        artifacts["execution_manifest_sha256"] = canonical_json_sha256(document)
+        return document
 
     @staticmethod
     def _job(
@@ -155,6 +265,33 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             attempt_id=attempt_id,
             model_revision="revision-a",
             items=(SimpleNamespace(scene_id="scene-a"),),
+        )
+
+    @staticmethod
+    def _fake_two_item_mage_job(attempt_id: str = "attempt-a") -> SimpleNamespace:
+        negative = "negative-scene-a|scene-b"
+
+        def item(scene_id: str, index: int) -> SimpleNamespace:
+            positive = "positive-" + scene_id
+            return SimpleNamespace(
+                scene_id=scene_id,
+                positive_prompt=positive,
+                positive_prompt_sha256="sha256:" + hashlib.sha256(positive.encode()).hexdigest(),
+                negative_prompt=negative,
+                negative_prompt_sha256="sha256:" + hashlib.sha256(negative.encode()).hexdigest(),
+                seed=2_000_000 + index,
+                width=1280,
+                height=720,
+                output_put_url="https://unused.example/placeholder",
+            )
+
+        return SimpleNamespace(
+            attempt_id=attempt_id,
+            model_revision="revision-a",
+            items=(
+                item("scene-a", 0),
+                item("scene-b", 1),
+            ),
         )
 
     @staticmethod
@@ -418,29 +555,102 @@ class MageServerlessBoundaryTest(unittest.TestCase):
     def test_resume_accepts_exact_carried_forward_readback_for_unresolved_batch(self) -> None:
         accepted = self._accepted()
         unit = self._resume_unit()
+        plan = self._plan_manifest(("scene-accepted", "scene-unresolved"))
+        resume = self._resume_document(plan, [unit], accepted)
         result = mage_serverless._validate_resume_state(
-            {"schema_version": "serverless-unit-resume/v1", "accepted_units": [unit]},
+            resume,
+            resume_canonical_json=self._canonical_json(resume),
             accepted=accepted,
-            current_item_ids=("scene-unresolved",),
+            current_item_ids=("scene-accepted", "scene-unresolved"),
+            expected_plan_manifest=plan,
             now=datetime(2026, 8, 19, tzinfo=UTC),
         )
         self.assertEqual(result[0]["item_id"], "scene-accepted")
         self.assertEqual(result[0]["output_bytes"], len(b"accepted-output"))
 
-    def test_resume_rejects_regenerating_an_already_accepted_item(self) -> None:
+    def test_resume_skips_an_already_accepted_item_after_process_replacement(self) -> None:
         # Clearing the process-local delivery fence models a fresh worker process.  The durable
-        # accepted-unit contract still rejects a replay that would regenerate the item.
+        # accepted-unit contract carries the prior item in the replacement batch and the handler
+        # will generate only the unresolved item IDs.
         mage_serverless._claimed_deliveries.clear()
+        accepted = self._accepted()
+        plan = self._plan_manifest(("scene-a", "scene-b"))
+        unit = self._resume_unit(item_id="scene-a", plan_manifest=plan)
+        resume = self._resume_document(plan, [unit], accepted)
+        result = mage_serverless._validate_resume_state(
+            resume,
+            resume_canonical_json=self._canonical_json(resume),
+            accepted=accepted,
+            current_item_ids=("scene-a", "scene-b"),
+            expected_plan_manifest=plan,
+            now=datetime(2026, 8, 19, tzinfo=UTC),
+        )
+        self.assertEqual(result[0]["item_id"], "scene-a")
+
+    def test_resume_manifest_survives_an_actual_process_replacement(self) -> None:
+        accepted = self._accepted()
+        plan = self._plan_manifest(("scene-a", "scene-b"))
+        resume = self._resume_document(
+            plan,
+            [self._resume_unit(item_id="scene-a", plan_manifest=plan)],
+            accepted,
+        )
+        payload = json.dumps(
+            {
+                "accepted": accepted,
+                "plan": plan,
+                "resume": resume,
+                "resume_canonical_json": self._canonical_json(resume),
+            }
+        )
+        script = """
+import json
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+root = Path.cwd()
+sys.path[:0] = [str(root), str(root / "src"), str(root.parent / "common")]
+import mage_serverless
+
+payload = json.loads(sys.stdin.read())
+units = mage_serverless._validate_resume_state(
+    payload["resume"],
+    resume_canonical_json=payload["resume_canonical_json"],
+    accepted=payload["accepted"],
+    current_item_ids=("scene-a", "scene-b"),
+    expected_plan_manifest=payload["plan"],
+    now=datetime.now(UTC),
+)
+print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": len(mage_serverless._claimed_deliveries)}))
+"""
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=ROOT,
+            input=payload,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(
+            json.loads(completed.stdout),
+            {"accepted": ["scene-a"], "claimed": 0},
+        )
+
+    def test_resume_rejects_accepted_item_missing_from_replacement_batch(self) -> None:
+        accepted = self._accepted()
+        plan = self._plan_manifest(("scene-b",))
+        unit = self._resume_unit(item_id="scene-a", plan_manifest=plan)
+        resume = self._resume_document(plan, [unit], accepted)
         with self.assertRaisesRegex(
-            mage_serverless.ServerlessMageError, "MAGE_SERVERLESS_RESUME_ITEM_REGENERATED"
+            mage_serverless.ServerlessMageError, "MAGE_SERVERLESS_RESUME_ITEM_NOT_IN_BATCH"
         ):
             mage_serverless._validate_resume_state(
-                {
-                    "schema_version": "serverless-unit-resume/v1",
-                    "accepted_units": [self._resume_unit(item_id="scene-a")],
-                },
-                accepted=self._accepted(),
-                current_item_ids=("scene-a",),
+                resume,
+                resume_canonical_json=self._canonical_json(resume),
+                accepted=accepted,
+                current_item_ids=("scene-b",),
+                expected_plan_manifest=plan,
                 now=datetime(2026, 8, 19, tzinfo=UTC),
             )
 
@@ -471,11 +681,15 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             with self.subTest(expected=expected):
                 unit = self._resume_unit()
                 mutation(unit)
+                plan = self._plan_manifest(("scene-accepted", "scene-unresolved"))
+                resume = self._resume_document(plan, [unit], accepted)
                 with self.assertRaisesRegex(mage_serverless.ServerlessMageError, expected):
                     mage_serverless._validate_resume_state(
-                        {"schema_version": "serverless-unit-resume/v1", "accepted_units": [unit]},
+                        resume,
+                        resume_canonical_json=self._canonical_json(resume),
                         accepted=accepted,
-                        current_item_ids=("scene-unresolved",),
+                        current_item_ids=("scene-accepted", "scene-unresolved"),
+                        expected_plan_manifest=plan,
                         now=datetime(2026, 8, 19, tzinfo=UTC),
                     )
 
@@ -520,16 +734,170 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                     now=datetime(2026, 8, 19, tzinfo=UTC),
                 )
 
-    def test_startup_timings_are_nonzero_ordered_and_bounded(self) -> None:
+    def test_replacement_handler_generates_only_unresolved_units(self) -> None:
+        body = b"png"
+        checksum = "sha256:" + hashlib.sha256(body).hexdigest()
+        accepted = self._accepted()
+        accepted["artifacts"]["transfer_port_reservation_ids"] = ["reservation-generated"]
+        authority = self._generated_authority(scene_id="scene-b")
+        job = self._job(
+            ports={"inputs": [], "outputs": []},
+            generated_output_authorities=[authority],
+        )
+        plan = self._plan_manifest(("scene-a", "scene-b"))
+        accepted["work"]["items_manifest_sha256"] = canonical_json_sha256(plan["items"])
+        resume = self._resume_document(
+            plan,
+            [self._resume_unit(item_id="scene-a", plan_manifest=plan)],
+            accepted,
+        )
+        execution = self._execution_document(plan, ["scene-b"], accepted)
+        job["input"]["resume"] = resume
+        job["input"]["resume_canonical_json"] = self._canonical_json(resume)
+        job["input"]["plan_manifest_canonical_json"] = self._canonical_json(plan)
+        job["input"]["execution"] = execution
+        job["input"]["execution_canonical_json"] = self._canonical_json(execution)
+        generated = {
+            "output_base64": base64.b64encode(body).decode("ascii"),
+            "output_sha256": checksum,
+            "bytes": len(body),
+            "width": 1280,
+            "height": 720,
+            "seed": 1,
+            "positive_prompt_sha256": "sha256:" + "1" * 64,
+            "negative_prompt_sha256": "sha256:" + "2" * 64,
+            "source_revision": "a" * 40,
+            "model_revision": "b" * 40,
+            "renderer_source_profile": "mage-landscape-native-1280x720-v1",
+            "generation_duration_ms": 12,
+        }
+        runtime = SimpleNamespace(
+            started=time.monotonic() - 0.001,
+            ready=True,
+            gpu={"name": "NVIDIA GeForce RTX 4090", "cuda_version": "12"},
+            warmup_output_sha256="sha256:" + "3" * 64,
+            bootstrap_evidence={"duration_ms": 1},
+            phase_timings_ms={"gpu_load": 2, "warmup": 3},
+            generate=AsyncMock(return_value=generated),
+        )
+        inline_indexes: list[int] = []
+
+        def inline(job_value: object, index: int) -> SimpleNamespace:
+            inline_indexes.append(index)
+            return SimpleNamespace()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with (
+                patch.object(mage_serverless, "validate_envelope", return_value=accepted),
+                patch.object(
+                    mage_serverless.MageJob,
+                    "from_value",
+                    return_value=self._fake_two_item_mage_job(),
+                ),
+                patch.object(mage_serverless, "_inline_item", side_effect=inline),
+                patch.object(
+                    mage_serverless, "_ready_runtime", new=AsyncMock(return_value=runtime)
+                ),
+                patch.object(mage_serverless, "urlopen") as urlopen,
+                patch.object(
+                    mage_serverless, "_put_generated_output", return_value=(123, checksum)
+                ),
+                patch.object(
+                    mage_serverless,
+                    "verify_model_root",
+                    return_value={"manifest_sha256": accepted["runtime"]["model_manifest_sha256"]},
+                ),
+                patch.dict(
+                    mage_serverless.os.environ,
+                    {
+                        "RUNPOD_ENDPOINT_ID": "endpoint-a",
+                        "VIDEOFORGE_RECEIPT_KEY_ID": "key-a",
+                        "VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": "4" * 64,
+                        "VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(temporary).resolve()),
+                    },
+                ),
+            ):
+                response = urlopen.return_value.__enter__.return_value
+                response.status = 200
+                response.headers = {"Content-Length": str(len(b"accepted-output"))}
+                response.read.return_value = b"accepted-output"
+                result = asyncio.run(mage_serverless.handler(job))
+        self.assertEqual(result["status"], "SUCCEEDED")
+        self.assertEqual(inline_indexes, [1])
+        runtime.generate.assert_awaited_once()
+        self.assertEqual(result["items"][0]["output_object_key"], authority["path"].lstrip("/"))
+
+    def test_execution_subset_rejects_tampered_bytes_and_resumed_ids(self) -> None:
+        accepted = self._accepted()
+        plan = self._plan_manifest(("scene-a", "scene-b"))
+        execution = self._execution_document(plan, ["scene-b"], accepted)
+        selected = mage_serverless._validate_execution_subset(
+            execution,
+            execution_canonical_json=self._canonical_json(execution),
+            plan_manifest_canonical_json=self._canonical_json(plan),
+            accepted=accepted,
+            current_item_ids=("scene-a", "scene-b"),
+            expected_plan_manifest=plan,
+            resumed_ids={"scene-a"},
+        )
+        self.assertEqual(selected, ("scene-b",))
+        with self.assertRaisesRegex(
+            mage_serverless.ServerlessMageError,
+            "MAGE_SERVERLESS_EXECUTION_MANIFEST_HASH_INVALID",
+        ):
+            mage_serverless._validate_execution_subset(
+                execution,
+                execution_canonical_json=self._canonical_json(execution) + " ",
+                plan_manifest_canonical_json=self._canonical_json(plan),
+                accepted=accepted,
+                current_item_ids=("scene-a", "scene-b"),
+                expected_plan_manifest=plan,
+                resumed_ids={"scene-a"},
+            )
+
+        replayed = self._execution_document(plan, ["scene-a"], accepted)
+        with self.assertRaisesRegex(
+            mage_serverless.ServerlessMageError,
+            "MAGE_SERVERLESS_EXECUTION_ITEMS_INVALID",
+        ):
+            mage_serverless._validate_execution_subset(
+                replayed,
+                execution_canonical_json=self._canonical_json(replayed),
+                plan_manifest_canonical_json=self._canonical_json(plan),
+                accepted=accepted,
+                current_item_ids=("scene-a", "scene-b"),
+                expected_plan_manifest=plan,
+                resumed_ids={"scene-a"},
+            )
+
+    def test_startup_timings_are_signed_boundary_derived_and_bounded(self) -> None:
         now = time.monotonic()
         runtime = SimpleNamespace(started=now - 0.5)
-        with patch.object(mage_serverless, "_PROCESS_STARTED_MONOTONIC", now - 1.0):
-            allocation_ms, container_ready_ms = mage_serverless._startup_timings(
-                runtime, ready_at=now, handler_started_at=now - 0.75
-            )
+        accepted = self._accepted()
+        issued_at = datetime.now(UTC) - timedelta(seconds=1)
+        accepted["limits"]["issued_at"] = issued_at.isoformat().replace("+00:00", "Z")
+        accepted["limits"]["expires_at"] = (
+            (issued_at + timedelta(seconds=7200)).isoformat().replace("+00:00", "Z")
+        )
+        allocation_ms, container_ready_ms, issued_at = mage_serverless._startup_timings(
+            runtime, accepted=accepted, ready_at=now, handler_started_at=now - 0.25
+        )
         self.assertGreaterEqual(allocation_ms, 1)
         self.assertGreaterEqual(container_ready_ms, allocation_ms)
         self.assertLessEqual(container_ready_ms, 86_400_000)
+        self.assertTrue(issued_at.endswith("Z"))
+        with patch.dict(
+            mage_serverless.os.environ,
+            {
+                "VIDEOFORGE_MAGE_ALLOCATION_MS": "999",
+                "VIDEOFORGE_MAGE_CONTAINER_READY_MS": "999",
+            },
+        ):
+            measured = mage_serverless._startup_timings(
+                runtime, accepted=accepted, ready_at=now, handler_started_at=now - 0.25
+            )
+        self.assertEqual(measured[0], allocation_ms)
+        self.assertEqual(measured[1], container_ready_ms)
 
     def test_input_get_download_binds_exact_length_hash_and_scratch(self) -> None:
         body = b"input-bytes"
@@ -607,6 +975,7 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             "generation_duration_ms": 12,
         }
         runtime = SimpleNamespace(
+            started=time.monotonic() - 0.001,
             ready=True,
             gpu={"name": "NVIDIA GeForce RTX 4090", "cuda_version": "12"},
             warmup_output_sha256="sha256:" + "3" * 64,
@@ -662,6 +1031,15 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         timings = result["provenance_receipt"]["timings"]
         self.assertGreaterEqual(timings["allocation_ms"], 1)
         self.assertGreaterEqual(timings["container_ready_ms"], timings["allocation_ms"])
+        self.assertEqual(
+            timings["timing_provenance"]["schema_version"],
+            "videoforge-serverless-timing-provenance/v1",
+        )
+        self.assertEqual(
+            timings["timing_provenance"]["provider_timing_source"],
+            "RUNPOD_STATUS_DELAY_TIME_MS_AND_EXECUTION_TIME_MS",
+        )
+        self.assertNotIn("timing_provenance", result)
 
     def test_handler_detects_model_volume_manifest_mutation_before_receipt(self) -> None:
         body = b"png"

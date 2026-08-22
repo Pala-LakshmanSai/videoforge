@@ -2,6 +2,8 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 import { chmod, readFile, rename, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
+import { canonicalizeJson } from "@videoforge/contracts";
+
 import {
   RunPodControlError,
   RunPodControlClient,
@@ -19,6 +21,9 @@ import {
 } from "./runpod-control";
 import {
   RunPodV207QualificationHarness,
+  buildV207PlanManifest,
+  hashV207PlanManifest,
+  type RunPodV207AcceptedUnitRecord,
   type RunPodV207DispatchBatchInput,
   type RunPodV207OutputAuthority,
 } from "./runpod-v207-qualification-harness";
@@ -88,6 +93,25 @@ let IMAGE: string = V207_REPAIRED_IMAGE;
 let finiteCapUsd = 0;
 
 type AnyRecord = Record<string, any>;
+
+const V207_RESUME_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
+const validateV207ResumeUrl = (value: string): void => {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("V207_RESUME_READBACK_URL_INVALID");
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username ||
+    parsed.password ||
+    parsed.hash ||
+    [...value].some((character) => character.charCodeAt(0) < 32)
+  ) {
+    throw new Error("V207_RESUME_READBACK_URL_INVALID");
+  }
+};
 
 const hashText = (value: string): string =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -397,6 +421,14 @@ const SAFE_EVIDENCE_KEYS = new Set([
   "timeout_status",
   "timeout_output_cleanup",
   "finalize_response_diagnostic",
+  "timing_provenance",
+  "provider_timing_source",
+  "worker_timing_source",
+  "process_start_boundary",
+  "container_ready_boundary",
+  "signed_envelope_issued_at",
+  "provider_delay_time_ms",
+  "provider_execution_time_ms",
 ]);
 
 /**
@@ -1173,17 +1205,152 @@ export function assertV207ItemCount(itemCount: number): void {
   }
 }
 
+/** Merge the prior accepted facts with a replacement's newly committed facts in plan order. */
+export function mergeV207AcceptedUnits(
+  priorUnits: readonly RunPodV207AcceptedUnitRecord[],
+  newUnits: readonly RunPodV207AcceptedUnitRecord[],
+  planManifest: Record<string, unknown>,
+): readonly RunPodV207AcceptedUnitRecord[] {
+  const planItems = planManifest.items;
+  if (!Array.isArray(planItems) || planItems.length !== 32) {
+    throw new Error("V207_RESUME_PLAN_MANIFEST_INVALID");
+  }
+  const planHash = hashV207PlanManifest(planManifest);
+  const expectedIds = planItems.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error("V207_RESUME_PLAN_MANIFEST_INVALID");
+    }
+    const itemId = (item as Record<string, unknown>).scene_id;
+    if (typeof itemId !== "string") throw new Error("V207_RESUME_PLAN_MANIFEST_INVALID");
+    return itemId;
+  });
+  const expected = new Set(expectedIds);
+  if (expected.size !== expectedIds.length) throw new Error("V207_RESUME_PLAN_DUPLICATE");
+  const merged = new Map<string, RunPodV207AcceptedUnitRecord>();
+  for (const unit of [...priorUnits, ...newUnits]) {
+    if (
+      !unit ||
+      unit.plan_manifest_sha256 !== planHash ||
+      canonicalizeJson(unit.plan_manifest) !== canonicalizeJson(planManifest) ||
+      !expected.has(unit.item_id) ||
+      merged.has(unit.item_id)
+    ) {
+      throw new Error("V207_RESUME_DURABLE_UNIT_INVALID");
+    }
+    merged.set(unit.item_id, unit);
+  }
+  if (merged.size !== expectedIds.length) {
+    throw new Error("V207_RESUME_DURABLE_UNIT_INCOMPLETE");
+  }
+  return Object.freeze(expectedIds.map((itemId) => merged.get(itemId)!));
+}
+
+function assertV207AcceptedUnits(
+  acceptedUnits: readonly RunPodV207AcceptedUnitRecord[] | undefined,
+  plannedItems: readonly AnyRecord[],
+  attemptId: string,
+  modelRevision: string,
+): ReadonlySet<string> {
+  if (acceptedUnits === undefined || acceptedUnits.length === 0) return new Set();
+  if (
+    acceptedUnits.length < 1 ||
+    acceptedUnits.length >= plannedItems.length ||
+    new Set(acceptedUnits.map((unit) => unit.item_id)).size !== acceptedUnits.length
+  ) {
+    throw new Error("V207_RESUME_ACCEPTED_UNITS_INVALID");
+  }
+  const planManifest = buildV207PlanManifest(plannedItems, modelRevision);
+  const planManifestSha256 = hashV207PlanManifest(planManifest);
+  const plannedIds = new Set(plannedItems.map((item) => item.scene_id));
+  const seen = new Set<string>();
+  for (const unit of acceptedUnits) {
+    if (
+      unit.tenant.account_id !== ACCOUNT ||
+      unit.tenant.workspace_id !== WORKSPACE ||
+      unit.project_id !== PROJECT ||
+      unit.revision_id !== REVISION ||
+      unit.lane !== "mage-image" ||
+      unit.plan_manifest_sha256 !== planManifestSha256 ||
+      canonicalizeJson(unit.plan_manifest) !== canonicalizeJson(planManifest) ||
+      !V207_RESUME_ID.test(unit.source_attempt_id) ||
+      unit.source_attempt_id === attemptId ||
+      !V207_RESUME_ID.test(unit.item_id) ||
+      !plannedIds.has(unit.item_id) ||
+      seen.has(unit.item_id) ||
+      unit.output_object_key !==
+        `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}/lane/mage-image/job/${unit.source_attempt_id}/artifact/${unit.item_id}` ||
+      !/^sha256:[0-9a-f]{64}$/u.test(unit.output_sha256) ||
+      !Number.isSafeInteger(unit.output_bytes) ||
+      unit.output_bytes < 1 ||
+      unit.output_bytes > OUTPUT_LIMIT ||
+      !/^sha256:[0-9a-f]{64}$/u.test(unit.artifact_commit_receipt_sha256) ||
+      !/^sha256:[0-9a-f]{64}$/u.test(unit.signed_provenance_receipt_sha256) ||
+      unit.readback_port.schema_version !== "artifact-transfer-port/v3" ||
+      unit.readback_port.path !== `/${unit.output_object_key}` ||
+      unit.readback_port.method !== "GET" ||
+      unit.readback_port.account_id !== ACCOUNT ||
+      unit.readback_port.workspace_id !== WORKSPACE ||
+      unit.readback_port.content_type !== "image/png" ||
+      unit.readback_port.content_length !== unit.output_bytes ||
+      unit.readback_port.checksum_sha256 !== unit.output_sha256 ||
+      unit.readback_port.max_uses !== 1 ||
+      typeof unit.readback_port.reservation_id !== "string" ||
+      typeof unit.readback_port.expires_at !== "string" ||
+      typeof unit.readback_port.capability_handle !== "string" ||
+      !/^[A-Za-z0-9._:-]{32,512}$/u.test(unit.readback_port.capability_handle)
+    ) {
+      throw new Error("V207_RESUME_ACCEPTED_UNITS_INVALID");
+    }
+    validateV207ResumeUrl(unit.readback_get_url);
+    seen.add(unit.item_id);
+  }
+  return seen;
+}
+
 async function createBatch(
   attemptId: string,
   nonce: string,
   workerToken: string,
   itemCount: number,
   abortCheck?: () => void,
+  acceptedUnits?: readonly RunPodV207AcceptedUnitRecord[],
+  executionItemIds?: readonly string[],
 ): Promise<{
   readonly input: RunPodV207DispatchBatchInput;
   readonly objectKeys: readonly string[];
+  readonly planManifest: Record<string, unknown>;
+  readonly planManifestSha256: string;
 }> {
   assertV207ItemCount(itemCount);
+  const negativePrompt = "text, letters, logo, watermark, malformed objects";
+  const items: AnyRecord[] = QUALIFICATION_SCENES.slice(0, itemCount).map(
+    (positivePrompt, index) => ({
+      scene_id: `scene-${String(index + 1).padStart(2, "0")}`,
+      positive_prompt: positivePrompt,
+      positive_prompt_sha256: hashText(positivePrompt),
+      negative_prompt: negativePrompt,
+      negative_prompt_sha256: hashText(negativePrompt),
+      seed: 2_000_000 + index,
+      width: 1280,
+      height: 720,
+      output_put_url: "https://unused.example/placeholder",
+    }),
+  );
+  const acceptedIds = assertV207AcceptedUnits(acceptedUnits, items, attemptId, MODEL_REVISION);
+  const unresolvedItems = items.filter((item) => !acceptedIds.has(item.scene_id));
+  if (unresolvedItems.length < 1) throw new Error("V207_RESUME_NO_UNRESOLVED_ITEMS");
+  const unresolvedIds = new Set(unresolvedItems.map((item) => item.scene_id));
+  const selectedIds = executionItemIds ?? unresolvedItems.map((item) => item.scene_id);
+  if (
+    selectedIds.length < 1 ||
+    new Set(selectedIds).size !== selectedIds.length ||
+    selectedIds.some((itemId) => !V207_RESUME_ID.test(itemId) || !unresolvedIds.has(itemId)) ||
+    (acceptedIds.size > 0 && selectedIds.length !== unresolvedItems.length)
+  ) {
+    throw new Error("V207_EXECUTION_SUBSET_INVALID");
+  }
+  const selectedIdSet = new Set(selectedIds);
+  const executionItems = unresolvedItems.filter((item) => selectedIdSet.has(item.scene_id));
   const outputPrefix =
     `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}` +
     `/lane/mage-image/job/${attemptId}`;
@@ -1192,9 +1359,9 @@ async function createBatch(
   const objectKeys: string[] = [];
   const reservationIds: string[] = [];
   try {
-    for (let index = 0; index < itemCount; index += 1) {
+    for (const item of executionItems) {
       abortCheck?.();
-      const objectKey = `${outputPrefix}/artifact/scene-${String(index + 1).padStart(2, "0")}`;
+      const objectKey = `${outputPrefix}/artifact/${item.scene_id}`;
       objectKeys.push(objectKey);
       const signed = await routePort(
         {
@@ -1223,7 +1390,9 @@ async function createBatch(
       authorities.push(authority);
       outputPutUrls.push(signed.url);
       reservationIds.push(authority.reservation_id);
-      if ((index + 1) % 8 === 0) console.error(`v207:ports-${attemptId}-${index + 1}`);
+      if (authorities.length % 8 === 0) {
+        console.error(`v207:ports-${attemptId}-${authorities.length}`);
+      }
     }
   } catch (error) {
     try {
@@ -1233,23 +1402,32 @@ async function createBatch(
     }
     throw error;
   }
-  const items = QUALIFICATION_SCENES.slice(0, itemCount).map((positivePrompt, index) => {
-    const negativePrompt = "text, letters, logo, watermark, malformed objects";
-    return {
-      scene_id: `scene-${String(index + 1).padStart(2, "0")}`,
-      positive_prompt: positivePrompt,
-      positive_prompt_sha256: hashText(positivePrompt),
-      negative_prompt: negativePrompt,
-      negative_prompt_sha256: hashText(negativePrompt),
-      seed: 2_000_000 + index,
-      width: 1280,
-      height: 720,
-      output_put_url: "https://unused.example/placeholder",
-    };
-  });
   const batch = { attempt_id: attemptId, model_revision: MODEL_REVISION, items };
+  const planManifest = buildV207PlanManifest(items, MODEL_REVISION);
+  const planManifestCanonicalJson = canonicalizeJson(planManifest);
+  const planManifestSha256 = hashText(planManifestCanonicalJson);
+  const execution = {
+    schema_version: "serverless-execution-subset/v1",
+    plan_manifest_sha256: planManifestSha256,
+    item_ids: executionItems.map((item) => item.scene_id),
+  };
+  const executionCanonicalJson = canonicalizeJson(execution);
+  const executionManifestSha256 = hashText(executionCanonicalJson);
+  const resume =
+    acceptedUnits && acceptedUnits.length > 0
+      ? {
+          schema_version: "serverless-unit-resume/v1",
+          plan_manifest: planManifest,
+          plan_manifest_sha256: planManifestSha256,
+          accepted_units: acceptedUnits,
+        }
+      : null;
+  const resumeManifestSha256 = resume ? hashText(canonicalizeJson(resume)) : null;
+  const resumeCanonicalJson = resume ? canonicalizeJson(resume) : null;
+  const issuedAtMs = Date.now();
+  const issuedAt = new Date(issuedAtMs).toISOString();
   const expiresAt = new Date(
-    Date.now() + V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS * 1_000,
+    issuedAtMs + V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS * 1_000,
   ).toISOString();
   const envelopeBody = {
     schema: "serverless-worker-job-envelope/v3",
@@ -1261,8 +1439,8 @@ async function createBatch(
       task_id: `task-${attemptId}`,
       attempt_id: attemptId,
       lane: "mage_image",
-      items_manifest_sha256: hashText(JSON.stringify(items)),
-      item_count: itemCount,
+      items_manifest_sha256: hashText(canonicalizeJson(items)),
+      item_count: executionItems.length,
     },
     runtime: {
       endpoint_profile_id: "mage-serverless-v1",
@@ -1280,8 +1458,12 @@ async function createBatch(
       input_manifest_sha256: hashText(`input-${attemptId}`),
       output_prefix: outputPrefix,
       transfer_port_reservation_ids: reservationIds,
+      plan_manifest_sha256: planManifestSha256,
+      execution_manifest_sha256: executionManifestSha256,
+      ...(resumeManifestSha256 ? { resume_manifest_sha256: resumeManifestSha256 } : {}),
     },
     limits: {
+      issued_at: issuedAt,
       expires_at: expiresAt,
       max_items: 64,
       max_input_bytes: 268_435_456,
@@ -1325,10 +1507,20 @@ async function createBatch(
     input: {
       requestKey: `request-${attemptId}`,
       attemptId,
-      input: { envelope, batch },
+      input: {
+        envelope,
+        batch,
+        plan_manifest_canonical_json: planManifestCanonicalJson,
+        execution,
+        execution_canonical_json: executionCanonicalJson,
+        ...(resume ? { resume } : {}),
+        ...(resumeCanonicalJson ? { resume_canonical_json: resumeCanonicalJson } : {}),
+      },
       outputAuthority,
     },
     objectKeys,
+    planManifest,
+    planManifestSha256,
   };
 }
 
@@ -1337,13 +1529,16 @@ async function verifyBatch(
   expectedAttemptId: string,
   objectKeys: readonly string[],
   authorities: readonly AnyRecord[],
+  planManifest: Record<string, unknown>,
   itemCount: number,
   expectedEndpointIdHash: string,
   nonce: string,
   receiptKeyId: string,
   receiptSecret: Buffer,
 ): Promise<AnyRecord> {
-  assertV207ItemCount(itemCount);
+  if (!Number.isSafeInteger(itemCount) || itemCount < 1 || itemCount > 32) {
+    throw new Error("V207_OUTPUT_ITEM_COUNT_INVALID");
+  }
   if (job.status !== "COMPLETED") throw new Error(`RUNPOD_JOB_${job.status}`);
   const output = job.output as AnyRecord;
   let failureStage: V207OutputFailureStage = "top_level";
@@ -1403,6 +1598,10 @@ async function verifyBatch(
     const scratchCleanup = receipt.scratch_cleanup as AnyRecord;
     const receiptItems = receipt.items as AnyRecord[];
     const timings = receipt.timings as AnyRecord;
+    // Timing provenance is accepted only from the signed receipt body.  A same-shaped
+    // top-level output field is deliberately ignored, because the provider response itself is
+    // not trusted until this receipt hash/signature has been checked.
+    const timingProvenance = timings?.timing_provenance as AnyRecord;
     const requiredTimings = [
       "allocation_ms",
       "container_ready_ms",
@@ -1434,6 +1633,15 @@ async function verifyBatch(
       !/^sha256:[0-9a-f]{64}$/u.test(String(modelReady?.warmup_output_sha256 ?? "")) ||
       scratchCleanup?.removed !== true ||
       scratchCleanup?.scratch_on_model_volume !== false ||
+      timingProvenance?.schema_version !== "videoforge-serverless-timing-provenance/v1" ||
+      timingProvenance?.provider_timing_source !==
+        "RUNPOD_STATUS_DELAY_TIME_MS_AND_EXECUTION_TIME_MS" ||
+      timingProvenance?.worker_timing_source !==
+        "SIGNED_ENVELOPE_ISSUED_AT_TO_LOCAL_RUNTIME_BOUNDARIES" ||
+      typeof timingProvenance?.signed_envelope_issued_at !== "string" ||
+      timingProvenance?.process_start_boundary !==
+        "MAGE_RUNTIME_STARTED_OR_HANDLER_ADMISSION_MONOTONIC" ||
+      timingProvenance?.container_ready_boundary !== "HANDLER_RUNTIME_READY_MONOTONIC" ||
       !Array.isArray(receiptItems) ||
       receiptItems.length !== objectKeys.length ||
       !timings ||
@@ -1441,18 +1649,27 @@ async function verifyBatch(
         (key) => !Number.isSafeInteger(timings[key]) || Number(timings[key]) < 0,
       ) ||
       timings.first_inference_ms < 1 ||
-      timings.total_ms < 1
+      timings.total_ms < 1 ||
+      !Number.isSafeInteger(job.delayTimeMs) ||
+      Number(job.delayTimeMs) < 0 ||
+      !Number.isSafeInteger(job.executionTimeMs) ||
+      Number(job.executionTimeMs) < 0
     ) {
       throw new Error("MAGE_RECEIPT_IDENTITY_INVALID");
     }
     const readbacks: AnyRecord[] = [];
     const commitReceipts: AnyRecord[] = [];
+    const durableAcceptedUnits: RunPodV207AcceptedUnitRecord[] = [];
+    const planManifestSha256 = hashV207PlanManifest(planManifest);
     let peakVram = 0;
     failureStage = "output_lineage";
     for (const [index, itemValue] of output.items.entries()) {
       const item = itemValue as AnyRecord;
       const authority = authorities[index] as AnyRecord;
       const receiptItem = receiptItems[index] as AnyRecord;
+      const expectedObjectKey = objectKeys[index];
+      if (typeof expectedObjectKey !== "string") throw new Error("MAGE_OUTPUT_LINEAGE_INVALID");
+      const expectedItemId = expectedObjectKey.split("/artifact/").at(-1);
       const runtimeEvidence = item.runtime_evidence as AnyRecord;
       const gpu = runtimeEvidence?.gpu as AnyRecord;
       if (
@@ -1464,7 +1681,9 @@ async function verifyBatch(
         item.width !== 1280 ||
         item.height !== 720 ||
         authority?.path !== `/${objectKeys[index]}` ||
-        receiptItem?.item_id !== `scene-${String(index + 1).padStart(2, "0")}` ||
+        typeof expectedItemId !== "string" ||
+        item.item_id !== expectedItemId ||
+        receiptItem?.item_id !== expectedItemId ||
         receiptItem?.state !== "SUCCEEDED" ||
         receiptItem?.output_object_key !== item.output_object_key ||
         receiptItem?.output_sha256 !== item.output_sha256 ||
@@ -1502,6 +1721,22 @@ async function verifyBatch(
         },
         nonce,
       );
+      const readbackAuthority = getPort.authority as AnyRecord;
+      if (
+        !readbackAuthority ||
+        readbackAuthority.schema_version !== "artifact-transfer-port/v3" ||
+        readbackAuthority.reservation_id === authority.reservation_id ||
+        readbackAuthority.account_id !== ACCOUNT ||
+        readbackAuthority.workspace_id !== WORKSPACE ||
+        readbackAuthority.method !== "GET" ||
+        readbackAuthority.path !== `/${item.output_object_key}` ||
+        readbackAuthority.content_type !== "image/png" ||
+        readbackAuthority.content_length !== item.output_bytes ||
+        readbackAuthority.checksum_sha256 !== item.output_sha256 ||
+        readbackAuthority.max_uses !== 1
+      ) {
+        throw new Error("MAGE_OUTPUT_READBACK_AUTHORITY_INVALID");
+      }
       const response = await fetch(getPort.url, { signal: AbortSignal.timeout(30_000) });
       if (!response.ok) throw new Error("MAGE_OUTPUT_READBACK_FAILED");
       const bytes = new Uint8Array(await response.arrayBuffer());
@@ -1562,6 +1797,43 @@ async function verifyBatch(
       if (replayed.receipt?.receipt_sha256 !== commitReceipt.receipt_sha256) {
         throw new Error("MAGE_COMMIT_RECEIPT_REPLAY_INVALID");
       }
+      // The first GET authority was consumed by the durability probe above.  Persist a fresh,
+      // one-use GET authority for a possible process-replacement resume; it is never reused for
+      // the current verification readback.
+      const resumeGetPort = await routePort(
+        {
+          schema_version: "videoforge-v207-generated-output-port-request/v1",
+          operation: "GET",
+          account_id: ACCOUNT,
+          workspace_id: WORKSPACE,
+          object_key: item.output_object_key,
+          content_type: "image/png",
+          max_content_length: OUTPUT_LIMIT,
+          // A replacement can sit through the same bounded queue/init window as its signed
+          // envelope. Keep this single-use GET valid for that whole authority window.
+          lifetime_seconds: V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+          content_length: item.output_bytes,
+          checksum_sha256: item.output_sha256,
+        },
+        nonce,
+      );
+      const resumeReadbackAuthority = resumeGetPort.authority as AnyRecord;
+      if (
+        !resumeReadbackAuthority ||
+        resumeReadbackAuthority.schema_version !== "artifact-transfer-port/v3" ||
+        resumeReadbackAuthority.reservation_id === readbackAuthority.reservation_id ||
+        resumeReadbackAuthority.account_id !== ACCOUNT ||
+        resumeReadbackAuthority.workspace_id !== WORKSPACE ||
+        resumeReadbackAuthority.method !== "GET" ||
+        resumeReadbackAuthority.path !== `/${item.output_object_key}` ||
+        resumeReadbackAuthority.content_type !== "image/png" ||
+        resumeReadbackAuthority.content_length !== item.output_bytes ||
+        resumeReadbackAuthority.checksum_sha256 !== item.output_sha256 ||
+        resumeReadbackAuthority.max_uses !== 1
+      ) {
+        throw new Error("MAGE_RESUME_READBACK_AUTHORITY_INVALID");
+      }
+      validateV207ResumeUrl(resumeGetPort.url);
       const itemPeak = Number(gpu.peak_vram_used_bytes);
       peakVram = Math.max(peakVram, itemPeak);
       readbacks.push({ bytes: bytes.byteLength, sha256: byteHash });
@@ -1569,6 +1841,23 @@ async function verifyBatch(
         receipt_sha256: commitReceipt.receipt_sha256,
         reservation_id: commitReceipt.reservation_id,
         replay_confirmed: true,
+      });
+      durableAcceptedUnits.push({
+        tenant: { account_id: ACCOUNT, workspace_id: WORKSPACE },
+        project_id: PROJECT,
+        revision_id: REVISION,
+        lane: "mage-image",
+        source_attempt_id: expectedAttemptId,
+        item_id: expectedItemId,
+        output_object_key: item.output_object_key,
+        output_sha256: item.output_sha256,
+        output_bytes: item.output_bytes,
+        artifact_commit_receipt_sha256: commitReceipt.receipt_sha256,
+        signed_provenance_receipt_sha256: receipt.receipt_sha256,
+        plan_manifest: planManifest,
+        plan_manifest_sha256: planManifestSha256,
+        readback_port: resumeReadbackAuthority,
+        readback_get_url: resumeGetPort.url,
       });
     }
     return {
@@ -1580,8 +1869,16 @@ async function verifyBatch(
       peak_vram_used_bytes: peakVram,
       readbacks,
       commit_receipts: commitReceipts,
+      durable_accepted_units: durableAcceptedUnits,
       receipt_sha256: receipt.receipt_sha256,
       timings,
+      timing_provenance: {
+        provider_timing_source: "RUNPOD_STATUS_DELAY_TIME_MS_AND_EXECUTION_TIME_MS",
+        provider_delay_time_ms: job.delayTimeMs,
+        provider_execution_time_ms: job.executionTimeMs,
+        worker_timing_source: timingProvenance.worker_timing_source,
+        signed_envelope_issued_at: timingProvenance.signed_envelope_issued_at,
+      },
     };
   } catch (error) {
     if (isV207OutputContractDiagnostic(error)) throw error;
@@ -1606,6 +1903,7 @@ async function verifyBatchWithDiagnostic(
   expectedAttemptId: string,
   objectKeys: readonly string[],
   authorities: readonly AnyRecord[],
+  planManifest: Record<string, unknown>,
   itemCount: number,
   expectedEndpointIdHash: string,
   nonce: string,
@@ -1618,6 +1916,7 @@ async function verifyBatchWithDiagnostic(
       expectedAttemptId,
       objectKeys,
       authorities,
+      planManifest,
       itemCount,
       expectedEndpointIdHash,
       nonce,
@@ -1822,6 +2121,8 @@ async function main(): Promise<void> {
         workerToken,
         32,
         cancellation.throwIfRequested,
+        undefined,
+        ["scene-01"],
       );
       generatedObjectKeys.push(...probe.objectKeys);
       console.error("v207:probe-ports-ready");
@@ -1838,7 +2139,8 @@ async function main(): Promise<void> {
         probeAttemptId,
         probe.objectKeys,
         probe.input.outputAuthority.authorities as readonly AnyRecord[],
-        32,
+        probe.planManifest,
+        probe.objectKeys.length,
         createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
@@ -1846,6 +2148,65 @@ async function main(): Promise<void> {
       );
       (evidence.batches as AnyRecord[]).push({ kind: "owned_probe", ...probeEvidence });
       await persistCheckpoint("probe-terminal");
+      const probeDurableUnits = probeEvidence.durable_accepted_units;
+      if (!Array.isArray(probeDurableUnits) || probeDurableUnits.length !== 1) {
+        throw new Error("V207_PROBE_DURABLE_UNITS_INCOMPLETE");
+      }
+      // Exercise the real replacement path with one already committed unit.  The replacement
+      // envelope still carries all 32 plan items, while its signed item count and fresh PUT
+      // authorities cover only the remaining 31.  The worker must read the prior unit through its
+      // fresh one-use GET authority and generate exactly the unresolved set.
+      const resumeAttemptId = `v207-resume-${runTag}`;
+      const priorResumeUnits = probeDurableUnits as readonly RunPodV207AcceptedUnitRecord[];
+      const resumeBatch = await createBatch(
+        resumeAttemptId,
+        nonce,
+        workerToken,
+        32,
+        cancellation.throwIfRequested,
+        priorResumeUnits,
+      );
+      generatedObjectKeys.push(...resumeBatch.objectKeys);
+      await persistCheckpoint("resume-ports", {
+        event: "replacement_resume_authority_ready",
+        prior_unit_count: priorResumeUnits.length,
+        unresolved_unit_count: resumeBatch.objectKeys.length,
+        resume_manifest_sha256: (
+          (resumeBatch.input.input.envelope as AnyRecord).artifacts as AnyRecord
+        ).resume_manifest_sha256,
+      });
+      cancellation.throwIfRequested();
+      const resumeJob = await harness.dispatchBatch(resumeBatch.input);
+      await persistCheckpoint("resume-dispatch");
+      const resumeResult = await harness.reconcile(resumeJob.id);
+      const resumeEvidence = await verifyBatchWithDiagnostic(
+        harness,
+        resumeResult,
+        resumeAttemptId,
+        resumeBatch.objectKeys,
+        resumeBatch.input.outputAuthority.authorities as readonly AnyRecord[],
+        resumeBatch.planManifest,
+        resumeBatch.objectKeys.length,
+        createdIdentity.endpointIdHash,
+        nonce,
+        receiptKeyId,
+        receiptSecret,
+      );
+      const mergedResumeUnits = mergeV207AcceptedUnits(
+        priorResumeUnits,
+        resumeEvidence.durable_accepted_units as readonly RunPodV207AcceptedUnitRecord[],
+        resumeBatch.planManifest,
+      );
+      if (mergedResumeUnits.length !== 32) throw new Error("V207_RESUME_MERGE_INCOMPLETE");
+      (evidence.batches as AnyRecord[]).push({
+        kind: "process_replacement_resume",
+        ...resumeEvidence,
+        prior_unit_count: priorResumeUnits.length,
+        new_unit_count: resumeEvidence.durable_accepted_units.length,
+        merged_unit_count: mergedResumeUnits.length,
+        durable_units: mergedResumeUnits,
+      });
+      await persistCheckpoint("resume-terminal");
       await harness.confirmWarmIdle();
       await persistCheckpoint("probe-warm-idle");
       const coldAttemptId = `v207-cold-${runTag}`;
@@ -1871,6 +2232,7 @@ async function main(): Promise<void> {
         coldAttemptId,
         cold.objectKeys,
         cold.input.outputAuthority.authorities as readonly AnyRecord[],
+        cold.planManifest,
         32,
         createdIdentity.endpointIdHash,
         nonce,
@@ -1906,6 +2268,7 @@ async function main(): Promise<void> {
         warmAttemptId,
         warm.objectKeys,
         warm.input.outputAuthority.authorities as readonly AnyRecord[],
+        warm.planManifest,
         32,
         createdIdentity.endpointIdHash,
         nonce,
@@ -1950,6 +2313,7 @@ async function main(): Promise<void> {
         readerAAttemptId,
         readerA.objectKeys,
         readerA.input.outputAuthority.authorities as readonly AnyRecord[],
+        readerA.planManifest,
         32,
         createdIdentity.endpointIdHash,
         nonce,
@@ -1962,6 +2326,7 @@ async function main(): Promise<void> {
         readerBAttemptId,
         readerB.objectKeys,
         readerB.input.outputAuthority.authorities as readonly AnyRecord[],
+        readerB.planManifest,
         32,
         createdIdentity.endpointIdHash,
         nonce,
