@@ -143,7 +143,7 @@ gates:
     current_candidate: "evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/combined-live-proposal.json"
     current_candidate_sha256: "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a"
     current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:d7b0648e0de3e7c80fb8f83300feafb8c03aac0d198e8dabd8a7b6b281b1dfd1"
+    current_candidate_acceptance_sha256: "sha256:58dea93e6f4ce8a1652bf484a22b16f637c166a20111f427b9a16f8ed825d2f1"
     current_candidate_control_source_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
@@ -161,14 +161,14 @@ gates:
     pending_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/combined-live-proposal.json"
     pending_proposal_sha256: "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a"
     pending_control_source_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
-    pending_authority: null
-    pending_authority_sha256: null
-    authority_mode: none_attempt29_consumed
-    pending_numeric_cap_usd: null
+    pending_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/approved-authority.json"
+    pending_authority_sha256: "sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131"
+    authority_mode: attempt30_bounded_mutation_authorized
+    pending_numeric_cap_usd: 4
     pending_flashboot: true
     pending_availability: HIGH
-    result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"
-    next_boundary: "approve exact Attempt30 proposal with fresh positive numeric cap; V2-08 forbidden"
+    result: "NOT_QUALIFIED_attempt30_authorized_preexecution"
+    next_boundary: "execute exact Attempt30 and reconcile; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:

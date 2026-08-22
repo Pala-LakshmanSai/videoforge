@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -9,7 +9,8 @@ const candidate = resolve(
 );
 const expected = Object.freeze({
   proposal: "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a",
-  acceptance: "sha256:d7b0648e0de3e7c80fb8f83300feafb8c03aac0d198e8dabd8a7b6b281b1dfd1",
+  acceptance: "sha256:58dea93e6f4ce8a1652bf484a22b16f637c166a20111f427b9a16f8ed825d2f1",
+  authority: "sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131",
   max1: "sha256:3ecd3f8f0d2ba49a7b1464bd3ff4a03f0866e371d9be0371db692fadc42a23f8",
   max2: "sha256:5c43f8c1499b8f8f3fbbed2cc7cf6b778e978bc61869cbdf79a680d26985e304",
   repair: "bf26c3a86ec6a48f619c39613d425da816eeae4d",
@@ -33,24 +34,40 @@ const paths = {
   acceptance: resolve(candidate, "acceptance.json"),
   max1: resolve(candidate, "staged-config-max1.json"),
   max2: resolve(candidate, "staged-config-max2.json"),
+  authority: resolve(candidate, "approved-authority.json"),
 };
-const [proposalBytes, acceptanceBytes, max1Bytes, max2Bytes] = await Promise.all(
+const [proposalBytes, acceptanceBytes, max1Bytes, max2Bytes, authorityBytes] = await Promise.all(
   Object.values(paths).map((path) => readFile(path)),
 );
 assert(sha256(proposalBytes) === expected.proposal, "PROPOSAL_HASH");
 assert(sha256(acceptanceBytes) === expected.acceptance, "ACCEPTANCE_HASH");
 assert(sha256(max1Bytes) === expected.max1, "MAX1_HASH");
 assert(sha256(max2Bytes) === expected.max2, "MAX2_HASH");
-try {
-  await access(resolve(candidate, "approved-authority.json"));
-  fail("UNEXPECTED_AUTHORITY_FILE");
-} catch (error) {
-  if (error instanceof Error && error.message.includes("V207_ATTEMPT30")) throw error;
-}
+assert(sha256(authorityBytes) === expected.authority, "AUTHORITY_HASH");
 const proposal = parse(proposalBytes, "PROPOSAL");
 const acceptance = parse(acceptanceBytes, "ACCEPTANCE");
 const max1 = parse(max1Bytes, "MAX1");
 const max2 = parse(max2Bytes, "MAX2");
+const authority = parse(authorityBytes, "AUTHORITY");
+assert(
+  authority.schema_version ===
+      "videoforge.v2-07-attempt30-finalize-replay-fast-path-authority/v1" &&
+    authority.attempt === 30 &&
+    authority.proposal?.sha256 === expected.proposal &&
+    authority.approval?.exact_proposal_approved === true &&
+    authority.approval?.flashboot_true_accepted === true &&
+    authority.approval?.minimum_approved_availability === "LOW" &&
+    authority.approval?.observed_availability_at_approval === "HIGH" &&
+    authority.approval?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval?.fresh_numeric_cap === true &&
+    authority.lineage?.control_source_commit === expected.repair &&
+    authority.lineage?.finalize_replay_fast_path_commit === expected.repair &&
+    authority.lineage?.initial_config_sha256 === expected.max1 &&
+    authority.lineage?.concurrent_reader_config_sha256 === expected.max2 &&
+    authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.status === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING",
+  "AUTHORITY",
+);
 assert(
   proposal.schema_version === "videoforge.v2-07-finalize-replay-fast-path-combined-live-proposal/v1" &&
     proposal.checkpoint === "V2-07" && proposal.task_id === "VF-10-07" && proposal.attempt === 30,
@@ -135,19 +152,19 @@ for (const [label, definition, workersMax, hash] of [
   );
 }
 assert(
-  acceptance.result === "PROVIDER_FREE_CANDIDATE_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP" &&
+  acceptance.result === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING" &&
     acceptance.candidate?.proposal_sha256 === expected.proposal &&
     acceptance.candidate?.max1_sha256 === expected.max1 &&
     acceptance.candidate?.max2_sha256 === expected.max2 &&
     acceptance.candidate?.control_source_commit === expected.repair &&
     acceptance.candidate?.finalize_replay_fast_path_commit === expected.repair &&
-    acceptance.candidate?.authority_path === null &&
-    acceptance.candidate?.authority_sha256 === null &&
-    acceptance.candidate?.authority_recorded === false &&
-    acceptance.candidate?.maximum_cumulative_finite_spend_usd === null &&
-    acceptance.candidate?.provider_calls_authorized === false &&
-    acceptance.candidate?.provider_mutations_authorized === false &&
-    acceptance.candidate?.gpu_use_authorized === false,
+    acceptance.candidate?.authority_path === "approved-authority.json" &&
+    acceptance.candidate?.authority_sha256 === expected.authority &&
+    acceptance.candidate?.authority_recorded === true &&
+    acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4 &&
+    acceptance.candidate?.provider_calls_authorized === true &&
+    acceptance.candidate?.provider_mutations_authorized === true &&
+    acceptance.candidate?.gpu_use_authorized === true,
   "ACCEPTANCE",
 );
 const [state, gates, task, start, activation, activationTest] = await Promise.all([
@@ -162,26 +179,28 @@ for (const [label, text] of Object.entries({ state, gates, task, start, activati
   assert(text.includes(expected.proposal) && text.includes(expected.repair), `${label.toUpperCase()}_POINTERS`);
 }
 assert(
-  state.includes("phase: serverless_v2_v2_07_attempt29_closed_finalize_replay_failure") &&
-    state.includes("task_stage: provider_free") &&
-    state.includes("provider_calls_authorized: false") &&
-    state.includes("maximum_external_spend_usd: 0"),
+  state.includes("phase: serverless_v2_v2_07_attempt30_finalize_replay_fast_path_authorized") &&
+    state.includes("task_stage: bounded_mutation") &&
+    state.includes("provider_calls_authorized: true") &&
+    state.includes("maximum_external_spend_usd: 4") &&
+    state.includes(expected.authority),
   "STATE_BOUNDARY",
 );
 assert(
-  gates.includes("authority_mode: none_attempt29_consumed") &&
-    gates.includes("pending_numeric_cap_usd: null") &&
-    gates.includes('result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"'),
+  gates.includes("authority_mode: attempt30_bounded_mutation_authorized") &&
+    gates.includes("pending_numeric_cap_usd: 4") &&
+    gates.includes(expected.authority) &&
+    gates.includes('result: "NOT_QUALIFIED_attempt30_authorized_preexecution"'),
   "GATE_BOUNDARY",
 );
 assert(
-  activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
-    activationTest.includes("V207_APPROVED_AUTHORITY_SHA256).toBeNull()") &&
-    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBeNull()") &&
+  activation.includes(expected.authority) &&
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
+    activationTest.includes(expected.authority) &&
+    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)") &&
     activationTest.includes("rejects the consumed Attempt29 proposal"),
   "ACTIVATION_BOUNDARY",
 );
 process.stdout.write(
-  `V2-07 Attempt30 provider-free proposal validation PASS (${expected.proposal}; max1 ${expected.max1}; max2 ${expected.max2}; acceptance ${expected.acceptance}; no authority/cap)\n`,
+  `V2-07 Attempt30 authorized proposal validation PASS (${expected.proposal}; max1 ${expected.max1}; max2 ${expected.max2}; acceptance ${expected.acceptance}; authority ${expected.authority}; cap $4)\n`,
 );
