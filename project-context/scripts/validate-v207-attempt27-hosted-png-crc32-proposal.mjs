@@ -11,7 +11,11 @@ import {
   isAttempt29CandidateState,
   isAttempt29AuthorizedGate,
   isAttempt29AuthorizedState,
+  isAttempt29ClosedGate,
+  isAttempt29ClosedState,
   ATTEMPT29_AUTHORITY,
+  ATTEMPT29_CLOSURE,
+  ATTEMPT29_CLEANUP,
 } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -620,6 +624,26 @@ if (candidateReady) {
         value.includes("RUNPOD_QUIESCENT_NOT_CONFIRMED") &&
         value.includes("consumed"),
       `${label}_attempt29_preserves_attempt28_closed_lineage`,
+    );
+  }
+} else if (isAttempt29ClosedState(state) && isAttempt29ClosedGate(gates) && isAttempt28Activation(activation)) {
+  assert(
+    state.includes(ATTEMPT29_CLOSURE) &&
+      state.includes(ATTEMPT29_CLEANUP) &&
+      state.includes(ATTEMPT29_AUTHORITY) &&
+      gates.includes(`latest_closed_authority_sha256: "${ATTEMPT29_AUTHORITY}"`) &&
+      gates.includes(`closure_evidence_sha256: "${ATTEMPT29_CLOSURE}"`) &&
+      gates.includes(`cleanup_evidence_sha256: "${ATTEMPT29_CLEANUP}"`) &&
+      gates.includes("authority_mode: none_attempt29_consumed") &&
+      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+    "attempt29_closed_lineage",
+  );
+  for (const [label, value] of [["task", task], ["start", start]]) {
+    assert(
+      value.includes(ATTEMPT29_CLOSURE) &&
+        value.includes("V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID") &&
+        value.includes("consumed"),
+      `${label}_attempt29_closed_lineage`,
     );
   }
 } else if (isAttempt28ClosedState(state) && isAttempt28ClosedGate(gates) && isAttempt28Activation(activation)) {

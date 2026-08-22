@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge.v2-07-failed-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 29,
+  "observed_at": "2026-08-22T03:41:40.883Z",
+  "result": {
+    "schema_version": "videoforge.v2-07-failed-cleanup/v1",
+    "endpoint_id_sha256": "sha256:dc2ea98238380b7031a0b68068ed28c79df01b37c3f86396ccc5d45b06ea3c0d",
+    "template_id_sha256": "sha256:172081692c5a1a71034499410644bade0c4eb016de20ad13840f7e88484a73da",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 1,
+    "terminal_pod_record_count": 1,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "raw_stdout_retained": false,
+    "limitation": "The live runner reported cleanup_drain_uncertain; this exact approved failure cleanup deleted only the disposable endpoint/template after two stable terminal snapshots. Three later read-only reconciliation reads are the authoritative final absence and billing proof."
+  }
+}

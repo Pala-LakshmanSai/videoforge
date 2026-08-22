@@ -12,7 +12,11 @@ import {
   isAttempt28State,
   isAttempt29AuthorizedGate,
   isAttempt29AuthorizedState,
+  isAttempt29ClosedState,
+  isAttempt29ClosedGate,
   ATTEMPT29_AUTHORITY,
+  ATTEMPT29_CLOSURE,
+  ATTEMPT29_CLEANUP,
   ATTEMPT29_AUTHORITY_PATH,
   isAttempt29CandidateState,
 } from "./v207-attempt28-compat.mjs";
@@ -368,6 +372,7 @@ if (isAttempt28State(state)) {
       topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized") ||
       topState.includes("phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready") ||
       topState.includes("phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_authorized") ||
+      topState.includes("phase: serverless_v2_v2_07_attempt29_closed_finalize_replay_failure") ||
       (isAttempt28ClosedState(state) && topState.includes("phase: serverless_v2_v2_07_attempt28_closed_quiescence_failure")),
     "state_top_phase_attempt28",
   );
@@ -428,6 +433,24 @@ if (isAttempt28AuthorizedState(state)) {
       "actual_spend_usd: 0",
     ],
     "provider_authority_attempt29",
+  );
+} else if (isAttempt29ClosedState(state)) {
+  includesAll(
+    providerAuthority,
+    [
+      "mode: none",
+      "cap_usd: 0",
+      "historical_cap_usd: 4",
+      "non_transferable: true",
+      "resources: []",
+      "authorized_operations: []",
+      "allowed_operations: []",
+      ATTEMPT29_AUTHORITY,
+      "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+      ATTEMPT29_CLOSURE,
+      ATTEMPT29_CLEANUP,
+    ],
+    "provider_authority_attempt29_closed",
   );
 } else if (isAttempt28ClosedState(state)) {
   includesAll(
@@ -503,6 +526,15 @@ if (isAttempt28State(state)) {
             "gpu_use_authorized: false",
             "execution_status: attempt29_provider_free_candidate_ready",
           ]
+        : isAttempt29ClosedState(state)
+        ? [
+            "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure",
+            "provider_calls_authorized: false",
+            "maximum_external_spend_usd: 0",
+            "remote_or_cloud_mutations_authorized: false",
+            "gpu_use_authorized: false",
+            "execution_status: attempt29_closed_provider_free_finalize_replay_repair_green",
+          ]
         : isAttempt28ClosedState(state)
         ? [
             "NOT_QUALIFIED_attempt28_closed_quiescence_failure",
@@ -545,6 +577,14 @@ includesAll(
         "authority_mode: none_attempt29_unapproved",
         "pending_numeric_cap_usd: null",
         'result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"',
+      ]
+    : isAttempt29ClosedState(state)
+    ? [
+        ATTEMPT29_CLOSURE,
+        ATTEMPT29_CLEANUP,
+        "authority_mode: none_attempt29_consumed",
+        "pending_numeric_cap_usd: null",
+        'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
       ]
     : isAttempt28ClosedState(state)
     ? [
@@ -603,6 +643,21 @@ if (isAttempt29AuthorizedGate(gates)) {
     ],
     "gate_attempt29_candidate",
   );
+} else if (isAttempt29ClosedGate(gates)) {
+  includesAll(
+    mageGate,
+    [
+      "status: open",
+      `latest_closed_proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"`,
+      `latest_closed_authority_sha256: "${ATTEMPT29_AUTHORITY}"`,
+      `closure_evidence_sha256: "${ATTEMPT29_CLOSURE}"`,
+      `cleanup_evidence_sha256: "${ATTEMPT29_CLEANUP}"`,
+      "authority_mode: none_attempt29_consumed",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
+    ],
+    "gate_attempt29_closed",
+  );
 } else if (isAttempt28ClosedGate(gates)) {
   includesAll(
     mageGate,
@@ -645,6 +700,14 @@ includesAll(
         "V2-07 remains `NOT_QUALIFIED`",
         "V2-08 remains forbidden",
       ]
+    : isAttempt29ClosedState(state)
+    ? [
+        ATTEMPT29_CLOSURE,
+        "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID",
+        "consumed and non-reusable",
+        "V2-07 remains `NOT_QUALIFIED`",
+        "V2-08 remains forbidden",
+      ]
     : isAttempt28ClosedState(state)
     ? [
         "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
@@ -663,6 +726,14 @@ includesAll(
         "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
         ATTEMPT29_AUTHORITY,
         "exact pre-execution authority recorded and awaits bounded live qualification",
+        "V2-07 remains NOT_QUALIFIED",
+        "V2-08",
+      ]
+    : isAttempt29ClosedState(state)
+    ? [
+        ATTEMPT29_CLOSURE,
+        "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID",
+        "consumed and non-reusable",
         "V2-07 remains NOT_QUALIFIED",
         "V2-08",
       ]

@@ -1,7 +1,21 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt28;
-Attempt29 has exact pre-execution authority recorded and awaits bounded live qualification.
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt29;
+the consumed Attempt29 authority/cap cannot be reused, and no provider mutation, GPU use, or spend is currently authorized.
+Attempt29 accepted an owned probe and cold complete batch with 64 total private durable outputs/readbacks
+and v3 receipts, and exact duplicate delivery caused no second dispatch or duplicate compute. Its warm
+provider job also completed, but mandatory FINALIZE replay failed at
+`V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID`, so warm acceptance, cancel/timeout, two-reader proof, and
+successful final drain remain open. Closure `failed-attempt-29.json` is
+`sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678`; exact cleanup is
+`sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24`. Three later settled reads prove
+zero disposable resources, both intended sealed 50 GB EU-RO-1 volumes retained, and exact Attempt29
+increment `$0.15470044442918152` within cap. Provider-free repair
+`bf26c3a86ec6a48f619c39613d425da816eeae4d` passes realistic 1280×720 immediate FINALIZE replay,
+web typecheck, and lint. A fresh exact Attempt30 proposal and fresh positive numeric cap are required
+before any live retry; V2-08 remains forbidden.
+
+Historical Attempt28/Attempt29 pre-execution narrative follows for lineage.
 Attempt28 completed one owned probe and one cold 32-image batch, each with 32 private durable
 outputs/readbacks and 32 provenance receipts. Duplicate delivery was detected, and the repair stopped
 fail-closed at `RUNPOD_QUIESCENT_NOT_CONFIRMED` in `cold-terminal`; no unplanned duplicate provider

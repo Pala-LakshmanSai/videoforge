@@ -15,6 +15,10 @@ import {
   isAttempt28ClosedState,
   isAttempt29CandidateGate,
   isAttempt29CandidateState,
+  isAttempt29ClosedGate,
+  isAttempt29ClosedState,
+  ATTEMPT29_CLOSURE,
+  ATTEMPT29_CLEANUP,
 } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -161,9 +165,11 @@ const [state, gates, task, start, activation, activationTest] = await Promise.al
 const attempt29AuthorizedSuccessor = isAttempt29AuthorizedState(state) && isAttempt29AuthorizedGate(gates);
 const attempt29Successor =
   (isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates)) || attempt29AuthorizedSuccessor;
-const closed = isAttempt28ClosedState(state) && isAttempt28ClosedGate(gates) && !attempt29Successor;
+const attempt29ClosedSuccessor = isAttempt29ClosedState(state) && isAttempt29ClosedGate(gates);
+const attempt29AnySuccessor = attempt29Successor || attempt29ClosedSuccessor;
+const closed = isAttempt28ClosedState(state) && isAttempt28ClosedGate(gates) && !attempt29AnySuccessor;
 for (const [name, text] of Object.entries({ state, gates, task, start, activation, activationTest })) {
-  const successorActivation = attempt29Successor && (name === "activation" || name === "activationTest");
+  const successorActivation = attempt29AnySuccessor && (name === "activation" || name === "activationTest");
   assert(
     (successorActivation ? hasAll(text, [ATTEMPT29_PROPOSAL, ATTEMPT29_CONTROL]) : hasAll(text, [expected.authority])) &&
       (name === "start" || successorActivation || hasAll(text, [expected.proposal])) &&
@@ -171,7 +177,32 @@ for (const [name, text] of Object.entries({ state, gates, task, start, activatio
     `${name.toUpperCase()}_POINTERS`,
   );
 }
-if (closed) {
+if (attempt29ClosedSuccessor) {
+  assert(
+    hasAll(state, [
+      ATTEMPT29_PROPOSAL,
+      ATTEMPT29_CONTROL,
+      ATTEMPT29_CLOSURE,
+      ATTEMPT29_CLEANUP,
+      "phase: serverless_v2_v2_07_attempt29_closed_finalize_replay_failure",
+      "task_stage: provider_free",
+      "provider_calls_authorized: false",
+      "maximum_external_spend_usd: 0",
+    ]),
+    "STATE_ATTEMPT29_CLOSED_SUCCESSOR_BOUNDARY",
+  );
+  assert(
+    hasAll(gates, [
+      ATTEMPT29_CLOSURE,
+      ATTEMPT29_CLEANUP,
+      "authority_mode: none_attempt29_consumed",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
+    ]),
+    "GATE_ATTEMPT29_CLOSED_SUCCESSOR_BOUNDARY",
+  );
+  assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_ATTEMPT29_CLOSED");
+} else if (closed) {
   assert(
     hasAll(state, [
       expected.max1,

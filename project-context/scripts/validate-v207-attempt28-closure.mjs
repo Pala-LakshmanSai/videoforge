@@ -6,8 +6,12 @@ import {
   isAttempt29CandidateState,
   isAttempt29AuthorizedGate,
   isAttempt29AuthorizedState,
+  isAttempt29ClosedGate,
+  isAttempt29ClosedState,
   ATTEMPT29_AUTHORITY,
   ATTEMPT29_AUTHORITY_PATH,
+  ATTEMPT29_CLOSURE,
+  ATTEMPT29_CLEANUP,
 } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -301,6 +305,38 @@ if (isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates)) {
       'result: "NOT_QUALIFIED_attempt29_authorized_preexecution"',
     ],
     "GATES_ATTEMPT29_AUTHORIZED_SUCCESSOR",
+  );
+} else if (isAttempt29ClosedState(state) && isAttempt29ClosedGate(gates)) {
+  includesAll(
+    state,
+    [
+      expected.closure,
+      expected.cleanup,
+      ATTEMPT29_CLOSURE,
+      ATTEMPT29_CLEANUP,
+      "phase: serverless_v2_v2_07_attempt29_closed_finalize_replay_failure",
+      "task_stage: provider_free",
+      "provider_calls_authorized: false",
+      "remote_or_cloud_mutations_authorized: false",
+      "gpu_use_authorized: false",
+      "maximum_external_spend_usd: 0",
+      "current_authority: null",
+      "current_authority_sha256: null",
+      "mutation_authorized: false",
+      "spend_authorized_usd: 0",
+    ],
+    "STATE_ATTEMPT29_CLOSED_SUCCESSOR",
+  );
+  includesAll(
+    gates,
+    [
+      ATTEMPT29_CLOSURE,
+      ATTEMPT29_CLEANUP,
+      "authority_mode: none_attempt29_consumed",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
+    ],
+    "GATES_ATTEMPT29_CLOSED_SUCCESSOR",
   );
 } else {
   includesAll(state, [

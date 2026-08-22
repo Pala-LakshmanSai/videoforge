@@ -16,6 +16,8 @@ const expected = Object.freeze({
   control: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b",
   closure: "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
   cleanup: "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049",
+  attempt29Closure: "sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678",
+  attempt29Cleanup: "sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24",
   priorProposal: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf",
   priorAuthority: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326",
   image:
@@ -232,13 +234,34 @@ const [state, gates, task, start, activation, activationTest] = await Promise.al
   readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.test.ts"), "utf8"),
 ]);
 for (const [label, text] of Object.entries({ state, gates, task, start, activation, activationTest })) {
+  const pointers =
+    label === "activation" || label === "activationTest"
+      ? [expected.proposal, expected.control]
+      : [expected.proposal, expected.control, expected.authority];
   assert(
-    hasAll(text, [expected.proposal, expected.control, expected.authority]),
+    hasAll(text, pointers),
     `${label.toUpperCase()}_POINTERS`,
   );
 }
-assert(
+const closed =
   hasAll(state, [
+    expected.attempt29Closure,
+    expected.attempt29Cleanup,
+    "phase: serverless_v2_v2_07_attempt29_closed_finalize_replay_failure",
+    "task_stage: provider_free",
+    "provider_calls_authorized: false",
+    "maximum_external_spend_usd: 0",
+  ]) &&
+  hasAll(gates, [
+    expected.attempt29Closure,
+    expected.attempt29Cleanup,
+    "authority_mode: none_attempt29_consumed",
+    "pending_numeric_cap_usd: null",
+    'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
+  ]);
+assert(
+  closed ||
+    hasAll(state, [
     expected.acceptance,
     expected.max1,
     expected.max2,
@@ -248,26 +271,32 @@ assert(
     "maximum_external_spend_usd: 4",
     "authority_recorded: true",
     expected.authority,
-  ]),
+    ]),
   "STATE_BOUNDARY",
 );
 assert(
-  hasAll(gates, [
+  closed ||
+    hasAll(gates, [
     expected.acceptance,
     "authority_mode: attempt29_bounded_mutation_authorized",
     "pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json\"",
     `pending_authority_sha256: "${expected.authority}"`,
     "pending_numeric_cap_usd: 4",
     'result: "NOT_QUALIFIED_attempt29_authorized_preexecution"',
-  ]),
+    ]),
   "GATE_BOUNDARY",
 );
 assert(
-  activation.includes(`V207_APPROVED_AUTHORITY_SHA256: string | null =\n  "${expected.authority}"`) &&
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
-    activationTest.includes(`V207_APPROVED_AUTHORITY_SHA256).toBe(\n      "${expected.authority}"`) &&
-    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)") &&
-    activationTest.includes("accepts only the exact Attempt29 candidate"),
+  (closed &&
+    activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
+    activationTest.includes("V207_APPROVED_AUTHORITY_SHA256).toBeNull()") &&
+    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBeNull()") &&
+    activationTest.includes("rejects the consumed Attempt29 candidate")) ||
+    (activation.includes(`V207_APPROVED_AUTHORITY_SHA256: string | null =\n  "${expected.authority}"`) &&
+      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
+      activationTest.includes(`V207_APPROVED_AUTHORITY_SHA256).toBe(\n      "${expected.authority}"`) &&
+      activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)")),
   "ACTIVATION_BOUNDARY",
 );
 assert(!state.includes("TODO_ATTEMPT29") && !gates.includes("TODO_ATTEMPT29"), "NO_TODO");

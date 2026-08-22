@@ -1,32 +1,32 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-22T03:01:26Z"
+updated_at: "2026-08-22T05:48:43Z"
 
-phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_authorized
+phase: serverless_v2_v2_07_attempt29_closed_finalize_replay_failure
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt29_bounded_mutation_authorized
+current_wave: v2_07_attempt29_closed_provider_free_repair
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: provider_free
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 4
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
+gpu_use_authorized: false
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt29_terminal_replay_queue_proof_bounded_mutation_authorized
+  mode: v2_07_attempt29_closed_finalize_replay_repair_provider_free
   live_provider_calls: false
-  remote_mutation: true
+  remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
-  runpod_mutation_or_gpu: true
-  v2_07_action: execute_only_the_exact_attempt29_terminal_replay_queue_proof_proposal_after_authority_commit_then_reconcile_and_stop_before_v2_08
-  note: "Attempt28 authority sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326 is consumed and non-reusable. Closure sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb records two completed 32-image private batches with durable readbacks/receipts, exact terminal request-key replay with no second provider POST, fail-closed RUNPOD_QUIESCENT_NOT_CONFIRMED at cold-terminal, exact endpoint/template cleanup, route restoration, zero disposable resources, both volumes retained, and settled USD 0 increment. Attempt29 authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572 binds exact proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6, FlashBoot=true LOW EU-RO-1, and fresh $4 cap. Provider execution is pending; V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
+  runpod_mutation_or_gpu: false
+  v2_07_action: retain_attempt29_closure_and_provider_free_finalize_replay_repair_then_prepare_fresh_exact_attempt30_proposal_and_cap_boundary
+  note: "Attempt29 proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6 and authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572 are consumed and non-reusable. Closure sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678 records two accepted 32-image private batches, an exact same-job duplicate replay with no duplicate compute, and a warm provider job that completed but failed mandatory output-finalization replay at V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID. Exact cleanup and three later reads prove zero disposable resources, both 50 GB EU-RO-1 volumes retained, and settled Attempt29 endpoint spend USD 0.15470044442918152 within the USD 4 cap. Provider-free repair bf26c3a86ec6a48f619c39613d425da816eeae4d passes realistic immediate replay, lint, and typecheck. V2-07 remains NOT_QUALIFIED; fresh exact proposal and positive numeric cap are required before any retry; V2-08 remains forbidden."
 
 pending_v2_07_attempt25_proposal:
   mode: closed_consumed_attempt25_output_finalization_failure
@@ -142,7 +142,7 @@ pending_v2_07_attempt28_proposal:
   next_boundary: fresh_exact_proposal_and_fresh_positive_numeric_cap_required_before_any_retry
 
 pending_v2_07_attempt29_proposal:
-  mode: bounded_mutation_attempt29_terminal_replay_queue_proof_authorized
+  mode: closed_consumed_attempt29_output_finalization_replay_failure
   proposal_path: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
   control_source_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
@@ -160,26 +160,32 @@ pending_v2_07_attempt29_proposal:
   observed_availability: LOW
   minimum_requested_availability: LOW
   region: EU-RO-1
-  maximum_cumulative_finite_spend_usd: 4
+  maximum_cumulative_finite_spend_usd: null
   estimated_finite_serverless_compute_usd_ceiling: 2.2
-  fresh_numeric_cap_required: false
-  authority_recorded: true
+  fresh_numeric_cap_required: true
+  authority_recorded: false
   authority_path: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json
   authority_sha256: "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572"
-  provider_calls_authorized: true
-  provider_mutations_authorized: true
-  gpu_use_authorized: true
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
   image_republication_authorized: false
   model_download_or_volume_mutation_authorized: false
   v2_08_authorized: false
-  current_read_only_truth_checked_at: "2026-08-21T19:29:07.445Z"
+  current_read_only_truth_checked_at: "2026-08-22T05:48:43.203Z"
   current_rtx4090_availability_checked_at: "2026-08-21T19:39:00.000Z"
   current_rtx4090_availability: LOW
-  cumulative_endpoint_spend_usd: 0.3379560004686937
+  cumulative_endpoint_spend_usd: 0.5883426677901298
   candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/acceptance.json
   candidate_acceptance_sha256: "sha256:1b2a52f34de0f5122522de50c0fbd213aea3bb77f11cf0d5e0c12506edd8906e"
-  result: NOT_QUALIFIED_attempt29_authorized_preexecution
-  next_boundary: execute_only_exact_attempt29_after_authority_context_commit_then_reconcile_and_stop_before_v2_08
+  failed_attempt_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-29.json
+  failed_attempt_evidence_sha256: "sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678"
+  cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt29-cleanup-observation.json
+  cleanup_evidence_sha256: "sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24"
+  provider_free_finalize_replay_repair_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
+  settled_incremental_spend_usd: 0.15470044442918152
+  result: NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure
+  next_boundary: fresh_exact_attempt30_proposal_and_fresh_positive_numeric_cap_required_before_any_retry
 
 pending_v2_07_attempt24_proposal:
   mode: closed_consumed_attempt24_quiescence_failure
@@ -266,9 +272,9 @@ pending_v2_07_attempt21_proposal:
   diagnostic_mismatch_categories: [identity, environment, flashboot, region, cuda, volume, gpu, workers, timing, scaler]
 
 provider_authority: &v2_07_provider_authority
-  mode: paid
-  provider: runpod+cloudflare_r2
-  cap_usd: 4
+  mode: none
+  provider: null
+  cap_usd: 0
   historical_cap_usd: 4
   recurring_r2_ceiling_usd_per_month: 0
   non_transferable: true
@@ -277,32 +283,13 @@ provider_authority: &v2_07_provider_authority
   authority_evidence: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json
   authority_sha256: "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572"
   proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
+  closed_at: "2026-08-22T05:48:43.203Z"
+  closure_sha256: "sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678"
+  cleanup_sha256: "sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24"
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  resources:
-    - github_ghcr_videoforge_mage_v2_07_immutable_digest_readback_only
-    - runpod_sujal_account_sha256_ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c
-    - runpod_eu_ro_1_exact_mage_serverless_endpoint_and_private_template
-    - runpod_volume_sha256_eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619_50gb_mage_only_read_only
-    - cloudflare_videoforge_v2_06_staging_private_r2_exact_scoped_ports
-  authorized_operations: &v2_07_attempt29_authorized_operations
-    - read_only_refresh_of_sujal_account_eu_ro_1_inventory_resource_identity_quota_low_or_better_availability_and_current_rates
-    - verify_existing_exact_immutable_image_digest_config_layer_source_and_registry_readback_without_republication
-    - capture_exact_cloudflare_worker_version_and_generated_output_route_fingerprint
-    - deploy_current_source_with_signer_disabled_activate_ephemeral_nonce_secret_and_require_scoped_route_403
-    - create_exact_private_template_for_the_published_digest
-    - create_initial_flashboot_true_max_one_endpoint_in_eu_ro_1_on_exact_mage_volume
-    - submit_one_owned_diagnostic_sample_then_one_complete_32_image_batch_cold
-    - status_reconcile_until_terminal_and_verify_private_durable_outputs_before_provider_expiry
-    - submit_one_complete_32_image_batch_warm_and_reconcile_outputs
-    - exercise_scoped_duplicate_delivery_cancellation_and_timeout_contracts_with_health_first_terminal_reconciliation
-    - apply_separately_hashed_flashboot_true_max_two_reader_configuration
-    - submit_two_simultaneous_read_only_complete_batches
-    - restore_flashboot_true_workers_max_one_and_wait_for_independent_workers_zero_with_health_first_quiescence
-    - delete_ephemeral_signer_secret_rollback_exact_worker_version_and_require_16_exact_route_fingerprints_over_30_seconds_within_120_seconds
-    - retain_endpoint_private_template_mage_volume_and_soulx_volume_on_success
-    - cancel_only_owned_jobs_and_delete_only_disposable_endpoint_and_private_template_if_failed
-    - retain_both_existing_volumes_in_all_outcomes
-  allowed_operations: *v2_07_attempt29_authorized_operations
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
   legacy_historical_resources:
     - github_ghcr_videoforge_mage_v2_07_immutable_digest_readback_only
     - runpod_sujal_account_sha256_ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c
@@ -446,10 +433,10 @@ provider_authority: &v2_07_provider_authority
       billing_unit: gb_month
       usd_per_unit: 0.07
       checked_at: "2026-08-21"
-  consumed: false
-  actual_spend_usd: 0
-  closure_evidence: null
-  closure_evidence_sha256: null
+  consumed: true
+  actual_spend_usd: 0.15470044442918152
+  closure_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-29.json
+  closure_evidence_sha256: "sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678"
 
 historical_v2_07_attempt22_authority:
   mode: paid
@@ -945,11 +932,11 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json
-  current_authority_sha256: "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572"
-  mutation_authorized: true
-  gpu_use_authorized: true
-  spend_authorized_usd: 4
+  current_authority: null
+  current_authority_sha256: null
+  mutation_authorized: false
+  gpu_use_authorized: false
+  spend_authorized_usd: 0
 
 repository:
   initialized: true
@@ -962,8 +949,8 @@ repository:
   current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt28 proposal sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf and authority sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326 are consumed and non-reusable. Closure sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb records two completed 32-image private batches with durable readbacks/receipts, exact terminal replay without a second provider POST, and fail-closed RUNPOD_QUIESCENT_NOT_CONFIRMED at cold-terminal. Exact cleanup deleted the disposable endpoint/template, restored the route, proved zero compute/resources, retained both volumes, and settled USD 0 increment. Attempt29 proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6 is approved under authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572 with FlashBoot=true, LOW EU-RO-1, and fresh $4 cap; execution remains pending exact authority commit. V2-07 remains NOT_QUALIFIED; V2-08 remains forbidden."
-  v2_07_latest_local_repair: "Terminal replay queue proof 7ba8e9181fe210858c23a3ba7c5c9aca768ac24b preserves exact same-job replay with no second /run and requires no owned jobs plus bounded queue-empty reads bracketing two stable terminal inventory snapshots after RUNPOD_WARM_IDLE_NOT_CONFIRMED; active, malformed, mismatched, nonterminal, or unstable state fails closed. Any retry requires a fresh exact proposal and positive numeric cap."
+  current_source_head_note: "Attempt29 is closed by sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678 after two accepted 32-image batches and a warm provider completion that failed mandatory output-finalization replay. Exact cleanup and later settled reconciliation prove zero disposable compute/resources, both intended volumes retained, and USD 0.15470044442918152 incremental endpoint spend. Attempt29 proposal/authority/cap are consumed and non-reusable. V2-07 remains NOT_QUALIFIED; V2-08 remains forbidden."
+  v2_07_latest_local_repair: "Commit bf26c3a86ec6a48f619c39613d425da816eeae4d validates existing receipt identity and authenticated object metadata/content-length/checksum before returning idempotent FINALIZE replay, without repeating the expensive PNG probe; first finalization retains the full PNG probe. Realistic 1280x720 replay, lint, and typecheck pass. Any retry requires a fresh exact proposal and positive numeric cap."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -978,10 +965,10 @@ live_development:
   chrome_route: null
   fixture_scenario: v2_00_roadmap_reset_audit
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: sandbox
-  provider_calls_authorized: true
-  authorized_spend_usd: 4
-  provider_authority_scope: "Attempt28 authority sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326 is consumed and closed by sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb. Attempt29 proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6 is approved under authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572 with FlashBoot=true, LOW EU-RO-1, and fresh $4 cap. Provider execution remains pending exact authority/context commit; V2-08 remains forbidden."
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: "Attempt29 proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6 and authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572 are consumed and closed by sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678. No live provider authority or cap remains; V2-08 remains forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -1050,7 +1037,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: NOT_QUALIFIED_attempt29_authorized_preexecution
+  V2-07: NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
@@ -1097,7 +1084,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt29_terminal_replay_queue_proof_candidate_provider_free
+    status: attempt29_closed_output_finalization_replay_failure_repaired_provider_free
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
     immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_PASS
@@ -1108,12 +1095,12 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
-    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/acceptance.json
-    v2_07_evidence_sha256: "sha256:1b2a52f34de0f5122522de50c0fbd213aea3bb77f11cf0d5e0c12506edd8906e"
+    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-29.json
+    v2_07_evidence_sha256: "sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678"
     v2_07_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json
     v2_07_proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
-    v2_07_cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt28-cleanup-observation.json
-    v2_07_cleanup_evidence_sha256: "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049"
+    v2_07_cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt29-cleanup-observation.json
+    v2_07_cleanup_evidence_sha256: "sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24"
     v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json
     v2_07_current_candidate_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
     v2_07_current_candidate_control_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
@@ -1125,15 +1112,16 @@ model_runtime_evidence:
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
     v2_07_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json
     v2_07_authority_sha256: "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572"
-    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json
-    v2_07_latest_closed_authority_sha256: "sha256:3bf923fb59df2ab0a0ff648ad8773ed549b2296aba66e82db9635c9fa7b66b10"
+    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json
+    v2_07_latest_closed_authority_sha256: "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572"
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
-    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-28.json
+    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-29.json
     v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/acceptance.json
     v2_07_current_candidate_acceptance_sha256: "sha256:1b2a52f34de0f5122522de50c0fbd213aea3bb77f11cf0d5e0c12506edd8906e"
-    v2_07_observed_cumulative_endpoint_spend_usd: 0.3379560004686937
+    v2_07_observed_cumulative_endpoint_spend_usd: 0.5883426677901298
+    v2_07_attempt_29_increment_usd_settled: 0.15470044442918152
     v2_07_attempt_28_increment_usd_settled: 0
     v2_07_attempt_27_increment_usd_settled: 0
     v2_07_attempt_26_increment_usd_settled: 0
@@ -1200,10 +1188,10 @@ last_known_provider_resource_truth:
   full_day_network_storage_charge_usd: 0.233
   current_day_cloud_gpu_usd: 0
   current_day_cloud_cpu_usd: 0
-  current_day_serverless_usd: 0.3379560004686937
+  current_day_serverless_usd: 0.5883426677901298
   auto_pay: DISABLED
-  cumulative_endpoint_spend_usd: 0.3379560004686937
-  note: "Attempt28 completed one owned probe and one cold 32-image batch, each with 32 private durable outputs/readbacks and 32 provenance receipts, then detected exact terminal request-key replay and failed closed at RUNPOD_QUIESCENT_NOT_CONFIRMED in cold-terminal. Exact cleanup deleted only the disposable endpoint/template after two stable terminal snapshots; independent reconciliation at 2026-08-21T19:29:07.445Z proves zero Pods/endpoints/templates/workers/running Pods, both intended 50 GB EU-RO-1 volumes retained, cumulative endpoint billing unchanged at USD 0.3379560004686937, and USD 0 settled Attempt28 increment. Worker rollback, signer deletion, and stable 404 V207_ROUTE_DISABLED are confirmed. Attempt29 candidate sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6 binds terminal replay queue proof commit 7ba8e9181fe210858c23a3ba7c5c9aca768ac24b and remains provider-free pending fresh authority and cap. V2-07 remains NOT_QUALIFIED; V2-08 remains forbidden."
+  cumulative_endpoint_spend_usd: 0.5883426677901298
+  note: "Attempt29 accepted an owned probe and cold 32-image batch with 64 total durable readbacks and receipts; exact duplicate delivery returned the same job with no second dispatch or duplicate compute. The warm provider job completed but mandatory FINALIZE replay failed at V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID. Exact cleanup and three settled reads at 2026-08-22T05:48:43.203Z prove zero Pods/endpoints/templates/workers/running Pods, both intended 50 GB EU-RO-1 volumes retained, baseline endpoint spend USD 0.43364222336094826, final USD 0.5883426677901298, and settled Attempt29 increment USD 0.15470044442918152. Attempt29 authority/cap are consumed; V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -1224,37 +1212,37 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt29_authorized_preexecution
+  status: NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: attempt29_bounded_mutation_authorized
-  task_stage: bounded_mutation
-  current_goal_authority: attempt29_bounded_mutation_authorized
+  authorization_status: no_live_authority_attempt29_consumed
+  task_stage: provider_free
+  current_goal_authority: none_attempt29_consumed_fresh_authority_required
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Execute and reconcile only the exact approved Attempt29 terminal replay queue-proof proposal, then stop before V2-08; V2-07 remains NOT_QUALIFIED until all live acceptance gates pass."
-  provider_calls_authorized: true
+  goal: "Retain exact Attempt29 closure, validate the provider-free FINALIZE replay repair, prepare one fresh exact Attempt30 proposal, and require a fresh positive numeric cap before any live retry; stop before V2-08."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 4
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
   credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt28 proposal sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf and authority sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326 are consumed and non-reusable. Closure sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb records exact terminal replay, RUNPOD_QUIESCENT_NOT_CONFIRMED, exact cleanup, route restoration, zero disposable resources, both volumes retained, and settled USD 0 increment. Attempt29 proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6 is approved under authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572 with FlashBoot=true, LOW EU-RO-1, and fresh $4 cap. Provider execution remains pending exact authority/context commit; V2-08 remains forbidden."
+  authority_note: "Attempt29 proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6 and authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572 are consumed and closed by sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678. Closure proves exact cleanup, zero disposable resources, both volumes retained, and settled USD 0.15470044442918152 increment. No live authority/cap remains; any retry requires a fresh exact proposal and positive numeric cap; V2-08 remains forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt29_approved_preexecution_pending
-  execution_blocker: authority_context_commit_and_final_preflight_before_exact_provider_execution
+  execution_status: attempt29_closed_provider_free_finalize_replay_repair_green
+  execution_blocker: fresh_exact_attempt30_proposal_approval_and_fresh_positive_numeric_cap_required_before_any_live_retry
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt29_authorized_preexecution_not_qualified
+  state: v2_06_complete_green_independently_audited_v2_07_attempt29_closed_finalize_replay_failure_repaired_provider_free_not_qualified
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -1267,25 +1255,25 @@ verification:
     findings_reconciled_in_repository: true
     fresh_independent_reaudit_required: false
   latest_live_check:
-    recorded_at_utc: "2026-08-21T19:39:00.000Z"
-    evidence: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/acceptance.json
-    evidence_sha256: "sha256:1b2a52f34de0f5122522de50c0fbd213aea3bb77f11cf0d5e0c12506edd8906e"
+    recorded_at_utc: "2026-08-22T05:48:43.203Z"
+    evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-29.json
+    evidence_sha256: "sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678"
     proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json
     proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
-    cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt28-cleanup-observation.json
-    cleanup_evidence_sha256: "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049"
-    authority_mode: attempt29_bounded_mutation_authorized
-    pending_numeric_cap_usd: 4
+    cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt29-cleanup-observation.json
+    cleanup_evidence_sha256: "sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24"
+    authority_mode: none_attempt29_consumed
+    pending_numeric_cap_usd: null
     authority_path: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json
     authority_sha256: "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572"
-    result: "NOT_QUALIFIED_attempt29_authorized_preexecution"
-    stop_reason: RUNPOD_QUIESCENT_NOT_CONFIRMED
+    result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"
+    stop_reason: V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID
     accepted_complete_probe_outputs: 32
     accepted_complete_cold_batch_outputs: 32
     duplicate_delivery_detected: true
     provider_disposable_resources_absent: true
     retained_volume_count: 2
-    settled_incremental_spend_usd: 0
+    settled_incremental_spend_usd: 0.15470044442918152
   latest_source_verification:
     recorded_at_utc: "2026-08-19T14:31:22Z"
     evidence: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/final-live-closure-e673527.json
@@ -1701,6 +1689,11 @@ verification:
       r2_inventory_sha256_after_cleanup: "sha256:7d67e4f45d3b58d24fbae1dd4718d4c88a0621bd3b5e2dc976f019d923ee559b"
 
 audit_evidence:
+  v2_07_attempt29_closure: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-29.json
+  v2_07_attempt29_closure_sha256: "sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678"
+  v2_07_attempt29_cleanup_observation: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt29-cleanup-observation.json
+  v2_07_attempt29_cleanup_observation_sha256: "sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24"
+  v2_07_attempt29_finalize_replay_repair_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
   v2_07_attempt29_candidate: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json
   v2_07_attempt29_candidate_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
   v2_07_attempt29_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/acceptance.json
@@ -1713,12 +1706,12 @@ audit_evidence:
   v2_07_attempt28_control_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
   v2_07_attempt28_candidate_max1_sha256: "sha256:acef5c48b6059fa2401b88bb40ed81e648c9ed795e5fcb3208e117d936f4196d"
   v2_07_attempt28_candidate_max2_sha256: "sha256:45d067e5d7e1b152d25c62eb7e185898bbedd30797d5d9aacc83bb9a48e41836"
-  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"
+  v2_07_current_proposal: null
+  v2_07_current_proposal_sha256: null
   v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/acceptance.json
   v2_07_current_candidate_acceptance_sha256: "sha256:1b2a52f34de0f5122522de50c0fbd213aea3bb77f11cf0d5e0c12506edd8906e"
-  v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json
-  v2_07_current_approved_authority_sha256: "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572"
+  v2_07_current_approved_authority: null
+  v2_07_current_approved_authority_sha256: null
   v2_07_attempt28_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json
   v2_07_attempt28_closed_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"
   v2_07_attempt28_closure: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-28.json
@@ -1832,6 +1825,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt29_terminal_replay_queue_proof_bounded_mutation_authorized
+  current_goal_scope: v2_07_attempt29_closed_finalize_replay_repair_provider_free
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_attempt29_authorized_preexecution
+  v2_07_status: NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure

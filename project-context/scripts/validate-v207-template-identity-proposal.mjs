@@ -9,6 +9,7 @@ import {
   isAttempt29CandidateState,
   isAttempt29AuthorizedState,
   isAttempt29AuthorizedGate,
+  isAttempt29ClosedState,
 } from "./v207-attempt28-compat.mjs";
 import { fileURLToPath } from "node:url";
 
@@ -374,6 +375,10 @@ assert(
     (isAttempt29CandidateState(currentState) &&
       currentState.includes(
         "v2_07_action: retain_attempt28_failure_evidence_and_prepare_attempt29_terminal_replay_queue_proof_then_require_fresh_proposal_and_cap",
+      )) ||
+    (isAttempt29ClosedState(currentState) &&
+      currentState.includes(
+        "v2_07_action: retain_attempt29_closure_and_provider_free_finalize_replay_repair_then_prepare_fresh_exact_attempt30_proposal_and_cap_boundary",
       )),
   "state_action",
 );
@@ -414,7 +419,9 @@ assert(
     (isAttempt29CandidateState(currentState) &&
       recommendedTask.includes("Validate and hand off the Attempt29 terminal replay queue-proof candidate")) ||
     (isAttempt29AuthorizedState(currentState) &&
-      recommendedTask.includes("Execute and reconcile only the exact approved Attempt29 terminal replay queue-proof proposal")),
+      recommendedTask.includes("Execute and reconcile only the exact approved Attempt29 terminal replay queue-proof proposal")) ||
+    (isAttempt29ClosedState(currentState) &&
+      recommendedTask.includes("Retain exact Attempt29 closure")),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation") || recommendedTask.includes("task_stage: provider_free"), "state_recommended_stage");
@@ -437,7 +444,8 @@ assert(
     recommendedTask.includes("current_goal_authority: exact_attempt28_authority_recorded") ||
     recommendedTask.includes("current_goal_authority: none_attempt28_closed_fresh_authority_required") ||
     recommendedTask.includes("current_goal_authority: none_attempt29_candidate_fresh_authority_required") ||
-    recommendedTask.includes("current_goal_authority: attempt29_bounded_mutation_authorized"),
+    recommendedTask.includes("current_goal_authority: attempt29_bounded_mutation_authorized") ||
+    recommendedTask.includes("current_goal_authority: none_attempt29_consumed_fresh_authority_required"),
   "state_recommended_authority",
 );
 assert(
