@@ -3,6 +3,7 @@ import base64
 import hashlib
 import sys
 import tempfile
+import time
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
@@ -92,6 +93,36 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             "expires_at": expires_at,
             "max_uses": 1,
             "capability_handle": "b" * 64,
+        }
+
+    @staticmethod
+    def _resume_unit(
+        *,
+        item_id: str = "scene-accepted",
+        source_attempt_id: str = "attempt-prior",
+        body: bytes = b"accepted-output",
+    ) -> dict[str, object]:
+        object_key = (
+            "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/"
+            f"lane/mage-image/job/{source_attempt_id}/artifact/{item_id}"
+        )
+        port = MageServerlessBoundaryTest._port(method="GET", attempt_id=source_attempt_id)
+        port.update(
+            {
+                "reservation_id": f"reservation-readback-{item_id}",
+                "path": f"/{object_key}",
+                "content_length": len(body),
+                "checksum_sha256": "sha256:" + hashlib.sha256(body).hexdigest(),
+                "max_uses": 1,
+            }
+        )
+        return {
+            "item_id": item_id,
+            "output_object_key": object_key,
+            "output_sha256": port["checksum_sha256"],
+            "output_bytes": len(body),
+            "readback_port": port,
+            "readback_get_url": "https://r2.example.test/accepted-output",
         }
 
     @staticmethod
@@ -384,6 +415,122 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         self.assertEqual(request.get_header("Content-length"), str(len(body)))
         self.assertEqual(request.get_header("Content-type"), "image/png")
 
+    def test_resume_accepts_exact_carried_forward_readback_for_unresolved_batch(self) -> None:
+        accepted = self._accepted()
+        unit = self._resume_unit()
+        result = mage_serverless._validate_resume_state(
+            {"schema_version": "serverless-unit-resume/v1", "accepted_units": [unit]},
+            accepted=accepted,
+            current_item_ids=("scene-unresolved",),
+            now=datetime(2026, 8, 19, tzinfo=UTC),
+        )
+        self.assertEqual(result[0]["item_id"], "scene-accepted")
+        self.assertEqual(result[0]["output_bytes"], len(b"accepted-output"))
+
+    def test_resume_rejects_regenerating_an_already_accepted_item(self) -> None:
+        # Clearing the process-local delivery fence models a fresh worker process.  The durable
+        # accepted-unit contract still rejects a replay that would regenerate the item.
+        mage_serverless._claimed_deliveries.clear()
+        with self.assertRaisesRegex(
+            mage_serverless.ServerlessMageError, "MAGE_SERVERLESS_RESUME_ITEM_REGENERATED"
+        ):
+            mage_serverless._validate_resume_state(
+                {
+                    "schema_version": "serverless-unit-resume/v1",
+                    "accepted_units": [self._resume_unit(item_id="scene-a")],
+                },
+                accepted=self._accepted(),
+                current_item_ids=("scene-a",),
+                now=datetime(2026, 8, 19, tzinfo=UTC),
+            )
+
+    def test_resume_rejects_tampered_or_cross_authority_readback(self) -> None:
+        accepted = self._accepted()
+        for mutation, expected in (
+            (
+                lambda unit: unit["readback_port"].update(
+                    {"checksum_sha256": "sha256:" + "f" * 64}
+                ),
+                "MAGE_SERVERLESS_RESUME_READBACK_AUTHORITY_MISMATCH",
+            ),
+            (
+                lambda unit: unit["readback_port"].update({"account_id": "account-foreign"}),
+                "WORKER_ARTIFACT_SCOPE_MISMATCH",
+            ),
+            (
+                lambda unit: unit.update(
+                    {
+                        "output_object_key": unit["output_object_key"].replace(
+                            "scene-accepted", "scene-foreign"
+                        )
+                    }
+                ),
+                "MAGE_SERVERLESS_RESUME_OBJECT_KEY_INVALID",
+            ),
+        ):
+            with self.subTest(expected=expected):
+                unit = self._resume_unit()
+                mutation(unit)
+                with self.assertRaisesRegex(mage_serverless.ServerlessMageError, expected):
+                    mage_serverless._validate_resume_state(
+                        {"schema_version": "serverless-unit-resume/v1", "accepted_units": [unit]},
+                        accepted=accepted,
+                        current_item_ids=("scene-unresolved",),
+                        now=datetime(2026, 8, 19, tzinfo=UTC),
+                    )
+
+    def test_resume_readback_uses_get_authority_and_removes_scratch(self) -> None:
+        unit = self._resume_unit()
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.object(mage_serverless, "urlopen") as urlopen:
+                response = urlopen.return_value.__enter__.return_value
+                response.status = 200
+                response.headers = {"Content-Length": str(unit["output_bytes"])}
+                response.read.return_value = b"accepted-output"
+                mage_serverless._verify_resume_readbacks_in_scratch(
+                    (unit,),
+                    root=Path(temporary).resolve(),
+                    account_id="account-a",
+                    workspace_id="workspace-a",
+                    now=datetime(2026, 8, 19, tzinfo=UTC),
+                )
+            self.assertFalse((Path(temporary) / "jobs" / "attempt-prior").exists())
+            request = urlopen.call_args.args[0]
+            self.assertEqual(request.get_method(), "GET")
+
+    def test_resume_readback_rejects_wrong_bytes(self) -> None:
+        unit = self._resume_unit()
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.object(mage_serverless, "urlopen") as urlopen,
+        ):
+            response = urlopen.return_value.__enter__.return_value
+            response.status = 200
+            response.headers = {"Content-Length": str(unit["output_bytes"])}
+            response.read.return_value = b"tampered-output"
+            with self.assertRaisesRegex(
+                mage_serverless.ServerlessMageError,
+                "MAGE_SERVERLESS_INPUT_CHECKSUM_MISMATCH",
+            ):
+                mage_serverless._verify_resume_readbacks_in_scratch(
+                    (unit,),
+                    root=Path(temporary).resolve(),
+                    account_id="account-a",
+                    workspace_id="workspace-a",
+                    now=datetime(2026, 8, 19, tzinfo=UTC),
+                )
+
+    def test_startup_timings_are_nonzero_ordered_and_bounded(self) -> None:
+        now = time.monotonic()
+        runtime = SimpleNamespace(started=now - 0.5)
+        with patch.object(mage_serverless, "_PROCESS_STARTED_MONOTONIC", now - 1.0):
+            allocation_ms, container_ready_ms = mage_serverless._startup_timings(
+                runtime, ready_at=now, handler_started_at=now - 0.75
+            )
+        self.assertGreaterEqual(allocation_ms, 1)
+        self.assertGreaterEqual(container_ready_ms, allocation_ms)
+        self.assertLessEqual(container_ready_ms, 86_400_000)
+
     def test_input_get_download_binds_exact_length_hash_and_scratch(self) -> None:
         body = b"input-bytes"
         port = self._input_port(body=body)
@@ -512,6 +659,9 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         self.assertEqual(result["items"][0]["output_bytes"], len(body))
         self.assertEqual(result["provenance_receipt"]["items"][0]["output_sha256"], checksum)
         self.assertEqual(result["provenance_receipt"]["items"][0]["output_bytes"], len(body))
+        timings = result["provenance_receipt"]["timings"]
+        self.assertGreaterEqual(timings["allocation_ms"], 1)
+        self.assertGreaterEqual(timings["container_ready_ms"], timings["allocation_ms"])
 
     def test_handler_detects_model_volume_manifest_mutation_before_receipt(self) -> None:
         body = b"png"

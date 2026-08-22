@@ -32,6 +32,7 @@ _runtime: MageRuntime | None = None
 _startup_lock = asyncio.Lock()
 _delivery_lock = asyncio.Lock()
 _claimed_deliveries: set[str] = set()
+_PROCESS_STARTED_MONOTONIC = time.monotonic()
 
 _GENERATED_OUTPUT_SCHEMA = "artifact-generated-output-authority/v1"
 _GENERATED_OUTPUT_KEYS = frozenset(
@@ -53,6 +54,77 @@ _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$")
 _CONTENT_TYPE = re.compile(r"^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$")
 _CAPABILITY = re.compile(r"^[A-Za-z0-9._:-]{32,512}$")
 _FAILURE_CODE = re.compile(r"^[A-Z][A-Z0-9_.:-]{2,120}$")
+_RESUME_SCHEMA = "serverless-unit-resume/v1"
+_RESUME_KEYS = frozenset({"schema_version", "accepted_units"})
+_RESUME_UNIT_KEYS = frozenset(
+    {
+        "item_id",
+        "output_object_key",
+        "output_sha256",
+        "output_bytes",
+        "readback_port",
+        "readback_get_url",
+    }
+)
+_TIMING_MAX_MS = 86_400_000
+
+
+def _bounded_timing_ms(value: object, *, fallback: int | None = None) -> int:
+    """Return a truthful, finite timing measurement or fail closed.
+
+    Provider allocation is not observable from inside a RunPod handler.  The worker therefore
+    records a lower-bound process-start measurement for allocation/container readiness and
+    accepts an explicit bounded integer only when the platform injects one.  Zero is never used
+    as a placeholder: a sub-millisecond observation is represented as one millisecond.
+    """
+    candidate = value if value is not None else fallback
+    if isinstance(candidate, bool) or not isinstance(candidate, int):
+        raise ServerlessMageError("MAGE_SERVERLESS_TIMING_INVALID")
+    if candidate < 0 or candidate > _TIMING_MAX_MS:
+        raise ServerlessMageError("MAGE_SERVERLESS_TIMING_INVALID")
+    return max(1, candidate)
+
+
+def _process_elapsed_ms(at: float | None = None) -> int:
+    observed = (time.monotonic() if at is None else at) - _PROCESS_STARTED_MONOTONIC
+    # Monotonic time is trusted, but clamp the emitted fact to a finite bounded measurement so a
+    # suspended/reused process cannot create an unbounded receipt value.
+    return _bounded_timing_ms(min(_TIMING_MAX_MS, max(0, round(observed * 1000))))
+
+
+def _startup_timings(
+    runtime: Any, *, ready_at: float, handler_started_at: float
+) -> tuple[int, int]:
+    """Derive allocation/container-ready timings without inventing provider-side timestamps."""
+    runtime_started = getattr(runtime, "started", handler_started_at)
+    if not isinstance(runtime_started, (int, float)):
+        runtime_started = handler_started_at
+
+    def override(name: str) -> int | None:
+        raw = os.environ.get(name)
+        if raw is None or raw == "":
+            return None
+        try:
+            parsed = int(raw, 10)
+        except ValueError as error:
+            raise ServerlessMageError("MAGE_SERVERLESS_TIMING_INVALID") from error
+        return parsed
+
+    allocation_override = override("VIDEOFORGE_MAGE_ALLOCATION_MS")
+    container_override = override("VIDEOFORGE_MAGE_CONTAINER_READY_MS")
+    allocation_fallback = _process_elapsed_ms(float(runtime_started))
+    container_fallback = _process_elapsed_ms(ready_at)
+    allocation_ms = _bounded_timing_ms(
+        allocation_override,
+        fallback=allocation_fallback,
+    )
+    container_ready_ms = _bounded_timing_ms(
+        container_override,
+        fallback=max(allocation_ms, container_fallback),
+    )
+    if container_ready_ms < allocation_ms:
+        raise ServerlessMageError("MAGE_SERVERLESS_TIMING_ORDER_INVALID")
+    return allocation_ms, container_ready_ms
 
 
 def _endpoint_id_hash() -> str:
@@ -371,6 +443,179 @@ def _validate_scoped_ports(
     return input_ports, output_ports, generated_authorities
 
 
+def _resume_source_attempt_id(port: dict[str, Any]) -> str:
+    """Extract the exact attempt binding from a prior accepted output GET port."""
+    path = port.get("path")
+    if not isinstance(path, str):
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_PATH_INVALID")
+    parts = path.split("/")
+    if (
+        len(parts) != 15
+        or parts[0] != ""
+        or parts[1] != "tenant"
+        or parts[3] != "workspace"
+        or parts[5] != "project"
+        or parts[7] != "revision"
+        or parts[9] != "lane"
+        or parts[10] != "mage-image"
+        or parts[11] != "job"
+        or parts[13] != "artifact"
+        or not _IDENTIFIER.fullmatch(parts[2])
+        or not _IDENTIFIER.fullmatch(parts[4])
+        or not _IDENTIFIER.fullmatch(parts[6])
+        or not _IDENTIFIER.fullmatch(parts[8])
+        or not _IDENTIFIER.fullmatch(parts[12])
+        or not _IDENTIFIER.fullmatch(parts[14])
+    ):
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_PATH_INVALID")
+    return parts[12]
+
+
+def _validate_resume_state(
+    resume: object,
+    *,
+    accepted: dict[str, Any],
+    current_item_ids: tuple[str, ...],
+    now: datetime,
+) -> tuple[dict[str, Any], ...]:
+    """Validate durable accepted-unit readbacks before any unit can be generated.
+
+    A replacement attempt carries only unresolved ``MageJob`` items.  If a caller accidentally
+    replays an accepted item in the batch, this boundary rejects it rather than regenerating it.
+    Accepted units are additionally bound to exact scoped GET ports whose path, checksum, and
+    byte length match the durable artifact record.  The readback is performed by the caller into
+    job-local scratch; nothing is trusted from caller-authored JSON alone.
+    """
+    if resume is None:
+        return ()
+    if not isinstance(resume, dict) or set(resume) != _RESUME_KEYS:
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_SCHEMA_INVALID")
+    if resume.get("schema_version") != _RESUME_SCHEMA:
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_SCHEMA_INVALID")
+    raw_units = resume.get("accepted_units")
+    if not isinstance(raw_units, list) or not raw_units or len(raw_units) > 64:
+        raise ServerlessMageError("MAGE_SERVERLESS_RESUME_UNITS_INVALID")
+    current_ids = set(current_item_ids)
+    seen_items: set[str] = set()
+    seen_objects: set[str] = set()
+    seen_reservations: set[str] = set()
+    account_id = accepted["tenant"]["account_id"]
+    workspace_id = accepted["tenant"]["workspace_id"]
+    units: list[dict[str, Any]] = []
+    for raw_unit in raw_units:
+        if not isinstance(raw_unit, dict) or set(raw_unit) != _RESUME_UNIT_KEYS:
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_UNIT_INVALID")
+        item_id = raw_unit.get("item_id")
+        if not isinstance(item_id, str) or not _IDENTIFIER.fullmatch(item_id):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_ITEM_INVALID")
+        if item_id in current_ids:
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_ITEM_REGENERATED")
+        if item_id in seen_items:
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_ITEM_DUPLICATE")
+        seen_items.add(item_id)
+        object_key = raw_unit.get("output_object_key")
+        expected_tenant_prefix = f"tenant/{account_id}/workspace/{workspace_id}/"
+        expected_suffix = f"/artifact/{item_id}"
+        if (
+            not isinstance(object_key, str)
+            or not object_key.startswith(expected_tenant_prefix)
+            or not object_key.endswith(expected_suffix)
+            or "?" in object_key
+            or "#" in object_key
+            or "/../" in object_key
+            or object_key in seen_objects
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_OBJECT_KEY_INVALID")
+        seen_objects.add(object_key)
+        output_sha256 = raw_unit.get("output_sha256")
+        output_bytes = raw_unit.get("output_bytes")
+        if (
+            not isinstance(output_sha256, str)
+            or not re.fullmatch(r"sha256:[0-9a-f]{64}", output_sha256)
+            or not isinstance(output_bytes, int)
+            or isinstance(output_bytes, bool)
+            or output_bytes < 1
+            or output_bytes > 10_737_418_240
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_OUTPUT_FACTS_INVALID")
+        readback_port = raw_unit.get("readback_port")
+        readback_url = raw_unit.get("readback_get_url")
+        if not isinstance(readback_port, dict) or not isinstance(readback_url, str):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_INVALID")
+        _validate_output_url(readback_url)
+        source_attempt_id = _resume_source_attempt_id(readback_port)
+        try:
+            validate_scoped_port(
+                readback_port,
+                account_id=account_id,
+                workspace_id=workspace_id,
+                job_id=source_attempt_id,
+                method="GET",
+                now=now,
+            )
+        except ScratchIsolationError as error:
+            raise ServerlessMageError(str(error)) from error
+        if (
+            readback_port.get("path") != f"/{object_key}"
+            or readback_port.get("content_type") != "image/png"
+            or readback_port.get("content_length") != output_bytes
+            or readback_port.get("checksum_sha256") != output_sha256
+            or readback_port.get("max_uses") != 1
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_AUTHORITY_MISMATCH")
+        reservation_id = readback_port.get("reservation_id")
+        if not isinstance(reservation_id, str) or reservation_id in seen_reservations:
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_REPLAYED")
+        seen_reservations.add(reservation_id)
+        units.append(
+            {
+                "item_id": item_id,
+                "output_object_key": object_key,
+                "output_sha256": output_sha256,
+                "output_bytes": output_bytes,
+                "readback_port": readback_port,
+                "readback_get_url": readback_url,
+            }
+        )
+    return tuple(units)
+
+
+def _verify_resume_readbacks(units: tuple[dict[str, Any], ...], worker_io: Any) -> None:
+    """Read every carried-forward output through its exact GET authority before generation."""
+    for unit in units:
+        path = _download_input(unit["readback_port"], unit["readback_get_url"], worker_io)
+        body = path.read_bytes()
+        if (
+            len(body) != unit["output_bytes"]
+            or f"sha256:{hashlib.sha256(body).hexdigest()}" != unit["output_sha256"]
+        ):
+            raise ServerlessMageError("MAGE_SERVERLESS_RESUME_READBACK_BYTES_MISMATCH")
+
+
+def _verify_resume_readbacks_in_scratch(
+    units: tuple[dict[str, Any], ...],
+    *,
+    root: Path,
+    account_id: str,
+    workspace_id: str,
+    now: datetime,
+) -> None:
+    """Read carried-forward outputs with the source-attempt binding on each GET port."""
+    for unit in units:
+        source_attempt_id = _resume_source_attempt_id(unit["readback_port"])
+        with _terminal_worker_io(
+            root=root,
+            account_id=account_id,
+            workspace_id=workspace_id,
+            job_id=source_attempt_id,
+            input_ports=(unit["readback_port"],),
+            output_ports=(),
+            now=now,
+        ) as worker_io:
+            worker_io.scratch.safe_path("inputs", directory=True)
+            _verify_resume_readbacks((unit,), worker_io)
+
+
 async def _claim_delivery(attempt_id: str) -> None:
     """Claim an attempt once per process; retries require a new durable attempt."""
     async with _delivery_lock:
@@ -456,6 +701,7 @@ def _inline_item(job: MageJob, index: int) -> dict[str, object]:
 async def handler(job: dict[str, Any]) -> dict[str, Any]:
     """Process one admitted batch; duplicate/retry reconciliation stays control-plane-owned."""
     try:
+        handler_started_at = time.monotonic()
         payload = _required(job, "input")
         envelope = _required(payload, "envelope")
         batch = _required(payload, "batch")
@@ -496,9 +742,24 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 _validate_output_url(input_url)
             except ServerlessMageError as error:
                 raise ServerlessMageError("MAGE_SERVERLESS_INPUT_URL_INVALID") from error
+        resume_units = _validate_resume_state(
+            payload.get("resume"),
+            accepted=accepted,
+            current_item_ids=tuple(item.scene_id for item in mage_job.items),
+            now=datetime.now(UTC),
+        )
+        scratch_root = Path(os.environ.get("VIDEOFORGE_JOB_SCRATCH_ROOT", "/tmp/videoforge-jobs"))
+        if resume_units:
+            _verify_resume_readbacks_in_scratch(
+                resume_units,
+                root=scratch_root,
+                account_id=accepted["tenant"]["account_id"],
+                workspace_id=accepted["tenant"]["workspace_id"],
+                now=datetime.now(UTC),
+            )
         await _claim_delivery(mage_job.attempt_id)
         runtime = await _ready_runtime()
-        scratch_root = Path(os.environ.get("VIDEOFORGE_JOB_SCRATCH_ROOT", "/tmp/videoforge-jobs"))
+        runtime_ready_at = time.monotonic()
         started = datetime.now(UTC)
         started_monotonic = time.monotonic()
         results: list[dict[str, Any]] = []
@@ -574,6 +835,11 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             )
             if post_manifest["manifest_sha256"] != accepted["runtime"]["model_manifest_sha256"]:
                 raise ServerlessMageError("MAGE_SERVERLESS_VOLUME_MUTATION_DETECTED")
+            allocation_ms, container_ready_ms = _startup_timings(
+                runtime,
+                ready_at=runtime_ready_at,
+                handler_started_at=handler_started_at,
+            )
             receipt_body = {
                 "schema_version": "serverless-provenance-receipt/v1",
                 "attestation_scope": "VIDEOFORGE_APPLICATION_SIGNED_FACTS_NOT_PROVIDER_HARDWARE_ATTESTATION",
@@ -613,16 +879,27 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                     or _sha_environment("VIDEOFORGE_MAGE_WARMUP_OUTPUT_SHA256"),
                 },
                 "timings": {
-                    "allocation_ms": 0,
-                    "container_ready_ms": 0,
-                    "volume_verified_ms": runtime.bootstrap_evidence.get("duration_ms", 0)
-                    if runtime.bootstrap_evidence
-                    else 0,
-                    "model_load_ms": runtime.phase_timings_ms.get("gpu_load", 0),
-                    "warmup_ms": runtime.phase_timings_ms.get("warmup", 0),
-                    "first_inference_ms": results[0]["generation_duration_ms"],
-                    "upload_ms": max(0, round(time.monotonic() * 1000) - upload_started_ms),
-                    "total_ms": round((time.monotonic() - started_monotonic) * 1000),
+                    "allocation_ms": allocation_ms,
+                    "container_ready_ms": container_ready_ms,
+                    "volume_verified_ms": _bounded_timing_ms(
+                        runtime.bootstrap_evidence.get("duration_ms")
+                        if runtime.bootstrap_evidence
+                        else None,
+                        fallback=1,
+                    ),
+                    "model_load_ms": _bounded_timing_ms(
+                        runtime.phase_timings_ms.get("gpu_load"), fallback=1
+                    ),
+                    "warmup_ms": _bounded_timing_ms(
+                        runtime.phase_timings_ms.get("warmup"), fallback=1
+                    ),
+                    "first_inference_ms": _bounded_timing_ms(results[0]["generation_duration_ms"]),
+                    "upload_ms": _bounded_timing_ms(
+                        max(0, round(time.monotonic() * 1000) - upload_started_ms), fallback=1
+                    ),
+                    "total_ms": _bounded_timing_ms(
+                        max(0, round((time.monotonic() - started_monotonic) * 1000)), fallback=1
+                    ),
                 },
                 "items": receipt_items,
                 "scratch_cleanup": {
