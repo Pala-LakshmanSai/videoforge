@@ -142,13 +142,13 @@ gates:
     historical_attempt29_control_source_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
     historical_attempt30_closure_sha256: "sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c"
     historical_attempt30_cleanup_sha256: "sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0"
-    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/approved-authority.json"
-    latest_closed_authority_sha256: "sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114"
-    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json"
-    latest_closed_proposal_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
-    latest_closed_candidate_acceptance_sha256: "sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080"
-    latest_closed_max1_sha256: "sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2"
-    latest_closed_max2_sha256: "sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a"
+    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/approved-authority.json"
+    latest_closed_authority_sha256: "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328"
+    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/combined-live-proposal.json"
+    latest_closed_proposal_sha256: "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925"
+    latest_closed_candidate_acceptance_sha256: "sha256:145408f7e2a5d33512a5458af98012097d65e363446e48a618d126f8008f8fb5"
+    latest_closed_max1_sha256: "sha256:5c3651673d93829535a450a88b99bcea697ed817e9f4ceba0536523e606f73a7"
+    latest_closed_max2_sha256: "sha256:051863d9b131aab22502de85b57553adc924c5bb8f4a3ceee0e6b9d5991e78d2"
     current_candidate: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/combined-live-proposal.json"
     current_candidate_sha256: "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925"
     current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/acceptance.json"
@@ -160,32 +160,32 @@ gates:
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
     current_candidate_max1_sha256: "sha256:5c3651673d93829535a450a88b99bcea697ed817e9f4ceba0536523e606f73a7"
     current_candidate_max2_sha256: "sha256:051863d9b131aab22502de85b57553adc924c5bb8f4a3ceee0e6b9d5991e78d2"
-    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json"
-    latest_approved_proposal_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
-    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/approved-authority.json"
-    latest_approved_authority_sha256: "sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114"
-    latest_approved_control_source_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
-    closed_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/approved-authority.json"
-    closed_authority_sha256: "sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114"
-    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-32.json"
-    closure_evidence_sha256: "sha256:5e2cf1f73e03673b9f350352fa2bfbb91566d9e9a695566fdc08f3b1d84c9f75"
-    cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt32-cleanup-observation.json"
-    cleanup_evidence_sha256: "sha256:01d91e1216a77ea4d6ac7130c2add5800f67043b3ba34d26ecbecf9422acc51d"
-    latest_closed_result: "NOT_QUALIFIED_RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN"
-    authority_mode: attempt33_bounded_mutation_authorized
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925"
-    pending_control_source_commit: "bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328"
-    pending_numeric_cap_usd: 4
+    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/combined-live-proposal.json"
+    latest_approved_proposal_sha256: "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925"
+    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/approved-authority.json"
+    latest_approved_authority_sha256: "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328"
+    latest_approved_control_source_commit: "bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37"
+    closed_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/approved-authority.json"
+    closed_authority_sha256: "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328"
+    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-33.json"
+    closure_evidence_sha256: "sha256:44ce85620744650b48ad4cf7397b1cfa6e2173302c9b35311ff01e7d76aa42d8"
+    cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt33-cleanup-observation.json"
+    cleanup_evidence_sha256: "sha256:f2bff0bd293172ea851db26b2c14f8edc3d50074dfc89beccbb7d26e4e93c059"
+    latest_closed_result: "NOT_QUALIFIED_V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID_HTTP_503"
+    authority_mode: no_live_authority_attempt33_consumed
+    pending_proposal: null
+    pending_proposal_sha256: null
+    pending_control_source_commit: null
+    pending_authority: null
+    pending_authority_sha256: null
+    pending_numeric_cap_usd: null
     pending_flashboot: true
     pending_availability: MEDIUM
-    provider_calls_authorized: true
-    provider_mutations_authorized: true
-    gpu_use_authorized: true
-    result: "NOT_QUALIFIED_attempt33_approved_execution_pending"
-    next_boundary: "execute only exact Attempt33 authority and close qualification or fail closed; V2-08 forbidden"
+    provider_calls_authorized: false
+    provider_mutations_authorized: false
+    gpu_use_authorized: false
+    result: "NOT_QUALIFIED_attempt33_closed_finalize_503_repair_in_progress"
+    next_boundary: "provider-free repair and separately hashed proposal; fresh exact approval and fresh positive numeric cap required; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

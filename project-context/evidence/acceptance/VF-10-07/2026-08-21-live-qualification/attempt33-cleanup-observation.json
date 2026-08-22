@@ -1,0 +1,63 @@
+{
+  "schema_version": "videoforge.v2-07-attempt33-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 33,
+  "proposal_sha256": "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925",
+  "authority_sha256": "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328",
+  "raw_redacted_evidence": {
+    "live_result_sha256": "sha256:884128a05d9c8d262e9ccce352652d7c51f5ef930b382547affdb686956c0558",
+    "orchestrator_sha256": "sha256:7aef86b952fbc6d308a3f413314a9d440bb6a6a2505cd5258140e4102c6e892f",
+    "reconciliation_sha256": "sha256:d808eb38b5130cc5b5fd193c705b90494d73eec6ccd9e639758eb78bf1a6e676"
+  },
+  "cleanup": {
+    "terminal_reader_drain_confirmed": true,
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 7,
+    "terminal_pod_record_count": 7,
+    "queue_proof_read_count": 4,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "network_volume_delete_called": false,
+    "owned_jobs_cancelled": false
+  },
+  "cloudflare_cleanup": {
+    "signer_secret_deleted": true,
+    "worker_version_rolled_back": true,
+    "pre_mutation_route_restored": true,
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED"
+  },
+  "final_reconciliation": {
+    "checked_at": "2026-08-22T13:57:46.239Z",
+    "stable_read_count": 3,
+    "read_interval_seconds": 10,
+    "provider_mutations_after_cleanup": 0,
+    "gpu_jobs_submitted_during_reconciliation": 0,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "retained_volumes": [
+      { "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be", "size_gb": 50, "region": "EU-RO-1" },
+      { "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "size_gb": 50, "region": "EU-RO-1" }
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.1340842194622383,
+    "final_endpoint_spend_usd": 1.1340842194622383,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "retention": {
+    "sealed_mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "volume_mutation_called": false
+  },
+  "secrets_or_raw_provider_ids_retained": false
+}

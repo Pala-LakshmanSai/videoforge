@@ -1,19 +1,20 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. Provider-free
-repair `bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37` fixes the exact Attempt32 max-two reader-drain
-false negative: the queue-empty stable-terminal fallback is allowed only after both exact reader job
-IDs are locally terminal and owned jobs are zero. The fresh Attempt33 proposal is
-`evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/combined-live-proposal.json`
-at `sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925`; max-one is
-`sha256:5c3651673d93829535a450a88b99bcea697ed817e9f4ceba0536523e606f73a7`, max-two is
-`sha256:051863d9b131aab22502de85b57553adc924c5bb8f4a3ceee0e6b9d5991e78d2`, and acceptance is
-`sha256:145408f7e2a5d33512a5458af98012097d65e363446e48a618d126f8008f8fb5`. Fresh read-only truth
-proves zero compute/disposable resources, both exact retained volumes, MEDIUM RTX 4090 EU-RO-1
-availability, and cumulative endpoint billing `$1.1340842194622383`. Exact single-use authority
-`sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328` approves only this
-proposal with FlashBoot=true, observed MEDIUM EU-RO-1 availability, and a fresh `$4` cumulative cap.
-Execution is pending; retained-volume mutation and V2-08 remain forbidden.
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. Attempt33
+closed fail-safe at `V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID`: both simultaneous reader jobs
+completed and the repaired terminal drain proof passed, but a reader's idempotent FINALIZE replay
+received three bounded HTTP 503 `text/html` responses. Three owned/cold/warm 32-image batches remain
+accepted with 96 durable readbacks and 96 replay-confirmed v3 receipts; reader acceptance, cancel,
+timeout, and success retention were not reached. Exact closure
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-33.json` is
+`sha256:44ce85620744650b48ad4cf7397b1cfa6e2173302c9b35311ff01e7d76aa42d8`; cleanup
+`attempt33-cleanup-observation.json` is
+`sha256:f2bff0bd293172ea851db26b2c14f8edc3d50074dfc89beccbb7d26e4e93c059`. It proves zero
+disposable compute, both exact retained 50 GB EU-RO-1 volumes, signer/Worker/route rollback,
+generated-output rollback, and three stable billing reads at cumulative `$1.1340842194622383`
+(`$0` observed increment). Attempt33 proposal/authority/cap are consumed and non-reusable.
+Provider-free repair may continue; any retry needs a separately hashed exact proposal, fresh exact
+approval, and a fresh positive numeric cap. Retained-volume mutation and V2-08 remain forbidden.
 
 Historical Attempt32 closed fail-closed. Its exact closure is
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-32.json` at
