@@ -1,6 +1,21 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after the
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. The current
+provider-free Attempt32 candidate is
+`evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json`
+at `sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a`; max-one is
+`sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2`, max-two is
+`sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a`, and acceptance is
+`sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080`. Control commit
+`a1da27192c567823f9508ecd6f146f8667e1daac` preserves only bounded FINALIZE response metadata
+(attempt, status, sanitized content type, body length, and category), never body/URL/IDs/secrets,
+while retaining the 30-second/three-attempt FINALIZE-only retry fence. Authority and cap are null;
+provider calls, mutation, GPU use, and spend remain disabled until fresh exact approval and a fresh
+positive numeric cap. Current read-only truth remains zero disposable resources, both intended sealed
+50 GB EU-RO-1 volumes retained, HIGH RTX 4090 availability, `$1.10/GPU-hour` Serverless Flex,
+`$2.20` finite estimate, and existing `$7/month` volume billing separately. V2-08 remains forbidden.
+
+Historical closure: V2-07 remains NOT_QUALIFIED after the
 Attempt31 output-finalization failure. Attempt31 authority
 `sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5`, proposal
 `sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea`, and its fresh `$4`

@@ -144,16 +144,17 @@ gates:
     latest_closed_authority_sha256: "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5"
     latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json"
     latest_closed_proposal_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
-    current_candidate: "evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json"
-    current_candidate_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
-    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:0d316d9cce233a5dfe1b0f5fa7851cbdb64cee575f374e95c6aaadfbfe021269"
-    current_candidate_control_source_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
+    current_candidate: "evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json"
+    current_candidate_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/acceptance.json"
+    current_candidate_acceptance_sha256: "sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080"
+    current_candidate_control_source_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
+    current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
     current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
-    current_candidate_max1_sha256: "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006"
-    current_candidate_max2_sha256: "sha256:4013c7b9887994b6de2dfd947f13ea74e622dfc0fe5b5e429c29fffedc69ef9b"
+    current_candidate_max1_sha256: "sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2"
+    current_candidate_max2_sha256: "sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a"
     latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json"
     latest_approved_proposal_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
     latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/approved-authority.json"
@@ -165,20 +166,21 @@ gates:
     closure_evidence_sha256: "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490"
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt31-cleanup-observation.json"
     cleanup_evidence_sha256: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"
-    authority_mode: none_attempt31_consumed
-    pending_proposal: null
-    pending_proposal_sha256: null
-    pending_control_source_commit: null
+    latest_closed_result: "MAGE_OUTPUT_NOT_SUCCEEDED_V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID"
+    authority_mode: none_attempt32_pending_fresh_approval
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+    pending_control_source_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     pending_authority: null
     pending_authority_sha256: null
     pending_numeric_cap_usd: null
-    pending_flashboot: null
-    pending_availability: null
+    pending_flashboot: true
+    pending_availability: HIGH
     provider_calls_authorized: false
     provider_mutations_authorized: false
     gpu_use_authorized: false
-    result: "NOT_QUALIFIED_attempt31_closed_MAGE_OUTPUT_NOT_SUCCEEDED_V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID"
-    next_boundary: "provider-free diagnose and repair the concurrent-reader FINALIZE response contract; any retry requires a fresh exact proposal, fresh authority, and fresh positive numeric cap; V2-08 forbidden"
+    result: "NOT_QUALIFIED_attempt32_provider_free_candidate_pending_fresh_approval"
+    next_boundary: "fresh exact approval and a fresh positive numeric cap are required before any provider call; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "health.jobs inQueue and inProgress must be present and exactly zero; two stable matching terminal worker/Pod inventory snapshots are allowed only before any owned job; health-first remains mandatory after dispatch, cancellation, concurrent-reader proof, and drain"
 
   GATE_SERVERLESS_SOULX_001:

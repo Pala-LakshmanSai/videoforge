@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-22T08:55:41Z"
+updated_at: "2026-08-22T09:15:00Z"
 
-phase: serverless_v2_v2_07_attempt31_output_contract_failure_closed
+phase: serverless_v2_v2_07_attempt32_finalize_response_diagnostics_provider_free
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt31_closed_output_finalization_failure
+current_wave: v2_07_attempt32_provider_free_candidate
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_diagnosis
+task_stage: pre_execution
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,15 +18,15 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt31_closed_provider_free_diagnosis
+  mode: v2_07_attempt32_provider_free_candidate_pending_fresh_approval
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: provider_free_diagnose_and_repair_attempt31_output_finalization_contract; require_fresh_exact_proposal_and_positive_cap_before_any_retry
-  note: "Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea and authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 are consumed and non-reusable. Closure sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490 records accepted owned/cold/warm batches, durable v3 receipts/readbacks, exact duplicate replay without duplicate compute, and MAGE_OUTPUT_NOT_SUCCEEDED with a fail-closed output-finalization stop at V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID before reader acceptance. Cleanup sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc proves zero disposable resources and both intended 50 GB EU-RO-1 volumes retained; settled incremental spend was USD 0.05512650031596422 within the consumed USD 4 cap. Provider calls, mutation, GPU use, and spend are disabled; V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
+  v2_07_action: validate_exact_attempt32_finalize_response_diagnostics_candidate; require_fresh_exact_approval_and_positive_numeric_cap_before_any_provider_call
+  note: "Attempt32 proposal sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a is provider-free and unapproved with null authority/cap. It binds diagnostic control a1da27192c567823f9508ecd6f146f8667e1daac, max-one sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2, max-two sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a, and acceptance sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080. Attempt31 proposal/authority/cap remain consumed by closure sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490. Provider calls, mutation, GPU use, and spend are disabled; V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden."
 
 pending_v2_07_attempt25_proposal:
   mode: closed_consumed_attempt25_output_finalization_failure
@@ -266,6 +266,42 @@ pending_v2_07_attempt31_proposal:
   settled_incremental_spend_usd: 0.05512650031596422
   result: NOT_QUALIFIED_attempt31_closed_output_finalization_failure
   next_boundary: provider_free_diagnose_and_repair_output_finalization_contract; fresh_exact_proposal_and_fresh_positive_numeric_cap_required_before_any_retry; V2-08 forbidden
+
+pending_v2_07_attempt32_proposal:
+  mode: provider_free_attempt32_finalize_response_diagnostics_pending_fresh_approval
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+  control_source_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
+  finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
+  staged_max1_sha256: "sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2"
+  staged_max2_sha256: "sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a"
+  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/acceptance.json
+  candidate_acceptance_sha256: "sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080"
+  flashboot: true
+  observed_availability: HIGH
+  minimum_requested_availability: LOW
+  region: EU-RO-1
+  maximum_cumulative_finite_spend_usd: null
+  estimated_finite_serverless_compute_usd_ceiling: 2.2
+  fresh_numeric_cap_required: true
+  authority_recorded: false
+  authority_path: null
+  authority_sha256: null
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  image_republication_authorized: false
+  model_download_or_volume_mutation_authorized: false
+  v2_08_authorized: false
+  current_read_only_truth_checked_at: "2026-08-22T08:49:57.233Z"
+  current_rtx4090_availability_checked_at: "2026-08-22T08:15:41.362Z"
+  current_rtx4090_availability: HIGH
+  cumulative_endpoint_spend_usd: 0.6856819738168269
+  prior_attempt31_closure_sha256: "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490"
+  prior_attempt31_cleanup_sha256: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"
+  prior_attempt31_stop: MAGE_OUTPUT_NOT_SUCCEEDED_V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID
+  result: NOT_QUALIFIED_attempt32_provider_free_candidate_pending_fresh_approval
+  next_boundary: fresh_exact_approval_and_fresh_positive_numeric_cap_required_before_any_provider_call; V2-08 forbidden
 
 pending_v2_07_attempt24_proposal:
   mode: closed_consumed_attempt24_quiescence_failure
@@ -1036,8 +1072,8 @@ repository:
   current_source_head: "79f123268b6ade640c02dd20616a89d16b43a5e6"
   current_source_head_semantics: exact_published_diagnostic_handler_image_source_not_qualification
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt31 is closed NOT_QUALIFIED by sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490 after owned/cold/warm 32-image batches completed durable readbacks/receipts and exact duplicate replay without duplicate compute, while max-two reader jobs reached provider terminal status but no reader batch was accepted. The stop code is V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID at output_finalization. Cleanup sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc proves zero disposable resources and both intended volumes retained; settled incremental spend was USD 0.05512650031596422. Attempt31 authority/cap are consumed and non-reusable; provider-free diagnosis/repair is next."
-  v2_07_latest_local_repair: "Commit f513ac807c6d5e2298092a936495e3c4fc0e6a28 supplied the terminal-snapshot stabilization fence used by Attempt31. Attempt31 is now closed on the output-finalization response contract; no provider boundary is active, and any retry requires a fresh exact proposal, authority, and positive cap."
+  current_source_head_note: "Attempt31 is closed NOT_QUALIFIED by sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490 after owned/cold/warm 32-image batches completed durable readbacks/receipts and exact duplicate replay without duplicate compute, while max-two reader jobs reached provider terminal status but no reader batch was accepted. The stop code is V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID at output_finalization. Cleanup sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc proves zero disposable resources and both intended volumes retained; settled incremental spend was USD 0.05512650031596422. Attempt32 provider-free candidate sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a is now active with null authority/cap."
+  v2_07_latest_local_repair: "Commit a1da27192c567823f9508ecd6f146f8667e1daac adds bounded FINALIZE response metadata diagnostics without body, URL, identifier, signed URL, or secret retention and preserves the 30-second/three-attempt FINALIZE-only retry fence. No provider boundary is active; Attempt32 requires fresh exact approval and a fresh positive numeric cap."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -1171,7 +1207,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt30_closed_concurrent_reader_baseline_failure_attempt31_authorized_preexecution
+    status: attempt31_closed_output_finalization_failure_attempt32_provider_free_candidate
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
     immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_PASS
@@ -1182,36 +1218,38 @@ model_runtime_evidence:
     ongoing_volume_usd_per_month: 3.5
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
-    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-30.json
-    v2_07_evidence_sha256: "sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c"
-    v2_07_proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/combined-live-proposal.json
-    v2_07_proposal_sha256: "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a"
-    v2_07_cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt30-cleanup-observation.json
-    v2_07_cleanup_evidence_sha256: "sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0"
-    v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json
-    v2_07_current_candidate_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
-    v2_07_current_candidate_control_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
+    v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-31.json
+    v2_07_evidence_sha256: "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490"
+    v2_07_proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json
+    v2_07_proposal_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+    v2_07_cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt31-cleanup-observation.json
+    v2_07_cleanup_evidence_sha256: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"
+    v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json
+    v2_07_current_candidate_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+    v2_07_current_candidate_control_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
+    v2_07_current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     v2_07_current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
     v2_07_current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     v2_07_current_candidate_hosted_png_crc32_repair_commit: "1960ea9307bb7fcb591c842b84fc1c622aec49eb"
     v2_07_current_candidate_post_job_terminal_scale_zero_repair_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
     v2_07_current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
-    v2_07_current_candidate_max1_sha256: "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006"
-    v2_07_current_candidate_max2_sha256: "sha256:4013c7b9887994b6de2dfd947f13ea74e622dfc0fe5b5e429c29fffedc69ef9b"
+    v2_07_current_candidate_max1_sha256: "sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2"
+    v2_07_current_candidate_max2_sha256: "sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a"
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/image-publication.json
-    v2_07_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/approved-authority.json
-    v2_07_authority_sha256: "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5"
-    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/approved-authority.json
-    v2_07_latest_closed_authority_sha256: "sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131"
+    v2_07_authority: null
+    v2_07_authority_sha256: null
+    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/approved-authority.json
+    v2_07_latest_closed_authority_sha256: "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5"
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
-    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-30.json
-    v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/acceptance.json
-    v2_07_current_candidate_acceptance_sha256: "sha256:0d316d9cce233a5dfe1b0f5fa7851cbdb64cee575f374e95c6aaadfbfe021269"
+    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-31.json
+    v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/acceptance.json
+    v2_07_current_candidate_acceptance_sha256: "sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080"
     v2_07_attempt_30_increment_usd_immediate_post_cleanup: 0
     v2_07_attempt_30_delayed_billing_refresh_required: true
-    v2_07_observed_cumulative_endpoint_spend_usd: 0.5883426677901298
+    v2_07_observed_cumulative_endpoint_spend_usd: 0.6856819738168269
+    v2_07_attempt_31_increment_usd_settled: 0.05512650031596422
     v2_07_attempt_29_increment_usd_settled: 0.15470044442918152
     v2_07_attempt_28_increment_usd_settled: 0
     v2_07_attempt_27_increment_usd_settled: 0
@@ -1303,15 +1341,15 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt31_closed_output_finalization_failure
+  status: NOT_QUALIFIED_attempt32_provider_free_candidate_pending_fresh_approval
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: attempt31_authority_and_cap_consumed_fresh_proposal_required
-  task_stage: provider_free_diagnosis
-  current_goal_authority: none_attempt31_consumed
+  authorization_status: attempt32_proposal_ready_fresh_exact_approval_and_cap_required
+  task_stage: pre_execution
+  current_goal_authority: none_attempt32_pending_fresh_approval
   provider_authority: *v2_07_provider_authority
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Diagnose and repair the Attempt31 output-finalization response contract provider-free; stop before V2-08 and require a fresh exact proposal and positive cap before any retry."
+  goal: "Present and validate exact Attempt32 FINALIZE-response diagnostics proposal; stop before any provider call until fresh exact approval and a fresh positive numeric cap; V2-08 forbidden."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -1327,13 +1365,13 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt31 proposal sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea and authority sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5 were consumed by failed closure sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490; cleanup sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc proves zero disposable resources and both volumes retained. No active authority or cap exists; provider-free diagnosis/repair only."
+  authority_note: "Attempt32 proposal sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a is unapproved with authority/cap null. Attempt31 authority is consumed and non-reusable. No provider call, mutation, GPU use, or spend is authorized until fresh exact approval and a fresh positive numeric cap are recorded."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt31_closed_provider_free_diagnosis_pending
-  execution_blocker: V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID_provider_free_diagnosis_required
+  execution_status: attempt32_provider_free_candidate_pending_fresh_approval
+  execution_blocker: FRESH_EXACT_ATTEMPT32_APPROVAL_AND_POSITIVE_NUMERIC_CAP_REQUIRED
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt30_closed_concurrent_reader_baseline_failure_attempt31_authorized_preexecution_not_qualified
+  state: v2_06_complete_green_independently_audited_v2_07_attempt31_closed_attempt32_provider_free_candidate_not_qualified
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -1813,17 +1851,24 @@ audit_evidence:
   v2_07_attempt31_control_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
   v2_07_attempt31_candidate_max1_sha256: "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006"
   v2_07_attempt31_candidate_max2_sha256: "sha256:4013c7b9887994b6de2dfd947f13ea74e622dfc0fe5b5e429c29fffedc69ef9b"
+  v2_07_attempt32_candidate: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json
+  v2_07_attempt32_candidate_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+  v2_07_attempt32_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/acceptance.json
+  v2_07_attempt32_candidate_acceptance_sha256: "sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080"
+  v2_07_attempt32_control_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
+  v2_07_attempt32_candidate_max1_sha256: "sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2"
+  v2_07_attempt32_candidate_max2_sha256: "sha256:969816bd9546a81d08f1b725480ad17839d6bd067451ed3074dac3a102cc9e7a"
   v2_07_attempt28_candidate: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/combined-live-proposal.json
   v2_07_attempt28_candidate_sha256: "sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf"
   v2_07_attempt28_control_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
   v2_07_attempt28_candidate_max1_sha256: "sha256:acef5c48b6059fa2401b88bb40ed81e648c9ed795e5fcb3208e117d936f4196d"
   v2_07_attempt28_candidate_max2_sha256: "sha256:45d067e5d7e1b152d25c62eb7e185898bbedd30797d5d9aacc83bb9a48e41836"
-  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"
-  v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/acceptance.json
-  v2_07_current_candidate_acceptance_sha256: "sha256:0d316d9cce233a5dfe1b0f5fa7851cbdb64cee575f374e95c6aaadfbfe021269"
-  v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/approved-authority.json
-  v2_07_current_approved_authority_sha256: "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5"
+  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json
+  v2_07_current_proposal_sha256: "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a"
+  v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/acceptance.json
+  v2_07_current_candidate_acceptance_sha256: "sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080"
+  v2_07_current_approved_authority: null
+  v2_07_current_approved_authority_sha256: null
   v2_07_attempt28_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json
   v2_07_attempt28_closed_authority_sha256: "sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326"
   v2_07_attempt28_closure: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-28.json
@@ -1937,6 +1982,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt30_closed_attempt31_terminal_snapshot_stabilization_provider_free
+  current_goal_scope: v2_07_attempt31_closed_attempt32_finalize_response_diagnostics_provider_free
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure
+  v2_07_status: NOT_QUALIFIED_attempt32_provider_free_candidate_pending_fresh_approval
