@@ -9,7 +9,8 @@ const dir = resolve(
 );
 const expected = Object.freeze({
   proposal: "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925",
-  acceptance: "sha256:7a47a7a8ec39c1aa8c8ed943378a5584785cc00cb7b5ee7666b974a5686df048",
+  acceptance: "sha256:145408f7e2a5d33512a5458af98012097d65e363446e48a618d126f8008f8fb5",
+  authority: "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328",
   max1: "sha256:5c3651673d93829535a450a88b99bcea697ed817e9f4ceba0536523e606f73a7",
   max2: "sha256:051863d9b131aab22502de85b57553adc924c5bb8f4a3ceee0e6b9d5991e78d2",
   control: "bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37",
@@ -29,10 +30,11 @@ const assert = (condition, code) => { if (!condition) fail(code); };
 const parse = (bytes, code) => { try { return JSON.parse(bytes); } catch { fail(`${code}_JSON`); } };
 const read = (path) => readFile(resolve(root, path));
 
-const [proposalBytes, acceptanceBytes, max1Bytes, max2Bytes, state, gates, start, task, activation] =
+const [proposalBytes, acceptanceBytes, authorityBytes, max1Bytes, max2Bytes, state, gates, start, task, activation] =
   await Promise.all([
     readFile(resolve(dir, "combined-live-proposal.json")),
     readFile(resolve(dir, "acceptance.json")),
+    readFile(resolve(dir, "approved-authority.json")),
     readFile(resolve(dir, "staged-config-max1.json")),
     readFile(resolve(dir, "staged-config-max2.json")),
     read("project-context/CURRENT_STATE.yaml"),
@@ -43,10 +45,12 @@ const [proposalBytes, acceptanceBytes, max1Bytes, max2Bytes, state, gates, start
   ]);
 assert(sha(proposalBytes) === expected.proposal, "PROPOSAL_HASH");
 assert(sha(acceptanceBytes) === expected.acceptance, "ACCEPTANCE_HASH");
+assert(sha(authorityBytes) === expected.authority, "AUTHORITY_HASH");
 assert(sha(max1Bytes) === expected.max1, "MAX1_HASH");
 assert(sha(max2Bytes) === expected.max2, "MAX2_HASH");
 const proposal = parse(proposalBytes, "PROPOSAL");
 const acceptance = parse(acceptanceBytes, "ACCEPTANCE");
+const authority = parse(authorityBytes, "AUTHORITY");
 const configs = [parse(max1Bytes, "MAX1"), parse(max2Bytes, "MAX2")];
 
 assert(proposal.attempt === 33 && proposal.status.includes("PROVIDER_FREE"), "STATUS");
@@ -103,16 +107,18 @@ assert(proposal.rates_cost_and_retention?.estimated_finite_serverless_compute_us
 assert(proposal.rates_cost_and_retention?.existing_two_volume_charge_usd_per_month_total === 7, "RETENTION");
 assert(acceptance.candidate?.proposal_sha256 === expected.proposal, "ACCEPTANCE_PROPOSAL");
 assert(acceptance.candidate?.max1_sha256 === expected.max1 && acceptance.candidate?.max2_sha256 === expected.max2, "ACCEPTANCE_CONFIGS");
-assert(acceptance.candidate?.authority_path === null && acceptance.candidate?.authority_sha256 === null, "ACCEPTANCE_AUTHORITY");
-assert(acceptance.candidate?.maximum_cumulative_finite_spend_usd === null, "ACCEPTANCE_CAP");
-assert(acceptance.provider_boundary?.provider_calls === false && acceptance.provider_boundary?.gpu_use === false, "ACCEPTANCE_BOUNDARY");
+assert(acceptance.candidate?.authority_path === "approved-authority.json" && acceptance.candidate?.authority_sha256 === expected.authority, "ACCEPTANCE_AUTHORITY");
+assert(acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4, "ACCEPTANCE_CAP");
+assert(acceptance.provider_boundary?.provider_calls === true && acceptance.provider_boundary?.gpu_use === true, "ACCEPTANCE_BOUNDARY");
+assert(authority.attempt === 33 && authority.proposal?.sha256 === expected.proposal, "AUTHORITY_PROPOSAL");
+assert(authority.approval?.maximum_cumulative_finite_spend_usd === 4 && authority.approval?.observed_availability_at_proposal === "MEDIUM", "AUTHORITY_APPROVAL");
+assert(authority.lineage?.control_source_commit === expected.control && authority.lineage?.initial_config_sha256 === expected.max1 && authority.lineage?.concurrent_reader_config_sha256 === expected.max2, "AUTHORITY_LINEAGE");
 
 const context = [state, gates, start, task, activation].map(String).join("\n");
-for (const value of [expected.proposal, expected.acceptance, expected.max1, expected.max2, expected.control]) {
+for (const value of [expected.proposal, expected.acceptance, expected.authority, expected.max1, expected.max2, expected.control]) {
   assert(context.includes(value), `CONTEXT_${value.slice(-8)}`);
 }
 assert(context.includes("attempt33_provider_free") || context.includes("Attempt33 provider-free"), "CONTEXT_STATE");
-assert(String(activation).includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_CAP_NULL");
-assert(!String(gates).includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-22-attempt33"), "NO_AUTHORITY_PATH");
+assert(String(activation).includes("V207_APPROVED_FINITE_CAP_USD = 4 as const"), "ACTIVATION_CAP");
 
 process.stdout.write(`V2-07 Attempt33 max-two terminal reader drain candidate validation PASS (${expected.proposal})\n`);

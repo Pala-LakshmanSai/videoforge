@@ -8,10 +8,12 @@ IDs are locally terminal and owned jobs are zero. The fresh Attempt33 proposal i
 at `sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925`; max-one is
 `sha256:5c3651673d93829535a450a88b99bcea697ed817e9f4ceba0536523e606f73a7`, max-two is
 `sha256:051863d9b131aab22502de85b57553adc924c5bb8f4a3ceee0e6b9d5991e78d2`, and acceptance is
-`sha256:7a47a7a8ec39c1aa8c8ed943378a5584785cc00cb7b5ee7666b974a5686df048`. Fresh read-only truth
+`sha256:145408f7e2a5d33512a5458af98012097d65e363446e48a618d126f8008f8fb5`. Fresh read-only truth
 proves zero compute/disposable resources, both exact retained volumes, MEDIUM RTX 4090 EU-RO-1
-availability, and cumulative endpoint billing `$1.1340842194622383`. No authority or positive cap
-exists; provider mutation/GPU use/spend remain disabled and V2-08 is forbidden.
+availability, and cumulative endpoint billing `$1.1340842194622383`. Exact single-use authority
+`sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328` approves only this
+proposal with FlashBoot=true, observed MEDIUM EU-RO-1 availability, and a fresh `$4` cumulative cap.
+Execution is pending; retained-volume mutation and V2-08 remain forbidden.
 
 Historical Attempt32 closed fail-closed. Its exact closure is
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-32.json` at

@@ -152,7 +152,7 @@ gates:
     current_candidate: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/combined-live-proposal.json"
     current_candidate_sha256: "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925"
     current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:7a47a7a8ec39c1aa8c8ed943378a5584785cc00cb7b5ee7666b974a5686df048"
+    current_candidate_acceptance_sha256: "sha256:145408f7e2a5d33512a5458af98012097d65e363446e48a618d126f8008f8fb5"
     current_candidate_control_source_commit: "bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37"
     current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
@@ -172,20 +172,20 @@ gates:
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt32-cleanup-observation.json"
     cleanup_evidence_sha256: "sha256:01d91e1216a77ea4d6ac7130c2add5800f67043b3ba34d26ecbecf9422acc51d"
     latest_closed_result: "NOT_QUALIFIED_RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN"
-    authority_mode: attempt33_provider_free_awaiting_fresh_exact_approval_and_positive_cap
+    authority_mode: attempt33_bounded_mutation_authorized
     pending_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/combined-live-proposal.json"
     pending_proposal_sha256: "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925"
     pending_control_source_commit: "bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37"
-    pending_authority: null
-    pending_authority_sha256: null
-    pending_numeric_cap_usd: null
+    pending_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/approved-authority.json"
+    pending_authority_sha256: "sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328"
+    pending_numeric_cap_usd: 4
     pending_flashboot: true
     pending_availability: MEDIUM
-    provider_calls_authorized: false
-    provider_mutations_authorized: false
-    gpu_use_authorized: false
-    result: "NOT_QUALIFIED_attempt33_provider_free_candidate_awaiting_authority"
-    next_boundary: "fresh exact Attempt33 approval and fresh positive numeric cap required before any publication, endpoint mutation, worker allocation, or GPU use; V2-08 forbidden"
+    provider_calls_authorized: true
+    provider_mutations_authorized: true
+    gpu_use_authorized: true
+    result: "NOT_QUALIFIED_attempt33_approved_execution_pending"
+    next_boundary: "execute only exact Attempt33 authority and close qualification or fail closed; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

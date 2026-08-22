@@ -514,10 +514,17 @@ const gateConsumed =
     (gate.includes("authority_mode: attempt32_consumed_closed") ||
       gate.includes(
         "authority_mode: attempt33_provider_free_awaiting_fresh_exact_approval_and_positive_cap",
-      )) &&
+      ) ||
+      gate.includes("authority_mode: attempt33_bounded_mutation_authorized")) &&
     /provider_calls_authorized:\s+false/u.test(gate) &&
     /gpu_use_authorized:\s+false/u.test(gate);
-assert(gateAuthorized || gateConsumed, "GATE_AUTHORITY_LIFECYCLE");
+const gateSuccessorAuthorized =
+  hasAll(gate, [authorityPath, authorityHash, expected.proposal, expected.max1, expected.max2]) &&
+  gate.includes("authority_mode: attempt33_bounded_mutation_authorized") &&
+  gate.includes("pending_numeric_cap_usd: 4") &&
+  /provider_calls_authorized:\s+true/u.test(gate) &&
+  /gpu_use_authorized:\s+true/u.test(gate);
+assert(gateAuthorized || gateConsumed || gateSuccessorAuthorized, "GATE_AUTHORITY_LIFECYCLE");
 for (const [label, text] of Object.entries({ task, start })) {
   assert(hasAll(text, [expected.proposal, expected.max1, expected.max2, acceptanceHash, authorityHash]), `${label.toUpperCase()}_POINTERS`);
 }

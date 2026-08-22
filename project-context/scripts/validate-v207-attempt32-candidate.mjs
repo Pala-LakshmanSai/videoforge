@@ -122,7 +122,7 @@ assert(
     String(gatesBytes).includes("authority_mode: attempt32_consumed_closed") ||
     String(gatesBytes).includes(
       "authority_mode: attempt33_provider_free_awaiting_fresh_exact_approval_and_positive_cap",
-    ),
+    ) || String(gatesBytes).includes("authority_mode: attempt33_bounded_mutation_authorized"),
   "GATE_AUTHORITY_LIFECYCLE",
 );
 assert(String(activationBytes).includes(expected.proposal), "ACTIVATION_HISTORICAL_PROPOSAL");
