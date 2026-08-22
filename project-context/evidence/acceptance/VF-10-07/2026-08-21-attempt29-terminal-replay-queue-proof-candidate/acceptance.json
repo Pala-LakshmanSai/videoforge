@@ -4,7 +4,7 @@
   "task_id": "VF-10-07",
   "attempt": 29,
   "recorded_at": "2026-08-21T19:39:00.000Z",
-  "result": "PROVIDER_FREE_TERMINAL_REPLAY_QUEUE_PROOF_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "result": "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING",
   "qualification_status": "NOT_QUALIFIED",
   "candidate": {
     "proposal_path": "combined-live-proposal.json",
@@ -30,13 +30,14 @@
     "volume_mount": "/runpod-volume",
     "flashboot": true,
     "availability": "LOW",
-    "maximum_cumulative_finite_spend_usd": null,
-    "fresh_numeric_cap_required": true,
-    "authority_path": null,
-    "authority_sha256": null,
-    "provider_calls_authorized": false,
-    "provider_mutations_authorized": false,
-    "gpu_use_authorized": false,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "fresh_numeric_cap_required": false,
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572",
+    "authority_recorded": true,
+    "provider_calls_authorized": true,
+    "provider_mutations_authorized": true,
+    "gpu_use_authorized": true,
     "image_republication_authorized": false,
     "model_download_or_volume_mutation_authorized": false,
     "v2_08_authorized": false
@@ -102,7 +103,7 @@
     "external_spend_usd": 0
   },
   "local_verification": {
-    "attempt29_proposal_validator": "PENDING",
+    "attempt29_proposal_validator": "PASS",
     "terminal_replay_queue_fence_tests": "PENDING",
     "context_validation": "PENDING",
     "secret_scan": "PENDING",
@@ -118,7 +119,7 @@
     "retained_volume_mutation": false,
     "v2_08_authorized": false
   },
-  "next_boundary": "Ask once for explicit approval of this exact Attempt29 proposal hash with FlashBoot=true, LOW or better EU-RO-1 availability, and a fresh positive numeric maximum cumulative finite spend. Do not create an authority record, publish, mutate provider state, use GPU, or spend before approval and cap are recorded.",
+  "next_boundary": "After the authority/context commit and final validation, execute only this exact bounded Attempt29 proposal; stop before any unplanned duplicate compute, mismatch, failed output, uncertain cleanup, or cap risk.",
   "unproven_acceptance": [
     "complete cold and warm 32-image batches",
     "durable outputs and v3 receipts before provider expiry",

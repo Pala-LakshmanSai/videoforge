@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -9,7 +9,8 @@ const candidate = resolve(
 );
 const expected = Object.freeze({
   proposal: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
-  acceptance: "sha256:0123141d53c7652a538d690f2425f8447570b7b46d6ee8c850e22853058a9ed2",
+  acceptance: "sha256:1b2a52f34de0f5122522de50c0fbd213aea3bb77f11cf0d5e0c12506edd8906e",
+  authority: "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572",
   max1: "sha256:115a413d11be895638d3742a512f1a1f2d21a6f613617559c5816aa70bd840aa",
   max2: "sha256:f375c3d4d4f67b7021b92d46b01c1e24b44c269280b697430191539a51155a0d",
   control: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b",
@@ -43,29 +44,66 @@ const hasAll = (text, values) => values.every((value) => text.includes(value));
 const files = Object.freeze({
   proposal: resolve(candidate, "combined-live-proposal.json"),
   acceptance: resolve(candidate, "acceptance.json"),
+  authority: resolve(candidate, "approved-authority.json"),
   max1: resolve(candidate, "staged-config-max1.json"),
   max2: resolve(candidate, "staged-config-max2.json"),
 });
-const [proposalBytes, acceptanceBytes, max1Bytes, max2Bytes] = await Promise.all(
+const [proposalBytes, acceptanceBytes, authorityBytes, max1Bytes, max2Bytes] = await Promise.all(
   Object.values(files).map((path) => readFile(path)),
 );
 assert(sha256(proposalBytes) === expected.proposal, "PROPOSAL_HASH");
 assert(sha256(acceptanceBytes) === expected.acceptance, "ACCEPTANCE_HASH");
+assert(sha256(authorityBytes) === expected.authority, "AUTHORITY_HASH");
 assert(sha256(max1Bytes) === expected.max1, "MAX1_HASH");
 assert(sha256(max2Bytes) === expected.max2, "MAX2_HASH");
-try {
-  await access(resolve(candidate, "approved-authority.json"));
-  fail("AUTHORITY_FILE_MUST_BE_ABSENT");
-} catch (error) {
-  if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) {
-    throw error;
-  }
-}
 
 const proposal = parse(proposalBytes, "PROPOSAL");
 const acceptance = parse(acceptanceBytes, "ACCEPTANCE");
+const authority = parse(authorityBytes, "AUTHORITY");
 const max1 = parse(max1Bytes, "MAX1");
 const max2 = parse(max2Bytes, "MAX2");
+assert(
+  authority.schema_version ===
+    "videoforge.v2-07-attempt29-terminal-replay-queue-proof-authority/v1" &&
+    authority.checkpoint === "V2-07" &&
+    authority.task_id === "VF-10-07" &&
+    authority.attempt === 29 &&
+    authority.authority_mode === "bounded_mutation" &&
+    authority.proposal?.sha256 === expected.proposal &&
+    authority.approval?.exact_proposal_approved === true &&
+    authority.approval?.flashboot_true_accepted === true &&
+    authority.approval?.minimum_approved_availability === "LOW" &&
+    authority.approval?.observed_availability_at_approval === "LOW" &&
+    authority.approval?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval?.fresh_numeric_cap === true &&
+    authority.approval?.historical_cap_reused === false &&
+    authority.approval?.prior_authority_reused === false,
+  "AUTHORITY_APPROVAL",
+);
+assert(
+  authority.lineage?.model === expected.model &&
+    authority.lineage?.model_manifest_sha256 === expected.manifest &&
+    authority.lineage?.final_image === expected.image &&
+    authority.lineage?.volume_id_sha256 === expected.volume &&
+    authority.lineage?.volume_mount === "/runpod-volume" &&
+    authority.lineage?.volume_size_gb === 50 &&
+    authority.lineage?.volume_region === "EU-RO-1" &&
+    authority.lineage?.control_source_commit === expected.control &&
+    authority.lineage?.terminal_replay_queue_fence_commit === expected.control &&
+    authority.lineage?.initial_config_sha256 === expected.max1 &&
+    authority.lineage?.concurrent_reader_config_sha256 === expected.max2,
+  "AUTHORITY_LINEAGE",
+);
+assert(
+  authority.execution_boundary?.provider_calls_completed === false &&
+    authority.execution_boundary?.external_spend_usd === 0 &&
+    authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true &&
+    authority.execution_boundary?.gpu_use_authorized_pending_execution === true &&
+    authority.execution_boundary?.v2_08_authorized === false &&
+    authority.status === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING",
+  "AUTHORITY_BOUNDARY",
+);
 assert(
   proposal.schema_version ===
     "videoforge.v2-07-terminal-replay-queue-proof-combined-live-proposal/v1" &&
@@ -175,9 +213,13 @@ assert(
     acceptance.candidate?.max1_sha256 === expected.max1 &&
     acceptance.candidate?.max2_sha256 === expected.max2 &&
     acceptance.candidate?.control_source_commit === expected.control &&
-    acceptance.candidate?.authority_path === null &&
-    acceptance.candidate?.authority_sha256 === null &&
-    acceptance.candidate?.maximum_cumulative_finite_spend_usd === null,
+    acceptance.candidate?.authority_path === "approved-authority.json" &&
+    acceptance.candidate?.authority_sha256 === expected.authority &&
+    acceptance.candidate?.authority_recorded === true &&
+    acceptance.candidate?.provider_calls_authorized === true &&
+    acceptance.candidate?.provider_mutations_authorized === true &&
+    acceptance.candidate?.gpu_use_authorized === true &&
+    acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4,
   "ACCEPTANCE",
 );
 
@@ -190,43 +232,46 @@ const [state, gates, task, start, activation, activationTest] = await Promise.al
   readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.test.ts"), "utf8"),
 ]);
 for (const [label, text] of Object.entries({ state, gates, task, start, activation, activationTest })) {
-  assert(hasAll(text, [expected.proposal, expected.control]), `${label.toUpperCase()}_POINTERS`);
+  assert(
+    hasAll(text, [expected.proposal, expected.control, expected.authority]),
+    `${label.toUpperCase()}_POINTERS`,
+  );
 }
 assert(
   hasAll(state, [
     expected.acceptance,
     expected.max1,
     expected.max2,
-    "phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready",
-    "task_stage: provider_free",
-    "provider_calls_authorized: false",
-    "maximum_external_spend_usd: 0",
-    "authority_recorded: false",
-    "authority_sha256: null",
+    "phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_authorized",
+    "task_stage: bounded_mutation",
+    "provider_calls_authorized: true",
+    "maximum_external_spend_usd: 4",
+    "authority_recorded: true",
+    expected.authority,
   ]),
   "STATE_BOUNDARY",
 );
 assert(
   hasAll(gates, [
     expected.acceptance,
-    "authority_mode: none_attempt29_unapproved",
-    "pending_authority: null",
-    "pending_authority_sha256: null",
-    "pending_numeric_cap_usd: null",
-    'result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"',
+    "authority_mode: attempt29_bounded_mutation_authorized",
+    "pending_authority: \"evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json\"",
+    `pending_authority_sha256: "${expected.authority}"`,
+    "pending_numeric_cap_usd: 4",
+    'result: "NOT_QUALIFIED_attempt29_authorized_preexecution"',
   ]),
   "GATE_BOUNDARY",
 );
 assert(
-  activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
-    activationTest.includes("V207_APPROVED_AUTHORITY_SHA256).toBeNull()") &&
-    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBeNull()") &&
-    activationTest.includes('toThrow("V207_FRESH_AUTHORITY_REQUIRED")'),
+  activation.includes(`V207_APPROVED_AUTHORITY_SHA256: string | null =\n  "${expected.authority}"`) &&
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
+    activationTest.includes(`V207_APPROVED_AUTHORITY_SHA256).toBe(\n      "${expected.authority}"`) &&
+    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)") &&
+    activationTest.includes("accepts only the exact Attempt29 candidate"),
   "ACTIVATION_BOUNDARY",
 );
 assert(!state.includes("TODO_ATTEMPT29") && !gates.includes("TODO_ATTEMPT29"), "NO_TODO");
 
 process.stdout.write(
-  `V2-07 Attempt29 proposal validation PASS (${expected.proposal}; max1 ${expected.max1}; max2 ${expected.max2}; acceptance ${expected.acceptance}; fresh authority and cap required)\n`,
+  `V2-07 Attempt29 authorized proposal validation PASS (${expected.proposal}; max1 ${expected.max1}; max2 ${expected.max2}; acceptance ${expected.acceptance}; authority ${expected.authority}; cap $4)\n`,
 );

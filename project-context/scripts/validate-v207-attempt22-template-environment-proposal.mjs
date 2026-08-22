@@ -1,7 +1,15 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
+import {
+  isAttempt28Activation,
+  isAttempt28Gate,
+  isAttempt28State,
+  isAttempt29AuthorizedGate,
+  isAttempt29AuthorizedState,
+  ATTEMPT29_AUTHORITY,
+  ATTEMPT29_AUTHORITY_PATH,
+} from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const candidate = resolve(
@@ -336,7 +344,10 @@ assert(
       state.includes("sha256:2fc6072b88ca5069eef5510e6f0699faad977102565455495f89b56b02444b7c")) ||
     (isAttempt28State(state) &&
       state.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json") &&
-      state.includes("sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326")),
+      state.includes("sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326")) ||
+    (isAttempt29AuthorizedState(state) &&
+      state.includes(`v2_07_current_approved_authority: ${ATTEMPT29_AUTHORITY_PATH}`) &&
+      state.includes(ATTEMPT29_AUTHORITY)),
   "state_authority",
 );
 assert(
@@ -356,7 +367,8 @@ assert(
       attempt27CandidateGate ||
       attempt27AuthorizedGate ||
       attempt27ClosedGate ||
-      attempt28Gate),
+      attempt28Gate ||
+      isAttempt29AuthorizedGate(gates)),
   "gate_authorized",
 );
 assert(task.includes("Attempt 22") && task.includes(EXPECTED.authority), "task_authority");

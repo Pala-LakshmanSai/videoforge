@@ -1,7 +1,14 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { isAttempt29CandidateGate, isAttempt29CandidateState } from "./v207-attempt28-compat.mjs";
+import {
+  isAttempt29CandidateGate,
+  isAttempt29CandidateState,
+  isAttempt29AuthorizedGate,
+  isAttempt29AuthorizedState,
+  ATTEMPT29_AUTHORITY,
+  ATTEMPT29_AUTHORITY_PATH,
+} from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const evidenceRoot = resolve(root, "project-context/evidence/acceptance/VF-10-07");
@@ -261,6 +268,40 @@ if (isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates)) {
     ],
     "GATES_ATTEMPT29_SUCCESSOR",
   );
+} else if (isAttempt29AuthorizedState(state) && isAttempt29AuthorizedGate(gates)) {
+  includesAll(
+    state,
+    [
+      expected.closure,
+      expected.cleanup,
+      expected.proposal,
+      expected.authority,
+      "phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_authorized",
+      "task_stage: bounded_mutation",
+      "provider_calls_authorized: true",
+      "remote_or_cloud_mutations_authorized: true",
+      "gpu_use_authorized: true",
+      "maximum_external_spend_usd: 4",
+      `current_authority: ${ATTEMPT29_AUTHORITY_PATH}`,
+      `current_authority_sha256: "${ATTEMPT29_AUTHORITY}"`,
+      "mutation_authorized: true",
+      "spend_authorized_usd: 4",
+    ],
+    "STATE_ATTEMPT29_AUTHORIZED_SUCCESSOR",
+  );
+  includesAll(
+    gates,
+    [
+      expected.closure,
+      expected.cleanup,
+      "authority_mode: attempt29_bounded_mutation_authorized",
+      `pending_authority: "${ATTEMPT29_AUTHORITY_PATH}"`,
+      `pending_authority_sha256: "${ATTEMPT29_AUTHORITY}"`,
+      "pending_numeric_cap_usd: 4",
+      'result: "NOT_QUALIFIED_attempt29_authorized_preexecution"',
+    ],
+    "GATES_ATTEMPT29_AUTHORIZED_SUCCESSOR",
+  );
 } else {
   includesAll(state, [
     expected.closure,
@@ -288,7 +329,18 @@ if (isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates)) {
 }
 includesAll(task, [expected.closure, expected.cleanup, "RUNPOD_QUIESCENT_NOT_CONFIRMED", "it is consumed", "V2-07 remains `NOT_QUALIFIED`", "V2-08 remains forbidden"], "TASK");
 includesAll(start, [expected.closure, expected.cleanup, "RUNPOD_QUIESCENT_NOT_CONFIRMED", "consumed and non-reusable", "V2-07 remains NOT_QUALIFIED", "V2-08"], "START");
-assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_CAP_CLOSED");
-assert(activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBeNull()") && activationTest.includes('toThrow("V207_FRESH_AUTHORITY_REQUIRED")'), "ACTIVATION_TEST_CLOSED");
+assert(
+  isAttempt29AuthorizedState(state)
+    ? activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4")
+    : activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+  "ACTIVATION_CAP_CLOSED",
+);
+assert(
+  isAttempt29AuthorizedState(state)
+    ? activationTest.includes("accepts only the exact Attempt29 candidate")
+    : activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBeNull()") &&
+      activationTest.includes('toThrow("V207_FRESH_AUTHORITY_REQUIRED")'),
+  "ACTIVATION_TEST_CLOSED",
+);
 
 process.stdout.write(`V2-07 Attempt28 closure validation PASS (${expected.closure}; cleanup ${expected.cleanup}; RUNPOD_QUIESCENT_NOT_CONFIRMED; 64 durable outputs/receipts; duplicate fail-closed; three stable zero-resource reads; authority consumed)\n`);

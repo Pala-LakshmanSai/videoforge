@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { isAttempt28Activation, isAttempt28Gate, isAttempt28State } from "./v207-attempt28-compat.mjs";
+import {
+  isAttempt28Activation,
+  isAttempt28Gate,
+  isAttempt28State,
+  isAttempt29AuthorizedState,
+  ATTEMPT29_AUTHORITY_PATH,
+} from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const candidate = resolve(
@@ -213,6 +219,8 @@ assert(
         state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt27-hosted-png-crc32-repair-candidate/approved-authority.json")) ||
       (attempt28State &&
         state.includes("current_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json")) ||
+      (isAttempt29AuthorizedState(state) &&
+        state.includes(`current_authority: ${ATTEMPT29_AUTHORITY_PATH}`)) ||
       (state.includes("provider_calls_authorized: false") && state.includes("current_authority: null"))) &&
     state.includes(EXPECTED.authority),
   "state_pointer",

@@ -7,6 +7,8 @@ import {
   isAttempt28Gate,
   isAttempt28State,
   isAttempt29CandidateState,
+  isAttempt29AuthorizedState,
+  isAttempt29AuthorizedGate,
 } from "./v207-attempt28-compat.mjs";
 import { fileURLToPath } from "node:url";
 
@@ -353,6 +355,7 @@ assert(
     currentState.includes(`v2_07_action: validate_attempt26_finalize_transport_repair_candidate_provider_free_then_stop_for_fresh_approval`) ||
     currentState.includes(`v2_07_action: execute_exact_attempt26_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`) ||
     currentState.includes(`v2_07_action: diagnose_attempt26_finalize_response_invalid_provider_free_and_require_fresh_exact_proposal_before_any_retry`) ||
+    currentState.includes(`v2_07_action: execute_only_the_exact_attempt29_terminal_replay_queue_proof_proposal_after_authority_commit_then_reconcile_and_stop_before_v2_08`) ||
     currentState.includes(`v2_07_action: validate_attempt27_hosted_png_crc32_repair_candidate_provider_free_then_require_fresh_exact_approval_and_cap`) ||
     currentState.includes(`v2_07_action: execute_exact_attempt27_proposal_under_recorded_authority_and_usd_4_cap_then_reconcile`) ||
     currentState.includes(`v2_07_action: diagnose_attempt27_warm_idle_failure_provider_free_and_prepare_fresh_uncapped_proposal_only_if_repair_is_proven`) ||
@@ -409,7 +412,9 @@ assert(
     (isAttempt28ClosedState(currentState) &&
       recommendedTask.includes("Retain exact Attempt28 failure closure")) ||
     (isAttempt29CandidateState(currentState) &&
-      recommendedTask.includes("Validate and hand off the Attempt29 terminal replay queue-proof candidate")),
+      recommendedTask.includes("Validate and hand off the Attempt29 terminal replay queue-proof candidate")) ||
+    (isAttempt29AuthorizedState(currentState) &&
+      recommendedTask.includes("Execute and reconcile only the exact approved Attempt29 terminal replay queue-proof proposal")),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation") || recommendedTask.includes("task_stage: provider_free"), "state_recommended_stage");
@@ -431,7 +436,8 @@ assert(
     recommendedTask.includes("current_goal_authority: none_attempt28_unapproved_fresh_authority_required") ||
     recommendedTask.includes("current_goal_authority: exact_attempt28_authority_recorded") ||
     recommendedTask.includes("current_goal_authority: none_attempt28_closed_fresh_authority_required") ||
-    recommendedTask.includes("current_goal_authority: none_attempt29_candidate_fresh_authority_required"),
+    recommendedTask.includes("current_goal_authority: none_attempt29_candidate_fresh_authority_required") ||
+    recommendedTask.includes("current_goal_authority: attempt29_bounded_mutation_authorized"),
   "state_recommended_authority",
 );
 assert(
@@ -463,7 +469,8 @@ assert(
     auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt24-verification-stage-diagnostic-candidate/approved-authority.json") ||
     auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt25-startup-terminal-inventory-candidate/approved-authority.json") ||
     auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt26-finalize-transport-repair-candidate/approved-authority.json") ||
-    auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json"),
+    auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt28-post-job-terminal-scale-zero-candidate/approved-authority.json") ||
+    auditEvidence.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-21-attempt29-terminal-replay-queue-proof-candidate/approved-authority.json"),
   "state_audit_authority",
 );
 assert(auditEvidence.includes(`v2_07_attempt17_closed_authority: ${expected.candidateAuthorityPath}`), "state_audit_attempt17_closed_authority");
@@ -488,7 +495,12 @@ const taskHeader = task.slice(0, task.indexOf("\n## Goal"));
 const repairSectionStart = task.indexOf("## Provider-free Attempt 16 repair and fresh proposal");
 assert(repairSectionStart >= 0, "task_repair_section");
 const repairSection = task.slice(repairSectionStart);
-assert(/consumed, closed,\s*and non-transferable/u.test(taskHeader), "task_current_authority_closed");
+assert(
+  /consumed, closed,\s*and non-transferable/u.test(taskHeader) ||
+    (isAttempt29AuthorizedState(currentState) &&
+      taskHeader.includes("exact pre-execution authority recorded")),
+  "task_current_authority_closed",
+);
 assert(task.includes(expected.currentProposal), "task_current_proposal_hash");
 assert(taskHeader.includes("V2-08"), "task_v208_boundary");
 assert(repairSection.includes("update the exact private template environment"), "task_template_update");

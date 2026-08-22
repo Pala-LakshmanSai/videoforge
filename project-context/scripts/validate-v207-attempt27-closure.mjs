@@ -10,6 +10,10 @@ import {
   isAttempt29CandidateGate,
   isAttempt28Gate,
   isAttempt28State,
+  isAttempt29AuthorizedGate,
+  isAttempt29AuthorizedState,
+  ATTEMPT29_AUTHORITY,
+  ATTEMPT29_AUTHORITY_PATH,
   isAttempt29CandidateState,
 } from "./v207-attempt28-compat.mjs";
 
@@ -363,12 +367,13 @@ if (isAttempt28State(state)) {
       topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_proposal_ready") ||
       topState.includes("phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized") ||
       topState.includes("phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready") ||
+      topState.includes("phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_authorized") ||
       (isAttempt28ClosedState(state) && topState.includes("phase: serverless_v2_v2_07_attempt28_closed_quiescence_failure")),
     "state_top_phase_attempt28",
   );
   includesAll(
     topState,
-    isAttempt28AuthorizedState(state)
+    (isAttempt28AuthorizedState(state) || isAttempt29AuthorizedState(state))
       ? [
           "task_stage: bounded_mutation",
           "provider_calls_authorized: true",
@@ -411,6 +416,19 @@ if (isAttempt28AuthorizedState(state)) {
     ],
     "provider_authority_attempt28",
   );
+} else if (isAttempt29AuthorizedState(state)) {
+  includesAll(
+    providerAuthority,
+    [
+      "mode: paid",
+      "cap_usd: 4",
+      ATTEMPT29_AUTHORITY,
+      "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+      "consumed: false",
+      "actual_spend_usd: 0",
+    ],
+    "provider_authority_attempt29",
+  );
 } else if (isAttempt28ClosedState(state)) {
   includesAll(
     providerAuthority,
@@ -443,6 +461,14 @@ includesAll(
         "gpu_use_authorized: true",
         "spend_authorized_usd: 4",
       ]
+    : isAttempt29AuthorizedState(state)
+      ? [
+          `current_authority: ${ATTEMPT29_AUTHORITY_PATH}`,
+          `current_authority_sha256: "${ATTEMPT29_AUTHORITY}"`,
+          "mutation_authorized: true",
+          "gpu_use_authorized: true",
+          "spend_authorized_usd: 4",
+        ]
     : ["current_authority: null", "current_authority_sha256: null", "mutation_authorized: false", "gpu_use_authorized: false", "spend_authorized_usd: 0"],
   "runpod_scope",
 );
@@ -459,7 +485,16 @@ if (isAttempt28State(state)) {
           "gpu_use_authorized: true",
           "execution_status: attempt28_authorized_provider_execution_pending",
         ]
-      : isAttempt29CandidateState(state)
+      : isAttempt29AuthorizedState(state)
+        ? [
+            "NOT_QUALIFIED_attempt29_authorized_preexecution",
+            "provider_calls_authorized: true",
+            "maximum_external_spend_usd: 4",
+            "remote_or_cloud_mutations_authorized: true",
+            "gpu_use_authorized: true",
+            "execution_status: attempt29_approved_preexecution_pending",
+          ]
+        : isAttempt29CandidateState(state)
         ? [
             "NOT_QUALIFIED_attempt29_provider_free_candidate_ready",
             "provider_calls_authorized: false",
@@ -493,7 +528,16 @@ if (isAttempt28State(state)) {
 const latestLive = section(state, "latest_live_check:", "GATE_SERVERLESS_SOULX_001:");
 includesAll(
   latestLive,
-  isAttempt29CandidateState(state)
+  isAttempt29AuthorizedState(state)
+    ? [
+        "sha256:1b2a52f34de0f5122522de50c0fbd213aea3bb77f11cf0d5e0c12506edd8906e",
+        "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+        "sha256:a8c7b12731fd8b6b72a4bdce38c2b03de51e50cdc255d9f0fb96639507174049",
+        `authority_mode: attempt29_bounded_mutation_authorized`,
+        "pending_numeric_cap_usd: 4",
+        'result: "NOT_QUALIFIED_attempt29_authorized_preexecution"',
+      ]
+    : isAttempt29CandidateState(state)
     ? [
         "sha256:0123141d53c7652a538d690f2425f8447570b7b46d6ee8c850e22853058a9ed2",
         "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
@@ -515,7 +559,22 @@ includesAll(
 );
 
 const mageGate = section(gates, "GATE_SERVERLESS_MAGE_001:", "GATE_SERVERLESS_SOULX_001:");
-if (isAttempt28AuthorizedGate(gates)) {
+if (isAttempt29AuthorizedGate(gates)) {
+  includesAll(
+    mageGate,
+    [
+      "status: open",
+      'pending_proposal_sha256: "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6"',
+      'pending_control_source_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"',
+      `pending_authority_sha256: "${ATTEMPT29_AUTHORITY}"`,
+      `pending_authority: "${ATTEMPT29_AUTHORITY_PATH}"`,
+      "authority_mode: attempt29_bounded_mutation_authorized",
+      "pending_numeric_cap_usd: 4",
+      'result: "NOT_QUALIFIED_attempt29_authorized_preexecution"',
+    ],
+    "gate_attempt29_authorized",
+  );
+} else if (isAttempt28AuthorizedGate(gates)) {
   includesAll(
     mageGate,
     [
@@ -575,10 +634,18 @@ if (isAttempt28AuthorizedGate(gates)) {
   includesAll(mageGate, ["status: open", "latest_closed_proposal_sha256: \"" + EXPECTED.proposal + "\"", "latest_closed_authority_sha256: \"" + EXPECTED.authority + "\"", "closure_evidence_sha256: \"" + EXPECTED.closure + "\"", "cleanup_evidence_sha256: \"" + EXPECTED.cleanup + "\"", "authority_mode: none_attempt27_consumed", "pending_numeric_cap_usd: null", "result: \"NOT_QUALIFIED_attempt27_closed_warm_idle_failure\""], "gate_closed");
 }
 assert(!mageGate.includes("authority_mode: attempt27_bounded_mutation_authorized"), "gate_stale_authority");
-assert(isAttempt28AuthorizedGate(gates) || !mageGate.includes("pending_numeric_cap_usd: 4"), "gate_stale_cap");
+assert(isAttempt28AuthorizedGate(gates) || isAttempt29AuthorizedGate(gates) || !mageGate.includes("pending_numeric_cap_usd: 4"), "gate_stale_cap");
 includesAll(
   task,
-  isAttempt28ClosedState(state)
+  isAttempt29AuthorizedState(state)
+    ? [
+        "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+        ATTEMPT29_AUTHORITY,
+        "Attempt29",
+        "V2-07 remains `NOT_QUALIFIED`",
+        "V2-08 remains forbidden",
+      ]
+    : isAttempt28ClosedState(state)
     ? [
         "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
         "RUNPOD_QUIESCENT_NOT_CONFIRMED",
@@ -591,7 +658,15 @@ includesAll(
 );
 includesAll(
   start,
-  isAttempt28ClosedState(state)
+  isAttempt29AuthorizedState(state)
+    ? [
+        "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+        ATTEMPT29_AUTHORITY,
+        "exact pre-execution authority recorded and awaits bounded live qualification",
+        "V2-07 remains NOT_QUALIFIED",
+        "V2-08",
+      ]
+    : isAttempt28ClosedState(state)
     ? [
         "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
         "RUNPOD_QUIESCENT_NOT_CONFIRMED",
@@ -605,7 +680,7 @@ includesAll(
 includesAll(
   activation,
   [
-    isAttempt28AuthorizedState(state)
+    isAttempt28AuthorizedState(state) || isAttempt29AuthorizedState(state)
       ? "V207_APPROVED_FINITE_CAP_USD: number | null = 4"
       : "V207_APPROVED_FINITE_CAP_USD: number | null = null",
     "V207_PENDING_PROPOSAL_SHA256",

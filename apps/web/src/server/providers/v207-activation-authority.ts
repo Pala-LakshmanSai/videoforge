@@ -18,9 +18,9 @@ export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
   "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b" as const;
-export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
-// Attempt 29 is provider-free and has no approved authority. A fresh exact approval and cap are required.
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+export const V207_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572";
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 
 export interface V207ActivationAuthority {
   readonly image: string;

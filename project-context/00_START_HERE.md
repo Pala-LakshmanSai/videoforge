@@ -1,7 +1,7 @@
 # VideoForge: start here
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt28;
-Attempt29 is a provider-free candidate pending fresh exact approval and a fresh positive numeric cap.
+Attempt29 has exact pre-execution authority recorded and awaits bounded live qualification.
 Attempt28 completed one owned probe and one cold 32-image batch, each with 32 private durable
 outputs/readbacks and 32 provenance receipts. Duplicate delivery was detected, and the repair stopped
 fail-closed at `RUNPOD_QUIESCENT_NOT_CONFIRMED` in `cold-terminal`; no unplanned duplicate provider
@@ -27,8 +27,10 @@ terminal request-key replay to the original terminal job, forbids a second provi
 duplicate compute, and requires no owned jobs plus bounded exact queue-empty reads bracketing two
 stable terminal inventory snapshots after `RUNPOD_WARM_IDLE_NOT_CONFIRMED`; queued, running,
 malformed, active, nonterminal, mismatched, or unstable state fails closed. The control repair is
-`7ba8e9181fe210858c23a3ba7c5c9aca768ac24b`; no Attempt29 authority is recorded, the proposal cap
-is null, and a fresh exact approval plus positive numeric cap is required before any retry.
+`7ba8e9181fe210858c23a3ba7c5c9aca768ac24b`; the proposal cap remains null by design and is bound by
+fresh authority `sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572` under a fresh
+`$4` cap, FlashBoot=true, and LOW EU-RO-1 availability. Provider execution is pending exact
+authority/context commit.
 Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any

@@ -7,6 +7,10 @@ import {
   ATTEMPT29_MAX1,
   ATTEMPT29_MAX2,
   ATTEMPT29_PROPOSAL,
+  ATTEMPT29_AUTHORITY,
+  ATTEMPT29_AUTHORITY_PATH,
+  isAttempt29AuthorizedGate,
+  isAttempt29AuthorizedState,
   isAttempt28ClosedGate,
   isAttempt28ClosedState,
   isAttempt29CandidateGate,
@@ -154,7 +158,9 @@ const [state, gates, task, start, activation, activationTest] = await Promise.al
   readFile(join(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
   readFile(join(root, "apps/web/src/server/providers/v207-activation-authority.test.ts"), "utf8"),
 ]);
-const attempt29Successor = isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates);
+const attempt29AuthorizedSuccessor = isAttempt29AuthorizedState(state) && isAttempt29AuthorizedGate(gates);
+const attempt29Successor =
+  (isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates)) || attempt29AuthorizedSuccessor;
 const closed = isAttempt28ClosedState(state) && isAttempt28ClosedGate(gates) && !attempt29Successor;
 for (const [name, text] of Object.entries({ state, gates, task, start, activation, activationTest })) {
   const successorActivation = attempt29Successor && (name === "activation" || name === "activationTest");
@@ -191,31 +197,60 @@ if (closed) {
   );
   assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_CLOSED");
 } else if (attempt29Successor) {
-  assert(
-    hasAll(state, [
-      ATTEMPT29_MAX1,
-      ATTEMPT29_MAX2,
-      "phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready",
-      "task_stage: provider_free",
-      "provider_calls_authorized: false",
-      "maximum_external_spend_usd: 0",
-      "authority_sha256: null",
-    ]),
-    "STATE_ATTEMPT29_SUCCESSOR_BOUNDARY",
-  );
-  assert(
-    hasAll(gates, [
-      `pending_proposal_sha256: "${ATTEMPT29_PROPOSAL}"`,
-      `pending_control_source_commit: "${ATTEMPT29_CONTROL}"`,
-      "authority_mode: none_attempt29_unapproved",
-      "pending_authority: null",
-      "pending_authority_sha256: null",
-      "pending_numeric_cap_usd: null",
-      'result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"',
-    ]),
-    "GATE_ATTEMPT29_SUCCESSOR_BOUNDARY",
-  );
-  assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_ATTEMPT29_SUCCESSOR");
+  if (attempt29AuthorizedSuccessor) {
+    assert(
+      hasAll(state, [
+        ATTEMPT29_MAX1,
+        ATTEMPT29_MAX2,
+        "phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_authorized",
+        "task_stage: bounded_mutation",
+        "provider_calls_authorized: true",
+        "maximum_external_spend_usd: 4",
+        `current_authority: ${ATTEMPT29_AUTHORITY_PATH}`,
+        `current_authority_sha256: "${ATTEMPT29_AUTHORITY}"`,
+      ]),
+      "STATE_ATTEMPT29_AUTHORIZED_SUCCESSOR_BOUNDARY",
+    );
+    assert(
+      hasAll(gates, [
+        `pending_proposal_sha256: "${ATTEMPT29_PROPOSAL}"`,
+        `pending_control_source_commit: "${ATTEMPT29_CONTROL}"`,
+        `pending_authority: "${ATTEMPT29_AUTHORITY_PATH}"`,
+        `pending_authority_sha256: "${ATTEMPT29_AUTHORITY}"`,
+        "authority_mode: attempt29_bounded_mutation_authorized",
+        "pending_numeric_cap_usd: 4",
+        'result: "NOT_QUALIFIED_attempt29_authorized_preexecution"',
+      ]),
+      "GATE_ATTEMPT29_AUTHORIZED_SUCCESSOR_BOUNDARY",
+    );
+    assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "ACTIVATION_ATTEMPT29_AUTHORIZED_SUCCESSOR");
+  } else {
+    assert(
+      hasAll(state, [
+        ATTEMPT29_MAX1,
+        ATTEMPT29_MAX2,
+        "phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready",
+        "task_stage: provider_free",
+        "provider_calls_authorized: false",
+        "maximum_external_spend_usd: 0",
+        "authority_sha256: null",
+      ]),
+      "STATE_ATTEMPT29_SUCCESSOR_BOUNDARY",
+    );
+    assert(
+      hasAll(gates, [
+        `pending_proposal_sha256: "${ATTEMPT29_PROPOSAL}"`,
+        `pending_control_source_commit: "${ATTEMPT29_CONTROL}"`,
+        "authority_mode: none_attempt29_unapproved",
+        "pending_authority: null",
+        "pending_authority_sha256: null",
+        "pending_numeric_cap_usd: null",
+        'result: "NOT_QUALIFIED_attempt29_provider_free_candidate_ready"',
+      ]),
+      "GATE_ATTEMPT29_SUCCESSOR_BOUNDARY",
+    );
+    assert(activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_ATTEMPT29_SUCCESSOR");
+  }
 } else {
   assert(hasAll(state, [expected.max1, expected.max2, "phase: serverless_v2_v2_07_attempt28_post_job_terminal_scale_zero_authorized", "task_stage: bounded_mutation", "maximum_external_spend_usd: 4", "v2_07_current_approved_authority_sha256: \"sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326\"", "provider_calls_authorized: true"]), "STATE_BOUNDARY");
   assert(hasAll(gates, ["authority_mode: attempt28_bounded_mutation_authorized", "pending_numeric_cap_usd: 4", "pending_authority_sha256: \"sha256:455d5102618a14595aabb9f38236a7fd4d8ddb59ba063c48b03b4c6dd0a85326\""]), "GATE_BOUNDARY");
