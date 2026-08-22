@@ -525,13 +525,20 @@ const gateSuccessorAuthorized =
   /provider_calls_authorized:\s+true/u.test(gate) &&
   /gpu_use_authorized:\s+true/u.test(gate);
 const gateSuperseded =
-  gate.includes("authority_mode: no_live_authority_attempt34_provider_free_candidate") &&
+  (gate.includes("authority_mode: no_live_authority_attempt34_provider_free_candidate") ||
+    gate.includes("authority_mode: exact_attempt34_single_use_authority_active")) &&
   gate.includes("failed-attempt-33.json") &&
   gate.includes("attempt33-cleanup-observation.json") &&
   /provider_calls_authorized:\s+false/u.test(gate) &&
   /gpu_use_authorized:\s+false/u.test(gate);
+const gateAttempt34Authorized =
+  gate.includes("authority_mode: exact_attempt34_single_use_authority_active") &&
+  gate.includes("pending_numeric_cap_usd: 4") &&
+  gate.includes("sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff") &&
+  /provider_calls_authorized:\s+true/u.test(gate) &&
+  /gpu_use_authorized:\s+true/u.test(gate);
 assert(
-  gateAuthorized || gateConsumed || gateSuccessorAuthorized || gateSuperseded,
+  gateAuthorized || gateConsumed || gateSuccessorAuthorized || gateSuperseded || gateAttempt34Authorized,
   "GATE_AUTHORITY_LIFECYCLE",
 );
 for (const [label, text] of Object.entries({ task, start })) {

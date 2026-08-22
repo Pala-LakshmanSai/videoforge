@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Attempt34 is the active provider-free V2-07 candidate. Repair commit
+Attempt34 is approved once for exact bounded V2-07 execution. Repair commit
 `96f5e16cf03be7e31049478ce7f6b0c134a8108c` keeps retries exclusive to idempotent FINALIZE with
 the same reservation/callback tuple, expands the bounded attempt count from three to six, and uses
 1/2/3/4/5-second backoff; PUT and every non-FINALIZE POST remain single-shot. The exact combined
@@ -9,13 +9,15 @@ proposal is
 at `sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12`;
 max-one is `sha256:d31a518831b9a978295047310800a34eaf81ed56dde58eea46918dc581563ca2`,
 max-two is `sha256:11665ee88f09c6cbe498026cacd8505b0fe02ee7f19ac8b4d3f68aa534f3435c`,
-and acceptance is `sha256:7a4a73f94c40a9e411a1d38ffd6f0ff071b542777111005ff528cc5b1793fdfc`.
+and approved acceptance is `sha256:8c55b0010c87966d887959cf386c2779b2396254a19a3c3e136faf84dbc18a16`.
 Fresh read-only truth proves zero disposable compute, both intended volumes, and MEDIUM RTX 4090
 EU-RO-1 availability at the `$0.74/hour` secure-Pod reference; Serverless Flex remains `$1.10/GPU-hour`,
 the finite estimate is `$2.20`, cumulative endpoint billing is `$1.1340842194622383`, and the two
-existing volumes remain `$7/month` separately. No Attempt34 authority or cap exists. Fresh exact
-approval and a fresh positive numeric cumulative cap are required before mutation/GPU/spend.
-V2-07 remains NOT_QUALIFIED; V2-08 remains forbidden.
+existing volumes remain `$7/month` separately. Exact append-only authority
+`approved-authority.json` is `sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff`
+and approves FlashBoot=true, MEDIUM-or-better EU-RO-1, and a fresh `$4` cumulative finite cap.
+Execute only once, then consume it and terminally reconcile. Image republication, retained-volume
+mutation, and V2-08 remain forbidden; V2-07 remains NOT_QUALIFIED pending execution.
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. Attempt33
 closed fail-safe at `V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID`: both simultaneous reader jobs
