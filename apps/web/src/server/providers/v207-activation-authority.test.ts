@@ -54,10 +54,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:362427a13f16b9df3d80c33e26b461222a82bbc699b3e7bdeb84400e987c8262",
+      "sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("f0e73c7d2e5961c8c0e72d4103457a680f4a97b4");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("6632c4508a1f4127491a598d52157dece41a0560");
     expect(V207_FINALIZE_REPLAY_FAST_PATH_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
     expect(V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT).toBe(
       "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
@@ -113,7 +113,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects unapproved Attempt36 even with a proposed cap", () => {
+  it("rejects unapproved Attempt37 even with a proposed cap", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -124,7 +124,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects any cap while Attempt36 has no exact authority", () => {
+  it("rejects any cap while Attempt37 has no exact authority", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,

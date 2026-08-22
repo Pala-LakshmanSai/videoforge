@@ -1,0 +1,46 @@
+{
+  "schema_version": "videoforge.v2-07-attempt37-provider-free-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 37,
+  "recorded_at": "2026-08-22T18:38:24.525Z",
+  "result": "PROVIDER_FREE_CANDIDATE_AWAITING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e",
+    "max1_sha256": "sha256:e6f3d746959b3a5633fd9b7d6035a0dca44cee9f886b1c045e9d55b6dc1e86f0",
+    "max2_sha256": "sha256:1a5ba973d3d97b76efa7ffb0a6f5cfa9427fb830e7fbfc8831659ea910f8e9d5",
+    "control_source_commit": "6632c4508a1f4127491a598d52157dece41a0560",
+    "authority_recorded": false,
+    "authority_sha256": null,
+    "maximum_cumulative_finite_spend_usd": null
+  },
+  "repair": {
+    "scope": "EXACT_TWO_READER_POST_TIMEOUT_STATUS_ONLY_RECOVERY",
+    "exact_dispatch_order_job_tuple_required": true,
+    "single_bounded_recovery_phase": true,
+    "completed_results_return_to_existing_application_verifier": true,
+    "nonterminal_or_mismatched_result_fails_closed": true,
+    "no_provider_redispatch": true,
+    "no_retry_of_run": true,
+    "focused_v2_07_tests_passed": 234
+  },
+  "prior_attempt": {
+    "proposal_sha256": "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c",
+    "authority_sha256": "sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37",
+    "closure_sha256": "sha256:d0278822d001fe2639d47920f6923c565882bdbbf6ff11c174b30e72aba6d6fa",
+    "cleanup_sha256": "sha256:ab3c5d668c7d2817bd0a9b3e40dbeab6bd3623ae92e9439292d1d32662ba57e1",
+    "authority_consumed": true,
+    "settled_incremental_spend_usd": 0
+  },
+  "provider_boundary": {
+    "provider_calls": false,
+    "provider_mutations": false,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "authority_active": false,
+    "cap_usd": 0,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false
+  }
+}

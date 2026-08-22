@@ -1,15 +1,20 @@
 # VideoForge: start here
 
-Attempt36 is the current provider-free candidate. Repair `f0e73c7d2e5961c8c0e72d4103457a680f4a97b4`
-promotes only the same exact owned reader job IDs observed terminal during cleanup into the existing
-max-two drain proof; it cannot retry `/run` or redispatch compute. Focused V2-07 tests pass 229/229.
+Attempt37 is the current provider-free candidate. Repair `6632c4508a1f4127491a598d52157dece41a0560`
+adds one bounded status-only recovery after the ordinary two-reader reconciliation timeout. It
+accepts only the exact dispatch-order job tuple, never retries `/run`, returns both `COMPLETED`
+results to the existing full output/readback/v3 receipt verifier, and cancels owned nonterminal work
+before failing closed. Focused V2-07 tests pass 234/234.
 The exact proposal is
-`evidence/acceptance/VF-10-07/2026-08-22-attempt36-cleanup-terminal-reader-promotion-candidate/combined-live-proposal.json`
-at `sha256:362427a13f16b9df3d80c33e26b461222a82bbc699b3e7bdeb84400e987c8262`;
-max-one/max-two are `sha256:44d407385cf3614f5fdb874669f840e96f0f0479c24f8a3141e10bf0959515e3`
-and `sha256:910bd161419dc77a03763e7edfed81a5bade01725298061c3dacc2003f2ebbac`.
-No live authority or cap exists. Fresh exact proposal approval is required before mutation, GPU use,
-or spend. Retained-volume mutation and V2-08 remain forbidden.
+`evidence/acceptance/VF-10-07/2026-08-23-attempt37-terminal-reader-result-recovery-candidate/combined-live-proposal.json`
+at `sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e`;
+max-one/max-two are `sha256:e6f3d746959b3a5633fd9b7d6035a0dca44cee9f886b1c045e9d55b6dc1e86f0`
+and `sha256:1a5ba973d3d97b76efa7ffb0a6f5cfa9427fb830e7fbfc8831659ea910f8e9d5`.
+Read-only inventory at `2026-08-22T18:38:05.635Z` proves zero compute/disposable resources and both
+exact retained 50 GB EU-RO-1 volumes. RTX 4090 EU-RO-1 availability remained LOW at
+`2026-08-22T18:38:24.525Z` and the secure-Pod reference remained `$0.74/hour`; Serverless Flex stays
+`$1.10/GPU-hour`. No live authority or cap exists. Fresh exact proposal approval is required before
+mutation, GPU use, or spend. Retained-volume mutation and V2-08 remain forbidden.
 
 Attempt35 is closed fail-safe and V2-07 remains NOT_QUALIFIED. It consumed proposal
 `sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c`, authority

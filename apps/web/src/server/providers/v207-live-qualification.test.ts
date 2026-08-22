@@ -66,6 +66,35 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("V207_OUTPUT_PORT_FINALIZE_MAX_ATTEMPTS");
   });
 
+  it("routes recovered reader results through both full verifiers before drain", () => {
+    const reconcile = source.indexOf(
+      "const readerResults = await harness.reconcileConcurrentReaders",
+    );
+    const verifyReaderA = source.indexOf(
+      "const readerEvidenceA = await verifyBatchWithDiagnostic",
+      reconcile,
+    );
+    const verifyReaderB = source.indexOf(
+      "const readerEvidenceB = await verifyBatchWithDiagnostic",
+      verifyReaderA + 1,
+    );
+    const recordReaderA = source.indexOf(
+      '(evidence.batches as AnyRecord[]).push({ kind: "reader_a", ...readerEvidenceA })',
+      verifyReaderB,
+    );
+    const recordReaderB = source.indexOf(
+      '(evidence.batches as AnyRecord[]).push({ kind: "reader_b", ...readerEvidenceB })',
+      recordReaderA,
+    );
+    const drain = source.indexOf("await harness.drain()", recordReaderB);
+    expect([reconcile, verifyReaderA, verifyReaderB, recordReaderA, recordReaderB, drain]).toEqual(
+      [...[reconcile, verifyReaderA, verifyReaderB, recordReaderA, recordReaderB, drain]].sort(
+        (left, right) => left - right,
+      ),
+    );
+    expect(reconcile).toBeGreaterThan(-1);
+  });
+
   it("retries only idempotent FINALIZE transport loss and accepts the later receipt", async () => {
     let attempts = 0;
     const fetchImpl: typeof fetch = async () => {

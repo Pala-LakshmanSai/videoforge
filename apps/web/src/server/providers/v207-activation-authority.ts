@@ -13,11 +13,11 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:362427a13f16b9df3d80c33e26b461222a82bbc699b3e7bdeb84400e987c8262" as const;
+  "sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "f0e73c7d2e5961c8c0e72d4103457a680f4a97b4" as const;
+  "6632c4508a1f4127491a598d52157dece41a0560" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -44,8 +44,8 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // closed before mutation on MEDIUM-threshold capacity drift. Attempt35 authority
 // sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37
 // and proposal sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c
-// were consumed by one bounded execution and cannot be reused. Attempt36 proposal
-// sha256:362427a13f16b9df3d80c33e26b461222a82bbc699b3e7bdeb84400e987c8262
+// were consumed by one bounded execution and cannot be reused. Attempt37 proposal
+// sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e
 // is provider-free and has no live authority or cap. Historical Attempt34/35 control:
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
