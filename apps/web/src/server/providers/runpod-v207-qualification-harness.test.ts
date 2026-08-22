@@ -1532,7 +1532,18 @@ describe("V2-07 qualification harness", () => {
   });
 
   it("proves terminal max-two drain, restores max-one, and retains intended resources", async () => {
-    const fetch = terminalScaleZeroFetch();
+    const fetch = terminalScaleZeroFetch({
+      // Reproduces Attempt32: two terminal reader workers remain reflected by stale max-two
+      // health counters while exact worker/Pod inventory is already terminal.
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+    });
     const instance = makeHarness(fetch);
     await instance.create();
     instance.markInitialQualificationComplete();
@@ -1575,10 +1586,117 @@ describe("V2-07 qualification harness", () => {
     expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
     const events = (await instance.evidence()).events;
     expect(events).toContainEqual(expect.objectContaining({ event: "workers_zero_confirmed" }));
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: "concurrent_reader_terminal_worker_drain_confirmed",
+        post_job_health_proof: "queue_empty_only_terminal_inventory",
+        stable_terminal_snapshot_count: 2,
+      }),
+    );
     expect(events).toContainEqual(expect.objectContaining({ event: "scaled_down_to_max_one" }));
     expect(events).toContainEqual(
       expect.objectContaining({ event: "resources_retained_after_drain" }),
     );
+  });
+
+  it("never uses the max-two terminal inventory fallback to hide queued reader work", async () => {
+    const fetch = terminalScaleZeroFetch({
+      healthWorkersBeforeDispatch: {
+        idle: 1,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 0,
+        unhealthy: 0,
+      },
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+      healthJobsAfterFirstSnapshot: { inQueue: 0, inProgress: 1 },
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    const jobs = await instance.dispatchConcurrentReaders([
+      { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      {
+        requestKey: "attempt_b",
+        attemptId: "attempt_b",
+        input: inputB,
+        outputAuthority: authority("attempt_b", "reservation_b"),
+      },
+    ]);
+    await instance.reconcileConcurrentReaders([jobs[0].id, jobs[1].id]);
+    await expect(instance.drain()).rejects.toThrow("RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN");
+  });
+
+  it("requires both reader job identities to be reconciled terminal before max-two fallback", async () => {
+    const fetch = terminalScaleZeroFetch({
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const input = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix,
+          transfer_port_reservation_ids: ["reservation_a"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_a" }] },
+    };
+    const inputB = {
+      envelope: {
+        artifacts: {
+          output_prefix: outputPrefix.replace("attempt_a", "attempt_b"),
+          transfer_port_reservation_ids: ["reservation_b"],
+        },
+      },
+      batch: { items: [{ scene_id: "scene_b" }] },
+    };
+    await instance.dispatchConcurrentReaders([
+      { requestKey: "attempt_a", attemptId: "attempt_a", input, outputAuthority: authority() },
+      {
+        requestKey: "attempt_b",
+        attemptId: "attempt_b",
+        input: inputB,
+        outputAuthority: authority("attempt_b", "reservation_b"),
+      },
+    ]);
+    await expect(instance.drain()).rejects.toThrow("RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN");
   });
 
   it("blocks max-one restore and deletion when post-reader terminal inventory is active", async () => {

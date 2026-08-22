@@ -275,6 +275,8 @@ export class RunPodV207QualificationHarness {
   readonly #guard = new RunPodDrainGuard();
   readonly #events: RecordValue[] = [];
   readonly #readerJobs: RunPodServerlessJobClient[] = [];
+  /** Exact reader job identities that must all be observed terminal before drain fallback. */
+  readonly #readerJobIds = new Set<string>();
   /** Every acknowledged job remains owned until a terminal status is observed. */
   readonly #ownedJobs = new Map<string, RunPodServerlessJobClient>();
   /** A terminal observation fences a later exact request-key replay from becoming owned again. */
@@ -1354,6 +1356,7 @@ export class RunPodV207QualificationHarness {
         const request = requests[index]!;
         return clients[index]!.dispatch(input.requestKey, request).then((job) => {
           this.trackDispatchedJob(input, job, clients[index]!);
+          this.#readerJobIds.add(job.id);
           return job;
         });
       }),
@@ -1438,9 +1441,20 @@ export class RunPodV207QualificationHarness {
       } catch {
         this.mark("concurrent_reader_drain_uncertain");
         try {
+          if (
+            this.#readerJobIds.size !== 2 ||
+            this.#ownedJobs.size !== 0 ||
+            [...this.#readerJobIds].some((jobId) => !this.#terminalJobIds.has(jobId))
+          ) {
+            throw new RunPodControlError("RUNPOD_CONCURRENT_READER_TERMINAL_STATUS_UNCONFIRMED");
+          }
+          // Max-two FlashBoot health may retain throttled=2 after both reader jobs are terminal.
+          // Do not apply the one-worker quiescence limit here. Instead require independently
+          // empty queue reads around two matching exact terminal endpoint/worker/Pod snapshots.
           await this.confirmTerminalScaleZeroBaseline(
             this.#options.concurrentReaderPolicy,
             "concurrent_reader_terminal_worker_drain_confirmed",
+            "post_job_queue_only",
           );
           break;
         } catch {
@@ -1462,6 +1476,7 @@ export class RunPodV207QualificationHarness {
       }
     }
     this.#readerJobs.length = 0;
+    this.#readerJobIds.clear();
     this.#concurrentReaderDispatchClaimed = false;
     this.#concurrentReaderFence = false;
     this.mark("workers_zero_confirmed");
