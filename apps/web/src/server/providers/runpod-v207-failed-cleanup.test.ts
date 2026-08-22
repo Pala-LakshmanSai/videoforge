@@ -248,6 +248,17 @@ describe("V2-07 failed-resource cleanup", () => {
     ]);
   });
 
+  it("deletes the exact failed endpoint after the approved max-two stage was applied", async () => {
+    const { fixture, result } = await cleanupFixture({
+      endpointPatch: { workersMax: 2 },
+    });
+    expect(result.finalDisposableResourcesAbsent).toBe(true);
+    expect(fixture.calls.filter((call) => call.method === "DELETE")).toEqual([
+      { method: "DELETE", path: "/endpoints/endpoint_10" },
+      { method: "DELETE", path: "/templates/template_10" },
+    ]);
+  });
+
   it("accepts only the exact template-bound endpoint identity hash", async () => {
     const { result } = await cleanupFixture({
       templatePatch: {
@@ -335,7 +346,7 @@ describe("V2-07 failed-resource cleanup", () => {
     ["CUDA", { endpointPatch: { minCudaVersion: "12.8" } }],
     ["volume", { endpointPatch: { networkVolumeId: "other_volume" } }],
     ["region", { endpointPatch: { dataCenterIds: ["US-KS-2"] } }],
-    ["policy", { endpointPatch: { workersMax: 2 } }],
+    ["policy", { endpointPatch: { workersMax: 3 } }],
     ["malformed FlashBoot", { endpointPatch: { flashboot: "true" } }],
     ["retained-volume size", { volumePatch: { size: 49 } }],
     ["unexpected third volume", { extraVolume: true }],

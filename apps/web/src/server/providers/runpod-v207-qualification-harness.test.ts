@@ -1483,6 +1483,56 @@ describe("V2-07 qualification harness", () => {
     ).toBe(true);
   });
 
+  it("waits for two consecutive exact max-two terminal snapshots before reader dispatch", async () => {
+    const baseFetch = terminalScaleZeroFetch();
+    let maxTwoApplied = false;
+    let generation = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const body = init?.body === undefined ? null : JSON.parse(String(init.body));
+      if (path === "/endpoints/endpoint_01/update" && body?.workersMax === 2) {
+        maxTwoApplied = true;
+      }
+      if (maxTwoApplied && path === "/pods" && init?.method === undefined) {
+        generation = Math.min(2, generation + 1);
+        return jsonResponse(
+          Array.from({ length: generation }, (_, index) => ({
+            id: `pod_${index + 1}`,
+            endpointId: "endpoint_01",
+            desiredStatus: "EXITED",
+          })),
+        );
+      }
+      if (maxTwoApplied && path === "/endpoints" && init?.method === undefined) {
+        return jsonResponse([
+          {
+            ...reconciledEndpoint,
+            workersMax: 2,
+            workers: Array.from({ length: generation }, () => ({ desiredStatus: "EXITED" })),
+          },
+        ]);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    instance.markInitialQualificationComplete();
+    await expect(instance.applyConcurrentReaderPolicy()).resolves.toMatch(/^sha256:/u);
+    expect(
+      (await instance.evidence()).events,
+    ).toContainEqual(
+      expect.objectContaining({
+        event: "concurrent_reader_terminal_worker_scale_zero_baseline",
+        stable_terminal_snapshot_count: 2,
+        endpoint_worker_record_count: 2,
+        terminal_pod_record_count: 2,
+      }),
+    );
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname === "/pods").length,
+    ).toBeGreaterThanOrEqual(4);
+  });
+
   it("proves terminal max-two drain, restores max-one, and retains intended resources", async () => {
     const fetch = terminalScaleZeroFetch();
     const instance = makeHarness(fetch);

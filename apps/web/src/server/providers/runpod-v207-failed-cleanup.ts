@@ -65,6 +65,9 @@ const optionalExactStringArray = (value: unknown, expected: readonly string[]): 
 const isTerminal = (value: unknown): value is string =>
   typeof value === "string" && TERMINAL_WORKER_STATUSES.has(value);
 
+/** Failure cleanup may observe either separately approved V2-07 stage. */
+const isApprovedWorkersMax = (value: unknown): value is 1 | 2 => value === 1 || value === 2;
+
 const sortedKeys = (value: JsonRecord): readonly string[] => Object.keys(value).sort();
 
 const expectedTemplateEnvironmentKeys = [
@@ -162,7 +165,7 @@ function validateEndpoint(resource: RunPodNamedResource, template: RunPodNamedRe
     raw.templateId !== template.id ||
     (raw.computeType !== undefined && raw.computeType !== "GPU") ||
     raw.workersMin !== 0 ||
-    raw.workersMax !== 1 ||
+    !isApprovedWorkersMax(raw.workersMax) ||
     raw.gpuCount !== 1 ||
     !exactStringArray(raw.gpuTypeIds, [V207_RUNPOD_GPU]) ||
     !networkVolumeMatches ||
@@ -257,7 +260,7 @@ function validateTerminalInventory(
   if (
     endpointInventory.idHash !== hashText(endpoint.id) ||
     endpointInventory.workersMin !== 0 ||
-    endpointInventory.workersMax !== 1 ||
+    !isApprovedWorkersMax(endpointInventory.workersMax) ||
     !endpointInventory.workerRecordsReported ||
     endpointInventory.workerRecordCount !== endpointWorkerStatuses.length ||
     endpointInventory.workerStatuses.length !== endpointWorkerStatuses.length ||

@@ -625,25 +625,44 @@ export class RunPodV207QualificationHarness {
           }),
         };
       };
-      const first = await readAndValidate();
-      this.checkAbort();
       const sleep =
         this.#options.sleep ??
         ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
-      await sleep(250);
-      this.checkAbort();
-      if (mode === "health_first") await this.#jobs.confirmQuiescent(1, 250);
-      this.checkAbort();
-      const second = await readAndValidate();
-      if (first.signature !== second.signature) {
+      let prior: Awaited<ReturnType<typeof readAndValidate>> | null = null;
+      let stable: Awaited<ReturnType<typeof readAndValidate>> | null = null;
+      // Policy transitions can append terminal FlashBoot worker/Pod records for a few seconds.
+      // Never dispatch through that churn: require two consecutive exact snapshots, but allow a
+      // bounded stabilization window while queue reads remain independently zero throughout.
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        this.checkAbort();
+        try {
+          const current = await readAndValidate();
+          if (prior?.signature === current.signature) {
+            stable = current;
+            break;
+          }
+          prior = current;
+        } catch (error) {
+          prior = null;
+          if (
+            !(error instanceof RunPodControlError) ||
+            error.code !== "RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED" ||
+            attempt === 39
+          ) {
+            throw error;
+          }
+        }
+        await sleep(250);
+      }
+      if (stable === null) {
         throw new RunPodControlError("RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED");
       }
-      const endpointInventory = second.inventory.endpoints[0]!;
+      const endpointInventory = stable.inventory.endpoints[0]!;
       this.#guard.confirmZero(0, 0);
       this.mark(event, {
         endpoint_id_hash: this.#endpoint.idHash,
         endpoint_worker_record_count: endpointInventory.workerRecordCount,
-        terminal_pod_record_count: second.inventory.pods.length,
+        terminal_pod_record_count: stable.inventory.pods.length,
         stable_terminal_snapshot_count: 2,
         ...(mode === "startup_inventory_only"
           ? {
@@ -1228,6 +1247,7 @@ export class RunPodV207QualificationHarness {
         await this.confirmTerminalScaleZeroBaseline(
           this.#options.concurrentReaderPolicy,
           "concurrent_reader_terminal_worker_scale_zero_baseline",
+          "post_job_queue_only",
         );
       } catch {
         throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
