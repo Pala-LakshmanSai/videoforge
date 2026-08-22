@@ -529,7 +529,8 @@ const gateSuperseded =
     gate.includes("authority_mode: exact_attempt34_single_use_authority_active") ||
     gate.includes("authority_mode: no_live_authority_attempt35_provider_free_candidate") ||
     gate.includes("authority_mode: exact_attempt35_single_use_authority_active") ||
-    gate.includes("authority_mode: no_live_authority_attempt35_consumed")) &&
+    gate.includes("authority_mode: no_live_authority_attempt35_consumed") ||
+    gate.includes("authority_mode: no_live_authority_attempt36_provider_free_candidate")) &&
   (gate.includes("failed-attempt-33.json") || gate.includes("failed-attempt-35.json")) &&
   (gate.includes("attempt33-cleanup-observation.json") || gate.includes("attempt35-cleanup-observation.json")) &&
   /provider_calls_authorized:\s+false/u.test(gate) &&
@@ -553,7 +554,8 @@ assert(
     gateSuperseded ||
     gateAttempt34Authorized ||
     gateAttempt35Authorized ||
-    gate.includes("authority_mode: no_live_authority_attempt35_consumed"),
+    gate.includes("authority_mode: no_live_authority_attempt35_consumed") ||
+    gate.includes("authority_mode: no_live_authority_attempt36_provider_free_candidate"),
   "GATE_AUTHORITY_LIFECYCLE",
 );
 for (const [label, text] of Object.entries({ task, start })) {
@@ -563,7 +565,8 @@ assert(
   hasAll(activation, [expected.proposal, authorityHash]) &&
     (activation.includes(expected.control) ||
       activation.includes("bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37") ||
-      activation.includes("96f5e16cf03be7e31049478ce7f6b0c134a8108c")) &&
+      activation.includes("96f5e16cf03be7e31049478ce7f6b0c134a8108c") ||
+      activation.includes("f0e73c7d2e5961c8c0e72d4103457a680f4a97b4")) &&
     (new RegExp(`V207_APPROVED_FINITE_CAP_USD\\s*=\\s*${cap}\\b`).test(activation) ||
       activation.includes(`V207_APPROVED_FINITE_CAP_USD: number | null = ${cap}`) ||
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")),

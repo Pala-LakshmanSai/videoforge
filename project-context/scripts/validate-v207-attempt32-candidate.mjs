@@ -128,14 +128,16 @@ assert(
     String(gatesBytes).includes("authority_mode: exact_attempt34_single_use_authority_active") ||
     String(gatesBytes).includes("authority_mode: no_live_authority_attempt35_provider_free_candidate") ||
     String(gatesBytes).includes("authority_mode: exact_attempt35_single_use_authority_active") ||
-    String(gatesBytes).includes("authority_mode: no_live_authority_attempt35_consumed"),
+    String(gatesBytes).includes("authority_mode: no_live_authority_attempt35_consumed") ||
+    String(gatesBytes).includes("authority_mode: no_live_authority_attempt36_provider_free_candidate"),
   "GATE_AUTHORITY_LIFECYCLE",
 );
 assert(String(activationBytes).includes(expected.proposal), "ACTIVATION_HISTORICAL_PROPOSAL");
 assert(
   String(activationBytes).includes(expected.control) ||
     String(activationBytes).includes("bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37") ||
-    String(activationBytes).includes("96f5e16cf03be7e31049478ce7f6b0c134a8108c"),
+    String(activationBytes).includes("96f5e16cf03be7e31049478ce7f6b0c134a8108c") ||
+    String(activationBytes).includes("f0e73c7d2e5961c8c0e72d4103457a680f4a97b4"),
   "ACTIVATION_CONTROL_LIFECYCLE",
 );
 assert(
