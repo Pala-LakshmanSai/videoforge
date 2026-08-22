@@ -13,11 +13,11 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a" as const;
+  "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "a1da27192c567823f9508ecd6f146f8667e1daac" as const;
+  "bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -36,6 +36,8 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // and its authority/cap were consumed by one bounded execution and cannot be reused.
 // Attempt32 proposal sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a
 // and its authority/cap were consumed by one bounded execution and cannot be reused.
+// Attempt33 proposal sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925
+// is provider-free only; no authority or positive cap exists yet.
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
 export const V207_APPROVED_AUTHORITY_SHA256 =

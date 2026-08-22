@@ -119,10 +119,18 @@ for (const value of [expected.proposal, expected.acceptance, expected.max1, expe
 assert(String(stateBytes).includes("pending_v2_07_attempt32_proposal"), "STATE_ATTEMPT32");
 assert(
   String(gatesBytes).includes("authority_mode: attempt32_bounded_mutation_authorized") ||
-    String(gatesBytes).includes("authority_mode: attempt32_consumed_closed"),
+    String(gatesBytes).includes("authority_mode: attempt32_consumed_closed") ||
+    String(gatesBytes).includes(
+      "authority_mode: attempt33_provider_free_awaiting_fresh_exact_approval_and_positive_cap",
+    ),
   "GATE_AUTHORITY_LIFECYCLE",
 );
-assert(String(activationBytes).includes(expected.proposal) && String(activationBytes).includes(expected.control), "ACTIVATION_POINTERS");
+assert(String(activationBytes).includes(expected.proposal), "ACTIVATION_HISTORICAL_PROPOSAL");
+assert(
+  String(activationBytes).includes(expected.control) ||
+    String(activationBytes).includes("bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37"),
+  "ACTIVATION_CONTROL_LIFECYCLE",
+);
 assert(
   String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD = 4 as const") ||
     String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),

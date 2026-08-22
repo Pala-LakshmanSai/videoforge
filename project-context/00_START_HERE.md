@@ -1,7 +1,19 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
-Attempt32 closed fail-closed. Its exact closure is
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. Provider-free
+repair `bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37` fixes the exact Attempt32 max-two reader-drain
+false negative: the queue-empty stable-terminal fallback is allowed only after both exact reader job
+IDs are locally terminal and owned jobs are zero. The fresh Attempt33 proposal is
+`evidence/acceptance/VF-10-07/2026-08-22-attempt33-max-two-terminal-reader-drain-candidate/combined-live-proposal.json`
+at `sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925`; max-one is
+`sha256:5c3651673d93829535a450a88b99bcea697ed817e9f4ceba0536523e606f73a7`, max-two is
+`sha256:051863d9b131aab22502de85b57553adc924c5bb8f4a3ceee0e6b9d5991e78d2`, and acceptance is
+`sha256:7a47a7a8ec39c1aa8c8ed943378a5584785cc00cb7b5ee7666b974a5686df048`. Fresh read-only truth
+proves zero compute/disposable resources, both exact retained volumes, MEDIUM RTX 4090 EU-RO-1
+availability, and cumulative endpoint billing `$1.1340842194622383`. No authority or positive cap
+exists; provider mutation/GPU use/spend remain disabled and V2-08 is forbidden.
+
+Historical Attempt32 closed fail-closed. Its exact closure is
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-32.json` at
 `sha256:5e2cf1f73e03673b9f350352fa2bfbb91566d9e9a695566fdc08f3b1d84c9f75`; cleanup is
 `attempt32-cleanup-observation.json` at `sha256:01d91e1216a77ea4d6ac7130c2add5800f67043b3ba34d26ecbecf9422acc51d`.

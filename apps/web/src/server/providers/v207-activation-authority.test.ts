@@ -27,11 +27,13 @@ const image = V207_REPAIRED_IMAGE;
 // Attempt29 sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6
 // Attempt29 control 7ba8e9181fe210858c23a3ba7c5c9aca768ac24b
 // Attempt29 authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572
+// Attempt32 proposal sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a
 // Compatibility assertions reject consumed Attempt29/30/31 candidates while the exact
-// Attempt32 proposal/authority/cap are consumed and must fail closed before any dispatch.
+// Attempt32 proposal/authority/cap are consumed; the provider-free Attempt33 candidate must fail
+// closed before any dispatch until its own fresh exact authority and positive cap are recorded.
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete provider-free Attempt32 diagnostics lineage", () => {
+  it("pins the complete provider-free Attempt33 max-two terminal reader drain lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -52,10 +54,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a",
+      "sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("a1da27192c567823f9508ecd6f146f8667e1daac");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37");
     expect(V207_FINALIZE_REPLAY_FAST_PATH_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
     expect(V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT).toBe(
       "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
