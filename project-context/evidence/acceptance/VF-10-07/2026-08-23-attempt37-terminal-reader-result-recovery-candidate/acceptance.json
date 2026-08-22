@@ -4,16 +4,18 @@
   "task_id": "VF-10-07",
   "attempt": 37,
   "recorded_at": "2026-08-22T18:38:24.525Z",
-  "result": "PROVIDER_FREE_CANDIDATE_AWAITING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "result": "APPROVED_SINGLE_USE_PENDING_EXECUTION",
+  "qualification_status": "NOT_QUALIFIED_PENDING_EXECUTION",
   "candidate": {
     "proposal_path": "combined-live-proposal.json",
     "proposal_sha256": "sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e",
     "max1_sha256": "sha256:e6f3d746959b3a5633fd9b7d6035a0dca44cee9f886b1c045e9d55b6dc1e86f0",
     "max2_sha256": "sha256:1a5ba973d3d97b76efa7ffb0a6f5cfa9427fb830e7fbfc8831659ea910f8e9d5",
     "control_source_commit": "6632c4508a1f4127491a598d52157dece41a0560",
-    "authority_recorded": false,
-    "authority_sha256": null,
-    "maximum_cumulative_finite_spend_usd": null
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:812899db3d2225224ea231112d2eba150ffbbd254148e71f94c81a44de32cadf",
+    "authority_recorded": true,
+    "maximum_cumulative_finite_spend_usd": 4
   },
   "repair": {
     "scope": "EXACT_TWO_READER_POST_TIMEOUT_STATUS_ONLY_RECOVERY",
@@ -34,12 +36,12 @@
     "settled_incremental_spend_usd": 0
   },
   "provider_boundary": {
-    "provider_calls": false,
-    "provider_mutations": false,
-    "gpu_use": false,
+    "provider_calls": true,
+    "provider_mutations": true,
+    "gpu_use": true,
     "external_spend_usd": 0,
-    "authority_active": false,
-    "cap_usd": 0,
+    "authority_active": true,
+    "cap_usd": 4,
     "retained_volume_mutation_authorized": false,
     "v2_08_authorized": false
   }
