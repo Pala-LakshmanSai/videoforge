@@ -259,8 +259,23 @@ const closed =
     "pending_numeric_cap_usd: null",
     'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
   ]);
+const successor =
+  hasAll(state, [
+    "phase: serverless_v2_v2_07_attempt31_terminal_snapshot_stabilization_provider_free",
+    "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea",
+    "sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c",
+    "task_stage: provider_free",
+    "provider_calls_authorized: false",
+    "maximum_external_spend_usd: 0",
+  ]) &&
+  hasAll(gates, [
+    "authority_mode: none_attempt31_pending_fresh_approval",
+    "pending_numeric_cap_usd: null",
+    'result: "NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure"',
+  ]);
+const closedOrSuccessor = closed || successor;
 assert(
-  closed ||
+  closedOrSuccessor ||
     hasAll(state, [
     expected.acceptance,
     expected.max1,
@@ -275,7 +290,7 @@ assert(
   "STATE_BOUNDARY",
 );
 assert(
-  closed ||
+  closedOrSuccessor ||
     hasAll(gates, [
     expected.acceptance,
     "authority_mode: attempt29_bounded_mutation_authorized",
@@ -287,7 +302,7 @@ assert(
   "GATE_BOUNDARY",
 );
 assert(
-  (closed &&
+  (closedOrSuccessor &&
     activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
     activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
     activationTest.includes("V207_APPROVED_AUTHORITY_SHA256).toBeNull()") &&

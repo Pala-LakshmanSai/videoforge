@@ -13,13 +13,15 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a" as const;
+  "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
+  "f513ac807c6d5e2298092a936495e3c4fc0e6a28" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
+export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
+  "f513ac807c6d5e2298092a936495e3c4fc0e6a28" as const;
 
 // Historical validators bind these consumed immutable lineages while the active
 // pointer advances. They are evidence markers only and are never dispatch authority:
@@ -28,9 +30,10 @@ export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
 // Attempt29 proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6
 // Attempt29 control 7ba8e9181fe210858c23a3ba7c5c9aca768ac24b
 // Attempt29 consumed authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+// Attempt30 proposal sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a
+// Attempt30 consumed authority sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {
   readonly image: string;

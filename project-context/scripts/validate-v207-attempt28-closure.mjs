@@ -12,6 +12,11 @@ import {
   ATTEMPT29_AUTHORITY_PATH,
   ATTEMPT29_CLOSURE,
   ATTEMPT29_CLEANUP,
+  isAttempt31CandidateGate,
+  isAttempt31CandidateState,
+  ATTEMPT30_CLOSURE,
+  ATTEMPT30_CLEANUP,
+  ATTEMPT31_PROPOSAL,
 } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -337,6 +342,39 @@ if (isAttempt29CandidateState(state) && isAttempt29CandidateGate(gates)) {
       'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
     ],
     "GATES_ATTEMPT29_CLOSED_SUCCESSOR",
+  );
+} else if (isAttempt31CandidateState(state) && isAttempt31CandidateGate(gates)) {
+  includesAll(
+    state,
+    [
+      expected.closure,
+      expected.cleanup,
+      ATTEMPT30_CLOSURE,
+      ATTEMPT30_CLEANUP,
+      ATTEMPT31_PROPOSAL,
+      "phase: serverless_v2_v2_07_attempt31_terminal_snapshot_stabilization_provider_free",
+      "task_stage: provider_free",
+      "provider_calls_authorized: false",
+      "remote_or_cloud_mutations_authorized: false",
+      "gpu_use_authorized: false",
+      "maximum_external_spend_usd: 0",
+      "current_authority: null",
+      "current_authority_sha256: null",
+      "mutation_authorized: false",
+      "spend_authorized_usd: 0",
+    ],
+    "STATE_ATTEMPT31_SUCCESSOR",
+  );
+  includesAll(
+    gates,
+    [
+      ATTEMPT30_CLOSURE,
+      ATTEMPT30_CLEANUP,
+      "authority_mode: none_attempt31_pending_fresh_approval",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure"',
+    ],
+    "GATES_ATTEMPT31_SUCCESSOR",
   );
 } else {
   includesAll(state, [

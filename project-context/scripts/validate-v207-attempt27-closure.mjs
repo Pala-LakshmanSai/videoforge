@@ -19,6 +19,12 @@ import {
   ATTEMPT29_CLEANUP,
   ATTEMPT29_AUTHORITY_PATH,
   isAttempt29CandidateState,
+  isAttempt31CandidateState,
+  isAttempt31CandidateGate,
+  ATTEMPT30_AUTHORITY,
+  ATTEMPT30_CLOSURE,
+  ATTEMPT30_CLEANUP,
+  ATTEMPT31_PROPOSAL,
 } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -373,6 +379,7 @@ if (isAttempt28State(state)) {
       topState.includes("phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_candidate_ready") ||
       topState.includes("phase: serverless_v2_v2_07_attempt29_terminal_replay_queue_proof_authorized") ||
       topState.includes("phase: serverless_v2_v2_07_attempt29_closed_finalize_replay_failure") ||
+      topState.includes("phase: serverless_v2_v2_07_attempt31_terminal_snapshot_stabilization_provider_free") ||
       (isAttempt28ClosedState(state) && topState.includes("phase: serverless_v2_v2_07_attempt28_closed_quiescence_failure")),
     "state_top_phase_attempt28",
   );
@@ -452,6 +459,24 @@ if (isAttempt28AuthorizedState(state)) {
     ],
     "provider_authority_attempt29_closed",
   );
+} else if (isAttempt31CandidateState(state)) {
+  includesAll(
+    providerAuthority,
+    [
+      "mode: none",
+      "cap_usd: 0",
+      "historical_cap_usd: 4",
+      "non_transferable: true",
+      "resources: []",
+      "authorized_operations: []",
+      "allowed_operations: []",
+      ATTEMPT30_AUTHORITY,
+      ATTEMPT31_PROPOSAL,
+      ATTEMPT30_CLOSURE,
+      ATTEMPT30_CLEANUP,
+    ],
+    "provider_authority_attempt31_candidate",
+  );
 } else if (isAttempt28ClosedState(state)) {
   includesAll(
     providerAuthority,
@@ -517,7 +542,16 @@ if (isAttempt28State(state)) {
             "gpu_use_authorized: true",
             "execution_status: attempt29_approved_preexecution_pending",
           ]
-        : isAttempt29CandidateState(state)
+      : isAttempt31CandidateState(state)
+        ? [
+            "NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure",
+            "provider_calls_authorized: false",
+            "maximum_external_spend_usd: 0",
+            "remote_or_cloud_mutations_authorized: false",
+            "gpu_use_authorized: false",
+            "execution_status: attempt31_provider_free_candidate_pending_fresh_approval",
+          ]
+      : isAttempt29CandidateState(state)
         ? [
             "NOT_QUALIFIED_attempt29_provider_free_candidate_ready",
             "provider_calls_authorized: false",
@@ -585,6 +619,14 @@ includesAll(
         "authority_mode: none_attempt29_consumed",
         "pending_numeric_cap_usd: null",
         'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
+      ]
+    : isAttempt31CandidateState(state)
+    ? [
+        ATTEMPT30_CLOSURE,
+        ATTEMPT30_CLEANUP,
+        "authority_mode: none_attempt30_consumed",
+        "pending_numeric_cap_usd: null",
+        'result: "NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure"',
       ]
     : isAttempt28ClosedState(state)
     ? [
@@ -658,6 +700,21 @@ if (isAttempt29AuthorizedGate(gates)) {
     ],
     "gate_attempt29_closed",
   );
+} else if (isAttempt31CandidateGate(gates)) {
+  includesAll(
+    mageGate,
+    [
+      "status: open",
+      `pending_proposal_sha256: "${ATTEMPT31_PROPOSAL}"`,
+      `latest_closed_authority_sha256: "${ATTEMPT30_AUTHORITY}"`,
+      `closure_evidence_sha256: "${ATTEMPT30_CLOSURE}"`,
+      `cleanup_evidence_sha256: "${ATTEMPT30_CLEANUP}"`,
+      "authority_mode: none_attempt31_pending_fresh_approval",
+      "pending_numeric_cap_usd: null",
+      'result: "NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure"',
+    ],
+    "gate_attempt31_candidate",
+  );
 } else if (isAttempt28ClosedGate(gates)) {
   includesAll(
     mageGate,
@@ -708,6 +765,14 @@ includesAll(
         "V2-07 remains `NOT_QUALIFIED`",
         "V2-08 remains forbidden",
       ]
+    : isAttempt31CandidateState(state)
+    ? [
+        ATTEMPT30_CLOSURE,
+        "RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED",
+        "consumed and non-reusable",
+        "V2-07 remains `NOT_QUALIFIED`",
+        "V2-08 remains forbidden",
+      ]
     : isAttempt28ClosedState(state)
     ? [
         "sha256:9d95a32f66a563db2c74dedd608067dbcc4b3ed989125ca4d2696b22943ef1bb",
@@ -733,6 +798,14 @@ includesAll(
     ? [
         ATTEMPT29_CLOSURE,
         "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID",
+        "consumed and non-reusable",
+        "V2-07 remains NOT_QUALIFIED",
+        "V2-08",
+      ]
+    : isAttempt31CandidateState(state)
+    ? [
+        ATTEMPT30_CLOSURE,
+        "RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED",
         "consumed and non-reusable",
         "V2-07 remains NOT_QUALIFIED",
         "V2-08",

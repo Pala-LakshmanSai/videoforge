@@ -382,7 +382,10 @@ assert(
       ) ||
         currentState.includes(
           "v2_07_action: request_fresh_exact_attempt30_approval_and_positive_numeric_cap_then_execute_only_if_recorded",
-        ))),
+        ))) ||
+    currentState.includes(
+      "v2_07_action: obtain_fresh_exact_attempt31_approval_and_positive_numeric_cap_before_any_live_retry",
+    ),
   "state_action",
 );
 assert(currentState.includes(`proposal_sha256: "${expected.currentProposal}"`), "state_current_proposal_hash");
@@ -425,7 +428,8 @@ assert(
       recommendedTask.includes("Execute and reconcile only the exact approved Attempt29 terminal replay queue-proof proposal")) ||
     (isAttempt29ClosedState(currentState) &&
       (recommendedTask.includes("Retain exact Attempt29 closure") ||
-        recommendedTask.includes("Obtain exact approval of the immutable Attempt30"))),
+        recommendedTask.includes("Obtain exact approval of the immutable Attempt30"))) ||
+    recommendedTask.includes("Obtain fresh exact approval and a fresh positive numeric cap for Attempt31"),
   "state_recommended_goal",
 );
 assert(recommendedTask.includes("task_stage: provider_free_repair") || recommendedTask.includes("task_stage: provider_free_candidate_ready") || recommendedTask.includes("task_stage: bounded_mutation") || recommendedTask.includes("task_stage: provider_free"), "state_recommended_stage");
@@ -475,6 +479,9 @@ assert(
     ) ||
     auditEvidence.includes(
       'v2_07_current_proposal_sha256: "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a"',
+    ) ||
+    auditEvidence.includes(
+      'v2_07_current_proposal_sha256: "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea"',
     ),
   "state_audit_current_proposal_hash",
 );

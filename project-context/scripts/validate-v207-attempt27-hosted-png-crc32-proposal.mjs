@@ -16,6 +16,12 @@ import {
   ATTEMPT29_AUTHORITY,
   ATTEMPT29_CLOSURE,
   ATTEMPT29_CLEANUP,
+  isAttempt31CandidateState,
+  isAttempt31CandidateGate,
+  ATTEMPT30_AUTHORITY,
+  ATTEMPT30_CLOSURE,
+  ATTEMPT30_CLEANUP,
+  ATTEMPT31_PROPOSAL,
 } from "./v207-attempt28-compat.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -646,6 +652,20 @@ if (candidateReady) {
       `${label}_attempt29_closed_lineage`,
     );
   }
+} else if (isAttempt31CandidateState(state) && isAttempt31CandidateGate(gates) && isAttempt28Activation(activation)) {
+  assert(
+    state.includes(ATTEMPT30_AUTHORITY) &&
+      state.includes(ATTEMPT30_CLOSURE) &&
+      state.includes(ATTEMPT30_CLEANUP) &&
+      state.includes(ATTEMPT31_PROPOSAL) &&
+      gates.includes(`pending_proposal_sha256: "${ATTEMPT31_PROPOSAL}"`) &&
+      gates.includes(`latest_closed_authority_sha256: "${ATTEMPT30_AUTHORITY}"`) &&
+      gates.includes(`closure_evidence_sha256: "${ATTEMPT30_CLOSURE}"`) &&
+      gates.includes(`cleanup_evidence_sha256: "${ATTEMPT30_CLEANUP}"`) &&
+      gates.includes("authority_mode: none_attempt31_pending_fresh_approval") &&
+      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+    "attempt31_candidate_lineage",
+  );
 } else if (isAttempt28ClosedState(state) && isAttempt28ClosedGate(gates) && isAttempt28Activation(activation)) {
   assert(
     state.includes("sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf") &&

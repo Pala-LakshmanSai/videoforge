@@ -1,0 +1,234 @@
+{
+  "schema_version": "videoforge.v2-07-staged-endpoint-definition/v8",
+  "stage": "initial_qualification",
+  "region": "EU-RO-1",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+  "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+  "control_source_commit": "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
+  "finalize_transport_repair_commit": "b8666dd8b8bc12578ffae8925f6ce73dbf53a841",
+  "network_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "network_volume_size_gb": 50,
+  "network_volume_region": "EU-RO-1",
+  "network_volume_mount": "/runpod-volume",
+  "model_root": "/runpod-volume/mage-model",
+  "volume_write_policy": "APPLICATION_READ_ONLY",
+  "gpu_type_ids": [
+    "NVIDIA GeForce RTX 4090"
+  ],
+  "gpu_count": 1,
+  "compute_type": "GPU",
+  "flex_only": true,
+  "workers_min": 0,
+  "workers_max": 1,
+  "scaler_type": "REQUEST_COUNT",
+  "scaler_value": 1,
+  "handler_concurrency": 1,
+  "idle_timeout_seconds": 5,
+  "init_timeout_seconds": 800,
+  "execution_timeout_seconds": 2400,
+  "request_authority_ttl_seconds": 7200,
+  "container_disk_gb": 120,
+  "flashboot": true,
+  "flashboot_basis": "ATTEMPT_31_TERMINAL_SNAPSHOT_STABILIZATION_EXACTLY_PINNED",
+  "cuda_minimum": "13.0",
+  "cuda_allowed": [
+    "13.0"
+  ],
+  "offline_environment": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "DIFFUSERS_OFFLINE": "1"
+  },
+  "endpoint_identity_binding": {
+    "method": "PRESERVE_EXACT_TEMPLATE_BOUND_IDENTITY_AFTER_FRESH_GET_PROOF_THEN_PATCH_DOCUMENTED_MUTABLE_FIELDS_ACCEPT_EXACT_ID_PARTIAL_ACK_THEN_GET_EFFECTIVE_ENDPOINT_READBACK",
+    "environment_key": "VIDEOFORGE_MAGE_ENDPOINT_ID_HASH",
+    "raw_endpoint_id_persisted": false,
+    "endpoint_patch_excludes_environment_and_compute_type": true,
+    "endpoint_patch_acknowledgement_requires_exact_endpoint_id": true,
+    "configuration_or_environment_drift_fails_closed": true,
+    "get_mismatch_category_persisted_redaction_safe": true,
+    "get_mismatch_category_stops_before_dispatch": true
+  },
+  "output_finalization_transport_policy": {
+    "repair_commit": "b8666dd8b8bc12578ffae8925f6ce73dbf53a841",
+    "retryable_operation_only": "FINALIZE",
+    "max_attempts": 3,
+    "request_timeout_seconds": 30,
+    "retry_backoff_ms": [
+      500,
+      1000
+    ],
+    "transport_error_code": "V207_OUTPUT_PORT_FINALIZE_TRANSPORT",
+    "response_error_code": "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID",
+    "retry_requires_same_reservation_and_callback_tuple": true,
+    "put_is_never_retried": true,
+    "non_finalize_posts_are_never_retried": true,
+    "provider_body_retained": false,
+    "signed_urls_or_secrets_retained": false,
+    "hosted_png_crc32_repair_commit": "1960ea9307bb7fcb591c842b84fc1c622aec49eb",
+    "hosted_png_crc32_repair": {
+      "hosted_png_crc32_repair_commit": "1960ea9307bb7fcb591c842b84fc1c622aec49eb",
+      "algorithm": "IEEE_CRC32_0xEDB88320",
+      "implementation": "256-entry lookup table replacing bit-at-a-time per-byte CRC loop",
+      "local_realistic_png_probe": "1280x720 high-entropy multi-megabyte PNG under 3000ms"
+    },
+    "finalize_replay_fast_path_commit": "bf26c3a86ec6a48f619c39613d425da816eeae4d",
+    "finalize_replay_fast_path": {
+      "existing_receipt_after_authenticated_metadata_checksum_before_png_probe": true,
+      "first_finalize_still_requires_full_png_probe": true,
+      "realistic_high_entropy_1280x720_replay_under_ms": 1000,
+      "receipt_identity_callback_content_checksum_and_hash_conflict_fences_preserved": true
+    }
+  },
+  "startup_terminal_inventory_fallback": {
+    "allowed_before_dispatch_only": true,
+    "allowed_before_any_owned_job": true,
+    "allowed_before_initial_qualification": true,
+    "exact_inventory_required": [
+      "fresh_endpoint_scoped_worker_inventory",
+      "fresh_endpoint_scoped_pod_inventory",
+      "all_observed_worker_and_pod_records_terminal_EXITED_or_TERMINATED",
+      "no_owned_jobs",
+      "no_in_progress_or_queued_jobs",
+      "exactly_two_stable_inventory_snapshots",
+      "matching_inventory_signatures",
+      "zero_nonterminal_records"
+    ],
+    "health_jobs_required": {
+      "object_present": true,
+      "in_queue_present": true,
+      "in_queue_exact": 0,
+      "in_progress_present": true,
+      "in_progress_exact": 0
+    },
+    "health_jobs_reads_bracketing_inventory": {
+      "before_first": "required_object_present_and_exact_zero",
+      "after_first": "required_object_present_and_exact_zero",
+      "before_second": "required_object_present_and_exact_zero",
+      "after_second": "required_object_present_and_exact_zero",
+      "signatures_match": true
+    },
+    "post_dispatch_or_drain_fallback_forbidden": true,
+    "post_drain_policy": "health_first_confirm_quiescent",
+    "cancellation_policy": "health_first_confirm_quiescent",
+    "concurrent_reader_policy": "health_first_confirm_quiescent",
+    "cleanup_policy": "health_first_confirm_quiescent",
+    "no_retry_or_duplicate_compute": true
+  },
+  "post_job_terminal_scale_zero_fallback": {
+    "repair_commit": "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14",
+    "trigger_error_exact": "RUNPOD_WARM_IDLE_NOT_CONFIRMED",
+    "owned_terminal_job_required": true,
+    "health_first_quiescence_required": true,
+    "queued_and_in_progress_jobs_must_be_zero": true,
+    "running_initializing_unhealthy_workers_must_be_zero": true,
+    "terminal_worker_and_pod_statuses": [
+      "EXITED",
+      "TERMINATED"
+    ],
+    "stable_exact_inventory_snapshots_required": 2,
+    "exact_endpoint_template_policy_volume_gpu_region_identity_required": true,
+    "active_malformed_mismatched_or_unstable_state_fails_closed": true,
+    "fallback_marks_scale_zero_not_warm_idle": true,
+    "no_retry_or_duplicate_compute": true,
+    "terminal_replay_queue_fence_commit": "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b",
+    "queue_empty_fallback": "exact_bounded_read_only_inQueue_and_inProgress_zero_reads_bracket_two_stable_terminal_inventory_snapshots"
+  },
+  "output_contract_policy": {
+    "first_completed_job_non_success": "persist_bounded_diagnostics_and_stop",
+    "retry_on_non_success": false,
+    "duplicate_dispatch_on_non_success": false,
+    "durable_output_and_v3_receipt_required": true
+  },
+  "ephemeral_secret_values": "injected_at_execution_and_excluded_from_this_public_definition",
+  "runtime_config_hash": "computed_after_exact_endpoint_template_id_endpoint_hash_and_ephemeral_values_before_dispatch",
+  "negative_contracts": [
+    "wrong_image_bytes_or_digest",
+    "wrong_path_or_volume",
+    "wrong_gpu_or_region",
+    "model_volume_write_or_cache_escape",
+    "malformed_authority",
+    "duplicate_delivery",
+    "cancel",
+    "timeout",
+    "two_readers",
+    "uncertain_cleanup",
+    "cap_risk"
+  ],
+  "success_requires": [
+    "complete_cold_and_warm_image_batch",
+    "durable_outputs_before_provider_expiry",
+    "v3_authority_receipts",
+    "unchanged_sealed_volume_hash",
+    "zero_model_volume_writes",
+    "peak_vram_and_timing_receipts",
+    "two_simultaneous_read_only_workers",
+    "workers_zero_after_drain"
+  ],
+  "stop_if": [
+    "any identity or configuration mismatch",
+    "wrong image bytes/path/volume/GPU/region",
+    "any model-volume write or cache escape",
+    "malformed authority or duplicate delivery",
+    "cancel or timeout without terminal reconciliation",
+    "FINALIZE transport retry tuple drift",
+    "failed output or missing receipt",
+    "uncertain cleanup or rollback",
+    "unplanned duplicate compute",
+    "cap risk",
+    "hosted PNG CRC32 repair commit drift or realistic probe regression",
+    "post-job terminal scale-zero repair drift or unproven health-first terminal inventory",
+    "finalize replay fast-path commit drift or realistic immediate replay regression",
+    "terminal snapshot stabilization commit drift or no consecutive exact max-two proof"
+  ],
+  "hosted_png_crc32_repair_commit": "1960ea9307bb7fcb591c842b84fc1c622aec49eb",
+  "hosted_png_crc32_repair": {
+    "hosted_png_crc32_repair_commit": "1960ea9307bb7fcb591c842b84fc1c622aec49eb",
+    "algorithm": "IEEE_CRC32_0xEDB88320",
+    "implementation": "256-entry lookup table replacing bit-at-a-time per-byte CRC loop",
+    "local_realistic_png_probe": "1280x720 high-entropy multi-megabyte PNG under 3000ms"
+  },
+  "terminal_replay_queue_fence_commit": "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b",
+  "terminal_request_key_replay_fence": {
+    "commit": "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b",
+    "exact_terminal_replay_returns_original_job_identity": true,
+    "terminal_request_key_cannot_reenter_owned_jobs": true,
+    "second_provider_run_post_forbidden": true,
+    "duplicate_compute": false,
+    "changed_work_under_same_request_key_rejected": true,
+    "replay_is_scoped_to_same_endpoint_and_runtime_identity": true
+  },
+  "post_job_queue_empty_fallback": {
+    "commit": "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b",
+    "allowed_after_terminal_job_only": true,
+    "owned_jobs_must_be_zero": true,
+    "bounded_read_only_queue_empty_reads_required": true,
+    "queue_read_max_attempts": 12,
+    "queue_read_poll_interval_ms": 250,
+    "exact_queue_fields": [
+      "inQueue",
+      "inProgress"
+    ],
+    "queue_reads_bracket_two_stable_terminal_inventory_snapshots": true,
+    "queue_reads_required_before_and_after_each_inventory_snapshot": true,
+    "queued_running_malformed_active_nonterminal_mismatched_or_unstable_state_fails_closed": true,
+    "dispatch_blocked_after_failure": true,
+    "no_retry_or_duplicate_compute": true
+  },
+  "finalize_replay_fast_path_commit": "bf26c3a86ec6a48f619c39613d425da816eeae4d",
+  "terminal_snapshot_stabilization_commit": "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
+  "terminal_snapshot_stabilization": {
+    "repair_commit": "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
+    "scope": "max-two transition and failure cleanup only",
+    "queue_empty_reads_bracket_each_candidate_snapshot": true,
+    "maximum_snapshot_attempts": 40,
+    "poll_interval_ms": 250,
+    "two_consecutive_exact_signatures_required": true,
+    "active_nonterminal_mismatched_malformed_or_unstable_state_fails_closed": true,
+    "reader_dispatch_before_stable_proof": false,
+    "cleanup_accepts_only_separately_approved_workers_max": [
+      1,
+      2
+    ]
+  }
+}

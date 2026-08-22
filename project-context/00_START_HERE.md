@@ -1,19 +1,26 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt29;
-the consumed Attempt29 authority/cap cannot be reused, and no provider mutation, GPU use, or spend is currently authorized.
-Attempt29 accepted an owned probe and cold complete batch with 64 total private durable outputs/readbacks
-and v3 receipts, and exact duplicate delivery caused no second dispatch or duplicate compute. Its warm
-provider job also completed, but mandatory FINALIZE replay failed at
-`V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID`, so warm acceptance, cancel/timeout, two-reader proof, and
-successful final drain remain open. Closure `failed-attempt-29.json` is
-`sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678`; exact cleanup is
-`sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24`. Three later settled reads prove
-zero disposable resources, both intended sealed 50 GB EU-RO-1 volumes retained, and exact Attempt29
-increment `$0.15470044442918152` within cap. Provider-free repair
-`bf26c3a86ec6a48f619c39613d425da816eeae4d` passes realistic 1280×720 immediate FINALIZE replay,
-web typecheck, and lint. A fresh exact Attempt30 proposal and fresh positive numeric cap are required
-before any live retry; V2-08 remains forbidden.
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after Attempt30;
+its exact authority and fresh `$4` cap are consumed, and no provider mutation, GPU use, or spend is
+currently authorized. Attempt30 accepted an owned probe plus cold and warm complete 32-image batches:
+96 durable readbacks and 96 replay-confirmed v3 receipts. RunPod then applied the separately approved
+max-two stage, but the concurrent-reader baseline failed before either reader was dispatched at
+`RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED`. Closure
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-30.json` is
+`sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c`; exact cleanup is
+`sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0`. The max-two cleanup
+fence was repaired in `f513ac807c6d5e2298092a936495e3c4fc0e6a28`; cleanup then proved zero disposable
+resources and both intended sealed 50 GB EU-RO-1 volumes retained. V2-08 remains forbidden.
+
+Attempt31 is the provider-free terminal-snapshot-stabilization candidate at
+`evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/combined-live-proposal.json`
+with proposal `sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea`, max-one
+`sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006`, max-two
+`sha256:4013c7b9887994b6de2dfd947f13ea74e622dfc0fe5b5e429c29fffedc69ef9b`, and acceptance
+`sha256:f278dc8946cc1b6565de5294bfe854639cc7ac8a2b1f774a57b6b8b777eaf7e4`. It pins the exact
+published Mage image, sealed volume, FlashBoot=true, LOW-or-better EU-RO-1, RTX 4090, and repair
+`f513ac807c6d5e2298092a936495e3c4fc0e6a28`; authority and numeric cap are null until one fresh exact
+approval. V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden.
 
 Historical Attempt28/Attempt29 pre-execution narrative follows for lineage.
 Attempt28 completed one owned probe and one cold 32-image batch, each with 32 private durable
@@ -46,9 +53,20 @@ fresh authority `sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de
 `$4` cap, FlashBoot=true, and LOW EU-RO-1 availability. Provider execution is pending exact
 authority/context commit.
 
-Attempt30 provider-free candidate `evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/combined-live-proposal.json` is `sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a`; it pins FINALIZE replay fast-path repair `bf26c3a86ec6a48f619c39613d425da816eeae4d`, max-one `sha256:3ecd3f8f0d2ba49a7b1464bd3ff4a03f0866e371d9be0371db692fadc42a23f8`, and max-two `sha256:5c43f8c1499b8f8f3fbbed2cc7cf6b778e978bc61869cbdf79a680d26985e304`. It has no authority and a null cap; exact fresh approval and a fresh positive numeric cap are required before provider mutation or GPU use. V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden.
+Attempt30 is now historical closed evidence. Its exact candidate
+`evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/combined-live-proposal.json`
+was `sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a`, with max-one
+`sha256:3ecd3f8f0d2ba49a7b1464bd3ff4a03f0866e371d9be0371db692fadc42a23f8` and max-two
+`sha256:5c43f8c1499b8f8f3fbbed2cc7cf6b778e978bc61869cbdf79a680d26985e304`. It was approved under
+append-only authority `sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131`,
+FlashBoot=true, LOW-or-better EU-RO-1, and a fresh `$4` cumulative finite cap; that authority and
+cap are consumed and cannot be reused. Its FINALIZE fast-path control was
+`bf26c3a86ec6a48f619c39613d425da816eeae4d`. Its closure and cleanup are recorded above; V2-07 remains
+NOT_QUALIFIED and V2-08 remains forbidden.
 
-Attempt30 is now approved under append-only authority `sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131`, FlashBoot=true, LOW-or-better EU-RO-1, and a fresh `$4` cumulative finite cap. Execute only that proposal; V2-08 remains forbidden.
+Attempt31 is the current provider-free candidate described above. Execute only after its exact
+proposal is freshly approved with a positive numeric cap; no current authority or provider operation
+is active.
 Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any

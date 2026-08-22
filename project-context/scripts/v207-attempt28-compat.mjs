@@ -46,9 +46,44 @@ export const ATTEMPT29_CLOSURE =
 export const ATTEMPT29_CLEANUP =
   "sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24";
 
+export const ATTEMPT30_PROPOSAL =
+  "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a";
+export const ATTEMPT30_CONTROL = "bf26c3a86ec6a48f619c39613d425da816eeae4d";
+export const ATTEMPT30_AUTHORITY =
+  "sha256:6fd4560fcba507dbae51da056d09c309fe0c93ed65e713e3526ad3aa2f978131";
+export const ATTEMPT30_CLOSURE =
+  "sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c";
+export const ATTEMPT30_CLEANUP =
+  "sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0";
+export const ATTEMPT31_PROPOSAL =
+  "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea";
+export const ATTEMPT31_CONTROL = "f513ac807c6d5e2298092a936495e3c4fc0e6a28";
+export const ATTEMPT31_PHASE =
+  "serverless_v2_v2_07_attempt31_terminal_snapshot_stabilization_provider_free";
+
 const hasAll = (text, needles) => needles.every((needle) => text.includes(needle));
 const hasIdentity = (text) => hasAll(text, [ATTEMPT28_PROPOSAL, ATTEMPT28_CONTROL]);
 const hasAttempt29Identity = (text) => hasAll(text, [ATTEMPT29_PROPOSAL, ATTEMPT29_CONTROL]);
+const hasAttempt31Identity = (text) => hasAll(text, [ATTEMPT31_PROPOSAL, ATTEMPT31_CONTROL]);
+
+export const isAttempt31CandidateState = (state) =>
+  hasAttempt31Identity(state) &&
+  state.includes(`phase: ${ATTEMPT31_PHASE}`) &&
+  hasAll(state, [
+    ATTEMPT30_PROPOSAL,
+    ATTEMPT30_AUTHORITY,
+    ATTEMPT30_CLOSURE,
+    ATTEMPT30_CLEANUP,
+    "task_stage: provider_free",
+    "provider_calls_authorized: false",
+    "remote_or_cloud_mutations_authorized: false",
+    "gpu_use_authorized: false",
+    "maximum_external_spend_usd: 0",
+    "current_authority: null",
+    "current_authority_sha256: null",
+    "mutation_authorized: false",
+    "spend_authorized_usd: 0",
+  ]);
 
 export const isAttempt29CandidateState = (state) =>
   hasAttempt29Identity(state) &&
@@ -150,7 +185,8 @@ const isAttempt28HistoricalClosedState = (state) =>
 export const isAttempt28ClosedState = (state) =>
   isAttempt28HistoricalClosedState(state) ||
   isAttempt29CandidateState(state) ||
-  isAttempt29ClosedState(state);
+  isAttempt29ClosedState(state) ||
+  isAttempt31CandidateState(state);
 
 export const isAttempt28State = (state) =>
   isAttempt28UnapprovedState(state) ||
@@ -158,7 +194,8 @@ export const isAttempt28State = (state) =>
   isAttempt29AuthorizedState(state) ||
   isAttempt29ClosedState(state) ||
   isAttempt28ClosedState(state) ||
-  isAttempt29CandidateState(state);
+  isAttempt29CandidateState(state) ||
+  isAttempt31CandidateState(state);
 
 const isAttempt28UnapprovedGate = (gates) =>
   hasAll(gates, [
@@ -204,6 +241,19 @@ export const isAttempt29ClosedGate = (gates) =>
     'result: "NOT_QUALIFIED_attempt29_closed_output_finalization_replay_failure"',
   ]);
 
+export const isAttempt31CandidateGate = (gates) =>
+  hasAll(gates, [
+    `pending_proposal_sha256: "${ATTEMPT31_PROPOSAL}"`,
+    `pending_control_source_commit: "${ATTEMPT31_CONTROL}"`,
+    ATTEMPT30_CLOSURE,
+    ATTEMPT30_CLEANUP,
+    "pending_authority: null",
+    "pending_authority_sha256: null",
+    "authority_mode: none_attempt31_pending_fresh_approval",
+    "pending_numeric_cap_usd: null",
+    'result: "NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure"',
+  ]);
+
 export const isAttempt28AuthorizedGate = (gates) =>
   hasAll(gates, [
     `pending_proposal_sha256: "${ATTEMPT28_PROPOSAL}"`,
@@ -229,7 +279,8 @@ const isAttempt28HistoricalClosedGate = (gates) =>
 export const isAttempt28ClosedGate = (gates) =>
   isAttempt28HistoricalClosedGate(gates) ||
   isAttempt29CandidateGate(gates) ||
-  isAttempt29ClosedGate(gates);
+  isAttempt29ClosedGate(gates) ||
+  isAttempt31CandidateGate(gates);
 
 export const isAttempt28Gate = (gates) =>
   isAttempt28UnapprovedGate(gates) ||
@@ -237,7 +288,8 @@ export const isAttempt28Gate = (gates) =>
   isAttempt29AuthorizedGate(gates) ||
   isAttempt29ClosedGate(gates) ||
   isAttempt28ClosedGate(gates) ||
-  isAttempt29CandidateGate(gates);
+  isAttempt29CandidateGate(gates) ||
+  isAttempt31CandidateGate(gates);
 
 export const isAttempt28AuthorizedActivation = (activation) =>
   hasIdentity(activation) &&
@@ -254,4 +306,7 @@ export const isAttempt28Activation = (activation) =>
     activation.includes(ATTEMPT29_AUTHORITY) &&
     activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4")) ||
   (hasAttempt29Identity(activation) &&
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"));
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")) ||
+  (hasAttempt31Identity(activation) &&
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
+    activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null"));

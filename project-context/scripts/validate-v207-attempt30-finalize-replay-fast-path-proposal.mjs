@@ -179,26 +179,38 @@ for (const [label, text] of Object.entries({ state, gates, task, start, activati
   assert(text.includes(expected.proposal) && text.includes(expected.repair), `${label.toUpperCase()}_POINTERS`);
 }
 assert(
-  state.includes("phase: serverless_v2_v2_07_attempt30_finalize_replay_fast_path_authorized") &&
-    state.includes("task_stage: bounded_mutation") &&
-    state.includes("provider_calls_authorized: true") &&
-    state.includes("maximum_external_spend_usd: 4") &&
-    state.includes(expected.authority),
+  (state.includes("phase: serverless_v2_v2_07_attempt30_finalize_replay_fast_path_authorized") &&
+      state.includes("task_stage: bounded_mutation") &&
+      state.includes("provider_calls_authorized: true") &&
+      state.includes("maximum_external_spend_usd: 4") &&
+      state.includes(expected.authority)) ||
+    (state.includes("phase: serverless_v2_v2_07_attempt31_terminal_snapshot_stabilization_provider_free") &&
+      state.includes("task_stage: provider_free") &&
+      state.includes("provider_calls_authorized: false") &&
+      state.includes("maximum_external_spend_usd: 0") &&
+      state.includes("sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c") &&
+      state.includes(expected.authority)),
   "STATE_BOUNDARY",
 );
 assert(
-  gates.includes("authority_mode: attempt30_bounded_mutation_authorized") &&
-    gates.includes("pending_numeric_cap_usd: 4") &&
-    gates.includes(expected.authority) &&
-    gates.includes('result: "NOT_QUALIFIED_attempt30_authorized_preexecution"'),
+  (gates.includes("authority_mode: attempt30_bounded_mutation_authorized") &&
+      gates.includes("pending_numeric_cap_usd: 4") &&
+      gates.includes(expected.authority) &&
+      gates.includes('result: "NOT_QUALIFIED_attempt30_authorized_preexecution"')) ||
+    (gates.includes("authority_mode: none_attempt31_pending_fresh_approval") &&
+      gates.includes("pending_numeric_cap_usd: null") &&
+      gates.includes(expected.authority) &&
+      gates.includes('result: "NOT_QUALIFIED_attempt30_closed_concurrent_reader_baseline_failure"')),
   "GATE_BOUNDARY",
 );
 assert(
   activation.includes(expected.authority) &&
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
-    activationTest.includes(expected.authority) &&
-    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)") &&
-    activationTest.includes("rejects the consumed Attempt29 proposal"),
+    activationTest.includes("rejects the consumed Attempt29 proposal") &&
+    ((activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
+      activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)")) ||
+      (activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
+        activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBeNull()") &&
+        activationTest.includes("rejects the consumed Attempt30 proposal"))),
   "ACTIVATION_BOUNDARY",
 );
 process.stdout.write(
