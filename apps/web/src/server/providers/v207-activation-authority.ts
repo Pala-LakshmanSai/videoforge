@@ -13,7 +13,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12" as const;
+  "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
@@ -39,12 +39,13 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // were consumed by one bounded execution and cannot be reused.
 // Attempt33 proposal sha256:0a417ca023895a02b8ce0e0f2e86b3f3e81b38624819a4abc473695602637925
 // and authority sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328
-// were consumed by one bounded execution and cannot be reused. Attempt34 has its own exact single-use authority.
+// were consumed by one bounded execution and cannot be reused. Attempt34 authority
+// sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff
+// closed before mutation on MEDIUM-threshold capacity drift. Attempt35 is provider-free only.
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-export const V207_APPROVED_AUTHORITY_SHA256 =
-  "sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff" as const;
-export const V207_APPROVED_FINITE_CAP_USD = 4 as const;
+export const V207_APPROVED_AUTHORITY_SHA256 = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {
   readonly image: string;

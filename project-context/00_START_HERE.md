@@ -1,23 +1,28 @@
 # VideoForge: start here
 
-Attempt34 is approved once for exact bounded V2-07 execution. Repair commit
+Attempt35 is the active provider-free LOW-or-better V2-07 candidate. Attempt34 stopped before any
+provider mutation, GPU job, or spend because three fresh read-only checks proved LOW EU-RO-1
+availability below its approved MEDIUM threshold. Its exact pre-execution closure is
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/blocked-attempt-34-capacity-drift.json`
+at `sha256:cf207d45228bf2754803ce56187129dde229b0abdbeb1bd834e7e83dad34b980`; authority
+`sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff` is closed and non-reusable.
+
+Repair commit
 `96f5e16cf03be7e31049478ce7f6b0c134a8108c` keeps retries exclusive to idempotent FINALIZE with
 the same reservation/callback tuple, expands the bounded attempt count from three to six, and uses
 1/2/3/4/5-second backoff; PUT and every non-FINALIZE POST remain single-shot. The exact combined
-proposal is
-`evidence/acceptance/VF-10-07/2026-08-22-attempt34-finalize-503-backoff-candidate/combined-live-proposal.json`
-at `sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12`;
+Attempt35 proposal is
+`evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/combined-live-proposal.json`
+at `sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c`;
 max-one is `sha256:d31a518831b9a978295047310800a34eaf81ed56dde58eea46918dc581563ca2`,
 max-two is `sha256:11665ee88f09c6cbe498026cacd8505b0fe02ee7f19ac8b4d3f68aa534f3435c`,
-and approved acceptance is `sha256:8c55b0010c87966d887959cf386c2779b2396254a19a3c3e136faf84dbc18a16`.
+and acceptance is `sha256:8e5d58e520e49c147a139dc612bd347b6a01ef62a4ecde2cb47d11acfd6b55c6`.
 Fresh read-only truth proves zero disposable compute, both intended volumes, and MEDIUM RTX 4090
 EU-RO-1 availability at the `$0.74/hour` secure-Pod reference; Serverless Flex remains `$1.10/GPU-hour`,
 the finite estimate is `$2.20`, cumulative endpoint billing is `$1.1340842194622383`, and the two
-existing volumes remain `$7/month` separately. Exact append-only authority
-`approved-authority.json` is `sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff`
-and approves FlashBoot=true, MEDIUM-or-better EU-RO-1, and a fresh `$4` cumulative finite cap.
-Execute only once, then consume it and terminally reconcile. Image republication, retained-volume
-mutation, and V2-08 remain forbidden; V2-07 remains NOT_QUALIFIED pending execution.
+existing volumes remain `$7/month` separately. No Attempt35 authority or cap exists. Fresh exact
+approval for FlashBoot=true and LOW-or-better EU-RO-1 plus a fresh positive numeric cap is required.
+Image republication, retained-volume mutation, and V2-08 remain forbidden; V2-07 is NOT_QUALIFIED.
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. Attempt33
 closed fail-safe at `V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID`: both simultaneous reader jobs

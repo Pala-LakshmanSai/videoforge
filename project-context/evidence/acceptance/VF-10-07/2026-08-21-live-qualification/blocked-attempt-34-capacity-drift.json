@@ -1,0 +1,54 @@
+{
+  "schema_version": "videoforge.v2-07-preexecution-capacity-drift-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 34,
+  "recorded_at": "2026-08-22T17:13:07.905Z",
+  "result": "NOT_QUALIFIED_PREEXECUTION_CAPACITY_DRIFT",
+  "proposal_sha256": "sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12",
+  "authority_sha256": "sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff",
+  "approved_minimum_availability": "MEDIUM",
+  "region": "EU-RO-1",
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "stop_condition": "CURRENT_AVAILABILITY_BELOW_APPROVED_THRESHOLD",
+  "read_only_observations": [
+    {
+      "checked_at": "2026-08-22T17:12:35.657Z",
+      "gpu_availability": "LOW",
+      "eu_ro_1_availability": "LOW",
+      "medium_or_better": false,
+      "secure_reference_usd_per_hour": 0.74
+    },
+    {
+      "checked_at": "2026-08-22T17:12:51.736Z",
+      "gpu_availability": "LOW",
+      "eu_ro_1_availability": "LOW",
+      "medium_or_better": false,
+      "secure_reference_usd_per_hour": 0.74
+    },
+    {
+      "checked_at": "2026-08-22T17:13:07.905Z",
+      "gpu_availability": "LOW",
+      "eu_ro_1_availability": null,
+      "medium_or_better": false,
+      "secure_reference_usd_per_hour": 0.74
+    }
+  ],
+  "provider_boundary": {
+    "runpod_mutations": 0,
+    "cloudflare_mutations": 0,
+    "gpu_jobs": 0,
+    "worker_allocations": 0,
+    "external_spend_usd": 0,
+    "image_publication": false,
+    "endpoint_or_template_creation": false,
+    "retained_volume_mutation": false
+  },
+  "retention": {
+    "mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "existing_two_volume_charge_usd_per_month_total": 7
+  },
+  "authority_state": "CLOSED_PREEXECUTION_CAPACITY_DRIFT_DO_NOT_REUSE",
+  "next_boundary": "A separately hashed LOW-or-better proposal, fresh exact approval, and a fresh positive numeric cap are required before provider mutation, GPU use, or spend. V2-08 remains forbidden."
+}

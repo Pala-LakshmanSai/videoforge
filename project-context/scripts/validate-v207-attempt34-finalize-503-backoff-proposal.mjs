@@ -8,6 +8,8 @@ const expected = Object.freeze({
   proposal: "sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12",
   acceptance: "sha256:8c55b0010c87966d887959cf386c2779b2396254a19a3c3e136faf84dbc18a16",
   authority: "sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff",
+  closure: "sha256:cf207d45228bf2754803ce56187129dde229b0abdbeb1bd834e7e83dad34b980",
+  successor: "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c",
   max1: "sha256:d31a518831b9a978295047310800a34eaf81ed56dde58eea46918dc581563ca2",
   max2: "sha256:11665ee88f09c6cbe498026cacd8505b0fe02ee7f19ac8b4d3f68aa534f3435c",
   control: "96f5e16cf03be7e31049478ce7f6b0c134a8108c",
@@ -25,6 +27,7 @@ const paths = Object.freeze({
   proposal: resolve(candidateRoot, "combined-live-proposal.json"),
   acceptance: resolve(candidateRoot, "acceptance.json"),
   authority: resolve(candidateRoot, "approved-authority.json"),
+  closure: resolve(root, "project-context/evidence/acceptance/VF-10-07/2026-08-21-live-qualification/blocked-attempt-34-capacity-drift.json"),
   max1: resolve(candidateRoot, "staged-config-max1.json"),
   max2: resolve(candidateRoot, "staged-config-max2.json"),
   activation: resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"),
@@ -39,10 +42,11 @@ const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("h
 const parse = (bytes, code) => { try { return JSON.parse(bytes.toString("utf8")); } catch { fail(`${code}_JSON`); } };
 const entries = await Promise.all(Object.entries(paths).map(async ([name, path]) => [name, await readFile(path)]));
 const bytes = Object.fromEntries(entries);
-for (const [name, hash] of Object.entries({ proposal: expected.proposal, acceptance: expected.acceptance, authority: expected.authority, max1: expected.max1, max2: expected.max2 })) assert(sha256(bytes[name]) === hash, `${name.toUpperCase()}_HASH`);
+for (const [name, hash] of Object.entries({ proposal: expected.proposal, acceptance: expected.acceptance, authority: expected.authority, closure: expected.closure, max1: expected.max1, max2: expected.max2 })) assert(sha256(bytes[name]) === hash, `${name.toUpperCase()}_HASH`);
 const proposal = parse(bytes.proposal, "PROPOSAL");
 const acceptance = parse(bytes.acceptance, "ACCEPTANCE");
 const authority = parse(bytes.authority, "AUTHORITY");
+const closure = parse(bytes.closure, "CLOSURE");
 const max1 = parse(bytes.max1, "MAX1");
 const max2 = parse(bytes.max2, "MAX2");
 assert(proposal.schema_version === "videoforge.v2-07-finalize-503-backoff-combined-live-proposal/v1" && proposal.attempt === 34 && proposal.authority_mode === "PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP" && proposal.provider_mutation === false && proposal.gpu_use === false && proposal.spend_usd === 0, "SCOPE");
@@ -61,8 +65,9 @@ const cost = proposal.rates_cost_and_retention;
 assert(cost?.serverless_flex_rtx4090_usd_per_gpu_hour === 1.1 && cost?.existing_two_volume_charge_usd_per_month_total === 7 && cost?.retained_volume_charge_is_existing_and_outside_finite_cap === true && cost?.maximum_cumulative_finite_spend_usd === null && cost?.numeric_cap_must_be_supplied_by_user === true && cost?.estimated_finite_serverless_compute_usd_ceiling === 2.2 && cost?.availability_threshold === "MEDIUM_OR_BETTER", "COST");
 assert(acceptance.result === "APPROVED_SINGLE_USE_PENDING_EXECUTION" && acceptance.candidate?.proposal_sha256 === expected.proposal && acceptance.candidate?.max1_sha256 === expected.max1 && acceptance.candidate?.max2_sha256 === expected.max2 && acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4 && acceptance.candidate?.authority_path === "approved-authority.json" && acceptance.candidate?.authority_sha256 === expected.authority && acceptance.candidate?.authority_recorded === true && acceptance.provider_boundary?.provider_calls === true && acceptance.provider_boundary?.provider_mutations === true && acceptance.provider_boundary?.gpu_use === true && acceptance.provider_boundary?.external_spend_usd === 0 && acceptance.provider_boundary?.authority_active === true && acceptance.provider_boundary?.cap_usd === 4, "ACCEPTANCE");
 assert(authority.schema_version === "videoforge.v2-07-attempt34-finalize-503-backoff-authority/v1" && authority.attempt === 34 && authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" && authority.proposal?.sha256 === expected.proposal && authority.approval?.exact_proposal_approved === true && authority.approval?.flashboot_true_accepted === true && authority.approval?.medium_or_better_eu_ro_1_availability_approved === true && authority.approval?.minimum_approved_availability === "MEDIUM" && authority.approval?.observed_availability_at_proposal === "MEDIUM" && authority.approval?.maximum_cumulative_finite_spend_usd === 4 && authority.lineage?.control_source_commit === expected.control && authority.lineage?.initial_config_sha256 === expected.max1 && authority.lineage?.concurrent_reader_config_sha256 === expected.max2 && authority.runtime_contract?.finalize_retry_attempts === 6 && JSON.stringify(authority.runtime_contract?.finalize_retry_backoff_ms) === JSON.stringify([1000, 2000, 3000, 4000, 5000]) && authority.execution_boundary?.retained_volume_mutation_authorized === false && authority.execution_boundary?.v2_08_authorized === false, "AUTHORITY");
+assert(closure.result === "NOT_QUALIFIED_PREEXECUTION_CAPACITY_DRIFT" && closure.authority_sha256 === expected.authority && closure.provider_boundary?.runpod_mutations === 0 && closure.provider_boundary?.gpu_jobs === 0 && closure.provider_boundary?.external_spend_usd === 0 && closure.authority_state === "CLOSED_PREEXECUTION_CAPACITY_DRIFT_DO_NOT_REUSE", "CLOSURE");
 const activation = bytes.activation.toString("utf8");
-for (const value of [expected.proposal, expected.control, expected.authority, "V207_APPROVED_FINITE_CAP_USD = 4 as const"]) assert(activation.includes(value), `ACTIVATION_${value}`);
+for (const value of [expected.successor, expected.control, expected.authority, "V207_APPROVED_AUTHORITY_SHA256 = null", "V207_APPROVED_FINITE_CAP_USD: number | null = null"]) assert(activation.includes(value), `ACTIVATION_${value}`);
 const context = [bytes.state, bytes.gates, bytes.task, bytes.start].map((value) => value.toString("utf8")).join("\n");
-for (const value of [expected.proposal, expected.acceptance, expected.authority, expected.max1, expected.max2, expected.control, "attempt34-finalize-503-backoff-candidate", "maximum_external_spend_usd: 4", "V2-08"]) assert(context.includes(value), `CONTEXT_${value}`);
-process.stdout.write("V2-07 Attempt34 FINALIZE 503 backoff authority validation PASS (single-use; cap $4)\n");
+for (const value of [expected.proposal, expected.acceptance, expected.authority, expected.closure, expected.successor, expected.max1, expected.max2, expected.control, "V2-08"]) assert(context.includes(value), `CONTEXT_${value}`);
+process.stdout.write("V2-07 Attempt34 pre-execution capacity closure validation PASS (zero mutation/GPU/spend)\n");

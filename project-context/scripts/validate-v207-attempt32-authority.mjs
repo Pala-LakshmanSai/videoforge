@@ -526,7 +526,8 @@ const gateSuccessorAuthorized =
   /gpu_use_authorized:\s+true/u.test(gate);
 const gateSuperseded =
   (gate.includes("authority_mode: no_live_authority_attempt34_provider_free_candidate") ||
-    gate.includes("authority_mode: exact_attempt34_single_use_authority_active")) &&
+    gate.includes("authority_mode: exact_attempt34_single_use_authority_active") ||
+    gate.includes("authority_mode: no_live_authority_attempt35_provider_free_candidate")) &&
   gate.includes("failed-attempt-33.json") &&
   gate.includes("attempt33-cleanup-observation.json") &&
   /provider_calls_authorized:\s+false/u.test(gate) &&

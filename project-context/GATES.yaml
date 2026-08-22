@@ -149,10 +149,10 @@ gates:
     latest_closed_candidate_acceptance_sha256: "sha256:145408f7e2a5d33512a5458af98012097d65e363446e48a618d126f8008f8fb5"
     latest_closed_max1_sha256: "sha256:5c3651673d93829535a450a88b99bcea697ed817e9f4ceba0536523e606f73a7"
     latest_closed_max2_sha256: "sha256:051863d9b131aab22502de85b57553adc924c5bb8f4a3ceee0e6b9d5991e78d2"
-    current_candidate: "evidence/acceptance/VF-10-07/2026-08-22-attempt34-finalize-503-backoff-candidate/combined-live-proposal.json"
-    current_candidate_sha256: "sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12"
-    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-22-attempt34-finalize-503-backoff-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:8c55b0010c87966d887959cf386c2779b2396254a19a3c3e136faf84dbc18a16"
+    current_candidate: "evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/combined-live-proposal.json"
+    current_candidate_sha256: "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c"
+    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/acceptance.json"
+    current_candidate_acceptance_sha256: "sha256:8e5d58e520e49c147a139dc612bd347b6a01ef62a4ecde2cb47d11acfd6b55c6"
     current_candidate_control_source_commit: "96f5e16cf03be7e31049478ce7f6b0c134a8108c"
     current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
@@ -172,20 +172,20 @@ gates:
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt33-cleanup-observation.json"
     cleanup_evidence_sha256: "sha256:f2bff0bd293172ea851db26b2c14f8edc3d50074dfc89beccbb7d26e4e93c059"
     latest_closed_result: "NOT_QUALIFIED_V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID_HTTP_503"
-    authority_mode: exact_attempt34_single_use_authority_active
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt34-finalize-503-backoff-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12"
+    authority_mode: no_live_authority_attempt35_provider_free_candidate
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-22-attempt35-low-availability-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c"
     pending_control_source_commit: "96f5e16cf03be7e31049478ce7f6b0c134a8108c"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-22-attempt34-finalize-503-backoff-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff"
-    pending_numeric_cap_usd: 4
+    pending_authority: null
+    pending_authority_sha256: null
+    pending_numeric_cap_usd: null
     pending_flashboot: true
-    pending_availability: MEDIUM
-    provider_calls_authorized: true
-    provider_mutations_authorized: true
-    gpu_use_authorized: true
-    result: "NOT_QUALIFIED_attempt34_approved_execution_pending"
-    next_boundary: "execute exact single-use Attempt34, terminally reconcile, consume authority, and stop before V2-08"
+    pending_availability: LOW
+    provider_calls_authorized: false
+    provider_mutations_authorized: false
+    gpu_use_authorized: false
+    result: "NOT_QUALIFIED_attempt35_provider_free_candidate_awaiting_authority"
+    next_boundary: "fresh exact Attempt35 LOW-or-better approval and fresh positive numeric cap required before provider mutation/GPU/spend; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

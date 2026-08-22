@@ -1,0 +1,227 @@
+{
+  "schema_version": "videoforge.v2-07-attempt35-provider-free-candidate/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 35,
+  "recorded_at": "2026-08-22T17:13:07.905Z",
+  "result": "PROVIDER_FREE_CANDIDATE_AWAITING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP",
+  "qualification_status": "NOT_QUALIFIED_PROVIDER_FREE_CANDIDATE",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c",
+    "max1_path": "staged-config-max1.json",
+    "max1_sha256": "sha256:d31a518831b9a978295047310800a34eaf81ed56dde58eea46918dc581563ca2",
+    "max2_path": "staged-config-max2.json",
+    "max2_sha256": "sha256:11665ee88f09c6cbe498026cacd8505b0fe02ee7f19ac8b4d3f68aa534f3435c",
+    "control_source_commit": "96f5e16cf03be7e31049478ce7f6b0c134a8108c",
+    "prior_proposal_sha256": "sha256:83cebe85da4a60862ccf981b72cec9bc8ae6673a3757852d0c63b93c2f38ae12",
+    "prior_authority_sha256": "sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "flashboot": true,
+    "availability": "LOW",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true,
+    "authority_path": null,
+    "authority_sha256": null,
+    "authority_recorded": false,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "image_republication_authorized": false,
+    "model_download_or_volume_mutation_authorized": false,
+    "v2_08_authorized": false,
+    "finalize_replay_fast_path_commit": "bf26c3a86ec6a48f619c39613d425da816eeae4d",
+    "terminal_snapshot_stabilization_commit": "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
+    "minimum_availability": "LOW_OR_BETTER",
+    "finalize_response_diagnostics_commit": "a1da27192c567823f9508ecd6f146f8667e1daac",
+    "runtime_execution_contract": {
+      "sealed_manifest_verification": "OFFLINE_EXACT_SHA256_BEFORE_MODEL_LOAD_AND_AFTER_FINAL_DRAIN",
+      "real_initialization_warmup_required": true,
+      "application_read_only_model_root": "/runpod-volume/mage-model",
+      "job_local_scratch": "/tmp/videoforge-v2-07/${job_id}",
+      "scoped_r2_output_ports": "EXACT_PER_JOB_PER_UNIT_PUT_FINALIZE_GET_HEAD_DELETE_AUTHORITIES_ONLY",
+      "durable_per_unit_resume": "RETRY_ONLY_UNRESOLVED_UNACCEPTED_UNITS_NEVER_REGENERATE_ACCEPTED_UNITS",
+      "runtime_download_or_quantization": false,
+      "cache_escape_forbidden": true,
+      "success_measurements": "peak_vram_bytes_init_load_warmup_inference_upload_total_ttl_and_settled_cost"
+    },
+    "diagnostic_scope": {
+      "scope": "provider response metadata only",
+      "preserved_fields": [
+        "attempt",
+        "status",
+        "sanitized_content_type",
+        "body_length",
+        "category"
+      ],
+      "request_timeout_seconds": 30,
+      "max_attempts": 6,
+      "retryable_operation_only": "FINALIZE",
+      "body_retained": false,
+      "url_retained": false,
+      "provider_ids_retained": false,
+      "secrets_retained": false,
+      "signed_urls_retained": false
+    },
+    "attempt34_closure": "../2026-08-21-live-qualification/blocked-attempt-34-capacity-drift.json",
+    "attempt34_closure_sha256": "sha256:cf207d45228bf2754803ce56187129dde229b0abdbeb1bd834e7e83dad34b980"
+  },
+  "terminal_replay_queue_proof": {
+    "commit": "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b",
+    "commit_resolution": "FULL",
+    "exact_terminal_replay_returns_original_job_identity": true,
+    "terminal_request_key_cannot_reenter_owned_jobs": true,
+    "second_provider_run_post_forbidden": true,
+    "duplicate_compute": false,
+    "changed_work_under_same_request_key_rejected": true,
+    "post_job_fallback_requires_no_owned_jobs": true,
+    "bounded_queue_empty_reads": {
+      "read_only": true,
+      "max_attempts": 12,
+      "poll_interval_ms": 250,
+      "exact_fields": [
+        "inQueue",
+        "inProgress"
+      ],
+      "bracket_two_stable_terminal_inventory_snapshots": true,
+      "reads_before_and_after_each_snapshot": true
+    },
+    "fails_closed_on": [
+      "queued",
+      "running",
+      "malformed",
+      "active",
+      "nonterminal",
+      "mismatched",
+      "unstable"
+    ],
+    "dispatch_blocked_after_failure": true,
+    "no_retry_or_duplicate_compute": true
+  },
+  "read_only_provider_snapshot": {
+    "checked_at": "2026-08-22T17:13:07.905Z",
+    "inventory_checked_at": "2026-08-22T13:57:46.239Z",
+    "provider_mutations_for_this_proposal": 0,
+    "external_spend_for_this_proposal_usd": 0,
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "network_volumes": 2,
+    "retained_volumes": [
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ],
+    "rtx4090_region": "EU-RO-1",
+    "rtx4090_availability": "LOW",
+    "secure_rtx4090_reference_usd_per_hour": 0.74,
+    "rtx4090_vram_gb": 24,
+    "cumulative_endpoint_spend_usd": 1.1340842194622383
+  },
+  "local_verification": {
+    "attempt33_closure_lineage": "PASS",
+    "attempt34_candidate_artifacts_json": "PASS",
+    "attempt34_candidate_hashes": "PASS",
+    "finalize_response_diagnostics_scope": "PASS_METADATA_ONLY_NO_BODY_URL_IDS_SECRETS",
+    "finalize_timeout_and_attempt_fence": "PASS_30_SECONDS_6_FINALIZE_ATTEMPTS",
+    "terminal_snapshot_stabilization_tests": "PASS",
+    "focused_v2_07_tests": "PASS_153_OF_153",
+    "web_typecheck_and_lint": "PASS",
+    "historical_v207_validators": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS_1385_TRACKED_FILES",
+    "format_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "provider_boundary": {
+    "provider_calls": false,
+    "provider_mutations": false,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "authority_active": false,
+    "cap_usd": 0
+  },
+  "next_boundary": "Create no authority record and make no provider call until this exact Attempt35 LOW-or-better candidate receives fresh exact approval plus a fresh positive numeric cumulative cap. Stop on any mismatch, failed output, uncertain cleanup, duplicate compute, or cap risk; V2-08 remains forbidden.",
+  "unproven_acceptance": [
+    "provider-free diagnostic metadata is applied without retaining response body URL identifiers or secrets",
+    "complete cold and warm 32-image batches",
+    "durable outputs and v3 receipts before provider expiry",
+    "duplicate delivery/cancellation/timeout live behavior",
+    "two simultaneous read-only workers",
+    "sealed manifest unchanged and no model-volume writes",
+    "peak VRAM bytes and init/load/warmup/inference/upload/total/TTL timings plus settled cost",
+    "retained endpoint and private template on success",
+    "independent workers=0 after drain"
+  ],
+  "finalize_replay_fast_path": {
+    "commit": "bf26c3a86ec6a48f619c39613d425da816eeae4d",
+    "existing_receipt_after_authenticated_metadata_checksum_before_png_probe": true,
+    "first_finalize_still_requires_full_png_probe": true,
+    "realistic_high_entropy_1280x720_replay_under_ms": 1000,
+    "receipt_identity_callback_content_checksum_and_hash_conflict_fences_preserved": true
+  },
+  "terminal_snapshot_stabilization": {
+    "commit": "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
+    "maximum_snapshot_attempts": 40,
+    "poll_interval_ms": 250,
+    "queue_empty_reads_bracket_each_candidate_snapshot": true,
+    "two_consecutive_exact_signatures_required": true,
+    "no_reader_dispatch_before_stable_proof": true,
+    "cleanup_accepts_only_separately_approved_workers_max": [
+      1,
+      2
+    ],
+    "active_nonterminal_mismatched_malformed_or_unstable_state_fails_closed": true
+  },
+  "finalize_response_diagnostics": {
+    "scope": "provider response metadata only",
+    "preserved_fields": [
+      "attempt",
+      "status",
+      "sanitized_content_type",
+      "body_length",
+      "category"
+    ],
+    "request_timeout_seconds": 30,
+    "max_attempts": 6,
+    "retryable_operation_only": "FINALIZE",
+    "body_retained": false,
+    "url_retained": false,
+    "provider_ids_retained": false,
+    "secrets_retained": false,
+    "signed_urls_retained": false
+  },
+  "max_two_reader_terminal_drain_repair": {
+    "repair_commit": "bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37",
+    "scope": "POST_CONCURRENT_READER_DRAIN_ONLY",
+    "exact_reader_job_ids_required": 2,
+    "all_reader_jobs_must_be_locally_observed_terminal": true,
+    "owned_jobs_must_be_zero_before_fallback": true,
+    "health_queue_reads_required": {
+      "in_queue": 0,
+      "in_progress": 0
+    },
+    "stable_terminal_inventory_snapshots_required": 2,
+    "active_malformed_mismatched_or_unstable_state_fails_closed": true,
+    "duplicate_compute_forbidden": true
+  }
+}

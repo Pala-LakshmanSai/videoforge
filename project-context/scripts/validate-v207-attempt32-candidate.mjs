@@ -125,7 +125,8 @@ assert(
     ) ||
     String(gatesBytes).includes("authority_mode: attempt33_bounded_mutation_authorized") ||
     String(gatesBytes).includes("authority_mode: no_live_authority_attempt34_provider_free_candidate") ||
-    String(gatesBytes).includes("authority_mode: exact_attempt34_single_use_authority_active"),
+    String(gatesBytes).includes("authority_mode: exact_attempt34_single_use_authority_active") ||
+    String(gatesBytes).includes("authority_mode: no_live_authority_attempt35_provider_free_candidate"),
   "GATE_AUTHORITY_LIFECYCLE",
 );
 assert(String(activationBytes).includes(expected.proposal), "ACTIVATION_HISTORICAL_PROPOSAL");
