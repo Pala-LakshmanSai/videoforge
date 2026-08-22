@@ -121,6 +121,7 @@ for (const value of [expected.proposal, expected.acceptance, expected.authority,
 assert(context.includes("attempt33_provider_free") || context.includes("Attempt33 provider-free") || context.includes("attempt34_provider_free"), "CONTEXT_STATE");
 assert(
   String(activation).includes("V207_APPROVED_FINITE_CAP_USD = 4 as const") ||
+    String(activation).includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") ||
     String(activation).includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
   "ACTIVATION_CAP",
 );

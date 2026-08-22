@@ -41,11 +41,13 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // and authority sha256:002ee1529b7b2173a51bd7ccedec5bc25bd9945ea8d4f03be02f202c7462f328
 // were consumed by one bounded execution and cannot be reused. Attempt34 authority
 // sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff
-// closed before mutation on MEDIUM-threshold capacity drift. Attempt35 is provider-free only.
+// closed before mutation on MEDIUM-threshold capacity drift. Attempt35 is approved once under
+// the exact authority below and must be closed after this execution.
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-export const V207_APPROVED_AUTHORITY_SHA256 = null;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+export const V207_APPROVED_AUTHORITY_SHA256 =
+  "sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37" as const;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 
 export interface V207ActivationAuthority {
   readonly image: string;

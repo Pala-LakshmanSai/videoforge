@@ -527,7 +527,8 @@ const gateSuccessorAuthorized =
 const gateSuperseded =
   (gate.includes("authority_mode: no_live_authority_attempt34_provider_free_candidate") ||
     gate.includes("authority_mode: exact_attempt34_single_use_authority_active") ||
-    gate.includes("authority_mode: no_live_authority_attempt35_provider_free_candidate")) &&
+    gate.includes("authority_mode: no_live_authority_attempt35_provider_free_candidate") ||
+    gate.includes("authority_mode: exact_attempt35_single_use_authority_active")) &&
   gate.includes("failed-attempt-33.json") &&
   gate.includes("attempt33-cleanup-observation.json") &&
   /provider_calls_authorized:\s+false/u.test(gate) &&
@@ -538,8 +539,19 @@ const gateAttempt34Authorized =
   gate.includes("sha256:3157147f85ecea86b6d01ce489dbfff2dc0d7bc51a833749d96a9cecd99314ff") &&
   /provider_calls_authorized:\s+true/u.test(gate) &&
   /gpu_use_authorized:\s+true/u.test(gate);
+const gateAttempt35Authorized =
+  gate.includes("authority_mode: exact_attempt35_single_use_authority_active") &&
+  gate.includes("pending_numeric_cap_usd: 4") &&
+  gate.includes("sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37") &&
+  /provider_calls_authorized:\s+true/u.test(gate) &&
+  /gpu_use_authorized:\s+true/u.test(gate);
 assert(
-  gateAuthorized || gateConsumed || gateSuccessorAuthorized || gateSuperseded || gateAttempt34Authorized,
+  gateAuthorized ||
+    gateConsumed ||
+    gateSuccessorAuthorized ||
+    gateSuperseded ||
+    gateAttempt34Authorized ||
+    gateAttempt35Authorized,
   "GATE_AUTHORITY_LIFECYCLE",
 );
 for (const [label, text] of Object.entries({ task, start })) {
@@ -551,6 +563,7 @@ assert(
       activation.includes("bbc3e40b8519ebee8d6ccdaaf29e1ede6215ac37") ||
       activation.includes("96f5e16cf03be7e31049478ce7f6b0c134a8108c")) &&
     (new RegExp(`V207_APPROVED_FINITE_CAP_USD\\s*=\\s*${cap}\\b`).test(activation) ||
+      activation.includes(`V207_APPROVED_FINITE_CAP_USD: number | null = ${cap}`) ||
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")),
   "ACTIVATION_AUTHORITY_LIFECYCLE",
 );

@@ -126,7 +126,8 @@ assert(
     String(gatesBytes).includes("authority_mode: attempt33_bounded_mutation_authorized") ||
     String(gatesBytes).includes("authority_mode: no_live_authority_attempt34_provider_free_candidate") ||
     String(gatesBytes).includes("authority_mode: exact_attempt34_single_use_authority_active") ||
-    String(gatesBytes).includes("authority_mode: no_live_authority_attempt35_provider_free_candidate"),
+    String(gatesBytes).includes("authority_mode: no_live_authority_attempt35_provider_free_candidate") ||
+    String(gatesBytes).includes("authority_mode: exact_attempt35_single_use_authority_active"),
   "GATE_AUTHORITY_LIFECYCLE",
 );
 assert(String(activationBytes).includes(expected.proposal), "ACTIVATION_HISTORICAL_PROPOSAL");
@@ -138,6 +139,7 @@ assert(
 );
 assert(
   String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD = 4 as const") ||
+    String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") ||
     String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
   "ACTIVATION_CAP_LIFECYCLE",
 );

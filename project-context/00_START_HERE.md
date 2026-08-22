@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Attempt35 is the active provider-free LOW-or-better V2-07 candidate. Attempt34 stopped before any
+Attempt35 is approved once for bounded LOW-or-better V2-07 execution. Attempt34 stopped before any
 provider mutation, GPU job, or spend because three fresh read-only checks proved LOW EU-RO-1
 availability below its approved MEDIUM threshold. Its exact pre-execution closure is
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/blocked-attempt-34-capacity-drift.json`
@@ -16,13 +16,15 @@ Attempt35 proposal is
 at `sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c`;
 max-one is `sha256:d31a518831b9a978295047310800a34eaf81ed56dde58eea46918dc581563ca2`,
 max-two is `sha256:11665ee88f09c6cbe498026cacd8505b0fe02ee7f19ac8b4d3f68aa534f3435c`,
-and acceptance is `sha256:8e5d58e520e49c147a139dc612bd347b6a01ef62a4ecde2cb47d11acfd6b55c6`.
+and approved acceptance is `sha256:fa701d3ef9f5619c585c6fc964007f660f19d5c92a3912d9af49e5d05bf7277d`.
 Fresh read-only truth proves zero disposable compute, both intended volumes, and MEDIUM RTX 4090
 EU-RO-1 availability at the `$0.74/hour` secure-Pod reference; Serverless Flex remains `$1.10/GPU-hour`,
 the finite estimate is `$2.20`, cumulative endpoint billing is `$1.1340842194622383`, and the two
-existing volumes remain `$7/month` separately. No Attempt35 authority or cap exists. Fresh exact
-approval for FlashBoot=true and LOW-or-better EU-RO-1 plus a fresh positive numeric cap is required.
-Image republication, retained-volume mutation, and V2-08 remain forbidden; V2-07 is NOT_QUALIFIED.
+existing volumes remain `$7/month` separately. Exact single-use authority
+`sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37` binds FlashBoot=true,
+LOW-or-better EU-RO-1, and the fresh `$4` cumulative cap. Execute only this proposal, consume the
+authority at closure, and stop before V2-08. Image republication and retained-volume mutation remain
+forbidden; V2-07 is NOT_QUALIFIED pending live proof.
 
 Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. Attempt33
 closed fail-safe at `V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID`: both simultaneous reader jobs
