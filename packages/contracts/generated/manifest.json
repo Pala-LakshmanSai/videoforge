@@ -59,8 +59,8 @@
     {
       "source": "project-context/evidence/serverless_provenance_receipt_v1.schema.json",
       "destination": "generated/schemas/serverless_provenance_receipt_v1.schema.json",
-      "bytes": 7138,
-      "sha256": "sha256:ca35cc67d469fdcdc9ae840fa301a47d4d2928df178fef0d7857dcc29aa52f88"
+      "bytes": 8010,
+      "sha256": "sha256:c476f1044fd062f3e6996f85309986cac58849c0f2892a4a8370be4543a1caf6"
     },
     {
       "source": "project-context/evidence/serverless_progress_event_v3.schema.json",

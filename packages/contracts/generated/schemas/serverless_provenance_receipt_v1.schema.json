@@ -97,7 +97,20 @@
         "warmup_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
         "first_inference_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
         "upload_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
-        "total_ms": {"type": "integer", "minimum": 0, "maximum": 86400000}
+        "total_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "timing_provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "provider_timing_source", "worker_timing_source", "signed_envelope_issued_at", "process_start_boundary", "container_ready_boundary"],
+          "properties": {
+            "schema_version": {"const": "videoforge-serverless-timing-provenance/v1"},
+            "provider_timing_source": {"const": "RUNPOD_STATUS_DELAY_TIME_MS_AND_EXECUTION_TIME_MS"},
+            "worker_timing_source": {"const": "SIGNED_ENVELOPE_ISSUED_AT_TO_LOCAL_RUNTIME_BOUNDARIES"},
+            "signed_envelope_issued_at": {"$ref": "#/$defs/utc"},
+            "process_start_boundary": {"const": "MAGE_RUNTIME_STARTED_OR_HANDLER_ADMISSION_MONOTONIC"},
+            "container_ready_boundary": {"const": "HANDLER_RUNTIME_READY_MONOTONIC"}
+          }
+        }
       }
     },
     "items": {
