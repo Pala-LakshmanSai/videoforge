@@ -45,6 +45,8 @@ malformed, active, nonterminal, mismatched, or unstable state fails closed. The 
 fresh authority `sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572` under a fresh
 `$4` cap, FlashBoot=true, and LOW EU-RO-1 availability. Provider execution is pending exact
 authority/context commit.
+
+Attempt30 provider-free candidate `evidence/acceptance/VF-10-07/2026-08-22-attempt30-finalize-replay-fast-path-candidate/combined-live-proposal.json` is `sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a`; it pins FINALIZE replay fast-path repair `bf26c3a86ec6a48f619c39613d425da816eeae4d`, max-one `sha256:3ecd3f8f0d2ba49a7b1464bd3ff4a03f0866e371d9be0371db692fadc42a23f8`, and max-two `sha256:5c43f8c1499b8f8f3fbbed2cc7cf6b778e978bc61869cbdf79a680d26985e304`. It has no authority and a null cap; exact fresh approval and a fresh positive numeric cap are required before provider mutation or GPU use. V2-07 remains NOT_QUALIFIED and V2-08 remains forbidden.
 Historically, Attempt25 consumed its exact proposal and authority. Its startup safety proof
 passed and one owned job reached `COMPLETED` with output status `SUCCEEDED`, but the run stopped
 fail-closed at `output_finalization` with a bounded `UNKNOWN` transport diagnostic before any

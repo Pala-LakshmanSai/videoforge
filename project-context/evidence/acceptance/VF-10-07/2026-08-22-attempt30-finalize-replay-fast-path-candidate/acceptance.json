@@ -1,0 +1,144 @@
+{
+  "schema_version": "videoforge.v2-07-finalize-replay-fast-path-candidate-handoff/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 30,
+  "recorded_at": "2026-08-22T06:00:36.093Z",
+  "result": "PROVIDER_FREE_CANDIDATE_PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a",
+    "max1_path": "staged-config-max1.json",
+    "max1_sha256": "sha256:3ecd3f8f0d2ba49a7b1464bd3ff4a03f0866e371d9be0371db692fadc42a23f8",
+    "max2_path": "staged-config-max2.json",
+    "max2_sha256": "sha256:5c43f8c1499b8f8f3fbbed2cc7cf6b778e978bc61869cbdf79a680d26985e304",
+    "control_source_commit": "bf26c3a86ec6a48f619c39613d425da816eeae4d",
+    "prior_proposal_sha256": "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+    "prior_authority_sha256": "sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "flashboot": true,
+    "availability": "HIGH",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true,
+    "authority_path": null,
+    "authority_sha256": null,
+    "authority_recorded": false,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "image_republication_authorized": false,
+    "model_download_or_volume_mutation_authorized": false,
+    "v2_08_authorized": false,
+    "finalize_replay_fast_path_commit": "bf26c3a86ec6a48f619c39613d425da816eeae4d",
+    "prior_attempt29_closure": "../2026-08-21-live-qualification/failed-attempt-29.json",
+    "prior_attempt29_closure_sha256": "sha256:ba6aab6bc71726c1690ae80161a7c22c9f3f50444efd14efc396bf556ae72678",
+    "prior_attempt29_cleanup": "../2026-08-21-live-qualification/attempt29-cleanup-observation.json",
+    "prior_attempt29_cleanup_sha256": "sha256:96a7660bb19f0db5e88cec60269647b2101fd2ef5114f78efeecacec022c8a24"
+  },
+  "terminal_replay_queue_proof": {
+    "commit": "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b",
+    "commit_resolution": "FULL",
+    "exact_terminal_replay_returns_original_job_identity": true,
+    "terminal_request_key_cannot_reenter_owned_jobs": true,
+    "second_provider_run_post_forbidden": true,
+    "duplicate_compute": false,
+    "changed_work_under_same_request_key_rejected": true,
+    "post_job_fallback_requires_no_owned_jobs": true,
+    "bounded_queue_empty_reads": {
+      "read_only": true,
+      "max_attempts": 12,
+      "poll_interval_ms": 250,
+      "exact_fields": [
+        "inQueue",
+        "inProgress"
+      ],
+      "bracket_two_stable_terminal_inventory_snapshots": true,
+      "reads_before_and_after_each_snapshot": true
+    },
+    "fails_closed_on": [
+      "queued",
+      "running",
+      "malformed",
+      "active",
+      "nonterminal",
+      "mismatched",
+      "unstable"
+    ],
+    "dispatch_blocked_after_failure": true,
+    "no_retry_or_duplicate_compute": true
+  },
+  "read_only_provider_snapshot": {
+    "inventory_checked_at": "2026-08-22T05:48:43.203Z",
+    "availability_checked_at": "2026-08-22T06:00:36.093Z",
+    "account_identity_verified": true,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "retained_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ],
+    "rtx4090_region": "EU-RO-1",
+    "rtx4090_availability": "HIGH",
+    "secure_pod_reference_usd_per_hour": 0.74,
+    "serverless_flex_usd_per_gpu_hour": 1.1,
+    "cumulative_endpoint_spend_usd": 0.5883426677901298,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "local_verification": {
+    "attempt30_proposal_validator": "PENDING",
+    "finalize_replay_fast_path_tests": "PASS_10_OF_10",
+    "context_validation": "PENDING",
+    "secret_scan": "PENDING",
+    "format_check": "PENDING",
+    "git_diff_check": "PENDING"
+  },
+  "provider_boundary": {
+    "provider_calls": false,
+    "provider_mutations": false,
+    "publication": false,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "retained_volume_mutation": false,
+    "v2_08_authorized": false
+  },
+  "next_boundary": "Request fresh exact approval of the immutable Attempt30 proposal and a fresh positive numeric cumulative finite spend cap; execute no provider mutation or GPU work before both are recorded.",
+  "unproven_acceptance": [
+    "complete cold and warm 32-image batches",
+    "durable outputs and v3 receipts before provider expiry",
+    "duplicate delivery/cancellation/timeout live behavior",
+    "two simultaneous read-only workers",
+    "sealed manifest unchanged and no model-volume writes",
+    "peak VRAM and init/load/warm/inference/upload timings",
+    "retained endpoint and private template on success",
+    "independent workers=0 after drain"
+  ],
+  "finalize_replay_fast_path": {
+    "commit": "bf26c3a86ec6a48f619c39613d425da816eeae4d",
+    "existing_receipt_after_authenticated_metadata_checksum_before_png_probe": true,
+    "first_finalize_still_requires_full_png_probe": true,
+    "realistic_high_entropy_1280x720_replay_under_ms": 1000,
+    "receipt_identity_callback_content_checksum_and_hash_conflict_fences_preserved": true
+  }
+}

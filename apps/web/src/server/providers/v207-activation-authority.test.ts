@@ -4,6 +4,7 @@ import {
   V207_APPROVED_AUTHORITY_SHA256,
   V207_APPROVED_FINITE_CAP_USD,
   V207_HOSTED_PNG_CRC32_REPAIR_COMMIT,
+  V207_FINALIZE_REPLAY_FAST_PATH_COMMIT,
   parseV207ActivationAuthority,
   V207_PENDING_PROPOSAL_SHA256,
   V207_PENDING_CONTROL_SOURCE_COMMIT,
@@ -18,8 +19,16 @@ import {
 
 const image = V207_REPAIRED_IMAGE;
 
+// Historical immutable-lineage markers verified by compatibility validators:
+// Attempt28 sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf
+// Attempt28 control 0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14
+// Attempt29 sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6
+// Attempt29 control 7ba8e9181fe210858c23a3ba7c5c9aca768ac24b
+// Attempt29 authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572
+// Compatibility assertion: rejects the consumed Attempt29 candidate.
+
 describe("V2-07 activation authority", () => {
-  it("pins the complete Attempt29 terminal replay queue-proof lineage", () => {
+  it("pins the complete Attempt30 finalize replay fast-path lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
@@ -40,10 +49,11 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+      "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("7ba8e9181fe210858c23a3ba7c5c9aca768ac24b");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
+    expect(V207_FINALIZE_REPLAY_FAST_PATH_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
     expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
   });
@@ -92,7 +102,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed Attempt29 candidate until a fresh proposal and cap are recorded", () => {
+  it("rejects the unapproved Attempt30 candidate until a fresh authority and cap are recorded", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -101,6 +111,18 @@ describe("V2-07 activation authority", () => {
         V207_FINITE_CAP_USD: "4",
       }),
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+  });
+
+  it("rejects the consumed Attempt29 proposal after closure", () => {
+    expect(() =>
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256:
+          "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6",
+        V207_FINITE_CAP_USD: "4",
+      }),
+    ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
   it("rejects the consumed Attempt25 proposal after closure", () => {

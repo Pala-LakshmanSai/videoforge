@@ -13,11 +13,21 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6" as const;
+  "sha256:2cb3d2a2ab73e968da1e964018fd2c100bf9e8cc7b277e9c5739b69355896c2a" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b" as const;
+  "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
+export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
+  "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
+
+// Historical validators bind these consumed immutable lineages while the active
+// pointer advances. They are evidence markers only and are never dispatch authority:
+// Attempt28 proposal sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf
+// Attempt28 control 0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14
+// Attempt29 proposal sha256:d29ab29956e00ebf15595943297564286a685fef0f796b5c8a6cb2a34183d8f6
+// Attempt29 control 7ba8e9181fe210858c23a3ba7c5c9aca768ac24b
+// Attempt29 consumed authority sha256:46bf0ba614b4210f56fd745057e8ebc6f5be4c69c672fe885d6d36de185f1572
 export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
