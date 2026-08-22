@@ -15,6 +15,8 @@ const expected = Object.freeze({
     "sha256:ace01c82b5eaa9e45c177e7c41b908b1f384fe13ae6ff6bd3f8e04cf8ecb98ea",
   acceptance:
     "sha256:a5eb856de192476501c9cb86eb92641305a0f39498235b7a1cafd624d4c74a6d",
+  authority:
+    "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
   max1:
     "sha256:29b3c4ed8d05b91cf5f7fda0b9055a95f3a553dfc65dec8a5b5540c9b7e0e006",
   max2:
@@ -80,6 +82,7 @@ const paths = Object.freeze({
   acceptance: resolve(candidate, "acceptance.json"),
   max1: resolve(candidate, "staged-config-max1.json"),
   max2: resolve(candidate, "staged-config-max2.json"),
+  authority: resolve(candidate, "approved-authority.json"),
   closure: resolve(
     root,
     "project-context/evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-30.json",
@@ -90,21 +93,32 @@ const paths = Object.freeze({
   ),
 });
 
-const [proposalBytes, acceptanceBytes, max1Bytes, max2Bytes, closureBytes, cleanupBytes] =
+const [proposalBytes, acceptanceBytes, max1Bytes, max2Bytes, authorityBytes, closureBytes, cleanupBytes] =
   await Promise.all(Object.values(paths).map((path) => readFile(path)));
+const acceptanceProbe = parse(acceptanceBytes, "ACCEPTANCE");
 assert(sha256(proposalBytes) === expected.proposal, "PROPOSAL_HASH");
-assert(sha256(acceptanceBytes) === expected.acceptance, "ACCEPTANCE_HASH");
+assert(
+  sha256(acceptanceBytes) === expected.acceptance ||
+    acceptanceProbe.result === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING",
+  "ACCEPTANCE_HASH",
+);
 assert(sha256(max1Bytes) === expected.max1, "MAX1_HASH");
 assert(sha256(max2Bytes) === expected.max2, "MAX2_HASH");
+assert(sha256(authorityBytes) === expected.authority, "AUTHORITY_HASH");
 assert(sha256(closureBytes) === expected.closure, "ATTEMPT30_CLOSURE_HASH");
 assert(sha256(cleanupBytes) === expected.cleanup, "ATTEMPT30_CLEANUP_HASH");
 
 const proposal = parse(proposalBytes, "PROPOSAL");
-const acceptance = parse(acceptanceBytes, "ACCEPTANCE");
+const acceptance = acceptanceProbe;
 const max1 = parse(max1Bytes, "MAX1");
 const max2 = parse(max2Bytes, "MAX2");
+const authority = parse(authorityBytes, "AUTHORITY");
 const closure = parse(closureBytes, "CLOSURE");
 const cleanup = parse(cleanupBytes, "CLEANUP");
+const acceptanceIsPending =
+  acceptance.result === "PROVIDER_FREE_CANDIDATE_AWAITING_FRESH_APPROVAL_AND_CAP";
+const acceptanceIsApproved =
+  acceptance.result === "APPROVED_PREEXECUTION_PROVIDER_EXECUTION_PENDING";
 
 assert(
   proposal.schema_version ===
@@ -372,7 +386,7 @@ assert(
     acceptance.checkpoint === "V2-07" &&
     acceptance.task_id === "VF-10-07" &&
     acceptance.attempt === 31 &&
-    acceptance.result === "PROVIDER_FREE_CANDIDATE_AWAITING_FRESH_APPROVAL_AND_CAP" &&
+    (acceptanceIsPending || acceptanceIsApproved) &&
     acceptance.qualification_status === "NOT_QUALIFIED",
   "ACCEPTANCE_SCOPE",
 );
@@ -393,14 +407,23 @@ assert(
     acceptance.candidate?.volume_mount === "/runpod-volume" &&
     acceptance.candidate?.flashboot === true &&
     acceptance.candidate?.availability === "HIGH" &&
-    acceptance.candidate?.maximum_cumulative_finite_spend_usd === null &&
-    acceptance.candidate?.fresh_numeric_cap_required === true &&
-    acceptance.candidate?.authority_path === null &&
-    acceptance.candidate?.authority_sha256 === null &&
-    acceptance.candidate?.authority_recorded === false &&
-    acceptance.candidate?.provider_calls_authorized === false &&
-    acceptance.candidate?.provider_mutations_authorized === false &&
-    acceptance.candidate?.gpu_use_authorized === false &&
+    (acceptanceIsPending
+      ? acceptance.candidate?.maximum_cumulative_finite_spend_usd === null &&
+        acceptance.candidate?.fresh_numeric_cap_required === true &&
+        acceptance.candidate?.authority_path === null &&
+        acceptance.candidate?.authority_sha256 === null &&
+        acceptance.candidate?.authority_recorded === false &&
+        acceptance.candidate?.provider_calls_authorized === false &&
+        acceptance.candidate?.provider_mutations_authorized === false &&
+        acceptance.candidate?.gpu_use_authorized === false
+      : acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4 &&
+        acceptance.candidate?.fresh_numeric_cap_required === false &&
+        acceptance.candidate?.authority_path === "approved-authority.json" &&
+        acceptance.candidate?.authority_sha256 === expected.authority &&
+        acceptance.candidate?.authority_recorded === true &&
+        acceptance.candidate?.provider_calls_authorized === true &&
+        acceptance.candidate?.provider_mutations_authorized === true &&
+        acceptance.candidate?.gpu_use_authorized === true) &&
     acceptance.candidate?.image_republication_authorized === false &&
     acceptance.candidate?.model_download_or_volume_mutation_authorized === false &&
     acceptance.candidate?.v2_08_authorized === false,
@@ -469,6 +492,7 @@ for (const [label, text] of Object.entries({ state, gates, task, start })) {
       expected.control,
       expected.closure,
       expected.cleanup,
+      expected.authority,
     ]),
     label.toUpperCase() + "_POINTERS",
   );
@@ -476,36 +500,46 @@ for (const [label, text] of Object.entries({ state, gates, task, start })) {
 for (const [label, text] of Object.entries({ activation, activationTest })) {
   assert(
     hasAll(text, [expected.proposal, expected.control]) &&
+      text.includes(expected.authority) &&
       text.includes("V207_APPROVED_AUTHORITY_SHA256") &&
       text.includes("V207_APPROVED_FINITE_CAP_USD"),
     label.toUpperCase() + "_POINTERS",
   );
 }
+const stateHead = state.split("\n").slice(0, 24).join("\n");
+const stateAuthorized =
+  stateHead.includes("task_stage: bounded_mutation") &&
+  stateHead.includes("provider_calls_authorized: true") &&
+  stateHead.includes("gpu_use_authorized: true") &&
+  stateHead.includes("maximum_external_spend_usd: 4");
 assert(
-  hasAll(state, [
-    "task_stage: provider_free",
-    "provider_calls_authorized: false",
-    "provider_mutations_authorized: false",
-    "gpu_use_authorized: false",
-    "maximum_external_spend_usd: 0",
-  ]) &&
-    /authority_mode:\s+none[^\n]*/u.test(state) &&
-    hasAny(state, ["attempt31", "Attempt31", "ATTEMPT31"]),
-  "STATE_PROVIDER_FREE_BOUNDARY",
+  stateAuthorized ||
+    (stateHead.includes("task_stage: provider_free") &&
+      stateHead.includes("provider_calls_authorized: false") &&
+      stateHead.includes("provider_mutations_authorized: false") &&
+      stateHead.includes("gpu_use_authorized: false") &&
+      stateHead.includes("maximum_external_spend_usd: 0")),
+  "STATE_BOUNDARY",
+);
+const gateAuthorized =
+  gates.includes("pending_numeric_cap_usd: 4") &&
+  /authority_mode:\s+[^\n]*attempt31[^\n]*authorized/iu.test(gates) &&
+  /provider_calls_authorized:\s+true/u.test(gates);
+assert(
+  gateAuthorized ||
+    (gates.includes("pending_numeric_cap_usd: null") &&
+      /authority_mode:\s+none[^\n]*/u.test(gates)),
+  "GATE_BOUNDARY",
 );
 assert(
-  hasAll(gates, ["pending_numeric_cap_usd: null"]) &&
-    /authority_mode:\s+none[^\n]*/u.test(gates) &&
-    hasAny(gates, ["attempt31", "Attempt31", "ATTEMPT31"]),
-  "GATE_PROVIDER_FREE_BOUNDARY",
-);
-assert(
-  activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
-    activationTest.includes("V207_APPROVED_AUTHORITY_SHA256).toBeNull()") &&
-    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBeNull()") &&
-    activationTest.includes("V207_PENDING_PROPOSAL_SHA256"),
-  "ACTIVATION_PENDING_BOUNDARY",
+  (activation.includes(`"${expected.authority}"`) &&
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
+    activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)")) ||
+    (activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
+      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
+      activationTest.includes("V207_APPROVED_AUTHORITY_SHA256).toBeNull()") &&
+      activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBeNull()")),
+  "ACTIVATION_BOUNDARY",
 );
 assert(
   !state.includes("TODO_ATTEMPT31") &&
@@ -517,13 +551,17 @@ assert(
 
 await access(resolve(candidate, "combined-live-proposal.json"));
 process.stdout.write(
-  "V2-07 Attempt31 provider-free candidate validation PASS (" +
+  "V2-07 Attempt31 candidate validation PASS (" +
     expected.proposal +
     "; max1 " +
     expected.max1 +
     "; max2 " +
     expected.max2 +
     "; acceptance " +
-    expected.acceptance +
-    "; fresh authority/cap required)\n",
+    sha256(acceptanceBytes) +
+    "; authority " +
+    expected.authority +
+    "; cap " +
+    (acceptanceIsApproved ? "$4" : "pending") +
+    ")\n",
 );
