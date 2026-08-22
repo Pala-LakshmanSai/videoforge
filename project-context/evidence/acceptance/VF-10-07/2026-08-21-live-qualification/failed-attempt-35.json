@@ -1,0 +1,157 @@
+{
+  "schema_version": "videoforge.v2-07-attempt35-live-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 35,
+  "recorded_at": "2026-08-22T18:10:51.860Z",
+  "result": "NOT_QUALIFIED_CONCURRENT_READER_STATUS_RECONCILIATION_FAILED_CLOSED",
+  "authority_state": "CONSUMED_CLOSED_DO_NOT_REUSE",
+  "proposal": {
+    "path": "../2026-08-22-attempt35-low-availability-candidate/combined-live-proposal.json",
+    "sha256": "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c"
+  },
+  "authority": {
+    "path": "../2026-08-22-attempt35-low-availability-candidate/approved-authority.json",
+    "sha256": "sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37",
+    "fresh_maximum_cumulative_finite_spend_usd": 4,
+    "flashboot": true,
+    "minimum_availability": "LOW_OR_BETTER",
+    "consumed": true,
+    "reusable": false
+  },
+  "lineage": {
+    "control_source_commit": "96f5e16cf03be7e31049478ce7f6b0c134a8108c",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5",
+    "image_source_commit": "79f123268b6ade640c02dd20616a89d16b43a5e6",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "initial_config_sha256": "sha256:d31a518831b9a978295047310800a34eaf81ed56dde58eea46918dc581563ca2",
+    "concurrent_reader_config_sha256": "sha256:11665ee88f09c6cbe498026cacd8505b0fe02ee7f19ac8b4d3f68aa534f3435c"
+  },
+  "preflight": {
+    "checked_at": "2026-08-22T17:37:28.369Z",
+    "availability": "LOW",
+    "availability_requirement_satisfied": true,
+    "secure_rtx4090_reference_usd_per_hour": 0.74,
+    "serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2
+  },
+  "raw_redacted_evidence": {
+    "live_result_path": "/tmp/videoforge-v207-live-result.json",
+    "live_result_sha256": "sha256:34e6f52eea2b3b1020037e7f74d7bf92a382c22958eaf8e464c425ccf224bddd",
+    "orchestrator_path": "/tmp/videoforge-v207-attempt35-orchestrator.json",
+    "orchestrator_sha256": "sha256:e82685232091f4c7ca608a12d0b8674eba9565aaa404e7f92db66b5fae4ee601",
+    "failed_cleanup_path": "/tmp/videoforge-v207-attempt35-failed-cleanup.json",
+    "failed_cleanup_sha256": "sha256:c269365662c2310e0fef6bab16c19f64063010e829de4c80019c04c3b75e57d4",
+    "reconciliation_path": "/tmp/videoforge-v207-attempt35-reconciliation.json",
+    "reconciliation_sha256": "sha256:e2a30ac237ca4006c7243c303b61797b5a63a79545d059fbb976770156e8b10e"
+  },
+  "accepted_batches": [
+    {
+      "kind": "owned_probe",
+      "provider_job_id_sha256": "sha256:df31e6e3a6096c1297b53d04039b858c7aa0252018470d81099a6ff556ac8e51",
+      "status": "COMPLETED",
+      "item_count": 32,
+      "durable_readback_count": 32,
+      "replay_confirmed_commit_receipt_count": 32,
+      "receipt_sha256": "sha256:80aa2570d088453ae77e9064fcee2130050cc7af520ad8497e04885cfef134f2",
+      "peak_vram_used_bytes": 14177271808,
+      "provider_execution_time_ms": 120575,
+      "provider_delay_time_ms": 56299,
+      "timings": { "allocation_ms": 0, "container_ready_ms": 0, "volume_verified_ms": 20228, "model_load_ms": 6136, "warmup_ms": 6171, "first_inference_ms": 765, "upload_ms": 20330, "total_ms": 86719 }
+    },
+    {
+      "kind": "cold",
+      "provider_job_id_sha256": "sha256:1f6c5c5e87ad0629ecd9efb3b4636b35899f855b0d73a3f4271f21d9a12c3a82",
+      "status": "COMPLETED",
+      "item_count": 32,
+      "durable_readback_count": 32,
+      "replay_confirmed_commit_receipt_count": 32,
+      "receipt_sha256": "sha256:66783305a278b8098e2b2d632e92704e183aba753e58e9bcef9965bf4ed68a47",
+      "peak_vram_used_bytes": 14177271808,
+      "provider_execution_time_ms": 91122,
+      "provider_delay_time_ms": 1484,
+      "timings": { "allocation_ms": 0, "container_ready_ms": 0, "volume_verified_ms": 20228, "model_load_ms": 6136, "warmup_ms": 6171, "first_inference_ms": 855, "upload_ms": 22644, "total_ms": 89791 }
+    },
+    {
+      "kind": "warm",
+      "provider_job_id_sha256": "sha256:98fdbd5a350663ec8046b3b9ce41f8c3bd2384697fc17f994cb5f5b179312308",
+      "status": "COMPLETED",
+      "item_count": 32,
+      "durable_readback_count": 32,
+      "replay_confirmed_commit_receipt_count": 32,
+      "receipt_sha256": "sha256:9191e33f7b6d4ebde9ae853613ccf991efc4cbe921f0c38363c897cc490fc454",
+      "peak_vram_used_bytes": 14177271808,
+      "provider_execution_time_ms": 95877,
+      "provider_delay_time_ms": 1486,
+      "timings": { "allocation_ms": 0, "container_ready_ms": 0, "volume_verified_ms": 20228, "model_load_ms": 6136, "warmup_ms": 6171, "first_inference_ms": 1676, "upload_ms": 21616, "total_ms": 94557 }
+    }
+  ],
+  "accepted_totals": {
+    "complete_batches": 3,
+    "durable_outputs": 96,
+    "replay_confirmed_v3_commit_receipts": 96,
+    "duplicate_delivery_same_job": true,
+    "duplicate_provider_dispatch": false,
+    "duplicate_compute": false,
+    "manifest_before_after_equal": true,
+    "model_volume_mutation_detected": false,
+    "cross_mount_detected": false,
+    "runtime_download_or_quantization": false,
+    "cache_escape_detected": false,
+    "scratch_cleanup_outside_model_volume": true
+  },
+  "failure": {
+    "stage": "CONCURRENT_READER_STATUS_RECONCILIATION",
+    "safe_error": "V207_QUALIFICATION_FAILED",
+    "reader_jobs_dispatched": 2,
+    "reader_batches_accepted": 0,
+    "last_live_status": "IN_PROGRESS",
+    "cleanup_later_observed_both_reader_jobs": "COMPLETED",
+    "concurrent_reader_drain_uncertain_in_runner": true,
+    "cleanup_drain_uncertain_in_runner": true,
+    "failure_reconciliation_error": "V207_RECONCILIATION_INVENTORY_MISMATCH",
+    "cancel_contract_reached": false,
+    "timeout_contract_reached": false,
+    "retry_or_redispatch_performed": false
+  },
+  "rollback": {
+    "generated_outputs": "CONFIRMED",
+    "signer_secret_deleted": true,
+    "worker_version_rolled_back": true,
+    "route_restored_status": 404,
+    "route_restored_code": "V207_ROUTE_DISABLED"
+  },
+  "cleanup": {
+    "evidence": "attempt35-cleanup-observation.json",
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "retained_volumes_deleted_or_written": false,
+    "final_disposable_resources_absent": true
+  },
+  "cost": {
+    "baseline_cumulative_endpoint_spend_usd": 1.3100463044829667,
+    "final_cumulative_endpoint_spend_usd": 1.3100463044829667,
+    "settled_incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS",
+    "existing_two_volume_charge_usd_per_month": 7,
+    "retained_volume_charge_outside_finite_cap": true
+  },
+  "qualification": {
+    "gate": "GATE_SERVERLESS_MAGE_001",
+    "status": "OPEN",
+    "v2_07": "NOT_QUALIFIED",
+    "v2_08_authorized": false
+  }
+}

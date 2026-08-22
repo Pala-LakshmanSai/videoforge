@@ -1,0 +1,54 @@
+{
+  "schema_version": "videoforge.v2-07-attempt35-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "attempt": 35,
+  "checked_at": "2026-08-22T18:10:51.860Z",
+  "proposal_sha256": "sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c",
+  "authority_sha256": "sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37",
+  "failed_cleanup": {
+    "source_path": "/tmp/videoforge-v207-attempt35-failed-cleanup.json",
+    "source_sha256": "sha256:c269365662c2310e0fef6bab16c19f64063010e829de4c80019c04c3b75e57d4",
+    "endpoint_id_sha256": "sha256:9f3f3b528a475c5391918a0bf96e0829cbbd205ae8d64e3da95b293958e5dc55",
+    "template_id_sha256": "sha256:5560b5c6e5caa86072d29957abae083e361c3aee25c9d36f7bf1cc25d87f5109",
+    "stable_terminal_snapshots": 2,
+    "endpoint_worker_records": 7,
+    "terminal_pod_records": 7,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true
+  },
+  "three_stable_reconciliation_reads": {
+    "source_path": "/tmp/videoforge-v207-attempt35-reconciliation.json",
+    "source_sha256": "sha256:e2a30ac237ca4006c7243c303b61797b5a63a79545d059fbb976770156e8b10e",
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      { "purpose": "SoulX", "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be", "size_gb": 50, "region": "EU-RO-1" },
+      { "purpose": "Mage", "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "size_gb": 50, "region": "EU-RO-1" }
+    ],
+    "baseline_endpoint_spend_usd": 1.3100463044829667,
+    "final_endpoint_spend_usd": 1.3100463044829667,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "cloudflare_rollback": {
+    "signer_secret_deleted": true,
+    "worker_version_restored": true,
+    "route_status": 404,
+    "route_code": "V207_ROUTE_DISABLED"
+  },
+  "retention": {
+    "mage_volume_retained_unchanged": true,
+    "soulx_volume_retained_unchanged": true,
+    "model_volume_write_authorized_or_observed": false,
+    "both_existing_volumes_monthly_charge_usd": 7
+  },
+  "result": "CLEANUP_AND_SETTLEMENT_CONFIRMED"
+}

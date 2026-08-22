@@ -1,6 +1,22 @@
 # VideoForge: start here
 
-Attempt35 is approved once for bounded LOW-or-better V2-07 execution. Attempt34 stopped before any
+Attempt35 is closed fail-safe and V2-07 remains NOT_QUALIFIED. It consumed proposal
+`sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c`, authority
+`sha256:fc173408635e6af48f824188dad878cd6259526f407e655941848f092732ef37`, and its `$4` cap.
+Owned probe, cold, and warm each accepted a complete 32-image batch: 96 durable readbacks and 96
+replay-confirmed v3 receipts total, with exact duplicate delivery causing no second dispatch or compute.
+Both reader jobs were dispatched and later observed provider-terminal `COMPLETED`, but neither reader
+batch was accepted because status reconciliation failed closed. Cancel and timeout proof were not reached.
+Closure `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-35.json` is
+`sha256:d0278822d001fe2639d47920f6923c565882bdbbf6ff11c174b30e72aba6d6fa`; cleanup
+`attempt35-cleanup-observation.json` is
+`sha256:ab3c5d668c7d2817bd0a9b3e40dbeab6bd3623ae92e9439292d1d32662ba57e1`.
+Three stable final reads prove zero disposable compute, both sealed 50 GB EU-RO-1 volumes retained,
+signer/Worker/route and generated-output rollback, and `$0` settled incremental spend at cumulative
+`$1.3100463044829667`. No live authority/cap remains. Provider-free diagnosis/repair is next;
+retained-volume mutation and V2-08 remain forbidden.
+
+Historical pre-execution record: Attempt35 was approved once for bounded LOW-or-better V2-07 execution. Attempt34 stopped before any
 provider mutation, GPU job, or spend because three fresh read-only checks proved LOW EU-RO-1
 availability below its approved MEDIUM threshold. Its exact pre-execution closure is
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/blocked-attempt-34-capacity-drift.json`
@@ -17,7 +33,7 @@ at `sha256:1df762844058f78db8171adcad3943ecfc03157c225070fcbc6506088169c87c`;
 max-one is `sha256:d31a518831b9a978295047310800a34eaf81ed56dde58eea46918dc581563ca2`,
 max-two is `sha256:11665ee88f09c6cbe498026cacd8505b0fe02ee7f19ac8b4d3f68aa534f3435c`,
 and approved acceptance is `sha256:fa701d3ef9f5619c585c6fc964007f660f19d5c92a3912d9af49e5d05bf7277d`.
-Fresh read-only truth proves zero disposable compute, both intended volumes, and MEDIUM RTX 4090
+Fresh read-only truth proved zero disposable compute, both intended volumes, and LOW RTX 4090
 EU-RO-1 availability at the `$0.74/hour` secure-Pod reference; Serverless Flex remains `$1.10/GPU-hour`,
 the finite estimate is `$2.20`, cumulative endpoint billing is `$1.1340842194622383`, and the two
 existing volumes remain `$7/month` separately. Exact single-use authority
