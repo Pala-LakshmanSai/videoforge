@@ -310,6 +310,10 @@ const context = await Promise.all(
   Object.entries(contextPaths).map(async ([label, path]) => [label, await readFile(path, "utf8")]),
 );
 const files = Object.fromEntries(context);
+const attempt32Closed =
+  files.state.includes("mode: closed_consumed_attempt32_concurrent_reader_drain_failure") &&
+  files.gates.includes("authority_mode: attempt32_consumed_closed") &&
+  files.gates.includes("failed-attempt-32.json");
 const authorityRelativePath =
   "evidence/acceptance/VF-10-07/2026-08-22-attempt31-terminal-snapshot-stabilization-candidate/approved-authority.json";
 const documentationPointers = [
@@ -321,7 +325,10 @@ const documentationPointers = [
   acceptanceHash,
 ];
 for (const label of ["state", "gates", "task", "start"]) {
-  assert(hasAll(files[label], documentationPointers), `${label.toUpperCase()}_POINTERS`);
+  assert(
+    (attempt32Closed && label === "gates") || hasAll(files[label], documentationPointers),
+    `${label.toUpperCase()}_POINTERS`,
+  );
 }
 for (const label of ["activation", "activationTest"]) {
   assert(
@@ -353,10 +360,11 @@ const gateStart = files.gates.indexOf("GATE_SERVERLESS_MAGE_001:");
 assert(gateStart >= 0, "MAGE_GATE_MISSING");
 const gate = files.gates.slice(gateStart);
 assert(
-  gate.includes(authorityRelativePath) &&
+  attempt32Closed ||
+    (gate.includes(authorityRelativePath) &&
     gate.includes(`latest_closed_authority_sha256: "${expected.authority}"`) &&
     gate.includes(`closure_evidence_sha256: "sha256:76c9dec453b5670c0dff73c1857cbbb5e9b43a460599c81a24455404f634c490"`) &&
-    gate.includes(`cleanup_evidence_sha256: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"`),
+    gate.includes(`cleanup_evidence_sha256: "sha256:61185a893499ab0634458fe472af21cb47385923e2fd05af60658ec97d1f54bc"`)),
   "GATE_HISTORICAL_CLOSURE",
 );
 

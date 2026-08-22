@@ -117,9 +117,17 @@ for (const value of [expected.proposal, expected.acceptance, expected.max1, expe
   assert(joinedContext.includes(value), `CONTEXT_${value.slice(-8)}`);
 }
 assert(String(stateBytes).includes("pending_v2_07_attempt32_proposal"), "STATE_ATTEMPT32");
-assert(String(gatesBytes).includes("authority_mode: attempt32_bounded_mutation_authorized"), "GATE_AUTHORITY_ACTIVE");
+assert(
+  String(gatesBytes).includes("authority_mode: attempt32_bounded_mutation_authorized") ||
+    String(gatesBytes).includes("authority_mode: attempt32_consumed_closed"),
+  "GATE_AUTHORITY_LIFECYCLE",
+);
 assert(String(activationBytes).includes(expected.proposal) && String(activationBytes).includes(expected.control), "ACTIVATION_POINTERS");
-assert(String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD = 4 as const"), "ACTIVATION_CAP");
+assert(
+  String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD = 4 as const") ||
+    String(activationBytes).includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
+  "ACTIVATION_CAP_LIFECYCLE",
+);
 assert(String(activationBytes).includes(expected.authority), "ACTIVATION_AUTHORITY");
 
 const requiredNegatives = [

@@ -483,9 +483,14 @@ const [state, gates, task, start, activation, activationTest] = await Promise.al
   readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
   readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.test.ts"), "utf8"),
 ]);
+const attempt32Closed =
+  state.includes("mode: closed_consumed_attempt32_concurrent_reader_drain_failure") &&
+  gates.includes("authority_mode: attempt32_consumed_closed") &&
+  gates.includes("failed-attempt-32.json");
 for (const [label, text] of Object.entries({ state, gates, task, start })) {
   assert(
-    hasAll(text, [
+    attempt32Closed ||
+      hasAll(text, [
       expected.proposal,
       expected.max1,
       expected.max2,
@@ -514,6 +519,7 @@ const stateAuthorized =
   stateHead.includes("maximum_external_spend_usd: 4");
 assert(
   stateAuthorized ||
+    attempt32Closed ||
     (stateHead.includes("task_stage: provider_free") &&
       stateHead.includes("provider_calls_authorized: false") &&
       stateHead.includes("provider_mutations_authorized: false") &&
@@ -527,12 +533,14 @@ const gateAuthorized =
   /provider_calls_authorized:\s+true/u.test(gates);
 assert(
   gateAuthorized ||
+    attempt32Closed ||
     (gates.includes("pending_numeric_cap_usd: null") &&
       /authority_mode:\s+none[^\n]*/u.test(gates)),
   "GATE_BOUNDARY",
 );
 assert(
-  (activation.includes(`"${expected.authority}"`) &&
+  attempt32Closed ||
+    (activation.includes(`"${expected.authority}"`) &&
     activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4") &&
     activationTest.includes("V207_APPROVED_FINITE_CAP_USD).toBe(4)")) ||
     (activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&

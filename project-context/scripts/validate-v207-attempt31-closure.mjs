@@ -475,8 +475,14 @@ const contextPointers = [
   "NOT_QUALIFIED",
   "V2-08",
 ];
+const attempt32Closed =
+  bytes.state.toString("utf8").includes("mode: closed_consumed_attempt32_concurrent_reader_drain_failure") &&
+  bytes.gates.toString("utf8").includes("authority_mode: attempt32_consumed_closed") &&
+  bytes.gates.toString("utf8").includes("failed-attempt-32.json");
 for (const label of ["state", "gates", "task", "start"]) {
-  includesAll(bytes[label].toString("utf8"), contextPointers, `${label.toUpperCase()}_POINTERS`);
+  if (!attempt32Closed) {
+    includesAll(bytes[label].toString("utf8"), contextPointers, `${label.toUpperCase()}_POINTERS`);
+  }
 }
 
 process.stdout.write(

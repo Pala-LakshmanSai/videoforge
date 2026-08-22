@@ -1,7 +1,11 @@
 # VideoForge: start here
 
-Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED. The current
-provider-free Attempt32 candidate is
+Status: V2-06 is complete and independently audited PASS. V2-07 remains NOT_QUALIFIED after
+Attempt32 closed fail-closed. Its exact closure is
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-32.json` at
+`sha256:5e2cf1f73e03673b9f350352fa2bfbb91566d9e9a695566fdc08f3b1d84c9f75`; cleanup is
+`attempt32-cleanup-observation.json` at `sha256:01d91e1216a77ea4d6ac7130c2add5800f67043b3ba34d26ecbecf9422acc51d`.
+The exact Attempt32 candidate that was executed is
 `evidence/acceptance/VF-10-07/2026-08-22-attempt32-finalize-response-diagnostics-candidate/combined-live-proposal.json`
 at `sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a`; max-one is
 `sha256:2663f06af19ceb11470e0ddac86ac74dae00d25a7b128970376dca2a3d1343d2`, max-two is
@@ -9,13 +13,16 @@ at `sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a`; ma
 `sha256:7ed0bd6c9d064133e9409b79be099184a4b80444d4da66759fa47082d7a66080`. Control commit
 `a1da27192c567823f9508ecd6f146f8667e1daac` preserves only bounded FINALIZE response metadata
 (attempt, status, sanitized content type, body length, and category), never body/URL/IDs/secrets,
-while retaining the 30-second/three-attempt FINALIZE-only retry fence. The exact proposal is approved
-under authority `sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114`,
-FlashBoot=true, LOW-or-better EU-RO-1, and a fresh `$4` cap. Provider mutation and GPU execution are
-pending the committed green authority handoff. Current read-only truth remains zero disposable resources, both intended sealed
-50 GB EU-RO-1 volumes retained, HIGH RTX 4090 availability, `$1.10/GPU-hour` Serverless Flex,
-`$2.20` finite estimate, and existing `$7/month` volume billing separately. The authority is single-use;
-stop on mismatch, cap risk, failure, or uncertain cleanup. V2-08 remains forbidden.
+while retaining the 30-second/three-attempt FINALIZE-only retry fence. One bounded live execution under
+authority `sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114`, FlashBoot=true,
+LOW-or-better EU-RO-1, and a fresh `$4` cap accepted five complete 32-image batches: 160 durable
+readbacks and 160 v3 receipts, including two simultaneous read-only readers and exact duplicate same-job
+replay. It stopped at `RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN` with
+`V207_RECONCILIATION_INVENTORY_MISMATCH`; cancellation, timeout, and successful endpoint-retention
+proofs were not reached. Exact cleanup and three stable final reads prove zero disposable resources,
+both intended sealed 50 GB EU-RO-1 volumes retained, and cumulative endpoint spend unchanged at
+`$0.9174736385466531` (`$0` settled Attempt32 increment). Provider calls, GPU use, mutation, and spend
+are disabled; the authority/cap are consumed and non-reusable. V2-08 remains forbidden.
 
 Historical closure: V2-07 remains NOT_QUALIFIED after the
 Attempt31 output-finalization failure. Attempt31 authority

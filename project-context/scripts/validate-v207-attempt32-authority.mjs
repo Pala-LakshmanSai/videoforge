@@ -462,44 +462,60 @@ const currentAttempt32 = state.slice(
     : state.length,
 );
 assert(currentAttempt32.includes(authorityPath), "STATE_AUTHORITY_PATH");
-assert(
-  hasAll(currentAttempt32, [
-    `authority_sha256: "${authorityHash}"`,
-    `candidate_acceptance_sha256: "${acceptanceHash}"`,
-    `maximum_cumulative_finite_spend_usd: ${cap}`,
-    "authority_recorded: true",
-    "provider_calls_authorized: true",
-    "provider_mutations_authorized: true",
-    "gpu_use_authorized: true",
-    "v2_08_authorized: false",
-  ]),
-  "STATE_AUTHORIZED_BOUNDARY",
-);
+const stateAuthorized = hasAll(currentAttempt32, [
+  `authority_sha256: "${authorityHash}"`,
+  `candidate_acceptance_sha256: "${acceptanceHash}"`,
+  `maximum_cumulative_finite_spend_usd: ${cap}`,
+  "authority_recorded: true",
+  "provider_calls_authorized: true",
+  "provider_mutations_authorized: true",
+  "gpu_use_authorized: true",
+  "v2_08_authorized: false",
+]);
+const stateConsumed = hasAll(currentAttempt32, [
+  `authority_sha256: "${authorityHash}"`,
+  `candidate_acceptance_sha256: "${acceptanceHash}"`,
+  "mode: closed_consumed_attempt32_concurrent_reader_drain_failure",
+  "maximum_cumulative_finite_spend_usd: 0",
+  "authority_recorded: false",
+  "provider_calls_authorized: false",
+  "provider_mutations_authorized: false",
+  "gpu_use_authorized: false",
+  "v2_08_authorized: false",
+]);
+assert(stateAuthorized || stateConsumed, "STATE_AUTHORITY_LIFECYCLE");
 const gateStart = gates.indexOf("GATE_SERVERLESS_MAGE_001:");
 assert(gateStart >= 0, "MAGE_GATE_MISSING");
 const gate = gates.slice(gateStart);
-assert(
-  hasAll(gate, [
+const gateIdentityBound = hasAll(gate, [
     authorityPath,
     `pending_authority_sha256: "${authorityHash}"`,
-    `pending_numeric_cap_usd: ${cap}`,
     expected.proposal,
     expected.max1,
     expected.max2,
     acceptanceHash,
-  ]) &&
+  ]);
+const gateAuthorized =
+  gateIdentityBound &&
+    gate.includes(`pending_numeric_cap_usd: ${cap}`) &&
     /authority_mode:\s+[^\n]*attempt32[^\n]*(authorized|bounded_mutation)/iu.test(gate) &&
     /provider_calls_authorized:\s+true/u.test(gate) &&
-    /gpu_use_authorized:\s+true/u.test(gate),
-  "GATE_AUTHORIZED_BOUNDARY",
-);
+    /gpu_use_authorized:\s+true/u.test(gate);
+const gateConsumed =
+  gateIdentityBound &&
+    gate.includes("pending_numeric_cap_usd: null") &&
+    gate.includes("authority_mode: attempt32_consumed_closed") &&
+    /provider_calls_authorized:\s+false/u.test(gate) &&
+    /gpu_use_authorized:\s+false/u.test(gate);
+assert(gateAuthorized || gateConsumed, "GATE_AUTHORITY_LIFECYCLE");
 for (const [label, text] of Object.entries({ task, start })) {
   assert(hasAll(text, [expected.proposal, expected.max1, expected.max2, acceptanceHash, authorityHash]), `${label.toUpperCase()}_POINTERS`);
 }
 assert(
   hasAll(activation, [expected.proposal, expected.control, authorityHash]) &&
-    new RegExp(`V207_APPROVED_FINITE_CAP_USD\\s*=\\s*${cap}\\b`).test(activation),
-  "ACTIVATION_AUTHORITY_BINDING",
+    (new RegExp(`V207_APPROVED_FINITE_CAP_USD\\s*=\\s*${cap}\\b`).test(activation) ||
+      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")),
+  "ACTIVATION_AUTHORITY_LIFECYCLE",
 );
 assert(hasAll(activationTest, [expected.proposal, authorityHash, String(cap)]), "ACTIVATION_TEST_BINDING");
 

@@ -1,0 +1,80 @@
+{
+  "schema_version": "videoforge.v2-07-attempt32-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 32,
+  "checked_at": "2026-08-22T10:34:41.910Z",
+  "proposal_sha256": "sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a",
+  "authority_sha256": "sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114",
+  "raw_redacted_evidence": {
+    "live_result_path": "/tmp/videoforge-v207-live-result.json",
+    "live_result_sha256": "sha256:a1895020150c1532e7ae4707fb903dea29761dd74982ed60d34a00d8cd915b67",
+    "orchestrator_path": "/tmp/videoforge-v207-attempt32-orchestrator.json",
+    "orchestrator_sha256": "sha256:7891302407658f2b263a0b51ece7b2e0b5d7909f76081680038e9b31746fb9eb",
+    "cleanup_path": "/tmp/videoforge-v207-attempt32-failed-cleanup.json",
+    "cleanup_sha256": "sha256:a41c901e1f2b5daee133a5ffd20b65730012c6c917e6c82c52315b92edfdaeb4",
+    "reconciliation_path": "/tmp/videoforge-v207-attempt32-reconciliation.json",
+    "reconciliation_sha256": "sha256:ea0818c6f4522e8217825d53a563e3ee322978efe9c8e19477c6a33976bb26ca",
+    "secrets_or_raw_provider_ids_retained": false
+  },
+  "cleanup": {
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 5,
+    "terminal_pod_record_count": 5,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "network_volume_delete_called": false,
+    "owned_jobs_cancelled": false,
+    "owned_jobs_cancel_required": false
+  },
+  "final_reconciliation": {
+    "stable_read_count": 3,
+    "read_interval_seconds": 10,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "retained_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ],
+    "provider_mutations_after_cleanup": 0,
+    "gpu_jobs_submitted_during_reconciliation": 0
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 0.9174736385466531,
+    "final_endpoint_spend_usd": 0.9174736385466531,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "cloudflare_cleanup": {
+    "signer_secret_deleted": true,
+    "worker_version_rolled_back": true,
+    "pre_mutation_route_restored": true,
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED",
+    "generated_output_rollback": "CONFIRMED"
+  },
+  "retention": {
+    "sealed_mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "existing_two_volume_charge_usd_per_month_total": 7,
+    "recurring_charge_outside_attempt32_finite_cap": true,
+    "volume_mutation_called": false
+  },
+  "secrets_or_raw_provider_ids_retained": false,
+  "v2_08_authorized": false
+}
