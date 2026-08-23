@@ -1122,6 +1122,10 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 results.append(
                     {
                         **generated,
+                        # Runtime metadata cannot choose the durable item identity. Bind the
+                        # returned output to the validated input scene so the control-plane
+                        # lineage check cannot accept an output for another unit.
+                        "item_id": item.scene_id,
                         "output_port_reservation_id": output_target["reservation_id"],
                         "output_object_key": object_key,
                         "output_sha256": measured_checksum,

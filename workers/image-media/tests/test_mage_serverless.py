@@ -759,6 +759,7 @@ print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": le
         job["input"]["execution_canonical_json"] = self._canonical_json(execution)
         generated = {
             "output_base64": base64.b64encode(body).decode("ascii"),
+            "item_id": "runtime-item-id-must-not-override-input",
             "output_sha256": checksum,
             "bytes": len(body),
             "width": 1280,
@@ -1023,6 +1024,7 @@ print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": le
             mage_serverless._inline_item(self._inline_source_job(), 0)
         )
         self.assertEqual(result["status"], "SUCCEEDED")
+        self.assertEqual(result["items"][0]["item_id"], "scene-a")
         self.assertEqual(result["items"][0]["output_port_reservation_id"], "reservation-generated")
         self.assertEqual(result["items"][0]["output_sha256"], checksum)
         self.assertEqual(result["items"][0]["output_bytes"], len(body))
