@@ -28,6 +28,15 @@ const RESTORATION_PROPAGATION_WINDOW_MS = 120_000;
 // The first exact probe plus 15 two-second intervals establishes a 30-second
 // exact-fingerprint stability window, while the surrounding deadline remains 120 seconds.
 const RESTORATION_REQUIRED_CONSECUTIVE_MATCHES = 16;
+/**
+ * A rollback-anchor refresh is deliberately opt-in and versioned.  The normal
+ * V2-07 path must continue to refuse all Worker mutation when its pre-existing
+ * anchor is not retained.  A future proposal may opt into the two-phase path
+ * only by putting this exact marker in both the activation environment and the
+ * protected Wrangler config.
+ */
+export const V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY = "V207_ROLLBACK_ANCHOR_REFRESH" as const;
+export const V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION = "two-phase-v1" as const;
 /** Wrangler's versions list is limited to ten recent versions. Keep three
  * slots of headroom for the bounded deploy/secret mutations and propagation
  * churn, so the captured rollback target must be in the newest seven. */
@@ -127,6 +136,20 @@ interface EvidenceEvent {
 interface RouteFingerprint {
   readonly status: number;
   readonly code: string;
+}
+
+interface V207RollbackAnchorRefresh {
+  readonly enabled: boolean;
+}
+
+/**
+ * Only a separately parsed, fresh authority may opt into the extra deploy.
+ * The optional field keeps the current Attempt42 authority and all historical
+ * authorities strictly refresh-disabled until their parser/proposal explicitly
+ * binds this mode.
+ */
+interface V207AuthorityWithAnchorRefresh extends V207ActivationAuthority {
+  readonly anchorRefreshAuthorized?: true;
 }
 
 interface EvidenceDocument {
@@ -480,6 +503,9 @@ export function assertV207WorkerRollbackAnchorRetained(
   const ids: string[] = [];
   collectV207WorkerVersionIds(value, ids);
   const uniqueIds = [...new Set(ids)];
+  if (ids.length !== uniqueIds.length) {
+    throw new V207LiveOrchestratorError("V207_WORKER_VERSION_LIST_INVALID");
+  }
   if (uniqueIds.length === 0 || uniqueIds.length > V207_WORKER_VERSION_LIST_LIMIT) {
     throw new V207LiveOrchestratorError("V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED");
   }
@@ -542,6 +568,34 @@ async function readProtectedConfig(configPath: string): Promise<JsonRecord> {
     throw new V207LiveOrchestratorError("V207_SIGNER_NOT_DISABLED_IN_CONFIG");
   }
   return record;
+}
+
+/**
+ * Resolve the optional rollback-anchor refresh mode.  A single environment
+ * toggle is not sufficient: the protected Wrangler config must carry the same
+ * exact versioned marker.  This keeps a stale shell variable, copied config,
+ * or accidental boolean from silently authorizing the extra Worker deploy.
+ */
+function resolveV207RollbackAnchorRefresh(
+  environment: Environment,
+  config: JsonRecord,
+): V207RollbackAnchorRefresh {
+  const envValue = environment[V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY];
+  const vars = asRecord(config.vars);
+  const configValue = vars?.[V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY];
+  const hasEnvValue = envValue !== undefined && envValue !== "";
+  const hasConfigValue = configValue !== undefined;
+
+  if (
+    (hasEnvValue && envValue !== V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION) ||
+    (hasConfigValue && configValue !== V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION)
+  ) {
+    throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION_INVALID");
+  }
+  if (hasEnvValue !== hasConfigValue || (hasEnvValue && !hasConfigValue)) {
+    throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_MISMATCH");
+  }
+  return { enabled: hasEnvValue && hasConfigValue };
 }
 
 function validateRouteUrl(value: string): string {
@@ -650,6 +704,55 @@ async function waitForRouteRestoration(
   throw new V207LiveOrchestratorError("V207_ROUTE_RESTORATION_UNCONFIRMED");
 }
 
+const V207_REFRESH_DISABLED_ROUTE: RouteFingerprint = Object.freeze({
+  status: 404,
+  code: "V207_ROUTE_DISABLED",
+});
+
+/**
+ * After the signer-disabled refresh deploy, require the route's exact disabled
+ * fingerprint for the same bounded stability window used by cleanup.  A
+ * mismatch is never treated as transient: proceeding would make the newly
+ * captured Worker version an unproven rollback target and could send the
+ * qualification child through an unexpected Worker.
+ */
+async function waitForRefreshDisabledRoute(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  sleepImpl: (milliseconds: number) => Promise<void>,
+  signal: AbortSignal,
+  failureCode = "V207_ROLLBACK_ANCHOR_REFRESH_ROUTE_UNCONFIRMED",
+): Promise<RouteFingerprint> {
+  let consecutiveMatches = 0;
+  for (let attempt = 1; attempt <= RESTORATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
+    if (signal.aborted) break;
+    let observed: RouteFingerprint;
+    try {
+      observed = await readRouteFingerprint(fetchImpl, routeUrl, signal);
+    } catch {
+      throw new V207LiveOrchestratorError(failureCode);
+    }
+    if (
+      observed.status !== V207_REFRESH_DISABLED_ROUTE.status ||
+      observed.code !== V207_REFRESH_DISABLED_ROUTE.code
+    ) {
+      throw new V207LiveOrchestratorError(failureCode);
+    }
+    consecutiveMatches += 1;
+    if (consecutiveMatches >= RESTORATION_REQUIRED_CONSECUTIVE_MATCHES) return observed;
+    if (attempt < RESTORATION_PROPAGATION_MAX_ATTEMPTS) {
+      await Promise.race([
+        sleepImpl(RESTORATION_PROPAGATION_DELAY_MS),
+        new Promise<void>((resolveAbort) => {
+          if (signal.aborted) resolveAbort();
+          else signal.addEventListener("abort", () => resolveAbort(), { once: true });
+        }),
+      ]);
+    }
+  }
+  throw new V207LiveOrchestratorError(failureCode);
+}
+
 async function waitForSignerRouteActivation(
   fetchImpl: typeof fetch,
   routeUrl: string,
@@ -729,6 +832,36 @@ async function statusVersion(
     }),
   );
   return extractV207WorkerRollbackAnchor(parseJsonOutput(result.stdout));
+}
+
+async function recentWorkerVersions(
+  run: V207CommandRunner,
+  cwd: string,
+  configPath: string,
+  environment: Environment,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const result = requireSuccessful(
+    "V207_WRANGLER_VERSIONS_LIST",
+    await run({
+      command: "pnpm",
+      args: [
+        "--filter",
+        "@videoforge/web",
+        "exec",
+        "wrangler",
+        "versions",
+        "list",
+        "--json",
+        "--config",
+        configPath,
+      ],
+      cwd,
+      env: redactedEnvironment(environment),
+      signal,
+    }),
+  );
+  return parseJsonOutput(result.stdout);
 }
 
 async function secretNames(
@@ -831,6 +964,7 @@ async function rollbackAndVerify(
   environment: Environment,
   expectedAnchor: V207WorkerRollbackAnchor,
   signal?: AbortSignal,
+  requireRetentionAfterRollback = false,
 ): Promise<void> {
   requireSuccessful(
     "V207_WRANGLER_ROLLBACK",
@@ -861,6 +995,10 @@ async function rollbackAndVerify(
   ) {
     throw new V207LiveOrchestratorError("V207_ROLLBACK_VERSION_UNCONFIRMED");
   }
+  if (requireRetentionAfterRollback) {
+    const recentVersions = await recentWorkerVersions(run, cwd, configPath, environment, signal);
+    assertV207WorkerRollbackAnchorRetained(recentVersions, expectedAnchor.versionId);
+  }
 }
 
 function commandEnvironment(
@@ -886,7 +1024,9 @@ export async function runV207LiveOrchestration(
   options: V207LiveOrchestratorOptions = {},
 ): Promise<V207LiveOrchestratorResult> {
   const environment = options.environment ?? process.env;
-  const authority = (options.authorityParser ?? parseV207ActivationAuthority)(environment);
+  const authority = (options.authorityParser ?? parseV207ActivationAuthority)(
+    environment,
+  ) as V207AuthorityWithAnchorRefresh;
   const sourceCommit = environment.V207_IMAGE_SOURCE_COMMIT ?? "";
   if (!SOURCE_COMMIT.test(sourceCommit)) {
     throw new V207LiveOrchestratorError("V207_IMAGE_SOURCE_COMMIT_MISSING");
@@ -954,6 +1094,7 @@ export async function runV207LiveOrchestration(
   }
 
   let capturedAnchor: V207WorkerRollbackAnchor | undefined;
+  let initialRollbackAnchor: V207WorkerRollbackAnchor | undefined;
   let nonce: string | undefined;
   let nonceSecretMayExist = false;
   // Set immediately before deploy: if Wrangler fails part-way through, a Worker mutation may
@@ -961,6 +1102,9 @@ export async function runV207LiveOrchestration(
   // Worker, so they must not be reported as an unresolvable rollback-target failure.
   let workerMutationMayExist = false;
   let workerRollbackVerified = false;
+  let rollbackAnchorRefresh: V207RollbackAnchorRefresh = { enabled: false };
+  let refreshValidationStarted = false;
+  let refreshCompleted = false;
   let preMutationRoute: RouteFingerprint | undefined;
   let runnerExitCode: number | undefined;
   let childFailureCode: string | undefined;
@@ -978,37 +1122,52 @@ export async function runV207LiveOrchestration(
       }),
     );
     if (clean.stdout.trim() !== "") throw new V207LiveOrchestratorError("V207_GIT_WORKTREE_DIRTY");
-    await readProtectedConfig(configPath);
+    const protectedConfig = await readProtectedConfig(configPath);
+    rollbackAnchorRefresh = resolveV207RollbackAnchorRefresh(environment, protectedConfig);
+    if (rollbackAnchorRefresh.enabled && authority.anchorRefreshAuthorized !== true) {
+      throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_AUTHORITY_REQUIRED");
+    }
+    if (rollbackAnchorRefresh.enabled) {
+      await record("rollback_anchor_refresh_authorized", {
+        activation: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+        authority_bound: true,
+        config_bound: true,
+      });
+    }
     capturedAnchor = await statusVersion(run, cwd, configPath, environment, abortController.signal);
-    const recentVersions = requireSuccessful(
-      "V207_WRANGLER_VERSIONS_LIST",
-      await run({
-        command: "pnpm",
-        args: [
-          "--filter",
-          "@videoforge/web",
-          "exec",
-          "wrangler",
-          "versions",
-          "list",
-          "--json",
-          "--config",
-          configPath,
-        ],
-        cwd,
-        env: redactedEnvironment(environment),
-        signal: abortController.signal,
-      }),
+    initialRollbackAnchor = capturedAnchor;
+    const recentVersions = await recentWorkerVersions(
+      run,
+      cwd,
+      configPath,
+      environment,
+      abortController.signal,
     );
-    const rollbackAnchorIndex = assertV207WorkerRollbackAnchorRetained(
-      parseJsonOutput(recentVersions.stdout),
-      capturedAnchor.versionId,
-    );
+    let rollbackAnchorIndex: number | null;
+    try {
+      rollbackAnchorIndex = assertV207WorkerRollbackAnchorRetained(
+        recentVersions,
+        capturedAnchor.versionId,
+      );
+    } catch (error) {
+      if (
+        !rollbackAnchorRefresh.enabled ||
+        !(error instanceof V207LiveOrchestratorError) ||
+        error.code !== "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED"
+      ) {
+        throw error;
+      }
+      // Refresh mode may proceed without an old retained anchor only because
+      // every mismatch path below re-reads retention and becomes
+      // CLEANUP_UNCERTAIN instead of issuing a blind rollback.
+      rollbackAnchorIndex = null;
+    }
     await record("captured_worker_version", {
       version_id_hash: sha256(capturedAnchor.versionId),
       rollback_anchor_sha256: capturedAnchor.sha256,
       recent_version_index: rollbackAnchorIndex,
       recent_version_window: V207_WORKER_VERSION_LIST_LIMIT,
+      ...(rollbackAnchorIndex === null ? { retained: false } : { retained: true }),
     });
     // Capture the exact pre-mutation route semantics. The restored V2-06 Worker may legitimately
     // answer 503 (HOSTED_ROUTE_NOT_COMPOSED), so cleanup must compare against this fingerprint
@@ -1018,6 +1177,26 @@ export async function runV207LiveOrchestration(
       status: preMutationRoute.status,
       code: preMutationRoute.code,
     });
+    if (rollbackAnchorRefresh.enabled) {
+      if (
+        preMutationRoute.status !== V207_REFRESH_DISABLED_ROUTE.status ||
+        preMutationRoute.code !== V207_REFRESH_DISABLED_ROUTE.code
+      ) {
+        throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED");
+      }
+      const stablePreMutationRoute = await waitForRefreshDisabledRoute(
+        fetchImpl,
+        routeUrl,
+        sleepImpl,
+        abortController.signal,
+        "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED",
+      );
+      await record("rollback_anchor_refresh_pre_mutation_route_stable", {
+        status: stablePreMutationRoute.status,
+        code: stablePreMutationRoute.code,
+        consecutive_matches: RESTORATION_REQUIRED_CONSECUTIVE_MATCHES,
+      });
+    }
 
     const beforeSecrets = await secretNames(
       run,
@@ -1026,7 +1205,13 @@ export async function runV207LiveOrchestration(
       environment,
       abortController.signal,
     );
-    if (beforeSecrets.includes(V207_ORCHESTRATOR_SECRET_NAME)) {
+    if (rollbackAnchorRefresh.enabled && beforeSecrets.includes(V207_ORCHESTRATOR_SECRET_NAME)) {
+      // Deleting an existing signer is a remote mutation.  Refresh mode must
+      // prove the signer is already absent before its first deploy because an
+      // unretained old anchor cannot safely protect that deletion.
+      throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_STALE_SIGNER_PRESENT");
+    }
+    if (!rollbackAnchorRefresh.enabled && beforeSecrets.includes(V207_ORCHESTRATOR_SECRET_NAME)) {
       nonceSecretMayExist = true;
       // Removing a stale signer secret is a remote Worker mutation too. Keep the captured version
       // eligible for rollback even when deletion succeeds and a later build/deploy step fails.
@@ -1072,6 +1257,7 @@ export async function runV207LiveOrchestration(
     }
     await record("staging_built_signer_disabled");
 
+    if (rollbackAnchorRefresh.enabled) refreshValidationStarted = true;
     workerMutationMayExist = true;
     requireSuccessful(
       "V207_SIGNER_DISABLED_DEPLOY",
@@ -1084,6 +1270,64 @@ export async function runV207LiveOrchestration(
       }),
     );
     await record("current_source_deployed_signer_disabled");
+
+    if (rollbackAnchorRefresh.enabled) {
+      const disabledRoute = await waitForRefreshDisabledRoute(
+        fetchImpl,
+        routeUrl,
+        sleepImpl,
+        abortController.signal,
+      );
+      await record("rollback_anchor_refresh_disabled_route_stable", {
+        status: disabledRoute.status,
+        code: disabledRoute.code,
+        consecutive_matches: RESTORATION_REQUIRED_CONSECUTIVE_MATCHES,
+      });
+      const refreshedAnchor = await statusVersion(
+        run,
+        cwd,
+        configPath,
+        environment,
+        abortController.signal,
+      );
+      if (
+        capturedAnchor === undefined ||
+        refreshedAnchor.versionId === capturedAnchor.versionId ||
+        refreshedAnchor.sha256 === capturedAnchor.sha256
+      ) {
+        throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_UNCHANGED");
+      }
+      const refreshedVersions = await recentWorkerVersions(
+        run,
+        cwd,
+        configPath,
+        environment,
+        abortController.signal,
+      );
+      const refreshedAnchorIndex = assertV207WorkerRollbackAnchorRetained(
+        refreshedVersions,
+        refreshedAnchor.versionId,
+      );
+      await record("rollback_anchor_refresh_captured", {
+        version_id_hash: sha256(refreshedAnchor.versionId),
+        rollback_anchor_sha256: refreshedAnchor.sha256,
+        recent_version_index: refreshedAnchorIndex,
+        recent_version_window: V207_WORKER_VERSION_LIST_LIMIT,
+      });
+      const promotedDisabledRoute = await waitForRefreshDisabledRoute(
+        fetchImpl,
+        routeUrl,
+        sleepImpl,
+        abortController.signal,
+      );
+      await record("rollback_anchor_refresh_post_promotion_route_stable", {
+        status: promotedDisabledRoute.status,
+        code: promotedDisabledRoute.code,
+        consecutive_matches: RESTORATION_REQUIRED_CONSECUTIVE_MATCHES,
+      });
+      capturedAnchor = refreshedAnchor;
+      refreshCompleted = true;
+    }
 
     nonce = nonceFactory();
     if (!NONCE.test(nonce)) throw new V207LiveOrchestratorError("V207_NONCE_INVALID");
@@ -1165,9 +1409,33 @@ export async function runV207LiveOrchestration(
         cleanupErrors.push(safeErrorCode(error));
       }
     }
-    if (workerMutationMayExist && capturedAnchor !== undefined) {
+    let rollbackTargetAvailable = true;
+    if (
+      workerMutationMayExist &&
+      rollbackAnchorRefresh.enabled &&
+      refreshValidationStarted &&
+      !refreshCompleted &&
+      initialRollbackAnchor !== undefined
+    ) {
       try {
-        await rollbackAndVerify(run, cwd, configPath, environment, capturedAnchor);
+        const latestVersions = await recentWorkerVersions(run, cwd, configPath, environment);
+        assertV207WorkerRollbackAnchorRetained(latestVersions, initialRollbackAnchor.versionId);
+      } catch {
+        rollbackTargetAvailable = false;
+        cleanupErrors.push("V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_NOT_RETAINED");
+      }
+    }
+    if (workerMutationMayExist && capturedAnchor !== undefined && rollbackTargetAvailable) {
+      try {
+        await rollbackAndVerify(
+          run,
+          cwd,
+          configPath,
+          environment,
+          capturedAnchor,
+          undefined,
+          rollbackAnchorRefresh.enabled && refreshValidationStarted && !refreshCompleted,
+        );
         workerRollbackVerified = true;
         await record("worker_rolled_back", {
           version_id_hash: sha256(capturedAnchor.versionId),
@@ -1176,8 +1444,13 @@ export async function runV207LiveOrchestration(
       } catch (error) {
         cleanupErrors.push(safeErrorCode(error));
       }
-    } else if (workerMutationMayExist) {
+    } else if (workerMutationMayExist && rollbackTargetAvailable) {
       cleanupErrors.push("V207_ROLLBACK_TARGET_MISSING");
+    } else if (workerMutationMayExist) {
+      // A refresh mismatch may only fall back to the original anchor after a
+      // fresh retention proof.  Do not issue a blind rollback or continue to
+      // route/GPU work when that proof is unavailable.
+      await record("worker_rollback_skipped_old_anchor_not_retained");
     } else {
       try {
         await record("worker_rollback_skipped_no_mutation");

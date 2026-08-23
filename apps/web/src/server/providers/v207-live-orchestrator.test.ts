@@ -13,6 +13,8 @@ import {
   spawnV207Command,
   V207_ORCHESTRATOR_SECRET_NAME,
   V207_ORCHESTRATOR_MIN_FREE_BYTES,
+  V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+  V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY,
   type V207CommandRequest,
   type V207CommandResult,
 } from "./v207-live-orchestrator";
@@ -29,9 +31,14 @@ const parseFixtureAuthority = () => ({
   proposalSha256: V207_PENDING_PROPOSAL_SHA256,
   capUsd: 4,
 });
+const parseFixtureRefreshAuthority = () => ({
+  ...parseFixtureAuthority(),
+  anchorRefreshAuthorized: true as const,
+});
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGED_VERSION_ID = "22222222-2222-4222-8222-222222222222";
 const DEPLOYMENT_ID = "33333333-3333-4333-8333-333333333333";
+const REFRESH_VERSION_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 const VERSION_HISTORY = [
   "44444444-4444-4444-8444-444444444444",
   "55555555-5555-4555-8555-555555555555",
@@ -46,6 +53,12 @@ const VERSION_HISTORY = [
 ] as const;
 const RECENT_VERSION_LIST = JSON.stringify({
   versions: VERSION_HISTORY.map((version_id) => ({ version_id })),
+});
+const REFRESHED_VERSION_LIST = JSON.stringify({
+  versions: [...VERSION_HISTORY.slice(1), REFRESH_VERSION_ID].map((version_id) => ({ version_id })),
+});
+const OLD_ANCHOR_MISSING_VERSION_LIST = JSON.stringify({
+  versions: VERSION_HISTORY.slice(1, 8).map((version_id) => ({ version_id })),
 });
 const NONCE = "a".repeat(64);
 const RUNPOD_KEY = "runpod-key-must-not-be-written";
@@ -86,6 +99,16 @@ async function fixture() {
       RUNPOD_KEY,
     } as const,
   };
+}
+
+async function enableRollbackAnchorRefresh(configPath: string): Promise<void> {
+  const config = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
+  config.vars = {
+    ...(typeof config.vars === "object" && config.vars !== null ? config.vars : {}),
+    [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+  };
+  await writeFile(configPath, JSON.stringify(config), { mode: 0o600 });
+  await chmod(configPath, 0o600);
 }
 
 afterEach(async () => {
@@ -201,6 +224,12 @@ describe("V2-07 live orchestrator", () => {
         VERSION_HISTORY[0],
       ),
     ).not.toThrow();
+    expect(() =>
+      assertV207WorkerRollbackAnchorRetained(
+        { versions: [{ version_id: VERSION_ID }, { version_id: VERSION_ID }] },
+        VERSION_ID,
+      ),
+    ).toThrow("V207_WORKER_VERSION_LIST_INVALID");
   });
 
   it("runs the full flow with mocked commands, optional RunPod key, and redacted evidence", async () => {
@@ -334,6 +363,686 @@ describe("V2-07 live orchestrator", () => {
     expect(rollback?.args).toContain(VERSION_ID);
     expect(rollback?.args).not.toContain(DEPLOYMENT_ID);
     expect(calls.flatMap((call) => call.args)).not.toContain(NONCE);
+  });
+
+  it("keeps the anchor-refresh deploy behind an exact environment/config pair", async () => {
+    const cases = [
+      {
+        name: "environment-only",
+        environment: {
+          [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+        },
+        configure: false,
+        code: "V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_MISMATCH",
+      },
+      {
+        name: "config-only",
+        environment: {},
+        configure: true,
+        code: "V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_MISMATCH",
+      },
+      {
+        name: "wrong-marker",
+        environment: { [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: "true" },
+        configure: false,
+        code: "V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION_INVALID",
+      },
+      {
+        name: "missing-authority-binding",
+        environment: {
+          [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+        },
+        configure: true,
+        code: "V207_ROLLBACK_ANCHOR_REFRESH_AUTHORITY_REQUIRED",
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const files = await fixture();
+      if (testCase.configure) await enableRollbackAnchorRefresh(files.configPath);
+      const calls: V207CommandRequest[] = [];
+      const environment = { ...files.environment, ...testCase.environment };
+      await expect(
+        runV207LiveOrchestration({
+          authorityParser: parseFixtureAuthority,
+          environment,
+          cwd: resolve(process.cwd(), "../.."),
+          configPath: files.configPath,
+          evidencePath: files.evidencePath,
+          diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+          commandRunner: async (request) => {
+            calls.push(request);
+            if (request.command === "git") return result();
+            throw new Error(`${testCase.name} must not reach provider mutation`);
+          },
+          fetchImpl: async () => {
+            throw new Error(`${testCase.name} must not probe the route`);
+          },
+          installSignalHandlers: false,
+        }),
+      ).rejects.toMatchObject({ code: testCase.code });
+      expect(calls).toHaveLength(1);
+      expect(await readFile(files.evidencePath, "utf8")).toContain(testCase.code);
+    }
+  });
+
+  it("refreshes to one newly deployed anchor, then qualifies and rolls back to that anchor", async () => {
+    const files = await fixture();
+    await enableRollbackAnchorRefresh(files.configPath);
+    const calls: V207CommandRequest[] = [];
+    let signerSecretPresent = false;
+    let statusCalls = 0;
+    let versionsCalls = 0;
+    let activeRouteProbeCalls = 0;
+    let refreshDisabledProbeCalls = 0;
+    let rollbackSeen = false;
+    let restorationProbeCalls = 0;
+    let deployCalls = 0;
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        versionsCalls += 1;
+        return result(
+          versionsCalls === 1 ? OLD_ANCHOR_MISSING_VERSION_LIST : REFRESHED_VERSION_LIST,
+        );
+      }
+      if (request.args.includes("deployments")) {
+        statusCalls += 1;
+        const version_id = statusCalls === 1 ? VERSION_ID : REFRESH_VERSION_ID;
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [
+              {
+                version_id,
+                percentage: 100,
+                script_hash: statusCalls === 1 ? "sha256:old" : "sha256:refreshed",
+              },
+            ],
+          }),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) {
+        return result(
+          JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("put")) {
+        signerSecretPresent = true;
+        return result();
+      }
+      if (request.args.includes("secret") && request.args.includes("delete")) {
+        signerSecretPresent = false;
+        return result();
+      }
+      if (request.args.includes("deploy") && !request.args.includes("deployments")) {
+        deployCalls += 1;
+        return result();
+      }
+      if (request.args.includes("rollback")) {
+        rollbackSeen = true;
+        return result();
+      }
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () => {
+      if (!signerSecretPresent && !rollbackSeen && refreshDisabledProbeCalls === 0) {
+        // The first probe captures the old route before any Worker mutation.
+        refreshDisabledProbeCalls += 1;
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      if (!signerSecretPresent && !rollbackSeen) {
+        refreshDisabledProbeCalls += 1;
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      if (signerSecretPresent && activeRouteProbeCalls++ === 0) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      if (signerSecretPresent) {
+        return new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
+          status: 403,
+        });
+      }
+      if (rollbackSeen && restorationProbeCalls++ < 16) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+        status: 404,
+      });
+    };
+
+    const orchestration = await runV207LiveOrchestration({
+      authorityParser: parseFixtureRefreshAuthority,
+      environment,
+      cwd: resolve(process.cwd(), "../.."),
+      configPath: files.configPath,
+      evidencePath: files.evidencePath,
+      diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+      commandRunner,
+      fetchImpl,
+      nonceFactory: () => NONCE,
+      sleepImpl: async () => undefined,
+      installSignalHandlers: false,
+    });
+
+    expect(orchestration.runnerExitCode).toBe(0);
+    expect(deployCalls).toBe(1);
+    expect(statusCalls).toBe(3);
+    expect(versionsCalls).toBe(2);
+    expect(refreshDisabledProbeCalls).toBe(49);
+    expect(restorationProbeCalls).toBe(16);
+    expect(signerSecretPresent).toBe(false);
+    const rollback = calls.find((call) => call.args.includes("rollback"));
+    expect(rollback?.args).toContain(REFRESH_VERSION_ID);
+    expect(rollback?.args).not.toContain(VERSION_ID);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain('"event": "rollback_anchor_refresh_disabled_route_stable"');
+    expect(evidence).toContain('"event": "rollback_anchor_refresh_captured"');
+    expect(evidence).toContain('"event": "orchestration_complete"');
+  });
+
+  it("refuses a stale signer before refresh mutation instead of deleting it without an anchor", async () => {
+    const files = await fixture();
+    await enableRollbackAnchorRefresh(files.configPath);
+    const calls: V207CommandRequest[] = [];
+    let preRouteProbeCalls = 0;
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) {
+        return result(JSON.stringify([{ name: V207_ORCHESTRATOR_SECRET_NAME }]));
+      }
+      throw new Error("refresh must not mutate with a stale signer");
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl: async () => {
+          preRouteProbeCalls += 1;
+          return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+            status: 404,
+          });
+        },
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_ROLLBACK_ANCHOR_REFRESH_STALE_SIGNER_PRESENT" });
+
+    expect(calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(calls.some((call) => call.args.includes("delete"))).toBe(false);
+    expect(preRouteProbeCalls).toBe(17);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+  });
+
+  it("rejects a 503 pre-mutation baseline in refresh mode before build or deployment", async () => {
+    const files = await fixture();
+    await enableRollbackAnchorRefresh(files.configPath);
+    const calls: V207CommandRequest[] = [];
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
+      throw new Error("503 baseline must stop before mutation");
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl: async () =>
+          new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
+            status: 503,
+          }),
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED" });
+
+    expect(calls.some((call) => call.args.includes("build:staging"))).toBe(false);
+    expect(calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+  });
+
+  it("rolls back the old anchor after a refresh route mismatch without invoking qualification", async () => {
+    const files = await fixture();
+    await enableRollbackAnchorRefresh(files.configPath);
+    const calls: V207CommandRequest[] = [];
+    let rollbackSeen = false;
+    let versionsCalls = 0;
+    let routeProbeCalls = 0;
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100, script_hash: "sha256:old" }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        versionsCalls += 1;
+        return result(RECENT_VERSION_LIST);
+      }
+      if (request.args.includes("deploy") && !request.args.includes("deployments")) return result();
+      if (request.args.includes("rollback")) {
+        rollbackSeen = true;
+        return result();
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes("secret")) throw new Error("signer mutation must not run");
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () => {
+      routeProbeCalls += 1;
+      if (routeProbeCalls <= 17 || rollbackSeen) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
+        status: 503,
+      });
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_ROLLBACK_ANCHOR_REFRESH_ROUTE_UNCONFIRMED" });
+
+    expect(rollbackSeen).toBe(true);
+    expect(versionsCalls).toBe(3);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+    const rollback = calls.find((call) => call.args.includes("rollback"));
+    expect(rollback?.args).toContain(VERSION_ID);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain("V207_ROLLBACK_ANCHOR_REFRESH_ROUTE_UNCONFIRMED");
+    expect(evidence).toContain('"event": "worker_rolled_back"');
+    expect(evidence).toContain('"result": "FAILED"');
+  });
+
+  it("fails cleanup-uncertain without a blind rollback when refresh evicts the old anchor", async () => {
+    const files = await fixture();
+    await enableRollbackAnchorRefresh(files.configPath);
+    const calls: V207CommandRequest[] = [];
+    let versionsCalls = 0;
+    let rollbackSeen = false;
+    let routeProbeCalls = 0;
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100, script_hash: "sha256:old" }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        versionsCalls += 1;
+        return result(versionsCalls === 1 ? RECENT_VERSION_LIST : OLD_ANCHOR_MISSING_VERSION_LIST);
+      }
+      if (request.args.includes("deploy") && !request.args.includes("deployments")) return result();
+      if (request.args.includes("rollback")) {
+        rollbackSeen = true;
+        throw new Error("blind rollback must not be attempted");
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes("secret")) throw new Error("signer mutation must not run");
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () => {
+      routeProbeCalls += 1;
+      if (routeProbeCalls <= 17 || rollbackSeen) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
+        status: 503,
+      });
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_CLEANUP_UNCERTAIN" });
+
+    expect(rollbackSeen).toBe(false);
+    expect(versionsCalls).toBe(2);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain("V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_NOT_RETAINED");
+    expect(evidence).toContain('"event": "worker_rollback_skipped_old_anchor_not_retained"');
+    expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
+  });
+
+  it("falls back to the old anchor when the post-promotion disabled route flaps", async () => {
+    const files = await fixture();
+    await enableRollbackAnchorRefresh(files.configPath);
+    const calls: V207CommandRequest[] = [];
+    let statusCalls = 0;
+    let versionsCalls = 0;
+    let routeProbeCalls = 0;
+    let postPromotionProbeCalls = 0;
+    let rollbackSeen = false;
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        statusCalls += 1;
+        const version_id = statusCalls === 2 ? REFRESH_VERSION_ID : VERSION_ID;
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [
+              {
+                version_id,
+                percentage: 100,
+                script_hash: statusCalls === 2 ? "sha256:refreshed" : "sha256:old",
+              },
+            ],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        versionsCalls += 1;
+        return result(versionsCalls === 2 ? REFRESHED_VERSION_LIST : RECENT_VERSION_LIST);
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes("build:staging")) return result();
+      if (request.args.includes("deploy") && !request.args.includes("deployments")) return result();
+      if (request.args.includes("rollback")) {
+        rollbackSeen = true;
+        return result();
+      }
+      throw new Error("post-promotion flap must stop before signer mutation");
+    };
+    const fetchImpl: typeof fetch = async () => {
+      routeProbeCalls += 1;
+      if (routeProbeCalls <= 33) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+        });
+      }
+      if (!rollbackSeen) {
+        postPromotionProbeCalls += 1;
+        if (postPromotionProbeCalls === 1) {
+          return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+            status: 404,
+          });
+        }
+        return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
+          status: 503,
+        });
+      }
+      return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+        status: 404,
+      });
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_ROLLBACK_ANCHOR_REFRESH_ROUTE_UNCONFIRMED" });
+
+    expect(rollbackSeen).toBe(true);
+    expect(postPromotionProbeCalls).toBe(2);
+    expect(statusCalls).toBe(3);
+    expect(versionsCalls).toBe(4);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+    const rollback = calls.find((call) => call.args.includes("rollback"));
+    expect(rollback?.args).toContain(VERSION_ID);
+    expect(rollback?.args).not.toContain(REFRESH_VERSION_ID);
+  });
+
+  it("treats a partially failed refresh deploy as cleanup-uncertain when the old anchor is gone", async () => {
+    const files = await fixture();
+    await enableRollbackAnchorRefresh(files.configPath);
+    const calls: V207CommandRequest[] = [];
+    let versionsCalls = 0;
+    let rollbackSeen = false;
+    let routeProbeCalls = 0;
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        versionsCalls += 1;
+        return result(versionsCalls === 1 ? RECENT_VERSION_LIST : OLD_ANCHOR_MISSING_VERSION_LIST);
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes("deploy") && !request.args.includes("deployments")) {
+        return result("partial deploy", 1);
+      }
+      if (request.args.includes("rollback")) {
+        rollbackSeen = true;
+        throw new Error("blind rollback must not be attempted");
+      }
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () => {
+      routeProbeCalls += 1;
+      return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+        status: 404,
+      });
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_CLEANUP_UNCERTAIN" });
+
+    expect(rollbackSeen).toBe(false);
+    expect(versionsCalls).toBe(2);
+    expect(routeProbeCalls).toBe(17);
+    expect(calls.some((call) => call.args.includes("deploy"))).toBe(true);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain("V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_NOT_RETAINED");
+    expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
+  });
+
+  it("rolls back the old anchor when the refreshed anchor falls outside newest seven of ten", async () => {
+    const files = await fixture();
+    await enableRollbackAnchorRefresh(files.configPath);
+    const calls: V207CommandRequest[] = [];
+    let statusCalls = 0;
+    let versionsCalls = 0;
+    let routeProbeCalls = 0;
+    let rollbackSeen = false;
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        statusCalls += 1;
+        const version_id = statusCalls === 2 ? REFRESH_VERSION_ID : VERSION_ID;
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id, percentage: 100, script_hash: "sha256:anchor" }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        versionsCalls += 1;
+        return result(RECENT_VERSION_LIST);
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes("build:staging")) return result();
+      if (request.args.includes("deploy") && !request.args.includes("deployments")) return result();
+      if (request.args.includes("rollback")) {
+        rollbackSeen = true;
+        return result();
+      }
+      throw new Error("outside-newest-seven must stop before signer mutation");
+    };
+    const fetchImpl: typeof fetch = async () => {
+      routeProbeCalls += 1;
+      return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+        status: 404,
+      });
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED" });
+
+    expect(rollbackSeen).toBe(true);
+    expect(routeProbeCalls).toBe(49);
+    expect(statusCalls).toBe(3);
+    expect(versionsCalls).toBe(4);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+    const rollback = calls.find((call) => call.args.includes("rollback"));
+    expect(rollback?.args).toContain(VERSION_ID);
+    expect(rollback?.args).not.toContain(REFRESH_VERSION_ID);
   });
 
   it("hard-stops route restoration when the deadline aborts an injected stalled sleep", async () => {
@@ -929,8 +1638,9 @@ describe("V2-07 live orchestrator", () => {
             id: DEPLOYMENT_ID,
             versions: [
               {
-                version_id: statusCalls === 1 ? VERSION_ID : CHANGED_VERSION_ID,
+                version_id: VERSION_ID,
                 percentage: 100,
+                script_hash: statusCalls === 1 ? "sha256:old" : "sha256:changed",
               },
             ],
           }),
@@ -978,6 +1688,7 @@ describe("V2-07 live orchestrator", () => {
     expect(signerSecretPresent).toBe(false);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
+    expect(evidence).toContain("V207_ROLLBACK_VERSION_UNCONFIRMED");
     expect(evidence).toContain("V207_ROUTE_RESTORATION_SKIPPED_ROLLBACK_UNCONFIRMED");
     expect(evidence).not.toContain('"event": "restored_route_confirmed"');
   });
