@@ -1,11 +1,14 @@
 # VideoForge: start here
 
-Attempt47 is approved once for bounded execution. Proposal
+Attempt47 is closed fail-closed as `NOT_QUALIFIED`. Proposal
 `sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53` and acceptance
 `sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6` bind repair `1d39b71`,
 the unique exact terminal-Pod identity fallback, Attempt46 closure, the unchanged immutable image,
 and unchanged max-one/max-two configs. Authority `sha256:aae6dfd8a282333a8a5caa3149e520e58a858c93b0730e4529d599f7d078a254`
-binds FlashBoot=true, LOW-or-better EU-RO-1, and a fresh `$4` cap for one execution. V2-08 forbidden.
+and its `$4` cap were consumed when preflight stopped before mutation at
+`V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. Closure `failed-attempt-47.json` is
+`sha256:6fe66c236e76a84b969d3ca08ab8cd24e6fe9eb6861d65a417523533142ea58e`; three stable reads prove
+zero disposable resources, both volumes retained, and `$0` incremental spend. No authority/cap remains; V2-08 forbidden.
 
 Attempt46 is closed fail-closed as `NOT_QUALIFIED`. Proposal
 `sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259` and authority

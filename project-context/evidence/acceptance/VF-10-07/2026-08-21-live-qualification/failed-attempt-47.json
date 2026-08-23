@@ -1,0 +1,102 @@
+{
+  "schema_version": "videoforge.v2-07-attempt47-failed-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 47,
+  "recorded_at": "2026-08-23T18:55:12.875Z",
+  "result": "NOT_QUALIFIED_ATTEMPT47_ROLLBACK_ANCHOR_NOT_RETAINED_CLEAN",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53",
+  "acceptance_sha256": "sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6",
+  "authority_sha256": "sha256:aae6dfd8a282333a8a5caa3149e520e58a858c93b0730e4529d599f7d078a254",
+  "staged_max1_sha256": "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a",
+  "staged_max2_sha256": "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb",
+  "authority_state": "CONSUMED_CLOSED_DO_NOT_REUSE",
+  "maximum_cumulative_finite_spend_usd": 4,
+  "failure": {
+    "code": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED",
+    "stage": "cloudflare_rollback_anchor_preflight",
+    "rollback_anchor_diagnostic": {
+      "result": "NOT_RETAINED",
+      "detail_retained": false,
+      "detail_limitation": "the redaction-safe orchestrator artifact retained the fail-closed code but not the version-list count or range",
+      "mutation_safety": "no build, deploy, signer, route, worker, RunPod, GPU, or output mutation started"
+    },
+    "stopped_before_mutation": true,
+    "stopped_before_runpod": true,
+    "stopped_before_gpu": true,
+    "stopped_before_spend": true
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "image_config_sha256": "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6",
+    "image_layer_sha256": "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a",
+    "image_layer_diff_id": "sha256:9f759e3f49c84816de71246f51f9aca275fc080c7c9c082aaa39ce81e8b049e1",
+    "canonical_activation_source_sha256": "sha256:858ebe43ef8ad6558825d6b1c756311a8944cd2ef27e58f42651d793ab191da9",
+    "orchestrator_source_sha256": "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894",
+    "live_qualification_source_sha256": "sha256:c5187fb9636d53e214d90f60c1a67a13ed06dc47c558f4869628b6d09a27a9c5",
+    "qualification_harness_source_sha256": "sha256:18ed63b1cc720618cdb733005ea304c546aac590545c3615fbed18e1eb2113fd",
+    "qualification_harness_test_source_sha256": "sha256:9888ca2b291867de5845dd0f6e5125ecc827e980df6b74baa0084c081d0a10a0",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_mount": "/runpod-volume",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flashboot": true,
+    "minimum_availability": "LOW-or-better",
+    "process_replacement_identity_repair_commit": "1d39b716705a69cd8f8933d6a640fa5a9a98d37e"
+  },
+  "execution": {
+    "orchestrator_path": "/tmp/videoforge-v207-attempt47-live-orchestrator.json",
+    "orchestrator_sha256": "sha256:4a98fc25527196f4b36bfbd58fcee55c966bb773de80173f3e95dbdaebf024e7",
+    "live_execution_runpod_calls_reached": false,
+    "read_only_runpod_reconciliation_completed": true,
+    "runpod_jobs_submitted": 0,
+    "accepted_batches": 0,
+    "accepted_outputs": 0,
+    "durable_readbacks": 0,
+    "v3_receipts": 0,
+    "unplanned_duplicate_compute": false,
+    "gpu_use": false
+  },
+  "cleanup": {
+    "path": "attempt47-cleanup-observation.json",
+    "sha256": "sha256:90ef9ccc517b545f64adba62e07615d4041121763a3015da51981d41b950abd1",
+    "result": "CLEAN_NO_MUTATION_CONFIRMED",
+    "cleanup_uncertain": false
+  },
+  "protected_config": {
+    "sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "mode": "0600",
+    "unchanged": true
+  },
+  "reconciliation": {
+    "path": "attempt47-reconciliation-observation.json",
+    "sha256": "sha256:643fcd70ec8a7b2ad8948bb3e24f176954bd1a6da653c08c091eff9b53cfc2a5",
+    "result": "PASS_THREE_STABLE_READS_ZERO_DISPOSABLE_RESOURCES",
+    "stable_read_count": 3,
+    "incremental_spend_usd": 0,
+    "final_cumulative_endpoint_spend_usd": 1.6217972798040137,
+    "within_cap": true
+  },
+  "remaining_gates": [
+    "owned probe",
+    "complete cold batch",
+    "complete warm batch",
+    "duplicate delivery",
+    "cancel",
+    "timeout",
+    "two simultaneous read-only workers",
+    "unchanged sealed manifest before and after live generation",
+    "model-volume no-write and cache-escape proof",
+    "init/load/warmup/inference/upload timings",
+    "peak VRAM",
+    "durable output and provider-expiry proof",
+    "successful terminal workers-zero retention proof"
+  ],
+  "next_boundary": "provider-free rollback-anchor refresh proposal only; any mutation or GPU retry requires a separately hashed proposal, fresh exact approval, and fresh positive numeric cap",
+  "v2_08_authorized": false
+}

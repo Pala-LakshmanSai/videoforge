@@ -276,9 +276,9 @@ ok(
   ),
   "activation source binds exact Attempt47 proposal",
 );
-ok(activation.includes(E.approvedAuthority), "activation exact authority");
-ok(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;"), "activation exact cap");
-ok(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;"), "activation anchor disabled");
+ok(activation.includes("export const V207_APPROVED_AUTHORITY_SHA256: string | null =\n  null;"), "activation authority consumed");
+ok(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = null;"), "activation cap consumed");
+ok(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;"), "activation anchor consumed");
 ok(!activation.includes(E.priorAuthority), "activation source does not contain consumed authority");
 
 eq(sha(rootFile("project-context/evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-46.json")), E.closure, "closure file");
