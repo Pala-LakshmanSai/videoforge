@@ -27,6 +27,8 @@ import {
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
   V207_TYPED_ACTIVATION_AUTHORITY_COMMIT,
   V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT,
+  hashV207ActivationAuthoritySource,
+  normalizeV207ActivationAuthoritySource,
 } from "./v207-activation-authority";
 
 const image = V207_REPAIRED_IMAGE;
@@ -73,7 +75,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:a01be815b987e1e402538421ddef80a70294eae0555f82f9ba90a3bdef8607df",
+      "sha256:387c8f338c129a959f60f1104f29c03c80c3160149d4c6eac7508e8ef0ad452a",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
     expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6");
@@ -99,6 +101,24 @@ describe("V2-07 activation authority", () => {
     expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
     expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
+  });
+
+  it("uses a fail-closed non-cyclic source binding for the exact proposal pointer", () => {
+    const sourceA =
+      'export const V207_PENDING_PROPOSAL_SHA256 =\n  "sha256:' + "a".repeat(64) + '" as const;';
+    const sourceB = sourceA.replace(/a{64}/u, "b".repeat(64));
+    expect(normalizeV207ActivationAuthoritySource(sourceA)).toBe(
+      normalizeV207ActivationAuthoritySource(sourceB),
+    );
+    expect(hashV207ActivationAuthoritySource(sourceA)).toBe(
+      hashV207ActivationAuthoritySource(sourceB),
+    );
+    expect(() => normalizeV207ActivationAuthoritySource("missing pointer")).toThrow(
+      "V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID",
+    );
+    expect(() => normalizeV207ActivationAuthoritySource(`${sourceA}\n${sourceA}`)).toThrow(
+      "V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID",
+    );
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {

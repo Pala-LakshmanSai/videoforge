@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export const V207_REPAIRED_IMAGE =
   "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59" as const;
 
@@ -19,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:a01be815b987e1e402538421ddef80a70294eae0555f82f9ba90a3bdef8607df" as const;
+  "sha256:387c8f338c129a959f60f1104f29c03c80c3160149d4c6eac7508e8ef0ad452a" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -90,6 +92,31 @@ export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
  * this to true in its own immutable activation commit.
  */
 export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
+
+const V207_PROPOSAL_POINTER_PATTERN =
+  /(\bexport const V207_PENDING_PROPOSAL_SHA256\s*=\s*(?:\r?\n\s*)?")sha256:[a-f0-9]{64}("\s+as const;)/gu;
+
+/**
+ * Canonicalize this module for proposal lineage without creating a hash cycle.  The exact
+ * proposal pointer remains compiled into the parser and is still compared byte-for-byte at
+ * execution; only that one pointer literal is replaced with a fixed zero digest when the source
+ * lineage hash is calculated.  Any missing or duplicate pointer fails closed rather than silently
+ * producing an unbound source hash.
+ */
+export function normalizeV207ActivationAuthoritySource(source: string): string {
+  const matches = source.match(V207_PROPOSAL_POINTER_PATTERN);
+  if (matches === null || matches.length !== 1) {
+    throw new Error("V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID");
+  }
+  return source.replace(V207_PROPOSAL_POINTER_PATTERN, `$1sha256:${"0".repeat(64)}$2`);
+}
+
+/** Return the non-cyclic source binding consumed by the Attempt43 proposal lineage. */
+export function hashV207ActivationAuthoritySource(source: string): string {
+  return `sha256:${createHash("sha256")
+    .update(normalizeV207ActivationAuthoritySource(source), "utf8")
+    .digest("hex")}`;
+}
 
 export interface V207ActivationAuthority {
   readonly image: string;
