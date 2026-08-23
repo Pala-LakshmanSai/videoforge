@@ -36,7 +36,7 @@ const image = V207_REPAIRED_IMAGE;
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete approved Attempt38 durable replacement lineage", () => {
+  it("pins the complete approved Attempt39 fresh-cap rollback-retention lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2",
@@ -66,10 +66,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c",
+      "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("edb18154759a1c4da9f28789fe5f4c4ab74a92ed");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("5aa2ccae639052fb61312a3b5a830402c275a2f8");
     expect(V207_FINALIZE_REPLAY_FAST_PATH_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
     expect(V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT).toBe(
       "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
@@ -78,7 +78,7 @@ describe("V2-07 activation authority", () => {
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
     expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6",
+      "sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b",
     );
     expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
   });
@@ -127,7 +127,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("accepts the exact Attempt38 proposal under its fresh cap", () => {
+  it("accepts the exact Attempt39 proposal under its fresh cap", () => {
     expect(
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -142,7 +142,7 @@ describe("V2-07 activation authority", () => {
     });
   });
 
-  it("rejects cap drift from the exact Attempt38 authority", () => {
+  it("rejects cap drift from the exact Attempt39 authority", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -153,7 +153,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FINITE_CAP_MISMATCH");
   });
 
-  it("rejects a missing numeric cap at the Attempt38 authority boundary", () => {
+  it("rejects a missing numeric cap at the Attempt39 authority boundary", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,

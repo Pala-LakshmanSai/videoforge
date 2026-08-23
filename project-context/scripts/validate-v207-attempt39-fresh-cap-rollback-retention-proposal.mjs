@@ -10,6 +10,7 @@ const candidate = resolve(
 const paths = {
   proposal: resolve(candidate, "combined-live-proposal.json"),
   acceptance: resolve(candidate, "acceptance.json"),
+  authority: resolve(candidate, "approved-authority.json"),
   max1: resolve(candidate, "staged-config-max1.json"),
   max2: resolve(candidate, "staged-config-max2.json"),
   state: resolve(root, "project-context/CURRENT_STATE.yaml"),
@@ -22,7 +23,8 @@ const paths = {
 };
 const expected = {
   proposal: "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57",
-  acceptance: "sha256:dab1020c8fee41c0ab0aa80a4878b13b4e70afa46974748d15fb77e9ebc015fd",
+  acceptance: "sha256:d38096058821aa2d2eb76216960b1e6ceabee725328b55c82e47ce0828e74259",
+  authority: "sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b",
   max1: "sha256:26387b6f18d354af2ec9f034a3bbdb0645fcd50abe932f49278c16f36b8e4b66",
   max2: "sha256:6c8093e0292d53c5288904bcedb36b5f26a4f98c1109a16c7a9be0e9ddbf870f",
   control: "5aa2ccae639052fb61312a3b5a830402c275a2f8",
@@ -55,16 +57,17 @@ const includesAll = (value, needles, code) => {
   for (const needle of needles) assert(value.includes(needle), `${code}_${needle}`);
 };
 
-assert(!existsSync(resolve(candidate, "approved-authority.json")), "AUTHORITY_MUST_BE_ABSENT");
 for (const [name, hash] of Object.entries({
   proposal: expected.proposal,
   acceptance: expected.acceptance,
+  authority: expected.authority,
   max1: expected.max1,
   max2: expected.max2,
 })) assert(sha(paths[name]) === hash, `${name.toUpperCase()}_HASH`);
 
 const proposal = json(paths.proposal);
 const acceptance = json(paths.acceptance);
+const authority = json(paths.authority);
 const max1 = json(paths.max1);
 const max2 = json(paths.max2);
 const configs = [max1, max2];
@@ -238,21 +241,21 @@ assert(
 
 assert(
   acceptance.schema_version === "videoforge.v2-07-attempt39-provider-free-candidate-acceptance/v1" &&
-    acceptance.attempt === 39 && acceptance.result === "UNAPPROVED_PROVIDER_FREE_CANDIDATE" &&
-    acceptance.qualification_status === "NOT_QUALIFIED_PENDING_FRESH_APPROVAL" &&
+    acceptance.attempt === 39 && acceptance.result === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    acceptance.qualification_status === "NOT_QUALIFIED_PENDING_EXECUTION" &&
     acceptance.candidate?.proposal_sha256 === expected.proposal &&
     acceptance.candidate.max1_sha256 === expected.max1 && acceptance.candidate.max2_sha256 === expected.max2 &&
     acceptance.candidate.control_source_commit === expected.control &&
-    acceptance.candidate.authority_recorded === false && acceptance.candidate.authority_path === null &&
-    acceptance.candidate.authority_sha256 === null && acceptance.candidate.maximum_cumulative_finite_spend_usd === null &&
+    acceptance.candidate.authority_recorded === true && acceptance.candidate.authority_path === "approved-authority.json" &&
+    acceptance.candidate.authority_sha256 === expected.authority && acceptance.candidate.maximum_cumulative_finite_spend_usd === 4 &&
     acceptance.candidate.fresh_numeric_cap_required === true,
   "ACCEPTANCE",
 );
 assert(
-  acceptance.provider_boundary?.provider_calls === true && acceptance.provider_boundary.provider_mutations === false &&
-    acceptance.provider_boundary.gpu_use === false && acceptance.provider_boundary.authority_active === false &&
-    acceptance.provider_boundary.cap_usd === null && acceptance.provider_boundary.external_spend_usd === 0 &&
-    acceptance.provider_boundary.v2_08_authorized === false && acceptance.provider_boundary.authority_file_present === false &&
+  acceptance.provider_boundary?.provider_calls === true && acceptance.provider_boundary.provider_mutations === true &&
+    acceptance.provider_boundary.gpu_use === false && acceptance.provider_boundary.authority_active === true &&
+    acceptance.provider_boundary.cap_usd === 4 && acceptance.provider_boundary.external_spend_usd === 0 &&
+    acceptance.provider_boundary.v2_08_authorized === false && acceptance.provider_boundary.authority_file_present === true &&
     acceptance.provider_boundary.read_only_refresh_required_before_mutation === false &&
     acceptance.provider_boundary.read_only_refresh_completed === true &&
     acceptance.provider_boundary.rollback_anchor_newest_seven_retention_required === true,
@@ -267,12 +270,22 @@ const activation = text(paths.activation);
 const reconciliation = text(paths.reconciliation);
 const orchestrator = text(paths.orchestrator);
 const candidatePath = "2026-08-23-attempt39-fresh-cap-rollback-retention-candidate";
-includesAll(state, [candidatePath, expected.proposal, expected.acceptance, expected.max1, expected.max2, expected.control, "pending_authority: null", "maximum_external_spend_usd: 0", "provider_calls_authorized: false"], "STATE");
-includesAll(gates, [candidatePath, expected.proposal, expected.acceptance, expected.max1, expected.max2, expected.control, "pending_authority: null", "pending_numeric_cap_usd: null", "provider_calls_authorized: false"], "GATES");
-includesAll(start, [candidatePath, expected.proposal, expected.control, "no authority file", "V2-08 remain forbidden"], "START");
-includesAll(task, [candidatePath, expected.proposal, expected.control, "fresh positive numeric finite cap", "V2-08 remains forbidden"], "TASK");
-assert(!activation.includes(expected.proposal) && !activation.includes(expected.control), "ACTIVATION_MUST_NOT_CARRY_UNAPPROVED_CANDIDATE");
+includesAll(state, [candidatePath, expected.proposal, expected.acceptance, expected.authority, expected.max1, expected.max2, expected.control, "pending_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/approved-authority.json", "maximum_external_spend_usd: 4", "provider_calls_authorized: true"], "STATE");
+includesAll(gates, [candidatePath, expected.proposal, expected.acceptance, expected.authority, expected.max1, expected.max2, expected.control, "pending_authority: \"evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/approved-authority.json\"", "pending_numeric_cap_usd: 4", "provider_calls_authorized: true"], "GATES");
+includesAll(start, [candidatePath, expected.proposal, expected.authority, expected.control, "user approved it", "V2-08 remain forbidden"], "START");
+includesAll(task, [candidatePath, expected.proposal, expected.authority, expected.control, "fresh maximum cumulative finite spend of `$4`", "V2-08 remains forbidden"], "TASK");
+assert(activation.includes(expected.proposal) && activation.includes(expected.control) && activation.includes(expected.authority), "ACTIVATION_AUTHORITY_BINDING");
+assert(
+  authority.attempt === 39 && authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal?.sha256 === expected.proposal && authority.approval?.exact_proposal_approved === true &&
+    authority.approval?.flashboot_true_accepted === true && authority.approval?.low_or_better_eu_ro_1_availability_approved === true &&
+    authority.approval?.minimum_approved_availability === "LOW" && authority.approval?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval?.consumed === false && authority.lineage?.control_source_commit === expected.control &&
+    authority.lineage?.initial_config_sha256 === expected.max1 && authority.lineage?.concurrent_reader_config_sha256 === expected.max2 &&
+    authority.execution_boundary?.retained_volume_mutation_authorized === false && authority.execution_boundary?.v2_08_authorized === false,
+  "AUTHORITY_BINDING",
+);
 assert(reconciliation.includes("v207IncrementalSpendThreshold") && reconciliation.includes("v207IncrementalSpendFromBilling"), "FRESH_CAP_SOURCE");
 assert(orchestrator.includes("assertV207WorkerRollbackAnchorRetained") && orchestrator.includes("V207_WORKER_VERSION_NEWEST_COUNT") && orchestrator.includes("versions"), "ROLLBACK_RETENTION_SOURCE");
 
-console.log("V2-07 Attempt39 fresh-cap/rollback-retention proposal validation PASS (unapproved; read-only refresh only; no authority, mutation, publication, GPU, or spend)");
+console.log("V2-07 Attempt39 fresh-cap/rollback-retention proposal validation PASS (approved single-use authority; pending execution; zero Attempt39 spend)");

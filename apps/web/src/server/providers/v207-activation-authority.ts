@@ -19,11 +19,11 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c" as const;
+  "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "edb18154759a1c4da9f28789fe5f4c4ab74a92ed" as const;
+  "5aa2ccae639052fb61312a3b5a830402c275a2f8" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -55,13 +55,18 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // and authority sha256:812899db3d2225224ea231112d2eba150ffbbd254148e71f94c81a44de32cadf
 // were consumed by one bounded execution and cannot be reused. Attempt38 proposal
 // sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c
-// is approved once by authority sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6
-// with a fresh USD 4 cap. Historical Attempt34/35 control:
+// was approved once by authority sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6
+// with a fresh USD 4 cap, then consumed by its fail-closed execution. Attempt39 proposal
+// sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57 is approved once
+// by authority sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b with
+// FlashBoot=true, LOW-or-better EU-RO-1, and a fresh USD 4 cap; it binds control repair
+// 5aa2ccae639052fb61312a3b5a830402c275a2f8 and reuses the already-published image digest.
+// Historical Attempt34/35 control:
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
 export const V207_APPROVED_AUTHORITY_SHA256 =
-  "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6" as const;
+  "sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b" as const;
 export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 
 export interface V207ActivationAuthority {

@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Attempt39 is a provider-free, unapproved candidate after Attempt38 closed `NOT_QUALIFIED`. It binds
+Attempt39 is the exact approved, single-use candidate after Attempt38 closed `NOT_QUALIFIED`. It binds
 the already-published immutable Mage image
 `ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2`,
 the existing sealed Mage-only 50 GB `EU-RO-1` volume at `/runpod-volume`, and control repair
@@ -13,11 +13,14 @@ V207_ROUTE_DISABLED`; this is a read-only observation, not an authority to mutat
 
 Attempt39 proposal
 `evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/combined-live-proposal.json`
-is `sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57` and has no authority file, cap, provider mutation, publication, or GPU
-authorization. It reuses the published digest without republication. A fresh read-only RunPod
-inventory/rate refresh passed at `2026-08-23T01:40:52.298Z`; exact proposal approval and a fresh positive numeric finite cap remain required
-before any external operation. V2-07 remains `NOT_QUALIFIED`; retained-volume mutation, fallback
-GPU/region, and V2-08 remain forbidden.
+is `sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57`; the user approved it
+with FlashBoot=true, LOW-or-better EU-RO-1 availability, and a fresh maximum cumulative finite
+spend of `$4`. Append-only authority `approved-authority.json` is
+`sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b` and is single-use,
+pending execution. It reuses the published digest without republication. A fresh read-only RunPod
+inventory/rate refresh passed at `2026-08-23T01:40:52.298Z`; no Attempt39 provider mutation or GPU
+call has occurred yet. V2-07 remains `NOT_QUALIFIED` pending live proof; retained-volume mutation,
+fallback GPU/region, and V2-08 remain forbidden.
 
 Attempt38 is closed `NOT_QUALIFIED` after bounded execution stopped at `initialized` on cap arithmetic
 risk. Runtime/image repair `edb18154759a1c4da9f28789fe5f4c4ab74a92ed` binds the full immutable
