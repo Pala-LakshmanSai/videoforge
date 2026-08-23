@@ -1,0 +1,88 @@
+{
+  "schema_version": "videoforge.v2-07-attempt43-anchor-refresh-read-only-preflight/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 43,
+  "checked_at": "2026-08-23T07:23:34.925Z",
+  "read_only": true,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "inventory": {
+    "source": "attempt42 three-stable-read reconciliation refreshed before candidate preparation",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "mount": "/runpod-volume",
+        "identity_unchanged": true
+      },
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "identity_unchanged": true
+      }
+    ]
+  },
+  "selected_gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "secure_cloud": true,
+    "availability": "HIGH",
+    "vram_gb": 24,
+    "secure_reference_rate_usd_per_hour": 0.74,
+    "source_preflight": "2026-08-23-attempt42-get-readback-authority-candidate/read-only-preflight.json"
+  },
+  "serverless_flex_rate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "usd_per_gpu_hour": 1.1,
+    "source": "https://docs.runpod.io/serverless/pricing"
+  },
+  "network_volume_rate": {
+    "usd_per_gb_month": 0.07,
+    "existing_two_volume_charge_usd_per_month_total": 7,
+    "source": "https://docs.runpod.io/storage/network-volumes"
+  },
+  "billing": {
+    "cumulative_endpoint_spend_usd": 1.5709891965379938,
+    "baseline_endpoint_spend_usd": 1.5709891965379938,
+    "fresh_cap_usd": null,
+    "fresh_numeric_cap_required": true,
+    "incremental_spend_usd": 0
+  },
+  "quota_lookup": {
+    "status": "NOT_EXPOSED_BY_PINNED_READ_ONLY_CLIENT",
+    "provider_mutation": false,
+    "allocation_or_gpu_use": false,
+    "no_quota_claim_inferred": true
+  },
+  "cloudflare_anchor_basis": {
+    "protected_config_path": "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+    "baseline_config_sha256": "sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175",
+    "baseline_config_mode": "0600",
+    "baseline_marker": null,
+    "projected_marker_config_sha256": "sha256:a01a6ec7ffa45a187f8b4cc094ca1522c33a37a6f3e4aea06cb2a38b14120fd5",
+    "old_active_version_id_sha256": "sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48",
+    "old_active_record_sha256": "sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97",
+    "old_active_index_oldest_to_newest": 0,
+    "old_active_window_length": 10,
+    "route_status": 404,
+    "route_code": "V207_ROUTE_DISABLED",
+    "stale_signer_present": false,
+    "read_only": true
+  },
+  "raw_evidence": {
+    "source_reconciliation_sha256": "sha256:a73ffbf9fe0960d94027970f4036599f080d02e0b32359eeeabedd6bb266beac",
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  }
+}

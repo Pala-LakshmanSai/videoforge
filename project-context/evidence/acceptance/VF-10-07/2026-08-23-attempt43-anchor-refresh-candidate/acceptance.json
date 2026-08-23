@@ -1,0 +1,94 @@
+{
+  "schema_version": "videoforge.v2-07-attempt43-anchor-refresh-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 43,
+  "recorded_at": "2026-08-23T07:23:34.925Z",
+  "result": "PROVIDER_FREE_CANDIDATE_PENDING_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED_PENDING_EXECUTION",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:a01be815b987e1e402538421ddef80a70294eae0555f82f9ba90a3bdef8607df",
+    "max1_sha256": "sha256:72dfa25d988699553141207dc6604f07cfd8f27e7a62954de4d357da79242951",
+    "max2_sha256": "sha256:4f27d0d4d97d9d5773b7492e4c6fbd78eb0b07510206bdc3c26c5dac885e9e38",
+    "control_source_commits": [
+      "a6c7266",
+      "816d28699ab9ecad74c74f73bce984205b267ed5",
+      "e5571ed2478f0c526ebf508d0a4ce301bafa8203",
+      "3dda73fed6d82dc7116b18a6b7cfbe4b262fc7bc",
+      "75c784ad1bd9ae4908a5a5204a2170052c44df92",
+      "5e1e5a067357a0df4a2fe1ea32412a4b6af33404"
+    ],
+    "authority_path": null,
+    "authority_sha256": null,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true,
+    "publication_required": false,
+    "read_only_refresh_required_before_mutation": true
+  },
+  "candidate_lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flashboot": true,
+    "control_source_commits": {
+      "anchor_refresh": "a6c7266e0c19fce07757c78fbd588dd442b7d24f",
+      "protected_config_helper": "816d28699ab9ecad74c74f73bce984205b267ed5",
+      "exact_typed_activation_authority": "e5571ed2478f0c526ebf508d0a4ce301bafa8203",
+      "orchestrator_owned_marker_lifecycle": "3dda73fed6d82dc7116b18a6b7cfbe4b262fc7bc",
+      "protected_config_path_pin": "75c784ad1bd9ae4908a5a5204a2170052c44df92",
+      "fresh_catalog_and_success_reconciliation": "5e1e5a067357a0df4a2fe1ea32412a4b6af33404"
+    },
+    "protected_config_baseline_sha256": "sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175",
+    "protected_config_projected_marker_sha256": "sha256:a01a6ec7ffa45a187f8b4cc094ca1522c33a37a6f3e4aea06cb2a38b14120fd5",
+    "old_active_version_id_sha256": "sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48",
+    "old_active_record_sha256": "sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97",
+    "old_active_index_oldest_to_newest": 0,
+    "old_active_window_length": 10,
+    "route_fingerprint": {"status": 404, "code": "V207_ROUTE_DISABLED"},
+    "prior_attempt42": {
+      "closure_sha256": "sha256:ca9d1ba45cdaf028acc92f07bfe278b7ae6c4bf2cf182dae0e4ed51696435dbc",
+      "cleanup_sha256": "sha256:4d30c80b9ba2d42916c358a0768ddca71b876d8b1225d5223114152065550f81",
+      "reconciliation_sha256": "sha256:a73ffbf9fe0960d94027970f4036599f080d02e0b32359eeeabedd6bb266beac",
+      "authority_consumed": true
+    }
+  },
+  "provider_boundary": {
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "external_spend_usd": 0,
+    "authority_active": false,
+    "authority_file_present": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "retained_volume_mutation_authorized": false,
+    "image_republication_authorized": false,
+    "v2_08_authorized": false
+  },
+  "focused_contracts": {
+    "negative_tests_required": [
+      "wrong bytes", "wrong path", "wrong volume", "wrong GPU", "wrong region", "writes",
+      "cache escape", "malformed authority", "duplicate delivery", "cancel", "timeout", "two readers",
+      "anchor hash drift", "route drift", "stale signer", "marker apply/revert drift", "cleanup uncertainty"
+    ],
+    "durable_output_before_provider_expiry": true,
+    "v3_authority_provenance_receipts": true,
+    "manifest_before_after_equal": true,
+    "model_volume_writes_zero": true,
+    "workers_zero_after_drain": true,
+    "endpoint_and_both_volumes_retained": true,
+    "authority_file_present": false,
+    "read_only_refresh_required_before_mutation": true,
+    "rollback_anchor_refresh_required": true,
+    "protected_config_revert_required": true,
+    "v2_08_forbidden": true
+  }
+}

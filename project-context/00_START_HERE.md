@@ -1,5 +1,14 @@
 # VideoForge: start here
 
+Attempt43 is a provider-free anchor-refresh candidate pending exact approval and a fresh positive cap.
+Proposal `sha256:a01be815b987e1e402538421ddef80a70294eae0555f82f9ba90a3bdef8607df` binds the exact Mage
+image/model/volume, Attempt42 closure hashes, exact authority `e5571ed`, orchestrator-owned marker lifecycle
+`3dda73f`, exact config-path pin `75c784a`, fresh catalog/success reconciliation `5e1e5a0`, atomic helper `816d286`, baseline config
+`sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175` mode 0600, projected marker
+`sha256:a01a6ec7ffa45a187f8b4cc094ca1522c33a37a6f3e4aea06cb2a38b14120fd5`, old active Worker version-ID hash
+`sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48`, and canonical active-version record
+hash `sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97` at index 0/10. It requires fresh LOW-or-better catalog/rate admission, a distinct newest-seven anchor, stable `404 V207_ROUTE_DISABLED`, three stable retained-resource success reads, exact cleanup revert, and no authority/cap/provider/GPU/spend; no image/model/volume mutation or V2-08.
+
 Attempt42 is closed `NOT_QUALIFIED` before provider mutation. Exact proposal
 `sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de` and authority
 `sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53` were approved once with
