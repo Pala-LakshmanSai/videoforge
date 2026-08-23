@@ -14,6 +14,7 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_OUTPUT_BYTES = 10_737_418_240;
 const GENERATED_PUT_LIFETIME_SECONDS = 7_200;
 const GENERATED_OUTPUT_SCHEMA = "artifact-generated-output-authority/v1" as const;
+const TRANSFER_PORT_SCHEMA = "artifact-transfer-port/v3" as const;
 const RESERVATION_SCHEMA = "artifact-generated-output-reservation/v1" as const;
 const FINALIZE_SCHEMA = "videoforge-v207-generated-output-finalization/v1" as const;
 const RECEIPT_SCHEMA = "artifact-commit-receipt/v3" as const;
@@ -43,6 +44,21 @@ type GeneratedOutputAuthority = {
   readonly path: string;
   readonly content_type: string;
   readonly max_content_length: number;
+  readonly expires_at: string;
+  readonly max_uses: 1;
+  readonly capability_handle: string;
+};
+
+type ArtifactTransferPortAuthority = {
+  readonly schema_version: typeof TRANSFER_PORT_SCHEMA;
+  readonly reservation_id: string;
+  readonly account_id: string;
+  readonly workspace_id: string;
+  readonly method: "GET";
+  readonly path: string;
+  readonly content_type: string;
+  readonly content_length: number;
+  readonly checksum_sha256: string;
   readonly expires_at: string;
   readonly max_uses: 1;
   readonly capability_handle: string;
@@ -883,8 +899,30 @@ export async function handleV207GeneratedOutputPort(
       contentLength: value.content_length,
       checksumSha256: value.checksum_sha256,
       lifetimeSeconds: value.lifetime_seconds,
+      now: new Date(),
     });
-    return json({ schema_version: "videoforge-v207-generated-output-read-port/v1", ...port });
+    const authorityBody = {
+      schema_version: TRANSFER_PORT_SCHEMA,
+      reservation_id: `get_${crypto.randomUUID().replaceAll("-", "")}`,
+      account_id: value.account_id,
+      workspace_id: value.workspace_id,
+      method: "GET" as const,
+      path: `/${value.object_key}`,
+      content_type: value.content_type,
+      content_length: value.content_length,
+      checksum_sha256: value.checksum_sha256,
+      expires_at: port.expiresAt,
+      max_uses: 1 as const,
+    };
+    const authority: ArtifactTransferPortAuthority = {
+      ...authorityBody,
+      capability_handle: await hmacHex(nonce, canonical(authorityBody)),
+    };
+    return json({
+      schema_version: "videoforge-v207-generated-output-read-port/v1",
+      ...port,
+      authority,
+    });
   } catch {
     return json({ error: { code: "V207_PORT_SIGNING_FAILED" } }, 503);
   }

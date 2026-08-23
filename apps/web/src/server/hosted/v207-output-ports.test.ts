@@ -3,6 +3,8 @@ import { DecompressionStream as NodeDecompressionStream } from "node:stream/web"
 
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
+import { canonicalizeJson } from "@videoforge/contracts/canonical-json";
+
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
 import { handleV207GeneratedOutputPort, v207RollbackToken } from "./v207-output-ports";
 
@@ -196,6 +198,20 @@ async function sha256Checksum(bytes: Uint8Array): Promise<string> {
     await crypto.subtle.digest("SHA-256", bytes.slice().buffer as ArrayBuffer),
   );
   return `sha256:${[...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+async function hmacHex(secret: string, value: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)),
+  );
+  return [...signature].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function request(body: unknown, authority = nonce): Request {
@@ -481,27 +497,106 @@ describe("V2-07 hosted generated-output port", () => {
   });
 
   it("signs a checksum-bound GET only after measured output facts exist", async () => {
-    const response = await handleV207GeneratedOutputPort(
-      request({
-        schema_version: "videoforge-v207-generated-output-port-request/v1",
-        operation: "GET",
-        account_id: "account-a",
-        workspace_id: "workspace-a",
-        object_key: objectKey,
-        content_type: "image/png",
-        max_content_length: 4 * 1024 * 1024,
-        lifetime_seconds: 300,
-        content_length: 3,
-        checksum_sha256: `sha256:${"e".repeat(64)}`,
-      }),
-      config,
-      environment(),
-    );
+    const body = {
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "GET",
+      account_id: "account-a",
+      workspace_id: "workspace-a",
+      object_key: objectKey,
+      content_type: "image/png",
+      max_content_length: 4 * 1024 * 1024,
+      lifetime_seconds: 300,
+      content_length: 3,
+      checksum_sha256: `sha256:${"e".repeat(64)}`,
+    };
+    const response = await handleV207GeneratedOutputPort(request(body), config, environment());
     expect(response?.status).toBe(200);
     const value = (await response?.json()) as Record<string, unknown>;
     expect(value.schema_version).toBe("videoforge-v207-generated-output-read-port/v1");
     expect(value.method).toBe("GET");
     expect(value.contentLength).toBe(3);
+    expect(value.authority).toBeDefined();
+    const authority = value.authority as Record<string, unknown>;
+    expect(Object.keys(authority).sort()).toEqual([
+      "account_id",
+      "capability_handle",
+      "checksum_sha256",
+      "content_length",
+      "content_type",
+      "expires_at",
+      "max_uses",
+      "method",
+      "path",
+      "reservation_id",
+      "schema_version",
+      "workspace_id",
+    ]);
+    expect(authority).toMatchObject({
+      schema_version: "artifact-transfer-port/v3",
+      reservation_id: expect.stringMatching(/^get_[A-Za-z0-9]+$/u),
+      account_id: "account-a",
+      workspace_id: "workspace-a",
+      method: "GET",
+      path: `/${objectKey}`,
+      content_type: "image/png",
+      content_length: 3,
+      checksum_sha256: `sha256:${"e".repeat(64)}`,
+      expires_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T.*Z$/u),
+      max_uses: 1,
+      capability_handle: expect.stringMatching(/^[a-f0-9]{64}$/u),
+    });
+    const bodyForCapability = { ...authority };
+    delete bodyForCapability.capability_handle;
+    await expect(hmacHex(nonce, canonicalizeJson(bodyForCapability))).resolves.toBe(
+      authority.capability_handle,
+    );
+
+    const replayResponse = await handleV207GeneratedOutputPort(
+      request(body),
+      config,
+      environment(),
+    );
+    const replayValue = (await replayResponse?.json()) as Record<string, any>;
+    expect(replayValue.authority.reservation_id).not.toBe(authority.reservation_id);
+    expect(replayValue.authority.capability_handle).not.toBe(authority.capability_handle);
+  });
+
+  it("binds every GET authority fact and rejects cryptographic drift", async () => {
+    const body = {
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "GET",
+      account_id: "account-a",
+      workspace_id: "workspace-a",
+      object_key: objectKey,
+      content_type: "image/png",
+      max_content_length: 4 * 1024 * 1024,
+      lifetime_seconds: 300,
+      content_length: 3,
+      checksum_sha256: `sha256:${"e".repeat(64)}`,
+    };
+    const response = await handleV207GeneratedOutputPort(request(body), config, environment());
+    const value = (await response?.json()) as Record<string, any>;
+    const authority = value.authority as Record<string, any>;
+    const authorityBody = { ...authority };
+    delete authorityBody.capability_handle;
+    for (const [field, drift] of [
+      ["account_id", "account-b"],
+      ["workspace_id", "workspace-b"],
+      ["method", "PUT"],
+      [
+        "path",
+        "/tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/mage-image/job/attempt-a/artifact/other",
+      ],
+      ["content_type", "image/jpeg"],
+      ["content_length", 4],
+      ["checksum_sha256", `sha256:${"f".repeat(64)}`],
+      ["max_uses", 2],
+    ] as const) {
+      const drifted = { ...authorityBody, [field]: drift };
+      await expect(hmacHex(nonce, canonicalizeJson(drifted))).resolves.not.toBe(
+        authority.capability_handle,
+      );
+    }
   });
 
   it("rejects wrong nonce, scope/path, and extra fields", async () => {
