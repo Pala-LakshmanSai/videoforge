@@ -64,11 +64,11 @@ pending_v2_07_attempt47_proposal:
   v2_08_authorized: false
   result: NOT_QUALIFIED_ATTEMPT47_ROLLBACK_ANCHOR_NOT_RETAINED_CLEAN
   closure_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-47.json
-  closure_evidence_sha256: "sha256:6fe66c236e76a84b969d3ca08ab8cd24e6fe9eb6861d65a417523533142ea58e"
+  closure_evidence_sha256: "sha256:6f3204b9eee5a10eaa64f4f80fa3bd7fa6cf16e3fc2dc0eda2e6d2a63de08472"
   cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt47-cleanup-observation.json
   cleanup_evidence_sha256: "sha256:90ef9ccc517b545f64adba62e07615d4041121763a3015da51981d41b950abd1"
   reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt47-reconciliation-observation.json
-  reconciliation_evidence_sha256: "sha256:643fcd70ec8a7b2ad8948bb3e24f176954bd1a6da653c08c091eff9b53cfc2a5"
+  reconciliation_evidence_sha256: "sha256:d9f6dd526a347653eae2cb7a67e1bacc4dbeab77200d4a533c13e42edda84a65"
 
 pending_v2_07_attempt46_proposal:
   mode: closed_consumed_attempt46_process_replacement_identity_unavailable_clean
@@ -2045,12 +2045,12 @@ model_runtime_evidence:
     v2_07_publication_evidence_sha256: "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7"
     v2_07_historical_attempt41_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate/approved-authority.json
     v2_07_historical_attempt41_authority_sha256: "sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d"
-    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/approved-authority.json
-    v2_07_latest_closed_authority_sha256: "sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588"
+    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/approved-authority.json
+    v2_07_latest_closed_authority_sha256: "sha256:aae6dfd8a282333a8a5caa3149e520e58a858c93b0730e4529d599f7d078a254"
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
-    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-46.json
+    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-47.json
     v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/acceptance.json
     v2_07_current_candidate_acceptance_sha256: "sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6"
     v2_07_attempt_30_increment_usd_immediate_post_cleanup: 0
@@ -2101,10 +2101,10 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-23T17:38:54.593Z"
-  basis: attempt_46_failed_closed_cleanup_and_three_stable_read_only_reconciliation_reads
-  evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt46-reconciliation-observation.json
-  evidence_sha256: "sha256:cf06ca26a87f25f5e95285f782289823b2f57766d1915fe3dc88dc7ec48b476b"
+  checked_at: "2026-08-23T18:55:12.875Z"
+  basis: attempt_47_failed_closed_cleanup_and_three_stable_read_only_reconciliation_reads
+  evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt47-reconciliation-observation.json
+  evidence_sha256: "sha256:d9f6dd526a347653eae2cb7a67e1bacc4dbeab77200d4a533c13e42edda84a65"
   current_live_refresh_permitted_now: false
   stale_until_new_authority_and_authorized_read_only_inventory_succeeds: true
   rtx4090_eu_ro_1_availability: HIGH
@@ -2136,11 +2136,11 @@ last_known_provider_resource_truth:
   current_day_serverless_usd: 1.6217972798040137
   auto_pay: DISABLED
   cumulative_endpoint_spend_usd: 1.6217972798040137
-  observed_attempt46_billing_increment_usd: 0
-  billing_attribution: "ATTEMPT46_OBSERVED_INCREMENT_ZERO_AT_THREE_STABLE_READ_RECONCILIATION"
-  cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt46-cleanup-observation.json
-  cleanup_evidence_sha256: "sha256:f1a82b50408b8ad7a99beffcf4daf6a69976a5cd58620d314a4d873e463b3d75"
-  note: "Attempt46 accepted one durable owned-probe output and v3 receipt, then stopped before the cold batch at process-replacement identity proof. Exact cleanup and Worker/route rollback passed. Three stable reads prove zero disposable resources, both retained volumes, and unchanged billing USD 1.6217972798040137. No authority/cap remains; V2-08 forbidden."
+  observed_attempt47_billing_increment_usd: 0
+  billing_attribution: "ATTEMPT47_OBSERVED_INCREMENT_ZERO_AT_THREE_STABLE_READ_RECONCILIATION"
+  cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt47-cleanup-observation.json
+  cleanup_evidence_sha256: "sha256:90ef9ccc517b545f64adba62e07615d4041121763a3015da51981d41b950abd1"
+  note: "Attempt47 stopped before any build, deploy, signer, route, RunPod, GPU, job, or output mutation because its rollback anchor was not retained. Three stable reads prove zero disposable resources, both retained volumes, and unchanged billing USD 1.6217972798040137. No authority/cap remains; V2-08 forbidden."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -2624,11 +2624,11 @@ provider_authority_attempt47: &v2_07_provider_authority_attempt47
   reusable: false
   actual_spend_usd: 0
   closure_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-47.json
-  closure_evidence_sha256: "sha256:6fe66c236e76a84b969d3ca08ab8cd24e6fe9eb6861d65a417523533142ea58e"
+  closure_evidence_sha256: "sha256:6f3204b9eee5a10eaa64f4f80fa3bd7fa6cf16e3fc2dc0eda2e6d2a63de08472"
   cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt47-cleanup-observation.json
   cleanup_evidence_sha256: "sha256:90ef9ccc517b545f64adba62e07615d4041121763a3015da51981d41b950abd1"
   reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt47-reconciliation-observation.json
-  reconciliation_evidence_sha256: "sha256:643fcd70ec8a7b2ad8948bb3e24f176954bd1a6da653c08c091eff9b53cfc2a5"
+  reconciliation_evidence_sha256: "sha256:d9f6dd526a347653eae2cb7a67e1bacc4dbeab77200d4a533c13e42edda84a65"
 
 provider_authority: *v2_07_provider_authority_attempt47
 
@@ -2681,7 +2681,7 @@ verification:
   latest_live_check:
     recorded_at_utc: "2026-08-23T18:55:12.875Z"
     evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-47.json
-    evidence_sha256: "sha256:6fe66c236e76a84b969d3ca08ab8cd24e6fe9eb6861d65a417523533142ea58e"
+    evidence_sha256: "sha256:6f3204b9eee5a10eaa64f4f80fa3bd7fa6cf16e3fc2dc0eda2e6d2a63de08472"
     proposal: evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/combined-live-proposal.json
     proposal_sha256: "sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53"
     authority: null
@@ -2691,7 +2691,7 @@ verification:
     cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt47-cleanup-observation.json
     cleanup_evidence_sha256: "sha256:90ef9ccc517b545f64adba62e07615d4041121763a3015da51981d41b950abd1"
     reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt47-reconciliation-observation.json
-    reconciliation_evidence_sha256: "sha256:643fcd70ec8a7b2ad8948bb3e24f176954bd1a6da653c08c091eff9b53cfc2a5"
+    reconciliation_evidence_sha256: "sha256:d9f6dd526a347653eae2cb7a67e1bacc4dbeab77200d4a533c13e42edda84a65"
     authority_mode: none_attempt47_consumed_rollback_anchor_not_retained
     pending_numeric_cap_usd: null
     authority_path: null

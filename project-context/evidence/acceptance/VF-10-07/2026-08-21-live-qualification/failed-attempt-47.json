@@ -51,6 +51,7 @@
   },
   "execution": {
     "orchestrator_path": "/tmp/videoforge-v207-attempt47-live-orchestrator.json",
+    "durable_orchestrator_path": "attempt47-live-orchestrator.json",
     "orchestrator_sha256": "sha256:4a98fc25527196f4b36bfbd58fcee55c966bb773de80173f3e95dbdaebf024e7",
     "live_execution_runpod_calls_reached": false,
     "read_only_runpod_reconciliation_completed": true,
@@ -75,7 +76,7 @@
   },
   "reconciliation": {
     "path": "attempt47-reconciliation-observation.json",
-    "sha256": "sha256:643fcd70ec8a7b2ad8948bb3e24f176954bd1a6da653c08c091eff9b53cfc2a5",
+    "sha256": "sha256:d9f6dd526a347653eae2cb7a67e1bacc4dbeab77200d4a533c13e42edda84a65",
     "result": "PASS_THREE_STABLE_READS_ZERO_DISPOSABLE_RESOURCES",
     "stable_read_count": 3,
     "incremental_spend_usd": 0,

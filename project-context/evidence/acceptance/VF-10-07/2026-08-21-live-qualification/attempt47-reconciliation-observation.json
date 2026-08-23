@@ -7,6 +7,7 @@
   "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
   "provider_mutations": 0,
   "gpu_jobs_submitted": 0,
+  "read_only": true,
   "stable_read_count": 3,
   "inventory": {
     "pods": 0,
@@ -19,6 +20,8 @@
       {"purpose": "mage_retained", "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "size_gb": 50, "region": "EU-RO-1", "application_mount": "/runpod-volume"}
     ]
   },
+  "final_disposable_resources_absent": true,
+  "retained_volume_count": 2,
   "billing": {
     "baseline_endpoint_spend_usd": 1.6217972798040137,
     "final_endpoint_spend_usd": 1.6217972798040137,

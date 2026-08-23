@@ -7,7 +7,7 @@ the unique exact terminal-Pod identity fallback, Attempt46 closure, the unchange
 and unchanged max-one/max-two configs. Authority `sha256:aae6dfd8a282333a8a5caa3149e520e58a858c93b0730e4529d599f7d078a254`
 and its `$4` cap were consumed when preflight stopped before mutation at
 `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. Closure `failed-attempt-47.json` is
-`sha256:6fe66c236e76a84b969d3ca08ab8cd24e6fe9eb6861d65a417523533142ea58e`; three stable reads prove
+`sha256:6f3204b9eee5a10eaa64f4f80fa3bd7fa6cf16e3fc2dc0eda2e6d2a63de08472`; three stable reads prove
 zero disposable resources, both volumes retained, and `$0` incremental spend. No authority/cap remains; V2-08 forbidden.
 
 Attempt46 is closed fail-closed as `NOT_QUALIFIED`. Proposal

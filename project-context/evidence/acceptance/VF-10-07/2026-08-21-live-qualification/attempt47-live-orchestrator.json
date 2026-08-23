@@ -1,0 +1,37 @@
+{
+  "schema_version": "videoforge-v207-live-orchestrator/v1",
+  "worker_name": "videoforge-v2-06-staging",
+  "route": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port",
+  "config_path": "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+  "authority": {
+    "image_digest": "sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "proposal_sha256": "sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53",
+    "cap_usd": 4
+  },
+  "events": [
+    {
+      "event": "orchestration_started",
+      "at": "2026-08-23T18:54:25.250Z",
+      "detail": {
+        "local_disk_available_bytes": 7667494912
+      }
+    },
+    {
+      "event": "orchestration_failed",
+      "at": "2026-08-23T18:54:32.864Z",
+      "detail": {
+        "code": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED"
+      }
+    },
+    {
+      "event": "worker_rollback_skipped_no_mutation",
+      "at": "2026-08-23T18:54:32.865Z"
+    },
+    {
+      "event": "disabled_route_probe_skipped_no_mutation",
+      "at": "2026-08-23T18:54:32.865Z"
+    }
+  ],
+  "result": "FAILED"
+}
