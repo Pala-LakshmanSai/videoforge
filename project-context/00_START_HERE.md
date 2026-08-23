@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Attempt40 is the current approved single-use candidate for V2-07. It repairs the exact Attempt39 output-lineage failure by adding `item_id = scene_id` at the Mage worker boundary, while preserving the strict verifier and all sealed-volume/runtime restrictions. The source repair is `a7b7a937d08dc9032b8922cca71c602195f3094c`; the image-pinning/control commit is `b811cdfd677775558aa79452a4930b50a07b7b1a`.
+Attempt40 is closed fail-closed for V2-07. It repaired the exact Attempt39 output-lineage failure by adding `item_id = scene_id` at the Mage worker boundary, and its immutable image published exactly, but the bounded Cloudflare runner stopped at `V207_LIVE_RUNNER_FAILED` before any RunPod job dispatch. The source repair is `a7b7a937d08dc9032b8922cca71c602195f3094c`; the image-pinning/control commit is `b811cdfd677775558aa79452a4930b50a07b7b1a`.
 
 Attempt40 proposal
 `evidence/acceptance/VF-10-07/2026-08-23-attempt40-item-lineage-candidate/combined-live-proposal.json`
@@ -16,10 +16,21 @@ Fresh read-only preflight at `2026-08-23T02:42:00.951Z` observed HIGH availabili
 compute/resources, both retained volumes, `$1.10/GPU-hour` Serverless Flex, `$0.74/hour` secure-Pod
 reference, and `$7/month` existing two-volume charge separately. The finite estimate is `$3.70`.
 The user approved this exact proposal with FlashBoot=true, LOW-or-better EU-RO-1 availability, and a
-fresh maximum cumulative finite spend of `$4`. Append-only authority `approved-authority.json` is
-`sha256:5691eb5bb3a9009fd1a010c74b7c04bc47d15c0ce580ff47f6183c105a563736`; it is single-use and
-pending execution. V2-07 remains `NOT_QUALIFIED_PENDING_EXECUTION`; Attempt39 remains closed historical
-evidence and consumed; V2-08 remains forbidden.
+fresh maximum cumulative finite spend of `$4`. Publication workflow `32615737298` read back the exact
+manifest/config/layer digests. The append-only authority `approved-authority.json` is
+`sha256:5691eb5bb3a9009fd1a010c74b7c04bc47d15c0ce580ff47f6183c105a563736`; it is consumed and
+non-reusable. Closure `failed-attempt-40.json` is `sha256:a80a70ece72d4ff08eccfa210257e267b41a2f924f061ec8740d589edd22d32b`, cleanup is
+`sha256:30daf998cf53eb2a476b44a907e2d6de6da9d73f4397a50840abae731cdd5398`, reconciliation is
+`sha256:4bddde16156ba76d48449265583e417309fded6c2a6f99de35825c6813927fbb`, and publication is
+`sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7`. Exact Worker rollback
+restored `404 V207_ROUTE_DISABLED`; three stable RunPod reads prove zero disposable resources, both
+retained volumes, and `$0` incremental spend. V2-07 remains `NOT_QUALIFIED`; provider-free diagnosis
+only; V2-08 remains forbidden.
+
+Attempt40 closure pointers: `failed-attempt-40.json`, `attempt40-image-publication.json`,
+`attempt40-cleanup-observation.json`, and `attempt40-reconciliation-observation.json`; result
+`NOT_QUALIFIED_LIVE_RUNNER_FAILED_CLEAN`, no provider authority/cap remains, and no RunPod job was
+dispatched.
 
 Attempt39 is now closed fail-closed as `NOT_QUALIFIED`. It used the exact approved, single-use candidate after Attempt38 closed `NOT_QUALIFIED`. It binds
 the already-published immutable Mage image

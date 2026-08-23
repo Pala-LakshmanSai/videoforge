@@ -214,10 +214,19 @@ for (const [name, path] of Object.entries({
 }
 const state = text(paths.state);
 const gates = text(paths.gates);
-assert(state.includes("phase: serverless_v2_v2_07_attempt40_approved_pending_execution"), "STATE_PHASE");
-assert(state.includes("provider_calls_authorized: true"), "STATE_PROVIDER_BOUNDARY");
-assert(state.includes("gpu_use_authorized: true"), "STATE_GPU_BOUNDARY");
-assert(state.includes("maximum_external_spend_usd: 4"), "STATE_SPEND_BOUNDARY");
-assert(gates.includes("pending_authority_sha256:"), "GATES_AUTHORITY_BOUNDARY");
-assert(gates.includes("pending_numeric_cap_usd: 4"), "GATES_CAP_BOUNDARY");
-console.log("V2-07 Attempt40 item-lineage candidate validation PASS (proposal immutable; exact approval recorded; publication and GPU pending execution)");
+const closed = state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified");
+if (closed) {
+  assert(state.includes("provider_calls_authorized: false"), "STATE_PROVIDER_CLOSED");
+  assert(state.includes("gpu_use_authorized: false"), "STATE_GPU_CLOSED");
+  assert(state.includes("maximum_external_spend_usd: 0"), "STATE_SPEND_CLOSED");
+  assert(gates.includes("pending_authority: null"), "GATES_AUTHORITY_CLOSED");
+  assert(gates.includes("pending_numeric_cap_usd: null"), "GATES_CAP_CLOSED");
+} else {
+  assert(state.includes("phase: serverless_v2_v2_07_attempt40_approved_pending_execution"), "STATE_PHASE");
+  assert(state.includes("provider_calls_authorized: true"), "STATE_PROVIDER_BOUNDARY");
+  assert(state.includes("gpu_use_authorized: true"), "STATE_GPU_BOUNDARY");
+  assert(state.includes("maximum_external_spend_usd: 4"), "STATE_SPEND_BOUNDARY");
+  assert(gates.includes("pending_authority_sha256:"), "GATES_AUTHORITY_BOUNDARY");
+  assert(gates.includes("pending_numeric_cap_usd: 4"), "GATES_CAP_BOUNDARY");
+}
+console.log(`V2-07 Attempt40 item-lineage candidate validation PASS (proposal immutable; exact approval recorded; ${closed ? "authority consumed and closed" : "publication and GPU pending execution"})`);

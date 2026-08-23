@@ -75,6 +75,12 @@ const activation = text(paths.activation);
 assert(activation.includes(`V207_PENDING_PROPOSAL_SHA256 =\n  \"${expected.proposal}\"`) && activation.includes(`V207_PENDING_CONTROL_SOURCE_COMMIT =\n  \"${expected.control}\"`) && activation.includes(`V207_APPROVED_AUTHORITY_SHA256 =\n  \"${expected.authority}\"`) && activation.includes(expected.image) && activation.includes(expected.source), "ACTIVATION_BINDING");
 for (const [name, path] of Object.entries({ state: paths.state, gates: paths.gates, start: paths.start, task: paths.task })) { const surface = text(path); assert(surface.includes(expected.proposal) && surface.includes(expected.acceptance) && surface.includes(expected.max1) && surface.includes(expected.max2) && surface.includes(expected.image) && surface.includes(expected.authority), `${name.toUpperCase()}_POINTERS`); }
 const state = text(paths.state); const gates = text(paths.gates);
-assert(state.includes("phase: serverless_v2_v2_07_attempt40_approved_pending_execution") && state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4") && state.includes(expected.authority), "STATE_BOUNDARY");
-assert(gates.includes("authority_mode: attempt40_bounded_mutation_authorized") && gates.includes("pending_numeric_cap_usd: 4") && gates.includes(expected.authority), "GATE_BOUNDARY");
-console.log("V2-07 Attempt40 exact authority validation PASS (proposal immutable; authority bound; fresh $4 cap; publication/GPU pending execution)");
+const closed = state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified");
+if (closed) {
+  assert(state.includes("current_authority: null") && state.includes("maximum_external_spend_usd: 0") && state.includes(expected.authority), "STATE_CLOSED_BOUNDARY");
+  assert(gates.includes("authority_mode: closed_consumed_attempt40_live_runner_failed") && gates.includes("pending_numeric_cap_usd: null") && gates.includes(expected.authority), "GATE_CLOSED_BOUNDARY");
+} else {
+  assert(state.includes("phase: serverless_v2_v2_07_attempt40_approved_pending_execution") && state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4") && state.includes(expected.authority), "STATE_BOUNDARY");
+  assert(gates.includes("authority_mode: attempt40_bounded_mutation_authorized") && gates.includes("pending_numeric_cap_usd: 4") && gates.includes(expected.authority), "GATE_BOUNDARY");
+}
+console.log(`V2-07 Attempt40 exact authority validation PASS (proposal immutable; authority bound; ${closed ? "consumed and closed" : "fresh $4 cap pending execution"})`);

@@ -1,0 +1,49 @@
+{
+  "schema_version": "videoforge.v2-07-attempt40-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 40,
+  "recorded_at": "2026-08-23T03:48:23.655Z",
+  "proposal_sha256": "sha256:56cd650b61a56fb17a9abd602839992990d3a985a952eafc30afa60e82e02ae8",
+  "authority_sha256": "sha256:5691eb5bb3a9009fd1a010c74b7c04bc47d15c0ce580ff47f6183c105a563736",
+  "result": "RUNPOD_CLEAN_CLOUDFLARE_ROUTE_RESTORED",
+  "runpod_cleanup": {
+    "endpoint_created": false,
+    "private_template_created": false,
+    "endpoint_deleted": false,
+    "private_template_deleted": false,
+    "deletion_not_needed": true,
+    "final_disposable_resources_absent": true,
+    "gpu_jobs_submitted": 0,
+    "accepted_outputs": 0,
+    "generated_output_rollback": "NOT_APPLICABLE_NO_OUTPUT_CREATED"
+  },
+  "cloudflare_cleanup": {
+    "ephemeral_signer_secret_deleted": true,
+    "worker_version_restored": true,
+    "rollback_anchor_sha256": "sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97",
+    "active_version_record_hash_restored": true,
+    "captured_route_status": 404,
+    "captured_route_code": "V207_ROUTE_DISABLED",
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED",
+    "exact_captured_fingerprint_restored": true,
+    "cleanup_uncertain": false
+  },
+  "final_reconciliation": {
+    "evidence": "attempt40-reconciliation-observation.json",
+    "stable_reads": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0
+  },
+  "retention": {
+    "mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "retained_volume_write_delete_rebuild_or_cross_mount": false,
+    "ongoing_two_volume_charge_usd_per_month": 7
+  },
+  "next_boundary": "ATTEMPT40_AUTHORITY_AND_CAP_CONSUMED; PROVIDER_FREE_DIAGNOSIS_ONLY; V2-08_FORBIDDEN"
+}
