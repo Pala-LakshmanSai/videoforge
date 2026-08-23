@@ -1,12 +1,12 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-23T10:37:55.699Z"
+updated_at: "2026-08-23T17:18:00.000Z"
 
-phase: serverless_v2_v2_07_attempt43_closed_not_qualified
+phase: serverless_v2_v2_07_attempt44_version_metadata_probe_candidate
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt43_anchor_refresh_candidate
+current_wave: v2_07_attempt44_version_metadata_probe_candidate
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: provider_free_diagnosis
 application_code_changes_authorized: true
@@ -18,15 +18,64 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt43_closed_not_qualified
+  mode: v2_07_attempt44_version_metadata_probe_candidate
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: Attempt43 is closed fail-closed after the output-finalization contract failure; preserve immutable evidence, consume authority, keep provider/GPU/mutation/cap disabled, and continue provider-free diagnosis only
-  note: "Attempt43 proposal sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458 and authority sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b were consumed once. One owned job reached provider COMPLETED, but output finalization failed with V207_OUTPUT_PORT_400 before any accepted batch/readback/v3 receipt. Follow-up cleanup and three stable reconciliation reads prove zero disposable resources, both retained volumes, stable 404 V207_ROUTE_DISABLED, baseline config sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175 mode 0600, and $0 incremental spend. V2-07 remains NOT_QUALIFIED; V2-08 remains forbidden."
+  v2_07_action: Attempt44 is a provider-free version-metadata candidate only; preserve consumed Attempt43 evidence, require sixteen consecutive CF_VERSION_METADATA matches with mixed-edge and malformed metadata fail-closed diagnostics before any future mutation, and keep authority/cap/anchor refresh disabled
+  note: "Attempt44 is provider-free and unapproved. Attempt43 authority/cap are consumed. Provider/GPU/spend remain disabled; V2-07 is NOT_QUALIFIED and V2-08 forbidden."
+
+pending_v2_07_attempt44_proposal:
+  mode: provider_free_version_metadata_probe_candidate_pending_fresh_approval
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:3d87c4a1a75f16d175645c205c0dfc6c172b6c7e0d5cafdb0fcb7ec9276dd589"
+  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/acceptance.json
+  candidate_acceptance_sha256: "sha256:2b692658b42cbc0c97168132d19c471a52b3beed1ef0246b0e3d27ea581f5fae"
+  read_only_preflight: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/read-only-preflight.json
+  read_only_preflight_sha256: "sha256:fa2c02e3117229d2b656255092c914514c9a4364fb38fc0b921d37cc025c683c"
+  cloudflare_anchor_observation: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/cloudflare-anchor-observation.json
+  cloudflare_anchor_observation_sha256: "sha256:3dc1465fc34db19174c307cd1454c24847cf7e7f8294e20af10f80fd6f67b768"
+  runpod_reconciliation_observation: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/runpod-reconciliation-observation.json
+  runpod_reconciliation_observation_sha256: "sha256:abde59d6ea9046295fe1373eed4bbba5a1e96228f824a4e2724b972b22893c56"
+  staged_max1_sha256: "sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c"
+  staged_max2_sha256: "sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c"
+  image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
+  image_source_commit: "a7b7a937d08dc9032b8922cca71c602195f3094c"
+  handler_repair_commit: "129fd40a81b98de8dcfcab7a00607bc41cb384f1"
+  config_binding_commit: "2e216bade5f8457749f435cca1dd160767c20039"
+  activation_reset_commit: "035306038daa23f1a9579c5d0c1852c5155fb52e"
+  typed_authority_source_sha256: "sha256:82e3e571a304e96ace9cbd861c8cd2e691e36964223c40702d0115a17931f7d7"
+  compiled_pending_proposal_sha256: "sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458"
+  compiled_approved_authority_sha256: null
+  compiled_finite_cap_usd: null
+  compiled_anchor_refresh_authorized: null
+  protected_config_baseline_sha256: "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774"
+  protected_config_projected_marker_sha256: "sha256:c643af2fe7d6325396b2527bcbe92d9422c6126aa3328530b8dfaa36b7bc08e5"
+  current_anchor_version_id_sha256: "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0"
+  current_anchor_record_sha256: "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878"
+  current_anchor_index_oldest_to_newest: 7
+  current_anchor_window_length: 10
+  version_metadata_binding: CF_VERSION_METADATA
+  required_consecutive_version_metadata_matches: 16
+  provider_calls_authorized: false
+  read_only_provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  authority_recorded: false
+  authority_path: null
+  authority_sha256: null
+  maximum_cumulative_finite_spend_usd: null
+  finite_action_estimate_usd: 3.95
+  anchor_refresh_required: false
+  anchor_refresh_authorized: false
+  marker_mutation_authorized: false
+  retained_volume_mutation_authorized: false
+  v2_08_authorized: false
+  result: NOT_QUALIFIED_provider_free_candidate
+  next_boundary: fresh exact approval and positive numeric cap required; no provider calls, GPU, publication, mutation, or spend
 
 pending_v2_07_attempt43_proposal:
   mode: closed_consumed_attempt43_output_finalization_failure
@@ -2246,21 +2295,43 @@ provider_authority_attempt43: &v2_07_provider_authority_attempt43
   stop_reason: V207_OUTPUT_PORT_400
   result: NOT_QUALIFIED_attempt43_output_finalization_400_clean
 
-provider_authority: *v2_07_provider_authority_attempt43
+provider_authority_attempt44: &v2_07_provider_authority_attempt44
+  mode: none
+  provider: null
+  authority_state: PENDING_FRESH_EXACT_APPROVAL
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:3d87c4a1a75f16d175645c205c0dfc6c172b6c7e0d5cafdb0fcb7ec9276dd589"
+  acceptance_path: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/acceptance.json
+  acceptance_sha256: "sha256:2b692658b42cbc0c97168132d19c471a52b3beed1ef0246b0e3d27ea581f5fae"
+  preflight_path: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/read-only-preflight.json
+  cap_usd: null
+  anchor_refresh_authorized: false
+  authority_recorded: false
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  retained_volume_mutation_authorized: false
+  v2_08_authorized: false
+  maximum_external_spend_usd: 0
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
+
+provider_authority: *v2_07_provider_authority_attempt44
 
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt43_closed_output_finalization_400
+  status: NOT_QUALIFIED_attempt44_provider_free_candidate
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: attempt43_consumed_closed_no_authority
+  authorization_status: attempt44_pending_fresh_exact_approval_no_authority
   task_stage: provider_free_diagnosis
   current_goal_authority: null
-  provider_authority: *v2_07_provider_authority_attempt43
+  provider_authority: *v2_07_provider_authority_attempt44
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Preserve the fail-closed Attempt43 evidence and perform provider-free diagnosis only; stop before V2-08."
+  goal: "Validate the immutable Attempt44 version-metadata candidate, then stop at fresh exact approval before any provider action; V2-08 remains forbidden."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

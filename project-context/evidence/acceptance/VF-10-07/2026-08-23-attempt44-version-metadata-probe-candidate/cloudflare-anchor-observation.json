@@ -1,0 +1,52 @@
+{
+  "schema_version": "videoforge.v2-07-attempt44-cloudflare-anchor-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 44,
+  "observed_at": "2026-08-23T11:08:19.184Z",
+  "read_only": true,
+  "version_metadata_binding": "CF_VERSION_METADATA",
+  "current_anchor": {
+    "version_id_sha256": "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0",
+    "record_sha256": "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878",
+    "index_oldest_to_newest": 7,
+    "window_length": 10,
+    "newest_seven_retained": true
+  },
+  "activation_probe_contract": {
+    "method": "POST",
+    "route_fingerprint_before_activation": "404 V207_ROUTE_DISABLED",
+    "expected_status": 403,
+    "expected_code": "V207_AUTHORITY_REJECTED",
+    "required_consecutive_version_metadata_matches": 16,
+    "probe_interval_ms": 2000,
+    "mixed_edge_status_or_version_drift": "FAIL_CLOSED",
+    "missing_or_malformed_version_metadata": "FAIL_CLOSED",
+    "diagnostics": {
+      "allowed_fields": [
+        "attempt_number",
+        "http_status",
+        "content_type_category",
+        "content_type_value",
+        "body_byte_length",
+        "failure_category",
+        "error_code"
+      ],
+      "raw_body_url_ids_headers_and_secrets_retained": false
+    }
+  },
+  "anchor_refresh": {
+    "required": false,
+    "authorized": false,
+    "marker_mutation": false,
+    "protected_config_baseline_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "marker_state": "DISABLED"
+  },
+  "raw_source": {
+    "path": "/tmp/videoforge-v207-attempt44-cloudflare-anchor.json",
+    "sha256": "sha256:3c8d749dca874d60d51d7f83a9131d6f7e984cddaa958a3beffa02c31c0532cc",
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "qualification_status": "NOT_QUALIFIED_PROVIDER_FREE_CANDIDATE"
+}

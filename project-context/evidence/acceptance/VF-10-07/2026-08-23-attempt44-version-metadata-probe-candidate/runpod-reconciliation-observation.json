@@ -1,0 +1,43 @@
+{
+  "schema_version": "videoforge.v2-07-attempt44-runpod-reconciliation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 44,
+  "checked_at": "2026-08-23T11:08:41.694Z",
+  "read_only": true,
+  "stable_read_count": 3,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "final_disposable_resources_absent": true,
+    "retained_volume_ids_sha256": [
+      "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+      "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+    ],
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "mage_mount": "/runpod-volume"
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.5709891965379938,
+    "final_endpoint_spend_usd": 1.5709891965379938,
+    "incremental_spend_usd": 0,
+    "settlement": "THREE_STABLE_READS",
+    "candidate_cap_usd": null,
+    "existing_two_volume_charge_usd_per_month": 7,
+    "cap_input_non_authorizing": true,
+    "cap_authority": null
+  },
+  "raw_source": {
+    "path": "/tmp/videoforge-v207-attempt44-runpod-reconciliation.json",
+    "sha256": "sha256:ee4cae58d284d6bbf5c4cbe9c1ebcec94e65b63309945031c771a0a64b93320f",
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "next_boundary": "PROVIDER_FREE_CANDIDATE_ONLY; NO GPU OR MUTATION AUTHORITY; V2-08-FORBIDDEN"
+}

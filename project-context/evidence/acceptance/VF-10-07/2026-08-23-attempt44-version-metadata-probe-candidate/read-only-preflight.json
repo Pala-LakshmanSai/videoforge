@@ -1,0 +1,74 @@
+{
+  "schema_version": "videoforge.v2-07-attempt44-read-only-preflight/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 44,
+  "checked_at": "2026-08-23T11:08:19.184Z",
+  "read_only": true,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "retained_volumes": [
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "mount": "/runpod-volume"
+      }
+    ]
+  },
+  "selected_gpu": {
+    "offering": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "HIGH",
+    "secure_rate_usd_per_gpu_hour": 0.74,
+    "serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "vram_gb": 24
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.5709891965379938,
+    "incremental_spend_usd": 0,
+    "existing_two_volume_charge_usd_per_month": 7,
+    "candidate_finite_cap_usd": null,
+    "finite_estimate_usd_ceiling": 3.95,
+    "cap_input_non_authorizing": true,
+    "cap_authority": null
+  },
+  "protected_config": {
+    "baseline_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "mode": "0600",
+    "marker_key": "V207_ROLLBACK_ANCHOR_REFRESH",
+    "marker_state": "DISABLED",
+    "mutation_planned": false
+  },
+  "raw_sources": {
+    "inventory_catalog_path": "/tmp/videoforge-v207-attempt44-runpod-inventory-catalog.json",
+    "inventory_catalog_sha256": "sha256:929722f3b7c947ddd88beddcb9e1e64931f3bd4d18904fea1a03384192dfa398",
+    "reconciliation_path": "/tmp/videoforge-v207-attempt44-runpod-reconciliation.json",
+    "reconciliation_sha256": "sha256:ee4cae58d284d6bbf5c4cbe9c1ebcec94e65b63309945031c771a0a64b93320f",
+    "cloudflare_anchor_path": "/tmp/videoforge-v207-attempt44-cloudflare-anchor.json",
+    "cloudflare_anchor_sha256": "sha256:3c8d749dca874d60d51d7f83a9131d6f7e984cddaa958a3beffa02c31c0532cc",
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "provider_calls_authorized": false,
+    "gpu_use_authorized": false,
+    "v2_08_authorized": false
+  },
+  "next_boundary": "PROVIDER_FREE_CANDIDATE_ONLY; FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP_REQUIRED; V2-08-FORBIDDEN"
+}

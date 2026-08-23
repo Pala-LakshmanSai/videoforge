@@ -758,9 +758,17 @@ retry, warm batch, reader dispatch, or duplicate submission. The candidate propo
 at `sha256:386dd8330f8e626d9afe8c8de8bbd1385fd9664b9fefbc472c24722105f917f9`. The user approved
 FlashBoot=true/LOW EU-RO-1 and a fresh USD 4 cap. Authority
 `sha256:c59bd74673263eeeafed828dade74fe36ae2f27ed7914d413e37bfd6722a3b35` is recorded; provider
-execution remains pending and is bounded to this exact proposal.
+execution was historically bounded to that proposal.
 
 ## Context navigation
+
+`evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/combined-live-proposal.json`
+`sha256:3d87c4a1a75f16d175645c205c0dfc6c172b6c7e0d5cafdb0fcb7ec9276dd589`;
+`evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/acceptance.json`
+`sha256:2b692658b42cbc0c97168132d19c471a52b3beed1ef0246b0e3d27ea581f5fae`;
+`evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/read-only-preflight.json`.
+`sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c`;
+`sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c`; V2-08.
 
 Read `MANIFEST.yaml`, `CURRENT_STATE.yaml`, then only the selected profile and task. Normative
 decisions: `15_DECISIONS_AND_OPEN_GATES.md`; architecture: `06_SYSTEM_ARCHITECTURE.md`; models:
