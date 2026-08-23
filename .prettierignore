@@ -13,3 +13,6 @@ docs
 packages/contracts/generated
 packages/contracts/.venv
 pnpm-lock.yaml
+
+# Exact V2-07 approval binding stays one line so canonical source bytes remain invariant.
+apps/web/src/server/providers/v207-activation-authority.ts

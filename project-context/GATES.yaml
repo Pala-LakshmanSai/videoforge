@@ -157,6 +157,16 @@ gates:
     current_candidate_acceptance_sha256: "sha256:f8abbd1acaf111d8c0986d0de2569ee5598bfb9b62c5f27c87da082d00fb94b1"
     current_candidate_preflight: "evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/read-only-preflight.json"
     current_candidate_preflight_sha256: "sha256:fa2c02e3117229d2b656255092c914514c9a4364fb38fc0b921d37cc025c683c"
+    current_candidate_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/approved-authority.json"
+    current_candidate_authority_sha256: "sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f"
+    current_candidate_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
+    current_candidate_authority_mode: bounded_mutation
+    current_candidate_finite_cap_usd: 4
+    current_candidate_anchor_refresh_authorized: false
+    current_candidate_cloudflare_mutation_authorized: true
+    current_candidate_scoped_signer_worker_route_activation_authorized: true
+    current_candidate_provider_calls_completed: false
+    current_candidate_external_spend_usd: 0
     current_candidate_control_source_commit: "1089c4729424ee066408e1de8fe927e17cf3915f"
     current_candidate_image_source_commit: "a7b7a937d08dc9032b8922cca71c602195f3094c"
     current_candidate_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
@@ -190,6 +200,14 @@ gates:
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
     pending_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/combined-live-proposal.json"
     pending_proposal_sha256: "sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e"
+    pending_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/approved-authority.json"
+    pending_authority_sha256: "sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f"
+    pending_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
+    pending_authority_mode: bounded_mutation_attempt44_pending_execution
+    pending_numeric_cap_usd: 4
+    pending_anchor_refresh_authorized: false
+    pending_cloudflare_mutation_authorized: true
+    pending_scoped_signer_worker_route_activation_authorized: true
     pending_control_source_commit: "1089c4729424ee066408e1de8fe927e17cf3915f"
     pending_live_qualification_source_sha256: "sha256:f842296ca11786fb97cf6c7a1286a38b867b42344bb91c33b6ce9f64ac377e4d"
     pending_orchestrator_source_sha256: "sha256:cfb288a20c169c3649495a54bee1aa7534ff5442e0627051a0b1d4f8750a3441"
@@ -210,16 +228,14 @@ gates:
     pending_old_active_record_sha256: "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878"
     pending_old_active_index_oldest_to_newest: 7
     pending_old_active_window_length: 10
-    pending_authority: null
-    pending_authority_sha256: null
-    pending_numeric_cap_usd: null
     pending_flashboot: true
     pending_availability: HIGH
-    provider_calls_authorized: false
-    provider_mutations_authorized: false
-    gpu_use_authorized: false
-    authority_mode: none_attempt44_pending_fresh_approval
-    result: "NOT_QUALIFIED_attempt44_provider_free_candidate_pending_fresh_approval"
+    provider_calls_authorized: true
+    provider_mutations_authorized: true
+    gpu_use_authorized: true
+    v2_08_authorized: false
+    authority_mode: bounded_mutation_attempt44_pending_execution
+    result: "NOT_QUALIFIED_attempt44_approved_bounded_mutation_pending_execution"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-43.json"
     closure_evidence_sha256: "sha256:1699d5429b12a5573b10be5b325a780f5a1c7d484b960fdb0758e64381391494"
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt43-cleanup-observation.json"
@@ -227,7 +243,7 @@ gates:
     reconciliation_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt43-reconciliation-observation.json"
     reconciliation_evidence_sha256: "sha256:e9fe4d7547b2ddc38a3766d22044b414037d09dd5426ab4a9816aea18336da6a"
     settled_reconciliation_source_sha256: "sha256:805be262eddfe9597ff5aa1c0732cdc31d502fdb6312d815c4226ef413058c7c"
-    next_boundary: "fresh exact Attempt44 proposal approval and positive numeric cap required; provider/GPU/spend disabled; V2-08 forbidden"
+    next_boundary: "execute only exact approved bounded operations; stop on negative condition, cleanup uncertainty, cap risk, or before V2-08"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

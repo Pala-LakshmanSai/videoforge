@@ -28,6 +28,7 @@ const expected = {
   attempt: 44,
   proposal: "sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e",
   acceptance: "sha256:f8abbd1acaf111d8c0986d0de2569ee5598bfb9b62c5f27c87da082d00fb94b1",
+  authority: "sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f",
   max1: "sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c",
   max2: "sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c",
   preflight: "sha256:fa2c02e3117229d2b656255092c914514c9a4364fb38fc0b921d37cc025c683c",
@@ -46,6 +47,8 @@ const expected = {
   canonicalActivation:
     "sha256:82e3e571a304e96ace9cbd861c8cd2e691e36964223c40702d0115a17931f7d7",
   rawActivation:
+    "sha256:6e36bce937a10317988d47bb0f67931c0af1d7c7c60d55db66b3a88e5a898d6e",
+  proposalRawActivation:
     "sha256:1034d31fd39565acddf6f3a433e1ff42d505e3eea24bd767c530c18c19b4091f",
   pendingAttempt43:
     "sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458",
@@ -72,11 +75,11 @@ const shaPattern = /^sha256:[a-f0-9]{64}$/u;
 const pathFor = (name) => paths[name];
 
 for (const [name, path] of Object.entries(paths)) {
-  if (name !== "authority") assert(existsSync(path), `MISSING_${name}`);
+  assert(existsSync(path), `MISSING_${name}`);
 }
-assert(!existsSync(paths.authority), "AUTHORITY_FILE_PRESENT");
 const proposal = json(paths.proposal);
 const acceptance = json(paths.acceptance);
+const authority = json(paths.authority);
 const preflight = json(paths.preflight);
 const anchor = json(paths.anchor);
 const reconciliation = json(paths.reconciliation);
@@ -90,6 +93,7 @@ for (const [name, expectedHash] of Object.entries({
   reconciliation: expected.reconciliation,
   max1: expected.max1,
   max2: expected.max2,
+  authority: expected.authority,
 })) {
   assert(sha(pathFor(name)) === expectedHash, `${name.toUpperCase()}_HASH`);
   assert(shaPattern.test(expectedHash), `${name.toUpperCase()}_HASH_FORMAT`);
@@ -160,7 +164,7 @@ assert(
       expected.canonicalActivation &&
     lineage?.control_source_hashes?.typed_authority_source_hash_mode ===
       "CANONICAL_ZEROED_APPROVAL_BINDINGS_V2" &&
-    lineage?.control_source_hashes?.typed_authority_raw_source_sha256 === expected.rawActivation,
+    lineage?.control_source_hashes?.typed_authority_raw_source_sha256 === expected.proposalRawActivation,
   "CONTROL_LINEAGE",
 );
 const compiled = lineage?.compiled_activation_boundary;
@@ -401,6 +405,143 @@ assert(
   "ACCEPTANCE_BOUNDARY",
 );
 
+const authorityPath =
+  "evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/approved-authority.json";
+const expectedRuntimeContract = {
+  offline_sealed_manifest_verification: true,
+  real_initialization_warmup: true,
+  application_read_only_model_files: true,
+  job_local_scratch: "/tmp/videoforge-v2-07/${job_id}",
+  scoped_r2_output_ports: true,
+  durable_per_unit_resume: true,
+  seed_then_distinct_replacement_process_required: true,
+  replacement_only_unresolved_units: true,
+  accepted_units_never_regenerated: true,
+  no_extra_probe_dispatch: true,
+  runtime_download_or_quantization: false,
+  cache_escape_forbidden: true,
+  completed_reader_results_require_full_output_readback_and_v3_receipt_verification: true,
+  provider_response_body_url_ids_or_secrets_retained: false,
+  fresh_cap_is_incremental_over_baseline: true,
+  downward_or_invalid_billing_read_fails_closed: true,
+  rollback_anchor_must_be_in_newest_seven_of_bounded_ten: true,
+  exact_active_version_record_hash_and_route_fingerprint_restore_required: true,
+};
+assert(
+  authority.schema_version ===
+    "videoforge.v2-07-attempt44-version-metadata-probe-authority/v1" &&
+    authority.checkpoint === "V2-07" &&
+    authority.task_id === "VF-10-07" &&
+    authority.attempt === expected.attempt &&
+    authority.authority_mode === "bounded_mutation" &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal?.path === "combined-live-proposal.json" &&
+    authority.proposal?.sha256 === expected.proposal &&
+    authority.acceptance?.path === "acceptance.json" &&
+    authority.acceptance?.sha256 === expected.acceptance &&
+    authority.approval?.exact_proposal_approved === true &&
+    authority.approval?.flashboot_true_accepted === true &&
+    authority.approval?.minimum_approved_availability === "LOW-or-better" &&
+    authority.approval?.observed_availability_at_proposal === "HIGH" &&
+    authority.approval?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval?.fresh_numeric_cap === true &&
+    authority.approval?.historical_cap_reused === false &&
+    authority.approval?.prior_authority_reused === false &&
+    authority.approval?.single_use === true &&
+    authority.approval?.consumed === false &&
+    authority.approval?.anchor_refresh_authorized === false &&
+    authority.approval?.recurring_retained_volume_charge_usd_per_month === 7 &&
+    authority.approval?.recurring_charge_is_outside_finite_cap === true,
+  "AUTHORITY_SCOPE_AND_APPROVAL",
+);
+assert(
+  authority.lineage?.image === expected.image &&
+    authority.lineage?.image_source_commit === expected.imageSource &&
+    authority.lineage?.model === expected.model &&
+    authority.lineage?.model_manifest_sha256 === expected.manifest &&
+    authority.lineage?.volume_id_sha256 === expected.mageVolume &&
+    authority.lineage?.volume_size_gb === 50 &&
+    authority.lineage?.volume_region === "EU-RO-1" &&
+    authority.lineage?.volume_mount === "/runpod-volume" &&
+    authority.lineage?.model_root === "/runpod-volume/mage-model" &&
+    authority.lineage?.volume_write_policy === "APPLICATION_READ_ONLY" &&
+    authority.lineage?.initial_config_sha256 === expected.max1 &&
+    authority.lineage?.concurrent_reader_config_sha256 === expected.max2 &&
+    authority.lineage?.handler_source_sha256 === expected.handler &&
+    authority.lineage?.execution_subset_schema_sha256 === expected.subset &&
+    authority.lineage?.gpu === "NVIDIA GeForce RTX 4090" &&
+    authority.lineage?.flashboot === true &&
+    authority.lineage?.protected_config?.baseline_sha256 === expected.configBaseline &&
+    authority.lineage?.protected_config?.mode === "0600" &&
+    authority.lineage?.protected_config?.version_metadata_binding === "CF_VERSION_METADATA" &&
+    authority.lineage?.protected_config?.marker_state === "DISABLED" &&
+    authority.lineage?.protected_config?.config_mutation_authorized === false &&
+    authority.lineage?.protected_config?.marker_mutation_authorized === false,
+  "AUTHORITY_IDENTITY_AND_CONFIG",
+);
+assert(
+  JSON.stringify(authority.approved_operations?.operations) ===
+      JSON.stringify(proposal.approved_operations_to_be_proposed_once_after_fresh_approval) &&
+    authority.approved_operations?.proposal_sha256 === expected.proposal &&
+    authority.approved_operations?.all_and_only_listed_operations_authorized === true &&
+    authority.approved_operations?.runpod_mutation_authorized_pending_execution === true &&
+    authority.approved_operations?.gpu_use_authorized_pending_execution === true &&
+    authority.approved_operations?.cloudflare_mutation_authorized === true &&
+    authority.approved_operations?.scoped_signer_worker_route_activation_authorized_pending_execution ===
+      true &&
+    authority.approved_operations?.anchor_refresh_authorized === false &&
+    authority.approved_operations?.image_republication_authorized === false &&
+    authority.approved_operations?.retained_volume_mutation_authorized === false &&
+    authority.approved_operations?.model_download_preparation_or_quantization_authorized === false &&
+    authority.approved_operations?.gpu_or_region_fallback_authorized === false &&
+    authority.approved_operations?.v2_08_authorized === false,
+  "AUTHORITY_OPERATIONS_BOUNDARY",
+);
+assert(
+  JSON.stringify(authority.runtime_contract) === JSON.stringify(expectedRuntimeContract) &&
+    authority.cleanup_and_rollback?.restore_max1_after_max2_reader_proof === true &&
+    authority.cleanup_and_rollback?.terminal_workers_zero_required === true &&
+    authority.cleanup_and_rollback?.exact_disposable_cleanup_on_failure === true &&
+    authority.cleanup_and_rollback?.ephemeral_signer_delete_required === true &&
+    authority.cleanup_and_rollback?.temporary_worker_route_rollback_required === true &&
+    authority.cleanup_and_rollback?.pre_mutation_route_fingerprint_required ===
+      "404 V207_ROUTE_DISABLED" &&
+    authority.cleanup_and_rollback?.stop_on_uncertain_cleanup === true &&
+    authority.cleanup_and_rollback?.stop_on_cap_risk_or_downward_billing === true &&
+    authority.cleanup_and_rollback?.protected_config_baseline_sha256 === expected.configBaseline &&
+    authority.cleanup_and_rollback?.protected_config_mode === "0600" &&
+    authority.cleanup_and_rollback?.marker_state === "DISABLED" &&
+    authority.cleanup_and_rollback?.anchor_refresh_required === false &&
+    authority.cleanup_and_rollback?.retained_volumes_untouched === true &&
+    authority.cleanup_and_rollback?.settled_incremental_spend_required_within_cap === true &&
+    authority.retention?.durable_outputs_before_provider_expiry === true &&
+    authority.retention?.v3_authority_provenance_receipts_required === true &&
+    authority.retention?.accepted_units_never_regenerated === true &&
+    authority.retention?.replacement_only_unresolved_units === true &&
+    authority.retention?.provider_response_body_urls_ids_and_secrets_not_retained === true &&
+    authority.retention?.endpoint_template_retention_on_success === true &&
+    authority.retention?.retained_volume_billing_separate_from_finite_cap === true &&
+    authority.retention?.ongoing_retained_volume_charge_usd_per_month === 7 &&
+    JSON.stringify(authority.stop_conditions) ===
+      JSON.stringify(proposal.negative_tests_and_stop_conditions),
+  "AUTHORITY_CLEANUP_RETENTION_STOPS",
+);
+assert(
+  authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true &&
+    authority.execution_boundary?.cloudflare_mutation_authorized_pending_execution === true &&
+    authority.execution_boundary?.gpu_use_authorized_pending_execution === true &&
+    authority.execution_boundary?.anchor_refresh_authorized === false &&
+    authority.execution_boundary?.provider_calls_completed === false &&
+    authority.execution_boundary?.external_spend_usd === 0 &&
+    authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.execution_boundary?.retained_volume_mutation_authorized === false &&
+    authority.execution_boundary?.v2_08_authorized === false &&
+    authority.lineage?.prior_attempt?.attempt === 43 &&
+    authority.lineage?.prior_attempt?.authority_consumed === true &&
+    authority.lineage?.prior_attempt?.settled_incremental_spend_usd === 0,
+  "AUTHORITY_EXECUTION_BOUNDARY",
+);
+
 const activation = text(paths.activation);
 const activationTest = text(paths.activationTest);
 assert(sha(paths.activation) === expected.rawActivation, "ACTIVATION_RAW_HASH");
@@ -410,12 +551,16 @@ const pointerMatches = [
   ),
 ];
 assert(pointerMatches.length === 1, "ACTIVATION_POINTER_COUNT");
-assert(`sha256:${pointerMatches[0][2]}` === expected.pendingAttempt43, "ACTIVATION_CONSUMED_POINTER");
+assert(`sha256:${pointerMatches[0][2]}` === expected.proposal, "ACTIVATION_ATTEMPT44_POINTER");
 assert(
-  /export const V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(activation) &&
-    /export const V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation) &&
-    /export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation),
-  "ACTIVATION_NULLS",
+  /export const V207_APPROVED_AUTHORITY_SHA256: string \| null = "sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f";/u.test(
+    activation,
+  ) &&
+    /export const V207_APPROVED_FINITE_CAP_USD: number \| null = 4;/u.test(activation) &&
+    /export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = false;/u.test(activation) &&
+    activation.includes("V207_PENDING_CONTROL_SOURCE_COMMIT") &&
+    activation.includes("78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6"),
+  "ACTIVATION_APPROVED_BINDINGS",
 );
 let canonicalActivation = activation;
 for (const [pattern, replacement, label] of [
@@ -449,11 +594,12 @@ assert(
   "ACTIVATION_CANONICAL_HASH",
 );
 assert(
-  activationTest.includes("Attempt43") &&
-    activationTest.includes("V207_FRESH_AUTHORITY_REQUIRED") &&
-    activationTest.includes(expected.pendingAttempt43.slice(7)) &&
-    activationTest.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull()"),
-  "ACTIVATION_NEGATIVE_TESTS_PRESENT",
+  activationTest.includes("Attempt44") &&
+    activationTest.includes("V207_FINITE_CAP_REQUIRED") &&
+    activationTest.includes("V207_FINITE_CAP_MISMATCH") &&
+    activationTest.includes(expected.proposal.slice(7)) &&
+    activationTest.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false)"),
+  "ACTIVATION_APPROVAL_TESTS_PRESENT",
 );
 try {
   execFileSync(
@@ -480,36 +626,49 @@ for (const [name, surface] of Object.entries({ state, gates, start, task })) {
   assert(surface.includes(expected.proposal), `${name.toUpperCase()}_PROPOSAL_POINTER`);
   assert(surface.includes(acceptancePath), `${name.toUpperCase()}_ACCEPTANCE_POINTER`);
   assert(surface.includes(expected.acceptance), `${name.toUpperCase()}_ACCEPTANCE_HASH_POINTER`);
+  assert(surface.includes(authorityPath), `${name.toUpperCase()}_AUTHORITY_POINTER`);
+  assert(surface.includes(expected.authority), `${name.toUpperCase()}_AUTHORITY_HASH_POINTER`);
   assert(surface.includes(preflightPath), `${name.toUpperCase()}_PREFLIGHT_POINTER`);
   assert(surface.includes(expected.max1) && surface.includes(expected.max2), `${name.toUpperCase()}_CONFIG_POINTER`);
   assert(surface.includes("V2-08"), `${name.toUpperCase()}_V2_08_FENCE`);
 }
 const stateHeader = state.slice(0, state.indexOf("current_goal_boundary:"));
 assert(
-  stateHeader.includes("phase: serverless_v2_v2_07_attempt44_version_metadata_probe_candidate") &&
-    stateHeader.includes("task_stage: provider_free_diagnosis") &&
-    stateHeader.includes("provider_calls_authorized: false") &&
+  stateHeader.includes("phase: serverless_v2_v2_07_attempt44_version_metadata_probe_bounded_mutation") &&
+    stateHeader.includes("task_stage: bounded_mutation_pending_execution") &&
+    stateHeader.includes("provider_calls_authorized: true") &&
     stateHeader.includes("read_only_provider_calls_authorized: false") &&
-    stateHeader.includes("gpu_use_authorized: false") &&
-    stateHeader.includes("maximum_external_spend_usd: 0"),
+    stateHeader.includes("remote_or_cloud_mutations_authorized: true") &&
+    stateHeader.includes("gpu_use_authorized: true") &&
+    stateHeader.includes("maximum_external_spend_usd: 4"),
   "STATE_ACTIVE_BOUNDARY",
 );
 assert(
-  gates.includes("authority_mode: none_attempt44_pending_fresh_approval") &&
-    gates.includes("pending_numeric_cap_usd: null") &&
-    gates.includes("provider_calls_authorized: false") &&
-    gates.includes("gpu_use_authorized: false"),
+  gates.includes("authority_mode: bounded_mutation_attempt44_pending_execution") &&
+    gates.includes("pending_numeric_cap_usd: 4") &&
+    gates.includes("provider_calls_authorized: true") &&
+    gates.includes("provider_mutations_authorized: true") &&
+    gates.includes("gpu_use_authorized: true") &&
+    gates.includes("v2_08_authorized: false"),
   "GATES_ACTIVE_BOUNDARY",
 );
 assert(
   state.includes("provider_authority_attempt44") &&
-    state.includes("authority_state: PENDING_FRESH_EXACT_APPROVAL") &&
-    state.includes("cap_usd: null") &&
+    state.includes("authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION") &&
+    state.includes("authority_mode: bounded_mutation") &&
+    state.includes(`authority_path: ${authorityPath}`) &&
+    state.includes(`authority_sha256: "${expected.authority}"`) &&
+    state.includes("cap_usd: 4") &&
     state.includes("anchor_refresh_authorized: false") &&
-    state.includes("authority_recorded: false"),
+    state.includes("authority_recorded: true") &&
+    state.includes("provider_calls_authorized: true") &&
+    state.includes("provider_mutations_authorized: true") &&
+    state.includes("gpu_use_authorized: true") &&
+    state.includes("maximum_cumulative_finite_spend_usd: 4") &&
+    state.includes("v2_08_authorized: false"),
   "STATE_AUTHORITY_RECORD",
 );
 
 console.log(
-  `V2-07 Attempt44 provider-free candidate validation PASS (${expected.proposal}; authority/cap/anchor-refresh disabled; Attempt43 env rejected)`,
+  `V2-07 Attempt44 approved bounded-mutation validation PASS (${expected.proposal}; ${expected.authority}; cap=$4; anchor-refresh disabled; Attempt43 env rejected)`,
 );

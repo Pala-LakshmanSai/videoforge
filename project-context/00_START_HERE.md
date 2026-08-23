@@ -770,6 +770,11 @@ execution was historically bounded to that proposal.
 `sha256:fa2c02e3117229d2b656255092c914514c9a4364fb38fc0b921d37cc025c683c`;
 `sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c`;
 `sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c`; V2-08.
+Exact user approval is recorded only in
+`evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/approved-authority.json`
+at `sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f`.
+Approved: RTX4090/FlashBoot, LOW+ EU-RO-1, `$4`.
+Anchor/config/marker/image/model/volume mutation and V2-08 forbidden.
 
 Read `MANIFEST.yaml`, `CURRENT_STATE.yaml`, then only the selected profile and task. Normative
 decisions: `15_DECISIONS_AND_OPEN_GATES.md`; architecture: `06_SYSTEM_ARCHITECTURE.md`; models:
