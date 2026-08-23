@@ -1,13 +1,14 @@
 # VideoForge: start here
 
-Attempt43 is a provider-free anchor-refresh candidate pending exact approval and a fresh positive cap.
+Attempt43 is approved once and pending bounded execution under a fresh USD 4 cap; no provider call or spend has occurred.
 Proposal `sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458` binds the exact Mage
 image/model/volume, Attempt42 closure hashes, exact authority `e5571ed`, orchestrator-owned marker lifecycle
 `3dda73f`, exact config-path pin `75c784a`, fresh catalog/success reconciliation `5e1e5a0`, atomic helper `816d286`, baseline config
 `sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175` mode 0600, projected marker
 `sha256:a01a6ec7ffa45a187f8b4cc094ca1522c33a37a6f3e4aea06cb2a38b14120fd5`, old active Worker version-ID hash
 `sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48`, and canonical active-version record
-hash `sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97` at index 0/10. It requires fresh LOW-or-better catalog/rate admission, a distinct newest-seven anchor, stable `404 V207_ROUTE_DISABLED`, three stable retained-resource success reads, exact cleanup revert, and no authority/cap/provider/GPU/spend; no image/model/volume mutation or V2-08.
+hash `sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97` at index 0/10. The user approved this exact proposal with FlashBoot=true, LOW-or-better EU-RO-1 availability, fresh maximum cumulative finite spend `$4`, and `anchorRefreshAuthorized=true`; append-only authority
+`approved-authority.json` is `sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b`. Execute only the exact listed sequence after the required fresh read-only refresh, retain the sealed Mage volume, and stop on any mismatch, cap risk, failed output, uncertain cleanup, or V2-08 boundary. No provider call, mutation, GPU use, or spend has occurred yet; image/model/volume mutation and V2-08 remain forbidden.
 
 Attempt42 is closed `NOT_QUALIFIED` before provider mutation. Exact proposal
 `sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de` and authority

@@ -10,6 +10,7 @@ const dir = resolve(
 const paths = {
   proposal: resolve(dir, "combined-live-proposal.json"),
   acceptance: resolve(dir, "acceptance.json"),
+  authority: resolve(dir, "approved-authority.json"),
   preflight: resolve(dir, "read-only-preflight.json"),
   max1: resolve(dir, "staged-config-max1.json"),
   max2: resolve(dir, "staged-config-max2.json"),
@@ -69,6 +70,9 @@ const expected = {
     "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
   markerKey: "V207_ROLLBACK_ANCHOR_REFRESH",
   markerValue: "two-phase-v1",
+  authority:
+    "sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b",
+  finiteCapUsd: 4,
 };
 const fail = (code) => {
   throw new Error("V207_ATTEMPT43_CANDIDATE_" + code);
@@ -83,14 +87,15 @@ const sha = (path) => "sha256:" + createHash("sha256").update(bytes(path)).diges
 const shaPattern = /^sha256:[a-f0-9]{64}$/u;
 
 for (const path of Object.values(paths)) assert(existsSync(path), "MISSING_" + path);
-assert(!existsSync(resolve(dir, "approved-authority.json")), "AUTHORITY_FILE_PRESENT");
 const proposal = json(paths.proposal);
 const acceptance = json(paths.acceptance);
+const authority = json(paths.authority);
 const preflight = json(paths.preflight);
 const max1 = json(paths.max1);
 const max2 = json(paths.max2);
 const proposalHash = sha(paths.proposal);
 const acceptanceHash = sha(paths.acceptance);
+const authorityHash = sha(paths.authority);
 const preflightHash = sha(paths.preflight);
 const max1Hash = sha(paths.max1);
 const max2Hash = sha(paths.max2);
@@ -99,15 +104,48 @@ const proposalPointerPattern =
   /(\bexport const V207_PENDING_PROPOSAL_SHA256\s*=\s*(?:\r?\n\s*)?")sha256:([a-f0-9]{64})("\s+as const;)/gu;
 const proposalPointerMatches = [...activationSource.matchAll(proposalPointerPattern)];
 assert(proposalPointerMatches.length === 1, "ACTIVATION_PROPOSAL_POINTER_COUNT");
-const canonicalActivationSource = activationSource.replace(
+const replaceOne = (source, pattern, replacement, code) => {
+  const matches = source.match(pattern);
+  assert(matches?.length === 1, code);
+  return source.replace(pattern, replacement);
+};
+// The proposal binds the pre-approval canonical source.  Approval only changes
+// these three compiled constants plus the exact proposal pointer; normalize
+// them back to their pre-approval values before checking the immutable hash.
+let canonicalActivationSource = activationSource.replace(
   proposalPointerPattern,
   `$1sha256:${"0".repeat(64)}$3`,
+);
+canonicalActivationSource = replaceOne(
+  canonicalActivationSource,
+  /export const V207_APPROVED_AUTHORITY_SHA256: string \| null\s*=\s*"sha256:[a-f0-9]{64}";/gu,
+  "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;",
+  "ACTIVATION_AUTHORITY_CONSTANT_COUNT",
+);
+canonicalActivationSource = replaceOne(
+  canonicalActivationSource,
+  /export const V207_APPROVED_FINITE_CAP_USD: number \| null\s*=\s*4;/gu,
+  "export const V207_APPROVED_FINITE_CAP_USD: number | null = null;",
+  "ACTIVATION_CAP_CONSTANT_COUNT",
+);
+canonicalActivationSource = replaceOne(
+  canonicalActivationSource,
+  /export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null\s*=\s*true;/gu,
+  "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;",
+  "ACTIVATION_ANCHOR_CONSTANT_COUNT",
 );
 const activationSourceHash =
   "sha256:" + createHash("sha256").update(canonicalActivationSource).digest("hex");
 const activationProposalHash = `sha256:${proposalPointerMatches[0][2]}`;
 
-for (const [name, value] of Object.entries({ proposalHash, acceptanceHash, preflightHash, max1Hash, max2Hash })) {
+for (const [name, value] of Object.entries({
+  proposalHash,
+  acceptanceHash,
+  authorityHash,
+  preflightHash,
+  max1Hash,
+  max2Hash,
+})) {
   assert(shaPattern.test(value), name + "_FORMAT");
 }
 assert(proposal.attempt === expected.attempt, "PROPOSAL_ATTEMPT");
@@ -244,6 +282,83 @@ assert(
     proposal.cost_estimate?.ongoing_volume_charge_separate_from_finite_cap === true,
   "COST_BOUNDARY",
 );
+assert(
+  authorityHash === expected.authority &&
+    authority.schema_version === "videoforge.v2-07-attempt43-anchor-refresh-authority/v1" &&
+    authority.checkpoint === "V2-07" &&
+    authority.task_id === "VF-10-07" &&
+    authority.attempt === expected.attempt &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal?.path === "combined-live-proposal.json" &&
+    authority.proposal?.sha256 === proposalHash &&
+    authority.approval?.exact_proposal_approved === true &&
+    authority.approval?.flashboot_true_accepted === true &&
+    authority.approval?.low_or_better_eu_ro_1_availability_approved === true &&
+    authority.approval?.minimum_approved_availability === "LOW" &&
+    authority.approval?.observed_availability_at_proposal === "HIGH" &&
+    authority.approval?.maximum_cumulative_finite_spend_usd === expected.finiteCapUsd &&
+    authority.approval?.fresh_numeric_cap === true &&
+    authority.approval?.historical_cap_reused === false &&
+    authority.approval?.prior_authority_reused === false &&
+    authority.approval?.single_use === true &&
+    authority.approval?.consumed === false &&
+    authority.approval?.anchor_refresh_authorized === true &&
+    authority.approval?.recurring_retained_volume_charge_usd_per_month === 7 &&
+    authority.approval?.recurring_charge_is_outside_finite_cap === true,
+  "AUTHORITY_APPROVAL",
+);
+assert(
+  authority.lineage?.image === expected.image &&
+    authority.lineage?.image_source_commit === expected.imageSource &&
+    authority.lineage?.model === expected.model &&
+    authority.lineage?.model_manifest_sha256 === expected.manifest &&
+    authority.lineage?.volume_id_sha256 === expected.mageVolume &&
+    authority.lineage?.volume_size_gb === 50 &&
+    authority.lineage?.volume_region === "EU-RO-1" &&
+    authority.lineage?.volume_mount === "/runpod-volume" &&
+    authority.lineage?.model_root === "/runpod-volume/mage-model" &&
+    authority.lineage?.gpu === "NVIDIA GeForce RTX 4090" &&
+    authority.lineage?.flashboot === true &&
+    authority.lineage?.initial_config_path === "staged-config-max1.json" &&
+    authority.lineage?.initial_config_sha256 === max1Hash &&
+    authority.lineage?.concurrent_reader_config_path === "staged-config-max2.json" &&
+    authority.lineage?.concurrent_reader_config_sha256 === max2Hash &&
+    authority.lineage?.protected_config_anchor_refresh?.baseline_sha256 === expected.baselineConfig &&
+    authority.lineage?.protected_config_anchor_refresh?.projected_marker_sha256 === expected.projectedConfig &&
+    authority.lineage?.cloudflare_anchor_refresh?.old_active_version_id_sha256 ===
+      expected.oldActiveVersionId &&
+    authority.lineage?.cloudflare_anchor_refresh?.old_active_record_sha256 === expected.oldActiveRecord,
+  "AUTHORITY_LINEAGE",
+);
+assert(
+  authority.lineage?.control_source_hashes?.typed_authority_source_sha256 === expected.typedAuthoritySource &&
+    authority.lineage?.control_source_hashes?.typed_authority_source_hash_mode ===
+      "CANONICAL_ZEROED_PROPOSAL_POINTER_V1" &&
+    authority.authorized_operations?.source ===
+      "combined-live-proposal.json#approved_operations_to_be_proposed_once" &&
+    authority.authorized_operations?.proposal_sha256 === proposalHash &&
+    authority.authorized_operations?.all_and_only_listed_operations_authorized === true &&
+    authority.authorized_operations?.anchor_refresh_authorized === true &&
+    authority.authorized_operations?.publication_or_tag_mutation_authorized === false &&
+    authority.authorized_operations?.image_republication_authorized === false &&
+    authority.authorized_operations?.retained_volume_mutation_authorized === false &&
+    authority.authorized_operations?.model_download_preparation_or_quantization_authorized === false &&
+    authority.authorized_operations?.gpu_or_region_fallback_authorized === false &&
+    authority.authorized_operations?.v2_08_authorized === false,
+  "AUTHORITY_OPERATIONS",
+);
+assert(
+  authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true &&
+    authority.execution_boundary?.cloudflare_mutation_authorized_pending_execution === true &&
+    authority.execution_boundary?.gpu_use_authorized_pending_execution === true &&
+    authority.execution_boundary?.anchor_refresh_authorized === true &&
+    authority.execution_boundary?.provider_calls_completed === false &&
+    authority.execution_boundary?.external_spend_usd === 0 &&
+    authority.execution_boundary?.maximum_cumulative_finite_spend_usd === expected.finiteCapUsd &&
+    authority.execution_boundary?.retained_volume_mutation_authorized === false &&
+    authority.execution_boundary?.v2_08_authorized === false,
+  "AUTHORITY_EXECUTION_BOUNDARY",
+);
 for (const fragment of [
   "let the hashed orchestrator atomically apply two-phase-v1",
   "capture the old active Cloudflare Worker record",
@@ -354,21 +469,29 @@ assert(
   "VOLUMES",
 );
 assert(
-  acceptance.result === "PROVIDER_FREE_CANDIDATE_PENDING_EXACT_APPROVAL" &&
+  acceptance.result === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
     acceptance.qualification_status === "NOT_QUALIFIED_PENDING_EXECUTION" &&
     acceptance.attempt === expected.attempt &&
     acceptance.candidate?.proposal_sha256 === proposalHash &&
     acceptance.candidate?.max1_sha256 === max1Hash &&
     acceptance.candidate?.max2_sha256 === max2Hash &&
-    acceptance.candidate?.authority_path === null &&
-    acceptance.candidate?.authority_sha256 === null &&
-    acceptance.candidate?.authority_recorded === false &&
-    acceptance.candidate?.maximum_cumulative_finite_spend_usd === null &&
-    acceptance.provider_boundary?.provider_calls_authorized === false &&
-    acceptance.provider_boundary?.provider_mutations_authorized === false &&
-    acceptance.provider_boundary?.gpu_use_authorized === false &&
-    acceptance.provider_boundary?.authority_active === false &&
-    acceptance.provider_boundary?.authority_file_present === false,
+    acceptance.candidate?.authority_path === "approved-authority.json" &&
+    acceptance.candidate?.authority_sha256 === authorityHash &&
+    acceptance.candidate?.authority_recorded === true &&
+    acceptance.candidate?.maximum_cumulative_finite_spend_usd === expected.finiteCapUsd &&
+    acceptance.candidate?.fresh_numeric_cap_required === true &&
+    acceptance.provider_boundary?.provider_calls_authorized === true &&
+    acceptance.provider_boundary?.provider_mutations_authorized === true &&
+    acceptance.provider_boundary?.gpu_use_authorized === true &&
+    acceptance.provider_boundary?.authority_active === true &&
+    acceptance.provider_boundary?.authority_file_present === true &&
+    acceptance.provider_boundary?.maximum_cumulative_finite_spend_usd === expected.finiteCapUsd &&
+    acceptance.provider_boundary?.anchor_refresh_authorized === true &&
+    acceptance.provider_boundary?.read_only_refresh_completed === false &&
+    acceptance.provider_boundary?.publication_authorized === false &&
+    acceptance.provider_boundary?.image_republication_forbidden === true &&
+    acceptance.provider_boundary?.retained_volume_mutation_authorized === false &&
+    acceptance.provider_boundary?.v2_08_authorized === false,
   "ACCEPTANCE",
 );
 assert(
@@ -389,12 +512,19 @@ assert(
     activation.includes(expected.orchestratorCommit) &&
     activation.includes(expected.qualificationCommit) &&
     activationTest.includes("Attempt43") &&
-    activationTest.includes("V207_FRESH_AUTHORITY_REQUIRED"),
+    activationTest.includes("V207_FINITE_CAP_REQUIRED") &&
+    activationTest.includes("V207_FINITE_CAP_MISMATCH"),
   "ACTIVATION",
 );
 for (const [name, path] of Object.entries({ state: paths.state, gates: paths.gates, start: paths.start, task: paths.task })) {
   const surface = text(path);
-  assert(surface.includes(proposalHash) && surface.includes("V2-08"), name.toUpperCase() + "_POINTER");
+  assert(
+    surface.includes(proposalHash) &&
+      surface.includes(expected.authority) &&
+      surface.includes("approved-authority.json") &&
+      surface.includes("V2-08"),
+    name.toUpperCase() + "_POINTER",
+  );
 }
 const state = text(paths.state);
 const gates = text(paths.gates);
@@ -402,9 +532,10 @@ const start = text(paths.start);
 const task = text(paths.task);
 assert(
   state.includes("attempt43") &&
-    state.includes("provider_calls_authorized: false") &&
-    state.includes("gpu_use_authorized: false") &&
-    state.includes("maximum_external_spend_usd: 0") &&
+    state.includes("provider_calls_authorized: true") &&
+    state.includes("gpu_use_authorized: true") &&
+    state.includes("maximum_external_spend_usd: 4") &&
+    state.includes("task_stage: bounded_mutation") &&
     state.includes(expected.baselineConfig) &&
     state.includes(expected.projectedConfig) &&
     state.includes(expected.oldActiveVersionId) &&
@@ -413,9 +544,9 @@ assert(
 );
 assert(
   gates.includes("attempt43") &&
-    gates.includes("pending_numeric_cap_usd: null") &&
-    gates.includes("provider_calls_authorized: false") &&
-    gates.includes("gpu_use_authorized: false") &&
+    gates.includes("pending_numeric_cap_usd: 4") &&
+    gates.includes("provider_calls_authorized: true") &&
+    gates.includes("gpu_use_authorized: true") &&
     gates.includes(expected.oldActiveVersionId) &&
     gates.includes(expected.oldActiveRecord),
   "GATES_BOUNDARY",
@@ -432,13 +563,6 @@ assert(
     task.includes(expected.oldActiveRecord),
   "TASK_LINEAGE",
 );
-assert(
-  !state.includes("attempt43-anchor-refresh-candidate/approved-authority.json") &&
-    !gates.includes("attempt43-anchor-refresh-candidate/approved-authority.json") &&
-    !start.includes("attempt43-anchor-refresh-candidate/approved-authority.json") &&
-    !task.includes("attempt43-anchor-refresh-candidate/approved-authority.json"),
-  "STALE_ATTEMPT43_AUTHORITY_POINTER",
-);
 console.log(
-  "V2-07 Attempt43 anchor-refresh candidate validation PASS (provider-free; no authority/cap/provider mutation)",
+  "V2-07 Attempt43 approved-authority validation PASS (provider-free; no provider mutation or spend)",
 );
