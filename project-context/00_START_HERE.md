@@ -1,5 +1,27 @@
 # VideoForge: start here
 
+Attempt45 is closed fail-closed as `NOT_QUALIFIED`. Exact proposal
+`sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770` and single-use authority
+`sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67` were used once with
+FlashBoot=true, LOW-or-better EU-RO-1, and a fresh `$4` cap. The bounded run stopped before RunPod
+calls, endpoint/template creation, job submission, GPU use, or output at
+`V207_SIGNER_DISABLED_DEPLOY_FAILED`; redacted orchestrator evidence is
+`sha256:e03a47850af3fc452fced31f45d5c62485e5a595e0b632e7dfce5fa12984c42a`. The signer secret was
+never activated, the captured Worker version was rolled back, and the route returned to
+`404 V207_ROUTE_DISABLED`.
+
+Closure `failed-attempt-45.json` is `sha256:f287a7ec8ea064587e251f5ccb9b5321025d37976fdbf40b0b894a962c71167c`;
+cleanup `attempt45-cleanup-observation.json` is `sha256:d23b169a2920e27b25e691e04758fbe123d3f41f3f1eb618940f998bc89d2f55`;
+three stable reconciliation reads are `attempt45-reconciliation-observation.json`
+`sha256:e786ee74546632ed38aeef5acf3860605693cd7255a4a19ba44d99ca91b82c2d`. They prove zero
+disposable compute/resources, both exact retained 50 GB EU-RO-1 volumes, protected config mode 0600
+and unchanged hash, and no model-volume mutation. Billing moved from `1.5903418626403436` to
+`1.6217972798040137`; the `0.03145541716367006` delta is unattributed late provider billing, not
+Attempt45 GPU spend; no Attempt45 jobs were submitted. The independent canonical-hash finding was
+not the live deploy-failure cause; provider-free repairs `f945392` and `7066520` are recorded.
+No authority or cap remains. V2-07 is still `NOT_QUALIFIED`, provider-free diagnosis only, and V2-08
+is forbidden.
+
 Attempt43 is closed fail-closed as `NOT_QUALIFIED`. Exact proposal
 `sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458` and single-use authority
 `sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b` were consumed once with
@@ -762,19 +784,20 @@ execution was historically bounded to that proposal.
 
 ## Context navigation
 
-Attempt45 provider-free candidate:
+Historical Attempt45 candidate (now consumed/closed):
 `evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/combined-live-proposal.json`
 `sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770`;
 acceptance `sha256:106c12b6be55f870ec17c52135eb90d09aa09fb60ad119e79a0d8174318353a2`;
 preflight `sha256:7a0e66ce4cf9cddaab6aa09692ed9f6cb385f43dedf8a288ffac57a41f6abffb`;
 `sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c`;
 `sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c`; V2-08.
-Attempt45 authority `sha256:e73bd7ec…b6b67` records one use and `$4`; Attempt44 closure
-`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-44.json`
-`sha256:695f438b4e2908a181d668a608588659f05075e2d6aa19d6bcfcca1a87d75be4`;
-cleanup `attempt44-cleanup-observation.json` `sha256:da05bd6a40812a3c59dbcdb5ec629646ae41d28cc763b18303dcb04aa57cb8a6`;
-reconciliation `attempt44-reconciliation-observation.json` `sha256:32070d0044349e52aa8e0f27baf1eb9394a2afa8189f45afa8b4279529f11357`.
-Attempt44 authority is consumed; resume GET repair `1a8a12d` is selected. V2-08 forbidden.
+Attempt45 authority `sha256:e73bd7ec…b6b67` recorded one use and `$4`; it is consumed and non-reusable.
+Closure `failed-attempt-45.json` is `sha256:f287a7ec8ea064587e251f5ccb9b5321025d37976fdbf40b0b894a962c71167c`,
+cleanup `attempt45-cleanup-observation.json` is `sha256:d23b169a2920e27b25e691e04758fbe123d3f41f3f1eb618940f998bc89d2f55`,
+and reconciliation `attempt45-reconciliation-observation.json` is
+`sha256:e786ee74546632ed38aeef5acf3860605693cd7255a4a19ba44d99ca91b82c2d`. The run failed before
+RunPod/GPU with clean Worker/route rollback and zero disposable resources; no authority/cap remains.
+Provider-free repairs are `f945392` (canonicalization) and `7066520` (deploy diagnostics). V2-08 forbidden.
 
 Read `MANIFEST.yaml`, `CURRENT_STATE.yaml`, then only the selected profile and task. Normative
 decisions: `15_DECISIONS_AND_OPEN_GATES.md`; architecture: `06_SYSTEM_ARCHITECTURE.md`; models:
