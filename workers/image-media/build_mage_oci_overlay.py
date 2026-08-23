@@ -3,8 +3,8 @@
 This builder deliberately works from a registry manifest and config blob only.
 It does not invoke Docker, download any base layer, contact a registry, or
 touch model bytes.  The output is a tiny replacement layer for the repaired
-Serverless handler plus a new config and manifest whose SHA-256 values are
-stable across runs.
+Serverless handler and its exact generated-contract dependencies plus a new
+config and manifest whose SHA-256 values are stable across runs.
 
 The caller supplies the immutable parent manifest/config blobs and an explicit
 creation timestamp.  Requiring those inputs makes the image identity an
@@ -23,7 +23,7 @@ import struct
 import tarfile
 import zlib
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 
 DOCKER_MANIFEST_MEDIA_TYPE = "application/vnd.docker.distribution.manifest.v2+json"
@@ -148,26 +148,42 @@ def _safe_source_bytes(source: Path) -> bytes:
     return data
 
 
-def _tar_layer(destination: str, source_bytes: bytes) -> bytes:
-    """Create a reproducible uncompressed tar layer containing one file."""
+def _tar_layer(source_files: Sequence[tuple[str, bytes]]) -> bytes:
+    """Create a reproducible uncompressed tar layer containing exact files."""
 
-    if not destination.startswith("/") or destination.endswith("/"):
-        raise OverlayError("destination must be an absolute file path")
-    relative = destination.lstrip("/")
-    if not relative or ".." in Path(relative).parts:
-        raise OverlayError("destination must not escape the image root")
-    # USTAR avoids implementation-dependent PAX records for this short path.
+    if not source_files:
+        raise OverlayError("at least one source file is required")
+    normalized: list[tuple[str, bytes]] = []
+    destinations: set[str] = set()
+    for destination, source_bytes in source_files:
+        if not isinstance(destination, str) or not destination.startswith("/"):
+            raise OverlayError("destination must be an absolute file path")
+        if destination.endswith("/"):
+            raise OverlayError("destination must be an absolute file path")
+        relative = destination.lstrip("/")
+        if not relative or ".." in Path(relative).parts:
+            raise OverlayError("destination must not escape the image root")
+        if destination in destinations:
+            raise OverlayError("overlay destinations must be unique")
+        if not isinstance(source_bytes, bytes) or not source_bytes:
+            raise OverlayError("source files must be non-empty bytes")
+        destinations.add(destination)
+        normalized.append((relative, source_bytes))
+    # Stable destination ordering makes the layer independent of caller ordering.
+    normalized.sort(key=lambda item: item[0])
+    # USTAR avoids implementation-dependent PAX records for these paths.
     stream = __import__("io").BytesIO()
     with tarfile.open(fileobj=stream, mode="w", format=tarfile.USTAR_FORMAT) as archive:
-        info = tarfile.TarInfo(name=relative)
-        info.size = len(source_bytes)
-        info.mode = 0o644
-        info.uid = 0
-        info.gid = 0
-        info.uname = ""
-        info.gname = ""
-        info.mtime = 0
-        archive.addfile(info, __import__("io").BytesIO(source_bytes))
+        for relative, source_bytes in normalized:
+            info = tarfile.TarInfo(name=relative)
+            info.size = len(source_bytes)
+            info.mode = 0o644
+            info.uid = 0
+            info.gid = 0
+            info.uname = ""
+            info.gname = ""
+            info.mtime = 0
+            archive.addfile(info, __import__("io").BytesIO(source_bytes))
     return stream.getvalue()
 
 
@@ -196,13 +212,14 @@ def build_overlay(
     base_manifest_bytes: bytes,
     base_config: Mapping[str, Any],
     base_config_bytes: bytes,
-    source_bytes: bytes,
+    source_bytes: bytes | None,
     source_commit: str,
     parent_image: str,
     created: str,
     destination: str = DEFAULT_DESTINATION,
     created_by: str = DEFAULT_CREATED_BY,
     overlay_kind: str = DEFAULT_OVERLAY_KIND,
+    source_files: Sequence[tuple[str, bytes]] | None = None,
 ) -> dict[str, Any]:
     """Return deterministic OCI blobs and identity metadata in memory."""
 
@@ -233,7 +250,15 @@ def build_overlay(
     if not created or not created.endswith("Z"):
         raise OverlayError("created must be an explicit UTC timestamp ending in Z")
 
-    tar_bytes = _tar_layer(destination, source_bytes)
+    if source_files is not None and source_bytes is not None:
+        raise OverlayError("provide source_bytes or source_files, not both")
+    if source_files is None:
+        if not isinstance(source_bytes, bytes) or not source_bytes:
+            raise OverlayError("source must be non-empty bytes")
+        source_files = ((destination, source_bytes),)
+    else:
+        source_files = tuple(source_files)
+    tar_bytes = _tar_layer(source_files)
     layer_bytes = _gzip_layer(tar_bytes)
     uncompressed_digest = "sha256:" + _sha256(tar_bytes)
     layer_digest = "sha256:" + _sha256(layer_bytes)
@@ -292,6 +317,18 @@ def build_overlay(
     )
     manifest_bytes = _canonical_json(manifest)
     manifest_digest = "sha256:" + _sha256(manifest_bytes)
+    source_metadata = [
+        {
+            "destination": file_destination,
+            "source_sha256": "sha256:" + _sha256(file_bytes),
+            "source_size_bytes": len(file_bytes),
+        }
+        for file_destination, file_bytes in sorted(source_files, key=lambda item: item[0])
+    ]
+    handler_source = next(
+        (entry for entry in source_metadata if entry["destination"] == DEFAULT_DESTINATION),
+        source_metadata[0],
+    )
     return {
         "base_manifest": dict(base_manifest),
         "config": config,
@@ -309,7 +346,10 @@ def build_overlay(
             "layer_diff_id": uncompressed_digest,
             "layer_tar_size_bytes": len(tar_bytes),
             "source_commit": source_commit,
-            "source_sha256": "sha256:" + _sha256(source_bytes),
+            # Keep the legacy field for single-source callers; source_files is
+            # authoritative when this overlay contains multiple exact files.
+            "source_sha256": handler_source["source_sha256"],
+            "source_files": source_metadata,
             "parent_image": parent_image,
             "destination": destination,
             "created": created,
@@ -339,12 +379,12 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-manifest", type=Path, required=True)
     parser.add_argument("--base-config", type=Path, required=True)
-    parser.add_argument("--source", type=Path, required=True)
+    parser.add_argument("--source", type=Path, action="append", required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--parent-image", required=True)
     parser.add_argument("--created", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--destination", default=DEFAULT_DESTINATION)
+    parser.add_argument("--destination", action="append")
     return parser
 
 
@@ -354,17 +394,29 @@ def main(argv: list[str] | None = None) -> int:
     base_config = _read_json(args.base_config, "base config")
     base_manifest_bytes = args.base_manifest.read_bytes()
     base_config_bytes = args.base_config.read_bytes()
-    source_bytes = _safe_source_bytes(args.source)
+    destinations = args.destination or [DEFAULT_DESTINATION]
+    if len(destinations) != len(args.source):
+        raise OverlayError("source and destination counts must match")
+    source_files = tuple(
+        (_destination, _safe_source_bytes(_source))
+        for _source, _destination in zip(args.source, destinations, strict=True)
+    )
+    created_by = "; ".join(
+        f"COPY {_source} {_destination}"
+        for _source, _destination in zip(args.source, destinations, strict=True)
+    )
     result = build_overlay(
         base_manifest=base_manifest,
         base_manifest_bytes=base_manifest_bytes,
         base_config=base_config,
         base_config_bytes=base_config_bytes,
-        source_bytes=source_bytes,
+        source_bytes=None,
         source_commit=args.source_commit,
         parent_image=args.parent_image,
         created=args.created,
-        destination=args.destination,
+        destination=destinations[0],
+        created_by=created_by,
+        source_files=source_files,
     )
     _write_output(result, args.output_dir)
     print(json.dumps(result["identity"], sort_keys=True, separators=(",", ":")))

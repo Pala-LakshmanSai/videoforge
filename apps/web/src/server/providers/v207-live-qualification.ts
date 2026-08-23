@@ -26,6 +26,7 @@ import {
   type RunPodV207AcceptedUnitRecord,
   type RunPodV207DispatchBatchInput,
   type RunPodV207OutputAuthority,
+  type RunPodV207WorkerProcessIdentity,
 } from "./runpod-v207-qualification-harness";
 import { reconcileV207Readonly } from "./runpod-v207-readonly-reconciliation";
 import { loadSujalRunPodApiKeyFromKeychain, SUJAL_RUNPOD_ACCOUNT_ID_SHA256 } from "./keychain";
@@ -1602,6 +1603,15 @@ async function verifyBatch(
     // top-level output field is deliberately ignored, because the provider response itself is
     // not trusted until this receipt hash/signature has been checked.
     const timingProvenance = timings?.timing_provenance as AnyRecord;
+    const signedWorkerId = receipt.worker_id;
+    const signedWorkerIdHash =
+      typeof signedWorkerId === "string" &&
+      signedWorkerId !== "" &&
+      signedWorkerId !== "serverless" &&
+      V207_RESUME_ID.test(signedWorkerId)
+        ? hashText(signedWorkerId)
+        : null;
+    let signedPodIdHash: string | null = null;
     const requiredTimings = [
       "allocation_ms",
       "container_ready_ms",
@@ -1643,6 +1653,7 @@ async function verifyBatch(
         "MAGE_RUNTIME_STARTED_OR_HANDLER_ADMISSION_MONOTONIC" ||
       timingProvenance?.container_ready_boundary !== "HANDLER_RUNTIME_READY_MONOTONIC" ||
       !Array.isArray(receiptItems) ||
+      signedWorkerIdHash === null ||
       receiptItems.length !== objectKeys.length ||
       !timings ||
       requiredTimings.some(
@@ -1672,6 +1683,7 @@ async function verifyBatch(
       const expectedItemId = expectedObjectKey.split("/artifact/").at(-1);
       const runtimeEvidence = item.runtime_evidence as AnyRecord;
       const gpu = runtimeEvidence?.gpu as AnyRecord;
+      const podIdHash = runtimeEvidence?.pod_id_hash;
       if (
         item.output_object_key !== objectKeys[index] ||
         !/^sha256:[0-9a-f]{64}$/u.test(String(item.output_sha256 ?? "")) ||
@@ -1692,6 +1704,8 @@ async function verifyBatch(
         receiptItem?.probe?.height !== 720 ||
         receiptItem?.probe?.format !== "png" ||
         runtimeEvidence?.schema_version !== "videoforge.mage-runtime-evidence/v3" ||
+        typeof podIdHash !== "string" ||
+        !/^sha256:[0-9a-f]{64}$/u.test(podIdHash) ||
         runtimeEvidence?.volume_id_hash !== VOLUME ||
         runtimeEvidence?.worker_image_digest !== IMAGE ||
         runtimeEvidence?.model_revision !== MODEL_REVISION ||
@@ -1704,6 +1718,10 @@ async function verifyBatch(
         Number(gpu?.peak_vram_used_bytes) < 1
       ) {
         throw new Error("MAGE_OUTPUT_LINEAGE_INVALID");
+      }
+      if (signedPodIdHash === null) signedPodIdHash = podIdHash;
+      if (signedPodIdHash !== podIdHash || podIdHash !== signedWorkerIdHash) {
+        throw new Error("MAGE_WORKER_PROCESS_IDENTITY_INVALID");
       }
       failureStage = "output_readback";
       const getPort = await routePort(
@@ -1860,6 +1878,14 @@ async function verifyBatch(
         readback_get_url: resumeGetPort.url,
       });
     }
+    if (signedWorkerIdHash === null || signedPodIdHash === null) {
+      throw new Error("MAGE_WORKER_PROCESS_IDENTITY_UNAVAILABLE");
+    }
+    const workerProcessIdentity: RunPodV207WorkerProcessIdentity = {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: signedWorkerIdHash,
+      pod_id_sha256: signedPodIdHash,
+    };
     return {
       provider_job_id_hash: hashText(job.id),
       status: job.status,
@@ -1870,6 +1896,7 @@ async function verifyBatch(
       readbacks,
       commit_receipts: commitReceipts,
       durable_accepted_units: durableAcceptedUnits,
+      worker_process_identity: workerProcessIdentity,
       receipt_sha256: receipt.receipt_sha256,
       timings,
       timing_provenance: {
@@ -2152,6 +2179,23 @@ async function main(): Promise<void> {
       if (!Array.isArray(probeDurableUnits) || probeDurableUnits.length !== 1) {
         throw new Error("V207_PROBE_DURABLE_UNITS_INCOMPLETE");
       }
+      const probeWorkerProcessIdentity = probeEvidence.worker_process_identity as
+        | RunPodV207WorkerProcessIdentity
+        | undefined;
+      if (!probeWorkerProcessIdentity) {
+        throw new Error("V207_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+      }
+      // A replacement is not admitted from warm-idle.  The one-item seed must first prove
+      // terminal status, empty queue, two stable terminal worker/Pod inventories, and the exact
+      // provider worker identity that the signed receipt reported.
+      const processReplacementBoundary = await harness.prepareProcessReplacement(
+        probeJob.id,
+        probeWorkerProcessIdentity,
+      );
+      await persistCheckpoint("probe-process-replaced-boundary", {
+        event: "process_replacement_seed_terminal_scale_zero",
+        process_replacement_boundary: processReplacementBoundary,
+      });
       // Exercise the real replacement path with one already committed unit.  The replacement
       // envelope still carries all 32 plan items, while its signed item count and fresh PUT
       // authorities cover only the remaining 31.  The worker must read the prior unit through its
@@ -2192,6 +2236,16 @@ async function main(): Promise<void> {
         receiptKeyId,
         receiptSecret,
       );
+      const resumeWorkerProcessIdentity = resumeEvidence.worker_process_identity as
+        | RunPodV207WorkerProcessIdentity
+        | undefined;
+      if (!resumeWorkerProcessIdentity) {
+        throw new Error("V207_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+      }
+      harness.assertProcessReplacementIdentity(
+        processReplacementBoundary,
+        resumeWorkerProcessIdentity,
+      );
       const mergedResumeUnits = mergeV207AcceptedUnits(
         priorResumeUnits,
         resumeEvidence.durable_accepted_units as readonly RunPodV207AcceptedUnitRecord[],
@@ -2204,6 +2258,9 @@ async function main(): Promise<void> {
         prior_unit_count: priorResumeUnits.length,
         new_unit_count: resumeEvidence.durable_accepted_units.length,
         merged_unit_count: mergedResumeUnits.length,
+        process_replacement_boundary: processReplacementBoundary,
+        seed_worker_process_identity: probeWorkerProcessIdentity,
+        replacement_worker_process_identity: resumeWorkerProcessIdentity,
         durable_units: mergedResumeUnits,
       });
       await persistCheckpoint("resume-terminal");

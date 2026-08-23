@@ -45,9 +45,9 @@ jobs:
           set -euo pipefail
           parent_digest="sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
           parent_config_digest="sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2"
-          expected_manifest_digest="sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
-          expected_config_digest="sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de"
-          expected_layer_digest="sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38"
+          expected_manifest_digest="sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2"
+          expected_config_digest="sha256:09d2ee0905ec4556857aae9df05b449802916cdf9e0d8ec4615a91b6d1fa9d06"
+          expected_layer_digest="sha256:1b390600563d813a87e09c2fa075d52ea1c24558e83b67c5649aa422a2c69c78"
           overlay_dir="$RUNNER_TEMP/v207-mage-oci-overlay"
           mkdir -p "$overlay_dir/input" "$overlay_dir/output"
           registry_token="$(
@@ -70,7 +70,10 @@ jobs:
             --base-manifest "$overlay_dir/input/manifest.json" \
             --base-config "$overlay_dir/input/config.json" \
             --source workers/image-media/mage_serverless.py \
-            --source-commit 79f123268b6ade640c02dd20616a89d16b43a5e6 \
+            --source packages/contracts/python/videoforge_contracts/_schema_documents.py \
+            --destination /opt/videoforge/mage_serverless.py \
+            --destination /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
+            --source-commit 4249cafd4a5525b5723d0811f16496fb0e949653 \
             --parent-image "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@$parent_digest" \
             --created 2026-08-20T14:22:30Z \
             --output-dir "$overlay_dir/output"
@@ -80,10 +83,13 @@ jobs:
           python3 workers/image-media/publish_mage_oci_overlay.py \
             --output-dir "$overlay_dir/output" \
             --repository pala-lakshmansai/videoforge-mage-v2-07 \
-            --tag v2-07-diagnostics-79f1232
+            --tag v2-07-diagnostics-4249caf
           echo "MAGE_OCI_OUTPUT_DIR=$overlay_dir/output" >> "$GITHUB_ENV"
           echo "MAGE_OCI_BASE_MANIFEST=$overlay_dir/input/manifest.json" >> "$GITHUB_ENV"
           echo "MAGE_OCI_BASE_CONFIG=$overlay_dir/input/config.json" >> "$GITHUB_ENV"
+          echo "MAGE_EXPECTED_MANIFEST_DIGEST=$expected_manifest_digest" >> "$GITHUB_ENV"
+          echo "MAGE_EXPECTED_CONFIG_DIGEST=$expected_config_digest" >> "$GITHUB_ENV"
+          echo "MAGE_EXPECTED_LAYER_DIGEST=$expected_layer_digest" >> "$GITHUB_ENV"
           echo "candidate_manifest_digest=$expected_manifest_digest" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build and smoke V2-07 repaired Mage INT8 Serverless candidate
@@ -91,12 +97,13 @@ jobs:
         run: |
           set -euo pipefail
           test "$RUNNER_ARCH" = "X64"
-          expected_source_commit="79f123268b6ade640c02dd20616a89d16b43a5e6"
+          expected_source_commit="4249cafd4a5525b5723d0811f16496fb0e949653"
           # The checkout may be newer than the source commit that defines the
           # repaired overlay.  Pin the bytes copied into the image explicitly;
           # labels alone would allow a later checkout to silently drift.
           expected_source_hashes=(
-            "workers/image-media/mage_serverless.py|be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68"
+            "workers/image-media/mage_serverless.py|dfc2cebede44c0a8903daf0e6348040cd6e2b5af1a00c77d3f767ddb10aa316c"
+            "packages/contracts/python/videoforge_contracts/_schema_documents.py|a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
           )
           for source_entry in "${expected_source_hashes[@]}"; do
             source_path="${source_entry%%|*}"
@@ -117,6 +124,8 @@ jobs:
             'import torch; from videoforge_image_media import MAGE_MODEL_REVISION, MAGE_SOURCE_REVISION; assert MAGE_MODEL_REVISION == "d8c99241f6fa80fbd453014234af2bf337ea21e6"; assert MAGE_SOURCE_REVISION == "26d7f8556822d9d08c2d3e1878636ac3b4969af9"; print("mage-int8-comfy-import-ok")'
           docker run --rm --entrypoint python "$image" -c \
             'import videoforge_contracts; import mage_serverless; assert callable(mage_serverless.handler); assert mage_serverless._FAILURE_CODE.fullmatch("MAGE_SERVERLESS_JOB_SHAPE_INVALID"); print("mage-serverless-repaired-handler-import-ok")'
+          docker run --rm --entrypoint python "$image" -c \
+            'from videoforge_contracts._schema_documents import SCHEMA_DOCUMENTS; assert "timing_provenance" in SCHEMA_DOCUMENTS["serverlessProvenanceReceiptV1"]["properties"]["timings"]["properties"]; print("mage-timing-provenance-schema-import-ok")'
           docker run --rm --entrypoint python "$image" -m compileall -q /opt/comfyui /opt/videoforge
           image_id="$(docker image inspect --format='{{.Id}}' "$image")"
           echo "LOCAL_IMAGE=$image" >> "$GITHUB_ENV"
@@ -129,21 +138,28 @@ jobs:
           set -euo pipefail
           candidate_source="$RUNNER_TEMP/v207-candidate-mage_serverless.py"
           candidate_verification="$RUNNER_TEMP/v207-candidate-verification.json"
+          candidate_schema="$RUNNER_TEMP/v207-candidate-schema-documents.py"
+          expected_handler_sha="dfc2cebede44c0a8903daf0e6348040cd6e2b5af1a00c77d3f767ddb10aa316c"
+          expected_schema_sha="a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
           python3 workers/image-media/verify_mage_oci_overlay.py \
             --output-dir "$MAGE_OCI_OUTPUT_DIR" \
             --base-manifest "$MAGE_OCI_BASE_MANIFEST" \
             --base-config "$MAGE_OCI_BASE_CONFIG" \
-            --expected-manifest-digest sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5 \
-            --expected-config-digest sha256:8e11a42cb91fa1d0d6a4e19fc6b4a6cfd5f77116c49a8516b6435813dfaab1de \
-            --expected-layer-digest sha256:befafc2ec3d32a73b632f769069c9c02645d3fac049ebd2478fbf8ad3d5cdf38 \
-            --expected-source-commit 79f123268b6ade640c02dd20616a89d16b43a5e6 \
-            --expected-source-sha256 sha256:be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68 \
+            --expected-manifest-digest "$MAGE_EXPECTED_MANIFEST_DIGEST" \
+            --expected-config-digest "$MAGE_EXPECTED_CONFIG_DIGEST" \
+            --expected-layer-digest "$MAGE_EXPECTED_LAYER_DIGEST" \
+            --expected-source-commit 4249cafd4a5525b5723d0811f16496fb0e949653 \
+            --expected-source /opt/videoforge/mage_serverless.py\|sha256:$expected_handler_sha \
+            --expected-source /opt/videoforge/src/videoforge_contracts/_schema_documents.py\|sha256:$expected_schema_sha \
             --expected-parent-image ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497 \
-            --extract-source "$candidate_source" > "$candidate_verification"
+            --extract-source "$candidate_source" \
+            --extract-source-file /opt/videoforge/src/videoforge_contracts/_schema_documents.py\|"$candidate_schema" > "$candidate_verification"
           test "$(jq -r '.manifest_digest' "$candidate_verification")" = \
-            sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5
+            "$MAGE_EXPECTED_MANIFEST_DIGEST"
           test "$(sha256sum "$candidate_source" | awk '{print $1}')" = \
-            be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68
+            "$expected_handler_sha"
+          test "$(sha256sum "$candidate_schema" | awk '{print $1}')" = \
+            "$expected_schema_sha"
           # Run the exact handler bytes extracted from the candidate layer against
           # the already-built pinned linux/amd64 runtime base. The candidate config
           # identity is checked above; this bind mount makes the runtime import use
@@ -155,6 +171,10 @@ jobs:
           docker run --rm \
             --mount "type=bind,src=$candidate_source,dst=/opt/videoforge/mage_serverless.py,readonly" \
             --entrypoint python "$LOCAL_IMAGE" -m py_compile /opt/videoforge/mage_serverless.py
+          docker run --rm \
+            --mount "type=bind,src=$candidate_schema,dst=/opt/videoforge/src/videoforge_contracts/_schema_documents.py,readonly" \
+            --entrypoint python "$LOCAL_IMAGE" -c \
+            'from videoforge_contracts._schema_documents import SCHEMA_DOCUMENTS; assert "timing_provenance" in SCHEMA_DOCUMENTS["serverlessProvenanceReceiptV1"]["properties"]["timings"]["properties"]'
           echo "exact_candidate_manifest_smoke=passed" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish exact smoke-tested immutable image
@@ -170,11 +190,11 @@ jobs:
             python3 workers/image-media/publish_mage_oci_overlay.py \
               --output-dir "$MAGE_OCI_OUTPUT_DIR" \
               --repository pala-lakshmansai/videoforge-mage-v2-07 \
-              --tag v2-07-diagnostics-79f1232 \
+              --tag v2-07-diagnostics-4249caf \
               --publish
           )"
           test "$(jq -r '.manifest_digest' <<<"$publication")" = \
-            "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
-          immutable_image="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
+            "$MAGE_EXPECTED_MANIFEST_DIGEST"
+          immutable_image="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@$MAGE_EXPECTED_MANIFEST_DIGEST"
           echo "immutable_image=$immutable_image" >> "$GITHUB_OUTPUT"
           echo "immutable_image=$immutable_image" >> "$GITHUB_STEP_SUMMARY"

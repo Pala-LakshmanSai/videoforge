@@ -126,6 +126,45 @@ export interface RunPodV207AcceptedUnitRecord {
   readonly readback_get_url: string;
 }
 
+/** Redaction-safe identity facts required to prove a real process replacement. */
+export interface RunPodV207WorkerProcessIdentity {
+  readonly schema_version: "videoforge-v207-worker-process-identity/v1";
+  /** Hash of the worker/pod identity signed by the worker in its provenance receipt. */
+  readonly worker_id_sha256: string;
+  /** Hash of the runtime pod identity echoed by each item runtime probe. */
+  readonly pod_id_sha256: string;
+}
+
+export interface RunPodV207ProcessReplacementBoundary {
+  readonly schema_version: "videoforge-v207-process-replacement-boundary/v1";
+  readonly seed_job_id_sha256: string;
+  readonly seed_worker_id_sha256: string;
+  readonly seed_pod_id_sha256: string;
+  readonly terminal_provider_worker_id_sha256: string;
+  readonly terminal_scale_zero_confirmed: true;
+}
+
+const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+const PROVIDER_WORKER_ID_KEYS = [
+  "id",
+  "workerId",
+  "worker_id",
+  "podId",
+  "pod_id",
+  "instanceId",
+  "instance_id",
+] as const;
+
+function providerWorkerIdHash(value: unknown): string | null {
+  const worker = asRecord(value);
+  if (!worker) return null;
+  for (const key of PROVIDER_WORKER_ID_KEYS) {
+    const candidate = worker[key];
+    if (typeof candidate === "string" && candidate.trim() !== "") return sha256(candidate);
+  }
+  return null;
+}
+
 /** The complete immutable scene plan carried into every durable accepted-unit fact. */
 export function buildV207PlanManifest(
   batchItems: readonly unknown[],
@@ -822,7 +861,14 @@ export class RunPodV207QualificationHarness {
     expectedPolicy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
     event: string,
     mode: "health_first" | "startup_inventory_only" | "post_job_queue_only" = "health_first",
-  ): Promise<void> {
+    options: {
+      readonly requireProviderWorkerIdentity?: boolean;
+      readonly expectedProviderWorkerIdSha256?: string;
+    } = {},
+  ): Promise<{
+    readonly providerWorkerIdSha256: string | null;
+    readonly terminalScaleZeroConfirmed: true;
+  }> {
     if (!this.#template || !this.#endpoint || !this.#jobs) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_NOT_CREATED");
     }
@@ -862,6 +908,7 @@ export class RunPodV207QualificationHarness {
       const readAndValidate = async (): Promise<{
         readonly inventory: RunPodInventory;
         readonly signature: string;
+        readonly providerWorkerIdSha256: string | null;
       }> => {
         // Bracket each inventory snapshot with an independent queue-only health read. Worker
         // counters can remain stale during FlashBoot startup, but a queued/in-progress job must
@@ -890,6 +937,10 @@ export class RunPodV207QualificationHarness {
                 if (desired && current && desired !== current) return "CONFLICT";
                 return desired ?? current ?? "UNKNOWN";
               });
+        const rawWorkerIdentityHashes =
+          rawWorkers === null ? null : rawWorkers.map((worker) => providerWorkerIdHash(worker));
+        const providerWorkerIdSha256 =
+          rawWorkerIdentityHashes?.length === 1 ? (rawWorkerIdentityHashes[0] ?? null) : null;
         const exactTerminalInventory =
           inventory.runningPodCount === 0 &&
           inventory.activeServerlessWorkerCount === 0 &&
@@ -925,11 +976,20 @@ export class RunPodV207QualificationHarness {
           ) &&
           this.endpointIdentityMatches(endpointResource, templateResource.id, expectedPolicy) &&
           endpointResource.raw.flashboot === V207_RUNPOD_FLASHBOOT;
+        if (
+          options.requireProviderWorkerIdentity &&
+          (providerWorkerIdSha256 === null ||
+            (options.expectedProviderWorkerIdSha256 !== undefined &&
+              providerWorkerIdSha256 !== options.expectedProviderWorkerIdSha256))
+        ) {
+          throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+        }
         if (!exactTerminalInventory || !endpointInventory) {
           throw new RunPodControlError("RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED");
         }
         return {
           inventory,
+          providerWorkerIdSha256,
           signature: canonicalizeJson({
             pods: inventory.pods.map((pod) => ({
               idHash: pod.idHash,
@@ -998,6 +1058,10 @@ export class RunPodV207QualificationHarness {
               }
             : {}),
       });
+      return {
+        providerWorkerIdSha256: stable.providerWorkerIdSha256,
+        terminalScaleZeroConfirmed: true,
+      };
     } catch (error) {
       this.#guard.invalidate();
       throw error;
@@ -1487,6 +1551,102 @@ export class RunPodV207QualificationHarness {
     this.checkAbort();
     this.#postJobWarmIdlePending = false;
     this.mark("warm_idle_confirmed");
+  }
+
+  /**
+   * Fence a seed process before a replacement request can be submitted.  This is deliberately
+   * stricter than the ordinary warm-idle transition: the seed job must already be terminal,
+   * the queue must be independently empty, and the exact terminal worker record must expose the
+   * same identity that the signed worker receipt reported.  Missing provider worker identity is
+   * never treated as scale-zero because doing so would make a same-process replay indistinguishable
+   * from a real replacement.
+   */
+  async prepareProcessReplacement(
+    seedJobId: string,
+    seedIdentity: RunPodV207WorkerProcessIdentity,
+  ): Promise<RunPodV207ProcessReplacementBoundary> {
+    this.assertCreated();
+    this.checkAbort();
+    if (!ID.test(seedJobId) || !this.#terminalJobIds.has(seedJobId)) {
+      throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_SEED_NOT_TERMINAL");
+    }
+    if (
+      seedIdentity.schema_version !== "videoforge-v207-worker-process-identity/v1" ||
+      !SHA256.test(seedIdentity.worker_id_sha256) ||
+      !SHA256.test(seedIdentity.pod_id_sha256)
+    ) {
+      throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+    }
+    if (this.#ownedJobs.size !== 0 || this.#concurrentReaderFence) {
+      throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_SEED_NOT_TERMINAL");
+    }
+    if (this.#guard.snapshot() === "active" || this.#guard.snapshot() === "warm_idle") {
+      this.#guard.beginDrain();
+    } else {
+      throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_DRAIN_STATE_INVALID");
+    }
+    await this.assertSpendWithinCap();
+    const terminal = await this.confirmTerminalScaleZeroBaseline(
+      this.#options.initialPolicy,
+      "process_replacement_seed_terminal_worker_scale_zero",
+      "post_job_queue_only",
+      {
+        requireProviderWorkerIdentity: true,
+        expectedProviderWorkerIdSha256: seedIdentity.worker_id_sha256,
+      },
+    );
+    if (
+      terminal.providerWorkerIdSha256 === null ||
+      terminal.providerWorkerIdSha256 !== seedIdentity.worker_id_sha256
+    ) {
+      throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+    }
+    this.#postJobWarmIdlePending = false;
+    const boundary: RunPodV207ProcessReplacementBoundary = {
+      schema_version: "videoforge-v207-process-replacement-boundary/v1",
+      seed_job_id_sha256: sha256(seedJobId),
+      seed_worker_id_sha256: seedIdentity.worker_id_sha256,
+      seed_pod_id_sha256: seedIdentity.pod_id_sha256,
+      terminal_provider_worker_id_sha256: terminal.providerWorkerIdSha256,
+      terminal_scale_zero_confirmed: true,
+    };
+    this.mark("process_replacement_seed_drained", {
+      seed_job_id_hash: boundary.seed_job_id_sha256,
+      seed_worker_id_sha256: boundary.seed_worker_id_sha256,
+      seed_pod_id_sha256: boundary.seed_pod_id_sha256,
+      terminal_provider_worker_id_sha256: boundary.terminal_provider_worker_id_sha256,
+      terminal_scale_zero_confirmed: true,
+    });
+    return boundary;
+  }
+
+  /** Require the replacement's signed runtime identity to differ on both worker and pod axes. */
+  assertProcessReplacementIdentity(
+    boundary: RunPodV207ProcessReplacementBoundary,
+    replacementIdentity: RunPodV207WorkerProcessIdentity,
+  ): void {
+    if (
+      boundary.schema_version !== "videoforge-v207-process-replacement-boundary/v1" ||
+      boundary.terminal_scale_zero_confirmed !== true ||
+      !SHA256.test(boundary.seed_worker_id_sha256) ||
+      !SHA256.test(boundary.seed_pod_id_sha256) ||
+      !SHA256.test(boundary.terminal_provider_worker_id_sha256) ||
+      replacementIdentity.schema_version !== "videoforge-v207-worker-process-identity/v1" ||
+      !SHA256.test(replacementIdentity.worker_id_sha256) ||
+      !SHA256.test(replacementIdentity.pod_id_sha256) ||
+      replacementIdentity.worker_id_sha256 === boundary.seed_worker_id_sha256 ||
+      replacementIdentity.pod_id_sha256 === boundary.seed_pod_id_sha256
+    ) {
+      throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
+    }
+    this.mark("process_replacement_identity_distinct", {
+      seed_worker_id_sha256: boundary.seed_worker_id_sha256,
+      seed_pod_id_sha256: boundary.seed_pod_id_sha256,
+      replacement_worker_id_sha256: replacementIdentity.worker_id_sha256,
+      replacement_pod_id_sha256: replacementIdentity.pod_id_sha256,
+      distinct_worker_identity: true,
+      distinct_process_identity: true,
+    });
   }
 
   async cancel(jobId: string): Promise<RunPodJobResult> {

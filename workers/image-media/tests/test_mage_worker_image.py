@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 REPAIR_DOCKERFILE = ROOT / "Dockerfile.mage.repair"
-REPAIRED_SOURCE_COMMIT = "79f123268b6ade640c02dd20616a89d16b43a5e6"
+REPAIRED_SOURCE_COMMIT = "4249cafd4a5525b5723d0811f16496fb0e949653"
 BASE_IMMUTABLE_IMAGE = (
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
     "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
@@ -23,9 +23,15 @@ REPAIR_RUNTIME_FILES = (
         "/opt/videoforge/mage_serverless.py",
         "MAGE_SERVERLESS_GENERATED_OUTPUT_PATH_MISMATCH",
     ),
+    (
+        "packages/contracts/python/videoforge_contracts/_schema_documents.py",
+        "/opt/videoforge/src/videoforge_contracts/_schema_documents.py",
+        "serverless-provenance-receipt/v1",
+    ),
 )
 REPAIR_SOURCE_HASHES = {
-    "workers/image-media/mage_serverless.py": "be050e3c1db8eae65c32e68c1d70ef01aa9b9f74b6079f2386fd4dbce37efe68",
+    "workers/image-media/mage_serverless.py": "dfc2cebede44c0a8903daf0e6348040cd6e2b5af1a00c77d3f767ddb10aa316c",
+    "packages/contracts/python/videoforge_contracts/_schema_documents.py": "a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71",
 }
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
@@ -99,7 +105,7 @@ class MageWorkerImageTest(unittest.TestCase):
         normalized = re.sub(r"\s+", " ", normalized)
         for source, destination, sentinels in REPAIR_RUNTIME_FILES:
             self.assertIn(f"COPY {source} {destination}", normalized)
-            source_path = ROOT / Path(source).relative_to("workers/image-media")
+            source_path = ROOT.parents[1] / source
             source_text = source_path.read_text(encoding="utf-8")
             for sentinel in sentinels if isinstance(sentinels, tuple) else (sentinels,):
                 self.assertIn(sentinel, source_text)
@@ -157,12 +163,21 @@ class MageWorkerImageTest(unittest.TestCase):
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        expected = "sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
-        self.assertIn(f'expected_manifest_digest="{expected}"', workflow)
+        expected_manifest = (
+            "sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2"
+        )
+        expected_config = "sha256:09d2ee0905ec4556857aae9df05b449802916cdf9e0d8ec4615a91b6d1fa9d06"
+        expected_layer = "sha256:1b390600563d813a87e09c2fa075d52ea1c24558e83b67c5649aa422a2c69c78"
+        self.assertIn(f'expected_manifest_digest="{expected_manifest}"', workflow)
+        self.assertIn(f'expected_config_digest="{expected_config}"', workflow)
+        self.assertIn(f'expected_layer_digest="{expected_layer}"', workflow)
         self.assertIn("build_mage_oci_overlay.py", workflow)
         self.assertIn("publish_mage_oci_overlay.py", workflow)
         self.assertIn("--publish", workflow)
-        self.assertIn(f"videoforge-mage-v2-07@{expected}", workflow)
+        self.assertIn(
+            "videoforge-mage-v2-07@$MAGE_EXPECTED_MANIFEST_DIGEST",
+            workflow,
+        )
         self.assertNotIn("docker push", workflow)
 
     def test_hosted_smoke_binds_exact_candidate_layer_payload(self) -> None:

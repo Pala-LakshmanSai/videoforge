@@ -14,6 +14,7 @@ import {
   V207_TIMEOUT_TTL_MS,
   type RunPodV207DispatchBatchInput,
   type RunPodV207OutputAuthority,
+  type RunPodV207WorkerProcessIdentity,
 } from "./runpod-v207-qualification-harness";
 import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
 
@@ -30,6 +31,8 @@ const placement: RunPodV207Placement = {
 };
 
 const image = V207_REPAIRED_IMAGE;
+const hashValue = (value: string): string =>
+  `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 const outputPrefix =
   "tenant/account_a/workspace/workspace_a/project/project_a/revision/revision_a/lane/mage-image/job/attempt_a";
 
@@ -374,6 +377,7 @@ function terminalScaleZeroFetch(
     readonly workerStatus?: string;
     readonly workerStatusAfterDispatch?: string;
     readonly workerCurrentStatus?: string;
+    readonly workerId?: string | null;
     readonly podStatus?: string;
     readonly podStatusAfterDispatch?: string;
     readonly podCurrentStatus?: string;
@@ -472,6 +476,9 @@ function terminalScaleZeroFetch(
         workersMax,
         workers: [
           {
+            ...((options.workerId === null
+              ? {}
+              : { id: options.workerId ?? "worker_01" }) as Record<string, unknown>),
             desiredStatus:
               (dispatched ? options.workerStatusAfterDispatch : undefined) ??
               options.workerStatus ??
@@ -1212,6 +1219,89 @@ describe("V2-07 qualification harness", () => {
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(1);
+  });
+
+  it("fences the one-item seed at terminal scale-zero before replacement dispatch", async () => {
+    const fetch = terminalScaleZeroFetch({ workerId: "worker_seed" });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    const seedIdentity: RunPodV207WorkerProcessIdentity = {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: hashValue("worker_seed"),
+      pod_id_sha256: hashValue("pod_seed"),
+    };
+    const boundary = await instance.prepareProcessReplacement(seed.id, seedIdentity);
+    expect(boundary).toMatchObject({
+      seed_job_id_sha256: hashValue(seed.id),
+      seed_worker_id_sha256: hashValue("worker_seed"),
+      terminal_provider_worker_id_sha256: hashValue("worker_seed"),
+      terminal_scale_zero_confirmed: true,
+    });
+    await expect(
+      instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
+    ).resolves.toMatchObject({ status: "IN_QUEUE" });
+    instance.assertProcessReplacementIdentity(boundary, {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: hashValue("worker_replacement"),
+      pod_id_sha256: hashValue("pod_replacement"),
+    });
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
+    const events = (await instance.evidence()).events;
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: "process_replacement_seed_drained",
+        terminal_scale_zero_confirmed: true,
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: "process_replacement_identity_distinct",
+        distinct_worker_identity: true,
+        distinct_process_identity: true,
+      }),
+    );
+  });
+
+  it("fails closed when the terminal provider worker identity is unavailable", async () => {
+    const fetch = terminalScaleZeroFetch({ workerId: null });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("worker_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("rejects a replacement that reuses either signed worker or process identity", async () => {
+    const fetch = terminalScaleZeroFetch({ workerId: "worker_seed" });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    const boundary = await instance.prepareProcessReplacement(seed.id, {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: hashValue("worker_seed"),
+      pod_id_sha256: hashValue("pod_seed"),
+    });
+    expect(() =>
+      instance.assertProcessReplacementIdentity(boundary, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("worker_new"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).toThrow("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
   });
 
   it("does not resurrect an owned job on exact terminal duplicate replay", async () => {

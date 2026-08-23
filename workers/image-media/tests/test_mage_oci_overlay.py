@@ -145,6 +145,75 @@ class MageOciOverlayTest(unittest.TestCase):
             self.assertEqual(members[0].mode, 0o644)
             self.assertEqual(members[0].mtime, 0)
 
+    def test_multi_file_layer_is_sorted_and_binds_each_exact_runtime_source(self) -> None:
+        manifest, config, config_bytes, manifest_bytes = _fixture()
+        parent_image = PARENT_REPOSITORY + "@sha256:" + hashlib.sha256(manifest_bytes).hexdigest()
+        source_files = (
+            ("/opt/videoforge/src/videoforge_contracts/_schema_documents.py", b"SCHEMA = {}\n"),
+            ("/opt/videoforge/mage_serverless.py", b"def handler():\n    return None\n"),
+        )
+        result = build_overlay(
+            base_manifest=manifest,
+            base_manifest_bytes=manifest_bytes,
+            base_config=config,
+            base_config_bytes=config_bytes,
+            source_bytes=None,
+            source_files=source_files,
+            source_commit="a" * 40,
+            parent_image=parent_image,
+            created="2026-08-20T09:39:31Z",
+        )
+        self.assertEqual(
+            [entry["destination"] for entry in result["identity"]["source_files"]],
+            [destination for destination, _ in sorted(source_files)],
+        )
+        with tarfile.open(fileobj=io.BytesIO(result["layer_tar_bytes"]), mode="r:") as archive:
+            self.assertEqual(
+                [member.name for member in archive.getmembers()],
+                [destination.lstrip("/") for destination, _ in sorted(source_files)],
+            )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "overlay"
+            output.mkdir()
+            _write_output(result, output)
+            parent_manifest = root / "parent-manifest.json"
+            parent_manifest.write_bytes(manifest_bytes)
+            parent_config = root / "parent-config.json"
+            parent_config.write_bytes(config_bytes)
+            handler = root / "mage_serverless.py"
+            schema = root / "_schema_documents.py"
+            verified = verify_candidate(
+                output_dir=output,
+                base_manifest_path=parent_manifest,
+                base_config_path=parent_config,
+                expected_manifest_digest=result["identity"]["manifest_digest"],
+                expected_config_digest=result["identity"]["config_digest"],
+                expected_layer_digest=result["identity"]["layer_digest"],
+                expected_source_commit=result["identity"]["source_commit"],
+                expected_source_sha256=None,
+                expected_parent_image=parent_image,
+                expected_source_files=tuple(
+                    (entry["destination"], entry["source_sha256"])
+                    for entry in result["identity"]["source_files"]
+                ),
+                extract_sources={
+                    "/opt/videoforge/mage_serverless.py": handler,
+                    "/opt/videoforge/src/videoforge_contracts/_schema_documents.py": schema,
+                },
+            )
+            self.assertEqual(
+                verified["sources_extracted"],
+                sorted(
+                    (
+                        "/opt/videoforge/mage_serverless.py",
+                        "/opt/videoforge/src/videoforge_contracts/_schema_documents.py",
+                    )
+                ),
+            )
+            self.assertEqual(handler.read_bytes(), source_files[1][1])
+            self.assertEqual(schema.read_bytes(), source_files[0][1])
+
     def test_parent_config_and_manifest_are_digest_bound(self) -> None:
         manifest, config, config_bytes, manifest_bytes = _fixture()
         parent_image = PARENT_REPOSITORY + "@sha256:" + hashlib.sha256(manifest_bytes).hexdigest()
