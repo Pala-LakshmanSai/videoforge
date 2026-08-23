@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-23T17:18:00.000Z"
+updated_at: "2026-08-23T12:11:46.000Z"
 
 phase: serverless_v2_v2_07_attempt44_version_metadata_probe_candidate
 implementation_authorized_in_current_task: true
@@ -1852,7 +1852,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: NOT_QUALIFIED_attempt42_closed_rollback_anchor_not_retained
+  V2-07: NOT_QUALIFIED_attempt44_provider_free_candidate_pending_fresh_approval
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
