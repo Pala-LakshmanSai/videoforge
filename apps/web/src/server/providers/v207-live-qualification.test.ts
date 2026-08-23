@@ -21,6 +21,7 @@ process.env.V207_PROPOSAL_SHA256 = V207_PENDING_PROPOSAL_SHA256;
 process.env.V207_FINITE_CAP_USD = "4";
 const {
   assertV207ItemCount,
+  assertV207FreshCatalogOffering,
   createV207Cancellation,
   extractV207EndpointReadbackMismatchCategory,
   extractV207OutputContractDiagnostics,
@@ -31,6 +32,8 @@ const {
   redactV207LiveEvidence,
   redactV207ProviderJobError,
   routePort,
+  V207_SECURE_REFERENCE_RATE_USD_PER_HOUR,
+  V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
   V207OutputContractError,
 } = await import("./v207-live-qualification");
 const { RunPodControlError } = await import("./runpod-control");
@@ -384,9 +387,9 @@ describe("V2-07 live qualification runner safety", () => {
   it("uses unique attempt lineage, bounded reads, and account-wide final drain proof", () => {
     expect(source).toContain("randomBytes(6)");
     expect(source).toContain("AbortSignal.timeout(30_000)");
-    expect(source).toContain("finalInventory.activeServerlessWorkerCount !== 0");
-    expect(source).toContain("V207_FINAL_INVENTORY_INVALID");
-    expect(source).toContain("expectedVolumeHashes");
+    expect(source).toContain("reconcileV207SuccessReadonly");
+    expect(source).toContain("final_reconciliation");
+    expect(source).toContain("confirmQueueEmptyReadOnly");
   });
 
   it("follows only the signed GHCR blob redirect without forwarding registry auth", () => {
@@ -414,6 +417,38 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("runV207PreflightOnly");
     expect(source).toContain("V207_PREFLIGHT_INVENTORY_UNEXPECTED");
     expect(source).toContain("V207_ROUTE_AUTHORITY_UNVERIFIED");
+    expect(source).toContain("fetchCp07Catalog");
+    expect(source).toContain("V207_CATALOG_RATE_OR_VRAM_DRIFT");
+    expect(source).toContain("selected_catalog_offering");
+  });
+
+  it("fails closed when the fresh exact GPU catalog observation is unavailable or drifts", () => {
+    const candidate = {
+      offeringId: "NVIDIA GeForce RTX 4090",
+      displayName: "RTX 4090",
+      region: "EU-RO-1",
+      secureCloud: true,
+      availability: "LOW",
+      rateUsdPerHour: V207_SECURE_REFERENCE_RATE_USD_PER_HOUR,
+      vramGb: 24,
+    } as const;
+    expect(assertV207FreshCatalogOffering([candidate])).toEqual(candidate);
+    expect(
+      assertV207FreshCatalogOffering([{ ...candidate, availability: "MEDIUM" }]),
+    ).toMatchObject({ availability: "MEDIUM" });
+    expect(assertV207FreshCatalogOffering([{ ...candidate, availability: "HIGH" }])).toMatchObject({
+      availability: "HIGH",
+    });
+    expect(() =>
+      assertV207FreshCatalogOffering([{ ...candidate, offeringId: "NVIDIA L4" }]),
+    ).toThrow("V207_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE");
+    expect(() => assertV207FreshCatalogOffering([{ ...candidate, rateUsdPerHour: 0.75 }])).toThrow(
+      "V207_CATALOG_RATE_OR_VRAM_DRIFT",
+    );
+    expect(() => assertV207FreshCatalogOffering([{ ...candidate, vramGb: 23 }])).toThrow(
+      "V207_CATALOG_RATE_OR_VRAM_DRIFT",
+    );
+    expect(V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR).toBe(1.1);
   });
 
   it("mounts the sealed volume at its fixed path and reads the CP-06 model subdirectory", () => {

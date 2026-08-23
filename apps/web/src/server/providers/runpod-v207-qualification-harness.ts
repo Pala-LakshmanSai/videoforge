@@ -1554,6 +1554,17 @@ export class RunPodV207QualificationHarness {
   }
 
   /**
+   * Read-only queue proof for final success reconciliation. Unlike drain(), this does not
+   * transition the endpoint guard or apply a provider policy; it only asks the owned job client
+   * for the provider's bounded zero queued/in-progress counters.
+   */
+  async confirmQueueEmptyReadOnly(maxAttempts = 1, pollIntervalMs = 100): Promise<void> {
+    this.assertCreated();
+    this.checkAbort();
+    await this.#jobs!.confirmQueueEmptyReadOnly(maxAttempts, pollIntervalMs);
+  }
+
+  /**
    * Fence a seed process before a replacement request can be submitted.  This is deliberately
    * stricter than the ordinary warm-idle transition: the seed job must already be terminal,
    * the queue must be independently empty, and the exact terminal worker record must expose the

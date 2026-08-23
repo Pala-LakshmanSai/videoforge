@@ -30,6 +30,7 @@ import {
 } from "./runpod-v207-qualification-harness";
 import {
   reconcileV207Readonly,
+  reconcileV207SuccessReadonly,
   v207IncrementalSpendFromBilling,
   v207IncrementalSpendThreshold,
 } from "./runpod-v207-readonly-reconciliation";
@@ -43,6 +44,7 @@ import {
   V207_REPAIRED_IMAGE_LAYER_DIGEST,
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
 } from "./v207-activation-authority";
+import { fetchCp07Catalog, type Cp07GpuCandidate } from "./runpod-echo-cp07-preflight";
 const MANIFEST = "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b";
 const VOLUME = "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const SOULX_VOLUME = "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
@@ -94,6 +96,10 @@ const BILLING_START = "2026-08-20T00:00:00.000Z";
 const IMAGE_CONFIG_DIGEST = V207_REPAIRED_IMAGE_CONFIG_DIGEST;
 const IMAGE_LAYER_DIGEST = V207_REPAIRED_IMAGE_LAYER_DIGEST;
 const IMAGE_BASE_DIGEST = V207_REPAIRED_IMAGE_BASE_DIGEST;
+/** The pinned RunPod Serverless Flex rate used by the V2-07 proposal. */
+export const V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR = 1.1 as const;
+/** The secure RTX 4090 catalog reference rate used by the V2-07 preflight. */
+export const V207_SECURE_REFERENCE_RATE_USD_PER_HOUR = 0.74 as const;
 let IMAGE: string = V207_REPAIRED_IMAGE;
 let finiteCapUsd = 0;
 
@@ -1025,6 +1031,15 @@ type V207PreflightSummary = Readonly<{
   readonly remaining_cumulative_cap_usd: number;
   readonly cumulative_billing_threshold_usd: number;
   readonly route_authority: Readonly<{ readonly status: number; readonly code: string }>;
+  readonly selected_catalog_offering: Readonly<{
+    readonly offering_id: typeof V207_RUNPOD_GPU;
+    readonly region: typeof V207_RUNPOD_REGION;
+    readonly availability: "LOW" | "MEDIUM" | "HIGH";
+    readonly secure_reference_rate_usd_per_hour: typeof V207_SECURE_REFERENCE_RATE_USD_PER_HOUR;
+    readonly vram_gb: number;
+    readonly serverless_flex_rate_usd_per_gpu_hour: typeof V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR;
+    readonly availability_threshold: "LOW-or-better";
+  }>;
   readonly inventory: Readonly<{
     readonly checked_at: string;
     readonly pod_count: number;
@@ -1111,6 +1126,44 @@ export function assertV207PreflightInventory(
   }
 }
 
+/**
+ * Require a fresh secure-catalog observation for the exact V2-07 offering before any
+ * disposable template or endpoint is created.  LOW is intentionally accepted: the
+ * proposal's availability boundary is LOW-or-better, not a stronger historical level.
+ * The catalog rate is a read-only guard; the Serverless Flex rate remains separately
+ * pinned and is recorded in the bounded preflight summary.
+ */
+export function assertV207FreshCatalogOffering(
+  candidates: readonly Cp07GpuCandidate[],
+): Cp07GpuCandidate & {
+  readonly offeringId: typeof V207_RUNPOD_GPU;
+  readonly rateUsdPerHour: typeof V207_SECURE_REFERENCE_RATE_USD_PER_HOUR;
+} {
+  const selected = candidates.find(
+    (candidate) =>
+      candidate.offeringId === V207_RUNPOD_GPU &&
+      candidate.region === V207_RUNPOD_REGION &&
+      candidate.secureCloud === true,
+  );
+  if (selected === undefined) {
+    throw new Error("V207_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE");
+  }
+  if (
+    selected.availability !== "LOW" &&
+    selected.availability !== "MEDIUM" &&
+    selected.availability !== "HIGH"
+  ) {
+    throw new Error("V207_CATALOG_AVAILABILITY_INVALID");
+  }
+  if (selected.rateUsdPerHour !== V207_SECURE_REFERENCE_RATE_USD_PER_HOUR || selected.vramGb < 24) {
+    throw new Error("V207_CATALOG_RATE_OR_VRAM_DRIFT");
+  }
+  return selected as Cp07GpuCandidate & {
+    readonly offeringId: typeof V207_RUNPOD_GPU;
+    readonly rateUsdPerHour: typeof V207_SECURE_REFERENCE_RATE_USD_PER_HOUR;
+  };
+}
+
 export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
   const imageAttestation = await attestPublishedImage();
   const apiKey = process.env.RUNPOD_KEY ?? (await loadSujalRunPodApiKeyFromKeychain());
@@ -1121,7 +1174,8 @@ export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
   const baseline = await billingAmount(apiKey);
   const billingThreshold = v207IncrementalSpendThreshold(baseline, finiteCapUsd);
   const control = new RunPodControlClient({ apiKey });
-  const inventory = await control.inventory();
+  const [inventory, catalog] = await Promise.all([control.inventory(), fetchCp07Catalog(apiKey)]);
+  const selectedCatalogOffering = assertV207FreshCatalogOffering(catalog);
   assertV207PreflightInventory(inventory);
   const routeAuthority = await preflightRouteAuthority();
   return Object.freeze({
@@ -1134,6 +1188,15 @@ export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
     remaining_cumulative_cap_usd: finiteCapUsd,
     cumulative_billing_threshold_usd: billingThreshold,
     route_authority: routeAuthority,
+    selected_catalog_offering: Object.freeze({
+      offering_id: selectedCatalogOffering.offeringId,
+      region: selectedCatalogOffering.region,
+      availability: selectedCatalogOffering.availability,
+      secure_reference_rate_usd_per_hour: selectedCatalogOffering.rateUsdPerHour,
+      vram_gb: selectedCatalogOffering.vramGb,
+      serverless_flex_rate_usd_per_gpu_hour: V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
+      availability_threshold: "LOW-or-better",
+    }),
     inventory: Object.freeze({
       checked_at: inventory.checkedAt,
       pod_count: inventory.pods.length,
@@ -1999,6 +2062,7 @@ async function main(): Promise<void> {
           remaining_cumulative_cap_usd: summary.remaining_cumulative_cap_usd,
           cumulative_billing_threshold_usd: summary.cumulative_billing_threshold_usd,
           route_authority: summary.route_authority,
+          selected_catalog_offering: summary.selected_catalog_offering,
           inventory: summary.inventory,
         })}`,
       );
@@ -2033,21 +2097,11 @@ async function main(): Promise<void> {
         "V207_FINITE_CAP_EXCEEDED",
       );
     };
-    const settledSpendSnapshotUsd = async (): Promise<number> => {
-      let previous: number | null = null;
-      let stableReads = 0;
-      for (let poll = 0; poll < 18; poll += 1) {
-        const current = await spendSnapshotUsd();
-        stableReads =
-          previous !== null && Math.abs(current - previous) < 0.000_001 ? stableReads + 1 : 0;
-        previous = current;
-        if (stableReads >= 2) return current;
-        if ((poll + 1) % 3 === 0) console.error(`v207:billing-settlement-poll-${poll + 1}`);
-        await sleep(10_000);
-      }
-      throw new Error("V207_BILLING_SETTLEMENT_UNCONFIRMED");
-    };
     const control = new RunPodControlClient({ apiKey });
+    // Repeat the catalog read in the mutating branch immediately before the first
+    // disposable template/endpoint request.  The earlier preflight is diagnostic;
+    // this fresh observation is the admission fence for availability and rate drift.
+    const selectedCatalogOffering = assertV207FreshCatalogOffering(await fetchCp07Catalog(apiKey));
     const placement: RunPodV207Placement = {
       networkVolumeId: VOLUME_ID,
       dataCenterIds: [V207_RUNPOD_REGION],
@@ -2065,6 +2119,15 @@ async function main(): Promise<void> {
       volume_id_sha256: VOLUME,
       volume_id_hash: hashText(VOLUME_ID),
       image_attestation: imageAttestation,
+      selected_catalog_offering: {
+        offering_id: selectedCatalogOffering.offeringId,
+        region: selectedCatalogOffering.region,
+        availability: selectedCatalogOffering.availability,
+        secure_reference_rate_usd_per_hour: selectedCatalogOffering.rateUsdPerHour,
+        vram_gb: selectedCatalogOffering.vramGb,
+        serverless_flex_rate_usd_per_gpu_hour: V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
+        availability_threshold: "LOW-or-better",
+      },
       batches: [],
     };
     const runTag = `20260820-${randomBytes(6).toString("hex")}`;
@@ -2461,61 +2524,26 @@ async function main(): Promise<void> {
       await persistCheckpoint("timeout-output-cleanup");
       await harness.scaleDownToInitial();
       await harness.cleanup({ deleteIfFailed: false, failed: false });
-      const finalInventory = await control.inventory();
-      const endpoint = finalInventory.endpoints.find(
-        (candidate) => candidate.idHash === createdIdentity.endpointIdHash,
-      );
-      const retainedVolumes = [...finalInventory.networkVolumes].sort((left, right) =>
-        left.idHash.localeCompare(right.idHash),
-      );
-      const expectedVolumeHashes = [SOULX_VOLUME, VOLUME].sort();
-      const terminalWorkerStatuses = new Set(["EXITED", "TERMINATED"]);
-      if (
-        finalInventory.runningPodCount !== 0 ||
-        finalInventory.activeServerlessWorkerCount !== 0 ||
-        finalInventory.pods.some(
-          (pod) =>
-            !pod.endpointWorker ||
-            pod.endpointIdHash !== createdIdentity.endpointIdHash ||
-            !terminalWorkerStatuses.has(pod.desiredStatus) ||
-            pod.observedStatuses.length === 0 ||
-            pod.observedStatuses.some((status) => !terminalWorkerStatuses.has(status)),
-        ) ||
-        finalInventory.endpoints.length !== 1 ||
-        !endpoint ||
-        endpoint.workersMin !== 0 ||
-        endpoint.workersMax !== 1 ||
-        !endpoint.workerRecordsReported ||
-        endpoint.activeWorkerCount !== 0 ||
-        endpoint.workerRecordCount !== endpoint.exitedWorkerCount ||
-        endpoint.workerStatuses.some((status) => !terminalWorkerStatuses.has(status)) ||
-        finalInventory.privateTemplateCount !== 1 ||
-        JSON.stringify(retainedVolumes.map((volume) => volume.idHash)) !==
-          JSON.stringify(expectedVolumeHashes) ||
-        retainedVolumes.some(
-          (volume) => volume.sizeGb !== 50 || volume.dataCenterId !== V207_RUNPOD_REGION,
-        )
-      ) {
-        throw new Error("V207_FINAL_INVENTORY_INVALID");
-      }
-      evidence.final_inventory = {
-        checked_at: finalInventory.checkedAt,
-        pod_count: finalInventory.pods.length,
-        endpoint_count: finalInventory.endpoints.length,
-        endpoint_id_hash: endpoint.idHash,
-        workers_min: endpoint.workersMin,
-        workers_max: endpoint.workersMax,
-        active_workers: finalInventory.activeServerlessWorkerCount,
-        endpoint_worker_statuses: endpoint.workerStatuses,
-        terminal_pod_statuses: finalInventory.pods.map((pod) => pod.observedStatuses),
-        private_template_count: finalInventory.privateTemplateCount,
-        volume_id_hashes: retainedVolumes.map((volume) => volume.idHash),
-        volume_sizes_gb: retainedVolumes.map((volume) => volume.sizeGb),
-        volume_regions: retainedVolumes.map((volume) => volume.dataCenterId),
-      };
-      evidence.spend_usd = await settledSpendSnapshotUsd();
-      evidence.cumulative_endpoint_spend_usd = baseline + evidence.spend_usd;
-      evidence.billing_settlement = "STABLE_THREE_READS";
+      // The success reconciler intentionally retains the exact endpoint/template and proves
+      // three stable inventory/resource/billing snapshots. Its zero-worker/terminal-Pod checks
+      // replace the former single finalInventory/V207_FINAL_INVENTORY_INVALID assertion.
+      const finalReconciliation = await reconcileV207SuccessReadonly({
+        accountIdHash: account.accountIdHash,
+        baselineEndpointSpendUsd: baseline,
+        maximumCumulativeFiniteSpendUsd: finiteCapUsd,
+        expectedEndpointIdHash: createdIdentity.endpointIdHash,
+        expectedTemplateIdHash: createdIdentity.templateIdHash,
+        inventory: () => control.inventory(),
+        resources: () => control.inventoryDisposableResources(),
+        queueEmpty: () => harness.confirmQueueEmptyReadOnly(1, 100),
+        billingAmount: () => billingAmount(apiKey),
+        wait: sleep,
+      });
+      evidence.final_reconciliation = finalReconciliation;
+      evidence.final_inventory = finalReconciliation.inventory;
+      evidence.spend_usd = finalReconciliation.billing.incremental_spend_usd;
+      evidence.cumulative_endpoint_spend_usd = finalReconciliation.billing.final_endpoint_spend_usd;
+      evidence.billing_settlement = finalReconciliation.billing.settlement;
       success = true;
     } catch (error) {
       const outputContractDiagnostics = extractV207OutputContractDiagnostics(error);

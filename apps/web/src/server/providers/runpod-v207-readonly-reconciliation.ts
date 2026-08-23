@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -7,6 +8,7 @@ import {
   RunPodControlClient,
   V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
   V207_RUNPOD_REGION,
+  type RunPodDisposableResourceInventory,
   type RunPodInventory,
 } from "./runpod-control";
 import {
@@ -73,6 +75,127 @@ const validateZeroComputeAndVolumes = (inventory: RunPodInventory): void => {
   }
 };
 
+const SUCCESS_TERMINAL_STATUSES = new Set(["EXITED", "TERMINATED"]);
+const SHA256_ID = /^sha256:[a-f0-9]{64}$/u;
+const hashResourceId = (value: string): string =>
+  `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+
+const assertSuccessIdentityHash = (value: string, code: string): void => {
+  if (!SHA256_ID.test(value)) throw new Error(code);
+};
+
+/**
+ * Validate the retained-resource side of a successful qualification.  Failure cleanup is
+ * intentionally stricter and requires zero disposable resources; success retains exactly the
+ * one endpoint/template so a later operator can inspect the qualified route without recreating
+ * it.  Terminal Pod records are allowed, but no running Pod or worker may remain.
+ */
+const validateSuccessInventory = (
+  inventory: RunPodInventory,
+  resources: RunPodDisposableResourceInventory,
+  expectedEndpointIdHash: string,
+  expectedTemplateIdHash: string,
+): void => {
+  const endpoint = inventory.endpoints.find(
+    (candidate) => candidate.idHash === expectedEndpointIdHash,
+  );
+  const resourceEndpoint = resources.endpoints.find(
+    (candidate) => hashResourceId(candidate.id) === expectedEndpointIdHash,
+  );
+  const resourceTemplate = resources.templates.find(
+    (candidate) => hashResourceId(candidate.id) === expectedTemplateIdHash,
+  );
+  const expectedVolumeHashes = [
+    V207_FAILED_CLEANUP_SOULX_VOLUME_ID_HASH,
+    V207_FAILED_CLEANUP_VOLUME_ID_HASH,
+  ].sort();
+  const retainedVolumes = [...inventory.networkVolumes].sort((left, right) =>
+    left.idHash.localeCompare(right.idHash),
+  );
+  const terminalPodStatuses = inventory.pods.every(
+    (pod) =>
+      pod.endpointWorker &&
+      pod.endpointIdHash === expectedEndpointIdHash &&
+      SUCCESS_TERMINAL_STATUSES.has(pod.desiredStatus) &&
+      pod.observedStatuses.length > 0 &&
+      pod.observedStatuses.every((status) => SUCCESS_TERMINAL_STATUSES.has(status)),
+  );
+  if (
+    inventory.endpoints.length !== 1 ||
+    endpoint === undefined ||
+    endpoint.workersMin !== 0 ||
+    endpoint.workersMax !== 1 ||
+    !endpoint.workerRecordsReported ||
+    endpoint.activeWorkerCount !== 0 ||
+    endpoint.workerRecordCount !== endpoint.exitedWorkerCount ||
+    endpoint.workerStatuses.some((status) => !SUCCESS_TERMINAL_STATUSES.has(status)) ||
+    resources.endpoints.length !== 1 ||
+    resourceEndpoint === undefined ||
+    resources.templates.length !== 1 ||
+    resourceTemplate === undefined ||
+    inventory.privateTemplateCount !== 1 ||
+    inventory.runningPodCount !== 0 ||
+    inventory.activeServerlessWorkerCount !== 0 ||
+    !terminalPodStatuses ||
+    retainedVolumes.length !== 2 ||
+    JSON.stringify(retainedVolumes.map((volume) => volume.idHash)) !==
+      JSON.stringify(expectedVolumeHashes) ||
+    retainedVolumes.some(
+      (volume) =>
+        volume.sizeGb !== V207_RUNPOD_MAGE_VOLUME_SIZE_GB ||
+        volume.dataCenterId !== V207_RUNPOD_REGION,
+    )
+  ) {
+    throw new Error("V207_SUCCESS_RECONCILIATION_INVENTORY_MISMATCH");
+  }
+};
+
+const successReadFingerprint = (
+  inventory: RunPodInventory,
+  resources: RunPodDisposableResourceInventory,
+): string =>
+  JSON.stringify({
+    pods: [...inventory.pods]
+      .map((pod) => ({
+        id_hash: pod.idHash,
+        desired_status: pod.desiredStatus,
+        observed_statuses: [...pod.observedStatuses].sort(),
+        endpoint_worker: pod.endpointWorker,
+        endpoint_id_hash: pod.endpointIdHash,
+      }))
+      .sort((left, right) => left.id_hash.localeCompare(right.id_hash)),
+    endpoints: [...inventory.endpoints]
+      .map((endpoint) => ({
+        id_hash: endpoint.idHash,
+        workers_min: endpoint.workersMin,
+        workers_max: endpoint.workersMax,
+        worker_records_reported: endpoint.workerRecordsReported,
+        worker_record_count: endpoint.workerRecordCount,
+        active_worker_count: endpoint.activeWorkerCount,
+        exited_worker_count: endpoint.exitedWorkerCount,
+        worker_statuses: [...endpoint.workerStatuses].sort(),
+      }))
+      .sort((left, right) => left.id_hash.localeCompare(right.id_hash)),
+    private_template_count: inventory.privateTemplateCount,
+    running_pod_count: inventory.runningPodCount,
+    active_serverless_worker_count: inventory.activeServerlessWorkerCount,
+    network_volumes: [...inventory.networkVolumes]
+      .map((volume) => ({
+        id_hash: volume.idHash,
+        size_gb: volume.sizeGb,
+        data_center_id: volume.dataCenterId,
+      }))
+      .sort((left, right) => left.id_hash.localeCompare(right.id_hash)),
+    resources: {
+      endpoints: [...resources.endpoints]
+        .map((resource) => ({ id_hash: hashResourceId(resource.id), name: resource.name }))
+        .sort((left, right) => left.id_hash.localeCompare(right.id_hash)),
+      templates: [...resources.templates]
+        .map((resource) => ({ id_hash: hashResourceId(resource.id), name: resource.name }))
+        .sort((left, right) => left.id_hash.localeCompare(right.id_hash)),
+    },
+  });
+
 export interface V207ReadonlyReconciliationResult {
   readonly schema_version: "videoforge.v2-07-readonly-reconciliation/v2";
   readonly checked_at: string;
@@ -86,6 +209,46 @@ export interface V207ReadonlyReconciliationResult {
     readonly active_serverless_workers: 0;
     readonly running_pods: 0;
     readonly retained_volumes: RunPodInventory["networkVolumes"];
+  };
+  readonly billing: {
+    readonly baseline_endpoint_spend_usd: number;
+    readonly final_endpoint_spend_usd: number;
+    readonly incremental_spend_usd: number;
+    readonly maximum_cumulative_finite_spend_usd: number;
+    readonly within_approved_cap: true;
+    readonly settlement: "THREE_STABLE_READS";
+  };
+}
+
+export interface V207SuccessReadonlyReconciliationResult {
+  readonly schema_version: "videoforge.v2-07-success-readonly-reconciliation/v1";
+  readonly checked_at: string;
+  readonly stable_read_count: 3;
+  readonly account_id_sha256: typeof SUJAL_RUNPOD_ACCOUNT_ID_SHA256;
+  readonly provider_mutations: 0;
+  readonly gpu_jobs_submitted: 0;
+  readonly inventory: {
+    readonly checked_at: string;
+    readonly pod_count: number;
+    readonly endpoint_count: 1;
+    readonly endpoint_id_hash: string;
+    readonly workers_min: 0;
+    readonly workers_max: 1;
+    readonly active_workers: 0;
+    readonly running_pods: 0;
+    readonly active_serverless_workers: 0;
+    readonly endpoint_worker_statuses: readonly string[];
+    readonly terminal_pod_statuses: readonly (readonly string[])[];
+    readonly private_template_count: 1;
+    readonly volume_id_hashes: readonly string[];
+    readonly volume_sizes_gb: readonly (number | null)[];
+    readonly volume_regions: readonly (string | null)[];
+  };
+  readonly retained_resources: {
+    readonly endpoint_count: 1;
+    readonly template_count: 1;
+    readonly endpoint_id_hash: string;
+    readonly template_id_hash: string;
   };
   readonly billing: {
     readonly baseline_endpoint_spend_usd: number;
@@ -212,6 +375,141 @@ export async function reconcileV207Readonly(input: {
       active_serverless_workers: 0,
       running_pods: 0,
       retained_volumes: finalInventory.networkVolumes,
+    },
+    billing: {
+      baseline_endpoint_spend_usd: input.baselineEndpointSpendUsd,
+      final_endpoint_spend_usd: finalBilling,
+      incremental_spend_usd: Math.max(0, finalBilling - input.baselineEndpointSpendUsd),
+      maximum_cumulative_finite_spend_usd: input.maximumCumulativeFiniteSpendUsd,
+      within_approved_cap: true,
+      settlement: "THREE_STABLE_READS",
+    },
+  };
+  return Object.freeze(result);
+}
+
+/**
+ * Reconcile a successful run without deleting its qualified endpoint/template.  This is a
+ * separate contract from reconcileV207Readonly: success must retain exactly the two disposable
+ * identities that were qualified, while still proving three stable read-only snapshots with no
+ * queued jobs, active workers, or running Pods.
+ */
+export async function reconcileV207SuccessReadonly(input: {
+  readonly accountIdHash: string;
+  readonly baselineEndpointSpendUsd: number;
+  readonly maximumCumulativeFiniteSpendUsd: number;
+  readonly expectedEndpointIdHash: string;
+  readonly expectedTemplateIdHash: string;
+  readonly inventory: () => Promise<RunPodInventory>;
+  readonly resources: () => Promise<RunPodDisposableResourceInventory>;
+  /** A read-only provider health check that fails closed if queued/in-progress jobs remain. */
+  readonly queueEmpty: () => Promise<void>;
+  readonly billingAmount: () => Promise<number>;
+  readonly wait?: (milliseconds: number) => Promise<void>;
+}): Promise<V207SuccessReadonlyReconciliationResult> {
+  if (input.accountIdHash !== SUJAL_RUNPOD_ACCOUNT_ID_SHA256) {
+    throw new Error("V207_RECONCILIATION_ACCOUNT_MISMATCH");
+  }
+  assertSuccessIdentityHash(input.expectedEndpointIdHash, "V207_SUCCESS_ENDPOINT_ID_HASH_INVALID");
+  assertSuccessIdentityHash(input.expectedTemplateIdHash, "V207_SUCCESS_TEMPLATE_ID_HASH_INVALID");
+  if (!Number.isFinite(input.baselineEndpointSpendUsd) || input.baselineEndpointSpendUsd < 0) {
+    throw new Error("V207_RECONCILIATION_BASELINE_INVALID");
+  }
+  const billingThreshold = v207IncrementalSpendThreshold(
+    input.baselineEndpointSpendUsd,
+    input.maximumCumulativeFiniteSpendUsd,
+  );
+  const wait = input.wait ?? sleep;
+  let finalInventory: RunPodInventory | null = null;
+  let finalResources: RunPodDisposableResourceInventory | null = null;
+  let finalBilling = Number.NaN;
+  let priorBilling: number | null = null;
+  let priorFingerprint: string | null = null;
+  for (let read = 0; read < 3; read += 1) {
+    try {
+      await input.queueEmpty();
+    } catch {
+      throw new Error("V207_SUCCESS_RECONCILIATION_QUEUE_NOT_EMPTY");
+    }
+    const [inventory, resources, billing] = await Promise.all([
+      input.inventory(),
+      input.resources(),
+      input.billingAmount(),
+    ]);
+    validateSuccessInventory(
+      inventory,
+      resources,
+      input.expectedEndpointIdHash,
+      input.expectedTemplateIdHash,
+    );
+    const fingerprint = successReadFingerprint(inventory, resources);
+    if (priorFingerprint !== null && fingerprint !== priorFingerprint) {
+      throw new Error("V207_SUCCESS_RECONCILIATION_INVENTORY_UNSETTLED");
+    }
+    v207IncrementalSpendFromBilling(
+      input.baselineEndpointSpendUsd,
+      billing,
+      input.maximumCumulativeFiniteSpendUsd,
+    );
+    if (priorBilling !== null && Math.abs(billing - priorBilling) >= 0.000_001) {
+      throw new Error("V207_RECONCILIATION_BILLING_UNSETTLED");
+    }
+    try {
+      await input.queueEmpty();
+    } catch {
+      throw new Error("V207_SUCCESS_RECONCILIATION_QUEUE_NOT_EMPTY");
+    }
+    finalInventory = inventory;
+    finalResources = resources;
+    finalBilling = billing;
+    priorBilling = billing;
+    priorFingerprint = fingerprint;
+    if (read < 2) await wait(10_000);
+  }
+  if (finalInventory === null || finalResources === null) {
+    throw new Error("V207_SUCCESS_RECONCILIATION_INVENTORY_MISSING");
+  }
+  if (finalBilling > billingThreshold) {
+    throw new Error("V207_RECONCILIATION_FINITE_CAP_EXCEEDED");
+  }
+  const endpoint = finalInventory.endpoints[0];
+  const retainedEndpoint = finalResources.endpoints[0];
+  const retainedTemplate = finalResources.templates[0];
+  if (endpoint === undefined || retainedEndpoint === undefined || retainedTemplate === undefined) {
+    throw new Error("V207_SUCCESS_RECONCILIATION_INVENTORY_MISSING");
+  }
+  const retainedVolumes = [...finalInventory.networkVolumes].sort((left, right) =>
+    left.idHash.localeCompare(right.idHash),
+  );
+  const result: V207SuccessReadonlyReconciliationResult = {
+    schema_version: "videoforge.v2-07-success-readonly-reconciliation/v1",
+    checked_at: finalInventory.checkedAt,
+    stable_read_count: 3,
+    account_id_sha256: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
+    provider_mutations: 0,
+    gpu_jobs_submitted: 0,
+    inventory: {
+      checked_at: finalInventory.checkedAt,
+      pod_count: finalInventory.pods.length,
+      endpoint_count: 1,
+      endpoint_id_hash: endpoint.idHash,
+      workers_min: 0,
+      workers_max: 1,
+      active_workers: 0,
+      running_pods: 0,
+      active_serverless_workers: 0,
+      endpoint_worker_statuses: endpoint.workerStatuses,
+      terminal_pod_statuses: finalInventory.pods.map((pod) => pod.observedStatuses),
+      private_template_count: 1,
+      volume_id_hashes: retainedVolumes.map((volume) => volume.idHash),
+      volume_sizes_gb: retainedVolumes.map((volume) => volume.sizeGb),
+      volume_regions: retainedVolumes.map((volume) => volume.dataCenterId),
+    },
+    retained_resources: {
+      endpoint_count: 1,
+      template_count: 1,
+      endpoint_id_hash: hashResourceId(retainedEndpoint.id),
+      template_id_hash: hashResourceId(retainedTemplate.id),
     },
     billing: {
       baseline_endpoint_spend_usd: input.baselineEndpointSpendUsd,
