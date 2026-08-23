@@ -238,6 +238,12 @@ eq(sha(rootFile("apps/web/src/server/providers/runpod-v207-qualification-harness
 eq(sha(rootFile("apps/web/src/server/providers/v207-live-orchestrator.ts")), E.orchestrator, "orchestrator file");
 eq(sha(rootFile("apps/web/src/server/providers/v207-live-qualification.ts")), E.live, "live qualification file");
 const activation = text(rootFile("apps/web/src/server/providers/v207-activation-authority.ts"));
+ok(
+  activation.includes(
+    `export const V207_PENDING_PROPOSAL_SHA256 =\n  "${E.proposal}" as const;`,
+  ),
+  "activation source binds exact Attempt47 proposal",
+);
 ok(activation.includes("export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;"), "activation authority consumed");
 ok(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = null;"), "activation cap consumed");
 ok(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;"), "activation anchor consumed");
