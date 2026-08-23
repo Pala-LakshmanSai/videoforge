@@ -33,10 +33,10 @@ const image = V207_REPAIRED_IMAGE;
 // Attempt32 proposal sha256:7c5370668ae06487729775f082cd981164d3e4a1634f20a77beb08bba2ea6b6a
 // Attempt32 authority sha256:a2f2519e6cc5f00ec804adea07b431d155e9fc88a566d7f9ef05396beca99114
 // Compatibility assertions reject consumed Attempt29/30/31 candidates while the exact
-// Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35 is consumed.
+// Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete provider-free Attempt38 durable replacement lineage", () => {
+  it("pins the complete approved Attempt38 durable replacement lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2",
@@ -77,8 +77,10 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
+      "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6",
+    );
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -125,18 +127,22 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed Attempt37 proposal and cap", () => {
-    expect(() =>
+  it("accepts the exact Attempt38 proposal under its fresh cap", () => {
+    expect(
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toEqual({
+      image,
+      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
+      capUsd: 4,
+    });
   });
 
-  it("rejects cap drift from the exact Attempt37 authority", () => {
+  it("rejects cap drift from the exact Attempt38 authority", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -144,17 +150,17 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "2",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_FINITE_CAP_MISMATCH");
   });
 
-  it("rejects a missing numeric cap at the Attempt37 authority boundary", () => {
+  it("rejects a missing numeric cap at the Attempt38 authority boundary", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_FINITE_CAP_REQUIRED");
   });
 
   it("rejects the consumed Attempt31 proposal after closure", () => {

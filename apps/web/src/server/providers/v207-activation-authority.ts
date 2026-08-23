@@ -53,12 +53,16 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // were consumed by one bounded execution and cannot be reused. Attempt37 proposal
 // sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e
 // and authority sha256:812899db3d2225224ea231112d2eba150ffbbd254148e71f94c81a44de32cadf
-// were consumed by one bounded execution and cannot be reused. Historical Attempt34/35 control:
+// were consumed by one bounded execution and cannot be reused. Attempt38 proposal
+// sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c
+// is approved once by authority sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6
+// with a fresh USD 4 cap. Historical Attempt34/35 control:
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+export const V207_APPROVED_AUTHORITY_SHA256 =
+  "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6" as const;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 
 export interface V207ActivationAuthority {
   readonly image: string;

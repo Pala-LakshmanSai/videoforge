@@ -6,11 +6,13 @@ const root = resolve(import.meta.dirname, "../..");
 const candidateDir = resolve(root, "project-context/evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate");
 const proposalPath = resolve(candidateDir, "combined-live-proposal.json");
 const acceptancePath = resolve(candidateDir, "acceptance.json");
+const authorityPath = resolve(candidateDir, "approved-authority.json");
 const max1Path = resolve(candidateDir, "staged-config-max1.json");
 const max2Path = resolve(candidateDir, "staged-config-max2.json");
 const expected = {
   proposal: "sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c",
-  acceptance: "sha256:2431aa2cc76f5f272fc23356ddf4b5b3db96cc23a0c7d071453e180f8d466779",
+  acceptance: "sha256:ece14904625e051064d486b26c8e2e1399f2ff28616fffb20ca304579553841a",
+  authority: "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6",
   max1: "sha256:a61c41148a80e9371934c1eaf7fdee76ab821cbbe6cff371a55dcfbd70493436",
   max2: "sha256:13f17498808fd6062b0dbac187eaa82d836580b673d9e666cc3dae0a64480f01",
   control: "edb18154759a1c4da9f28789fe5f4c4ab74a92ed",
@@ -34,11 +36,13 @@ const json = (path) => JSON.parse(text(path));
 const sha = (path) => `sha256:${createHash("sha256").update(bytes(path)).digest("hex")}`;
 const proposal = json(proposalPath);
 const acceptance = json(acceptancePath);
+const authority = json(authorityPath);
 const max1 = json(max1Path);
 const max2 = json(max2Path);
 
 assert(sha(proposalPath) === expected.proposal, "PROPOSAL_HASH");
 assert(sha(acceptancePath) === expected.acceptance, "ACCEPTANCE_HASH");
+assert(sha(authorityPath) === expected.authority, "AUTHORITY_HASH");
 assert(sha(max1Path) === expected.max1, "MAX1_HASH");
 assert(sha(max2Path) === expected.max2, "MAX2_HASH");
 assert(proposal.attempt === 38 && proposal.checkpoint === "V2-07" && proposal.task_id === "VF-10-07", "SCOPE");
@@ -76,10 +80,18 @@ validateConfig(max1, 1, "MAX1");
 validateConfig(max2, 2, "MAX2");
 assert(proposal.staged_endpoint_configs?.[0]?.definition_sha256 === expected.max1 && proposal.staged_endpoint_configs?.[1]?.definition_sha256 === expected.max2, "STAGED_HASH_BINDING");
 
-assert(acceptance.attempt === 38 && acceptance.result === "UNAPPROVED_PENDING_FRESH_EXACT_APPROVAL" && acceptance.qualification_status === "NOT_QUALIFIED_PENDING_APPROVAL", "ACCEPTANCE_STATE");
-assert(acceptance.candidate?.proposal_sha256 === expected.proposal && acceptance.candidate?.max1_sha256 === expected.max1 && acceptance.candidate?.max2_sha256 === expected.max2 && acceptance.candidate?.authority_recorded === false && acceptance.candidate?.authority_path === null && acceptance.candidate?.maximum_cumulative_finite_spend_usd === null, "ACCEPTANCE_BINDING");
-assert(acceptance.provider_boundary?.provider_calls === false && acceptance.provider_boundary?.provider_mutations === false && acceptance.provider_boundary?.gpu_use === false && acceptance.provider_boundary?.authority_active === false && acceptance.provider_boundary?.cap_usd === null && acceptance.provider_boundary?.v2_08_authorized === false, "ACCEPTANCE_BOUNDARY");
+assert(acceptance.attempt === 38 && acceptance.result === "APPROVED_SINGLE_USE_PENDING_EXECUTION" && acceptance.qualification_status === "NOT_QUALIFIED_PENDING_EXECUTION", "ACCEPTANCE_STATE");
+assert(acceptance.candidate?.proposal_sha256 === expected.proposal && acceptance.candidate?.max1_sha256 === expected.max1 && acceptance.candidate?.max2_sha256 === expected.max2 && acceptance.candidate?.authority_recorded === true && acceptance.candidate?.authority_path === "approved-authority.json" && acceptance.candidate?.authority_sha256 === expected.authority && acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4, "ACCEPTANCE_BINDING");
+assert(acceptance.provider_boundary?.provider_calls === true && acceptance.provider_boundary?.provider_mutations === true && acceptance.provider_boundary?.gpu_use === true && acceptance.provider_boundary?.authority_active === true && acceptance.provider_boundary?.cap_usd === 4 && acceptance.provider_boundary?.external_spend_usd === 0 && acceptance.provider_boundary?.v2_08_authorized === false, "ACCEPTANCE_BOUNDARY");
 assert(acceptance.plan?.total_units === 32 && JSON.stringify(acceptance.plan?.item_ids) === JSON.stringify(ids) && JSON.stringify(acceptance.plan?.seed_item_ids) === JSON.stringify([ids[0]]) && JSON.stringify(acceptance.plan?.replacement_item_ids) === JSON.stringify(ids.slice(1)), "ACCEPTANCE_PLAN");
+
+assert(authority.schema_version === "videoforge.v2-07-attempt38-durable-replacement-authority/v1" && authority.attempt === 38 && authority.authority_mode === "bounded_mutation" && authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION", "AUTHORITY_SCOPE");
+assert(authority.proposal?.sha256 === expected.proposal && authority.approval?.exact_proposal_approved === true && authority.approval?.flashboot_true_accepted === true && authority.approval?.low_or_better_eu_ro_1_availability_approved === true && authority.approval?.minimum_approved_availability === "LOW" && authority.approval?.observed_availability_at_proposal === "HIGH" && authority.approval?.maximum_cumulative_finite_spend_usd === 4 && authority.approval?.fresh_numeric_cap === true && authority.approval?.historical_cap_reused === false && authority.approval?.prior_authority_reused === false && authority.approval?.consumed === false, "AUTHORITY_APPROVAL");
+assert(authority.lineage?.control_source_commit === expected.control && authority.lineage?.image_source_commit === expected.source && authority.lineage?.image === expected.image && authority.lineage?.image_manifest_sha256 === expected.imageManifest && authority.lineage?.image_config_sha256 === expected.imageConfig && authority.lineage?.image_layer_sha256 === expected.imageLayer && authority.lineage?.image_layer_diff_id === expected.imageDiffId && authority.lineage?.model_manifest_sha256 === lineage.model_manifest_sha256 && authority.lineage?.volume_id_sha256 === expected.volume && authority.lineage?.volume_mount === "/runpod-volume" && authority.lineage?.volume_region === "EU-RO-1" && authority.lineage?.volume_size_gb === 50 && authority.lineage?.model_root === "/runpod-volume/mage-model" && authority.lineage?.initial_config_sha256 === expected.max1 && authority.lineage?.concurrent_reader_config_sha256 === expected.max2, "AUTHORITY_LINEAGE");
+assert(authority.runtime_contract?.offline_sealed_manifest_verification === true && authority.runtime_contract?.real_initialization_warmup === true && authority.runtime_contract?.application_read_only_model_files === true && authority.runtime_contract?.durable_per_unit_resume === true && authority.runtime_contract?.seed_then_distinct_replacement_process_required === true && authority.runtime_contract?.replacement_only_unresolved_units === true && authority.runtime_contract?.accepted_units_never_regenerated === true && authority.runtime_contract?.no_extra_probe_dispatch === true && authority.runtime_contract?.runtime_download_or_quantization === false && authority.runtime_contract?.cache_escape_forbidden === true, "AUTHORITY_RUNTIME");
+assert(authority.authorized_operations?.proposal_sha256 === expected.proposal && authority.authorized_operations?.all_and_only_listed_operations_authorized === true && authority.authorized_operations?.publication_or_tag_mutation_authorized === true && authority.authorized_operations?.retained_volume_mutation_authorized === false && authority.authorized_operations?.model_download_preparation_or_quantization_authorized === false && authority.authorized_operations?.gpu_or_region_fallback_authorized === false && authority.authorized_operations?.v2_08_authorized === false, "AUTHORITY_OPERATIONS");
+assert(authority.rate_snapshot?.checked_at === proposal.read_only_preflight?.checked_at && authority.rate_snapshot?.availability === "HIGH" && authority.rate_snapshot?.minimum_approved_availability === "LOW" && authority.rate_snapshot?.serverless_flex_rtx4090_usd_per_gpu_hour === 1.1 && authority.rate_snapshot?.maximum_cumulative_finite_spend_usd === 4 && authority.rate_snapshot?.estimated_finite_serverless_compute_usd_ceiling === 3.7 && authority.rate_snapshot?.existing_two_volume_charge_usd_per_month_total === 7, "AUTHORITY_RATES");
+assert(authority.execution_boundary?.image_republication_authorized === true && authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true && authority.execution_boundary?.cloudflare_mutation_authorized_pending_execution === true && authority.execution_boundary?.gpu_use_authorized_pending_execution === true && authority.execution_boundary?.provider_calls_completed === false && authority.execution_boundary?.external_spend_usd === 0 && authority.execution_boundary?.maximum_cumulative_finite_spend_usd === 4 && authority.execution_boundary?.retained_volume_mutation_authorized === false && authority.execution_boundary?.v2_08_authorized === false, "AUTHORITY_BOUNDARY");
 
 const currentState = text(resolve(root, "project-context/CURRENT_STATE.yaml"));
 const gateState = text(resolve(root, "project-context/GATES.yaml"));
@@ -88,6 +100,8 @@ const task = text(resolve(root, "project-context/tasks/VF-10-07.md"));
 const activation = text(resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"));
 assert(currentState.includes("2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json") && currentState.includes(expected.proposal), "CURRENT_STATE_POINTER");
 assert(gateState.includes("2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json") && gateState.includes(expected.proposal), "GATE_POINTER");
+assert(currentState.includes("v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/approved-authority.json") && currentState.includes(`v2_07_current_approved_authority_sha256: "${expected.authority}"`) && currentState.includes("provider_calls_authorized: true") && currentState.includes("maximum_external_spend_usd: 4"), "CURRENT_AUTHORITY_BINDING");
+assert(gateState.includes("pending_authority: \"evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/approved-authority.json\"") && gateState.includes(`pending_authority_sha256: "${expected.authority}"`) && gateState.includes("pending_numeric_cap_usd: 4") && gateState.includes("authority_mode: attempt38_bounded_mutation_authorized"), "GATE_AUTHORITY_BINDING");
 assert(currentState.includes(`v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json`) && currentState.includes(`v2_07_current_proposal_sha256: "${expected.proposal}"`) && currentState.includes("latest_live_check:\n    recorded_at_utc: \"2026-08-22T22:34:34.293Z\""), "CURRENT_ACTIVE_TRUTH");
 assert(
   currentState.includes(
@@ -115,7 +129,7 @@ assert(
 );
 assert(gateState.includes(`current_candidate_sha256: "${expected.proposal}"`) && gateState.includes(`pending_proposal_sha256: "${expected.proposal}"`) && gateState.includes("latest_closed_proposal_sha256: \"sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e\""), "GATE_ACTIVE_AND_HISTORICAL");
 assert(startHere.includes(expected.proposal) && task.includes(expected.proposal) && startHere.includes("Attempt38") && task.includes("Attempt38"), "HANDOFF_POINTERS");
-assert(activation.includes(expected.proposal) && activation.includes(expected.image) && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"), "ACTIVATION_FAIL_CLOSED");
+assert(activation.includes(expected.proposal) && activation.includes(expected.image) && activation.includes(`V207_APPROVED_AUTHORITY_SHA256 =\n  \"${expected.authority}\"`) && activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"), "ACTIVATION_AUTHORITY");
 
 const handlerPath = resolve(root, "workers/image-media/mage_serverless.py");
 const schemaPath = resolve(root, "packages/contracts/python/videoforge_contracts/_schema_documents.py");
