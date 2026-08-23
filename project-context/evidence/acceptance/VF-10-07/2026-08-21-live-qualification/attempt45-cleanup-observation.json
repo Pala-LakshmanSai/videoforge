@@ -1,0 +1,41 @@
+{
+  "schema_version": "videoforge.v2-07-attempt45-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 45,
+  "checked_at": "2026-08-23T15:03:46.164Z",
+  "result": "CLEAN_ROLLBACK_CONFIRMED",
+  "failure_code": "V207_SIGNER_DISABLED_DEPLOY_FAILED",
+  "orchestrator": {
+    "path": "/tmp/videoforge-v207-attempt45-live-orchestrator.json",
+    "sha256": "sha256:e03a47850af3fc452fced31f45d5c62485e5a595e0b632e7dfce5fa12984c42a",
+    "result": "FAILED"
+  },
+  "cloudflare": {
+    "pre_mutation_route": "404 V207_ROUTE_DISABLED",
+    "captured_version_id_sha256": "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0",
+    "captured_version_record_sha256": "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878",
+    "signer_disabled_deploy_attempted": true,
+    "signer_secret_activated": false,
+    "worker_rollback_confirmed": true,
+    "restored_route": "404 V207_ROUTE_DISABLED",
+    "restored_route_confirmed_at": "2026-08-23T15:02:55.118Z"
+  },
+  "protected_config": {
+    "path": "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+    "mode": "0600",
+    "sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "unchanged": true
+  },
+  "runpod": {
+    "endpoint_or_template_created": false,
+    "jobs_submitted": 0,
+    "gpu_use": false,
+    "reconciliation_evidence": "attempt45-reconciliation-observation.json"
+  },
+  "retained_volumes_untouched": true,
+  "cleanup_uncertain": false,
+  "authority_consumed": true,
+  "retry_under_same_authority_forbidden": true,
+  "v2_08_authorized": false
+}
