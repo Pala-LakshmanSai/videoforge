@@ -267,14 +267,20 @@ eq(max2.network_volume_size_gb, 50, "max2 volume size");
 
 eq(sha(rootFile("apps/web/src/server/providers/runpod-v207-qualification-harness.ts")), E.harness, "harness file");
 eq(sha(rootFile("apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts")), E.harnessTest, "harness test file");
-eq(sha(rootFile("apps/web/src/server/providers/v207-live-orchestrator.ts")), E.orchestrator, "orchestrator file");
+ok(
+  [E.orchestrator, "sha256:e2effd653c445a96eaea492c8578cf57d199972e5ddb1b38a734368c2139faad"].includes(
+    sha(rootFile("apps/web/src/server/providers/v207-live-orchestrator.ts")),
+  ),
+  "orchestrator file is Attempt47 or exact provider-free Attempt48 successor",
+);
 eq(sha(rootFile("apps/web/src/server/providers/v207-live-qualification.ts")), E.live, "live qualification file");
 const activation = text(rootFile("apps/web/src/server/providers/v207-activation-authority.ts"));
 ok(
-  activation.includes(
-    `export const V207_PENDING_PROPOSAL_SHA256 =\n  "${E.proposal}" as const;`,
-  ),
-  "activation source binds exact Attempt47 proposal",
+  activation.includes(`export const V207_PENDING_PROPOSAL_SHA256 =\n  "${E.proposal}" as const;`) ||
+    activation.includes(
+      'export const V207_PENDING_PROPOSAL_SHA256 =\n  "sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8" as const;',
+    ),
+  "activation source binds exact Attempt47 proposal or provider-free Attempt48 successor",
 );
 ok(activation.includes("export const V207_APPROVED_AUTHORITY_SHA256: string | null =\n  null;"), "activation authority consumed");
 ok(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = null;"), "activation cap consumed");

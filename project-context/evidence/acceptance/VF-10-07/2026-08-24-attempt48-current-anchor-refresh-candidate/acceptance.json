@@ -1,0 +1,33 @@
+{
+  "schema_version": "videoforge.v2-07-attempt48-current-anchor-refresh-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 48,
+  "recorded_at": "2026-08-23T19:13:35Z",
+  "result": "PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_CAP",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8",
+    "prior_attempt47_closure_sha256": "sha256:6f3204b9eee5a10eaa64f4f80fa3bd7fa6cf16e3fc2dc0eda2e6d2a63de08472",
+    "control_source_commit": "3bfeff00b62945936bdbfc1e7dede9037ef4a31e",
+    "orchestrator_source_sha256": "sha256:e2effd653c445a96eaea492c8578cf57d199972e5ddb1b38a734368c2139faad",
+    "max1_sha256": "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a",
+    "max2_sha256": "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb",
+    "anchor_refresh_authorized_if_approved": true,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null
+  },
+  "provider_boundary": {
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "spend_usd": 0,
+    "publication_authorized": false,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false
+  },
+  "required_user_authority": "Approve proposal sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8 with FlashBoot=true and LOW-or-better EU-RO-1 availability; fresh maximum cumulative finite spend $4",
+  "remaining_gate": "exact live Mage Serverless qualification",
+  "v2_08_authorized": false
+}

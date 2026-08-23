@@ -1,0 +1,137 @@
+{
+  "schema_version": "videoforge.v2-07-attempt48-current-anchor-refresh-combined-live-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 48,
+  "recorded_at": "2026-08-23T19:13:35Z",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "provider_calls_authorized": false,
+  "provider_mutation": false,
+  "gpu_use": false,
+  "spend_usd": 0,
+  "reason": "Attempt47 consumed its single-use authority and stopped before mutation because the current Worker rollback anchor was no longer retained. Attempt48 first refreshes that exact current anchor through the already-tested two-phase lifecycle, then runs the unchanged bounded Mage qualification.",
+  "approval_request": {
+    "exact_proposal_approved": false,
+    "flashboot": true,
+    "minimum_availability": "LOW-or-better",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_positive_numeric_cap_required": true,
+    "prior_authority_or_cap_reuse_forbidden": true,
+    "anchor_refresh_authorized": true
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "image_config_sha256": "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6",
+    "image_layer_sha256": "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a",
+    "image_layer_diff_id": "sha256:9f759e3f49c84816de71246f51f9aca275fc080c7c9c082aaa39ce81e8b049e1",
+    "image_publication_state": "PUBLISHED_EXACT_DIGEST_READBACK_ATTEMPT40_NO_REPUBLICATION",
+    "control_source_commit": "3bfeff00b62945936bdbfc1e7dede9037ef4a31e",
+    "orchestrator_source_sha256": "sha256:e2effd653c445a96eaea492c8578cf57d199972e5ddb1b38a734368c2139faad",
+    "anchor_refresh_marker_source_sha256": "sha256:6eb196247a9154ecb1110d74a2c0254855bcff9f4ec01a6377c30f6352a4dff7",
+    "canonical_activation_source_sha256": "sha256:858ebe43ef8ad6558825d6b1c756311a8944cd2ef27e58f42651d793ab191da9",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_write_policy": "APPLICATION_READ_ONLY",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_count_per_worker": 1,
+    "compute_type": "GPU",
+    "flex_only": true,
+    "flashboot": true,
+    "prior_attempt": {
+      "attempt": 47,
+      "proposal_sha256": "sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53",
+      "authority_sha256": "sha256:aae6dfd8a282333a8a5caa3149e520e58a858c93b0730e4529d599f7d078a254",
+      "closure_sha256": "sha256:6f3204b9eee5a10eaa64f4f80fa3bd7fa6cf16e3fc2dc0eda2e6d2a63de08472",
+      "cleanup_sha256": "sha256:90ef9ccc517b545f64adba62e07615d4041121763a3015da51981d41b950abd1",
+      "reconciliation_sha256": "sha256:d9f6dd526a347653eae2cb7a67e1bacc4dbeab77200d4a533c13e42edda84a65",
+      "authority_consumed": true,
+      "incremental_spend_usd": 0
+    }
+  },
+  "protected_config_anchor_refresh": {
+    "path": "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+    "baseline_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "projected_marker_sha256": "sha256:c643af2fe7d6325396b2527bcbe92d9422c6126aa3328530b8dfaa36b7bc08e5",
+    "mode": "0600",
+    "marker": "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1",
+    "apply_before_remote_mutation": true,
+    "terminal_revert_required": true,
+    "final_required_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774"
+  },
+  "cloudflare_anchor_refresh": {
+    "expected_old_active_version_id_sha256": "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0",
+    "expected_old_active_record_sha256": "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878",
+    "version_index_or_count_claimed": false,
+    "pre_mutation_route": {"status": 404, "code": "V207_ROUTE_DISABLED"},
+    "stale_signer_must_be_absent": true,
+    "signer_disabled_deploy_only": true,
+    "new_anchor_must_be_distinct": true,
+    "new_anchor_must_be_in_newest_seven_of_at_most_ten": true,
+    "post_refresh_route": {"status": 404, "code": "V207_ROUTE_DISABLED"},
+    "qualification_may_start_only_after_refresh_proof": true,
+    "cleanup_rollback_requires_exact_refreshed_record_hash": true
+  },
+  "staged_endpoint_configs": [
+    {
+      "stage": "initial_qualification",
+      "definition_path": "../2026-08-23-attempt47-terminal-pod-identity-repair-candidate/staged-config-max1.json",
+      "definition_sha256": "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a",
+      "workers_min": 0,
+      "workers_max": 1
+    },
+    {
+      "stage": "bounded_concurrent_reader_proof_only",
+      "definition_path": "../2026-08-23-attempt47-terminal-pod-identity-repair-candidate/staged-config-max2.json",
+      "definition_sha256": "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb",
+      "workers_min": 0,
+      "workers_max": 2,
+      "restore_after_proof": "max1"
+    }
+  ],
+  "operations": [
+    "read-only refresh RunPod identity, inventory, quota, availability, rate, and billing baseline; stop on mismatch",
+    "verify protected config baseline/mode and exact current old-anchor hashes",
+    "atomically apply two-phase-v1 marker and verify projected hash",
+    "require stable disabled route and absent stale signer",
+    "deploy signer-disabled Worker, capture distinct refreshed anchor, prove newest-seven retention and stable disabled route",
+    "activate scoped ephemeral R2 signer route",
+    "create exact private EU-RO-1 max1 endpoint/template using immutable image and sealed Mage volume",
+    "submit/status owned probe, complete cold and warm batches, duplicate delivery, cancel, and timeout",
+    "apply exact max2 only for two simultaneous read-only workers, then restore max1",
+    "prove durable outputs and v3 receipts before expiry, timings, peak VRAM, unchanged manifest, no model-volume writes or cache escape",
+    "on success retain endpoint/private template and both volumes with workers zero",
+    "on failure cancel only owned jobs, delete only disposable endpoint/template, rollback exact refreshed Worker record, delete signer, restore route, and perform three stable reconciliation reads",
+    "terminally restore protected config baseline hash/mode and remove marker",
+    "stop before V2-08"
+  ],
+  "cost": {
+    "baseline_endpoint_spend_usd": 1.6217972798040137,
+    "finite_action_estimate_usd": 3.95,
+    "proposed_finite_cap_usd": null,
+    "serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "existing_two_volume_charge_usd_per_month": 7,
+    "volume_charge_separate_from_finite_cap": true
+  },
+  "stop_conditions": [
+    "any lineage, anchor, marker, signer, route, resource, image, volume, GPU, region, or config mismatch",
+    "availability below LOW",
+    "cap risk or billing ambiguity",
+    "failed output or uncertain durable readback",
+    "unplanned duplicate compute",
+    "uncertain drain, rollback, config restoration, cleanup, or reconciliation"
+  ],
+  "success_retention": {
+    "endpoint": true,
+    "private_template": true,
+    "mage_volume": true,
+    "soulx_volume": true,
+    "workers_zero": true
+  },
+  "v2_08_authorized": false
+}

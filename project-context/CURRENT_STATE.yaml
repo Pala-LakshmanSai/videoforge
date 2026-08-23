@@ -28,6 +28,24 @@ current_goal_boundary:
   v2_07_action: Provider-free rollback-anchor recovery proposal only; no retry, mutation, GPU use, or spend without a separately hashed proposal and fresh authority
   note: "Attempt47 consumed its one-use authority and stopped before mutation at V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED. Three stable reads prove zero resources, both volumes, and zero incremental spend. V2-07 remains NOT_QUALIFIED; V2-08 forbidden."
 
+pending_v2_07_attempt48_proposal:
+  mode: provider_free_candidate_pending_fresh_exact_approval_and_cap
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8"
+  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/acceptance.json
+  candidate_acceptance_sha256: "sha256:0a80c683aaa670ae8c11132e0601b56879d70e1857a6ad2e2c64cba6657c6384"
+  control_source_commit: "3bfeff00b62945936bdbfc1e7dede9037ef4a31e"
+  orchestrator_source_sha256: "sha256:e2effd653c445a96eaea492c8578cf57d199972e5ddb1b38a734368c2139faad"
+  anchor_refresh_authorized: false
+  authority_recorded: false
+  maximum_cumulative_finite_spend_usd: null
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  retained_volume_mutation_authorized: false
+  v2_07_qualified: false
+  v2_08_authorized: false
+
 pending_v2_07_attempt47_proposal:
   mode: closed_consumed_attempt47_rollback_anchor_not_retained_clean
   proposal_path: evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/combined-live-proposal.json
@@ -2027,9 +2045,9 @@ model_runtime_evidence:
     v2_07_historical_attempt41_cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
     v2_07_historical_attempt41_reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
     v2_07_historical_attempt41_reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
-    v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/combined-live-proposal.json
-    v2_07_current_candidate_sha256: "sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53"
-    v2_07_current_candidate_control_commit: "1d39b716705a69cd8f8933d6a640fa5a9a98d37e"
+    v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/combined-live-proposal.json
+    v2_07_current_candidate_sha256: "sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8"
+    v2_07_current_candidate_control_commit: "3bfeff00b62945936bdbfc1e7dede9037ef4a31e"
     v2_07_current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     v2_07_current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
     v2_07_current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
@@ -2051,8 +2069,8 @@ model_runtime_evidence:
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
     v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-47.json
-    v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/acceptance.json
-    v2_07_current_candidate_acceptance_sha256: "sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6"
+    v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/acceptance.json
+    v2_07_current_candidate_acceptance_sha256: "sha256:0a80c683aaa670ae8c11132e0601b56879d70e1857a6ad2e2c64cba6657c6384"
     v2_07_attempt_30_increment_usd_immediate_post_cleanup: 0
     v2_07_attempt_30_delayed_billing_refresh_required: true
     v2_07_attempt_32_increment_usd_settled: 0
@@ -2638,13 +2656,13 @@ recommended_next_task:
   milestone: mage_serverless_qualification
   status: NOT_QUALIFIED_attempt47_rollback_anchor_not_retained_clean
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: attempt47_consumed_no_current_authority_or_cap
+  authorization_status: attempt48_candidate_pending_fresh_exact_approval_and_cap
   task_stage: provider_free_repair
   current_goal_authority: null
   provider_authority: *v2_07_provider_authority_attempt47
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Prepare a separately hashed provider-free rollback-anchor recovery proposal; no retry without fresh exact approval and cap."
+  goal: "Obtain exact authority for Attempt48 proposal sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8; no provider action before approval."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -2662,8 +2680,8 @@ recommended_next_task:
   application_code_changes_authorized: true
   authority_note: "Attempt47 authority/cap are consumed after pre-mutation rollback-anchor failure. Zero resources/spend reconciled; fresh proposal/approval/cap required for any retry. V2-08 forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt47_closed_not_qualified_clean
-  execution_blocker: "Exact rollback anchor is not retained; no mutation or retry is authorized."
+  execution_status: attempt48_provider_free_candidate_ready
+  execution_blocker: "Fresh exact proposal approval and positive numeric cap are required."
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_not_qualified_attempt47_closed_clean
