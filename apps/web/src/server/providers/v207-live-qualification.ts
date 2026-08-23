@@ -378,6 +378,7 @@ const V207_OUTPUT_FAILURE_STAGES = [
   "output_png_probe",
   "output_finalization",
   "output_finalization_replay",
+  "output_resume_readback",
   "unknown",
 ] as const;
 type V207OutputFailureStage = (typeof V207_OUTPUT_FAILURE_STAGES)[number];
@@ -796,6 +797,9 @@ export function extractV207ProviderJobErrorCode(jobError: unknown, output: unkno
 const RESULT_TEMP_PATH = `${RESULT_PATH}.tmp`;
 const V207_OUTPUT_PORT_REQUEST_TIMEOUT_MS = 15_000;
 const V207_OUTPUT_PORT_FINALIZE_TIMEOUT_MS = 30_000;
+// Hosted output-port GET authorities reject lifetimes above 900 seconds. Keep the
+// process-replacement resume readback within that route contract.
+const V207_OUTPUT_PORT_GET_MAX_LIFETIME_SECONDS = 900;
 // Attempt33 observed a valid completed reader payload followed by a short Cloudflare 503 HTML
 // burst on the idempotent FINALIZE callback. Keep retries exclusive to FINALIZE, but give that
 // reservation/callback replay enough bounded backoff to outlive the transient edge failure.
@@ -1962,6 +1966,7 @@ async function verifyBatch(
       // The first GET authority was consumed by the durability probe above.  Persist a fresh,
       // one-use GET authority for a possible process-replacement resume; it is never reused for
       // the current verification readback.
+      failureStage = "output_resume_readback";
       const resumeGetPort = await routePort(
         {
           schema_version: "videoforge-v207-generated-output-port-request/v1",
@@ -1971,9 +1976,10 @@ async function verifyBatch(
           object_key: item.output_object_key,
           content_type: "image/png",
           max_content_length: OUTPUT_LIMIT,
-          // A replacement can sit through the same bounded queue/init window as its signed
-          // envelope. Keep this single-use GET valid for that whole authority window.
-          lifetime_seconds: V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
+          // The hosted route caps GET authorities at 900 seconds. This single-use resume
+          // authority is intentionally bounded to that contract rather than the longer
+          // request/envelope lifetime.
+          lifetime_seconds: V207_OUTPUT_PORT_GET_MAX_LIFETIME_SECONDS,
           content_length: item.output_bytes,
           checksum_sha256: item.output_sha256,
         },

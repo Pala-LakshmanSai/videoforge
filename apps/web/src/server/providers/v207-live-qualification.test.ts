@@ -50,6 +50,7 @@ const source = await readFile(
   join(process.cwd(), "src/server/providers/v207-live-qualification.ts"),
   "utf8",
 );
+type TestRecord = Record<string, unknown>;
 
 describe("V2-07 live qualification runner safety", () => {
   it("merges one durable seed with exactly 31 replacement units and rejects gaps", () => {
@@ -93,12 +94,95 @@ describe("V2-07 live qualification runner safety", () => {
 
   it("uses the full request lifetime and durable hosted finalization", () => {
     expect(source).toContain("lifetime_seconds: V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS");
+    expect(source).toContain("const V207_OUTPUT_PORT_GET_MAX_LIFETIME_SECONDS = 900");
     expect(source).toContain('operation: "FINALIZE"');
     expect(source).toContain('schema_version !== "artifact-commit-receipt/v3"');
     expect(source).toContain("MAGE_COMMIT_RECEIPT_REPLAY_INVALID");
     expect(source).toContain("V207_OUTPUT_PORT_FINALIZE_TRANSPORT");
     expect(source).toContain("V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID");
     expect(source).toContain("V207_OUTPUT_PORT_FINALIZE_MAX_ATTEMPTS");
+  });
+
+  it("keeps successful FINALIZE replay ahead of a bounded resume GET and labels its failures", async () => {
+    const calls: TestRecord[] = [];
+    const receiptSha256 = `sha256:${"a".repeat(64)}`;
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as TestRecord;
+      calls.push(body);
+      if (body.operation === "FINALIZE") {
+        return new Response(
+          JSON.stringify({
+            schema_version: "videoforge-v207-generated-output-finalization/v1",
+            receipt: { receipt_sha256: receiptSha256 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          schema_version: "videoforge-v207-generated-output-read-port/v1",
+          url: "https://signed.example/read",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const nonce = "b".repeat(64);
+    const finalizeRequest = {
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "FINALIZE",
+      reservation_id: "reservation-a",
+      object_key: "outputs/scene-01.png",
+      receipt: { receipt_sha256: receiptSha256 },
+    };
+    await expect(
+      routePort(finalizeRequest, nonce, { fetchImpl, sleepImpl: async () => undefined }),
+    ).resolves.toMatchObject({
+      schema_version: "videoforge-v207-generated-output-finalization/v1",
+    });
+    await expect(
+      routePort(finalizeRequest, nonce, { fetchImpl, sleepImpl: async () => undefined }),
+    ).resolves.toMatchObject({
+      schema_version: "videoforge-v207-generated-output-finalization/v1",
+    });
+    await expect(
+      routePort(
+        {
+          schema_version: "videoforge-v207-generated-output-port-request/v1",
+          operation: "GET",
+          object_key: "outputs/scene-01.png",
+          lifetime_seconds: 900,
+        },
+        nonce,
+        { fetchImpl, sleepImpl: async () => undefined },
+      ),
+    ).resolves.toMatchObject({
+      schema_version: "videoforge-v207-generated-output-read-port/v1",
+    });
+    expect(calls.map((call) => call.operation)).toEqual(["FINALIZE", "FINALIZE", "GET"]);
+    expect(calls[2]?.lifetime_seconds).toBe(900);
+
+    const replayStage = source.indexOf('failureStage = "output_finalization_replay"');
+    const resumeStage = source.indexOf('failureStage = "output_resume_readback"');
+    const resumeLifetime = source.indexOf(
+      "lifetime_seconds: V207_OUTPUT_PORT_GET_MAX_LIFETIME_SECONDS",
+      resumeStage,
+    );
+    expect(replayStage).toBeGreaterThan(-1);
+    expect(resumeStage).toBeGreaterThan(replayStage);
+    expect(resumeLifetime).toBeGreaterThan(resumeStage);
+    expect(
+      extractV207OutputContractDiagnostics(
+        new V207OutputContractError(
+          "SUCCEEDED",
+          "V207_OUTPUT_PORT_400",
+          { kind: "object", keys: ["items"] },
+          "output_resume_readback",
+        ),
+      ),
+    ).toMatchObject({
+      output_failure_stage: "output_resume_readback",
+      output_failure_code: "V207_OUTPUT_PORT_400",
+    });
   });
 
   it("routes recovered reader results through both full verifiers before drain", () => {
@@ -733,6 +817,7 @@ describe("V2-07 live qualification runner safety", () => {
       "output_png_probe",
       "output_finalization",
       "output_finalization_replay",
+      "output_resume_readback",
     ]) {
       expect(source).toContain(`failureStage = "${stage}"`);
     }
