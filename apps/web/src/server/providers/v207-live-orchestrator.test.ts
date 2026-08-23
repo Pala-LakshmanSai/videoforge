@@ -121,6 +121,19 @@ describe("V2-07 live orchestrator", () => {
     expect(parseFixtureRefreshAuthority().anchorRefreshAuthorized).toBe(true);
   });
 
+  it("pins production orchestration to the exact protected config path", async () => {
+    const files = await fixture();
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
+        environment: files.environment,
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+      }),
+    ).rejects.toMatchObject({ code: "V207_WRANGLER_CONFIG_PATH_MISMATCH" });
+  });
+
   it("extracts one bounded child failure code from stderr only", () => {
     const stderr =
       "provider body https://example.invalid/run/secret-token\n" +

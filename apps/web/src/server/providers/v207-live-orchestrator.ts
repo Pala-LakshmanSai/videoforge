@@ -1039,6 +1039,14 @@ export async function runV207LiveOrchestration(
       environment.V207_WRANGLER_CONFIG ??
       V207_ORCHESTRATOR_DEFAULT_WRANGLER_CONFIG,
   );
+  // Production execution is pinned to the one reviewed protected config. Tests opt out of
+  // process signal installation and may use an exact temporary copy to exercise atomic writes.
+  if (
+    options.installSignalHandlers !== false &&
+    configPath !== resolve(V207_ORCHESTRATOR_DEFAULT_WRANGLER_CONFIG)
+  ) {
+    throw new V207LiveOrchestratorError("V207_WRANGLER_CONFIG_PATH_MISMATCH");
+  }
   const routeUrl = validateRouteUrl(
     options.routeUrl ?? environment.V207_ROUTE_URL ?? V207_ORCHESTRATOR_ROUTE,
   );
