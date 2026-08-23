@@ -1,0 +1,82 @@
+{
+  "schema_version": "videoforge.v2-07-attempt39-provider-free-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 39,
+  "recorded_at": "2026-08-23T01:35:00.000Z",
+  "result": "UNAPPROVED_PROVIDER_FREE_CANDIDATE",
+  "qualification_status": "NOT_QUALIFIED_PENDING_FRESH_APPROVAL",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57",
+    "max1_sha256": "sha256:26387b6f18d354af2ec9f034a3bbdb0645fcd50abe932f49278c16f36b8e4b66",
+    "max2_sha256": "sha256:6c8093e0292d53c5288904bcedb36b5f26a4f98c1109a16c7a9be0e9ddbf870f",
+    "control_source_commit": "5aa2ccae639052fb61312a3b5a830402c275a2f8",
+    "authority_path": null,
+    "authority_sha256": null,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_numeric_cap_required": true
+  },
+  "candidate_lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2",
+    "image_source_commit": "4249cafd4a5525b5723d0811f16496fb0e949653",
+    "image_config_sha256": "sha256:09d2ee0905ec4556857aae9df05b449802916cdf9e0d8ec4615a91b6d1fa9d06",
+    "image_layer_sha256": "sha256:1b390600563d813a87e09c2fa075d52ea1c24558e83b67c5649aa422a2c69c78",
+    "image_layer_diff_id": "sha256:0391cef74dd661df3c2c7b8b4fea1b391063abea0cfc004c806078a004915163",
+    "handler_source_sha256": "sha256:dfc2cebede44c0a8903daf0e6348040cd6e2b5af1a00c77d3f767ddb10aa316c",
+    "execution_subset_schema_sha256": "sha256:a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71",
+    "control_source_commit": "5aa2ccae639052fb61312a3b5a830402c275a2f8",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flashboot": true,
+    "latest_observed_cloudflare_route": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "fresh_cap_arithmetic": {
+      "approved_cap_is_incremental_allowance": true,
+      "cumulative_threshold_formula": "baseline_endpoint_spend_usd + maximum_incremental_spend_usd",
+      "downward_or_invalid_billing_read_fails_closed": true
+    }
+  },
+  "plan": {
+    "total_units": 32,
+    "item_ids": ["scene-01", "scene-02", "scene-03", "scene-04", "scene-05", "scene-06", "scene-07", "scene-08", "scene-09", "scene-10", "scene-11", "scene-12", "scene-13", "scene-14", "scene-15", "scene-16", "scene-17", "scene-18", "scene-19", "scene-20", "scene-21", "scene-22", "scene-23", "scene-24", "scene-25", "scene-26", "scene-27", "scene-28", "scene-29", "scene-30", "scene-31", "scene-32"],
+    "seed_item_ids": ["scene-01"],
+    "replacement_item_ids": ["scene-02", "scene-03", "scene-04", "scene-05", "scene-06", "scene-07", "scene-08", "scene-09", "scene-10", "scene-11", "scene-12", "scene-13", "scene-14", "scene-15", "scene-16", "scene-17", "scene-18", "scene-19", "scene-20", "scene-21", "scene-22", "scene-23", "scene-24", "scene-25", "scene-26", "scene-27", "scene-28", "scene-29", "scene-30", "scene-31", "scene-32"]
+  },
+  "provider_boundary": {
+    "provider_calls": true,
+    "provider_mutations": false,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "authority_active": false,
+    "cap_usd": null,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false,
+    "authority_file_present": false,
+    "read_only_refresh_required_before_mutation": false,
+    "read_only_refresh_completed": true,
+    "rollback_anchor_newest_seven_retention_required": true
+  },
+  "focused_contracts": {
+    "negative_tests_required": ["wrong bytes", "wrong path", "wrong volume", "wrong GPU", "wrong region", "writes", "cache escape", "malformed authority", "duplicate delivery", "cancel", "timeout", "two readers"],
+    "durable_output_before_provider_expiry": true,
+    "v3_authority_provenance_receipts": true,
+    "manifest_before_after_equal": true,
+    "model_volume_writes_zero": true,
+    "workers_zero_after_drain": true,
+    "endpoint_and_both_volumes_retained": true,
+    "authority_file_present": false,
+    "read_only_refresh_required_before_mutation": false,
+    "rollback_anchor_newest_seven_retention_required": true,
+    "v2_08_forbidden": true
+  }
+}

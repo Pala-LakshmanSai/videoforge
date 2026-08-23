@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-23T01:13:26.598Z"
+updated_at: "2026-08-23T01:35:00.000Z"
 
-phase: serverless_v2_v2_07_attempt38_closed_fail_uncertain
+phase: serverless_v2_v2_07_attempt39_candidate_pending_approval
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt38_closed_not_qualified
+current_wave: v2_07_attempt39_candidate_pending_approval
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_closure
+task_stage: provider_free_candidate
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,15 +18,15 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_attempt38_closed_fail_uncertain
+  mode: v2_07_attempt39_candidate_pending_approval
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: true
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: execute_only_exact_approved_attempt38_then_close_and_stop_before_v2_08; V2-08 forbidden
-  note: "Attempt38 consumed proposal sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c and authority sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6 after the live runner canceled at initialized on cap arithmetic risk. Closure is NOT_QUALIFIED with zero GPU jobs, zero accepted outputs, zero incremental spend, zero disposable RunPod resources after three stable reads, both exact retained volumes, and uncertain Cloudflare route rollback. Do not reuse authority/cap; provider-free diagnosis only; V2-08 forbidden."
+  v2_07_action: prepare_and_approve_only_exact_attempt39_then_execute_bounded_sequence_and_stop_before_v2_08; V2-08 forbidden
+  note: "Attempt38 consumed proposal sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c and authority sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6 after the live runner canceled at initialized on cap arithmetic risk. Attempt39 is a new unapproved provider-free candidate sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57 binding control repair 5aa2ccae639052fb61312a3b5a830402c275a2f8, the already-published immutable image, fresh-cap arithmetic, and newest-seven rollback-anchor retention. No authority, provider mutation, GPU use, publication, or spend is active; fresh exact approval and a positive numeric cap are required. V2-08 forbidden."
 
 pending_v2_07_attempt25_proposal:
   mode: closed_consumed_attempt25_output_finalization_failure
@@ -545,6 +545,52 @@ pending_v2_07_attempt38_proposal:
   authority_consumed: true
   result: NOT_QUALIFIED_attempt38_cap_arithmetic_stop_cleanup_uncertain
   next_boundary: provider_free_diagnosis_only; fresh exact proposal/authority/cap required for any retry; V2-08 forbidden
+
+pending_v2_07_attempt39_proposal:
+  mode: pending_fresh_exact_approval_and_numeric_cap
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57"
+  control_source_commit: "5aa2ccae639052fb61312a3b5a830402c275a2f8"
+  image_source_commit: "4249cafd4a5525b5723d0811f16496fb0e949653"
+  immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2"
+  staged_max1_sha256: "sha256:26387b6f18d354af2ec9f034a3bbdb0645fcd50abe932f49278c16f36b8e4b66"
+  staged_max2_sha256: "sha256:6c8093e0292d53c5288904bcedb36b5f26a4f98c1109a16c7a9be0e9ddbf870f"
+  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/acceptance.json
+  candidate_acceptance_sha256: "sha256:dab1020c8fee41c0ab0aa80a4878b13b4e70afa46974748d15fb77e9ebc015fd"
+  flashboot: true
+  minimum_requested_availability: LOW
+  observed_availability: HIGH
+  region: EU-RO-1
+  maximum_cumulative_finite_spend_usd: null
+  estimated_finite_serverless_compute_usd_ceiling: 3.7
+  fresh_numeric_cap_required: true
+  exact_proposal_approval_required: true
+  authority_recorded: false
+  pending_authority: null
+  pending_authority_sha256: null
+  authority_path: null
+  authority_sha256: null
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  image_republication_authorized: false
+  model_download_or_volume_mutation_authorized: false
+  v2_08_authorized: false
+  current_read_only_truth_checked_at: "2026-08-23T01:40:52.298Z"
+  latest_observed_cloudflare_route_status: 404
+  latest_observed_cloudflare_route_code: V207_ROUTE_DISABLED
+  rollback_anchor_retention_required: newest_seven_of_ten_before_worker_or_secret_mutation
+  fresh_cap_arithmetic: cumulative_billing_threshold_is_baseline_plus_incremental_cap
+  existing_two_volume_charge_usd_per_month_total: 7
+  closure_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-38.json
+  closure_evidence_sha256: "sha256:ab89f5f143c2f424c811a149e96ed0020b0095ce3399c5bbe33e64bb771a1a07"
+  cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt38-cleanup-observation.json
+  cleanup_evidence_sha256: "sha256:52d73dcbd15ca96e713306bf95877b1d2873025b934bab14306dae6011988ca4"
+  reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt38-reconciliation-observation.json
+  reconciliation_evidence_sha256: "sha256:a9d6b96952892a33460e1aa592bbc97c8d6c3aad0d0580dda0f829d843788e10"
+  authority_consumed: false
+  result: NOT_QUALIFIED_pending_fresh_approval
+  next_boundary: exact user approval and fresh positive numeric cap; read-only refresh passed HIGH with zero compute; no authority file or provider mutation/GPU/spend is active; V2-08 forbidden
 
 pending_v2_07_attempt24_proposal:
   mode: closed_consumed_attempt24_quiescence_failure
@@ -1419,9 +1465,9 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "5aa2ccae639052fb61312a3b5a830402c275a2f8"
-  current_source_head_semantics: exact_attempt38_source_published_but_qualification_failed_closed
+  current_source_head_semantics: attempt39_provider_free_candidate_after_attempt38_failed_closed
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt38 published/read back exact Mage image sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2 through workflow 32609238298, then canceled at initialized on cap arithmetic risk before any GPU job. Closure sha256:ab89f5f143c2f424c811a149e96ed0020b0095ce3399c5bbe33e64bb771a1a07 is NOT_QUALIFIED; RunPod is reconciled to zero disposable resources and both retained volumes, while Cloudflare route rollback remains uncertain. Post-attempt provider-free rollback-retention fix is committed at 5aa2ccae639052fb61312a3b5a830402c275a2f8; it is not the published image source lineage."
+  current_source_head_note: "Attempt38 published/read back exact Mage image sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2 through workflow 32609238298, then canceled at initialized on cap arithmetic risk before any GPU job. Closure sha256:ab89f5f143c2f424c811a149e96ed0020b0095ce3399c5bbe33e64bb771a1a07 is NOT_QUALIFIED; RunPod is reconciled to zero disposable resources and both retained volumes, while Cloudflare route rollback remains uncertain. Attempt39 provider-free candidate sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57 binds control repair 5aa2ccae639052fb61312a3b5a830402c275a2f8, fresh-cap arithmetic, and newest-seven rollback-anchor retention; it has no authority, publication, GPU, or spend."
   v2_07_latest_local_repair: "Commit edb18154759a1c4da9f28789fe5f4c4ab74a92ed adds strict terminal scale-zero and distinct worker/pod identity before the 31-unit resume, and a deterministic multi-file overlay containing the exact timing-provenance schema. Focused V2-07 tests pass 166/166 and image-worker tests pass 117/117."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -1440,7 +1486,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Attempt38 authority/cap consumed and closed. Provider-free diagnosis only; retained-volume mutation, fallback GPU/region, and V2-08 remain forbidden."
+  provider_authority_scope: "Attempt39 is an unapproved provider-free candidate. Attempt38 authority/cap are consumed and closed; fresh exact approval and a positive numeric cap are required before any provider mutation/GPU/spend. Retained-volume mutation, fallback GPU/region, and V2-08 remain forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
