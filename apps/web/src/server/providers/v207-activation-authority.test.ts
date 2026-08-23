@@ -27,11 +27,36 @@ import {
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
   V207_TYPED_ACTIVATION_AUTHORITY_COMMIT,
   V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT,
+  canonicalV207ActivationAuthoritySource,
   hashV207ActivationAuthoritySource,
   normalizeV207ActivationAuthoritySource,
 } from "./v207-activation-authority";
 
 const image = V207_REPAIRED_IMAGE;
+
+type ActivationSourceFixtureOptions = {
+  proposal?: string;
+  authority?: string;
+  cap?: string;
+  anchorRefresh?: string;
+  unrelated?: string;
+};
+
+function activationSourceFixture({
+  proposal = "a".repeat(64),
+  authority = "null",
+  cap = "null",
+  anchorRefresh = "null",
+  unrelated = "",
+}: ActivationSourceFixtureOptions = {}): string {
+  return [
+    `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${proposal}" as const;`,
+    `export const V207_APPROVED_AUTHORITY_SHA256: string | null = ${authority};`,
+    `export const V207_APPROVED_FINITE_CAP_USD: number | null = ${cap};`,
+    `export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = ${anchorRefresh};`,
+    `const unrelated = "${unrelated}";`,
+  ].join("\n");
+}
 
 // Historical immutable-lineage markers verified by compatibility validators:
 // Attempt28 sha256:12bb46d0d6403c888bc5ba7c965174f681baa5f45f320a90a4b1d4f0cf7f56cf
@@ -103,22 +128,93 @@ describe("V2-07 activation authority", () => {
     expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
   });
 
-  it("uses a fail-closed non-cyclic source binding for the exact proposal pointer", () => {
-    const sourceA =
-      'export const V207_PENDING_PROPOSAL_SHA256 =\n  "sha256:' + "a".repeat(64) + '" as const;';
-    const sourceB = sourceA.replace(/a{64}/u, "b".repeat(64));
-    expect(normalizeV207ActivationAuthoritySource(sourceA)).toBe(
-      normalizeV207ActivationAuthoritySource(sourceB),
+  it("uses a fail-closed non-cyclic source binding for all approval constants", () => {
+    const sourceBeforeApproval = activationSourceFixture();
+    const sourceAfterApproval = activationSourceFixture({
+      proposal: "b".repeat(64),
+      authority: `"sha256:${"c".repeat(64)}"`,
+      cap: "4",
+      anchorRefresh: "true",
+    });
+    expect(canonicalV207ActivationAuthoritySource(sourceBeforeApproval)).toBe(
+      canonicalV207ActivationAuthoritySource(sourceAfterApproval),
     );
-    expect(hashV207ActivationAuthoritySource(sourceA)).toBe(
-      hashV207ActivationAuthoritySource(sourceB),
+    expect(normalizeV207ActivationAuthoritySource(sourceBeforeApproval)).toBe(
+      canonicalV207ActivationAuthoritySource(sourceBeforeApproval),
     );
-    expect(() => normalizeV207ActivationAuthoritySource("missing pointer")).toThrow(
-      "V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID",
+    expect(hashV207ActivationAuthoritySource(sourceBeforeApproval)).toBe(
+      hashV207ActivationAuthoritySource(sourceAfterApproval),
     );
-    expect(() => normalizeV207ActivationAuthoritySource(`${sourceA}\n${sourceA}`)).toThrow(
-      "V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID",
+
+    const unrelatedDrift = activationSourceFixture({ unrelated: "drift" });
+    expect(canonicalV207ActivationAuthoritySource(unrelatedDrift)).not.toBe(
+      canonicalV207ActivationAuthoritySource(sourceBeforeApproval),
     );
+    expect(hashV207ActivationAuthoritySource(unrelatedDrift)).not.toBe(
+      hashV207ActivationAuthoritySource(sourceBeforeApproval),
+    );
+  });
+
+  it("rejects missing, duplicate, and malformed canonical approval bindings", () => {
+    const source = activationSourceFixture();
+    const cases = [
+      {
+        error: "V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID",
+        missing: source.replace(
+          'export const V207_PENDING_PROPOSAL_SHA256 = "sha256:' + "a".repeat(64) + '" as const;\n',
+          "",
+        ),
+        duplicate: `${source}\n${source.split("\n")[0]}`,
+        malformed: source.replace("sha256:" + "a".repeat(64), "sha256:bad"),
+      },
+      {
+        error: "V207_ACTIVATION_SOURCE_APPROVED_AUTHORITY_INVALID",
+        missing: source.replace(
+          "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;\n",
+          "",
+        ),
+        duplicate: `${source}\n${source.split("\n")[1]}`,
+        malformed: source.replace(
+          "V207_APPROVED_AUTHORITY_SHA256: string | null = null",
+          "V207_APPROVED_AUTHORITY_SHA256: string | null = undefined",
+        ),
+      },
+      {
+        error: "V207_ACTIVATION_SOURCE_FINITE_CAP_INVALID",
+        missing: source.replace(
+          "export const V207_APPROVED_FINITE_CAP_USD: number | null = null;\n",
+          "",
+        ),
+        duplicate: `${source}\n${source.split("\n")[2]}`,
+        malformed: source.replace(
+          "V207_APPROVED_FINITE_CAP_USD: number | null = null",
+          "V207_APPROVED_FINITE_CAP_USD: number | null = Infinity",
+        ),
+      },
+      {
+        error: "V207_ACTIVATION_SOURCE_ANCHOR_REFRESH_INVALID",
+        missing: source.replace(
+          "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;\n",
+          "",
+        ),
+        duplicate: `${source}\n${source.split("\n")[3]}`,
+        malformed: source.replace(
+          "V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null",
+          "V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = undefined",
+        ),
+      },
+    ];
+    for (const testCase of cases) {
+      expect(() => canonicalV207ActivationAuthoritySource(testCase.missing)).toThrow(
+        testCase.error,
+      );
+      expect(() => canonicalV207ActivationAuthoritySource(testCase.duplicate)).toThrow(
+        testCase.error,
+      );
+      expect(() => canonicalV207ActivationAuthoritySource(testCase.malformed)).toThrow(
+        testCase.error,
+      );
+    }
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {

@@ -94,27 +94,75 @@ export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
-  /(\bexport const V207_PENDING_PROPOSAL_SHA256\s*=\s*(?:\r?\n\s*)?")sha256:[a-f0-9]{64}("\s+as const;)/gu;
+  /(\bexport const V207_PENDING_PROPOSAL_SHA256\s*=\s*")sha256:[a-f0-9]{64}("\s+as const;)/gu;
+const V207_APPROVED_AUTHORITY_PATTERN =
+  /(\bexport const V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*)(?:"sha256:[a-f0-9]{64}"|null)(\s*;)/gu;
+const V207_FINITE_CAP_PATTERN =
+  /(\bexport const V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*)(?:null|(?:0|[1-9]\d*)(?:\.\d+)?)(\s*;)/gu;
+const V207_ANCHOR_REFRESH_PATTERN =
+  /(\bexport const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*)(?:true|false|null)(\s*;)/gu;
+
+function replaceExactlyOneV207Binding(
+  source: string,
+  declarationName: string,
+  pattern: RegExp,
+  replacement: string,
+  errorCode: string,
+): string {
+  const declarationCount =
+    source.match(new RegExp(`\\bexport\\s+const\\s+${declarationName}\\b`, "gu"))?.length ?? 0;
+  const bindingMatches = source.match(pattern)?.length ?? 0;
+  if (declarationCount !== 1 || bindingMatches !== 1) throw new Error(errorCode);
+  return source.replace(pattern, replacement);
+}
 
 /**
- * Canonicalize this module for proposal lineage without creating a hash cycle.  The exact
+ * Canonicalize this module for approval lineage without creating a hash cycle. The exact
  * proposal pointer remains compiled into the parser and is still compared byte-for-byte at
- * execution; only that one pointer literal is replaced with a fixed zero digest when the source
- * lineage hash is calculated.  Any missing or duplicate pointer fails closed rather than silently
- * producing an unbound source hash.
+ * execution; the proposal digest, approved authority digest, finite cap, and anchor-refresh
+ * flag are replaced with neutral values when the source lineage hash is calculated. Any missing,
+ * duplicate, or malformed binding fails closed rather than silently producing an unbound source hash.
  */
+export function canonicalV207ActivationAuthoritySource(source: string): string {
+  let canonical = replaceExactlyOneV207Binding(
+    source,
+    "V207_PENDING_PROPOSAL_SHA256",
+    V207_PROPOSAL_POINTER_PATTERN,
+    `$1sha256:${"0".repeat(64)}$2`,
+    "V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID",
+  );
+  canonical = replaceExactlyOneV207Binding(
+    canonical,
+    "V207_APPROVED_AUTHORITY_SHA256",
+    V207_APPROVED_AUTHORITY_PATTERN,
+    "$1null$2",
+    "V207_ACTIVATION_SOURCE_APPROVED_AUTHORITY_INVALID",
+  );
+  canonical = replaceExactlyOneV207Binding(
+    canonical,
+    "V207_APPROVED_FINITE_CAP_USD",
+    V207_FINITE_CAP_PATTERN,
+    "$1null$2",
+    "V207_ACTIVATION_SOURCE_FINITE_CAP_INVALID",
+  );
+  return replaceExactlyOneV207Binding(
+    canonical,
+    "V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED",
+    V207_ANCHOR_REFRESH_PATTERN,
+    "$1null$2",
+    "V207_ACTIVATION_SOURCE_ANCHOR_REFRESH_INVALID",
+  );
+}
+
+/** Backward-compatible name for callers that only need the canonical source binding. */
 export function normalizeV207ActivationAuthoritySource(source: string): string {
-  const matches = source.match(V207_PROPOSAL_POINTER_PATTERN);
-  if (matches === null || matches.length !== 1) {
-    throw new Error("V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID");
-  }
-  return source.replace(V207_PROPOSAL_POINTER_PATTERN, `$1sha256:${"0".repeat(64)}$2`);
+  return canonicalV207ActivationAuthoritySource(source);
 }
 
 /** Return the non-cyclic source binding consumed by the Attempt43 proposal lineage. */
 export function hashV207ActivationAuthoritySource(source: string): string {
   return `sha256:${createHash("sha256")
-    .update(normalizeV207ActivationAuthoritySource(source), "utf8")
+    .update(canonicalV207ActivationAuthoritySource(source), "utf8")
     .digest("hex")}`;
 }
 
