@@ -7,13 +7,20 @@ import {
   parseV207ActivationAuthority,
   type V207ActivationAuthority,
 } from "./v207-activation-authority";
+import {
+  applyV207RollbackAnchorRefreshMarker,
+  revertV207RollbackAnchorRefreshMarker,
+  V207_ANCHOR_REFRESH_BASELINE_SHA256,
+  V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH,
+  V207_ANCHOR_REFRESH_ENABLED_SHA256,
+  V207_ANCHOR_REFRESH_FILE_MODE,
+} from "./v207-anchor-refresh-marker";
 
 export const V207_ORCHESTRATOR_WORKER_NAME = "videoforge-v2-06-staging" as const;
 export const V207_ORCHESTRATOR_SECRET_NAME = "VIDEOFORGE_V207_AUTHORITY_NONCE" as const;
 export const V207_ORCHESTRATOR_ROUTE =
   "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port" as const;
-export const V207_ORCHESTRATOR_DEFAULT_WRANGLER_CONFIG =
-  "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json" as const;
+export const V207_ORCHESTRATOR_DEFAULT_WRANGLER_CONFIG = V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH;
 
 const REPOSITORY_ROOT = process.cwd().endsWith("/apps/web")
   ? resolve(process.cwd(), "../..")
@@ -37,6 +44,10 @@ const RESTORATION_REQUIRED_CONSECUTIVE_MATCHES = 16;
  */
 export const V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY = "V207_ROLLBACK_ANCHOR_REFRESH" as const;
 export const V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION = "two-phase-v1" as const;
+export const V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256 =
+  "sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48" as const;
+export const V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256 =
+  "sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97" as const;
 /** Wrangler's versions list is limited to ten recent versions. Keep three
  * slots of headroom for the bounded deploy/secret mutations and propagation
  * churn, so the captured rollback target must be in the newest seven. */
@@ -90,6 +101,9 @@ export interface V207LiveOrchestratorOptions {
   readonly sleepImpl?: (milliseconds: number) => Promise<void>;
   /** Test-only hard deadline for route restoration; production uses a fresh 120-second signal. */
   readonly routeRestorationSignal?: AbortSignal;
+  /** Test-only expected old-anchor overrides; production is pinned to the exact proposal hashes. */
+  readonly expectedOldActiveVersionIdSha256?: string;
+  readonly expectedOldActiveRecordSha256?: string;
   /** Test-only filesystem headroom override; production always reads statfs. */
   readonly diskAvailableBytes?: number;
   /** Tests disable process signal registration; production leaves it enabled. */
@@ -535,7 +549,7 @@ async function readProtectedConfig(configPath: string): Promise<JsonRecord> {
   } catch {
     throw new V207LiveOrchestratorError("V207_WRANGLER_CONFIG_UNREADABLE");
   }
-  if (!metadata.isFile() || (metadata.mode & 0o077) !== 0) {
+  if (!metadata.isFile() || (metadata.mode & 0o7777) !== V207_ANCHOR_REFRESH_FILE_MODE) {
     throw new V207LiveOrchestratorError("V207_WRANGLER_CONFIG_NOT_PROTECTED");
   }
   let config: unknown;
@@ -1091,6 +1105,8 @@ export async function runV207LiveOrchestration(
   let workerMutationMayExist = false;
   let workerRollbackVerified = false;
   let rollbackAnchorRefresh: V207RollbackAnchorRefresh = { enabled: false };
+  let anchorRefreshMarkerApplyAttempted = false;
+  let anchorRefreshMarkerApplied = false;
   let refreshValidationStarted = false;
   let refreshCompleted = false;
   let preMutationRoute: RouteFingerprint | undefined;
@@ -1110,7 +1126,31 @@ export async function runV207LiveOrchestration(
       }),
     );
     if (clean.stdout.trim() !== "") throw new V207LiveOrchestratorError("V207_GIT_WORKTREE_DIRTY");
-    const protectedConfig = await readProtectedConfig(configPath);
+    let protectedConfig = await readProtectedConfig(configPath);
+    const configuredRefreshMarker = asRecord(protectedConfig.vars)?.[
+      V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY
+    ];
+    if (
+      environment[V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY] ===
+        V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION &&
+      configuredRefreshMarker === undefined &&
+      authority.anchorRefreshAuthorized === true
+    ) {
+      // The protected config is the only local input that enables the extra deploy. Apply the
+      // exact marker atomically immediately before the first remote read/mutation. Any helper
+      // drift is treated as cleanup uncertainty even when the remote boundary was not reached.
+      anchorRefreshMarkerApplyAttempted = true;
+      const applied = await applyV207RollbackAnchorRefreshMarker(configPath);
+      if (applied.sha256 !== V207_ANCHOR_REFRESH_ENABLED_SHA256 || applied.state !== "enabled") {
+        throw new V207LiveOrchestratorError("V207_ANCHOR_REFRESH_MARKER_APPLY_UNCONFIRMED");
+      }
+      anchorRefreshMarkerApplied = true;
+      protectedConfig = await readProtectedConfig(configPath);
+      await record("rollback_anchor_refresh_marker_applied", {
+        sha256: applied.sha256,
+        mode: V207_ANCHOR_REFRESH_FILE_MODE,
+      });
+    }
     rollbackAnchorRefresh = resolveV207RollbackAnchorRefresh(environment, protectedConfig);
     if (rollbackAnchorRefresh.enabled && authority.anchorRefreshAuthorized !== true) {
       throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_AUTHORITY_REQUIRED");
@@ -1124,6 +1164,24 @@ export async function runV207LiveOrchestration(
     }
     capturedAnchor = await statusVersion(run, cwd, configPath, environment, abortController.signal);
     initialRollbackAnchor = capturedAnchor;
+    if (rollbackAnchorRefresh.enabled) {
+      const expectedVersionIdHash =
+        options.expectedOldActiveVersionIdSha256 ??
+        V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256;
+      const expectedRecordHash =
+        options.expectedOldActiveRecordSha256 ??
+        V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256;
+      if (
+        sha256(capturedAnchor.versionId) !== expectedVersionIdHash ||
+        capturedAnchor.sha256 !== expectedRecordHash
+      ) {
+        throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH");
+      }
+      await record("rollback_anchor_refresh_old_anchor_exact", {
+        version_id_hash: sha256(capturedAnchor.versionId),
+        rollback_anchor_sha256: capturedAnchor.sha256,
+      });
+    }
     const recentVersions = await recentWorkerVersions(
       run,
       cwd,
@@ -1476,6 +1534,29 @@ export async function runV207LiveOrchestration(
         await record("disabled_route_probe_skipped_no_mutation");
       } catch {
         cleanupErrors.push("V207_EVIDENCE_PERSIST_FAILED");
+      }
+    }
+    if (anchorRefreshMarkerApplied || anchorRefreshMarkerApplyAttempted) {
+      if (!anchorRefreshMarkerApplied) {
+        cleanupErrors.push("V207_ANCHOR_REFRESH_MARKER_APPLY_UNCERTAIN");
+      }
+      try {
+        const reverted = await revertV207RollbackAnchorRefreshMarker(configPath);
+        if (
+          reverted.sha256 !== V207_ANCHOR_REFRESH_BASELINE_SHA256 ||
+          reverted.state !== "disabled"
+        ) {
+          cleanupErrors.push("V207_ANCHOR_REFRESH_MARKER_REVERT_UNCONFIRMED");
+        } else {
+          anchorRefreshMarkerApplied = false;
+          await record("rollback_anchor_refresh_marker_reverted", {
+            sha256: reverted.sha256,
+            mode: V207_ANCHOR_REFRESH_FILE_MODE,
+          });
+        }
+      } catch (error) {
+        cleanupErrors.push("V207_ANCHOR_REFRESH_MARKER_REVERT_UNCERTAIN");
+        cleanupErrors.push(safeErrorCode(error));
       }
     }
     if (cleanupErrors.length > 0) {

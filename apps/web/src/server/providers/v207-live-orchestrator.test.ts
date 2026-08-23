@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
@@ -18,6 +19,11 @@ import {
   type V207CommandRequest,
   type V207CommandResult,
 } from "./v207-live-orchestrator";
+import {
+  applyV207RollbackAnchorRefreshMarker,
+  V207_ANCHOR_REFRESH_BASELINE_SHA256,
+  V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH,
+} from "./v207-anchor-refresh-marker";
 import {
   V207_PENDING_PROPOSAL_SHA256,
   V207_REPAIRED_IMAGE,
@@ -40,6 +46,12 @@ const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGED_VERSION_ID = "22222222-2222-4222-8222-222222222222";
 const DEPLOYMENT_ID = "33333333-3333-4333-8333-333333333333";
 const REFRESH_VERSION_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const TEST_OLD_ACTIVE_VERSION_ID_SHA256 = `sha256:${createHash("sha256")
+  .update(VERSION_ID, "utf8")
+  .digest("hex")}`;
+const TEST_OLD_ACTIVE_RECORD_SHA256 = extractV207WorkerRollbackAnchor({
+  versions: [{ version_id: VERSION_ID, percentage: 100 }],
+}).sha256;
 const VERSION_HISTORY = [
   "44444444-4444-4444-8444-444444444444",
   "55555555-5555-4555-8555-555555555555",
@@ -76,16 +88,8 @@ async function fixture() {
   const root = await mkdtemp("/tmp/vf-v207-orchestrator-");
   roots.push(root);
   const configPath = join(root, "wrangler-current.json");
-  await writeFile(
-    configPath,
-    JSON.stringify({
-      name: "videoforge-v2-06-staging",
-      main: "apps/web/dist-staging/index.js",
-      vars: {},
-      r2_buckets: [{ binding: "PRIVATE_ARTIFACTS", bucket_name: "private" }],
-    }),
-    { mode: 0o600 },
-  );
+  const baseline = await readFile(V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH);
+  await writeFile(configPath, baseline, { mode: 0o600 });
   await chmod(configPath, 0o600);
   return {
     root,
@@ -103,13 +107,8 @@ async function fixture() {
 }
 
 async function enableRollbackAnchorRefresh(configPath: string): Promise<void> {
-  const config = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
-  config.vars = {
-    ...(typeof config.vars === "object" && config.vars !== null ? config.vars : {}),
-    [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
-  };
-  await writeFile(configPath, JSON.stringify(config), { mode: 0o600 });
-  await chmod(configPath, 0o600);
+  const result = await applyV207RollbackAnchorRefreshMarker(configPath);
+  expect(result.sha256).not.toBe(V207_ANCHOR_REFRESH_BASELINE_SHA256);
 }
 
 afterEach(async () => {
@@ -434,7 +433,6 @@ describe("V2-07 live orchestrator", () => {
 
   it("refreshes to one newly deployed anchor, then qualifies and rolls back to that anchor", async () => {
     const files = await fixture();
-    await enableRollbackAnchorRefresh(files.configPath);
     const calls: V207CommandRequest[] = [];
     let signerSecretPresent = false;
     let statusCalls = 0;
@@ -467,7 +465,7 @@ describe("V2-07 live orchestrator", () => {
               {
                 version_id,
                 percentage: 100,
-                script_hash: statusCalls === 1 ? "sha256:old" : "sha256:refreshed",
+                ...(statusCalls === 1 ? {} : { script_hash: "sha256:refreshed" }),
               },
             ],
           }),
@@ -532,6 +530,8 @@ describe("V2-07 live orchestrator", () => {
 
     const orchestration = await runV207LiveOrchestration({
       authorityParser: parseFixtureRefreshAuthority,
+      expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+      expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
       environment,
       cwd: resolve(process.cwd(), "../.."),
       configPath: files.configPath,
@@ -560,9 +560,92 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"event": "orchestration_complete"');
   });
 
+  it("rejects a refresh when the fresh old version and record hashes drift from the proposal", async () => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      throw new Error("old-anchor mismatch must stop before provider mutation");
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl: async () => {
+          throw new Error("old-anchor mismatch must not probe the route");
+        },
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH" });
+
+    expect(calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(await readFile(files.configPath)).toEqual(
+      await readFile(V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH),
+    );
+    expect(await readFile(files.evidencePath, "utf8")).toContain(
+      '"event": "rollback_anchor_refresh_marker_reverted"',
+    );
+  });
+
+  it("fails cleanup-uncertain when the protected marker cannot be applied exactly", async () => {
+    const files = await fixture();
+    const config = JSON.parse(await readFile(files.configPath, "utf8")) as {
+      vars: Record<string, unknown>;
+    };
+    config.vars.VIDEOFORGE_PROVIDER_MODE = "fixture-drift";
+    await writeFile(files.configPath, `${JSON.stringify(config)}\n`, { mode: 0o600 });
+    await chmod(files.configPath, 0o600);
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner: async (request) => {
+          if (request.command === "git") return result();
+          throw new Error("marker apply drift must stop before provider mutation");
+        },
+        fetchImpl: async () => {
+          throw new Error("marker apply drift must not probe the route");
+        },
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_CLEANUP_UNCERTAIN" });
+
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain("V207_ANCHOR_REFRESH_MARKER_APPLY_UNCERTAIN");
+    expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
+  });
+
   it("refuses a stale signer before refresh mutation instead of deleting it without an anchor", async () => {
     const files = await fixture();
-    await enableRollbackAnchorRefresh(files.configPath);
     const calls: V207CommandRequest[] = [];
     let preRouteProbeCalls = 0;
     const environment = {
@@ -592,6 +675,8 @@ describe("V2-07 live orchestrator", () => {
     await expect(
       runV207LiveOrchestration({
         authorityParser: parseFixtureRefreshAuthority,
+        expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+        expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
         environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -619,7 +704,6 @@ describe("V2-07 live orchestrator", () => {
 
   it("rejects a 503 pre-mutation baseline in refresh mode before build or deployment", async () => {
     const files = await fixture();
-    await enableRollbackAnchorRefresh(files.configPath);
     const calls: V207CommandRequest[] = [];
     const environment = {
       ...files.environment,
@@ -645,6 +729,8 @@ describe("V2-07 live orchestrator", () => {
     await expect(
       runV207LiveOrchestration({
         authorityParser: parseFixtureRefreshAuthority,
+        expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+        expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
         environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -668,7 +754,6 @@ describe("V2-07 live orchestrator", () => {
 
   it("rolls back the old anchor after a refresh route mismatch without invoking qualification", async () => {
     const files = await fixture();
-    await enableRollbackAnchorRefresh(files.configPath);
     const calls: V207CommandRequest[] = [];
     let rollbackSeen = false;
     let versionsCalls = 0;
@@ -684,7 +769,7 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id: VERSION_ID, percentage: 100, script_hash: "sha256:old" }],
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
           }),
         );
       }
@@ -716,6 +801,8 @@ describe("V2-07 live orchestrator", () => {
     await expect(
       runV207LiveOrchestration({
         authorityParser: parseFixtureRefreshAuthority,
+        expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+        expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
         environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -743,7 +830,6 @@ describe("V2-07 live orchestrator", () => {
 
   it("fails cleanup-uncertain without a blind rollback when refresh evicts the old anchor", async () => {
     const files = await fixture();
-    await enableRollbackAnchorRefresh(files.configPath);
     const calls: V207CommandRequest[] = [];
     let versionsCalls = 0;
     let rollbackSeen = false;
@@ -759,7 +845,7 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id: VERSION_ID, percentage: 100, script_hash: "sha256:old" }],
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
           }),
         );
       }
@@ -791,6 +877,8 @@ describe("V2-07 live orchestrator", () => {
     await expect(
       runV207LiveOrchestration({
         authorityParser: parseFixtureRefreshAuthority,
+        expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+        expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
         environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -816,7 +904,6 @@ describe("V2-07 live orchestrator", () => {
 
   it("falls back to the old anchor when the post-promotion disabled route flaps", async () => {
     const files = await fixture();
-    await enableRollbackAnchorRefresh(files.configPath);
     const calls: V207CommandRequest[] = [];
     let statusCalls = 0;
     let versionsCalls = 0;
@@ -840,7 +927,7 @@ describe("V2-07 live orchestrator", () => {
               {
                 version_id,
                 percentage: 100,
-                script_hash: statusCalls === 2 ? "sha256:refreshed" : "sha256:old",
+                ...(statusCalls === 2 ? { script_hash: "sha256:refreshed" } : {}),
               },
             ],
           }),
@@ -885,6 +972,8 @@ describe("V2-07 live orchestrator", () => {
     await expect(
       runV207LiveOrchestration({
         authorityParser: parseFixtureRefreshAuthority,
+        expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+        expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
         environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -911,7 +1000,6 @@ describe("V2-07 live orchestrator", () => {
 
   it("treats a partially failed refresh deploy as cleanup-uncertain when the old anchor is gone", async () => {
     const files = await fixture();
-    await enableRollbackAnchorRefresh(files.configPath);
     const calls: V207CommandRequest[] = [];
     let versionsCalls = 0;
     let rollbackSeen = false;
@@ -955,6 +1043,8 @@ describe("V2-07 live orchestrator", () => {
     await expect(
       runV207LiveOrchestration({
         authorityParser: parseFixtureRefreshAuthority,
+        expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+        expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
         environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
@@ -981,7 +1071,6 @@ describe("V2-07 live orchestrator", () => {
 
   it("rolls back the old anchor when the refreshed anchor falls outside newest seven of ten", async () => {
     const files = await fixture();
-    await enableRollbackAnchorRefresh(files.configPath);
     const calls: V207CommandRequest[] = [];
     let statusCalls = 0;
     let versionsCalls = 0;
@@ -1000,7 +1089,7 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id, percentage: 100, script_hash: "sha256:anchor" }],
+            versions: [{ version_id, percentage: 100 }],
           }),
         );
       }
@@ -1027,6 +1116,8 @@ describe("V2-07 live orchestrator", () => {
     await expect(
       runV207LiveOrchestration({
         authorityParser: parseFixtureRefreshAuthority,
+        expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+        expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
         environment,
         cwd: resolve(process.cwd(), "../.."),
         configPath: files.configPath,
