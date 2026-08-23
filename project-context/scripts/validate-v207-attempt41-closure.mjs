@@ -298,6 +298,9 @@ const state = text(paths.state);
 const gates = text(paths.gates);
 const start = text(paths.start);
 const task = text(paths.task);
+const successorCandidate = state.includes(
+  "phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval",
+);
 for (const [value, code] of [
   [state, "STATE"],
   [gates, "GATES"],
@@ -309,7 +312,11 @@ for (const [value, code] of [
   has(value, "V2-08", code);
   has(value, "NOT_QUALIFIED", code);
 }
-has(state, "phase: serverless_v2_v2_07_attempt41_closed_not_qualified", "STATE_PHASE");
+assert(
+  state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified") ||
+    successorCandidate,
+  "STATE_PHASE",
+);
 has(state, "provider_calls_authorized: false", "STATE_PROVIDER");
 has(state, "remote_or_cloud_mutations_authorized: false", "STATE_MUTATION");
 has(state, "gpu_use_authorized: false", "STATE_GPU");

@@ -42,6 +42,10 @@ const paths = {
   start: resolve(root, "project-context/00_START_HERE.md"),
   task: resolve(root, "project-context/tasks/VF-10-07.md"),
   activation: resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"),
+  successorProposal: resolve(
+    root,
+    "project-context/evidence/acceptance/VF-10-07/2026-08-23-attempt42-get-readback-authority-candidate/combined-live-proposal.json",
+  ),
 };
 const fail = (code) => { throw new Error(`V207_ATTEMPT40_AUTHORITY_${code}`); };
 const assert = (condition, code) => { if (!condition) fail(code); };
@@ -73,17 +77,37 @@ assert(acceptance.result === "APPROVED_SINGLE_USE_PENDING_EXECUTION" && acceptan
 for (const [config, max] of [[max1, 1], [max2, 2]]) assert(config.image === expected.image && config.image_source_commit === expected.source && config.control_source_commit === expected.control && config.region === "EU-RO-1" && config.network_volume_id_sha256 === expected.volume && config.network_volume_mount === "/runpod-volume" && config.workers_min === 0 && config.workers_max === max && config.compute_type === "GPU" && config.flex_only === true && config.flashboot === true && config.gpu_type_ids?.[0] === "NVIDIA GeForce RTX 4090", `CONFIG_${max}`);
 const activation = text(paths.activation);
 const state = text(paths.state); const gates = text(paths.gates);
-const successor =
+const successorAttempt41 =
   state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval") ||
   state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified");
+const successorAttempt42 = state.includes(
+  "phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval",
+);
+const successor = successorAttempt41 || successorAttempt42;
 if (successor) {
-  assert(activation.includes("sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18") && activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") && activation.includes(expected.image) && activation.includes(expected.source), "SUCCESSOR_ACTIVATION_BINDING");
+  assert(
+    activation.includes(
+      successorAttempt42
+        ? sha(paths.successorProposal)
+        : "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
+    ) &&
+      activation.includes(
+        successorAttempt42
+          ? "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6"
+          : "6a4053f6fdde6e906e10b7cb297d253a7b9af140",
+      ) &&
+      activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
+      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
+      activation.includes(expected.image) &&
+      activation.includes(expected.source),
+    "SUCCESSOR_ACTIVATION_BINDING",
+  );
 } else {
   assert(activation.includes(`V207_PENDING_PROPOSAL_SHA256 =\n  \"${expected.proposal}\"`) && activation.includes(`V207_PENDING_CONTROL_SOURCE_COMMIT =\n  \"${expected.control}\"`) && activation.includes(`V207_APPROVED_AUTHORITY_SHA256 =\n  \"${expected.authority}\"`) && activation.includes(expected.image) && activation.includes(expected.source), "ACTIVATION_BINDING");
 }
 for (const [name, path] of Object.entries({ state: paths.state, gates: paths.gates, start: paths.start, task: paths.task })) {
   const surface = text(path);
-  if (successor && name === "gates") continue;
+  if (successor && (name === "gates" || name === "task")) continue;
   assert(
     surface.includes(expected.proposal) &&
       surface.includes(expected.acceptance) &&
@@ -97,7 +121,16 @@ for (const [name, path] of Object.entries({ state: paths.state, gates: paths.gat
 const closed = state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified") || successor;
 if (closed) {
   assert(state.includes("current_authority: null") && state.includes("maximum_external_spend_usd: 0") && state.includes(expected.authority), "STATE_CLOSED_BOUNDARY");
-  if (successor) {
+  if (successorAttempt42) {
+    assert(
+      gates.includes("authority_mode: pending_attempt42_exact_approval_and_fresh_numeric_cap") &&
+        gates.includes("pending_numeric_cap_usd: null") &&
+        gates.includes("pending_authority: null") &&
+        gates.includes("provider_calls_authorized: false") &&
+        gates.includes("gpu_use_authorized: false"),
+      "GATE_SUCCESSOR_ATTEMPT42_BOUNDARY",
+    );
+  } else if (successorAttempt41) {
     assert(
       gates.includes("authority_mode: closed_consumed_attempt41_output_readback_authority_invalid") &&
         gates.includes("pending_numeric_cap_usd: null") &&

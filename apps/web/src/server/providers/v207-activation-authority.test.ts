@@ -36,7 +36,7 @@ const image = V207_REPAIRED_IMAGE;
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete pending Attempt41 diagnostic/read-retry lineage", () => {
+  it("pins the complete pending Attempt42 GET-readback authority repair lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
@@ -66,10 +66,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
+      "sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("6a4053f6fdde6e906e10b7cb297d253a7b9af140");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6");
     expect(V207_FINALIZE_REPLAY_FAST_PATH_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
     expect(V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT).toBe(
       "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
@@ -130,13 +130,14 @@ describe("V2-07 activation authority", () => {
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
-        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_PROPOSAL_SHA256:
+          "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects a cap that differs from the consumed Attempt41 authority", () => {
+  it("rejects the pending Attempt42 proposal before fresh approval", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -147,7 +148,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects a missing numeric cap after Attempt41 closure", () => {
+  it("rejects a missing numeric cap before Attempt42 approval", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,

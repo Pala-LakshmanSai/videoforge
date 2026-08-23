@@ -19,11 +19,11 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18" as const;
+  "sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "6a4053f6fdde6e906e10b7cb297d253a7b9af140" as const;
+  "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -66,8 +66,8 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
 // Attempt41 was consumed and closed fail-closed after the provider GET-readback
-// authority mismatch. Keep its immutable lineage above for historical validation,
-// but remove the executable approval and cap so no replay can cross the boundary.
+// authority mismatch. Attempt42 binds the provider-free repair but has no approval
+// or cap, so neither the consumed Attempt41 proposal nor the new proposal can run.
 export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 

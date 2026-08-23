@@ -247,12 +247,19 @@ const gates = text(paths.gates);
 const start = text(paths.start);
 const task = text(paths.task);
 const successorClosed = state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified");
+const successorCandidate = state.includes(
+  "phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval",
+);
 for (const [value, code] of [
   [state, "STATE"],
   [gates, "GATES"],
   [start, "START"],
   [task, "TASK"],
 ]) {
+  if (successorCandidate && (code === "GATES" || code === "TASK")) {
+    has(value, "V2-08", code);
+    continue;
+  }
   has(value, "failed-attempt-40.json", code);
   has(value, expected.closure, code);
   has(value, "V2-08", code);
@@ -260,7 +267,8 @@ for (const [value, code] of [
 assert(
   state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified") ||
     state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval") ||
-    state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified"),
+    state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified") ||
+    successorCandidate,
   "STATE_PHASE",
 );
 has(state, "provider_calls_authorized: false", "STATE");
@@ -270,7 +278,9 @@ has(state, "maximum_external_spend_usd: 0", "STATE");
 has(state, "current_authority: null", "STATE");
 has(
   gates,
-  successorClosed
+  successorCandidate
+    ? "NOT_QUALIFIED_PENDING_EXECUTION_attempt42"
+    : successorClosed
     ? "NOT_QUALIFIED_OUTPUT_READBACK_AUTHORITY_INVALID_CLEAN"
     : "NOT_QUALIFIED_LIVE_RUNNER_FAILED_CLEAN",
   "GATES",

@@ -1,0 +1,106 @@
+{
+  "schema_version": "videoforge.v2-07-staged-endpoint-definition/v10",
+  "stage": "initial_qualification",
+  "region": "EU-RO-1",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+  "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+  "control_source_commit": "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6",
+  "handler_source_sha256": "sha256:3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da",
+  "execution_subset_schema_sha256": "sha256:a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71",
+  "network_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "network_volume_size_gb": 50,
+  "network_volume_region": "EU-RO-1",
+  "network_volume_mount": "/runpod-volume",
+  "model_root": "/runpod-volume/mage-model",
+  "volume_write_policy": "APPLICATION_READ_ONLY",
+  "gpu_type_ids": [
+    "NVIDIA GeForce RTX 4090"
+  ],
+  "gpu_count": 1,
+  "compute_type": "GPU",
+  "flex_only": true,
+  "workers_min": 0,
+  "workers_max": 1,
+  "scaler_type": "REQUEST_COUNT",
+  "scaler_value": 1,
+  "handler_concurrency": 1,
+  "idle_timeout_seconds": 5,
+  "init_timeout_seconds": 800,
+  "execution_timeout_seconds": 2400,
+  "request_authority_ttl_seconds": 7200,
+  "container_disk_gb": 120,
+  "flashboot": true,
+  "availability_threshold": "LOW-or-better",
+  "offline_environment": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "DIFFUSERS_OFFLINE": "1"
+  },
+  "runtime_execution_contract": {
+    "sealed_manifest_verification": "OFFLINE_EXACT_SHA256_BEFORE_MODEL_LOAD_AND_AFTER_FINAL_DRAIN",
+    "real_initialization_warmup_required": true,
+    "model_files": "APPLICATION_READ_ONLY_UNDER_/runpod-volume/mage-model",
+    "job_local_scratch": "/tmp/videoforge-v2-07/${job_id}",
+    "scratch_must_not_escape_job": true,
+    "scoped_r2_output_ports": "EXACT_PER_JOB_PER_UNIT_PUT_FINALIZE_GET_HEAD_DELETE_AUTHORITIES_ONLY",
+    "durable_per_unit_resume": "RETRY_ONLY_UNRESOLVED_UNACCEPTED_UNITS_NEVER_REGENERATE_ACCEPTED_UNITS",
+    "runtime_download_or_quantization": false,
+    "cache_escape_forbidden": true
+  },
+  "timing_scaler_contract": {
+    "queue_timing_source": "RUNPOD_DELAY_TIME_MS",
+    "execution_timing_source": "RUNPOD_EXECUTION_TIME_MS",
+    "worker_init_load_warmup_timing_source": "SIGNED_WORKER_LOCAL_MONOTONIC_CLOCK",
+    "missing_or_zero_required_timings": "FAIL_CLOSED",
+    "timings_are_never_clamped": true
+  },
+  "execution_subset_contract": {
+    "plan_units": 32,
+    "seed_units": [
+      "scene-01"
+    ],
+    "replacement_units": 31,
+    "replacement_requires_seed_terminal_and_scale_zero": true,
+    "replacement_process_identity_must_differ": true,
+    "replacement_executes_only_unresolved_units": true,
+    "accepted_units_never_regenerated": true,
+    "merge_requires_exact_plan_order_and_unique_ids": true
+  },
+  "negative_contracts": [
+    "wrong image bytes or digest",
+    "wrong path, volume, GPU, or region",
+    "model-volume write or cache escape",
+    "malformed authority or duplicate delivery",
+    "cancel and timeout without terminal reconciliation",
+    "two-reader configuration drift",
+    "uncertain cleanup, rollback, or cap risk"
+  ],
+  "fresh_cap_contract": {
+    "billing_measurement": "CUMULATIVE_ENDPOINT_TOTAL",
+    "baseline_is_pre_attempt_cumulative_total": true,
+    "approved_cap_is_incremental_allowance": true,
+    "cumulative_threshold_formula": "baseline_endpoint_spend_usd + maximum_incremental_spend_usd",
+    "downward_or_invalid_billing_read_fails_closed": true,
+    "historical_cumulative_spend_is_not_subtracted_from_fresh_cap": true
+  },
+  "cloudflare_rollback_contract": {
+    "capture_active_version_record_before_any_mutation": true,
+    "capture_active_version_record_sha256": true,
+    "versions_list_limit": 10,
+    "required_anchor_retention": "NEWEST_SEVEN",
+    "reject_absent_or_older_anchor_before_any_worker_or_secret_mutation": true,
+    "restore_exact_version_and_record_hash": true,
+    "latest_observed_route_status": 404,
+    "latest_observed_route_code": "V207_ROUTE_DISABLED",
+    "capture_exact_route_fingerprint_again_before_mutation": true,
+    "require_exact_route_fingerprint_after_rollback": true
+  },
+  "get_readback_authority_repair": {
+    "source_sha256": "sha256:5226ff6a2a4d78080fc1853245098771d9a7d8c12ba77b19f7eddb89ba194030",
+    "repair_commit": "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6",
+    "authority_schema": "artifact-transfer-port/v3",
+    "reservation_identity": "FRESH_DISTINCT_GET_RESERVATION_PER_RESPONSE",
+    "capability_binding": "NONCE_HMAC_CANONICAL_EXACT_FACTS",
+    "max_uses": 1
+  }
+}

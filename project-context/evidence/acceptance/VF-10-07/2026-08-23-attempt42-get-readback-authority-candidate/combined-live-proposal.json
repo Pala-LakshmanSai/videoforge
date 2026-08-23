@@ -1,0 +1,427 @@
+{
+  "schema_version": "videoforge.v2-07-attempt42-get-readback-authority-combined-live-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 42,
+  "recorded_at": "2026-08-23T06:27:22.111Z",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "provider_mutation": false,
+  "publication": false,
+  "gpu_use": false,
+  "spend_usd": 0,
+  "reason_for_fresh_proposal": "Attempt41 consumed its one-use authority after one provider job reached COMPLETED/SUCCEEDED and then failed MAGE_OUTPUT_READBACK_AUTHORITY_INVALID before any batch, durable readback, or v3 receipt was accepted. Exact cleanup, both retained volumes, and a late-settled USD 0.046342222136445343 increment within the consumed USD 4 cap are proven. Attempt42 reuses the exact published immutable image without republication and binds only the provider-free hosted GET artifact-transfer-port/v3 authority repair: fresh distinct reservation identity, exact account/workspace/path/GET/content facts/expiry/max_uses=1, and canonical nonce-HMAC capability binding. Attempt41 authority/cap are closed and cannot be reused.",
+  "user_approval": {
+    "exact_proposal_approved": false,
+    "flashboot_true_requested": true,
+    "minimum_approved_availability_requested": "LOW-or-better",
+    "observed_availability": "HIGH",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_positive_numeric_cap_required": true,
+    "prior_authority_or_cap_reuse_forbidden": true
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_write_policy": "APPLICATION_READ_ONLY",
+    "runtime_execution_contract": {
+      "sealed_manifest_verification": "OFFLINE_EXACT_SHA256_BEFORE_MODEL_LOAD_AND_AFTER_FINAL_DRAIN",
+      "real_initialization_warmup_required": true,
+      "model_files": "APPLICATION_READ_ONLY_UNDER_/runpod-volume/mage-model",
+      "job_local_scratch": "/tmp/videoforge-v2-07/${job_id}",
+      "scratch_must_not_escape_job": true,
+      "scoped_r2_output_ports": "EXACT_PER_JOB_PER_UNIT_PUT_FINALIZE_GET_HEAD_DELETE_AUTHORITIES_ONLY",
+      "durable_per_unit_resume": "RETRY_ONLY_UNRESOLVED_UNACCEPTED_UNITS_NEVER_REGENERATE_ACCEPTED_UNITS",
+      "runtime_download_or_quantization": false,
+      "cache_escape_forbidden": true
+    },
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "control_source_commit": "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6",
+    "handler_source_sha256": "sha256:3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da",
+    "execution_subset_schema_sha256": "sha256:a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71",
+    "image_manifest_sha256": "sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_config_sha256": "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6",
+    "image_layer_sha256": "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a",
+    "image_layer_diff_id": "sha256:9f759e3f49c84816de71246f51f9aca275fc080c7c9c082aaa39ce81e8b049e1",
+    "image_parent": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "image_base_sha256": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "image_parent_config_sha256": "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
+    "final_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_publication_state": "PUBLISHED_EXACT_DIGEST_READBACK_ATTEMPT40_NO_REPUBLICATION_REQUIRED",
+    "existing_publication_evidence": "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json",
+    "existing_publication_evidence_sha256": "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7",
+    "existing_publication_workflow_run_id": 32615737298,
+    "control_repair": {
+      "commit": "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6",
+      "bounded_child_failure_capture": {
+        "source": "stderr_only",
+        "max_capture_bytes": 131072,
+        "allowed_code_families": [
+          "MAGE_*",
+          "RUNPOD_*",
+          "SERVERLESS_*",
+          "V207_*"
+        ],
+        "fallback": "V207_CHILD_FAILURE_UNCLASSIFIED",
+        "stdout_provider_bodies_urls_ids_and_secrets_persisted": false
+      },
+      "bounded_inventory_read_retry": {
+        "operation": "idempotent_inventory_GET_only",
+        "retryable_error": "RUNPOD_READ_AMBIGUOUS",
+        "delays_ms": [
+          250,
+          1000,
+          2000
+        ],
+        "max_retries": 3,
+        "auth_malformed_response_and_mutation_paths_retried": false
+      },
+      "get_readback_authority": {
+        "source_sha256": "sha256:5226ff6a2a4d78080fc1853245098771d9a7d8c12ba77b19f7eddb89ba194030",
+        "repair_commit": "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6",
+        "authority_schema": "artifact-transfer-port/v3",
+        "distinct_reservation_prefix": "get_",
+        "exact_bound_facts": [
+          "account_id",
+          "workspace_id",
+          "path",
+          "method_GET",
+          "content_type",
+          "content_length",
+          "checksum_sha256",
+          "expires_at",
+          "max_uses_1"
+        ],
+        "capability_handle": "NONCE_HMAC_OVER_CANONICAL_AUTHORITY_FACTS",
+        "malformed_or_drifted_authority": "FAIL_CLOSED",
+        "duplicate_get_response": "FRESH_AUTHORITY_NO_REUSE"
+      }
+    },
+    "prior_attempt": {
+      "attempt": 41,
+      "proposal_sha256": "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
+      "authority_sha256": "sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d",
+      "acceptance_sha256": "sha256:b32f70dcee108c0eea8b79496183eac9a7b207ce341dd4f75f60a20dd6579f19",
+      "closure_sha256": "sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187",
+      "cleanup_sha256": "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54",
+      "reconciliation_sha256": "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e",
+      "settled_incremental_spend_usd": 0.046342222136445343,
+      "authority_consumed": true,
+      "qualification_status": "NOT_QUALIFIED"
+    },
+    "immutable_overlay_lineage": {
+      "created": "2026-08-23T02:38:33Z",
+      "architecture": "amd64",
+      "os": "linux",
+      "overlay_kind": "source-only-overlay-v2",
+      "source_paths": [
+        "workers/image-media/mage_serverless.py",
+        "packages/contracts/python/videoforge_contracts/_schema_documents.py"
+      ],
+      "destination_paths": [
+        "/opt/videoforge/mage_serverless.py",
+        "/opt/videoforge/src/videoforge_contracts/_schema_documents.py"
+      ]
+    },
+    "consumed_attempt41_authority_close_commit": "f9a0baae7fc281d3508b33e92e307afb492c5d18",
+    "attempt41_closure_context_commit": "4a64e086edd11e10f31a40e90890ea9c28b5abc2"
+  },
+  "staged_endpoint_configs": [
+    {
+      "stage": "initial_qualification",
+      "definition_path": "staged-config-max1.json",
+      "definition_sha256": "sha256:14a70d3861a7810792e226478037d865ff47425d20f5440b6f54fe0a9c54f50e",
+      "workers_min": 0,
+      "workers_max": 1,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "gpu_count": 1,
+      "compute_type": "GPU",
+      "flex_only": true,
+      "flashboot": true,
+      "control_source_commit": "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6",
+      "region": "EU-RO-1",
+      "volume_mount": "/runpod-volume",
+      "volume_size_gb": 50,
+      "path": "staged-config-max1.json"
+    },
+    {
+      "stage": "bounded_concurrent_reader_proof_only",
+      "definition_path": "staged-config-max2.json",
+      "definition_sha256": "sha256:44fad1bfde2e4ba6ee08040e5296bb3a95924728ed322c639cd146c8a66bb2f1",
+      "workers_min": 0,
+      "workers_max": 2,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "gpu_count_per_worker": 1,
+      "compute_type": "GPU",
+      "flex_only": true,
+      "flashboot": true,
+      "control_source_commit": "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6",
+      "region": "EU-RO-1",
+      "volume_mount": "/runpod-volume",
+      "volume_size_gb": 50,
+      "restore_after_proof": "staged-config-max1.json",
+      "path": "staged-config-max2.json"
+    }
+  ],
+  "execution_plan": {
+    "schema_version": "serverless-execution-subset/v1",
+    "total_units": 32,
+    "item_ids": [
+      "scene-01",
+      "scene-02",
+      "scene-03",
+      "scene-04",
+      "scene-05",
+      "scene-06",
+      "scene-07",
+      "scene-08",
+      "scene-09",
+      "scene-10",
+      "scene-11",
+      "scene-12",
+      "scene-13",
+      "scene-14",
+      "scene-15",
+      "scene-16",
+      "scene-17",
+      "scene-18",
+      "scene-19",
+      "scene-20",
+      "scene-21",
+      "scene-22",
+      "scene-23",
+      "scene-24",
+      "scene-25",
+      "scene-26",
+      "scene-27",
+      "scene-28",
+      "scene-29",
+      "scene-30",
+      "scene-31",
+      "scene-32"
+    ],
+    "seed": {
+      "item_ids": [
+        "scene-01"
+      ],
+      "exact_dispatch_count": 1,
+      "process_role": "seed",
+      "terminal_scale_zero_required_before_replacement": true
+    },
+    "replacement": {
+      "item_ids": [
+        "scene-02",
+        "scene-03",
+        "scene-04",
+        "scene-05",
+        "scene-06",
+        "scene-07",
+        "scene-08",
+        "scene-09",
+        "scene-10",
+        "scene-11",
+        "scene-12",
+        "scene-13",
+        "scene-14",
+        "scene-15",
+        "scene-16",
+        "scene-17",
+        "scene-18",
+        "scene-19",
+        "scene-20",
+        "scene-21",
+        "scene-22",
+        "scene-23",
+        "scene-24",
+        "scene-25",
+        "scene-26",
+        "scene-27",
+        "scene-28",
+        "scene-29",
+        "scene-30",
+        "scene-31",
+        "scene-32"
+      ],
+      "exact_dispatch_count": 1,
+      "process_role": "replacement",
+      "distinct_process_required": true,
+      "unresolved_only": true,
+      "accepted_units_never_regenerated": true
+    },
+    "merge": {
+      "requires_exact_32_unique_items": true,
+      "requires_plan_order": true,
+      "requires_durable_readbacks_and_v3_receipts": true
+    }
+  },
+  "qualification_runs": {
+    "probe_composition": "the one-unit seed plus the distinct-process 31-unit resume merge into the single complete owned probe; no additional probe dispatch is permitted",
+    "owned_samples": [
+      "probe",
+      "cold",
+      "warm"
+    ],
+    "complete_image_batch": true,
+    "cold_and_warm": true,
+    "duplicate_delivery_same_job_no_second_run": true,
+    "two_simultaneous_read_only_workers": {
+      "uses_max2_only": true,
+      "reader_a": "complete_32",
+      "reader_b": "complete_32",
+      "restore_max1": true
+    },
+    "cancel": "submit_owned_cancel_probe_and_observe_CANCELED_or_stop",
+    "timeout": "submit_owned_timeout_probe_and_observe_TIMED_OUT_or_stop",
+    "durable_outputs_before_provider_expiry": true,
+    "v3_authority_provenance_receipts": true,
+    "readbacks": [
+      "PUT",
+      "FINALIZE",
+      "GET",
+      "HEAD",
+      "DELETE"
+    ],
+    "required_timing_fields": [
+      "queue",
+      "init",
+      "load",
+      "warmup",
+      "inference",
+      "upload",
+      "total",
+      "ttl"
+    ],
+    "peak_vram_bytes": true
+  },
+  "approved_operations_to_be_proposed_once": [
+    "reuse the already-published exact immutable image once, read back manifest/config/layer/diff identity, and reject any digest or tag drift; image republication is forbidden because the worker bytes are unchanged",
+    "refresh RunPod EU-RO-1 inventory, resource identity, available quota surface, availability, and current rates read-only, and capture cumulative billing baseline without comparing historical total directly to the fresh cap",
+    "capture at most one bounded child failure code from stderr only, retaining no stdout, provider body, URL, identifier, credential, or arbitrary diagnostic text",
+    "retry only transport-ambiguous idempotent inventory GETs with the pinned bounded delays; never retry auth failures, malformed responses, mutations, or provider jobs",
+    "capture the current exact Cloudflare route fingerprint and active Worker version record before any mutation; read the bounded versions list and require the anchor in the newest seven of at most ten entries before any Worker or secret mutation",
+    "create or update one private EU-RO-1 endpoint using staged max1 definition",
+    "submit one seed job for scene-01 only",
+    "status-read seed until terminal and prove scale zero plus distinct replacement process",
+    "submit one replacement job carrying only scenes 02-32 and merge durable outputs",
+    "treat the merged seed plus replacement as the one complete owned probe, then run cold/warm and duplicate-delivery checks without any extra probe dispatch",
+    "apply separately hashed max2 definition only for two simultaneous read-only workers",
+    "status-read both readers, restore max1, drain to workersMin=0",
+    "observe owned cancel CANCELED and timeout TIMED_OUT cases where terminally available",
+    "reconcile endpoint/template/worker/pod/volume identities and rates three stable read-only times",
+    "retain exact endpoint and both intended 50GB volumes if qualification succeeds",
+    "delete only disposable endpoint/template if any stop condition or failed qualification requires it",
+    "delete the ephemeral signer, restore the exact captured Worker version and active-version record hash, and require the exact captured route fingerprint (latest observed baseline was 404 V207_ROUTE_DISABLED) before recording cleanup",
+    "stop before V2-08"
+  ],
+  "read_only_preflight": {
+    "checked_at": "2026-08-23T06:27:22.111Z",
+    "region": "EU-RO-1",
+    "availability_observed": "HIGH",
+    "availability_threshold": "LOW-or-better",
+    "gpu_rate_usd_per_hour": 1.1,
+    "secure_reference_rate_usd_per_hour": 0.74,
+    "gpu_vram_gb": 24,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "read_only_refresh_required_before_mutation": true,
+    "catalog_checked_at": "2026-08-23T06:26:19.181Z",
+    "billing_checked_at": "2026-08-23T06:27:22.111Z",
+    "quota_lookup": {
+      "status": "NOT_EXPOSED_BY_PINNED_READ_ONLY_CLIENT",
+      "provider_mutation": false,
+      "allocation_or_gpu_use": false,
+      "no_quota_claim_inferred": true
+    },
+    "stable_final_reconciliation": {
+      "checked_at": "2026-08-23T06:27:22.111Z",
+      "stable_final_reads": 3,
+      "pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_workers": 0,
+      "running_pods": 0,
+      "retained_volumes": 2,
+      "billing_baseline_usd": 1.5709891965379938,
+      "billing_final_usd": 1.5709891965379938,
+      "incremental_spend_usd": 0,
+      "state": "THREE_STABLE_READS",
+      "raw_evidence_sha256": "sha256:088c4701e16a11050f9c9850734cc6d6cce810566f0c9a87dc4931fb16bca2ce"
+    },
+    "latest_observed_cloudflare_route": {
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "latest_observed_cloudflare_route_is_not_a_mutation_authority": true,
+    "retained_volumes": [
+      {
+        "lane": "mage",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+      },
+      {
+        "lane": "soulx",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
+      }
+    ],
+    "read_only_refresh_basis": "fresh authorized USD 0 EU-RO-1 inventory, catalog, resource identity, and three stable billing reads; zero disposable compute/resources, both exact retained volumes, HIGH RTX 4090 availability, and fresh cumulative baseline USD 1.5709891965379938; quota remains not exposed by the pinned read-only client and no quota claim is inferred",
+    "evidence_path": "evidence/acceptance/VF-10-07/2026-08-23-attempt42-get-readback-authority-candidate/read-only-preflight.json",
+    "evidence_sha256": "sha256:c4180d5862f574953fede7fa5905c0b06d6df3689916043f2ab3039a27d84298"
+  },
+  "cost_estimate": {
+    "finite_action_estimate_usd": 3.7,
+    "finite_action_estimate_basis": "bounded seed/replacement complete batch, owned samples, two max2 readers, cancel/timeout probes, cleanup and three reconciliation reads at $1.10/Flex GPU-hour; the exact image is already published and read back, so no publication cost or image mutation is included; exact cumulative billing baseline and rate must be recaptured before mutation",
+    "proposed_finite_cap_usd": null,
+    "current_provider_rate_usd_per_gpu_hour": 1.1,
+    "secure_reference_rate_usd_per_hour": 0.74,
+    "ongoing_retained_volume_charge_usd_per_month": 7,
+    "ongoing_volume_charge_separate_from_finite_cap": true,
+    "historical_cumulative_endpoint_spend_usd": 1.5709891965379938,
+    "fresh_read_cumulative_endpoint_spend_usd": 1.5709891965379938,
+    "historical_spend_is_not_new_authority_or_fresh_billing": true,
+    "fresh_cap_arithmetic": {
+      "approved_cap_is_incremental_allowance": true,
+      "cumulative_billing_threshold_formula": "baseline_endpoint_spend_usd + maximum_incremental_spend_usd",
+      "downward_or_invalid_read_fails_closed": true,
+      "fresh_cap_threshold": "REQUIRES_FRESH_EXACT_NUMERIC_APPROVAL"
+    }
+  },
+  "official_rate_sources": {
+    "serverless_pricing": "https://docs.runpod.io/serverless/pricing",
+    "gpu_pricing": "https://www.runpod.io/pricing",
+    "network_volume_pricing": "https://docs.runpod.io/storage/network-volumes"
+  },
+  "negative_tests_and_stop_conditions": [
+    "wrong image bytes, path, volume, GPU, region, or FlashBoot identity",
+    "any model-volume write or cache escape",
+    "malformed authority, duplicate delivery, accepted-unit regeneration, or non-distinct replacement process",
+    "missing durable output/readback/v3 receipt or missing nonzero required timing",
+    "cancel/timeout without terminal status reconciliation",
+    "reader A/B mismatch, max2 config drift, uncertain route rollback, cleanup, or retained identity",
+    "cap risk, unplanned duplicate compute, provider body/URL/ID/secret retention",
+    "any condition that would make qualification status uncertain"
+  ],
+  "execution_boundary": {
+    "maximum_cumulative_finite_spend_usd": null,
+    "provider_calls_completed": false,
+    "runpod_mutation_authorized_pending_execution": false,
+    "gpu_use_authorized_pending_execution": false,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false,
+    "read_only_refresh_completed": true,
+    "fresh_cap_required": true,
+    "authority_file_present": false,
+    "read_only_refresh_required_before_mutation": true
+  },
+  "publication_state": "ALREADY_PUBLISHED_EXACT_DIGEST_READBACK_ATTEMPT40_NO_REPUBLICATION",
+  "publication_required": false
+}

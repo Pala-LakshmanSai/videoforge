@@ -1,5 +1,13 @@
 # VideoForge: start here
 
+Attempt42 provider-free candidate is ready at proposal
+`sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de`. It binds GET-authority repair
+`78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6`, reuses the exact published Mage image, and keeps authority/cap
+null. Preflight `sha256:c4180d5862f574953fede7fa5905c0b06d6df3689916043f2ab3039a27d84298` proves
+zero disposable compute, both retained volumes, HIGH RTX 4090 EU-RO-1 availability, and stable cumulative billing
+`$1.5709891965379938`. Exact fresh approval and a positive numeric cap are required before mutation/GPU/spend;
+V2-08 remains forbidden.
+
 Attempt41 is closed `NOT_QUALIFIED`. One exact RTX 4090 job reached provider `COMPLETED`/output `SUCCEEDED`,
 then failed `MAGE_OUTPUT_READBACK_AUTHORITY_INVALID` before any output/readback/v3 receipt was accepted. Closure
 `failed-attempt-41.json` is `sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187`;
