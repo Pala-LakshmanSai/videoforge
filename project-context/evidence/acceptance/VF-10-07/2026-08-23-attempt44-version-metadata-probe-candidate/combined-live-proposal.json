@@ -57,7 +57,7 @@
       "orchestrator_source_sha256": "sha256:cfb288a20c169c3649495a54bee1aa7534ff5442e0627051a0b1d4f8750a3441",
       "live_qualification_source_sha256": "sha256:f842296ca11786fb97cf6c7a1286a38b867b42344bb91c33b6ce9f64ac377e4d",
       "typed_authority_source_sha256": "sha256:82e3e571a304e96ace9cbd861c8cd2e691e36964223c40702d0115a17931f7d7",
-      "typed_authority_source_hash_mode": "CANONICAL_ZEROED_PROPOSAL_POINTER_V1",
+      "typed_authority_source_hash_mode": "CANONICAL_ZEROED_APPROVAL_BINDINGS_V2",
       "typed_authority_raw_source_sha256": "sha256:1034d31fd39565acddf6f3a433e1ff42d505e3eea24bd767c530c18c19b4091f",
       "anchor_refresh_marker_source_sha256": "sha256:6eb196247a9154ecb1110d74a2c0254855bcff9f4ec01a6377c30f6352a4dff7",
       "protected_config_source_sha256": "sha256:273f8c7ef6844488e9266276e7ab8db184810456079c6419ba62a9cca116d540",

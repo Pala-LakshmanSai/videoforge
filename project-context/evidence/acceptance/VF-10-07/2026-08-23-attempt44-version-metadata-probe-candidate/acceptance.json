@@ -8,7 +8,7 @@
   "qualification_status": "NOT_QUALIFIED",
   "candidate": {
     "proposal_path": "combined-live-proposal.json",
-    "proposal_sha256": "sha256:3d87c4a1a75f16d175645c205c0dfc6c172b6c7e0d5cafdb0fcb7ec9276dd589",
+    "proposal_sha256": "sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e",
     "max1_path": "staged-config-max1.json",
     "max1_sha256": "sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c",
     "max2_path": "staged-config-max2.json",
@@ -49,7 +49,7 @@
     "flashboot": true,
     "volume_write_policy": "APPLICATION_READ_ONLY",
     "typed_authority_source_sha256": "sha256:82e3e571a304e96ace9cbd861c8cd2e691e36964223c40702d0115a17931f7d7",
-    "typed_authority_source_hash_mode": "CANONICAL_ZEROED_PROPOSAL_POINTER_V1",
+    "typed_authority_source_hash_mode": "CANONICAL_ZEROED_APPROVAL_BINDINGS_V2",
     "compiled_pending_proposal_sha256": "sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458",
     "compiled_consumed_authority_sha256": "sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b",
     "compiled_authority_cap_refresh": {"authority": null, "cap_usd": null, "anchor_refresh": null},

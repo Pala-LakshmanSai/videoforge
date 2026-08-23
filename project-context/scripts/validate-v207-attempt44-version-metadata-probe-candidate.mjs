@@ -26,8 +26,8 @@ const paths = {
 };
 const expected = {
   attempt: 44,
-  proposal: "sha256:3d87c4a1a75f16d175645c205c0dfc6c172b6c7e0d5cafdb0fcb7ec9276dd589",
-  acceptance: "sha256:2b692658b42cbc0c97168132d19c471a52b3beed1ef0246b0e3d27ea581f5fae",
+  proposal: "sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e",
+  acceptance: "sha256:f8abbd1acaf111d8c0986d0de2569ee5598bfb9b62c5f27c87da082d00fb94b1",
   max1: "sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c",
   max2: "sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c",
   preflight: "sha256:fa2c02e3117229d2b656255092c914514c9a4364fb38fc0b921d37cc025c683c",
@@ -159,7 +159,7 @@ assert(
     lineage?.control_source_hashes?.typed_authority_source_sha256 ===
       expected.canonicalActivation &&
     lineage?.control_source_hashes?.typed_authority_source_hash_mode ===
-      "CANONICAL_ZEROED_PROPOSAL_POINTER_V1" &&
+      "CANONICAL_ZEROED_APPROVAL_BINDINGS_V2" &&
     lineage?.control_source_hashes?.typed_authority_raw_source_sha256 === expected.rawActivation,
   "CONTROL_LINEAGE",
 );
