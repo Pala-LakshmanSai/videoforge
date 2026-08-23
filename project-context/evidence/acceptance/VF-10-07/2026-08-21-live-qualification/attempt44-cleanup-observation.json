@@ -1,0 +1,58 @@
+{
+  "schema_version": "videoforge.v2-07-attempt44-failed-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 44,
+  "observed_at": "2026-08-23T13:46:20Z",
+  "proposal_sha256": "sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e",
+  "authority_sha256": "sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f",
+  "result": "FAILED_ATTEMPT_CLEANUP_DISPOSABLE_RESOURCES_DELETED",
+  "failure_code": "V207_OUTPUT_PORT_400",
+  "initial_runner_cleanup_uncertain": true,
+  "runpod_cleanup": {
+    "endpoint_id_sha256": "sha256:7f7399b01a65264afce37b921412757e4fcb8b8a78edcb4288420eaa08c623e8",
+    "template_id_sha256": "sha256:557f0e8006a8532397e9f74329ebb4cce3c58b2873363216989dc9dd981dbe9a",
+    "retained_mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 3,
+    "terminal_pod_record_count": 3,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true
+  },
+  "cloudflare_cleanup": {
+    "ephemeral_signer_secret_deleted": true,
+    "worker_version_rolled_back": true,
+    "rollback_version_id_sha256": "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0",
+    "rollback_anchor_sha256": "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878",
+    "route_restored_status": 404,
+    "route_restored_code": "V207_ROUTE_DISABLED",
+    "cleanup_uncertain_after_follow_up": false
+  },
+  "protected_config_restore": {
+    "baseline_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "baseline_mode": "0600",
+    "marker_state": "DISABLED",
+    "identity_unchanged": true
+  },
+  "route_reconciliation": {
+    "method": "POST",
+    "status": 404,
+    "code": "V207_ROUTE_DISABLED",
+    "source_observed_consecutive_matches": 16
+  },
+  "retention": {
+    "mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "retained_volume_write_delete_rebuild_or_cross_mount": false,
+    "ongoing_two_volume_charge_usd_per_month": 7
+  },
+  "raw_redacted_evidence": {
+    "orchestrator_path": "/private/tmp/videoforge-v207-attempt44-live-orchestrator.json",
+    "orchestrator_sha256": "sha256:6064926cbb08e3cdba032018795aca14925696371a0e5c17f33860ab0ec07f87",
+    "live_result_path": "/private/tmp/videoforge-v207-live-result.json",
+    "live_result_sha256": "sha256:9884dfc49aac7c57059fd513e49561bf1db21174770e82767c4c805162208885",
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "next_boundary": "ATTEMPT44_AUTHORITY_AND_CAP_CONSUMED; PROVIDER_FREE_DIAGNOSIS_ONLY; V2-08-FORBIDDEN"
+}

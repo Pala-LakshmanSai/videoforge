@@ -47,7 +47,7 @@ const expected = {
   canonicalActivation:
     "sha256:82e3e571a304e96ace9cbd861c8cd2e691e36964223c40702d0115a17931f7d7",
   rawActivation:
-    "sha256:6e36bce937a10317988d47bb0f67931c0af1d7c7c60d55db66b3a88e5a898d6e",
+    "sha256:b4d4ae4587e043823ace63c1257560b5396983abd264b25caddf818db35a5d69",
   proposalRawActivation:
     "sha256:1034d31fd39565acddf6f3a433e1ff42d505e3eea24bd767c530c18c19b4091f",
   pendingAttempt43:
@@ -553,14 +553,14 @@ const pointerMatches = [
 assert(pointerMatches.length === 1, "ACTIVATION_POINTER_COUNT");
 assert(`sha256:${pointerMatches[0][2]}` === expected.proposal, "ACTIVATION_ATTEMPT44_POINTER");
 assert(
-  /export const V207_APPROVED_AUTHORITY_SHA256: string \| null = "sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f";/u.test(
+  /export const V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(
     activation,
   ) &&
-    /export const V207_APPROVED_FINITE_CAP_USD: number \| null = 4;/u.test(activation) &&
-    /export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = false;/u.test(activation) &&
+    /export const V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation) &&
+    /export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation) &&
     activation.includes("V207_PENDING_CONTROL_SOURCE_COMMIT") &&
     activation.includes("78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6"),
-  "ACTIVATION_APPROVED_BINDINGS",
+  "ACTIVATION_CONSUMED_BINDINGS",
 );
 let canonicalActivation = activation;
 for (const [pattern, replacement, label] of [
@@ -595,11 +595,10 @@ assert(
 );
 assert(
   activationTest.includes("Attempt44") &&
-    activationTest.includes("V207_FINITE_CAP_REQUIRED") &&
-    activationTest.includes("V207_FINITE_CAP_MISMATCH") &&
+    activationTest.includes("V207_FRESH_AUTHORITY_REQUIRED") &&
     activationTest.includes(expected.proposal.slice(7)) &&
-    activationTest.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false)"),
-  "ACTIVATION_APPROVAL_TESTS_PRESENT",
+    activationTest.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull()"),
+  "ACTIVATION_CONSUMPTION_TESTS_PRESENT",
 );
 try {
   execFileSync(
@@ -634,41 +633,41 @@ for (const [name, surface] of Object.entries({ state, gates, start, task })) {
 }
 const stateHeader = state.slice(0, state.indexOf("current_goal_boundary:"));
 assert(
-  stateHeader.includes("phase: serverless_v2_v2_07_attempt44_version_metadata_probe_bounded_mutation") &&
-    stateHeader.includes("task_stage: bounded_mutation_pending_execution") &&
-    stateHeader.includes("provider_calls_authorized: true") &&
+  stateHeader.includes("phase: serverless_v2_v2_07_attempt44_closed_provider_free_resume_get_repair") &&
+    stateHeader.includes("task_stage: provider_free_diagnosis") &&
+    stateHeader.includes("provider_calls_authorized: false") &&
     stateHeader.includes("read_only_provider_calls_authorized: false") &&
-    stateHeader.includes("remote_or_cloud_mutations_authorized: true") &&
-    stateHeader.includes("gpu_use_authorized: true") &&
-    stateHeader.includes("maximum_external_spend_usd: 4"),
-  "STATE_ACTIVE_BOUNDARY",
+    stateHeader.includes("remote_or_cloud_mutations_authorized: false") &&
+    stateHeader.includes("gpu_use_authorized: false") &&
+    stateHeader.includes("maximum_external_spend_usd: 0"),
+  "STATE_CLOSED_BOUNDARY",
 );
 assert(
-  gates.includes("authority_mode: bounded_mutation_attempt44_pending_execution") &&
-    gates.includes("pending_numeric_cap_usd: 4") &&
-    gates.includes("provider_calls_authorized: true") &&
-    gates.includes("provider_mutations_authorized: true") &&
-    gates.includes("gpu_use_authorized: true") &&
+  gates.includes("authority_mode: none_attempt44_consumed_output_resume_get_400") &&
+    gates.includes("pending_numeric_cap_usd: null") &&
+    gates.includes("provider_calls_authorized: false") &&
+    gates.includes("provider_mutations_authorized: false") &&
+    gates.includes("gpu_use_authorized: false") &&
     gates.includes("v2_08_authorized: false"),
-  "GATES_ACTIVE_BOUNDARY",
+  "GATES_CLOSED_BOUNDARY",
 );
 assert(
   state.includes("provider_authority_attempt44") &&
-    state.includes("authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION") &&
-    state.includes("authority_mode: bounded_mutation") &&
+    state.includes("authority_state: CONSUMED_CLOSED_DO_NOT_REUSE") &&
+    state.includes("authority_mode: closed_consumed") &&
     state.includes(`authority_path: ${authorityPath}`) &&
     state.includes(`authority_sha256: "${expected.authority}"`) &&
-    state.includes("cap_usd: 4") &&
+    state.includes("cap_usd: 0") &&
     state.includes("anchor_refresh_authorized: false") &&
     state.includes("authority_recorded: true") &&
-    state.includes("provider_calls_authorized: true") &&
-    state.includes("provider_mutations_authorized: true") &&
-    state.includes("gpu_use_authorized: true") &&
-    state.includes("maximum_cumulative_finite_spend_usd: 4") &&
+    state.includes("provider_calls_authorized: false") &&
+    state.includes("provider_mutations_authorized: false") &&
+    state.includes("gpu_use_authorized: false") &&
+    state.includes("maximum_cumulative_finite_spend_usd: 0") &&
     state.includes("v2_08_authorized: false"),
-  "STATE_AUTHORITY_RECORD",
+  "STATE_CONSUMED_AUTHORITY_RECORD",
 );
 
 console.log(
-  `V2-07 Attempt44 approved bounded-mutation validation PASS (${expected.proposal}; ${expected.authority}; cap=$4; anchor-refresh disabled; Attempt43 env rejected)`,
+  `V2-07 Attempt44 candidate lineage validation PASS (${expected.proposal}; ${expected.authority}; authority consumed; executable bindings cleared)`,
 );
