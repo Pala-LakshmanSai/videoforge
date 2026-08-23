@@ -1,6 +1,6 @@
 # VideoForge: start here
 
-Attempt39 is the exact approved, single-use candidate after Attempt38 closed `NOT_QUALIFIED`. It binds
+Attempt39 is now closed fail-closed as `NOT_QUALIFIED`. It used the exact approved, single-use candidate after Attempt38 closed `NOT_QUALIFIED`. It binds
 the already-published immutable Mage image
 `ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2`,
 the existing sealed Mage-only 50 GB `EU-RO-1` volume at `/runpod-volume`, and control repair
@@ -8,19 +8,27 @@ the existing sealed Mage-only 50 GB `EU-RO-1` volume at `/runpod-volume`, and co
 allowance over the cumulative billing baseline and fails closed on downward/invalid reads; it also
 requires the exact pre-mutation Cloudflare Worker version record to remain in Wrangler's newest
 seven of at most ten versions before any Worker or signer mutation, then verifies the exact record
-hash and route fingerprint after rollback. Latest observed route truth is `404
-V207_ROUTE_DISABLED`; this is a read-only observation, not an authority to mutate.
+hash and route fingerprint after rollback. The exact captured Worker version record and route were
+restored to `404 V207_ROUTE_DISABLED`; provider mutation/GPU authority is now consumed and closed.
 
 Attempt39 proposal
 `evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/combined-live-proposal.json`
 is `sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57`; the user approved it
 with FlashBoot=true, LOW-or-better EU-RO-1 availability, and a fresh maximum cumulative finite
 spend of `$4`. Append-only authority `approved-authority.json` is
-`sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b` and is single-use,
-pending execution. It reuses the published digest without republication. A fresh read-only RunPod
-inventory/rate refresh passed at `2026-08-23T01:40:52.298Z`; no Attempt39 provider mutation or GPU
-call has occurred yet. V2-07 remains `NOT_QUALIFIED` pending live proof; retained-volume mutation,
-fallback GPU/region, and V2-08 remain forbidden.
+`sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b`; it is consumed and
+non-reusable. One provider job reached `COMPLETED`/`SUCCEEDED` but failed `MAGE_OUTPUT_LINEAGE_INVALID`
+at `output_lineage`; no output/readback/v3 receipt was accepted. Closure
+`failed-attempt-39.json` is `sha256:66f067c2789c5f1a725e764ea23b07a741fee90565ac87a5e0d5f3e8522f4e12`,
+cleanup is `sha256:4dde8efb506f6cbceaaf7e8b66193eda251200ff872373664ee1e14b3ba70a68`, and reconciliation
+is `sha256:21cc221887ca44324948983e1ad4c001760cde7a9646b4faadfab7d15a2eb813`. Generated-output
+rollback, exact Cloudflare rollback, zero final disposable RunPod resources, both retained volumes,
+and `$0` incremental spend passed. V2-07 remains `NOT_QUALIFIED`; provider-free diagnosis only;
+retained-volume mutation, fallback GPU/region, and V2-08 remain forbidden.
+
+Current closure pointers: `failed-attempt-39.json`, `attempt39-cleanup-observation.json`, and
+`attempt39-reconciliation-observation.json`; result `NOT_QUALIFIED` and no provider authority/cap
+remain.
 
 Attempt38 is closed `NOT_QUALIFIED` after bounded execution stopped at `initialized` on cap arithmetic
 risk. Runtime/image repair `edb18154759a1c4da9f28789fe5f4c4ab74a92ed` binds the full immutable

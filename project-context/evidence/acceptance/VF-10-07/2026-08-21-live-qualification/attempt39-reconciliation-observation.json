@@ -1,0 +1,46 @@
+{
+  "schema_version": "videoforge.v2-07-attempt39-readonly-reconciliation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 39,
+  "checked_at": "2026-08-23T02:24:11.243Z",
+  "read_mode": "READ_ONLY",
+  "stable_read_count": 3,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.5246469744015485,
+    "final_endpoint_spend_usd": 1.5246469744015485,
+    "settled_incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "mutation_boundary": {
+    "new_gpu_jobs": 1,
+    "accepted_outputs": 0,
+    "model_volume_writes": 0,
+    "volume_mutation_called": false,
+    "cross_mount_observed": false,
+    "secrets_or_raw_provider_ids_retained": false
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-07-attempt39-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 39,
+  "checked_at": "2026-08-23T02:24:11.243Z",
+  "result": "RUNPOD_CLEAN_CLOUDFLARE_ROUTE_RESTORED",
+  "proposal_sha256": "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57",
+  "authority_sha256": "sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b",
+  "runpod_cleanup": {
+    "endpoint_id_sha256": "sha256:1cef2f0db7960e6e5aa45ba805f1647b65df97b5ac01aa3e86d288f0cefaa22e",
+    "template_id_sha256": "sha256:579e2fea24b50faa6dd718267dcf9d77958d548bfbec5b745dcb50afebab613d",
+    "stable_terminal_snapshots_before_delete": 2,
+    "terminal_worker_record_count": 2,
+    "terminal_pod_record_count": 2,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "gpu_jobs_submitted": 1,
+    "accepted_outputs": 0,
+    "generated_output_rollback": "CONFIRMED"
+  },
+  "cloudflare_cleanup": {
+    "ephemeral_signer_secret_deleted": true,
+    "captured_worker_version_id_sha256": "sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48",
+    "captured_active_version_record_sha256": "sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97",
+    "captured_route_status": 404,
+    "captured_route_code": "V207_ROUTE_DISABLED",
+    "worker_version_restored": true,
+    "active_version_record_hash_restored": true,
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED",
+    "exact_captured_fingerprint_restored": true,
+    "cleanup_uncertain": false
+  },
+  "final_reconciliation": {
+    "evidence": "attempt39-reconciliation-observation.json",
+    "checked_at": "2026-08-23T02:24:11.243Z",
+    "stable_reads": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0
+  },
+  "retention": {
+    "mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "retained_volume_write_delete_rebuild_or_cross_mount": false,
+    "ongoing_two_volume_charge_usd_per_month": 7
+  },
+  "provider_boundary": {
+    "authority_consumed": true,
+    "cap_consumed": true,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false
+  }
+}
