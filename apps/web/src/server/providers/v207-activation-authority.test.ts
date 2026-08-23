@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -182,6 +184,11 @@ describe("V2-07 activation authority", () => {
     expect(hashV207ActivationAuthoritySource(prettierWrapped)).toBe(
       hashV207ActivationAuthoritySource(singleLine),
     );
+  });
+
+  it("canonicalizes the real activation module without counting replacement literals", async () => {
+    const source = await readFile("src/server/providers/v207-activation-authority.ts", "utf8");
+    expect(hashV207ActivationAuthoritySource(source)).toMatch(/^sha256:[a-f0-9]{64}$/u);
   });
 
   it("rejects missing, duplicate, and malformed canonical approval bindings", () => {

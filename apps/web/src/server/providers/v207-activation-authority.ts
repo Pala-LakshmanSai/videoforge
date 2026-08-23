@@ -94,13 +94,13 @@ export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
-  /\bexport\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gu;
+  /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;
 const V207_APPROVED_AUTHORITY_PATTERN =
-  /\bexport\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/gu;
+  /^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/gmu;
 const V207_FINITE_CAP_PATTERN =
-  /\bexport\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*(?:null|(?:0|[1-9]\d*)(?:\.\d+)?)\s*;/gu;
+  /^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*(?:null|(?:0|[1-9]\d*)(?:\.\d+)?)\s*;/gmu;
 const V207_ANCHOR_REFRESH_PATTERN =
-  /\bexport\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*(?:true|false|null)\s*;/gu;
+  /^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*(?:true|false|null)\s*;/gmu;
 
 function replaceExactlyOneV207Binding(
   source: string,
@@ -110,7 +110,7 @@ function replaceExactlyOneV207Binding(
   errorCode: string,
 ): string {
   const declarationCount =
-    source.match(new RegExp(`\\bexport\\s+const\\s+${declarationName}\\b`, "gu"))?.length ?? 0;
+    source.match(new RegExp(`^export\\s+const\\s+${declarationName}\\b`, "gmu"))?.length ?? 0;
   const bindingMatches = source.match(pattern)?.length ?? 0;
   if (declarationCount !== 1 || bindingMatches !== 1) throw new Error(errorCode);
   return source.replace(pattern, canonicalDeclaration);
