@@ -83,21 +83,28 @@ const successorAttempt41 =
 const successorAttempt42 = state.includes(
   "phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval",
 );
-const successor = successorAttempt41 || successorAttempt42;
+const successorAttempt42Authorized = state.includes(
+  "phase: serverless_v2_v2_07_attempt42_paid_authorized_pending_execution",
+);
+const successor = successorAttempt41 || successorAttempt42 || successorAttempt42Authorized;
 if (successor) {
   assert(
     activation.includes(
-      successorAttempt42
+      successorAttempt42 || successorAttempt42Authorized
         ? sha(paths.successorProposal)
         : "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
     ) &&
       activation.includes(
-        successorAttempt42
+        successorAttempt42 || successorAttempt42Authorized
           ? "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6"
           : "6a4053f6fdde6e906e10b7cb297d253a7b9af140",
       ) &&
-      activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
-      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
+      (successorAttempt42Authorized
+        ? activation.includes(
+            "sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53",
+          ) && activation.includes("V207_APPROVED_FINITE_CAP_USD = 4 as const")
+        : activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
+          activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")) &&
       activation.includes(expected.image) &&
       activation.includes(expected.source),
     "SUCCESSOR_ACTIVATION_BINDING",
@@ -120,8 +127,34 @@ for (const [name, path] of Object.entries({ state: paths.state, gates: paths.gat
 }
 const closed = state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified") || successor;
 if (closed) {
-  assert(state.includes("current_authority: null") && state.includes("maximum_external_spend_usd: 0") && state.includes(expected.authority), "STATE_CLOSED_BOUNDARY");
-  if (successorAttempt42) {
+  if (successorAttempt42Authorized) {
+    assert(
+      state.includes("provider_calls_authorized: true") &&
+        state.includes("gpu_use_authorized: true") &&
+        state.includes("maximum_external_spend_usd: 4") &&
+        state.includes(
+          "current_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"",
+        ) &&
+        state.includes(expected.authority),
+      "STATE_AUTHORIZED_BOUNDARY",
+    );
+    assert(
+      state.includes("provider_calls_authorized: true") &&
+        state.includes("gpu_use_authorized: true") &&
+        state.includes("maximum_external_spend_usd: 4") &&
+        state.includes(
+          "current_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"",
+        ) &&
+        gates.includes("authority_mode: approved_attempt42_single_use_pending_execution") &&
+        gates.includes(
+          "pending_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"",
+        ) &&
+        gates.includes("pending_numeric_cap_usd: 4") &&
+        gates.includes("provider_calls_authorized: true") &&
+        gates.includes("gpu_use_authorized: true"),
+      "GATE_SUCCESSOR_ATTEMPT42_AUTHORIZED_BOUNDARY",
+    );
+  } else if (successorAttempt42) {
     assert(
       gates.includes("authority_mode: pending_attempt42_exact_approval_and_fresh_numeric_cap") &&
         gates.includes("pending_numeric_cap_usd: null") &&
@@ -152,4 +185,4 @@ if (closed) {
   assert(state.includes("phase: serverless_v2_v2_07_attempt40_approved_pending_execution") && state.includes("provider_calls_authorized: true") && state.includes("maximum_external_spend_usd: 4") && state.includes(expected.authority), "STATE_BOUNDARY");
   assert(gates.includes("authority_mode: attempt40_bounded_mutation_authorized") && gates.includes("pending_numeric_cap_usd: 4") && gates.includes(expected.authority), "GATE_BOUNDARY");
 }
-console.log(`V2-07 Attempt40 exact authority validation PASS (proposal immutable; authority bound; ${closed ? "consumed and closed" : "fresh $4 cap pending execution"})`);
+console.log(`V2-07 Attempt40 exact authority validation PASS (proposal immutable; authority bound; ${closed ? successorAttempt42Authorized ? "Attempt42 paid authority pending execution" : "consumed and closed" : "fresh $4 cap pending execution"})`);

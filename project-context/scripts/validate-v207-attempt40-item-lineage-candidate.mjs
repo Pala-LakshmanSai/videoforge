@@ -203,6 +203,9 @@ const state = text(paths.state);
 const successorClosed =
   state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified") ||
   state.includes("phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval");
+const successorAuthorized = state.includes(
+  "phase: serverless_v2_v2_07_attempt42_paid_authorized_pending_execution",
+);
 for (const [name, path] of Object.entries({
   state: paths.state,
   gates: paths.gates,
@@ -210,7 +213,7 @@ for (const [name, path] of Object.entries({
   task: paths.task,
 })) {
   const surface = text(path);
-  if (successorClosed && (name === "gates" || name === "task")) continue;
+  if ((successorClosed || successorAuthorized) && (name === "gates" || name === "task")) continue;
   assert(surface.includes(expected.proposal), `${name.toUpperCase()}_PROPOSAL`);
   assert(surface.includes(expected.acceptance), `${name.toUpperCase()}_ACCEPTANCE`);
   assert(surface.includes(expected.max1), `${name.toUpperCase()}_MAX1`);
@@ -222,13 +225,36 @@ const closed =
   state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified") ||
   state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval") ||
   state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified") ||
-  state.includes("phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval");
+  state.includes("phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval") ||
+  successorAuthorized;
 if (closed) {
-  assert(state.includes("provider_calls_authorized: false"), "STATE_PROVIDER_CLOSED");
-  assert(state.includes("gpu_use_authorized: false"), "STATE_GPU_CLOSED");
-  assert(state.includes("maximum_external_spend_usd: 0"), "STATE_SPEND_CLOSED");
-  assert(gates.includes("pending_authority: null"), "GATES_AUTHORITY_CLOSED");
-  assert(gates.includes("pending_numeric_cap_usd: null"), "GATES_CAP_CLOSED");
+  if (successorAuthorized) {
+    assert(state.includes("provider_calls_authorized: true"), "STATE_PROVIDER_AUTHORIZED");
+    assert(state.includes("gpu_use_authorized: true"), "STATE_GPU_AUTHORIZED");
+    assert(state.includes("maximum_external_spend_usd: 4"), "STATE_SPEND_AUTHORIZED");
+    assert(
+      state.includes(
+        "current_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"",
+      ),
+      "STATE_AUTHORITY_AUTHORIZED",
+    );
+    assert(
+      gates.includes("authority_mode: approved_attempt42_single_use_pending_execution") &&
+        gates.includes(
+          "pending_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"",
+        ) &&
+        gates.includes("pending_numeric_cap_usd: 4") &&
+        gates.includes("provider_calls_authorized: true") &&
+        gates.includes("gpu_use_authorized: true"),
+      "GATES_AUTHORIZED_BOUNDARY",
+    );
+  } else {
+    assert(state.includes("provider_calls_authorized: false"), "STATE_PROVIDER_CLOSED");
+    assert(state.includes("gpu_use_authorized: false"), "STATE_GPU_CLOSED");
+    assert(state.includes("maximum_external_spend_usd: 0"), "STATE_SPEND_CLOSED");
+    assert(gates.includes("pending_authority: null"), "GATES_AUTHORITY_CLOSED");
+    assert(gates.includes("pending_numeric_cap_usd: null"), "GATES_CAP_CLOSED");
+  }
 } else {
   assert(state.includes("phase: serverless_v2_v2_07_attempt40_approved_pending_execution"), "STATE_PHASE");
   assert(state.includes("provider_calls_authorized: true"), "STATE_PROVIDER_BOUNDARY");

@@ -24,7 +24,8 @@ const paths = {
 };
 const expected = {
   proposal: "sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de",
-  acceptance: "sha256:589dbe9cb24dde5dfa4277ea38e061a0a4de9e924112742cee791017d9319e41",
+  acceptance: "sha256:64d5e3aa1e81a26afe564a43a60e3ef2b9cbc28efd735401d707f1099d8ca2bd",
+  authority: "sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53",
   preflight: "sha256:c4180d5862f574953fede7fa5905c0b06d6df3689916043f2ab3039a27d84298",
   max1: "sha256:14a70d3861a7810792e226478037d865ff47425d20f5440b6f54fe0a9c54f50e",
   max2: "sha256:44fad1bfde2e4ba6ee08040e5296bb3a95924728ed322c639cd146c8a66bb2f1",
@@ -63,10 +64,10 @@ const json = (path) => JSON.parse(text(path));
 const sha = (path) =>
   "sha256:" + createHash("sha256").update(bytes(path)).digest("hex");
 
-for (const name of ["proposal", "acceptance", "preflight", "max1", "max2"]) {
+for (const name of ["proposal", "acceptance", "preflight", "max1", "max2", "authority"]) {
   assert(sha(paths[name]) === expected[name], name.toUpperCase() + "_HASH");
 }
-assert(!existsSync(paths.authority), "UNAPPROVED_AUTHORITY_FILE_PRESENT");
+assert(existsSync(paths.authority), "APPROVED_AUTHORITY_FILE_MISSING");
 assert(sha(paths.outputPorts) === expected.controlSource, "OUTPUT_PORT_SOURCE_HASH");
 
 const proposal = json(paths.proposal);
@@ -74,6 +75,7 @@ const acceptance = json(paths.acceptance);
 const preflight = json(paths.preflight);
 const max1 = json(paths.max1);
 const max2 = json(paths.max2);
+const authority = json(paths.authority);
 
 assert(
   proposal.attempt === 42 &&
@@ -230,21 +232,42 @@ assert(
   "VOLUMES",
 );
 assert(
-  acceptance.result ===
-    "PROVIDER_FREE_CANDIDATE_PENDING_FRESH_APPROVAL_AND_NUMERIC_CAP" &&
+  acceptance.result === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    acceptance.schema_version ===
+      "videoforge.v2-07-attempt42-get-readback-authority-acceptance/v1" &&
     acceptance.qualification_status === "NOT_QUALIFIED_PENDING_EXECUTION" &&
     acceptance.candidate?.proposal_sha256 === expected.proposal &&
     acceptance.candidate?.max1_sha256 === expected.max1 &&
     acceptance.candidate?.max2_sha256 === expected.max2 &&
-    acceptance.candidate?.authority_path === null &&
-    acceptance.candidate?.authority_recorded === false &&
-    acceptance.candidate?.maximum_cumulative_finite_spend_usd === null &&
-    acceptance.provider_boundary?.provider_calls === false &&
-    acceptance.provider_boundary?.provider_mutations === false &&
+    acceptance.candidate?.authority_path === "approved-authority.json" &&
+    acceptance.candidate?.authority_sha256 === expected.authority &&
+    acceptance.candidate?.authority_recorded === true &&
+    acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4 &&
+    acceptance.provider_boundary?.provider_calls === true &&
+    acceptance.provider_boundary?.provider_mutations === true &&
     acceptance.provider_boundary?.gpu_use === false &&
-    acceptance.provider_boundary?.authority_active === false &&
-    acceptance.provider_boundary?.cap_usd === null,
+    acceptance.provider_boundary?.authority_active === true &&
+    acceptance.provider_boundary?.cap_usd === 4,
   "ACCEPTANCE",
+);
+assert(
+  authority.attempt === 42 &&
+    authority.schema_version === "videoforge.v2-07-attempt42-get-readback-authority/v1" &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal?.sha256 === expected.proposal &&
+    authority.approval?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval?.single_use === true &&
+    authority.approval?.consumed === false &&
+    authority.lineage?.control_source_commit === expected.control &&
+    authority.lineage?.image === expected.image &&
+    authority.lineage?.volume_id_sha256 === expected.mageVolume &&
+    authority.lineage?.initial_config_sha256 === expected.max1 &&
+    authority.lineage?.concurrent_reader_config_sha256 === expected.max2 &&
+    authority.authorized_operations?.proposal_sha256 === expected.proposal &&
+    authority.authorized_operations?.image_republication_authorized === false &&
+    authority.authorized_operations?.retained_volume_mutation_authorized === false &&
+    authority.authorized_operations?.v2_08_authorized === false,
+  "AUTHORITY",
 );
 
 const activation = text(paths.activation);
@@ -252,8 +275,8 @@ const activationTest = text(paths.activationTest);
 assert(
   activation.includes(expected.proposal) &&
     activation.includes(expected.control) &&
-    activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null") &&
+    activation.includes(expected.authority) &&
+    activation.includes("V207_APPROVED_FINITE_CAP_USD = 4 as const") &&
     activationTest.includes(expected.priorProposal),
   "ACTIVATION",
 );
@@ -284,22 +307,23 @@ assert(
   "TASK_LINEAGE",
 );
 assert(
-  state.includes("phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval") &&
-    state.includes("provider_calls_authorized: false") &&
-    state.includes("remote_or_cloud_mutations_authorized: false") &&
-    state.includes("gpu_use_authorized: false") &&
-    state.includes("maximum_external_spend_usd: 0"),
+  state.includes("phase: serverless_v2_v2_07_attempt42_paid_authorized_pending_execution") &&
+    state.includes("provider_calls_authorized: true") &&
+    state.includes("remote_or_cloud_mutations_authorized: true") &&
+    state.includes("gpu_use_authorized: true") &&
+    state.includes("maximum_external_spend_usd: 4"),
   "STATE_BOUNDARY",
 );
 assert(
-  gates.includes("authority_mode: pending_attempt42_exact_approval_and_fresh_numeric_cap") &&
-    gates.includes("pending_authority: null") &&
-    gates.includes("pending_numeric_cap_usd: null") &&
-    gates.includes("provider_calls_authorized: false") &&
-    gates.includes("gpu_use_authorized: false"),
+  gates.includes("authority_mode: approved_attempt42_single_use_pending_execution") &&
+    gates.includes("pending_authority:") &&
+    gates.includes(expected.authority) &&
+    gates.includes("pending_numeric_cap_usd: 4") &&
+    gates.includes("provider_calls_authorized: true") &&
+    gates.includes("gpu_use_authorized: true"),
   "GATES_BOUNDARY",
 );
 
 console.log(
-  "V2-07 Attempt42 candidate validation PASS (exact GET authority repair; clean fresh baseline; no authority/cap/provider mutation)",
+  "V2-07 Attempt42 authority validation PASS (exact GET authority repair; single-use $4 cap; pending bounded execution)",
 );

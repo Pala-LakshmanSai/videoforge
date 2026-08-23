@@ -301,6 +301,9 @@ const task = text(paths.task);
 const successorCandidate = state.includes(
   "phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval",
 );
+const successorAuthorized = state.includes(
+  "phase: serverless_v2_v2_07_attempt42_paid_authorized_pending_execution",
+);
 for (const [value, code] of [
   [state, "STATE"],
   [gates, "GATES"],
@@ -314,22 +317,37 @@ for (const [value, code] of [
 }
 assert(
   state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified") ||
-    successorCandidate,
+    successorCandidate ||
+    successorAuthorized,
   "STATE_PHASE",
 );
-has(state, "provider_calls_authorized: false", "STATE_PROVIDER");
-has(state, "remote_or_cloud_mutations_authorized: false", "STATE_MUTATION");
-has(state, "gpu_use_authorized: false", "STATE_GPU");
-has(state, "maximum_external_spend_usd: 0", "STATE_CAP");
-has(state, "current_authority: null", "STATE_AUTHORITY");
 has(gates, "latest_closed_result: NOT_QUALIFIED_OUTPUT_READBACK_AUTHORITY_INVALID_CLEAN", "GATES_RESULT");
-has(gates, "pending_authority: null", "GATES_AUTHORITY");
-has(gates, "provider_calls_authorized: false", "GATES_PROVIDER");
+if (successorAuthorized) {
+  has(state, "provider_calls_authorized: true", "STATE_PROVIDER_AUTHORIZED");
+  has(state, "remote_or_cloud_mutations_authorized: true", "STATE_MUTATION_AUTHORIZED");
+  has(state, "gpu_use_authorized: true", "STATE_GPU_AUTHORIZED");
+  has(state, "maximum_external_spend_usd: 4", "STATE_CAP_AUTHORIZED");
+  has(state, "current_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"", "STATE_AUTHORITY_AUTHORIZED");
+  has(gates, "pending_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"", "GATES_AUTHORITY_AUTHORIZED");
+  has(gates, "pending_numeric_cap_usd: 4", "GATES_CAP_AUTHORIZED");
+  has(gates, "provider_calls_authorized: true", "GATES_PROVIDER_AUTHORIZED");
+  has(gates, "gpu_use_authorized: true", "GATES_GPU_AUTHORIZED");
+  has(gates, "authority_mode: approved_attempt42_single_use_pending_execution", "GATES_MODE_AUTHORIZED");
+} else {
+  has(state, "provider_calls_authorized: false", "STATE_PROVIDER");
+  has(state, "remote_or_cloud_mutations_authorized: false", "STATE_MUTATION");
+  has(state, "gpu_use_authorized: false", "STATE_GPU");
+  has(state, "maximum_external_spend_usd: 0", "STATE_CAP");
+  has(state, "current_authority: null", "STATE_AUTHORITY");
+  has(gates, "pending_authority: null", "GATES_AUTHORITY");
+  has(gates, "provider_calls_authorized: false", "GATES_PROVIDER");
+}
 assert(
-  !state.includes("attempt41_approved_pending_execution") &&
+  successorAuthorized ||
+    (!state.includes("attempt41_approved_pending_execution") &&
     !state.includes("APPROVED_SINGLE_USE_PENDING_EXECUTION_attempt41") &&
     !gates.includes("attempt41_bounded_mutation_authorized") &&
-    !gates.includes("APPROVED_SINGLE_USE_PENDING_EXECUTION_attempt41"),
+    !gates.includes("APPROVED_SINGLE_USE_PENDING_EXECUTION_attempt41")),
   "NO_STALE_ACTIVE_ATTEMPT41",
 );
 

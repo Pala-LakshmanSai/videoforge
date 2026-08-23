@@ -289,6 +289,9 @@ const closed = state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_q
 const successor = state.includes(
   "phase: serverless_v2_v2_07_attempt42_candidate_pending_exact_approval",
 );
+const successorAuthorized = state.includes(
+  "phase: serverless_v2_v2_07_attempt42_paid_authorized_pending_execution",
+);
 if (closed) {
   assert(
     activation.includes(expected.proposal) &&
@@ -297,13 +300,17 @@ if (closed) {
       activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
     "ACTIVATION_CLOSED_AUTHORITY",
   );
-} else if (successor) {
+} else if (successor || successorAuthorized) {
   assert(
     activation.includes(sha(paths.successorProposal)) &&
       activation.includes(expected.successorControlSource) &&
-      activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
-      activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
-    "ACTIVATION_SUCCESSOR_CANDIDATE",
+      (successorAuthorized
+        ? activation.includes(
+            "sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53",
+          ) && activation.includes("V207_APPROVED_FINITE_CAP_USD = 4 as const")
+        : activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
+          activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")),
+    successorAuthorized ? "ACTIVATION_SUCCESSOR_AUTHORIZED" : "ACTIVATION_SUCCESSOR_CANDIDATE",
   );
 } else {
   assert(
@@ -324,13 +331,33 @@ for (const [name, path] of Object.entries({
   // START_HERE leads with the closed Attempt41 outcome and intentionally does not
   // repeat every consumed candidate handoff hash; the durable state/gate/task
   // surfaces retain those immutable candidate pointers below.
-  if ((closed || successor) && (name === "start" || name === "task")) continue;
+  if ((closed || successor || successorAuthorized) && (name === "start" || name === "task")) continue;
   assert(surface.includes(expected.proposal), `${name.toUpperCase()}_PROPOSAL`);
   assert(surface.includes(expected.acceptance), `${name.toUpperCase()}_ACCEPTANCE`);
   assert(surface.includes(expected.preflight), `${name.toUpperCase()}_PREFLIGHT`);
   assert(surface.includes(expected.max1) && surface.includes(expected.max2), `${name.toUpperCase()}_CONFIGS`);
 }
-if (closed || successor) {
+if (successorAuthorized) {
+  assert(
+    state.includes("provider_calls_authorized: true") &&
+      state.includes("gpu_use_authorized: true") &&
+      state.includes("maximum_external_spend_usd: 4") &&
+      state.includes(
+        "current_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"",
+      ),
+    "AUTHORIZED_STATE_BOUNDARY",
+  );
+  assert(
+    gates.includes("authority_mode: approved_attempt42_single_use_pending_execution") &&
+      gates.includes(
+        "pending_authority_sha256: \"sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53\"",
+      ) &&
+      gates.includes("pending_numeric_cap_usd: 4") &&
+      gates.includes("provider_calls_authorized: true") &&
+      gates.includes("gpu_use_authorized: true"),
+    "AUTHORIZED_GATE_BOUNDARY",
+  );
+} else if (closed || successor) {
   assert(
     state.includes("provider_calls_authorized: false") &&
       state.includes("gpu_use_authorized: false") &&
@@ -361,5 +388,5 @@ if (closed || successor) {
 }
 
 console.log(
-  `V2-07 Attempt41 authority validation PASS (exact proposal/authority/cap; reused image; ${closed ? "consumed and closed" : successor ? "successor Attempt42 candidate pending exact approval" : "pending bounded execution"})`,
+  `V2-07 Attempt41 authority validation PASS (exact proposal/authority/cap; reused image; ${closed ? "consumed and closed" : successorAuthorized ? "successor Attempt42 paid authority pending execution" : successor ? "successor Attempt42 candidate pending exact approval" : "pending bounded execution"})`,
 );
