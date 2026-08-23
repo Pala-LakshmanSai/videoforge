@@ -16,6 +16,7 @@ const E = {
   closure: "sha256:695f438b4e2908a181d668a608588659f05075e2d6aa19d6bcfcca1a87d75be4",
   repair: "1a8a12de10869d163ddf7bb4dfa3f329407ba566",
   source: "sha256:c5187fb9636d53e214d90f60c1a67a13ed06dc47c558f4869628b6d09a27a9c5",
+  authority: "sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67",
   closureCommit: "c9772731e202ce31084d5a56e165756afcec950c",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
   modelManifest: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
@@ -55,8 +56,8 @@ for (const [name, expected] of Object.entries({
   "runpod-reconciliation-observation.json": E.reconciliation,
   "staged-config-max1.json": E.max1,
   "staged-config-max2.json": E.max2,
+  "approved-authority.json": E.authority,
 })) checkHash(name, expected);
-ok(!fs.existsSync(path.join(DIR, "approved-authority.json")), "candidate contains authority");
 
 const proposal = json("combined-live-proposal.json");
 const acceptance = json("acceptance.json");
@@ -65,6 +66,39 @@ const cloudflare = json("cloudflare-anchor-observation.json");
 const reconciliation = json("runpod-reconciliation-observation.json");
 const max1 = json("staged-config-max1.json");
 const max2 = json("staged-config-max2.json");
+const authority = json("approved-authority.json");
+
+eq(authority.schema_version, "videoforge.v2-07-attempt45-resume-get-lifetime-repair-authority/v1", "authority schema");
+eq(authority.checkpoint, "V2-07", "authority checkpoint");
+eq(authority.attempt, 45, "authority attempt");
+eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "authority status");
+eq(authority.proposal.sha256, E.proposal, "authority proposal");
+eq(authority.acceptance.sha256, E.acceptance, "authority acceptance");
+eq(authority.approval.exact_proposal_approved, true, "authority approval");
+eq(authority.approval.flashboot_true_accepted, true, "authority FlashBoot");
+eq(authority.approval.minimum_approved_availability, "LOW-or-better", "authority availability");
+eq(authority.approval.maximum_cumulative_finite_spend_usd, 4, "authority cap");
+eq(authority.approval.fresh_numeric_cap, true, "authority fresh cap");
+eq(authority.approval.historical_cap_reused, false, "authority historical cap");
+eq(authority.approval.prior_authority_reused, false, "authority reuse");
+eq(authority.approval.consumed, false, "authority consumed");
+eq(authority.approval.anchor_refresh_authorized, false, "authority anchor refresh");
+eq(authority.lineage.repair_commit, E.repair, "authority repair");
+eq(authority.lineage.live_qualification_source_sha256, E.source, "authority source");
+eq(authority.lineage.image, E.image, "authority image");
+eq(authority.lineage.model_manifest_sha256, E.modelManifest, "authority manifest");
+eq(authority.lineage.volume_id_sha256, E.volume, "authority volume");
+eq(authority.lineage.initial_config_sha256, E.max1, "authority max1");
+eq(authority.lineage.concurrent_reader_config_sha256, E.max2, "authority max2");
+eq(authority.lineage.gpu, E.gpu, "authority GPU");
+eq(authority.lineage.flashboot, true, "authority FlashBoot lineage");
+eq(authority.approved_operations.length, proposal.approved_operations_to_be_proposed_once_after_fresh_approval.length, "authority operation count");
+eq(JSON.stringify(authority.approved_operations), JSON.stringify(proposal.approved_operations_to_be_proposed_once_after_fresh_approval), "authority operations");
+eq(authority.execution_boundary.runpod_mutation_authorized_pending_execution, true, "authority RunPod mutation");
+eq(authority.execution_boundary.gpu_use_authorized_pending_execution, true, "authority GPU execution");
+eq(authority.execution_boundary.maximum_cumulative_finite_spend_usd, 4, "authority execution cap");
+eq(authority.execution_boundary.anchor_refresh_authorized, false, "authority execution anchor");
+eq(authority.execution_boundary.v2_08_authorized, false, "authority V2-08");
 
 eq(proposal.schema_version, "videoforge.v2-07-attempt45-resume-get-lifetime-repair-combined-live-proposal/v1", "proposal schema");
 eq(proposal.checkpoint, "V2-07", "proposal checkpoint");
@@ -271,15 +305,15 @@ includes("project-context/CURRENT_STATE.yaml", E.proposal, "CURRENT_STATE active
 includes("project-context/CURRENT_STATE.yaml", E.acceptance, "CURRENT_STATE active acceptance");
 includes("project-context/CURRENT_STATE.yaml", E.repair, "CURRENT_STATE repair");
 includes("project-context/CURRENT_STATE.yaml", "provider_calls_authorized: false", "CURRENT_STATE provider boundary");
-includes("project-context/CURRENT_STATE.yaml", "authorized_spend_usd: 0", "CURRENT_STATE spend boundary");
+includes("project-context/CURRENT_STATE.yaml", "spend_authorized_usd: 4", "CURRENT_STATE spend boundary");
 includes("project-context/CURRENT_STATE.yaml", "V2-08: blocked_on_V2-07", "CURRENT_STATE V2-08");
-includes("project-context/CURRENT_STATE.yaml", "current_authority: null", "CURRENT_STATE authority");
+includes("project-context/CURRENT_STATE.yaml", E.authority, "CURRENT_STATE authority");
 includes("project-context/GATES.yaml", E.closure, "GATES closure");
 includes("project-context/GATES.yaml", E.proposal, "GATES active proposal");
 includes("project-context/GATES.yaml", E.acceptance, "GATES active acceptance");
 includes("project-context/GATES.yaml", E.repair, "GATES repair");
 includes("project-context/GATES.yaml", E.source, "GATES source");
-includes("project-context/GATES.yaml", "provider_calls_authorized: false", "GATES provider boundary");
+includes("project-context/GATES.yaml", "provider_calls_authorized: true", "GATES provider boundary");
 includes("project-context/GATES.yaml", "v2_08_authorized: false", "GATES V2-08");
 includes("project-context/00_START_HERE.md", E.closure, "START_HERE closure");
 includes("project-context/00_START_HERE.md", E.proposal, "START_HERE active proposal");
@@ -288,19 +322,20 @@ includes("project-context/00_START_HERE.md", E.repair.slice(0, 7), "START_HERE r
 includes("project-context/00_START_HERE.md", "V2-08 forbidden", "START_HERE V2-08");
 const activation = "apps/web/src/server/providers/v207-activation-authority.ts";
 includes(activation, E.proposal, "activation pending proposal");
-includes(activation, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;", "activation authority");
-includes(activation, "export const V207_APPROVED_FINITE_CAP_USD: number | null = null;", "activation cap");
-includes(activation, "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;", "activation anchor");
+includes(activation, E.authority, "activation authority");
+includes(activation, "export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;", "activation cap");
+includes(activation, "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;", "activation anchor");
 
 console.log("PASS validate-v207-attempt45-resume-get-lifetime-repair-candidate", JSON.stringify({
   proposal_sha256: E.proposal,
   acceptance_sha256: E.acceptance,
+  authority_sha256: E.authority,
   max1_sha256: E.max1,
   max2_sha256: E.max2,
   prior_attempt44_closure_sha256: E.closure,
   repair_commit: E.repair,
   live_qualification_source_sha256: E.source,
-  provider_calls: false,
+  provider_calls_authorized: true,
   gpu_use: false,
   external_spend_usd: 0,
 }));

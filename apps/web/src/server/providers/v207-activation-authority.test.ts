@@ -123,9 +123,11 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
+      "sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67",
+    );
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
   });
 
   it("uses a fail-closed non-cyclic source binding for all approval constants", () => {
@@ -285,28 +287,33 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed Attempt44 proposal and cap", () => {
-    expect(() =>
+  it("accepts only the exact fresh Attempt45 proposal and cap", () => {
+    expect(
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toEqual({
+      image,
+      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
+      capUsd: 4,
+      anchorRefreshAuthorized: false,
+    });
   });
 
-  it("rejects missing cap input because Attempt44 authority is consumed", () => {
+  it("rejects missing cap input for Attempt45", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_FINITE_CAP_REQUIRED");
   });
 
-  it("rejects drifted cap input because Attempt44 authority is consumed", () => {
+  it("rejects drifted cap input for Attempt45", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -314,13 +321,13 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "2",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_FINITE_CAP_MISMATCH");
   });
 
-  it("keeps anchor refresh unapproved after Attempt44 consumption", () => {
+  it("keeps anchor refresh unapproved for Attempt45", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
-    expect(() =>
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
+    expect(
       parseV207ActivationAuthority({
         ...refreshMarker,
         V207_IMAGE: image,
@@ -328,7 +335,7 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toMatchObject({ anchorRefreshAuthorized: false });
     expect(() =>
       parseV207ActivationAuthority({
         ...refreshMarker,

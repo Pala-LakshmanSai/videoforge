@@ -83,15 +83,16 @@ export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
 // because the exact Cloudflare rollback anchor was not retained in the bounded
 // newest-seven window. Keep the immutable authority in evidence for audit only;
 // remove executable approval and cap so the attempt cannot be replayed.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+export const V207_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67";
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap.  Keep the
  * current provider-free candidate null; a future exact authority may change
  * this to true in its own immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /(\bexport const V207_PENDING_PROPOSAL_SHA256\s*=\s*")sha256:[a-f0-9]{64}("\s+as const;)/gu;

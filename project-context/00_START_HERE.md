@@ -769,7 +769,7 @@ acceptance `sha256:106c12b6be55f870ec17c52135eb90d09aa09fb60ad119e79a0d817431835
 preflight `sha256:7a0e66ce4cf9cddaab6aa09692ed9f6cb385f43dedf8a288ffac57a41f6abffb`;
 `sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c`;
 `sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c`; V2-08.
-No Attempt45 authority or cap is recorded. Historical Attempt44 closure
+Attempt45 authority `sha256:e73bd7ec…b6b67` records one use and `$4`; Attempt44 closure
 `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-44.json`
 `sha256:695f438b4e2908a181d668a608588659f05075e2d6aa19d6bcfcca1a87d75be4`;
 cleanup `attempt44-cleanup-observation.json` `sha256:da05bd6a40812a3c59dbcdb5ec629646ae41d28cc763b18303dcb04aa57cb8a6`;
