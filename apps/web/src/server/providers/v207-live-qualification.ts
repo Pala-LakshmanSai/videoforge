@@ -161,7 +161,30 @@ const V207_OUTPUT_PORT_FINALIZE_FAILURE_CATEGORIES = new Set([
   "transport",
   "json_parse",
   "non_object",
+  "http_error",
 ] as const);
+const V207_OUTPUT_PORT_FINALIZE_ERROR_CODES: ReadonlySet<string> = new Set([
+  "V207_AUTHORITY_REJECTED",
+  "V207_DELETE_UNAVAILABLE",
+  "V207_DELETE_UNCONFIRMED",
+  "V207_DELETE_VERIFY_FAILED",
+  "V207_OUTPUT_FACTS_MISMATCH",
+  "V207_OUTPUT_KEY_INVALID",
+  "V207_OUTPUT_NOT_FOUND",
+  "V207_OUTPUT_PNG_PROBE_FAILED",
+  "V207_PORT_SIGNING_FAILED",
+  "V207_PROVENANCE_KEY_INVALID",
+  "V207_PROVENANCE_RECORD_INVALID",
+  "V207_RECEIPT_CONFLICT",
+  "V207_REQUEST_INVALID",
+  "V207_RESERVATION_AUTHORITY_REJECTED",
+  "V207_RESERVATION_CONFLICT",
+  "V207_RESERVATION_EXPIRED",
+  "V207_RESERVATION_NOT_FOUND",
+  "V207_RESERVATION_UNAVAILABLE",
+  "V207_ROLLBACK_AUTHORITY_REJECTED",
+  "V207_ROUTE_DISABLED",
+]);
 const V207_OUTPUT_PORT_CONTENT_TYPE_CATEGORIES = new Set([
   "json",
   "text",
@@ -170,7 +193,11 @@ const V207_OUTPUT_PORT_CONTENT_TYPE_CATEGORIES = new Set([
   "invalid",
 ] as const);
 const V207_OUTPUT_PORT_CONTENT_TYPE_VALUE = /^[a-z0-9!#$&^_.+-]{1,63}\/[a-z0-9!#$&^_.+-]{1,63}$/u;
-type V207OutputPortFinalizeFailureCategory = "transport" | "json_parse" | "non_object";
+type V207OutputPortFinalizeFailureCategory =
+  | "transport"
+  | "json_parse"
+  | "non_object"
+  | "http_error";
 type V207OutputPortContentTypeCategory = "json" | "text" | "other" | "missing" | "invalid";
 
 /**
@@ -184,6 +211,7 @@ export interface V207OutputPortFinalizeResponseDiagnostic {
   readonly content_type_value: string | null;
   readonly body_byte_length: number;
   readonly failure_category: V207OutputPortFinalizeFailureCategory;
+  readonly error_code?: string | null;
 }
 
 const sanitizeV207OutputPortContentType = (
@@ -215,11 +243,12 @@ const makeV207OutputPortFinalizeResponseDiagnostic = (
   response: Response | null,
   failureCategory: V207OutputPortFinalizeFailureCategory,
   bodyByteLength = 0,
+  errorCode?: string | null,
 ): V207OutputPortFinalizeResponseDiagnostic => {
   const contentType = sanitizeV207OutputPortContentType(
     response?.headers?.get("content-type") ?? null,
   );
-  return {
+  const diagnostic = {
     attempt_number: Number.isSafeInteger(attemptNumber) && attemptNumber > 0 ? attemptNumber : 1,
     http_status:
       response &&
@@ -233,6 +262,28 @@ const makeV207OutputPortFinalizeResponseDiagnostic = (
       Number.isSafeInteger(bodyByteLength) && bodyByteLength >= 0 ? bodyByteLength : 0,
     failure_category: failureCategory,
   };
+  return errorCode === undefined ? diagnostic : { ...diagnostic, error_code: errorCode };
+};
+
+const boundedV207OutputPortFinalizeErrorCode = (value: unknown): string | null => {
+  if (
+    typeof value === "string" &&
+    V207_OUTPUT_DIAGNOSTIC_CODE.test(value) &&
+    V207_OUTPUT_PORT_FINALIZE_ERROR_CODES.has(value)
+  ) {
+    return value;
+  }
+  return null;
+};
+
+const extractV207OutputPortFinalizeErrorCode = (value: unknown): string | null => {
+  const record = value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  const error =
+    record && "error" in record && record.error && typeof record.error === "object"
+      ? record.error
+      : null;
+  const code = error && !Array.isArray(error) && "code" in error ? error.code : null;
+  return boundedV207OutputPortFinalizeErrorCode(code);
 };
 
 /** Normalize an in-process diagnostic before it can cross into persisted evidence. */
@@ -247,6 +298,8 @@ export function normalizeV207OutputPortFinalizeResponseDiagnostic(
   const failureCategory = candidate.failure_category;
   const contentTypeCategory = candidate.content_type_category;
   const contentTypeValue = candidate.content_type_value;
+  const hasErrorCode = Object.prototype.hasOwnProperty.call(candidate, "error_code");
+  const errorCode = candidate.error_code;
   if (
     !Number.isSafeInteger(attemptNumber) ||
     attemptNumber < 1 ||
@@ -264,7 +317,13 @@ export function normalizeV207OutputPortFinalizeResponseDiagnostic(
       contentTypeValue === null ||
       (typeof contentTypeValue === "string" &&
         V207_OUTPUT_PORT_CONTENT_TYPE_VALUE.test(contentTypeValue))
-    )
+    ) ||
+    (failureCategory === "http_error" &&
+      (!hasErrorCode ||
+        !(
+          errorCode === null || boundedV207OutputPortFinalizeErrorCode(errorCode) === errorCode
+        ))) ||
+    (failureCategory !== "http_error" && hasErrorCode)
   ) {
     return null;
   }
@@ -275,13 +334,14 @@ export function normalizeV207OutputPortFinalizeResponseDiagnostic(
   ) {
     return null;
   }
-  return {
+  const normalized = {
     attempt_number: attemptNumber,
     http_status: httpStatus,
     ...normalizedContentType,
     body_byte_length: bodyByteLength,
     failure_category: failureCategory as V207OutputPortFinalizeFailureCategory,
   };
+  return hasErrorCode ? { ...normalized, error_code: errorCode as string | null } : normalized;
 }
 
 class V207OutputPortFinalizeResponseError extends Error {
@@ -810,11 +870,13 @@ export async function routePort(
     }
 
     let value: AnyRecord;
+    let responseBodyByteLength = 0;
     if (isFinalize) {
       let diagnostic: V207OutputPortFinalizeResponseDiagnostic;
       try {
         const body = await response.arrayBuffer();
         const bodyByteLength = body.byteLength;
+        responseBodyByteLength = bodyByteLength;
         let parsed: unknown;
         try {
           parsed = JSON.parse(new TextDecoder().decode(body));
@@ -866,6 +928,17 @@ export async function routePort(
     const finalized =
       isFinalize && value.schema_version === "videoforge-v207-generated-output-finalization/v1";
     if (response.ok && (signedPort || finalized)) return value;
+    if (isFinalize && response.status !== 503) {
+      throw new V207OutputPortFinalizeResponseError(
+        makeV207OutputPortFinalizeResponseDiagnostic(
+          attempt + 1,
+          response,
+          "http_error",
+          responseBodyByteLength,
+          extractV207OutputPortFinalizeErrorCode(value),
+        ),
+      );
+    }
     if (response.status !== 503 || attempt === maxAttempts - 1) {
       throw new Error(`V207_OUTPUT_PORT_${response.status}`);
     }

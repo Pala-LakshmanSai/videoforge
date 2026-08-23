@@ -33,6 +33,12 @@ export interface HostedR2BucketBinding {
 
 export interface HostedRuntimeEnvironment {
   readonly ASSETS?: { fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> };
+  /** Cloudflare's immutable version identity; exposed only for the V2-07 route fingerprint. */
+  readonly CF_VERSION_METADATA?: {
+    readonly id: string;
+    readonly tag: string;
+    readonly timestamp: string;
+  };
   readonly PRIVATE_ARTIFACTS?: HostedR2BucketBinding;
   readonly VIDEO_WORKFLOW?: HostedWorkflowBinding;
   readonly VIDEOFORGE_COMMIT?: string;

@@ -46,6 +46,7 @@ const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGED_VERSION_ID = "22222222-2222-4222-8222-222222222222";
 const DEPLOYMENT_ID = "33333333-3333-4333-8333-333333333333";
 const REFRESH_VERSION_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const SIGNER_VERSION_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 const TEST_OLD_ACTIVE_VERSION_ID_SHA256 = `sha256:${createHash("sha256")
   .update(VERSION_ID, "utf8")
   .digest("hex")}`;
@@ -267,7 +268,12 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+            versions: [
+              {
+                version_id: signerSecretPresent ? SIGNER_VERSION_ID : VERSION_ID,
+                percentage: 100,
+              },
+            ],
           }),
         );
       }
@@ -293,11 +299,13 @@ describe("V2-07 live orchestrator", () => {
       if (signerSecretPresent && activeRouteProbeCalls++ === 0) {
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
+          headers: { "x-videoforge-worker-version": SIGNER_VERSION_ID },
         });
       }
       if (signerSecretPresent) {
         return new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
           status: 403,
+          headers: { "x-videoforge-worker-version": SIGNER_VERSION_ID },
         });
       }
       if (rollbackSeen && restorationProbeCalls++ < 2) {
@@ -337,7 +345,7 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"event": "restored_route_confirmed"');
     expect(evidence).toContain('"event": "live_preflight_completed"');
     expect(evidence).toContain('"event": "signer_route_activation_confirmed"');
-    expect(evidence).toContain('"attempts": 2');
+    expect(evidence).toContain('"attempts": 17');
     expect(evidence).toContain('"code": "HOSTED_ROUTE_NOT_COMPOSED"');
     // Two transient mismatches are tolerated before the first exact match, then
     // 16 exact 2-second probes establish the documented 30-second window.
@@ -381,6 +389,114 @@ describe("V2-07 live orchestrator", () => {
     expect(rollback?.args).toContain(VERSION_ID);
     expect(rollback?.args).not.toContain(DEPLOYMENT_ID);
     expect(calls.flatMap((call) => call.args)).not.toContain(NONCE);
+  });
+
+  it.each([
+    {
+      name: "404 then 403 then old-contract 400",
+      expectedCode: "V207_AUTHORITY_PROPAGATION_UNCONFIRMED",
+      responses: [
+        { status: 404, code: "V207_ROUTE_DISABLED", versionId: SIGNER_VERSION_ID },
+        { status: 403, code: "V207_AUTHORITY_REJECTED", versionId: SIGNER_VERSION_ID },
+        { status: 400, code: "V207_REQUEST_INVALID", versionId: VERSION_ID },
+      ],
+    },
+    {
+      name: "alternating active edge version",
+      expectedCode: "V207_AUTHORITY_VERSION_ID_UNCONFIRMED",
+      responses: [
+        { status: 403, code: "V207_AUTHORITY_REJECTED", versionId: SIGNER_VERSION_ID },
+        { status: 403, code: "V207_AUTHORITY_REJECTED", versionId: CHANGED_VERSION_ID },
+      ],
+    },
+    {
+      name: "missing active edge version",
+      expectedCode: "V207_ROUTE_VERSION_ID_MISSING",
+      responses: [{ status: 403, code: "V207_AUTHORITY_REJECTED", versionId: null }],
+    },
+    {
+      name: "malformed active edge version",
+      expectedCode: "V207_ROUTE_VERSION_ID_INVALID",
+      responses: [{ status: 403, code: "V207_AUTHORITY_REJECTED", versionId: "not-a-version" }],
+    },
+  ] as const)("fails closed on $name before qualification", async ({ expectedCode, responses }) => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    let signerSecretPresent = false;
+    let responseIndex = 0;
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [
+              {
+                version_id: signerSecretPresent ? SIGNER_VERSION_ID : VERSION_ID,
+                percentage: 100,
+              },
+            ],
+          }),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) {
+        return result(
+          JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("put")) {
+        signerSecretPresent = true;
+        return result();
+      }
+      if (request.args.includes("secret") && request.args.includes("delete")) {
+        signerSecretPresent = false;
+        return result();
+      }
+      if (request.args.includes("rollback")) return result();
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () => {
+      if (!signerSecretPresent) {
+        return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
+          status: 503,
+        });
+      }
+      const observed =
+        responses[Math.min(responseIndex++, responses.length - 1)] ?? responses.at(-1)!;
+      return new Response(JSON.stringify({ error: { code: observed.code } }), {
+        status: observed.status,
+        ...(observed.versionId === null
+          ? {}
+          : { headers: { "x-videoforge-worker-version": observed.versionId } }),
+      });
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        nonceFactory: () => NONCE,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: expectedCode });
+    expect(signerSecretPresent).toBe(false);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain(expectedCode);
+    expect(evidence).not.toContain(NONCE);
   });
 
   it("keeps the anchor-refresh deploy behind an exact environment/config pair", async () => {
@@ -470,7 +586,11 @@ describe("V2-07 live orchestrator", () => {
       }
       if (request.args.includes("deployments")) {
         statusCalls += 1;
-        const version_id = statusCalls === 1 ? VERSION_ID : REFRESH_VERSION_ID;
+        const version_id = signerSecretPresent
+          ? SIGNER_VERSION_ID
+          : statusCalls === 1
+            ? VERSION_ID
+            : REFRESH_VERSION_ID;
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
@@ -524,11 +644,13 @@ describe("V2-07 live orchestrator", () => {
       if (signerSecretPresent && activeRouteProbeCalls++ === 0) {
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
+          headers: { "x-videoforge-worker-version": SIGNER_VERSION_ID },
         });
       }
       if (signerSecretPresent) {
         return new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
           status: 403,
+          headers: { "x-videoforge-worker-version": SIGNER_VERSION_ID },
         });
       }
       if (rollbackSeen && restorationProbeCalls++ < 16) {
@@ -559,7 +681,7 @@ describe("V2-07 live orchestrator", () => {
 
     expect(orchestration.runnerExitCode).toBe(0);
     expect(deployCalls).toBe(1);
-    expect(statusCalls).toBe(3);
+    expect(statusCalls).toBe(4);
     expect(versionsCalls).toBe(2);
     expect(refreshDisabledProbeCalls).toBe(49);
     expect(restorationProbeCalls).toBe(16);
@@ -1159,6 +1281,7 @@ describe("V2-07 live orchestrator", () => {
     const files = await fixture();
     let signerSecretPresent = false;
     let rollbackSeen = false;
+    let propagationSleeps = 0;
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       if (request.command === "git") return result();
       if (request.args.includes("versions") && request.args.includes("list")) {
@@ -1168,7 +1291,12 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+            versions: [
+              {
+                version_id: signerSecretPresent ? SIGNER_VERSION_ID : VERSION_ID,
+                percentage: 100,
+              },
+            ],
           }),
         );
       }
@@ -1192,6 +1320,7 @@ describe("V2-07 live orchestrator", () => {
       if (signerSecretPresent) {
         return new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
           status: 403,
+          headers: { "x-videoforge-worker-version": SIGNER_VERSION_ID },
         });
       }
       return new Response(
@@ -1214,7 +1343,12 @@ describe("V2-07 live orchestrator", () => {
         commandRunner,
         fetchImpl,
         nonceFactory: () => NONCE,
-        sleepImpl: async () => new Promise<void>(() => undefined),
+        sleepImpl: async () => {
+          propagationSleeps += 1;
+          // Activation now requires 16 exact active probes. Stall only once those probes have
+          // completed, so this test still exercises the bounded restoration deadline.
+          if (propagationSleeps > 15) await new Promise<void>(() => undefined);
+        },
         routeRestorationSignal: AbortSignal.timeout(25),
         installSignalHandlers: false,
       }),
@@ -1358,7 +1492,12 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+            versions: [
+              {
+                version_id: signerSecretPresent ? SIGNER_VERSION_ID : VERSION_ID,
+                percentage: 100,
+              },
+            ],
           }),
         );
       if (request.args.includes("secret") && request.args.includes("list")) {
@@ -1395,7 +1534,10 @@ describe("V2-07 live orchestrator", () => {
             ? { error: { code: "V207_AUTHORITY_REJECTED" } }
             : { error: { code: "V207_ROUTE_DISABLED" } },
         ),
-        { status: signerSecretPresent ? 403 : 404 },
+        {
+          status: signerSecretPresent ? 403 : 404,
+          headers: { "x-videoforge-worker-version": SIGNER_VERSION_ID },
+        },
       );
 
     await expect(
@@ -1441,7 +1583,12 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+            versions: [
+              {
+                version_id: signerSecretPresent ? SIGNER_VERSION_ID : VERSION_ID,
+                percentage: 100,
+              },
+            ],
           }),
         );
       if (request.args.includes("secret") && request.args.includes("list")) {
@@ -1466,7 +1613,12 @@ describe("V2-07 live orchestrator", () => {
             ? { error: { code: "V207_ROUTE_DISABLED" } }
             : { error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } },
         ),
-        { status: signerSecretPresent ? 404 : 503 },
+        {
+          status: signerSecretPresent ? 404 : 503,
+          headers: signerSecretPresent
+            ? { "x-videoforge-worker-version": SIGNER_VERSION_ID }
+            : undefined,
+        },
       );
 
     await expect(
@@ -1507,7 +1659,12 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+            versions: [
+              {
+                version_id: signerSecretPresent ? SIGNER_VERSION_ID : VERSION_ID,
+                percentage: 100,
+              },
+            ],
           }),
         );
       if (request.args.includes("secret") && request.args.includes("list")) {
@@ -1539,7 +1696,10 @@ describe("V2-07 live orchestrator", () => {
             ? { error: { code: "V207_AUTHORITY_REJECTED" } }
             : { error: { code: "V207_ROUTE_DISABLED" } },
         ),
-        { status: signerSecretPresent ? 403 : 404 },
+        {
+          status: signerSecretPresent ? 403 : 404,
+          headers: { "x-videoforge-worker-version": SIGNER_VERSION_ID },
+        },
       );
     const environment = { ...files.environment };
     delete (environment as { RUNPOD_KEY?: string }).RUNPOD_KEY;
@@ -1778,7 +1938,10 @@ describe("V2-07 live orchestrator", () => {
             ? { error: { code: "V207_AUTHORITY_REJECTED" } }
             : { error: { code: "V207_ROUTE_DISABLED" } },
         ),
-        { status: signerSecretPresent ? 403 : 404 },
+        {
+          status: signerSecretPresent ? 403 : 404,
+          headers: { "x-videoforge-worker-version": VERSION_ID },
+        },
       );
     await expect(
       runV207LiveOrchestration({
@@ -1791,10 +1954,11 @@ describe("V2-07 live orchestrator", () => {
         commandRunner,
         fetchImpl,
         nonceFactory: () => NONCE,
+        sleepImpl: async () => undefined,
         installSignalHandlers: false,
       }),
     ).rejects.toMatchObject({ code: "V207_CLEANUP_UNCERTAIN" });
-    expect(statusCalls).toBe(2);
+    expect(statusCalls).toBe(3);
     expect(signerSecretPresent).toBe(false);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');

@@ -35,6 +35,11 @@ const RESTORATION_PROPAGATION_WINDOW_MS = 120_000;
 // The first exact probe plus 15 two-second intervals establishes a 30-second
 // exact-fingerprint stability window, while the surrounding deadline remains 120 seconds.
 const RESTORATION_REQUIRED_CONSECUTIVE_MATCHES = 16;
+// A signer-enabled route must remain on the exact authority-rejecting contract for the same
+// bounded 30-second window used by route restoration.  A single 403 can come from one edge while
+// another edge still serves the previous Worker version; proceeding on that isolated match can
+// make a later idempotent FINALIZE replay hit an older request contract.
+const ACTIVATION_REQUIRED_CONSECUTIVE_MATCHES = RESTORATION_REQUIRED_CONSECUTIVE_MATCHES;
 /**
  * A rollback-anchor refresh is deliberately opt-in and versioned.  The normal
  * V2-07 path must continue to refuse all Worker mutation when its pre-existing
@@ -150,6 +155,7 @@ interface EvidenceEvent {
 interface RouteFingerprint {
   readonly status: number;
   readonly code: string;
+  readonly workerVersionId: string | null;
 }
 
 interface V207RollbackAnchorRefresh {
@@ -621,11 +627,30 @@ function validateRouteUrl(value: string): string {
 }
 
 const SAFE_ROUTE_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
+export const V207_ROUTE_VERSION_HEADER = "x-videoforge-worker-version" as const;
+
+/**
+ * Probe responses are allowed to carry only the exact Cloudflare Worker version UUID.  The
+ * active route check compares this value with the post-secret Wrangler status readback; a static
+ * contract header is not enough because an old edge can serve the same contract name.
+ */
+const readRouteVersionIdentity = (response: Response, required: boolean): string | null => {
+  const value = response.headers.get(V207_ROUTE_VERSION_HEADER);
+  if (value === null) {
+    if (required) throw new V207LiveOrchestratorError("V207_ROUTE_VERSION_ID_MISSING");
+    return null;
+  }
+  if (!VERSION_ID.test(value)) {
+    throw new V207LiveOrchestratorError("V207_ROUTE_VERSION_ID_INVALID");
+  }
+  return value;
+};
 
 async function readRouteFingerprint(
   fetchImpl: typeof fetch,
   routeUrl: string,
   signal?: AbortSignal,
+  requireVersionIdentity = false,
 ): Promise<RouteFingerprint> {
   let response: Response;
   try {
@@ -655,7 +680,11 @@ async function readRouteFingerprint(
   ) {
     throw new V207LiveOrchestratorError("V207_ROUTE_PROBE_INVALID");
   }
-  return { status: response.status, code: error.code };
+  return {
+    status: response.status,
+    code: error.code,
+    workerVersionId: readRouteVersionIdentity(response, requireVersionIdentity),
+  };
 }
 
 async function waitForRouteRestoration(
@@ -711,6 +740,7 @@ async function waitForRouteRestoration(
 const V207_REFRESH_DISABLED_ROUTE: RouteFingerprint = Object.freeze({
   status: 404,
   code: "V207_ROUTE_DISABLED",
+  workerVersionId: null,
 });
 
 /**
@@ -762,23 +792,49 @@ async function waitForSignerRouteActivation(
   routeUrl: string,
   sleepImpl: (milliseconds: number) => Promise<void>,
   signal?: AbortSignal,
+  expectedWorkerVersionId?: string,
 ): Promise<{ readonly attempts: number; readonly status: 403 }> {
   const deadline = AbortSignal.timeout(ACTIVATION_PROPAGATION_WINDOW_MS);
   const pollSignal = signal === undefined ? deadline : AbortSignal.any([signal, deadline]);
+  let consecutiveMatches = 0;
   for (let attempt = 1; attempt <= ACTIVATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
     let observed: RouteFingerprint;
     try {
-      observed = await readRouteFingerprint(fetchImpl, routeUrl, pollSignal);
-    } catch {
+      observed = await readRouteFingerprint(fetchImpl, routeUrl, pollSignal, true);
+    } catch (error) {
+      if (
+        error instanceof V207LiveOrchestratorError &&
+        (error.code === "V207_ROUTE_VERSION_ID_MISSING" ||
+          error.code === "V207_ROUTE_VERSION_ID_INVALID")
+      ) {
+        throw error;
+      }
       // Only the exact transient disabled response is retryable. A network,
       // malformed, or unexpected response fails closed without persisting it.
       throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
     }
     if (observed.status === 403 && observed.code === "V207_AUTHORITY_REJECTED") {
-      return { attempts: attempt, status: 403 };
-    }
-    if (observed.status !== 404 || observed.code !== "V207_ROUTE_DISABLED") {
-      throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
+      if (
+        observed.workerVersionId === null ||
+        (expectedWorkerVersionId !== undefined &&
+          observed.workerVersionId !== expectedWorkerVersionId)
+      ) {
+        throw new V207LiveOrchestratorError("V207_AUTHORITY_VERSION_ID_UNCONFIRMED");
+      }
+      consecutiveMatches += 1;
+      if (consecutiveMatches >= ACTIVATION_REQUIRED_CONSECUTIVE_MATCHES) {
+        return { attempts: attempt, status: 403 };
+      }
+    } else {
+      if (consecutiveMatches > 0) {
+        // Once the active route has appeared, any later disabled/old-contract response proves edge
+        // alternation rather than transient propagation.  Never reset and accept a later isolated
+        // 403 because the qualification child would observe a mixed Worker contract.
+        throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
+      }
+      if (observed.status !== 404 || observed.code !== "V207_ROUTE_DISABLED") {
+        throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
+      }
     }
     if (attempt < ACTIVATION_PROPAGATION_MAX_ATTEMPTS) {
       await sleepImpl(ACTIVATION_PROPAGATION_DELAY_MS);
@@ -1105,6 +1161,7 @@ export async function runV207LiveOrchestration(
 
   let capturedAnchor: V207WorkerRollbackAnchor | undefined;
   let initialRollbackAnchor: V207WorkerRollbackAnchor | undefined;
+  let signerActiveAnchor: V207WorkerRollbackAnchor | undefined;
   let nonce: string | undefined;
   let nonceSecretMayExist = false;
   // Set immediately before deploy: if Wrangler fails part-way through, a Worker mutation may
@@ -1392,19 +1449,45 @@ export async function runV207LiveOrchestration(
       throw new V207LiveOrchestratorError("V207_SIGNER_SECRET_PRESENCE_UNCONFIRMED");
     }
     await record("signer_secret_activated");
+    // Secret activation creates a new immutable Worker version. Read back its exact active
+    // version record before probing the route: UUID-only identity is insufficient because the
+    // provider can expose a different deployment record under the same route. Keep the signer
+    // version separate from capturedAnchor; cleanup must still roll back to the signer-disabled
+    // anchor that was proven before qualification.
+    signerActiveAnchor = await statusVersion(
+      run,
+      cwd,
+      configPath,
+      environment,
+      abortController.signal,
+    );
+    if (
+      capturedAnchor === undefined ||
+      (signerActiveAnchor.versionId === capturedAnchor.versionId &&
+        signerActiveAnchor.sha256 === capturedAnchor.sha256)
+    ) {
+      throw new V207LiveOrchestratorError("V207_SIGNER_ACTIVE_VERSION_UNCONFIRMED");
+    }
+    const activeSignerVersionId = signerActiveAnchor.versionId;
+    await record("signer_active_worker_identity_confirmed", {
+      version_id_hash: sha256(activeSignerVersionId),
+      worker_record_sha256: signerActiveAnchor.sha256,
+    });
     const activation = await waitForSignerRouteActivation(
       fetchImpl,
       routeUrl,
       sleepImpl,
       abortController.signal,
+      activeSignerVersionId,
     );
     await record("signer_route_activation_confirmed", {
       attempts: activation.attempts,
       status: activation.status,
     });
-    await record("active_route_rejected_missing_header", {
+    await record("active_route_identity_confirmed", {
       attempts: activation.attempts,
       status: activation.status,
+      worker_version_id_hash: sha256(activeSignerVersionId),
     });
 
     if (abortRequested) throw new V207LiveOrchestratorError("V207_OPERATOR_ABORT");

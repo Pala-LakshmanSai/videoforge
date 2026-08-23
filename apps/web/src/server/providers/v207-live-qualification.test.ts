@@ -249,6 +249,70 @@ describe("V2-07 live qualification runner safety", () => {
     },
   );
 
+  it("records a bounded allowlisted FINALIZE HTTP error without retrying an old contract", async () => {
+    let attempts = 0;
+    let thrown: unknown;
+    try {
+      await routePort({ operation: "FINALIZE", object_key: "exact-object" }, "b".repeat(64), {
+        fetchImpl: async () => {
+          attempts += 1;
+          return new Response(
+            JSON.stringify({
+              error: { code: "V207_REQUEST_INVALID", detail: "provider body must not persist" },
+            }),
+            {
+              status: 400,
+              headers: {
+                "content-type": "application/json; charset=utf-8",
+                "x-provider-secret": "must-not-persist",
+              },
+            },
+          );
+        },
+        sleepImpl: async () => undefined,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(attempts).toBe(1);
+    const diagnostic = (thrown as { diagnostic?: unknown } | null)?.diagnostic;
+    expect(diagnostic).toEqual({
+      attempt_number: 1,
+      http_status: 400,
+      content_type_category: "json",
+      content_type_value: "application/json",
+      body_byte_length: Buffer.byteLength(
+        JSON.stringify({
+          error: { code: "V207_REQUEST_INVALID", detail: "provider body must not persist" },
+        }),
+      ),
+      failure_category: "http_error",
+      error_code: "V207_REQUEST_INVALID",
+    });
+    expect(JSON.stringify(diagnostic)).not.toContain("provider body");
+    expect(JSON.stringify(diagnostic)).not.toContain("must-not-persist");
+  });
+
+  it("redacts an unknown FINALIZE HTTP error code to null", async () => {
+    let thrown: unknown;
+    try {
+      await routePort({ operation: "FINALIZE", object_key: "exact-object" }, "b".repeat(64), {
+        fetchImpl: async () =>
+          new Response(JSON.stringify({ error: { code: "V207_PROVIDER_SECRET_DETAIL" } }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          }),
+        sleepImpl: async () => undefined,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expect((thrown as { diagnostic?: Record<string, unknown> }).diagnostic).toMatchObject({
+      failure_category: "http_error",
+      error_code: null,
+    });
+  });
+
   it("does not leak FINALIZE response body, URL, nonce, or non-content-type headers", async () => {
     const secretBody =
       "secret-body https://signed.example/private?sig=secret nonce-" + "b".repeat(64);
