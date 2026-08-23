@@ -56,7 +56,7 @@ const expected = {
   orchestratorSource:
     "sha256:f8cad240cdfb4ba0aa0885aef3e00ab38e0b051950dcf41528f219bc7d7bb90a",
   typedAuthoritySource:
-    "sha256:abebc7cd8e90c81496dd111970a741c939d57a9e148835d0aec233409fe5389b",
+    "sha256:eecb4df971f67848a8ce01dc8faa8eb23b36fb06ee1e64cf7293248da51c57d7",
   helperSource:
     "sha256:8b059ade2b20ca3aea06a502af98858b6b5cce8e6e95f3008b45483712b28db8",
   liveQualificationSource:
@@ -94,7 +94,18 @@ const acceptanceHash = sha(paths.acceptance);
 const preflightHash = sha(paths.preflight);
 const max1Hash = sha(paths.max1);
 const max2Hash = sha(paths.max2);
-const activationSourceHash = sha(paths.activation);
+const activationSource = text(paths.activation);
+const proposalPointerPattern =
+  /(\bexport const V207_PENDING_PROPOSAL_SHA256\s*=\s*(?:\r?\n\s*)?")sha256:([a-f0-9]{64})("\s+as const;)/gu;
+const proposalPointerMatches = [...activationSource.matchAll(proposalPointerPattern)];
+assert(proposalPointerMatches.length === 1, "ACTIVATION_PROPOSAL_POINTER_COUNT");
+const canonicalActivationSource = activationSource.replace(
+  proposalPointerPattern,
+  `$1sha256:${"0".repeat(64)}$3`,
+);
+const activationSourceHash =
+  "sha256:" + createHash("sha256").update(canonicalActivationSource).digest("hex");
+const activationProposalHash = `sha256:${proposalPointerMatches[0][2]}`;
 
 for (const [name, value] of Object.entries({ proposalHash, acceptanceHash, preflightHash, max1Hash, max2Hash })) {
   assert(shaPattern.test(value), name + "_FORMAT");
@@ -192,6 +203,8 @@ assert(
     proposal.lineage?.control_source_hashes?.orchestrator_source_sha256 ===
       expected.orchestratorSource &&
     proposal.lineage?.control_source_hashes?.typed_authority_source_sha256 === expected.typedAuthoritySource &&
+    proposal.lineage?.control_source_hashes?.typed_authority_source_hash_mode ===
+      "CANONICAL_ZEROED_PROPOSAL_POINTER_V1" &&
     proposal.lineage?.control_source_hashes?.typed_authority_source_sha256 === activationSourceHash &&
     proposal.lineage?.control_source_hashes?.protected_config_helper_source_sha256 === expected.helperSource &&
     proposal.lineage?.control_source_hashes?.live_qualification_source_sha256 ===
@@ -365,11 +378,12 @@ assert(
     acceptance.candidate_lineage?.old_active_window_length === 10,
   "ACCEPTANCE_ANCHOR_LINEAGE",
 );
-const activation = text(paths.activation);
+const activation = activationSource;
 const activationTest = text(paths.activationTest);
 assert(
   activation.includes("V207_PENDING_PROPOSAL_SHA256") &&
     activationSourceHash === expected.typedAuthoritySource &&
+    activationProposalHash === proposalHash &&
     activation.includes(expected.helperCommit) &&
     activation.includes(expected.typedAuthorityCommit) &&
     activation.includes(expected.orchestratorCommit) &&

@@ -75,7 +75,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:387c8f338c129a959f60f1104f29c03c80c3160149d4c6eac7508e8ef0ad452a",
+      "sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
     expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6");

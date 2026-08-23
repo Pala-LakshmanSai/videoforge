@@ -26,14 +26,14 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: provider-free Attempt43 candidate preparation only; exact approval and fresh positive numeric cap are required before any mutation, GPU, or spend
-  note: "Attempt42 is consumed and closed before mutation at V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED. Attempt43 is a provider-free anchor-refresh candidate only: proposal sha256:387c8f338c129a959f60f1104f29c03c80c3160149d4c6eac7508e8ef0ad452a binds the exact Attempt42 closure hashes, repaired anchor-refresh authority/marker lifecycle, fresh catalog fence, three-read success reconciliation, baseline/projected config hashes, old active Worker version-ID hash sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48 and canonical active-version record hash sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97 at index 0 of 10, stable 404 route, exact Mage image/model/volume, and the original qualification sequence. No authority file, cap, provider mutation, GPU use, or spend is active; V2-08 remains forbidden."
+  note: "Attempt42 is consumed and closed before mutation at V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED. Attempt43 is a provider-free anchor-refresh candidate only: proposal sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458 binds the exact Attempt42 closure hashes, repaired anchor-refresh authority/marker lifecycle, fresh catalog fence, three-read success reconciliation, baseline/projected config hashes, old active Worker version-ID hash sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48 and canonical active-version record hash sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97 at index 0 of 10, stable 404 route, exact Mage image/model/volume, and the original qualification sequence. No authority file, cap, provider mutation, GPU use, or spend is active; V2-08 remains forbidden."
 
 pending_v2_07_attempt43_proposal:
   mode: pending_exact_approval_anchor_refresh_candidate
   proposal_path: evidence/acceptance/VF-10-07/2026-08-23-attempt43-anchor-refresh-candidate/combined-live-proposal.json
-  proposal_sha256: "sha256:387c8f338c129a959f60f1104f29c03c80c3160149d4c6eac7508e8ef0ad452a"
+  proposal_sha256: "sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458"
   candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt43-anchor-refresh-candidate/acceptance.json
-  candidate_acceptance_sha256: "sha256:cd6470ad5b2b74f869174d1b4d3b267441f9c54ec164463cd6af7209050574d1"
+  candidate_acceptance_sha256: "sha256:82cb70d3c59b9b09222d565bd2817645ff9dfd5d5d2169ac4b63e10f68e16b66"
   read_only_preflight: evidence/acceptance/VF-10-07/2026-08-23-attempt43-anchor-refresh-candidate/read-only-preflight.json
   read_only_preflight_sha256: "sha256:3f039e9c521c08f02cac8d4c5bea5b0077beeb0598c516515da5be6b030fad35"
   staged_max1_sha256: "sha256:72dfa25d988699553141207dc6604f07cfd8f27e7a62954de4d357da79242951"
