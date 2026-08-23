@@ -1,20 +1,17 @@
 # VideoForge: start here
 
-Attempt41 is the current approved-single-use V2-07 execution candidate. Proposal
-`evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate/combined-live-proposal.json`
-is `sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18`; acceptance is
-`sha256:b32f70dcee108c0eea8b79496183eac9a7b207ce341dd4f75f60a20dd6579f19`; max-one/max-two are
-`sha256:879ec4844e01a667ea14d3d5ba47b89b5a77accf99c55cf3f40744a319c6cd3a` /
-`sha256:6ec51bd572c6e7377eae857ea811178296b818f2d993dcf587b0a93e2f0115e4`. It reuses the already-published
-exact image without republication and binds control `6a4053f6fdde6e906e10b7cb297d253a7b9af140`, bounded stderr-only
-failure-code capture, and bounded retries for transport-ambiguous inventory GETs only. Fresh read-only preflight
-`sha256:c9de952bfcf6de4c0fc5247a2d7f542866501f8de24adf75b0f7fed6e2da0318` proves HIGH RTX 4090
-availability, zero compute/disposable resources, both sealed volumes, three stable reads, and cumulative billing
-`$1.5246469744015485` unchanged. Serverless Flex is `$1.10/GPU-hour`, secure-Pod reference is `$0.74/hour`,
-the finite estimate is `$3.70`, and existing two-volume billing remains `$7/month` separately. The user approved
-this exact proposal with FlashBoot=true, LOW-or-better EU-RO-1 availability, and a fresh maximum cumulative finite
-spend of `$4`; append-only authority is `sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d`.
-No provider call, GPU job, or spend has started; bounded execution is pending. V2-07 remains `NOT_QUALIFIED_PENDING_EXECUTION`; V2-08 is forbidden.
+Attempt41 is closed `NOT_QUALIFIED`. One exact RTX 4090 job reached provider `COMPLETED`/output `SUCCEEDED`,
+then failed `MAGE_OUTPUT_READBACK_AUTHORITY_INVALID` before any output/readback/v3 receipt was accepted. Closure
+`failed-attempt-41.json` is `sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca`;
+cleanup is `sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54`;
+reconciliation is `sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0`.
+Exact endpoint/template deletion, zero final compute/resources, both retained 50 GB EU-RO-1 volumes, Cloudflare
+rollback to `404 V207_ROUTE_DISABLED`, and three stable billing reads with `$0` observed increment are proven.
+Post-run sealed-manifest/hash comparison was not reached, so unchanged model bytes are not claimed; retained
+volume identity and no observed writes/mutation are recorded. Authority `sha256:2aec5d48…291f9d` and its `$4` cap
+are consumed. Provider-free commit `78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6` repairs the deterministic
+hosted GET `artifact-transfer-port/v3` authority mismatch with 249/249 relevant tests passing. No fresh provider
+authority or cap exists; live requalification remains pending and V2-08 is forbidden.
 
 Attempt40 is closed fail-closed for V2-07. It repaired the exact Attempt39 output-lineage failure by adding `item_id = scene_id` at the Mage worker boundary, and its immutable image published exactly, but the bounded Cloudflare runner stopped at `V207_LIVE_RUNNER_FAILED` before any RunPod job dispatch. The source repair is `a7b7a937d08dc9032b8922cca71c602195f3094c`; the image-pinning/control commit is `b811cdfd677775558aa79452a4930b50a07b7b1a`.
 

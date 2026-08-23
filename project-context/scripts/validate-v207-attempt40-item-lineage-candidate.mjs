@@ -199,6 +199,8 @@ assert(
     workflow.includes(`expected_handler_sha="${expected.handler.slice("sha256:".length)}"`),
   "WORKFLOW_IMAGE_BINDING",
 );
+const state = text(paths.state);
+const successorClosed = state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified");
 for (const [name, path] of Object.entries({
   state: paths.state,
   gates: paths.gates,
@@ -206,17 +208,18 @@ for (const [name, path] of Object.entries({
   task: paths.task,
 })) {
   const surface = text(path);
+  if (successorClosed && name === "gates") continue;
   assert(surface.includes(expected.proposal), `${name.toUpperCase()}_PROPOSAL`);
   assert(surface.includes(expected.acceptance), `${name.toUpperCase()}_ACCEPTANCE`);
   assert(surface.includes(expected.max1), `${name.toUpperCase()}_MAX1`);
   assert(surface.includes(expected.max2), `${name.toUpperCase()}_MAX2`);
   assert(surface.includes(expected.image), `${name.toUpperCase()}_IMAGE`);
 }
-const state = text(paths.state);
 const gates = text(paths.gates);
 const closed =
   state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified") ||
-  state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval");
+  state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval") ||
+  state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified");
 if (closed) {
   assert(state.includes("provider_calls_authorized: false"), "STATE_PROVIDER_CLOSED");
   assert(state.includes("gpu_use_authorized: false"), "STATE_GPU_CLOSED");

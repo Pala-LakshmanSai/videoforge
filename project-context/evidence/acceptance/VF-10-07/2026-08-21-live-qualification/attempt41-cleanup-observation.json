@@ -1,0 +1,62 @@
+{
+  "schema_version": "videoforge.v2-07-attempt41-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 41,
+  "recorded_at": "2026-08-23T05:34:24.994Z",
+  "proposal_sha256": "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
+  "authority_sha256": "sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d",
+  "result": "RUNPOD_CLEAN_CLOUDFLARE_ROUTE_RESTORED",
+  "runpod_cleanup": {
+    "endpoint_created": true,
+    "private_template_created": true,
+    "endpoint_deleted": true,
+    "private_template_deleted": true,
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 3,
+    "terminal_pod_record_count": 3,
+    "gpu_jobs_submitted": 1,
+    "accepted_outputs": 0,
+    "generated_output_rollback": "CONFIRMED",
+    "final_disposable_resources_absent": true
+  },
+  "cloudflare_cleanup": {
+    "ephemeral_signer_secret_deleted": true,
+    "worker_version_restored": true,
+    "rollback_anchor_sha256": "sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97",
+    "captured_route_status": 404,
+    "captured_route_code": "V207_ROUTE_DISABLED",
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED",
+    "restored_route_probe_count": 3,
+    "restored_route_probe_interval_ms": 10000,
+    "restored_route_probe_statuses": [404, 404, 404],
+    "restored_route_probe_codes": ["V207_ROUTE_DISABLED", "V207_ROUTE_DISABLED", "V207_ROUTE_DISABLED"],
+    "exact_captured_fingerprint_restored": true,
+    "cleanup_uncertain": false
+  },
+  "final_reconciliation": {
+    "evidence": "attempt41-reconciliation-observation.json",
+    "stable_reads": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0
+  },
+  "retention": {
+    "mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "retained_volume_write_delete_rebuild_or_cross_mount": false,
+    "ongoing_two_volume_charge_usd_per_month": 7
+  },
+  "raw_evidence": {
+    "orchestrator_sha256": "sha256:60a89ba81336cfcae4441bb13dd89bb7e0ea71c5d0ca0f66ebd965eff8ecf67f",
+    "live_result_sha256": "sha256:bc08a194659a216aa86803fbbcfc7be5541cf4160b41f22c11954152af926ffd",
+    "cleanup_sha256": "sha256:36aa07a67c6a673f917b9e9916371f73d524e776aa7e947da59010d4054f34e9",
+    "reconciliation_sha256": "sha256:6b83da3f9f5de88936a4f6010a39b4d4ffc750bd79f7b7d8e7b9e020f6d50390",
+    "delayed_reconciliation_sha256": "sha256:d257d9270cfc21bbefd2e2140f5f07a2bb41ab223311e91c6f11b0ee24b349b2",
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "next_boundary": "ATTEMPT41_AUTHORITY_AND_CAP_CONSUMED; PROVIDER_FREE_DIAGNOSIS_ONLY; V2-08-FORBIDDEN"
+}

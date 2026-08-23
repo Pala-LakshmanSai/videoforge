@@ -9,13 +9,12 @@ const liveDir = resolve(
 );
 const candidateDir = resolve(
   root,
-  "project-context/evidence/acceptance/VF-10-07/2026-08-23-attempt40-item-lineage-candidate",
+  "project-context/evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate",
 );
 const paths = {
-  publication: resolve(liveDir, "attempt40-image-publication.json"),
-  closure: resolve(liveDir, "failed-attempt-40.json"),
-  cleanup: resolve(liveDir, "attempt40-cleanup-observation.json"),
-  reconciliation: resolve(liveDir, "attempt40-reconciliation-observation.json"),
+  closure: resolve(liveDir, "failed-attempt-41.json"),
+  cleanup: resolve(liveDir, "attempt41-cleanup-observation.json"),
+  reconciliation: resolve(liveDir, "attempt41-reconciliation-observation.json"),
   proposal: resolve(candidateDir, "combined-live-proposal.json"),
   authority: resolve(candidateDir, "approved-authority.json"),
   acceptance: resolve(candidateDir, "acceptance.json"),
@@ -26,32 +25,56 @@ const paths = {
   start: resolve(root, "project-context/00_START_HERE.md"),
   task: resolve(root, "project-context/tasks/VF-10-07.md"),
 };
+
 const expected = {
-  proposal: "sha256:56cd650b61a56fb17a9abd602839992990d3a985a952eafc30afa60e82e02ae8",
-  authority: "sha256:5691eb5bb3a9009fd1a010c74b7c04bc47d15c0ce580ff47f6183c105a563736",
-  acceptance: "sha256:def791c571e6266a85486982a95ad139e7baa52a2d646a178df1c7ad0939c645",
-  max1: "sha256:391dd6b208b4b6c2e045058295f03e47937da7f9361b6bf27e7b225dbb51432e",
-  max2: "sha256:fee8426ec819aa4e742fd9e36e0e16113786fd773f66e9e46f29104b78ed044e",
-  publication: "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7",
-  closure: "sha256:a80a70ece72d4ff08eccfa210257e267b41a2f924f061ec8740d589edd22d32b",
-  cleanup: "sha256:30daf998cf53eb2a476b44a907e2d6de6da9d73f4397a50840abae731cdd5398",
-  reconciliation: "sha256:4bddde16156ba76d48449265583e417309fded6c2a6f99de35825c6813927fbb",
+  proposal:
+    "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
+  authority:
+    "sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d",
+  acceptance:
+    "sha256:b32f70dcee108c0eea8b79496183eac9a7b207ce341dd4f75f60a20dd6579f19",
+  max1:
+    "sha256:879ec4844e01a667ea14d3d5ba47b89b5a77accf99c55cf3f40744a319c6cd3a",
+  max2:
+    "sha256:6ec51bd572c6e7377eae857ea811178296b818f2d993dcf587b0a93e2f0115e4",
+  closure:
+    "sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca",
+  cleanup:
+    "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54",
+  reconciliation:
+    "sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0",
   image:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
-  manifest: "sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
-  config: "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6",
-  layer: "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a",
-  diffId: "sha256:9f759e3f49c84816de71246f51f9aca275fc080c7c9c082aaa39ce81e8b049e1",
-  model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
-  modelManifest: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
-  mageVolume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
-  soulxVolume: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+  manifest:
+    "sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+  config:
+    "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6",
+  layer:
+    "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a",
+  diffId:
+    "sha256:9f759e3f49c84816de71246f51f9aca275fc080c7c9c082aaa39ce81e8b049e1",
+  model:
+    "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+  modelManifest:
+    "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+  mageVolume:
+    "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  soulxVolume:
+    "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
   source: "a7b7a937d08dc9032b8922cca71c602195f3094c",
-  control: "b811cdfd677775558aa79452a4930b50a07b7b1a",
+  control: "6a4053f6fdde6e906e10b7cb297d253a7b9af140",
+  orchestrator:
+    "sha256:60a89ba81336cfcae4441bb13dd89bb7e0ea71c5d0ca0f66ebd965eff8ecf67f",
+  liveResult:
+    "sha256:bc08a194659a216aa86803fbbcfc7be5541cf4160b41f22c11954152af926ffd",
+  delayedReconciliation:
+    "sha256:d257d9270cfc21bbefd2e2140f5f07a2bb41ab223311e91c6f11b0ee24b349b2",
+  settlementReconciliation:
+    "sha256:e97f2fb598a6f0f9465b9c7d13d11f6c7dd63a097a6dc67737a50659d8eaa936",
 };
 
 const fail = (code) => {
-  throw new Error(`V207_ATTEMPT40_CLOSURE_${code}`);
+  throw new Error(`V207_ATTEMPT41_CLOSURE_${code}`);
 };
 const assert = (condition, code) => {
   if (!condition) fail(code);
@@ -59,7 +82,8 @@ const assert = (condition, code) => {
 const bytes = (path) => readFileSync(path);
 const text = (path) => bytes(path).toString("utf8");
 const json = (path) => JSON.parse(text(path));
-const sha = (path) => `sha256:${createHash("sha256").update(bytes(path)).digest("hex")}`;
+const sha = (path) =>
+  `sha256:${createHash("sha256").update(bytes(path)).digest("hex")}`;
 const has = (value, needle, code) => assert(value.includes(needle), `${code}_${needle}`);
 
 for (const name of [
@@ -68,24 +92,24 @@ for (const name of [
   "acceptance",
   "max1",
   "max2",
-  "publication",
   "closure",
   "cleanup",
   "reconciliation",
 ]) {
+  assert(!expected[name].includes("TODO"), `${name.toUpperCase()}_EXPECTED_HASH_MISSING`);
   assert(sha(paths[name]) === expected[name], `${name.toUpperCase()}_HASH`);
 }
 
 const proposal = json(paths.proposal);
 const authority = json(paths.authority);
-const publication = json(paths.publication);
+const acceptance = json(paths.acceptance);
 const closure = json(paths.closure);
 const cleanup = json(paths.cleanup);
 const reconciliation = json(paths.reconciliation);
 const max1 = json(paths.max1);
 const max2 = json(paths.max2);
 
-assert(proposal.attempt === 40 && proposal.checkpoint === "V2-07", "PROPOSAL_SCOPE");
+assert(proposal.attempt === 41 && proposal.checkpoint === "V2-07", "PROPOSAL_SCOPE");
 assert(
   proposal.lineage?.final_image === expected.image &&
     proposal.lineage?.image_manifest_sha256 === expected.manifest &&
@@ -125,32 +149,22 @@ for (const [config, workers, code] of [
   );
 }
 assert(
-  authority.attempt === 40 &&
+  authority.attempt === 41 &&
     authority.proposal?.sha256 === expected.proposal &&
     authority.approval?.maximum_cumulative_finite_spend_usd === 4 &&
     authority.approval?.flashboot_true_accepted === true &&
     authority.approval?.minimum_approved_availability === "LOW",
   "AUTHORITY_IMMUTABLE",
 );
+assert(
+  acceptance.candidate?.proposal_sha256 === expected.proposal &&
+    acceptance.candidate?.authority_sha256 === expected.authority,
+  "ACCEPTANCE_BINDING",
+);
 
 assert(
-  publication.attempt === 40 &&
-    publication.result === "PASS_EXACT_IMMUTABLE_CANDIDATE_PUBLISHED" &&
-    publication.workflow?.conclusion === "success" &&
-    publication.registry?.immutable_image === expected.image &&
-    publication.registry?.manifest_digest === expected.manifest &&
-    publication.registry?.config_digest === expected.config &&
-    publication.registry?.layer_digest === expected.layer &&
-    publication.registry?.layer_diff_id === expected.diffId &&
-    publication.registry?.digest_readback_exact === true &&
-    publication.provider_boundary?.runpod_mutation === false &&
-    publication.provider_boundary?.gpu_allocation === false &&
-    publication.provider_boundary?.external_spend_usd === 0,
-  "PUBLICATION",
-);
-assert(
-  closure.attempt === 40 &&
-    closure.result === "NOT_QUALIFIED_LIVE_RUNNER_FAILED_CLEAN" &&
+  closure.attempt === 41 &&
+    closure.result === "NOT_QUALIFIED_OUTPUT_READBACK_AUTHORITY_INVALID_CLEAN" &&
     closure.qualification_status === "NOT_QUALIFIED" &&
     closure.proposal?.sha256 === expected.proposal &&
     closure.authority?.sha256 === expected.authority &&
@@ -170,39 +184,63 @@ assert(
   "CLOSURE_LINEAGE",
 );
 assert(
-  closure.execution?.live_runner_started === true &&
-    closure.execution?.live_result_checkpoint_reached === false &&
-    closure.execution?.provider_job_count === 0 &&
-    closure.execution?.gpu_jobs_submitted === 0 &&
-    closure.execution?.failure_stage === "before_live_result_checkpoint" &&
-    closure.execution?.failure_code === "V207_LIVE_RUNNER_FAILED" &&
+  closure.execution?.provider_job_count === 1 &&
+    closure.execution?.gpu_jobs_submitted === 1 &&
+    closure.execution?.provider_terminal_status === "COMPLETED" &&
+    closure.execution?.provider_output_status === "SUCCEEDED" &&
+    closure.execution?.failure_stage === "output_readback" &&
+    closure.execution?.failure_code === "MAGE_OUTPUT_READBACK_AUTHORITY_INVALID" &&
+    closure.execution?.generated_output_rollback === "CONFIRMED" &&
     closure.execution?.accepted_batches === 0 &&
     closure.execution?.durable_output_readbacks === 0 &&
     closure.execution?.v3_receipts === 0 &&
+    closure.execution?.replacement_reached === false &&
+    closure.execution?.cold_warm_reached === false &&
+    closure.execution?.concurrent_reader_proof_reached === false &&
     closure.execution?.duplicate_compute === false &&
     closure.execution?.qualification_claim_allowed === false &&
-    closure.execution?.peak_vram_bytes === null &&
-    closure.execution?.timings?.timing_contract_fulfilled === false,
+    closure.execution?.timings?.queue_ms === 94981 &&
+    closure.execution?.timings?.timing_contract_fulfilled === false &&
+    closure.execution?.peak_vram_bytes === null,
   "EXECUTION_STOP",
 );
 assert(
-  closure.raw_evidence?.live_result_checkpoint_present === false &&
+  closure.sealed_volume?.manifest_verified_before_execution === true &&
+    closure.sealed_volume?.manifest_or_volume_hash_unchanged === false &&
+    closure.sealed_volume?.manifest_after_execution_comparison ===
+      "NOT_PROVEN_AFTER_OUTPUT_FAILURE" &&
+    closure.sealed_volume?.retained_volume_identity_unchanged === true &&
+    closure.sealed_volume?.model_volume_writes_observed === false &&
+    closure.sealed_volume?.application_model_files_read_only === true,
+  "SEALED_VOLUME_EVIDENCE_BOUNDARY",
+);
+assert(
+  closure.raw_evidence?.orchestrator_sha256 === expected.orchestrator &&
+    closure.raw_evidence?.live_result_sha256 === expected.liveResult &&
+    closure.raw_evidence?.delayed_reconciliation_sha256 === expected.delayedReconciliation &&
+    closure.raw_evidence?.settlement_reconciliation_sha256 ===
+      expected.settlementReconciliation &&
     closure.raw_evidence?.raw_provider_ids_urls_bodies_or_secrets_retained === false &&
     closure.billing?.incremental_spend_usd === 0 &&
-    closure.billing?.within_approved_cap === true &&
-    closure.billing?.settlement === "THREE_STABLE_READS",
+    closure.billing?.within_approved_cap === true,
   "EVIDENCE_AND_BILLING",
 );
 assert(
   cleanup.result === "RUNPOD_CLEAN_CLOUDFLARE_ROUTE_RESTORED" &&
-    cleanup.runpod_cleanup?.deletion_not_needed === true &&
+    cleanup.runpod_cleanup?.endpoint_created === true &&
+    cleanup.runpod_cleanup?.private_template_created === true &&
+    cleanup.runpod_cleanup?.endpoint_deleted === true &&
+    cleanup.runpod_cleanup?.private_template_deleted === true &&
     cleanup.runpod_cleanup?.final_disposable_resources_absent === true &&
-    cleanup.runpod_cleanup?.gpu_jobs_submitted === 0 &&
+    cleanup.runpod_cleanup?.gpu_jobs_submitted === 1 &&
     cleanup.cloudflare_cleanup?.ephemeral_signer_secret_deleted === true &&
     cleanup.cloudflare_cleanup?.worker_version_restored === true &&
     cleanup.cloudflare_cleanup?.exact_captured_fingerprint_restored === true &&
     cleanup.cloudflare_cleanup?.restored_route_status === 404 &&
     cleanup.cloudflare_cleanup?.restored_route_code === "V207_ROUTE_DISABLED" &&
+    cleanup.cloudflare_cleanup?.restored_route_probe_count === 3 &&
+    JSON.stringify(cleanup.cloudflare_cleanup?.restored_route_probe_statuses) ===
+      JSON.stringify([404, 404, 404]) &&
     cleanup.cloudflare_cleanup?.cleanup_uncertain === false,
   "CLEANUP",
 );
@@ -214,7 +252,10 @@ assert(
     reconciliation.inventory?.active_serverless_workers === 0 &&
     reconciliation.inventory?.running_pods === 0 &&
     reconciliation.inventory?.intended_volume_count === 2 &&
-    reconciliation.inventory?.final_disposable_resources_absent === true,
+    reconciliation.inventory?.final_disposable_resources_absent === true &&
+    reconciliation.checked_at === "2026-08-23T05:58:46.116Z" &&
+    reconciliation.raw_evidence?.settlement_reconciliation_sha256 ===
+      expected.settlementReconciliation,
   "RECONCILIATION_INVENTORY",
 );
 const volumes = new Map(
@@ -222,9 +263,13 @@ const volumes = new Map(
 );
 assert(
   volumes.get("Mage")?.id_sha256 === expected.mageVolume &&
+    volumes.get("Mage")?.identity_unchanged === true &&
+    !("unchanged" in volumes.get("Mage")) &&
     volumes.get("Mage")?.size_gb === 50 &&
     volumes.get("Mage")?.region === "EU-RO-1" &&
     volumes.get("SoulX")?.id_sha256 === expected.soulxVolume &&
+    volumes.get("SoulX")?.identity_unchanged === true &&
+    !("unchanged" in volumes.get("SoulX")) &&
     volumes.get("SoulX")?.size_gb === 50 &&
     volumes.get("SoulX")?.region === "EU-RO-1",
   "RETAINED_VOLUMES",
@@ -236,7 +281,8 @@ assert(
     reconciliation.billing?.maximum_cumulative_finite_spend_usd === 4 &&
     reconciliation.billing?.within_approved_cap === true &&
     reconciliation.billing?.settlement === "THREE_STABLE_READS" &&
-    reconciliation.mutation_boundary?.new_gpu_jobs === 0 &&
+    reconciliation.mutation_boundary?.new_gpu_jobs === 1 &&
+    reconciliation.mutation_boundary?.accepted_outputs === 0 &&
     reconciliation.mutation_boundary?.model_volume_writes === 0 &&
     reconciliation.mutation_boundary?.volume_mutation_called === false,
   "RECONCILIATION_BOUNDARY",
@@ -246,43 +292,34 @@ const state = text(paths.state);
 const gates = text(paths.gates);
 const start = text(paths.start);
 const task = text(paths.task);
-const successorClosed = state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified");
 for (const [value, code] of [
   [state, "STATE"],
   [gates, "GATES"],
   [start, "START"],
   [task, "TASK"],
 ]) {
-  has(value, "failed-attempt-40.json", code);
+  has(value, "failed-attempt-41.json", code);
   has(value, expected.closure, code);
   has(value, "V2-08", code);
+  has(value, "NOT_QUALIFIED", code);
 }
+has(state, "phase: serverless_v2_v2_07_attempt41_closed_not_qualified", "STATE_PHASE");
+has(state, "provider_calls_authorized: false", "STATE_PROVIDER");
+has(state, "remote_or_cloud_mutations_authorized: false", "STATE_MUTATION");
+has(state, "gpu_use_authorized: false", "STATE_GPU");
+has(state, "maximum_external_spend_usd: 0", "STATE_CAP");
+has(state, "current_authority: null", "STATE_AUTHORITY");
+has(gates, "latest_closed_result: NOT_QUALIFIED_OUTPUT_READBACK_AUTHORITY_INVALID_CLEAN", "GATES_RESULT");
+has(gates, "pending_authority: null", "GATES_AUTHORITY");
+has(gates, "provider_calls_authorized: false", "GATES_PROVIDER");
 assert(
-  state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified") ||
-    state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval") ||
-    state.includes("phase: serverless_v2_v2_07_attempt41_closed_not_qualified"),
-  "STATE_PHASE",
-);
-has(state, "provider_calls_authorized: false", "STATE");
-has(state, "remote_or_cloud_mutations_authorized: false", "STATE");
-has(state, "gpu_use_authorized: false", "STATE");
-has(state, "maximum_external_spend_usd: 0", "STATE");
-has(state, "current_authority: null", "STATE");
-has(
-  gates,
-  successorClosed
-    ? "NOT_QUALIFIED_OUTPUT_READBACK_AUTHORITY_INVALID_CLEAN"
-    : "NOT_QUALIFIED_LIVE_RUNNER_FAILED_CLEAN",
-  "GATES",
-);
-has(gates, "pending_authority: null", "GATES");
-assert(
-  !state.includes("attempt40_approved_pending_execution") &&
-    !gates.includes("attempt40_approved_pending_execution") &&
-    !task.includes("Attempt40 approved bounded execution"),
-  "NO_STALE_ACTIVE_ATTEMPT40",
+  !state.includes("attempt41_approved_pending_execution") &&
+    !state.includes("APPROVED_SINGLE_USE_PENDING_EXECUTION_attempt41") &&
+    !gates.includes("attempt41_bounded_mutation_authorized") &&
+    !gates.includes("APPROVED_SINGLE_USE_PENDING_EXECUTION_attempt41"),
+  "NO_STALE_ACTIVE_ATTEMPT41",
 );
 
 console.log(
-  "V2-07 Attempt40 closure validation PASS (pre-checkpoint live-runner failure; exact Cloudflare rollback; zero RunPod jobs/resources; three stable reads; zero incremental spend)",
+  "V2-07 Attempt41 closure validation PASS (output readback authority failure; exact route rollback; zero final disposable resources; delayed three stable reads; zero incremental spend)",
 );

@@ -1,0 +1,74 @@
+{
+  "schema_version": "videoforge.v2-07-attempt41-readonly-reconciliation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 41,
+  "checked_at": "2026-08-23T05:58:46.116Z",
+  "stable_read_count": 3,
+  "read_only": true,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "mount": "/runpod-volume",
+        "identity_unchanged": true
+      },
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "identity_unchanged": true
+      }
+    ],
+    "intended_volume_count": 2,
+    "final_disposable_resources_absent": true
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.5246469744015485,
+    "final_endpoint_spend_usd": 1.5246469744015485,
+    "settled_incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS",
+    "existing_two_volume_charge_usd_per_month": 7
+  },
+  "mutation_boundary": {
+    "new_gpu_jobs": 1,
+    "gpu_jobs_submitted": 1,
+    "accepted_outputs": 0,
+    "model_volume_writes": 0,
+    "volume_mutation_called": false,
+    "cross_mount_observed": false,
+    "secrets_or_raw_provider_ids_retained": false
+  },
+  "raw_evidence": {
+    "fresh_inventory_sha256": "sha256:3a593a1353dd9d63f20a24dfc84fcb780921e4a22afb04b17955c039d58d5ffb",
+    "fresh_reconciliation_sha256": "sha256:de3f67c1ed7adf5449100e7d155fccbfcafed071ebdea6221719e533cb5d6208",
+    "monitor_inventory_sha256": "sha256:2b98230a72f14acd9bd9288473bff11fe4a8fee1903e142a801d599d72b810ba",
+    "monitor_inventory_2_sha256": "sha256:baaf98de0516b9cf52531f4661cb59faec064ebadc70d34dde10c21095e0a370",
+    "final_reconciliation_sha256": "sha256:6b83da3f9f5de88936a4f6010a39b4d4ffc750bd79f7b7d8e7b9e020f6d50390",
+    "delayed_reconciliation_path": "/tmp/videoforge-v207-attempt41-delayed-reconciliation.json",
+    "delayed_reconciliation_sha256": "sha256:d257d9270cfc21bbefd2e2140f5f07a2bb41ab223311e91c6f11b0ee24b349b2",
+    "settlement_reconciliation_path": "/tmp/videoforge-v207-attempt41-settlement-reconciliation.json",
+    "settlement_reconciliation_sha256": "sha256:e97f2fb598a6f0f9465b9c7d13d11f6c7dd63a097a6dc67737a50659d8eaa936",
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "basis": {
+    "preflight_checked_at": "2026-08-23T05:15:00.755Z",
+    "preflight_zero_disposable_resources": true,
+    "cleanup_checked_at": "2026-08-23T05:34:24.994Z",
+    "settlement_checked_at": "2026-08-23T05:58:46.116Z",
+    "three_stable_readings": true,
+    "authority_consumed": true,
+    "v2_08_forbidden": true
+  }
+}
