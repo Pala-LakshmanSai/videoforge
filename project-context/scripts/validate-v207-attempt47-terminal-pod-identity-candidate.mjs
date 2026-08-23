@@ -13,6 +13,8 @@ const E = {
     "sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53",
   acceptance:
     "sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6",
+  approvedAuthority:
+    "sha256:aae6dfd8a282333a8a5caa3149e520e58a858c93b0730e4529d599f7d078a254",
   max1:
     "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a",
   max2:
@@ -75,10 +77,11 @@ const expectedFiles = {
 for (const [name, expected] of Object.entries(expectedFiles)) {
   eq(sha(at(name)), expected, `${name} hash`);
 }
-ok(!fs.existsSync(at("approved-authority.json")), "no authority file in provider-free candidate");
+eq(sha(at("approved-authority.json")), E.approvedAuthority, "approved authority hash");
 
 const proposal = json(at("combined-live-proposal.json"));
 const acceptance = json(at("acceptance.json"));
+const authority = json(at("approved-authority.json"));
 const max1 = json(at("staged-config-max1.json"));
 const max2 = json(at("staged-config-max2.json"));
 const closure = json(
@@ -212,6 +215,35 @@ eq(acceptance.fresh_read_required_after_approval, true, "acceptance fresh read")
 eq(acceptance.v2_07_qualified, false, "acceptance qualification");
 eq(acceptance.v2_08_authorized, false, "acceptance successor");
 
+eq(authority.schema_version, "videoforge.v2-07-attempt47-terminal-pod-identity-repair-authority/v1", "authority schema");
+eq(authority.attempt, 47, "authority attempt");
+eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "authority status");
+eq(authority.proposal?.sha256, E.proposal, "authority proposal");
+eq(authority.acceptance?.sha256, E.acceptance, "authority acceptance");
+eq(authority.approval?.exact_proposal_approved, true, "authority exact approval");
+eq(authority.approval?.flashboot_true_accepted, true, "authority FlashBoot");
+eq(authority.approval?.minimum_approved_availability, "LOW-or-better", "authority availability");
+eq(authority.approval?.maximum_cumulative_finite_spend_usd, 4, "authority cap");
+eq(authority.approval?.fresh_numeric_cap, true, "authority fresh cap");
+eq(authority.approval?.prior_authority_reused, false, "authority reuse fence");
+eq(authority.approval?.single_use, true, "authority single use");
+eq(authority.approval?.consumed, false, "authority pending consumption");
+eq(authority.approval?.anchor_refresh_authorized, false, "authority anchor refresh");
+eq(authority.lineage?.image, E.image, "authority image");
+eq(authority.lineage?.model_manifest_sha256, E.manifest, "authority manifest");
+eq(authority.lineage?.volume_id_sha256, E.volume, "authority volume");
+eq(authority.lineage?.initial_config_sha256, E.max1, "authority max1");
+eq(authority.lineage?.concurrent_reader_config_sha256, E.max2, "authority max2");
+eq(authority.lineage?.process_replacement_identity_repair_commit, undefined, "authority repair encoded in repair commits");
+ok(authority.lineage?.repair_commits?.includes(E.repairCommit), "authority terminal Pod repair");
+eq(JSON.stringify(authority.approved_operations), JSON.stringify(proposal.operations), "authority operations");
+eq(authority.execution_boundary?.maximum_cumulative_finite_spend_usd, 4, "authority boundary cap");
+eq(authority.execution_boundary?.runpod_mutation_authorized_pending_execution, true, "authority RunPod mutation");
+eq(authority.execution_boundary?.gpu_use_authorized_pending_execution, true, "authority GPU");
+eq(authority.execution_boundary?.image_republication_authorized, false, "authority image publication");
+eq(authority.execution_boundary?.retained_volume_mutation_authorized, false, "authority volume mutation");
+eq(authority.execution_boundary?.v2_08_authorized, false, "authority successor");
+
 eq(max1.workers_min, 0, "max1 workers min");
 eq(max1.workers_max, 1, "max1 workers max");
 eq(max1.gpu_type_ids?.[0], "NVIDIA GeForce RTX 4090", "max1 GPU");
@@ -244,9 +276,9 @@ ok(
   ),
   "activation source binds exact Attempt47 proposal",
 );
-ok(activation.includes("export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;"), "activation authority consumed");
-ok(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = null;"), "activation cap consumed");
-ok(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;"), "activation anchor consumed");
+ok(activation.includes(E.approvedAuthority), "activation exact authority");
+ok(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;"), "activation exact cap");
+ok(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;"), "activation anchor disabled");
 ok(!activation.includes(E.priorAuthority), "activation source does not contain consumed authority");
 
 eq(sha(rootFile("project-context/evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-46.json")), E.closure, "closure file");

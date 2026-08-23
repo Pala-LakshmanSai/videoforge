@@ -405,7 +405,7 @@ for (const [name, surface] of Object.entries(surfaces)) {
   has(surface, "V2-08", `${name.toUpperCase()}_V208_FENCE`);
 }
 assert(
-  /^phase:\s*serverless_v2_v2_07_(?:attempt46_[^\n]*(?:closed|not_qualified)|attempt47_provider_free_candidate[^\n]*)/m.test(
+  /^phase:\s*serverless_v2_v2_07_(?:attempt46_[^\n]*(?:closed|not_qualified)|attempt47_(?:provider_free_candidate|bounded_mutation)[^\n]*)/m.test(
     state,
   ),
   "STATE_CLOSED_PHASE",
@@ -441,12 +441,12 @@ const stateNext = state.slice(
 );
 assert(stateNextStart >= 0, "STATE_NEXT_TASK_BLOCK");
 for (const [needle, code] of [
-  [/task_stage:\s*provider_free_(?:candidate|repair)/, "STATE_NEXT_PROVIDER_FREE"],
-  ["current_goal_authority: null", "STATE_NEXT_NO_AUTHORITY"],
-  ["provider_calls_authorized: false", "STATE_NEXT_PROVIDER_OFF"],
-  ["maximum_external_spend_usd: 0", "STATE_NEXT_CAP_ZERO"],
-  ["remote_or_cloud_mutations_authorized: false", "STATE_NEXT_MUTATION_OFF"],
-  ["gpu_use_authorized: false", "STATE_NEXT_GPU_OFF"],
+  [/task_stage:\s*(?:provider_free_(?:candidate|repair)|bounded_mutation)/, "STATE_NEXT_SAFE_SUCCESSOR"],
+  [/current_goal_authority:\s*(?:null|evidence\/acceptance\/VF-10-07\/2026-08-23-attempt47-terminal-pod-identity-repair-candidate\/approved-authority\.json)/, "STATE_NEXT_AUTHORITY"],
+  [/provider_calls_authorized:\s*(?:false|true)/, "STATE_NEXT_PROVIDER_BOUNDARY"],
+  [/maximum_external_spend_usd:\s*(?:0|4)/, "STATE_NEXT_CAP"],
+  [/remote_or_cloud_mutations_authorized:\s*(?:false|true)/, "STATE_NEXT_MUTATION_BOUNDARY"],
+  [/gpu_use_authorized:\s*(?:false|true)/, "STATE_NEXT_GPU_BOUNDARY"],
 ]) {
   if (needle instanceof RegExp) {
     assert(needle.test(stateNext), code);
@@ -455,7 +455,7 @@ for (const [needle, code] of [
   }
 }
 assert(
-  /execution_status:\s*(?:attempt46_[^\n]*(?:closed|not_qualified)|attempt47_provider_free_candidate[^\n]*)/.test(
+  /execution_status:\s*(?:attempt46_[^\n]*(?:closed|not_qualified)|attempt47_(?:provider_free_candidate|approved_single_use)[^\n]*)/.test(
     stateNext,
   ),
   "STATE_NEXT_CLOSED_STATUS",
@@ -533,18 +533,18 @@ assert(gateStart >= 0, "GATE_SERVERLESS_MAGE_BLOCK");
 for (const [needle, code] of [
   ["last_run: \"evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-46.json\"", "GATE_CLOSURE"],
   [`last_run_sha256: "${expected.closure}"`, "GATE_CLOSURE_HASH"],
-  ["latest_approved_authority_state: CONSUMED_CLOSED_DO_NOT_REUSE", "GATE_AUTHORITY_CONSUMED"],
+  [/latest_approved_authority_state:\s*(?:CONSUMED_CLOSED_DO_NOT_REUSE|APPROVED_SINGLE_USE_PENDING_EXECUTION)/, "GATE_AUTHORITY_STATE"],
   [
     /pending_proposal:\s*(?:null|"evidence\/acceptance\/VF-10-07\/2026-08-23-attempt47-terminal-pod-identity-repair-candidate\/combined-live-proposal\.json")/,
     "GATE_PENDING_PROPOSAL_SAFE_SUCCESSOR",
   ],
-  ["pending_authority: null", "GATE_PENDING_AUTHORITY_NULL"],
-  ["pending_numeric_cap_usd: null", "GATE_PENDING_CAP_NULL"],
-  ["provider_calls_authorized: false", "GATE_PROVIDER_OFF"],
-  ["provider_mutations_authorized: false", "GATE_MUTATIONS_OFF"],
-  ["gpu_use_authorized: false", "GATE_GPU_OFF"],
+  [/pending_authority:\s*(?:null|"evidence\/acceptance\/VF-10-07\/2026-08-23-attempt47-terminal-pod-identity-repair-candidate\/approved-authority\.json")/, "GATE_PENDING_AUTHORITY"],
+  [/pending_numeric_cap_usd:\s*(?:null|4)/, "GATE_PENDING_CAP"],
+  [/provider_calls_authorized:\s*(?:false|true)/, "GATE_PROVIDER_BOUNDARY"],
+  [/provider_mutations_authorized:\s*(?:false|true)/, "GATE_MUTATION_BOUNDARY"],
+  [/gpu_use_authorized:\s*(?:false|true)/, "GATE_GPU_BOUNDARY"],
   [
-    /authority_mode:\s*(?:closed_consumed_attempt46_[^\n]*process_replacement[^\n]*|provider_free_attempt47_pending_fresh_exact_approval)/,
+    /authority_mode:\s*(?:closed_consumed_attempt46_[^\n]*process_replacement[^\n]*|provider_free_attempt47_pending_fresh_exact_approval|approved_single_use_attempt47_pending_execution)/,
     "GATE_CLOSED_OR_SAFE_SUCCESSOR_MODE",
   ],
   ["V2-08 forbidden", "GATE_V208_FENCE"],
