@@ -214,7 +214,9 @@ for (const [name, path] of Object.entries({
 }
 const state = text(paths.state);
 const gates = text(paths.gates);
-const closed = state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified");
+const closed =
+  state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified") ||
+  state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval");
 if (closed) {
   assert(state.includes("provider_calls_authorized: false"), "STATE_PROVIDER_CLOSED");
   assert(state.includes("gpu_use_authorized: false"), "STATE_GPU_CLOSED");

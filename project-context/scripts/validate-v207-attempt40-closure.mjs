@@ -256,7 +256,11 @@ for (const [value, code] of [
   has(value, expected.closure, code);
   has(value, "V2-08", code);
 }
-has(state, "phase: serverless_v2_v2_07_attempt40_closed_not_qualified", "STATE");
+assert(
+  state.includes("phase: serverless_v2_v2_07_attempt40_closed_not_qualified") ||
+    state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval"),
+  "STATE_PHASE",
+);
 has(state, "provider_calls_authorized: false", "STATE");
 has(state, "remote_or_cloud_mutations_authorized: false", "STATE");
 has(state, "gpu_use_authorized: false", "STATE");

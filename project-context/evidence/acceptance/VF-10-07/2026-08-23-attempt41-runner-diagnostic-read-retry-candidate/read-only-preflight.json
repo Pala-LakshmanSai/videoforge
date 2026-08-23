@@ -1,0 +1,133 @@
+{
+  "schema_version": "videoforge.v2-07-attempt41-read-only-preflight/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 41,
+  "checked_at": "2026-08-23T04:20:38.116Z",
+  "read_only": true,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "inventory": {
+    "checked_at": "2026-08-23T04:18:41.078Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "mount": "/runpod-volume",
+        "unchanged": true
+      },
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "unchanged": true
+      }
+    ]
+  },
+  "selected_gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "display_name": "RTX 4090",
+    "region": "EU-RO-1",
+    "secure_cloud": true,
+    "availability": "HIGH",
+    "vram_gb": 24,
+    "secure_reference_rate_usd_per_hour": 0.74,
+    "catalog_checked_at": "2026-08-23T04:18:41.078Z"
+  },
+  "serverless_flex_rate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "usd_per_gpu_hour": 1.1,
+    "source": "https://docs.runpod.io/serverless/pricing",
+    "checked_at": "2026-08-23T04:18:41.078Z"
+  },
+  "network_volume_rate": {
+    "usd_per_gb_month": 0.07,
+    "source": "https://docs.runpod.io/storage/network-volumes",
+    "checked_at": "2026-08-23T04:18:41.078Z",
+    "existing_two_volume_charge_usd_per_month": 7
+  },
+  "billing": {
+    "cumulative_endpoint_spend_usd": 1.5246469744015485,
+    "baseline_endpoint_spend_usd": 1.5246469744015485,
+    "checked_at": "2026-08-23T04:20:38.116Z",
+    "fresh_cap_usd": null,
+    "fresh_numeric_cap_required": true
+  },
+  "reconciliation": {
+    "checked_at": "2026-08-23T04:20:38.116Z",
+    "read_only": true,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "first_reconciliation_invocation": "FAILED_CLOSED_UNCLASSIFIED",
+    "first_failure_exact_code_persisted": false,
+    "second_reconciliation_invocation_succeeded": true,
+    "bounded_inventory_retry_policy": {
+      "operation": "idempotent_inventory_GET_only",
+      "only_retryable_error": "RUNPOD_READ_AMBIGUOUS",
+      "live_retry_count_observed": null,
+      "source_and_unit_tests_verified": true,
+      "delays_ms": [250, 1000, 2000],
+      "mutation_or_auth_or_malformed_response_retry": false
+    },
+    "stable_final_reads": 3,
+    "final_inventory": {
+      "pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_serverless_workers": 0,
+      "running_pods": 0,
+      "retained_volumes": [
+        {
+          "purpose": "Mage",
+          "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+          "size_gb": 50,
+          "region": "EU-RO-1"
+        },
+        {
+          "purpose": "SoulX",
+          "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+          "size_gb": 50,
+          "region": "EU-RO-1"
+        }
+      ]
+    },
+    "billing_baseline_usd": 1.5246469744015485,
+    "billing_final_usd": 1.5246469744015485,
+    "incremental_spend_usd": 0,
+    "state": "THREE_STABLE_READS"
+  },
+  "quota_lookup": {
+    "status": "NOT_EXPOSED_BY_PINNED_READ_ONLY_CLIENT",
+    "provider_mutation": false,
+    "allocation_or_gpu_use": false,
+    "no_quota_claim_inferred": true
+  },
+  "cloudflare_route_basis": {
+    "source": "attempt40 cleanup observation",
+    "status": 404,
+    "code": "V207_ROUTE_DISABLED",
+    "fresh_mutation_authority": false
+  },
+  "lineage": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "control_source_commit": "6a4053f6fdde6e906e10b7cb297d253a7b9af140",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "image_republication": false,
+    "existing_publication_evidence": "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json",
+    "existing_publication_evidence_sha256": "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7"
+  }
+}
