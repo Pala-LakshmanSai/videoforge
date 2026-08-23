@@ -1,0 +1,50 @@
+{
+  "schema_version": "videoforge.v2-07-attempt45-runpod-reconciliation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 45,
+  "checked_at": "2026-08-23T13:47:11.642Z",
+  "observation_kind": "REUSED_ATTEMPT44_POST_CLEANUP_READ_ONLY_RECONCILIATION",
+  "read_only": true,
+  "fresh_provider_read": false,
+  "fresh_read_required_after_approval": true,
+  "stable_read_count": 3,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "source_attempt44_closure": {
+    "path": "project-context/evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-44.json",
+    "sha256": "sha256:695f438b4e2908a181d668a608588659f05075e2d6aa19d6bcfcca1a87d75be4",
+    "commit": "c9772731e202ce31084d5a56e165756afcec950c",
+    "reconciliation_sha256": "sha256:32070d0044349e52aa8e0f27baf1eb9394a2afa8189f45afa8b4279529f11357"
+  },
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "final_disposable_resources_absent": true,
+    "retained_volume_ids_sha256": [
+      "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+      "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+    ],
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "mage_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model"
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.5903418626403436,
+    "final_endpoint_spend_usd": 1.5903418626403436,
+    "incremental_spend_usd": 0,
+    "settlement": "THREE_STABLE_READS_FROM_ATTEMPT44",
+    "candidate_cap_usd": null,
+    "existing_two_volume_charge_usd_per_month": 7,
+    "cap_input_non_authorizing": true,
+    "cap_authority": null
+  },
+  "no_model_volume_writes_or_cache_escape_observed": true,
+  "no_provider_call_or_mutation_in_attempt45": true,
+  "next_boundary": "FRESH EXACT APPROVAL, POSITIVE NUMERIC CAP, AND FRESH READ-ONLY RECONCILIATION REQUIRED; V2-08-FORBIDDEN"
+}
