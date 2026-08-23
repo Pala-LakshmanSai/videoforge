@@ -10,6 +10,7 @@ const candidate = resolve(
 const paths = {
   proposal: resolve(candidate, "combined-live-proposal.json"),
   acceptance: resolve(candidate, "acceptance.json"),
+  authority: resolve(candidate, "approved-authority.json"),
   preflight: resolve(candidate, "read-only-preflight.json"),
   max1: resolve(candidate, "staged-config-max1.json"),
   max2: resolve(candidate, "staged-config-max2.json"),
@@ -23,7 +24,8 @@ const paths = {
 };
 const expected = {
   proposal: "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
-  acceptance: "sha256:aea4433890852e70c58baf2e9ba87a999422b57699348469c9a24d9e679f7025",
+  acceptance: "sha256:b32f70dcee108c0eea8b79496183eac9a7b207ce341dd4f75f60a20dd6579f19",
+  authority: "sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d",
   preflight: "sha256:c9de952bfcf6de4c0fc5247a2d7f542866501f8de24adf75b0f7fed6e2da0318",
   max1: "sha256:879ec4844e01a667ea14d3d5ba47b89b5a77accf99c55cf3f40744a319c6cd3a",
   max2: "sha256:6ec51bd572c6e7377eae857ea811178296b818f2d993dcf587b0a93e2f0115e4",
@@ -52,12 +54,13 @@ const text = (path) => bytes(path).toString("utf8");
 const json = (path) => JSON.parse(text(path));
 const sha = (path) => `sha256:${createHash("sha256").update(bytes(path)).digest("hex")}`;
 
-for (const name of ["proposal", "acceptance", "preflight", "max1", "max2"]) {
+for (const name of ["proposal", "acceptance", "authority", "preflight", "max1", "max2"]) {
   assert(sha(paths[name]) === expected[name], `${name.toUpperCase()}_HASH`);
 }
 
 const proposal = json(paths.proposal);
 const acceptance = json(paths.acceptance);
+const authority = json(paths.authority);
 const preflight = json(paths.preflight);
 const max1 = json(paths.max1);
 const max2 = json(paths.max2);
@@ -220,20 +223,43 @@ assert(
 );
 assert(
   acceptance.attempt === 41 &&
-    acceptance.result === "PROVIDER_FREE_CANDIDATE_PENDING_FRESH_APPROVAL_AND_NUMERIC_CAP" &&
+    acceptance.result === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
     acceptance.qualification_status === "NOT_QUALIFIED_PENDING_EXECUTION" &&
     acceptance.candidate?.proposal_sha256 === expected.proposal &&
     acceptance.candidate?.max1_sha256 === expected.max1 &&
     acceptance.candidate?.max2_sha256 === expected.max2 &&
-    acceptance.candidate?.authority_recorded === false &&
-    acceptance.candidate?.maximum_cumulative_finite_spend_usd === null &&
+    acceptance.candidate?.authority_path === "approved-authority.json" &&
+    acceptance.candidate?.authority_sha256 === expected.authority &&
+    acceptance.candidate?.authority_recorded === true &&
+    acceptance.candidate?.maximum_cumulative_finite_spend_usd === 4 &&
     acceptance.candidate?.publication_required === false &&
     acceptance.candidate_lineage?.read_only_preflight_evidence_sha256 === expected.preflight &&
-    acceptance.provider_boundary?.provider_mutations === false &&
+    acceptance.provider_boundary?.provider_calls === true &&
+    acceptance.provider_boundary?.provider_mutations === true &&
     acceptance.provider_boundary?.gpu_use === false &&
-    acceptance.provider_boundary?.authority_active === false &&
+    acceptance.provider_boundary?.authority_active === true &&
+    acceptance.provider_boundary?.cap_usd === 4 &&
+    acceptance.provider_boundary?.authority_file_present === true &&
     acceptance.provider_boundary?.image_republication_forbidden === true,
   "ACCEPTANCE",
+);
+assert(
+  authority.attempt === 41 &&
+    authority.checkpoint === "V2-07" &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal?.sha256 === expected.proposal &&
+    authority.approval?.exact_proposal_approved === true &&
+    authority.approval?.single_use === true &&
+    authority.approval?.consumed === false &&
+    authority.approval?.flashboot_true_accepted === true &&
+    authority.approval?.low_or_better_eu_ro_1_availability_approved === true &&
+    authority.approval?.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.execution_boundary?.runpod_mutation_authorized_pending_execution === true &&
+    authority.execution_boundary?.gpu_use_authorized_pending_execution === true &&
+    authority.execution_boundary?.image_republication_authorized === false &&
+    authority.execution_boundary?.retained_volume_mutation_authorized === false &&
+    authority.execution_boundary?.v2_08_authorized === false,
+  "AUTHORITY",
 );
 
 const control = text(paths.control);
@@ -255,9 +281,9 @@ const activation = text(paths.activation);
 assert(
   activation.includes(expected.proposal) &&
     activation.includes(expected.controlSource) &&
-    activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null") &&
-    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null"),
-  "ACTIVATION_FAIL_CLOSED",
+    activation.includes(expected.authority) &&
+    activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4"),
+  "ACTIVATION_AUTHORITY",
 );
 for (const [name, path] of Object.entries({
   state: paths.state,
@@ -274,22 +300,22 @@ for (const [name, path] of Object.entries({
 const state = text(paths.state);
 const gates = text(paths.gates);
 assert(
-  state.includes("phase: serverless_v2_v2_07_attempt41_candidate_pending_exact_approval") &&
-    state.includes("provider_calls_authorized: false") &&
-    state.includes("gpu_use_authorized: false") &&
-    state.includes("maximum_external_spend_usd: 0") &&
-    state.includes("current_authority: null"),
+  state.includes("phase: serverless_v2_v2_07_attempt41_approved_pending_execution") &&
+    state.includes("provider_calls_authorized: true") &&
+    state.includes("gpu_use_authorized: true") &&
+    state.includes("maximum_external_spend_usd: 4") &&
+    state.includes(expected.authority),
   "STATE_BOUNDARY",
 );
 assert(
-  gates.includes("pending_attempt41_exact_approval_and_fresh_numeric_cap") &&
-    gates.includes("pending_authority: null") &&
-    gates.includes("pending_numeric_cap_usd: null") &&
-    gates.includes("provider_calls_authorized: false") &&
-    gates.includes("gpu_use_authorized: false"),
+  gates.includes("authority_mode: attempt41_bounded_mutation_authorized") &&
+    gates.includes(expected.authority) &&
+    gates.includes("pending_numeric_cap_usd: 4") &&
+    gates.includes("provider_calls_authorized: true") &&
+    gates.includes("gpu_use_authorized: true"),
   "GATE_BOUNDARY",
 );
 
 console.log(
-  "V2-07 Attempt41 candidate validation PASS (reused published image; exact control/config/preflight lineage; no authority, mutation, GPU, or spend)",
+  "V2-07 Attempt41 authority validation PASS (exact proposal/authority/cap; reused image; pending bounded execution)",
 );
