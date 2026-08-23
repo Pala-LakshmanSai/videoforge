@@ -15,9 +15,9 @@ export const V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH =
 export const V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY = "V207_ROLLBACK_ANCHOR_REFRESH" as const;
 export const V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION = "two-phase-v1" as const;
 export const V207_ANCHOR_REFRESH_BASELINE_SHA256 =
-  "sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175" as const;
+  "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774" as const;
 export const V207_ANCHOR_REFRESH_ENABLED_SHA256 =
-  "sha256:a01a6ec7ffa45a187f8b4cc094ca1522c33a37a6f3e4aea06cb2a38b14120fd5" as const;
+  "sha256:c643af2fe7d6325396b2527bcbe92d9422c6126aa3328530b8dfaa36b7bc08e5" as const;
 export const V207_ANCHOR_REFRESH_FILE_MODE = 0o600 as const;
 
 type MarkerState = "disabled" | "enabled";
