@@ -530,39 +530,80 @@ const state = text(paths.state);
 const gates = text(paths.gates);
 const start = text(paths.start);
 const task = text(paths.task);
-assert(
-  state.includes("attempt43") &&
-    state.includes("provider_calls_authorized: true") &&
-    state.includes("gpu_use_authorized: true") &&
-    state.includes("maximum_external_spend_usd: 4") &&
-    state.includes("task_stage: bounded_mutation") &&
-    state.includes(expected.baselineConfig) &&
-    state.includes(expected.projectedConfig) &&
-    state.includes(expected.oldActiveVersionId) &&
-    state.includes(expected.oldActiveRecord),
-  "STATE_BOUNDARY",
+const attempt43Closed = state.includes(
+  "phase: serverless_v2_v2_07_attempt43_closed_not_qualified",
 );
-assert(
-  gates.includes("attempt43") &&
-    gates.includes("pending_numeric_cap_usd: 4") &&
-    gates.includes("provider_calls_authorized: true") &&
-    gates.includes("gpu_use_authorized: true") &&
-    gates.includes(expected.oldActiveVersionId) &&
-    gates.includes(expected.oldActiveRecord),
-  "GATES_BOUNDARY",
-);
-assert(start.includes(expected.baselineConfig) && start.includes(expected.projectedConfig), "START_LINEAGE");
-assert(
-  start.includes(expected.oldActiveVersionId) && start.includes(expected.oldActiveRecord),
-  "START_ANCHOR_LINEAGE",
-);
-assert(
-  task.includes(expected.baselineConfig) &&
-    task.includes(expected.projectedConfig) &&
-    task.includes(expected.oldActiveVersionId) &&
-    task.includes(expected.oldActiveRecord),
-  "TASK_LINEAGE",
-);
+if (attempt43Closed) {
+  assert(
+    state.includes("provider_calls_authorized: false") &&
+      state.includes("gpu_use_authorized: false") &&
+      state.includes("maximum_external_spend_usd: 0") &&
+      state.includes("task_stage: provider_free_diagnosis") &&
+      state.includes(expected.baselineConfig) &&
+      state.includes(expected.projectedConfig) &&
+      state.includes(expected.oldActiveVersionId) &&
+      state.includes(expected.oldActiveRecord),
+    "STATE_CLOSED_BOUNDARY",
+  );
+  assert(
+    gates.includes("attempt43") &&
+      gates.includes("pending_numeric_cap_usd: null") &&
+      gates.includes("provider_calls_authorized: false") &&
+      gates.includes("gpu_use_authorized: false") &&
+      gates.includes(expected.oldActiveVersionId) &&
+      gates.includes(expected.oldActiveRecord),
+    "GATES_CLOSED_BOUNDARY",
+  );
+} else {
+  assert(
+    state.includes("attempt43") &&
+      state.includes("provider_calls_authorized: true") &&
+      state.includes("gpu_use_authorized: true") &&
+      state.includes("maximum_external_spend_usd: 4") &&
+      state.includes("task_stage: bounded_mutation") &&
+      state.includes(expected.baselineConfig) &&
+      state.includes(expected.projectedConfig) &&
+      state.includes(expected.oldActiveVersionId) &&
+      state.includes(expected.oldActiveRecord),
+    "STATE_BOUNDARY",
+  );
+  assert(
+    gates.includes("attempt43") &&
+      gates.includes("pending_numeric_cap_usd: 4") &&
+      gates.includes("provider_calls_authorized: true") &&
+      gates.includes("gpu_use_authorized: true") &&
+      gates.includes(expected.oldActiveVersionId) &&
+      gates.includes(expected.oldActiveRecord),
+    "GATES_BOUNDARY",
+  );
+}
+if (attempt43Closed) {
+  assert(
+    start.includes(expected.baselineConfig) &&
+      start.includes("failed-attempt-43.json") &&
+      start.includes("NOT_QUALIFIED"),
+    "START_CLOSED_LINEAGE",
+  );
+  assert(
+    task.includes(expected.baselineConfig) &&
+      task.includes("failed-attempt-43.json") &&
+      task.includes("NOT_QUALIFIED"),
+    "TASK_CLOSED_LINEAGE",
+  );
+} else {
+  assert(start.includes(expected.baselineConfig) && start.includes(expected.projectedConfig), "START_LINEAGE");
+  assert(
+    start.includes(expected.oldActiveVersionId) && start.includes(expected.oldActiveRecord),
+    "START_ANCHOR_LINEAGE",
+  );
+  assert(
+    task.includes(expected.baselineConfig) &&
+      task.includes(expected.projectedConfig) &&
+      task.includes(expected.oldActiveVersionId) &&
+      task.includes(expected.oldActiveRecord),
+    "TASK_LINEAGE",
+  );
+}
 console.log(
-  "V2-07 Attempt43 approved-authority validation PASS (provider-free; no provider mutation or spend)",
+  `V2-07 Attempt43 candidate validation PASS (${attempt43Closed ? "historical consumed authority; closure is separately validated" : "pending single-use authority"})`,
 );

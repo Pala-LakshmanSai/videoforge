@@ -1,14 +1,20 @@
 # VideoForge: start here
 
-Attempt43 is approved once and pending bounded execution under a fresh USD 4 cap; no provider call or spend has occurred.
-Proposal `sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458` binds the exact Mage
-image/model/volume, Attempt42 closure hashes, exact authority `e5571ed`, orchestrator-owned marker lifecycle
-`3dda73f`, exact config-path pin `75c784a`, fresh catalog/success reconciliation `5e1e5a0`, atomic helper `816d286`, baseline config
-`sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175` mode 0600, projected marker
-`sha256:a01a6ec7ffa45a187f8b4cc094ca1522c33a37a6f3e4aea06cb2a38b14120fd5`, old active Worker version-ID hash
-`sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48`, and canonical active-version record
-hash `sha256:a4449873ab598a85a5bc0b15ebb9d46ee56bbef9efa936f450148614d132cd97` at index 0/10. The user approved this exact proposal with FlashBoot=true, LOW-or-better EU-RO-1 availability, fresh maximum cumulative finite spend `$4`, and `anchorRefreshAuthorized=true`; append-only authority
-`approved-authority.json` is `sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b`. Execute only the exact listed sequence after the required fresh read-only refresh, retain the sealed Mage volume, and stop on any mismatch, cap risk, failed output, uncertain cleanup, or V2-08 boundary. No provider call, mutation, GPU use, or spend has occurred yet; image/model/volume mutation and V2-08 remain forbidden.
+Attempt43 is closed fail-closed as `NOT_QUALIFIED`. Exact proposal
+`sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458` and single-use authority
+`sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b` were consumed once with
+FlashBoot=true, LOW-or-better EU-RO-1, and a fresh `$4` cap. One owned job reached provider `COMPLETED`,
+but output finalization failed with `V207_OUTPUT_PORT_400` before any accepted batch, durable readback, or
+v3 receipt; generated output rollback was confirmed. Closure is
+`failed-attempt-43.json` (`sha256:1699d5429b12a5573b10be5b325a780f5a1c7d484b960fdb0758e64381391494`).
+Follow-up cleanup (`attempt43-cleanup-observation.json`, `sha256:59caf2f398a6146e177d2f6dd34f8fa82848a97261cdf752d1a8cd03729fe260`)
+and three stable reconciliation reads (`attempt43-reconciliation-observation.json`,
+`sha256:e9fe4d7547b2ddc38a3766d22044b414037d09dd5426ab4a9816aea18336da6a`; settled source
+`sha256:805be262eddfe9597ff5aa1c0732cdc31d502fdb6312d815c4226ef413058c7c`) prove zero disposable
+Pods/endpoints/templates/workers, both exact retained 50 GB EU-RO-1 volumes, stable POST `404
+V207_ROUTE_DISABLED`, baseline config `sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175`
+mode 0600, and `$0` incremental spend. No authority, cap, provider call, GPU use, or mutation remains;
+provider-free diagnosis only. V2-08 is forbidden.
 
 Attempt42 is closed `NOT_QUALIFIED` before provider mutation. Exact proposal
 `sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de` and authority
