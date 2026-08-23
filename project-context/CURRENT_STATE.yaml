@@ -1746,9 +1746,9 @@ runpod_account_scope:
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
   current_authority: null
-  current_authority_sha256: "sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53"
-  latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt42-get-readback-authority-candidate/approved-authority.json
-  latest_closed_authority_sha256: "sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53"
+  current_authority_sha256: null
+  latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt43-anchor-refresh-candidate/approved-authority.json
+  latest_closed_authority_sha256: "sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b"
   mutation_authorized: false
   gpu_use_authorized: false
   spend_authorized_usd: 0
@@ -1761,11 +1761,11 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6"
-  current_source_head_semantics: attempt42_get_readback_authority_candidate_provider_free
+  current_source_head: "1089c4729424ee066408e1de8fe927e17cf3915f"
+  current_source_head_semantics: attempt44_version_metadata_candidate_provider_free
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt42 is closed NOT_QUALIFIED before mutation: the exact Worker rollback anchor was not retained in the bounded newest-seven window. Proposal sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de was approved once under authority sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53 with a fresh USD 4 cap; no build, deploy, signer, route probe, RunPod job, GPU use, mutation, or spend occurred. Closure, cleanup, and three-stable-read reconciliation are recorded at failed-attempt-42.json, attempt42-cleanup-observation.json, and attempt42-reconciliation-observation.json."
-  v2_07_latest_local_repair: "Commit 78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6 returns a fresh scoped artifact-transfer-port/v3 GET authority with canonical nonce-HMAC binding and distinct reservation identity. Provider-free focused tests pass; live requalification remains unproven."
+  current_source_head_note: "Attempt44 is a provider-free candidate at proposal sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e. Attempt43 authority/cap are consumed; no provider/GPU/mutation/spend is active."
+  v2_07_latest_local_repair: "Commit 1089c4729424ee066408e1de8fe927e17cf3915f canonicalizes all approval-dependent activation bindings; mixed/stale Worker edges fail closed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -1783,7 +1783,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Attempt43 authority and cap are consumed; use fixture mode for provider-free diagnosis only. V2-08 is forbidden."
+  provider_authority_scope: "Attempt44 provider-free candidate pending fresh exact approval; authority/cap are null and provider/GPU/spend disabled. V2-08 is forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
