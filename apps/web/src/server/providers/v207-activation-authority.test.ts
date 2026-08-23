@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   V207_APPROVED_AUTHORITY_SHA256,
+  V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED,
   V207_APPROVED_FINITE_CAP_USD,
+  V207_ANCHOR_REFRESH_HELPER_COMMIT,
+  V207_ANCHOR_REFRESH_HELPER_SHA256,
+  V207_ANCHOR_REFRESH_SOURCE_COMMIT,
   V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256,
   V207_HOSTED_PNG_CRC32_REPAIR_COMMIT,
   V207_FINALIZE_REPLAY_FAST_PATH_COMMIT,
@@ -19,6 +23,7 @@ import {
   V207_REPAIRED_IMAGE_PARENT,
   V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST,
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+  V207_TYPED_ACTIVATION_AUTHORITY_COMMIT,
   V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT,
 } from "./v207-activation-authority";
 
@@ -36,7 +41,7 @@ const image = V207_REPAIRED_IMAGE;
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete pending Attempt42 GET-readback authority repair lineage", () => {
+  it("pins the complete pending Attempt43 anchor-refresh lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
@@ -66,10 +71,16 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de",
+      "sha256:971249e2085b1f55fd0e4c94e176815189bf00b570ce374d45c0d171855151c3",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
     expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6");
+    expect(V207_ANCHOR_REFRESH_SOURCE_COMMIT).toBe("a6c7266e0c19fce07757c78fbd588dd442b7d24f");
+    expect(V207_TYPED_ACTIVATION_AUTHORITY_COMMIT).toBe("2e87ec02fc2ed62a40fc51480a9d8c7b575ddf66");
+    expect(V207_ANCHOR_REFRESH_HELPER_COMMIT).toBe("816d28699ab9ecad74c74f73bce984205b267ed5");
+    expect(V207_ANCHOR_REFRESH_HELPER_SHA256).toBe(
+      "sha256:8b059ade2b20ca3aea06a502af98858b6b5cce8e6e95f3008b45483712b28db8",
+    );
     expect(V207_FINALIZE_REPLAY_FAST_PATH_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
     expect(V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT).toBe(
       "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
@@ -79,6 +90,7 @@ describe("V2-07 activation authority", () => {
     );
     expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
     expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
   });
 
   it("rejects identity and proposal drift before the approval boundary", () => {
@@ -142,10 +154,11 @@ describe("V2-07 activation authority", () => {
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
-        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_PROPOSAL_SHA256:
+          "sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de",
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
   it("rejects a missing numeric cap after Attempt42 closure", () => {
@@ -171,6 +184,7 @@ describe("V2-07 activation authority", () => {
 
   it("keeps the production parser refresh-disabled for current, consumed, and absent authority", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
     expect(() =>
       parseV207ActivationAuthority({
         ...refreshMarker,
@@ -191,6 +205,19 @@ describe("V2-07 activation authority", () => {
       }),
     ).toThrow("V207_PROPOSAL_MISMATCH");
     expect(() => parseV207ActivationAuthority(refreshMarker)).toThrow("V207_IMAGE_DIGEST_REQUIRED");
+  });
+
+  it("rejects the consumed proposal even when refresh activation is requested", () => {
+    expect(() =>
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256:
+          "sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de",
+        V207_FINITE_CAP_USD: "4",
+        V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1",
+      }),
+    ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
   it("rejects the consumed Attempt31 proposal after closure", () => {

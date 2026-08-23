@@ -19,7 +19,15 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de" as const;
+  "sha256:971249e2085b1f55fd0e4c94e176815189bf00b570ce374d45c0d171855151c3" as const;
+export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
+  "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
+export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
+  "2e87ec02fc2ed62a40fc51480a9d8c7b575ddf66" as const;
+export const V207_ANCHOR_REFRESH_HELPER_COMMIT =
+  "816d28699ab9ecad74c74f73bce984205b267ed5" as const;
+export const V207_ANCHOR_REFRESH_HELPER_SHA256 =
+  "sha256:8b059ade2b20ca3aea06a502af98858b6b5cce8e6e95f3008b45483712b28db8" as const;
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
@@ -71,6 +79,13 @@ export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
 // remove executable approval and cap so the attempt cannot be replayed.
 export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+/**
+ * Anchor refresh is an additional Worker mutation and must be opt-in at the
+ * same compiled approval boundary as the proposal and finite cap.  Keep the
+ * current provider-free candidate null; a future exact authority may change
+ * this to true in its own immutable activation commit.
+ */
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 export interface V207ActivationAuthority {
   readonly image: string;
@@ -98,8 +113,11 @@ export function parseV207ActivationAuthority(
   if (proposalSha256 !== V207_PENDING_PROPOSAL_SHA256) {
     throw new Error("V207_PROPOSAL_MISMATCH");
   }
+  const approvedAuthoritySha256: string | null = V207_APPROVED_AUTHORITY_SHA256;
   const approvedCapUsd: number | null = V207_APPROVED_FINITE_CAP_USD;
-  if (approvedCapUsd === null) throw new Error("V207_FRESH_AUTHORITY_REQUIRED");
+  if (approvedAuthoritySha256 === null || approvedCapUsd === null) {
+    throw new Error("V207_FRESH_AUTHORITY_REQUIRED");
+  }
   const capUsd = Number(environment.V207_FINITE_CAP_USD ?? "");
   if (!Number.isFinite(capUsd) || capUsd <= 0) {
     throw new Error("V207_FINITE_CAP_REQUIRED");
@@ -107,5 +125,10 @@ export function parseV207ActivationAuthority(
   if (capUsd !== approvedCapUsd) {
     throw new Error("V207_FINITE_CAP_MISMATCH");
   }
-  return { image, proposalSha256, capUsd, anchorRefreshAuthorized: false };
+  return {
+    image,
+    proposalSha256,
+    capUsd,
+    anchorRefreshAuthorized: V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED === true,
+  };
 }
