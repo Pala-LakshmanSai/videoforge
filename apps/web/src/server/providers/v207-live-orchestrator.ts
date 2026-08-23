@@ -28,6 +28,11 @@ const RESTORATION_PROPAGATION_WINDOW_MS = 120_000;
 // The first exact probe plus 15 two-second intervals establishes a 30-second
 // exact-fingerprint stability window, while the surrounding deadline remains 120 seconds.
 const RESTORATION_REQUIRED_CONSECUTIVE_MATCHES = 16;
+/** Wrangler's versions list is limited to ten recent versions. Keep three
+ * slots of headroom for the bounded deploy/secret mutations and propagation
+ * churn, so the captured rollback target must be in the newest seven. */
+export const V207_WORKER_VERSION_LIST_LIMIT = 10;
+export const V207_WORKER_VERSION_NEWEST_COUNT = 7;
 const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const NONCE = /^[a-f0-9]{64}$/u;
 const SOURCE_COMMIT = /^[0-9a-f]{40}$/u;
@@ -80,6 +85,20 @@ export interface V207LiveOrchestratorResult {
   readonly capturedVersionIdHash: string;
   readonly runnerExitCode: number;
   readonly cleanedUp: true;
+}
+
+/**
+ * The exact active-version record captured before the first remote mutation.
+ *
+ * Wrangler's deployment envelope `id` is not a rollback target.  The anchor is
+ * therefore the active `versions[]` record (or an explicit version record in an
+ * alternate status shape), hashed after deterministic JSON normalization.  The
+ * hash is re-read after rollback; a matching UUID alone is not enough because a
+ * provider can expose a different deployment record under the same route.
+ */
+export interface V207WorkerRollbackAnchor {
+  readonly versionId: string;
+  readonly sha256: string;
 }
 
 export function assertV207DiskHeadroom(availableBytes: number): void {
@@ -270,6 +289,33 @@ function asRecord(value: unknown): JsonRecord | null {
  * only accept a bare `id` when no deployment `versions` collection is present.
  */
 export function extractV207WorkerVersionId(value: unknown): string {
+  try {
+    return extractV207WorkerRollbackAnchor(value).versionId;
+  } catch (error) {
+    if (
+      error instanceof V207LiveOrchestratorError &&
+      error.code === "V207_WORKER_ROLLBACK_ANCHOR_MISSING"
+    ) {
+      throw new V207LiveOrchestratorError("V207_WORKER_VERSION_ID_MISSING");
+    }
+    throw error;
+  }
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function findV207WorkerRollbackAnchor(
+  value: unknown,
+): { versionId: string; value: unknown } | null {
   const versionKeys = [
     "version_id",
     "versionId",
@@ -298,7 +344,7 @@ export function extractV207WorkerVersionId(value: unknown): string {
     return readVersionField(record);
   };
 
-  const activeVersionFromList = (entries: unknown[]): string | null => {
+  const activeVersionFromList = (entries: unknown[]): unknown | null => {
     const records = entries.filter((entry): entry is JsonRecord => asRecord(entry) !== null);
     if (records.length === 0) return null;
     const active = records.filter((record) => {
@@ -308,10 +354,10 @@ export function extractV207WorkerVersionId(value: unknown): string {
     });
     const candidates = active.length === 1 ? active : records.length === 1 ? records : [];
     if (candidates.length !== 1) return null;
-    return versionFromEntry(candidates[0]);
+    return candidates.length === 1 ? candidates[0] : null;
   };
 
-  const visit = (candidate: unknown): string | null => {
+  const visit = (candidate: unknown): { versionId: string; value: unknown } | null => {
     if (Array.isArray(candidate)) {
       // Arrays at the root are commonly the deployments list. Examine each
       // envelope independently so an envelope's `id` never wins over its
@@ -325,12 +371,12 @@ export function extractV207WorkerVersionId(value: unknown): string {
     const record = asRecord(candidate);
     if (!record) return null;
 
-    const explicit = readVersionField(record);
-    if (explicit) return explicit;
-
     if (Array.isArray(record.versions)) {
       const active = activeVersionFromList(record.versions);
-      if (active) return active;
+      const activeVersionId = active === null ? null : versionFromEntry(active);
+      if (active !== null && activeVersionId !== null) {
+        return { versionId: activeVersionId, value: active };
+      }
       // An envelope with an ambiguous/malformed versions list must not fall
       // through to its deployment id. Continue only into non-id metadata.
       for (const [key, entry] of Object.entries(record)) {
@@ -341,10 +387,15 @@ export function extractV207WorkerVersionId(value: unknown): string {
       return null;
     }
 
+    const explicit = readVersionField(record);
+    if (explicit) return { versionId: explicit, value: record };
+
     // Wrangler's status command can also emit a bare `{ id: <version> }` in
     // older/alternate shapes. This fallback is safe only without a deployment
     // versions collection (handled above).
-    if (typeof record.id === "string" && VERSION_ID.test(record.id)) return record.id;
+    if (typeof record.id === "string" && VERSION_ID.test(record.id)) {
+      return { versionId: record.id, value: record };
+    }
 
     for (const [key, entry] of Object.entries(record)) {
       if (versionKeySet.has(key) || key === "id") continue;
@@ -355,8 +406,74 @@ export function extractV207WorkerVersionId(value: unknown): string {
   };
 
   const found = visit(value);
-  if (!found) throw new V207LiveOrchestratorError("V207_WORKER_VERSION_ID_MISSING");
   return found;
+}
+
+export function extractV207WorkerRollbackAnchor(value: unknown): V207WorkerRollbackAnchor {
+  const found = findV207WorkerRollbackAnchor(value);
+  if (found === null) throw new V207LiveOrchestratorError("V207_WORKER_ROLLBACK_ANCHOR_MISSING");
+  const normalized = canonicalJson(found.value);
+  if (normalized === "undefined") {
+    throw new V207LiveOrchestratorError("V207_WORKER_ROLLBACK_ANCHOR_INVALID");
+  }
+  return Object.freeze({
+    versionId: found.versionId,
+    sha256: sha256(normalized),
+  });
+}
+
+function collectV207WorkerVersionIds(value: unknown, output: string[]): void {
+  if (Array.isArray(value)) {
+    for (const entry of value) collectV207WorkerVersionIds(entry, output);
+    return;
+  }
+  const record = asRecord(value);
+  if (!record) return;
+  for (const key of ["version_id", "versionId"] as const) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && VERSION_ID.test(candidate)) {
+      output.push(candidate);
+      return;
+    }
+  }
+  const beforeNested = output.length;
+  for (const [key, entry] of Object.entries(record)) {
+    if (key === "id" || key === "version_id" || key === "versionId") continue;
+    collectV207WorkerVersionIds(entry, output);
+  }
+  if (output.length > beforeNested) return;
+  const genericId = record.id;
+  if (typeof genericId === "string" && VERSION_ID.test(genericId)) output.push(genericId);
+}
+
+/**
+ * Prove the captured version is still in Wrangler's recent-version retention
+ * window before allowing any Worker or secret mutation. A status response can
+ * identify the active version even after it has fallen out of the rollback
+ * list; the list read is the bounded provider-side retention proof.
+ */
+export function assertV207WorkerRollbackAnchorRetained(
+  value: unknown,
+  expectedVersionId: string,
+): number {
+  if (!VERSION_ID.test(expectedVersionId)) {
+    throw new V207LiveOrchestratorError("V207_WORKER_ROLLBACK_ANCHOR_INVALID");
+  }
+  const ids: string[] = [];
+  collectV207WorkerVersionIds(value, ids);
+  const uniqueIds = [...new Set(ids)];
+  if (uniqueIds.length === 0 || uniqueIds.length > V207_WORKER_VERSION_LIST_LIMIT) {
+    throw new V207LiveOrchestratorError("V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED");
+  }
+  // Wrangler currently returns the bounded list oldest-to-newest. Require the
+  // target in the newest seven entries, leaving three slots for the planned
+  // deploy/secret churn even if two new versions are appended immediately.
+  const index = uniqueIds.indexOf(expectedVersionId);
+  const newestStart = Math.max(0, uniqueIds.length - V207_WORKER_VERSION_NEWEST_COUNT);
+  if (index < newestStart) {
+    throw new V207LiveOrchestratorError("V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED");
+  }
+  return index;
 }
 
 function parseSecretNames(value: unknown): readonly string[] {
@@ -572,7 +689,7 @@ async function statusVersion(
   configPath: string,
   environment: Environment,
   signal?: AbortSignal,
-): Promise<string> {
+): Promise<V207WorkerRollbackAnchor> {
   const result = requireSuccessful(
     "V207_WRANGLER_STATUS",
     await run({
@@ -593,7 +710,7 @@ async function statusVersion(
       signal,
     }),
   );
-  return extractV207WorkerVersionId(parseJsonOutput(result.stdout));
+  return extractV207WorkerRollbackAnchor(parseJsonOutput(result.stdout));
 }
 
 async function secretNames(
@@ -694,7 +811,7 @@ async function rollbackAndVerify(
   cwd: string,
   configPath: string,
   environment: Environment,
-  expectedVersionId: string,
+  expectedAnchor: V207WorkerRollbackAnchor,
   signal?: AbortSignal,
 ): Promise<void> {
   requireSuccessful(
@@ -707,7 +824,7 @@ async function rollbackAndVerify(
         "exec",
         "wrangler",
         "rollback",
-        expectedVersionId,
+        expectedAnchor.versionId,
         "--yes",
         "--message",
         "V2-07 bounded orchestrator cleanup",
@@ -720,7 +837,10 @@ async function rollbackAndVerify(
     }),
   );
   const observed = await statusVersion(run, cwd, configPath, environment, signal);
-  if (observed !== expectedVersionId) {
+  if (
+    observed.versionId !== expectedAnchor.versionId ||
+    observed.sha256 !== expectedAnchor.sha256
+  ) {
     throw new V207LiveOrchestratorError("V207_ROLLBACK_VERSION_UNCONFIRMED");
   }
 }
@@ -815,7 +935,7 @@ export async function runV207LiveOrchestration(
     }
   }
 
-  let capturedVersionId: string | undefined;
+  let capturedAnchor: V207WorkerRollbackAnchor | undefined;
   let nonce: string | undefined;
   let nonceSecretMayExist = false;
   // Set immediately before deploy: if Wrangler fails part-way through, a Worker mutation may
@@ -840,14 +960,37 @@ export async function runV207LiveOrchestration(
     );
     if (clean.stdout.trim() !== "") throw new V207LiveOrchestratorError("V207_GIT_WORKTREE_DIRTY");
     await readProtectedConfig(configPath);
-    capturedVersionId = await statusVersion(
-      run,
-      cwd,
-      configPath,
-      environment,
-      abortController.signal,
+    capturedAnchor = await statusVersion(run, cwd, configPath, environment, abortController.signal);
+    const recentVersions = requireSuccessful(
+      "V207_WRANGLER_VERSIONS_LIST",
+      await run({
+        command: "pnpm",
+        args: [
+          "--filter",
+          "@videoforge/web",
+          "exec",
+          "wrangler",
+          "versions",
+          "list",
+          "--json",
+          "--config",
+          configPath,
+        ],
+        cwd,
+        env: redactedEnvironment(environment),
+        signal: abortController.signal,
+      }),
     );
-    await record("captured_worker_version", { version_id_hash: sha256(capturedVersionId) });
+    const rollbackAnchorIndex = assertV207WorkerRollbackAnchorRetained(
+      parseJsonOutput(recentVersions.stdout),
+      capturedAnchor.versionId,
+    );
+    await record("captured_worker_version", {
+      version_id_hash: sha256(capturedAnchor.versionId),
+      rollback_anchor_sha256: capturedAnchor.sha256,
+      recent_version_index: rollbackAnchorIndex,
+      recent_version_window: V207_WORKER_VERSION_LIST_LIMIT,
+    });
     // Capture the exact pre-mutation route semantics. The restored V2-06 Worker may legitimately
     // answer 503 (HOSTED_ROUTE_NOT_COMPOSED), so cleanup must compare against this fingerprint
     // instead of assuming the V2-07 route is always a 404 before/after the run.
@@ -1000,11 +1143,14 @@ export async function runV207LiveOrchestration(
         cleanupErrors.push(safeErrorCode(error));
       }
     }
-    if (workerMutationMayExist && capturedVersionId !== undefined) {
+    if (workerMutationMayExist && capturedAnchor !== undefined) {
       try {
-        await rollbackAndVerify(run, cwd, configPath, environment, capturedVersionId);
+        await rollbackAndVerify(run, cwd, configPath, environment, capturedAnchor);
         workerRollbackVerified = true;
-        await record("worker_rolled_back", { version_id_hash: sha256(capturedVersionId) });
+        await record("worker_rolled_back", {
+          version_id_hash: sha256(capturedAnchor.versionId),
+          rollback_anchor_sha256: capturedAnchor.sha256,
+        });
       } catch (error) {
         cleanupErrors.push(safeErrorCode(error));
       }
@@ -1083,13 +1229,13 @@ export async function runV207LiveOrchestration(
   if (cleanupErrors.length > 0) throw new V207LiveOrchestratorError("V207_CLEANUP_UNCERTAIN");
   if (primaryError !== undefined) throw primaryError;
   if (abortRequested) throw new V207LiveOrchestratorError("V207_OPERATOR_ABORT");
-  if (capturedVersionId === undefined || runnerExitCode === undefined) {
+  if (capturedAnchor === undefined || runnerExitCode === undefined) {
     throw new V207LiveOrchestratorError("V207_ORCHESTRATION_INCOMPLETE");
   }
   // The evidence excludes the nonce, RunPod key, signed URLs, and child output by construction.
   return {
     evidencePath: evidenceFile,
-    capturedVersionIdHash: sha256(capturedVersionId),
+    capturedVersionIdHash: sha256(capturedAnchor.versionId),
     runnerExitCode,
     cleanedUp: true,
   };

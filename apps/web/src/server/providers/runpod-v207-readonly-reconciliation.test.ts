@@ -6,7 +6,11 @@ import {
   V207_FAILED_CLEANUP_SOULX_VOLUME_ID_HASH,
   V207_FAILED_CLEANUP_VOLUME_ID_HASH,
 } from "./runpod-v207-failed-cleanup";
-import { reconcileV207Readonly } from "./runpod-v207-readonly-reconciliation";
+import {
+  reconcileV207Readonly,
+  v207IncrementalSpendFromBilling,
+  v207IncrementalSpendThreshold,
+} from "./runpod-v207-readonly-reconciliation";
 
 const inventory = (patch: Partial<RunPodInventory> = {}): RunPodInventory => ({
   checkedAt: "2026-08-21T04:00:00.000Z",
@@ -112,7 +116,7 @@ describe("V2-07 read-only reconciliation", () => {
     ).rejects.toThrow("V207_RECONCILIATION_BASELINE_INVALID");
   });
 
-  it("rejects a missing, invalid, or already-exceeded cumulative finite cap", async () => {
+  it("treats the fresh cap as incremental over a historical baseline", async () => {
     await expect(
       reconcileV207Readonly({
         accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
@@ -126,25 +130,44 @@ describe("V2-07 read-only reconciliation", () => {
     await expect(
       reconcileV207Readonly({
         accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
-        baselineEndpointSpendUsd: 0.12480033212341368,
+        baselineEndpointSpendUsd: 5,
         maximumCumulativeFiniteSpendUsd: 0.1,
         inventory: async () => inventory(),
-        billingAmount: async () => 0.12480033212341368,
+        billingAmount: async () => 5.1,
         wait: async () => undefined,
       }),
-    ).rejects.toThrow("V207_RECONCILIATION_FINITE_CAP_INVALID");
+    ).resolves.toMatchObject({
+      billing: {
+        baseline_endpoint_spend_usd: 5,
+        final_endpoint_spend_usd: 5.1,
+        incremental_spend_usd: 0.09999999999999964,
+        maximum_cumulative_finite_spend_usd: 0.1,
+        within_approved_cap: true,
+      },
+    });
   });
 
-  it("fails closed when settled cumulative billing exceeds the approved cap", async () => {
+  it("fails closed when settled incremental billing exceeds the approved cap", async () => {
     await expect(
       reconcileV207Readonly({
         accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
-        baselineEndpointSpendUsd: 0.12480033212341368,
+        baselineEndpointSpendUsd: 5,
         maximumCumulativeFiniteSpendUsd: 0.2,
         inventory: async () => inventory(),
-        billingAmount: async () => 0.21,
+        billingAmount: async () => 5.21,
         wait: async () => undefined,
       }),
     ).rejects.toThrow("V207_RECONCILIATION_FINITE_CAP_EXCEEDED");
+  });
+
+  it("keeps threshold arithmetic and downward reads fail-closed", () => {
+    expect(v207IncrementalSpendThreshold(5, 0.2)).toBe(5.2);
+    expect(v207IncrementalSpendFromBilling(5, 5.2, 0.2)).toBeCloseTo(0.2);
+    expect(() => v207IncrementalSpendFromBilling(5, 4.99, 0.2)).toThrow(
+      "V207_RECONCILIATION_BILLING_INVALID",
+    );
+    expect(() => v207IncrementalSpendThreshold(Number.MAX_VALUE, Number.MAX_VALUE)).toThrow(
+      "V207_RECONCILIATION_FINITE_CAP_INVALID",
+    );
   });
 });

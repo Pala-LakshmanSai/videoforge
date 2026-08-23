@@ -97,6 +97,66 @@ export interface V207ReadonlyReconciliationResult {
   };
 }
 
+/**
+ * Return the approved-cap threshold in provider billing space.
+ *
+ * The user-approved finite cap is a fresh-attempt allowance.  RunPod's billing
+ * endpoint returns the account's cumulative endpoint total, so comparing that
+ * total directly with the fresh cap incorrectly rejects a run whose historical
+ * spend predates the approval.  Keep this arithmetic in one small, exported
+ * helper so the live runner and the final read-only reconciliation cannot drift.
+ */
+export function v207IncrementalSpendThreshold(
+  baselineEndpointSpendUsd: number,
+  maximumIncrementalSpendUsd: number,
+): number {
+  if (
+    !Number.isFinite(baselineEndpointSpendUsd) ||
+    baselineEndpointSpendUsd < 0 ||
+    !Number.isFinite(maximumIncrementalSpendUsd) ||
+    maximumIncrementalSpendUsd <= 0
+  ) {
+    throw new Error("V207_RECONCILIATION_FINITE_CAP_INVALID");
+  }
+  const threshold = baselineEndpointSpendUsd + maximumIncrementalSpendUsd;
+  if (!Number.isFinite(threshold)) {
+    throw new Error("V207_RECONCILIATION_FINITE_CAP_INVALID");
+  }
+  return threshold;
+}
+
+/**
+ * Validate a cumulative provider billing reading and return its fresh-attempt
+ * increment.  A downward billing read is not treated as zero spend: it means
+ * the provider read is inconsistent with the captured baseline and must stop
+ * the run before any further work is accepted.
+ */
+export function v207IncrementalSpendFromBilling(
+  baselineEndpointSpendUsd: number,
+  currentEndpointSpendUsd: number,
+  maximumIncrementalSpendUsd: number,
+  exceededCode = "V207_RECONCILIATION_FINITE_CAP_EXCEEDED",
+): number {
+  const threshold = v207IncrementalSpendThreshold(
+    baselineEndpointSpendUsd,
+    maximumIncrementalSpendUsd,
+  );
+  if (!Number.isFinite(currentEndpointSpendUsd) || currentEndpointSpendUsd < 0) {
+    throw new Error("V207_RECONCILIATION_BILLING_INVALID");
+  }
+  if (currentEndpointSpendUsd < baselineEndpointSpendUsd) {
+    throw new Error("V207_RECONCILIATION_BILLING_INVALID");
+  }
+  const incrementalSpendUsd = currentEndpointSpendUsd - baselineEndpointSpendUsd;
+  // Compare in cumulative billing space so a boundary value produced by the
+  // same baseline+cap arithmetic is not rejected by a floating-point roundoff
+  // in the separately-subtracted delta.
+  if (currentEndpointSpendUsd > threshold) {
+    throw new Error(exceededCode);
+  }
+  return incrementalSpendUsd;
+}
+
 export async function reconcileV207Readonly(input: {
   readonly accountIdHash: string;
   readonly baselineEndpointSpendUsd: number;
@@ -111,13 +171,10 @@ export async function reconcileV207Readonly(input: {
   if (!Number.isFinite(input.baselineEndpointSpendUsd) || input.baselineEndpointSpendUsd < 0) {
     throw new Error("V207_RECONCILIATION_BASELINE_INVALID");
   }
-  if (
-    !Number.isFinite(input.maximumCumulativeFiniteSpendUsd) ||
-    input.maximumCumulativeFiniteSpendUsd <= 0 ||
-    input.baselineEndpointSpendUsd > input.maximumCumulativeFiniteSpendUsd
-  ) {
-    throw new Error("V207_RECONCILIATION_FINITE_CAP_INVALID");
-  }
+  const billingThreshold = v207IncrementalSpendThreshold(
+    input.baselineEndpointSpendUsd,
+    input.maximumCumulativeFiniteSpendUsd,
+  );
   const wait = input.wait ?? sleep;
   let finalInventory: RunPodInventory | null = null;
   let priorBilling: number | null = null;
@@ -125,9 +182,11 @@ export async function reconcileV207Readonly(input: {
   for (let read = 0; read < 3; read += 1) {
     const [inventory, billing] = await Promise.all([input.inventory(), input.billingAmount()]);
     validateZeroComputeAndVolumes(inventory);
-    if (!Number.isFinite(billing) || billing < input.baselineEndpointSpendUsd) {
-      throw new Error("V207_RECONCILIATION_BILLING_INVALID");
-    }
+    v207IncrementalSpendFromBilling(
+      input.baselineEndpointSpendUsd,
+      billing,
+      input.maximumCumulativeFiniteSpendUsd,
+    );
     if (priorBilling !== null && Math.abs(billing - priorBilling) >= 0.000_001) {
       throw new Error("V207_RECONCILIATION_BILLING_UNSETTLED");
     }
@@ -137,7 +196,7 @@ export async function reconcileV207Readonly(input: {
     if (read < 2) await wait(10_000);
   }
   if (finalInventory === null) throw new Error("V207_RECONCILIATION_INVENTORY_MISSING");
-  if (finalBilling > input.maximumCumulativeFiniteSpendUsd) {
+  if (finalBilling > billingThreshold) {
     throw new Error("V207_RECONCILIATION_FINITE_CAP_EXCEEDED");
   }
   const result: V207ReadonlyReconciliationResult = {

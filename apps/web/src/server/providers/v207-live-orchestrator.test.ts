@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   assertV207DiskHeadroom,
+  assertV207WorkerRollbackAnchorRetained,
+  extractV207WorkerRollbackAnchor,
   extractV207WorkerVersionId,
   runV207LiveOrchestration,
   spawnV207Command,
@@ -29,6 +31,21 @@ const parseFixtureAuthority = () => ({
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGED_VERSION_ID = "22222222-2222-4222-8222-222222222222";
 const DEPLOYMENT_ID = "33333333-3333-4333-8333-333333333333";
+const VERSION_HISTORY = [
+  "44444444-4444-4444-8444-444444444444",
+  "55555555-5555-4555-8555-555555555555",
+  "66666666-6666-4666-8666-666666666666",
+  "77777777-7777-4777-8777-777777777777",
+  "88888888-8888-4888-8888-888888888888",
+  "99999999-9999-4999-8999-999999999999",
+  "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  VERSION_ID,
+] as const;
+const RECENT_VERSION_LIST = JSON.stringify({
+  versions: VERSION_HISTORY.map((version_id) => ({ version_id })),
+});
 const NONCE = "a".repeat(64);
 const RUNPOD_KEY = "runpod-key-must-not-be-written";
 const roots: string[] = [];
@@ -127,6 +144,47 @@ describe("V2-07 live orchestrator", () => {
     ).toThrow("V207_WORKER_VERSION_ID_MISSING");
   });
 
+  it("captures an exact active-version rollback anchor, not the deployment envelope", () => {
+    const status = {
+      id: DEPLOYMENT_ID,
+      versions: [{ version_id: VERSION_ID, percentage: 100, script_hash: "sha256:old" }],
+    };
+    const anchor = extractV207WorkerRollbackAnchor(status);
+    expect(anchor.versionId).toBe(VERSION_ID);
+    expect(anchor.sha256).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(anchor.sha256).not.toBe(`sha256:${"0".repeat(64)}`);
+    expect(() =>
+      extractV207WorkerRollbackAnchor({
+        id: DEPLOYMENT_ID,
+        versions: [
+          { version_id: VERSION_ID, percentage: 50 },
+          { version_id: CHANGED_VERSION_ID, percentage: 50 },
+        ],
+      }),
+    ).toThrow("V207_WORKER_ROLLBACK_ANCHOR_MISSING");
+  });
+
+  it("requires the captured anchor in the newest seven of Wrangler's oldest-to-newest ten-version window", () => {
+    expect(
+      assertV207WorkerRollbackAnchorRetained(JSON.parse(RECENT_VERSION_LIST), VERSION_ID),
+    ).toBe(9);
+    expect(() =>
+      assertV207WorkerRollbackAnchorRetained(
+        { versions: VERSION_HISTORY.slice(3).map((version_id) => ({ version_id })) },
+        VERSION_HISTORY[3],
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertV207WorkerRollbackAnchorRetained(JSON.parse(RECENT_VERSION_LIST), VERSION_HISTORY[2]),
+    ).toThrow("V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED");
+    expect(() =>
+      assertV207WorkerRollbackAnchorRetained(
+        { versions: [{ version_id: VERSION_HISTORY[0] }] },
+        VERSION_HISTORY[0],
+      ),
+    ).not.toThrow();
+  });
+
   it("runs the full flow with mocked commands, optional RunPod key, and redacted evidence", async () => {
     const files = await fixture();
     const calls: V207CommandRequest[] = [];
@@ -137,6 +195,9 @@ describe("V2-07 live orchestrator", () => {
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       calls.push(request);
       if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
       if (request.args.includes("deployments")) {
         return result(
           JSON.stringify({
@@ -263,6 +324,9 @@ describe("V2-07 live orchestrator", () => {
     let rollbackSeen = false;
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
       if (request.args.includes("deployments")) {
         return result(
           JSON.stringify({
@@ -336,6 +400,9 @@ describe("V2-07 live orchestrator", () => {
     let restorationProbeCalls = 0;
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
       if (request.args.includes("deployments")) {
         return result(
           JSON.stringify({
@@ -447,6 +514,9 @@ describe("V2-07 live orchestrator", () => {
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       calls.push(request);
       if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
       if (request.args.includes("deployments"))
         return result(
           JSON.stringify({
@@ -516,6 +586,9 @@ describe("V2-07 live orchestrator", () => {
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       calls.push(request);
       if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
       if (request.args.includes("deployments"))
         return result(
           JSON.stringify({
@@ -579,6 +652,9 @@ describe("V2-07 live orchestrator", () => {
     let signerSecretPresent = false;
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
       if (request.args.includes("deployments"))
         return result(
           JSON.stringify({
@@ -671,6 +747,47 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain("worker_rollback_skipped_no_mutation");
   });
 
+  it("fails closed before any Worker mutation when no exact rollback anchor is available", async () => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner: async (request) => {
+          calls.push(request);
+          if (request.command === "git") return result();
+          if (request.args.includes("versions") && request.args.includes("list")) {
+            return result(RECENT_VERSION_LIST);
+          }
+          if (request.args.includes("deployments")) {
+            return result(
+              JSON.stringify({
+                id: DEPLOYMENT_ID,
+                versions: [{ id: DEPLOYMENT_ID, percentage: 100 }],
+              }),
+            );
+          }
+          throw new Error("no provider mutation is allowed without an anchor");
+        },
+        fetchImpl: async () => {
+          throw new Error("route probe must not run");
+        },
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_WORKER_ROLLBACK_ANCHOR_MISSING" });
+    expect(calls).toHaveLength(2);
+    expect(calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(calls.some((call) => call.args.includes("secret"))).toBe(false);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain("V207_WORKER_ROLLBACK_ANCHOR_MISSING");
+    expect(evidence).toContain("worker_rollback_skipped_no_mutation");
+  });
+
   it("rolls back after removing a pre-existing signer secret because that is remote mutation", async () => {
     const files = await fixture();
     const calls: V207CommandRequest[] = [];
@@ -678,6 +795,9 @@ describe("V2-07 live orchestrator", () => {
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       calls.push(request);
       if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
       if (request.args.includes("deployments"))
         return result(
           JSON.stringify({
@@ -718,12 +838,61 @@ describe("V2-07 live orchestrator", () => {
     );
   });
 
+  it("fails before route or Worker mutation when the active anchor fell out of recent versions", async () => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(
+          JSON.stringify({
+            versions: VERSION_HISTORY.slice(0, 9).map((version_id) => ({ version_id })),
+          }),
+        );
+      }
+      throw new Error("provider mutation must not run without retained rollback anchor");
+    };
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl: async () => {
+          throw new Error("route probe must not run");
+        },
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED" });
+    expect(calls).toHaveLength(3);
+    expect(calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(calls.some((call) => call.args.includes("secret"))).toBe(false);
+    expect(await readFile(files.evidencePath, "utf8")).toContain(
+      "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED",
+    );
+  });
+
   it("fails closed when rollback does not restore the captured Worker version", async () => {
     const files = await fixture();
     let signerSecretPresent = false;
     let statusCalls = 0;
     const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
       if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
       if (request.args.includes("deployments")) {
         statusCalls += 1;
         return result(

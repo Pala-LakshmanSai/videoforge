@@ -28,7 +28,11 @@ import {
   type RunPodV207OutputAuthority,
   type RunPodV207WorkerProcessIdentity,
 } from "./runpod-v207-qualification-harness";
-import { reconcileV207Readonly } from "./runpod-v207-readonly-reconciliation";
+import {
+  reconcileV207Readonly,
+  v207IncrementalSpendFromBilling,
+  v207IncrementalSpendThreshold,
+} from "./runpod-v207-readonly-reconciliation";
 import { loadSujalRunPodApiKeyFromKeychain, SUJAL_RUNPOD_ACCOUNT_ID_SHA256 } from "./keychain";
 import { assertSujalRunPodAccount } from "./runpod-account";
 import {
@@ -1019,6 +1023,7 @@ type V207PreflightSummary = Readonly<{
   readonly runpod_account_id_sha256: string;
   readonly baseline_endpoint_spend_usd: number;
   readonly remaining_cumulative_cap_usd: number;
+  readonly cumulative_billing_threshold_usd: number;
   readonly route_authority: Readonly<{ readonly status: number; readonly code: string }>;
   readonly inventory: Readonly<{
     readonly checked_at: string;
@@ -1114,7 +1119,7 @@ export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
     throw new Error("V207_RUNPOD_ACCOUNT_MISMATCH");
   }
   const baseline = await billingAmount(apiKey);
-  if (baseline > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
+  const billingThreshold = v207IncrementalSpendThreshold(baseline, finiteCapUsd);
   const control = new RunPodControlClient({ apiKey });
   const inventory = await control.inventory();
   assertV207PreflightInventory(inventory);
@@ -1124,7 +1129,10 @@ export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
     image_attestation: imageAttestation,
     runpod_account_id_sha256: account.accountIdHash,
     baseline_endpoint_spend_usd: baseline,
-    remaining_cumulative_cap_usd: Math.max(0, finiteCapUsd - baseline),
+    // RunPod returns cumulative billing.  The approved cap applies only to
+    // spend after this fresh baseline, regardless of historical spend.
+    remaining_cumulative_cap_usd: finiteCapUsd,
+    cumulative_billing_threshold_usd: billingThreshold,
     route_authority: routeAuthority,
     inventory: Object.freeze({
       checked_at: inventory.checkedAt,
@@ -1989,6 +1997,7 @@ async function main(): Promise<void> {
           runpod_account_id_sha256: summary.runpod_account_id_sha256,
           baseline_endpoint_spend_usd: summary.baseline_endpoint_spend_usd,
           remaining_cumulative_cap_usd: summary.remaining_cumulative_cap_usd,
+          cumulative_billing_threshold_usd: summary.cumulative_billing_threshold_usd,
           route_authority: summary.route_authority,
           inventory: summary.inventory,
         })}`,
@@ -2014,12 +2023,15 @@ async function main(): Promise<void> {
       throw new Error("V207_RUNPOD_ACCOUNT_MISMATCH");
     }
     const baseline = await billingAmount(apiKey);
-    if (baseline > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
+    const billingThreshold = v207IncrementalSpendThreshold(baseline, finiteCapUsd);
     const spendSnapshotUsd = async (): Promise<number> => {
       const current = await billingAmount(apiKey);
-      if (current > finiteCapUsd) throw new Error("V207_FINITE_CAP_EXCEEDED");
-      const delta = Math.max(0, current - baseline);
-      return delta;
+      return v207IncrementalSpendFromBilling(
+        baseline,
+        current,
+        finiteCapUsd,
+        "V207_FINITE_CAP_EXCEEDED",
+      );
     };
     const settledSpendSnapshotUsd = async (): Promise<number> => {
       let previous: number | null = null;
@@ -2046,7 +2058,8 @@ async function main(): Promise<void> {
       approved_finite_spend_cap_usd: finiteCapUsd,
       runpod_account_id_sha256: account.accountIdHash,
       baseline_endpoint_spend_usd: baseline,
-      remaining_cumulative_cap_at_start_usd: Math.max(0, finiteCapUsd - baseline),
+      remaining_cumulative_cap_at_start_usd: finiteCapUsd,
+      cumulative_billing_threshold_usd: billingThreshold,
       image_digest: IMAGE.slice(IMAGE.indexOf("@") + 1),
       manifest_sha256: MANIFEST,
       volume_id_sha256: VOLUME,
