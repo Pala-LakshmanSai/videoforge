@@ -104,8 +104,8 @@ for (const [name, surface] of Object.entries({ state, gates, start, task })) {
   ok(surface.includes("V2-08"), `${name} V2-08 fence`);
 }
 for (const [needle, label] of [
-  ["phase: serverless_v2_v2_07_attempt45_closed_not_qualified", "state phase"],
-  ["task_stage: provider_free_diagnosis", "state task stage"],
+  ["phase: serverless_v2_v2_07_attempt46_candidate_pending_fresh_exact_approval", "state phase"],
+  ["task_stage: provider_free_candidate", "state task stage"],
   ["provider_calls_authorized: false", "state provider calls"],
   ["read_only_provider_calls_authorized: false", "state read-only calls"],
   ["remote_or_cloud_mutations_authorized: false", "state mutations"],
@@ -116,8 +116,8 @@ for (const [needle, label] of [
   ["current_goal_authority: null", "state candidate authority"],
   ["current_authority_sha256: null", "state candidate authority hash"],
   ["authority_state: CONSUMED_CLOSED_DO_NOT_REUSE", "state authority state"],
-  ["authority_mode: none_attempt45_consumed_signer_disabled_deploy_failed", "state authority mode"],
-  ["execution_status: attempt45_closed_signer_disabled_deploy_failed_clean", "state execution status"],
+  ["mode: closed_consumed_attempt45_signer_disabled_deploy_failed_clean", "state Attempt45 mode"],
+  ["result: NOT_QUALIFIED_attempt45_signer_disabled_deploy_failed_clean", "state Attempt45 result"],
   ["latest_live_check:", "state latest live check"],
   ["f945392", "canonical repair"],
   ["7066520", "deploy diagnostics repair"],
@@ -129,7 +129,7 @@ for (const [needle, label] of [
   ["current_candidate_authority_mode: none", "gate authority mode"],
   ["pending_authority: null", "gate pending authority"],
   ["pending_numeric_cap_usd: null", "gate pending cap"],
-  ["authority_mode: none_attempt45_consumed_signer_disabled_deploy_failed", "gate authority state"],
+  ["latest_closed_authority_mode: closed_consumed_attempt45_signer_disabled_deploy_failed", "gate Attempt45 authority state"],
   ["provider_calls_authorized: false", "gate provider calls"],
   ["provider_mutations_authorized: false", "gate mutations"],
   ["gpu_use_authorized: false", "gate GPU"],
