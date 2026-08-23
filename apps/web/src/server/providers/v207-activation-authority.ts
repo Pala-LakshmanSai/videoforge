@@ -65,9 +65,11 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+// Attempt41 was consumed and closed fail-closed after the provider GET-readback
+// authority mismatch. Keep its immutable lineage above for historical validation,
+// but remove the executable approval and cap so no replay can cross the boundary.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {
   readonly image: string;
