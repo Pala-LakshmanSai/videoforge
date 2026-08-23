@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 REPAIR_DOCKERFILE = ROOT / "Dockerfile.mage.repair"
-REPAIRED_SOURCE_COMMIT = "4249cafd4a5525b5723d0811f16496fb0e949653"
+REPAIRED_SOURCE_COMMIT = "a7b7a937d08dc9032b8922cca71c602195f3094c"
 BASE_IMMUTABLE_IMAGE = (
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
     "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
@@ -30,7 +30,7 @@ REPAIR_RUNTIME_FILES = (
     ),
 )
 REPAIR_SOURCE_HASHES = {
-    "workers/image-media/mage_serverless.py": "dfc2cebede44c0a8903daf0e6348040cd6e2b5af1a00c77d3f767ddb10aa316c",
+    "workers/image-media/mage_serverless.py": "3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da",
     "packages/contracts/python/videoforge_contracts/_schema_documents.py": "a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71",
 }
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
@@ -164,10 +164,10 @@ class MageWorkerImageTest(unittest.TestCase):
             encoding="utf-8"
         )
         expected_manifest = (
-            "sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2"
+            "sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
         )
-        expected_config = "sha256:09d2ee0905ec4556857aae9df05b449802916cdf9e0d8ec4615a91b6d1fa9d06"
-        expected_layer = "sha256:1b390600563d813a87e09c2fa075d52ea1c24558e83b67c5649aa422a2c69c78"
+        expected_config = "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6"
+        expected_layer = "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a"
         self.assertIn(f'expected_manifest_digest="{expected_manifest}"', workflow)
         self.assertIn(f'expected_config_digest="{expected_config}"', workflow)
         self.assertIn(f'expected_layer_digest="{expected_layer}"', workflow)

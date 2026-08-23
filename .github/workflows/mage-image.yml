@@ -45,9 +45,9 @@ jobs:
           set -euo pipefail
           parent_digest="sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
           parent_config_digest="sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2"
-          expected_manifest_digest="sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2"
-          expected_config_digest="sha256:09d2ee0905ec4556857aae9df05b449802916cdf9e0d8ec4615a91b6d1fa9d06"
-          expected_layer_digest="sha256:1b390600563d813a87e09c2fa075d52ea1c24558e83b67c5649aa422a2c69c78"
+          expected_manifest_digest="sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
+          expected_config_digest="sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6"
+          expected_layer_digest="sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a"
           overlay_dir="$RUNNER_TEMP/v207-mage-oci-overlay"
           mkdir -p "$overlay_dir/input" "$overlay_dir/output"
           registry_token="$(
@@ -73,9 +73,9 @@ jobs:
             --source packages/contracts/python/videoforge_contracts/_schema_documents.py \
             --destination /opt/videoforge/mage_serverless.py \
             --destination /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
-            --source-commit 4249cafd4a5525b5723d0811f16496fb0e949653 \
+            --source-commit a7b7a937d08dc9032b8922cca71c602195f3094c \
             --parent-image "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@$parent_digest" \
-            --created 2026-08-20T14:22:30Z \
+            --created 2026-08-23T02:38:33Z \
             --output-dir "$overlay_dir/output"
           test "$(jq -r '.manifest_digest' "$overlay_dir/output/identity.json")" = "$expected_manifest_digest"
           test "$(jq -r '.config_digest' "$overlay_dir/output/identity.json")" = "$expected_config_digest"
@@ -83,7 +83,7 @@ jobs:
           python3 workers/image-media/publish_mage_oci_overlay.py \
             --output-dir "$overlay_dir/output" \
             --repository pala-lakshmansai/videoforge-mage-v2-07 \
-            --tag v2-07-diagnostics-4249caf
+            --tag v2-07-lineage-a7b7a93
           echo "MAGE_OCI_OUTPUT_DIR=$overlay_dir/output" >> "$GITHUB_ENV"
           echo "MAGE_OCI_BASE_MANIFEST=$overlay_dir/input/manifest.json" >> "$GITHUB_ENV"
           echo "MAGE_OCI_BASE_CONFIG=$overlay_dir/input/config.json" >> "$GITHUB_ENV"
@@ -97,12 +97,12 @@ jobs:
         run: |
           set -euo pipefail
           test "$RUNNER_ARCH" = "X64"
-          expected_source_commit="4249cafd4a5525b5723d0811f16496fb0e949653"
+          expected_source_commit="a7b7a937d08dc9032b8922cca71c602195f3094c"
           # The checkout may be newer than the source commit that defines the
           # repaired overlay.  Pin the bytes copied into the image explicitly;
           # labels alone would allow a later checkout to silently drift.
           expected_source_hashes=(
-            "workers/image-media/mage_serverless.py|dfc2cebede44c0a8903daf0e6348040cd6e2b5af1a00c77d3f767ddb10aa316c"
+            "workers/image-media/mage_serverless.py|3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da"
             "packages/contracts/python/videoforge_contracts/_schema_documents.py|a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
           )
           for source_entry in "${expected_source_hashes[@]}"; do
@@ -139,7 +139,7 @@ jobs:
           candidate_source="$RUNNER_TEMP/v207-candidate-mage_serverless.py"
           candidate_verification="$RUNNER_TEMP/v207-candidate-verification.json"
           candidate_schema="$RUNNER_TEMP/v207-candidate-schema-documents.py"
-          expected_handler_sha="dfc2cebede44c0a8903daf0e6348040cd6e2b5af1a00c77d3f767ddb10aa316c"
+          expected_handler_sha="3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da"
           expected_schema_sha="a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
           python3 workers/image-media/verify_mage_oci_overlay.py \
             --output-dir "$MAGE_OCI_OUTPUT_DIR" \
@@ -148,7 +148,7 @@ jobs:
             --expected-manifest-digest "$MAGE_EXPECTED_MANIFEST_DIGEST" \
             --expected-config-digest "$MAGE_EXPECTED_CONFIG_DIGEST" \
             --expected-layer-digest "$MAGE_EXPECTED_LAYER_DIGEST" \
-            --expected-source-commit 4249cafd4a5525b5723d0811f16496fb0e949653 \
+            --expected-source-commit a7b7a937d08dc9032b8922cca71c602195f3094c \
             --expected-source /opt/videoforge/mage_serverless.py\|sha256:$expected_handler_sha \
             --expected-source /opt/videoforge/src/videoforge_contracts/_schema_documents.py\|sha256:$expected_schema_sha \
             --expected-parent-image ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497 \
@@ -190,7 +190,7 @@ jobs:
             python3 workers/image-media/publish_mage_oci_overlay.py \
               --output-dir "$MAGE_OCI_OUTPUT_DIR" \
               --repository pala-lakshmansai/videoforge-mage-v2-07 \
-              --tag v2-07-diagnostics-4249caf \
+              --tag v2-07-lineage-a7b7a93 \
               --publish
           )"
           test "$(jq -r '.manifest_digest' <<<"$publication")" = \
