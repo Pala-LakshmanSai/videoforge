@@ -1979,10 +1979,10 @@ model_runtime_evidence:
     v2_07_historical_attempt41_evidence_sha256: "sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187"
     v2_07_historical_attempt41_proposal: evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate/combined-live-proposal.json
     v2_07_historical_attempt41_proposal_sha256: "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18"
-    v2_07_cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-cleanup-observation.json
-    v2_07_cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
-    v2_07_reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
-    v2_07_reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
+    v2_07_historical_attempt41_cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-cleanup-observation.json
+    v2_07_historical_attempt41_cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
+    v2_07_historical_attempt41_reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
+    v2_07_historical_attempt41_reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
     v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/combined-live-proposal.json
     v2_07_current_candidate_sha256: "sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259"
     v2_07_current_candidate_control_commit: "926b149"
@@ -1999,14 +1999,14 @@ model_runtime_evidence:
     v2_07_current_candidate_cap_usd: null
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json
     v2_07_publication_evidence_sha256: "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7"
-    v2_07_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate/approved-authority.json
-    v2_07_authority_sha256: "sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d"
-    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt40-item-lineage-candidate/approved-authority.json
-    v2_07_latest_closed_authority_sha256: "sha256:5691eb5bb3a9009fd1a010c74b7c04bc47d15c0ce580ff47f6183c105a563736"
+    v2_07_historical_attempt41_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate/approved-authority.json
+    v2_07_historical_attempt41_authority_sha256: "sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d"
+    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/approved-authority.json
+    v2_07_latest_closed_authority_sha256: "sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67"
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
-    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-44.json
+    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-45.json
     v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/acceptance.json
     v2_07_current_candidate_acceptance_sha256: "sha256:4e467eaf9190cb6cc93e344fdc608fcbc49c7bc6e99d7f68fe055e149484d5e8"
     v2_07_attempt_30_increment_usd_immediate_post_cleanup: 0
@@ -2016,7 +2016,8 @@ model_runtime_evidence:
     v2_07_attempt_35_increment_usd_settled: 0
     v2_07_attempt_37_increment_usd_settled: 0.21460066991858184
     v2_07_attempt_38_increment_usd_settled: 0
-    v2_07_observed_cumulative_endpoint_spend_usd: 1.5903418626403436
+    v2_07_observed_cumulative_endpoint_spend_usd: 1.6217972798040137
+    v2_07_attempt_45_unattributed_late_billing_delta_usd: 0.03145541716367006
     v2_07_attempt_44_increment_usd_settled: 0
     v2_07_attempt_31_increment_usd_settled: 0.05512650031596422
     v2_07_attempt_29_increment_usd_settled: 0.15470044442918152
