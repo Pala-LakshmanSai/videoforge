@@ -1,0 +1,131 @@
+{
+  "schema_version": "videoforge.v2-07-attempt46-deploy-diagnostic-canonical-repair-combined-live-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 46,
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP",
+  "provider_mutation": false,
+  "publication": false,
+  "gpu_use": false,
+  "spend_usd": 0,
+  "reason": "Attempt45 consumed its authority and stopped at signer-disabled Worker deployment before any RunPod call. Attempt46 binds the real-source canonicalization repair and redaction-safe Wrangler deploy diagnostics; it does not reuse Attempt45 authority or cap.",
+  "requested_approval": {
+    "exact_proposal_approved": false,
+    "flashboot": true,
+    "minimum_availability": "LOW-or-better",
+    "region": "EU-RO-1",
+    "maximum_cumulative_finite_spend_usd": null,
+    "fresh_positive_numeric_cap_required": true,
+    "prior_authority_or_cap_reuse_forbidden": true
+  },
+  "lineage": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "image_config_sha256": "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6",
+    "image_layer_sha256": "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a",
+    "image_layer_diff_id": "sha256:9f759e3f49c84816de71246f51f9aca275fc080c7c9c082aaa39ce81e8b049e1",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flashboot": true,
+    "canonical_activation_source_sha256": "sha256:858ebe43ef8ad6558825d6b1c756311a8944cd2ef27e58f42651d793ab191da9",
+    "orchestrator_source_sha256": "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894",
+    "live_qualification_source_sha256": "sha256:c5187fb9636d53e214d90f60c1a67a13ed06dc47c558f4869628b6d09a27a9c5",
+    "repair_commits": [
+      "1a8a12de10869d163ddf7bb4dfa3f329407ba566",
+      "f945392",
+      "7066520",
+      "926b149"
+    ]
+  },
+  "prior_attempt": {
+    "attempt": 45,
+    "proposal_sha256": "sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770",
+    "authority_sha256": "sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67",
+    "closure_path": "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-45.json",
+    "closure_sha256": "sha256:f287a7ec8ea064587e251f5ccb9b5321025d37976fdbf40b0b894a962c71167c",
+    "authority_consumed": true,
+    "runpod_calls_reached": false,
+    "runpod_jobs_submitted": 0,
+    "gpu_use": false,
+    "cleanup_confirmed": true
+  },
+  "last_observed_provider_truth": {
+    "checked_at": "2026-08-23T15:03:46.164Z",
+    "evidence_path": "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt45-reconciliation-observation.json",
+    "evidence_sha256": "sha256:e786ee74546632ed38aeef5acf3860605693cd7255a4a19ba44d99ca91b82c2d",
+    "fresh_read_required_after_approval": true,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": 2,
+    "cumulative_endpoint_spend_usd": 1.6217972798040137,
+    "attempt45_unattributed_late_billing_delta_usd": 0.03145541716367006
+  },
+  "staged_endpoint_configs": [
+    {
+      "path": "staged-config-max1.json",
+      "sha256": "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a",
+      "workers_min": 0,
+      "workers_max": 1,
+      "gpu_count": 1,
+      "compute_type": "GPU",
+      "flex_only": true
+    },
+    {
+      "path": "staged-config-max2.json",
+      "sha256": "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb",
+      "workers_min": 0,
+      "workers_max": 2,
+      "gpu_count_per_worker": 1,
+      "compute_type": "GPU",
+      "flex_only": true,
+      "use": "BOUNDED_CONCURRENT_READER_PROOF_ONLY",
+      "restore": "staged-config-max1.json"
+    }
+  ],
+  "operations": [
+    "read-only refresh exact RunPod account, EU-RO-1 inventory, volume identity, quota surface, RTX 4090 availability, rates, and billing baseline",
+    "read-only verify protected Cloudflare config mode/hash, disabled signer route, and retained rollback anchor",
+    "deploy signer-disabled current Worker and retain only allowlisted deploy diagnostic class/channel/exit/signal on failure",
+    "activate the scoped R2 signer route only after exact version-metadata proof",
+    "create or update one private EU-RO-1 endpoint from exact max1 config",
+    "submit and reconcile owned probe, cold batch, warm batch, duplicate delivery, cancel, and timeout jobs",
+    "apply exact max2 config only for two simultaneous read-only workers, then restore exact max1",
+    "prove durable per-unit outputs and v3 receipts before provider expiry, manifest equality, zero model-volume writes/cache escape, timings, peak VRAM, and settled cost",
+    "scale down and independently prove workers zero; retain endpoint/template only on full success",
+    "on failure cancel only owned jobs, delete only disposable endpoint/template, roll back signer/Worker/route, preserve both intended volumes, and perform three stable final reconciliation reads",
+    "stop before V2-08"
+  ],
+  "forbidden": [
+    "image publication or tag mutation",
+    "model download, preparation, quantization, volume write, rebuild, delete, or cross-mount",
+    "GPU, region, image, model, or volume fallback",
+    "unplanned duplicate compute or accepted-unit regeneration",
+    "raw deploy stderr/stdout, URL, ID, header, token, secret, or response-body retention",
+    "spend at or above the approved cap or continuation under uncertain cleanup"
+  ],
+  "cost": {
+    "serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "secure_pod_reference_usd_per_hour": 0.74,
+    "finite_action_estimate_usd": 3.95,
+    "maximum_cumulative_finite_spend_usd": null,
+    "existing_two_retained_volumes_usd_per_month": 7,
+    "retained_volume_charge_separate": true
+  },
+  "provider_boundary": {
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "spend_authorized_usd": 0,
+    "authority_file_present": false,
+    "v2_08_authorized": false
+  }
+}
