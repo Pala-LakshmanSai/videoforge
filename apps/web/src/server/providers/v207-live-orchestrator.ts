@@ -70,6 +70,101 @@ export const V207_ORCHESTRATOR_MIN_FREE_BYTES = 2 * 1024 * 1024 * 1024;
 const V207_CHILD_FAILURE_CODE = /\b(?:MAGE|RUNPOD|SERVERLESS|V207)_[A-Z0-9][A-Z0-9_.-]{1,159}\b/u;
 const V207_CHILD_FAILURE_UNCLASSIFIED = "V207_CHILD_FAILURE_UNCLASSIFIED" as const;
 
+/**
+ * Wrangler emits human-readable diagnostics on stderr and, depending on the version, sometimes
+ * stdout.  The deploy boundary may classify those diagnostics, but it must never persist the
+ * diagnostic text itself.  Keep this list intentionally small: a class is useful for deciding
+ * whether a later provider-free repair is warranted, while an unrecognised message must remain
+ * `unknown` rather than becoming an accidental assertion about the provider.
+ */
+export const V207_WRANGLER_DEPLOY_FAILURE_CLASSES = [
+  "authentication",
+  "configuration",
+  "network",
+  "rate_limit",
+  "provider",
+  "unknown",
+] as const;
+export type V207WranglerDeployFailureClass = (typeof V207_WRANGLER_DEPLOY_FAILURE_CLASSES)[number];
+export const V207_WRANGLER_DEPLOY_FAILURE_EVENT_DETAIL_KEYS = [
+  "deploy_failure_class",
+  "deploy_output_channel",
+  "deploy_exit_code",
+  "deploy_signal",
+] as const;
+type V207WranglerDeployFailureOutputChannel = "stderr" | "stdout" | "both" | "none";
+export interface V207WranglerDeployFailureDiagnostic {
+  readonly failure_class: V207WranglerDeployFailureClass;
+  readonly output_channel: V207WranglerDeployFailureOutputChannel;
+  readonly exit_code: number | null;
+  readonly signal: NodeJS.Signals | null;
+}
+
+const V207_WRANGLER_DEPLOY_FAILURE_PATTERNS: ReadonlyArray<{
+  readonly failureClass: Exclude<V207WranglerDeployFailureClass, "unknown">;
+  readonly pattern: RegExp;
+}> = [
+  {
+    failureClass: "authentication",
+    pattern:
+      /\b(?:authentication|unauthori[sz]ed|forbidden|invalid\s+(?:api\s+)?token|api\s+token\s+(?:is\s+)?invalid|not\s+authorized|access\s+denied)\b/iu,
+  },
+  {
+    failureClass: "configuration",
+    pattern:
+      /\b(?:invalid\s+config(?:uration)?|config(?:uration)?\s+(?:file|error)|missing\s+(?:account[_ -]?id|script(?:\s+name)?|config)|account[_ -]?id\s+(?:is\s+)?required|compatibility\s+date)\b/iu,
+  },
+  {
+    failureClass: "network",
+    pattern:
+      /\b(?:network|fetch\s+failed|econn(?:refused|reset)|enotfound|etimedout|timed\s+out|socket|tls|dns)\b/iu,
+  },
+  {
+    failureClass: "rate_limit",
+    pattern: /\b(?:rate[- ]?limit(?:ed|ing)?|too\s+many\s+requests|quota|\b429\b)\b/iu,
+  },
+  {
+    failureClass: "provider",
+    pattern:
+      /\b(?:cloudflare\s+api|api\s+request\s+(?:failed|error)|internal\s+server\s+error|bad\s+gateway|service\s+unavailable|\b5\d{2}\b|error\s+code\s*[:=]?\s*\d{4,6}|code\s*[:=]\s*\d{4,6})\b/iu,
+  },
+];
+const V207_CHILD_SIGNAL_NAMES = new Set<string>([
+  "SIGABRT",
+  "SIGALRM",
+  "SIGBUS",
+  "SIGCHLD",
+  "SIGCONT",
+  "SIGFPE",
+  "SIGHUP",
+  "SIGILL",
+  "SIGINT",
+  "SIGIO",
+  "SIGIOT",
+  "SIGKILL",
+  "SIGPIPE",
+  "SIGPOLL",
+  "SIGPROF",
+  "SIGPWR",
+  "SIGQUIT",
+  "SIGSEGV",
+  "SIGSTKFLT",
+  "SIGSTOP",
+  "SIGSYS",
+  "SIGTERM",
+  "SIGTRAP",
+  "SIGTSTP",
+  "SIGTTIN",
+  "SIGTTOU",
+  "SIGURG",
+  "SIGUSR1",
+  "SIGUSR2",
+  "SIGVTALRM",
+  "SIGWINCH",
+  "SIGXCPU",
+  "SIGXFSZ",
+]);
+
 type Environment = Readonly<Record<string, string | undefined>>;
 
 export interface V207CommandRequest {
@@ -218,6 +313,47 @@ function safeErrorCode(error: unknown): string {
 export function extractV207ChildFailureCode(stderr: string): string {
   const match = V207_CHILD_FAILURE_CODE.exec(stderr.slice(0, MAX_CAPTURE_BYTES));
   return match?.[0] ?? V207_CHILD_FAILURE_UNCLASSIFIED;
+}
+
+const normalizeDeployExitCode = (value: number | null): number | null =>
+  value !== null && Number.isSafeInteger(value) && value >= 0 && value <= 255 ? value : null;
+
+const normalizeDeploySignal = (value: NodeJS.Signals | null): NodeJS.Signals | null =>
+  typeof value === "string" && V207_CHILD_SIGNAL_NAMES.has(value)
+    ? (value as NodeJS.Signals)
+    : null;
+
+/**
+ * Classify a failed Wrangler deploy without allowing untrusted command output to cross the
+ * evidence boundary.  Both output channels are inspected in memory because Wrangler has emitted
+ * the same class of failure on either channel across versions.  Only the allowlisted class,
+ * channel-presence tuple, exit code, and signal are returned; URLs, response bodies, identifiers,
+ * headers, tokens, and arbitrary text are never returned or persisted.
+ */
+export function classifyV207WranglerDeployFailure(
+  result: Pick<V207CommandResult, "exitCode" | "signal" | "stdout" | "stderr">,
+): V207WranglerDeployFailureDiagnostic {
+  const stderr = typeof result.stderr === "string" ? result.stderr.slice(0, MAX_CAPTURE_BYTES) : "";
+  const stdout = typeof result.stdout === "string" ? result.stdout.slice(0, MAX_CAPTURE_BYTES) : "";
+  const matchingClass = V207_WRANGLER_DEPLOY_FAILURE_PATTERNS.find(
+    ({ pattern }) => pattern.test(stderr) || pattern.test(stdout),
+  )?.failureClass;
+  const stderrHasOutput = stderr.length > 0;
+  const stdoutHasOutput = stdout.length > 0;
+  const outputChannel: V207WranglerDeployFailureOutputChannel =
+    stderrHasOutput && stdoutHasOutput
+      ? "both"
+      : stderrHasOutput
+        ? "stderr"
+        : stdoutHasOutput
+          ? "stdout"
+          : "none";
+  return Object.freeze({
+    failure_class: matchingClass ?? "unknown",
+    output_channel: outputChannel,
+    exit_code: normalizeDeployExitCode(result.exitCode),
+    signal: normalizeDeploySignal(result.signal),
+  });
 }
 
 function redactEnvironment(environment: Environment): Record<string, string | undefined> {
@@ -1177,6 +1313,7 @@ export async function runV207LiveOrchestration(
   let preMutationRoute: RouteFingerprint | undefined;
   let runnerExitCode: number | undefined;
   let childFailureCode: string | undefined;
+  let deployFailureDiagnostic: V207WranglerDeployFailureDiagnostic | undefined;
   let primaryError: unknown;
   const cleanupErrors: string[] = [];
   try {
@@ -1370,16 +1507,17 @@ export async function runV207LiveOrchestration(
 
     if (rollbackAnchorRefresh.enabled) refreshValidationStarted = true;
     workerMutationMayExist = true;
-    requireSuccessful(
-      "V207_SIGNER_DISABLED_DEPLOY",
-      await run({
-        command: "pnpm",
-        args: ["--filter", "@videoforge/web", "exec", "wrangler", "deploy", "--config", configPath],
-        cwd,
-        env: redactEnvironment(environment),
-        signal: abortController.signal,
-      }),
-    );
+    const signerDisabledDeploy = await run({
+      command: "pnpm",
+      args: ["--filter", "@videoforge/web", "exec", "wrangler", "deploy", "--config", configPath],
+      cwd,
+      env: redactEnvironment(environment),
+      signal: abortController.signal,
+    });
+    if (signerDisabledDeploy.exitCode !== 0) {
+      deployFailureDiagnostic = classifyV207WranglerDeployFailure(signerDisabledDeploy);
+      throw new V207LiveOrchestratorError("V207_SIGNER_DISABLED_DEPLOY_FAILED");
+    }
     await record("current_source_deployed_signer_disabled");
 
     if (rollbackAnchorRefresh.enabled) {
@@ -1523,6 +1661,14 @@ export async function runV207LiveOrchestration(
       await record("orchestration_failed", {
         code: safeErrorCode(error),
         ...(childFailureCode === undefined ? {} : { child_failure_code: childFailureCode }),
+        ...(deployFailureDiagnostic === undefined
+          ? {}
+          : {
+              deploy_failure_class: deployFailureDiagnostic.failure_class,
+              deploy_output_channel: deployFailureDiagnostic.output_channel,
+              deploy_exit_code: deployFailureDiagnostic.exit_code,
+              deploy_signal: deployFailureDiagnostic.signal,
+            }),
       });
     } catch {
       // The initialized evidence path remains the only durable diagnostic; cleanup is still

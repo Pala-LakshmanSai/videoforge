@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assertV207DiskHeadroom,
   assertV207WorkerRollbackAnchorRetained,
+  classifyV207WranglerDeployFailure,
   extractV207ChildFailureCode,
   extractV207WorkerRollbackAnchor,
   extractV207WorkerVersionId,
@@ -14,6 +15,7 @@ import {
   spawnV207Command,
   V207_ORCHESTRATOR_SECRET_NAME,
   V207_ORCHESTRATOR_MIN_FREE_BYTES,
+  V207_WRANGLER_DEPLOY_FAILURE_EVENT_DETAIL_KEYS,
   V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
   V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY,
   type V207CommandRequest,
@@ -150,6 +152,154 @@ describe("V2-07 live orchestrator", () => {
     expect(extractV207ChildFailureCode("unclassified provider diagnostic")).toBe(
       "V207_CHILD_FAILURE_UNCLASSIFIED",
     );
+  });
+
+  it.each([
+    {
+      name: "authentication",
+      stderr: "Authentication failed for API token; bearer secret must not persist",
+      expected: "authentication",
+    },
+    {
+      name: "configuration",
+      stderr: "Invalid configuration: account_id is required",
+      expected: "configuration",
+    },
+    {
+      name: "network",
+      stderr: "fetch failed: ECONNRESET while contacting provider",
+      expected: "network",
+    },
+    {
+      name: "rate limit",
+      stderr: "429 Too Many Requests: quota exceeded",
+      expected: "rate_limit",
+    },
+    {
+      name: "provider",
+      stdout: "Cloudflare API request failed with code 10021",
+      expected: "provider",
+    },
+    {
+      name: "unknown",
+      stderr: "opaque provider body with no recognized class",
+      expected: "unknown",
+    },
+  ] as const)("classifies bounded Wrangler deploy failure $name", ({ expected, ...output }) => {
+    const diagnostic = classifyV207WranglerDeployFailure({
+      exitCode: 1,
+      signal: null,
+      stdout: output.stdout ?? "",
+      stderr: output.stderr ?? "",
+    });
+    expect(diagnostic.failure_class).toBe(expected);
+    expect(diagnostic.exit_code).toBe(1);
+    expect(diagnostic.signal).toBeNull();
+    expect(JSON.stringify(diagnostic)).not.toContain("bearer secret");
+    expect(JSON.stringify(diagnostic)).not.toContain("provider body");
+    expect(JSON.stringify(diagnostic)).not.toContain("10021");
+  });
+
+  it("returns only the exact deploy event detail tuple and never raw command text", () => {
+    const diagnostic = classifyV207WranglerDeployFailure({
+      exitCode: 1,
+      signal: null,
+      stdout: "https://api.example.invalid/deploy/provider-id response-body-secret",
+      stderr: "x-videoforge-worker-version: 11111111-1111-4111-8111-111111111111",
+    });
+    const eventDetail = {
+      deploy_failure_class: diagnostic.failure_class,
+      deploy_output_channel: diagnostic.output_channel,
+      deploy_exit_code: diagnostic.exit_code,
+      deploy_signal: diagnostic.signal,
+    };
+    expect(Object.keys(eventDetail)).toEqual([...V207_WRANGLER_DEPLOY_FAILURE_EVENT_DETAIL_KEYS]);
+    expect(JSON.stringify(eventDetail)).not.toContain("api.example.invalid");
+    expect(JSON.stringify(eventDetail)).not.toContain("provider-id");
+    expect(JSON.stringify(eventDetail)).not.toContain("response-body-secret");
+    expect(JSON.stringify(eventDetail)).not.toContain("11111111-1111-4111-8111-111111111111");
+  });
+
+  it("preserves the deploy top-level code and cleanup while recording only bounded diagnostics", async () => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    let rollbackSeen = false;
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes("build:staging")) return result();
+      if (request.args.includes("deploy")) {
+        return {
+          exitCode: 1,
+          signal: null,
+          stdout: "https://api.example.invalid/deploy/provider-id response-body-secret",
+          stderr:
+            "Cloudflare API request failed with code 10021; " +
+            "x-videoforge-worker-version: 11111111-1111-4111-8111-111111111111",
+        };
+      }
+      if (request.args.includes("rollback")) {
+        rollbackSeen = true;
+        return result();
+      }
+      return result();
+    };
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+        status: 404,
+      });
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_SIGNER_DISABLED_DEPLOY_FAILED" });
+
+    expect(rollbackSeen).toBe(true);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+    const evidence = JSON.parse(await readFile(files.evidencePath, "utf8")) as {
+      readonly events: ReadonlyArray<{
+        readonly event: string;
+        readonly detail?: Readonly<Record<string, unknown>>;
+      }>;
+      readonly result: string;
+    };
+    const failureEvent = evidence.events.find((event) => event.event === "orchestration_failed");
+    expect(failureEvent?.detail).toEqual({
+      code: "V207_SIGNER_DISABLED_DEPLOY_FAILED",
+      deploy_failure_class: "provider",
+      deploy_output_channel: "both",
+      deploy_exit_code: 1,
+      deploy_signal: null,
+    });
+    expect(evidence.result).toBe("FAILED");
+    expect(JSON.stringify(evidence)).not.toContain("api.example.invalid");
+    expect(JSON.stringify(evidence)).not.toContain("provider-id");
+    expect(JSON.stringify(evidence)).not.toContain("response-body-secret");
+    expect(JSON.stringify(evidence)).not.toContain("11111111-1111-4111-8111-111111111111");
   });
 
   it("fails before orchestration when local disk cannot safely persist evidence", () => {
