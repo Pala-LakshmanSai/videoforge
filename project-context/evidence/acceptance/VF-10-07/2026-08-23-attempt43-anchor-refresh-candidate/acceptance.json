@@ -8,7 +8,7 @@
   "qualification_status": "NOT_QUALIFIED_PENDING_EXECUTION",
   "candidate": {
     "proposal_path": "combined-live-proposal.json",
-    "proposal_sha256": "sha256:a01be815b987e1e402538421ddef80a70294eae0555f82f9ba90a3bdef8607df",
+    "proposal_sha256": "sha256:387c8f338c129a959f60f1104f29c03c80c3160149d4c6eac7508e8ef0ad452a",
     "max1_sha256": "sha256:72dfa25d988699553141207dc6604f07cfd8f27e7a62954de4d357da79242951",
     "max2_sha256": "sha256:4f27d0d4d97d9d5773b7492e4c6fbd78eb0b07510206bdc3c26c5dac885e9e38",
     "control_source_commits": [

@@ -1,7 +1,7 @@
 # VideoForge: start here
 
 Attempt43 is a provider-free anchor-refresh candidate pending exact approval and a fresh positive cap.
-Proposal `sha256:a01be815b987e1e402538421ddef80a70294eae0555f82f9ba90a3bdef8607df` binds the exact Mage
+Proposal `sha256:387c8f338c129a959f60f1104f29c03c80c3160149d4c6eac7508e8ef0ad452a` binds the exact Mage
 image/model/volume, Attempt42 closure hashes, exact authority `e5571ed`, orchestrator-owned marker lifecycle
 `3dda73f`, exact config-path pin `75c784a`, fresh catalog/success reconciliation `5e1e5a0`, atomic helper `816d286`, baseline config
 `sha256:085c49cad14e5e3b339f34065075f311a795c311d474c2355b6477f75c860175` mode 0600, projected marker

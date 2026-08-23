@@ -56,7 +56,7 @@ const expected = {
   orchestratorSource:
     "sha256:f8cad240cdfb4ba0aa0885aef3e00ab38e0b051950dcf41528f219bc7d7bb90a",
   typedAuthoritySource:
-    "sha256:dfe6fd2ce9ae933bcbdbce61275a50920ebfb1d2bce5bb7123e540ddf9295857",
+    "sha256:abebc7cd8e90c81496dd111970a741c939d57a9e148835d0aec233409fe5389b",
   helperSource:
     "sha256:8b059ade2b20ca3aea06a502af98858b6b5cce8e6e95f3008b45483712b28db8",
   liveQualificationSource:
@@ -94,6 +94,7 @@ const acceptanceHash = sha(paths.acceptance);
 const preflightHash = sha(paths.preflight);
 const max1Hash = sha(paths.max1);
 const max2Hash = sha(paths.max2);
+const activationSourceHash = sha(paths.activation);
 
 for (const [name, value] of Object.entries({ proposalHash, acceptanceHash, preflightHash, max1Hash, max2Hash })) {
   assert(shaPattern.test(value), name + "_FORMAT");
@@ -191,6 +192,7 @@ assert(
     proposal.lineage?.control_source_hashes?.orchestrator_source_sha256 ===
       expected.orchestratorSource &&
     proposal.lineage?.control_source_hashes?.typed_authority_source_sha256 === expected.typedAuthoritySource &&
+    proposal.lineage?.control_source_hashes?.typed_authority_source_sha256 === activationSourceHash &&
     proposal.lineage?.control_source_hashes?.protected_config_helper_source_sha256 === expected.helperSource &&
     proposal.lineage?.control_source_hashes?.live_qualification_source_sha256 ===
       expected.liveQualificationSource &&
@@ -366,7 +368,8 @@ assert(
 const activation = text(paths.activation);
 const activationTest = text(paths.activationTest);
 assert(
-  activation.includes(proposalHash) &&
+  activation.includes("V207_PENDING_PROPOSAL_SHA256") &&
+    activationSourceHash === expected.typedAuthoritySource &&
     activation.includes(expected.helperCommit) &&
     activation.includes(expected.typedAuthorityCommit) &&
     activation.includes(expected.orchestratorCommit) &&
