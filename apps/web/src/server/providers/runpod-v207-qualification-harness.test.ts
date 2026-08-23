@@ -378,6 +378,7 @@ function terminalScaleZeroFetch(
     readonly workerStatusAfterDispatch?: string;
     readonly workerCurrentStatus?: string;
     readonly workerId?: string | null;
+    readonly podId?: string;
     readonly podStatus?: string;
     readonly podStatusAfterDispatch?: string;
     readonly podCurrentStatus?: string;
@@ -454,7 +455,7 @@ function terminalScaleZeroFetch(
       terminalInventoryReads += 1;
       return jsonResponse([
         {
-          id: "pod_01",
+          id: options.podId ?? "pod_01",
           ...((dispatched ? options.podEndpointIdAfterDispatch : options.podEndpointId) === null
             ? {}
             : {
@@ -1268,6 +1269,46 @@ describe("V2-07 qualification harness", () => {
 
   it("fails closed when the terminal provider worker identity is unavailable", async () => {
     const fetch = terminalScaleZeroFetch({ workerId: null });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("worker_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("uses the exact unique terminal provider Pod identity when the worker record omits id", async () => {
+    const fetch = terminalScaleZeroFetch({ workerId: null, podId: "pod_seed" });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("worker_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).resolves.toMatchObject({
+      terminal_provider_worker_id_sha256: hashValue("pod_seed"),
+      terminal_provider_identity_source: "terminal_pod_record",
+      terminal_scale_zero_confirmed: true,
+    });
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("never lets a matching Pod identity override an explicit mismatched worker identity", async () => {
+    const fetch = terminalScaleZeroFetch({ workerId: "worker_other", podId: "pod_seed" });
     const instance = makeHarness(fetch);
     await instance.create();
     const seed = await instance.dispatchBatch(oneItemInput());
