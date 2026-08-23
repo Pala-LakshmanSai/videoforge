@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assertV207DiskHeadroom,
   assertV207WorkerRollbackAnchorRetained,
+  extractV207ChildFailureCode,
   extractV207WorkerRollbackAnchor,
   extractV207WorkerVersionId,
   runV207LiveOrchestration,
@@ -92,6 +93,23 @@ afterEach(async () => {
 });
 
 describe("V2-07 live orchestrator", () => {
+  it("extracts one bounded child failure code from stderr only", () => {
+    const stderr =
+      "provider body https://example.invalid/run/secret-token\n" +
+      "MAGE_OUTPUT_LINEAGE_INVALID\n" +
+      "RUNPOD_SECONDARY_SHOULD_NOT_BE_SELECTED\n" +
+      "Bearer runpod-secret-value";
+    expect(extractV207ChildFailureCode(stderr)).toBe("MAGE_OUTPUT_LINEAGE_INVALID");
+    // The orchestrator passes only the child's stderr to this function.  Non-code output gets
+    // the fixed fallback, never an arbitrary line or diagnostic body.
+    expect(extractV207ChildFailureCode("stdout or provider body only")).toBe(
+      "V207_CHILD_FAILURE_UNCLASSIFIED",
+    );
+    expect(extractV207ChildFailureCode("unclassified provider diagnostic")).toBe(
+      "V207_CHILD_FAILURE_UNCLASSIFIED",
+    );
+  });
+
   it("fails before orchestration when local disk cannot safely persist evidence", () => {
     expect(() => assertV207DiskHeadroom(V207_ORCHESTRATOR_MIN_FREE_BYTES - 1)).toThrow(
       "V207_LOCAL_DISK_HEADROOM_INSUFFICIENT",
@@ -540,7 +558,14 @@ describe("V2-07 live orchestrator", () => {
       if (request.command === qualificationCommand) {
         expect(request.args).toEqual(["src/server/providers/v207-live-qualification.ts"]);
         if (request.env.V207_PREFLIGHT_ONLY === "1") return result();
-        return { exitCode: null, signal: "SIGTERM", stdout: "", stderr: "" };
+        return {
+          exitCode: null,
+          signal: "SIGTERM",
+          stdout: "RUNPOD_STDOUT_SECRET_MUST_NOT_ESCAPE",
+          stderr:
+            "https://provider.invalid/status/secret-body MAGE_OUTPUT_LINEAGE_INVALID " +
+            "RUNPOD_SECONDARY_CODE",
+        };
       }
       return result();
     };
@@ -576,6 +601,10 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"event": "signer_secret_deleted"');
     expect(evidence).toContain('"event": "worker_rolled_back"');
     expect(evidence).toContain('"result": "FAILED"');
+    expect(evidence).toContain('"child_failure_code": "MAGE_OUTPUT_LINEAGE_INVALID"');
+    expect(evidence).not.toContain("RUNPOD_STDOUT_SECRET_MUST_NOT_ESCAPE");
+    expect(evidence).not.toContain("secret-body");
+    expect(evidence).not.toContain("RUNPOD_SECONDARY_CODE");
     expect(evidence).not.toContain(NONCE);
   });
 

@@ -583,12 +583,20 @@ export interface RunPodControlClientOptions {
   readonly fetch?: FetchPort;
   readonly baseUrl?: string;
   readonly timeoutMs?: number;
+  /** Bounded retry delays for idempotent inventory GET transport ambiguity only. */
+  readonly inventoryReadRetryDelaysMs?: readonly number[];
+  /** Test-only clock injection for the bounded inventory retry. */
+  readonly inventorySleep?: (milliseconds: number) => Promise<void>;
 }
+
+const DEFAULT_INVENTORY_READ_RETRY_DELAYS_MS = Object.freeze([250, 1_000, 2_000]);
 
 export class RunPodControlClient {
   private readonly fetch: FetchPort;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
+  private readonly inventoryReadRetryDelaysMs: readonly number[];
+  private readonly inventorySleep: (milliseconds: number) => Promise<void>;
 
   constructor(private readonly options: RunPodControlClientOptions) {
     if (options.apiKey.trim() !== options.apiKey || options.apiKey.length < 20) {
@@ -602,6 +610,20 @@ export class RunPodControlClient {
     }
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs < 1 || this.timeoutMs > 120_000) {
       throw new RunPodControlError("RUNPOD_TIMEOUT_INVALID");
+    }
+    this.inventoryReadRetryDelaysMs = Object.freeze([
+      ...(options.inventoryReadRetryDelaysMs ?? DEFAULT_INVENTORY_READ_RETRY_DELAYS_MS),
+    ]);
+    this.inventorySleep =
+      options.inventorySleep ??
+      ((milliseconds) => new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds)));
+    if (
+      this.inventoryReadRetryDelaysMs.length > 4 ||
+      this.inventoryReadRetryDelaysMs.some(
+        (delay) => !Number.isSafeInteger(delay) || delay < 0 || delay > 10_000,
+      )
+    ) {
+      throw new RunPodControlError("RUNPOD_READ_RETRY_POLICY_INVALID");
     }
   }
 
@@ -626,6 +648,24 @@ export class RunPodControlClient {
       return JSON.parse(await response.text());
     } catch {
       throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+    }
+  }
+
+  /**
+   * Inventory is a read-only snapshot assembled from independent GETs. A transport ambiguity
+   * cannot have caused a mutation, so retry that one GET a bounded number of times; do not retry
+   * auth, malformed responses, or any mutation/readback path.
+   */
+  private async readInventory(path: string): Promise<unknown> {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await this.read(path);
+      } catch (error) {
+        const retryable =
+          error instanceof RunPodControlError && error.code === "RUNPOD_READ_AMBIGUOUS";
+        if (!retryable || attempt >= this.inventoryReadRetryDelaysMs.length) throw error;
+        await this.inventorySleep(this.inventoryReadRetryDelaysMs[attempt]!);
+      }
     }
   }
 
@@ -1065,10 +1105,10 @@ export class RunPodControlClient {
   async inventory(now = new Date()): Promise<RunPodInventory> {
     if (!Number.isFinite(now.getTime())) throw new RunPodControlError("RUNPOD_CLOCK_INVALID");
     const [podValue, endpointValue, templateValue, volumeValue] = await Promise.all([
-      this.read("/pods?includeWorkers=true"),
-      this.read("/endpoints?includeTemplate=true&includeWorkers=true"),
-      this.read("/templates?includeEndpointBoundTemplates=true"),
-      this.read("/networkvolumes"),
+      this.readInventory("/pods?includeWorkers=true"),
+      this.readInventory("/endpoints?includeTemplate=true&includeWorkers=true"),
+      this.readInventory("/templates?includeEndpointBoundTemplates=true"),
+      this.readInventory("/networkvolumes"),
     ]);
     if (
       !Array.isArray(podValue) ||
@@ -1159,8 +1199,8 @@ export class RunPodControlClient {
    */
   async inventoryDisposableResources(): Promise<RunPodDisposableResourceInventory> {
     const [endpointValue, templateValue] = await Promise.all([
-      this.read("/endpoints?includeTemplate=true&includeWorkers=true"),
-      this.read("/templates?includeEndpointBoundTemplates=true"),
+      this.readInventory("/endpoints?includeTemplate=true&includeWorkers=true"),
+      this.readInventory("/templates?includeEndpointBoundTemplates=true"),
     ]);
     const parse = (value: unknown): readonly RunPodNamedResource[] => {
       if (!Array.isArray(value)) throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");

@@ -37,6 +37,13 @@ const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-
 const NONCE = /^[a-f0-9]{64}$/u;
 const SOURCE_COMMIT = /^[0-9a-f]{40}$/u;
 export const V207_ORCHESTRATOR_MIN_FREE_BYTES = 2 * 1024 * 1024 * 1024;
+/**
+ * Qualification's direct-entrypoint catch prints one bounded error code to stderr.  Only these
+ * known code families may cross the child-process boundary; everything else (including logs,
+ * URLs, provider bodies, identifiers, and credentials) is deliberately discarded.
+ */
+const V207_CHILD_FAILURE_CODE = /\b(?:MAGE|RUNPOD|SERVERLESS|V207)_[A-Z0-9][A-Z0-9_.-]{1,159}\b/u;
+const V207_CHILD_FAILURE_UNCLASSIFIED = "V207_CHILD_FAILURE_UNCLASSIFIED" as const;
 
 type Environment = Readonly<Record<string, string | undefined>>;
 
@@ -167,6 +174,17 @@ function safeErrorCode(error: unknown): string {
         ? error.message
         : "V207_ORCHESTRATOR_FAILED";
   return /^[A-Z][A-Z0-9_.:-]{2,160}$/u.test(candidate) ? candidate : "V207_ORCHESTRATOR_FAILED";
+}
+
+/**
+ * Extract at most one safe code from the qualification child's stderr.  This function must never
+ * be called with stdout: the child may emit progress, provider diagnostics, URLs, or credentials
+ * there.  The returned value is a new bounded token, never a substring containing surrounding
+ * stderr.  A fixed fallback keeps the evidence useful without persisting untrusted text.
+ */
+export function extractV207ChildFailureCode(stderr: string): string {
+  const match = V207_CHILD_FAILURE_CODE.exec(stderr.slice(0, MAX_CAPTURE_BYTES));
+  return match?.[0] ?? V207_CHILD_FAILURE_UNCLASSIFIED;
 }
 
 function redactEnvironment(environment: Environment): Record<string, string | undefined> {
@@ -945,6 +963,7 @@ export async function runV207LiveOrchestration(
   let workerRollbackVerified = false;
   let preMutationRoute: RouteFingerprint | undefined;
   let runnerExitCode: number | undefined;
+  let childFailureCode: string | undefined;
   let primaryError: unknown;
   const cleanupErrors: string[] = [];
   try {
@@ -1103,24 +1122,27 @@ export async function runV207LiveOrchestration(
     );
     await record("live_preflight_completed", { exit_code: preflight.exitCode ?? -1 });
 
-    const runner = requireSuccessful(
-      "V207_LIVE_RUNNER",
-      await run({
-        command: qualificationCommand,
-        args: ["src/server/providers/v207-live-qualification.ts"],
-        cwd: resolve(cwd, "apps/web"),
-        env: commandEnvironment(environment, nonce, configPath),
-        signal: abortController.signal,
-      }),
-    );
+    const runner = await run({
+      command: qualificationCommand,
+      args: ["src/server/providers/v207-live-qualification.ts"],
+      cwd: resolve(cwd, "apps/web"),
+      env: commandEnvironment(environment, nonce, configPath),
+      signal: abortController.signal,
+    });
     runnerExitCode = runner.exitCode ?? -1;
+    if (runner.exitCode !== 0) {
+      childFailureCode = extractV207ChildFailureCode(runner.stderr);
+      throw new V207LiveOrchestratorError("V207_LIVE_RUNNER_FAILED");
+    }
     await record("live_runner_finished", { exit_code: runnerExitCode });
-    if (runnerExitCode !== 0) throw new V207LiveOrchestratorError("V207_LIVE_RUNNER_NONZERO");
   } catch (error) {
     primaryError = error;
     // Evidence persistence must never prevent the finally-block cleanup from running.
     try {
-      await record("orchestration_failed", { code: safeErrorCode(error) });
+      await record("orchestration_failed", {
+        code: safeErrorCode(error),
+        ...(childFailureCode === undefined ? {} : { child_failure_code: childFailureCode }),
+      });
     } catch {
       // The initialized evidence path remains the only durable diagnostic; cleanup is still
       // attempted and any resulting uncertainty is surfaced as a bounded failure code.

@@ -481,6 +481,70 @@ describe("RunPod scale-zero control", () => {
     expect(fetch).toHaveBeenCalledTimes(4);
   });
 
+  it("retries one ambiguous inventory GET without persisting transport text", async () => {
+    let podReads = 0;
+    const sleep = vi.fn(async () => undefined);
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/pods") && podReads++ === 0) {
+        throw new Error("transport secret must not escape");
+      }
+      if (path.endsWith("/pods")) return response([]);
+      if (path.endsWith("/endpoints")) return response([]);
+      if (path.endsWith("/templates")) return response([]);
+      return response([{ id: "volume_01", size: 50, dataCenterId: "EU-RO-1" }]);
+    });
+    const inventory = await new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      inventoryReadRetryDelaysMs: [0],
+      inventorySleep: sleep,
+    }).inventory();
+    expect(inventory.runningPodCount).toBe(0);
+    expect(fetch).toHaveBeenCalledTimes(5);
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(inventory)).not.toContain("transport secret");
+  });
+
+  it("fails closed after bounded inventory ambiguity retries", async () => {
+    const sleep = vi.fn(async () => undefined);
+    const fetch = vi.fn(async () => {
+      throw new Error(key);
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      inventoryReadRetryDelaysMs: [0, 0],
+      inventorySleep: sleep,
+    });
+    await expect(client.inventory()).rejects.toMatchObject({ code: "RUNPOD_READ_AMBIGUOUS" });
+    // Each of the four snapshot GETs is independently bounded to two retries.
+    expect(sleep).toHaveBeenCalledTimes(8);
+    expect(fetch).toHaveBeenCalledTimes(12);
+  });
+
+  it("does not retry an authenticated or malformed inventory response", async () => {
+    const cases = [
+      { fetch: vi.fn(async () => response({}, 401)), code: "RUNPOD_AUTH_REJECTED" },
+      { fetch: vi.fn(async () => new Response("bad-json")), code: "RUNPOD_RESPONSE_INVALID" },
+    ] as const;
+    for (const { fetch, code } of cases) {
+      const sleep = vi.fn(async () => undefined);
+      const client = new RunPodControlClient({
+        apiKey: key,
+        fetch,
+        baseUrl: "http://127.0.0.1:43123",
+        inventoryReadRetryDelaysMs: [0, 0],
+        inventorySleep: sleep,
+      });
+      await expect(client.inventory()).rejects.toMatchObject({ code });
+      expect(fetch).toHaveBeenCalledTimes(4);
+      expect(sleep).not.toHaveBeenCalled();
+    }
+  });
+
   it("reads only named disposable resources during ambiguous-create recovery", async () => {
     const fetch = vi.fn(async (input: string | URL | Request) => {
       const path = new URL(String(input)).pathname;
@@ -519,6 +583,7 @@ describe("RunPod scale-zero control", () => {
         apiKey: key,
         fetch,
         baseUrl: "http://127.0.0.1:43123",
+        inventoryReadRetryDelaysMs: [],
       });
       await expect(client.inventory()).rejects.toMatchObject({ code });
       try {
