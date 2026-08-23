@@ -1,13 +1,16 @@
 # VideoForge: start here
 
-Attempt46 is the current provider-free candidate pending fresh exact approval. Proposal
+Attempt46 is the current approved single-use execution boundary. Proposal
 `sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259`, acceptance
 `sha256:4e467eaf9190cb6cc93e344fdc608fcbc49c7bc6e99d7f68fe055e149484d5e8`, and max-one/max-two
 `sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a` /
 `sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb` bind repairs
-`f945392`, `7066520`, and `926b149`. No authority, cap, provider call, mutation, GPU use, or spend is
-active. A fresh exact approval and positive numeric cap are required; V2-07 remains
-`NOT_QUALIFIED` and V2-08 is forbidden.
+`f945392`, `7066520`, and `926b149`. The user approved this proposal once with FlashBoot=true,
+LOW-or-better EU-RO-1 and fresh `$4`; authority
+`sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588` is pending one bounded
+execution. Fresh read-only reconciliation at `2026-08-23T17:16:47.569Z` found zero disposable
+resources, both retained volumes, and unchanged billing `1.6217972798040137`. V2-07 remains
+`NOT_QUALIFIED` pending live gate proof and V2-08 is forbidden.
 
 Attempt45 is closed fail-closed as `NOT_QUALIFIED`. Exact proposal
 `sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770` and single-use authority

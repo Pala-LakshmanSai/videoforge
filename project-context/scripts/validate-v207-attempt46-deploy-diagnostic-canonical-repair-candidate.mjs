@@ -14,6 +14,7 @@ const E = {
   orchestrator: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894",
   live: "sha256:c5187fb9636d53e214d90f60c1a67a13ed06dc47c558f4869628b6d09a27a9c5",
   closure: "sha256:f287a7ec8ea064587e251f5ccb9b5321025d37976fdbf40b0b894a962c71167c",
+  authority: "sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588",
   volume: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
   manifest: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
   image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
@@ -31,11 +32,13 @@ for (const [name, expected] of Object.entries({
   "staged-config-max1.json": E.max1,
   "staged-config-max2.json": E.max2,
 })) eq(sha(file(name)), expected, `${name} hash`);
+eq(sha(file("approved-authority.json")), E.authority, "approved-authority.json hash");
 
 const proposal = json("combined-live-proposal.json");
 const acceptance = json("acceptance.json");
 const max1 = json("staged-config-max1.json");
 const max2 = json("staged-config-max2.json");
+const authority = json("approved-authority.json");
 eq(proposal.attempt, 46, "attempt");
 eq(proposal.authority_mode, "PENDING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP", "authority mode");
 eq(proposal.requested_approval.maximum_cumulative_finite_spend_usd, null, "proposal cap");
@@ -100,10 +103,63 @@ eq(acceptance.provider_calls, false, "acceptance calls");
 eq(acceptance.v2_07_qualified, false, "qualification");
 eq(acceptance.v2_08_authorized, false, "successor");
 
+eq(authority.schema_version, "videoforge.v2-07-attempt46-deploy-diagnostic-canonical-repair-authority/v1", "authority schema");
+eq(authority.checkpoint, "V2-07", "authority checkpoint");
+eq(authority.task_id, "VF-10-07", "authority task");
+eq(authority.attempt, 46, "authority attempt");
+eq(authority.authority_mode, "bounded_mutation", "authority mode");
+eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "authority status");
+eq(authority.proposal?.path, "combined-live-proposal.json", "authority proposal path");
+eq(authority.proposal?.sha256, E.proposal, "authority proposal");
+eq(authority.acceptance?.path, "acceptance.json", "authority acceptance path");
+eq(authority.acceptance?.sha256, E.acceptance, "authority acceptance");
+eq(authority.approval?.exact_proposal_approved, true, "authority exact approval");
+eq(authority.approval?.flashboot_true_accepted, true, "authority FlashBoot");
+eq(authority.approval?.low_or_better_eu_ro_1_availability_approved, true, "authority availability");
+eq(authority.approval?.minimum_approved_availability, "LOW-or-better", "authority minimum");
+eq(authority.approval?.maximum_cumulative_finite_spend_usd, 4, "authority cap");
+eq(authority.approval?.fresh_numeric_cap, true, "authority fresh cap");
+eq(authority.approval?.historical_cap_reused, false, "authority historical cap");
+eq(authority.approval?.prior_authority_reused, false, "authority prior reuse");
+eq(authority.approval?.single_use, true, "authority single use");
+eq(authority.approval?.consumed, false, "authority consumed");
+eq(authority.approval?.anchor_refresh_authorized, false, "authority anchor refresh");
+eq(authority.lineage?.model_manifest_sha256, E.manifest, "authority manifest");
+eq(authority.lineage?.image, E.image, "authority image");
+eq(authority.lineage?.volume_id_sha256, E.volume, "authority volume");
+eq(authority.lineage?.volume_size_gb, 50, "authority volume size");
+eq(authority.lineage?.volume_region, "EU-RO-1", "authority volume region");
+eq(authority.lineage?.volume_mount, "/runpod-volume", "authority volume mount");
+eq(authority.lineage?.initial_config_sha256, E.max1, "authority max1");
+eq(authority.lineage?.concurrent_reader_config_sha256, E.max2, "authority max2");
+eq(authority.lineage?.canonical_activation_source_sha256, E.canonical, "authority canonical");
+eq(authority.lineage?.orchestrator_source_sha256, E.orchestrator, "authority orchestrator");
+eq(authority.lineage?.live_qualification_source_sha256, E.live, "authority live source");
+eq(authority.lineage?.prior_attempt45_closure_sha256, E.closure, "authority prior closure");
+eq(JSON.stringify(authority.approved_operations), JSON.stringify(proposal.operations), "authority operations");
+eq(authority.execution_boundary?.maximum_cumulative_finite_spend_usd, 4, "authority boundary cap");
+eq(authority.execution_boundary?.provider_calls_completed, false, "authority calls");
+eq(authority.execution_boundary?.external_spend_usd, 0, "authority spend");
+eq(authority.execution_boundary?.runpod_mutation_authorized_pending_execution, true, "authority RunPod");
+eq(authority.execution_boundary?.gpu_use_authorized_pending_execution, true, "authority GPU");
+eq(authority.execution_boundary?.image_republication_authorized, false, "authority publication");
+eq(authority.execution_boundary?.retained_volume_mutation_authorized, false, "authority volume mutation");
+eq(authority.execution_boundary?.v2_08_authorized, false, "authority successor");
+eq(authority.runtime_contract?.offline_sealed_manifest_verification, true, "authority manifest verification");
+eq(authority.runtime_contract?.application_read_only_model_files, true, "authority read-only model");
+eq(authority.runtime_contract?.runtime_download_or_quantization, false, "authority runtime download");
+eq(authority.runtime_contract?.durable_per_unit_resume, true, "authority resume");
+eq(authority.cleanup_and_stop?.restore_max1_after_max2_reader_proof, true, "authority restore max1");
+eq(authority.cleanup_and_stop?.terminal_workers_zero_required, true, "authority worker drain");
+eq(authority.cleanup_and_stop?.stop_on_uncertain_cleanup, true, "authority cleanup stop");
+
 const activation = fs.readFileSync(path.join(ROOT, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8");
 eq(sha(path.join(ROOT, "apps/web/src/server/providers/v207-live-orchestrator.ts")), E.orchestrator, "orchestrator file");
 eq(sha(path.join(ROOT, "apps/web/src/server/providers/v207-live-qualification.ts")), E.live, "live file");
 ok(activation.includes(`export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;`), "null authority");
 ok(activation.includes(`export const V207_APPROVED_FINITE_CAP_USD: number | null = null;`), "null cap");
-ok(!fs.existsSync(file("approved-authority.json")), "unexpected authority file");
+eq(activation.includes(`export const V207_APPROVED_AUTHORITY_SHA256: string | null =`), true, "compiled authority declaration");
+ok(activation.includes(E.authority), "compiled authority hash");
+ok(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;"), "compiled cap");
+ok(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;"), "compiled anchor flag");
 console.log("PASS validate-v207-attempt46-deploy-diagnostic-canonical-repair-candidate", JSON.stringify(E));
