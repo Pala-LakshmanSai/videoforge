@@ -70,7 +70,7 @@ function activationSourceFixture({
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete consumed Attempt44 lineage without executable authority", () => {
+  it("pins the complete Attempt45 lineage without executable authority", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
@@ -123,11 +123,9 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67",
-    );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
   });
 
   it("uses a fail-closed non-cyclic source binding for all approval constants", () => {
@@ -154,6 +152,35 @@ describe("V2-07 activation authority", () => {
     );
     expect(hashV207ActivationAuthoritySource(unrelatedDrift)).not.toBe(
       hashV207ActivationAuthoritySource(sourceBeforeApproval),
+    );
+  });
+
+  it("canonicalizes Prettier-wrapped approval declarations", () => {
+    const proposal = "a".repeat(64);
+    const authority = "c".repeat(64);
+    const singleLine = activationSourceFixture({
+      proposal,
+      authority: `"sha256:${authority}"`,
+      cap: "4",
+      anchorRefresh: "true",
+    });
+    const prettierWrapped = [
+      `export const V207_PENDING_PROPOSAL_SHA256 =`,
+      `  "sha256:${proposal}" as const;`,
+      `export const V207_APPROVED_AUTHORITY_SHA256: string | null =`,
+      `  "sha256:${authority}";`,
+      `export const V207_APPROVED_FINITE_CAP_USD: number | null =`,
+      `  4;`,
+      `export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null =`,
+      `  true;`,
+      `const unrelated = "";`,
+    ].join("\n");
+
+    expect(canonicalV207ActivationAuthoritySource(prettierWrapped)).toBe(
+      canonicalV207ActivationAuthoritySource(singleLine),
+    );
+    expect(hashV207ActivationAuthoritySource(prettierWrapped)).toBe(
+      hashV207ActivationAuthoritySource(singleLine),
     );
   });
 
@@ -287,33 +314,25 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("accepts only the exact fresh Attempt45 proposal and cap", () => {
-    expect(
+  it("requires fresh authority before Attempt45 execution", () => {
+    expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toEqual({
-      image,
-      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
-      capUsd: 4,
-      anchorRefreshAuthorized: false,
-    });
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects missing cap input for Attempt45", () => {
+  it("keeps cap validation behind the fresh-authority boundary", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
       }),
-    ).toThrow("V207_FINITE_CAP_REQUIRED");
-  });
-
-  it("rejects drifted cap input for Attempt45", () => {
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -321,13 +340,13 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "2",
       }),
-    ).toThrow("V207_FINITE_CAP_MISMATCH");
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
   it("keeps anchor refresh unapproved for Attempt45", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
-    expect(
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
+    expect(() =>
       parseV207ActivationAuthority({
         ...refreshMarker,
         V207_IMAGE: image,
@@ -335,7 +354,7 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toMatchObject({ anchorRefreshAuthorized: false });
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
     expect(() =>
       parseV207ActivationAuthority({
         ...refreshMarker,

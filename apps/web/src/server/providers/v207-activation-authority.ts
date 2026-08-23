@@ -83,38 +83,37 @@ export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
 // because the exact Cloudflare rollback anchor was not retained in the bounded
 // newest-seven window. Keep the immutable authority in evidence for audit only;
 // remove executable approval and cap so the attempt cannot be replayed.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap.  Keep the
  * current provider-free candidate null; a future exact authority may change
  * this to true in its own immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
-  /(\bexport const V207_PENDING_PROPOSAL_SHA256\s*=\s*")sha256:[a-f0-9]{64}("\s+as const;)/gu;
+  /\bexport\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gu;
 const V207_APPROVED_AUTHORITY_PATTERN =
-  /(\bexport const V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*)(?:"sha256:[a-f0-9]{64}"|null)(\s*;)/gu;
+  /\bexport\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/gu;
 const V207_FINITE_CAP_PATTERN =
-  /(\bexport const V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*)(?:null|(?:0|[1-9]\d*)(?:\.\d+)?)(\s*;)/gu;
+  /\bexport\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*(?:null|(?:0|[1-9]\d*)(?:\.\d+)?)\s*;/gu;
 const V207_ANCHOR_REFRESH_PATTERN =
-  /(\bexport const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*)(?:true|false|null)(\s*;)/gu;
+  /\bexport\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*(?:true|false|null)\s*;/gu;
 
 function replaceExactlyOneV207Binding(
   source: string,
   declarationName: string,
   pattern: RegExp,
-  replacement: string,
+  canonicalDeclaration: string,
   errorCode: string,
 ): string {
   const declarationCount =
     source.match(new RegExp(`\\bexport\\s+const\\s+${declarationName}\\b`, "gu"))?.length ?? 0;
   const bindingMatches = source.match(pattern)?.length ?? 0;
   if (declarationCount !== 1 || bindingMatches !== 1) throw new Error(errorCode);
-  return source.replace(pattern, replacement);
+  return source.replace(pattern, canonicalDeclaration);
 }
 
 /**
@@ -129,28 +128,28 @@ export function canonicalV207ActivationAuthoritySource(source: string): string {
     source,
     "V207_PENDING_PROPOSAL_SHA256",
     V207_PROPOSAL_POINTER_PATTERN,
-    `$1sha256:${"0".repeat(64)}$2`,
+    `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${"0".repeat(64)}" as const;`,
     "V207_ACTIVATION_SOURCE_PROPOSAL_POINTER_INVALID",
   );
   canonical = replaceExactlyOneV207Binding(
     canonical,
     "V207_APPROVED_AUTHORITY_SHA256",
     V207_APPROVED_AUTHORITY_PATTERN,
-    "$1null$2",
+    "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;",
     "V207_ACTIVATION_SOURCE_APPROVED_AUTHORITY_INVALID",
   );
   canonical = replaceExactlyOneV207Binding(
     canonical,
     "V207_APPROVED_FINITE_CAP_USD",
     V207_FINITE_CAP_PATTERN,
-    "$1null$2",
+    "export const V207_APPROVED_FINITE_CAP_USD: number | null = null;",
     "V207_ACTIVATION_SOURCE_FINITE_CAP_INVALID",
   );
   return replaceExactlyOneV207Binding(
     canonical,
     "V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED",
     V207_ANCHOR_REFRESH_PATTERN,
-    "$1null$2",
+    "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;",
     "V207_ACTIVATION_SOURCE_ANCHOR_REFRESH_INVALID",
   );
 }
