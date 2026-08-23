@@ -1,0 +1,116 @@
+{
+  "schema_version": "videoforge.v2-07-attempt42-failed-closed/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 42,
+  "recorded_at": "2026-08-23T07:26:05.300Z",
+  "result": "NOT_QUALIFIED_ROLLBACK_ANCHOR_NOT_RETAINED_CLEAN",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal": {
+    "path": "../2026-08-23-attempt42-get-readback-authority-candidate/combined-live-proposal.json",
+    "sha256": "sha256:1b3a75d67ff6ebff875e0ffb42e11d0bb0544c566670847f7748755c490681de",
+    "max1_sha256": "sha256:14a70d3861a7810792e226478037d865ff47425d20f5440b6f54fe0a9c54f50e",
+    "max2_sha256": "sha256:44fad1bfde2e4ba6ee08040e5296bb3a95924728ed322c639cd146c8a66bb2f1"
+  },
+  "authority": {
+    "path": "../2026-08-23-attempt42-get-readback-authority-candidate/approved-authority.json",
+    "sha256": "sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53",
+    "maximum_cumulative_finite_spend_usd": 4,
+    "flashboot": true,
+    "minimum_availability": "LOW",
+    "region": "EU-RO-1",
+    "state": "CONSUMED_CLOSED_DO_NOT_REUSE",
+    "consumption_reason": "attempt42_pre_mutation_rollback_anchor_not_retained; no provider mutation, GPU job, or spend"
+  },
+  "acceptance": {
+    "path": "../2026-08-23-attempt42-get-readback-authority-candidate/acceptance.json",
+    "sha256": "sha256:64d5e3aa1e81a26afe564a43a60e3ef2b9cbc28efd735401d707f1099d8ca2bd"
+  },
+  "lineage": {
+    "control_source_commit": "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6",
+    "proposal_authority_exact_binding": true,
+    "image_identity_check": "NOT_RUN_PREMUTATION_GUARD",
+    "model_manifest_check": "NOT_RUN_PREMUTATION_GUARD",
+    "sealed_volume_hash_check": "NOT_RUN_PREMUTATION_GUARD"
+  },
+  "raw_evidence": {
+    "orchestrator_path": "/tmp/videoforge-v207-attempt42-orchestrator.json",
+    "orchestrator_sha256": "sha256:25afc6caf005c54b98de89e1db026e869d0159d11b055a12d498c624c0cc63150e",
+    "redacted_versions_check_retained": true,
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "execution": {
+    "orchestration_started_at": "2026-08-23T07:20:34.945Z",
+    "finished_at": "2026-08-23T07:20:42.418Z",
+    "live_preflight_completed": false,
+    "build_started": false,
+    "live_runner_started": false,
+    "provider_job_count": 0,
+    "gpu_jobs_submitted": 0,
+    "provider_mutation_count": 0,
+    "cloudflare_mutation_count": 0,
+    "failure_stage": "pre_mutation_rollback_anchor_retention",
+    "error": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED",
+    "error_category": "orchestration_safety_guard",
+    "failure_code": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED",
+    "rollback_anchor_diagnostic": {
+      "versions_entry_count": 10,
+      "version_number_range": [163, 172],
+      "order": "oldest_to_newest",
+      "active_version_index": 0,
+      "active_version_id_sha256": "sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48",
+      "newest_retention_window_count": 7,
+      "anchor_retained_for_bounded_mutation": false
+    },
+    "accepted_batches": 0,
+    "durable_output_readbacks": 0,
+    "v3_receipts": 0,
+    "duplicate_compute": false,
+    "qualification_claim_allowed": false
+  },
+  "billing": {
+    "approved_cap_usd": 4,
+    "baseline_cumulative_endpoint_spend_usd": 1.5709891965379938,
+    "final_cumulative_endpoint_spend_usd": 1.5709891965379938,
+    "incremental_spend_usd": 0,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "sealed_volume": {
+    "manifest_or_model_hash_check": "NOT_RUN_PREMUTATION_GUARD",
+    "retained_volume_identity_unchanged": true,
+    "model_volume_write_check": "NOT_APPLICABLE_NO_PROVIDER_JOB",
+    "volume_mutation_called": false,
+    "cross_mount_observed": false,
+    "cache_escape_observed": false,
+    "runtime_download_or_quantization_observed": false
+  },
+  "cleanup": {
+    "evidence": "attempt42-cleanup-observation.json",
+    "status": "NO_MUTATION_CLEAN",
+    "cleanup_required": false,
+    "endpoint_created": false,
+    "private_template_created": false,
+    "endpoint_deleted": false,
+    "private_template_deleted": false,
+    "signer_secret_created": false,
+    "worker_deployed": false,
+    "worker_version_rolled_back": false,
+    "route_probe_performed": false,
+    "cleanup_uncertain": false
+  },
+  "reconciliation": {
+    "evidence": "attempt42-reconciliation-observation.json",
+    "stable_reads": 3,
+    "checked_at": "2026-08-23T07:23:34.925Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "settled_incremental_spend_usd": 0,
+    "within_approved_cap": true
+  },
+  "next_boundary": "PROVIDER_FREE_DIAGNOSIS_ONLY; ATTEMPT42_AUTHORITY_AND_CAP_CONSUMED; DO_NOT_REUSE; V2-08-FORBIDDEN"
+}

@@ -1,0 +1,75 @@
+{
+  "schema_version": "videoforge.v2-07-attempt42-readonly-reconciliation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 42,
+  "checked_at": "2026-08-23T07:23:34.925Z",
+  "stable_read_count": 3,
+  "read_only": true,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "mount": "/runpod-volume",
+        "identity_unchanged": true
+      },
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "identity_unchanged": true
+      }
+    ],
+    "intended_volume_count": 2,
+    "final_disposable_resources_absent": true
+  },
+  "cloudflare_rollback_anchor": {
+    "versions_entry_count": 10,
+    "version_number_range": [163, 172],
+    "order": "oldest_to_newest",
+    "active_version_index": 0,
+    "active_version_id_sha256": "sha256:534524220d7e478d7178a6a51a7cf1b3d77ff0bca3de3a57736c8fad1d90bf48",
+    "newest_retention_window_count": 7,
+    "retained_for_bounded_mutation": false,
+    "failure_code": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED"
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.5709891965379938,
+    "final_endpoint_spend_usd": 1.5709891965379938,
+    "settled_incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS",
+    "existing_two_volume_charge_usd_per_month": 7
+  },
+  "mutation_boundary": {
+    "new_gpu_jobs": 0,
+    "gpu_jobs_submitted": 0,
+    "accepted_outputs": 0,
+    "model_volume_writes": 0,
+    "volume_mutation_called": false,
+    "cross_mount_observed": false,
+    "cloudflare_mutation_called": false,
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "raw_evidence": {
+    "orchestrator_sha256": "sha256:25afc6caf005c54b98de89e1db026e869d0159d11b055a12d498c624c0cc63150e",
+    "redacted_versions_check_retained": true,
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "basis": {
+    "orchestrator_failed_before_mutation": true,
+    "three_stable_readings": true,
+    "authority_consumed": true,
+    "v2_08_forbidden": true
+  }
+}

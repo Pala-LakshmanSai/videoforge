@@ -65,12 +65,12 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempt41 was consumed and closed fail-closed after the provider GET-readback
-// authority mismatch. Attempt42 is now approved exactly once under the fresh
-// authority record below; it remains single-use and is pending bounded execution.
-export const V207_APPROVED_AUTHORITY_SHA256 =
-  "sha256:ea0c638e8e68c48538954717aaa2eb49695ee702e2c98d000e9190e36aa54b53" as const;
-export const V207_APPROVED_FINITE_CAP_USD = 4 as const;
+// Attempt42 was consumed and closed fail-closed before any provider mutation
+// because the exact Cloudflare rollback anchor was not retained in the bounded
+// newest-seven window. Keep the immutable authority in evidence for audit only;
+// remove executable approval and cap so the attempt cannot be replayed.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 
 export interface V207ActivationAuthority {
   readonly image: string;
