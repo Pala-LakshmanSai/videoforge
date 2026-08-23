@@ -142,16 +142,6 @@ interface V207RollbackAnchorRefresh {
   readonly enabled: boolean;
 }
 
-/**
- * Only a separately parsed, fresh authority may opt into the extra deploy.
- * The optional field keeps the current Attempt42 authority and all historical
- * authorities strictly refresh-disabled until their parser/proposal explicitly
- * binds this mode.
- */
-interface V207AuthorityWithAnchorRefresh extends V207ActivationAuthority {
-  readonly anchorRefreshAuthorized?: true;
-}
-
 interface EvidenceDocument {
   readonly schema_version: "videoforge-v207-live-orchestrator/v1";
   readonly worker_name: typeof V207_ORCHESTRATOR_WORKER_NAME;
@@ -1024,9 +1014,7 @@ export async function runV207LiveOrchestration(
   options: V207LiveOrchestratorOptions = {},
 ): Promise<V207LiveOrchestratorResult> {
   const environment = options.environment ?? process.env;
-  const authority = (options.authorityParser ?? parseV207ActivationAuthority)(
-    environment,
-  ) as V207AuthorityWithAnchorRefresh;
+  const authority = (options.authorityParser ?? parseV207ActivationAuthority)(environment);
   const sourceCommit = environment.V207_IMAGE_SOURCE_COMMIT ?? "";
   if (!SOURCE_COMMIT.test(sourceCommit)) {
     throw new V207LiveOrchestratorError("V207_IMAGE_SOURCE_COMMIT_MISSING");

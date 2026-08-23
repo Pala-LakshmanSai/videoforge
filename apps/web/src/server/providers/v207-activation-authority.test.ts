@@ -169,6 +169,30 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
+  it("keeps the production parser refresh-disabled for current, consumed, and absent authority", () => {
+    const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
+    expect(() =>
+      parseV207ActivationAuthority({
+        ...refreshMarker,
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_FINITE_CAP_USD: "4",
+      }),
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    expect(() =>
+      parseV207ActivationAuthority({
+        ...refreshMarker,
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256:
+          "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18",
+        V207_FINITE_CAP_USD: "4",
+      }),
+    ).toThrow("V207_PROPOSAL_MISMATCH");
+    expect(() => parseV207ActivationAuthority(refreshMarker)).toThrow("V207_IMAGE_DIGEST_REQUIRED");
+  });
+
   it("rejects the consumed Attempt31 proposal after closure", () => {
     expect(() =>
       parseV207ActivationAuthority({

@@ -76,6 +76,12 @@ export interface V207ActivationAuthority {
   readonly image: string;
   readonly proposalSha256: typeof V207_PENDING_PROPOSAL_SHA256;
   readonly capUsd: number;
+  /**
+   * Explicitly binds the optional rollback-anchor refresh capability.  The
+   * current and historical authorities are refresh-disabled; a future
+   * authority must opt in with the literal `true` through its own parser.
+   */
+  readonly anchorRefreshAuthorized: boolean;
 }
 
 /** Require the exact approved changed-image proposal before any dispatch. */
@@ -101,5 +107,5 @@ export function parseV207ActivationAuthority(
   if (capUsd !== approvedCapUsd) {
     throw new Error("V207_FINITE_CAP_MISMATCH");
   }
-  return { image, proposalSha256, capUsd };
+  return { image, proposalSha256, capUsd, anchorRefreshAuthorized: false };
 }

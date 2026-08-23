@@ -30,6 +30,7 @@ const parseFixtureAuthority = () => ({
   image: IMAGE,
   proposalSha256: V207_PENDING_PROPOSAL_SHA256,
   capUsd: 4,
+  anchorRefreshAuthorized: false as const,
 });
 const parseFixtureRefreshAuthority = () => ({
   ...parseFixtureAuthority(),
@@ -116,6 +117,11 @@ afterEach(async () => {
 });
 
 describe("V2-07 live orchestrator", () => {
+  it("requires an explicit refresh binding on every injected authority", () => {
+    expect(parseFixtureAuthority().anchorRefreshAuthorized).toBe(false);
+    expect(parseFixtureRefreshAuthority().anchorRefreshAuthorized).toBe(true);
+  });
+
   it("extracts one bounded child failure code from stderr only", () => {
     const stderr =
       "provider body https://example.invalid/run/secret-token\n" +
