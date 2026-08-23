@@ -1,5 +1,24 @@
 # VideoForge: start here
 
+Attempt38 is the current provider-free V2-07 candidate and remains NOT_QUALIFIED pending fresh exact
+approval. Runtime/image repair `edb18154759a1c4da9f28789fe5f4c4ab74a92ed` binds the full immutable
+32-unit plan to one `scene-01` seed, terminal scale-zero plus distinct worker/pod identity, and one
+replacement that executes only `scene-02` through `scene-32`; accepted work cannot be regenerated.
+The deterministic multi-file overlay includes the repaired handler and timing-provenance schema and
+derives unpublished immutable image
+`ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2`.
+Exact proposal
+`evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json`
+is `sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c`;
+max-one/max-two are `sha256:a61c41148a80e9371934c1eaf7fdee76ab821cbbe6cff371a55dcfbd70493436`
+and `sha256:13f17498808fd6062b0dbac187eaa82d836580b673d9e666cc3dae0a64480f01`.
+Fresh read-only truth at `2026-08-23T00:13:52.501Z` proves zero disposable compute/resources, both
+exact retained 50 GB EU-RO-1 volumes, and HIGH RTX 4090 availability. Current rates are `$1.10/GPU-hour`
+Serverless Flex and `$0.74/hour` secure-Pod reference; the bounded finite estimate is `$3.70`, while
+the two existing volumes remain `$7/month` separately. Attempt38 has no authority or cap. Publication,
+provider mutation, GPU use, retained-volume mutation, and V2-08 remain forbidden pending fresh exact
+approval and a fresh positive numeric cap.
+
 Attempt37 is closed NOT_QUALIFIED. A prequalification safety audit exposed two P1 gaps in the
 already-published immutable handler: no durable accepted-unit resume across process replacement, and
 `allocation_ms` / `container_ready_ms` were hardcoded to zero. The live orchestration reached

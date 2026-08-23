@@ -39,5 +39,5 @@ for (const [index, config] of configs.entries()) {
 }
 assert(acceptance.result === "PROVIDER_FREE_CANDIDATE_AWAITING_FRESH_EXACT_APPROVAL_AND_NUMERIC_CAP" && acceptance.candidate.proposal_sha256 === expected.proposal && acceptance.candidate.authority_recorded === false && acceptance.candidate.maximum_cumulative_finite_spend_usd === null, "ACCEPTANCE");
 const context = ["project-context/CURRENT_STATE.yaml", "project-context/GATES.yaml", "project-context/00_START_HERE.md", "project-context/tasks/VF-10-07.md", "apps/web/src/server/providers/v207-activation-authority.ts"].map((path) => String(readFileSync(resolve(root, path)))).join("\n");
-for (const value of [expected.proposal, expected.acceptance, expected.max1, expected.max2, expected.control, expected.priorClosure, "no_live_authority_attempt36_provider_free_candidate", "V207_APPROVED_FINITE_CAP_USD: number | null = null", "V2-08"]) assert(context.includes(value), `CONTEXT_${value.slice(-8)}`);
+for (const value of [expected.proposal, expected.acceptance, expected.max1, expected.max2, expected.control, expected.priorClosure, "V207_APPROVED_FINITE_CAP_USD: number | null = null", "V2-08"]) assert(context.includes(value), `CONTEXT_${value.slice(-8)}`);
 console.log("V2-07 Attempt36 provider-free proposal validation PASS");

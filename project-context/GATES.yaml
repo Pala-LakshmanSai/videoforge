@@ -149,17 +149,17 @@ gates:
     latest_closed_candidate_acceptance_sha256: "sha256:ba830728d81fbe31739e6aa73c16bb06ddb6ede95adf605f990c42e2540861cf"
     latest_closed_max1_sha256: "sha256:e6f3d746959b3a5633fd9b7d6035a0dca44cee9f886b1c045e9d55b6dc1e86f0"
     latest_closed_max2_sha256: "sha256:1a5ba973d3d97b76efa7ffb0a6f5cfa9427fb830e7fbfc8831659ea910f8e9d5"
-    current_candidate: "evidence/acceptance/VF-10-07/2026-08-23-attempt37-terminal-reader-result-recovery-candidate/combined-live-proposal.json"
-    current_candidate_sha256: "sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e"
-    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt37-terminal-reader-result-recovery-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:ba830728d81fbe31739e6aa73c16bb06ddb6ede95adf605f990c42e2540861cf"
-    current_candidate_control_source_commit: "6632c4508a1f4127491a598d52157dece41a0560"
+    current_candidate: "evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json"
+    current_candidate_sha256: "sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c"
+    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/acceptance.json"
+    current_candidate_acceptance_sha256: "sha256:2431aa2cc76f5f272fc23356ddf4b5b3db96cc23a0c7d071453e180f8d466779"
+    current_candidate_control_source_commit: "edb18154759a1c4da9f28789fe5f4c4ab74a92ed"
     current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
     current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
-    current_candidate_max1_sha256: "sha256:e6f3d746959b3a5633fd9b7d6035a0dca44cee9f886b1c045e9d55b6dc1e86f0"
-    current_candidate_max2_sha256: "sha256:1a5ba973d3d97b76efa7ffb0a6f5cfa9427fb830e7fbfc8831659ea910f8e9d5"
+    current_candidate_max1_sha256: "sha256:a61c41148a80e9371934c1eaf7fdee76ab821cbbe6cff371a55dcfbd70493436"
+    current_candidate_max2_sha256: "sha256:13f17498808fd6062b0dbac187eaa82d836580b673d9e666cc3dae0a64480f01"
     latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt37-terminal-reader-result-recovery-candidate/combined-live-proposal.json"
     latest_approved_proposal_sha256: "sha256:6ff97af22dd025e9298a830a9bcd946f18fe376745f39ed6e5c15b791e3f390e"
     latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt37-terminal-reader-result-recovery-candidate/approved-authority.json"
@@ -172,11 +172,11 @@ gates:
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt37-cleanup-observation.json"
     cleanup_evidence_sha256: "sha256:af1c8d3c1c1f8808c5cb94dda49c09c521b3f853c4560e28365af4a078617054"
     latest_closed_result: "NOT_QUALIFIED_PREQUALIFICATION_ACCEPTANCE_GAP_AND_INTERRUPTED_ORCHESTRATION_CLEANUP_UNCERTAIN"
-    authority_mode: none_attempt37_consumed
+    authority_mode: pending_attempt38_fresh_exact_approval_required
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
-    pending_proposal: null
-    pending_proposal_sha256: null
-    pending_control_source_commit: null
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c"
+    pending_control_source_commit: "edb18154759a1c4da9f28789fe5f4c4ab74a92ed"
     pending_authority: null
     pending_authority_sha256: null
     pending_numeric_cap_usd: null
@@ -185,8 +185,8 @@ gates:
     provider_calls_authorized: false
     provider_mutations_authorized: false
     gpu_use_authorized: false
-    result: "NOT_QUALIFIED_attempt37_acceptance_gap_and_cleanup_uncertain"
-    next_boundary: "provider-free handler repair and cleanup reconciliation, then separately hashed candidate; V2-08 forbidden"
+    result: "NOT_QUALIFIED_attempt38_durable_replacement_candidate_pending_fresh_exact_approval"
+    next_boundary: "fresh exact approval and numeric finite cap, then bounded publication/qualification; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

@@ -431,7 +431,8 @@ assert(
     gate.includes('last_run_at: "2026-08-22T22:34:34.293Z"') &&
     gate.includes(`closure_evidence_sha256: \"${expected.closure}\"`) &&
     gate.includes(`cleanup_evidence_sha256: \"${expected.cleanup}\"`) &&
-    gate.includes("pending_proposal: null") &&
+    gate.includes('pending_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json"') &&
+    gate.includes('pending_proposal_sha256: "sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c"') &&
     gate.includes("pending_authority: null") &&
     gate.includes("provider_calls_authorized: false") &&
     gate.includes("provider_mutations_authorized: false") &&
