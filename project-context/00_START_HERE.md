@@ -1,25 +1,30 @@
 # VideoForge: start here
 
-Attempt38 is the current approved-once V2-07 execution and remains NOT_QUALIFIED pending bounded
-qualification. Runtime/image repair `edb18154759a1c4da9f28789fe5f4c4ab74a92ed` binds the full immutable
+Attempt38 is closed `NOT_QUALIFIED` after bounded execution stopped at `initialized` on cap arithmetic
+risk. Runtime/image repair `edb18154759a1c4da9f28789fe5f4c4ab74a92ed` binds the full immutable
 32-unit plan to one `scene-01` seed, terminal scale-zero plus distinct worker/pod identity, and one
 replacement that executes only `scene-02` through `scene-32`; accepted work cannot be regenerated.
 The deterministic multi-file overlay includes the repaired handler and timing-provenance schema and
-derives unpublished immutable image
+derives immutable image
 `ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2`.
 Exact proposal
 `evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json`
 is `sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c`;
 max-one/max-two are `sha256:a61c41148a80e9371934c1eaf7fdee76ab821cbbe6cff371a55dcfbd70493436`
 and `sha256:13f17498808fd6062b0dbac187eaa82d836580b673d9e666cc3dae0a64480f01`.
-Fresh read-only truth at `2026-08-23T00:13:52.501Z` proves zero disposable compute/resources, both
-exact retained 50 GB EU-RO-1 volumes, and HIGH RTX 4090 availability. Current rates are `$1.10/GPU-hour`
-Serverless Flex and `$0.74/hour` secure-Pod reference; the bounded finite estimate is `$3.70`, while
-the two existing volumes remain `$7/month` separately. Exact append-only authority
-`approved-authority.json` is `sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6`;
-it approves this proposal once with FlashBoot=true, LOW-or-better EU-RO-1, and a fresh `$4` cap.
-Execute only the bounded proposal operations; retained-volume mutation, fallback GPU/region, and V2-08
-remain forbidden.
+The exact image was published/read back by workflow `32609238298`, but no GPU job was submitted.
+Final read-only truth at `2026-08-23T01:13:26.598Z` proves zero disposable compute/resources across
+three stable reads, both exact retained 50 GB EU-RO-1 volumes, and zero Attempt38 incremental spend.
+Current rates are `$1.10/GPU-hour` Serverless Flex and `$0.74/hour` secure-Pod reference; the finite
+estimate was `$3.70`, while the two existing volumes remain `$7/month` separately. Exact append-only
+authority `approved-authority.json` is `sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6`
+and is consumed/non-reusable. Closure
+`failed-attempt-38.json` is `sha256:ab89f5f143c2f424c811a149e96ed0020b0095ce3399c5bbe33e64bb771a1a07`;
+cleanup is `sha256:52d73dcbd15ca96e713306bf95877b1d2873025b934bab14306dae6011988ca4` and reconciliation is
+`sha256:a9d6b96952892a33460e1aa592bbc97c8d6c3aad0d0580dda0f829d843788e10`. Cloudflare route rollback
+remains uncertain (`503 HOSTED_ROUTE_NOT_COMPOSED` instead of captured `404 V207_ROUTE_DISABLED`).
+Provider-free diagnosis only; retained-volume mutation, fallback GPU/region, and V2-08 remain forbidden.
+Repository HEAD is now provider-free repair `5aa2ccae639052fb61312a3b5a830402c275a2f8`; the published image remains bound to the earlier Attempt38 source lineage.
 
 Attempt37 is closed NOT_QUALIFIED. A prequalification safety audit exposed two P1 gaps in the
 already-published immutable handler: no durable accepted-unit resume across process replacement, and

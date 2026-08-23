@@ -1,0 +1,79 @@
+{
+  "schema_version": "videoforge.v2-07-attempt38-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 38,
+  "checked_at": "2026-08-23T01:13:26.598Z",
+  "result": "RUNPOD_CLEAN_CLOUDFLARE_ROUTE_FINGERPRINT_UNCERTAIN",
+  "proposal_sha256": "sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c",
+  "authority_sha256": "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6",
+  "runpod_cleanup": {
+    "endpoint_id_sha256": "sha256:b8ee90f541faf1ef897787e87948fe40eb0dd7d1e95eb5a9c7ea5fbfd4546a5e",
+    "template_id_sha256": "sha256:a321af5d1bc27c2494e6859e95dce35c0446c475e59e040949376fb88751aac3",
+    "stable_terminal_snapshots_before_delete": 2,
+    "terminal_worker_record_count": 1,
+    "terminal_pod_record_count": 1,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "gpu_jobs_submitted": 0
+  },
+  "final_reconciliation": {
+    "evidence": "attempt38-reconciliation-observation.json",
+    "checked_at": "2026-08-23T01:13:26.598Z",
+    "stable_reads": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "retained_volumes": [
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ],
+    "baseline_endpoint_spend_usd": 1.5246469744015485,
+    "final_endpoint_spend_usd": 1.5246469744015485,
+    "settled_incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "retention": {
+    "mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "retained_volume_write_delete_rebuild_or_cross_mount": false,
+    "ongoing_two_volume_charge_usd_per_month": 7
+  },
+  "cloudflare_cleanup": {
+    "ephemeral_signer_secret_deleted": true,
+    "captured_worker_version_sha256": "sha256:0ca150f857bbbbd63b474e220a008511805daf337ae7d0154489046e57419e53",
+    "captured_route_status": 404,
+    "captured_route_code": "V207_ROUTE_DISABLED",
+    "captured_version_hash_available_for_rollback": false,
+    "rollback_error": "V207_WRANGLER_ROLLBACK_FAILED",
+    "post_rollback_observed_status": 503,
+    "post_rollback_observed_code": "HOSTED_ROUTE_NOT_COMPOSED",
+    "exact_captured_fingerprint_restored": false,
+    "cleanup_uncertain": true
+  },
+  "provider_boundary": {
+    "authority_consumed": true,
+    "cap_consumed": true,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false
+  }
+}

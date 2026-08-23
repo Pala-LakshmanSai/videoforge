@@ -1,0 +1,98 @@
+{
+  "schema_version": "videoforge.v2-07-attempt38-failed-closed/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 38,
+  "recorded_at": "2026-08-23T01:13:26.598Z",
+  "result": "NOT_QUALIFIED_CAP_ARITHMETIC_STOP_CLEANUP_UNCERTAIN",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal": {
+    "path": "../2026-08-23-attempt38-durable-replacement-candidate/combined-live-proposal.json",
+    "sha256": "sha256:8613f60fb65a3d7c254daeb42901b217d392566bef11dfaa864d7cbbe000378c",
+    "max1_sha256": "sha256:a61c41148a80e9371934c1eaf7fdee76ab821cbbe6cff371a55dcfbd70493436",
+    "max2_sha256": "sha256:13f17498808fd6062b0dbac187eaa82d836580b673d9e666cc3dae0a64480f01"
+  },
+  "authority": {
+    "path": "../2026-08-23-attempt38-durable-replacement-candidate/approved-authority.json",
+    "sha256": "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6",
+    "maximum_cumulative_finite_spend_usd": 4,
+    "flashboot": true,
+    "minimum_availability": "LOW",
+    "region": "EU-RO-1",
+    "state": "CONSUMED_CLOSED_DO_NOT_REUSE"
+  },
+  "lineage": {
+    "control_source_commit": "edb18154759a1c4da9f28789fe5f4c4ab74a92ed",
+    "image_source_commit": "4249cafd4a5525b5723d0811f16496fb0e949653",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2",
+    "image_manifest_sha256": "sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2",
+    "image_config_sha256": "sha256:09d2ee0905ec4556857aae9df05b449802916cdf9e0d8ec4615a91b6d1fa9d06",
+    "image_layer_sha256": "sha256:1b390600563d813a87e09c2fa075d52ea1c24558e83b67c5649aa422a2c69c78",
+    "image_layer_diff_id": "sha256:0391cef74dd661df3c2c7b8b4fea1b391063abea0cfc004c806078a004915163",
+    "image_parent_sha256": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "mage_volume_size_gb": 50,
+    "mage_volume_region": "EU-RO-1",
+    "mage_volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "gpu_allowlist": ["NVIDIA GeForce RTX 4090"]
+  },
+  "publication": {
+    "workflow_run_id": "32609238298",
+    "workflow_result": "success",
+    "tag": "v2-07-diagnostics-4249caf",
+    "exact_image_published": true,
+    "exact_image_readback": true,
+    "readback_manifest_sha256": "sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2",
+    "no_model_download_or_quantization": true
+  },
+  "raw_evidence": {
+    "live_result_sha256": "sha256:79847e300e977715c53a95cb3b8222b9ef2a31016f072d653b0b30b6a1fb2a22",
+    "orchestrator_sha256": "sha256:1ccfd9157e174426a5c400ffae9b018b337ef3984d362e2ed3f183d140910f1d",
+    "raw_provider_ids_urls_bodies_or_secrets_retained": false
+  },
+  "execution": {
+    "started_at": "2026-08-23T01:04:54.507Z",
+    "finished_at": "2026-08-23T01:10:09.351Z",
+    "live_runner_phase": "initialized",
+    "live_runner_status": "CANCELED",
+    "cancel_reason": "CAP_ARITHMETIC_RISK",
+    "approved_cap_usd": 4,
+    "baseline_cumulative_endpoint_spend_usd": 1.5246469744015485,
+    "remaining_cumulative_cap_usd": 2.4753530255984515,
+    "planned_finite_compute_estimate_usd": 3.7,
+    "gpu_jobs_submitted": 0,
+    "accepted_batches": 0,
+    "durable_output_readbacks": 0,
+    "v3_receipts": 0,
+    "incremental_spend_usd": 0,
+    "duplicate_compute": false,
+    "qualification_claim_allowed": false
+  },
+  "sealed_volume": {
+    "manifest_verified_before_execution": true,
+    "manifest_or_volume_hash_unchanged": true,
+    "model_volume_writes_observed": false,
+    "cross_mount_observed": false,
+    "cache_escape_observed": false,
+    "runtime_download_or_quantization_observed": false,
+    "application_model_files_read_only": true
+  },
+  "cleanup": {
+    "evidence": "attempt38-cleanup-observation.json",
+    "status": "RUNPOD_CLEAN_CLOUDFLARE_ROUTE_FINGERPRINT_UNCERTAIN",
+    "endpoint_deleted": true,
+    "private_template_deleted": true,
+    "stable_terminal_snapshots_before_delete": 2,
+    "terminal_worker_record_count": 1,
+    "terminal_pod_record_count": 1,
+    "signer_secret_deleted": true,
+    "generated_output_rollback": "CONFIRMED",
+    "route_rollback_exact": false,
+    "route_cleanup_uncertain": true,
+    "v2_08_authorized": false
+  },
+  "next_boundary": "PROVIDER_FREE_DIAGNOSIS_ONLY; ATTEMPT38_AUTHORITY_AND_CAP_ARE_CONSUMED; DO_NOT_REUSE; V2-08 FORBIDDEN"
+}
