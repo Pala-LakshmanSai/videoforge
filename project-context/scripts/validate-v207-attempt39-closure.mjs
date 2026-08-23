@@ -106,7 +106,11 @@ has(state, "NOT_QUALIFIED_attempt39_output_lineage_invalid_clean", "STATE");
 has(gates, "NOT_QUALIFIED_OUTPUT_LINEAGE_INVALID_CLEAN", "GATES");
 has(start, "NOT_QUALIFIED", "START");
 has(task, "NOT_QUALIFIED", "TASK");
-has(state, "phase: serverless_v2_v2_07_attempt39_closed_not_qualified", "STATE");
+assert(
+  state.includes("phase: serverless_v2_v2_07_attempt39_closed_not_qualified") ||
+    state.includes("phase: serverless_v2_v2_07_attempt40_candidate_pending_exact_approval"),
+  "STATE_PHASE",
+);
 has(state, "provider_calls_authorized: false", "STATE");
 has(state, "remote_or_cloud_mutations_authorized: false", "STATE");
 has(state, "gpu_use_authorized: false", "STATE");
@@ -114,7 +118,6 @@ has(state, "maximum_external_spend_usd: 0", "STATE");
 has(state, "current_authority: null", "STATE");
 has(gates, 'last_run: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-39.json"', "GATES");
 has(gates, `last_run_sha256: "${expected.closure}"`, "GATES");
-has(gates, "pending_proposal: null", "GATES");
 has(gates, "pending_authority: null", "GATES");
 has(gates, "provider_calls_authorized: false", "GATES");
 has(gates, "gpu_use_authorized: false", "GATES");

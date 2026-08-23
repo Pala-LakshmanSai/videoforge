@@ -1,5 +1,24 @@
 # VideoForge: start here
 
+Attempt40 is the current provider-free candidate for V2-07 and is not yet approved or published. It repairs the exact Attempt39 output-lineage failure by adding `item_id = scene_id` at the Mage worker boundary, while preserving the strict verifier and all sealed-volume/runtime restrictions. The source repair is `a7b7a937d08dc9032b8922cca71c602195f3094c`; the image-pinning/control commit is `b811cdfd677775558aa79452a4930b50a07b7b1a`.
+
+Attempt40 proposal
+`evidence/acceptance/VF-10-07/2026-08-23-attempt40-item-lineage-candidate/combined-live-proposal.json`
+is `sha256:56cd650b61a56fb17a9abd602839992990d3a985a952eafc30afa60e82e02ae8`; candidate
+acceptance is `sha256:c55e31ab998cc98627265b7447ea3dafb0671307dfe499afcafbe617ea850d48`; max-one/max-two
+are `sha256:391dd6b208b4b6c2e045058295f03e47937da7f9361b6bf27e7b225dbb51432e` /
+`sha256:fee8426ec819aa4e742fd9e36e0e16113786fd773f66e9e46f29104b78ed044e`. It binds the exact
+Mage model and manifest, existing sealed Mage-only 50 GB `EU-RO-1` volume at `/runpod-volume`, RTX
+4090/Flex/FlashBoot, and new immutable image
+`ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59`.
+Fresh read-only preflight at `2026-08-23T02:42:00.951Z` observed HIGH availability, zero disposable
+compute/resources, both retained volumes, `$1.10/GPU-hour` Serverless Flex, `$0.74/hour` secure-Pod
+reference, and `$7/month` existing two-volume charge separately. The finite estimate is `$3.70`;
+no numeric cap, authority file, publication, provider mutation, GPU use, or spend is active. Exact
+approval plus a fresh positive numeric cap are required before publication or execution. V2-07 remains
+`NOT_QUALIFIED_PENDING_EXACT_APPROVAL`; Attempt39 remains closed historical evidence and consumed;
+V2-08 remains forbidden.
+
 Attempt39 is now closed fail-closed as `NOT_QUALIFIED`. It used the exact approved, single-use candidate after Attempt38 closed `NOT_QUALIFIED`. It binds
 the already-published immutable Mage image
 `ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2`,

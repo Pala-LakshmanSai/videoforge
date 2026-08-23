@@ -149,17 +149,20 @@ gates:
     latest_closed_candidate_acceptance_sha256: "sha256:d38096058821aa2d2eb76216960b1e6ceabee725328b55c82e47ce0828e74259"
     latest_closed_max1_sha256: "sha256:26387b6f18d354af2ec9f034a3bbdb0645fcd50abe932f49278c16f36b8e4b66"
     latest_closed_max2_sha256: "sha256:6c8093e0292d53c5288904bcedb36b5f26a4f98c1109a16c7a9be0e9ddbf870f"
-    current_candidate: "evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/combined-live-proposal.json"
-    current_candidate_sha256: "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57"
-    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:d38096058821aa2d2eb76216960b1e6ceabee725328b55c82e47ce0828e74259"
-    current_candidate_control_source_commit: "5aa2ccae639052fb61312a3b5a830402c275a2f8"
+    current_candidate: "evidence/acceptance/VF-10-07/2026-08-23-attempt40-item-lineage-candidate/combined-live-proposal.json"
+    current_candidate_sha256: "sha256:56cd650b61a56fb17a9abd602839992990d3a985a952eafc30afa60e82e02ae8"
+    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt40-item-lineage-candidate/acceptance.json"
+    current_candidate_acceptance_sha256: "sha256:c55e31ab998cc98627265b7447ea3dafb0671307dfe499afcafbe617ea850d48"
+    current_candidate_control_source_commit: "b811cdfd677775558aa79452a4930b50a07b7b1a"
+    current_candidate_image_source_commit: "a7b7a937d08dc9032b8922cca71c602195f3094c"
+    current_candidate_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
+    current_candidate_image_publication_state: PENDING_PUBLICATION_EXACT_DIGEST_READBACK_REQUIRED
     current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
     current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
-    current_candidate_max1_sha256: "sha256:26387b6f18d354af2ec9f034a3bbdb0645fcd50abe932f49278c16f36b8e4b66"
-    current_candidate_max2_sha256: "sha256:6c8093e0292d53c5288904bcedb36b5f26a4f98c1109a16c7a9be0e9ddbf870f"
+    current_candidate_max1_sha256: "sha256:391dd6b208b4b6c2e045058295f03e47937da7f9361b6bf27e7b225dbb51432e"
+    current_candidate_max2_sha256: "sha256:fee8426ec819aa4e742fd9e36e0e16113786fd773f66e9e46f29104b78ed044e"
     latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/combined-live-proposal.json"
     latest_approved_proposal_sha256: "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57"
     latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt39-fresh-cap-rollback-retention-candidate/approved-authority.json"
@@ -176,19 +179,19 @@ gates:
     latest_closed_result: "NOT_QUALIFIED_OUTPUT_LINEAGE_INVALID_CLEAN"
     authority_mode: closed_consumed_attempt39_output_lineage_invalid
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
-    pending_proposal: null
-    pending_proposal_sha256: null
-    pending_control_source_commit: "5aa2ccae639052fb61312a3b5a830402c275a2f8"
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt40-item-lineage-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:56cd650b61a56fb17a9abd602839992990d3a985a952eafc30afa60e82e02ae8"
+    pending_control_source_commit: "b811cdfd677775558aa79452a4930b50a07b7b1a"
     pending_authority: null
     pending_authority_sha256: null
     pending_numeric_cap_usd: null
     pending_flashboot: true
-    pending_availability: LOW
+    pending_availability: LOW-or-better
     provider_calls_authorized: false
     provider_mutations_authorized: false
     gpu_use_authorized: false
-    result: "NOT_QUALIFIED_attempt39_output_lineage_invalid_clean"
-    next_boundary: "provider-free diagnosis only; Attempt39 authority/cap consumed and non-reusable; stop before V2-08"
+    result: "NOT_QUALIFIED_attempt40_candidate_pending_exact_approval"
+    next_boundary: "exact user approval and fresh positive numeric cap; then exact image publication/readback and bounded execution; no authority, provider mutation, GPU, or spend is active; stop before V2-08"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:
