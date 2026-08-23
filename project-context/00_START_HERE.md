@@ -2,11 +2,11 @@
 
 Attempt41 is closed `NOT_QUALIFIED`. One exact RTX 4090 job reached provider `COMPLETED`/output `SUCCEEDED`,
 then failed `MAGE_OUTPUT_READBACK_AUTHORITY_INVALID` before any output/readback/v3 receipt was accepted. Closure
-`failed-attempt-41.json` is `sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca`;
+`failed-attempt-41.json` is `sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187`;
 cleanup is `sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54`;
-reconciliation is `sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0`.
+reconciliation is `sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e`.
 Exact endpoint/template deletion, zero final compute/resources, both retained 50 GB EU-RO-1 volumes, Cloudflare
-rollback to `404 V207_ROUTE_DISABLED`, and three stable billing reads with `$0` observed increment are proven.
+rollback to `404 V207_ROUTE_DISABLED`, and a late-settled `$0.046342222136445343` increment within cap are proven.
 Post-run sealed-manifest/hash comparison was not reached, so unchanged model bytes are not claimed; retained
 volume identity and no observed writes/mutation are recorded. Authority `sha256:2aec5d48…291f9d` and its `$4` cap
 are consumed. Provider-free commit `78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6` repairs the deterministic

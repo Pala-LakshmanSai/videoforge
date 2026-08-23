@@ -175,14 +175,16 @@ gates:
     closed_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/approved-authority.json"
     closed_authority_sha256: "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-41.json"
-    closure_evidence_sha256: "sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca"
+    closure_evidence_sha256: "sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187"
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-cleanup-observation.json"
     cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
     reconciliation_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json"
-    reconciliation_evidence_sha256: "sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0"
+    reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
     publication_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json"
     publication_evidence_sha256: "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7"
     latest_closed_result: NOT_QUALIFIED_OUTPUT_READBACK_AUTHORITY_INVALID_CLEAN
+    latest_closed_incremental_spend_usd: 0.046342222136445343
+    latest_closed_cumulative_endpoint_spend_usd: 1.5709891965379938
     latest_closed_authority_mode: closed_consumed_attempt41_output_readback_authority_invalid
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
     pending_proposal: null

@@ -38,11 +38,11 @@ const expected = {
   max2:
     "sha256:6ec51bd572c6e7377eae857ea811178296b818f2d993dcf587b0a93e2f0115e4",
   closure:
-    "sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca",
+    "sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187",
   cleanup:
     "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54",
   reconciliation:
-    "sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0",
+    "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e",
   image:
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
   manifest:
@@ -71,6 +71,8 @@ const expected = {
     "sha256:d257d9270cfc21bbefd2e2140f5f07a2bb41ab223311e91c6f11b0ee24b349b2",
   settlementReconciliation:
     "sha256:e97f2fb598a6f0f9465b9c7d13d11f6c7dd63a097a6dc67737a50659d8eaa936",
+  lateSettlementReconciliation:
+    "sha256:7d6b5a8ee0a8fbc0b3000cb2ccc68de0e320ae528ea55270d5db4de17845f88f",
 };
 
 const fail = (code) => {
@@ -220,8 +222,10 @@ assert(
     closure.raw_evidence?.delayed_reconciliation_sha256 === expected.delayedReconciliation &&
     closure.raw_evidence?.settlement_reconciliation_sha256 ===
       expected.settlementReconciliation &&
+    closure.raw_evidence?.late_settlement_reconciliation_sha256 ===
+      expected.lateSettlementReconciliation &&
     closure.raw_evidence?.raw_provider_ids_urls_bodies_or_secrets_retained === false &&
-    closure.billing?.incremental_spend_usd === 0 &&
+    closure.billing?.incremental_spend_usd === 0.046342222136445343 &&
     closure.billing?.within_approved_cap === true,
   "EVIDENCE_AND_BILLING",
 );
@@ -253,9 +257,11 @@ assert(
     reconciliation.inventory?.running_pods === 0 &&
     reconciliation.inventory?.intended_volume_count === 2 &&
     reconciliation.inventory?.final_disposable_resources_absent === true &&
-    reconciliation.checked_at === "2026-08-23T05:58:46.116Z" &&
+    reconciliation.checked_at === "2026-08-23T06:24:45.876Z" &&
     reconciliation.raw_evidence?.settlement_reconciliation_sha256 ===
-      expected.settlementReconciliation,
+      expected.settlementReconciliation &&
+    reconciliation.raw_evidence?.late_settlement_reconciliation_sha256 ===
+      expected.lateSettlementReconciliation,
   "RECONCILIATION_INVENTORY",
 );
 const volumes = new Map(
@@ -276,8 +282,8 @@ assert(
 );
 assert(
   reconciliation.billing?.baseline_endpoint_spend_usd === 1.5246469744015485 &&
-    reconciliation.billing?.final_endpoint_spend_usd === 1.5246469744015485 &&
-    reconciliation.billing?.settled_incremental_spend_usd === 0 &&
+    reconciliation.billing?.final_endpoint_spend_usd === 1.5709891965379938 &&
+    reconciliation.billing?.settled_incremental_spend_usd === 0.046342222136445343 &&
     reconciliation.billing?.maximum_cumulative_finite_spend_usd === 4 &&
     reconciliation.billing?.within_approved_cap === true &&
     reconciliation.billing?.settlement === "THREE_STABLE_READS" &&
@@ -321,5 +327,5 @@ assert(
 );
 
 console.log(
-  "V2-07 Attempt41 closure validation PASS (output readback authority failure; exact route rollback; zero final disposable resources; delayed three stable reads; zero incremental spend)",
+  "V2-07 Attempt41 closure validation PASS (output readback authority failure; exact route rollback; zero final disposable resources; late-settled cost within cap)",
 );

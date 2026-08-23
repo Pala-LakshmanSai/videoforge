@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: provider-free diagnosis only after consumed Attempt41; stop before V2-08
-  note: "Attempt41 is closed NOT_QUALIFIED after one provider job reached COMPLETED/SUCCEEDED but failed MAGE_OUTPUT_READBACK_AUTHORITY_INVALID at output_readback. Generated-output rollback, exact Cloudflare Worker/route rollback, disposable endpoint/template deletion, three stable final reads, both sealed volumes, and $0 incremental spend are recorded in failed-attempt-41.json, attempt41-cleanup-observation.json, and attempt41-reconciliation-observation.json. Authority sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d and fresh $4 cap are consumed and non-reusable. V2-08 remains forbidden."
+  note: "Attempt41 is closed NOT_QUALIFIED after one provider job reached COMPLETED/SUCCEEDED but failed MAGE_OUTPUT_READBACK_AUTHORITY_INVALID at output_readback. Generated-output rollback, exact Cloudflare Worker/route rollback, disposable endpoint/template deletion, three stable final reads, both sealed volumes, and a late-settled USD 0.046342222136445343 increment are recorded in failed-attempt-41.json, attempt41-cleanup-observation.json, and attempt41-reconciliation-observation.json. Authority sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d and fresh USD 4 cap are consumed and non-reusable. V2-08 remains forbidden."
 
 pending_v2_07_attempt25_proposal:
   mode: closed_consumed_attempt25_output_finalization_failure
@@ -594,13 +594,13 @@ pending_v2_07_attempt41_proposal:
   prior_attempt_closure_sha256: "sha256:a80a70ece72d4ff08eccfa210257e267b41a2f924f061ec8740d589edd22d32b"
   prior_attempt_authority_consumed: true
   authority_consumed: true
-  actual_spend_usd: 0
+  actual_spend_usd: 0.046342222136445343
   closure_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-41.json
-  closure_evidence_sha256: "sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca"
+  closure_evidence_sha256: "sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187"
   cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-cleanup-observation.json
   cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
   reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
-  reconciliation_evidence_sha256: "sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0"
+  reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
   result: NOT_QUALIFIED_attempt41_output_readback_authority_invalid_clean
   next_boundary: provider_free_diagnosis_only; Attempt41 authority/cap consumed and non-reusable; V2-08 forbidden
 
@@ -1609,7 +1609,7 @@ repository:
   current_source_head: "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6"
   current_source_head_semantics: attempt41_closed_and_get_readback_authority_contract_repaired_provider_free
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt41 is closed NOT_QUALIFIED after one provider COMPLETED/SUCCEEDED job failed the hosted GET readback-authority contract. Exact RunPod and Cloudflare cleanup, both retained volumes, three stable reads, and $0 incremental spend are recorded. Commit 78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6 repairs the deterministic hosted artifact-transfer-port/v3 GET authority mismatch provider-free; no fresh provider authority or cap exists."
+  current_source_head_note: "Attempt41 is closed NOT_QUALIFIED after one provider COMPLETED/SUCCEEDED job failed the hosted GET readback-authority contract. Exact RunPod and Cloudflare cleanup, both retained volumes, three stable reads, and a late-settled USD 0.046342222136445343 increment are recorded. Commit 78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6 repairs the deterministic hosted artifact-transfer-port/v3 GET authority mismatch provider-free; no fresh provider authority or cap exists."
   v2_07_latest_local_repair: "Commit 78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6 returns a fresh scoped artifact-transfer-port/v3 GET authority with canonical nonce-HMAC binding and distinct reservation identity. Provider-free focused tests pass; live requalification remains unproven."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -1628,7 +1628,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "Attempt41 proposal sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18 was executed once under consumed authority sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d with FlashBoot=true, LOW-or-better EU-RO-1, and a fresh $4 cap. It failed output readback, was cleaned and reconciled at $0 incremental spend; image republication, retained-volume mutation, fallback GPU/region, further provider calls, and V2-08 remain forbidden."
+  provider_authority_scope: "Attempt41 proposal sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18 was executed once under consumed authority sha256:2aec5d4846bfe8d6d1e658af9db7cf354a25611838f725472477b443d6291f9d with FlashBoot=true, LOW-or-better EU-RO-1, and a fresh USD 4 cap. It failed output readback, was cleaned, and late-settled at USD 0.046342222136445343 incremental spend; image republication, retained-volume mutation, fallback GPU/region, further provider calls, and V2-08 remain forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -1757,13 +1757,13 @@ model_runtime_evidence:
     settled_qualification_cost_usd: 0.34927155333571136
     evidence: evidence/acceptance/VF-9-24Q/cp06-phase-b/settlement-reaudit.json
     v2_07_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-41.json
-    v2_07_evidence_sha256: "sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca"
+    v2_07_evidence_sha256: "sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187"
     v2_07_proposal: evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate/combined-live-proposal.json
     v2_07_proposal_sha256: "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18"
     v2_07_cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-cleanup-observation.json
     v2_07_cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
     v2_07_reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
-    v2_07_reconciliation_evidence_sha256: "sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0"
+    v2_07_reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
     v2_07_current_candidate: null
     v2_07_current_candidate_sha256: null
     v2_07_current_candidate_control_commit: null
@@ -1832,10 +1832,10 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-23T05:58:46.116Z"
+  checked_at: "2026-08-23T06:24:45.876Z"
   basis: attempt_41_failed_closed_cleanup_and_delayed_three_stable_final_reconciliation_reads
   evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
-  evidence_sha256: "sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0"
+  evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
   current_live_refresh_permitted_now: false
   stale_until_current_authorized_read_only_inventory_succeeds: false
   rtx4090_eu_ro_1_availability: HIGH
@@ -1864,10 +1864,10 @@ last_known_provider_resource_truth:
   full_day_network_storage_charge_usd: 0.233
   current_day_cloud_gpu_usd: 0
   current_day_cloud_cpu_usd: 0
-  current_day_serverless_usd: 1.5246469744015485
+  current_day_serverless_usd: 1.5709891965379938
   auto_pay: DISABLED
-  cumulative_endpoint_spend_usd: 1.5246469744015485
-  note: "Attempt41 settlement read at 2026-08-23T05:58:46.116Z follows cleanup and proves zero Pods/endpoints/private templates/active workers/running Pods, both intended 50 GB EU-RO-1 volumes retained, baseline/final cumulative endpoint billing USD 1.5246469744015485, and USD 0 incremental spend within the consumed USD 4 cap. Attempt41 is NOT_QUALIFIED after output-readback authority failure; no live authority/cap remains and V2-08 remains forbidden."
+  cumulative_endpoint_spend_usd: 1.5709891965379938
+  note: "Attempt41 late settlement read at 2026-08-23T06:24:45.876Z follows cleanup and proves zero Pods/endpoints/private templates/active workers/running Pods, both intended 50 GB EU-RO-1 volumes retained, cumulative endpoint billing USD 1.5246469744015485 to USD 1.5709891965379938, and USD 0.046342222136445343 incremental spend within the consumed USD 4 cap. Attempt41 is NOT_QUALIFIED after output-readback authority failure; no live authority/cap remains and V2-08 remains forbidden."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -2007,7 +2007,7 @@ provider_authority_attempt41: &v2_07_provider_authority_attempt41
   proposal_sha256: "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18"
   authority_state: CONSUMED_CLOSED_DO_NOT_REUSE
   consumed: true
-  actual_spend_usd: 0
+  actual_spend_usd: 0.046342222136445343
   provider_calls_authorized: false
   provider_mutations_authorized: false
   gpu_use_authorized: false
@@ -2018,11 +2018,11 @@ provider_authority_attempt41: &v2_07_provider_authority_attempt41
   authorized_operations: []
   allowed_operations: []
   closure_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-41.json
-  closure_evidence_sha256: "sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca"
+  closure_evidence_sha256: "sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187"
   cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-cleanup-observation.json
   cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
   reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
-  reconciliation_evidence_sha256: "sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0"
+  reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
   rate_snapshot:
     - resource_id: runpod_eu_ro_1_rtx4090_serverless_flex
       billing_unit: gpu_hour
@@ -2086,9 +2086,9 @@ verification:
     findings_reconciled_in_repository: true
     fresh_independent_reaudit_required: false
   latest_live_check:
-    recorded_at_utc: "2026-08-23T05:58:46.116Z"
+    recorded_at_utc: "2026-08-23T06:24:45.876Z"
     evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-41.json
-    evidence_sha256: "sha256:434bef38c015e4b94c006b0f0de97ff06c373eb8cdd713b4cf9a086c23b073ca"
+    evidence_sha256: "sha256:ecfc252b04cc8daa9c4ee85fb5991d7e8874d6cf2fcfd5321d99abf343731187"
     proposal: evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate/combined-live-proposal.json
     proposal_sha256: "sha256:3ce00d81d161e43a2d6a1610b6f9a7c9b7ceaa1fcb3bbbe44339fa478605eb18"
     publication_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json
@@ -2096,7 +2096,7 @@ verification:
     cleanup_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-cleanup-observation.json
     cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
     reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
-    reconciliation_evidence_sha256: "sha256:ae4692bfbd1a7b03fa780a141897ae393fcf147a8da2bc54d00748aee37fabe0"
+    reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
     authority_mode: none_attempt41_consumed
     pending_numeric_cap_usd: null
     authority_path: null
@@ -2115,8 +2115,8 @@ verification:
     provider_disposable_resources_absent: true
     retained_volume_count: 2
     immediate_post_cleanup_incremental_spend_usd: 0
-    settled_incremental_spend_usd: 0
-    final_cumulative_endpoint_spend_usd: 1.5246469744015485
+    settled_incremental_spend_usd: 0.046342222136445343
+    final_cumulative_endpoint_spend_usd: 1.5709891965379938
     concurrent_reader_batches_accepted: 0
     independent_reader_drain_proof: false
     cleanup_route_fingerprint_exact: true
@@ -2521,7 +2521,7 @@ verification:
       - "pnpm context:validate, pnpm contracts:check, pnpm validate:v2-06-deployment, pnpm secret:scan, pnpm format:check, and git diff --check: PASS."
       - "The focused command passes 16/16 in the operator workspace with the protected ignored fixture present. Repository-only worktrees now run the R2/tooling assertions and explicitly skip fixture-dependent cases when that private corpus is absent; neither mode is hosted proof."
     successor_boundary:
-      - "V2-07 Attempt41 is the current provider-free candidate; it reuses the already-published exact image and requires exact proposal approval plus a fresh positive numeric cap before bounded execution or any qualification claim."
+      - "V2-07 Attempt41 is closed NOT_QUALIFIED; its GET-authority mismatch is repaired provider-free, but a new exact proposal and fresh positive numeric cap are required before bounded execution or any qualification claim."
     resource_truth:
       external_spend_usd: 0
       final_live_closure_cap_usd: 1

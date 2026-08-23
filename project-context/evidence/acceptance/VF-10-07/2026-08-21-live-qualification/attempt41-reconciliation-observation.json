@@ -3,7 +3,7 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 41,
-  "checked_at": "2026-08-23T05:58:46.116Z",
+  "checked_at": "2026-08-23T06:24:45.876Z",
   "stable_read_count": 3,
   "read_only": true,
   "inventory": {
@@ -34,8 +34,8 @@
   },
   "billing": {
     "baseline_endpoint_spend_usd": 1.5246469744015485,
-    "final_endpoint_spend_usd": 1.5246469744015485,
-    "settled_incremental_spend_usd": 0,
+    "final_endpoint_spend_usd": 1.5709891965379938,
+    "settled_incremental_spend_usd": 0.046342222136445343,
     "maximum_cumulative_finite_spend_usd": 4,
     "within_approved_cap": true,
     "settlement": "THREE_STABLE_READS",
@@ -60,13 +60,15 @@
     "delayed_reconciliation_sha256": "sha256:d257d9270cfc21bbefd2e2140f5f07a2bb41ab223311e91c6f11b0ee24b349b2",
     "settlement_reconciliation_path": "/tmp/videoforge-v207-attempt41-settlement-reconciliation.json",
     "settlement_reconciliation_sha256": "sha256:e97f2fb598a6f0f9465b9c7d13d11f6c7dd63a097a6dc67737a50659d8eaa936",
+    "late_settlement_reconciliation_path": "/tmp/videoforge-v207-attempt42-reconciliation.raw.json",
+    "late_settlement_reconciliation_sha256": "sha256:7d6b5a8ee0a8fbc0b3000cb2ccc68de0e320ae528ea55270d5db4de17845f88f",
     "raw_provider_ids_urls_bodies_or_secrets_retained": false
   },
   "basis": {
     "preflight_checked_at": "2026-08-23T05:15:00.755Z",
     "preflight_zero_disposable_resources": true,
     "cleanup_checked_at": "2026-08-23T05:34:24.994Z",
-    "settlement_checked_at": "2026-08-23T05:58:46.116Z",
+    "settlement_checked_at": "2026-08-23T06:24:45.876Z",
     "three_stable_readings": true,
     "authority_consumed": true,
     "v2_08_forbidden": true
