@@ -36,22 +36,22 @@ const image = V207_REPAIRED_IMAGE;
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the complete approved Attempt39 fresh-cap rollback-retention lineage", () => {
+  it("pins the complete approved Attempt40 item-lineage publication lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
-      "@sha256:d37242d8413b1a5e52c2434b0ff12a04093ec5fdfacaed72faeb86fa2cbc67f2",
+      "@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
     );
     expect(V207_REPAIRED_IMAGE_CONFIG_DIGEST).toBe(
-      "sha256:09d2ee0905ec4556857aae9df05b449802916cdf9e0d8ec4615a91b6d1fa9d06",
+      "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6",
     );
     expect(V207_REPAIRED_IMAGE_LAYER_DIGEST).toBe(
-      "sha256:1b390600563d813a87e09c2fa075d52ea1c24558e83b67c5649aa422a2c69c78",
+      "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a",
     );
     expect(V207_REPAIRED_IMAGE_LAYER_DIFF_ID).toBe(
-      "sha256:0391cef74dd661df3c2c7b8b4fea1b391063abea0cfc004c806078a004915163",
+      "sha256:9f759e3f49c84816de71246f51f9aca275fc080c7c9c082aaa39ce81e8b049e1",
     );
     expect(V207_REPAIRED_HANDLER_SHA256).toBe(
-      "sha256:dfc2cebede44c0a8903daf0e6348040cd6e2b5af1a00c77d3f767ddb10aa316c",
+      "sha256:3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da",
     );
     expect(V207_EXECUTION_SUBSET_SCHEMA_SHA256).toBe(
       "sha256:a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71",
@@ -66,10 +66,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:11203e32aff804dd9f31c674cd3411c8a0efb2cdca7057e891543f30377f5e57",
+      "sha256:56cd650b61a56fb17a9abd602839992990d3a985a952eafc30afa60e82e02ae8",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("5aa2ccae639052fb61312a3b5a830402c275a2f8");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("b811cdfd677775558aa79452a4930b50a07b7b1a");
     expect(V207_FINALIZE_REPLAY_FAST_PATH_COMMIT).toBe("bf26c3a86ec6a48f619c39613d425da816eeae4d");
     expect(V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT).toBe(
       "f513ac807c6d5e2298092a936495e3c4fc0e6a28",
@@ -78,7 +78,7 @@ describe("V2-07 activation authority", () => {
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
     expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:a9d68f4125f58429699fe52e90ae238b72f0835b4627f9246be86b10e759352b",
+      "sha256:5691eb5bb3a9009fd1a010c74b7c04bc47d15c0ce580ff47f6183c105a563736",
     );
     expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
   });
@@ -127,7 +127,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("accepts the exact Attempt39 proposal under its fresh cap", () => {
+  it("accepts the exact Attempt40 proposal under its fresh cap", () => {
     expect(
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -142,7 +142,7 @@ describe("V2-07 activation authority", () => {
     });
   });
 
-  it("rejects cap drift from the exact Attempt39 authority", () => {
+  it("rejects cap drift from the exact Attempt40 authority", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -153,7 +153,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FINITE_CAP_MISMATCH");
   });
 
-  it("rejects a missing numeric cap at the Attempt39 authority boundary", () => {
+  it("rejects a missing numeric cap at the Attempt40 authority boundary", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,

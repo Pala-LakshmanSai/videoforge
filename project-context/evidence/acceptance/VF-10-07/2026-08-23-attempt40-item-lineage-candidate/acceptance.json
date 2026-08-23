@@ -4,7 +4,7 @@
   "task_id": "VF-10-07",
   "attempt": 40,
   "recorded_at": "2026-08-23T02:42:00.951Z",
-  "result": "PENDING_FRESH_EXACT_APPROVAL_AND_PUBLICATION",
+  "result": "APPROVED_SINGLE_USE_PENDING_EXECUTION",
   "qualification_status": "NOT_QUALIFIED_PENDING_EXECUTION",
   "candidate": {
     "proposal_path": "combined-live-proposal.json",
@@ -12,10 +12,10 @@
     "max1_sha256": "sha256:391dd6b208b4b6c2e045058295f03e47937da7f9361b6bf27e7b225dbb51432e",
     "max2_sha256": "sha256:fee8426ec819aa4e742fd9e36e0e16113786fd773f66e9e46f29104b78ed044e",
     "control_source_commit": "b811cdfd677775558aa79452a4930b50a07b7b1a",
-    "authority_path": null,
-    "authority_sha256": null,
-    "authority_recorded": false,
-    "maximum_cumulative_finite_spend_usd": null,
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:5691eb5bb3a9009fd1a010c74b7c04bc47d15c0ce580ff47f6183c105a563736",
+    "authority_recorded": true,
+    "maximum_cumulative_finite_spend_usd": 4,
     "fresh_numeric_cap_required": true,
     "publication_required": true,
     "read_only_refresh_required_before_mutation": true
@@ -122,19 +122,19 @@
     ]
   },
   "provider_boundary": {
-    "provider_calls": false,
-    "provider_mutations": false,
+    "provider_calls": true,
+    "provider_mutations": true,
     "gpu_use": false,
     "external_spend_usd": 0,
-    "authority_active": false,
-    "cap_usd": null,
+    "authority_active": true,
+    "cap_usd": 4,
     "retained_volume_mutation_authorized": false,
     "v2_08_authorized": false,
-    "authority_file_present": false,
-    "read_only_refresh_required_before_mutation": true,
+    "authority_file_present": true,
+    "read_only_refresh_required_before_mutation": false,
     "read_only_refresh_completed": true,
     "rollback_anchor_newest_seven_retention_required": true,
-    "publication_authorized": false
+    "publication_authorized": true
   },
   "focused_contracts": {
     "negative_tests_required": [
@@ -157,8 +157,8 @@
     "model_volume_writes_zero": true,
     "workers_zero_after_drain": true,
     "endpoint_and_both_volumes_retained": true,
-    "authority_file_present": false,
-    "read_only_refresh_required_before_mutation": true,
+    "authority_file_present": true,
+    "read_only_refresh_required_before_mutation": false,
     "rollback_anchor_newest_seven_retention_required": true,
     "v2_08_forbidden": true,
     "publication_exact_digest_required": true,

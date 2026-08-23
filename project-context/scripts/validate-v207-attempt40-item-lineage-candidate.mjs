@@ -21,7 +21,7 @@ const paths = {
 };
 const expected = {
   proposal: "sha256:56cd650b61a56fb17a9abd602839992990d3a985a952eafc30afa60e82e02ae8",
-  acceptance: "sha256:c55e31ab998cc98627265b7447ea3dafb0671307dfe499afcafbe617ea850d48",
+  acceptance: "sha256:def791c571e6266a85486982a95ad139e7baa52a2d646a178df1c7ad0939c645",
   max1: "sha256:391dd6b208b4b6c2e045058295f03e47937da7f9361b6bf27e7b225dbb51432e",
   max2: "sha256:fee8426ec819aa4e742fd9e36e0e16113786fd773f66e9e46f29104b78ed044e",
   image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
@@ -174,18 +174,18 @@ for (const [index, config] of configs.entries()) {
 }
 assert(
   acceptance.schema_version === "videoforge.v2-07-attempt40-item-lineage-provider-free-candidate-acceptance/v1" &&
-    acceptance.attempt === 40 && acceptance.result === "PENDING_FRESH_EXACT_APPROVAL_AND_PUBLICATION" &&
+    acceptance.attempt === 40 && acceptance.result === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
     acceptance.candidate?.proposal_sha256 === expected.proposal && acceptance.candidate.max1_sha256 === expected.max1 &&
     acceptance.candidate.max2_sha256 === expected.max2 && acceptance.candidate.control_source_commit === expected.control &&
-    acceptance.candidate.authority_recorded === false && acceptance.candidate.maximum_cumulative_finite_spend_usd === null &&
+    acceptance.candidate.authority_recorded === true && acceptance.candidate.maximum_cumulative_finite_spend_usd === 4 &&
     acceptance.candidate.publication_required === true && acceptance.candidate.read_only_refresh_required_before_mutation === true,
   "ACCEPTANCE",
 );
 assert(
-  acceptance.provider_boundary?.provider_calls === false && acceptance.provider_boundary.provider_mutations === false &&
-    acceptance.provider_boundary.gpu_use === false && acceptance.provider_boundary.authority_active === false &&
-    acceptance.provider_boundary.external_spend_usd === 0 && acceptance.provider_boundary.authority_file_present === false &&
-    acceptance.provider_boundary.publication_authorized === false && acceptance.provider_boundary.v2_08_authorized === false,
+  acceptance.provider_boundary?.provider_calls === true && acceptance.provider_boundary.provider_mutations === true &&
+    acceptance.provider_boundary.gpu_use === false && acceptance.provider_boundary.authority_active === true &&
+    acceptance.provider_boundary.external_spend_usd === 0 && acceptance.provider_boundary.authority_file_present === true &&
+    acceptance.provider_boundary.publication_authorized === true && acceptance.provider_boundary.v2_08_authorized === false,
   "ACCEPTANCE_BOUNDARY",
 );
 const worker = text(paths.worker);
@@ -214,10 +214,10 @@ for (const [name, path] of Object.entries({
 }
 const state = text(paths.state);
 const gates = text(paths.gates);
-assert(state.includes("phase: serverless_v2_v2_07_attempt40_candidate_pending_exact_approval"), "STATE_PHASE");
-assert(state.includes("provider_calls_authorized: false"), "STATE_PROVIDER_BOUNDARY");
-assert(state.includes("gpu_use_authorized: false"), "STATE_GPU_BOUNDARY");
-assert(state.includes("maximum_external_spend_usd: 0"), "STATE_SPEND_BOUNDARY");
-assert(gates.includes("pending_authority: null"), "GATES_AUTHORITY_BOUNDARY");
-assert(gates.includes("pending_numeric_cap_usd: null"), "GATES_CAP_BOUNDARY");
-console.log("V2-07 Attempt40 item-lineage candidate validation PASS (provider-free; publication and fresh approval/cap still required; no authority or spend)");
+assert(state.includes("phase: serverless_v2_v2_07_attempt40_approved_pending_execution"), "STATE_PHASE");
+assert(state.includes("provider_calls_authorized: true"), "STATE_PROVIDER_BOUNDARY");
+assert(state.includes("gpu_use_authorized: true"), "STATE_GPU_BOUNDARY");
+assert(state.includes("maximum_external_spend_usd: 4"), "STATE_SPEND_BOUNDARY");
+assert(gates.includes("pending_authority_sha256:"), "GATES_AUTHORITY_BOUNDARY");
+assert(gates.includes("pending_numeric_cap_usd: 4"), "GATES_CAP_BOUNDARY");
+console.log("V2-07 Attempt40 item-lineage candidate validation PASS (proposal immutable; exact approval recorded; publication and GPU pending execution)");
