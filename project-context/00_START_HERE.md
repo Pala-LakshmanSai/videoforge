@@ -762,22 +762,19 @@ execution was historically bounded to that proposal.
 
 ## Context navigation
 
-`evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/combined-live-proposal.json`
-`sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e`;
-`evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/acceptance.json`
-`sha256:f8abbd1acaf111d8c0986d0de2569ee5598bfb9b62c5f27c87da082d00fb94b1`;
-`evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/read-only-preflight.json`.
-`sha256:fa2c02e3117229d2b656255092c914514c9a4364fb38fc0b921d37cc025c683c`;
+Attempt45 provider-free candidate:
+`evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/combined-live-proposal.json`
+`sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770`;
+acceptance `sha256:106c12b6be55f870ec17c52135eb90d09aa09fb60ad119e79a0d8174318353a2`;
+preflight `sha256:7a0e66ce4cf9cddaab6aa09692ed9f6cb385f43dedf8a288ffac57a41f6abffb`;
 `sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c`;
 `sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c`; V2-08.
-Consumed authority:
-`evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/approved-authority.json`
-`sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f`.
-Closure `evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-44.json`
+No Attempt45 authority or cap is recorded. Historical Attempt44 closure
+`evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-44.json`
 `sha256:695f438b4e2908a181d668a608588659f05075e2d6aa19d6bcfcca1a87d75be4`;
 cleanup `attempt44-cleanup-observation.json` `sha256:da05bd6a40812a3c59dbcdb5ec629646ae41d28cc763b18303dcb04aa57cb8a6`;
 reconciliation `attempt44-reconciliation-observation.json` `sha256:32070d0044349e52aa8e0f27baf1eb9394a2afa8189f45afa8b4279529f11357`.
-Resume GET 7200s>900s; repair `1a8a12d`. V2-08 forbidden.
+Attempt44 authority is consumed; resume GET repair `1a8a12d` is selected. V2-08 forbidden.
 
 Read `MANIFEST.yaml`, `CURRENT_STATE.yaml`, then only the selected profile and task. Normative
 decisions: `15_DECISIONS_AND_OPEN_GATES.md`; architecture: `06_SYSTEM_ARCHITECTURE.md`; models:

@@ -267,20 +267,27 @@ eq(acceptance.local_verification_required.candidate_validator, "PASS", "acceptan
 eq(acceptance.local_verification_required.repair_source_binding, "PASS", "acceptance repair validation");
 
 includes("project-context/CURRENT_STATE.yaml", E.closure, "CURRENT_STATE closure");
+includes("project-context/CURRENT_STATE.yaml", E.proposal, "CURRENT_STATE active proposal");
+includes("project-context/CURRENT_STATE.yaml", E.acceptance, "CURRENT_STATE active acceptance");
 includes("project-context/CURRENT_STATE.yaml", E.repair, "CURRENT_STATE repair");
 includes("project-context/CURRENT_STATE.yaml", "provider_calls_authorized: false", "CURRENT_STATE provider boundary");
 includes("project-context/CURRENT_STATE.yaml", "authorized_spend_usd: 0", "CURRENT_STATE spend boundary");
 includes("project-context/CURRENT_STATE.yaml", "V2-08: blocked_on_V2-07", "CURRENT_STATE V2-08");
 includes("project-context/CURRENT_STATE.yaml", "current_authority: null", "CURRENT_STATE authority");
 includes("project-context/GATES.yaml", E.closure, "GATES closure");
+includes("project-context/GATES.yaml", E.proposal, "GATES active proposal");
+includes("project-context/GATES.yaml", E.acceptance, "GATES active acceptance");
 includes("project-context/GATES.yaml", E.repair, "GATES repair");
 includes("project-context/GATES.yaml", E.source, "GATES source");
 includes("project-context/GATES.yaml", "provider_calls_authorized: false", "GATES provider boundary");
 includes("project-context/GATES.yaml", "v2_08_authorized: false", "GATES V2-08");
 includes("project-context/00_START_HERE.md", E.closure, "START_HERE closure");
+includes("project-context/00_START_HERE.md", E.proposal, "START_HERE active proposal");
+includes("project-context/tasks/VF-10-07.md", E.proposal, "task active proposal");
 includes("project-context/00_START_HERE.md", E.repair.slice(0, 7), "START_HERE repair");
 includes("project-context/00_START_HERE.md", "V2-08 forbidden", "START_HERE V2-08");
 const activation = "apps/web/src/server/providers/v207-activation-authority.ts";
+includes(activation, E.proposal, "activation pending proposal");
 includes(activation, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;", "activation authority");
 includes(activation, "export const V207_APPROVED_FINITE_CAP_USD: number | null = null;", "activation cap");
 includes(activation, "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;", "activation anchor");

@@ -1,12 +1,12 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-23T13:49:18.000Z"
+updated_at: "2026-08-23T14:40:00.000Z"
 
-phase: serverless_v2_v2_07_attempt44_closed_provider_free_resume_get_repair
+phase: serverless_v2_v2_07_attempt45_resume_get_repair_candidate_ready
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt44_closed_provider_free_resume_get_repair
+current_wave: v2_07_attempt45_resume_get_repair_candidate_ready
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: provider_free_diagnosis
 application_code_changes_authorized: true
@@ -25,21 +25,21 @@ current_goal_boundary:
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: Attempt44 failed closed after one completed provider job because the resume GET requested 7200 seconds while the hosted port permits at most 900; repair and validate locally only
-  note: "Attempt44 authority/cap are consumed. Cleanup and three-read reconciliation prove zero disposable compute and both exact retained volumes; incremental spend settled at $0. V2-07 remains NOT_QUALIFIED and V2-08 forbidden."
+  v2_07_action: Attempt45 provider-free candidate binds the repaired 900-second resume GET and waits for fresh exact approval and numeric cap
+  note: "Attempt44 authority/cap remain consumed historical evidence. Attempt45 has no authority or cap; provider calls, mutation, GPU use, and spend remain disabled. V2-07 remains NOT_QUALIFIED and V2-08 forbidden."
 
-pending_v2_07_attempt44_proposal:
-  mode: closed_consumed_attempt44_resume_get_lifetime_mismatch
-  proposal_path: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/combined-live-proposal.json
-  proposal_sha256: "sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e"
-  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/acceptance.json
-  candidate_acceptance_sha256: "sha256:f8abbd1acaf111d8c0986d0de2569ee5598bfb9b62c5f27c87da082d00fb94b1"
-  read_only_preflight: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/read-only-preflight.json
-  read_only_preflight_sha256: "sha256:fa2c02e3117229d2b656255092c914514c9a4364fb38fc0b921d37cc025c683c"
-  cloudflare_anchor_observation: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/cloudflare-anchor-observation.json
-  cloudflare_anchor_observation_sha256: "sha256:3dc1465fc34db19174c307cd1454c24847cf7e7f8294e20af10f80fd6f67b768"
-  runpod_reconciliation_observation: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/runpod-reconciliation-observation.json
-  runpod_reconciliation_observation_sha256: "sha256:abde59d6ea9046295fe1373eed4bbba5a1e96228f824a4e2724b972b22893c56"
+pending_v2_07_attempt45_proposal:
+  mode: provider_free_candidate_pending_fresh_exact_approval_and_numeric_cap
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770"
+  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/acceptance.json
+  candidate_acceptance_sha256: "sha256:106c12b6be55f870ec17c52135eb90d09aa09fb60ad119e79a0d8174318353a2"
+  read_only_preflight: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/read-only-preflight.json
+  read_only_preflight_sha256: "sha256:7a0e66ce4cf9cddaab6aa09692ed9f6cb385f43dedf8a288ffac57a41f6abffb"
+  cloudflare_anchor_observation: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/cloudflare-anchor-observation.json
+  cloudflare_anchor_observation_sha256: "sha256:0338d443c898295dd08508e4d9ea66ab82d37475c6d29b501d9f82bd11ae16bd"
+  runpod_reconciliation_observation: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/runpod-reconciliation-observation.json
+  runpod_reconciliation_observation_sha256: "sha256:30f56deb33f0756153fc16f8ac237f1f9e53e7daea472cd4acb31dc430dba298"
   staged_max1_sha256: "sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c"
   staged_max2_sha256: "sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c"
   image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
@@ -48,7 +48,7 @@ pending_v2_07_attempt44_proposal:
   config_binding_commit: "2e216bade5f8457749f435cca1dd160767c20039"
   activation_reset_commit: "035306038daa23f1a9579c5d0c1852c5155fb52e"
   typed_authority_source_sha256: "sha256:82e3e571a304e96ace9cbd861c8cd2e691e36964223c40702d0115a17931f7d7"
-  compiled_pending_proposal_sha256: "sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e"
+  compiled_pending_proposal_sha256: "sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770"
   compiled_approved_authority_sha256: null
   compiled_finite_cap_usd: null
   compiled_anchor_refresh_authorized: null
@@ -66,10 +66,10 @@ pending_v2_07_attempt44_proposal:
   cloudflare_mutations_authorized: false
   scoped_signer_worker_route_activation_authorized: false
   gpu_use_authorized: false
-  authority_recorded: true
-  authority_path: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/approved-authority.json
-  authority_sha256: "sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f"
-  maximum_cumulative_finite_spend_usd: 0
+  authority_recorded: false
+  authority_path: null
+  authority_sha256: null
+  maximum_cumulative_finite_spend_usd: null
   finite_action_estimate_usd: 3.95
   anchor_refresh_required: false
   anchor_refresh_authorized: false
@@ -77,7 +77,7 @@ pending_v2_07_attempt44_proposal:
   retained_volume_mutation_authorized: false
   v2_08_authorized: false
   result: NOT_QUALIFIED_attempt44_output_resume_get_400_clean
-  next_boundary: provider-free repair and validation only; fresh exact proposal approval and numeric cap required before any future mutation or GPU use
+  next_boundary: fresh exact Attempt45 proposal approval and positive numeric cap required before any provider call, mutation, GPU use, or spend
 
 pending_v2_07_attempt43_proposal:
   mode: closed_consumed_attempt43_output_finalization_failure
@@ -1764,9 +1764,9 @@ repository:
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
   current_source_head: "1089c4729424ee066408e1de8fe927e17cf3915f"
-  current_source_head_semantics: attempt44_failed_closed_provider_free_resume_get_repair
+  current_source_head_semantics: attempt45_provider_free_resume_get_repair_candidate_selected
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt44 proposal sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e and authority sha256:a376fb6782c1512e50c8586b060bf57d030685dba3df4b5a69650e195595ab5f are consumed. Failure was a local resume-GET 7200-vs-900 lifetime mismatch; cleanup/reconciliation are clean and provider work is disabled."
+  current_source_head_note: "Attempt45 proposal sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770 binds the 900-second resume-GET repair and is selected provider-free with no authority or cap. Attempt44 proposal/authority remain consumed historical evidence; provider work is disabled."
   v2_07_latest_local_repair: "Commit 1a8a12de10869d163ddf7bb4dfa3f329407ba566 caps resume GET authority at the hosted 900-second maximum and labels output_resume_readback distinctly; provider-free tests passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -1854,7 +1854,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: NOT_QUALIFIED_attempt44_output_resume_get_400_clean_provider_free_repair
+  V2-07: NOT_QUALIFIED_attempt45_provider_free_candidate_pending_fresh_approval
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
@@ -1901,7 +1901,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt44_output_resume_get_400_clean_provider_free_repair
+    status: attempt45_provider_free_candidate_pending_fresh_approval
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
     immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_ATTEMPT40
@@ -1921,8 +1921,8 @@ model_runtime_evidence:
     v2_07_cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
     v2_07_reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
     v2_07_reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
-    v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/combined-live-proposal.json
-    v2_07_current_candidate_sha256: "sha256:a5c57dab66673cce1878c38aceff50b9f5341a4c3b069b250aeeac099dfeaa0e"
+    v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/combined-live-proposal.json
+    v2_07_current_candidate_sha256: "sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770"
     v2_07_current_candidate_control_commit: "1089c4729424ee066408e1de8fe927e17cf3915f"
     v2_07_current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     v2_07_current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
@@ -1945,8 +1945,8 @@ model_runtime_evidence:
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
     v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-44.json
-    v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt44-version-metadata-probe-candidate/acceptance.json
-    v2_07_current_candidate_acceptance_sha256: "sha256:f8abbd1acaf111d8c0986d0de2569ee5598bfb9b62c5f27c87da082d00fb94b1"
+    v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/acceptance.json
+    v2_07_current_candidate_acceptance_sha256: "sha256:106c12b6be55f870ec17c52135eb90d09aa09fb60ad119e79a0d8174318353a2"
     v2_07_attempt_30_increment_usd_immediate_post_cleanup: 0
     v2_07_attempt_30_delayed_billing_refresh_required: true
     v2_07_attempt_32_increment_usd_settled: 0
@@ -2352,21 +2352,55 @@ provider_authority_attempt44: &v2_07_provider_authority_attempt44
   actual_spend_usd: 0
   result: NOT_QUALIFIED_attempt44_output_resume_get_400_clean
 
-provider_authority: *v2_07_provider_authority_attempt44
+provider_authority_attempt45: &v2_07_provider_authority_attempt45
+  mode: none
+  authority_mode: pending_fresh_exact_approval
+  provider: null
+  model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
+  source: provider_free_attempt45_candidate
+  non_transferable: true
+  authority_state: NOT_RECORDED
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770"
+  acceptance_path: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/acceptance.json
+  acceptance_sha256: "sha256:106c12b6be55f870ec17c52135eb90d09aa09fb60ad119e79a0d8174318353a2"
+  preflight_path: evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/read-only-preflight.json
+  authority_path: null
+  authority_sha256: null
+  cap_usd: null
+  anchor_refresh_authorized: false
+  authority_recorded: false
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  cloudflare_mutations_authorized: false
+  scoped_signer_worker_route_activation_authorized: false
+  gpu_use_authorized: false
+  retained_volume_mutation_authorized: false
+  v2_08_authorized: false
+  maximum_external_spend_usd: 0
+  maximum_cumulative_finite_spend_usd: null
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
+  consumed: false
+  actual_spend_usd: 0
+  result: PROVIDER_FREE_CANDIDATE_PENDING_FRESH_APPROVAL
+
+provider_authority: *v2_07_provider_authority_attempt45
 
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt44_output_resume_get_400_clean
+  status: NOT_QUALIFIED_attempt45_provider_free_candidate_pending_fresh_approval
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: attempt44_consumed_closed_provider_free
+  authorization_status: attempt45_pending_fresh_exact_approval_no_authority
   task_stage: provider_free_diagnosis
   current_goal_authority: null
-  provider_authority: *v2_07_provider_authority_attempt44
+  provider_authority: *v2_07_provider_authority_attempt45
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Repair and validate the Attempt44 resume-GET lifetime mismatch locally; no provider execution before fresh exact approval."
+  goal: "Obtain fresh exact approval for the selected Attempt45 resume-GET repair candidate; no provider execution before authority is recorded."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -2382,13 +2416,13 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt44 proposal/authority are consumed. Cleanup and three stable reads prove zero disposable compute and $0 settled incremental spend; provider-free repair only, V2-08 forbidden."
+  authority_note: "Attempt45 is selected provider-free with no authority or cap. Attempt44 proposal/authority are consumed historical evidence; V2-08 forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt44_failed_closed_provider_free_repair
+  execution_status: attempt45_provider_free_candidate_ready
   execution_blocker: fresh_exact_proposal_approval_and_numeric_cap_required_before_paid_retry
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt44_failed_closed_provider_free_repair
+  state: v2_06_complete_green_independently_audited_v2_07_attempt45_provider_free_candidate_ready
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
