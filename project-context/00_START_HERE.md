@@ -1,5 +1,12 @@
 # VideoForge: start here
 
+Attempt47 is the current provider-free candidate. Proposal
+`sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53` and acceptance
+`sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6` bind repair `1d39b71`,
+the unique exact terminal-Pod identity fallback, Attempt46 closure, the unchanged immutable image,
+and unchanged max-one/max-two configs. Authority and cap are null; no provider call/GPU/spend is
+authorized. Fresh exact approval and a fresh positive numeric cap are required; V2-08 forbidden.
+
 Attempt46 is closed fail-closed as `NOT_QUALIFIED`. Proposal
 `sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259` and authority
 `sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588` were consumed once with

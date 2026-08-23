@@ -405,7 +405,9 @@ for (const [name, surface] of Object.entries(surfaces)) {
   has(surface, "V2-08", `${name.toUpperCase()}_V208_FENCE`);
 }
 assert(
-  /^phase:\s*serverless_v2_v2_07_attempt46_[^\n]*(?:closed|not_qualified)/m.test(state),
+  /^phase:\s*serverless_v2_v2_07_(?:attempt46_[^\n]*(?:closed|not_qualified)|attempt47_provider_free_candidate[^\n]*)/m.test(
+    state,
+  ),
   "STATE_CLOSED_PHASE",
 );
 
@@ -453,7 +455,9 @@ for (const [needle, code] of [
   }
 }
 assert(
-  /execution_status:\s*attempt46_[^\n]*(?:closed|not_qualified)/.test(stateNext),
+  /execution_status:\s*(?:attempt46_[^\n]*(?:closed|not_qualified)|attempt47_provider_free_candidate[^\n]*)/.test(
+    stateNext,
+  ),
   "STATE_NEXT_CLOSED_STATUS",
 );
 
@@ -530,15 +534,18 @@ for (const [needle, code] of [
   ["last_run: \"evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-46.json\"", "GATE_CLOSURE"],
   [`last_run_sha256: "${expected.closure}"`, "GATE_CLOSURE_HASH"],
   ["latest_approved_authority_state: CONSUMED_CLOSED_DO_NOT_REUSE", "GATE_AUTHORITY_CONSUMED"],
-  ["pending_proposal: null", "GATE_PENDING_PROPOSAL_NULL"],
+  [
+    /pending_proposal:\s*(?:null|"evidence\/acceptance\/VF-10-07\/2026-08-23-attempt47-terminal-pod-identity-repair-candidate\/combined-live-proposal\.json")/,
+    "GATE_PENDING_PROPOSAL_SAFE_SUCCESSOR",
+  ],
   ["pending_authority: null", "GATE_PENDING_AUTHORITY_NULL"],
   ["pending_numeric_cap_usd: null", "GATE_PENDING_CAP_NULL"],
   ["provider_calls_authorized: false", "GATE_PROVIDER_OFF"],
   ["provider_mutations_authorized: false", "GATE_MUTATIONS_OFF"],
   ["gpu_use_authorized: false", "GATE_GPU_OFF"],
   [
-    /authority_mode:\s*closed_consumed_attempt46_[^\n]*process_replacement[^\n]*/,
-    "GATE_CLOSED_MODE",
+    /authority_mode:\s*(?:closed_consumed_attempt46_[^\n]*process_replacement[^\n]*|provider_free_attempt47_pending_fresh_exact_approval)/,
+    "GATE_CLOSED_OR_SAFE_SUCCESSOR_MODE",
   ],
   ["V2-08 forbidden", "GATE_V208_FENCE"],
 ]) {

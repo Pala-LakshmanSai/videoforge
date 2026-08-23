@@ -151,23 +151,23 @@ gates:
     latest_closed_preflight_sha256: null
     latest_closed_max1_sha256: "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a"
     latest_closed_max2_sha256: "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb"
-    current_candidate: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/combined-live-proposal.json"
-    current_candidate_sha256: "sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259"
-    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:4e467eaf9190cb6cc93e344fdc608fcbc49c7bc6e99d7f68fe055e149484d5e8"
+    current_candidate: "evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/combined-live-proposal.json"
+    current_candidate_sha256: "sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53"
+    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/acceptance.json"
+    current_candidate_acceptance_sha256: "sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6"
     current_candidate_preflight: null
     current_candidate_preflight_sha256: null
-    current_candidate_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/approved-authority.json"
-    current_candidate_authority_sha256: "sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588"
-    current_candidate_authority_state: CONSUMED_CLOSED_DO_NOT_REUSE
+    current_candidate_authority: null
+    current_candidate_authority_sha256: null
+    current_candidate_authority_state: PENDING_FRESH_EXACT_APPROVAL
     current_candidate_authority_mode: none
     current_candidate_finite_cap_usd: null
     current_candidate_anchor_refresh_authorized: false
     current_candidate_cloudflare_mutation_authorized: false
     current_candidate_scoped_signer_worker_route_activation_authorized: false
-    current_candidate_provider_calls_completed: true
+    current_candidate_provider_calls_completed: false
     current_candidate_external_spend_usd: 0
-    current_candidate_control_source_commit: "926b149"
+    current_candidate_control_source_commit: "1d39b716705a69cd8f8933d6a640fa5a9a98d37e"
     current_candidate_image_source_commit: "a7b7a937d08dc9032b8922cca71c602195f3094c"
     current_candidate_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
     current_candidate_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_ATTEMPT40_NO_REPUBLICATION
@@ -200,17 +200,17 @@ gates:
     latest_closed_billing_attribution: ATTEMPT46_OBSERVED_INCREMENT_ZERO_AT_THREE_STABLE_READ_RECONCILIATION
     latest_closed_authority_mode: closed_consumed_attempt46_process_replacement_identity_unavailable
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
-    pending_proposal: null
-    pending_proposal_sha256: null
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53"
     pending_authority: null
     pending_authority_sha256: null
-    pending_authority_state: CONSUMED_CLOSED_DO_NOT_REUSE
+    pending_authority_state: PENDING_FRESH_EXACT_APPROVAL
     pending_authority_mode: none
     pending_numeric_cap_usd: null
     pending_anchor_refresh_authorized: false
     pending_cloudflare_mutation_authorized: false
     pending_scoped_signer_worker_route_activation_authorized: false
-    pending_control_source_commit: "926b149"
+    pending_control_source_commit: "1d39b716705a69cd8f8933d6a640fa5a9a98d37e"
     pending_live_qualification_source_sha256: "sha256:c5187fb9636d53e214d90f60c1a67a13ed06dc47c558f4869628b6d09a27a9c5"
     current_provider_free_repair_commit: "1a8a12de10869d163ddf7bb4dfa3f329407ba566"
     current_provider_free_live_qualification_source_sha256: "sha256:c5187fb9636d53e214d90f60c1a67a13ed06dc47c558f4869628b6d09a27a9c5"
@@ -220,12 +220,12 @@ gates:
     pending_typed_activation_authority_commit: "926b149"
     pending_orchestrator_marker_lifecycle_commit: "3dda73fed6d82dc7116b18a6b7cfbe4b262fc7bc"
     pending_protected_config_path_pin_commit: "75c784ad1bd9ae4908a5a5204a2170052c44df92"
-    pending_candidate_acceptance: null
-    pending_candidate_acceptance_sha256: null
+    pending_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt47-terminal-pod-identity-repair-candidate/acceptance.json"
+    pending_candidate_acceptance_sha256: "sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6"
     pending_preflight: null
     pending_preflight_sha256: null
-    pending_max1_sha256: null
-    pending_max2_sha256: null
+    pending_max1_sha256: "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a"
+    pending_max2_sha256: "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb"
     pending_protected_config_baseline_sha256: "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774"
     pending_protected_config_projected_sha256: "sha256:c643af2fe7d6325396b2527bcbe92d9422c6126aa3328530b8dfaa36b7bc08e5"
     pending_old_active_version_id_sha256: "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0"
@@ -238,7 +238,7 @@ gates:
     provider_mutations_authorized: false
     gpu_use_authorized: false
     v2_08_authorized: false
-    authority_mode: provider_free_attempt46_consumed_closed
+    authority_mode: provider_free_attempt47_pending_fresh_exact_approval
     result: "NOT_QUALIFIED_attempt46_process_replacement_worker_identity_unavailable_clean"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-46.json"
     closure_evidence_sha256: "sha256:e333bc34e7fbc72bf123e32ce65d28ee8a85da4e6b3542db929a4e63a520e8d2"
@@ -249,7 +249,7 @@ gates:
     canonicalization_repair_commit: "f945392"
     deploy_diagnostic_repair_commit: "7066520"
     deploy_diagnostic_repair_source_sha256: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894"
-    next_boundary: "provider-free process-replacement identity repair only; fresh exact proposal, approval, and positive cap required before any retry; V2-08 forbidden"
+    next_boundary: "fresh exact Attempt47 proposal approval and positive numeric cap required before any provider call; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:
