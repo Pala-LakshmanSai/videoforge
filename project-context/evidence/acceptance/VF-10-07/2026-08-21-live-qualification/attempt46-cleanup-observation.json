@@ -1,0 +1,54 @@
+{
+  "schema_version": "videoforge.v2-07-attempt46-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 46,
+  "checked_at": "2026-08-23T17:38:54.593Z",
+  "result": "CLEAN_ROLLBACK_CONFIRMED_AFTER_NARROW_EXACT_CLEANUP",
+  "failure_code": "RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE",
+  "orchestrator": {
+    "path": "/tmp/videoforge-v207-attempt46-live-orchestrator.json",
+    "sha256": "sha256:6a69bbe05ed1cd3af6ed6e0d3f20d137238c3d2288936404864f2df2e120df4f",
+    "result": "FAILED"
+  },
+  "live_result": {
+    "path": "/tmp/videoforge-v207-live-result.json",
+    "sha256": "sha256:9d98ea0527be82e4c6047fcdab971c6b4e7d3104cf86ee7784f59d22caba3403",
+    "result": "FAILED"
+  },
+  "cloudflare": {
+    "pre_mutation_route": "404 V207_ROUTE_DISABLED",
+    "captured_version_id_sha256": "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0",
+    "captured_version_record_sha256": "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878",
+    "signer_secret_activated": true,
+    "signer_secret_deleted": true,
+    "worker_rollback_confirmed": true,
+    "restored_route": "404 V207_ROUTE_DISABLED",
+    "restored_route_confirmed_at": "2026-08-23T17:37:31.713Z"
+  },
+  "protected_config": {
+    "path": "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+    "mode": "0600",
+    "sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "unchanged": true
+  },
+  "runpod": {
+    "endpoint_id_sha256": "sha256:4b9649b30c04e0f519eb95b994d4752862c20225d68e9feb39843a54b1351687",
+    "template_id_sha256": "sha256:6ffa21b66b487cd3f96217701cffc8cae61031d15b577439a3365d208494ae1b",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 2,
+    "terminal_pod_record_count": 2,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "jobs_submitted": 1,
+    "gpu_use": true,
+    "reconciliation_evidence": "attempt46-reconciliation-observation.json"
+  },
+  "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "retained_volumes_deleted_or_mutated_by_cleanup": false,
+  "cleanup_uncertain": false,
+  "authority_consumed": true,
+  "retry_under_same_authority_forbidden": true,
+  "v2_08_authorized": false
+}

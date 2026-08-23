@@ -115,9 +115,9 @@ gates:
     blocks: mage_serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
-    last_run: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-45.json"
-    last_run_sha256: "sha256:f287a7ec8ea064587e251f5ccb9b5321025d37976fdbf40b0b894a962c71167c"
-    last_run_at: "2026-08-23T15:03:46.164Z"
+    last_run: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-46.json"
+    last_run_sha256: "sha256:e333bc34e7fbc72bf123e32ce65d28ee8a85da4e6b3542db929a4e63a520e8d2"
+    last_run_at: "2026-08-23T17:38:54.593Z"
     previous_attempt: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-28.json"
     historical_attempt22_proposal: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
     historical_attempt22_authority: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
@@ -142,15 +142,15 @@ gates:
     historical_attempt29_control_source_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
     historical_attempt30_closure_sha256: "sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c"
     historical_attempt30_cleanup_sha256: "sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0"
-    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/approved-authority.json"
-    latest_closed_authority_sha256: "sha256:e73bd7ecdf22db25bfebbb260364c580831ce949e7338bb133bf4def1b2b6b67"
-    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/combined-live-proposal.json"
-    latest_closed_proposal_sha256: "sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770"
-    latest_closed_candidate_acceptance_sha256: "sha256:106c12b6be55f870ec17c52135eb90d09aa09fb60ad119e79a0d8174318353a2"
-    latest_closed_preflight: "evidence/acceptance/VF-10-07/2026-08-23-attempt45-resume-get-lifetime-repair-candidate/read-only-preflight.json"
-    latest_closed_preflight_sha256: "sha256:7a0e66ce4cf9cddaab6aa09692ed9f6cb385f43dedf8a288ffac57a41f6abffb"
-    latest_closed_max1_sha256: "sha256:fcd591f6ad384ad5ab20ae6ab24bbec6d1e3940f07ffbc3cb33bc3be6664973c"
-    latest_closed_max2_sha256: "sha256:8c1d60cc939c3e01f95533733259ce8de5a2a8345429327af2fd869b2dd32a2c"
+    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/approved-authority.json"
+    latest_closed_authority_sha256: "sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588"
+    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/combined-live-proposal.json"
+    latest_closed_proposal_sha256: "sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259"
+    latest_closed_candidate_acceptance_sha256: "sha256:4e467eaf9190cb6cc93e344fdc608fcbc49c7bc6e99d7f68fe055e149484d5e8"
+    latest_closed_preflight: null
+    latest_closed_preflight_sha256: null
+    latest_closed_max1_sha256: "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a"
+    latest_closed_max2_sha256: "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb"
     current_candidate: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/combined-live-proposal.json"
     current_candidate_sha256: "sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259"
     current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/acceptance.json"
@@ -159,13 +159,13 @@ gates:
     current_candidate_preflight_sha256: null
     current_candidate_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/approved-authority.json"
     current_candidate_authority_sha256: "sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588"
-    current_candidate_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
-    current_candidate_authority_mode: bounded_mutation
-    current_candidate_finite_cap_usd: 4
+    current_candidate_authority_state: CONSUMED_CLOSED_DO_NOT_REUSE
+    current_candidate_authority_mode: none
+    current_candidate_finite_cap_usd: null
     current_candidate_anchor_refresh_authorized: false
-    current_candidate_cloudflare_mutation_authorized: true
-    current_candidate_scoped_signer_worker_route_activation_authorized: true
-    current_candidate_provider_calls_completed: false
+    current_candidate_cloudflare_mutation_authorized: false
+    current_candidate_scoped_signer_worker_route_activation_authorized: false
+    current_candidate_provider_calls_completed: true
     current_candidate_external_spend_usd: 0
     current_candidate_control_source_commit: "926b149"
     current_candidate_image_source_commit: "a7b7a937d08dc9032b8922cca71c602195f3094c"
@@ -177,10 +177,10 @@ gates:
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
     current_candidate_max1_sha256: "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a"
     current_candidate_max2_sha256: "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb"
-    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt43-anchor-refresh-candidate/combined-live-proposal.json"
-    latest_approved_proposal_sha256: "sha256:05e8aa382b135101990edbe155e75ac89b51f75779d81de500bb75b693207458"
-    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt43-anchor-refresh-candidate/approved-authority.json"
-    latest_approved_authority_sha256: "sha256:e5c268b63583d28c18a3999ef9880f425d54e9bf50f759e376dbcd0f2b40a07b"
+    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/combined-live-proposal.json"
+    latest_approved_proposal_sha256: "sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259"
+    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/approved-authority.json"
+    latest_approved_authority_sha256: "sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588"
     latest_approved_authority_state: CONSUMED_CLOSED_DO_NOT_REUSE
     latest_approved_control_source_commit: "e5571ed2478f0c526ebf508d0a4ce301bafa8203"
     closed_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/approved-authority.json"
@@ -193,23 +193,23 @@ gates:
     historical_attempt41_reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
     publication_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json"
     publication_evidence_sha256: "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7"
-    latest_closed_result: NOT_QUALIFIED_attempt45_signer_disabled_deploy_failed_clean
+    latest_closed_result: NOT_QUALIFIED_attempt46_process_replacement_worker_identity_unavailable_clean
     latest_closed_incremental_spend_usd: 0
     latest_closed_cumulative_endpoint_spend_usd: 1.6217972798040137
-    latest_closed_observed_unattributed_late_billing_increment_usd: 0.03145541716367006
-    latest_closed_billing_attribution: UNATTRIBUTED_LATE_PROVIDER_BILLING_NOT_ATTEMPT45_COMPUTE
-    latest_closed_authority_mode: closed_consumed_attempt45_signer_disabled_deploy_failed
+    latest_closed_observed_unattributed_late_billing_increment_usd: 0
+    latest_closed_billing_attribution: ATTEMPT46_OBSERVED_INCREMENT_ZERO_AT_THREE_STABLE_READ_RECONCILIATION
+    latest_closed_authority_mode: closed_consumed_attempt46_process_replacement_identity_unavailable
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588"
-    pending_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
-    pending_authority_mode: bounded_mutation
-    pending_numeric_cap_usd: 4
+    pending_proposal: null
+    pending_proposal_sha256: null
+    pending_authority: null
+    pending_authority_sha256: null
+    pending_authority_state: CONSUMED_CLOSED_DO_NOT_REUSE
+    pending_authority_mode: none
+    pending_numeric_cap_usd: null
     pending_anchor_refresh_authorized: false
-    pending_cloudflare_mutation_authorized: true
-    pending_scoped_signer_worker_route_activation_authorized: true
+    pending_cloudflare_mutation_authorized: false
+    pending_scoped_signer_worker_route_activation_authorized: false
     pending_control_source_commit: "926b149"
     pending_live_qualification_source_sha256: "sha256:c5187fb9636d53e214d90f60c1a67a13ed06dc47c558f4869628b6d09a27a9c5"
     current_provider_free_repair_commit: "1a8a12de10869d163ddf7bb4dfa3f329407ba566"
@@ -220,12 +220,12 @@ gates:
     pending_typed_activation_authority_commit: "926b149"
     pending_orchestrator_marker_lifecycle_commit: "3dda73fed6d82dc7116b18a6b7cfbe4b262fc7bc"
     pending_protected_config_path_pin_commit: "75c784ad1bd9ae4908a5a5204a2170052c44df92"
-    pending_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-23-attempt46-deploy-diagnostic-canonical-repair-candidate/acceptance.json"
-    pending_candidate_acceptance_sha256: "sha256:4e467eaf9190cb6cc93e344fdc608fcbc49c7bc6e99d7f68fe055e149484d5e8"
+    pending_candidate_acceptance: null
+    pending_candidate_acceptance_sha256: null
     pending_preflight: null
     pending_preflight_sha256: null
-    pending_max1_sha256: "sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a"
-    pending_max2_sha256: "sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb"
+    pending_max1_sha256: null
+    pending_max2_sha256: null
     pending_protected_config_baseline_sha256: "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774"
     pending_protected_config_projected_sha256: "sha256:c643af2fe7d6325396b2527bcbe92d9422c6126aa3328530b8dfaa36b7bc08e5"
     pending_old_active_version_id_sha256: "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0"
@@ -234,22 +234,22 @@ gates:
     pending_old_active_window_length: 10
     pending_flashboot: true
     pending_availability: HIGH
-    provider_calls_authorized: true
-    provider_mutations_authorized: true
-    gpu_use_authorized: true
+    provider_calls_authorized: false
+    provider_mutations_authorized: false
+    gpu_use_authorized: false
     v2_08_authorized: false
-    authority_mode: bounded_mutation_attempt46_approved_single_use
-    result: "NOT_QUALIFIED_attempt45_signer_disabled_deploy_failed_clean"
-    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-45.json"
-    closure_evidence_sha256: "sha256:f287a7ec8ea064587e251f5ccb9b5321025d37976fdbf40b0b894a962c71167c"
-    cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt45-cleanup-observation.json"
-    cleanup_evidence_sha256: "sha256:d23b169a2920e27b25e691e04758fbe123d3f41f3f1eb618940f998bc89d2f55"
-    reconciliation_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt45-reconciliation-observation.json"
-    reconciliation_evidence_sha256: "sha256:e786ee74546632ed38aeef5acf3860605693cd7255a4a19ba44d99ca91b82c2d"
+    authority_mode: provider_free_attempt46_consumed_closed
+    result: "NOT_QUALIFIED_attempt46_process_replacement_worker_identity_unavailable_clean"
+    closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-46.json"
+    closure_evidence_sha256: "sha256:e333bc34e7fbc72bf123e32ce65d28ee8a85da4e6b3542db929a4e63a520e8d2"
+    cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt46-cleanup-observation.json"
+    cleanup_evidence_sha256: "sha256:f1a82b50408b8ad7a99beffcf4daf6a69976a5cd58620d314a4d873e463b3d75"
+    reconciliation_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt46-reconciliation-observation.json"
+    reconciliation_evidence_sha256: "sha256:cf06ca26a87f25f5e95285f782289823b2f57766d1915fe3dc88dc7ec48b476b"
     canonicalization_repair_commit: "f945392"
     deploy_diagnostic_repair_commit: "7066520"
     deploy_diagnostic_repair_source_sha256: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894"
-    next_boundary: "fresh read-only Attempt46 admission checks, then exact bounded execution under the recorded USD 4 cap; stop before V2-08"
+    next_boundary: "provider-free process-replacement identity repair only; fresh exact proposal, approval, and positive cap required before any retry; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

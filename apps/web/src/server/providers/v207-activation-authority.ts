@@ -79,19 +79,17 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempt46 is the exact freshly approved single-use boundary. The authority
-// bytes remain immutable in evidence; this compiled binding is consumed at the
-// first execution attempt and must be reset to null after closure.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+// Attempt46 was consumed once and closed fail-closed after the owned probe.
+// Keep its immutable authority in evidence for audit only; executable approval
+// and cap are reset so the provider job cannot be replayed.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
- * same compiled approval boundary as the proposal and finite cap. Attempt46
- * is refresh-disabled; a future exact authority may change this to true in
- * its own immutable activation commit.
+ * same compiled approval boundary as the proposal and finite cap. No current
+ * provider authority exists; a future exact authority may opt in separately.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;

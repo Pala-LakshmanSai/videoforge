@@ -1,16 +1,17 @@
 # VideoForge: start here
 
-Attempt46 is the current approved single-use execution boundary. Proposal
-`sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259`, acceptance
-`sha256:4e467eaf9190cb6cc93e344fdc608fcbc49c7bc6e99d7f68fe055e149484d5e8`, and max-one/max-two
-`sha256:624dafe2f1a5fdfbf0435b87e3eecaca997281386d4a6c41339bfb5e78eb457a` /
-`sha256:9774e90daf86cfa8f7f8f17c4bd9319475ac5881d0c2667ca61f0a7412a9bfcb` bind repairs
-`f945392`, `7066520`, and `926b149`. The user approved this proposal once with FlashBoot=true,
-LOW-or-better EU-RO-1 and fresh `$4`; authority
-`sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588` is pending one bounded
-execution. Fresh read-only reconciliation at `2026-08-23T17:16:47.569Z` found zero disposable
-resources, both retained volumes, and unchanged billing `1.6217972798040137`. V2-07 remains
-`NOT_QUALIFIED` pending live gate proof and V2-08 is forbidden.
+Attempt46 is closed fail-closed as `NOT_QUALIFIED`. Proposal
+`sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259` and authority
+`sha256:86b5810de7fb360182c5ade95d2d0f4349cb76175cc41b4e10923e78262f5588` were consumed once with
+FlashBoot=true, LOW-or-better EU-RO-1, and `$4`. One owned probe completed with one durable output,
+replay-confirmed artifact receipt, signed v3 receipt, and 14,177,206,272-byte peak VRAM. Execution
+stopped before the cold batch at `RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE`.
+
+Closure `failed-attempt-46.json` is `sha256:e333bc34e7fbc72bf123e32ce65d28ee8a85da4e6b3542db929a4e63a520e8d2`.
+Narrow cleanup deleted only the disposable endpoint/template after two stable terminal snapshots;
+signer deletion, Worker rollback, `404 V207_ROUTE_DISABLED`, protected config, both retained volumes,
+zero disposable resources, three stable reads, and unchanged billing `1.6217972798040137` passed.
+No authority/cap remains. Provider-free harness diagnosis only; V2-08 is forbidden.
 
 Attempt45 is closed fail-closed as `NOT_QUALIFIED`. Exact proposal
 `sha256:a2f336fe5bb0291ef436699d60a0f6885948c4a5cf52d724a184caa917718770` and single-use authority

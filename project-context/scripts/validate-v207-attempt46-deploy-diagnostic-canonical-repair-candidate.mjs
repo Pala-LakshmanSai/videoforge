@@ -158,8 +158,11 @@ eq(sha(path.join(ROOT, "apps/web/src/server/providers/v207-live-orchestrator.ts"
 eq(sha(path.join(ROOT, "apps/web/src/server/providers/v207-live-qualification.ts")), E.live, "live file");
 ok(activation.includes(`export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;`), "null authority");
 ok(activation.includes(`export const V207_APPROVED_FINITE_CAP_USD: number | null = null;`), "null cap");
-eq(activation.includes(`export const V207_APPROVED_AUTHORITY_SHA256: string | null =`), true, "compiled authority declaration");
-ok(activation.includes(E.authority), "compiled authority hash");
-ok(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;"), "compiled cap");
-ok(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;"), "compiled anchor flag");
+ok(
+  activation.includes(
+    "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;",
+  ),
+  "consumed anchor flag",
+);
+ok(!activation.includes(E.authority), "consumed authority removed from executable source");
 console.log("PASS validate-v207-attempt46-deploy-diagnostic-canonical-repair-candidate", JSON.stringify(E));
