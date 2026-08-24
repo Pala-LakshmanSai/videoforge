@@ -2,7 +2,9 @@
 
 ## Active handoff — read this section first
 
-Attempt57 is a provider-free candidate pending one fresh exact approval. Anchor rebind
+Attempt57 is approved once under single-use authority
+`sha256:7ab262a878e0447002f417ea3af49ffa376cea307296ea8d24681ff8492bc015`, pending one bounded
+execution. Anchor rebind
 `2202c11f5587ddf1e61e03677401a67561f879f2` and queue-poll classification repair
 `c2086e1a4d0f54adf50848fe5b0ddf9f75962b03` are bound by proposal
 `sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4`, acceptance
@@ -16,8 +18,8 @@ resources, both retained volumes, LOW RTX 4090 EU-RO-1 availability, `$1.10/GPU-
 absence, protected config mode `0600`, and three exact version-bound POST `404 V207_ROUTE_DISABLED`
 reads. The proposal requests FlashBoot=true, LOW-or-better capacity, `two-phase-v1` anchor refresh,
 a fresh `$4` maximum cumulative finite cap, and continued `$7/month` retention of both volumes.
-Authority, executable cap, and refresh authorization remain null; no mutation, GPU job, or spend
-occurred. V2-07 remains `NOT_QUALIFIED`; V2-08 is forbidden.
+The executable cap is `$4` and exact `two-phase-v1` refresh is authorized only for this sequence;
+no mutation, GPU job, or spend has occurred yet. V2-07 remains `NOT_QUALIFIED`; V2-08 is forbidden.
 
 Attempt56 is closed `NOT_QUALIFIED`. Its single-use authority is consumed and non-reusable after one
 job remained `IN_QUEUE` for 34 status reads and was cancelled with no accepted batch, output, receipt,

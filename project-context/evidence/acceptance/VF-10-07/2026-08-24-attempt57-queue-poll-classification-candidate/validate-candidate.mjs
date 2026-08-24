@@ -8,6 +8,7 @@ const root = path.resolve(dir, "../../../../../");
 const expected = {
   proposal: "sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4",
   acceptance: "sha256:6e3e2e0e3b8739a4dbf8365c263fd6e2229dd760b0dad424a18e16cbde618d36",
+  authority: "sha256:7ab262a878e0447002f417ea3af49ffa376cea307296ea8d24681ff8492bc015",
   preflight: "sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c",
   max1: "sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7",
   max2: "sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9",
@@ -26,16 +27,18 @@ const json = async (name) => JSON.parse(await readFile(path.join(dir, name), "ut
 const fileSha = async (name) => sha(await readFile(path.join(dir, name)));
 const rootSha = async (name) => sha(await readFile(path.join(root, name)));
 
-const [proposal, preflight, max1, max2, acceptance, activation] = await Promise.all([
+const [proposal, preflight, max1, max2, acceptance, authority, activation] = await Promise.all([
   json("combined-live-proposal.json"),
   json("read-only-preflight.json"),
   json("staged-config-max1.json"),
   json("staged-config-max2.json"),
   json("acceptance.json"),
+  json("approved-authority.json"),
   readFile(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
 ]);
 yes((await fileSha("combined-live-proposal.json")) === expected.proposal, "PROPOSAL_HASH");
 yes((await fileSha("acceptance.json")) === expected.acceptance, "ACCEPTANCE_HASH");
+yes((await fileSha("approved-authority.json")) === expected.authority, "AUTHORITY_HASH");
 yes((await fileSha("read-only-preflight.json")) === expected.preflight, "PREFLIGHT_HASH");
 yes((await fileSha("staged-config-max1.json")) === expected.max1, "MAX1_HASH");
 yes((await fileSha("staged-config-max2.json")) === expected.max2, "MAX2_HASH");
@@ -110,15 +113,32 @@ yes(
     acceptance.authority.v2_08_authorized === false,
   "ACCEPTANCE",
 );
+yes(
+  authority.attempt === 57 &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal.sha256 === expected.proposal &&
+    authority.acceptance.sha256 === expected.acceptance &&
+    authority.approval.exact_proposal_approved === true &&
+    authority.approval.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval.anchor_refresh_authorized === true &&
+    authority.approval.single_use === true &&
+    authority.approval.consumed === false &&
+    authority.queue_poll_contract.poll_interval_ms === 10000 &&
+    authority.queue_poll_contract.maximum_polls === 180 &&
+    authority.queue_poll_contract.billing_retry_delays_ms.join(",") === "250,1000,2000" &&
+    authority.queue_poll_contract.redispatch_on_poll_failure === false &&
+    authority.execution_boundary.v2_08_authorized === false,
+  "AUTHORITY",
+);
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_PROPOSAL_POINTER");
-yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null =\s*null;/u.test(activation), "AUTHORITY_NOT_NULL");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null =\s*null;/u.test(activation), "CAP_NOT_NULL");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null =\s*null;/u.test(activation), "REFRESH_NOT_NULL");
+yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_BINDING");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null =\s*4;/u.test(activation), "CAP_BINDING");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null =\s*true;/u.test(activation), "REFRESH_BINDING");
 let authorityExists = true;
 try {
   await access(path.join(dir, "approved-authority.json"));
 } catch {
   authorityExists = false;
 }
-yes(authorityExists === false, "PREMATURE_AUTHORITY_FILE");
+yes(authorityExists === true, "AUTHORITY_FILE_REQUIRED");
 process.stdout.write(`PASS validate-v207-attempt57-candidate ${JSON.stringify(expected)}\n`);
