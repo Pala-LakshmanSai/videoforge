@@ -1,12 +1,12 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-24T17:16:42Z"
+updated_at: "2026-08-24T17:54:25Z"
 
-phase: serverless_v2_v2_07_attempt56_queue_stop_provider_free_repaired
+phase: serverless_v2_v2_07_attempt57_pending_exact_approval
 implementation_authorized_in_current_task: false
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt56_queue_stop_provider_free_repaired
+current_wave: v2_07_attempt57_pending_exact_approval
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: blocked_handoff
 application_code_changes_authorized: false
@@ -18,15 +18,15 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: attempt56_queue_stop_provider_free_repaired
+  mode: attempt57_pending_exact_approval
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: "Stop after the Attempt56 provider-free queue-stop diagnosis and repair; any new paid attempt requires a fresh exact proposal, approval, positive cap, and re-confirmed provider truth; no Attempt57 or V2-08"
-  note: "Attempt56 did not reach its 180-read reconciliation limit: it stopped after 34 IN_QUEUE reads on an unclassified poll-stage exception. Commit c2086e1 adds bounded billing-read retries plus explicit billing/checkpoint failure codes without redispatch or provider-policy change. Exact live root cause remains unproven; no provider call, mutation, GPU use, or spend occurred during repair."
+  v2_07_action: "Stop for fresh exact approval of Attempt57 proposal sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4; no provider mutation, GPU use, spend, or V2-08 before approval"
+  note: "Anchor rebind 2202c11 and queue-poll repair c2086e1 are bound to fresh zero-compute RunPod and exact version-bound Cloudflare truth. Attempt57 requests a fresh $4 cap with FlashBoot=true, LOW-or-better EU-RO-1, two-phase-v1 refresh, and continued $7/month volume retention. Authority, executable cap, and refresh authorization remain null."
 
 fast_completion_plan:
   decision: DEC_DELIVERY_001
@@ -41,6 +41,51 @@ fast_completion_plan:
   broad_hardening_deferred: [separate_300_image_suite, separate_five_style_suite, ten_artificial_jobs, exhaustive_fault_matrix, broad_browser_matrix]
   roadmap: 22_PROJECT_COMPLETION_CHECKPOINTS.md
   copy_ready_prompts: templates/CHECKPOINT_CHAT_PROMPTS.md
+
+pending_v2_07_attempt57_proposal:
+  mode: pending_fresh_exact_approval
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4"
+  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/acceptance.json
+  candidate_acceptance_sha256: "sha256:6e3e2e0e3b8739a4dbf8365c263fd6e2229dd760b0dad424a18e16cbde618d36"
+  read_only_preflight: evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/read-only-preflight.json
+  read_only_preflight_sha256: "sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c"
+  staged_max1: evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/staged-config-max1.json
+  staged_max1_sha256: "sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7"
+  staged_max2: evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/staged-config-max2.json
+  staged_max2_sha256: "sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9"
+  queue_poll_repair_commit: "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03"
+  queue_diagnosis_context_commit: "e3e45b6fd6be82b250de1df18f06e9ed4c428394"
+  anchor_rebind_commit: "2202c11f5587ddf1e61e03677401a67561f879f2"
+  orchestrator_source_sha256: "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62"
+  live_qualification_source_sha256: "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1"
+  qualification_harness_source_sha256: "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512"
+  requested_maximum_cumulative_finite_spend_usd: 4
+  executable_maximum_cumulative_finite_spend_usd: 0
+  finite_action_estimate_usd_ceiling: 3.95
+  authority_recorded: false
+  authority_path: null
+  authority_sha256: null
+  anchor_refresh_authorized: null
+  anchor_refresh_mode: two-phase-v1
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  retained_volume_mutation_authorized: false
+  flashboot: true
+  minimum_availability: LOW-or-better
+  last_observed_availability: LOW
+  last_observed_cumulative_endpoint_spend_usd: 1.7478178361488972
+  last_observed_pods: 0
+  last_observed_endpoints: 0
+  last_observed_private_templates: 0
+  last_observed_active_workers: 0
+  last_observed_running_pods: 0
+  retained_volume_cost_usd_per_month: 7
+  external_spend_usd: 0
+  v2_07_qualified: false
+  v2_08_authorized: false
+  next_boundary: "fresh exact approval only"
 
 closed_v2_07_attempt56_proposal:
   mode: closed_consumed_not_qualified_primary_job_stalled_in_queue_clean
@@ -3385,16 +3430,16 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt56_primary_job_stalled_in_queue_clean
+  status: NOT_QUALIFIED_attempt57_candidate_pending_exact_approval
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: no_live_authority_attempt56_consumed_non_reusable
+  authorization_status: attempt57_pending_fresh_exact_approval_no_live_authority
   task_stage: blocked_handoff
-  current_goal_authority: evidence/acceptance/VF-10-07/2026-08-24-attempt56-anchor-constant-rebind-candidate/approved-authority.json
-  current_goal_authority_sha256: "sha256:6a82d8ae1bf7c3a987b941cd00153a7cc9a51c4d589aaa537aa88f854d5de5ac"
+  current_goal_authority: null
+  current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt56
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Stop after the completed provider-free Attempt56 queue-stop diagnosis and repair; any paid retry requires a fresh exact proposal, approval, positive cap, and re-confirmed provider truth; do not create Attempt57 or start V2-08."
+  goal: "Request fresh exact approval of Attempt57 proposal sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4; do not mutate, dispatch, spend, or start V2-08 before approval."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

@@ -2,6 +2,23 @@
 
 ## Active handoff — read this section first
 
+Attempt57 is a provider-free candidate pending one fresh exact approval. Anchor rebind
+`2202c11f5587ddf1e61e03677401a67561f879f2` and queue-poll classification repair
+`c2086e1a4d0f54adf50848fe5b0ddf9f75962b03` are bound by proposal
+`sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4`, acceptance
+`sha256:6e3e2e0e3b8739a4dbf8365c263fd6e2229dd760b0dad424a18e16cbde618d36`, preflight
+`sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c`, max1
+`sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7`, and max2
+`sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9`.
+Fresh read-only truth through `2026-08-24T17:40:34.870Z` proves zero RunPod compute/disposable
+resources, both retained volumes, LOW RTX 4090 EU-RO-1 availability, `$1.10/GPU-hour` Flex,
+`$0.74/hour` Secure reference, unchanged cumulative endpoint billing `1.7478178361488972`, signer
+absence, protected config mode `0600`, and three exact version-bound POST `404 V207_ROUTE_DISABLED`
+reads. The proposal requests FlashBoot=true, LOW-or-better capacity, `two-phase-v1` anchor refresh,
+a fresh `$4` maximum cumulative finite cap, and continued `$7/month` retention of both volumes.
+Authority, executable cap, and refresh authorization remain null; no mutation, GPU job, or spend
+occurred. V2-07 remains `NOT_QUALIFIED`; V2-08 is forbidden.
+
 Attempt56 is closed `NOT_QUALIFIED`. Its single-use authority is consumed and non-reusable after one
 job remained `IN_QUEUE` for 34 status reads and was cancelled with no accepted batch, output, receipt,
 execution time, or GPU use.
@@ -28,8 +45,8 @@ forbidden. Provider-free diagnosis `sha256:247c8c6b…f922` proves Attempt56 sto
 allowed reads, so the reconciliation timeout was not reached; the exact immediate exception and
 provider-capacity root cause remain unproven. Repair `c2086e1` adds bounded billing-read retry and
 explicit billing/checkpoint failure codes without redispatch or provider-policy changes; 129/129
-focused tests and TypeScript passed. Any paid retry requires a fresh exact proposal, fresh approval,
-fresh positive cap, and re-confirmed provider truth; do not create Attempt57 or start V2-08 here.
+focused tests and TypeScript passed. Attempt56 cannot be retried; use only the pending exact
+Attempt57 boundary above and do not start V2-08.
 
 Attempt55 remains closed and non-reusable at `V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH`; preserve its
 consumed authority and cap as immutable history and do not retry it.

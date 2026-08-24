@@ -1,0 +1,302 @@
+{
+  "schema_version": "videoforge.v2-07-attempt57-queue-poll-classification-combined-live-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 57,
+  "recorded_at": "2026-08-24T17:40:34.870Z",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP",
+  "provider_calls_authorized": false,
+  "provider_mutation_authorized": false,
+  "gpu_use_authorized": false,
+  "qualification_status": "NOT_QUALIFIED",
+  "reason": "Provider-free Attempt57 candidate after the Attempt56 queued-poll repair. It binds the current executable rollback-anchor source, bounded billing-read retry and checkpoint-failure classification, fresh diagnosis/context, exact staged definitions, and current read-only provider truth. It is unapproved: no authority, cap, mutation, GPU, provider spend, or V2-08 work is authorized; no Attempt56 proposal, config, authority, or cap is reusable.",
+  "approval_request": {
+    "exact_proposal_approved": false,
+    "flashboot": true,
+    "minimum_availability": "LOW-or-better",
+    "last_observed_availability": "LOW",
+    "requested_maximum_cumulative_finite_spend_usd": 4,
+    "executable_cap_binding": null,
+    "anchor_refresh_mode": "two-phase-v1",
+    "anchor_refresh_authorized": null,
+    "fresh_exact_approval_required": true,
+    "prior_authority_or_cap_reuse_forbidden": true,
+    "prior_proposal_reuse_forbidden": true,
+    "executable_anchor_constants_binding_required": true,
+    "validator_gate_required": true,
+    "continued_retention_of_two_existing_volumes_at_usd_per_month": 7
+  },
+  "provider_free_lineage": {
+    "control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+    "anchor_repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+    "orchestrator_source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+    "live_qualification_source_sha256": "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1",
+    "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512",
+    "canonical_activation_source_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+    "executable_anchor_constants_binding": {
+      "source_file": "apps/web/src/server/providers/v207-live-orchestrator.ts",
+      "source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+      "repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+      "expected_old_active_version_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256",
+      "expected_old_active_version_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+      "expected_old_active_record_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256",
+      "expected_old_active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+      "matches_fresh_cloudflare_read": true
+    },
+    "anchor_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+    "queue_poll_repair_commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+    "diagnosis_context_commit": "e3e45b6fd6be82b250de1df18f06e9ed4c428394"
+  },
+  "provider_free_preflight": {
+    "path": "read-only-preflight.json",
+    "sha256": "sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c"
+  },
+  "fresh_runpod_read_only_truth": {
+    "checked_at": "2026-08-24T17:37:33.236Z",
+    "inventory_checked_at": "2026-08-24T17:37:30.942Z",
+    "billing_catalog_checked_at": "2026-08-24T17:38:42.369Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": 2,
+    "fresh_baseline_endpoint_spend_usd": 1.7478178361488972,
+    "incremental_spend_during_preflight_usd": 0,
+    "must_be_reconfirmed_after_approval_before_mutation": true
+  },
+  "fresh_cloudflare_read_only_truth": {
+    "checked_at": "2026-08-24T17:40:34.870Z",
+    "route_probe_checked_at": "2026-08-24T17:40:34.870Z",
+    "active_version_id_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+    "active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+    "active_anchor_retained": true,
+    "active_anchor_index_oldest_to_newest": 7,
+    "version_window_length": 10,
+    "protected_signer_secret_present": false,
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "disabled_route_probe": "POST_404_V207_ROUTE_DISABLED_WITH_EXACT_ACTIVE_VERSION_HEADER",
+    "exact_version_bound_disabled_route_required_before_mutation": true,
+    "executable_anchor_constants_binding": {
+      "source_file": "apps/web/src/server/providers/v207-live-orchestrator.ts",
+      "source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+      "repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+      "expected_old_active_version_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256",
+      "expected_old_active_version_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+      "expected_old_active_record_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256",
+      "expected_old_active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+      "matches_fresh_cloudflare_read": true
+    },
+    "unrelated_secret_name_count": 8,
+    "route_probe_reads": [
+      {
+        "checked_at": "2026-08-24T17:39:42.115Z",
+        "method": "POST",
+        "status": 404,
+        "code": "V207_ROUTE_DISABLED",
+        "worker_version_id_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+        "matches_active_version": true
+      },
+      {
+        "checked_at": "2026-08-24T17:40:08.492Z",
+        "method": "POST",
+        "status": 404,
+        "code": "V207_ROUTE_DISABLED",
+        "worker_version_id_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+        "matches_active_version": true
+      },
+      {
+        "checked_at": "2026-08-24T17:40:34.870Z",
+        "method": "POST",
+        "status": 404,
+        "code": "V207_ROUTE_DISABLED",
+        "worker_version_id_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+        "matches_active_version": true
+      }
+    ],
+    "exact_route_probe": {
+      "checked_at": "2026-08-24T17:40:34.870Z",
+      "method": "POST",
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED",
+      "worker_version_header_present": true,
+      "worker_version_id_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+      "matches_active_version": true
+    }
+  },
+  "fresh_catalog_read_only_truth": {
+    "checked_at": "2026-08-24T17:38:42.369Z",
+    "billing_catalog_checked_at": "2026-08-24T17:38:42.369Z",
+    "offering": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "minimum_requested": "LOW-or-better",
+    "minimum_satisfied": true,
+    "serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "secure_reference_rate_usd_per_gpu_hour": 0.74,
+    "flashboot": true,
+    "vram_gb": 24
+  },
+  "immutable_runtime": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "selected_model_bytes": 13379919280,
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "mage_volume_size_gb": 50,
+    "mage_volume_region": "EU-RO-1",
+    "mage_volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_write_policy": "APPLICATION_READ_ONLY",
+    "runtime_download_or_quantization": false,
+    "image_rebuild_or_republication": false,
+    "gpu_or_region_fallback": false
+  },
+  "staged_endpoint_configs": [
+    {
+      "stage": "initial_qualification",
+      "definition_path": "staged-config-max1.json",
+      "definition_sha256": "sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7",
+      "control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+      "anchor_repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+      "orchestrator_source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+      "canonical_activation_source_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+      "executable_anchor_constants_binding": {
+        "source_file": "apps/web/src/server/providers/v207-live-orchestrator.ts",
+        "source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+        "repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+        "expected_old_active_version_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256",
+        "expected_old_active_version_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+        "expected_old_active_record_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256",
+        "expected_old_active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+        "matches_fresh_cloudflare_read": true
+      },
+      "workers_min": 0,
+      "workers_max": 1,
+      "queue_poll_repair_commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+      "diagnosis_context_commit": "e3e45b6fd6be82b250de1df18f06e9ed4c428394",
+      "live_qualification_source_sha256": "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1",
+      "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512"
+    },
+    {
+      "stage": "final_concurrent_reader_proof",
+      "definition_path": "staged-config-max2.json",
+      "definition_sha256": "sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9",
+      "control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+      "anchor_repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+      "orchestrator_source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+      "canonical_activation_source_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+      "executable_anchor_constants_binding": {
+        "source_file": "apps/web/src/server/providers/v207-live-orchestrator.ts",
+        "source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+        "repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+        "expected_old_active_version_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256",
+        "expected_old_active_version_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+        "expected_old_active_record_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256",
+        "expected_old_active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+        "matches_fresh_cloudflare_read": true
+      },
+      "workers_min": 0,
+      "workers_max": 2,
+      "restore_after_proof": "staged-config-max1.json",
+      "queue_poll_repair_commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+      "diagnosis_context_commit": "e3e45b6fd6be82b250de1df18f06e9ed4c428394",
+      "live_qualification_source_sha256": "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1",
+      "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512"
+    }
+  ],
+  "queue_poll_contract": {
+    "poll_interval_ms": 10000,
+    "maximum_polls": 180,
+    "persistent_in_queue_is_not_fixed_or_qualified": true,
+    "billing_retry_delays_ms": [250, 1000, 2000],
+    "billing_transport_exhaustion_code": "RUNPOD_ENDPOINT_BILLING_READ_AMBIGUOUS",
+    "checkpoint_persistence_failure_code": "RUNPOD_STATUS_CHECKPOINT_PERSIST_FAILED",
+    "exact_owned_job_cleanup_required": true,
+    "redispatch_on_poll_failure": false,
+    "null_cancel_timing_retains_liability_until_two_exact_zero_reads": true
+  },
+  "exact_external_operations_if_approved": [
+    "reconfirm the exact Attempt57 proposal, fresh single-use authority, executable anchor constants, validator gate, code and staged-config hashes, protected config, active Worker anchor and record, exact version-bound disabled route, RunPod zero-compute inventory, retained volumes, LOW-or-better EU-RO-1 RTX 4090 availability, current rates, and fresh billing baseline",
+    "apply V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1, deploy one signer-disabled staging Worker, bind every refresh-disabled read to its exact active version, and prove the refreshed anchor retained",
+    "activate one ephemeral signer secret and exact route on that refreshed version only",
+    "create the exact private EU-RO-1 max1 endpoint/template using the immutable image and sealed Mage volume with FlashBoot=true, workersMin=0, workersMax=1",
+    "run max1 probe and stable terminal-history identity proof; resume only the remaining 31 units; run complete cold and warm 32-unit batches, duplicate-delivery, cancellation, and timeout proofs",
+    "apply the separately hashed max2 definition only for the final two simultaneous complete 32-unit read-only readers; dispatch no later GPU work",
+    "drain, restore exact max1, delete only disposable failed resources when required, delete the signer, restore the exact refreshed version-bound disabled route and protected config, remove attempt scratch, and complete three-read reconciliation"
+  ],
+  "acceptance_contract": {
+    "complete_batches_only": true,
+    "provider_status_output_receipt_reconciliation_required": true,
+    "durable_readback_before_expiry_required": true,
+    "at_most_one_acceptance_per_unit": true,
+    "duplicate_compute_and_cost_visibility_required": true,
+    "cancel_and_timeout_proof_required": true,
+    "queue_execution_init_load_warmup_timings_required": true,
+    "peak_vram_required": true,
+    "pre_and_post_manifest_exact": true,
+    "volume_write_or_cache_escape_forbidden": true,
+    "terminal_workers_zero_required": true,
+    "unchanged_two_volume_inventory_required": true
+  },
+  "cost": {
+    "fresh_baseline_endpoint_spend_usd": 1.7478178361488972,
+    "finite_action_estimate_usd_ceiling": 3.95,
+    "requested_maximum_cumulative_finite_spend_usd": 4,
+    "executable_finite_cap_usd": null,
+    "serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "secure_rtx4090_reference_usd_per_gpu_hour": 0.74,
+    "existing_two_50gb_volumes_usd_per_month": 7,
+    "volume_charge_separate_from_finite_cap": true,
+    "rates_must_be_reconfirmed_after_approval": true,
+    "provider_final_invoice_absolute_guarantee": false
+  },
+  "retention_and_cleanup": {
+    "success_retains_exact_max1_endpoint_and_private_template": true,
+    "success_workers_min": 0,
+    "success_workers_max": 1,
+    "terminal_total_workers_required": 0,
+    "failure_deletes_only_exact_disposable_endpoint_and_private_template_after_proven_drain": true,
+    "ephemeral_signer_secret_deleted": true,
+    "cloudflare_route_rolled_back_to_exact_version_bound_post_404_v207_route_disabled": true,
+    "protected_config_restored_exactly": true,
+    "attempt_scratch_removed": true,
+    "both_existing_50gb_volumes_retained_unchanged": true
+  },
+  "stop_conditions": [
+    "any proposal, authority, cap, code, staged-config lineage, executable anchor constant, validator gate, anchor, route version, resource, image, model, volume, scratch, GPU, region, rate, or config mismatch",
+    "availability below LOW",
+    "projected liability plus observed spend would exceed the approved cap",
+    "partial or failed output, missing receipt/readback, status disagreement, or invisible duplicate cost",
+    "missing, malformed, stale, alternating, or mixed Worker version identity on any refresh-mode route read",
+    "uncertain drain, max1 restoration, rollback, config restoration, cleanup, volume inventory, billing settlement, or reconciliation"
+  ],
+  "retained_volume_mutation_authorized": false,
+  "gpu_or_region_fallback_authorized": false,
+  "v2_08_authorized": false,
+  "executable_anchor_constants_binding": {
+    "source_file": "apps/web/src/server/providers/v207-live-orchestrator.ts",
+    "source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+    "anchor_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+    "expected_old_active_version_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+    "expected_old_active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+    "matches_fresh_cloudflare_read": true
+  },
+  "validator_gate": {
+    "required": true,
+    "proposal_digest": "COMPUTE_AFTER_FILE_CREATION",
+    "preflight_sha256": "sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c",
+    "staged_config_hashes": [
+      "sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7",
+      "sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9"
+    ],
+    "orchestrator_source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+    "live_qualification_source_sha256": "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1",
+    "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512",
+    "canonical_activation_source_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+    "approved_authority_file_forbidden": true,
+    "activation_bindings_must_remain_null_until_approval": true
+  }
+}

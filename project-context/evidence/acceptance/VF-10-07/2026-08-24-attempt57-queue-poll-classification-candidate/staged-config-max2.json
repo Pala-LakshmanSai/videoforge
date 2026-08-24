@@ -1,0 +1,109 @@
+{
+  "schema_version": "videoforge.v2-07-staged-endpoint-definition/v18",
+  "stage": "attempt57_final_concurrent_reader_proof_after_complete_max1_qualification",
+  "region": "EU-RO-1",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+  "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+  "control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+  "historical_control_repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+  "anchor_repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+  "source_hashes": {
+    "orchestrator_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+    "live_qualification_sha256": "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1",
+    "qualification_harness_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512",
+    "canonical_activation_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+    "readonly_reconciliation_sha256": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "mage_handler_sha256": "sha256:3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da"
+  },
+  "executable_anchor_constants_binding": {
+    "source_file": "apps/web/src/server/providers/v207-live-orchestrator.ts",
+    "source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+    "anchor_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+    "expected_old_active_version_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+    "expected_old_active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+    "matches_fresh_cloudflare_read": true
+  },
+  "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+  "network_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "network_volume_size_gb": 50,
+  "network_volume_region": "EU-RO-1",
+  "network_volume_mount": "/runpod-volume",
+  "model_root": "/runpod-volume/mage-model",
+  "volume_write_policy": "APPLICATION_READ_ONLY",
+  "gpu_type_ids": [
+    "NVIDIA GeForce RTX 4090"
+  ],
+  "gpu_count_per_worker": 1,
+  "compute_type": "GPU",
+  "flex_only": true,
+  "workers_min": 0,
+  "workers_max": 2,
+  "scaler_type": "REQUEST_COUNT",
+  "scaler_value": 1,
+  "handler_concurrency": 1,
+  "idle_timeout_seconds": 5,
+  "init_timeout_seconds": 800,
+  "execution_timeout_seconds": 2400,
+  "request_authority_ttl_seconds": 7200,
+  "container_disk_gb": 120,
+  "flashboot": true,
+  "availability_threshold": "LOW-or-better",
+  "scope": "two simultaneous complete read-only readers only; restore exact max1 immediately after proof",
+  "template_environment": {
+    "MAGE_MODEL_ROOT": "/runpod-volume/mage-model",
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "DIFFUSERS_OFFLINE": "1",
+    "VIDEOFORGE_JOB_SCRATCH_ROOT": "/tmp/videoforge-jobs",
+    "RUNPOD_INIT_TIMEOUT": "800"
+  },
+  "runtime_execution_contract": {
+    "sealed_manifest_verification": "OFFLINE_EXACT_SHA256_BEFORE_MODEL_LOAD_AND_AFTER_FINAL_DRAIN",
+    "job_local_scratch": "/tmp/videoforge-jobs/jobs/${attempt_id}",
+    "scratch_must_not_escape_job": true,
+    "scratch_cleanup_receipt_required": true,
+    "accepted_units_never_regenerated": true,
+    "runtime_download_or_quantization": false,
+    "cache_escape_forbidden": true
+  },
+  "execution_subset_contract": {
+    "plan_units": 32,
+    "reader_batch_units": 32,
+    "readers": 2,
+    "read_only": true,
+    "accept_at_most_once_per_unit": true,
+    "duplicate_compute_cost_must_be_visible": true,
+    "merge_requires_exact_plan_order_and_unique_ids": true,
+    "provider_status_output_receipt_reconciliation_required": true
+  },
+  "cloudflare_anchor_refresh_contract": {
+    "activation": "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1",
+    "compiled_authority_binding_required": true,
+    "fresh_read_required_before_mutation": true,
+    "expected_old_active_version_id_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+    "expected_old_active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+    "executable_anchor_constants_binding": {
+      "source_file": "apps/web/src/server/providers/v207-live-orchestrator.ts",
+      "source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+      "repair_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+      "version_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256",
+      "version_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+      "record_constant": "V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256",
+      "record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+      "matches_fresh_cloudflare_read": true
+    },
+    "refreshed_anchor_newest_seven_retention_required": true,
+    "required_consecutive_route_matches": 16,
+    "pre_and_post_refresh_route": "POST_404_V207_ROUTE_DISABLED_WITH_EXACT_EXPECTED_WORKER_VERSION",
+    "terminal_protected_config_restore_required": true
+  },
+  "terminal_contract": {
+    "restore_definition": "staged-config-max1.json",
+    "workers_zero_after_drain": true,
+    "independent_worker_and_running_pod_zero_required": true,
+    "two_volume_inventory_unchanged_required": true
+  },
+  "candidate_attempt": 57,
+  "queue_poll_repair_commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+  "diagnosis_context_commit": "e3e45b6fd6be82b250de1df18f06e9ed4c428394"
+}

@@ -1,0 +1,79 @@
+{
+  "schema_version": "videoforge.v2-07-attempt57-queue-poll-classification-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 57,
+  "status": "PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4",
+  "preflight_sha256": "sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c",
+  "max1_sha256": "sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7",
+  "max2_sha256": "sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9",
+  "lineage_acceptance": {
+    "control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+    "anchor_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+    "queue_poll_repair_commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+    "diagnosis_context_commit": "e3e45b6fd6be82b250de1df18f06e9ed4c428394",
+    "orchestrator_source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+    "live_qualification_source_sha256": "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1",
+    "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512",
+    "canonical_activation_source_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+    "both_configs_exactly_match_repaired_lineage": true,
+    "attempt56_config_reuse": false,
+    "attempt56_authority_or_cap_reuse": false,
+    "attempt56_proposal_reuse": false
+  },
+  "provider_state": {
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0,
+    "runpod_zero_compute": true,
+    "cloudflare_exact_version_bound_disabled_route": true,
+    "two_existing_volumes_retained": true,
+    "fresh_truth_checked_at": "2026-08-24T17:40:34.870Z",
+    "billing_baseline_usd": 1.7478178361488972,
+    "billing_increment_usd": 0,
+    "active_version_id_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+    "active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+    "route_probe_match_reads": 3
+  },
+  "remaining_gates": [
+    "fresh exact approval of the immutable Attempt57 proposal",
+    "fresh single-use authority and exact positive USD 4 finite cap recorded only after approval",
+    "execute one bounded live qualification and prove complete artifact, timing, cost, reader reconciliation, cleanup, and zero paid compute"
+  ],
+  "v2_08_started": false,
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "executable_cap_binding": null,
+    "anchor_refresh_authorized": null,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "v2_08_authorized": false,
+    "authority_file": null
+  },
+  "validator_gate": {
+    "required": true,
+    "approved_authority_file_forbidden": true,
+    "activation_bindings_must_remain_null_until_approval": true,
+    "exact_source_bytes_required": true,
+    "proposal_pointer_rebind_after_parent_source_update_allowed": true
+  },
+  "recorded_at": "2026-08-24T17:40:34.870Z",
+  "provider_free_lineage": {
+    "control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+    "anchor_commit": "2202c11f5587ddf1e61e03677401a67561f879f2",
+    "queue_poll_repair_commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+    "diagnosis_context_commit": "e3e45b6fd6be82b250de1df18f06e9ed4c428394",
+    "orchestrator_source_sha256": "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62",
+    "live_qualification_source_sha256": "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1",
+    "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512",
+    "canonical_activation_source_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+    "both_configs_exactly_match_repaired_lineage": true,
+    "attempt56_config_reuse": false,
+    "attempt56_authority_or_cap_reuse": false,
+    "attempt56_proposal_reuse": false
+  }
+}
