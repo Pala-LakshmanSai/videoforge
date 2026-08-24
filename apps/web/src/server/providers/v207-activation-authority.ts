@@ -21,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a" as const;
+  "sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -37,7 +37,7 @@ export const V207_ANCHOR_REFRESH_HELPER_SHA256 =
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "78062a729fd2e321fbe3b71dc9e7e57b5c8b3fe6" as const;
+  "9afbdca73b64209899a84555d771a3e7e81f51f6" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -83,8 +83,7 @@ export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
 // because the exact Cloudflare rollback anchor was not retained in the bounded
 // newest-seven window. Keep the immutable authority in evidence for audit only;
 // remove executable approval and cap so the attempt cannot be replayed.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  null;
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the

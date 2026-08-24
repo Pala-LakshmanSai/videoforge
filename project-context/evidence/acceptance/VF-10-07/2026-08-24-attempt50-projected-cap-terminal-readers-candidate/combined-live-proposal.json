@@ -1,0 +1,171 @@
+{
+  "schema_version": "videoforge.v2-07-attempt50-projected-cap-terminal-readers-combined-live-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 50,
+  "recorded_at": "2026-08-24T06:10:00Z",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP",
+  "provider_calls_authorized": false,
+  "provider_mutation_authorized": false,
+  "gpu_use_authorized": false,
+  "spend_usd": 0,
+  "qualification_status": "NOT_QUALIFIED",
+  "reason": "Attempt49 was blocked before activation because its observed-billing-only fence could admit asynchronous paid work beyond the approved cap. Attempt50 binds the repaired projected-liability fence and makes the two complete max-two readers the final GPU phase.",
+  "approval_request": {
+    "exact_proposal_approved": false,
+    "flashboot": true,
+    "minimum_availability": "LOW-or-better",
+    "last_observed_availability": "MEDIUM",
+    "requested_maximum_cumulative_finite_spend_usd": 4,
+    "executable_cap_binding": null,
+    "fresh_exact_approval_required": true,
+    "prior_attempt49_authority_or_cap_reuse_forbidden": true,
+    "exact_launcher_activation_if_approved": "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1"
+  },
+  "provider_free_lineage": {
+    "control_source_commit": "9afbdca73b64209899a84555d771a3e7e81f51f6",
+    "orchestrator_source_sha256": "sha256:52d37b01230b4e5532266717c174e514f74fd05c37a4137a2b36e6d20b44e518",
+    "live_qualification_source_sha256": "sha256:82f3e2741a5e4bc415169d5d8ae1e2313eb145f89958a2bc74b7ec1ef9a98d7d",
+    "qualification_harness_source_sha256": "sha256:36325e2d156baf3a774fff710ed3ead2810b75c1c8c79e8be0f19b7621a0b12d",
+    "canonical_activation_source_sha256": "sha256:c9295043d008a3622034a16e91ff30522a7bd19e5e10c7d40befe7cd42a48248",
+    "readonly_reconciliation_source_sha256": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "anchor_refresh_marker_source_sha256": "sha256:6eb196247a9154ecb1110d74a2c0254855bcff9f4ec01a6377c30f6352a4dff7"
+  },
+  "prior_attempt49": {
+    "proposal_sha256": "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a",
+    "authority_sha256": "sha256:29bef150a23b48d990d7ec76de8e701e4548a417404f09b1836267f55f60106d",
+    "pre_activation_no_go_path": "../2026-08-24-attempt49-authority-bound-lineage-candidate/pre-activation-no-go.json",
+    "pre_activation_no_go_sha256": "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba",
+    "provider_calls": 0,
+    "incremental_spend_usd": 0,
+    "authority_reusable": false
+  },
+  "last_read_only_preflight": {
+    "path": "../2026-08-24-attempt49-authority-bound-lineage-candidate/read-only-preflight.json",
+    "sha256": "sha256:a628e630428a0256eab05112c181ab598d579446485179e0a65497a17f9ec1b5",
+    "checked_at": "2026-08-24T04:09:31Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": 2,
+    "cumulative_endpoint_spend_usd": 1.6217972798040137,
+    "incremental_spend_usd": 0,
+    "must_be_reconfirmed_before_mutation": true
+  },
+  "immutable_runtime": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "selected_model_bytes": 13379919280,
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_write_policy": "APPLICATION_READ_ONLY",
+    "runtime_download_or_quantization": false,
+    "image_rebuild_or_republication": false,
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flex_only": true,
+    "flashboot": true
+  },
+  "scratch_contract": {
+    "scratch_root": "/tmp/videoforge-jobs",
+    "exact_job_path": "/tmp/videoforge-jobs/jobs/${attempt_id}",
+    "model_volume_scratch_forbidden": true,
+    "per_job_isolation_required": true,
+    "terminal_removal_receipt_required": true
+  },
+  "staged_endpoint_configs": [
+    {
+      "stage": "initial_qualification",
+      "definition_path": "staged-config-max1.json",
+      "definition_sha256": "sha256:6a70f6c1373f3525a9d6fb7cdb9eaaa11763322635d860a5512a7b1a6b477005",
+      "workers_min": 0,
+      "workers_max": 1
+    },
+    {
+      "stage": "final_concurrent_reader_proof",
+      "definition_path": "staged-config-max2.json",
+      "definition_sha256": "sha256:88e878b0cd1d041abd1a31b798c43305565da5873e4bb096736431b72b96143c",
+      "workers_min": 0,
+      "workers_max": 2,
+      "restore_after_proof": "staged-config-max1.json"
+    }
+  ],
+  "measured_timeouts_seconds": {
+    "idle": 5,
+    "initialization": 800,
+    "execution": 2400,
+    "request_authority_ttl": 7200
+  },
+  "paid_sequence": [
+    "max1 probe",
+    "max1 resume",
+    "max1 complete cold 32-unit batch",
+    "max1 complete warm 32-unit batch and duplicate-delivery proof",
+    "max1 cancellation proof",
+    "max1 timeout proof",
+    "separately hashed max2 two simultaneous complete 32-unit read-only readers as final GPU phase",
+    "drain, restore exact max1, cleanup, read-only reconciliation; no later GPU dispatch"
+  ],
+  "acceptance_contract": {
+    "complete_batches_only": true,
+    "provider_status_output_receipt_reconciliation_required": true,
+    "durable_readback_before_expiry_required": true,
+    "at_most_one_acceptance_per_unit": true,
+    "duplicate_compute_and_cost_visibility_required": true,
+    "cancel_and_timeout_proof_required": true,
+    "queue_execution_init_load_warmup_timings_required": true,
+    "peak_vram_required": true,
+    "pre_and_post_manifest_exact": true,
+    "volume_write_or_cache_escape_forbidden": true,
+    "terminal_workers_zero_required": true,
+    "unchanged_two_volume_inventory_required": true
+  },
+  "projected_liability_cap_fence": {
+    "pinned_serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "billing_lag_margin_seconds_per_worker": 60,
+    "reserves_active_and_pending_worst_case_liability_before_every_new_paid_operation": true,
+    "unknown_or_null_execution_time_retains_full_reservation": true,
+    "null_cancelled_narrowing_exception": "only after the same exact job is terminal CANCELLED and two consecutive exact zero queue/worker observations at least 100ms apart; use monotonic dispatch-to-second-zero upper bound plus initialization, idle, and 60-second billing-lag margins",
+    "null_cancelled_narrowing_anomaly_policy": "retain full reservation and permanently fence new paid work",
+    "warm_idle_with_zero_idle_workers_requires_initialization_reserve": true,
+    "new_paid_work_permanently_fenced_on_headroom_failure": true,
+    "cleanup_and_drain_remain_allowed": true,
+    "completion_conditional_on_measured_durations_fitting_cap": true,
+    "stop_before_new_paid_work_if_headroom_insufficient": true,
+    "provider_final_invoice_absolute_guarantee": false
+  },
+  "cost": {
+    "baseline_endpoint_spend_usd": 1.6217972798040137,
+    "finite_action_estimate_usd": 3.95,
+    "finite_action_estimate_basis": "historical conservative envelope; the provider-free short-duration eight-job model projects about USD 3.583, but neither value guarantees completion under the cap",
+    "requested_finite_cap_usd": 4,
+    "executable_finite_cap_usd": null,
+    "serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "secure_rtx4090_reference_usd_per_gpu_hour": 0.74,
+    "existing_two_volume_charge_usd_per_month": 7,
+    "volume_charge_separate_from_finite_cap": true
+  },
+  "stop_conditions": [
+    "any proposal, authority, cap, code, anchor, route, resource, image, model, volume, scratch, GPU, region, rate, or config mismatch",
+    "availability below LOW",
+    "projected liability plus observed spend would exceed the approved cap",
+    "partial or failed output, missing receipt/readback, status disagreement, or invisible duplicate cost",
+    "uncertain drain, max1 restoration, rollback, config restoration, cleanup, volume inventory, or reconciliation"
+  ],
+  "success_retention": {
+    "endpoint": true,
+    "private_template": true,
+    "mage_volume": true,
+    "soulx_volume": true,
+    "workers_zero": true
+  },
+  "retained_volume_mutation_authorized": false,
+  "gpu_or_region_fallback_authorized": false,
+  "v2_08_authorized": false
+}

@@ -1,0 +1,74 @@
+{
+  "schema_version": "videoforge.v2-07-attempt50-projected-cap-terminal-readers-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 50,
+  "recorded_at": "2026-08-24T06:10:00Z",
+  "result": "PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb",
+    "control_source_commit": "9afbdca73b64209899a84555d771a3e7e81f51f6",
+    "orchestrator_source_sha256": "sha256:52d37b01230b4e5532266717c174e514f74fd05c37a4137a2b36e6d20b44e518",
+    "live_qualification_source_sha256": "sha256:82f3e2741a5e4bc415169d5d8ae1e2313eb145f89958a2bc74b7ec1ef9a98d7d",
+    "qualification_harness_source_sha256": "sha256:36325e2d156baf3a774fff710ed3ead2810b75c1c8c79e8be0f19b7621a0b12d",
+    "canonical_activation_source_sha256": "sha256:c9295043d008a3622034a16e91ff30522a7bd19e5e10c7d40befe7cd42a48248",
+    "readonly_reconciliation_source_sha256": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "max1_path": "staged-config-max1.json",
+    "max1_sha256": "sha256:6a70f6c1373f3525a9d6fb7cdb9eaaa11763322635d860a5512a7b1a6b477005",
+    "max2_path": "staged-config-max2.json",
+    "max2_sha256": "sha256:88e878b0cd1d041abd1a31b798c43305565da5873e4bb096736431b72b96143c",
+    "authority_recorded": false,
+    "requested_maximum_cumulative_finite_spend_usd": 4,
+    "executable_maximum_cumulative_finite_spend_usd": null
+  },
+  "attempt49_closure": {
+    "proposal_sha256": "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a",
+    "authority_sha256": "sha256:29bef150a23b48d990d7ec76de8e701e4548a417404f09b1836267f55f60106d",
+    "pre_activation_no_go_sha256": "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba",
+    "authority_or_cap_reusable": false,
+    "provider_calls": 0,
+    "incremental_spend_usd": 0
+  },
+  "scratch_contract": {
+    "configured_root": "/tmp/videoforge-jobs",
+    "exact_job_path": "/tmp/videoforge-jobs/jobs/${attempt_id}",
+    "model_volume_scratch_forbidden": true,
+    "terminal_removal_receipt_required": true
+  },
+  "provider_boundary": {
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "cloudflare_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "external_spend_usd": 0,
+    "publication_authorized": false,
+    "retained_volume_mutation_authorized": false,
+    "v2_08_authorized": false
+  },
+  "last_read_only_truth": {
+    "checked_at": "2026-08-24T04:09:31Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "cumulative_endpoint_spend_usd": 1.6217972798040137,
+    "attempt50_incremental_spend_usd": 0,
+    "must_be_reconfirmed_before_mutation": true
+  },
+  "cap_truth": {
+    "requested_cap_usd": 4,
+    "finite_action_estimate_usd": 3.95,
+    "completion_conditional_on_measured_durations_fitting_cap": true,
+    "new_paid_work_stops_before_dispatch_on_insufficient_projected_headroom": true,
+    "unknown_execution_time_retains_full_liability": true,
+    "null_cancelled_narrowing_exception": "same exact job terminal CANCELLED plus two exact zero queue/worker reads at least 100ms apart; monotonic dispatch-to-second-zero upper bound plus initialization, idle, and 60-second billing-lag margins; anomalies retain full liability and fence new paid work",
+    "provider_final_invoice_absolute_guarantee": false
+  },
+  "remaining_gate": "one exact immutable paid Mage Serverless qualification satisfying all complete-batch, receipt/status, at-most-one, duplicate-cost, sealed-volume, scratch, max1/max2, and terminal drain gates",
+  "required_user_authority": "Approve exact Attempt50 proposal sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb with FlashBoot=true, LOW-or-better EU-RO-1 availability, exact two-phase-v1 anchor refresh, and a fresh USD 4 maximum cumulative finite spend cap; completion remains conditional on measured durations fitting the cap",
+  "v2_08_authorized": false
+}

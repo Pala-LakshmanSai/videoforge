@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-24T05:06:00Z"
+updated_at: "2026-08-24T06:10:00Z"
 
-phase: serverless_v2_v2_07_attempt49_blocked_pre_activation_no_authority
+phase: serverless_v2_v2_07_attempt50_provider_free_candidate_pending_authority
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt49_authority_bound_lineage_candidate
+current_wave: v2_07_attempt50_projected_cap_terminal_readers_candidate
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_repair_after_attempt49_pre_activation_no_go
+task_stage: provider_free_candidate_pending_fresh_exact_approval_and_cap
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,15 +18,43 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: provider_free_repair_after_attempt49_pre_activation_no_go
+  mode: provider_free_candidate_pending_fresh_exact_approval_and_cap
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: Complete provider-free cap and terminal-reader ordering repair, then freeze a changed-lineage proposal; Attempt49 authority and cap are non-reusable
-  note: "Attempt49 pre-activation no-go sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba records zero provider calls, mutations, GPU jobs, protected-config writes, or spend after approval. V2-07 remains NOT_QUALIFIED; fresh exact successor proposal, approval, and cap required; V2-08 forbidden."
+  v2_07_action: Attempt50 exact provider-free candidate is ready; fresh exact proposal approval and positive numeric cap required before any provider call, mutation, GPU use, or spend
+  note: "Attempt50 proposal sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb binds repair 9afbdca73b64209899a84555d771a3e7e81f51f6. Requested cap USD 4; executable authority/cap null. Completion conditional on measured duration; no provider final-invoice guarantee. Attempt49 authority/cap non-reusable; V2-08 forbidden."
+
+pending_v2_07_attempt50_proposal:
+  mode: provider_free_candidate_pending_fresh_exact_approval_and_positive_numeric_cap
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb"
+  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/acceptance.json
+  candidate_acceptance_sha256: "sha256:33fb4f18b1e1663b58b6334d1a371fc2c352d050635721378ad1cee4ff109561"
+  staged_max1: evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/staged-config-max1.json
+  staged_max1_sha256: "sha256:6a70f6c1373f3525a9d6fb7cdb9eaaa11763322635d860a5512a7b1a6b477005"
+  staged_max2: evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/staged-config-max2.json
+  staged_max2_sha256: "sha256:88e878b0cd1d041abd1a31b798c43305565da5873e4bb096736431b72b96143c"
+  control_source_commit: "9afbdca73b64209899a84555d771a3e7e81f51f6"
+  canonical_activation_source_sha256: "sha256:c9295043d008a3622034a16e91ff30522a7bd19e5e10c7d40befe7cd42a48248"
+  exact_job_scratch: "/tmp/videoforge-jobs/jobs/${attempt_id}"
+  authority_recorded: false
+  authority_path: null
+  authority_sha256: null
+  requested_maximum_cumulative_finite_spend_usd: 4
+  executable_maximum_cumulative_finite_spend_usd: null
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  retained_volume_mutation_authorized: false
+  completion_conditional_on_measured_durations_fitting_cap: true
+  provider_final_invoice_absolute_guarantee: false
+  v2_07_qualified: false
+  v2_08_authorized: false
+  result: PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP
 
 pending_v2_07_attempt49_proposal:
   mode: closed_blocked_superseded_before_activation
@@ -2072,7 +2100,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt49_provider_free_candidate_pending_fresh_exact_authority_and_cap
+    status: attempt50_provider_free_candidate_pending_fresh_exact_authority_and_cap
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
     immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_ATTEMPT40
@@ -2092,17 +2120,17 @@ model_runtime_evidence:
     v2_07_historical_attempt41_cleanup_evidence_sha256: "sha256:caaf90bc41ad65ecb8407c280f125e3317e86e386299220a317b5028f5bcab54"
     v2_07_historical_attempt41_reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt41-reconciliation-observation.json
     v2_07_historical_attempt41_reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
-    v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/combined-live-proposal.json
-    v2_07_current_candidate_sha256: "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a"
-    v2_07_current_candidate_control_commit: "a49f7578e0a03677366560defa30493f1c975b56"
+    v2_07_current_candidate: evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/combined-live-proposal.json
+    v2_07_current_candidate_sha256: "sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb"
+    v2_07_current_candidate_control_commit: "9afbdca73b64209899a84555d771a3e7e81f51f6"
     v2_07_current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
     v2_07_current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
     v2_07_current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     v2_07_current_candidate_hosted_png_crc32_repair_commit: "1960ea9307bb7fcb591c842b84fc1c622aec49eb"
     v2_07_current_candidate_post_job_terminal_scale_zero_repair_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
     v2_07_current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
-    v2_07_current_candidate_max1_sha256: "sha256:c68a4c2c2e4a14a3f9ed85e47fe33e3893886dba3040af7245261d198160c63b"
-    v2_07_current_candidate_max2_sha256: "sha256:fcb2c2b62072eb182a0c8833f2aa30b33bfff581be4006c41225dca962a88eed"
+    v2_07_current_candidate_max1_sha256: "sha256:6a70f6c1373f3525a9d6fb7cdb9eaaa11763322635d860a5512a7b1a6b477005"
+    v2_07_current_candidate_max2_sha256: "sha256:88e878b0cd1d041abd1a31b798c43305565da5873e4bb096736431b72b96143c"
     v2_07_current_candidate_authority: null
     v2_07_current_candidate_authority_sha256: null
     v2_07_current_candidate_cap_usd: null
@@ -2116,8 +2144,8 @@ model_runtime_evidence:
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
     v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-48.json
-    v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/acceptance.json
-    v2_07_current_candidate_acceptance_sha256: "sha256:343042fba22a804f882717c8c6119408cb5a3e5839c6feb124ca6c090ba3e387"
+    v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/acceptance.json
+    v2_07_current_candidate_acceptance_sha256: "sha256:33fb4f18b1e1663b58b6334d1a371fc2c352d050635721378ad1cee4ff109561"
     v2_07_attempt_30_increment_usd_immediate_post_cleanup: 0
     v2_07_attempt_30_delayed_billing_refresh_required: true
     v2_07_attempt_32_increment_usd_settled: 0
@@ -2752,18 +2780,37 @@ provider_authority_attempt48: &v2_07_provider_authority_attempt48
   reconciliation_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt48-reconciliation-observation.json
   reconciliation_evidence_sha256: "sha256:321b74893c2925a0b82f46b5f8a85d281e5e307abccf18ad98ae3ec61cf0b298"
 
-provider_authority_attempt49: &v2_07_provider_authority_attempt49
+provider_authority_attempt49_closed:
+  mode: none
+  authority_mode: blocked_superseded_before_activation_non_reusable
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a"
+  authority_path: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/approved-authority.json
+  authority_sha256: "sha256:29bef150a23b48d990d7ec76de8e701e4548a417404f09b1836267f55f60106d"
+  pre_activation_no_go_path: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/pre-activation-no-go.json
+  pre_activation_no_go_sha256: "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba"
+  authority_recorded: true
+  consumed_by_execution: false
+  reusable: false
+  provider_calls: 0
+  actual_spend_usd: 0
+
+provider_authority_attempt50: &v2_07_provider_authority_attempt50
   mode: none
   authority_mode: pending_fresh_exact_approval_and_positive_numeric_cap
   provider: null
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/combined-live-proposal.json
-  proposal_sha256: "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a"
-  acceptance_path: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/acceptance.json
-  acceptance_sha256: "sha256:343042fba22a804f882717c8c6119408cb5a3e5839c6feb124ca6c090ba3e387"
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb"
+  acceptance_path: evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/acceptance.json
+  acceptance_sha256: "sha256:33fb4f18b1e1663b58b6334d1a371fc2c352d050635721378ad1cee4ff109561"
   read_only_preflight_path: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/read-only-preflight.json
   read_only_preflight_sha256: "sha256:a628e630428a0256eab05112c181ab598d579446485179e0a65497a17f9ec1b5"
-  control_source_commit: "a49f7578e0a03677366560defa30493f1c975b56"
+  control_source_commit: "9afbdca73b64209899a84555d771a3e7e81f51f6"
+  live_qualification_source_sha256: "sha256:82f3e2741a5e4bc415169d5d8ae1e2313eb145f89958a2bc74b7ec1ef9a98d7d"
+  qualification_harness_source_sha256: "sha256:36325e2d156baf3a774fff710ed3ead2810b75c1c8c79e8be0f19b7621a0b12d"
+  staged_max1_sha256: "sha256:6a70f6c1373f3525a9d6fb7cdb9eaaa11763322635d860a5512a7b1a6b477005"
+  staged_max2_sha256: "sha256:88e878b0cd1d041abd1a31b798c43305565da5873e4bb096736431b72b96143c"
   exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1
   anchor_refresh_authorized: false
   authority_recorded: false
@@ -2781,23 +2828,23 @@ provider_authority_attempt49: &v2_07_provider_authority_attempt49
   v2_08_authorized: false
   actual_spend_usd: 0
   reusable: false
-  next_boundary: fresh_exact_attempt49_approval_and_positive_numeric_cap_required
+  next_boundary: fresh_exact_attempt50_approval_and_positive_numeric_cap_required
 
-provider_authority: *v2_07_provider_authority_attempt49
+provider_authority: *v2_07_provider_authority_attempt50
 
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt49_candidate_pending_authority
+  status: NOT_QUALIFIED_attempt50_candidate_pending_authority
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: attempt49_candidate_no_current_authority_or_cap
+  authorization_status: attempt50_candidate_no_current_authority_or_cap
   task_stage: provider_free_candidate_pending_fresh_exact_approval_and_cap
   current_goal_authority: null
-  provider_authority: *v2_07_provider_authority_attempt49
+  provider_authority: *v2_07_provider_authority_attempt50
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Obtain fresh exact approval and a positive numeric cap for Attempt49, then execute only its authority-bound two-phase-v1 Mage qualification."
+  goal: "Obtain fresh exact approval and a positive numeric cap for Attempt50, then execute only its projected-liability-fenced two-phase-v1 Mage qualification."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -2813,13 +2860,13 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  authority_note: "Attempt49 proposal is separately hashed and fresh read-only truth is recorded, but no approval/authority/cap exists. Provider mutation, GPU use, and spend remain forbidden; V2-08 forbidden."
+  authority_note: "Attempt50 proposal is separately hashed, but no approval/authority/executable cap exists. Completion is conditional on measured durations fitting the approved cap; provider mutation, GPU use, and spend remain forbidden; V2-08 forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt49_provider_free_candidate_ready_pending_authority
-  execution_blocker: "Fresh exact Attempt49 proposal approval and a fresh positive numeric cap are required before execution."
+  execution_status: attempt50_provider_free_candidate_ready_pending_authority
+  execution_blocker: "Fresh exact Attempt50 proposal approval and a fresh positive numeric cap are required before execution."
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_not_qualified_attempt49_candidate_pending_authority
+  state: v2_06_complete_green_independently_audited_v2_07_not_qualified_attempt50_candidate_pending_authority
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
