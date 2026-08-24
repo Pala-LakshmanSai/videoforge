@@ -19,6 +19,17 @@ definitions bound to repaired control `85391b1` and orchestrator `sha256:5298ec2
 recompute a fresh exact proposal and request fresh approval. Do not reuse Attempt54 authority/cap.
 V2-08 is forbidden.
 
+Provider-free Attempt55 repairs that exact blocker. Fresh max1 `sha256:62167243…fa368` and max2
+`sha256:551b30c3…d48ee` bind repaired control `85391b1`, orchestrator
+`sha256:5298ec25…fc42c`, canonical activation `sha256:36a23948…a6b3`, and the exact version-bound
+route contract. Fresh read-only truth remains zero compute, both volumes, LOW RTX 4090 EU-RO-1,
+`$1.10/GPU-hour` Flex, and exact active-version-bound `404 V207_ROUTE_DISABLED`. Exact proposal
+`sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f` requests
+FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1` anchor refresh, a fresh `$4` maximum cumulative
+finite cap, and continued `$7/month` retention of both existing volumes. No executable authority or
+cap exists; stop before mutation/GPU/spend until this exact proposal is approved. V2-08 remains
+forbidden.
+
 Attempt52 is closed before mutation at `V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; its
 authority is consumed and non-reusable. Closure `sha256:267918ea…8dec0` and reconciliation
 `sha256:83dbb079…32876` prove zero disposable resources, both volumes retained, restored config,

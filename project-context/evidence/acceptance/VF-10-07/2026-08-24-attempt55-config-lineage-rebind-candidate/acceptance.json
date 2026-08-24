@@ -1,0 +1,34 @@
+{
+  "schema_version": "videoforge.v2-07-attempt55-config-lineage-rebind-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 55,
+  "status": "PROVIDER_FREE_CONFIG_LINEAGE_REPAIR_COMPLETE_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f",
+  "preflight_sha256": "sha256:46883e09bd784dd05a4017a6519d0935f02b29b861d9cb2b9b9cd0037b29353e",
+  "max1_sha256": "sha256:62167243073a7c35c9b7b0d2701971fae2da1366a56aa1b6a303b67c1f2fa368",
+  "max2_sha256": "sha256:551b30c3e669d4127390bf5cb9b7c6c1a3ce9cb76a9bd9b400350a6f4e2d48ee",
+  "lineage_acceptance": {
+    "control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+    "orchestrator_source_sha256": "sha256:5298ec25000e42affb7e36b518b778fa692e65b72d868087d58fbd81e6cfc42c",
+    "canonical_activation_source_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+    "both_configs_exactly_match_repaired_lineage": true,
+    "attempt53_config_reuse": false,
+    "attempt54_authority_or_cap_reuse": false
+  },
+  "provider_state": {
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0,
+    "runpod_zero_compute": true,
+    "cloudflare_exact_version_bound_disabled_route": true,
+    "two_existing_volumes_retained": true
+  },
+  "remaining_gates": [
+    "fresh exact approval of proposal sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f",
+    "record fresh single-use authority and exact USD 4 cap",
+    "execute one bounded live qualification and prove complete artifact, timing, cost, reader reconciliation, cleanup, and zero paid compute"
+  ],
+  "v2_08_started": false
+}
