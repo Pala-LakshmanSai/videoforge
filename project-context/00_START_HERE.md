@@ -2,31 +2,28 @@
 
 ## Active handoff — read this section first
 
-Attempt54 provider-free repair is green but V2-07 remains `NOT_QUALIFIED`. Control commit
-`85391b130673200e2d1f74fea4ea2581d5d83c1a` binds every refresh pre-route, refreshed-disabled,
-post-promotion, and refresh-cleanup route read to the exact expected Worker version. Missing, stale,
-alternating, and mixed identities fail closed; non-refresh behavior remains compatible; evidence
-retains hashes only. The focused orchestrator file passes 55/55 and web TypeScript passes.
+Attempt56 provider-free executable-anchor-constant rebind is complete and pending fresh exact approval.
+Repair commit `5c2fbe06ba559543c122876d32ef41cb26fd688b` binds the orchestrator constants, both staged
+configs, proposal, and validator gate to the same fresh Cloudflare anchors. Proposal
+`sha256:d3c10f7af00591dea0afe73d2960b316a788235bb2585decab6ca479b4ce9ab9`, acceptance
+`sha256:3ddaf8f9fde45f93de0a9c4a770a09bc117168ff27dbd2ec312e7516cf9c094d`, preflight
+`sha256:4a1f95ee496afabedc33ca148bee8543010600ea302966f4b66b8b23c2425373`, max1
+`sha256:6bba5f707e19352b2935129429665f1a488f241065c9c84fe814a2f8677dae7a`, and max2
+`sha256:19d4824c205b5c3c17edc351d7762578b249caee497d60ec4d8ff762fd41b37b` are provider-free evidence.
 
-Attempt54 exact approval was recorded, then consumed before any provider call at
-`V207_STAGED_CONFIG_CONTROL_LINEAGE_MISMATCH`; its proposal reused Attempt53 max1/max2 definitions
-whose embedded control/orchestrator/canonical-activation lineage predates the version-bound repair.
-Blocker `sha256:b225757a…3903f` proves zero provider calls, mutations, jobs, GPU use, or spend after
-approval. Activation authority/cap/refresh are null; RunPod remains zero compute, the exact
-version-bound `404 V207_ROUTE_DISABLED` remains the last verified route, and both volumes remain at
-the approved `$7/month` retention. V2-08 is forbidden.
+Fresh truth at `2026-08-24T15:46:30.599Z` is zero RunPod compute/disposable resources, two retained
+volumes, LOW RTX 4090 EU-RO-1 availability, `$1.10/GPU-hour` Flex, `$0.74/hour` Secure reference,
+cumulative billing `1.7478178361488972`, signer absent, and exact active-version-bound POST `404
+V207_ROUTE_DISABLED`. The executable anchors are `sha256:36256382…7a8ad6` and
+`sha256:9e37db7…a0afac2`; the canonical activation source remains `sha256:36a23948…a6b3`.
 
-Attempt55 is now closed consumed before provider execution at
-`V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH`. Its exact approved proposal is
-`sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f`; the consumed authority
-record is at `sha256:47e06a69…70818` (pre-execution approval record
-`sha256:966159fc…921c0d`). No provider call, mutation, job, GPU use, or spend occurred. The
-executable cap is `$0`; RunPod remains at zero compute, both volumes remain retained at `$7/month`,
-and V2-07 remains `NOT_QUALIFIED`.
+Attempt56 authority and executable cap remain null/`$0` pending fresh exact approval. Provider calls,
+mutations, GPU use, and spend are false/zero; both existing volumes remain retained at `$7/month`;
+V2-07 remains `NOT_QUALIFIED`; V2-08 is forbidden. Next boundary is exact Attempt56 approval only,
+then one bounded live qualification under the approved cap.
 
-Smallest next action is one provider-free micro-checkpoint to update executable anchor constants and
-fully bind the validator/config/proposal to them, then create a fresh exact proposal and request fresh
-approval. Do not run a provider qualification under Attempt55. V2-08 remains forbidden.
+Attempt55 remains closed and non-reusable at `V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH`; preserve its
+consumed authority and cap as immutable history and do not retry it.
 
 Attempt52 is closed before mutation at `V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; its
 authority is consumed and non-reusable. Closure `sha256:267918ea…8dec0` and reconciliation
