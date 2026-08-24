@@ -2502,6 +2502,63 @@ async function main(): Promise<void> {
       await persistCheckpoint("warm-terminal");
       await harness.confirmWarmIdle();
       harness.markInitialQualificationComplete();
+      const cancel = await createBatch(
+        `v207-cancel-${runTag}`,
+        nonce,
+        workerToken,
+        32,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...cancel.objectKeys);
+      await persistCheckpoint("cancel-ports");
+      cancellation.throwIfRequested();
+      const cancelJob = await harness.dispatchBatch(cancel.input);
+      await persistCheckpoint("cancel-dispatch");
+      const cancelled = await harness.cancel(cancelJob.id);
+      if (cancelled.status !== "CANCELLED") throw new Error("V207_CANCEL_UNCONFIRMED");
+      evidence.cancel_status = cancelled.status;
+      await deleteGeneratedObjects(cancel.objectKeys, nonce);
+      evidence.cancel_output_cleanup = "CONFIRMED";
+      await persistCheckpoint("cancel-terminal");
+      await harness.scaleDownToInitial();
+
+      // Deliberately own one separate timeout attempt under the approved max-one endpoint. The
+      // provider must report its exact terminal TIMED_OUT state; a local reconciliation timeout,
+      // FAILED result, or successful output is not substituted for this proof and fails closed.
+      const timeoutAttemptId = `v207-timeout-${runTag}`;
+      const timeout = await createBatch(
+        timeoutAttemptId,
+        nonce,
+        workerToken,
+        32,
+        cancellation.throwIfRequested,
+      );
+      generatedObjectKeys.push(...timeout.objectKeys);
+      await persistCheckpoint("timeout-ports");
+      cancellation.throwIfRequested();
+      const timeoutJob = await harness.dispatchTimeoutBatch(timeout.input);
+      await persistCheckpoint("timeout-dispatch");
+      const timeoutResult = await harness.reconcile(timeoutJob.id);
+      evidence.timeout_status = timeoutResult.status;
+      await persistCheckpoint("timeout-terminal", {
+        event: "provider_timeout_terminal",
+        status: timeoutResult.status,
+        job_id_hash: timeoutResult.idHash,
+      });
+      if (timeoutResult.status !== "TIMED_OUT") {
+        throw new Error("V207_TIMEOUT_NOT_OBSERVED");
+      }
+      await deleteGeneratedObjects(timeout.objectKeys, nonce);
+      evidence.timeout_output_cleanup = "CONFIRMED";
+      await persistCheckpoint("timeout-output-cleanup");
+      await harness.scaleDownToInitial();
+
+      // The separately hashed max-two reader policy is the final GPU phase. Both complete
+      // 32-item batches run only after the max-one probe/cold/warm/duplicate/cancel/timeout
+      // sequence. Their independently signed receipts must each prove the exact sealed manifest
+      // before and after inference, so they jointly provide the terminal sealed-model attestation.
+      // After their reconciliation, only max-one restoration, drain, cleanup, and read-only final
+      // reconciliation are permitted; no later GPU job is dispatched.
       cancellation.throwIfRequested();
       evidence.concurrent_config_sha256 = await harness.applyConcurrentReaderPolicy();
       await refreshHarnessCheckpoint("concurrent-policy");
@@ -2556,105 +2613,28 @@ async function main(): Promise<void> {
         receiptKeyId,
         receiptSecret,
       );
-      (evidence.batches as AnyRecord[]).push({ kind: "reader_a", ...readerEvidenceA });
-      (evidence.batches as AnyRecord[]).push({ kind: "reader_b", ...readerEvidenceB });
-      await persistCheckpoint("reader-terminal");
+      (evidence.batches as AnyRecord[]).push({
+        kind: "reader_a",
+        terminal_sealed_model_attestation: true,
+        ...readerEvidenceA,
+      });
+      (evidence.batches as AnyRecord[]).push({
+        kind: "reader_b",
+        terminal_sealed_model_attestation: true,
+        ...readerEvidenceB,
+      });
+      evidence.terminal_sealed_model_attestation = {
+        status: "CONFIRMED",
+        after_timeout: true,
+        manifest_sha256: MANIFEST,
+        reader_receipt_sha256: [readerEvidenceA.receipt_sha256, readerEvidenceB.receipt_sha256],
+      };
+      evidence.no_gpu_action_after_terminal_attestation = true;
+      await persistCheckpoint("reader-terminal-attestation");
       await harness.drain();
       cancellation.throwIfRequested();
       await harness.scaleDownToInitial();
       await persistCheckpoint("reader-drained");
-      const cancel = await createBatch(
-        `v207-cancel-${runTag}`,
-        nonce,
-        workerToken,
-        32,
-        cancellation.throwIfRequested,
-      );
-      generatedObjectKeys.push(...cancel.objectKeys);
-      await persistCheckpoint("cancel-ports");
-      cancellation.throwIfRequested();
-      const cancelJob = await harness.dispatchBatch(cancel.input);
-      await persistCheckpoint("cancel-dispatch");
-      const cancelled = await harness.cancel(cancelJob.id);
-      if (cancelled.status !== "CANCELLED") throw new Error("V207_CANCEL_UNCONFIRMED");
-      evidence.cancel_status = cancelled.status;
-      await deleteGeneratedObjects(cancel.objectKeys, nonce);
-      evidence.cancel_output_cleanup = "CONFIRMED";
-      await persistCheckpoint("cancel-terminal");
-      await harness.scaleDownToInitial();
-
-      // Deliberately own one separate timeout attempt under the approved max-one endpoint. The
-      // provider must report its exact terminal TIMED_OUT state; a local reconciliation timeout,
-      // FAILED result, or successful output is not substituted for this proof and fails closed.
-      const timeoutAttemptId = `v207-timeout-${runTag}`;
-      const timeout = await createBatch(
-        timeoutAttemptId,
-        nonce,
-        workerToken,
-        32,
-        cancellation.throwIfRequested,
-      );
-      generatedObjectKeys.push(...timeout.objectKeys);
-      await persistCheckpoint("timeout-ports");
-      cancellation.throwIfRequested();
-      const timeoutJob = await harness.dispatchTimeoutBatch(timeout.input);
-      await persistCheckpoint("timeout-dispatch");
-      const timeoutResult = await harness.reconcile(timeoutJob.id);
-      evidence.timeout_status = timeoutResult.status;
-      await persistCheckpoint("timeout-terminal", {
-        event: "provider_timeout_terminal",
-        status: timeoutResult.status,
-        job_id_hash: timeoutResult.idHash,
-      });
-      if (timeoutResult.status !== "TIMED_OUT") {
-        throw new Error("V207_TIMEOUT_NOT_OBSERVED");
-      }
-      await deleteGeneratedObjects(timeout.objectKeys, nonce);
-      evidence.timeout_output_cleanup = "CONFIRMED";
-      await persistCheckpoint("timeout-output-cleanup");
-      await harness.scaleDownToInitial();
-
-      // Cancellation and provider timeout can interrupt the worker before its normal post-run
-      // model-volume verification. Run one final one-item execution only after both negative
-      // proofs, and accept the qualification only if its signed receipt proves the exact sealed
-      // manifest both before and after inference on the retained immutable image/volume lineage.
-      const terminalAttestationAttemptId = `v207-terminal-attestation-${runTag}`;
-      const terminalAttestation = await createBatch(
-        terminalAttestationAttemptId,
-        nonce,
-        workerToken,
-        32,
-        cancellation.throwIfRequested,
-        undefined,
-        ["scene-01"],
-      );
-      generatedObjectKeys.push(...terminalAttestation.objectKeys);
-      await persistCheckpoint("terminal-attestation-ports");
-      cancellation.throwIfRequested();
-      const terminalAttestationJob = await harness.dispatchBatch(terminalAttestation.input);
-      await persistCheckpoint("terminal-attestation-dispatch");
-      const terminalAttestationResult = await harness.reconcile(terminalAttestationJob.id);
-      const terminalAttestationEvidence = await verifyBatchWithDiagnostic(
-        harness,
-        terminalAttestationResult,
-        terminalAttestationAttemptId,
-        terminalAttestation.objectKeys,
-        terminalAttestation.input.outputAuthority.authorities as readonly AnyRecord[],
-        terminalAttestation.planManifest,
-        terminalAttestation.objectKeys.length,
-        createdIdentity.endpointIdHash,
-        nonce,
-        receiptKeyId,
-        receiptSecret,
-      );
-      (evidence.batches as AnyRecord[]).push({
-        kind: "terminal_sealed_model_attestation",
-        ...terminalAttestationEvidence,
-      });
-      evidence.terminal_sealed_model_attestation = "CONFIRMED";
-      await persistCheckpoint("terminal-attestation-complete");
-      await harness.confirmWarmIdle();
-      await harness.scaleDownToInitial();
       await harness.cleanup({ deleteIfFailed: false, failed: false });
       // The success reconciler intentionally retains the exact endpoint/template and proves
       // three stable inventory/resource/billing snapshots. Its zero-worker/terminal-Pod checks

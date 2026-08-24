@@ -44,6 +44,13 @@ const V207_RESUME_WORKSPACE = "workspace-a";
 const V207_RESUME_PROJECT = "project-a";
 const V207_RESUME_REVISION = "revision-a";
 const V207_PLAN_MANIFEST_SCHEMA = "videoforge-v207-plan-manifest/v1";
+/** Pinned approved RTX 4090 Flex rate for this qualification lineage. */
+export const V207_RUNPOD_GPU_HOURLY_RATE_USD = 1.1 as const;
+/**
+ * Provider billing is asynchronous. This is a conservative per-worker metering margin, not a
+ * promise about when RunPod's account total will settle.
+ */
+export const V207_RUNPOD_BILLING_LAG_MARGIN_SECONDS = 60 as const;
 
 type RecordValue = Readonly<Record<string, unknown>>;
 
@@ -247,6 +254,11 @@ export interface RunPodV207HarnessEvidence {
   readonly imageDigest: string;
   readonly events: readonly RecordValue[];
   readonly measuredSpendUsd: number | null;
+  readonly projectedSpendUsd: number | null;
+  readonly activeWorstCaseLiabilityUsd: number;
+  readonly newPaidWorkFenced: boolean;
+  readonly gpuHourlyRateUsd: typeof V207_RUNPOD_GPU_HOURLY_RATE_USD;
+  readonly billingLagMarginSeconds: typeof V207_RUNPOD_BILLING_LAG_MARGIN_SECONDS;
 }
 
 const assertAuthority = (
@@ -652,6 +664,18 @@ export class RunPodV207QualificationHarness {
   #concurrentReaderDispatchClaimed = false;
   /** A timeout arms exactly one post-timeout status recovery; it never permits redispatch. */
   #concurrentReaderRecoveryArmed = false;
+  /** Conservative cost already incurred but potentially absent from the asynchronous bill. */
+  #projectedSettledLiabilityUsd = 0;
+  /** Worst-case liability for every acknowledged non-terminal job. */
+  readonly #activeSpendLiabilitiesUsd = new Map<
+    string,
+    { readonly usd: number; readonly initIncluded: boolean }
+  >();
+  /** A reservation held across an in-flight /run request before its provider job id is known. */
+  #pendingDispatchLiabilityUsd = 0;
+  #newPaidWorkFenced = false;
+  /** Verified initialization reservations that exactly one following dispatch may consume. */
+  #reservedInitCredits = 0;
 
   constructor(options: RunPodV207QualificationHarnessOptions) {
     if (
@@ -709,6 +733,7 @@ export class RunPodV207QualificationHarness {
           status: observed.status,
         });
         if (TERMINAL_STATUSES.has(observed.status)) {
+          this.settleJobSpendLiability(observed);
           // Cleanup reconciliation is authoritative for the same owned job ID. A bounded
           // caller timeout may end before RunPod exposes terminal status; preserve the later
           // terminal observation so max-two drain can prove quiescence without redispatch.
@@ -720,6 +745,7 @@ export class RunPodV207QualificationHarness {
             throw new RunPodControlError("RUNPOD_OWNED_JOB_CANCEL_UNCONFIRMED");
           }
           this.#terminalJobIds.add(jobId);
+          this.settleJobSpendLiability(cancelled);
           if (this.#readerJobIds.has(jobId)) this.#terminalReaderResults.set(jobId, cancelled);
           this.mark("owned_job_cleanup_cancelled", {
             job_id_hash: cancelled.idHash,
@@ -745,9 +771,76 @@ export class RunPodV207QualificationHarness {
       throw new RunPodControlError("RUNPOD_SPEND_SNAPSHOT_INVALID");
     }
     if (spend > this.#options.finiteSpendCapUsd) {
+      this.#newPaidWorkFenced = true;
       throw new RunPodControlError("RUNPOD_FINITE_SPEND_CAP_EXCEEDED");
     }
     return spend;
+  }
+
+  private workerLiabilityUsd(executionTimeoutMs: number, includeInit: boolean): number {
+    const seconds =
+      (includeInit ? V207_RUNPOD_INIT_TIMEOUT_SECONDS : 0) +
+      executionTimeoutMs / 1_000 +
+      V207_RUNPOD_IDLE_TIMEOUT_SECONDS +
+      V207_RUNPOD_BILLING_LAG_MARGIN_SECONDS;
+    return (seconds / 3_600) * V207_RUNPOD_GPU_HOURLY_RATE_USD;
+  }
+
+  private infrastructureLiabilityUsd(workerCount: number): number {
+    return (
+      workerCount * (V207_RUNPOD_INIT_TIMEOUT_SECONDS / 3_600) * V207_RUNPOD_GPU_HOURLY_RATE_USD
+    );
+  }
+
+  private activeSpendLiabilityUsd(): number {
+    return [...this.#activeSpendLiabilitiesUsd.values()].reduce((sum, value) => sum + value.usd, 0);
+  }
+
+  /**
+   * Admit a new potentially billed action only when the latest bill plus every unreported or
+   * in-flight worst-case liability fits under the approved cap. Because RunPod billing settles
+   * asynchronously, this is a local fail-closed projection fence, not a provider-side guarantee
+   * that the final invoice cannot exceed the cap.
+   */
+  private async reservePaidLiability(liabilityUsd: number): Promise<void> {
+    if (this.#newPaidWorkFenced) {
+      throw new RunPodControlError("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
+    }
+    const observedSpendUsd = await this.assertSpendWithinCap();
+    const projectedSpendUsd =
+      Math.max(observedSpendUsd, this.#projectedSettledLiabilityUsd) +
+      this.activeSpendLiabilityUsd() +
+      this.#pendingDispatchLiabilityUsd +
+      liabilityUsd;
+    if (projectedSpendUsd > this.#options.finiteSpendCapUsd + Number.EPSILON) {
+      this.#newPaidWorkFenced = true;
+      this.mark("finite_spend_headroom_insufficient", {
+        observed_spend_usd: observedSpendUsd,
+        projected_spend_usd: projectedSpendUsd,
+        approved_cap_usd: this.#options.finiteSpendCapUsd,
+        new_liability_usd: liabilityUsd,
+        active_liability_usd: this.activeSpendLiabilityUsd(),
+        unsettled_liability_floor_usd: this.#projectedSettledLiabilityUsd,
+        no_new_paid_action: true,
+        drain_existing_owned_work: true,
+      });
+      throw new RunPodControlError("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
+    }
+  }
+
+  private settleJobSpendLiability(job: RunPodJobResult): void {
+    const reserved = this.#activeSpendLiabilitiesUsd.get(job.id);
+    if (reserved === undefined) return;
+    this.#activeSpendLiabilitiesUsd.delete(job.id);
+    const measuredExecutionMs = job.executionTimeMs;
+    const realizedUpperBound =
+      measuredExecutionMs === null
+        ? reserved.usd
+        : this.workerLiabilityUsd(
+            Math.min(measuredExecutionMs, V207_RUNPOD_EXECUTION_TIMEOUT_MS),
+            reserved.initIncluded,
+          );
+    this.#projectedSettledLiabilityUsd += Math.min(reserved.usd, realizedUpperBound);
   }
 
   private assertRetainedMageVolume(inventory: RunPodInventory): void {
@@ -1352,6 +1445,8 @@ export class RunPodV207QualificationHarness {
       console.error("v207:harness-template-created");
       this.mark("template_created", { template_id_hash: this.#template!.idHash });
       mutationPhase = "endpoint";
+      const endpointCreationLiability = this.infrastructureLiabilityUsd(1);
+      await this.reservePaidLiability(endpointCreationLiability);
       this.#endpoint = await this.#options.control.createScaleZeroEndpoint(
         this.#options.endpointName,
         this.#template!.id,
@@ -1360,6 +1455,8 @@ export class RunPodV207QualificationHarness {
         this.#options.placement,
         true,
       );
+      this.#projectedSettledLiabilityUsd += endpointCreationLiability;
+      this.#reservedInitCredits += 1;
       console.error("v207:harness-endpoint-created");
       mutationPhase = "endpoint_identity";
       await this.bindEndpointIdentity();
@@ -1462,6 +1559,7 @@ export class RunPodV207QualificationHarness {
       this.#terminalJobIds.has(job.id) &&
       !TERMINAL_STATUSES.has(job.status);
     if (TERMINAL_STATUSES.has(job.status)) {
+      this.settleJobSpendLiability(job);
       this.#terminalJobIds.add(job.id);
       this.#ownedJobs.delete(job.id);
       if (this.#readerJobIds.has(job.id)) this.#terminalReaderResults.set(job.id, job);
@@ -1489,11 +1587,45 @@ export class RunPodV207QualificationHarness {
     this.checkAbort();
     this.assertPrimaryDispatchAllowed();
     const request = buildDispatchRequest(input);
-    await this.assertSpendWithinCap();
-    const job =
-      policy === undefined
-        ? await this.#jobs!.dispatch(input.requestKey, request)
-        : await this.#jobs!.dispatchWithPolicy(input.requestKey, request, policy);
+    const previousRequest = this.#requestJobIds.get(input.requestKey);
+    if (previousRequest?.client === this.#jobs) {
+      // The job client validates the exact request hash and returns its cached /run response.
+      // This path cannot issue provider work, so charging it a second liability would make the
+      // cost fence contradict the at-most-one delivery proof.
+      const replay =
+        policy === undefined
+          ? await this.#jobs!.dispatch(input.requestKey, request)
+          : await this.#jobs!.dispatchWithPolicy(input.requestKey, request, policy);
+      this.trackDispatchedJob(input, replay, this.#jobs!, true);
+      this.mark("job_dispatch_replay", {
+        job_id_hash: replay.idHash,
+        attempt_id: input.attemptId,
+        no_new_provider_dispatch: true,
+        no_new_spend_liability: true,
+      });
+      return replay;
+    }
+    const executionTimeoutMs = policy?.executionTimeout ?? V207_RUNPOD_EXECUTION_TIMEOUT_MS;
+    const consumesInitCredit = this.#reservedInitCredits > 0;
+    const initIncluded = !consumesInitCredit && this.#guard.snapshot() !== "warm_idle";
+    const liability = this.workerLiabilityUsd(executionTimeoutMs, initIncluded);
+    await this.reservePaidLiability(liability);
+    if (consumesInitCredit) this.#reservedInitCredits -= 1;
+    this.#pendingDispatchLiabilityUsd += liability;
+    let job: RunPodJobResult;
+    try {
+      job =
+        policy === undefined
+          ? await this.#jobs!.dispatch(input.requestKey, request)
+          : await this.#jobs!.dispatchWithPolicy(input.requestKey, request, policy);
+    } catch (error) {
+      this.#pendingDispatchLiabilityUsd -= liability;
+      this.#projectedSettledLiabilityUsd += liability;
+      this.#newPaidWorkFenced = true;
+      throw error;
+    }
+    this.#pendingDispatchLiabilityUsd -= liability;
+    this.#activeSpendLiabilitiesUsd.set(job.id, { usd: liability, initIncluded });
     this.trackDispatchedJob(input, job, this.#jobs!, true);
     this.checkAbort();
     await this.assertSpendWithinCap();
@@ -1528,6 +1660,7 @@ export class RunPodV207QualificationHarness {
         executionTimeMs: latest.executionTimeMs,
       });
       if (TERMINAL_STATUSES.has(latest.status)) {
+        this.settleJobSpendLiability(latest);
         this.#ownedJobs.delete(jobId);
         this.#terminalJobIds.add(jobId);
         if (this.#readerJobIds.has(jobId)) this.#terminalReaderResults.set(jobId, latest);
@@ -1715,6 +1848,7 @@ export class RunPodV207QualificationHarness {
     }
     const result = await this.#jobs!.cancel(jobId);
     if (result.status === "CANCELLED") {
+      this.settleJobSpendLiability(result);
       this.#ownedJobs.delete(jobId);
       this.#terminalJobIds.add(jobId);
       if (this.#readerJobIds.has(jobId)) this.#terminalReaderResults.set(jobId, result);
@@ -1762,7 +1896,8 @@ export class RunPodV207QualificationHarness {
     if (this.#guard.snapshot() !== "warm_idle" && this.#guard.snapshot() !== "zero") {
       throw new RunPodControlError("RUNPOD_CONCURRENT_READER_BASELINE_UNCONFIRMED");
     }
-    await this.assertSpendWithinCap();
+    const policyLiability = this.infrastructureLiabilityUsd(2);
+    await this.reservePaidLiability(policyLiability);
     await this.#options.control.enforceV207EndpointPolicy(
       this.#endpoint!.id,
       this.#template!.id,
@@ -1770,6 +1905,8 @@ export class RunPodV207QualificationHarness {
       this.#options.placement,
       this.#guard,
     );
+    this.#projectedSettledLiabilityUsd += policyLiability;
+    this.#reservedInitCredits += 2;
     this.checkAbort();
     await this.assertSpendWithinCap();
     this.#guard.markActive();
@@ -1865,11 +2002,21 @@ export class RunPodV207QualificationHarness {
     // Claim the one allowed reader dispatch before the first asynchronous cap read. This keeps a
     // third caller out during preflight; the primary fence remains until drain proves zero.
     this.#concurrentReaderDispatchClaimed = true;
-    // Check each reader before any /run request. A single shared check would allow the second
-    // reader to enter after a concurrent billing read crossed the approved finite cap.
+    // Reserve both workers atomically before either /run request. This includes the full init,
+    // execution-timeout, idle, and asynchronous-metering margin for both concurrent readers.
+    const availableInitCredits = Math.min(this.#reservedInitCredits, 2);
+    const uncertainInitCount =
+      this.#guard.snapshot() === "warm_idle" ? 0 : 2 - availableInitCredits;
+    const perReaderRuntimeLiability = this.workerLiabilityUsd(
+      V207_RUNPOD_EXECUTION_TIMEOUT_MS,
+      false,
+    );
+    const readerLiability =
+      perReaderRuntimeLiability * 2 + this.infrastructureLiabilityUsd(uncertainInitCount);
     try {
-      await this.assertSpendWithinCap();
-      await this.assertSpendWithinCap();
+      await this.reservePaidLiability(readerLiability);
+      this.#reservedInitCredits -= availableInitCredits;
+      this.#pendingDispatchLiabilityUsd += readerLiability;
     } catch (error) {
       this.#concurrentReaderDispatchClaimed = false;
       throw error;
@@ -1888,18 +2035,36 @@ export class RunPodV207QualificationHarness {
       this.#readerJobs.push(client);
       return client;
     }) as [RunPodServerlessJobClient, RunPodServerlessJobClient];
-    const results = await Promise.all(
-      inputs.map((input, index) => {
-        const request = requests[index]!;
-        return clients[index]!.dispatch(input.requestKey, request).then((job) => {
-          this.#readerJobIds.add(job.id);
-          this.#readerJobOrder[index] = job.id;
-          this.#readerInputs.set(job.id, input);
-          this.trackDispatchedJob(input, job, clients[index]!);
-          return job;
-        });
-      }),
-    );
+    let results: [RunPodJobResult, RunPodJobResult];
+    try {
+      results = (await Promise.all(
+        inputs.map((input, index) => {
+          const request = requests[index]!;
+          return clients[index]!.dispatch(input.requestKey, request).then((job) => {
+            const includesInit = index >= availableInitCredits && uncertainInitCount > 0;
+            const perReaderLiability =
+              perReaderRuntimeLiability + (includesInit ? this.infrastructureLiabilityUsd(1) : 0);
+            this.#pendingDispatchLiabilityUsd -= perReaderLiability;
+            this.#activeSpendLiabilitiesUsd.set(job.id, {
+              usd: perReaderLiability,
+              initIncluded: includesInit,
+            });
+            this.#readerJobIds.add(job.id);
+            this.#readerJobOrder[index] = job.id;
+            this.#readerInputs.set(job.id, input);
+            this.trackDispatchedJob(input, job, clients[index]!);
+            return job;
+          });
+        }),
+      )) as [RunPodJobResult, RunPodJobResult];
+      this.#pendingDispatchLiabilityUsd = 0;
+    } catch (error) {
+      // Preserve any unassigned half of the reservation: a failed /run response is ambiguous.
+      this.#projectedSettledLiabilityUsd += this.#pendingDispatchLiabilityUsd;
+      this.#pendingDispatchLiabilityUsd = 0;
+      this.#newPaidWorkFenced = true;
+      throw error;
+    }
     this.checkAbort();
     await this.assertSpendWithinCap();
     const first = results[0]!;
@@ -1954,6 +2119,7 @@ export class RunPodV207QualificationHarness {
           executionTimeMs: latest.executionTimeMs,
         });
         if (TERMINAL_STATUSES.has(latest.status)) {
+          this.settleJobSpendLiability(latest);
           this.#ownedJobs.delete(jobId);
           this.#terminalJobIds.add(jobId);
           this.#terminalReaderResults.set(jobId, latest);
@@ -2065,6 +2231,7 @@ export class RunPodV207QualificationHarness {
         executionTimeMs: latest.executionTimeMs,
       });
       if (TERMINAL_STATUSES.has(latest.status)) {
+        this.settleJobSpendLiability(latest);
         this.#ownedJobs.delete(jobId);
         this.#terminalJobIds.add(jobId);
         this.#terminalReaderResults.set(jobId, latest);
@@ -2276,6 +2443,17 @@ export class RunPodV207QualificationHarness {
       imageDigest: this.#options.imageName.slice(this.#options.imageName.indexOf("@") + 1),
       events: Object.freeze(this.#events.map((event) => redactRunPodEvidence(event))),
       measuredSpendUsd: spend,
+      projectedSpendUsd:
+        spend === null
+          ? null
+          : Math.max(spend, this.#projectedSettledLiabilityUsd) +
+            this.activeSpendLiabilityUsd() +
+            this.#pendingDispatchLiabilityUsd,
+      activeWorstCaseLiabilityUsd:
+        this.activeSpendLiabilityUsd() + this.#pendingDispatchLiabilityUsd,
+      newPaidWorkFenced: this.#newPaidWorkFenced,
+      gpuHourlyRateUsd: V207_RUNPOD_GPU_HOURLY_RATE_USD,
+      billingLagMarginSeconds: V207_RUNPOD_BILLING_LAG_MARGIN_SECONDS,
     });
   }
 }

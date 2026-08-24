@@ -185,7 +185,9 @@ describe("V2-07 live qualification runner safety", () => {
     });
   });
 
-  it("routes recovered reader results through both full verifiers before drain", () => {
+  it("routes post-timeout reader results through both full verifiers before drain", () => {
+    const timeoutTerminal = source.indexOf('persistCheckpoint("timeout-terminal"');
+    const concurrentPolicy = source.indexOf("await harness.applyConcurrentReaderPolicy()");
     const reconcile = source.indexOf(
       "const readerResults = await harness.reconcileConcurrentReaders",
     );
@@ -197,21 +199,31 @@ describe("V2-07 live qualification runner safety", () => {
       "const readerEvidenceB = await verifyBatchWithDiagnostic",
       verifyReaderA + 1,
     );
-    const recordReaderA = source.indexOf(
-      '(evidence.batches as AnyRecord[]).push({ kind: "reader_a", ...readerEvidenceA })',
-      verifyReaderB,
-    );
-    const recordReaderB = source.indexOf(
-      '(evidence.batches as AnyRecord[]).push({ kind: "reader_b", ...readerEvidenceB })',
-      recordReaderA,
-    );
+    const recordReaderA = source.indexOf('kind: "reader_a"', verifyReaderB);
+    const recordReaderB = source.indexOf('kind: "reader_b"', recordReaderA);
     const drain = source.indexOf("await harness.drain()", recordReaderB);
-    expect([reconcile, verifyReaderA, verifyReaderB, recordReaderA, recordReaderB, drain]).toEqual(
-      [...[reconcile, verifyReaderA, verifyReaderB, recordReaderA, recordReaderB, drain]].sort(
-        (left, right) => left - right,
-      ),
+    expect([
+      timeoutTerminal,
+      concurrentPolicy,
+      reconcile,
+      verifyReaderA,
+      verifyReaderB,
+      recordReaderA,
+      recordReaderB,
+      drain,
+    ]).toEqual(
+      [
+        timeoutTerminal,
+        concurrentPolicy,
+        reconcile,
+        verifyReaderA,
+        verifyReaderB,
+        recordReaderA,
+        recordReaderB,
+        drain,
+      ].sort((left, right) => left - right),
     );
-    expect(reconcile).toBeGreaterThan(-1);
+    expect(timeoutTerminal).toBeGreaterThan(-1);
   });
 
   it("retries only idempotent FINALIZE transport loss and accepts the later receipt", async () => {
@@ -639,18 +651,22 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain('evidence.timeout_output_cleanup = "CONFIRMED"');
   });
 
-  it("requires a final sealed-model receipt after cancellation and timeout before acceptance", () => {
+  it("uses both post-timeout reader receipts as the terminal sealed-model attestation", () => {
     const cancelTerminal = source.indexOf('persistCheckpoint("cancel-terminal")');
     const timeoutTerminal = source.indexOf('persistCheckpoint("timeout-terminal"');
-    const terminalDispatch = source.indexOf(
-      "const terminalAttestationJob = await harness.dispatchBatch",
+    const concurrentPolicy = source.indexOf("await harness.applyConcurrentReaderPolicy()");
+    const readerDispatch = source.indexOf(
+      "const readerJobs = await harness.dispatchConcurrentReaders",
     );
-    const terminalVerify = source.indexOf(
-      "const terminalAttestationEvidence = await verifyBatchWithDiagnostic",
+    const readerVerifyA = source.indexOf("const readerEvidenceA = await verifyBatchWithDiagnostic");
+    const readerVerifyB = source.indexOf(
+      "const readerEvidenceB = await verifyBatchWithDiagnostic",
+      readerVerifyA + 1,
     );
-    const terminalConfirmed = source.indexOf(
-      'evidence.terminal_sealed_model_attestation = "CONFIRMED"',
-    );
+    const terminalConfirmed = source.indexOf("evidence.terminal_sealed_model_attestation = {");
+    const readerTerminal = source.indexOf('persistCheckpoint("reader-terminal-attestation")');
+    const readerDrain = source.indexOf("await harness.drain()", readerTerminal);
+    const restoreMaxOne = source.indexOf("await harness.scaleDownToInitial()", readerDrain);
     const finalReconciliation = source.indexOf(
       "const finalReconciliation = await reconcileV207SuccessReadonly",
     );
@@ -658,25 +674,43 @@ describe("V2-07 live qualification runner safety", () => {
     expect([
       cancelTerminal,
       timeoutTerminal,
-      terminalDispatch,
-      terminalVerify,
+      concurrentPolicy,
+      readerDispatch,
+      readerVerifyA,
+      readerVerifyB,
       terminalConfirmed,
+      readerTerminal,
+      readerDrain,
+      restoreMaxOne,
       finalReconciliation,
       success,
     ]).toEqual(
       [
         cancelTerminal,
         timeoutTerminal,
-        terminalDispatch,
-        terminalVerify,
+        concurrentPolicy,
+        readerDispatch,
+        readerVerifyA,
+        readerVerifyB,
         terminalConfirmed,
+        readerTerminal,
+        readerDrain,
+        restoreMaxOne,
         finalReconciliation,
         success,
       ].sort((left, right) => left - right),
     );
     expect(cancelTerminal).toBeGreaterThan(-1);
-    expect(source).toContain('kind: "terminal_sealed_model_attestation"');
-    expect(source).toContain('["scene-01"]');
+    expect(source.match(/terminal_sealed_model_attestation: true/g)).toHaveLength(2);
+    expect(source).toContain(
+      "reader_receipt_sha256: [readerEvidenceA.receipt_sha256, readerEvidenceB.receipt_sha256]",
+    );
+    expect(source).toContain("manifest_sha256: MANIFEST");
+    expect(source).toContain("evidence.no_gpu_action_after_terminal_attestation = true");
+    expect(source).not.toContain("terminalAttestationJob");
+    expect(source.slice(readerTerminal, finalReconciliation)).not.toMatch(
+      /dispatch(?:Batch|TimeoutBatch|ConcurrentReaders)/,
+    );
   });
 
   it("binds the sealed worker's existing scratch implementation to its exact staged job path", () => {

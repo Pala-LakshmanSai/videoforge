@@ -283,6 +283,7 @@ function cleanupCancellationFetch() {
 function makeHarness(
   fetch: typeof globalThis.fetch,
   spendSnapshotUsd: () => Promise<number> = async () => 0,
+  finiteSpendCapUsd = 4,
 ) {
   const control = new RunPodControlClient({
     apiKey,
@@ -311,7 +312,7 @@ function makeHarness(
       idleTimeout: 5,
       executionTimeoutMs: 2_400_000,
     },
-    finiteSpendCapUsd: 4,
+    finiteSpendCapUsd,
     spendSnapshotUsd,
     fetch,
     baseUrl: "http://127.0.0.1:43123",
@@ -819,7 +820,7 @@ describe("V2-07 qualification harness", () => {
           init?.method === "DELETE" &&
           new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01"),
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     expect(
       fetch.mock.calls.filter(
         ([url, init]) =>
@@ -2188,7 +2189,88 @@ describe("V2-07 qualification harness", () => {
     ).rejects.toThrow("RUNPOD_FINITE_SPEND_CAP_EXCEEDED");
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
+  it("rejects the $3.95 estimate against a $4 cap before the first potentially billed endpoint mutation", async () => {
+    const fetch = harnessFetch();
+    const spendSnapshotUsd = vi.fn<() => Promise<number>>().mockResolvedValue(3.95);
+    const instance = makeHarness(fetch, spendSnapshotUsd, 4);
+
+    await expect(instance.create()).rejects.toThrow("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
+    expect(
+      fetch.mock.calls.filter(
+        ([url, init]) => init?.method === "POST" && new URL(String(url)).pathname === "/endpoints",
+      ),
+    ).toHaveLength(0);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
+  it("reserves both concurrent-reader worst-case liabilities atomically before either /run", async () => {
+    let observedSpend = 0;
+    const spendSnapshotUsd = vi.fn<() => Promise<number>>(async () => observedSpend);
+    const fetch = harnessFetch();
+    const instance = makeHarness(fetch, spendSnapshotUsd, 4);
+    await instance.create();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    observedSpend = 2.6;
+
+    await expect(
+      instance.dispatchConcurrentReaders([
+        oneItemInput("attempt_a", "reservation_a"),
+        oneItemInput("attempt_b", "reservation_b"),
+      ]),
+    ).rejects.toThrow("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
+  });
+
+  it("retains completed-job liability across asynchronous billing lag and blocks redispatch", async () => {
+    const fetch = harnessFetch();
+    const spendSnapshotUsd = vi.fn<() => Promise<number>>().mockResolvedValue(0);
+    const instance = makeHarness(fetch, spendSnapshotUsd, 1.2);
+    await instance.create();
+
+    const first = await instance.dispatchBatch(oneItemInput("attempt_a", "reservation_a"));
+    await instance.reconcile(first.id);
+    await expect(
+      instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
+    ).rejects.toThrow("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(1);
+  });
+
+  it("admits the bounded max-one then max-two sequence under $4 without double-counting init", async () => {
+    const fetch = harnessFetch();
+    const spendSnapshotUsd = vi.fn<() => Promise<number>>().mockResolvedValue(0);
+    const instance = makeHarness(fetch, spendSnapshotUsd, 4);
+    await instance.create();
+
+    const maxOne = await instance.dispatchBatch(oneItemInput("attempt_seed", "reservation_seed"));
+    await instance.reconcile(maxOne.id);
+    await instance.confirmWarmIdle();
+    await instance.drain();
+    instance.markInitialQualificationComplete();
+    await instance.applyConcurrentReaderPolicy();
+    const readers = await instance.dispatchConcurrentReaders([
+      oneItemInput("attempt_a", "reservation_a"),
+      oneItemInput("attempt_b", "reservation_b"),
+    ]);
+
+    expect(readers).toHaveLength(2);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(3);
+    const evidence = await instance.evidence();
+    expect(evidence.projectedSpendUsd).not.toBeNull();
+    expect(evidence.projectedSpendUsd!).toBeLessThan(4);
+    expect(evidence.newPaidWorkFenced).toBe(false);
   });
 
   it("fails closed when the max-two policy update crosses the cap", async () => {
@@ -2210,7 +2292,7 @@ describe("V2-07 qualification harness", () => {
       fetch.mock.calls.filter(([url]) =>
         new URL(String(url)).pathname.endsWith("/endpoints/endpoint_01/update"),
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
   });
 
   it("checks the finite cap after concurrent reader dispatch", async () => {
