@@ -2,20 +2,21 @@
 
 ## Active handoff — read this section first
 
-Attempt53 is `NOT_QUALIFIED` with exact single-use authority pending execution. Proposal
-`sha256:5c2023d6451284b9ccdf64112e3bee6d8417ed6b0fa796520875ea080eead75f`, candidate acceptance
-`sha256:a04962398607efcd8350e14417f86c185f2c2e5b8146286edf8843712d433b99`, preflight
-`sha256:86befdc3…a4fb55`, max1 `sha256:2b9f6a9f…032d1e`, and max2
-`sha256:f897321d…db0ff4` bind control commit `3b40fd3`. The candidate rebinds the fresh retained active
-Worker anchor while preserving the unique matching signed endpoint-bound terminal Pod,
-queue-empty, two-identical-snapshot, all-terminal, zero-active-worker, zero-running-Pod, and
-no-redispatch fences. Focused proof is green. Authority `sha256:d8087eb3…ceeefb` binds the exact
-proposal, FlashBoot true, LOW-or-better EU-RO-1, `two-phase-v1` anchor refresh, and a fresh `$4`
-maximum cumulative finite cap.
-Fresh reads prove zero Pods/endpoints/private templates/workers, both retained volumes, unchanged
-billing `1.645446196460398`, RTX 4090 EU-RO-1 `LOW`, restored protected config, and POST `404
-V207_ROUTE_DISABLED`. Continued `$7/month` retention of the two existing volumes is approved
-separately. The authority is single-use and unconsumed; V2-08 is forbidden.
+Attempt53 is closed `NOT_QUALIFIED`. Its exact `$4` authority is consumed and non-reusable. The
+repaired terminal-history gate passed, and probe, unresolved-only resume, and cold batches accepted
+64 durable units. The warm job then failed during status reconciliation after its first `IN_QUEUE`
+read with `V207_QUALIFICATION_FAILED`; it was cancelled without retry. Exact RunPod cleanup deleted
+the disposable endpoint/template after two stable terminal snapshots. Three later reads prove zero
+Pods/endpoints/private templates/workers, both retained volumes, and `$0` immediate observed billing
+increment against the cap, subject to provider billing lag.
+
+Cloudflare rollback remains unresolved. The orchestrator captured immediate `404
+V207_ROUTE_DISABLED`, but the required later handoff check is stably `503
+HOSTED_ROUTE_NOT_COMPOSED` across three reads. Protected config is restored at mode 0600 and the
+ephemeral signer is absent, but the route fingerprint is not accepted. Stop external work. The
+smallest next action is provider-free Cloudflare rollback fingerprint diagnosis; any remote repair
+or paid retry requires a new exact proposal and fresh approval. Continued `$7/month` retention of
+the two existing volumes remains approved. V2-08 is forbidden.
 
 Attempt52 is closed before mutation at `V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; its
 authority is consumed and non-reusable. Closure `sha256:267918ea…8dec0` and reconciliation
@@ -46,9 +47,8 @@ personal-worker renderer are completed foundations to integrate, not reimplement
 Use focused tests for changed surfaces and one narrow repair cycle. Canonical provider-free
 verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
 Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
-mandatory. This state grants one exact Attempt53 execution under authority
-`sha256:d8087eb316fd9d0f32d77db6343457a836a56f1d40c5d51cb2a2d89e98ceeefb` and the `$4` cap.
-Consume and close it after execution. Do not start V2-08.
+mandatory. No provider authority or finite cap remains. Do not retry Attempt53, mutate the hosted
+route, or start V2-08.
 
 ## Historical V2-07 attempt ledger — do not preload
 

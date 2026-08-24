@@ -6,7 +6,7 @@
   "authorized_at": "2026-08-24T11:35:58Z",
   "authority_mode": "bounded_mutation",
   "authority_source": "explicit_user_exact_attempt53_proposal_approval_with_fresh_usd_4_cap_and_continued_volume_retention",
-  "status": "APPROVED_SINGLE_USE_PENDING_EXECUTION",
+  "status": "CONSUMED_NON_REUSABLE_ATTEMPT53_WARM_STATUS_FAILURE",
   "proposal": {
     "path": "combined-live-proposal.json",
     "sha256": "sha256:5c2023d6451284b9ccdf64112e3bee6d8417ed6b0fa796520875ea080eead75f"
@@ -25,7 +25,7 @@
     "historical_cap_reused": false,
     "prior_authority_reused": false,
     "single_use": true,
-    "consumed": false,
+    "consumed": true,
     "anchor_refresh_authorized": true,
     "exact_launcher_activation": "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1",
     "completion_conditional_on_measured_durations_fitting_cap": true,
@@ -91,13 +91,13 @@
     "retain exact max1 endpoint/private template and both existing volumes on success with workers zero; on failure delete only exact disposable endpoint/template after proven drain; stop before V2-08"
   ],
   "execution_boundary": {
-    "read_only_provider_calls_authorized_pending_execution": true,
-    "runpod_mutation_authorized_pending_execution": true,
-    "cloudflare_mutation_authorized_pending_execution": true,
-    "scoped_signer_worker_route_activation_authorized_pending_execution": true,
-    "gpu_use_authorized_pending_execution": true,
+    "read_only_provider_calls_authorized_pending_execution": false,
+    "runpod_mutation_authorized_pending_execution": false,
+    "cloudflare_mutation_authorized_pending_execution": false,
+    "scoped_signer_worker_route_activation_authorized_pending_execution": false,
+    "gpu_use_authorized_pending_execution": false,
     "maximum_cumulative_finite_spend_usd": 4,
-    "provider_calls_completed": false,
+    "provider_calls_completed": true,
     "external_spend_usd": 0,
     "image_republication_authorized": false,
     "retained_volume_mutation_authorized": false,
@@ -134,5 +134,17 @@
     "stop_on_projected_cap_risk_or_downward_billing": true,
     "stop_on_failed_output_or_unplanned_duplicate_compute": true,
     "v2_08_forbidden": true
+  },
+  "consumption": {
+    "consumed_at": "2026-08-24T12:07:17.500Z",
+    "consumption_reason": "attempt53_reached_paid_probe_resume_and_cold_batches_then_failed_during_warm_status_reconciliation",
+    "provider_jobs_submitted": 4,
+    "gpu_use_occurred": true,
+    "accepted_units": 64,
+    "observed_incremental_endpoint_spend_usd_at_three_stable_cleanup_reads": 0,
+    "provider_billing_may_lag": true,
+    "reusable": false,
+    "retry_under_same_authority_forbidden": true,
+    "v2_08_authorized": false
   }
 }
