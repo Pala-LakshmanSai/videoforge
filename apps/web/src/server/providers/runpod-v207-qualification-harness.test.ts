@@ -2192,7 +2192,7 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
-  it("rejects the $3.95 estimate against a $4 cap before the first potentially billed endpoint mutation", async () => {
+  it("rejects $3.95 observed spend against a $4 cap before the first potentially billed endpoint mutation", async () => {
     const fetch = harnessFetch();
     const spendSnapshotUsd = vi.fn<() => Promise<number>>().mockResolvedValue(3.95);
     const instance = makeHarness(fetch, spendSnapshotUsd, 4);
@@ -2230,7 +2230,7 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
-  it("retains completed-job liability across asynchronous billing lag and blocks redispatch", async () => {
+  it("does not treat warm_idle with zero idle workers as an initialization credit", async () => {
     const fetch = harnessFetch();
     const spendSnapshotUsd = vi.fn<() => Promise<number>>().mockResolvedValue(0);
     const instance = makeHarness(fetch, spendSnapshotUsd, 1.2);
@@ -2238,6 +2238,7 @@ describe("V2-07 qualification harness", () => {
 
     const first = await instance.dispatchBatch(oneItemInput("attempt_a", "reservation_a"));
     await instance.reconcile(first.id);
+    await instance.confirmWarmIdle();
     await expect(
       instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
     ).rejects.toThrow("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
@@ -2246,27 +2247,60 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
-  it("admits the bounded max-one then max-two sequence under $4 without double-counting init", async () => {
-    const fetch = harnessFetch();
+  it("admits all six max-one paid stages plus two readers under $4 for measured short runs", async () => {
+    const baseFetch = harnessFetch();
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      if (path.includes("/cancel/")) {
+        return jsonResponse({ id: jobId, status: "CANCELLED" });
+      }
+      if (path.includes("/status/")) {
+        return jsonResponse({
+          id: jobId,
+          status: jobId === "job_05" ? "CANCELLED" : jobId === "job_06" ? "TIMED_OUT" : "COMPLETED",
+          executionTime: jobId === "job_06" ? 5_000 : 100,
+          delayTime: 20,
+        });
+      }
+      return baseFetch(input, init);
+    });
     const spendSnapshotUsd = vi.fn<() => Promise<number>>().mockResolvedValue(0);
     const instance = makeHarness(fetch, spendSnapshotUsd, 4);
     await instance.create();
 
-    const maxOne = await instance.dispatchBatch(oneItemInput("attempt_seed", "reservation_seed"));
-    await instance.reconcile(maxOne.id);
-    await instance.confirmWarmIdle();
-    await instance.drain();
+    for (const stage of ["probe", "resume", "cold", "warm"] as const) {
+      const job = await instance.dispatchBatch(
+        oneItemInput(`attempt_${stage}`, `reservation_${stage}`),
+      );
+      await instance.reconcile(job.id);
+      await instance.confirmWarmIdle();
+    }
     instance.markInitialQualificationComplete();
+
+    const cancelJob = await instance.dispatchBatch(
+      oneItemInput("attempt_cancel", "reservation_cancel"),
+    );
+    await instance.cancel(cancelJob.id);
+    await instance.scaleDownToInitial();
+
+    const timeoutJob = await instance.dispatchTimeoutBatch(
+      oneItemInput("attempt_timeout", "reservation_timeout"),
+    );
+    await instance.reconcile(timeoutJob.id);
+    await instance.scaleDownToInitial();
+
     await instance.applyConcurrentReaderPolicy();
     const readers = await instance.dispatchConcurrentReaders([
-      oneItemInput("attempt_a", "reservation_a"),
-      oneItemInput("attempt_b", "reservation_b"),
+      oneItemInput("attempt_reader_a", "reservation_reader_a"),
+      oneItemInput("attempt_reader_b", "reservation_reader_b"),
     ]);
+    await instance.reconcileConcurrentReaders([readers[0].id, readers[1].id]);
 
     expect(readers).toHaveLength(2);
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
-    ).toHaveLength(3);
+    ).toHaveLength(8);
     const evidence = await instance.evidence();
     expect(evidence.projectedSpendUsd).not.toBeNull();
     expect(evidence.projectedSpendUsd!).toBeLessThan(4);

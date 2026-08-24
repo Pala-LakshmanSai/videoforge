@@ -1607,7 +1607,9 @@ export class RunPodV207QualificationHarness {
     }
     const executionTimeoutMs = policy?.executionTimeout ?? V207_RUNPOD_EXECUTION_TIMEOUT_MS;
     const consumesInitCredit = this.#reservedInitCredits > 0;
-    const initIncluded = !consumesInitCredit && this.#guard.snapshot() !== "warm_idle";
+    // `warm_idle` proves queue quiescence, not positive idle-worker capacity: RunPod may report
+    // zero idle workers. Only an explicit initialization credit can waive startup liability.
+    const initIncluded = !consumesInitCredit;
     const liability = this.workerLiabilityUsd(executionTimeoutMs, initIncluded);
     await this.reservePaidLiability(liability);
     if (consumesInitCredit) this.#reservedInitCredits -= 1;
@@ -2002,11 +2004,11 @@ export class RunPodV207QualificationHarness {
     // Claim the one allowed reader dispatch before the first asynchronous cap read. This keeps a
     // third caller out during preflight; the primary fence remains until drain proves zero.
     this.#concurrentReaderDispatchClaimed = true;
-    // Reserve both workers atomically before either /run request. This includes the full init,
-    // execution-timeout, idle, and asynchronous-metering margin for both concurrent readers.
+    // Reserve both workers atomically before either /run request. Exact max-two policy init
+    // credits are consumed once; any missing credit is charged here along with both execution,
+    // idle, and asynchronous-metering margins.
     const availableInitCredits = Math.min(this.#reservedInitCredits, 2);
-    const uncertainInitCount =
-      this.#guard.snapshot() === "warm_idle" ? 0 : 2 - availableInitCredits;
+    const uncertainInitCount = 2 - availableInitCredits;
     const perReaderRuntimeLiability = this.workerLiabilityUsd(
       V207_RUNPOD_EXECUTION_TIMEOUT_MS,
       false,
