@@ -284,6 +284,7 @@ function makeHarness(
   fetch: typeof globalThis.fetch,
   spendSnapshotUsd: () => Promise<number> = async () => 0,
   finiteSpendCapUsd = 4,
+  monotonicNowMs?: () => number,
 ) {
   const control = new RunPodControlClient({
     apiKey,
@@ -319,6 +320,7 @@ function makeHarness(
     pollIntervalMs: 1,
     maxPolls: 3,
     sleep: async () => undefined,
+    monotonicNowMs,
   });
 }
 
@@ -2247,7 +2249,7 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
-  it("admits all six max-one paid stages plus two readers under $4 for measured short runs", async () => {
+  it("admits exact six-plus-two under $4 after null cancel settles through monotonic stable zero", async () => {
     const baseFetch = harnessFetch();
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
@@ -2259,14 +2261,15 @@ describe("V2-07 qualification harness", () => {
         return jsonResponse({
           id: jobId,
           status: jobId === "job_05" ? "CANCELLED" : jobId === "job_06" ? "TIMED_OUT" : "COMPLETED",
-          executionTime: jobId === "job_06" ? 5_000 : 100,
+          executionTime: jobId === "job_05" ? null : jobId === "job_06" ? 5_000 : 100,
           delayTime: 20,
         });
       }
       return baseFetch(input, init);
     });
     const spendSnapshotUsd = vi.fn<() => Promise<number>>().mockResolvedValue(0);
-    const instance = makeHarness(fetch, spendSnapshotUsd, 4);
+    let monotonicNow = 0;
+    const instance = makeHarness(fetch, spendSnapshotUsd, 4, () => monotonicNow);
     await instance.create();
 
     for (const stage of ["probe", "resume", "cold", "warm"] as const) {
@@ -2282,6 +2285,7 @@ describe("V2-07 qualification harness", () => {
       oneItemInput("attempt_cancel", "reservation_cancel"),
     );
     await instance.cancel(cancelJob.id);
+    monotonicNow = 1_000;
     await instance.scaleDownToInitial();
 
     const timeoutJob = await instance.dispatchTimeoutBatch(
@@ -2305,6 +2309,13 @@ describe("V2-07 qualification harness", () => {
     expect(evidence.projectedSpendUsd).not.toBeNull();
     expect(evidence.projectedSpendUsd!).toBeLessThan(4);
     expect(evidence.newPaidWorkFenced).toBe(false);
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "cancel_liability_settled_after_stable_zero",
+        elapsed_through_stable_zero_ms: 1_000,
+        stable_zero_read_count: 2,
+      }),
+    );
   });
 
   it("rejects the readers under $4 when the six-stage cancel execution time is unknown", async () => {
@@ -2325,7 +2336,13 @@ describe("V2-07 qualification harness", () => {
       }
       return baseFetch(input, init);
     });
-    const instance = makeHarness(fetch, async () => 0, 4);
+    let monotonicNow = 0;
+    const instance = makeHarness(
+      fetch,
+      async () => 0,
+      4,
+      () => monotonicNow,
+    );
     await instance.create();
 
     for (const stage of ["probe", "resume", "cold", "warm"] as const) {
@@ -2340,6 +2357,7 @@ describe("V2-07 qualification harness", () => {
       oneItemInput("attempt_cancel", "reservation_cancel"),
     );
     await instance.cancel(cancelJob.id);
+    monotonicNow = 2_400_000;
     await instance.scaleDownToInitial();
     const timeoutJob = await instance.dispatchTimeoutBatch(
       oneItemInput("attempt_timeout", "reservation_timeout"),
@@ -2363,6 +2381,118 @@ describe("V2-07 qualification harness", () => {
     );
     expect(rejection?.projected_spend_usd).toBeCloseTo(4.316, 3);
     expect(evidence.newPaidWorkFenced).toBe(true);
+  });
+
+  it.each([
+    ["nonfinite capture", [Number.NaN]],
+    ["backward clock", [100, 50]],
+  ] as const)("retains full cancel liability and fences on %s", async (_label, readings) => {
+    const baseFetch = harnessFetch();
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      if (path.includes("/cancel/")) return jsonResponse({ id: jobId, status: "CANCELLED" });
+      if (path.includes("/status/")) {
+        return jsonResponse({ id: jobId, status: "CANCELLED", executionTime: null });
+      }
+      return baseFetch(input, init);
+    });
+    let readIndex = 0;
+    const clock = vi.fn(() => readings[Math.min(readIndex++, readings.length - 1)]!);
+    const instance = makeHarness(fetch, async () => 0, 4, clock);
+    await instance.create();
+    const job = await instance.dispatchBatch(oneItemInput());
+    await instance.cancel(job.id);
+    await instance.scaleDownToInitial();
+
+    await expect(
+      instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
+    ).rejects.toThrow("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
+    const evidence = await instance.evidence();
+    expect(evidence.newPaidWorkFenced).toBe(true);
+    expect(evidence.activeWorstCaseLiabilityUsd).toBe(0);
+  });
+
+  it.each([1, 2])(
+    "retains full cancel liability when stable-zero read %i fails",
+    async (failedRead) => {
+      const baseFetch = harnessFetch();
+      let cancelled = false;
+      let postCancelHealthReads = 0;
+      const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const path = new URL(String(input)).pathname;
+        const jobId = path.split("/").at(-1) ?? "job_01";
+        if (path.includes("/cancel/")) {
+          cancelled = true;
+          return jsonResponse({ id: jobId, status: "CANCELLED" });
+        }
+        if (path.includes("/status/")) {
+          return jsonResponse({ id: jobId, status: "CANCELLED", executionTime: null });
+        }
+        if (path.endsWith("/health") && cancelled) {
+          postCancelHealthReads += 1;
+          const running = postCancelHealthReads === failedRead ? 1 : 0;
+          return jsonResponse({
+            workers: {
+              idle: 0,
+              running,
+              initializing: 0,
+              ready: 0,
+              throttled: 0,
+              unhealthy: 0,
+            },
+            jobs: { inQueue: 0, inProgress: 0 },
+          });
+        }
+        return baseFetch(input, init);
+      });
+      const instance = makeHarness(
+        fetch,
+        async () => 0,
+        4,
+        () => 100,
+      );
+      await instance.create();
+      const job = await instance.dispatchBatch(oneItemInput());
+      await instance.cancel(job.id);
+      await expect(instance.scaleDownToInitial()).rejects.toThrow();
+      const evidence = await instance.evidence();
+      expect(evidence.newPaidWorkFenced).toBe(true);
+      expect(evidence.activeWorstCaseLiabilityUsd).toBeGreaterThan(0);
+    },
+  );
+
+  it("does not reset the cancellation clock on exact dispatch replay", async () => {
+    const baseFetch = harnessFetch();
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      if (path.includes("/cancel/")) return jsonResponse({ id: jobId, status: "CANCELLED" });
+      if (path.includes("/status/")) {
+        return jsonResponse({ id: jobId, status: "CANCELLED", executionTime: null });
+      }
+      return baseFetch(input, init);
+    });
+    const clock = vi.fn().mockReturnValueOnce(100).mockReturnValue(1_100);
+    const instance = makeHarness(fetch, async () => 0, 4, clock);
+    await instance.create();
+    const input = oneItemInput();
+    const job = await instance.dispatchBatch(input);
+    await instance.dispatchBatch(input);
+    await instance.cancel(job.id);
+    await instance.scaleDownToInitial();
+
+    const evidence = await instance.evidence();
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "cancel_liability_settled_after_stable_zero",
+        elapsed_through_stable_zero_ms: 1_000,
+      }),
+    );
+    expect(clock).toHaveBeenCalledTimes(2);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
   });
 
   it("fails closed when the max-two policy update crosses the cap", async () => {

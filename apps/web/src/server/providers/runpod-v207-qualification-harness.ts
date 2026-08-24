@@ -231,6 +231,8 @@ export interface RunPodV207QualificationHarnessOptions {
     readonly executionTimeMs: number | null;
     readonly delayTimeMs: number | null;
   }) => Promise<void>;
+  /** Injectable monotonic clock used only for conservative cancellation settlement. */
+  readonly monotonicNowMs?: () => number;
 }
 
 /**
@@ -676,6 +678,16 @@ export class RunPodV207QualificationHarness {
   #newPaidWorkFenced = false;
   /** Verified initialization reservations that exactly one following dispatch may consume. */
   #reservedInitCredits = 0;
+  /** First-dispatch clock is immutable for the job lifetime and is never reset by replay/status. */
+  readonly #dispatchStartedAtMs = new Map<string, number>();
+  /** Null-timed cancellations remain fully reserved until two exact zero-worker health reads. */
+  readonly #pendingCancelledLiabilities = new Map<
+    string,
+    {
+      readonly startedAtMs: number;
+      readonly reserved: { readonly usd: number; readonly initIncluded: boolean };
+    }
+  >();
 
   constructor(options: RunPodV207QualificationHarnessOptions) {
     if (
@@ -711,6 +723,11 @@ export class RunPodV207QualificationHarness {
 
   private checkAbort(): void {
     this.#options.abortCheck?.();
+  }
+
+  private monotonicNowMs(): number | null {
+    const value = (this.#options.monotonicNowMs ?? (() => performance.now()))();
+    return Number.isFinite(value) && value >= 0 ? value : null;
   }
 
   /**
@@ -831,6 +848,27 @@ export class RunPodV207QualificationHarness {
   private settleJobSpendLiability(job: RunPodJobResult): void {
     const reserved = this.#activeSpendLiabilitiesUsd.get(job.id);
     if (reserved === undefined) return;
+    if (job.status === "CANCELLED" && job.executionTimeMs === null) {
+      if (this.#pendingCancelledLiabilities.has(job.id)) return;
+      const startedAtMs = this.#dispatchStartedAtMs.get(job.id);
+      if (startedAtMs === undefined) {
+        this.#activeSpendLiabilitiesUsd.delete(job.id);
+        this.#projectedSettledLiabilityUsd += reserved.usd;
+        this.#newPaidWorkFenced = true;
+        this.mark("cancel_liability_retained_timer_unavailable", {
+          job_id_hash: job.idHash,
+          retained_liability_usd: reserved.usd,
+          no_new_paid_action: true,
+        });
+        return;
+      }
+      this.#pendingCancelledLiabilities.set(job.id, { startedAtMs, reserved });
+      this.mark("cancel_liability_pending_stable_zero", {
+        job_id_hash: job.idHash,
+        retained_liability_usd: reserved.usd,
+      });
+      return;
+    }
     this.#activeSpendLiabilitiesUsd.delete(job.id);
     const measuredExecutionMs = job.executionTimeMs;
     const realizedUpperBound =
@@ -841,6 +879,33 @@ export class RunPodV207QualificationHarness {
             reserved.initIncluded,
           );
     this.#projectedSettledLiabilityUsd += Math.min(reserved.usd, realizedUpperBound);
+  }
+
+  private settleCancelledLiabilitiesAfterStableZero(): void {
+    for (const [jobId, pending] of this.#pendingCancelledLiabilities) {
+      const endedAtMs = this.monotonicNowMs();
+      const elapsedMs = endedAtMs === null ? null : endedAtMs - pending.startedAtMs;
+      this.#activeSpendLiabilitiesUsd.delete(jobId);
+      if (elapsedMs === null || !Number.isFinite(elapsedMs) || elapsedMs < 0) {
+        this.#projectedSettledLiabilityUsd += pending.reserved.usd;
+        this.#newPaidWorkFenced = true;
+        this.mark("cancel_liability_retained_clock_anomaly", {
+          retained_liability_usd: pending.reserved.usd,
+          no_new_paid_action: true,
+        });
+      } else {
+        const elapsedUpperBound = this.workerLiabilityUsd(elapsedMs, pending.reserved.initIncluded);
+        const settledUsd = Math.min(pending.reserved.usd, elapsedUpperBound);
+        this.#projectedSettledLiabilityUsd += settledUsd;
+        this.mark("cancel_liability_settled_after_stable_zero", {
+          elapsed_through_stable_zero_ms: elapsedMs,
+          settled_liability_usd: settledUsd,
+          original_reserved_liability_usd: pending.reserved.usd,
+          stable_zero_read_count: 2,
+        });
+      }
+      this.#pendingCancelledLiabilities.delete(jobId);
+    }
   }
 
   private assertRetainedMageVolume(inventory: RunPodInventory): void {
@@ -1614,6 +1679,7 @@ export class RunPodV207QualificationHarness {
     await this.reservePaidLiability(liability);
     if (consumesInitCredit) this.#reservedInitCredits -= 1;
     this.#pendingDispatchLiabilityUsd += liability;
+    const dispatchStartedAtMs = this.monotonicNowMs();
     let job: RunPodJobResult;
     try {
       job =
@@ -1628,6 +1694,9 @@ export class RunPodV207QualificationHarness {
     }
     this.#pendingDispatchLiabilityUsd -= liability;
     this.#activeSpendLiabilitiesUsd.set(job.id, { usd: liability, initIncluded });
+    if (dispatchStartedAtMs !== null && !this.#dispatchStartedAtMs.has(job.id)) {
+      this.#dispatchStartedAtMs.set(job.id, dispatchStartedAtMs);
+    }
     this.trackDispatchedJob(input, job, this.#jobs!, true);
     this.checkAbort();
     await this.assertSpendWithinCap();
@@ -2348,6 +2417,28 @@ export class RunPodV207QualificationHarness {
         } catch {
           throw new RunPodControlError("RUNPOD_CONCURRENT_READER_DRAIN_UNCERTAIN");
         }
+      }
+    }
+    if (this.#pendingCancelledLiabilities.size > 0) {
+      try {
+        // A terminal CANCELLED status can precede actual worker shutdown. Require two separate,
+        // exact endpoint health reads with both queue and every worker counter at zero before
+        // using elapsed time to narrow its reservation.
+        await this.#jobs!.confirmDrained(1);
+        const stableReadSleep =
+          this.#options.sleep ??
+          ((milliseconds: number) =>
+            new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+        await stableReadSleep(100);
+        await this.#jobs!.confirmDrained(1);
+        this.settleCancelledLiabilitiesAfterStableZero();
+      } catch (error) {
+        this.#newPaidWorkFenced = true;
+        this.mark("cancel_liability_retained_drain_uncertain", {
+          pending_cancel_count: this.#pendingCancelledLiabilities.size,
+          no_new_paid_action: true,
+        });
+        throw error;
       }
     }
     if (this.#guard.snapshot() !== "zero") {
