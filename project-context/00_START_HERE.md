@@ -2,9 +2,9 @@
 
 ## Active handoff — read this section first
 
-Attempt56 provider-free executable-anchor-constant rebind is complete and exact approval is recorded;
-single-use authority `sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2`
-is pending one bounded execution.
+Attempt56 is closed `NOT_QUALIFIED`. Its single-use authority is consumed and non-reusable after one
+job remained `IN_QUEUE` for 34 status reads and was cancelled with no accepted batch, output, receipt,
+execution time, or GPU use.
 Repair commit `5c2fbe06ba559543c122876d32ef41cb26fd688b` binds the orchestrator constants, both staged
 configs, proposal, and validator gate to the same fresh Cloudflare anchors. Proposal
 `sha256:d3c10f7af00591dea0afe73d2960b316a788235bb2585decab6ca479b4ce9ab9`, acceptance
@@ -13,19 +13,19 @@ configs, proposal, and validator gate to the same fresh Cloudflare anchors. Prop
 `sha256:6bba5f707e19352b2935129429665f1a488f241065c9c84fe814a2f8677dae7a`, and max2
 `sha256:19d4824c205b5c3c17edc351d7762578b249caee497d60ec4d8ff762fd41b37b` are provider-free evidence.
 
-Fresh truth at `2026-08-24T15:46:30.599Z` is zero RunPod compute/disposable resources, two retained
-volumes, LOW RTX 4090 EU-RO-1 availability, `$1.10/GPU-hour` Flex, `$0.74/hour` Secure reference,
-cumulative billing `1.7478178361488972`, signer absent, and exact active-version-bound POST `404
-V207_ROUTE_DISABLED`. The executable anchors are `sha256:36256382…7a8ad6` and
-`sha256:9e37db7…a0afac2`; the canonical activation source remains `sha256:36a23948…a6b3`.
+Terminal truth through `2026-08-24T16:43:56.268Z` is three stable reads with zero RunPod compute or
+disposable resources and both retained volumes. Cumulative billing is `1.7478178361488972`, with `$0`
+observed Attempt56 increment subject to provider lag. The signer is absent, protected config is
+restored, and the refreshed exact route is POST `404 V207_ROUTE_DISABLED`.
 
-Attempt56 authority is recorded at
+Attempt56 closed authority is recorded at
 `evidence/acceptance/VF-10-07/2026-08-24-attempt56-anchor-constant-rebind-candidate/approved-authority.json`
-with an approved `$4` maximum cumulative finite cap and exact `two-phase-v1` anchor refresh. Provider
-calls, Cloudflare/RunPod mutation, scoped signer route activation, and GPU use are authorized only for
-that exact bounded sequence; execution has not started and observed spend remains `$0`. Both existing
-volumes remain retained at `$7/month`; V2-07 remains `NOT_QUALIFIED`; V2-08 is forbidden. Next boundary
-is one bounded Attempt56 live qualification after re-confirming exact lineage and provider truth.
+at `sha256:6a82d8ae…de5ac`; the approved pre-execution hash was `sha256:c708d07d…7bdf2`.
+Executable authority/cap/anchor refresh are null. Closure `sha256:9465f6a1…731dd`, cleanup
+`sha256:b7ded646…5bfc8`, and reconciliation `sha256:e1d71ed3…fd3d` prove the clean terminal state.
+Both existing volumes remain retained at `$7/month`; V2-07 remains `NOT_QUALIFIED`; V2-08 is
+forbidden. Next boundary is provider-free diagnosis of the prolonged queue/restoration observation
+only; do not create Attempt57 or retry paid work.
 
 Attempt55 remains closed and non-reusable at `V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH`; preserve its
 consumed authority and cap as immutable history and do not retry it.
@@ -59,8 +59,7 @@ personal-worker renderer are completed foundations to integrate, not reimplement
 Use focused tests for changed surfaces and one narrow repair cycle. Canonical provider-free
 verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
 Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
-mandatory. Attempt56 is the only current provider authority/cap and is limited to its exact approved
-bounded sequence; do not retry Attempt55, mutate outside that sequence, or start V2-08.
+mandatory. No current provider authority or cap exists. Do not retry Attempt56 or start V2-08.
 
 ## Historical V2-07 attempt ledger — do not preload
 

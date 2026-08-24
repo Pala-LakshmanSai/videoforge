@@ -8,7 +8,8 @@ const root = path.resolve(dir, "../../../../../");
 const E = {
   proposal: "sha256:d3c10f7af00591dea0afe73d2960b316a788235bb2585decab6ca479b4ce9ab9",
   acceptance: "sha256:3ddaf8f9fde45f93de0a9c4a770a09bc117168ff27dbd2ec312e7516cf9c094d",
-  authority: "sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2",
+  preExecutionAuthority: "sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2",
+  authority: "sha256:6a82d8ae1bf7c3a987b941cd00153a7cc9a51c4d589aaa537aa88f854d5de5ac",
   preflight: "sha256:4a1f95ee496afabedc33ca148bee8543010600ea302966f4b66b8b23c2425373",
   max1: "sha256:6bba5f707e19352b2935129429665f1a488f241065c9c84fe814a2f8677dae7a",
   max2: "sha256:19d4824c205b5c3c17edc351d7762578b249caee497d60ec4d8ff762fd41b37b",
@@ -21,6 +22,11 @@ const E = {
   canonical: "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
   anchorVersion: "sha256:36256382df0f40b1e654b041d5bfbcadefac429ab0b9de0709b567975e7a8ad6",
   anchorRecord: "sha256:9e37db7bcf43625ea1ff0679f3ed421d50ad4e951088e2fa0cdbfc707a0afac2",
+  closure: {
+    failedAttempt: "sha256:9465f6a19ef02bc763900cb14fdeaa89c2dd9a36f46d4ffcbce1022ded6731dd",
+    cleanup: "sha256:b7ded64662bd0d1b20cb0da05347f0ec96ab4620f8f73c02612e7ea3f4f5bfc8",
+    reconciliation: "sha256:e1d71ed322f705c49f31c7be0fddd056974e0e919f19911b22528aadaa2cfd3d",
+  },
 };
 
 const bytes = (file) => fs.readFileSync(file);
@@ -37,6 +43,8 @@ const yes = (value, code) => {
   if (!value) fail(code);
 };
 const file = (name) => path.join(dir, name);
+const closureDir = path.resolve(dir, "../2026-08-21-live-qualification");
+const closureFile = (name) => path.join(closureDir, name);
 
 for (const [name, expected] of Object.entries({
   "combined-live-proposal.json": E.proposal,
@@ -48,6 +56,13 @@ for (const [name, expected] of Object.entries({
 })) {
   eq(sha(file(name)), expected, `${name.replaceAll(".", "_")}_HASH`);
 }
+for (const [name, expected] of Object.entries({
+  "failed-attempt-56.json": E.closure.failedAttempt,
+  "attempt56-cleanup-observation.json": E.closure.cleanup,
+  "attempt56-reconciliation-observation.json": E.closure.reconciliation,
+})) {
+  eq(sha(closureFile(name)), expected, `CLOSURE_${name.replaceAll(".", "_")}_HASH`);
+}
 
 const proposal = json(file("combined-live-proposal.json"));
 const acceptance = json(file("acceptance.json"));
@@ -56,6 +71,9 @@ const preflight = json(file("read-only-preflight.json"));
 const max1 = json(file("staged-config-max1.json"));
 const max2 = json(file("staged-config-max2.json"));
 const configs = [max1, max2];
+const failedAttempt = json(closureFile("failed-attempt-56.json"));
+const cleanupObservation = json(closureFile("attempt56-cleanup-observation.json"));
+const reconciliationObservation = json(closureFile("attempt56-reconciliation-observation.json"));
 
 eq(proposal.attempt, 56, "ATTEMPT");
 eq(proposal.authority_mode, "PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP", "AUTHORITY_MODE");
@@ -141,7 +159,7 @@ eq(acceptance.authority.v2_08_authorized, false, "ACCEPTANCE_AUTHORITY_V208");
 eq(authority.checkpoint, "V2-07", "AUTHORITY_CHECKPOINT");
 eq(authority.task_id, "VF-10-07", "AUTHORITY_TASK");
 eq(authority.attempt, 56, "AUTHORITY_ATTEMPT");
-eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "AUTHORITY_STATUS");
+eq(authority.status, "CONSUMED_NON_REUSABLE_ATTEMPT56_QUALIFICATION_FAILED_CLEANUP_UNCERTAIN", "AUTHORITY_STATUS");
 eq(authority.proposal.sha256, E.proposal, "AUTHORITY_PROPOSAL");
 eq(authority.acceptance.sha256, E.acceptance, "AUTHORITY_ACCEPTANCE");
 eq(authority.approval.exact_proposal_approved, true, "AUTHORITY_APPROVED");
@@ -153,7 +171,7 @@ eq(authority.approval.historical_cap_reused, false, "AUTHORITY_HISTORICAL_CAP_RE
 eq(authority.approval.prior_authority_reused, false, "AUTHORITY_PRIOR_REUSE");
 eq(authority.approval.prior_attempt56_authority_reused, false, "AUTHORITY_ATTEMPT56_REUSE");
 eq(authority.approval.single_use, true, "AUTHORITY_SINGLE_USE");
-eq(authority.approval.consumed, false, "AUTHORITY_UNCONSUMED");
+eq(authority.approval.consumed, true, "AUTHORITY_CONSUMED");
 eq(authority.approval.anchor_refresh_authorized, true, "AUTHORITY_REFRESH");
 eq(authority.approval.exact_launcher_activation, "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1", "AUTHORITY_REFRESH_MODE");
 eq(authority.approval.recurring_retained_volume_charge_usd_per_month, 7, "AUTHORITY_VOLUME_RATE");
@@ -172,17 +190,81 @@ eq(authority.lineage.concurrent_reader_config_sha256, E.max2, "AUTHORITY_MAX2");
 eq(authority.lineage.executable_anchor_constants_binding.source_sha256, E.orchestrator, "AUTHORITY_EXECUTABLE_SOURCE");
 eq(authority.lineage.executable_anchor_constants_binding.expected_old_active_version_sha256, E.anchorVersion, "AUTHORITY_EXECUTABLE_VERSION");
 eq(authority.lineage.executable_anchor_constants_binding.expected_old_active_record_sha256, E.anchorRecord, "AUTHORITY_EXECUTABLE_RECORD");
-eq(authority.execution_boundary.read_only_provider_calls_authorized_pending_execution, true, "AUTHORITY_READ_ONLY_CALLS");
-eq(authority.execution_boundary.provider_calls_completed, false, "AUTHORITY_PROVIDER_CALLS");
+eq(authority.execution_boundary.read_only_provider_calls_authorized_pending_execution, false, "AUTHORITY_READ_ONLY_CALLS_CLOSED");
+eq(authority.execution_boundary.provider_calls_completed, true, "AUTHORITY_PROVIDER_CALLS");
 eq(authority.execution_boundary.external_spend_usd, 0, "AUTHORITY_SPEND");
 eq(authority.execution_boundary.maximum_cumulative_finite_spend_usd, 4, "AUTHORITY_BOUND_CAP");
 eq(authority.execution_boundary.anchor_refresh_authorized, true, "AUTHORITY_BOUND_REFRESH");
 eq(authority.execution_boundary.v2_08_authorized, false, "AUTHORITY_V208");
-eq(authority.consumption.consumed_at, null, "AUTHORITY_CONSUMPTION_TIMESTAMP");
-eq(authority.consumption.provider_jobs_submitted, 0, "AUTHORITY_PROVIDER_JOBS");
+yes(typeof authority.consumption.consumed_at === "string" && authority.consumption.consumed_at.length > 0, "AUTHORITY_CONSUMPTION_TIMESTAMP");
+eq(authority.consumption.provider_jobs_submitted, 1, "AUTHORITY_PROVIDER_JOBS");
 eq(authority.consumption.gpu_use_occurred, false, "AUTHORITY_GPU");
 eq(authority.consumption.accepted_units, 0, "AUTHORITY_ACCEPTED_UNITS");
+eq(authority.consumption.observed_incremental_endpoint_spend_usd_at_three_stable_cleanup_reads, 0, "AUTHORITY_OBSERVED_INCREMENT");
+eq(authority.consumption.reusable, false, "AUTHORITY_REUSABLE");
 eq(authority.consumption.v2_08_authorized, false, "AUTHORITY_CONSUMPTION_V208");
+
+eq(failedAttempt.checkpoint, "V2-07", "CLOSURE_FAILED_CHECKPOINT");
+eq(failedAttempt.task_id, "VF-10-07", "CLOSURE_FAILED_TASK");
+eq(failedAttempt.attempt, 56, "CLOSURE_FAILED_ATTEMPT");
+eq(failedAttempt.qualification_status, "NOT_QUALIFIED", "CLOSURE_FAILED_STATUS");
+eq(failedAttempt.authority.approved_preexecution_sha256, E.preExecutionAuthority, "CLOSURE_FAILED_PREEXEC_AUTHORITY");
+eq(failedAttempt.authority.consumed_sha256, E.authority, "CLOSURE_FAILED_CONSUMED_AUTHORITY");
+eq(failedAttempt.authority.consumed, true, "CLOSURE_FAILED_CONSUMED");
+eq(failedAttempt.authority.reusable, false, "CLOSURE_FAILED_REUSABLE");
+eq(failedAttempt.execution.failure_code, "V207_QUALIFICATION_FAILED", "CLOSURE_FAILED_CODE");
+eq(failedAttempt.execution.runpod_jobs_submitted, 1, "CLOSURE_FAILED_JOBS");
+eq(failedAttempt.execution.gpu_use, false, "CLOSURE_FAILED_GPU");
+eq(failedAttempt.execution.accepted_units, 0, "CLOSURE_FAILED_UNITS");
+eq(failedAttempt.execution.accepted_outputs, 0, "CLOSURE_FAILED_OUTPUTS");
+eq(failedAttempt.execution.primary_job_status_read_count, 34, "CLOSURE_FAILED_QUEUE_READS");
+eq(failedAttempt.execution.primary_job_terminal_status, "CANCELLED", "CLOSURE_FAILED_TERMINAL");
+eq(failedAttempt.output.generated_output_rollback, "CONFIRMED", "CLOSURE_FAILED_OUTPUT_ROLLBACK");
+eq(failedAttempt.cleanup.runpod_cleanup_complete, true, "CLOSURE_FAILED_RUNPOD_CLEANUP");
+eq(failedAttempt.cleanup.cloudflare_rollback_complete, true, "CLOSURE_FAILED_CLOUDFLARE_ROLLBACK");
+eq(failedAttempt.cleanup.retained_volumes_deleted_or_mutated_by_cleanup, false, "CLOSURE_FAILED_VOLUMES");
+eq(failedAttempt.v2_08_authorized, false, "CLOSURE_FAILED_V208");
+
+eq(cleanupObservation.checkpoint, "V2-07", "CLOSURE_CLEANUP_CHECKPOINT");
+eq(cleanupObservation.task_id, "VF-10-07", "CLOSURE_CLEANUP_TASK");
+eq(cleanupObservation.attempt, 56, "CLOSURE_CLEANUP_ATTEMPT");
+eq(cleanupObservation.result, "CLEAN_EXACT_DISPOSABLE_RESOURCES_DELETED_AND_ABSENT_AFTER_RECONCILIATION", "CLOSURE_CLEANUP_RESULT");
+eq(cleanupObservation.runpod.endpoint_deleted, true, "CLOSURE_CLEANUP_ENDPOINT");
+eq(cleanupObservation.runpod.template_deleted, true, "CLOSURE_CLEANUP_TEMPLATE");
+eq(cleanupObservation.runpod.final_disposable_resources_absent, true, "CLOSURE_CLEANUP_RESOURCES");
+eq(cleanupObservation.runpod.owned_primary_job_cancelled, true, "CLOSURE_CLEANUP_JOB");
+eq(cleanupObservation.cloudflare.restored_route_probe, "404 V207_ROUTE_DISABLED", "CLOSURE_CLEANUP_ROUTE");
+eq(cleanupObservation.cloudflare.ephemeral_signer_secret_absent, true, "CLOSURE_CLEANUP_SIGNER");
+eq(cleanupObservation.retained_volumes_deleted_or_mutated_by_cleanup, false, "CLOSURE_CLEANUP_VOLUMES");
+eq(cleanupObservation.authority_consumed, true, "CLOSURE_CLEANUP_AUTHORITY");
+eq(cleanupObservation.retry_under_same_authority_forbidden, true, "CLOSURE_CLEANUP_RETRY");
+eq(cleanupObservation.v2_08_authorized, false, "CLOSURE_CLEANUP_V208");
+
+eq(reconciliationObservation.checkpoint, "V2-07", "CLOSURE_RECON_CHECKPOINT");
+eq(reconciliationObservation.task_id, "VF-10-07", "CLOSURE_RECON_TASK");
+eq(reconciliationObservation.attempt, 56, "CLOSURE_RECON_ATTEMPT");
+eq(reconciliationObservation.result, "PASS_THREE_STABLE_READS_ZERO_DISPOSABLE_RESOURCES", "CLOSURE_RECON_RESULT");
+eq(reconciliationObservation.provider_mutations_during_reconciliation, 0, "CLOSURE_RECON_MUTATIONS");
+eq(reconciliationObservation.gpu_jobs_submitted_during_reconciliation, 0, "CLOSURE_RECON_GPU_JOBS");
+eq(reconciliationObservation.inventory.pods, 0, "CLOSURE_RECON_PODS");
+eq(reconciliationObservation.inventory.endpoints, 0, "CLOSURE_RECON_ENDPOINTS");
+eq(reconciliationObservation.inventory.private_templates, 0, "CLOSURE_RECON_TEMPLATES");
+eq(reconciliationObservation.inventory.active_serverless_workers, 0, "CLOSURE_RECON_WORKERS");
+eq(reconciliationObservation.inventory.running_pods, 0, "CLOSURE_RECON_RUNNING_PODS");
+eq(reconciliationObservation.inventory.retained_volumes.length, 2, "CLOSURE_RECON_VOLUMES");
+eq(reconciliationObservation.billing.observed_increment_usd, 0, "CLOSURE_RECON_BILLING_INCREMENT");
+eq(reconciliationObservation.primary_execution.jobs_submitted, 1, "CLOSURE_RECON_JOBS");
+eq(reconciliationObservation.primary_execution.gpu_use, false, "CLOSURE_RECON_GPU");
+eq(reconciliationObservation.primary_execution.accepted_batches, 0, "CLOSURE_RECON_BATCHES");
+eq(reconciliationObservation.primary_execution.accepted_outputs, 0, "CLOSURE_RECON_OUTPUTS");
+eq(reconciliationObservation.primary_execution.cleanup_terminal_status, "CANCELLED", "CLOSURE_RECON_TERMINAL");
+eq(reconciliationObservation.cloudflare.route, "POST 404 V207_ROUTE_DISABLED", "CLOSURE_RECON_ROUTE");
+eq(reconciliationObservation.cloudflare.ephemeral_signer_secret_absent, true, "CLOSURE_RECON_SIGNER");
+eq(reconciliationObservation.cloudflare.protected_config.restored, true, "CLOSURE_RECON_CONFIG");
+eq(reconciliationObservation.retention.mage_volume_retained, true, "CLOSURE_RECON_MAGE_VOLUME");
+eq(reconciliationObservation.retention.soulx_volume_retained, true, "CLOSURE_RECON_SOULX_VOLUME");
+eq(reconciliationObservation.retention.volume_mutation_observed, false, "CLOSURE_RECON_VOLUME_MUTATION");
+eq(reconciliationObservation.v2_08_authorized, false, "CLOSURE_RECON_V208");
 
 eq(preflight.attempt, 56, "PREFLIGHT_ATTEMPT");
 eq(preflight.read_only, true, "PREFLIGHT_READ_ONLY");
@@ -280,10 +362,10 @@ const activationPath = path.join(root, "apps/web/src/server/providers/v207-activ
 const activation = text(activationPath);
 yes(activation.includes(E.proposal), "ACTIVATION_PROPOSAL");
 yes(activation.includes(`V207_PENDING_CONTROL_SOURCE_COMMIT =\n  "${E.control}"`), "ACTIVATION_CONTROL");
-yes(activation.includes(E.authority), "ACTIVATION_AUTHORITY");
-yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*\n?\s*"sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2"\s*;/mu.test(activation), "ACTIVATION_AUTHORITY");
-yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*\n?\s*4\s*;/mu.test(activation), "ACTIVATION_CAP");
-yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*\n?\s*true\s*;/mu.test(activation), "ACTIVATION_REFRESH");
+yes(!activation.includes(E.authority), "ACTIVATION_CLOSED_AUTHORITY_NOT_BOUND");
+yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*\n?\s*null\s*;/mu.test(activation), "ACTIVATION_NULL_AUTHORITY");
+yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*\n?\s*null\s*;/mu.test(activation), "ACTIVATION_NULL_CAP");
+yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*\n?\s*null\s*;/mu.test(activation), "ACTIVATION_NULL_REFRESH");
 
 const replaceOne = (source, pattern, replacement, code) => {
   eq((source.match(pattern) ?? []).length, 1, code);

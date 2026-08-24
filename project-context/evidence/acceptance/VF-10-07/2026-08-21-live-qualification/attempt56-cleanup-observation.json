@@ -1,0 +1,40 @@
+{
+  "schema_version": "videoforge.v2-07-attempt56-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 56,
+  "checked_at": "2026-08-24T16:43:39.012Z",
+  "result": "CLEAN_EXACT_DISPOSABLE_RESOURCES_DELETED_AND_ABSENT_AFTER_RECONCILIATION",
+  "failure_code": "V207_QUALIFICATION_FAILED",
+  "failure_stage": "primary_probe_status_reconciliation_after_34_in_queue_reads",
+  "raw_live_result_sha256": "sha256:5e5680f7258e85eff3341f0fb2783d098e6236b10051cc9cb01570dcadb6561f",
+  "raw_orchestrator_sha256": "sha256:d1620b8affae5424297bdf01daf4be34c8f8414c2c1f4f87499ff51c42383c2b",
+  "runpod": {
+    "endpoint_id_sha256": "sha256:92ae7957fb3614871e0c3773e3925c4550519d0524e74ee21bb0dd439ce97afd",
+    "template_id_sha256": "sha256:0f5f8c93c06080de825952ee18632dfc2e1407ba1be263d8a5df0db40cd32824",
+    "stable_terminal_snapshot_count_before_delete": 2,
+    "endpoint_worker_record_count": 3,
+    "terminal_pod_record_count": 3,
+    "owned_primary_job_cancelled": true,
+    "generated_output_rollback": "CONFIRMED",
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "cleanup_uncertain_after_three_read_reconciliation": false
+  },
+  "cloudflare": {
+    "refreshed_active_version_id_sha256": "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
+    "refreshed_active_record_sha256": "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+    "ephemeral_signer_secret_absent": true,
+    "protected_config_mode": "0600",
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "restored_route_probe": "404 V207_ROUTE_DISABLED",
+    "route_identity_exact_over_current_snapshots": true,
+    "rollback_resolved": true
+  },
+  "retained_volumes_deleted_or_mutated_by_cleanup": false,
+  "authority_consumed": true,
+  "retry_under_same_authority_forbidden": true,
+  "v2_08_authorized": false,
+  "redaction": "NO_RAW_PROVIDER_IDS_URLS_SECRETS_OR_SIGNER_MATERIAL_RETAINED"
+}
