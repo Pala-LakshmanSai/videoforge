@@ -23,7 +23,7 @@ V2-08  SoulX Serverless qualification on the existing sealed SoulX volume
 V2-09  one short real hosted end-to-end project
 V2-10  one real 3-5 minute Ranga-style pilot
 V2-11  two-user concurrency, fair queue, autoscaling, and recovery
-V2-12  20-30 minute quality, speed, and economics qualification
+V2-12  29-31 minute quality, speed, and economics qualification
 V2-13  security hardening, production release, and operations proof
 ```
 
@@ -62,10 +62,12 @@ committed migrations or reinterpret foundation evidence as current authority. Th
 make every superseded global-session, manual-compute, Pod-bound dispatch, alternate-runtime,
 fallback/repair, automatic-GPU, and cross-tenant path unreachable in ordinary production.
 
-Every checkpoint ends with focused negative tests, canonical verification, context/schema
-validation, `git diff --check`, real Chrome acceptance when behavior is visible, truthful gates, a
-small green commit, and refreshed `CURRENT_STATE.yaml`. Handoffs state the exact commit, commands and
-exits, unresolved gates, provider/spend state, and active-worker truth.
+Every checkpoint ends with focused tests for changed surfaces, relevant typecheck/build,
+`git diff --check`, context/schema validation when those surfaces change, real Chrome when behavior
+is visible, truthful gates, a small green commit, and refreshed `CURRENT_STATE.yaml`. Canonical
+provider-free verification runs at V2-09 and V2-13, or earlier only for a shared contract/runtime
+change. Handoffs state the exact commit, commands/exits, unresolved gates, provider/spend state, and
+active-worker truth.
 
 For external checkpoints, finish local work and allowlisted read-only price/inventory preflight at
 `$0` first. Before the first external mutation or paid request, obtain one exact combined approval

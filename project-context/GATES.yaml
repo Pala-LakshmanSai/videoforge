@@ -1,5 +1,5 @@
 schema_version: "2.0"
-updated_at: "2026-08-23"
+updated_at: "2026-08-24"
 evidence_root: "evidence/gates"
 
 # This registry contains only active V2 gates and accepted foundations still used by V2.
@@ -266,7 +266,7 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
     last_run: "evidence/acceptance/VF-9-24U/acceptance.json"
-    result: open_pod_technical_proof_preserved_visual_crop_and_serverless_proof_pending
+    result: open_pod_technical_proof_preserved_visual_crop_and_serverless_max1_cold_warm_focused_fault_proof_pending
 
   GATE_SOULX_LICENSE_001:
     status: open
@@ -305,8 +305,10 @@ gates:
       - same_account_double_submit_and_preview_capacity_locking
       - two_account_private_installed_chrome
     still_open:
-      - live_endpoint_max_two_workers_failure_isolation_and_bounded_services
-      - zero_workers_after_live_drain
+      - exact_max2_config_and_two_simultaneous_read_only_workers_per_lane
+      - unchanged_pre_post_mage_and_soulx_volume_manifests_and_exact_config_restore
+      - live_failure_isolation_and_bounded_services
+      - zero_endpoint_jobs_and_zero_workers_after_live_drain
 
   GATE_ECONOMICS_001:
     status: open
@@ -319,7 +321,7 @@ gates:
   GATE_SECURITY_001:
     status: open
     blocks: production_release
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatesecurity001-production-security"
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatesecurity001-invited-production-security"
     owner: V2-13
     last_run: null
     result: open_security_release_and_operations_proof_pending
@@ -330,7 +332,7 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateimage001-mage-production-quality"
     owner: V2-12
     last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-    result: pod_runtime_and_user_sample_acceptance_passed_40_prompt_300_image_suite_pending
+    result: pod_runtime_and_user_sample_acceptance_passed_real_pilot_and_production_length_output_review_pending
     active_effect: feeds_GATE_RANGA_001_and_GATE_ECONOMICS_001
 
   GATE_IMAGE_002:
@@ -361,11 +363,11 @@ gates:
 
   GATE_STYLE_002:
     status: open
-    blocks: five_style_production_adherence_and_release
-    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatestyle002-five-style-adherence"
+    blocks: unaccepted_enabled_style_and_release
+    acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatestyle002-published-style-adherence"
     owner: V2-12
     last_run: "evidence/acceptance/VF-9-24Q/cp06-phase-b/acceptance.json"
-    result: open_five_style_production_suite_pending
+    result: open_each_invited_production_enabled_style_needs_one_exact_real_accepted_sample
 
   GATE_UI_001:
     status: closed

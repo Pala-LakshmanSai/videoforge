@@ -31,8 +31,8 @@ foundation, gate, artifact identity, cost fact, or audit depends on it.
 10. `V2-09`: run one short real hosted end-to-end project.
 11. `V2-10`: run and visually accept one real 3-5 minute Ranga-style pilot.
 12. `V2-11`: prove two-user concurrency, fair queueing, autoscaling, and failure recovery.
-13. `V2-12`: qualify representative 20-30 minute quality, speed, and economics; qualify RTX 5090
-    separately only if it is explicitly proposed and approved.
+13. `V2-12`: qualify representative 29-31 minute quality, speed, and economics on the exact accepted
+    RTX 4090 lanes.
 14. `V2-13`: harden security, release production, and prove operations/rollback.
 
 Checkpoint promotion stays serial. Disjoint worker code may be built in parallel after V2-04, but
@@ -92,13 +92,14 @@ region, capacity, retained resources, or cleanup. Authorization from any other t
 - Mage and SoulX use different existing sealed 50 GB `EU-RO-1` volumes at `/runpod-volume`. Model
   bytes are verified and application-read-only. User artifacts and mutable cache never touch those
   volumes; job-local scratch is erased after success, failure, cancellation, timeout, and refresh.
-- RTX 4090 is the initial exact qualification target. RTX 5090 is neither fallback nor allowed in an
-  endpoint GPU list until the exact lane runtime has separate compatibility, quality, timing, VRAM,
-  and cost evidence plus explicit bounded approval.
+- RTX 4090 is the exact invited-release qualification target. RTX 5090 is post-release work, neither
+  fallback nor allowed in an endpoint GPU list until the exact lane runtime has separate
+  compatibility, quality, timing, VRAM, and cost evidence plus explicit bounded approval.
 
 ## Verification and handoff
 
-Use focused tests before canonical verification. Required proof grows with risk:
+Use focused tests for every change. Run canonical verification at V2-09/V2-13, or earlier only when
+a shared contract/runtime change makes focused proof insufficient. Required proof grows with risk:
 
 - migrations: fresh, upgrade, restore, constraints, and adversarial ownership;
 - contracts: TypeScript/Python parity, valid/invalid fixtures, replay, races, response loss, worker

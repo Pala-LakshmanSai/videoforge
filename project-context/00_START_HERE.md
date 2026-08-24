@@ -1,5 +1,7 @@
 # VideoForge: start here
 
+## Active handoff — read this section first
+
 Attempt51 is the current provider-free candidate. Repair `f4054ed` separates provider worker-record
 IDs from signed runtime Pod IDs and requires the unique terminal Pod plus exact terminal worker
 count before resume. Proposal `sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8`, acceptance `sha256:76e1c5b9…264885`, max1
@@ -10,6 +12,24 @@ use, or spend is authorized. V2-07 remains `NOT_QUALIFIED`; V2-08 forbidden.
 Attempt50 is closed after one durable probe failed the former cross-namespace identity check. Its
 proposal/authority are consumed and non-reusable. Cleanup and three stable reads prove restored
 route/config, zero disposable resources/workers, both retained volumes, and `$0` observed increment.
+
+V2-00 through V2-06 are complete and must not be rebuilt. The remaining fast sequence is V2-07
+through V2-13 in `22_PROJECT_COMPLETION_CHECKPOINTS.md`; copy-ready implementation/audit prompts are
+in `templates/CHECKPOINT_CHAT_PROMPTS.md`. Production is tenant-private and autoscaling-only: one
+durable account/default-workspace-owned tenant state, one active provider workload/account, two different
+accounts globally, two queue-based RunPod Serverless lanes, `workersMin=0`, and no manual Pod/GPU
+lifecycle. Word-level transcript, voiceover splitting, the three-composition scheduler, and the
+personal-worker renderer are completed foundations to integrate, not reimplement.
+
+Use focused tests for changed surfaces and one narrow repair cycle. Canonical provider-free
+verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
+Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
+mandatory. This planning state grants no provider call, mutation, deployment, GPU use, or spend.
+
+## Historical V2-07 attempt ledger — do not preload
+
+The records below remain for exact evidence/validator compatibility. Read only an exact referenced
+attempt when a current failure or audit pointer requires it.
 
 Attempt47 is closed fail-closed as `NOT_QUALIFIED`. Proposal
 `sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53` and acceptance

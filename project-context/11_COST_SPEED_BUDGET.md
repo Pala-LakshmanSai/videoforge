@@ -123,9 +123,10 @@ policy, substitute, quality pass, upscaler, or AI-video stage requires a new dec
 
 ## CPU, storage, and orchestration cost
 
-Pinned whisper.cpp transcription and deterministic FFmpeg render/probe run in scale-to-zero Cloud
-Run Jobs over private R2. Measure CPU, memory, execution, operation, and transfer cost per accepted
-project. Local Mac runs are development parity and cannot establish hosted cost.
+Pinned whisper.cpp transcription and deterministic FFmpeg render/probe run on the authenticated
+account's paired Windows/macOS personal media worker over private R2. Provider compute cost is `$0`,
+while device time, electricity, storage, network, execution duration, and transfer remain measured
+and disclosed. Hosted Cloud Run CPU jobs are superseded and are not an active production dependency.
 
 R2 stores tenant-private inputs, intermediates, results, and receipts. A 30-minute H.264 final at
 8-12 Mbps is roughly 1.8-2.7 GB before intermediates. The 10 GB free allowance holds only a few
@@ -171,8 +172,10 @@ Historical SoulX's 672-second Pod start-to-ready misses the seven-minute cold ta
 specific Serverless risk. Qualify container startup and `RUNPOD_INIT_TIMEOUT`; do not hide the gap by
 starting an always-on worker.
 
-Do not declare p50/p90 from one sample. Record at least 10 representative accepted runs spanning cold
-and warm starts, both endpoints, and the approved compositions. Report:
+The initial invited-production gate requires one representative automatic run with final duration
+between 29 and 31 minutes, plus the settled lane, short-E2E, pilot, and concurrency observations. A
+shorter run cannot close the quality or economics gate. Do not label this p50/p90. Accumulate at
+least 10 organic accepted beta jobs before reporting p50/p90 confidence. Report:
 
 - application wait, RunPod queue wait, initialization, inference, upload, render, and end-to-end;
 - actual worker/GPU/rate and billed seconds;

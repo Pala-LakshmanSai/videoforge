@@ -1,7 +1,7 @@
 schema_version: "2.0"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-08-19"
+last_updated: "2026-08-24"
 source_of_truth: project-context
 
 current_selected_profile: v2_07_mage_serverless
@@ -204,6 +204,7 @@ hard_rules:
   - no_exactly_once_provider_or_billing_claim
   - no_routine_endpoint_queue_purge
   - ordinary_users_have_no_gpu_or_pod_lifecycle_controls
+  - production_is_autoscaling_only_and_browser_state_projects_durable_tenant_truth
   - zero_workers_required_after_drain_fixed_volume_billing_reported_separately
   - no_motion_graphics_text_overlays_captions_borders_or_watermarks
   - no_decorative_transitions_hard_cuts_only
@@ -228,6 +229,7 @@ approved_decisions:
   DEC_COST_001: representative_30m_variable_target_1_usd_hard_ceiling_2_usd
   DEC_DB_001: additive_postgres_contracts_pglite_tests_neon_production
   DEC_DISPATCH_001: two_phase_serverless_authority_at_most_one_accepted_output
+  DEC_DELIVERY_001: fast_bounded_checkpoints_focused_tests_sample_driven_hardening
   DEC_HOSTING_001: superseded_cloud_run_hosting_decision_history
   DEC_IMAGE_001: exact_mage_flow_int8_convrot_profile
   DEC_IMAGE_002: mage_terms_risk_accepted_no_clear_permission_claim
@@ -243,6 +245,7 @@ approved_decisions:
   DEC_RENDER_002: no_remotion_or_hyperframes
   DEC_PERSONAL_WORKER_001: tenant_owned_windows_macos_asr_render_worker
   DEC_RUNPOD_003: two_scale_to_zero_serverless_lanes_existing_volumes
+  DEC_RUNTIME_001: autoscaling_only_durable_per_tenant_state_no_manual_pods
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
   DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split
   DEC_SCOPE_001: image_only_broll
@@ -265,14 +268,14 @@ open_gates:
   GATE_CONCURRENCY_001: v2_multi_user_load_and_recovery
   GATE_E2E_001: real_short_hosted_project
   GATE_ECONOMICS_001: representative_serverless_speed_and_settled_cost
-  GATE_IMAGE_001: mage_full_quality_suite
+  GATE_IMAGE_001: mage_real_project_output_quality
   GATE_IMAGE_002: mage_terms_ambiguity
   GATE_RANGA_001: real_human_editorial_quality
   GATE_SECURITY_001: production_security_release_operations
   GATE_SERVERLESS_MAGE_001: exact_mage_endpoint
   GATE_SERVERLESS_SOULX_001: exact_soulx_endpoint_and_crop_review
   GATE_SOULX_LICENSE_001: soulx_deployability_terms
-  GATE_STYLE_002: five_style_production_adherence
+  GATE_STYLE_002: enabled_style_real_sample_adherence
 
 closed_gates:
   GATE_HOSTING_001: hosted_control_and_personal_worker_plane_pass

@@ -23,10 +23,14 @@ Each layer proves only itself:
 `CI=1 TURBO_FORCE=true pnpm verify` is canonical provider-free integration evidence. It cannot prove
 hosted bindings, provider identity, GPU/model/volume state, real cost, or production readiness.
 
-## Mandatory provider-free gate
+## Fast provider-free gate
 
-Every implementation checkpoint runs its focused tests plus the canonical aggregate before commit.
-Context or contract changes also run:
+Every implementation checkpoint runs focused tests for changed surfaces, the touched workspace
+typecheck/build, and `git diff --check`. The canonical aggregate runs at the V2-09 integration and
+V2-13 release boundaries, or earlier only when a shared contract/runtime change makes focused proof
+insufficient. Accepted unchanged proof is reused; test-count inflation is not acceptance.
+
+Context, contract, schema, gate, or selector changes also run:
 
 ```text
 pnpm context:validate
@@ -34,9 +38,12 @@ project-context/scripts/validate-context.sh
 project-context/scripts/validate-schemas.sh
 ```
 
-The aggregate must remain `$0`, avoid credentials/external providers, own and release its test ports,
-and leave no process it did not create. Installed-Chrome journeys use the stable application URL and
-check console/network failures as well as appearance.
+All provider-free checks must remain `$0`, avoid credentials/external providers, own and release
+their test ports, and leave no process they did not create. Installed-Chrome journeys run only when
+visible behavior changes and check console/network failures as well as appearance.
+
+One narrow observed-failure repair cycle is allowed per checkpoint. Tenant isolation, authority/
+cap checks, artifact lineage, model-volume protection, and paid-compute cleanup are never reduced.
 
 ## `GATE_TENANCY_001` — account/workspace privacy
 
@@ -157,12 +164,11 @@ evidence stays reproducible. It is never an ordinary per-project generation call
 
 ## `GATE_IMAGE_001` — Mage production quality
 
-Pass the full qualification through the exact accepted Mage Serverless runtime with a frozen
-40-prompt manifest and exactly 300 generated candidates. The manifest covers people/skin, hands and
-physical demonstrations, food/produce/material texture, tools/rural work, interiors/public settings,
-macro evidence, historical/period scenes, wide environmental context, split-safe framing, and the
-five production styles. Record every first generation, bounded same-scene retry, rejection, and
-accepted checksum; never curate failures out of the denominator.
+Pass using every real Mage output from the accepted 3–5-minute pilot and representative 30-minute
+video, plus the preserved Pod/runtime sample evidence. Freeze the natural project manifests and
+record every first generation, bounded same-scene retry, rejection, and accepted checksum; never
+curate failures out of the denominator. The production-length project is expected to exercise
+hundreds of real scene requests, so a second artificial 300-candidate suite is not a release blocker.
 
 Pass requires:
 
@@ -170,24 +176,23 @@ Pass requires:
 - at least 90% of first generations clearly relevant to the literal scene request;
 - no more than 5% obvious severe anatomy, generated-text/logo/watermark, pseudo-infographic,
   material object, or AI-look failures after the single allowed same-scene retry;
-- every required prompt category yields accepted evidence, important subjects survive full/split
-  crop-safe checks, and final 1080p zoom frames remain acceptably detailed;
+- the real project covers its required people/action/object/environment/detail categories, important
+  subjects survive full/split crop-safe checks, and final 1080p zoom frames remain acceptably detailed;
 - no OOM/crash, measured operational VRAM headroom, itemized timing/cost, and zero endpoint jobs plus
   zero total workers (`Active + Flex`) after drain;
 - explicit human blind acceptance before the production image-quality gate closes.
 
-## `GATE_STYLE_002` — five-style adherence
+## `GATE_STYLE_002` — published-style adherence
 
-Using identical neutral person/action/environment content and locked seeds where supported, compare
-the built-in default plus four substantially different published Image Style versions. Preserve exact
-compiled positive/negative prompts, style/version hashes, optional-keyword on/off cases, generated
-checksums, and blind-review order.
+The built-in default and every style version enabled for invited production must have at least one
+exact real Mage sample with compiled positive/negative prompts, version hash, optional-keyword state,
+checksum, literal relevance, crop safety, and human acceptance. Untested versions remain draft or
+not-release-qualified; they do not block release of accepted versions. A separate same-content
+five-style suite is sample-driven hardening, not an initial release blocker.
 
-Pass requires the human reviewer to distinguish and accept every intended style as materially
-different and faithful without copying reference subjects, identities, logos, readable text, or exact
-reference compositions. Every style must retain literal narration relevance, useful full/split crop
-safety, technical validity, and deterministic keyword behavior. Failure of any style keeps the gate
-open; do not add LoRA/reference conditioning or change the selected generator without a new decision.
+No accepted style may copy reference subjects, identities, logos, readable text, or exact reference
+compositions. Do not add LoRA/reference conditioning or change the selected generator without a new
+decision.
 
 ## `GATE_SERVERLESS_MAGE_001` — Mage endpoint
 
@@ -209,10 +214,10 @@ RTX 5090 is a separate later lane-specific qualification; it is not automatic fa
 
 ## `GATE_SERVERLESS_SOULX_001` — SoulX endpoint
 
-Pass requires the exact immutable SoulX-FlashHead Pro Serverless image/template/endpoint and existing
-SoulX-only 50 GB `EU-RO-1` volume:
+Pass for bounded max1 production dispatch requires the exact immutable SoulX-FlashHead Pro Serverless
+image/template/endpoint and existing SoulX-only 50 GB `EU-RO-1` volume:
 
-- `workersMin=0`, `workersMax=2`, one RTX 4090 GPU, no repair/fallback;
+- V2-08 `workersMin=0`, `workersMax=1`; one RTX 4090 GPU, no repair/fallback;
 - exact source/weights/audio/runtime manifest and best approved Pro settings;
 - `/runpod-volume` offline/read-only contract, unique job scratch, unchanged pre/post hashes;
 - deliberate `RUNPOD_INIT_TIMEOUT` and cold start below the documented seven-minute unhealthy
@@ -222,13 +227,15 @@ SoulX-only 50 GB `EU-RO-1` volume:
   second scheduler spans plus the bounded seven-second opener, padding/trim, exact A/V duration, and
   no full-voiceover job;
 - one native generation reused for approved full/split renderer compositions;
-- cold, warm, and two-concurrent-worker trials against the same volume;
+- cold/warm max1 in V2-08;
 - request/status/cancel/reconciliation, invalid output, timeout, receipt/R2 durability, settled cost,
   and zero endpoint jobs plus zero total workers (`Active + Flex`) after drain.
 
 Human review checks identity, lips/teeth/tongue, eye behavior, hair/beard/hat, head/shoulder motion,
 background stability, blur, jitter, crop, and temporal continuity. Technical validity alone does not
-activate production.
+activate production. Max2 promotion and two-concurrent-reader proof are owned by
+`GATE_CONCURRENCY_001` in V2-11; they do not block bounded max1 V2-09/V2-10 dispatch after this gate
+and its independent audit pass.
 
 ## `GATE_SOULX_LICENSE_001` — deployability record
 
@@ -250,7 +257,7 @@ The accepted deterministic-scheduler baseline is preserved. Regression/property 
 - clean split seam at `x=960`, no border/label;
 - hard cuts and the approved image zoom; no forbidden graphics.
 
-Statistical acceptance on representative 20-30 minute timelines targets:
+Statistical acceptance on representative 29-31 minute timelines targets:
 
 - mean avatar span 3.5-4.0 seconds;
 - 3.3-3.7 avatar appearances/minute;
@@ -263,7 +270,7 @@ boundaries and deterministic bounded variation remain the scheduling mechanism.
 
 ## `GATE_RANGA_001` — human editorial quality
 
-Pass a real owned 3-5 minute pilot, then a representative 20-30 minute output:
+Pass a real owned 3-5 minute pilot, then a representative 30-minute output:
 
 - composition/cadence metrics above;
 - image-to-voiceover relevance scored `2=direct`, `1=contextual`, `0=generic/incorrect`, with mean
@@ -291,7 +298,7 @@ Using an owned short project through the actual app:
 6. accept only verified signed receipts and durable tenant artifacts;
 7. render/probe on the same account's paired personal worker;
 8. review/play/download the final MP4 in installed Chrome;
-9. restart the control plane during at least one non-destructive stage and recover;
+9. prove one provider-free resume/cancel path and truthful hosted recovery state;
 10. prove zero endpoint jobs, zero total workers (`Active + Flex`), and both retained volumes after
     drain.
 
@@ -300,26 +307,32 @@ GPU/rate, every stage timing, artifact hashes/probes, cost, callbacks/status evi
 
 ## `GATE_CONCURRENCY_001` — 5-10-user behavior
 
-Pass staged tests with 1, 2, 5, and 10 distinct accounts:
+Reuse the accepted provider-free 1/2/5/10-account admission proof, then pass one bounded live run
+with two distinct accounts plus same-account and third-account waiters:
 
 - no tenant leakage and no account with two active videos;
 - exactly two or fewer videos active globally under races/restarts;
 - fair promotion/no starvation and per-account queue order;
+- each exact lane deliberately exercises two simultaneous read-only workers against its same sealed
+  volume, with unchanged pre/post manifests and exact max1/max2 config readback/restoration;
 - each endpoint remains at two or fewer workers and the shared lane volume remains unchanged;
-- cancellation/failure of one tenant does not mutate or expose another;
+- one named live failure/cancel/reconciliation path does not mutate or expose another tenant;
 - status/event fan-out, database connections, Workflow instances, personal-worker leases, R2, and browser UI
   remain bounded and truthful;
 - all jobs settle and endpoints drain to zero endpoint jobs and zero total workers (`Active + Flex`).
 
 ## `GATE_ECONOMICS_001` — production-length speed/cost
 
-Use at least 10 representative accepted runs spanning cold/warm starts and concurrent load. Report
-queue wait separately from active service time; per-lane initialization/inference/upload; CPU/render;
-provider idle/retry/possible duplicate cost; final settled variable cost; and fixed volume rate.
+Use one accepted automatic run with final duration between 29 and 31 minutes plus settled V2-07
+through V2-11 evidence. A shorter run cannot close either the production-length quality gate or the
+economics gate. Report queue wait separately from active service time; per-lane initialization/
+inference/upload; CPU/render; provider idle/retry/possible duplicate cost; final settled variable
+cost; and fixed volume rate.
 
 Pass objectives:
 
-- representative 30-minute active-service p50 <=30 minutes and p90 <=45 minutes;
+- the first representative 30-minute active-service observation is measured and acceptable to the
+  user; p50/p90 confidence is accumulated from ten organic beta jobs rather than artificial runs;
 - variable cost target <=`$1.00` and hard MVP ceiling <=`$2.00` per accepted 30-minute video;
 - no hidden always-on GPU workers;
 - zero total workers (`Active + Flex`) and zero endpoint jobs after drain, plus the explicit
@@ -329,9 +342,9 @@ Pass objectives:
 If the exact quality/runtime cannot pass both hard cost and quality gates, stop and present measured
 tradeoffs. Do not silently weaken quality, switch model/GPU, or leave workers warm.
 
-## `GATE_SECURITY_001` — production security
+## `GATE_SECURITY_001` — invited-production security
 
-Pass automated and independent review for:
+Pass focused automated and independent review with no unresolved critical/high finding for:
 
 - invite/auth/session/CSRF/origin/rate-limit controls;
 - tenant database, API, event, queue, R2, signed-URL, callback, scratch/cache, and log isolation;
@@ -339,10 +352,16 @@ Pass automated and independent review for:
 - upload/media parsing limits, malware/content policy as selected, decompression/zip-bomb protection;
 - webhook forgery/replay, dispatch-token replay, stale assignment, SSRF/path traversal/object-key
   injection, ID enumeration, and cost-amplification attacks;
-- dependency/container/image/secret scans, SBOM/provenance, key rotation and incident runbooks;
+- dependency/container/image/secret scans, pinned provenance, backup/rollback readback, spend/queue/
+  worker alerts, and concise incident runbooks;
+- one release-current hosted control-plane restart/reconcile with no duplicate dispatch or foreign
+  result; perform a disposable restore only if V2-09 through V2-13 changed schemas/migrations,
+  otherwise retain the accepted V2-06 restore proof;
 - queue purge and old Pod transport unreachable from ordinary production paths.
 
-Any unresolved critical/high issue blocks release.
+Any unresolved critical/high issue blocks release. Broad cross-browser/accessibility, exhaustive
+provider fault injection, and ten-job statistical matrices continue as sample-driven hardening when
+they do not expose a P0/P1 in the invited-production boundary.
 
 ## UI and Chrome acceptance
 

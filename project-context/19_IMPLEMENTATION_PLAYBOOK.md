@@ -9,6 +9,10 @@ Ship the accepted VideoForge UI as a production-ready private 5–10-user applic
 voiceover, choose their private reusable avatar/style, and click Generate once. They never select,
 start, stop, or clean up Pods/GPUs/workers.
 
+Every account/workspace owns durable private project, revision, media, preset, queue, progress,
+retry, cost, output, download, and paired-device state. The browser projects server truth; no
+singleton global user context or browser-only production state is authoritative.
+
 The production target is:
 
 - invite-only Better Auth with one default private workspace per account;
@@ -37,6 +41,8 @@ redownload them.
 6. Default to fixture/provider-free mode. Never infer provider authority from an older checkpoint.
 7. Implement the smallest coherent vertical slice, validate it, inspect in real Chrome when visible,
    update context/current state, and make one green commit.
+8. Use one narrow repair cycle for an observed checkpoint failure. A second unrelated failure becomes
+   a named micro-checkpoint instead of expanding the current chat indefinitely.
 
 Only V2 task briefs live in the working tree. Git history records removed planning files; retain
 repository evidence only when an active foundation, gate, artifact identity, cost fact, or audit
@@ -197,7 +203,9 @@ and validation.
 ## Definition of done
 
 - Requested checkpoint behavior works at its intended layer and no later gate is claimed.
-- Focused tests and canonical provider-free verify pass; hosted/live evidence is added only when run.
+- Focused tests for changed surfaces, touched workspace typecheck/build, and diff checks pass.
+  Canonical provider-free verify is required at V2-09 and V2-13, or earlier only for a shared
+  contract/runtime change that focused proof cannot cover.
 - User-visible behavior passes the real-Chrome journey with no new unexplained console/network error.
 - Tenant isolation and required negative/fault cases pass.
 - No secret/private/reference asset/model weight/signed URL entered Git or browser bundles.
