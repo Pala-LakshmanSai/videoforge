@@ -1,0 +1,41 @@
+{
+  "schema_version": "videoforge.v2-07-attempt48-cleanup/v1",
+  "checkpoint": "V2-07",
+  "attempt": 48,
+  "result": "CLEAN_NO_MUTATION_CONFIRMED",
+  "failure_code": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED",
+  "failure_stage": "cloudflare_rollback_anchor_preflight",
+  "orchestrator_source_path": "/tmp/videoforge-v207-attempt48-live-orchestrator.json",
+  "orchestrator_sha256": "sha256:49976bbaeccfded0b254be187836a8de49683467a165fd350015f2b9179d1d68",
+  "cloudflare": {
+    "build_started": false,
+    "deploy_started": false,
+    "signer_secret_created": false,
+    "route_activated": false,
+    "worker_mutated": false,
+    "rollback_required": false,
+    "rollback_skipped_no_mutation": true,
+    "disabled_route_probe_skipped_no_mutation": true,
+    "rollback_anchor_refresh_authorized": true,
+    "rollback_anchor_refresh_attempted": false,
+    "rollback_anchor_diagnostic_detail_retained": false
+  },
+  "runpod": {
+    "live_execution_calls_reached": false,
+    "read_only_reconciliation_completed": true,
+    "endpoint_created": false,
+    "template_created": false,
+    "jobs_submitted": 0,
+    "gpu_use": false,
+    "final_disposable_resources_absent": true
+  },
+  "generated_output_mutation": false,
+  "retained_volumes_deleted_or_mutated_by_cleanup": false,
+  "protected_config": {
+    "sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "mode": "0600",
+    "unchanged": true
+  },
+  "cleanup_uncertain": false,
+  "v2_08_authorized": false
+}

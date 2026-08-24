@@ -88,16 +88,15 @@ yes(marker.includes(proposal.protected_config_anchor_refresh.baseline_sha256), "
 yes(marker.includes(proposal.protected_config_anchor_refresh.projected_marker_sha256), "MARKER_PROJECTED_BINDING");
 const activation = text(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"));
 yes(activation.includes(expected.proposal), "ACTIVATION_PROPOSAL");
-yes(activation.includes(expected.authority), "ACTIVATION_AUTHORITY");
-yes(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;"), "ACTIVATION_CAP");
-yes(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = true;"), "ACTIVATION_REFRESH_AUTHORITY");
+yes(activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = null;"), "ACTIVATION_CAP_CONSUMED");
+yes(activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;"), "ACTIVATION_REFRESH_CONSUMED");
 const gates = text(path.join(root, "project-context/GATES.yaml"));
 yes(gates.includes(expected.proposal), "GATES_PROPOSAL");
 yes(gates.includes(expected.acceptance), "GATES_ACCEPTANCE");
 yes(gates.includes('pending_control_source_commit: "3bfeff00b62945936bdbfc1e7dede9037ef4a31e"'), "GATES_CONTROL");
 yes(gates.includes(`pending_orchestrator_source_sha256: "${expected.orchestrator}"`), "GATES_ORCHESTRATOR");
 yes(gates.includes(`pending_authority_sha256: "${expected.authority}"`), "GATES_AUTHORITY");
-yes(gates.includes("pending_numeric_cap_usd: 4"), "GATES_CAP");
+yes(gates.includes("pending_numeric_cap_usd: 0"), "GATES_CAP_CONSUMED");
 yes(gates.includes("pending_old_active_index_oldest_to_newest: null"), "GATES_NO_STALE_INDEX");
 
 console.log("PASS validate-v207-attempt48-current-anchor-refresh-candidate", JSON.stringify(expected));
