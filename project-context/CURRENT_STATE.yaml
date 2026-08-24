@@ -1,12 +1,12 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-24T16:43:56.268Z"
+updated_at: "2026-08-24T17:16:42Z"
 
-phase: serverless_v2_v2_07_attempt56_closed_not_qualified_queued_probe_clean
+phase: serverless_v2_v2_07_attempt56_queue_stop_provider_free_repaired
 implementation_authorized_in_current_task: false
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt56_closed_not_qualified_queued_probe_clean
+current_wave: v2_07_attempt56_queue_stop_provider_free_repaired
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: blocked_handoff
 application_code_changes_authorized: false
@@ -18,15 +18,15 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: attempt56_closed_not_qualified_queued_probe_clean
+  mode: attempt56_queue_stop_provider_free_repaired
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: "Stop after consumed Attempt56; provider-free diagnosis of the prolonged IN_QUEUE probe and restoration observation only; no remote mutation, paid retry, Attempt57, or V2-08"
-  note: "Attempt56 authority was consumed by one bounded live run. One owned job remained IN_QUEUE for 34 status reads, was cancelled, and produced no accepted batch, output, receipt, execution time, or GPU use. Exact cleanup and three stable zero-disposable-resource reads passed; both existing volumes remain retained at $7/month, observed billing increment is $0 subject to provider lag, and V2-08 is forbidden."
+  v2_07_action: "Stop after the Attempt56 provider-free queue-stop diagnosis and repair; any new paid attempt requires a fresh exact proposal, approval, positive cap, and re-confirmed provider truth; no Attempt57 or V2-08"
+  note: "Attempt56 did not reach its 180-read reconciliation limit: it stopped after 34 IN_QUEUE reads on an unclassified poll-stage exception. Commit c2086e1 adds bounded billing-read retries plus explicit billing/checkpoint failure codes without redispatch or provider-policy change. Exact live root cause remains unproven; no provider call, mutation, GPU use, or spend occurred during repair."
 
 fast_completion_plan:
   decision: DEC_DELIVERY_001
@@ -127,7 +127,13 @@ closed_v2_07_attempt56_proposal:
   retained_volumes_deleted_or_mutated: false
   blocker_code: V207_QUALIFICATION_FAILED
   blocker: PRIMARY_JOB_REMAINED_IN_QUEUE_FOR_34_STATUS_READS_AND_WAS_CANCELLED_WITH_NO_ACCEPTED_BATCH_OR_OUTPUT
-  next_boundary: "provider-free diagnosis of prolonged queue and restoration observation only; any new paid retry requires a new exact proposal, fresh approval, and fresh positive numeric cap; do not create Attempt57 or start V2-08"
+  queue_stop_diagnosis_path: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt56-queue-stop-diagnosis.json
+  queue_stop_diagnosis_sha256: "sha256:247c8c6b1bc1f5f3ce09978ca178d70e4d323a00448e42d97e766c483dabf922"
+  queue_stop_repair_commit: "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03"
+  reconciliation_timeout_reached: false
+  exact_immediate_exception_proven: false
+  provider_capacity_root_cause_proven: false
+  next_boundary: "stop provider-free; any new paid attempt requires a new exact proposal, fresh approval, fresh positive numeric cap, and re-confirmed provider truth; do not create Attempt57 or start V2-08"
 
 closed_v2_07_attempt55_proposal:
   mode: closed_consumed_preexecution_executable_anchor_lineage_mismatch
@@ -2343,7 +2349,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: "No live authority. Attempt56 is consumed and non-reusable after one queued probe; provider-free diagnosis of the prolonged queue and restoration observation only; V2-08 forbidden."
+  provider_authority_scope: "No live authority. Attempt56 is consumed and non-reusable; queue-stop diagnosis and repair c2086e1 are provider-free and do not qualify the lane. Any paid retry needs a fresh exact proposal and approval; V2-08 forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -2497,6 +2503,12 @@ model_runtime_evidence:
     v2_07_current_candidate_approved_preexecution_authority_sha256: "sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2"
     v2_07_current_candidate_cap_usd: 0
     v2_07_current_candidate_authority_state: CONSUMED_NON_REUSABLE
+    v2_07_attempt56_queue_stop_diagnosis: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt56-queue-stop-diagnosis.json
+    v2_07_attempt56_queue_stop_diagnosis_sha256: "sha256:247c8c6b1bc1f5f3ce09978ca178d70e4d323a00448e42d97e766c483dabf922"
+    v2_07_attempt56_queue_stop_repair_commit: "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03"
+    v2_07_attempt56_reconciliation_timeout_reached: false
+    v2_07_attempt56_exact_immediate_exception_proven: false
+    v2_07_attempt56_provider_capacity_root_cause_proven: false
     v2_07_publication_evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json
     v2_07_publication_evidence_sha256: "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7"
     v2_07_historical_attempt41_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt41-runner-diagnostic-read-retry-candidate/approved-authority.json
@@ -3382,7 +3394,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt56
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Diagnose provider-free why the primary Attempt56 job remained IN_QUEUE for 34 status reads and observe restored route/config only; do not mutate remotely, retry paid work, create Attempt57, or start V2-08."
+  goal: "Stop after the completed provider-free Attempt56 queue-stop diagnosis and repair; any paid retry requires a fresh exact proposal, approval, positive cap, and re-confirmed provider truth; do not create Attempt57 or start V2-08."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

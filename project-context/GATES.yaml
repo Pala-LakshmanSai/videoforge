@@ -239,6 +239,12 @@ gates:
     current_provider_free_repair_commit: "5c2fbe06ba559543c122876d32ef41cb26fd688b"
     current_provider_free_live_qualification_source_sha256: "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86"
     current_provider_free_qualification_harness_source_sha256: "sha256:772249e8feab2c58600807d35844693baaa02d3706eb72d86773637061560cd4"
+    attempt56_queue_stop_diagnosis: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt56-queue-stop-diagnosis.json"
+    attempt56_queue_stop_diagnosis_sha256: "sha256:247c8c6b1bc1f5f3ce09978ca178d70e4d323a00448e42d97e766c483dabf922"
+    attempt56_queue_stop_repair_commit: "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03"
+    attempt56_reconciliation_timeout_reached: false
+    attempt56_exact_immediate_exception_proven: false
+    attempt56_provider_capacity_root_cause_proven: false
     pending_orchestrator_source_sha256: "sha256:3d0580e1b6e4c8fedb3d1be6e7a639b89b0a53562d1806b0dc02eeca435b608c"
     pending_canonical_activation_source_sha256: "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3"
     pending_protected_config_helper_sha256: "sha256:273f8c7ef6844488e9266276e7ab8db184810456079c6419ba62a9cca116d540"
@@ -283,7 +289,7 @@ gates:
     canonicalization_repair_commit: "f945392"
     deploy_diagnostic_repair_commit: "7066520"
     deploy_diagnostic_repair_source_sha256: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894"
-    next_boundary: "provider-free diagnosis of prolonged queue and restoration observation only; no paid retry under consumed Attempt56 and no Attempt57 or V2-08"
+    next_boundary: "provider-free diagnosis and repair complete; any paid retry requires a fresh exact proposal, approval, positive cap, and re-confirmed provider truth; no Attempt57 or V2-08 under this boundary"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

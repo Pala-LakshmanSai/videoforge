@@ -1,0 +1,71 @@
+{
+  "schema_version": "videoforge.v2-07-attempt56-queue-stop-diagnosis/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 56,
+  "diagnosed_at": "2026-08-24T17:16:42Z",
+  "result": "PROVIDER_FREE_REPAIR_COMPLETE_EXACT_LIVE_EXCEPTION_REMAINS_UNPROVEN",
+  "immutable_live_facts": {
+    "qualification_started_at": "2026-08-24T16:26:53.744Z",
+    "qualification_finished_at": "2026-08-24T16:39:12.109Z",
+    "qualification_runtime_ms": 738365,
+    "successful_status_reads": 34,
+    "status_on_every_successful_read": "IN_QUEUE",
+    "delay_time_ms_on_every_successful_read": null,
+    "execution_time_ms_on_every_successful_read": null,
+    "minimum_observed_queue_duration_ms": 330000,
+    "provider_jobs_submitted": 1,
+    "gpu_use": false,
+    "accepted_units": 0
+  },
+  "configured_bounds": {
+    "poll_interval_ms": 10000,
+    "maximum_polls": 180,
+    "nominal_reconciliation_window_ms": 1790000,
+    "runpod_init_timeout_seconds": 800,
+    "ordinary_execution_timeout_ms": 2400000,
+    "reconciliation_timeout_reached": false
+  },
+  "diagnosis": {
+    "provider_capacity_root_cause_confirmed": false,
+    "external_process_deadline_confirmed": false,
+    "exact_immediate_exception_retained": false,
+    "queue_observation": "PERSISTENT_IN_QUEUE_BEFORE_UNCLASSIFIED_POLL_STAGE_EXCEPTION",
+    "strongest_source_inference": "TRANSIENT_BILLING_READ_TRANSPORT_OR_CHECKPOINT_PERSISTENCE_FAILURE",
+    "inference_is_live_proof": false,
+    "reason": "Each poll performs a billing cap read, provider status read, and evidence checkpoint. The run stopped after 34 of 180 allowed reads with generic V207_QUALIFICATION_FAILED, so the queue window itself did not expire and the sanitized evidence cannot distinguish the two formerly unnamed local stages."
+  },
+  "provider_free_repair": {
+    "commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+    "live_qualification_source_sha256": "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1",
+    "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512",
+    "billing_read_retry_delays_ms": [250, 1000, 2000],
+    "billing_retry_scope": ["transport", "http_429", "http_5xx"],
+    "billing_fail_closed_without_retry": ["auth", "other_http_4xx", "invalid_response"],
+    "billing_transport_exhaustion_code": "RUNPOD_ENDPOINT_BILLING_READ_AMBIGUOUS",
+    "checkpoint_persistence_failure_code": "RUNPOD_STATUS_CHECKPOINT_PERSIST_FAILED",
+    "job_ownership_preserved_for_cleanup": true,
+    "redispatch_added": false,
+    "provider_timeout_or_capacity_policy_changed": false
+  },
+  "focused_validation": {
+    "test_files": 2,
+    "tests_passed": 129,
+    "tests_failed": 0,
+    "typescript": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "provider_state": {
+    "provider_calls": 0,
+    "remote_mutations": 0,
+    "gpu_jobs": 0,
+    "external_spend_usd": 0,
+    "authority": null,
+    "finite_cap_usd": 0,
+    "attempt56_reusable": false,
+    "retained_volume_mutation": false
+  },
+  "next_boundary": "STOP_PROVIDER_FREE; A NEW PAID ATTEMPT REQUIRES A FRESH EXACT PROPOSAL, FRESH APPROVAL, FRESH POSITIVE NUMERIC CAP, AND RECONFIRMED PROVIDER TRUTH",
+  "v2_08_authorized": false
+}

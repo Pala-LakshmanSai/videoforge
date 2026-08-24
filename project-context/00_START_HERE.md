@@ -24,8 +24,12 @@ at `sha256:6a82d8ae…de5ac`; the approved pre-execution hash was `sha256:c708d0
 Executable authority/cap/anchor refresh are null. Closure `sha256:9465f6a1…731dd`, cleanup
 `sha256:b7ded646…5bfc8`, and reconciliation `sha256:e1d71ed3…fd3d` prove the clean terminal state.
 Both existing volumes remain retained at `$7/month`; V2-07 remains `NOT_QUALIFIED`; V2-08 is
-forbidden. Next boundary is provider-free diagnosis of the prolonged queue/restoration observation
-only; do not create Attempt57 or retry paid work.
+forbidden. Provider-free diagnosis `sha256:247c8c6b…f922` proves Attempt56 stopped after 34 of 180
+allowed reads, so the reconciliation timeout was not reached; the exact immediate exception and
+provider-capacity root cause remain unproven. Repair `c2086e1` adds bounded billing-read retry and
+explicit billing/checkpoint failure codes without redispatch or provider-policy changes; 129/129
+focused tests and TypeScript passed. Any paid retry requires a fresh exact proposal, fresh approval,
+fresh positive cap, and re-confirmed provider truth; do not create Attempt57 or start V2-08 here.
 
 Attempt55 remains closed and non-reusable at `V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH`; preserve its
 consumed authority and cap as immutable history and do not retry it.
