@@ -1664,6 +1664,7 @@ describe("V2-07 live orchestrator", () => {
       routeProbeCalls += 1;
       return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
         status: 404,
+        headers: { "x-videoforge-worker-version": VERSION_ID },
       });
     };
 
@@ -1737,6 +1738,10 @@ describe("V2-07 live orchestrator", () => {
       routeProbeCalls += 1;
       return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
         status: 404,
+        headers: {
+          "x-videoforge-worker-version":
+            rollbackSeen || routeProbeCalls <= 17 ? VERSION_ID : REFRESH_VERSION_ID,
+        },
       });
     };
 
