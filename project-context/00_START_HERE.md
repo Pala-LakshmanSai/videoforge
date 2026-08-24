@@ -1,5 +1,8 @@
 # VideoForge: start here
 
+Attempt49 proposal `sha256:a8b03557…74734a` binds control `a49f7578`, exact `two-phase-v1`,
+sealed Mage bytes, new max1/max2, fresh clean preflight, null authority/cap, and blocked V2-08.
+
 Attempt47 is closed fail-closed as `NOT_QUALIFIED`. Proposal
 `sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53` and acceptance
 `sha256:be3f2c5bca77f90a2470f4e2f165f47b2811501a6cc9febee911edeb24b758e6` bind repair `1d39b71`,

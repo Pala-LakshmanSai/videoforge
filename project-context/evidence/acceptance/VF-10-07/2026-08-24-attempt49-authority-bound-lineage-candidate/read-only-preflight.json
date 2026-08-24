@@ -1,0 +1,148 @@
+{
+  "schema_version": "videoforge.v2-07-attempt49-read-only-preflight/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 49,
+  "checked_at": "2026-08-24T04:07:35.822Z",
+  "observation_kind": "FRESH_AUTHORIZED_READ_ONLY_RUNPOD_RECONCILIATION_CATALOG_AND_OFFICIAL_RATE_REFRESH",
+  "read_only": true,
+  "fresh_provider_read": true,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "command_results": [
+    {
+      "operation": "redacted_read_only_reconciliation",
+      "checked_at": "2026-08-24T04:07:14.356Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    },
+    {
+      "operation": "local_catalog_import_smoke",
+      "exit_code": 1,
+      "provider_request_completed": false,
+      "failure": "TSX_CJS_TOP_LEVEL_AWAIT_TRANSFORM"
+    },
+    {
+      "operation": "redacted_safe_direct_catalog_read",
+      "checked_at": "2026-08-24T04:07:35.822Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    },
+    {
+      "operation": "redacted_cloudflare_deployments_status_hash_read",
+      "checked_at": "2026-08-24T04:08:15.094Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    },
+    {
+      "operation": "redacted_cloudflare_status_versions_read",
+      "checked_at": "2026-08-24T04:08:32.960Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    },
+    {
+      "operation": "redacted_cloudflare_secret_names_read",
+      "checked_at": "2026-08-24T04:09:07Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    },
+    {
+      "operation": "exact_post_empty_json_disabled_route_probe",
+      "checked_at": "2026-08-24T04:09:31Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    }
+  ],
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "final_disposable_resources_absent": true,
+    "retained_volumes": [
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "mount": "/runpod-volume",
+        "model_root": "/runpod-volume/mage-model"
+      }
+    ]
+  },
+  "selected_gpu": {
+    "offering": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "MEDIUM",
+    "minimum_requested": "LOW-or-better",
+    "minimum_satisfied": true,
+    "flashboot": true,
+    "secure_reference_rate_usd_per_gpu_hour": 0.74,
+    "serverless_flex_published_rate_usd_per_gpu_hour": 1.1,
+    "vram_gb": 24
+  },
+  "official_published_rates": {
+    "serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "secure_rtx4090_reference_usd_per_gpu_hour": 0.74,
+    "network_volume_usd_per_gb_month": 0.07,
+    "existing_two_volume_charge_usd_per_month": 7,
+    "source": "RUNPOD_OFFICIAL_PUBLISHED_PRICING_AND_FRESH_CATALOG_READ"
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.6217972798040137,
+    "final_endpoint_spend_usd": 1.6217972798040137,
+    "incremental_spend_usd": 0,
+    "existing_two_volume_charge_usd_per_month": 7,
+    "candidate_finite_cap_usd": null,
+    "finite_estimate_usd_ceiling": 3.95,
+    "cap_input_non_authorizing": true,
+    "cap_authority": null
+  },
+  "cloudflare": {
+    "active_version_id_sha256": "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0",
+    "active_record_sha256": "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878",
+    "active_anchor_retained": false,
+    "active_anchor_index_oldest_to_newest": null,
+    "version_window_limit": 10,
+    "anchor_refresh_required_before_qualification": true,
+    "protected_signer_secret_present": false,
+    "unrelated_secret_name_count": 8,
+    "secret_values_retained": false,
+    "exact_route_probe": {
+      "method": "POST",
+      "request_body": {},
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    "non_contract_get_probe": {
+      "status": 503,
+      "code": null,
+      "authoritative_for_route_fingerprint": false
+    }
+  },
+  "prior_attempt48_closure": {
+    "path": "../2026-08-21-live-qualification/failed-attempt-48.json",
+    "sha256": "sha256:c0fee47e5cc93adf06decaf8ca993f4040709069f1508fded890d57a76e86d92",
+    "reconciliation_path": "../2026-08-21-live-qualification/attempt48-reconciliation-observation.json",
+    "reconciliation_sha256": "sha256:321b74893c2925a0b82f46b5f8a85d281e5e307abccf18ad98ae3ec61cf0b298"
+  },
+  "raw_provider_ids_urls_bodies_or_secrets_retained": false,
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "provider_calls_authorized_after_this_read": false,
+    "gpu_use_authorized": false,
+    "v2_08_authorized": false
+  },
+  "next_boundary": "FRESH_EXACT_ATTEMPT49_PROPOSAL_APPROVAL_AND_POSITIVE_NUMERIC_CAP_REQUIRED; V2-08-FORBIDDEN"
+}
