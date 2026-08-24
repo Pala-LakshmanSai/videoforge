@@ -117,6 +117,172 @@ async function enableRollbackAnchorRefresh(configPath: string): Promise<void> {
   expect(result.sha256).not.toBe(V207_ANCHOR_REFRESH_BASELINE_SHA256);
 }
 
+type RefreshVersionIdentityFailure = "missing" | "stale" | "alternating";
+type RefreshVersionIdentityBoundary = "pre-route" | "disabled-route" | "restored-route";
+
+/**
+ * Exercise only the version-bound refresh fences.  This stays provider-free: the command runner
+ * is a deterministic Wrangler/qualification fixture and the route is an in-memory Response.
+ */
+async function exerciseRefreshVersionIdentityFailure(
+  identityFailure: RefreshVersionIdentityFailure,
+  boundary: RefreshVersionIdentityBoundary,
+): Promise<{
+  readonly files: Awaited<ReturnType<typeof fixture>>;
+  readonly calls: V207CommandRequest[];
+  readonly error: unknown;
+  readonly refreshDisabledProbeCalls: number;
+  readonly restorationProbeCalls: number;
+}> {
+  const files = await fixture();
+  const calls: V207CommandRequest[] = [];
+  let signerSecretPresent = false;
+  let statusCalls = 0;
+  let versionsCalls = 0;
+  let rollbackSeen = false;
+  let refreshDisabledProbeCalls = 0;
+  let restorationProbeCalls = 0;
+  let activeRouteProbeCalls = 0;
+  const qualificationCommand = join(
+    resolve(process.cwd(), "../.."),
+    "apps/web/node_modules/.bin/tsx",
+  );
+  const environment = {
+    ...files.environment,
+    [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+  };
+  const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+    calls.push(request);
+    if (request.command === "git") return result();
+    if (request.args.includes("versions") && request.args.includes("list")) {
+      versionsCalls += 1;
+      return result(
+        versionsCalls === 1 ? RECENT_VERSION_LIST : REFRESHED_VERSION_LIST,
+      );
+    }
+    if (request.args.includes("deployments")) {
+      statusCalls += 1;
+      const version_id = signerSecretPresent
+        ? SIGNER_VERSION_ID
+        : rollbackSeen && boundary === "disabled-route"
+          ? VERSION_ID
+        : statusCalls === 1
+          ? VERSION_ID
+          : REFRESH_VERSION_ID;
+      return result(
+        JSON.stringify({
+          id: DEPLOYMENT_ID,
+          versions: [
+            {
+              version_id,
+              percentage: 100,
+              ...(version_id === VERSION_ID ? {} : { script_hash: "sha256:refreshed" }),
+            },
+          ],
+        }),
+      );
+    }
+    if (request.args.includes("secret") && request.args.includes("list")) {
+      return result(
+        JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
+      );
+    }
+    if (request.args.includes("secret") && request.args.includes("put")) {
+      signerSecretPresent = true;
+      return result();
+    }
+    if (request.args.includes("secret") && request.args.includes("delete")) {
+      signerSecretPresent = false;
+      return result();
+    }
+    if (request.args.includes("deploy") && !request.args.includes("deployments")) return result();
+    if (request.args.includes("rollback")) {
+      rollbackSeen = true;
+      return result();
+    }
+    if (request.command === qualificationCommand) {
+      if (request.env.V207_PREFLIGHT_ONLY === "1") return result();
+      return { ...result("", 1), stderr: "MAGE_VERSION_BOUND_TEST_FAILURE" };
+    }
+    return result();
+  };
+  const response = (status: number, code: string, workerVersionId?: string): Response =>
+    new Response(JSON.stringify({ error: { code } }), {
+      status,
+      ...(workerVersionId === undefined
+        ? {}
+        : { headers: { "x-videoforge-worker-version": workerVersionId } }),
+    });
+  const failureIdentity = (expected: string, readIndex: number): string | undefined => {
+    if (identityFailure === "missing") return undefined;
+    if (identityFailure === "stale") {
+      return expected === VERSION_ID ? CHANGED_VERSION_ID : VERSION_ID;
+    }
+    return readIndex === 0 ? expected : CHANGED_VERSION_ID;
+  };
+  const fetchImpl: typeof fetch = async () => {
+    if (rollbackSeen && !signerSecretPresent) {
+      if (boundary === "restored-route") {
+        const readIndex = restorationProbeCalls++;
+        return response(
+          404,
+          "V207_ROUTE_DISABLED",
+          failureIdentity(REFRESH_VERSION_ID, readIndex),
+        );
+      }
+      return response(404, "V207_ROUTE_DISABLED", VERSION_ID);
+    }
+    if (signerSecretPresent) {
+      if (activeRouteProbeCalls++ === 0) {
+        return response(404, "V207_ROUTE_DISABLED", SIGNER_VERSION_ID);
+      }
+      return response(403, "V207_AUTHORITY_REJECTED", SIGNER_VERSION_ID);
+    }
+    const readIndex = refreshDisabledProbeCalls++;
+    if (readIndex < 17) {
+      if (boundary === "pre-route") {
+        return response(404, "V207_ROUTE_DISABLED", failureIdentity(VERSION_ID, readIndex));
+      }
+      return response(404, "V207_ROUTE_DISABLED", VERSION_ID);
+    }
+    if (boundary === "disabled-route") {
+      return response(
+        404,
+        "V207_ROUTE_DISABLED",
+        failureIdentity(REFRESH_VERSION_ID, readIndex - 17),
+      );
+    }
+    return response(404, "V207_ROUTE_DISABLED", REFRESH_VERSION_ID);
+  };
+  let error: unknown;
+  try {
+    await runV207LiveOrchestration({
+      authorityParser: parseFixtureRefreshAuthority,
+      expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+      expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
+      environment,
+      cwd: resolve(process.cwd(), "../.."),
+      configPath: files.configPath,
+      evidencePath: files.evidencePath,
+      diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+      commandRunner,
+      fetchImpl,
+      nonceFactory: () => NONCE,
+      sleepImpl: async () => undefined,
+      installSignalHandlers: false,
+    });
+  } catch (caught) {
+    error = caught;
+  }
+  return {
+    files,
+    calls,
+    error,
+    refreshDisabledProbeCalls,
+    restorationProbeCalls,
+  };
+}
+
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
@@ -535,6 +701,7 @@ describe("V2-07 live orchestrator", () => {
       }
       return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
         status: 503,
+        headers: { "x-videoforge-worker-version": REFRESH_VERSION_ID },
       });
     };
 
@@ -857,12 +1024,17 @@ describe("V2-07 live orchestrator", () => {
         refreshDisabledProbeCalls += 1;
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
+          headers: { "x-videoforge-worker-version": VERSION_ID },
         });
       }
       if (!signerSecretPresent && !rollbackSeen) {
         refreshDisabledProbeCalls += 1;
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
+          headers: {
+            "x-videoforge-worker-version":
+              refreshDisabledProbeCalls <= 17 ? VERSION_ID : REFRESH_VERSION_ID,
+          },
         });
       }
       if (signerSecretPresent && activeRouteProbeCalls++ === 0) {
@@ -880,10 +1052,12 @@ describe("V2-07 live orchestrator", () => {
       if (rollbackSeen && restorationProbeCalls++ < 16) {
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
+          headers: { "x-videoforge-worker-version": REFRESH_VERSION_ID },
         });
       }
       return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
         status: 404,
+        headers: { "x-videoforge-worker-version": REFRESH_VERSION_ID },
       });
     };
 
@@ -918,6 +1092,80 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"event": "rollback_anchor_refresh_captured"');
     expect(evidence).toContain('"event": "orchestration_complete"');
   });
+
+  it.each([
+    { name: "missing", identityFailure: "missing" as const },
+    { name: "stale", identityFailure: "stale" as const },
+    { name: "alternating", identityFailure: "alternating" as const },
+  ])(
+    "fails closed when the refresh-disabled route has a $name Worker version identity",
+    async ({ identityFailure }) => {
+      const outcome = await exerciseRefreshVersionIdentityFailure(
+        identityFailure,
+        "disabled-route",
+      );
+      expect([
+        "V207_ROUTE_VERSION_ID_MISSING",
+        "V207_ROUTE_VERSION_ID_UNCONFIRMED",
+        "V207_ROLLBACK_ANCHOR_REFRESH_ROUTE_UNCONFIRMED",
+      ]).toContain((outcome.error as { readonly code?: string } | undefined)?.code);
+      expect(outcome.refreshDisabledProbeCalls).toBeLessThanOrEqual(19);
+      expect(
+        outcome.calls.some((call) =>
+          call.args.some((argument) => argument.endsWith("v207-live-qualification.ts")),
+        ),
+      ).toBe(false);
+      const evidence = await readFile(outcome.files.evidencePath, "utf8");
+      expect(evidence).toMatch(
+        /V207_(?:ROUTE_VERSION_ID_MISSING|ROUTE_VERSION_ID_UNCONFIRMED|ROLLBACK_ANCHOR_REFRESH_ROUTE_UNCONFIRMED)/u,
+      );
+      expect(evidence).not.toContain('"event": "orchestration_complete"');
+    },
+  );
+
+  it.each([
+    { name: "missing", identityFailure: "missing" as const },
+    { name: "stale", identityFailure: "stale" as const },
+    { name: "alternating", identityFailure: "alternating" as const },
+  ])(
+    "fails closed when the pre-mutation refresh-disabled route has a $name Worker version identity",
+    async ({ identityFailure }) => {
+      const outcome = await exerciseRefreshVersionIdentityFailure(identityFailure, "pre-route");
+      expect([
+        "V207_ROUTE_VERSION_ID_MISSING",
+        "V207_ROUTE_VERSION_ID_UNCONFIRMED",
+        "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED",
+      ]).toContain((outcome.error as { readonly code?: string } | undefined)?.code);
+      expect(outcome.refreshDisabledProbeCalls).toBeLessThan(18);
+      expect(
+        outcome.calls.some((call) =>
+          call.args.some((argument) => argument.endsWith("v207-live-qualification.ts")),
+        ),
+      ).toBe(false);
+      const evidence = await readFile(outcome.files.evidencePath, "utf8");
+      expect(evidence).not.toContain('"event": "orchestration_complete"');
+    },
+  );
+
+  it.each([
+    { name: "missing", identityFailure: "missing" as const },
+    { name: "stale", identityFailure: "stale" as const },
+    { name: "alternating", identityFailure: "alternating" as const },
+  ])(
+    "requires the exact refreshed rollback target during cleanup when the restored route has a $name Worker version identity",
+    async ({ identityFailure }) => {
+      const outcome = await exerciseRefreshVersionIdentityFailure(
+        identityFailure,
+        "restored-route",
+      );
+      expect(outcome.error).toMatchObject({ code: "V207_CLEANUP_UNCERTAIN" });
+      expect(outcome.restorationProbeCalls).toBeLessThan(16);
+      const evidence = await readFile(outcome.files.evidencePath, "utf8");
+      expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
+      expect(evidence).toMatch(/V207_(?:ROUTE_VERSION_ID_MISSING|ROUTE_VERSION_ID_UNCONFIRMED|ROUTE_RESTORATION_UNCONFIRMED)/u);
+      expect(evidence).not.toContain('"event": "restored_route_confirmed"');
+    },
+  );
 
   it("rejects a refresh when the fresh old version and record hashes drift from the proposal", async () => {
     const files = await fixture();
@@ -1046,6 +1294,7 @@ describe("V2-07 live orchestrator", () => {
           preRouteProbeCalls += 1;
           return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
             status: 404,
+            headers: { "x-videoforge-worker-version": VERSION_ID },
           });
         },
         sleepImpl: async () => undefined,
@@ -1099,6 +1348,7 @@ describe("V2-07 live orchestrator", () => {
         fetchImpl: async () =>
           new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
             status: 503,
+            headers: { "x-videoforge-worker-version": VERSION_ID },
           }),
         installSignalHandlers: false,
       }),
@@ -1125,10 +1375,15 @@ describe("V2-07 live orchestrator", () => {
       calls.push(request);
       if (request.command === "git") return result();
       if (request.args.includes("deployments")) {
+        const version_id = rollbackSeen
+          ? VERSION_ID
+          : calls.filter((call) => call.args.includes("deployments")).length === 1
+            ? VERSION_ID
+            : REFRESH_VERSION_ID;
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+            versions: [{ version_id, percentage: 100, ...(version_id === VERSION_ID ? {} : { script_hash: "sha256:refreshed" }) }],
           }),
         );
       }
@@ -1150,10 +1405,12 @@ describe("V2-07 live orchestrator", () => {
       if (routeProbeCalls <= 17 || rollbackSeen) {
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
+          headers: { "x-videoforge-worker-version": VERSION_ID },
         });
       }
       return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
         status: 503,
+        headers: { "x-videoforge-worker-version": REFRESH_VERSION_ID },
       });
     };
 
@@ -1226,6 +1483,7 @@ describe("V2-07 live orchestrator", () => {
       if (routeProbeCalls <= 17 || rollbackSeen) {
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
+          headers: { "x-videoforge-worker-version": VERSION_ID },
         });
       }
       return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
@@ -1307,9 +1565,16 @@ describe("V2-07 live orchestrator", () => {
     };
     const fetchImpl: typeof fetch = async () => {
       routeProbeCalls += 1;
+      if (routeProbeCalls <= 17) {
+        return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+          status: 404,
+          headers: { "x-videoforge-worker-version": VERSION_ID },
+        });
+      }
       if (routeProbeCalls <= 33) {
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
+          headers: { "x-videoforge-worker-version": REFRESH_VERSION_ID },
         });
       }
       if (!rollbackSeen) {
@@ -1317,14 +1582,17 @@ describe("V2-07 live orchestrator", () => {
         if (postPromotionProbeCalls === 1) {
           return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
             status: 404,
+            headers: { "x-videoforge-worker-version": REFRESH_VERSION_ID },
           });
         }
         return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
           status: 503,
+          headers: { "x-videoforge-worker-version": REFRESH_VERSION_ID },
         });
       }
       return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
         status: 404,
+        headers: { "x-videoforge-worker-version": VERSION_ID },
       });
     };
 
