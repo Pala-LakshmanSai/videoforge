@@ -1,0 +1,48 @@
+{
+  "schema_version": "videoforge.v2-07-attempt51-orchestrator-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 51,
+  "started_at": "2026-08-24T09:11:22.863Z",
+  "failed_at": "2026-08-24T09:22:18.858Z",
+  "result": "FAILED_CLEAN_ROLLBACK_CONFIRMED",
+  "authority_sha256": "sha256:61e00a70cb64c1e467a2d2877f67a20597b5a17e19a1ffa7a9a767ef06f52ea9",
+  "proposal_sha256": "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe",
+  "maximum_cumulative_finite_spend_usd": 4,
+  "anchor_refresh_authorized": true,
+  "raw_temp_evidence_sha256": "sha256:d46fa9f4ef9c5a09fc7a0f1989a4263802522e2068e8360bc5f5f40a53e116d3",
+  "raw_live_result_sha256": "sha256:9ae2d187bb072037f3e13e6b19c43d1558132cb7daf16a4688694143fc547d0c",
+  "pre_mutation": {
+    "old_active_version_id_sha256": "sha256:05478fd7e83a2886edd70ed3558d29d253f2a37b7d0dbe100d5a30b97ad42c52",
+    "old_active_record_sha256": "sha256:64fef83e5b77393eeb9d2d6e91a7e0f6b56a0a941d0ebe535707d1ef9e12e969",
+    "route": "404 V207_ROUTE_DISABLED",
+    "consecutive_route_matches": 16
+  },
+  "refreshed_anchor": {
+    "version_id_sha256": "sha256:c0c3303f78987b630da7a425117b2587aeca563266458f6f4b0b20db6b014f33",
+    "record_sha256": "sha256:1612a0d0582a9af311a5395f1920dde197ddad89f109ed396f35f3b4ef3840ad",
+    "retained_index_oldest_to_newest": 9,
+    "window_length": 10
+  },
+  "signer": {
+    "activated": true,
+    "route_identity_confirmed": true,
+    "deleted_at": "2026-08-24T09:22:27.672Z"
+  },
+  "live_preflight_exit_code": 0,
+  "failure": {
+    "orchestrator_code": "V207_LIVE_RUNNER_FAILED",
+    "child_failure_code": "RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE",
+    "stage": "post_probe_process_replacement_identity_proof"
+  },
+  "rollback": {
+    "worker_version_id_sha256": "sha256:c0c3303f78987b630da7a425117b2587aeca563266458f6f4b0b20db6b014f33",
+    "worker_record_sha256": "sha256:1612a0d0582a9af311a5395f1920dde197ddad89f109ed396f35f3b4ef3840ad",
+    "route_restored_at": "2026-08-24T09:23:09.455Z",
+    "route": "404 V207_ROUTE_DISABLED",
+    "protected_config_reverted_at": "2026-08-24T09:23:09.471Z",
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600"
+  },
+  "v2_08_authorized": false
+}

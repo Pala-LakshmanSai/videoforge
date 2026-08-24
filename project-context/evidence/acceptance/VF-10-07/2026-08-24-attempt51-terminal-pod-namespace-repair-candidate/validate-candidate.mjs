@@ -7,6 +7,7 @@ const dir = import.meta.dirname;
 const root = path.resolve(dir, "../../../../../");
 const E = {
   authority: "sha256:61e00a70cb64c1e467a2d2877f67a20597b5a17e19a1ffa7a9a767ef06f52ea9",
+  closure: "sha256:c2ac52ad7b5600c472be09be6d1ba5376194c9a4e1f192242ec281b686eab02a",
   proposal: "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe",
   acceptance: "sha256:be67953bc6189adcacff5c06b265f340cbbcdb045f19efbfc426bc4d695a856b",
   max1: "sha256:c2c31282f991c08677d9b49c1b6a367ba945c3fa232b48354e8913e14889ba5e",
@@ -42,6 +43,11 @@ for (const [file, hash] of [
   ["staged-config-max2.json", E.max2],
 ]) eq(sha(path.join(dir, file)), hash, `${file}_HASH`);
 eq(sha(path.join(dir, "approved-authority.json")), E.authority, "AUTHORITY_HASH");
+eq(
+  sha(path.join(dir, "../2026-08-21-live-qualification/failed-attempt-51.json")),
+  E.closure,
+  "CLOSURE_HASH",
+);
 
 const proposal = json(path.join(dir, "combined-live-proposal.json"));
 const acceptance = json(path.join(dir, "acceptance.json"));
@@ -128,9 +134,9 @@ eq(sha(path.join(root, "apps/web/src/server/providers/runpod-v207-readonly-recon
 const activation = text(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"));
 yes(activation.includes(E.proposal), "ACTIVATION_PROPOSAL");
 yes(activation.includes(E.control), "ACTIVATION_CONTROL");
-yes(activation.includes(E.authority), "ACTIVATION_AUTHORITY");
-yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*4\s*;/mu.test(activation), "ACTIVATION_CAP");
-yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*true\s*;/mu.test(activation), "ACTIVATION_REFRESH");
+yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_AUTHORITY");
+yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_CAP");
+yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_REFRESH");
 eq(`sha256:${crypto.createHash("sha256").update(canonicalActivation(activation), "utf8").digest("hex")}`, E.canonical, "CANONICAL_ACTIVATION_BYTES");
 for (const file of ["project-context/CURRENT_STATE.yaml", "project-context/GATES.yaml", "project-context/00_START_HERE.md", "project-context/tasks/VF-10-07.md"]) {
   yes(text(path.join(root, file)).includes(E.proposal), `${file}_PROPOSAL_POINTER`);
