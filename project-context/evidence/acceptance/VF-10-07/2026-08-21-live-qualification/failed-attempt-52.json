@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-07-attempt52-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 52,
+  "closed_at": "2026-08-24T10:57:45.227Z",
+  "result": "NOT_QUALIFIED",
+  "failure_code": "V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH",
+  "failure_stage": "proposal_bound_pre_mutation_active_anchor_identity_check",
+  "authority": {
+    "path": "../2026-08-24-attempt52-stable-terminal-history-repair-candidate/approved-authority.json",
+    "sha256": "sha256:3b15fca048ba4eb570a27b5a6e6d521a415e27c556c230757b6702e0c1017453",
+    "commit": "4df769d5602feecb54a27803a955668e3540ac85",
+    "single_use_consumed": true,
+    "reusable": false,
+    "approved_cap_usd": 4,
+    "anchor_refresh_authorized": true
+  },
+  "proposal": {
+    "path": "../2026-08-24-attempt52-stable-terminal-history-repair-candidate/combined-live-proposal.json",
+    "sha256": "sha256:af1c2da86886bc3b4d077a30bf9ab720de6a39aa9fe4e8ec351697df5b224e77"
+  },
+  "execution": {
+    "orchestrator_evidence": "attempt52-live-orchestrator.json",
+    "orchestrator_evidence_sha256": "sha256:64f8a98a43e6ce7d0bad4837cb7835795d729d6b6647945d93462714024166bb",
+    "read_only_provider_calls_completed": true,
+    "cloudflare_remote_mutations": 0,
+    "runpod_remote_mutations": 0,
+    "jobs_submitted": 0,
+    "gpu_jobs_submitted": 0,
+    "gpu_use": false,
+    "durable_outputs_created": 0,
+    "observed_incremental_spend_usd": 0,
+    "anchor_refresh_marker_applied_locally": true,
+    "anchor_refresh_marker_reverted": true,
+    "worker_rollback_skipped_no_mutation": true
+  },
+  "terminal_reconciliation": {
+    "path": "attempt52-reconciliation-observation.json",
+    "sha256": "sha256:83dbb0790059de5215ea857849b5897f1deee474ed5d4f02727b26f30cf32876",
+    "stable_reads": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_50gb_eu_ro_1_volumes": 2,
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "route_fingerprint": "404 V207_ROUTE_DISABLED",
+    "baseline_endpoint_spend_usd": 1.645446196460398,
+    "final_endpoint_spend_usd": 1.645446196460398,
+    "incremental_spend_usd": 0
+  },
+  "scope_stop": {
+    "unrelated_second_problem": true,
+    "repair_or_retry_performed": false,
+    "v2_08_started": false,
+    "smallest_next_action": "Open a new provider-free V2-07 anchor-rebind micro-checkpoint that captures the current active Worker version record, updates the two proposal-bound active-anchor hashes, recomputes all linked hashes and validators, and creates a fresh exact proposal for approval."
+  }
+}

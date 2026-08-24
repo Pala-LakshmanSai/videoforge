@@ -2,7 +2,7 @@
 
 ## Active handoff — read this section first
 
-Attempt52 is approved once and pending fresh preflight/execution. Proposal
+Attempt52 is closed `NOT_QUALIFIED`. Proposal
 `sha256:af1c2da86886bc3b4d077a30bf9ab720de6a39aa9fe4e8ec351697df5b224e77`, candidate acceptance
 `sha256:193f1066714e2e778cf2266564c0bfd0c6b65976d4f85ea862416033febea300`, max1
 `sha256:6a227655…cd60f2`, and max2 `sha256:c293dd01…65def7` bind repair `ec39d09`. The repair accepts
@@ -11,7 +11,12 @@ requiring queue-empty reads, two identical snapshots, every record terminal, zer
 and zero running Pods. Focused proof is green. Exact authority
 `sha256:3b15fca048ba4eb570a27b5a6e6d521a415e27c556c230757b6702e0c1017453` binds FlashBoot true,
 LOW-or-better EU-RO-1, `two-phase-v1` anchor refresh, the `$4` maximum cumulative finite cap, and
-continued `$7/month` retention of the two existing volumes. It is single-use; V2-08 is forbidden.
+continued `$7/month` retention of the two existing volumes. Pre-mutation execution stopped at
+`V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; the authority is consumed and non-reusable.
+No Cloudflare/RunPod mutation, job, GPU use, output, or observed spend occurred. Closure
+`sha256:267918ea…8dec0` and reconciliation `sha256:83dbb079…32876` prove zero disposable resources,
+both volumes retained, restored protected config, unchanged billing, and POST `404
+V207_ROUTE_DISABLED`. V2-08 is forbidden.
 
 Attempt51 remains closed `NOT_QUALIFIED`. Its consumed/non-reusable authority produced one durable
 1280×720 probe before the former exact-one-total-record gate failed. Closure `sha256:c2ac52ad…eab02a`
@@ -37,8 +42,10 @@ personal-worker renderer are completed foundations to integrate, not reimplement
 Use focused tests for changed surfaces and one narrow repair cycle. Canonical provider-free
 verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
 Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
-mandatory. This state grants only the exact Attempt52 proposal-bound operations. The smallest next
-action is a fresh read-only preflight, followed by bounded execution only if every bound check passes.
+mandatory. This state grants no provider call, mutation, GPU use, or spend. The smallest next action
+is a new provider-free V2-07 anchor-rebind micro-checkpoint; capture the current active Worker
+record, update both bound anchor hashes, recompute linked hashes/validators, and issue a fresh exact
+proposal. Do not start V2-08.
 
 ## Historical V2-07 attempt ledger — do not preload
 
