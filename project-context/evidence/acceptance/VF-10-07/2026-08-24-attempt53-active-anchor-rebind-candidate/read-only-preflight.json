@@ -1,0 +1,122 @@
+{
+  "schema_version": "videoforge.v2-07-attempt53-read-only-preflight/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 53,
+  "checked_at": "2026-08-24T11:13:48.804Z",
+  "observation_kind": "FRESH_AUTHORIZED_READ_ONLY_ANCHOR_REBIND_RUNPOD_RECONCILIATION_AND_CATALOG",
+  "read_only": true,
+  "fresh_provider_read": true,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "command_results": [
+    {
+      "operation": "redacted_cloudflare_status_versions_and_secret_names_read",
+      "checked_at": "2026-08-24T11:12:47.944Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    },
+    {
+      "operation": "redacted_read_only_runpod_reconciliation",
+      "checked_at": "2026-08-24T11:13:34.144Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    },
+    {
+      "operation": "local_catalog_import_smoke",
+      "exit_code": 1,
+      "provider_request_completed": false,
+      "failure": "TSX_CJS_TOP_LEVEL_AWAIT_TRANSFORM"
+    },
+    {
+      "operation": "redacted_safe_direct_catalog_read",
+      "checked_at": "2026-08-24T11:13:48.804Z",
+      "exit_code": 0,
+      "provider_request_completed": true
+    },
+    {
+      "operation": "exact_post_empty_json_disabled_route_probe",
+      "exit_code": 0,
+      "provider_request_completed": true
+    }
+  ],
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "final_disposable_resources_absent": true,
+    "retained_volumes": [
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "mount": "/runpod-volume",
+        "model_root": "/runpod-volume/mage-model"
+      }
+    ]
+  },
+  "selected_gpu": {
+    "offering": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "minimum_requested": "LOW-or-better",
+    "minimum_satisfied": true,
+    "flashboot": true,
+    "secure_reference_rate_usd_per_gpu_hour": 0.74,
+    "serverless_flex_published_rate_usd_per_gpu_hour": 1.1,
+    "vram_gb": 24
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.645446196460398,
+    "final_endpoint_spend_usd": 1.645446196460398,
+    "incremental_spend_usd": 0,
+    "candidate_finite_cap_usd": null,
+    "finite_estimate_usd_ceiling": 3.95,
+    "cap_input_non_authorizing": true,
+    "existing_two_volume_charge_usd_per_month": 7
+  },
+  "cloudflare": {
+    "active_version_id_sha256": "sha256:c0c3303f78987b630da7a425117b2587aeca563266458f6f4b0b20db6b014f33",
+    "active_record_sha256": "sha256:1612a0d0582a9af311a5395f1920dde197ddad89f109ed396f35f3b4ef3840ad",
+    "active_anchor_retained": true,
+    "active_anchor_index_oldest_to_newest": 7,
+    "version_window_length": 10,
+    "protected_signer_secret_present": false,
+    "unrelated_secret_name_count": 8,
+    "secret_values_retained": false,
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "exact_route_probe": {
+      "method": "POST",
+      "request_body": {},
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    }
+  },
+  "prior_attempt52_closure": {
+    "path": "../2026-08-21-live-qualification/failed-attempt-52.json",
+    "sha256": "sha256:267918ea297d63e614107815a01f2a45192be85495752008c375c229db98dec0",
+    "reconciliation_path": "../2026-08-21-live-qualification/attempt52-reconciliation-observation.json",
+    "reconciliation_sha256": "sha256:83dbb0790059de5215ea857849b5897f1deee474ed5d4f02727b26f30cf32876"
+  },
+  "raw_provider_ids_urls_bodies_or_secrets_retained": false,
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "provider_calls_authorized_after_this_read": false,
+    "gpu_use_authorized": false,
+    "v2_08_authorized": false
+  }
+}

@@ -16,6 +16,8 @@ import {
   spawnV207Command,
   V207_ORCHESTRATOR_SECRET_NAME,
   V207_ORCHESTRATOR_MIN_FREE_BYTES,
+  V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256,
+  V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256,
   V207_WRANGLER_DEPLOY_FAILURE_EVENT_DETAIL_KEYS,
   V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
   V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY,
@@ -120,6 +122,15 @@ afterEach(async () => {
 });
 
 describe("V2-07 live orchestrator", () => {
+  it("pins the refreshed active Worker anchor without exposing its raw version id", () => {
+    expect(V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256).toBe(
+      "sha256:c0c3303f78987b630da7a425117b2587aeca563266458f6f4b0b20db6b014f33",
+    );
+    expect(V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256).toBe(
+      "sha256:1612a0d0582a9af311a5395f1920dde197ddad89f109ed396f35f3b4ef3840ad",
+    );
+  });
+
   it("requires an explicit refresh binding on every injected authority", () => {
     expect(parseFixtureAuthority().anchorRefreshAuthorized).toBe(false);
     expect(parseFixtureRefreshAuthority().anchorRefreshAuthorized).toBe(true);
