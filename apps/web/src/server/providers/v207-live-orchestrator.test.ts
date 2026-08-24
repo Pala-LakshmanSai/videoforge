@@ -156,9 +156,7 @@ async function exerciseRefreshVersionIdentityFailure(
     if (request.command === "git") return result();
     if (request.args.includes("versions") && request.args.includes("list")) {
       versionsCalls += 1;
-      return result(
-        versionsCalls === 1 ? RECENT_VERSION_LIST : REFRESHED_VERSION_LIST,
-      );
+      return result(versionsCalls === 1 ? RECENT_VERSION_LIST : REFRESHED_VERSION_LIST);
     }
     if (request.args.includes("deployments")) {
       statusCalls += 1;
@@ -166,9 +164,9 @@ async function exerciseRefreshVersionIdentityFailure(
         ? SIGNER_VERSION_ID
         : rollbackSeen && boundary === "disabled-route"
           ? VERSION_ID
-        : statusCalls === 1
-          ? VERSION_ID
-          : REFRESH_VERSION_ID;
+          : statusCalls === 1
+            ? VERSION_ID
+            : REFRESH_VERSION_ID;
       return result(
         JSON.stringify({
           id: DEPLOYMENT_ID,
@@ -224,11 +222,7 @@ async function exerciseRefreshVersionIdentityFailure(
     if (rollbackSeen && !signerSecretPresent) {
       if (boundary === "restored-route") {
         const readIndex = restorationProbeCalls++;
-        return response(
-          404,
-          "V207_ROUTE_DISABLED",
-          failureIdentity(REFRESH_VERSION_ID, readIndex),
-        );
+        return response(404, "V207_ROUTE_DISABLED", failureIdentity(REFRESH_VERSION_ID, readIndex));
       }
       return response(404, "V207_ROUTE_DISABLED", VERSION_ID);
     }
@@ -288,12 +282,12 @@ afterEach(async () => {
 });
 
 describe("V2-07 live orchestrator", () => {
-  it("pins the refreshed active Worker anchor without exposing its raw version id", () => {
+  it("pins the currently approved refreshed active Worker anchor without exposing its raw version id", () => {
     expect(V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256).toBe(
-      "sha256:c0c3303f78987b630da7a425117b2587aeca563266458f6f4b0b20db6b014f33",
+      "sha256:36256382df0f40b1e654b041d5bfbcadefac429ab0b9de0709b567975e7a8ad6",
     );
     expect(V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256).toBe(
-      "sha256:1612a0d0582a9af311a5395f1920dde197ddad89f109ed396f35f3b4ef3840ad",
+      "sha256:9e37db7bcf43625ea1ff0679f3ed421d50ad4e951088e2fa0cdbfc707a0afac2",
     );
   });
 
@@ -1162,12 +1156,14 @@ describe("V2-07 live orchestrator", () => {
       expect(outcome.restorationProbeCalls).toBeLessThan(16);
       const evidence = await readFile(outcome.files.evidencePath, "utf8");
       expect(evidence).toContain('"result": "CLEANUP_UNCERTAIN"');
-      expect(evidence).toMatch(/V207_(?:ROUTE_VERSION_ID_MISSING|ROUTE_VERSION_ID_UNCONFIRMED|ROUTE_RESTORATION_UNCONFIRMED)/u);
+      expect(evidence).toMatch(
+        /V207_(?:ROUTE_VERSION_ID_MISSING|ROUTE_VERSION_ID_UNCONFIRMED|ROUTE_RESTORATION_UNCONFIRMED)/u,
+      );
       expect(evidence).not.toContain('"event": "restored_route_confirmed"');
     },
   );
 
-  it("rejects a refresh when the fresh old version and record hashes drift from the proposal", async () => {
+  it("fails closed before route or Worker mutation when the observed old anchor is stale", async () => {
     const files = await fixture();
     const calls: V207CommandRequest[] = [];
     const environment = {
@@ -1206,12 +1202,27 @@ describe("V2-07 live orchestrator", () => {
     ).rejects.toMatchObject({ code: "V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH" });
 
     expect(calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(calls.some((call) => call.command === "git")).toBe(true);
     expect(await readFile(files.configPath)).toEqual(
       await readFile(V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH),
     );
-    expect(await readFile(files.evidencePath, "utf8")).toContain(
-      '"event": "rollback_anchor_refresh_marker_reverted"',
+    const evidence = JSON.parse(await readFile(files.evidencePath, "utf8")) as {
+      readonly events: ReadonlyArray<{
+        readonly event: string;
+        readonly detail?: Readonly<Record<string, unknown>>;
+      }>;
+      readonly result: string;
+    };
+    expect(evidence.events.find((event) => event.event === "orchestration_failed")?.detail).toEqual(
+      {
+        code: "V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH",
+      },
     );
+    expect(evidence.events.some((event) => event.event === "orchestration_complete")).toBe(false);
+    expect(
+      evidence.events.some((event) => event.event === "rollback_anchor_refresh_marker_reverted"),
+    ).toBe(true);
+    expect(evidence.result).toBe("FAILED");
   });
 
   it("fails cleanup-uncertain when the protected marker cannot be applied exactly", async () => {
@@ -1383,7 +1394,13 @@ describe("V2-07 live orchestrator", () => {
         return result(
           JSON.stringify({
             id: DEPLOYMENT_ID,
-            versions: [{ version_id, percentage: 100, ...(version_id === VERSION_ID ? {} : { script_hash: "sha256:refreshed" }) }],
+            versions: [
+              {
+                version_id,
+                percentage: 100,
+                ...(version_id === VERSION_ID ? {} : { script_hash: "sha256:refreshed" }),
+              },
+            ],
           }),
         );
       }
