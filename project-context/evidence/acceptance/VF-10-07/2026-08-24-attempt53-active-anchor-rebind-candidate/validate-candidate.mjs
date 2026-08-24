@@ -8,6 +8,7 @@ const root = path.resolve(dir, "../../../../../");
 const E = {
   proposal: "sha256:5c2023d6451284b9ccdf64112e3bee6d8417ed6b0fa796520875ea080eead75f",
   acceptance: "sha256:a04962398607efcd8350e14417f86c185f2c2e5b8146286edf8843712d433b99",
+  authority: "sha256:d8087eb316fd9d0f32d77db6343457a836a56f1d40c5d51cb2a2d89e98ceeefb",
   preflight: "sha256:86befdc3eee48ec030b73848fb2133f1be9f7ed2f76023bbc9b7d920b2a4fb55",
   max1: "sha256:2b9f6a9f5d3220491996c5b910205cdb18f21655735fcd1c8a1e40b14a032d1e",
   max2: "sha256:f897321d10e9d4a839f9bc675c24351fbc8b73c98bfb93a64c261a5359db0ff4",
@@ -65,13 +66,13 @@ const canonicalActivation = (source) => {
 for (const [file, hash] of [
   ["combined-live-proposal.json", E.proposal],
   ["acceptance.json", E.acceptance],
+  ["approved-authority.json", E.authority],
   ["read-only-preflight.json", E.preflight],
   ["staged-config-max1.json", E.max1],
   ["staged-config-max2.json", E.max2],
 ]) {
   eq(sha(path.join(dir, file)), hash, `${file}_HASH`);
 }
-yes(!fs.existsSync(path.join(dir, "approved-authority.json")), "NO_AUTHORITY_FILE");
 eq(
   sha(path.join(dir, "../2026-08-21-live-qualification/failed-attempt-52.json")),
   E.priorClosure,
@@ -80,6 +81,7 @@ eq(
 
 const proposal = json(path.join(dir, "combined-live-proposal.json"));
 const acceptance = json(path.join(dir, "acceptance.json"));
+const authority = json(path.join(dir, "approved-authority.json"));
 const preflight = json(path.join(dir, "read-only-preflight.json"));
 const max1 = json(path.join(dir, "staged-config-max1.json"));
 const max2 = json(path.join(dir, "staged-config-max2.json"));
@@ -113,6 +115,19 @@ eq(acceptance.provider_boundary.provider_calls_authorized, false, "ACCEPTANCE_PR
 eq(acceptance.provider_boundary.external_spend_usd, 0, "ACCEPTANCE_SPEND");
 eq(acceptance.v2_08_authorized, false, "ACCEPTANCE_V208");
 
+eq(authority.attempt, 53, "AUTHORITY_ATTEMPT");
+eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "AUTHORITY_STATUS");
+eq(authority.proposal.sha256, E.proposal, "AUTHORITY_PROPOSAL");
+eq(authority.acceptance.sha256, E.acceptance, "AUTHORITY_ACCEPTANCE");
+eq(authority.approval.maximum_cumulative_finite_spend_usd, 4, "AUTHORITY_CAP");
+eq(authority.approval.anchor_refresh_authorized, true, "AUTHORITY_REFRESH");
+eq(authority.approval.consumed, false, "AUTHORITY_UNCONSUMED");
+eq(authority.lineage.control_source_commit, E.control, "AUTHORITY_CONTROL");
+eq(authority.lineage.canonical_activation_source_sha256, E.canonical, "AUTHORITY_CANONICAL");
+eq(authority.lineage.initial_config_sha256, E.max1, "AUTHORITY_MAX1");
+eq(authority.lineage.concurrent_reader_config_sha256, E.max2, "AUTHORITY_MAX2");
+eq(authority.execution_boundary.v2_08_authorized, false, "AUTHORITY_V208");
+
 eq(preflight.authority.authority_recorded, false, "PREFLIGHT_AUTHORITY");
 eq(preflight.authority.maximum_cumulative_finite_spend_usd, null, "PREFLIGHT_CAP");
 eq(preflight.provider_mutations, 0, "PREFLIGHT_MUTATIONS");
@@ -141,9 +156,9 @@ eq(sha(path.join(root, "apps/web/src/server/providers/runpod-v207-readonly-recon
 const activation = text(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"));
 yes(activation.includes(E.proposal), "ACTIVATION_PROPOSAL");
 yes(activation.includes(E.control), "ACTIVATION_CONTROL");
-yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_AUTHORITY");
-yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_CAP");
-yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_REFRESH");
+yes(activation.includes(E.authority), "ACTIVATION_AUTHORITY");
+yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*4\s*;/mu.test(activation), "ACTIVATION_CAP");
+yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*true\s*;/mu.test(activation), "ACTIVATION_REFRESH");
 eq(
   `sha256:${crypto.createHash("sha256").update(canonicalActivation(activation), "utf8").digest("hex")}`,
   E.canonical,

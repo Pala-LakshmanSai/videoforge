@@ -2,19 +2,20 @@
 
 ## Active handoff — read this section first
 
-Attempt53 is a provider-free `NOT_QUALIFIED` candidate pending fresh exact approval. Proposal
+Attempt53 is `NOT_QUALIFIED` with exact single-use authority pending execution. Proposal
 `sha256:5c2023d6451284b9ccdf64112e3bee6d8417ed6b0fa796520875ea080eead75f`, candidate acceptance
 `sha256:a04962398607efcd8350e14417f86c185f2c2e5b8146286edf8843712d433b99`, preflight
 `sha256:86befdc3…a4fb55`, max1 `sha256:2b9f6a9f…032d1e`, and max2
 `sha256:f897321d…db0ff4` bind control commit `3b40fd3`. The candidate rebinds the fresh retained active
 Worker anchor while preserving the unique matching signed endpoint-bound terminal Pod,
 queue-empty, two-identical-snapshot, all-terminal, zero-active-worker, zero-running-Pod, and
-no-redispatch fences. Focused proof is green. No Attempt53 authority or executable cap exists.
+no-redispatch fences. Focused proof is green. Authority `sha256:d8087eb3…ceeefb` binds the exact
+proposal, FlashBoot true, LOW-or-better EU-RO-1, `two-phase-v1` anchor refresh, and a fresh `$4`
+maximum cumulative finite cap.
 Fresh reads prove zero Pods/endpoints/private templates/workers, both retained volumes, unchanged
 billing `1.645446196460398`, RTX 4090 EU-RO-1 `LOW`, restored protected config, and POST `404
-V207_ROUTE_DISABLED`. The exact requested boundary is FlashBoot true, LOW-or-better EU-RO-1,
-`two-phase-v1` anchor refresh, a fresh `$4` maximum cumulative finite cap, and continued `$7/month`
-retention of the two existing volumes. V2-08 is forbidden.
+V207_ROUTE_DISABLED`. Continued `$7/month` retention of the two existing volumes is approved
+separately. The authority is single-use and unconsumed; V2-08 is forbidden.
 
 Attempt52 is closed before mutation at `V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; its
 authority is consumed and non-reusable. Closure `sha256:267918ea…8dec0` and reconciliation
@@ -45,10 +46,9 @@ personal-worker renderer are completed foundations to integrate, not reimplement
 Use focused tests for changed surfaces and one narrow repair cycle. Canonical provider-free
 verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
 Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
-mandatory. This state grants no provider call, mutation, GPU use, or spend. The smallest next action
-is fresh exact approval of Attempt53 proposal
-`sha256:5c2023d6451284b9ccdf64112e3bee6d8417ed6b0fa796520875ea080eead75f`.
-Do not start V2-08.
+mandatory. This state grants one exact Attempt53 execution under authority
+`sha256:d8087eb316fd9d0f32d77db6343457a836a56f1d40c5d51cb2a2d89e98ceeefb` and the `$4` cap.
+Consume and close it after execution. Do not start V2-08.
 
 ## Historical V2-07 attempt ledger — do not preload
 

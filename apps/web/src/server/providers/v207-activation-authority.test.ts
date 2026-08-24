@@ -125,9 +125,11 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
+      "sha256:d8087eb316fd9d0f32d77db6343457a836a56f1d40c5d51cb2a2d89e98ceeefb",
+    );
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4);
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(true);
   });
 
   it("uses a fail-closed non-cyclic source binding for all approval constants", () => {
@@ -321,14 +323,14 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects Attempt52 inputs after the single-use authority is consumed", () => {
+  it("requires the exact finite cap for the approved Attempt53 proposal", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_FINITE_CAP_REQUIRED");
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -336,13 +338,13 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "2",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_FINITE_CAP_MISMATCH");
   });
 
-  it("rejects Attempt52 even when the consumed activation values are supplied", () => {
+  it("accepts Attempt53 only with the compiled single-use authority and exact cap", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
-    expect(() =>
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(true);
+    expect(
       parseV207ActivationAuthority({
         ...refreshMarker,
         V207_IMAGE: image,
@@ -350,7 +352,12 @@ describe("V2-07 activation authority", () => {
         V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
         V207_FINITE_CAP_USD: "4",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toEqual({
+      image,
+      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
+      capUsd: 4,
+      anchorRefreshAuthorized: true,
+    });
     expect(() =>
       parseV207ActivationAuthority({
         ...refreshMarker,
