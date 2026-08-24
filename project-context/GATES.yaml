@@ -157,14 +157,14 @@ gates:
     current_candidate_acceptance_sha256: "sha256:0a80c683aaa670ae8c11132e0601b56879d70e1857a6ad2e2c64cba6657c6384"
     current_candidate_preflight: null
     current_candidate_preflight_sha256: null
-    current_candidate_authority: null
-    current_candidate_authority_sha256: null
-    current_candidate_authority_state: PENDING_FRESH_EXACT_APPROVAL_AND_CAP
-    current_candidate_authority_mode: none
-    current_candidate_finite_cap_usd: null
-    current_candidate_anchor_refresh_authorized: false
-    current_candidate_cloudflare_mutation_authorized: false
-    current_candidate_scoped_signer_worker_route_activation_authorized: false
+    current_candidate_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/approved-authority.json"
+    current_candidate_authority_sha256: "sha256:1c2166d74fdb0a35271b50709720bd80fbbef7442dc28d35c16c534dc43760fa"
+    current_candidate_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
+    current_candidate_authority_mode: bounded_mutation
+    current_candidate_finite_cap_usd: 4
+    current_candidate_anchor_refresh_authorized: true
+    current_candidate_cloudflare_mutation_authorized: true
+    current_candidate_scoped_signer_worker_route_activation_authorized: true
     current_candidate_provider_calls_completed: false
     current_candidate_external_spend_usd: 0
     current_candidate_control_source_commit: "3bfeff00b62945936bdbfc1e7dede9037ef4a31e"
@@ -202,14 +202,14 @@ gates:
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
     pending_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/combined-live-proposal.json"
     pending_proposal_sha256: "sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8"
-    pending_authority: null
-    pending_authority_sha256: null
-    pending_authority_state: null
-    pending_authority_mode: none
-    pending_numeric_cap_usd: null
-    pending_anchor_refresh_authorized: false
-    pending_cloudflare_mutation_authorized: false
-    pending_scoped_signer_worker_route_activation_authorized: false
+    pending_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/approved-authority.json"
+    pending_authority_sha256: "sha256:1c2166d74fdb0a35271b50709720bd80fbbef7442dc28d35c16c534dc43760fa"
+    pending_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
+    pending_authority_mode: bounded_mutation
+    pending_numeric_cap_usd: 4
+    pending_anchor_refresh_authorized: true
+    pending_cloudflare_mutation_authorized: true
+    pending_scoped_signer_worker_route_activation_authorized: true
     pending_control_source_commit: "3bfeff00b62945936bdbfc1e7dede9037ef4a31e"
     pending_live_qualification_source_sha256: "sha256:c5187fb9636d53e214d90f60c1a67a13ed06dc47c558f4869628b6d09a27a9c5"
     current_provider_free_repair_commit: "1a8a12de10869d163ddf7bb4dfa3f329407ba566"
@@ -234,11 +234,11 @@ gates:
     pending_old_active_window_length: 10
     pending_flashboot: true
     pending_availability: HIGH
-    provider_calls_authorized: false
-    provider_mutations_authorized: false
-    gpu_use_authorized: false
+    provider_calls_authorized: true
+    provider_mutations_authorized: true
+    gpu_use_authorized: true
     v2_08_authorized: false
-    authority_mode: closed_consumed_attempt47_rollback_anchor_not_retained_clean
+    authority_mode: approved_single_use_attempt48_pending_execution
     result: "NOT_QUALIFIED_attempt47_rollback_anchor_not_retained_clean"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-47.json"
     closure_evidence_sha256: "sha256:6f3204b9eee5a10eaa64f4f80fa3bd7fa6cf16e3fc2dc0eda2e6d2a63de08472"

@@ -10,9 +10,10 @@ and its `$4` cap were consumed when preflight stopped before mutation at
 `sha256:6f3204b9eee5a10eaa64f4f80fa3bd7fa6cf16e3fc2dc0eda2e6d2a63de08472`; three stable reads prove
 zero disposable resources, both volumes retained, and `$0` incremental spend. No authority/cap remains; V2-08 forbidden.
 
-Attempt48 provider-free proposal `sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8`
+Attempt48 proposal `sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8`
 binds the verified current rollback anchor and the two-phase refresh lifecycle before unchanged Mage qualification.
-It has no authority or cap; provider calls remain forbidden pending fresh exact approval.
+Authority `sha256:1c2166d74fdb0a35271b50709720bd80fbbef7442dc28d35c16c534dc43760fa`
+approves one execution with FlashBoot=true, LOW-or-better EU-RO-1, anchor refresh, and a fresh `$4` cap.
 
 Attempt46 is closed fail-closed as `NOT_QUALIFIED`. Proposal
 `sha256:653c44ceeb3aa3948dade2f7b2d0c68904152aeee66392f826b3b1ffd7b9c259` and authority
