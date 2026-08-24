@@ -1,0 +1,101 @@
+{
+  "schema_version": "videoforge.v2-07-attempt52-stable-terminal-history-repair-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 52,
+  "recorded_at": "2026-08-24T09:48:15Z",
+  "status": "PROVIDER_FREE_CANDIDATE_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:af1c2da86886bc3b4d077a30bf9ab720de6a39aa9fe4e8ec351697df5b224e77",
+    "control_source_commit": "ec39d091745394f4ebb84362d1c2a9fc1e18b1c3",
+    "live_qualification_source_sha256": "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86",
+    "qualification_harness_source_sha256": "sha256:772249e8feab2c58600807d35844693baaa02d3706eb72d86773637061560cd4",
+    "canonical_activation_source_sha256": "sha256:c79cc35c2e41ca0cce06caf6913c4154a3ae9799ecf875d84b027cbbda706248",
+    "max1_path": "staged-config-max1.json",
+    "max1_sha256": "sha256:6a227655b4ed8b6e36bacc3d373c6de12be5c53ff68fb7a0c97accde4fcd60f2",
+    "max2_path": "staged-config-max2.json",
+    "max2_sha256": "sha256:c293dd01d90d2b587a263cfe0729271b25e4f76cf88469f1d6912b019865def7",
+    "authority_recorded": false,
+    "authority_sha256": null,
+    "executable_maximum_cumulative_finite_spend_usd": null,
+    "anchor_refresh_authorized": null
+  },
+  "repair_proof": {
+    "provider_worker_record_id_and_runtime_pod_id_are_separate_namespaces": true,
+    "signed_runtime_pod_must_match_exactly_once_among_endpoint_bound_terminal_history": true,
+    "additional_distinct_terminal_pod_history_is_not_receipt_identity": true,
+    "all_provider_worker_and_pod_records_must_be_terminal": true,
+    "active_worker_and_running_pod_counts_must_be_zero": true,
+    "queue_empty_and_two_stable_terminal_snapshots_required": true,
+    "missing_or_duplicated_signed_pod_match_or_nonterminal_inventory_fails_closed": true,
+    "second_run_before_boundary_forbidden": true,
+    "attempt51_three_worker_three_pod_shape_covered_by_focused_test": true,
+    "fixture_proof_is_not_live_qualification": true
+  },
+  "immutable_runtime": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_rebuild_or_republication": false,
+    "handler_sha256": "sha256:3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "retained_volume_mutation_authorized": false
+  },
+  "scratch_contract": {
+    "exact_job_path": "/tmp/videoforge-jobs/jobs/${attempt_id}",
+    "model_volume_scratch_forbidden": true,
+    "terminal_removal_receipt_required": true
+  },
+  "acceptance_still_required_in_one_exact_paid_run": {
+    "complete_probe_resume_cold_warm_batches": true,
+    "provider_status_output_readback_receipt_reconciliation": true,
+    "at_most_one_and_duplicate_cost_visibility": true,
+    "cancel_and_timeout": true,
+    "measured_queue_execution_init_load_warmup_vram": true,
+    "pre_and_post_manifest_no_write_no_cache_escape": true,
+    "max1_then_separately_hashed_max2_complete_readers": true,
+    "restore_max1_and_workers_zero": true,
+    "unchanged_two_volume_inventory": true,
+    "actual_rate_and_cost_within_fresh_cap": true
+  },
+  "provider_boundary": {
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "external_spend_usd": 0,
+    "fresh_read_required_after_approval_before_mutation": true,
+    "attempt51_authority_reusable": false
+  },
+  "fresh_read_only_truth": {
+    "checked_at": "2026-08-24T09:24:19.200Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "cumulative_endpoint_spend_usd": 1.645446196460398,
+    "late_unattributed_billing_increment_usd": 0.023648916656384245,
+    "rtx4090_eu_ro_1_availability": "LOW",
+    "active_anchor_version_id_sha256": "sha256:05478fd7e83a2886edd70ed3558d29d253f2a37b7d0dbe100d5a30b97ad42c52",
+    "active_anchor_record_sha256": "sha256:64fef83e5b77393eeb9d2d6e91a7e0f6b56a0a941d0ebe535707d1ef9e12e969",
+    "active_anchor_retained": true,
+    "active_anchor_index_oldest_to_newest": 7,
+    "protected_signer_secret_present": false,
+    "route_probe": "404_V207_ROUTE_DISABLED"
+  },
+  "cost_truth": {
+    "last_observed_serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "requested_fresh_cap_usd": 4,
+    "finite_action_estimate_usd": 3.95,
+    "completion_conditional_on_measured_durations_fitting_cap": true,
+    "provider_final_invoice_absolute_guarantee": false,
+    "existing_two_volume_charge_usd_per_month": 7
+  },
+  "remaining_p1": "NO_SINGLE_IMMUTABLE_PAID_RUN_SATISFIES_THE_EXACT_CURRENT_LINEAGE_AND_COMPLETE_ACCEPTANCE",
+  "required_user_authority": "Approve exact Attempt52 proposal sha256:af1c2da86886bc3b4d077a30bf9ab720de6a39aa9fe4e8ec351697df5b224e77 with FlashBoot=true, LOW-or-better EU-RO-1 availability, exact two-phase-v1 anchor refresh, and a fresh USD 4 maximum cumulative finite spend cap; completion remains conditional on measured durations fitting the cap",
+  "v2_08_authorized": false
+}

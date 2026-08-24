@@ -2,14 +2,18 @@
 
 ## Active handoff — read this section first
 
-Attempt51 is closed `NOT_QUALIFIED`. Under exact authority `sha256:61e00a70…f52ea9` and a `$4` cap,
-one durable 1280×720 probe completed, but the process-replacement boundary again failed
-`RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE`; repair `f4054ed` did not close the gate.
-The closed proposal is `sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe`.
-Closure `sha256:c2ac52ad…eab02a` proves the authority consumed/non-reusable, exact endpoint/template
-deleted, signer removed, protected config and disabled route restored, zero compute/disposable
-resources across three stable reads, both 50 GB volumes retained, and `$0` observed billing increment.
-The allowed repair cycle is exhausted. V2-08 is forbidden.
+Attempt52 is a provider-free candidate pending fresh exact approval. Proposal
+`sha256:af1c2da86886bc3b4d077a30bf9ab720de6a39aa9fe4e8ec351697df5b224e77`, candidate acceptance
+`sha256:193f1066714e2e778cf2266564c0bfd0c6b65976d4f85ea862416033febea300`, max1
+`sha256:6a227655…cd60f2`, and max2 `sha256:c293dd01…65def7` bind repair `ec39d09`. The repair accepts
+exactly one matching signed endpoint-bound terminal Pod among stable terminal history while still
+requiring queue-empty reads, two identical snapshots, every record terminal, zero active workers,
+and zero running Pods. Focused proof is green. No authority/cap is executable; V2-08 is forbidden.
+
+Attempt51 remains closed `NOT_QUALIFIED`. Its consumed/non-reusable authority produced one durable
+1280×720 probe before the former exact-one-total-record gate failed. Closure `sha256:c2ac52ad…eab02a`
+proves exact cleanup, restored route/config, zero compute/disposable resources across three stable
+reads, both 50 GB volumes retained, and `$0` observed billing increment.
 
 Terminal read-only truth at `2026-08-24T09:24:19.200Z` proves zero Pods/endpoints/private
 templates/workers, both retained volumes, current cumulative endpoint billing `1.645446196460398`,
@@ -31,8 +35,8 @@ Use focused tests for changed surfaces and one narrow repair cycle. Canonical pr
 verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
 Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
 mandatory. This state grants no provider call, mutation, GPU use, or spend. The smallest next action
-is provider-free analysis of Attempt51 terminal Pod identity lookup evidence only. Any paid retry
-requires a new exact proposal, fresh approval, and fresh positive numeric cap.
+is fresh exact approval of Attempt52 with FlashBoot true, LOW-or-better EU-RO-1 availability, exact
+two-phase anchor refresh, and a maximum cumulative finite spend cap of `$4`.
 
 ## Historical V2-07 attempt ledger — do not preload
 
