@@ -869,14 +869,35 @@ async function waitForRouteRestoration(
   expected: RouteFingerprint,
   sleepImpl: (milliseconds: number) => Promise<void>,
   signal: AbortSignal,
+  expectedWorkerVersionId?: string,
 ): Promise<RouteFingerprint> {
+  if (expectedWorkerVersionId !== undefined && !VERSION_ID.test(expectedWorkerVersionId)) {
+    throw new V207LiveOrchestratorError("V207_ROUTE_VERSION_ID_INVALID");
+  }
   let consecutiveMatches = 0;
   for (let attempt = 1; attempt <= RESTORATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
     if (signal.aborted) break;
     let observed: RouteFingerprint | undefined;
     try {
-      observed = await readRouteFingerprint(fetchImpl, routeUrl, signal);
-    } catch {
+      observed = await readRouteFingerprint(
+        fetchImpl,
+        routeUrl,
+        signal,
+        expectedWorkerVersionId !== undefined,
+      );
+    } catch (error) {
+      // In refresh mode, an identity that is missing or malformed is an
+      // observed edge mismatch, not a transient reachability failure. Keep
+      // the precise bounded identity error so cleanup cannot accept a later
+      // isolated status/code match from another Worker version.
+      if (
+        expectedWorkerVersionId !== undefined &&
+        error instanceof V207LiveOrchestratorError &&
+        (error.code === "V207_ROUTE_VERSION_ID_MISSING" ||
+          error.code === "V207_ROUTE_VERSION_ID_INVALID")
+      ) {
+        throw error;
+      }
       if (consecutiveMatches > 0) {
         // Once the captured fingerprint has appeared, a probe error is an unproven
         // alternation rather than a stable restoration. Fail closed instead of
@@ -889,6 +910,12 @@ async function waitForRouteRestoration(
       consecutiveMatches = 0;
     }
     if (observed !== undefined) {
+      if (
+        expectedWorkerVersionId !== undefined &&
+        observed.workerVersionId !== expectedWorkerVersionId
+      ) {
+        throw new V207LiveOrchestratorError("V207_ROUTE_VERSION_ID_UNCONFIRMED");
+      }
       const matches = observed.status === expected.status && observed.code === expected.code;
       if (matches) {
         consecutiveMatches += 1;
@@ -932,15 +959,38 @@ async function waitForRefreshDisabledRoute(
   sleepImpl: (milliseconds: number) => Promise<void>,
   signal: AbortSignal,
   failureCode = "V207_ROLLBACK_ANCHOR_REFRESH_ROUTE_UNCONFIRMED",
+  expectedWorkerVersionId?: string,
 ): Promise<RouteFingerprint> {
+  if (expectedWorkerVersionId !== undefined && !VERSION_ID.test(expectedWorkerVersionId)) {
+    throw new V207LiveOrchestratorError("V207_ROUTE_VERSION_ID_INVALID");
+  }
   let consecutiveMatches = 0;
   for (let attempt = 1; attempt <= RESTORATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
     if (signal.aborted) break;
     let observed: RouteFingerprint;
     try {
-      observed = await readRouteFingerprint(fetchImpl, routeUrl, signal);
-    } catch {
+      observed = await readRouteFingerprint(
+        fetchImpl,
+        routeUrl,
+        signal,
+        expectedWorkerVersionId !== undefined,
+      );
+    } catch (error) {
+      if (
+        expectedWorkerVersionId !== undefined &&
+        error instanceof V207LiveOrchestratorError &&
+        (error.code === "V207_ROUTE_VERSION_ID_MISSING" ||
+          error.code === "V207_ROUTE_VERSION_ID_INVALID")
+      ) {
+        throw error;
+      }
       throw new V207LiveOrchestratorError(failureCode);
+    }
+    if (
+      expectedWorkerVersionId !== undefined &&
+      observed.workerVersionId !== expectedWorkerVersionId
+    ) {
+      throw new V207LiveOrchestratorError("V207_ROUTE_VERSION_ID_UNCONFIRMED");
     }
     if (
       observed.status !== V207_REFRESH_DISABLED_ROUTE.status ||
@@ -1578,17 +1628,6 @@ export async function runV207LiveOrchestration(
     await record("current_source_deployed_signer_disabled");
 
     if (rollbackAnchorRefresh.enabled) {
-      const disabledRoute = await waitForRefreshDisabledRoute(
-        fetchImpl,
-        routeUrl,
-        sleepImpl,
-        abortController.signal,
-      );
-      await record("rollback_anchor_refresh_disabled_route_stable", {
-        status: disabledRoute.status,
-        code: disabledRoute.code,
-        consecutive_matches: RESTORATION_REQUIRED_CONSECUTIVE_MATCHES,
-      });
       const refreshedAnchor = await statusVersion(
         run,
         cwd,
@@ -1603,6 +1642,23 @@ export async function runV207LiveOrchestration(
       ) {
         throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_UNCHANGED");
       }
+      // Read the exact active version before accepting any signer-disabled
+      // route response. The control-plane status and data-plane header must
+      // identify one immutable refreshed Worker version.
+      const disabledRoute = await waitForRefreshDisabledRoute(
+        fetchImpl,
+        routeUrl,
+        sleepImpl,
+        abortController.signal,
+        undefined,
+        refreshedAnchor.versionId,
+      );
+      await record("rollback_anchor_refresh_disabled_route_stable", {
+        status: disabledRoute.status,
+        code: disabledRoute.code,
+        worker_version_id_hash: sha256(refreshedAnchor.versionId),
+        consecutive_matches: RESTORATION_REQUIRED_CONSECUTIVE_MATCHES,
+      });
       const refreshedVersions = await recentWorkerVersions(
         run,
         cwd,
@@ -1625,10 +1681,13 @@ export async function runV207LiveOrchestration(
         routeUrl,
         sleepImpl,
         abortController.signal,
+        undefined,
+        refreshedAnchor.versionId,
       );
       await record("rollback_anchor_refresh_post_promotion_route_stable", {
         status: promotedDisabledRoute.status,
         code: promotedDisabledRoute.code,
+        worker_version_id_hash: sha256(refreshedAnchor.versionId),
         consecutive_matches: RESTORATION_REQUIRED_CONSECUTIVE_MATCHES,
       });
       capturedAnchor = refreshedAnchor;
@@ -1802,25 +1861,37 @@ export async function runV207LiveOrchestration(
       if (!workerRollbackVerified) {
         cleanupErrors.push("V207_ROUTE_RESTORATION_SKIPPED_ROLLBACK_UNCONFIRMED");
       } else {
-        try {
-          if (preMutationRoute === undefined) {
-            cleanupErrors.push("V207_ROUTE_RESTORATION_FINGERPRINT_MISSING");
-          } else {
-            const restoredRoute = await waitForRouteRestoration(
-              fetchImpl,
-              routeUrl,
-              preMutationRoute,
-              sleepImpl,
-              options.routeRestorationSignal ??
-                AbortSignal.timeout(RESTORATION_PROPAGATION_WINDOW_MS),
-            );
-            await record("restored_route_confirmed", {
-              status: restoredRoute.status,
-              code: restoredRoute.code,
-            });
+        const restoredAnchor = capturedAnchor;
+        if (restoredAnchor === undefined) {
+          cleanupErrors.push("V207_ROUTE_RESTORATION_VERSION_MISSING");
+        } else {
+          try {
+            if (preMutationRoute === undefined) {
+              cleanupErrors.push("V207_ROUTE_RESTORATION_FINGERPRINT_MISSING");
+            } else {
+              const expectedRestoredWorkerVersionId = rollbackAnchorRefresh.enabled
+                ? restoredAnchor.versionId
+                : undefined;
+              const restoredRoute = await waitForRouteRestoration(
+                fetchImpl,
+                routeUrl,
+                preMutationRoute,
+                sleepImpl,
+                options.routeRestorationSignal ??
+                  AbortSignal.timeout(RESTORATION_PROPAGATION_WINDOW_MS),
+                expectedRestoredWorkerVersionId,
+              );
+              await record("restored_route_confirmed", {
+                status: restoredRoute.status,
+                code: restoredRoute.code,
+                ...(expectedRestoredWorkerVersionId === undefined
+                  ? {}
+                  : { worker_version_id_hash: sha256(expectedRestoredWorkerVersionId) }),
+              });
+            }
+          } catch (error) {
+            cleanupErrors.push(safeErrorCode(error));
           }
-        } catch (error) {
-          cleanupErrors.push(safeErrorCode(error));
         }
       }
     } else {
