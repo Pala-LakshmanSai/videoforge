@@ -8,6 +8,7 @@ const root = path.resolve(dir, "../../../../../");
 const E = {
   proposal: "sha256:af1c2da86886bc3b4d077a30bf9ab720de6a39aa9fe4e8ec351697df5b224e77",
   acceptance: "sha256:193f1066714e2e778cf2266564c0bfd0c6b65976d4f85ea862416033febea300",
+  authority: "sha256:3b15fca048ba4eb570a27b5a6e6d521a415e27c556c230757b6702e0c1017453",
   max1: "sha256:6a227655b4ed8b6e36bacc3d373c6de12be5c53ff68fb7a0c97accde4fcd60f2",
   max2: "sha256:c293dd01d90d2b587a263cfe0729271b25e4f76cf88469f1d6912b019865def7",
   priorClosure: "sha256:c2ac52ad7b5600c472be09be6d1ba5376194c9a4e1f192242ec281b686eab02a",
@@ -63,6 +64,7 @@ const canonicalActivation = (source) => {
 for (const [file, hash] of [
   ["combined-live-proposal.json", E.proposal],
   ["acceptance.json", E.acceptance],
+  ["approved-authority.json", E.authority],
   ["staged-config-max1.json", E.max1],
   ["staged-config-max2.json", E.max2],
 ]) {
@@ -76,6 +78,7 @@ eq(
 
 const proposal = json(path.join(dir, "combined-live-proposal.json"));
 const acceptance = json(path.join(dir, "acceptance.json"));
+const authority = json(path.join(dir, "approved-authority.json"));
 const max1 = json(path.join(dir, "staged-config-max1.json"));
 const max2 = json(path.join(dir, "staged-config-max2.json"));
 eq(proposal.attempt, 52, "ATTEMPT");
@@ -107,6 +110,20 @@ eq(acceptance.repair_proof.additional_distinct_terminal_pod_history_is_not_recei
 eq(acceptance.repair_proof.active_worker_and_running_pod_counts_must_be_zero, true, "ZERO_ACTIVE");
 eq(acceptance.v2_08_authorized, false, "ACCEPTANCE_V208");
 
+eq(authority.attempt, 52, "AUTHORITY_ATTEMPT");
+eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "AUTHORITY_STATUS");
+eq(authority.proposal.sha256, E.proposal, "AUTHORITY_PROPOSAL");
+eq(authority.acceptance.sha256, E.acceptance, "AUTHORITY_ACCEPTANCE");
+eq(authority.approval.maximum_cumulative_finite_spend_usd, 4, "AUTHORITY_CAP");
+eq(authority.approval.anchor_refresh_authorized, true, "AUTHORITY_REFRESH");
+eq(authority.approval.consumed, false, "AUTHORITY_UNCONSUMED");
+eq(authority.lineage.control_source_commit, E.control, "AUTHORITY_CONTROL");
+eq(authority.lineage.qualification_harness_source_sha256, E.harness, "AUTHORITY_HARNESS");
+eq(authority.lineage.canonical_activation_source_sha256, E.canonical, "AUTHORITY_CANONICAL");
+eq(authority.lineage.initial_config_sha256, E.max1, "AUTHORITY_MAX1");
+eq(authority.lineage.concurrent_reader_config_sha256, E.max2, "AUTHORITY_MAX2");
+eq(authority.execution_boundary.v2_08_authorized, false, "AUTHORITY_V208");
+
 for (const [config, workersMax] of [
   [max1, 1],
   [max2, 2],
@@ -129,9 +146,9 @@ eq(sha(path.join(root, "apps/web/src/server/providers/runpod-v207-readonly-recon
 const activation = text(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"));
 yes(activation.includes(E.proposal), "ACTIVATION_PROPOSAL");
 yes(activation.includes(E.control), "ACTIVATION_CONTROL");
-yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_AUTHORITY");
-yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_CAP");
-yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_REFRESH");
+yes(activation.includes(E.authority), "ACTIVATION_AUTHORITY");
+yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*4\s*;/mu.test(activation), "ACTIVATION_CAP");
+yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*true\s*;/mu.test(activation), "ACTIVATION_REFRESH");
 eq(
   `sha256:${crypto.createHash("sha256").update(canonicalActivation(activation), "utf8").digest("hex")}`,
   E.canonical,
