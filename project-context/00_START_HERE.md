@@ -2,28 +2,31 @@
 
 ## Active handoff — read this section first
 
-Attempt52 is closed `NOT_QUALIFIED`. Proposal
-`sha256:af1c2da86886bc3b4d077a30bf9ab720de6a39aa9fe4e8ec351697df5b224e77`, candidate acceptance
-`sha256:193f1066714e2e778cf2266564c0bfd0c6b65976d4f85ea862416033febea300`, max1
-`sha256:6a227655…cd60f2`, and max2 `sha256:c293dd01…65def7` bind repair `ec39d09`. The repair accepts
-exactly one matching signed endpoint-bound terminal Pod among stable terminal history while still
-requiring queue-empty reads, two identical snapshots, every record terminal, zero active workers,
-and zero running Pods. Focused proof is green. Exact authority
-`sha256:3b15fca048ba4eb570a27b5a6e6d521a415e27c556c230757b6702e0c1017453` binds FlashBoot true,
-LOW-or-better EU-RO-1, `two-phase-v1` anchor refresh, the `$4` maximum cumulative finite cap, and
-continued `$7/month` retention of the two existing volumes. Pre-mutation execution stopped at
-`V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; the authority is consumed and non-reusable.
-No Cloudflare/RunPod mutation, job, GPU use, output, or observed spend occurred. Closure
-`sha256:267918ea…8dec0` and reconciliation `sha256:83dbb079…32876` prove zero disposable resources,
-both volumes retained, restored protected config, unchanged billing, and POST `404
-V207_ROUTE_DISABLED`. V2-08 is forbidden.
+Attempt53 is a provider-free `NOT_QUALIFIED` candidate pending fresh exact approval. Proposal
+`sha256:5c2023d6451284b9ccdf64112e3bee6d8417ed6b0fa796520875ea080eead75f`, candidate acceptance
+`sha256:a04962398607efcd8350e14417f86c185f2c2e5b8146286edf8843712d433b99`, preflight
+`sha256:86befdc3…a4fb55`, max1 `sha256:2b9f6a9f…032d1e`, and max2
+`sha256:f897321d…db0ff4` bind control commit `3b40fd3`. The candidate rebinds the fresh retained active
+Worker anchor while preserving the unique matching signed endpoint-bound terminal Pod,
+queue-empty, two-identical-snapshot, all-terminal, zero-active-worker, zero-running-Pod, and
+no-redispatch fences. Focused proof is green. No Attempt53 authority or executable cap exists.
+Fresh reads prove zero Pods/endpoints/private templates/workers, both retained volumes, unchanged
+billing `1.645446196460398`, RTX 4090 EU-RO-1 `LOW`, restored protected config, and POST `404
+V207_ROUTE_DISABLED`. The exact requested boundary is FlashBoot true, LOW-or-better EU-RO-1,
+`two-phase-v1` anchor refresh, a fresh `$4` maximum cumulative finite cap, and continued `$7/month`
+retention of the two existing volumes. V2-08 is forbidden.
+
+Attempt52 is closed before mutation at `V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; its
+authority is consumed and non-reusable. Closure `sha256:267918ea…8dec0` and reconciliation
+`sha256:83dbb079…32876` prove zero disposable resources, both volumes retained, restored config,
+unchanged billing, and no job, GPU use, output, or observed spend.
 
 Attempt51 remains closed `NOT_QUALIFIED`. Its consumed/non-reusable authority produced one durable
 1280×720 probe before the former exact-one-total-record gate failed. Closure `sha256:c2ac52ad…eab02a`
 proves exact cleanup, restored route/config, zero compute/disposable resources across three stable
 reads, both 50 GB volumes retained, and `$0` observed billing increment.
 
-Terminal read-only truth at `2026-08-24T09:24:19.200Z` proves zero Pods/endpoints/private
+Terminal read-only truth at `2026-08-24T11:13:48.804Z` proves zero Pods/endpoints/private
 templates/workers, both retained volumes, current cumulative endpoint billing `1.645446196460398`,
 restored protected config, deleted signer, and exact POST `404 V207_ROUTE_DISABLED`.
 
@@ -43,9 +46,9 @@ Use focused tests for changed surfaces and one narrow repair cycle. Canonical pr
 verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
 Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
 mandatory. This state grants no provider call, mutation, GPU use, or spend. The smallest next action
-is a new provider-free V2-07 anchor-rebind micro-checkpoint; capture the current active Worker
-record, update both bound anchor hashes, recompute linked hashes/validators, and issue a fresh exact
-proposal. Do not start V2-08.
+is fresh exact approval of Attempt53 proposal
+`sha256:5c2023d6451284b9ccdf64112e3bee6d8417ed6b0fa796520875ea080eead75f`.
+Do not start V2-08.
 
 ## Historical V2-07 attempt ledger — do not preload
 

@@ -1,0 +1,199 @@
+{
+  "schema_version": "videoforge.v2-07-attempt53-active-anchor-rebind-combined-live-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 53,
+  "recorded_at": "2026-08-24T11:13:48.804Z",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP",
+  "provider_calls_authorized": false,
+  "provider_mutation_authorized": false,
+  "gpu_use_authorized": false,
+  "spend_usd": 0,
+  "qualification_status": "NOT_QUALIFIED",
+  "reason": "Attempt52 stopped before mutation because the exact active Cloudflare Worker anchor changed after its proposal was recorded. Attempt53 binds a fresh read-only active-anchor observation and the provider-free repair that accepts exactly one matching signed endpoint-bound terminal Pod among stable terminal history while still requiring queue-empty reads, two identical snapshots, all records terminal, zero active workers, and zero running Pods before any second dispatch.",
+  "approval_request": {
+    "exact_proposal_approved": false,
+    "flashboot": true,
+    "minimum_availability": "LOW-or-better",
+    "last_observed_availability": "LOW",
+    "requested_maximum_cumulative_finite_spend_usd": 4,
+    "executable_cap_binding": null,
+    "anchor_refresh_authorized": null,
+    "fresh_exact_approval_required": true,
+    "attempt52_authority_or_cap_reuse_forbidden": true,
+    "exact_launcher_activation_if_approved": "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1"
+  },
+  "provider_free_lineage": {
+    "control_source_commit": "3b40fd36767acde51ed979155a67ec4555a76400",
+    "orchestrator_source_sha256": "sha256:358a5b7c18c7985bd9e1f14cd73449715d1e00671df51f613080efa3ae4f1d9c",
+    "live_qualification_source_sha256": "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86",
+    "qualification_harness_source_sha256": "sha256:772249e8feab2c58600807d35844693baaa02d3706eb72d86773637061560cd4",
+    "canonical_activation_source_sha256": "sha256:ce890309588c82408c4d5f5e9bf239bd6fa03e53ce10bf6b3814ac0f6b6f63aa",
+    "readonly_reconciliation_source_sha256": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b"
+  },
+  "provider_free_preflight": {
+    "path": "read-only-preflight.json",
+    "sha256": "sha256:86befdc3eee48ec030b73848fb2133f1be9f7ed2f76023bbc9b7d920b2a4fb55"
+  },
+  "prior_attempt52": {
+    "proposal_sha256": "sha256:af1c2da86886bc3b4d077a30bf9ab720de6a39aa9fe4e8ec351697df5b224e77",
+    "authority_sha256": "sha256:3b15fca048ba4eb570a27b5a6e6d521a415e27c556c230757b6702e0c1017453",
+    "closure_path": "../2026-08-21-live-qualification/failed-attempt-52.json",
+    "closure_sha256": "sha256:267918ea297d63e614107815a01f2a45192be85495752008c375c229db98dec0",
+    "orchestrator_sha256": "sha256:64f8a98a43e6ce7d0bad4837cb7835795d729d6b6647945d93462714024166bb",
+    "reconciliation_sha256": "sha256:83dbb0790059de5215ea857849b5897f1deee474ed5d4f02727b26f30cf32876",
+    "authority_reusable": false
+  },
+  "fresh_runpod_read_only_truth": {
+    "checked_at": "2026-08-24T11:13:34.144Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": 2,
+    "baseline_endpoint_spend_usd": 1.645446196460398,
+    "final_endpoint_spend_usd": 1.645446196460398,
+    "incremental_spend_usd": 0,
+    "must_be_reconfirmed_after_approval_before_mutation": true
+  },
+  "fresh_cloudflare_read_only_truth": {
+    "checked_at": "2026-08-24T11:12:47.944Z",
+    "active_version_id_sha256": "sha256:c0c3303f78987b630da7a425117b2587aeca563266458f6f4b0b20db6b014f33",
+    "active_record_sha256": "sha256:1612a0d0582a9af311a5395f1920dde197ddad89f109ed396f35f3b4ef3840ad",
+    "active_anchor_retained": true,
+    "active_anchor_index_oldest_to_newest": 7,
+    "version_window_length": 10,
+    "protected_signer_secret_present": false,
+    "disabled_route_probe": "POST_404_V207_ROUTE_DISABLED",
+    "exact_post_404_v207_route_disabled_required_before_mutation": true
+  },
+  "fresh_catalog_read_only_truth": {
+    "checked_at": "2026-08-24T11:13:48.804Z",
+    "offering": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "minimum_satisfied": true,
+    "serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "secure_reference_rate_usd_per_gpu_hour": 0.74
+  },
+  "immutable_runtime": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "selected_model_bytes": 13379919280,
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "handler_sha256": "sha256:3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_size_gb": 50,
+    "volume_region": "EU-RO-1",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "volume_write_policy": "APPLICATION_READ_ONLY",
+    "runtime_download_or_quantization": false,
+    "image_rebuild_or_republication": false,
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "flex_only": true,
+    "flashboot": true
+  },
+  "scratch_contract": {
+    "scratch_root": "/tmp/videoforge-jobs",
+    "exact_job_path": "/tmp/videoforge-jobs/jobs/${attempt_id}",
+    "model_volume_scratch_forbidden": true,
+    "per_job_isolation_required": true,
+    "terminal_removal_receipt_required": true
+  },
+  "staged_endpoint_configs": [
+    {
+      "stage": "initial_qualification",
+      "definition_path": "staged-config-max1.json",
+      "definition_sha256": "sha256:2b9f6a9f5d3220491996c5b910205cdb18f21655735fcd1c8a1e40b14a032d1e",
+      "workers_min": 0,
+      "workers_max": 1
+    },
+    {
+      "stage": "final_concurrent_reader_proof",
+      "definition_path": "staged-config-max2.json",
+      "definition_sha256": "sha256:f897321d10e9d4a839f9bc675c24351fbc8b73c98bfb93a64c261a5359db0ff4",
+      "workers_min": 0,
+      "workers_max": 2,
+      "restore_after_proof": "staged-config-max1.json"
+    }
+  ],
+  "measured_timeouts_seconds": {
+    "idle": 5,
+    "initialization": 800,
+    "execution": 2400,
+    "request_authority_ttl": 7200
+  },
+  "paid_sequence": [
+    "max1 probe",
+    "exactly one matching signed terminal Pod among two stable endpoint-bound terminal-history snapshots, with queue empty and zero active workers/running Pods",
+    "max1 resume of 31 unresolved units without regenerating the accepted probe unit",
+    "max1 complete cold 32-unit batch",
+    "max1 complete warm 32-unit batch and duplicate-delivery proof",
+    "max1 cancellation proof",
+    "max1 timeout proof",
+    "separately hashed max2 two simultaneous complete 32-unit read-only readers as final GPU phase",
+    "drain, restore exact max1, cleanup, and three-read reconciliation; no later GPU dispatch"
+  ],
+  "acceptance_contract": {
+    "complete_batches_only": true,
+    "process_replacement_before_resume_proven": true,
+    "provider_status_output_receipt_reconciliation_required": true,
+    "durable_readback_before_expiry_required": true,
+    "at_most_one_acceptance_per_unit": true,
+    "duplicate_compute_and_cost_visibility_required": true,
+    "cancel_and_timeout_proof_required": true,
+    "queue_execution_init_load_warmup_timings_required": true,
+    "peak_vram_required": true,
+    "pre_and_post_manifest_exact": true,
+    "volume_write_or_cache_escape_forbidden": true,
+    "terminal_workers_zero_required": true,
+    "unchanged_two_volume_inventory_required": true
+  },
+  "projected_liability_cap_fence": {
+    "pinned_serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "billing_lag_margin_seconds_per_worker": 60,
+    "reserves_active_and_pending_worst_case_liability_before_every_new_paid_operation": true,
+    "unknown_or_null_execution_time_retains_full_reservation": true,
+    "new_paid_work_permanently_fenced_on_headroom_failure": true,
+    "cleanup_and_drain_remain_allowed": true,
+    "completion_conditional_on_measured_durations_fitting_cap": true,
+    "stop_before_new_paid_work_if_headroom_insufficient": true,
+    "provider_final_invoice_absolute_guarantee": false
+  },
+  "cost": {
+    "baseline_endpoint_spend_usd": 1.645446196460398,
+    "finite_action_estimate_usd": 3.95,
+    "requested_finite_cap_usd": 4,
+    "executable_finite_cap_usd": null,
+    "serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "secure_rtx4090_reference_usd_per_gpu_hour": 0.74,
+    "existing_two_volume_charge_usd_per_month": 7,
+    "volume_charge_separate_from_finite_cap": true,
+    "rates_must_be_reconfirmed_after_approval": true
+  },
+  "cleanup_and_retention": {
+    "success_retains_exact_max1_endpoint_and_private_template": true,
+    "success_workers_min": 0,
+    "success_workers_max": 1,
+    "terminal_total_workers_required": 0,
+    "failure_deletes_only_exact_disposable_endpoint_and_private_template_after_proven_drain": true,
+    "ephemeral_signer_secret_deleted": true,
+    "cloudflare_route_rolled_back_to_post_404_v207_route_disabled": true,
+    "protected_config_restored_exactly": true,
+    "attempt_scratch_removed": true,
+    "both_existing_50gb_volumes_retained_unchanged": true
+  },
+  "stop_conditions": [
+    "any proposal, authority, cap, code, anchor, route, resource, image, model, volume, scratch, GPU, region, rate, or config mismatch",
+    "availability below LOW",
+    "projected liability plus observed spend would exceed the approved cap",
+    "partial or failed output, missing receipt/readback, status disagreement, or invisible duplicate cost",
+    "uncertain drain, max1 restoration, rollback, config restoration, cleanup, volume inventory, or reconciliation"
+  ],
+  "retained_volume_mutation_authorized": false,
+  "gpu_or_region_fallback_authorized": false,
+  "v2_08_authorized": false
+}
