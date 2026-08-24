@@ -1,0 +1,44 @@
+{
+  "schema_version": "videoforge.v2-07-attempt54-preexecution-blocker/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 54,
+  "recorded_at": "2026-08-24T14:40:00Z",
+  "result": "NOT_QUALIFIED_FAIL_CLOSED_BEFORE_PROVIDER_CALL",
+  "error_code": "V207_STAGED_CONFIG_CONTROL_LINEAGE_MISMATCH",
+  "proposal_sha256": "sha256:5a61facbadeb460ee8dff2072a9c5c54abccd0267c60f1cefbb5aad2194a0e4b",
+  "approved_preexecution_authority_sha256": "sha256:abe775bc4967eeaff1d4ee340b3e5055f0eabf1c8642cf539a447daa84d8d6f9",
+  "closed_authority_sha256": "sha256:f973bce87530d540c8b3fe6d1d3fa3a311b866ae2187145248e3e1aa33c62565",
+  "blocker": {
+    "summary": "The exact Attempt54 proposal reused Attempt53 max1 and max2 definitions. Both definitions embed the pre-repair control commit, orchestrator hash, and canonical activation hash, so they cannot authorize the version-bound Attempt54 executable.",
+    "proposal_control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+    "proposal_orchestrator_source_sha256": "sha256:5298ec25000e42affb7e36b518b778fa692e65b72d868087d58fbd81e6cfc42c",
+    "actual_current_canonical_activation_sha256": "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
+    "referenced_max1_sha256": "sha256:2b9f6a9f5d3220491996c5b910205cdb18f21655735fcd1c8a1e40b14a032d1e",
+    "referenced_max2_sha256": "sha256:f897321d10e9d4a839f9bc675c24351fbc8b73c98bfb93a64c261a5359db0ff4",
+    "referenced_configs_control_source_commit": "3b40fd36767acde51ed979155a67ec4555a76400",
+    "referenced_configs_orchestrator_source_sha256": "sha256:358a5b7c18c7985bd9e1f14cd73449715d1e00671df51f613080efa3ae4f1d9c",
+    "referenced_configs_canonical_activation_sha256": "sha256:ce890309588c82408c4d5f5e9bf239bd6fa03e53ce10bf6b3814ac0f6b6f63aa"
+  },
+  "provider_state": {
+    "provider_calls_after_approval": 0,
+    "cloudflare_mutations": 0,
+    "runpod_mutations": 0,
+    "jobs_submitted": 0,
+    "gpu_use_occurred": false,
+    "external_spend_usd": 0,
+    "last_verified_runpod_zero_compute": true,
+    "last_verified_cloudflare_route": "POST_404_V207_ROUTE_DISABLED_WITH_EXACT_ACTIVE_VERSION_HEADER",
+    "two_existing_volumes_retained": true,
+    "existing_volume_charge_usd_per_month": 7
+  },
+  "authority": {
+    "attempt54_consumed": true,
+    "attempt54_reusable": false,
+    "executable_authority_sha256": null,
+    "executable_finite_cap_usd": null,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  },
+  "smallest_next_action": "Create new max1 and max2 definitions bound to control commit 85391b130673200e2d1f74fea4ea2581d5d83c1a, orchestrator sha256:5298ec25000e42affb7e36b518b778fa692e65b72d868087d58fbd81e6cfc42c, and the current canonical activation hash; then recompute a fresh proposal and request fresh exact approval. Do not reuse Attempt54 authority or cap."
+}

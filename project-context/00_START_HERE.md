@@ -8,17 +8,16 @@ post-promotion, and refresh-cleanup route read to the exact expected Worker vers
 alternating, and mixed identities fail closed; non-refresh behavior remains compatible; evidence
 retains hashes only. The focused orchestrator file passes 55/55 and web TypeScript passes.
 
-Fresh read-only truth proves the exact POST `404 V207_ROUTE_DISABLED` now carries the active Worker
-version, RunPod has zero Pods/endpoints/private templates/workers, both existing 50 GB volumes are
-retained, RTX 4090 EU-RO-1 availability is `LOW`, Serverless Flex is `$1.10/GPU-hour`, Secure
-reference is `$0.74/hour`, and the new cumulative endpoint billing baseline is
-`1.7478178361488972`. Attempt54 proposal
-`evidence/acceptance/VF-10-07/2026-08-24-attempt54-version-bound-rollback-candidate/combined-live-proposal.json`
-is exactly `sha256:5a61facbadeb460ee8dff2072a9c5c54abccd0267c60f1cefbb5aad2194a0e4b`.
-It requests FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1` anchor refresh, a `$4` maximum
-cumulative finite cap, and continued `$7/month` retention of the two existing volumes. No executable
-authority or cap exists. Stop before any provider mutation, GPU use, or spend until that exact
-proposal is approved. V2-08 is forbidden.
+Attempt54 exact approval was recorded, then consumed before any provider call at
+`V207_STAGED_CONFIG_CONTROL_LINEAGE_MISMATCH`: its proposal reused Attempt53 max1/max2 definitions
+whose embedded control/orchestrator/canonical-activation lineage predates the version-bound repair.
+Blocker `sha256:b225757a…3903f` proves zero provider calls, mutations, jobs, GPU use, or spend after
+approval. Activation authority/cap/refresh are null; RunPod remains zero compute, the exact
+version-bound `404 V207_ROUTE_DISABLED` remains the last verified route, and both volumes remain at
+the approved `$7/month` retention. Smallest next action is provider-free: create new max1/max2
+definitions bound to repaired control `85391b1` and orchestrator `sha256:5298ec25…fc42c`, then
+recompute a fresh exact proposal and request fresh approval. Do not reuse Attempt54 authority/cap.
+V2-08 is forbidden.
 
 Attempt52 is closed before mutation at `V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; its
 authority is consumed and non-reusable. Closure `sha256:267918ea…8dec0` and reconciliation

@@ -115,9 +115,9 @@ gates:
     blocks: mage_serverless_dispatch
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlessmage001-mage-endpoint"
     owner: V2-07
-    last_run: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-53.json"
-    last_run_sha256: "sha256:490c178e6b0c63d01a905f4382f39fbe00cf514d8f0bb01e825a2be52bffed87"
-    last_run_at: "2026-08-24T14:06:49.560Z"
+    last_run: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/blocked-attempt-54-staged-config-lineage-mismatch.json"
+    last_run_sha256: "sha256:b225757a6b5e9c7f6a76d6d1c0fcc9f10018b3a091caeba0a56088aa8c93903f"
+    last_run_at: "2026-08-24T14:40:00Z"
     previous_attempt: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-28.json"
     historical_attempt22_proposal: "sha256:96ead6591874229d93537af46a3159002e2fe86c93cc2905c42bbb1326ccece7"
     historical_attempt22_authority: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
@@ -157,10 +157,10 @@ gates:
     current_candidate_acceptance_sha256: "sha256:db91d6143f3d4d551cf7b44b7c6f33100195bda36bfc78785ad175cd3394858c"
     current_candidate_preflight: "evidence/acceptance/VF-10-07/2026-08-24-attempt54-version-bound-rollback-candidate/read-only-preflight.json"
     current_candidate_preflight_sha256: "sha256:94e84a0ee7abe1d880b723782e5129b341176ee7655d58a20391c5c2e88618f3"
-    current_candidate_authority: null
-    current_candidate_authority_sha256: null
-    current_candidate_authority_state: PENDING_FRESH_EXACT_APPROVAL
-    current_candidate_authority_mode: pending
+    current_candidate_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt54-version-bound-rollback-candidate/approved-authority.json"
+    current_candidate_authority_sha256: "sha256:f973bce87530d540c8b3fe6d1d3fa3a311b866ae2187145248e3e1aa33c62565"
+    current_candidate_authority_state: CONSUMED_NON_REUSABLE_ATTEMPT54_STAGED_CONFIG_LINEAGE_MISMATCH
+    current_candidate_authority_mode: closed_consumed
     current_candidate_finite_cap_usd: 0
     current_candidate_anchor_refresh_authorized: false
     current_candidate_exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1
@@ -203,12 +203,12 @@ gates:
     latest_closed_billing_attribution: ATTEMPT53_OBSERVED_INCREMENT_ZERO_AT_IMMEDIATE_THREE_READ_RECONCILIATION_BILLING_MAY_LAG
     latest_closed_authority_mode: closed_consumed_attempt53_rollback_blocked
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt54-version-bound-rollback-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:5a61facbadeb460ee8dff2072a9c5c54abccd0267c60f1cefbb5aad2194a0e4b"
+    pending_proposal: null
+    pending_proposal_sha256: null
     pending_authority: null
     pending_authority_sha256: null
-    pending_authority_state: PENDING_FRESH_EXACT_APPROVAL
-    pending_authority_mode: pending
+    pending_authority_state: NONE_ATTEMPT54_CONSUMED
+    pending_authority_mode: none
     pending_numeric_cap_usd: 0
     pending_anchor_refresh_authorized: false
     pending_exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1

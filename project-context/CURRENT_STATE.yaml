@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-24T14:10:00Z"
+updated_at: "2026-08-24T14:40:00Z"
 
-phase: serverless_v2_v2_07_attempt54_proposal_pending_approval
+phase: serverless_v2_v2_07_attempt54_closed_config_lineage_blocked
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt54_version_bound_rollback_candidate
+current_wave: v2_07_attempt54_closed_config_lineage_blocked
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: approval_handoff
+task_stage: blocked_handoff
 application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,15 +18,15 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: attempt54_provider_free_repair_complete_pending_fresh_exact_approval
+  mode: attempt54_consumed_before_provider_call_staged_config_lineage_mismatch
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: Approve only the exact Attempt54 proposal hash before any Cloudflare mutation, RunPod mutation, GPU use, or spend; V2-08 forbidden
-  note: "Attempt54 provider-free repair and focused mixed-edge tests are green. Fresh read-only truth proves the exact version-bound disabled route, RunPod zero compute, two retained volumes, LOW RTX 4090 availability, and a fresh billing baseline. No executable authority or cap exists."
+  v2_07_action: Stop at exact blocker; a future provider-free micro-checkpoint must create new max1/max2 definitions bound to the repaired control/orchestrator/canonical activation lineage, then create a fresh proposal; V2-08 forbidden
+  note: "Attempt54 approval was consumed before any provider call because its exact proposal reused Attempt53 staged configs bound to the old control/orchestrator lineage. Activation is disabled; no executable authority or cap exists."
 
 fast_completion_plan:
   decision: DEC_DELIVERY_001
@@ -42,8 +42,8 @@ fast_completion_plan:
   roadmap: 22_PROJECT_COMPLETION_CHECKPOINTS.md
   copy_ready_prompts: templates/CHECKPOINT_CHAT_PROMPTS.md
 
-pending_v2_07_attempt54_proposal:
-  mode: pending_fresh_exact_approval_no_executable_authority
+closed_v2_07_attempt54_proposal:
+  mode: closed_consumed_preexecution_staged_config_lineage_mismatch
   proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt54-version-bound-rollback-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:5a61facbadeb460ee8dff2072a9c5c54abccd0267c60f1cefbb5aad2194a0e4b"
   candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt54-version-bound-rollback-candidate/acceptance.json
@@ -73,7 +73,16 @@ pending_v2_07_attempt54_proposal:
   external_spend_usd: 0
   v2_07_qualified: false
   v2_08_authorized: false
-  next_boundary: fresh exact approval of proposal sha256:5a61facbadeb460ee8dff2072a9c5c54abccd0267c60f1cefbb5aad2194a0e4b
+  authority_recorded: true
+  authority_path: evidence/acceptance/VF-10-07/2026-08-24-attempt54-version-bound-rollback-candidate/approved-authority.json
+  authority_sha256: "sha256:f973bce87530d540c8b3fe6d1d3fa3a311b866ae2187145248e3e1aa33c62565"
+  approved_preexecution_authority_sha256: "sha256:abe775bc4967eeaff1d4ee340b3e5055f0eabf1c8642cf539a447daa84d8d6f9"
+  authority_consumed: true
+  authority_reusable: false
+  blocker_path: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/blocked-attempt-54-staged-config-lineage-mismatch.json
+  blocker_sha256: "sha256:b225757a6b5e9c7f6a76d6d1c0fcc9f10018b3a091caeba0a56088aa8c93903f"
+  blocker_code: V207_STAGED_CONFIG_CONTROL_LINEAGE_MISMATCH
+  next_boundary: provider-free rebind of max1/max2 definitions to repaired lineage and a fresh exact proposal; no Attempt54 authority/cap reuse
 
 closed_v2_07_attempt53_proposal:
   mode: closed_consumed_warm_status_failure_cloudflare_rollback_unresolved
