@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assertV207DiskHeadroom,
   assertV207WorkerRollbackAnchorRetained,
+  bindV207RollbackAnchorRefreshInvocation,
   classifyV207WranglerDeployFailure,
   extractV207ChildFailureCode,
   extractV207WorkerRollbackAnchor,
@@ -122,7 +123,65 @@ describe("V2-07 live orchestrator", () => {
   it("requires an explicit refresh binding on every injected authority", () => {
     expect(parseFixtureAuthority().anchorRefreshAuthorized).toBe(false);
     expect(parseFixtureRefreshAuthority().anchorRefreshAuthorized).toBe(true);
+    expect(
+      bindV207RollbackAnchorRefreshInvocation(
+        {
+          [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+        },
+        parseFixtureRefreshAuthority(),
+      ),
+    ).toEqual({
+      enabled: true,
+      activation: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    });
+    expect(bindV207RollbackAnchorRefreshInvocation({}, parseFixtureAuthority())).toEqual({
+      enabled: false,
+      activation: null,
+    });
   });
+
+  it.each([
+    {
+      name: "missing",
+      environment: {},
+      code: "V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION_REQUIRED",
+    },
+    {
+      name: "wrong",
+      environment: { [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: "true" },
+      code: "V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION_INVALID",
+    },
+  ] as const)(
+    "fails closed before every command when approved refresh activation is $name",
+    async ({ environment: activationEnvironment, code }) => {
+      const files = await fixture();
+      const calls: V207CommandRequest[] = [];
+      await expect(
+        runV207LiveOrchestration({
+          authorityParser: parseFixtureRefreshAuthority,
+          environment: { ...files.environment, ...activationEnvironment },
+          cwd: resolve(process.cwd(), "../.."),
+          configPath: files.configPath,
+          evidencePath: files.evidencePath,
+          diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+          commandRunner: async (request) => {
+            calls.push(request);
+            throw new Error("invalid refresh invocation must not execute a command");
+          },
+          fetchImpl: async () => {
+            throw new Error("invalid refresh invocation must not probe the route");
+          },
+          installSignalHandlers: false,
+        }),
+      ).rejects.toMatchObject({ code });
+      expect(calls).toHaveLength(0);
+      const evidence = await readFile(files.evidencePath, "utf8");
+      expect(evidence).toContain('"anchor_refresh_authorized": true');
+      expect(evidence).toContain('"event": "rollback_anchor_refresh_invocation_rejected"');
+      expect(evidence).toContain(code);
+      expect(evidence).toContain('"worker_rollback_skipped_no_mutation"');
+    },
+  );
 
   it("pins production orchestration to the exact protected config path", async () => {
     const files = await fixture();
@@ -657,19 +716,22 @@ describe("V2-07 live orchestrator", () => {
           [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
         },
         configure: false,
-        code: "V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_MISMATCH",
+        code: "V207_ROLLBACK_ANCHOR_REFRESH_AUTHORITY_REQUIRED",
+        commandCalls: 0,
       },
       {
         name: "config-only",
         environment: {},
         configure: true,
         code: "V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_MISMATCH",
+        commandCalls: 1,
       },
       {
         name: "wrong-marker",
         environment: { [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: "true" },
         configure: false,
         code: "V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION_INVALID",
+        commandCalls: 0,
       },
       {
         name: "missing-authority-binding",
@@ -678,6 +740,7 @@ describe("V2-07 live orchestrator", () => {
         },
         configure: true,
         code: "V207_ROLLBACK_ANCHOR_REFRESH_AUTHORITY_REQUIRED",
+        commandCalls: 0,
       },
     ] as const;
 
@@ -705,7 +768,7 @@ describe("V2-07 live orchestrator", () => {
           installSignalHandlers: false,
         }),
       ).rejects.toMatchObject({ code: testCase.code });
-      expect(calls).toHaveLength(1);
+      expect(calls).toHaveLength(testCase.commandCalls);
       expect(await readFile(files.evidencePath, "utf8")).toContain(testCase.code);
     }
   });

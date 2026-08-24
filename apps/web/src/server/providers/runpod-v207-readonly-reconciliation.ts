@@ -6,8 +6,16 @@ import { loadSujalRunPodApiKeyFromKeychain, SUJAL_RUNPOD_ACCOUNT_ID_SHA256 } fro
 import { assertSujalRunPodAccount } from "./runpod-account";
 import {
   RunPodControlClient,
+  V207_RUNPOD_EXECUTION_TIMEOUT_MS,
+  V207_RUNPOD_FLASHBOOT,
+  V207_RUNPOD_GPU,
+  V207_RUNPOD_IDLE_TIMEOUT_SECONDS,
+  V207_RUNPOD_MIN_CUDA_VERSION,
   V207_RUNPOD_MAGE_VOLUME_SIZE_GB,
   V207_RUNPOD_REGION,
+  V207_RUNPOD_SCALER,
+  V207_RUNPOD_SCALER_VALUE,
+  V207_RUNPOD_VOLUME_MOUNT,
   type RunPodDisposableResourceInventory,
   type RunPodInventory,
 } from "./runpod-control";
@@ -84,6 +92,83 @@ const assertSuccessIdentityHash = (value: string, code: string): void => {
   if (!SHA256_ID.test(value)) throw new Error(code);
 };
 
+export interface V207SuccessRetainedConfiguration {
+  readonly endpointName: string;
+  readonly templateName: string;
+  readonly imageName: string;
+  readonly containerDiskInGb: 120;
+  readonly networkVolumeId: string;
+  readonly environment: Readonly<Record<string, string>>;
+}
+
+const exactStringArray = (value: unknown, expected: readonly string[]): boolean =>
+  Array.isArray(value) &&
+  value.length === expected.length &&
+  value.every((candidate, index) => candidate === expected[index]);
+
+const exactEnvironment = (value: unknown, expected: Readonly<Record<string, string>>): boolean => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const actual = value as Record<string, unknown>;
+  return (
+    Object.keys(actual).length === Object.keys(expected).length &&
+    Object.entries(expected).every(([key, expectedValue]) => actual[key] === expectedValue)
+  );
+};
+
+/** Validate the exact retained raw provider configuration on every terminal read. */
+const validateSuccessRawConfiguration = (
+  endpoint: RunPodDisposableResourceInventory["endpoints"][number],
+  template: RunPodDisposableResourceInventory["templates"][number],
+  expected: V207SuccessRetainedConfiguration,
+): void => {
+  const endpointRaw = endpoint.raw;
+  const templateRaw = template.raw;
+  const endpointVolumeIds = endpointRaw.networkVolumeIds;
+  const volumeBindingMatches =
+    endpointRaw.networkVolumeId === expected.networkVolumeId &&
+    (endpointVolumeIds === undefined ||
+      exactStringArray(endpointVolumeIds, [expected.networkVolumeId]));
+  const templateMountMatches =
+    templateRaw.volumeMountPath === "/workspace" ||
+    templateRaw.volumeMountPath === V207_RUNPOD_VOLUME_MOUNT;
+  if (
+    endpoint.name !== expected.endpointName ||
+    template.name !== expected.templateName ||
+    endpointRaw.id !== endpoint.id ||
+    endpointRaw.name !== expected.endpointName ||
+    endpointRaw.templateId !== template.id ||
+    endpointRaw.computeType !== "GPU" ||
+    endpointRaw.gpuCount !== 1 ||
+    !exactStringArray(endpointRaw.gpuTypeIds, [V207_RUNPOD_GPU]) ||
+    endpointRaw.workersMin !== 0 ||
+    endpointRaw.workersMax !== 1 ||
+    !exactStringArray(endpointRaw.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
+    endpointRaw.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
+    endpointRaw.flashboot !== V207_RUNPOD_FLASHBOOT ||
+    !volumeBindingMatches ||
+    !exactStringArray(endpointRaw.dataCenterIds, [V207_RUNPOD_REGION]) ||
+    endpointRaw.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
+    endpointRaw.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS ||
+    endpointRaw.scalerType !== V207_RUNPOD_SCALER ||
+    endpointRaw.scalerValue !== V207_RUNPOD_SCALER_VALUE ||
+    (endpointRaw.env !== undefined && !exactEnvironment(endpointRaw.env, expected.environment)) ||
+    templateRaw.id !== template.id ||
+    templateRaw.name !== expected.templateName ||
+    templateRaw.imageName !== expected.imageName ||
+    templateRaw.containerDiskInGb !== expected.containerDiskInGb ||
+    !exactStringArray(templateRaw.dockerEntrypoint, []) ||
+    !exactStringArray(templateRaw.dockerStartCmd, []) ||
+    !exactEnvironment(templateRaw.env, expected.environment) ||
+    templateRaw.isPublic !== false ||
+    templateRaw.isServerless !== true ||
+    !exactStringArray(templateRaw.ports, []) ||
+    templateRaw.volumeInGb !== 0 ||
+    !templateMountMatches
+  ) {
+    throw new Error("V207_SUCCESS_RECONCILIATION_CONFIGURATION_MISMATCH");
+  }
+};
+
 /**
  * Validate the retained-resource side of a successful qualification.  Failure cleanup is
  * intentionally stricter and requires zero disposable resources; success retains exactly the
@@ -95,6 +180,7 @@ const validateSuccessInventory = (
   resources: RunPodDisposableResourceInventory,
   expectedEndpointIdHash: string,
   expectedTemplateIdHash: string,
+  expectedConfiguration: V207SuccessRetainedConfiguration,
 ): void => {
   const endpoint = inventory.endpoints.find(
     (candidate) => candidate.idHash === expectedEndpointIdHash,
@@ -105,6 +191,9 @@ const validateSuccessInventory = (
   const resourceTemplate = resources.templates.find(
     (candidate) => hashResourceId(candidate.id) === expectedTemplateIdHash,
   );
+  if (resourceEndpoint !== undefined && resourceTemplate !== undefined) {
+    validateSuccessRawConfiguration(resourceEndpoint, resourceTemplate, expectedConfiguration);
+  }
   const expectedVolumeHashes = [
     V207_FAILED_CLEANUP_SOULX_VOLUME_ID_HASH,
     V207_FAILED_CLEANUP_VOLUME_ID_HASH,
@@ -221,7 +310,7 @@ export interface V207ReadonlyReconciliationResult {
 }
 
 export interface V207SuccessReadonlyReconciliationResult {
-  readonly schema_version: "videoforge.v2-07-success-readonly-reconciliation/v1";
+  readonly schema_version: "videoforge.v2-07-success-readonly-reconciliation/v2";
   readonly checked_at: string;
   readonly stable_read_count: 3;
   readonly account_id_sha256: typeof SUJAL_RUNPOD_ACCOUNT_ID_SHA256;
@@ -249,6 +338,7 @@ export interface V207SuccessReadonlyReconciliationResult {
     readonly template_count: 1;
     readonly endpoint_id_hash: string;
     readonly template_id_hash: string;
+    readonly exact_raw_configuration_validated_each_read: true;
   };
   readonly billing: {
     readonly baseline_endpoint_spend_usd: number;
@@ -400,6 +490,7 @@ export async function reconcileV207SuccessReadonly(input: {
   readonly maximumCumulativeFiniteSpendUsd: number;
   readonly expectedEndpointIdHash: string;
   readonly expectedTemplateIdHash: string;
+  readonly expectedConfiguration: V207SuccessRetainedConfiguration;
   readonly inventory: () => Promise<RunPodInventory>;
   readonly resources: () => Promise<RunPodDisposableResourceInventory>;
   /** A read-only provider health check that fails closed if queued/in-progress jobs remain. */
@@ -441,6 +532,7 @@ export async function reconcileV207SuccessReadonly(input: {
       resources,
       input.expectedEndpointIdHash,
       input.expectedTemplateIdHash,
+      input.expectedConfiguration,
     );
     const fingerprint = successReadFingerprint(inventory, resources);
     if (priorFingerprint !== null && fingerprint !== priorFingerprint) {
@@ -482,7 +574,7 @@ export async function reconcileV207SuccessReadonly(input: {
     left.idHash.localeCompare(right.idHash),
   );
   const result: V207SuccessReadonlyReconciliationResult = {
-    schema_version: "videoforge.v2-07-success-readonly-reconciliation/v1",
+    schema_version: "videoforge.v2-07-success-readonly-reconciliation/v2",
     checked_at: finalInventory.checkedAt,
     stable_read_count: 3,
     account_id_sha256: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
@@ -510,6 +602,7 @@ export async function reconcileV207SuccessReadonly(input: {
       template_count: 1,
       endpoint_id_hash: hashResourceId(retainedEndpoint.id),
       template_id_hash: hashResourceId(retainedTemplate.id),
+      exact_raw_configuration_validated_each_read: true,
     },
     billing: {
       baseline_endpoint_spend_usd: input.baselineEndpointSpendUsd,

@@ -49,6 +49,19 @@ const ACTIVATION_REQUIRED_CONSECUTIVE_MATCHES = RESTORATION_REQUIRED_CONSECUTIVE
  */
 export const V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY = "V207_ROLLBACK_ANCHOR_REFRESH" as const;
 export const V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION = "two-phase-v1" as const;
+
+/**
+ * The CLI activation and compiled authority form one typed invocation. Keeping
+ * this as a discriminated union prevents an approved refresh authority from
+ * being represented as the ordinary (refresh-disabled) path merely because a
+ * launcher omitted the environment marker.
+ */
+export type V207RollbackAnchorRefreshInvocation =
+  | Readonly<{ enabled: false; activation: null }>
+  | Readonly<{
+      enabled: true;
+      activation: typeof V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION;
+    }>;
 export const V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256 =
   "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0" as const;
 export const V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256 =
@@ -267,6 +280,7 @@ interface EvidenceDocument {
     readonly source_commit: string;
     readonly proposal_sha256: string;
     readonly cap_usd: number;
+    readonly anchor_refresh_authorized: boolean;
   };
   readonly events: EvidenceEvent[];
   result: "RUNNING" | "SUCCEEDED" | "FAILED" | "CLEANUP_UNCERTAIN";
@@ -714,6 +728,32 @@ async function readProtectedConfig(configPath: string): Promise<JsonRecord> {
     throw new V207LiveOrchestratorError("V207_SIGNER_NOT_DISABLED_IN_CONFIG");
   }
   return record;
+}
+
+/**
+ * Bind the exact versioned launcher marker to the compiled authority before
+ * any command, provider read, route probe, or mutation can occur. An approved
+ * refresh is a required execution mode, not an optional capability that may
+ * silently fall back to ordinary orchestration.
+ */
+export function bindV207RollbackAnchorRefreshInvocation(
+  environment: Readonly<Record<string, string | undefined>>,
+  authority: Pick<V207ActivationAuthority, "anchorRefreshAuthorized">,
+): V207RollbackAnchorRefreshInvocation {
+  const value = environment[V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY];
+  const present = value !== undefined && value !== "";
+  if (present && value !== V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION) {
+    throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION_INVALID");
+  }
+  if (authority.anchorRefreshAuthorized && !present) {
+    throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION_REQUIRED");
+  }
+  if (!authority.anchorRefreshAuthorized && present) {
+    throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_AUTHORITY_REQUIRED");
+  }
+  return authority.anchorRefreshAuthorized
+    ? { enabled: true, activation: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION }
+    : { enabled: false, activation: null };
 }
 
 /**
@@ -1262,6 +1302,7 @@ export async function runV207LiveOrchestration(
       source_commit: sourceCommit,
       proposal_sha256: authority.proposalSha256,
       cap_usd: authority.capUsd,
+      anchor_refresh_authorized: authority.anchorRefreshAuthorized,
     },
     events,
     result: "RUNNING",
@@ -1305,6 +1346,10 @@ export async function runV207LiveOrchestration(
   // Worker, so they must not be reported as an unresolvable rollback-target failure.
   let workerMutationMayExist = false;
   let workerRollbackVerified = false;
+  let anchorRefreshInvocation: V207RollbackAnchorRefreshInvocation = {
+    enabled: false,
+    activation: null,
+  };
   let rollbackAnchorRefresh: V207RollbackAnchorRefresh = { enabled: false };
   let anchorRefreshMarkerApplyAttempted = false;
   let anchorRefreshMarkerApplied = false;
@@ -1317,6 +1362,23 @@ export async function runV207LiveOrchestration(
   let primaryError: unknown;
   const cleanupErrors: string[] = [];
   try {
+    try {
+      anchorRefreshInvocation = bindV207RollbackAnchorRefreshInvocation(environment, authority);
+      await record("rollback_anchor_refresh_invocation_checked", {
+        activation: anchorRefreshInvocation.activation ?? "disabled",
+        authority_bound: authority.anchorRefreshAuthorized,
+        environment_bound: anchorRefreshInvocation.enabled,
+      });
+    } catch (error) {
+      await record("rollback_anchor_refresh_invocation_rejected", {
+        code: safeErrorCode(error),
+        authority_bound: authority.anchorRefreshAuthorized,
+        environment_bound:
+          environment[V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY] ===
+          V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+      });
+      throw error;
+    }
     const clean = requireSuccessful(
       "V207_GIT_STATUS",
       await run({
@@ -1332,12 +1394,7 @@ export async function runV207LiveOrchestration(
     const configuredRefreshMarker = asRecord(protectedConfig.vars)?.[
       V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY
     ];
-    if (
-      environment[V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY] ===
-        V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION &&
-      configuredRefreshMarker === undefined &&
-      authority.anchorRefreshAuthorized === true
-    ) {
+    if (anchorRefreshInvocation.enabled && configuredRefreshMarker === undefined) {
       // The protected config is the only local input that enables the extra deploy. Apply the
       // exact marker atomically immediately before the first remote read/mutation. Any helper
       // drift is treated as cleanup uncertainty even when the remote boundary was not reached.

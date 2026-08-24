@@ -639,6 +639,56 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain('evidence.timeout_output_cleanup = "CONFIRMED"');
   });
 
+  it("requires a final sealed-model receipt after cancellation and timeout before acceptance", () => {
+    const cancelTerminal = source.indexOf('persistCheckpoint("cancel-terminal")');
+    const timeoutTerminal = source.indexOf('persistCheckpoint("timeout-terminal"');
+    const terminalDispatch = source.indexOf(
+      "const terminalAttestationJob = await harness.dispatchBatch",
+    );
+    const terminalVerify = source.indexOf(
+      "const terminalAttestationEvidence = await verifyBatchWithDiagnostic",
+    );
+    const terminalConfirmed = source.indexOf(
+      'evidence.terminal_sealed_model_attestation = "CONFIRMED"',
+    );
+    const finalReconciliation = source.indexOf(
+      "const finalReconciliation = await reconcileV207SuccessReadonly",
+    );
+    const success = source.indexOf("success = true", finalReconciliation);
+    expect([
+      cancelTerminal,
+      timeoutTerminal,
+      terminalDispatch,
+      terminalVerify,
+      terminalConfirmed,
+      finalReconciliation,
+      success,
+    ]).toEqual(
+      [
+        cancelTerminal,
+        timeoutTerminal,
+        terminalDispatch,
+        terminalVerify,
+        terminalConfirmed,
+        finalReconciliation,
+        success,
+      ].sort((left, right) => left - right),
+    );
+    expect(cancelTerminal).toBeGreaterThan(-1);
+    expect(source).toContain('kind: "terminal_sealed_model_attestation"');
+    expect(source).toContain('["scene-01"]');
+  });
+
+  it("binds the sealed worker's existing scratch implementation to its exact staged job path", () => {
+    expect(source).toContain('const V207_JOB_SCRATCH_ROOT = "/tmp/videoforge-jobs"');
+    expect(source).toContain("VIDEOFORGE_JOB_SCRATCH_ROOT: V207_JOB_SCRATCH_ROOT");
+    expect(source).toContain(
+      "exact_job_path: `${V207_JOB_SCRATCH_ROOT}/jobs/${expectedAttemptId}`",
+    );
+    expect(source).toContain("scratchCleanup?.removed !== true");
+    expect(source).toContain("scratchCleanup?.scratch_on_model_volume !== false");
+  });
+
   it("persists only redacted checkpoint evidence with no raw provider material", () => {
     const hash = "sha256:" + "a".repeat(64);
     const redacted = redactV207LiveEvidence({

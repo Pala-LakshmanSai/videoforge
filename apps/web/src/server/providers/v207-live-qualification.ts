@@ -92,6 +92,9 @@ const QUALIFICATION_SCENES = [
 const ROUTE =
   "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port";
 const RESULT_PATH = "/tmp/videoforge-v207-live-result.json";
+const V207_JOB_SCRATCH_ROOT = "/tmp/videoforge-jobs" as const;
+const V207_TEMPLATE_NAME = "videoforge_mage_v207_20260820" as const;
+const V207_ENDPOINT_NAME = "videoforge_mage_v207_20260820" as const;
 const BILLING_START = "2026-08-20T00:00:00.000Z";
 const IMAGE_CONFIG_DIGEST = V207_REPAIRED_IMAGE_CONFIG_DIGEST;
 const IMAGE_LAYER_DIGEST = V207_REPAIRED_IMAGE_LAYER_DIGEST;
@@ -2048,6 +2051,12 @@ async function verifyBatch(
       durable_accepted_units: durableAcceptedUnits,
       worker_process_identity: workerProcessIdentity,
       receipt_sha256: receipt.receipt_sha256,
+      scratch_contract: {
+        configured_root: V207_JOB_SCRATCH_ROOT,
+        exact_job_path: `${V207_JOB_SCRATCH_ROOT}/jobs/${expectedAttemptId}`,
+        removed: true,
+        scratch_on_model_volume: false,
+      },
       timings,
       timing_provenance: {
         provider_timing_source: "RUNPOD_STATUS_DELAY_TIME_MS_AND_EXECUTION_TIME_MS",
@@ -2231,27 +2240,29 @@ async function main(): Promise<void> {
       latestHarnessEvidence = (await harness.evidence()) as unknown as AnyRecord;
       await persistCheckpoint(phase);
     };
+    const templateEnvironment = {
+      MAGE_MODEL_ROOT: V207_RUNPOD_MODEL_ROOT,
+      HF_HUB_OFFLINE: "1",
+      TRANSFORMERS_OFFLINE: "1",
+      DIFFUSERS_OFFLINE: "1",
+      VIDEOFORGE_JOB_SCRATCH_ROOT: V207_JOB_SCRATCH_ROOT,
+      VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE,
+      VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
+      VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
+      VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
+      VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
+      RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
+      VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
+      VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: receiptSecret.toString("hex"),
+    } as const;
     const harness = new RunPodV207QualificationHarness({
       control,
       apiKey,
-      templateName: "videoforge_mage_v207_20260820",
-      endpointName: "videoforge_mage_v207_20260820",
+      templateName: V207_TEMPLATE_NAME,
+      endpointName: V207_ENDPOINT_NAME,
       imageName: IMAGE,
       containerDiskInGb: 120,
-      templateEnvironment: {
-        MAGE_MODEL_ROOT: V207_RUNPOD_MODEL_ROOT,
-        HF_HUB_OFFLINE: "1",
-        TRANSFORMERS_OFFLINE: "1",
-        DIFFUSERS_OFFLINE: "1",
-        VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE,
-        VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
-        VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
-        VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
-        VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
-        RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
-        VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
-        VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: receiptSecret.toString("hex"),
-      },
+      templateEnvironment,
       placement,
       initialPolicy: {
         workersMin: 0,
@@ -2602,6 +2613,48 @@ async function main(): Promise<void> {
       evidence.timeout_output_cleanup = "CONFIRMED";
       await persistCheckpoint("timeout-output-cleanup");
       await harness.scaleDownToInitial();
+
+      // Cancellation and provider timeout can interrupt the worker before its normal post-run
+      // model-volume verification. Run one final one-item execution only after both negative
+      // proofs, and accept the qualification only if its signed receipt proves the exact sealed
+      // manifest both before and after inference on the retained immutable image/volume lineage.
+      const terminalAttestationAttemptId = `v207-terminal-attestation-${runTag}`;
+      const terminalAttestation = await createBatch(
+        terminalAttestationAttemptId,
+        nonce,
+        workerToken,
+        32,
+        cancellation.throwIfRequested,
+        undefined,
+        ["scene-01"],
+      );
+      generatedObjectKeys.push(...terminalAttestation.objectKeys);
+      await persistCheckpoint("terminal-attestation-ports");
+      cancellation.throwIfRequested();
+      const terminalAttestationJob = await harness.dispatchBatch(terminalAttestation.input);
+      await persistCheckpoint("terminal-attestation-dispatch");
+      const terminalAttestationResult = await harness.reconcile(terminalAttestationJob.id);
+      const terminalAttestationEvidence = await verifyBatchWithDiagnostic(
+        harness,
+        terminalAttestationResult,
+        terminalAttestationAttemptId,
+        terminalAttestation.objectKeys,
+        terminalAttestation.input.outputAuthority.authorities as readonly AnyRecord[],
+        terminalAttestation.planManifest,
+        terminalAttestation.objectKeys.length,
+        createdIdentity.endpointIdHash,
+        nonce,
+        receiptKeyId,
+        receiptSecret,
+      );
+      (evidence.batches as AnyRecord[]).push({
+        kind: "terminal_sealed_model_attestation",
+        ...terminalAttestationEvidence,
+      });
+      evidence.terminal_sealed_model_attestation = "CONFIRMED";
+      await persistCheckpoint("terminal-attestation-complete");
+      await harness.confirmWarmIdle();
+      await harness.scaleDownToInitial();
       await harness.cleanup({ deleteIfFailed: false, failed: false });
       // The success reconciler intentionally retains the exact endpoint/template and proves
       // three stable inventory/resource/billing snapshots. Its zero-worker/terminal-Pod checks
@@ -2612,6 +2665,18 @@ async function main(): Promise<void> {
         maximumCumulativeFiniteSpendUsd: finiteCapUsd,
         expectedEndpointIdHash: createdIdentity.endpointIdHash,
         expectedTemplateIdHash: createdIdentity.templateIdHash,
+        expectedConfiguration: {
+          endpointName: V207_ENDPOINT_NAME,
+          templateName: V207_TEMPLATE_NAME,
+          imageName: IMAGE,
+          containerDiskInGb: 120,
+          networkVolumeId: placement.networkVolumeId,
+          environment: {
+            LOG_LEVEL: "INFO",
+            ...templateEnvironment,
+            VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: createdIdentity.endpointIdHash,
+          },
+        },
         inventory: () => control.inventory(),
         resources: () => control.inventoryDisposableResources(),
         queueEmpty: () => harness.confirmQueueEmptyReadOnly(1, 100),
