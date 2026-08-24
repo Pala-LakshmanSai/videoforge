@@ -10,6 +10,7 @@ const E = {
   acceptance: "sha256:33fb4f18b1e1663b58b6334d1a371fc2c352d050635721378ad1cee4ff109561",
   max1: "sha256:6a70f6c1373f3525a9d6fb7cdb9eaaa11763322635d860a5512a7b1a6b477005",
   max2: "sha256:88e878b0cd1d041abd1a31b798c43305565da5873e4bb096736431b72b96143c",
+  authority: "sha256:fea7eaeb0078e88f75f19b5ea811d5af30d0a9d3209604d343fd623f596160a7",
   canonical: "sha256:c9295043d008a3622034a16e91ff30522a7bd19e5e10c7d40befe7cd42a48248",
   control: "9afbdca73b64209899a84555d771a3e7e81f51f6",
   orchestrator: "sha256:52d37b01230b4e5532266717c174e514f74fd05c37a4137a2b36e6d20b44e518",
@@ -56,11 +57,12 @@ const canonicalActivation = (source) => {
   );
 };
 
-for (const [file, hash] of [["combined-live-proposal.json", E.proposal], ["acceptance.json", E.acceptance], ["staged-config-max1.json", E.max1], ["staged-config-max2.json", E.max2]]) eq(sha(path.join(dir, file)), hash, `${file}_HASH`);
+for (const [file, hash] of [["combined-live-proposal.json", E.proposal], ["acceptance.json", E.acceptance], ["staged-config-max1.json", E.max1], ["staged-config-max2.json", E.max2], ["approved-authority.json", E.authority]]) eq(sha(path.join(dir, file)), hash, `${file}_HASH`);
 const proposal = json(path.join(dir, "combined-live-proposal.json"));
 const acceptance = json(path.join(dir, "acceptance.json"));
 const max1 = json(path.join(dir, "staged-config-max1.json"));
 const max2 = json(path.join(dir, "staged-config-max2.json"));
+const authority = json(path.join(dir, "approved-authority.json"));
 eq(proposal.attempt, 50, "ATTEMPT");
 eq(proposal.authority_mode, "PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP", "AUTHORITY_MODE");
 eq(proposal.approval_request.requested_maximum_cumulative_finite_spend_usd, 4, "REQUESTED_CAP");
@@ -97,6 +99,23 @@ eq(acceptance.scratch_contract.exact_job_path, "/tmp/videoforge-jobs/jobs/${atte
 eq(acceptance.provider_boundary.provider_calls_authorized, false, "PROVIDER_OFF");
 eq(acceptance.provider_boundary.external_spend_usd, 0, "SPEND_ZERO");
 yes(acceptance.cap_truth.null_cancelled_narrowing_exception.includes("two exact zero queue/worker reads at least 100ms apart"), "ACCEPTANCE_CANCEL");
+eq(authority.attempt, 50, "AUTHORITY_ATTEMPT");
+eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "AUTHORITY_STATUS");
+eq(authority.proposal.sha256, E.proposal, "AUTHORITY_PROPOSAL");
+eq(authority.acceptance.sha256, E.acceptance, "AUTHORITY_ACCEPTANCE");
+eq(authority.approval.maximum_cumulative_finite_spend_usd, 4, "AUTHORITY_CAP");
+eq(authority.approval.anchor_refresh_authorized, true, "AUTHORITY_REFRESH");
+eq(authority.approval.historical_cap_reused, false, "AUTHORITY_FRESH_CAP");
+eq(authority.approval.prior_authority_reused, false, "AUTHORITY_NO_REUSE");
+eq(authority.lineage.control_source_commit, E.control, "AUTHORITY_CONTROL");
+eq(authority.lineage.canonical_activation_source_sha256, E.canonical, "AUTHORITY_CANONICAL");
+eq(authority.lineage.initial_config_sha256, E.max1, "AUTHORITY_MAX1");
+eq(authority.lineage.concurrent_reader_config_sha256, E.max2, "AUTHORITY_MAX2");
+eq(authority.lineage.exact_job_scratch, "/tmp/videoforge-jobs/jobs/${attempt_id}", "AUTHORITY_SCRATCH");
+eq(authority.execution_boundary.provider_calls_completed, false, "AUTHORITY_PROVIDER_PENDING");
+eq(authority.execution_boundary.external_spend_usd, 0, "AUTHORITY_SPEND_ZERO");
+eq(authority.execution_boundary.retained_volume_mutation_authorized, false, "AUTHORITY_VOLUME_READONLY");
+eq(authority.execution_boundary.v2_08_authorized, false, "AUTHORITY_V208");
 for (const [config, max] of [[max1, 1], [max2, 2]]) {
   eq(config.control_source_commit, E.control, `CONFIG_${max}_CONTROL`);
   eq(config.source_hashes.qualification_harness_sha256, E.harness, `CONFIG_${max}_HARNESS`);
@@ -112,9 +131,9 @@ eq(sha(path.join(root, "apps/web/src/server/providers/runpod-v207-readonly-recon
 const activation = text(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"));
 yes(activation.includes(E.proposal), "ACTIVATION_POINTER");
 yes(activation.includes(E.control), "ACTIVATION_CONTROL_POINTER");
-yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_AUTHORITY_NULL");
-yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_CAP_NULL");
-yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_REFRESH_NULL");
+yes(activation.includes(E.authority), "ACTIVATION_AUTHORITY");
+yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*4\s*;/mu.test(activation), "ACTIVATION_CAP");
+yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*true\s*;/mu.test(activation), "ACTIVATION_REFRESH");
 eq(
   `sha256:${crypto.createHash("sha256").update(canonicalActivation(activation), "utf8").digest("hex")}`,
   E.canonical,

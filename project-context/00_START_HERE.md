@@ -1,10 +1,12 @@
 # VideoForge: start here
 
-Attempt50 provider-free proposal `sha256:1a7dd058…7badb` binds control `9afbdca7`, exact
-projected-liability cap admission, final max2 readers, sealed Mage/image/volume bytes, and local
-scratch. It requests a fresh exact `$4` cap approval, but executable authority/cap remain null.
-Completion is conditional on measured durations fitting the cap; the provider final invoice is not
-absolutely guaranteed. No provider call or spend occurred. V2-07 remains `NOT_QUALIFIED`; V2-08 forbidden.
+Attempt50 proposal `sha256:1a7dd058…7badb` is approved once by authority
+`sha256:fea7eaeb…160a7` with an exact `$4` cap, FlashBoot=true, LOW-or-better EU-RO-1,
+and `V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1`. It binds control `9afbdca7`, projected-liability
+admission, final max2 readers, sealed Mage/image/volume bytes, and local scratch. Completion is
+conditional on measured durations fitting the cap; the provider final invoice is not absolutely
+guaranteed. Execution is pending, with no provider call or spend yet. V2-07 remains `NOT_QUALIFIED`;
+V2-08 forbidden.
 
 Attempt49 proposal `sha256:a8b03557…74734a` and append-only authority
 `sha256:29bef150…0106d` are closed non-reusable before activation by pre-activation no-go
