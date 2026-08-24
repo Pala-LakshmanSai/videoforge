@@ -14,6 +14,7 @@ import {
   V207_TIMEOUT_TTL_MS,
   type RunPodV207DispatchBatchInput,
   type RunPodV207OutputAuthority,
+  type RunPodV207QualificationHarnessOptions,
   type RunPodV207WorkerProcessIdentity,
 } from "./runpod-v207-qualification-harness";
 import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
@@ -285,6 +286,7 @@ function makeHarness(
   spendSnapshotUsd: () => Promise<number> = async () => 0,
   finiteSpendCapUsd = 4,
   monotonicNowMs?: () => number,
+  onStatusCheckpoint?: RunPodV207QualificationHarnessOptions["onStatusCheckpoint"],
 ) {
   const control = new RunPodControlClient({
     apiKey,
@@ -321,6 +323,7 @@ function makeHarness(
     maxPolls: 3,
     sleep: async () => undefined,
     monotonicNowMs,
+    onStatusCheckpoint,
   });
 }
 
@@ -1024,6 +1027,64 @@ describe("V2-07 qualification harness", () => {
     expect((await instance.evidence()).events).toContainEqual(
       expect.objectContaining({ event: "owned_job_cleanup_cancelled", status: "CANCELLED" }),
     );
+  });
+
+  it("names checkpoint persistence failure and cancels the exact queued job without redispatch", async () => {
+    const baseFetch = harnessFetch();
+    let cancelled = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.includes("/cancel/")) {
+        cancelled = true;
+        const jobId = path.split("/").at(-1) ?? "job_01";
+        return jsonResponse({ id: jobId, status: "CANCELLED" });
+      }
+      if (path.includes("/status/")) {
+        const jobId = path.split("/").at(-1) ?? "job_01";
+        return jsonResponse({
+          id: jobId,
+          status: cancelled ? "CANCELLED" : "IN_QUEUE",
+          executionTime: null,
+          delayTime: null,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(
+      fetch,
+      async () => 0,
+      4,
+      undefined,
+      async () => {
+        throw new Error("checkpoint unavailable");
+      },
+    );
+    await instance.create();
+    const job = await instance.dispatchBatch({
+      requestKey: "attempt_a",
+      attemptId: "attempt_a",
+      input: {
+        envelope: {
+          artifacts: {
+            output_prefix: outputPrefix,
+            transfer_port_reservation_ids: ["reservation_a"],
+          },
+        },
+        batch: { items: [{ scene_id: "scene_a" }] },
+      },
+      outputAuthority: authority(),
+    });
+
+    await expect(instance.reconcile(job.id)).rejects.toThrow(
+      "RUNPOD_STATUS_CHECKPOINT_PERSIST_FAILED",
+    );
+    await instance.cleanup({ deleteIfFailed: true, failed: true });
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.includes("/cancel/")),
+    ).toHaveLength(1);
   });
 
   it("checks the finite cap before concurrent reader dispatch", async () => {

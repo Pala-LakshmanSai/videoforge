@@ -988,18 +988,56 @@ async function deleteGeneratedObjects(objectKeys: readonly string[], nonce: stri
   }
 }
 
-async function billingAmount(apiKey: string): Promise<number> {
+const V207_BILLING_READ_RETRY_DELAYS_MS = [250, 1_000, 2_000] as const;
+
+/**
+ * Billing is a read-only cap fence and may transiently time out independently of job status.
+ * Retry only transport, rate-limit, and server failures; malformed or unauthorized responses
+ * remain immediate fail-closed errors so API drift cannot be hidden by retries.
+ */
+export async function readV207EndpointBillingAmount(
+  apiKey: string,
+  options: {
+    readonly fetchImpl?: typeof fetch;
+    readonly sleepImpl?: (milliseconds: number) => Promise<void>;
+  } = {},
+): Promise<number> {
   const query = new URLSearchParams({
     bucketSize: "hour",
     grouping: "endpointId",
     startTime: BILLING_START,
     endTime: nowIso(),
   });
-  const response = await fetch(`https://rest.runpod.io/v1/billing/endpoints?${query}`, {
-    headers: { authorization: `Bearer ${apiKey}` },
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new Error("RUNPOD_ENDPOINT_BILLING_READ_FAILED");
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const sleepImpl = options.sleepImpl ?? sleep;
+  let response: Response | null = null;
+  for (let attempt = 0; attempt <= V207_BILLING_READ_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      response = await fetchImpl(`https://rest.runpod.io/v1/billing/endpoints?${query}`, {
+        headers: { authorization: `Bearer ${apiKey}`, connection: "close" },
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch {
+      if (attempt === V207_BILLING_READ_RETRY_DELAYS_MS.length) {
+        throw new Error("RUNPOD_ENDPOINT_BILLING_READ_AMBIGUOUS");
+      }
+      await sleepImpl(V207_BILLING_READ_RETRY_DELAYS_MS[attempt]!);
+      continue;
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("RUNPOD_ENDPOINT_BILLING_AUTH_REJECTED");
+    }
+    if (response.status === 429 || response.status >= 500) {
+      if (attempt === V207_BILLING_READ_RETRY_DELAYS_MS.length) {
+        throw new Error("RUNPOD_ENDPOINT_BILLING_READ_FAILED");
+      }
+      await sleepImpl(V207_BILLING_READ_RETRY_DELAYS_MS[attempt]!);
+      continue;
+    }
+    if (!response.ok) throw new Error("RUNPOD_ENDPOINT_BILLING_READ_FAILED");
+    break;
+  }
+  if (response === null) throw new Error("RUNPOD_ENDPOINT_BILLING_READ_AMBIGUOUS");
   const value = (await response.json()) as unknown;
   if (!Array.isArray(value)) throw new Error("RUNPOD_ENDPOINT_BILLING_RESPONSE_INVALID");
   let amount = 0;
@@ -1017,6 +1055,8 @@ async function billingAmount(apiKey: string): Promise<number> {
     throw new Error("RUNPOD_ENDPOINT_BILLING_TOTAL_INVALID");
   return amount;
 }
+
+const billingAmount = readV207EndpointBillingAmount;
 
 const GHCR_BLOB_REDIRECT_HOST = "pkg-containers.githubusercontent.com" as const;
 

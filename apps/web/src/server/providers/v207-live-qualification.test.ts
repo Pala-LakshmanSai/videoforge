@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { hashV207PlanManifest } from "./runpod-v207-qualification-harness";
 
@@ -29,6 +29,7 @@ const {
   installV207SignalHandlers,
   isAllowedV207GhcrBlobRedirect,
   mergeV207AcceptedUnits,
+  readV207EndpointBillingAmount,
   redactV207LiveEvidence,
   redactV207ProviderJobError,
   routePort,
@@ -53,6 +54,40 @@ const source = await readFile(
 type TestRecord = Record<string, unknown>;
 
 describe("V2-07 live qualification runner safety", () => {
+  it("retries transient billing transport and server failures before accepting a cap snapshot", async () => {
+    const sleeps: number[] = [];
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new Error("transient transport"))
+      .mockResolvedValueOnce(new Response("unavailable", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ amount: 1.25 }, { amount: 2.25 }]), { status: 200 }),
+      );
+
+    await expect(
+      readV207EndpointBillingAmount("test-api-key", {
+        fetchImpl,
+        sleepImpl: async (milliseconds) => {
+          sleeps.push(milliseconds);
+        },
+      }),
+    ).resolves.toBe(3.5);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(sleeps).toEqual([250, 1_000]);
+    expect(fetchImpl.mock.calls[2]?.[1]?.headers).toMatchObject({ connection: "close" });
+  });
+
+  it("fails with a named ambiguous billing error after the bounded retry window", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new Error("offline"));
+    await expect(
+      readV207EndpointBillingAmount("test-api-key", {
+        fetchImpl,
+        sleepImpl: async () => undefined,
+      }),
+    ).rejects.toThrow("RUNPOD_ENDPOINT_BILLING_READ_AMBIGUOUS");
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+  });
+
   it("merges one durable seed with exactly 31 replacement units and rejects gaps", () => {
     const items = Array.from({ length: 32 }, (_, index) => ({
       scene_id: `scene-${String(index + 1).padStart(2, "0")}`,

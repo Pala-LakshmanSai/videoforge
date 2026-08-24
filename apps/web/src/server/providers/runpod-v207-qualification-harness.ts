@@ -1723,12 +1723,16 @@ export class RunPodV207QualificationHarness {
         ...(latest.error === undefined ? {} : { provider_error_present: true }),
       });
       this.checkAbort();
-      await this.#options.onStatusCheckpoint?.({
-        idHash: latest.idHash,
-        status: latest.status,
-        delayTimeMs: latest.delayTimeMs,
-        executionTimeMs: latest.executionTimeMs,
-      });
+      try {
+        await this.#options.onStatusCheckpoint?.({
+          idHash: latest.idHash,
+          status: latest.status,
+          delayTimeMs: latest.delayTimeMs,
+          executionTimeMs: latest.executionTimeMs,
+        });
+      } catch {
+        throw new RunPodControlError("RUNPOD_STATUS_CHECKPOINT_PERSIST_FAILED");
+      }
       if (TERMINAL_STATUSES.has(latest.status)) {
         this.settleJobSpendLiability(latest);
         this.#ownedJobs.delete(jobId);
