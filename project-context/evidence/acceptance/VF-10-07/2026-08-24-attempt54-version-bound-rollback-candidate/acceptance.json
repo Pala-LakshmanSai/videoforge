@@ -1,0 +1,52 @@
+{
+  "schema_version": "videoforge.v2-07-attempt54-version-bound-rollback-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 54,
+  "status": "PROVIDER_FREE_REPAIR_COMPLETE_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal": {
+    "path": "combined-live-proposal.json",
+    "sha256": "sha256:5a61facbadeb460ee8dff2072a9c5c54abccd0267c60f1cefbb5aad2194a0e4b"
+  },
+  "read_only_preflight": {
+    "path": "read-only-preflight.json",
+    "sha256": "sha256:94e84a0ee7abe1d880b723782e5129b341176ee7655d58a20391c5c2e88618f3"
+  },
+  "provider_free_validation": {
+    "control_source_commit": "85391b130673200e2d1f74fea4ea2581d5d83c1a",
+    "focused_orchestrator_tests": {
+      "command": "pnpm exec vitest run src/server/providers/v207-live-orchestrator.test.ts --reporter=dot",
+      "result": "55_PASS_0_FAIL"
+    },
+    "web_typescript": {
+      "command": "pnpm exec tsc --noEmit",
+      "result": "PASS"
+    },
+    "git_diff_check": "PASS"
+  },
+  "repair_acceptance": {
+    "pre_mutation_refresh_reads_bound_to_captured_anchor_version": true,
+    "post_deploy_refresh_reads_bound_to_refreshed_version": true,
+    "post_promotion_reads_bound_to_refreshed_version": true,
+    "refresh_cleanup_reads_bound_to_exact_rollback_target": true,
+    "missing_stale_alternating_and_mixed_identity_fail_closed": true,
+    "non_refresh_behavior_preserved": true,
+    "raw_worker_version_ids_not_retained": true
+  },
+  "provider_state": {
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0,
+    "runpod_zero_compute": true,
+    "cloudflare_exact_version_bound_disabled_route": true,
+    "two_existing_volumes_retained": true
+  },
+  "remaining_gates": [
+    "fresh exact approval of proposal sha256:5a61facbadeb460ee8dff2072a9c5c54abccd0267c60f1cefbb5aad2194a0e4b",
+    "record fresh executable authority with maximum cumulative finite cap USD 4 and two-phase-v1 anchor refresh",
+    "execute the single bounded live qualification",
+    "prove complete artifact, timing, cost, reader reconciliation, terminal cleanup, and zero paid compute"
+  ],
+  "v2_08_started": false
+}

@@ -2,25 +2,23 @@
 
 ## Active handoff — read this section first
 
-Attempt53 is closed `NOT_QUALIFIED`. Its exact `$4` authority is consumed and non-reusable. The
-repaired terminal-history gate passed, and probe, unresolved-only resume, and cold batches accepted
-64 durable units. The warm job then failed during status reconciliation after its first `IN_QUEUE`
-read with `V207_QUALIFICATION_FAILED`; it was cancelled without retry. Exact RunPod cleanup deleted
-the disposable endpoint/template after two stable terminal snapshots. Three later reads prove zero
-Pods/endpoints/private templates/workers, both retained volumes, and `$0` immediate observed billing
-increment against the cap, subject to provider billing lag.
+Attempt54 provider-free repair is green but V2-07 remains `NOT_QUALIFIED`. Control commit
+`85391b130673200e2d1f74fea4ea2581d5d83c1a` binds every refresh pre-route, refreshed-disabled,
+post-promotion, and refresh-cleanup route read to the exact expected Worker version. Missing, stale,
+alternating, and mixed identities fail closed; non-refresh behavior remains compatible; evidence
+retains hashes only. The focused orchestrator file passes 55/55 and web TypeScript passes.
 
-Cloudflare rollback remains unresolved. The orchestrator captured immediate `404
-V207_ROUTE_DISABLED`, but the required later handoff check is stably `503
-HOSTED_ROUTE_NOT_COMPOSED` across three reads. Protected config is restored at mode 0600 and the
-ephemeral signer is absent, but the route fingerprint is not accepted. Provider-free diagnosis
-`sha256:fcfadc8b…d3f80` proves the orchestrator separately checks the control-plane rollback version
-and data-plane status/code without binding disabled/restored route reads to that version. The later
-503 carries the V2-06 runtime header and no Worker-version header. Stop external work. The smallest
-next action is one provider-free orchestrator repair that requires the exact rollback-target version
-on every refresh-disabled and cleanup route read, plus focused mixed-edge tests. Any remote repair
-or paid retry requires a new exact proposal and fresh approval. Continued `$7/month` retention of
-the two existing volumes remains approved. V2-08 is forbidden.
+Fresh read-only truth proves the exact POST `404 V207_ROUTE_DISABLED` now carries the active Worker
+version, RunPod has zero Pods/endpoints/private templates/workers, both existing 50 GB volumes are
+retained, RTX 4090 EU-RO-1 availability is `LOW`, Serverless Flex is `$1.10/GPU-hour`, Secure
+reference is `$0.74/hour`, and the new cumulative endpoint billing baseline is
+`1.7478178361488972`. Attempt54 proposal
+`evidence/acceptance/VF-10-07/2026-08-24-attempt54-version-bound-rollback-candidate/combined-live-proposal.json`
+is exactly `sha256:5a61facbadeb460ee8dff2072a9c5c54abccd0267c60f1cefbb5aad2194a0e4b`.
+It requests FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1` anchor refresh, a `$4` maximum
+cumulative finite cap, and continued `$7/month` retention of the two existing volumes. No executable
+authority or cap exists. Stop before any provider mutation, GPU use, or spend until that exact
+proposal is approved. V2-08 is forbidden.
 
 Attempt52 is closed before mutation at `V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; its
 authority is consumed and non-reusable. Closure `sha256:267918ea…8dec0` and reconciliation
