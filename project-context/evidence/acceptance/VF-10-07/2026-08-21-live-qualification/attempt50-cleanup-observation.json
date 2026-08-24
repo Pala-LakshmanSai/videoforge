@@ -1,0 +1,42 @@
+{
+  "schema_version": "videoforge.v2-07-attempt50-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 50,
+  "checked_at": "2026-08-24T06:09:47.997Z",
+  "result": "CLEAN_ROLLBACK_CONFIRMED_AFTER_NARROW_EXACT_CLEANUP",
+  "failure_code": "RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE",
+  "cleanup_repair_commit": "333dc1f",
+  "cleanup_repair_is_post_run_cleanup_only_not_paid_lineage": true,
+  "raw_live_result_sha256": "sha256:170fed6183ff8bf57f2cda309d66634407ad07c484bca3aa8dfddffcc2220553",
+  "raw_orchestrator_sha256": "sha256:ba25bfbd734a500542f01a1f48c411dec11cd79d15ae752f520cb65cc6cd534f",
+  "generated_output_rollback": "CONFIRMED",
+  "runpod": {
+    "endpoint_id_sha256": "sha256:acb3e840248217ef5cc6647fdb7fcc187a6ce6234b73d47db506891700f1348d",
+    "template_id_sha256": "sha256:ae6465a311854bb3f12e637e68bad6d20fe217e5dda4bb493e397644cfb625ae",
+    "stable_terminal_snapshot_count": 2,
+    "endpoint_worker_record_count": 3,
+    "terminal_pod_record_count": 3,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "jobs_submitted": 1,
+    "gpu_use": true
+  },
+  "cloudflare": {
+    "signer_secret_deleted": true,
+    "worker_rollback_confirmed": true,
+    "restored_route": "404 V207_ROUTE_DISABLED"
+  },
+  "protected_config": {
+    "mode": "0600",
+    "sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "unchanged": true
+  },
+  "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "retained_volumes_deleted_or_mutated_by_cleanup": false,
+  "cleanup_uncertain": false,
+  "authority_consumed": true,
+  "retry_under_same_authority_forbidden": true,
+  "v2_08_authorized": false
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "videoforge.v2-07-attempt50-live-orchestrator-redacted/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 50,
+  "result": "FAILED",
+  "source": {
+    "path": "/tmp/videoforge-v207-attempt50-live-orchestrator.json",
+    "sha256": "sha256:ba25bfbd734a500542f01a1f48c411dec11cd79d15ae752f520cb65cc6cd534f"
+  },
+  "authority": {
+    "proposal_sha256": "sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb",
+    "authority_sha256": "sha256:fea7eaeb0078e88f75f19b5ea811d5af30d0a9d3209604d343fd623f596160a7",
+    "authority_commit": "00f65c8",
+    "cap_usd": 4,
+    "anchor_refresh_activation": "two-phase-v1"
+  },
+  "events": {
+    "orchestration_started_at": "2026-08-24T05:50:59.852Z",
+    "pre_mutation_route": "404 V207_ROUTE_DISABLED",
+    "pre_mutation_route_consecutive_matches": 16,
+    "anchor_refresh_promoted": true,
+    "signer_secret_activated": true,
+    "signer_route_activation_confirmed": true,
+    "live_preflight_exit_code": 0,
+    "orchestration_failed_at": "2026-08-24T05:59:43.445Z",
+    "failure_code": "V207_LIVE_RUNNER_FAILED",
+    "child_failure_code": "RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE",
+    "signer_secret_deleted": true,
+    "worker_rollback_confirmed": true,
+    "restored_route": "404 V207_ROUTE_DISABLED",
+    "restored_route_confirmed_at": "2026-08-24T06:00:36.388Z",
+    "protected_config_marker_reverted": true
+  },
+  "protected_config": {
+    "sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "mode": "0600",
+    "unchanged_after_rollback": true
+  },
+  "credentials_or_secret_values_recorded": false,
+  "v2_08_authorized": false
+}
