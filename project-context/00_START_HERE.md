@@ -1,7 +1,11 @@
 # VideoForge: start here
 
-Attempt49 proposal `sha256:a8b03557…74734a` binds control `a49f7578`, exact `two-phase-v1`,
-sealed Mage bytes, new max1/max2, fresh clean preflight, null authority/cap, and blocked V2-08.
+Attempt49 proposal `sha256:a8b03557…74734a` and append-only authority
+`sha256:29bef150…0106d` are closed non-reusable before activation by pre-activation no-go
+`sha256:6eb7575c…65ba`. Independent review found the asynchronous paid-work fence did not
+reserve conservative in-flight liability against the `$4` cap. No provider call, mutation,
+GPU job, protected-config write, or spend occurred. V2-07 remains `NOT_QUALIFIED`; a changed
+lineage needs a fresh exact proposal, approval, and positive numeric cap. V2-08 is forbidden.
 
 Attempt47 is closed fail-closed as `NOT_QUALIFIED`. Proposal
 `sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53` and acceptance

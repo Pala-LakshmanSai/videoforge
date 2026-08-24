@@ -1,0 +1,63 @@
+{
+  "schema_version": "videoforge.v2-07-attempt49-pre-activation-no-go/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 49,
+  "recorded_at": "2026-08-24T05:06:00Z",
+  "result": "BLOCKED_SUPERSEDED_BEFORE_ACTIVATION_NO_PROVIDER_CALL_NO_SPEND",
+  "qualification_status": "NOT_QUALIFIED",
+  "approved_lineage": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a",
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:29bef150a23b48d990d7ec76de8e701e4548a417404f09b1836267f55f60106d",
+    "approved_cap_usd": 4,
+    "approved_authority_bytes_preserved": true,
+    "consumed_by_execution": false,
+    "invalidated_before_activation": true,
+    "reusable": false
+  },
+  "pre_activation_no_go": {
+    "reason": "The independent launch audit found that Attempt49 admitted new asynchronous paid work using only observed settled billing. It did not reserve conservative in-flight liability against the exact USD 4 cap, so delayed RunPod billing could allow a cap overshoot. The approved proposal therefore could not be activated safely.",
+    "provider_calls_after_approval": 0,
+    "provider_mutations_after_approval": 0,
+    "cloudflare_mutations_after_approval": 0,
+    "gpu_jobs_submitted_after_approval": 0,
+    "external_spend_usd_after_approval": 0,
+    "protected_config_written": false,
+    "rollback_anchor_refresh_started": false,
+    "endpoint_or_template_created": false,
+    "sealed_image_rebuilt_or_republished": false,
+    "retained_volume_written_or_mutated": false
+  },
+  "executable_activation_at_no_go": {
+    "approved_authority_sha256": null,
+    "approved_finite_cap_usd": null,
+    "approved_anchor_refresh_authorized": null,
+    "launcher_marker_applied": false
+  },
+  "last_read_only_truth": {
+    "source_path": "read-only-preflight.json",
+    "source_sha256": "sha256:a628e630428a0256eab05112c181ab598d579446485179e0a65497a17f9ec1b5",
+    "checked_at": "2026-08-24T04:09:31Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "cumulative_endpoint_spend_usd": 1.6217972798040137,
+    "attempt49_incremental_spend_usd": 0
+  },
+  "successor_boundary": {
+    "attempt50_or_later_requires_changed_source_lineage": true,
+    "fresh_exact_proposal_required": true,
+    "fresh_exact_user_approval_required": true,
+    "fresh_positive_numeric_cap_required": true,
+    "attempt49_authority_or_cap_reuse_forbidden": true,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "v2_08_authorized": false
+  }
+}

@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-24T04:10:00Z"
+updated_at: "2026-08-24T05:06:00Z"
 
-phase: serverless_v2_v2_07_attempt49_provider_free_candidate_pending_authority
+phase: serverless_v2_v2_07_attempt49_blocked_pre_activation_no_authority
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
 current_wave: v2_07_attempt49_authority_bound_lineage_candidate
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_candidate_pending_fresh_exact_approval_and_cap
+task_stage: provider_free_repair_after_attempt49_pre_activation_no_go
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,18 +18,18 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: provider_free_candidate_pending_fresh_exact_approval_and_cap
+  mode: provider_free_repair_after_attempt49_pre_activation_no_go
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: Attempt49 exact provider-free candidate is ready; no retry, mutation, GPU use, or spend until its exact proposal is approved with a fresh positive numeric cap
-  note: "Attempt48 remains closed NOT_QUALIFIED. Attempt49 binds control a49f7578e0a03677366560defa30493f1c975b56, exact two-phase-v1 activation, fresh MEDIUM RTX4090 EU-RO-1 truth, max1 then separately hashed max2, and zero current authority/cap. V2-08 forbidden."
+  v2_07_action: Complete provider-free cap and terminal-reader ordering repair, then freeze a changed-lineage proposal; Attempt49 authority and cap are non-reusable
+  note: "Attempt49 pre-activation no-go sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba records zero provider calls, mutations, GPU jobs, protected-config writes, or spend after approval. V2-07 remains NOT_QUALIFIED; fresh exact successor proposal, approval, and cap required; V2-08 forbidden."
 
 pending_v2_07_attempt49_proposal:
-  mode: provider_free_candidate_pending_fresh_exact_approval_and_positive_numeric_cap
+  mode: closed_blocked_superseded_before_activation
   proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a"
   candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/acceptance.json
@@ -47,10 +47,13 @@ pending_v2_07_attempt49_proposal:
   canonical_activation_source_sha256: "sha256:858ebe43ef8ad6558825d6b1c756311a8944cd2ef27e58f42651d793ab191da9"
   exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1
   anchor_refresh_authorized_if_approved: true
-  authority_recorded: false
-  authority_path: null
-  authority_sha256: null
-  maximum_cumulative_finite_spend_usd: null
+  authority_recorded: true
+  authority_path: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/approved-authority.json
+  authority_sha256: "sha256:29bef150a23b48d990d7ec76de8e701e4548a417404f09b1836267f55f60106d"
+  authority_state: BLOCKED_SUPERSEDED_BEFORE_ACTIVATION_NON_REUSABLE
+  authority_consumed_by_execution: false
+  authority_reusable: false
+  maximum_cumulative_finite_spend_usd: 0
   finite_action_estimate_usd: 3.95
   provider_calls_authorized: false
   provider_mutations_authorized: false
@@ -58,7 +61,9 @@ pending_v2_07_attempt49_proposal:
   retained_volume_mutation_authorized: false
   v2_07_qualified: false
   v2_08_authorized: false
-  result: PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP
+  result: BLOCKED_SUPERSEDED_BEFORE_ACTIVATION_NO_PROVIDER_CALL_NO_SPEND
+  pre_activation_no_go: evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/pre-activation-no-go.json
+  pre_activation_no_go_sha256: "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba"
 
 pending_v2_07_attempt48_proposal:
   mode: closed_consumed_attempt48_rollback_anchor_not_retained_clean

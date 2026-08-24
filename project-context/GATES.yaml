@@ -157,12 +157,13 @@ gates:
     current_candidate_acceptance_sha256: "sha256:343042fba22a804f882717c8c6119408cb5a3e5839c6feb124ca6c090ba3e387"
     current_candidate_preflight: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/read-only-preflight.json"
     current_candidate_preflight_sha256: "sha256:a628e630428a0256eab05112c181ab598d579446485179e0a65497a17f9ec1b5"
-    current_candidate_authority: null
-    current_candidate_authority_sha256: null
-    current_candidate_authority_state: PENDING_FRESH_EXACT_APPROVAL
-    current_candidate_authority_mode: pending_fresh_exact_approval_and_positive_numeric_cap
+    current_candidate_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/approved-authority.json"
+    current_candidate_authority_sha256: "sha256:29bef150a23b48d990d7ec76de8e701e4548a417404f09b1836267f55f60106d"
+    current_candidate_authority_state: BLOCKED_SUPERSEDED_BEFORE_ACTIVATION_NON_REUSABLE
+    current_candidate_authority_mode: none_attempt49_blocked_before_activation
     current_candidate_finite_cap_usd: null
     current_candidate_anchor_refresh_authorized: false
+    current_candidate_exact_anchor_refresh_activation: null
     current_candidate_cloudflare_mutation_authorized: false
     current_candidate_scoped_signer_worker_route_activation_authorized: false
     current_candidate_provider_calls_completed: false
@@ -177,12 +178,12 @@ gates:
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
     current_candidate_max1_sha256: "sha256:c68a4c2c2e4a14a3f9ed85e47fe33e3893886dba3040af7245261d198160c63b"
     current_candidate_max2_sha256: "sha256:fcb2c2b62072eb182a0c8833f2aa30b33bfff581be4006c41225dca962a88eed"
-    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/combined-live-proposal.json"
-    latest_approved_proposal_sha256: "sha256:6ac58b154cd6d91b72f591128f5f9ed94af8ae3ad969bfce278c05d31f1c11c8"
-    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt48-current-anchor-refresh-candidate/approved-authority.json"
-    latest_approved_authority_sha256: "sha256:1c2166d74fdb0a35271b50709720bd80fbbef7442dc28d35c16c534dc43760fa"
-    latest_approved_authority_state: CONSUMED_CLOSED_DO_NOT_REUSE
-    latest_approved_control_source_commit: "3bfeff00b62945936bdbfc1e7dede9037ef4a31e"
+    latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/combined-live-proposal.json"
+    latest_approved_proposal_sha256: "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a"
+    latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/approved-authority.json"
+    latest_approved_authority_sha256: "sha256:29bef150a23b48d990d7ec76de8e701e4548a417404f09b1836267f55f60106d"
+    latest_approved_authority_state: BLOCKED_SUPERSEDED_BEFORE_ACTIVATION_NON_REUSABLE
+    latest_approved_control_source_commit: "a49f7578e0a03677366560defa30493f1c975b56"
     closed_authority: "evidence/acceptance/VF-10-07/2026-08-23-attempt38-durable-replacement-candidate/approved-authority.json"
     closed_authority_sha256: "sha256:1933bf186c235089c13edfee0e68a28b2fa0ab2ebc89a25f81bb59a7eedd92b6"
     historical_attempt41_closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-41.json"
@@ -204,10 +205,11 @@ gates:
     pending_proposal_sha256: "sha256:a8b03557f6e4aa2b38cd17b58d1d62704e126619f1a7378348b72c0fde74734a"
     pending_authority: null
     pending_authority_sha256: null
-    pending_authority_state: PENDING_FRESH_EXACT_APPROVAL
-    pending_authority_mode: pending_fresh_exact_approval_and_positive_numeric_cap
+    pending_authority_state: NONE_ATTEMPT49_BLOCKED_SUPERSEDED
+    pending_authority_mode: pending_changed_lineage_proposal_and_fresh_exact_approval
     pending_numeric_cap_usd: null
     pending_anchor_refresh_authorized: false
+    pending_exact_anchor_refresh_activation: null
     pending_cloudflare_mutation_authorized: false
     pending_scoped_signer_worker_route_activation_authorized: false
     pending_control_source_commit: "a49f7578e0a03677366560defa30493f1c975b56"
@@ -238,8 +240,10 @@ gates:
     provider_mutations_authorized: false
     gpu_use_authorized: false
     v2_08_authorized: false
-    authority_mode: pending_fresh_exact_approval_and_positive_numeric_cap
-    result: "NOT_QUALIFIED_attempt49_provider_free_candidate_pending_authority"
+    authority_mode: none_attempt49_blocked_superseded_before_activation
+    result: "NOT_QUALIFIED_attempt49_blocked_before_activation_no_provider_call_no_spend"
+    attempt49_pre_activation_no_go: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/pre-activation-no-go.json"
+    attempt49_pre_activation_no_go_sha256: "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-48.json"
     closure_evidence_sha256: "sha256:c0fee47e5cc93adf06decaf8ca993f4040709069f1508fded890d57a76e86d92"
     cleanup_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt48-cleanup-observation.json"
@@ -249,7 +253,7 @@ gates:
     canonicalization_repair_commit: "f945392"
     deploy_diagnostic_repair_commit: "7066520"
     deploy_diagnostic_repair_source_sha256: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894"
-    next_boundary: "fresh exact Attempt49 proposal approval and positive numeric cap required before any provider mutation, GPU use, or spend; V2-08 forbidden"
+    next_boundary: "finish provider-free repair and freeze changed lineage; fresh exact proposal approval and positive numeric cap required before any provider call, mutation, GPU use, or spend; Attempt49 authority/cap non-reusable; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:
