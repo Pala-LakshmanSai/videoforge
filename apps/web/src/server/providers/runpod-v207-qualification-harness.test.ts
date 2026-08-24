@@ -1352,6 +1352,9 @@ describe("V2-07 qualification harness", () => {
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(1);
+    expect((await instance.evidence()).events).not.toContainEqual(
+      expect.objectContaining({ event: "process_replacement_seed_drained" }),
+    );
   });
 
   it("never substitutes a matching opaque worker id for a missing signed Pod", async () => {

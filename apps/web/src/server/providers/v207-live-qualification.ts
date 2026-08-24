@@ -2353,7 +2353,7 @@ async function main(): Promise<void> {
       }
       // A replacement is not admitted from warm-idle.  The one-item seed must first prove
       // terminal status, empty queue, two stable terminal worker/Pod inventories, and the exact
-      // provider worker identity that the signed receipt reported.
+      // exact provider Pod identity that the signed receipt reported as RUNPOD_POD_ID.
       const processReplacementBoundary = await harness.prepareProcessReplacement(
         probeJob.id,
         probeWorkerProcessIdentity,

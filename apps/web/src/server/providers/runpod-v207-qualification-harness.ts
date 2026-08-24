@@ -1848,7 +1848,9 @@ export class RunPodV207QualificationHarness {
     if (
       terminal.providerPodIdSha256 === null ||
       terminal.providerIdentitySource === null ||
-      terminal.providerPodIdSha256 !== seedIdentity.pod_id_sha256
+      terminal.providerPodIdSha256 !== seedIdentity.pod_id_sha256 ||
+      terminal.terminalWorkerRecordCount !== 1 ||
+      terminal.terminalPodRecordCount !== 1
     ) {
       throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
     }
