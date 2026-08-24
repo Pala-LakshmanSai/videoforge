@@ -1527,10 +1527,24 @@ export async function runV207LiveOrchestration(
     // Capture the exact pre-mutation route semantics. The restored V2-06 Worker may legitimately
     // answer 503 (HOSTED_ROUTE_NOT_COMPOSED), so cleanup must compare against this fingerprint
     // instead of assuming the V2-07 route is always a 404 before/after the run.
-    preMutationRoute = await readRouteFingerprint(fetchImpl, routeUrl, abortController.signal);
+    preMutationRoute = await readRouteFingerprint(
+      fetchImpl,
+      routeUrl,
+      abortController.signal,
+      rollbackAnchorRefresh.enabled,
+    );
+    if (
+      rollbackAnchorRefresh.enabled &&
+      preMutationRoute.workerVersionId !== capturedAnchor.versionId
+    ) {
+      throw new V207LiveOrchestratorError("V207_ROUTE_VERSION_ID_UNCONFIRMED");
+    }
     await record("captured_pre_mutation_route", {
       status: preMutationRoute.status,
       code: preMutationRoute.code,
+      ...(rollbackAnchorRefresh.enabled
+        ? { worker_version_id_hash: sha256(capturedAnchor.versionId) }
+        : {}),
     });
     if (rollbackAnchorRefresh.enabled) {
       if (
@@ -1545,10 +1559,12 @@ export async function runV207LiveOrchestration(
         sleepImpl,
         abortController.signal,
         "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED",
+        capturedAnchor.versionId,
       );
       await record("rollback_anchor_refresh_pre_mutation_route_stable", {
         status: stablePreMutationRoute.status,
         code: stablePreMutationRoute.code,
+        worker_version_id_hash: sha256(capturedAnchor.versionId),
         consecutive_matches: RESTORATION_REQUIRED_CONSECUTIVE_MATCHES,
       });
     }
