@@ -257,10 +257,13 @@ gates:
     cleanup_evidence_sha256: "sha256:70ed2b1846f36c1ee76fde045244277213d06e875f30995621fe17421897fe11"
     reconciliation_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt53-reconciliation-observation.json"
     reconciliation_evidence_sha256: "sha256:95ebac235a15509c6a8c2d761b5a195dad54f16b598e87f6432d8db171cca5ee"
+    rollback_fingerprint_diagnosis: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt53-rollback-fingerprint-diagnosis.json"
+    rollback_fingerprint_diagnosis_sha256: "sha256:fcfadc8bd7202f3bcf7cba3403bc5935e8fbaa53a758b3002114b722c5cd3f80"
+    rollback_fingerprint_diagnosis_result: CONTROL_PLANE_DATA_PLANE_VERSION_IDENTITY_NOT_BOUND_DURING_DISABLED_ROUTE_AND_CLEANUP_STABILITY_WINDOWS
     canonicalization_repair_commit: "f945392"
     deploy_diagnostic_repair_commit: "7066520"
     deploy_diagnostic_repair_source_sha256: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894"
-    next_boundary: "provider-free Cloudflare rollback fingerprint diagnosis only; no remote mutation or paid retry without a fresh exact proposal and approval; V2-08 forbidden"
+    next_boundary: "one provider-free orchestrator version-bound rollback repair micro-checkpoint with focused mixed-edge tests; no remote mutation or paid retry; V2-08 forbidden"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

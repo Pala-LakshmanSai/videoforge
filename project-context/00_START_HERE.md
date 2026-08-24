@@ -13,8 +13,12 @@ increment against the cap, subject to provider billing lag.
 Cloudflare rollback remains unresolved. The orchestrator captured immediate `404
 V207_ROUTE_DISABLED`, but the required later handoff check is stably `503
 HOSTED_ROUTE_NOT_COMPOSED` across three reads. Protected config is restored at mode 0600 and the
-ephemeral signer is absent, but the route fingerprint is not accepted. Stop external work. The
-smallest next action is provider-free Cloudflare rollback fingerprint diagnosis; any remote repair
+ephemeral signer is absent, but the route fingerprint is not accepted. Provider-free diagnosis
+`sha256:fcfadc8b…d3f80` proves the orchestrator separately checks the control-plane rollback version
+and data-plane status/code without binding disabled/restored route reads to that version. The later
+503 carries the V2-06 runtime header and no Worker-version header. Stop external work. The smallest
+next action is one provider-free orchestrator repair that requires the exact rollback-target version
+on every refresh-disabled and cleanup route read, plus focused mixed-edge tests. Any remote repair
 or paid retry requires a new exact proposal and fresh approval. Continued `$7/month` retention of
 the two existing volumes remains approved. V2-08 is forbidden.
 

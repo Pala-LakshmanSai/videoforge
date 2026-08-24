@@ -1,0 +1,50 @@
+{
+  "schema_version": "videoforge.v2-07-attempt53-rollback-fingerprint-diagnosis/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 53,
+  "diagnosed_at": "2026-08-24T12:24:00Z",
+  "mode": "PROVIDER_FREE_READ_ONLY",
+  "result": "CONTROL_PLANE_DATA_PLANE_VERSION_IDENTITY_NOT_BOUND_DURING_DISABLED_ROUTE_AND_CLEANUP_STABILITY_WINDOWS",
+  "observed_failure": {
+    "orchestrator_immediate_cleanup_route": "404 V207_ROUTE_DISABLED",
+    "later_route": "503 HOSTED_ROUTE_NOT_COMPOSED",
+    "later_route_stable_read_count": 3,
+    "later_response_runtime_header": "hosted-v2-06",
+    "later_response_worker_version_header_present": false,
+    "later_response_headers_sha256": "sha256:6e38b953e53525753909a20797dc49b3aeb121bd5395f835366b2487b344ca02",
+    "later_response_body_sha256": "sha256:e9968906a25a47a97705de7d155726ed7a0a483201f87b00e852f3dd5732b101"
+  },
+  "lineage": {
+    "closure_commit": "d51aa5586a5c9cee98295c5c806c25bb4a231f66",
+    "refreshed_rollback_version_id_sha256": "sha256:36256382df0f40b1e654b041d5bfbcadefac429ab0b9de0709b567975e7a8ad6",
+    "post_run_deployment_version_id_sha256": "sha256:36256382df0f40b1e654b041d5bfbcadefac429ab0b9de0709b567975e7a8ad6",
+    "refreshed_rollback_record_sha256": "sha256:9e37db7bcf43625ea1ff0679f3ed421d50ad4e951088e2fa0cdbfc707a0afac2",
+    "orchestrator_evidence_sha256": "sha256:8e267bf630f6d7c6f42916f5d272ff513f7fc56244b60f6a30c7a71f5383be25",
+    "orchestrator_source_sha256": "sha256:358a5b7c18c7985bd9e1f14cd73449715d1e00671df51f613080efa3ae4f1d9c",
+    "staging_entry_source_sha256": "sha256:19c99a07da1703dd2e5b205a3e2b9bb488ac125e0b2bfdcced698f44484de8e2",
+    "production_entry_source_sha256": "sha256:700e18236c2ca1907c42c87c910636e29a7319b9368c6dfdf4754607e4468d11",
+    "built_staging_worker_asset_sha256": "sha256:e64d6842bbd31cf0a670eb907ac6e4732108a175a3d3fe435f7ac2531a9a0bb8"
+  },
+  "provider_free_findings": [
+    "The built staging Worker intercepts POST /api/v2/v207/generated-output-port and returns 404 V207_ROUTE_DISABLED without the signer while attaching x-videoforge-worker-version when CF_VERSION_METADATA is valid.",
+    "The production Worker does not compose the V2-07 port; its hosted fallback returns 503 HOSTED_ROUTE_NOT_COMPOSED with x-videoforge-runtime hosted-v2-06 and no x-videoforge-worker-version header, matching the later observed response.",
+    "Signer activation requires the exact active Worker version header, but waitForRefreshDisabledRoute and waitForRouteRestoration call readRouteFingerprint without requiring or comparing Worker version identity.",
+    "rollbackAndVerify proves the control-plane deployment record, while the cleanup route loop separately proves only status and error code; no invariant binds the two observations to one immutable Worker version.",
+    "Therefore sixteen matching disabled-route reads can be accepted even though a later edge serves the uncomposed V2-06 contract. Attempt53 cleanup cannot be qualified from the immediate 404 window."
+  ],
+  "exact_provider_free_repair_scope": [
+    "After the signer-disabled refresh deploy, read and retain the exact active version before route acceptance.",
+    "Require x-videoforge-worker-version on every refresh-disabled and post-promotion route read and require equality with that exact refreshed version.",
+    "During refresh-mode cleanup, require every restored 404 V207_ROUTE_DISABLED read to carry the exact captured rollback-target version; missing, malformed, mixed, or changed identities fail closed.",
+    "Record only the version ID hash in durable evidence.",
+    "Add focused mixed-edge tests for status/code matches from missing, stale, and alternating version identities; preserve non-refresh historical fingerprint behavior."
+  ],
+  "remote_mutation_performed": false,
+  "provider_call_performed": false,
+  "gpu_use": false,
+  "external_spend_usd": 0,
+  "authority_available": false,
+  "v2_08_authorized": false,
+  "smallest_next_action": "OPEN_ONE_PROVIDER_FREE_V2_07_ORCHESTRATOR_VERSION_BOUND_ROLLBACK_REPAIR_MICRO_CHECKPOINT; NO_REMOTE_MUTATION_OR_PAID_RETRY"
+}
