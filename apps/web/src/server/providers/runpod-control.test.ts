@@ -607,7 +607,12 @@ describe("RunPod scale-zero control", () => {
         return response(
           statusReads === 1
             ? { id: "job_01", status: "IN_PROGRESS", delayTime: 1200, executionTime: 3400 }
-            : { id: "job_01", status: "CANCELLED" },
+            : {
+                id: "job_01",
+                status: "CANCELLED",
+                executionTime: null,
+                delayTime: null,
+              },
         );
       }
       if (path.endsWith("/health")) return response(health());
@@ -636,7 +641,11 @@ describe("RunPod scale-zero control", () => {
       executionTimeMs: 3400,
     });
     guard.beginDrain();
-    await expect(client.cancel("job_01")).resolves.toMatchObject({ status: "CANCELLED" });
+    await expect(client.cancel("job_01")).resolves.toMatchObject({
+      status: "CANCELLED",
+      executionTimeMs: null,
+      delayTimeMs: null,
+    });
     expect(() => guard.assertDispatchAllowed()).toThrow("RUNPOD_DISPATCH_BLOCKED");
     await client.confirmDrained();
     expect(() => guard.assertDispatchAllowed()).not.toThrow();

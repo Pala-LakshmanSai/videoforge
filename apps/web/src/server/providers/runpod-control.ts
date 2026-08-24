@@ -153,6 +153,14 @@ const record = (value: unknown): JsonRecord | null =>
     : null;
 
 const numberOrNull = (value: unknown): number | null => {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "boolean" ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return null;
+  }
   const candidate = typeof value === "number" ? value : Number(value);
   return Number.isFinite(candidate) && candidate >= 0 ? candidate : null;
 };

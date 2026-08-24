@@ -2307,6 +2307,64 @@ describe("V2-07 qualification harness", () => {
     expect(evidence.newPaidWorkFenced).toBe(false);
   });
 
+  it("rejects the readers under $4 when the six-stage cancel execution time is unknown", async () => {
+    const baseFetch = harnessFetch();
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      if (path.includes("/cancel/")) {
+        return jsonResponse({ id: jobId, status: "CANCELLED" });
+      }
+      if (path.includes("/status/")) {
+        return jsonResponse({
+          id: jobId,
+          status: jobId === "job_05" ? "CANCELLED" : jobId === "job_06" ? "TIMED_OUT" : "COMPLETED",
+          executionTime: jobId === "job_05" ? null : jobId === "job_06" ? 5_000 : 100,
+          delayTime: 20,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch, async () => 0, 4);
+    await instance.create();
+
+    for (const stage of ["probe", "resume", "cold", "warm"] as const) {
+      const job = await instance.dispatchBatch(
+        oneItemInput(`attempt_${stage}`, `reservation_${stage}`),
+      );
+      await instance.reconcile(job.id);
+      await instance.confirmWarmIdle();
+    }
+    instance.markInitialQualificationComplete();
+    const cancelJob = await instance.dispatchBatch(
+      oneItemInput("attempt_cancel", "reservation_cancel"),
+    );
+    await instance.cancel(cancelJob.id);
+    await instance.scaleDownToInitial();
+    const timeoutJob = await instance.dispatchTimeoutBatch(
+      oneItemInput("attempt_timeout", "reservation_timeout"),
+    );
+    await instance.reconcile(timeoutJob.id);
+    await instance.scaleDownToInitial();
+    await instance.applyConcurrentReaderPolicy();
+
+    await expect(
+      instance.dispatchConcurrentReaders([
+        oneItemInput("attempt_reader_a", "reservation_reader_a"),
+        oneItemInput("attempt_reader_b", "reservation_reader_b"),
+      ]),
+    ).rejects.toThrow("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(6);
+    const evidence = await instance.evidence();
+    const rejection = evidence.events.find(
+      (event) => event.event === "finite_spend_headroom_insufficient",
+    );
+    expect(rejection?.projected_spend_usd).toBeCloseTo(4.316, 3);
+    expect(evidence.newPaidWorkFenced).toBe(true);
+  });
+
   it("fails closed when the max-two policy update crosses the cap", async () => {
     const fetch = harnessFetch();
     const spendSnapshotUsd = vi
