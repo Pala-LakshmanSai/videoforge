@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-24T14:55:00Z"
+updated_at: "2026-08-24T15:12:28Z"
 
-phase: serverless_v2_v2_07_attempt55_proposal_pending_approval
+phase: serverless_v2_v2_07_attempt55_closed_consumed_preexecution_executable_anchor_lineage_mismatch
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt55_config_lineage_rebind_candidate
+current_wave: v2_07_attempt55_closed_consumed_preexecution_executable_anchor_lineage_mismatch
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: approval_handoff
+task_stage: closed_preexecution_blocked
 application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,15 +18,15 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: attempt55_provider_free_config_lineage_repair_complete_pending_fresh_exact_approval
+  mode: attempt55_closed_consumed_preexecution_executable_anchor_lineage_mismatch
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: Approve only exact Attempt55 proposal sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f before any mutation, GPU use, or spend; V2-08 forbidden
-  note: "Fresh max1/max2 definitions now bind repaired control 85391b1, orchestrator sha256:5298ec25..., and canonical activation sha256:36a23948.... Fresh read-only truth remains zero compute and exact version-bound disabled route. No executable authority or cap exists."
+  v2_07_action: "Keep Attempt55 closed and non-reusable after the preexecution executable-anchor-lineage mismatch; run only one provider-free micro-checkpoint to update executable anchor constants and fully bind validator/config/proposal to them, then require a fresh exact proposal and approval; no provider run; V2-08 forbidden"
+  note: "User approved exact Attempt55 proposal sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f, but its single-use authority was consumed at preexecution on the executable-anchor-lineage mismatch. No provider call, mutation, job, GPU use, or spend occurred."
 
 fast_completion_plan:
   decision: DEC_DELIVERY_001
@@ -42,8 +42,8 @@ fast_completion_plan:
   roadmap: 22_PROJECT_COMPLETION_CHECKPOINTS.md
   copy_ready_prompts: templates/CHECKPOINT_CHAT_PROMPTS.md
 
-pending_v2_07_attempt55_proposal:
-  mode: pending_fresh_exact_approval_no_executable_authority
+closed_v2_07_attempt55_proposal:
+  mode: closed_consumed_preexecution_executable_anchor_lineage_mismatch
   proposal_path: evidence/acceptance/VF-10-07/2026-08-24-attempt55-config-lineage-rebind-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f"
   candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt55-config-lineage-rebind-candidate/acceptance.json
@@ -62,20 +62,36 @@ pending_v2_07_attempt55_proposal:
   exact_route_probe: POST_404_V207_ROUTE_DISABLED_WITH_EXACT_ACTIVE_VERSION_HEADER
   requested_maximum_cumulative_finite_spend_usd: 4
   executable_maximum_cumulative_finite_spend_usd: 0
-  authority_recorded: false
+  authority_recorded: true
+  authority_path: evidence/acceptance/VF-10-07/2026-08-24-attempt55-config-lineage-rebind-candidate/approved-authority.json
+  authority_sha256: "sha256:47e06a69ece45babed6e8c1c32544d13033680901995ba77cdfc70e4cbd70818"
+  approved_preexecution_authority_sha256: "sha256:966159fc2afa2cf0a6365c5e3b017041effbf5b1f4f312aa4fde310f3d921c0d"
+  authority_consumed: true
+  authority_reusable: false
   anchor_refresh_authorized: false
-  flashboot: true
-  minimum_availability: LOW-or-better
-  last_observed_availability: LOW
+  anchor_refresh_mode: two-phase-v1
   provider_calls_authorized: false
   provider_mutations_authorized: false
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
-  retained_volume_cost_usd_per_month: 7
-  external_spend_usd: 0
+  fresh_read_only_checked_at: "2026-08-24T14:51:10.483Z"
+  last_observed_rtx4090_eu_ro_1_availability: LOW
+  last_observed_cumulative_endpoint_spend_usd: 1.7478178361488972
+  last_observed_pods: 0
+  last_observed_endpoints: 0
+  last_observed_private_templates: 0
+  last_observed_active_workers: 0
   v2_07_qualified: false
   v2_08_authorized: false
-  next_boundary: fresh exact approval of proposal sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f
+  flashboot: true
+  minimum_availability: LOW-or-better
+  last_observed_availability: LOW
+  retained_volume_cost_usd_per_month: 7
+  external_spend_usd: 0
+  consumption_at: "2026-08-24T15:12:28Z"
+  provider_jobs_submitted: 0
+  blocker_code: V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH
+  next_boundary: "one provider-free micro-checkpoint to update executable anchor constants and fully bind validator/config/proposal to them, then fresh exact proposal and approval; no provider run; V2-08 forbidden"
 
 closed_v2_07_attempt54_proposal:
   mode: closed_consumed_preexecution_staged_config_lineage_mismatch

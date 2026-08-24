@@ -1,0 +1,52 @@
+{
+  "schema_version": "videoforge.v2-07-attempt55-preexecution-blocker/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 55,
+  "recorded_at": "2026-08-24T15:12:28Z",
+  "result": "NOT_QUALIFIED_FAIL_CLOSED_BEFORE_PROVIDER_CALL",
+  "error_code": "V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH",
+  "proposal_sha256": "sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f",
+  "approved_preexecution_authority_sha256": "sha256:966159fc2afa2cf0a6365c5e3b017041effbf5b1f4f312aa4fde310f3d921c0d",
+  "closed_authority_sha256": "sha256:47e06a69ece45babed6e8c1c32544d13033680901995ba77cdfc70e4cbd70818",
+  "blocker": {
+    "summary": "The exact approved Attempt55 authority expected the retained active Worker anchor hashes sha256:36256382df0f40b1e654b041d5bfbcadefac429ab0b9de0709b567975e7a8ad6 and sha256:9e37db7bcf43625ea1ff0679f3ed421d50ad4e951088e2fa0cdbfc707a0afac2, but the executable orchestrator constants were sha256:c0c3303f78987b630da7a425117b2587aeca563266458f6f4b0b20db6b014f33 and sha256:1612a0d0582a9af311a5395f1920dde197ddad89f109ed396f35f3b4ef3840ad. The exact approved executable lineage therefore could not be established, so Attempt55 was closed before any provider call or mutation.",
+    "approved_expected_old_active_version_id_sha256": "sha256:36256382df0f40b1e654b041d5bfbcadefac429ab0b9de0709b567975e7a8ad6",
+    "approved_expected_old_active_record_sha256": "sha256:9e37db7bcf43625ea1ff0679f3ed421d50ad4e951088e2fa0cdbfc707a0afac2",
+    "executable_orchestrator_expected_old_active_version_id_sha256": "sha256:c0c3303f78987b630da7a425117b2587aeca563266458f6f4b0b20db6b014f33",
+    "executable_orchestrator_expected_old_active_record_sha256": "sha256:1612a0d0582a9af311a5395f1920dde197ddad89f109ed396f35f3b4ef3840ad",
+    "orchestrator_source_path": "apps/web/src/server/providers/v207-live-orchestrator.ts",
+    "orchestrator_source_sha256": "sha256:5298ec25000e42affb7e36b518b778fa692e65b72d868087d58fbd81e6cfc42c",
+    "version_anchor_match": false,
+    "record_anchor_match": false
+  },
+  "provider_state": {
+    "provider_calls_after_approval": 0,
+    "cloudflare_mutations": 0,
+    "runpod_mutations": 0,
+    "jobs_submitted": 0,
+    "gpu_use_occurred": false,
+    "accepted_units": 0,
+    "external_spend_usd": 0,
+    "last_verified_runpod_zero_compute": true,
+    "two_existing_volumes_retained": true,
+    "existing_volume_charge_usd_per_month": 7
+  },
+  "authority": {
+    "attempt55_consumed": true,
+    "attempt55_reusable": false,
+    "executable_authority_sha256": null,
+    "executable_finite_cap_usd": null,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  },
+  "execution": {
+    "provider_calls": 0,
+    "provider_mutation_count": 0,
+    "cloudflare_mutation_count": 0,
+    "gpu_jobs_submitted": 0,
+    "accepted_units": 0,
+    "qualification_claim_allowed": false
+  },
+  "smallest_next_action": "Provider-free only: repair or rebind the next candidate to one immutable executable anchor lineage, then create a fresh exact proposal and obtain fresh exact approval. Do not reuse Attempt55 authority or cap; do not start V2-08."
+}

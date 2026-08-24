@@ -72,7 +72,7 @@ function activationSourceFixture({
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the pending Attempt55 proposal with no executable authority", () => {
+  it("pins the closed consumed Attempt55 lineage", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
@@ -321,7 +321,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the pending Attempt55 proposal without executable authority", () => {
+  it("rejects the consumed Attempt55 authority even when its former cap is supplied", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -339,18 +339,9 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects pending Attempt55 even with the requested cap and refresh marker", () => {
+  it("rejects the consumed Attempt55 executable binding after closure", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
     expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
-    expect(() =>
-      parseV207ActivationAuthority({
-        ...refreshMarker,
-        V207_IMAGE: image,
-        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
-        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
-        V207_FINITE_CAP_USD: "4",
-      }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
     expect(() =>
       parseV207ActivationAuthority({
         ...refreshMarker,
@@ -361,6 +352,15 @@ describe("V2-07 activation authority", () => {
         V207_FINITE_CAP_USD: "4",
       }),
     ).toThrow("V207_PROPOSAL_MISMATCH");
+    expect(() =>
+      parseV207ActivationAuthority({
+        ...refreshMarker,
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_FINITE_CAP_USD: "4",
+      }),
+    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
     expect(() => parseV207ActivationAuthority(refreshMarker)).toThrow("V207_IMAGE_DIGEST_REQUIRED");
   });
 

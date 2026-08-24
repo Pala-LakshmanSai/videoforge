@@ -9,26 +9,24 @@ alternating, and mixed identities fail closed; non-refresh behavior remains comp
 retains hashes only. The focused orchestrator file passes 55/55 and web TypeScript passes.
 
 Attempt54 exact approval was recorded, then consumed before any provider call at
-`V207_STAGED_CONFIG_CONTROL_LINEAGE_MISMATCH`: its proposal reused Attempt53 max1/max2 definitions
+`V207_STAGED_CONFIG_CONTROL_LINEAGE_MISMATCH`; its proposal reused Attempt53 max1/max2 definitions
 whose embedded control/orchestrator/canonical-activation lineage predates the version-bound repair.
 Blocker `sha256:b225757a…3903f` proves zero provider calls, mutations, jobs, GPU use, or spend after
 approval. Activation authority/cap/refresh are null; RunPod remains zero compute, the exact
 version-bound `404 V207_ROUTE_DISABLED` remains the last verified route, and both volumes remain at
-the approved `$7/month` retention. Smallest next action is provider-free: create new max1/max2
-definitions bound to repaired control `85391b1` and orchestrator `sha256:5298ec25…fc42c`, then
-recompute a fresh exact proposal and request fresh approval. Do not reuse Attempt54 authority/cap.
-V2-08 is forbidden.
+the approved `$7/month` retention. V2-08 is forbidden.
 
-Provider-free Attempt55 repairs that exact blocker. Fresh max1 `sha256:62167243…fa368` and max2
-`sha256:551b30c3…d48ee` bind repaired control `85391b1`, orchestrator
-`sha256:5298ec25…fc42c`, canonical activation `sha256:36a23948…a6b3`, and the exact version-bound
-route contract. Fresh read-only truth remains zero compute, both volumes, LOW RTX 4090 EU-RO-1,
-`$1.10/GPU-hour` Flex, and exact active-version-bound `404 V207_ROUTE_DISABLED`. Exact proposal
-`sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f` requests
-FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1` anchor refresh, a fresh `$4` maximum cumulative
-finite cap, and continued `$7/month` retention of both existing volumes. No executable authority or
-cap exists; stop before mutation/GPU/spend until this exact proposal is approved. V2-08 remains
-forbidden.
+Attempt55 is now closed consumed before provider execution at
+`V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH`. Its exact approved proposal is
+`sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f`; the consumed authority
+record is at `sha256:47e06a69…70818` (pre-execution approval record
+`sha256:966159fc…921c0d`). No provider call, mutation, job, GPU use, or spend occurred. The
+executable cap is `$0`; RunPod remains at zero compute, both volumes remain retained at `$7/month`,
+and V2-07 remains `NOT_QUALIFIED`.
+
+Smallest next action is one provider-free micro-checkpoint to update executable anchor constants and
+fully bind the validator/config/proposal to them, then create a fresh exact proposal and request fresh
+approval. Do not run a provider qualification under Attempt55. V2-08 remains forbidden.
 
 Attempt52 is closed before mutation at `V207_ROLLBACK_ANCHOR_REFRESH_OLD_ANCHOR_MISMATCH`; its
 authority is consumed and non-reusable. Closure `sha256:267918ea…8dec0` and reconciliation
