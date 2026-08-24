@@ -381,7 +381,9 @@ function terminalScaleZeroFetch(
     readonly workerStatusAfterDispatch?: string;
     readonly workerCurrentStatus?: string;
     readonly workerId?: string | null;
+    readonly workerIds?: readonly (string | null)[];
     readonly podId?: string;
+    readonly podIds?: readonly string[];
     readonly podStatus?: string;
     readonly podStatusAfterDispatch?: string;
     readonly podCurrentStatus?: string;
@@ -456,9 +458,9 @@ function terminalScaleZeroFetch(
     }
     if (created && path === "/pods" && init?.method === undefined) {
       terminalInventoryReads += 1;
-      return jsonResponse([
-        {
-          id: options.podId ?? "pod_01",
+      return jsonResponse(
+        (options.podIds ?? [options.podId ?? "pod_01"]).map((podId) => ({
+          id: podId,
           ...((dispatched ? options.podEndpointIdAfterDispatch : options.podEndpointId) === null
             ? {}
             : {
@@ -471,27 +473,23 @@ function terminalScaleZeroFetch(
             options.podStatus ??
             "EXITED",
           ...(options.podCurrentStatus === undefined ? {} : { status: options.podCurrentStatus }),
-        },
-      ]);
+        })),
+      );
     }
     if (created && path === "/endpoints" && init?.method === undefined) {
       const endpoint = {
         ...reconciledEndpoint,
         workersMax,
-        workers: [
-          {
-            ...((options.workerId === null
-              ? {}
-              : { id: options.workerId ?? "worker_01" }) as Record<string, unknown>),
-            desiredStatus:
-              (dispatched ? options.workerStatusAfterDispatch : undefined) ??
-              options.workerStatus ??
-              "EXITED",
-            ...(options.workerCurrentStatus === undefined
-              ? {}
-              : { status: options.workerCurrentStatus }),
-          },
-        ],
+        workers: (options.workerIds ?? [options.workerId ?? "worker_01"]).map((workerId) => ({
+          ...((workerId === null ? {} : { id: workerId }) as Record<string, unknown>),
+          desiredStatus:
+            (dispatched ? options.workerStatusAfterDispatch : undefined) ??
+            options.workerStatus ??
+            "EXITED",
+          ...(options.workerCurrentStatus === undefined
+            ? {}
+            : { status: options.workerCurrentStatus }),
+        })),
         ...options.endpointDrift,
         ...(dispatched ? options.endpointDriftAfterDispatch : {}),
       };
@@ -1107,7 +1105,7 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
-  it("blocks concurrent readers when the max-two endpoint is only quiescent", async () => {
+  it("blocks readers and refuses deletion when max-two has only quiescent proof", async () => {
     const baseFetch = harnessFetch();
     let maxTwoApplied = false;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -1144,10 +1142,11 @@ describe("V2-07 qualification harness", () => {
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(0);
-    await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).rejects.toThrow(
-      "RUNPOD_CLEANUP_UNCERTAIN",
-    );
+    await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).resolves.toBeUndefined();
     expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "cleanup_drain_uncertain" }),
+    );
   });
 
   it("promotes ghost-throttled health to initial scale-zero only with terminal exact inventory", async () => {
@@ -1226,21 +1225,24 @@ describe("V2-07 qualification harness", () => {
   });
 
   it("fences the one-item seed at terminal scale-zero before replacement dispatch", async () => {
-    const fetch = terminalScaleZeroFetch({ workerId: "worker_seed" });
+    const fetch = terminalScaleZeroFetch({ workerId: "worker_seed", podId: "pod_seed" });
     const instance = makeHarness(fetch);
     await instance.create();
     const seed = await instance.dispatchBatch(oneItemInput());
     await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
     const seedIdentity: RunPodV207WorkerProcessIdentity = {
       schema_version: "videoforge-v207-worker-process-identity/v1",
-      worker_id_sha256: hashValue("worker_seed"),
+      worker_id_sha256: hashValue("pod_seed"),
       pod_id_sha256: hashValue("pod_seed"),
     };
     const boundary = await instance.prepareProcessReplacement(seed.id, seedIdentity);
     expect(boundary).toMatchObject({
       seed_job_id_sha256: hashValue(seed.id),
-      seed_worker_id_sha256: hashValue("worker_seed"),
-      terminal_provider_worker_id_sha256: hashValue("worker_seed"),
+      seed_worker_id_sha256: hashValue("pod_seed"),
+      terminal_provider_pod_id_sha256: hashValue("pod_seed"),
+      terminal_provider_identity_source: "terminal_pod_record",
+      terminal_worker_record_count: 1,
+      terminal_pod_record_count: 1,
       terminal_scale_zero_confirmed: true,
     });
     await expect(
@@ -1248,7 +1250,7 @@ describe("V2-07 qualification harness", () => {
     ).resolves.toMatchObject({ status: "IN_QUEUE" });
     instance.assertProcessReplacementIdentity(boundary, {
       schema_version: "videoforge-v207-worker-process-identity/v1",
-      worker_id_sha256: hashValue("worker_replacement"),
+      worker_id_sha256: hashValue("pod_replacement"),
       pod_id_sha256: hashValue("pod_replacement"),
     });
     expect(
@@ -1270,7 +1272,7 @@ describe("V2-07 qualification harness", () => {
     );
   });
 
-  it("fails closed when the terminal provider worker identity is unavailable", async () => {
+  it("fails closed when the exact signed terminal Pod identity is unavailable", async () => {
     const fetch = terminalScaleZeroFetch({ workerId: null });
     const instance = makeHarness(fetch);
     await instance.create();
@@ -1279,7 +1281,7 @@ describe("V2-07 qualification harness", () => {
     await expect(
       instance.prepareProcessReplacement(seed.id, {
         schema_version: "videoforge-v207-worker-process-identity/v1",
-        worker_id_sha256: hashValue("worker_seed"),
+        worker_id_sha256: hashValue("pod_seed"),
         pod_id_sha256: hashValue("pod_seed"),
       }),
     ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
@@ -1297,11 +1299,11 @@ describe("V2-07 qualification harness", () => {
     await expect(
       instance.prepareProcessReplacement(seed.id, {
         schema_version: "videoforge-v207-worker-process-identity/v1",
-        worker_id_sha256: hashValue("worker_seed"),
+        worker_id_sha256: hashValue("pod_seed"),
         pod_id_sha256: hashValue("pod_seed"),
       }),
     ).resolves.toMatchObject({
-      terminal_provider_worker_id_sha256: hashValue("pod_seed"),
+      terminal_provider_pod_id_sha256: hashValue("pod_seed"),
       terminal_provider_identity_source: "terminal_pod_record",
       terminal_scale_zero_confirmed: true,
     });
@@ -1310,7 +1312,7 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
-  it("never lets a matching Pod identity override an explicit mismatched worker identity", async () => {
+  it("uses the signed terminal Pod when the opaque provider worker id is mismatched", async () => {
     const fetch = terminalScaleZeroFetch({ workerId: "worker_other", podId: "pod_seed" });
     const instance = makeHarness(fetch);
     await instance.create();
@@ -1319,7 +1321,144 @@ describe("V2-07 qualification harness", () => {
     await expect(
       instance.prepareProcessReplacement(seed.id, {
         schema_version: "videoforge-v207-worker-process-identity/v1",
-        worker_id_sha256: hashValue("worker_seed"),
+        worker_id_sha256: hashValue("pod_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).resolves.toMatchObject({
+      terminal_provider_pod_id_sha256: hashValue("pod_seed"),
+      terminal_provider_identity_source: "terminal_pod_record",
+    });
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("fails closed when multiple opaque worker records make the process boundary ambiguous", async () => {
+    const fetch = terminalScaleZeroFetch({
+      workerIds: [null, "worker_stale", "worker_other_namespace"],
+      podId: "pod_seed",
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("pod_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("never substitutes a matching opaque worker id for a missing signed Pod", async () => {
+    const fetch = terminalScaleZeroFetch({ workerId: "pod_seed", podId: "pod_other" });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("pod_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("fails closed when the signed terminal Pod identity is duplicated", async () => {
+    const fetch = terminalScaleZeroFetch({
+      workerIds: ["worker_a", "worker_b"],
+      podIds: ["pod_seed", "pod_seed"],
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("pod_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it("recovers an invalidated cleanup guard only through fresh exact terminal proof", async () => {
+    const podIds = ["pod_other"];
+    const fetch = terminalScaleZeroFetch({ workerId: "worker_other", podIds });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("pod_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+
+    podIds.splice(0, 1, "pod_seed");
+    await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).resolves.toBeUndefined();
+    const deletes = fetch.mock.calls
+      .filter(([, init]) => init?.method === "DELETE")
+      .map(([url]) => new URL(String(url)).pathname);
+    expect(deletes).toEqual(["/endpoints/endpoint_01", "/templates/template_01"]);
+    expect(deletes.some((path) => path.includes("networkvolumes"))).toBe(false);
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "provider_terminal_worker_drain_confirmed" }),
+    );
+  });
+
+  it("does not delete through an invalidated guard when fresh terminal proof is insufficient", async () => {
+    let podStatus = "EXITED";
+    const fetch = terminalScaleZeroFetch({
+      workerId: "worker_other",
+      podId: "pod_other",
+      get podStatus() {
+        return podStatus;
+      },
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("pod_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+
+    podStatus = "RUNNING";
+    await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).resolves.toBeUndefined();
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(0);
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "cleanup_drain_uncertain" }),
+    );
+  });
+
+  it("rejects signed seed identity axes that do not both bind RUNPOD_POD_ID", async () => {
+    const fetch = terminalScaleZeroFetch({ podId: "pod_seed" });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    await expect(
+      instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("worker_namespace"),
         pod_id_sha256: hashValue("pod_seed"),
       }),
     ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
@@ -1329,21 +1468,40 @@ describe("V2-07 qualification harness", () => {
   });
 
   it("rejects a replacement that reuses either signed worker or process identity", async () => {
-    const fetch = terminalScaleZeroFetch({ workerId: "worker_seed" });
+    const fetch = terminalScaleZeroFetch({ workerId: "worker_seed", podId: "pod_seed" });
     const instance = makeHarness(fetch);
     await instance.create();
     const seed = await instance.dispatchBatch(oneItemInput());
     await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
     const boundary = await instance.prepareProcessReplacement(seed.id, {
       schema_version: "videoforge-v207-worker-process-identity/v1",
-      worker_id_sha256: hashValue("worker_seed"),
+      worker_id_sha256: hashValue("pod_seed"),
       pod_id_sha256: hashValue("pod_seed"),
     });
     expect(() =>
       instance.assertProcessReplacementIdentity(boundary, {
         schema_version: "videoforge-v207-worker-process-identity/v1",
-        worker_id_sha256: hashValue("worker_new"),
+        worker_id_sha256: hashValue("pod_seed"),
         pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).toThrow("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
+
+    expect(() =>
+      instance.assertProcessReplacementIdentity(
+        { ...boundary, terminal_provider_pod_id_sha256: hashValue("pod_other") },
+        {
+          schema_version: "videoforge-v207-worker-process-identity/v1",
+          worker_id_sha256: hashValue("pod_new"),
+          pod_id_sha256: hashValue("pod_new"),
+        },
+      ),
+    ).toThrow("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
+
+    expect(() =>
+      instance.assertProcessReplacementIdentity(boundary, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("worker_namespace"),
+        pod_id_sha256: hashValue("pod_new"),
       }),
     ).toThrow("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
   });

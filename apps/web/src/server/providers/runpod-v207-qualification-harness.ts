@@ -147,8 +147,10 @@ export interface RunPodV207ProcessReplacementBoundary {
   readonly seed_job_id_sha256: string;
   readonly seed_worker_id_sha256: string;
   readonly seed_pod_id_sha256: string;
-  readonly terminal_provider_worker_id_sha256: string;
-  readonly terminal_provider_identity_source: "worker_record" | "terminal_pod_record";
+  readonly terminal_provider_pod_id_sha256: string;
+  readonly terminal_provider_identity_source: "terminal_pod_record";
+  readonly terminal_worker_record_count: number;
+  readonly terminal_pod_record_count: number;
   readonly terminal_scale_zero_confirmed: true;
 }
 
@@ -1021,13 +1023,14 @@ export class RunPodV207QualificationHarness {
     event: string,
     mode: "health_first" | "startup_inventory_only" | "post_job_queue_only" = "health_first",
     options: {
-      readonly requireProviderWorkerIdentity?: boolean;
-      readonly expectedProviderWorkerIdSha256?: string;
+      readonly requireProviderPodIdentity?: boolean;
       readonly expectedProviderPodIdSha256?: string;
     } = {},
   ): Promise<{
-    readonly providerWorkerIdSha256: string | null;
-    readonly providerIdentitySource: "worker_record" | "terminal_pod_record" | null;
+    readonly providerPodIdSha256: string | null;
+    readonly providerIdentitySource: "terminal_pod_record" | null;
+    readonly terminalWorkerRecordCount: number;
+    readonly terminalPodRecordCount: number;
     readonly terminalScaleZeroConfirmed: true;
   }> {
     if (!this.#template || !this.#endpoint || !this.#jobs) {
@@ -1069,8 +1072,8 @@ export class RunPodV207QualificationHarness {
       const readAndValidate = async (): Promise<{
         readonly inventory: RunPodInventory;
         readonly signature: string;
-        readonly providerWorkerIdSha256: string | null;
-        readonly providerIdentitySource: "worker_record" | "terminal_pod_record" | null;
+        readonly providerPodIdSha256: string | null;
+        readonly providerIdentitySource: "terminal_pod_record" | null;
       }> => {
         // Bracket each inventory snapshot with an independent queue-only health read. Worker
         // counters can remain stale during FlashBoot startup, but a queued/in-progress job must
@@ -1101,8 +1104,6 @@ export class RunPodV207QualificationHarness {
               });
         const rawWorkerIdentityHashes =
           rawWorkers === null ? null : rawWorkers.map((worker) => providerWorkerIdHash(worker));
-        const workerRecordIdentitySha256 =
-          rawWorkerIdentityHashes?.length === 1 ? (rawWorkerIdentityHashes[0] ?? null) : null;
         const terminalPodIdentityHashes = inventory.pods
           .filter(
             (pod) =>
@@ -1113,22 +1114,17 @@ export class RunPodV207QualificationHarness {
               pod.observedStatuses.every((status) => terminalStatuses.has(status)),
           )
           .map((pod) => pod.idHash);
+        // The sealed worker signs RUNPOD_POD_ID on both receipt identity axes. RunPod's
+        // endpoint workers[].id is a separate opaque namespace and can retain stale records, so
+        // it is never used as receipt identity. Select exactly one terminal Pod matching the
+        // signed Pod hash while retaining every worker and Pod record in the stable snapshot.
         const terminalPodIdentitySha256 =
-          terminalPodIdentityHashes.length === 1 ? terminalPodIdentityHashes[0]! : null;
+          terminalPodIdentityHashes.length === 1 &&
+          terminalPodIdentityHashes[0] === options.expectedProviderPodIdSha256
+            ? terminalPodIdentityHashes[0]!
+            : null;
         const providerIdentitySource =
-          workerRecordIdentitySha256 !== null
-            ? ("worker_record" as const)
-            : terminalPodIdentitySha256 !== null &&
-                options.expectedProviderPodIdSha256 !== undefined &&
-                terminalPodIdentitySha256 === options.expectedProviderPodIdSha256
-              ? ("terminal_pod_record" as const)
-              : null;
-        const providerWorkerIdSha256 =
-          providerIdentitySource === "worker_record"
-            ? workerRecordIdentitySha256
-            : providerIdentitySource === "terminal_pod_record"
-              ? terminalPodIdentitySha256
-              : null;
+          terminalPodIdentitySha256 === null ? null : ("terminal_pod_record" as const);
         const exactTerminalInventory =
           inventory.runningPodCount === 0 &&
           inventory.activeServerlessWorkerCount === 0 &&
@@ -1165,14 +1161,11 @@ export class RunPodV207QualificationHarness {
           this.endpointIdentityMatches(endpointResource, templateResource.id, expectedPolicy) &&
           endpointResource.raw.flashboot === V207_RUNPOD_FLASHBOOT;
         if (
-          options.requireProviderWorkerIdentity &&
-          (providerWorkerIdSha256 === null ||
-            (providerIdentitySource === "worker_record" &&
-              options.expectedProviderWorkerIdSha256 !== undefined &&
-              providerWorkerIdSha256 !== options.expectedProviderWorkerIdSha256) ||
-            (providerIdentitySource === "terminal_pod_record" &&
-              options.expectedProviderPodIdSha256 !== undefined &&
-              providerWorkerIdSha256 !== options.expectedProviderPodIdSha256))
+          options.requireProviderPodIdentity &&
+          (terminalPodIdentitySha256 === null ||
+            options.expectedProviderPodIdSha256 === undefined ||
+            terminalPodIdentitySha256 !== options.expectedProviderPodIdSha256 ||
+            endpointInventory?.workerRecordCount !== 1)
         ) {
           throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
         }
@@ -1181,12 +1174,13 @@ export class RunPodV207QualificationHarness {
         }
         return {
           inventory,
-          providerWorkerIdSha256,
+          providerPodIdSha256: terminalPodIdentitySha256,
           providerIdentitySource,
           signature: canonicalizeJson({
             pods: inventory.pods.map((pod) => ({
               idHash: pod.idHash,
               endpointIdHash: pod.endpointIdHash,
+              desiredStatus: pod.desiredStatus,
               observedStatuses: pod.observedStatuses,
             })),
             endpoint: {
@@ -1194,6 +1188,7 @@ export class RunPodV207QualificationHarness {
               workersMin: endpointInventory.workersMin,
               workersMax: endpointInventory.workersMax,
               workerStatuses: endpointInventory.workerStatuses,
+              workerIdentityHashes: rawWorkerIdentityHashes,
             },
             endpointResourceIdHash: sha256(endpointResource.id),
             templateResourceIdHash: sha256(templateResource.id),
@@ -1252,8 +1247,10 @@ export class RunPodV207QualificationHarness {
             : {}),
       });
       return {
-        providerWorkerIdSha256: stable.providerWorkerIdSha256,
+        providerPodIdSha256: stable.providerPodIdSha256,
         providerIdentitySource: stable.providerIdentitySource,
+        terminalWorkerRecordCount: endpointInventory.workerRecordCount,
+        terminalPodRecordCount: stable.inventory.pods.length,
         terminalScaleZeroConfirmed: true,
       };
     } catch (error) {
@@ -1807,10 +1804,11 @@ export class RunPodV207QualificationHarness {
   /**
    * Fence a seed process before a replacement request can be submitted.  This is deliberately
    * stricter than the ordinary warm-idle transition: the seed job must already be terminal,
-   * the queue must be independently empty, and the exact terminal worker record must expose the
-   * same identity that the signed worker receipt reported.  Missing provider worker identity is
-   * never treated as scale-zero because doing so would make a same-process replay indistinguishable
-   * from a real replacement.
+   * the queue must be independently empty, and the exact signed RUNPOD_POD_ID must appear once
+   * among the terminal Pod records in two stable snapshots. Endpoint workers[].id belongs to a
+   * different provider namespace, so stale, null, or mismatched worker IDs are retained as
+   * inventory facts but never treated as receipt identity. Missing or ambiguous signed Pod
+   * identity still fails before another request can be submitted.
    */
   async prepareProcessReplacement(
     seedJobId: string,
@@ -1824,7 +1822,8 @@ export class RunPodV207QualificationHarness {
     if (
       seedIdentity.schema_version !== "videoforge-v207-worker-process-identity/v1" ||
       !SHA256.test(seedIdentity.worker_id_sha256) ||
-      !SHA256.test(seedIdentity.pod_id_sha256)
+      !SHA256.test(seedIdentity.pod_id_sha256) ||
+      seedIdentity.worker_id_sha256 !== seedIdentity.pod_id_sha256
     ) {
       throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
     }
@@ -1842,18 +1841,14 @@ export class RunPodV207QualificationHarness {
       "process_replacement_seed_terminal_worker_scale_zero",
       "post_job_queue_only",
       {
-        requireProviderWorkerIdentity: true,
-        expectedProviderWorkerIdSha256: seedIdentity.worker_id_sha256,
+        requireProviderPodIdentity: true,
         expectedProviderPodIdSha256: seedIdentity.pod_id_sha256,
       },
     );
     if (
-      terminal.providerWorkerIdSha256 === null ||
+      terminal.providerPodIdSha256 === null ||
       terminal.providerIdentitySource === null ||
-      (terminal.providerIdentitySource === "worker_record" &&
-        terminal.providerWorkerIdSha256 !== seedIdentity.worker_id_sha256) ||
-      (terminal.providerIdentitySource === "terminal_pod_record" &&
-        terminal.providerWorkerIdSha256 !== seedIdentity.pod_id_sha256)
+      terminal.providerPodIdSha256 !== seedIdentity.pod_id_sha256
     ) {
       throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
     }
@@ -1863,16 +1858,20 @@ export class RunPodV207QualificationHarness {
       seed_job_id_sha256: sha256(seedJobId),
       seed_worker_id_sha256: seedIdentity.worker_id_sha256,
       seed_pod_id_sha256: seedIdentity.pod_id_sha256,
-      terminal_provider_worker_id_sha256: terminal.providerWorkerIdSha256,
+      terminal_provider_pod_id_sha256: terminal.providerPodIdSha256,
       terminal_provider_identity_source: terminal.providerIdentitySource,
+      terminal_worker_record_count: terminal.terminalWorkerRecordCount,
+      terminal_pod_record_count: terminal.terminalPodRecordCount,
       terminal_scale_zero_confirmed: true,
     };
     this.mark("process_replacement_seed_drained", {
       seed_job_id_hash: boundary.seed_job_id_sha256,
       seed_worker_id_sha256: boundary.seed_worker_id_sha256,
       seed_pod_id_sha256: boundary.seed_pod_id_sha256,
-      terminal_provider_worker_id_sha256: boundary.terminal_provider_worker_id_sha256,
+      terminal_provider_pod_id_sha256: boundary.terminal_provider_pod_id_sha256,
       terminal_provider_identity_source: boundary.terminal_provider_identity_source,
+      terminal_worker_record_count: boundary.terminal_worker_record_count,
+      terminal_pod_record_count: boundary.terminal_pod_record_count,
       terminal_scale_zero_confirmed: true,
     });
     return boundary;
@@ -1888,10 +1887,18 @@ export class RunPodV207QualificationHarness {
       boundary.terminal_scale_zero_confirmed !== true ||
       !SHA256.test(boundary.seed_worker_id_sha256) ||
       !SHA256.test(boundary.seed_pod_id_sha256) ||
-      !SHA256.test(boundary.terminal_provider_worker_id_sha256) ||
+      !SHA256.test(boundary.terminal_provider_pod_id_sha256) ||
+      boundary.seed_worker_id_sha256 !== boundary.seed_pod_id_sha256 ||
+      boundary.terminal_provider_pod_id_sha256 !== boundary.seed_pod_id_sha256 ||
+      boundary.terminal_provider_identity_source !== "terminal_pod_record" ||
+      !Number.isSafeInteger(boundary.terminal_worker_record_count) ||
+      boundary.terminal_worker_record_count !== 1 ||
+      !Number.isSafeInteger(boundary.terminal_pod_record_count) ||
+      boundary.terminal_pod_record_count !== 1 ||
       replacementIdentity.schema_version !== "videoforge-v207-worker-process-identity/v1" ||
       !SHA256.test(replacementIdentity.worker_id_sha256) ||
       !SHA256.test(replacementIdentity.pod_id_sha256) ||
+      replacementIdentity.worker_id_sha256 !== replacementIdentity.pod_id_sha256 ||
       replacementIdentity.worker_id_sha256 === boundary.seed_worker_id_sha256 ||
       replacementIdentity.pod_id_sha256 === boundary.seed_pod_id_sha256
     ) {
@@ -2496,7 +2503,7 @@ export class RunPodV207QualificationHarness {
     if (
       this.#readerJobs.length > 0 ||
       this.#ownedJobs.size > 0 ||
-      ["active", "warm_idle", "draining", "queue_empty"].includes(this.#guard.snapshot())
+      ["unknown", "active", "warm_idle", "draining", "queue_empty"].includes(this.#guard.snapshot())
     ) {
       try {
         await this.drain();
