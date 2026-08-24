@@ -284,10 +284,10 @@ afterEach(async () => {
 describe("V2-07 live orchestrator", () => {
   it("pins the currently approved refreshed active Worker anchor without exposing its raw version id", () => {
     expect(V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256).toBe(
-      "sha256:36256382df0f40b1e654b041d5bfbcadefac429ab0b9de0709b567975e7a8ad6",
+      "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
     );
     expect(V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256).toBe(
-      "sha256:9e37db7bcf43625ea1ff0679f3ed421d50ad4e951088e2fa0cdbfc707a0afac2",
+      "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
     );
   });
 
