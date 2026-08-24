@@ -382,8 +382,10 @@ function terminalScaleZeroFetch(
     readonly workerCurrentStatus?: string;
     readonly workerId?: string | null;
     readonly workerIds?: readonly (string | null)[];
+    readonly workerIdsAfterDispatch?: readonly (string | null)[];
     readonly podId?: string;
     readonly podIds?: readonly string[];
+    readonly podIdsAfterDispatch?: readonly string[];
     readonly podStatus?: string;
     readonly podStatusAfterDispatch?: string;
     readonly podCurrentStatus?: string;
@@ -459,7 +461,10 @@ function terminalScaleZeroFetch(
     if (created && path === "/pods" && init?.method === undefined) {
       terminalInventoryReads += 1;
       return jsonResponse(
-        (options.podIds ?? [options.podId ?? "pod_01"]).map((podId) => ({
+        (dispatched
+          ? (options.podIdsAfterDispatch ?? options.podIds ?? [options.podId ?? "pod_01"])
+          : (options.podIds ?? [options.podId ?? "pod_01"])
+        ).map((podId) => ({
           id: podId,
           ...((dispatched ? options.podEndpointIdAfterDispatch : options.podEndpointId) === null
             ? {}
@@ -480,7 +485,11 @@ function terminalScaleZeroFetch(
       const endpoint = {
         ...reconciledEndpoint,
         workersMax,
-        workers: (options.workerIds ?? [options.workerId ?? "worker_01"]).map((workerId) => ({
+        workers: (dispatched
+          ? (options.workerIdsAfterDispatch ??
+            options.workerIds ?? [options.workerId ?? "worker_01"])
+          : (options.workerIds ?? [options.workerId ?? "worker_01"])
+        ).map((workerId) => ({
           ...((workerId === null ? {} : { id: workerId }) as Record<string, unknown>),
           desiredStatus:
             (dispatched ? options.workerStatusAfterDispatch : undefined) ??
@@ -1333,27 +1342,45 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
-  it("fails closed when multiple opaque worker records make the process boundary ambiguous", async () => {
+  it("uses one unique signed Pod among stale terminal worker and Pod records", async () => {
     const fetch = terminalScaleZeroFetch({
-      workerIds: [null, "worker_stale", "worker_other_namespace"],
+      workerId: "worker_initial",
+      workerIdsAfterDispatch: [null, "worker_stale", "worker_other_namespace"],
       podId: "pod_seed",
+      podIdsAfterDispatch: ["pod_initial", "pod_seed", "pod_stale"],
     });
     const instance = makeHarness(fetch);
     await instance.create();
     const seed = await instance.dispatchBatch(oneItemInput());
     await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
-    await expect(
-      instance.prepareProcessReplacement(seed.id, {
+    const boundary = await instance.prepareProcessReplacement(seed.id, {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: hashValue("pod_seed"),
+      pod_id_sha256: hashValue("pod_seed"),
+    });
+    expect(boundary).toMatchObject({
+      terminal_provider_pod_id_sha256: hashValue("pod_seed"),
+      terminal_provider_identity_source: "terminal_pod_record",
+      terminal_worker_record_count: 3,
+      terminal_pod_record_count: 3,
+      terminal_scale_zero_confirmed: true,
+    });
+    expect(() =>
+      instance.assertProcessReplacementIdentity(boundary, {
         schema_version: "videoforge-v207-worker-process-identity/v1",
-        worker_id_sha256: hashValue("pod_seed"),
-        pod_id_sha256: hashValue("pod_seed"),
+        worker_id_sha256: hashValue("pod_replacement"),
+        pod_id_sha256: hashValue("pod_replacement"),
       }),
-    ).rejects.toThrow("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
+    ).not.toThrow();
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(1);
-    expect((await instance.evidence()).events).not.toContainEqual(
-      expect.objectContaining({ event: "process_replacement_seed_drained" }),
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({
+        event: "process_replacement_seed_drained",
+        terminal_worker_record_count: 3,
+        terminal_pod_record_count: 3,
+      }),
     );
   });
 

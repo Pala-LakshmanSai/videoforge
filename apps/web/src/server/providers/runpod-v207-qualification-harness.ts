@@ -1118,10 +1118,13 @@ export class RunPodV207QualificationHarness {
         // endpoint workers[].id is a separate opaque namespace and can retain stale records, so
         // it is never used as receipt identity. Select exactly one terminal Pod matching the
         // signed Pod hash while retaining every worker and Pod record in the stable snapshot.
+        const matchingTerminalPodIdentityHashes = terminalPodIdentityHashes.filter(
+          (idHash) => idHash === options.expectedProviderPodIdSha256,
+        );
         const terminalPodIdentitySha256 =
-          terminalPodIdentityHashes.length === 1 &&
-          terminalPodIdentityHashes[0] === options.expectedProviderPodIdSha256
-            ? terminalPodIdentityHashes[0]!
+          options.expectedProviderPodIdSha256 !== undefined &&
+          matchingTerminalPodIdentityHashes.length === 1
+            ? options.expectedProviderPodIdSha256
             : null;
         const providerIdentitySource =
           terminalPodIdentitySha256 === null ? null : ("terminal_pod_record" as const);
@@ -1164,8 +1167,7 @@ export class RunPodV207QualificationHarness {
           options.requireProviderPodIdentity &&
           (terminalPodIdentitySha256 === null ||
             options.expectedProviderPodIdSha256 === undefined ||
-            terminalPodIdentitySha256 !== options.expectedProviderPodIdSha256 ||
-            endpointInventory?.workerRecordCount !== 1)
+            terminalPodIdentitySha256 !== options.expectedProviderPodIdSha256)
         ) {
           throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
         }
@@ -1806,9 +1808,9 @@ export class RunPodV207QualificationHarness {
    * stricter than the ordinary warm-idle transition: the seed job must already be terminal,
    * the queue must be independently empty, and the exact signed RUNPOD_POD_ID must appear once
    * among the terminal Pod records in two stable snapshots. Endpoint workers[].id belongs to a
-   * different provider namespace, so stale, null, or mismatched worker IDs are retained as
-   * inventory facts but never treated as receipt identity. Missing or ambiguous signed Pod
-   * identity still fails before another request can be submitted.
+   * different provider namespace, so stale, null, or mismatched terminal worker/Pod records are
+   * retained as inventory facts but never treated as receipt identity. Missing or duplicated
+   * signed Pod identity still fails before another request can be submitted.
    */
   async prepareProcessReplacement(
     seedJobId: string,
@@ -1848,9 +1850,7 @@ export class RunPodV207QualificationHarness {
     if (
       terminal.providerPodIdSha256 === null ||
       terminal.providerIdentitySource === null ||
-      terminal.providerPodIdSha256 !== seedIdentity.pod_id_sha256 ||
-      terminal.terminalWorkerRecordCount !== 1 ||
-      terminal.terminalPodRecordCount !== 1
+      terminal.providerPodIdSha256 !== seedIdentity.pod_id_sha256
     ) {
       throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
     }
@@ -1894,9 +1894,9 @@ export class RunPodV207QualificationHarness {
       boundary.terminal_provider_pod_id_sha256 !== boundary.seed_pod_id_sha256 ||
       boundary.terminal_provider_identity_source !== "terminal_pod_record" ||
       !Number.isSafeInteger(boundary.terminal_worker_record_count) ||
-      boundary.terminal_worker_record_count !== 1 ||
+      boundary.terminal_worker_record_count < 0 ||
       !Number.isSafeInteger(boundary.terminal_pod_record_count) ||
-      boundary.terminal_pod_record_count !== 1 ||
+      boundary.terminal_pod_record_count < 1 ||
       replacementIdentity.schema_version !== "videoforge-v207-worker-process-identity/v1" ||
       !SHA256.test(replacementIdentity.worker_id_sha256) ||
       !SHA256.test(replacementIdentity.pod_id_sha256) ||
