@@ -6,6 +6,7 @@ import path from "node:path";
 const dir = import.meta.dirname;
 const root = path.resolve(dir, "../../../../../");
 const E = {
+  authority: "sha256:61e00a70cb64c1e467a2d2877f67a20597b5a17e19a1ffa7a9a767ef06f52ea9",
   proposal: "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe",
   acceptance: "sha256:be67953bc6189adcacff5c06b265f340cbbcdb045f19efbfc426bc4d695a856b",
   max1: "sha256:c2c31282f991c08677d9b49c1b6a367ba945c3fa232b48354e8913e14889ba5e",
@@ -40,10 +41,11 @@ for (const [file, hash] of [
   ["staged-config-max1.json", E.max1],
   ["staged-config-max2.json", E.max2],
 ]) eq(sha(path.join(dir, file)), hash, `${file}_HASH`);
-yes(!fs.existsSync(path.join(dir, "approved-authority.json")), "NO_AUTHORITY_FILE");
+eq(sha(path.join(dir, "approved-authority.json")), E.authority, "AUTHORITY_HASH");
 
 const proposal = json(path.join(dir, "combined-live-proposal.json"));
 const acceptance = json(path.join(dir, "acceptance.json"));
+const authority = json(path.join(dir, "approved-authority.json"));
 const max1 = json(path.join(dir, "staged-config-max1.json"));
 const max2 = json(path.join(dir, "staged-config-max2.json"));
 eq(proposal.attempt, 51, "ATTEMPT");
@@ -91,6 +93,21 @@ eq(acceptance.provider_boundary.external_spend_usd, 0, "ACCEPTANCE_SPEND");
 yes(acceptance.remaining_p1.includes("NO_SINGLE_IMMUTABLE_PAID_RUN"), "P1_OPEN");
 eq(acceptance.v2_08_authorized, false, "ACCEPTANCE_V208");
 
+eq(authority.attempt, 51, "AUTHORITY_ATTEMPT");
+eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "AUTHORITY_STATUS");
+eq(authority.proposal.sha256, E.proposal, "AUTHORITY_PROPOSAL");
+eq(authority.acceptance.sha256, E.acceptance, "AUTHORITY_ACCEPTANCE");
+eq(authority.approval.maximum_cumulative_finite_spend_usd, 4, "AUTHORITY_CAP");
+eq(authority.approval.anchor_refresh_authorized, true, "AUTHORITY_REFRESH");
+eq(authority.approval.prior_authority_reused, false, "AUTHORITY_NO_REUSE");
+eq(authority.lineage.control_source_commit, E.control, "AUTHORITY_CONTROL");
+eq(authority.lineage.orchestrator_source_sha256, E.orchestrator, "AUTHORITY_ORCHESTRATOR");
+eq(authority.lineage.canonical_activation_source_sha256, E.canonical, "AUTHORITY_CANONICAL");
+eq(authority.lineage.initial_config_sha256, E.max1, "AUTHORITY_MAX1");
+eq(authority.lineage.concurrent_reader_config_sha256, E.max2, "AUTHORITY_MAX2");
+eq(authority.cap_and_rate.baseline_endpoint_spend_usd, 1.645446196460398, "AUTHORITY_BASELINE");
+eq(authority.execution_boundary.v2_08_authorized, false, "AUTHORITY_V208");
+
 for (const [config, workersMax] of [[max1, 1], [max2, 2]]) {
   eq(config.control_source_commit, E.control, `CONFIG_${workersMax}_CONTROL`);
   eq(config.source_hashes.qualification_harness_sha256, E.harness, `CONFIG_${workersMax}_HARNESS`);
@@ -111,9 +128,9 @@ eq(sha(path.join(root, "apps/web/src/server/providers/runpod-v207-readonly-recon
 const activation = text(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"));
 yes(activation.includes(E.proposal), "ACTIVATION_PROPOSAL");
 yes(activation.includes(E.control), "ACTIVATION_CONTROL");
-yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_AUTHORITY");
-yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_CAP");
-yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*null\s*;/mu.test(activation), "ACTIVATION_NO_REFRESH");
+yes(activation.includes(E.authority), "ACTIVATION_AUTHORITY");
+yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*4\s*;/mu.test(activation), "ACTIVATION_CAP");
+yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*true\s*;/mu.test(activation), "ACTIVATION_REFRESH");
 eq(`sha256:${crypto.createHash("sha256").update(canonicalActivation(activation), "utf8").digest("hex")}`, E.canonical, "CANONICAL_ACTIVATION_BYTES");
 for (const file of ["project-context/CURRENT_STATE.yaml", "project-context/GATES.yaml", "project-context/00_START_HERE.md", "project-context/tasks/VF-10-07.md"]) {
   yes(text(path.join(root, file)).includes(E.proposal), `${file}_PROPOSAL_POINTER`);

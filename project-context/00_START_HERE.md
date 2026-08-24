@@ -2,12 +2,13 @@
 
 ## Active handoff — read this section first
 
-Attempt51 is the current provider-free candidate. Repair `f4054ed` separates provider worker-record
+Attempt51 is the current exact single-use approved candidate. Repair `f4054ed` separates provider worker-record
 IDs from signed runtime Pod IDs and requires the unique terminal Pod plus exact terminal worker
 count before resume. Proposal `sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe`, acceptance `sha256:be67953b…5a856b`, max1
 `sha256:c2c31282…89ba5e`, and max2 `sha256:e1b23717…cb7f8c` reuse the unchanged sealed image and
-volumes. Authority, cap, and anchor-refresh permission are null; no provider call, mutation, GPU
-use, or spend is authorized. V2-07 remains `NOT_QUALIFIED`; V2-08 forbidden.
+volumes. Authority `sha256:61e00a70…f52ea9` commits the exact proposal, two-phase anchor refresh,
+RunPod/Cloudflare mutations, GPU use, and a `$4` cumulative finite cap. V2-07 remains
+`NOT_QUALIFIED` pending execution; V2-08 forbidden.
 
 Fresh read-only truth at `2026-08-24T08:50:12Z` proves zero disposable resources/workers, both
 retained volumes, RTX 4090 `LOW` availability, and current cumulative endpoint billing
@@ -29,7 +30,8 @@ personal-worker renderer are completed foundations to integrate, not reimplement
 Use focused tests for changed surfaces and one narrow repair cycle. Canonical provider-free
 verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
 Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
-mandatory. This planning state grants no provider call, mutation, deployment, GPU use, or spend.
+mandatory. This state grants only the exact Attempt51 operations recorded in the single-use
+authority; it does not grant image/model/volume changes, fallback, successor work, or spend above `$4`.
 
 ## Historical V2-07 attempt ledger — do not preload
 
