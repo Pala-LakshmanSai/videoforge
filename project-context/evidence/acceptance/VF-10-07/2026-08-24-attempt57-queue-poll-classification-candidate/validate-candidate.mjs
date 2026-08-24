@@ -5,10 +5,16 @@ import { fileURLToPath } from "node:url";
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dir, "../../../../../");
+const liveDir = path.resolve(dir, "../2026-08-21-live-qualification");
 const expected = {
   proposal: "sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4",
   acceptance: "sha256:6e3e2e0e3b8739a4dbf8365c263fd6e2229dd760b0dad424a18e16cbde618d36",
-  authority: "sha256:7ab262a878e0447002f417ea3af49ffa376cea307296ea8d24681ff8492bc015",
+  authority: "sha256:16bfca4ceb5a673f391fad9b1fe95b30d9c8c7eac335df3cc7464960baa17dd8",
+  preexecutionAuthority:
+    "sha256:7ab262a878e0447002f417ea3af49ffa376cea307296ea8d24681ff8492bc015",
+  closure: "sha256:6847f2c4f596705910c33d26581fab3b2c2c3ce5f9bb6d4e0a9c8103df052135",
+  cleanup: "sha256:af01054a4b0c16fe43f4ace6a9036763e20966ac20842fb6d40210029421eae0",
+  reconciliation: "sha256:5895fe18b8143282e397d372b30fa56028f5003bc2ce258b5ef61cce2d1db8c6",
   preflight: "sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c",
   max1: "sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7",
   max2: "sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9",
@@ -18,6 +24,8 @@ const expected = {
   canonicalActivation: "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
   version: "sha256:0fbd792eb0ce3a906a57b1bcf55bfa2fbf12485eae0efd0d7881479f8609002a",
   record: "sha256:94b40dd4ba2b681a2f9aff554685b1206065ee5a61874ebae3e9ce1e7a1eb0ba",
+  restoredVersion: "sha256:5a50180c9772341817844ac140461cca335ba58b7e7e5f0f32c1cb64ebbe304c",
+  restoredRecord: "sha256:c64f4ec079b8f22fbe7f83db40e4db8a98bf3317adc7be61dc6d34f44f388324",
 };
 const sha = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const yes = (value, code) => {
@@ -26,19 +34,31 @@ const yes = (value, code) => {
 const json = async (name) => JSON.parse(await readFile(path.join(dir, name), "utf8"));
 const fileSha = async (name) => sha(await readFile(path.join(dir, name)));
 const rootSha = async (name) => sha(await readFile(path.join(root, name)));
+const liveJson = async (name) => JSON.parse(await readFile(path.join(liveDir, name), "utf8"));
+const liveSha = async (name) => sha(await readFile(path.join(liveDir, name)));
 
-const [proposal, preflight, max1, max2, acceptance, authority, activation] = await Promise.all([
+const [proposal, preflight, max1, max2, acceptance, authority, activation, closure, cleanup, reconciliation] =
+  await Promise.all([
   json("combined-live-proposal.json"),
   json("read-only-preflight.json"),
   json("staged-config-max1.json"),
   json("staged-config-max2.json"),
   json("acceptance.json"),
   json("approved-authority.json"),
-  readFile(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
-]);
+    readFile(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8"),
+    liveJson("failed-attempt-57.json"),
+    liveJson("attempt57-cleanup-observation.json"),
+    liveJson("attempt57-reconciliation-observation.json"),
+  ]);
 yes((await fileSha("combined-live-proposal.json")) === expected.proposal, "PROPOSAL_HASH");
 yes((await fileSha("acceptance.json")) === expected.acceptance, "ACCEPTANCE_HASH");
 yes((await fileSha("approved-authority.json")) === expected.authority, "AUTHORITY_HASH");
+yes((await liveSha("failed-attempt-57.json")) === expected.closure, "CLOSURE_HASH");
+yes((await liveSha("attempt57-cleanup-observation.json")) === expected.cleanup, "CLEANUP_HASH");
+yes(
+  (await liveSha("attempt57-reconciliation-observation.json")) === expected.reconciliation,
+  "RECONCILIATION_HASH",
+);
 yes((await fileSha("read-only-preflight.json")) === expected.preflight, "PREFLIGHT_HASH");
 yes((await fileSha("staged-config-max1.json")) === expected.max1, "MAX1_HASH");
 yes((await fileSha("staged-config-max2.json")) === expected.max2, "MAX2_HASH");
@@ -115,25 +135,64 @@ yes(
 );
 yes(
   authority.attempt === 57 &&
-    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.status === "CONSUMED_NON_REUSABLE_ATTEMPT57_REPLACEMENT_OUTPUT_CONTRACT_FAILURE" &&
     authority.proposal.sha256 === expected.proposal &&
     authority.acceptance.sha256 === expected.acceptance &&
     authority.approval.exact_proposal_approved === true &&
     authority.approval.maximum_cumulative_finite_spend_usd === 4 &&
     authority.approval.anchor_refresh_authorized === true &&
     authority.approval.single_use === true &&
-    authority.approval.consumed === false &&
+    authority.approval.consumed === true &&
     authority.queue_poll_contract.poll_interval_ms === 10000 &&
     authority.queue_poll_contract.maximum_polls === 180 &&
     authority.queue_poll_contract.billing_retry_delays_ms.join(",") === "250,1000,2000" &&
     authority.queue_poll_contract.redispatch_on_poll_failure === false &&
+    authority.execution_boundary.maximum_cumulative_finite_spend_usd === null &&
+    authority.execution_boundary.runpod_mutation_authorized_pending_execution === false &&
+    authority.execution_boundary.gpu_use_authorized_pending_execution === false &&
+    authority.consumption.provider_jobs_submitted === 2 &&
+    authority.consumption.accepted_units === 1 &&
     authority.execution_boundary.v2_08_authorized === false,
   "AUTHORITY",
 );
+yes(
+  closure.qualification_status === "NOT_QUALIFIED" &&
+    closure.authority.approved_preexecution_sha256 === expected.preexecutionAuthority &&
+    closure.authority.consumed_sha256 === expected.authority &&
+    closure.execution.child_failure_code === "MAGE_OUTPUT_NOT_SUCCEEDED" &&
+    closure.execution.failure_stage === "output_readback" &&
+    closure.output.output_status_observed === "SUCCEEDED" &&
+    closure.output.output_failure_code === "UNKNOWN" &&
+    closure.output.exact_remote_response_or_transport_root_cause === "UNPROVEN" &&
+    closure.v2_08_authorized === false,
+  "CLOSURE",
+);
+yes(
+  cleanup.runpod.final_disposable_resources_absent === true &&
+    cleanup.cloudflare.refreshed_active_version_id_sha256 === expected.restoredVersion &&
+    cleanup.cloudflare.refreshed_active_record_sha256 === expected.restoredRecord &&
+    cleanup.authority_consumed === true &&
+    cleanup.v2_08_authorized === false,
+  "CLEANUP",
+);
+yes(
+  reconciliation.stable_read_count === 3 &&
+    reconciliation.inventory.pods === 0 &&
+    reconciliation.inventory.endpoints === 0 &&
+    reconciliation.inventory.private_templates === 0 &&
+    reconciliation.inventory.active_serverless_workers === 0 &&
+    reconciliation.inventory.running_pods === 0 &&
+    reconciliation.billing.observed_increment_usd === 0 &&
+    reconciliation.billing.within_approved_cap === true &&
+    reconciliation.cloudflare.active_version_id_sha256 === expected.restoredVersion &&
+    reconciliation.cloudflare.active_record_sha256 === expected.restoredRecord &&
+    reconciliation.v2_08_authorized === false,
+  "RECONCILIATION",
+);
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_PROPOSAL_POINTER");
-yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_BINDING");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null =\s*4;/u.test(activation), "CAP_BINDING");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null =\s*true;/u.test(activation), "REFRESH_BINDING");
+yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null =\s*null;/u.test(activation), "AUTHORITY_BINDING");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null =\s*null;/u.test(activation), "CAP_BINDING");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null =\s*null;/u.test(activation), "REFRESH_BINDING");
 let authorityExists = true;
 try {
   await access(path.join(dir, "approved-authority.json"));

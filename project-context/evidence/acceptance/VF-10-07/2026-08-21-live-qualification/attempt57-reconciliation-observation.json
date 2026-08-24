@@ -1,0 +1,62 @@
+{
+  "schema_version": "videoforge.v2-07-attempt57-readonly-reconciliation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 57,
+  "checked_at": "2026-08-24T18:37:20.249Z",
+  "result": "PASS_THREE_STABLE_READS_ZERO_DISPOSABLE_RESOURCES",
+  "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "provider_mutations_during_reconciliation": 0,
+  "gpu_jobs_submitted_during_reconciliation": 0,
+  "stable_read_count": 3,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "purpose": "SoulX",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "purpose": "Mage",
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "mount": "/runpod-volume"
+      }
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.7478178361488972,
+    "final_endpoint_spend_usd": 1.7478178361488972,
+    "observed_increment_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS",
+    "provider_final_invoice_absolute_guarantee": false,
+    "provider_billing_may_lag": true
+  },
+  "cloudflare": {
+    "active_version_id_sha256": "sha256:5a50180c9772341817844ac140461cca335ba58b7e7e5f0f32c1cb64ebbe304c",
+    "active_record_sha256": "sha256:c64f4ec079b8f22fbe7f83db40e4db8a98bf3317adc7be61dc6d34f44f388324",
+    "route": "POST 404 V207_ROUTE_DISABLED",
+    "route_identity_exact_over_orchestrator_restoration_snapshot": true,
+    "ephemeral_signer_secret_absent": true,
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600"
+  },
+  "retention": {
+    "mage_volume_retained": true,
+    "soulx_volume_retained": true,
+    "volume_mutation_authorized": false,
+    "volume_mutation_observed": false,
+    "existing_two_volume_charge_usd_per_month": 7
+  },
+  "v2_08_authorized": false,
+  "redaction": "NO_RAW_PROVIDER_IDS_URLS_SECRETS_OR_SIGNER_MATERIAL_RETAINED"
+}

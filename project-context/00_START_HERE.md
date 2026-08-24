@@ -2,24 +2,31 @@
 
 ## Active handoff — read this section first
 
-Attempt57 is approved once under single-use authority
-`sha256:7ab262a878e0447002f417ea3af49ffa376cea307296ea8d24681ff8492bc015`, pending one bounded
-execution. Anchor rebind
-`2202c11f5587ddf1e61e03677401a67561f879f2` and queue-poll classification repair
-`c2086e1a4d0f54adf50848fe5b0ddf9f75962b03` are bound by proposal
-`sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4`, acceptance
-`sha256:6e3e2e0e3b8739a4dbf8365c263fd6e2229dd760b0dad424a18e16cbde618d36`, preflight
-`sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c`, max1
-`sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7`, and max2
-`sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9`.
-Fresh read-only truth through `2026-08-24T17:40:34.870Z` proves zero RunPod compute/disposable
-resources, both retained volumes, LOW RTX 4090 EU-RO-1 availability, `$1.10/GPU-hour` Flex,
-`$0.74/hour` Secure reference, unchanged cumulative endpoint billing `1.7478178361488972`, signer
-absence, protected config mode `0600`, and three exact version-bound POST `404 V207_ROUTE_DISABLED`
-reads. The proposal requests FlashBoot=true, LOW-or-better capacity, `two-phase-v1` anchor refresh,
-a fresh `$4` maximum cumulative finite cap, and continued `$7/month` retention of both volumes.
-The executable cap is `$4` and exact `two-phase-v1` refresh is authorized only for this sequence;
-no mutation, GPU job, or spend has occurred yet. V2-07 remains `NOT_QUALIFIED`; V2-08 is forbidden.
+Attempt57 is closed `NOT_QUALIFIED` and its exact single-use authority/cap are consumed and
+non-reusable. The run accepted one durable probe unit, then failed during replacement output
+readback with `MAGE_OUTPUT_NOT_SUCCEEDED`; no full V2-07 qualification claim is made. Closure is
+`failed-attempt-57.json` (`sha256:6847f2c4f596705910c33d26581fab3b2c2c3ce5f9bb6d4e0a9c8103df052135`),
+cleanup is `attempt57-cleanup-observation.json`
+(`sha256:af01054a4b0c16fe43f4ace6a9036763e20966ac20842fb6d40210029421eae0`), and three-read
+reconciliation is `attempt57-reconciliation-observation.json`
+(`sha256:5895fe18b8143282e397d372b30fa56028f5003bc2ce258b5ef61cce2d1db8c6`).
+
+The approved proposal was
+`sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4`; its authority record
+was `sha256:7ab262a878e0447002f417ea3af49ffa376cea307296ea8d24681ff8492bc015`. Attempt57 used
+FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1`, and the fresh `$4` maximum cumulative
+finite cap. Executable authority, cap, and anchor refresh are now null. Observed incremental
+spend is `$0` within the historical cap, both exact 50 GB EU-RO-1 volumes remain retained at
+`$7/month`, the signer/config/disabled route were restored, and final RunPod reconciliation proves
+zero Pods, endpoints, templates, workers, and running Pods. V2-07 remains `NOT_QUALIFIED`; V2-08
+is forbidden. Stop provider work; any future V2-07 attempt requires a provider-free diagnosis,
+fresh exact proposal/approval/cap, and refreshed provider truth.
+
+Attempt57 lineage is anchor rebind `2202c11f5587ddf1e61e03677401a67561f879f2`, queue-poll repair
+`c2086e1a4d0f54adf50848fe5b0ddf9f75962b03`, orchestrator
+`sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62`, qualification
+`sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1`, and harness
+`sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512`.
 
 Attempt56 is closed `NOT_QUALIFIED`. Its single-use authority is consumed and non-reusable after one
 job remained `IN_QUEUE` for 34 status reads and was cancelled with no accepted batch, output, receipt,
@@ -47,8 +54,8 @@ forbidden. Provider-free diagnosis `sha256:247c8c6b…f922` proves Attempt56 sto
 allowed reads, so the reconciliation timeout was not reached; the exact immediate exception and
 provider-capacity root cause remain unproven. Repair `c2086e1` adds bounded billing-read retry and
 explicit billing/checkpoint failure codes without redispatch or provider-policy changes; 129/129
-focused tests and TypeScript passed. Attempt56 cannot be retried; use only the pending exact
-Attempt57 boundary above and do not start V2-08.
+focused tests and TypeScript passed. Attempt56 cannot be retried; Attempt57 is now also consumed
+and closed as `NOT_QUALIFIED`; stop provider work and do not start V2-08.
 
 Attempt55 remains closed and non-reusable at `V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH`; preserve its
 consumed authority and cap as immutable history and do not retry it.

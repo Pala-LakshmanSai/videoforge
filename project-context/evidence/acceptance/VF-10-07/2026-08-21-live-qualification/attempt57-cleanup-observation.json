@@ -1,0 +1,40 @@
+{
+  "schema_version": "videoforge.v2-07-attempt57-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 57,
+  "checked_at": "2026-08-24T18:37:20.249Z",
+  "result": "CLEAN_EXACT_DISPOSABLE_RESOURCES_DELETED_AND_ABSENT_AFTER_RECONCILIATION",
+  "failure_code": "V207_LIVE_RUNNER_FAILED",
+  "failure_stage": "replacement_output_contract",
+  "raw_live_result_sha256": "sha256:cc66768d86a09a4d14917fa910e412814ff0ff16b6b72de888ea3e4f60271901",
+  "raw_orchestrator_sha256": "sha256:7ee2ddec63f3370a647be86799829c8c109235e74d92d69983105af907218353",
+  "runpod": {
+    "endpoint_id_sha256": "sha256:2347a4f5e811aaf3473d2d578caa2b23e83cfde59dbe47997748ba2be9adc8fb",
+    "template_id_sha256": "sha256:957857725d73b6912fa9b957de1815ddd640b088f092a6fa6491ebd05cfbe238",
+    "provider_jobs_submitted": 2,
+    "owned_jobs_cancelled_or_terminal": true,
+    "generated_output_rollback": "CONFIRMED",
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_disposable_resources_absent": true,
+    "cleanup_uncertain_after_final_reconciliation": false,
+    "final_active_serverless_workers": 0,
+    "final_running_pods": 0
+  },
+  "cloudflare": {
+    "refreshed_active_version_id_sha256": "sha256:5a50180c9772341817844ac140461cca335ba58b7e7e5f0f32c1cb64ebbe304c",
+    "refreshed_active_record_sha256": "sha256:c64f4ec079b8f22fbe7f83db40e4db8a98bf3317adc7be61dc6d34f44f388324",
+    "ephemeral_signer_secret_absent": true,
+    "protected_config_mode": "0600",
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "restored_route_probe": "POST 404 V207_ROUTE_DISABLED",
+    "route_identity_exact_over_orchestrator_restoration_snapshot": true,
+    "rollback_resolved": true
+  },
+  "retained_volumes_deleted_or_mutated_by_cleanup": false,
+  "authority_consumed": true,
+  "retry_under_same_authority_forbidden": true,
+  "v2_08_authorized": false,
+  "redaction": "NO_RAW_PROVIDER_IDS_URLS_SECRETS_OR_SIGNER_MATERIAL_RETAINED"
+}
