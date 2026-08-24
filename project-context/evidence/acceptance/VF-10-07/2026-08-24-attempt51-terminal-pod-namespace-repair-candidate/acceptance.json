@@ -1,0 +1,81 @@
+{
+  "schema_version": "videoforge.v2-07-attempt51-terminal-pod-namespace-repair-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 51,
+  "recorded_at": "2026-08-24T07:00:00Z",
+  "status": "PROVIDER_FREE_CANDIDATE_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "candidate": {
+    "proposal_path": "combined-live-proposal.json",
+    "proposal_sha256": "sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8",
+    "control_source_commit": "f4054ed4865ed8fac1af53bd766cf2c5153c7e29",
+    "live_qualification_source_sha256": "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86",
+    "qualification_harness_source_sha256": "sha256:367e9c0aa57909b8b91e8bfd9aade181a2c849f43356e1e123f39882e25f2821",
+    "canonical_activation_source_sha256": "sha256:04df0f5e8640cb6063089bb933d932be501fd2d3bb8876f94cfabf9b106d3617",
+    "max1_path": "staged-config-max1.json",
+    "max1_sha256": "sha256:cce816d3028c0e0e439f74f59ffbdc0319bf678893e3f4ebaf75cc1f9034c995",
+    "max2_path": "staged-config-max2.json",
+    "max2_sha256": "sha256:b84a15675471a6bffba23243e5d026604e1da9789d57e87d9946db5964ca42aa",
+    "authority_recorded": false,
+    "authority_sha256": null,
+    "executable_maximum_cumulative_finite_spend_usd": null,
+    "anchor_refresh_authorized": null
+  },
+  "repair_proof": {
+    "provider_worker_record_id_and_runtime_pod_id_are_separate_namespaces": true,
+    "signed_runtime_pod_must_match_unique_endpoint_bound_terminal_pod": true,
+    "sole_provider_worker_record_must_be_terminal": true,
+    "exact_worker_count_zero_required_before_resume_dispatch": true,
+    "queue_empty_and_two_stable_terminal_snapshots_required": true,
+    "missing_multiple_mismatched_or_nonterminal_pod_fails_closed": true,
+    "second_run_before_boundary_forbidden": true,
+    "fixture_proof_is_not_live_qualification": true
+  },
+  "immutable_runtime": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_rebuild_or_republication": false,
+    "handler_sha256": "sha256:3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "retained_volume_mutation_authorized": false
+  },
+  "scratch_contract": {
+    "exact_job_path": "/tmp/videoforge-jobs/jobs/${attempt_id}",
+    "model_volume_scratch_forbidden": true,
+    "terminal_removal_receipt_required": true
+  },
+  "acceptance_still_required_in_one_exact_paid_run": {
+    "complete_probe_resume_cold_warm_batches": true,
+    "provider_status_output_readback_receipt_reconciliation": true,
+    "at_most_one_and_duplicate_cost_visibility": true,
+    "cancel_and_timeout": true,
+    "measured_queue_execution_init_load_warmup_vram": true,
+    "pre_and_post_manifest_no_write_no_cache_escape": true,
+    "max1_then_separately_hashed_max2_complete_readers": true,
+    "restore_max1_and_workers_zero": true,
+    "unchanged_two_volume_inventory": true,
+    "actual_rate_and_cost_within_fresh_cap": true
+  },
+  "provider_boundary": {
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "external_spend_usd": 0,
+    "fresh_read_required_after_approval_before_mutation": true,
+    "attempt50_authority_reusable": false
+  },
+  "cost_truth": {
+    "last_observed_serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
+    "requested_fresh_cap_usd": 4,
+    "finite_action_estimate_usd": 3.95,
+    "completion_conditional_on_measured_durations_fitting_cap": true,
+    "provider_final_invoice_absolute_guarantee": false,
+    "existing_two_volume_charge_usd_per_month": 7
+  },
+  "remaining_p1": "NO_SINGLE_IMMUTABLE_PAID_RUN_SATISFIES_THE_EXACT_CURRENT_LINEAGE_AND_COMPLETE_ACCEPTANCE",
+  "required_user_authority": "Approve exact Attempt51 proposal sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8 with FlashBoot=true, LOW-or-better EU-RO-1 availability, exact two-phase-v1 anchor refresh, and a fresh USD 4 maximum cumulative finite spend cap; completion remains conditional on measured durations fitting the cap",
+  "v2_08_authorized": false
+}

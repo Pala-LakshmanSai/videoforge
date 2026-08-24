@@ -1,21 +1,15 @@
 # VideoForge: start here
 
-Attempt50 is closed `NOT_QUALIFIED`. Proposal `sha256:1a7dd058…7badb` and authority
-`sha256:fea7eaeb…160a7` were consumed once under the `$4` cap. One RTX 4090 EU-RO-1 probe reached
-`COMPLETED` with one durable readback and replay-confirmed receipt, then execution stopped at
-`RUNPOD_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE` before complete-batch, duplicate,
-max2-reader, cancel, or timeout acceptance. Cleanup repair `333dc1f` was post-run cleanup-only and
-is not paid execution lineage. Closure `failed-attempt-50.json` records restored
-`404 V207_ROUTE_DISABLED`, unchanged protected config, zero compute/resources/workers, both retained
-50 GB EU-RO-1 volumes, and `$0` observed billing increment at three stable reads; delayed settlement
-and the final provider invoice remain unguaranteed. Authority/cap are non-reusable; V2-08 forbidden.
+Attempt51 is the current provider-free candidate. Repair `f4054ed` separates provider worker-record
+IDs from signed runtime Pod IDs and requires the unique terminal Pod plus exact terminal worker
+count before resume. Proposal `sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8`, acceptance `sha256:76e1c5b9…264885`, max1
+`sha256:cce816d3…34c995`, and max2 `sha256:b84a1567…ca42aa` reuse the unchanged sealed image and
+volumes. Authority, cap, and anchor-refresh permission are null; no provider call, mutation, GPU
+use, or spend is authorized. V2-07 remains `NOT_QUALIFIED`; V2-08 forbidden.
 
-Attempt49 proposal `sha256:a8b03557…74734a` and append-only authority
-`sha256:29bef150…0106d` are closed non-reusable before activation by pre-activation no-go
-`sha256:6eb7575c…65ba`. Independent review found the asynchronous paid-work fence did not
-reserve conservative in-flight liability against the `$4` cap. No provider call, mutation,
-GPU job, protected-config write, or spend occurred. V2-07 remains `NOT_QUALIFIED`; a changed
-lineage needs a fresh exact proposal, approval, and positive numeric cap. V2-08 is forbidden.
+Attempt50 is closed after one durable probe failed the former cross-namespace identity check. Its
+proposal/authority are consumed and non-reusable. Cleanup and three stable reads prove restored
+route/config, zero disposable resources/workers, both retained volumes, and `$0` observed increment.
 
 Attempt47 is closed fail-closed as `NOT_QUALIFIED`. Proposal
 `sha256:e0e0e62014a770678485d780dbb2c852ae7e1786162fc58594f6d08afaa0ee53` and acceptance

@@ -1,0 +1,82 @@
+{
+  "schema_version": "videoforge.v2-07-staged-endpoint-definition/v13",
+  "stage": "attempt51_final_concurrent_reader_proof_after_complete_max1_qualification",
+  "region": "EU-RO-1",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+  "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+  "control_source_commit": "f4054ed4865ed8fac1af53bd766cf2c5153c7e29",
+  "source_hashes": {
+    "orchestrator_sha256": "sha256:52d37b01230b4e5532266717c174e514f74fd05c37a4137a2b36e6d20b44e518",
+    "live_qualification_sha256": "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86",
+    "qualification_harness_sha256": "sha256:367e9c0aa57909b8b91e8bfd9aade181a2c849f43356e1e123f39882e25f2821",
+    "canonical_activation_sha256": "sha256:04df0f5e8640cb6063089bb933d932be501fd2d3bb8876f94cfabf9b106d3617",
+    "readonly_reconciliation_sha256": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "mage_handler_sha256": "sha256:3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da"
+  },
+  "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+  "network_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "network_volume_size_gb": 50,
+  "network_volume_region": "EU-RO-1",
+  "network_volume_mount": "/runpod-volume",
+  "model_root": "/runpod-volume/mage-model",
+  "volume_write_policy": "APPLICATION_READ_ONLY",
+  "gpu_type_ids": ["NVIDIA GeForce RTX 4090"],
+  "gpu_count_per_worker": 1,
+  "compute_type": "GPU",
+  "flex_only": true,
+  "workers_min": 0,
+  "workers_max": 2,
+  "scaler_type": "REQUEST_COUNT",
+  "scaler_value": 1,
+  "handler_concurrency": 1,
+  "idle_timeout_seconds": 5,
+  "init_timeout_seconds": 800,
+  "execution_timeout_seconds": 2400,
+  "request_authority_ttl_seconds": 7200,
+  "container_disk_gb": 120,
+  "flashboot": true,
+  "availability_threshold": "LOW-or-better",
+  "scope": "two simultaneous complete read-only readers only; restore exact max1 immediately after proof",
+  "template_environment": {
+    "MAGE_MODEL_ROOT": "/runpod-volume/mage-model",
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "DIFFUSERS_OFFLINE": "1",
+    "VIDEOFORGE_JOB_SCRATCH_ROOT": "/tmp/videoforge-jobs",
+    "RUNPOD_INIT_TIMEOUT": "800"
+  },
+  "runtime_execution_contract": {
+    "sealed_manifest_verification": "OFFLINE_EXACT_SHA256_BEFORE_MODEL_LOAD_AND_AFTER_FINAL_DRAIN",
+    "job_local_scratch": "/tmp/videoforge-jobs/jobs/${attempt_id}",
+    "scratch_must_not_escape_job": true,
+    "scratch_cleanup_receipt_required": true,
+    "accepted_units_never_regenerated": true,
+    "runtime_download_or_quantization": false,
+    "cache_escape_forbidden": true
+  },
+  "execution_subset_contract": {
+    "plan_units": 32,
+    "reader_batch_units": 32,
+    "readers": 2,
+    "read_only": true,
+    "accept_at_most_once_per_unit": true,
+    "duplicate_compute_cost_must_be_visible": true,
+    "merge_requires_exact_plan_order_and_unique_ids": true,
+    "provider_status_output_receipt_reconciliation_required": true
+  },
+  "cloudflare_anchor_refresh_contract": {
+    "activation": "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1",
+    "compiled_authority_binding_required": true,
+    "fresh_read_required_before_mutation": true,
+    "refreshed_anchor_newest_seven_retention_required": true,
+    "required_consecutive_route_matches": 16,
+    "pre_and_post_refresh_route": "POST_404_V207_ROUTE_DISABLED",
+    "terminal_protected_config_restore_required": true
+  },
+  "terminal_contract": {
+    "restore_definition": "staged-config-max1.json",
+    "workers_zero_after_drain": true,
+    "independent_worker_and_running_pod_zero_required": true,
+    "two_volume_inventory_unchanged_required": true
+  }
+}
