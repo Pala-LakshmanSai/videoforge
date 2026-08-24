@@ -8,12 +8,16 @@ const root = path.resolve(dir, "../../../../../");
 const E = {
   proposal: "sha256:d3c10f7af00591dea0afe73d2960b316a788235bb2585decab6ca479b4ce9ab9",
   acceptance: "sha256:3ddaf8f9fde45f93de0a9c4a770a09bc117168ff27dbd2ec312e7516cf9c094d",
+  authority: "sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2",
   preflight: "sha256:4a1f95ee496afabedc33ca148bee8543010600ea302966f4b66b8b23c2425373",
   max1: "sha256:6bba5f707e19352b2935129429665f1a488f241065c9c84fe814a2f8677dae7a",
   max2: "sha256:19d4824c205b5c3c17edc351d7762578b249caee497d60ec4d8ff762fd41b37b",
   control: "85391b130673200e2d1f74fea4ea2581d5d83c1a",
   anchorRepair: "5c2fbe06ba559543c122876d32ef41cb26fd688b",
+  proposalRecord: "227c77acf1642f02c8cafb95752eb860d6d37c87",
   orchestrator: "sha256:3d0580e1b6e4c8fedb3d1be6e7a639b89b0a53562d1806b0dc02eeca435b608c",
+  qualification: "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86",
+  harness: "sha256:772249e8feab2c58600807d35844693baaa02d3706eb72d86773637061560cd4",
   canonical: "sha256:36a23948ce41b7344af81a8a8abfd44e7d356d9a12c10731aefed1f3ce36a6b3",
   anchorVersion: "sha256:36256382df0f40b1e654b041d5bfbcadefac429ab0b9de0709b567975e7a8ad6",
   anchorRecord: "sha256:9e37db7bcf43625ea1ff0679f3ed421d50ad4e951088e2fa0cdbfc707a0afac2",
@@ -37,6 +41,7 @@ const file = (name) => path.join(dir, name);
 for (const [name, expected] of Object.entries({
   "combined-live-proposal.json": E.proposal,
   "acceptance.json": E.acceptance,
+  "approved-authority.json": E.authority,
   "read-only-preflight.json": E.preflight,
   "staged-config-max1.json": E.max1,
   "staged-config-max2.json": E.max2,
@@ -44,12 +49,9 @@ for (const [name, expected] of Object.entries({
   eq(sha(file(name)), expected, `${name.replaceAll(".", "_")}_HASH`);
 }
 
-// Attempt56 is an unapproved provider-free candidate. A same-directory authority file would
-// make the candidate ambiguously executable, so fail closed if one is introduced.
-yes(!fs.existsSync(file("approved-authority.json")), "APPROVED_AUTHORITY_FILE_PRESENT");
-
 const proposal = json(file("combined-live-proposal.json"));
 const acceptance = json(file("acceptance.json"));
+const authority = json(file("approved-authority.json"));
 const preflight = json(file("read-only-preflight.json"));
 const max1 = json(file("staged-config-max1.json"));
 const max2 = json(file("staged-config-max2.json"));
@@ -135,6 +137,52 @@ eq(acceptance.authority.anchor_refresh_authorized, null, "ACCEPTANCE_NULL_REFRES
 eq(acceptance.authority.provider_mutations_authorized, false, "ACCEPTANCE_AUTHORITY_MUTATION");
 eq(acceptance.authority.gpu_use_authorized, false, "ACCEPTANCE_AUTHORITY_GPU");
 eq(acceptance.authority.v2_08_authorized, false, "ACCEPTANCE_AUTHORITY_V208");
+
+eq(authority.checkpoint, "V2-07", "AUTHORITY_CHECKPOINT");
+eq(authority.task_id, "VF-10-07", "AUTHORITY_TASK");
+eq(authority.attempt, 56, "AUTHORITY_ATTEMPT");
+eq(authority.status, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "AUTHORITY_STATUS");
+eq(authority.proposal.sha256, E.proposal, "AUTHORITY_PROPOSAL");
+eq(authority.acceptance.sha256, E.acceptance, "AUTHORITY_ACCEPTANCE");
+eq(authority.approval.exact_proposal_approved, true, "AUTHORITY_APPROVED");
+eq(authority.approval.flashboot_true_accepted, true, "AUTHORITY_FLASHBOOT");
+eq(authority.approval.minimum_approved_availability, "LOW-or-better", "AUTHORITY_AVAILABILITY");
+eq(authority.approval.maximum_cumulative_finite_spend_usd, 4, "AUTHORITY_CAP");
+eq(authority.approval.fresh_numeric_cap, true, "AUTHORITY_FRESH_CAP");
+eq(authority.approval.historical_cap_reused, false, "AUTHORITY_HISTORICAL_CAP_REUSE");
+eq(authority.approval.prior_authority_reused, false, "AUTHORITY_PRIOR_REUSE");
+eq(authority.approval.prior_attempt56_authority_reused, false, "AUTHORITY_ATTEMPT56_REUSE");
+eq(authority.approval.single_use, true, "AUTHORITY_SINGLE_USE");
+eq(authority.approval.consumed, false, "AUTHORITY_UNCONSUMED");
+eq(authority.approval.anchor_refresh_authorized, true, "AUTHORITY_REFRESH");
+eq(authority.approval.exact_launcher_activation, "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1", "AUTHORITY_REFRESH_MODE");
+eq(authority.approval.recurring_retained_volume_charge_usd_per_month, 7, "AUTHORITY_VOLUME_RATE");
+eq(authority.approval.recurring_charge_is_outside_finite_cap, true, "AUTHORITY_VOLUME_CAP_SEPARATE");
+eq(authority.lineage.control_source_commit, E.control, "AUTHORITY_CONTROL");
+eq(authority.lineage.anchor_repair_commit, E.anchorRepair, "AUTHORITY_ANCHOR_REPAIR");
+eq(authority.lineage.proposal_record_commit, E.proposalRecord, "AUTHORITY_PROPOSAL_RECORD");
+eq(authority.lineage.orchestrator_source_sha256, E.orchestrator, "AUTHORITY_ORCHESTRATOR");
+eq(authority.lineage.live_qualification_source_sha256, E.qualification, "AUTHORITY_QUALIFICATION");
+eq(authority.lineage.qualification_harness_source_sha256, E.harness, "AUTHORITY_HARNESS");
+eq(authority.lineage.canonical_activation_source_sha256, E.canonical, "AUTHORITY_CANONICAL");
+eq(authority.lineage.expected_old_active_version_id_sha256, E.anchorVersion, "AUTHORITY_ANCHOR_VERSION");
+eq(authority.lineage.expected_old_active_record_sha256, E.anchorRecord, "AUTHORITY_ANCHOR_RECORD");
+eq(authority.lineage.initial_config_sha256, E.max1, "AUTHORITY_MAX1");
+eq(authority.lineage.concurrent_reader_config_sha256, E.max2, "AUTHORITY_MAX2");
+eq(authority.lineage.executable_anchor_constants_binding.source_sha256, E.orchestrator, "AUTHORITY_EXECUTABLE_SOURCE");
+eq(authority.lineage.executable_anchor_constants_binding.expected_old_active_version_sha256, E.anchorVersion, "AUTHORITY_EXECUTABLE_VERSION");
+eq(authority.lineage.executable_anchor_constants_binding.expected_old_active_record_sha256, E.anchorRecord, "AUTHORITY_EXECUTABLE_RECORD");
+eq(authority.execution_boundary.read_only_provider_calls_authorized_pending_execution, true, "AUTHORITY_READ_ONLY_CALLS");
+eq(authority.execution_boundary.provider_calls_completed, false, "AUTHORITY_PROVIDER_CALLS");
+eq(authority.execution_boundary.external_spend_usd, 0, "AUTHORITY_SPEND");
+eq(authority.execution_boundary.maximum_cumulative_finite_spend_usd, 4, "AUTHORITY_BOUND_CAP");
+eq(authority.execution_boundary.anchor_refresh_authorized, true, "AUTHORITY_BOUND_REFRESH");
+eq(authority.execution_boundary.v2_08_authorized, false, "AUTHORITY_V208");
+eq(authority.consumption.consumed_at, null, "AUTHORITY_CONSUMPTION_TIMESTAMP");
+eq(authority.consumption.provider_jobs_submitted, 0, "AUTHORITY_PROVIDER_JOBS");
+eq(authority.consumption.gpu_use_occurred, false, "AUTHORITY_GPU");
+eq(authority.consumption.accepted_units, 0, "AUTHORITY_ACCEPTED_UNITS");
+eq(authority.consumption.v2_08_authorized, false, "AUTHORITY_CONSUMPTION_V208");
 
 eq(preflight.attempt, 56, "PREFLIGHT_ATTEMPT");
 eq(preflight.read_only, true, "PREFLIGHT_READ_ONLY");
@@ -232,9 +280,10 @@ const activationPath = path.join(root, "apps/web/src/server/providers/v207-activ
 const activation = text(activationPath);
 yes(activation.includes(E.proposal), "ACTIVATION_PROPOSAL");
 yes(activation.includes(`V207_PENDING_CONTROL_SOURCE_COMMIT =\n  "${E.control}"`), "ACTIVATION_CONTROL");
-yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*\n?\s*null\s*;/mu.test(activation), "ACTIVATION_AUTHORITY_NULL");
-yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*\n?\s*null\s*;/mu.test(activation), "ACTIVATION_CAP_NULL");
-yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*\n?\s*null\s*;/mu.test(activation), "ACTIVATION_REFRESH_NULL");
+yes(activation.includes(E.authority), "ACTIVATION_AUTHORITY");
+yes(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*\n?\s*"sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2"\s*;/mu.test(activation), "ACTIVATION_AUTHORITY");
+yes(/^export\s+const\s+V207_APPROVED_FINITE_CAP_USD\s*:\s*number\s*\|\s*null\s*=\s*\n?\s*4\s*;/mu.test(activation), "ACTIVATION_CAP");
+yes(/^export\s+const\s+V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED\s*:\s*boolean\s*\|\s*null\s*=\s*\n?\s*true\s*;/mu.test(activation), "ACTIVATION_REFRESH");
 
 const replaceOne = (source, pattern, replacement, code) => {
   eq((source.match(pattern) ?? []).length, 1, code);

@@ -2,7 +2,9 @@
 
 ## Active handoff — read this section first
 
-Attempt56 provider-free executable-anchor-constant rebind is complete and pending fresh exact approval.
+Attempt56 provider-free executable-anchor-constant rebind is complete and exact approval is recorded;
+single-use authority `sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2`
+is pending one bounded execution.
 Repair commit `5c2fbe06ba559543c122876d32ef41cb26fd688b` binds the orchestrator constants, both staged
 configs, proposal, and validator gate to the same fresh Cloudflare anchors. Proposal
 `sha256:d3c10f7af00591dea0afe73d2960b316a788235bb2585decab6ca479b4ce9ab9`, acceptance
@@ -17,10 +19,13 @@ cumulative billing `1.7478178361488972`, signer absent, and exact active-version
 V207_ROUTE_DISABLED`. The executable anchors are `sha256:36256382…7a8ad6` and
 `sha256:9e37db7…a0afac2`; the canonical activation source remains `sha256:36a23948…a6b3`.
 
-Attempt56 authority and executable cap remain null/`$0` pending fresh exact approval. Provider calls,
-mutations, GPU use, and spend are false/zero; both existing volumes remain retained at `$7/month`;
-V2-07 remains `NOT_QUALIFIED`; V2-08 is forbidden. Next boundary is exact Attempt56 approval only,
-then one bounded live qualification under the approved cap.
+Attempt56 authority is recorded at
+`evidence/acceptance/VF-10-07/2026-08-24-attempt56-anchor-constant-rebind-candidate/approved-authority.json`
+with an approved `$4` maximum cumulative finite cap and exact `two-phase-v1` anchor refresh. Provider
+calls, Cloudflare/RunPod mutation, scoped signer route activation, and GPU use are authorized only for
+that exact bounded sequence; execution has not started and observed spend remains `$0`. Both existing
+volumes remain retained at `$7/month`; V2-07 remains `NOT_QUALIFIED`; V2-08 is forbidden. Next boundary
+is one bounded Attempt56 live qualification after re-confirming exact lineage and provider truth.
 
 Attempt55 remains closed and non-reusable at `V207_EXECUTABLE_ANCHOR_LINEAGE_MISMATCH`; preserve its
 consumed authority and cap as immutable history and do not retry it.
@@ -54,8 +59,8 @@ personal-worker renderer are completed foundations to integrate, not reimplement
 Use focused tests for changed surfaces and one narrow repair cycle. Canonical provider-free
 verification runs at V2-09 and V2-13 unless a shared contract/runtime change needs it earlier.
 Tenant isolation, authority/caps, artifact lineage, volume integrity, and zero-worker drain remain
-mandatory. No provider authority or finite cap remains. Do not retry Attempt53, mutate the hosted
-route, or start V2-08.
+mandatory. Attempt56 is the only current provider authority/cap and is limited to its exact approved
+bounded sequence; do not retry Attempt55, mutate outside that sequence, or start V2-08.
 
 ## Historical V2-07 attempt ledger — do not preload
 
