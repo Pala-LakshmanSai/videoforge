@@ -44,9 +44,9 @@ Repository truth at roadmap creation:
   version `32bfc4bf-4421-4703-9095-2afc3515fda3`;
 - V2-07 Attempt51 is the current provider-free Mage candidate. It has no authority, cap,
   anchor-refresh permission, provider call, mutation, GPU use, or spend;
-- the last recorded provider inventory, not refreshed by this planning task, had zero disposable
-  Pods/endpoints/templates/workers, exactly two retained 50 GB `EU-RO-1` volumes, and a combined
-  retained-volume planning charge of `$7/month`;
+- the fresh V2-07 read-only inventory has zero disposable Pods/endpoints/templates/workers, exactly
+  two retained 50 GB `EU-RO-1` volumes, RTX 4090 `LOW` availability, and a combined retained-volume
+  planning charge of `$7/month`;
 - no provider, cloud, credential, deploy, or paid operation is authorized by this roadmap.
 
 ### Complete and reusable — do not rebuild

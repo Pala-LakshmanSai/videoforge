@@ -4,10 +4,15 @@
 
 Attempt51 is the current provider-free candidate. Repair `f4054ed` separates provider worker-record
 IDs from signed runtime Pod IDs and requires the unique terminal Pod plus exact terminal worker
-count before resume. Proposal `sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8`, acceptance `sha256:76e1c5b9…264885`, max1
-`sha256:cce816d3…34c995`, and max2 `sha256:b84a1567…ca42aa` reuse the unchanged sealed image and
+count before resume. Proposal `sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe`, acceptance `sha256:be67953b…5a856b`, max1
+`sha256:c2c31282…89ba5e`, and max2 `sha256:e1b23717…cb7f8c` reuse the unchanged sealed image and
 volumes. Authority, cap, and anchor-refresh permission are null; no provider call, mutation, GPU
 use, or spend is authorized. V2-07 remains `NOT_QUALIFIED`; V2-08 forbidden.
+
+Fresh read-only truth at `2026-08-24T08:50:12Z` proves zero disposable resources/workers, both
+retained volumes, RTX 4090 `LOW` availability, and current cumulative endpoint billing
+`1.645446196460398`. The active Cloudflare anchor was rebound to its fresh retained hashes; the
+disabled-route probe must be repeated before mutation because local DNS returned `ENOTFOUND`.
 
 Attempt50 is closed after one durable probe failed the former cross-namespace identity check. Its
 proposal/authority are consumed and non-reusable. Cleanup and three stable reads prove restored

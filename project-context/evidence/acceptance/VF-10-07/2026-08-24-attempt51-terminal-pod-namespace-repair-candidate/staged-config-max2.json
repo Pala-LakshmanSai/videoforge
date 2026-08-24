@@ -6,7 +6,7 @@
   "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
   "control_source_commit": "f4054ed4865ed8fac1af53bd766cf2c5153c7e29",
   "source_hashes": {
-    "orchestrator_sha256": "sha256:52d37b01230b4e5532266717c174e514f74fd05c37a4137a2b36e6d20b44e518",
+    "orchestrator_sha256": "sha256:57e81e3bc75704156f0cba191d987ce89c32428a91e34ea80954b4dc7159b4e0",
     "live_qualification_sha256": "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86",
     "qualification_harness_sha256": "sha256:367e9c0aa57909b8b91e8bfd9aade181a2c849f43356e1e123f39882e25f2821",
     "canonical_activation_sha256": "sha256:04df0f5e8640cb6063089bb933d932be501fd2d3bb8876f94cfabf9b106d3617",
@@ -68,6 +68,8 @@
     "activation": "V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1",
     "compiled_authority_binding_required": true,
     "fresh_read_required_before_mutation": true,
+    "expected_old_active_version_id_sha256": "sha256:05478fd7e83a2886edd70ed3558d29d253f2a37b7d0dbe100d5a30b97ad42c52",
+    "expected_old_active_record_sha256": "sha256:64fef83e5b77393eeb9d2d6e91a7e0f6b56a0a941d0ebe535707d1ef9e12e969",
     "refreshed_anchor_newest_seven_retention_required": true,
     "required_consecutive_route_matches": 16,
     "pre_and_post_refresh_route": "POST_404_V207_ROUTE_DISABLED",

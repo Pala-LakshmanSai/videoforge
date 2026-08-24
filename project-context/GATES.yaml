@@ -152,9 +152,9 @@ gates:
     latest_closed_max1_sha256: "sha256:6a70f6c1373f3525a9d6fb7cdb9eaaa11763322635d860a5512a7b1a6b477005"
     latest_closed_max2_sha256: "sha256:88e878b0cd1d041abd1a31b798c43305565da5873e4bb096736431b72b96143c"
     current_candidate: "evidence/acceptance/VF-10-07/2026-08-24-attempt51-terminal-pod-namespace-repair-candidate/combined-live-proposal.json"
-    current_candidate_sha256: "sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8"
+    current_candidate_sha256: "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe"
     current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-24-attempt51-terminal-pod-namespace-repair-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:76e1c5b9b811647815660fbf50ac54087737b3492be812d7df503ee44a264885"
+    current_candidate_acceptance_sha256: "sha256:be67953bc6189adcacff5c06b265f340cbbcdb045f19efbfc426bc4d695a856b"
     current_candidate_preflight: null
     current_candidate_preflight_sha256: null
     current_candidate_authority: null
@@ -178,8 +178,8 @@ gates:
     current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
     current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
-    current_candidate_max1_sha256: "sha256:cce816d3028c0e0e439f74f59ffbdc0319bf678893e3f4ebaf75cc1f9034c995"
-    current_candidate_max2_sha256: "sha256:b84a15675471a6bffba23243e5d026604e1da9789d57e87d9946db5964ca42aa"
+    current_candidate_max1_sha256: "sha256:c2c31282f991c08677d9b49c1b6a367ba945c3fa232b48354e8913e14889ba5e"
+    current_candidate_max2_sha256: "sha256:e1b23717ccf3b4b03a281936602e3b0f36ef19345a4ba22db9afc78585cb7f8c"
     latest_approved_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/combined-live-proposal.json"
     latest_approved_proposal_sha256: "sha256:1a7dd058e81dc172440a5457db8c5f81ae099dc99c56d3bc36357f1dcd97badb"
     latest_approved_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt50-projected-cap-terminal-readers-candidate/approved-authority.json"
@@ -204,7 +204,7 @@ gates:
     latest_closed_authority_mode: closed_consumed_attempt50_process_replacement_identity_unavailable_clean
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
     pending_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt51-terminal-pod-namespace-repair-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8"
+    pending_proposal_sha256: "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe"
     pending_authority: null
     pending_authority_sha256: null
     pending_authority_state: PENDING_FRESH_EXACT_APPROVAL
@@ -220,26 +220,29 @@ gates:
     current_provider_free_repair_commit: "f4054ed4865ed8fac1af53bd766cf2c5153c7e29"
     current_provider_free_live_qualification_source_sha256: "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86"
     current_provider_free_qualification_harness_source_sha256: "sha256:367e9c0aa57909b8b91e8bfd9aade181a2c849f43356e1e123f39882e25f2821"
-    pending_orchestrator_source_sha256: "sha256:52d37b01230b4e5532266717c174e514f74fd05c37a4137a2b36e6d20b44e518"
+    pending_orchestrator_source_sha256: "sha256:57e81e3bc75704156f0cba191d987ce89c32428a91e34ea80954b4dc7159b4e0"
     pending_protected_config_helper_sha256: "sha256:273f8c7ef6844488e9266276e7ab8db184810456079c6419ba62a9cca116d540"
     pending_anchor_refresh_source_commit: "a6c7266"
     pending_typed_activation_authority_commit: "e5571ed2478f0c526ebf508d0a4ce301bafa8203"
     pending_orchestrator_marker_lifecycle_commit: "3dda73fed6d82dc7116b18a6b7cfbe4b262fc7bc"
     pending_protected_config_path_pin_commit: "75c784ad1bd9ae4908a5a5204a2170052c44df92"
     pending_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-24-attempt51-terminal-pod-namespace-repair-candidate/acceptance.json"
-    pending_candidate_acceptance_sha256: "sha256:76e1c5b9b811647815660fbf50ac54087737b3492be812d7df503ee44a264885"
+    pending_candidate_acceptance_sha256: "sha256:be67953bc6189adcacff5c06b265f340cbbcdb045f19efbfc426bc4d695a856b"
     pending_preflight: null
     pending_preflight_sha256: null
-    pending_max1_sha256: "sha256:cce816d3028c0e0e439f74f59ffbdc0319bf678893e3f4ebaf75cc1f9034c995"
-    pending_max2_sha256: "sha256:b84a15675471a6bffba23243e5d026604e1da9789d57e87d9946db5964ca42aa"
+    pending_max1_sha256: "sha256:c2c31282f991c08677d9b49c1b6a367ba945c3fa232b48354e8913e14889ba5e"
+    pending_max2_sha256: "sha256:e1b23717ccf3b4b03a281936602e3b0f36ef19345a4ba22db9afc78585cb7f8c"
     pending_protected_config_baseline_sha256: "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774"
     pending_protected_config_projected_sha256: "sha256:c643af2fe7d6325396b2527bcbe92d9422c6126aa3328530b8dfaa36b7bc08e5"
-    pending_old_active_version_id_sha256: "sha256:ee4c0d1dd0e4c05cb4067f312ea7a4e656d27f1e96e678c815565c2ca2ff4ea0"
-    pending_old_active_record_sha256: "sha256:5b2768ef36f1ad131b1838e2fb3ca7eb1329827b607a6bcd1fca6a9c443c3878"
-    pending_old_active_index_oldest_to_newest: null
+    pending_old_active_version_id_sha256: "sha256:05478fd7e83a2886edd70ed3558d29d253f2a37b7d0dbe100d5a30b97ad42c52"
+    pending_old_active_record_sha256: "sha256:64fef83e5b77393eeb9d2d6e91a7e0f6b56a0a941d0ebe535707d1ef9e12e969"
+    pending_old_active_index_oldest_to_newest: 7
     pending_old_active_window_length: 10
     pending_flashboot: true
-    pending_availability: MEDIUM
+    pending_availability: LOW
+    pending_current_cumulative_endpoint_spend_usd: 1.645446196460398
+    pending_late_unattributed_billing_increment_usd: 0.023648916656384245
+    pending_route_probe: UNAVAILABLE_LOCAL_DNS_ENOTFOUND_RETRY_REQUIRED_BEFORE_MUTATION
     provider_calls_authorized: false
     provider_mutations_authorized: false
     gpu_use_authorized: false

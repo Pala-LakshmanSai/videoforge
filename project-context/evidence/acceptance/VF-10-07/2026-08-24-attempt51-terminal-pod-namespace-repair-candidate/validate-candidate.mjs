@@ -6,13 +6,13 @@ import path from "node:path";
 const dir = import.meta.dirname;
 const root = path.resolve(dir, "../../../../../");
 const E = {
-  proposal: "sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8",
-  acceptance: "sha256:76e1c5b9b811647815660fbf50ac54087737b3492be812d7df503ee44a264885",
-  max1: "sha256:cce816d3028c0e0e439f74f59ffbdc0319bf678893e3f4ebaf75cc1f9034c995",
-  max2: "sha256:b84a15675471a6bffba23243e5d026604e1da9789d57e87d9946db5964ca42aa",
+  proposal: "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe",
+  acceptance: "sha256:be67953bc6189adcacff5c06b265f340cbbcdb045f19efbfc426bc4d695a856b",
+  max1: "sha256:c2c31282f991c08677d9b49c1b6a367ba945c3fa232b48354e8913e14889ba5e",
+  max2: "sha256:e1b23717ccf3b4b03a281936602e3b0f36ef19345a4ba22db9afc78585cb7f8c",
   canonical: "sha256:04df0f5e8640cb6063089bb933d932be501fd2d3bb8876f94cfabf9b106d3617",
   control: "f4054ed4865ed8fac1af53bd766cf2c5153c7e29",
-  orchestrator: "sha256:52d37b01230b4e5532266717c174e514f74fd05c37a4137a2b36e6d20b44e518",
+  orchestrator: "sha256:57e81e3bc75704156f0cba191d987ce89c32428a91e34ea80954b4dc7159b4e0",
   qualification: "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86",
   harness: "sha256:367e9c0aa57909b8b91e8bfd9aade181a2c849f43356e1e123f39882e25f2821",
   reconciliation: "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
@@ -60,6 +60,12 @@ eq(proposal.provider_free_lineage.control_source_commit, E.control, "CONTROL");
 eq(proposal.provider_free_lineage.qualification_harness_source_sha256, E.harness, "HARNESS");
 eq(proposal.provider_free_lineage.live_qualification_source_sha256, E.qualification, "QUALIFICATION");
 eq(proposal.provider_free_lineage.canonical_activation_source_sha256, E.canonical, "CANONICAL");
+eq(proposal.provider_free_lineage.orchestrator_source_sha256, E.orchestrator, "ORCHESTRATOR");
+eq(proposal.last_terminal_read_only_truth.cumulative_endpoint_spend_usd, 1.645446196460398, "FRESH_BILLING");
+eq(proposal.approval_request.last_observed_availability, "LOW", "FRESH_AVAILABILITY");
+eq(proposal.fresh_cloudflare_read_only_truth.active_version_id_sha256, "sha256:05478fd7e83a2886edd70ed3558d29d253f2a37b7d0dbe100d5a30b97ad42c52", "FRESH_ANCHOR_VERSION");
+eq(proposal.fresh_cloudflare_read_only_truth.active_record_sha256, "sha256:64fef83e5b77393eeb9d2d6e91a7e0f6b56a0a941d0ebe535707d1ef9e12e969", "FRESH_ANCHOR_RECORD");
+eq(proposal.fresh_cloudflare_read_only_truth.active_anchor_retained, true, "FRESH_ANCHOR_RETAINED");
 eq(proposal.immutable_runtime.image_rebuild_or_republication, false, "NO_IMAGE_REBUILD");
 eq(proposal.immutable_runtime.volume_mount, "/runpod-volume", "MOUNT");
 eq(proposal.scratch_contract.exact_job_path, "/tmp/videoforge-jobs/jobs/${attempt_id}", "SCRATCH");

@@ -3,20 +3,20 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 51,
-  "recorded_at": "2026-08-24T07:00:00Z",
+  "recorded_at": "2026-08-24T08:52:00Z",
   "status": "PROVIDER_FREE_CANDIDATE_PENDING_FRESH_EXACT_APPROVAL",
   "qualification_status": "NOT_QUALIFIED",
   "candidate": {
     "proposal_path": "combined-live-proposal.json",
-    "proposal_sha256": "sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8",
+    "proposal_sha256": "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe",
     "control_source_commit": "f4054ed4865ed8fac1af53bd766cf2c5153c7e29",
     "live_qualification_source_sha256": "sha256:861f8cd507c694a0d3ca48ddff8717e166a0bd327f0217114857b7e4eabd6d86",
     "qualification_harness_source_sha256": "sha256:367e9c0aa57909b8b91e8bfd9aade181a2c849f43356e1e123f39882e25f2821",
     "canonical_activation_source_sha256": "sha256:04df0f5e8640cb6063089bb933d932be501fd2d3bb8876f94cfabf9b106d3617",
     "max1_path": "staged-config-max1.json",
-    "max1_sha256": "sha256:cce816d3028c0e0e439f74f59ffbdc0319bf678893e3f4ebaf75cc1f9034c995",
+    "max1_sha256": "sha256:c2c31282f991c08677d9b49c1b6a367ba945c3fa232b48354e8913e14889ba5e",
     "max2_path": "staged-config-max2.json",
-    "max2_sha256": "sha256:b84a15675471a6bffba23243e5d026604e1da9789d57e87d9946db5964ca42aa",
+    "max2_sha256": "sha256:e1b23717ccf3b4b03a281936602e3b0f36ef19345a4ba22db9afc78585cb7f8c",
     "authority_recorded": false,
     "authority_sha256": null,
     "executable_maximum_cumulative_finite_spend_usd": null,
@@ -67,6 +67,24 @@
     "fresh_read_required_after_approval_before_mutation": true,
     "attempt50_authority_reusable": false
   },
+  "fresh_read_only_truth": {
+    "checked_at": "2026-08-24T08:50:12.025Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "cumulative_endpoint_spend_usd": 1.645446196460398,
+    "late_unattributed_billing_increment_usd": 0.023648916656384245,
+    "rtx4090_eu_ro_1_availability": "LOW",
+    "active_anchor_version_id_sha256": "sha256:05478fd7e83a2886edd70ed3558d29d253f2a37b7d0dbe100d5a30b97ad42c52",
+    "active_anchor_record_sha256": "sha256:64fef83e5b77393eeb9d2d6e91a7e0f6b56a0a941d0ebe535707d1ef9e12e969",
+    "active_anchor_retained": true,
+    "active_anchor_index_oldest_to_newest": 7,
+    "protected_signer_secret_present": false,
+    "route_probe": "UNAVAILABLE_LOCAL_DNS_ENOTFOUND_RETRY_REQUIRED_BEFORE_MUTATION"
+  },
   "cost_truth": {
     "last_observed_serverless_flex_rtx4090_usd_per_gpu_hour": 1.1,
     "requested_fresh_cap_usd": 4,
@@ -76,6 +94,6 @@
     "existing_two_volume_charge_usd_per_month": 7
   },
   "remaining_p1": "NO_SINGLE_IMMUTABLE_PAID_RUN_SATISFIES_THE_EXACT_CURRENT_LINEAGE_AND_COMPLETE_ACCEPTANCE",
-  "required_user_authority": "Approve exact Attempt51 proposal sha256:5530958cae5413ac5dbd32b37567a717ee503ba1f154f8cc988b2c0ea51fdbd8 with FlashBoot=true, LOW-or-better EU-RO-1 availability, exact two-phase-v1 anchor refresh, and a fresh USD 4 maximum cumulative finite spend cap; completion remains conditional on measured durations fitting the cap",
+  "required_user_authority": "Approve exact Attempt51 proposal sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe with FlashBoot=true, LOW-or-better EU-RO-1 availability, exact two-phase-v1 anchor refresh, and a fresh USD 4 maximum cumulative finite spend cap; completion remains conditional on measured durations fitting the cap",
   "v2_08_authorized": false
 }
