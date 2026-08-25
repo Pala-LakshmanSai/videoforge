@@ -102,10 +102,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4",
+      "sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("85391b130673200e2d1f74fea4ea2581d5d83c1a");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("61919013c74f71995cf1631ce6ac56e633708dce");
     expect(V207_ANCHOR_REFRESH_SOURCE_COMMIT).toBe("a6c7266e0c19fce07757c78fbd588dd442b7d24f");
     expect(V207_TYPED_ACTIVATION_AUTHORITY_COMMIT).toBe("e5571ed2478f0c526ebf508d0a4ce301bafa8203");
     expect(V207_ORCHESTRATOR_MARKER_LIFECYCLE_COMMIT).toBe(
@@ -339,14 +339,15 @@ describe("V2-07 activation authority", () => {
       parseV207ActivationAuthority({
         V207_IMAGE: image,
         V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
-        V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+        V207_PROPOSAL_SHA256:
+          "sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4",
         V207_FINITE_CAP_USD: "4",
         V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1",
       }),
-    ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
+    ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects Attempt57 activation with no reusable authority or cap", () => {
+  it("rejects pending Attempt58 activation with no authority or cap", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -364,7 +365,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects refresh activation without the exact approved Attempt57 proposal", () => {
+  it("rejects refresh activation without the exact pending Attempt58 proposal", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
     expect(() =>
       parseV207ActivationAuthority({

@@ -1,0 +1,83 @@
+{
+  "schema_version": "videoforge.v2-07-attempt58-output-readback-classification-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 58,
+  "status": "PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24",
+  "preflight_sha256": "sha256:2b1790d9b142fbf08afef6ca0a1697ebf33c77f19fcd55966b922a3f994ad83f",
+  "max1_sha256": "sha256:8638fc1c0b6259ad5b978a11af50fb13cebe3daba52b44c402d60ed8fa0e6d65",
+  "max2_sha256": "sha256:a4395f95d4f8fb6427a178c98d2e7ee2e2dd61b69aaf520eb2101934df6b3d79",
+  "lineage_acceptance": {
+    "control_source_commit": "61919013c74f71995cf1631ce6ac56e633708dce",
+    "anchor_commit": "75ee5f3d0461f32074726e65b9a22530f0f8a292",
+    "queue_poll_repair_commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+    "diagnosis_context_commit": "2d73f04967679ae2636cb90e2db4950e3fc27ba7",
+    "orchestrator_source_sha256": "sha256:daf8b7956cff24252ae9c0edab053f26e4f95a9836dab5141cb43717affc2ccf",
+    "live_qualification_source_sha256": "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43",
+    "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512",
+    "canonical_activation_source_sha256": "sha256:fcef15d69622c8d796d32ce7001adccb8da2ff53d999a3293d3dff884fdedba7",
+    "output_readback_classification_repair_commit": "61919013c74f71995cf1631ce6ac56e633708dce",
+    "output_readback_classification_test_sha256": "sha256:df4edea0050c5b3c0daf0a8a19a7d7bfd6b53d87ac5ce743b1b299945ec46555",
+    "both_configs_exactly_match_repaired_lineage": true,
+    "attempt57_config_reuse": false,
+    "attempt57_authority_or_cap_reuse": false,
+    "attempt57_proposal_reuse": false
+  },
+  "provider_state": {
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0,
+    "runpod_zero_compute": true,
+    "cloudflare_exact_version_bound_disabled_route": true,
+    "two_existing_volumes_retained": true,
+    "fresh_truth_checked_at": "2026-08-25T02:27:30.000Z",
+    "billing_baseline_usd": 1.8249728917435277,
+    "billing_increment_usd": 0,
+    "active_version_id_sha256": "sha256:5a50180c9772341817844ac140461cca335ba58b7e7e5f0f32c1cb64ebbe304c",
+    "active_record_sha256": "sha256:c64f4ec079b8f22fbe7f83db40e4db8a98bf3317adc7be61dc6d34f44f388324",
+    "route_probe_match_reads": 3
+  },
+  "remaining_gates": [
+    "fresh exact approval of the immutable Attempt58 proposal",
+    "fresh single-use authority and exact positive USD 4 finite cap recorded only after approval",
+    "execute one bounded live qualification and prove complete artifact, timing, cost, reader reconciliation, cleanup, and zero paid compute"
+  ],
+  "v2_08_started": false,
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "executable_cap_binding": null,
+    "anchor_refresh_authorized": null,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "v2_08_authorized": false,
+    "authority_file": null
+  },
+  "validator_gate": {
+    "required": true,
+    "approved_authority_file_forbidden": true,
+    "activation_bindings_must_remain_null_until_approval": true,
+    "exact_source_bytes_required": true,
+    "proposal_pointer_rebind_after_parent_source_update_allowed": true
+  },
+  "recorded_at": "2026-08-25T02:27:30.000Z",
+  "provider_free_lineage": {
+    "control_source_commit": "61919013c74f71995cf1631ce6ac56e633708dce",
+    "anchor_commit": "75ee5f3d0461f32074726e65b9a22530f0f8a292",
+    "queue_poll_repair_commit": "c2086e1a4d0f54adf50848fe5b0ddf9f75962b03",
+    "diagnosis_context_commit": "2d73f04967679ae2636cb90e2db4950e3fc27ba7",
+    "orchestrator_source_sha256": "sha256:daf8b7956cff24252ae9c0edab053f26e4f95a9836dab5141cb43717affc2ccf",
+    "live_qualification_source_sha256": "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43",
+    "qualification_harness_source_sha256": "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512",
+    "canonical_activation_source_sha256": "sha256:fcef15d69622c8d796d32ce7001adccb8da2ff53d999a3293d3dff884fdedba7",
+    "output_readback_classification_repair_commit": "61919013c74f71995cf1631ce6ac56e633708dce",
+    "output_readback_classification_test_sha256": "sha256:df4edea0050c5b3c0daf0a8a19a7d7bfd6b53d87ac5ce743b1b299945ec46555",
+    "both_configs_exactly_match_repaired_lineage": true,
+    "attempt57_config_reuse": false,
+    "attempt57_authority_or_cap_reuse": false,
+    "attempt57_proposal_reuse": false
+  }
+}

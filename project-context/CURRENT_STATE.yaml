@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T02:00:00Z"
+updated_at: "2026-08-25T02:27:30Z"
 
-phase: serverless_v2_v2_07_attempt57_closed_not_qualified
+phase: serverless_v2_v2_07_attempt58_pending_exact_approval
 implementation_authorized_in_current_task: false
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt57_closed_not_qualified
+current_wave: v2_07_attempt58_pending_exact_approval
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: closure
+task_stage: paid_boundary
 application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,15 +18,15 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: attempt57_closed_consumed_not_qualified
+  mode: attempt58_provider_free_candidate_pending_exact_approval
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
-  runpod_mutation_or_gpu: forbidden_after_consumed_attempt57
-  v2_07_action: "Attempt57 is closed NOT_QUALIFIED after replacement output-contract failure; authority/cap/anchor refresh are null and non-reusable; no V2-08"
-  note: "Attempt57 ran once under the exact approved proposal, accepted one durable probe unit, then failed with MAGE_OUTPUT_NOT_SUCCEEDED during replacement output readback. Signer, refreshed Worker route, disposable RunPod resources, and generated output were cleaned up; observed incremental spend is $0 within the historical $4 cap and both retained volumes remain at $7/month."
+  runpod_mutation_or_gpu: forbidden_pending_exact_attempt58_approval
+  v2_07_action: "Attempt58 exact provider-free candidate is ready; authority/cap/anchor refresh remain null pending exact approval; no V2-08"
+  note: "Fresh read-only truth proves zero RunPod compute/disposables, both retained volumes, MEDIUM RTX 4090 EU-RO-1 availability, stable billing baseline 1.8249728917435277, and exact version-bound POST 404. Proposal sha256:7053157f...5b24 requests a fresh $4 cap; no mutation, GPU job, or spend is authorized yet."
 
 fast_completion_plan:
   decision: DEC_DELIVERY_001
@@ -41,6 +41,45 @@ fast_completion_plan:
   broad_hardening_deferred: [separate_300_image_suite, separate_five_style_suite, ten_artificial_jobs, exhaustive_fault_matrix, broad_browser_matrix]
   roadmap: 22_PROJECT_COMPLETION_CHECKPOINTS.md
   copy_ready_prompts: templates/CHECKPOINT_CHAT_PROMPTS.md
+
+pending_v2_07_attempt58_proposal:
+  mode: provider_free_candidate_ready_pending_fresh_exact_approval
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24"
+  candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/acceptance.json
+  candidate_acceptance_sha256: "sha256:599d28434a7b5dd63b93dfe8f6035f909ca3f1da03273582f2f9e7af6f1766a8"
+  read_only_preflight: evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/read-only-preflight.json
+  read_only_preflight_sha256: "sha256:2b1790d9b142fbf08afef6ca0a1697ebf33c77f19fcd55966b922a3f994ad83f"
+  staged_max1: evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/staged-config-max1.json
+  staged_max1_sha256: "sha256:8638fc1c0b6259ad5b978a11af50fb13cebe3daba52b44c402d60ed8fa0e6d65"
+  staged_max2: evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/staged-config-max2.json
+  staged_max2_sha256: "sha256:a4395f95d4f8fb6427a178c98d2e7ee2e2dd61b69aaf520eb2101934df6b3d79"
+  validator: evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/validate-candidate.mjs
+  anchor_rebind_commit: "75ee5f3d0461f32074726e65b9a22530f0f8a292"
+  orchestrator_source_sha256: "sha256:daf8b7956cff24252ae9c0edab053f26e4f95a9836dab5141cb43717affc2ccf"
+  live_qualification_source_sha256: "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43"
+  canonical_activation_source_sha256: "sha256:fcef15d69622c8d796d32ce7001adccb8da2ff53d999a3293d3dff884fdedba7"
+  output_readback_classification_repair_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
+  requested_maximum_cumulative_finite_spend_usd: 4
+  executable_maximum_cumulative_finite_spend_usd: 0
+  finite_action_estimate_usd_ceiling: 3.95
+  exact_proposal_approved: false
+  authority_recorded: false
+  anchor_refresh_authorized: null
+  provider_mutations_authorized: false
+  gpu_use_authorized: false
+  fresh_read_only_checked_at: "2026-08-25T02:27:30Z"
+  last_observed_availability: MEDIUM
+  fresh_baseline_endpoint_spend_usd: 1.8249728917435277
+  last_observed_pods: 0
+  last_observed_endpoints: 0
+  last_observed_private_templates: 0
+  last_observed_active_workers: 0
+  last_observed_running_pods: 0
+  retained_volume_cost_usd_per_month: 7
+  v2_07_qualified: false
+  v2_08_authorized: false
+  next_boundary: "obtain exact Attempt58 proposal approval; then record one single-use authority and positive cap before any mutation; no V2-08"
 
 closed_v2_07_attempt57_proposal:
   mode: closed_consumed_not_qualified_replacement_output_contract_failure_clean

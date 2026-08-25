@@ -2,6 +2,16 @@
 
 ## Active handoff — read this section first
 
+Attempt58 is a provider-free candidate pending fresh exact approval. Proposal
+`sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24` binds output-readback
+classification repair `6191901`, current rollback-anchor rebind `75ee5f3`, fresh max1/max2
+definitions, and fresh read-only truth. RunPod has zero Pods/endpoints/templates/workers/running
+Pods, both exact 50 GB EU-RO-1 volumes remain, RTX 4090 availability is MEDIUM, and three stable
+billing reads hold at `1.8249728917435277`. Cloudflare signer is absent and three exact POST reads
+return version-bound `404 V207_ROUTE_DISABLED`. The finite estimate is `$3.95`; the requested cap is
+`$4`, with continued `$7/month` volume retention separate. Authority, executable cap, and anchor
+refresh remain null; no mutation/GPU/spend is authorized and V2-08 remains forbidden.
+
 Attempt57 is closed `NOT_QUALIFIED` and its exact single-use authority/cap are consumed and
 non-reusable. The run accepted one durable probe unit, then failed during replacement output
 readback with `MAGE_OUTPUT_NOT_SUCCEEDED`; no full V2-07 qualification claim is made. Closure is

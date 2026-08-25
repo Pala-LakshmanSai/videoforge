@@ -204,8 +204,10 @@ gates:
     current_candidate_terminal_snapshot_stabilization_commit: "f513ac807c6d5e2298092a936495e3c4fc0e6a28"
     current_candidate_finalize_replay_fast_path_commit: "bf26c3a86ec6a48f619c39613d425da816eeae4d"
     current_candidate_terminal_replay_queue_fence_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
-    current_candidate_max1_sha256: "sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7"
-    current_candidate_max2_sha256: "sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9"
+    current_candidate_max1_sha256: "sha256:8638fc1c0b6259ad5b978a11af50fb13cebe3daba52b44c402d60ed8fa0e6d65"
+    current_candidate_max2_sha256: "sha256:a4395f95d4f8fb6427a178c98d2e7ee2e2dd61b69aaf520eb2101934df6b3d79"
+    current_candidate_output_readback_repair_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
+    current_candidate_anchor_rebind_commit: "75ee5f3d0461f32074726e65b9a22530f0f8a292"
     latest_attempt55_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt55-config-lineage-rebind-candidate/combined-live-proposal.json"
     latest_attempt55_closed_proposal_sha256: "sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f"
     latest_attempt55_closed_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt55-config-lineage-rebind-candidate/approved-authority.json"
@@ -230,14 +232,14 @@ gates:
     latest_closed_billing_attribution: ATTEMPT57_OBSERVED_INCREMENT_ZERO_AT_THREE_STABLE_READ_RECONCILIATION_BILLING_MAY_LAG
     latest_closed_authority_mode: closed_consumed_attempt57_replacement_output_contract_failure_clean
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
-    pending_proposal: null
-    pending_proposal_sha256: null
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24"
     pending_authority: null
     pending_authority_sha256: null
     pending_authority_state: null
     pending_authority_mode: null
     pending_numeric_cap_usd: null
-    pending_requested_numeric_cap_usd: null
+    pending_requested_numeric_cap_usd: 4
     pending_anchor_refresh_authorized: null
     pending_exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1
     pending_cloudflare_mutation_authorized: false
