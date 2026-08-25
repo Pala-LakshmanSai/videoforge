@@ -252,6 +252,12 @@
       "name": "hosted_atomic_pair_predispatch",
       "filename": "0042_hosted_atomic_pair_predispatch.sql",
       "sha256": "sha256:ea34a54c7044e25ca50f58f47d622e293b0c34719c74e5e32ca190cedf850fcc"
+    },
+    {
+      "version": 43,
+      "name": "hosted_pair_runtime_executor",
+      "filename": "0043_hosted_pair_runtime_executor.sql",
+      "sha256": "sha256:0cd9647ddb9ebf1715d2162ec9510d740fb343c8a0dcc9085fbc508a37df271b"
     }
   ]
 }

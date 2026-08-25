@@ -86,6 +86,14 @@ describe("provider-neutral RunPod Serverless transport", () => {
     }
   });
 
+  it("treats an unexpected post-dispatch exception as acknowledgement unknown", async () => {
+    const port = client();
+    port.dispatch.mockRejectedValueOnce(new Error("unexpected network failure"));
+    await expect(
+      new RunPodServerlessTransport(port, ENDPOINT_SHA256).run(request()),
+    ).rejects.toMatchObject({ code: "DISPATCH_ACK_UNKNOWN" });
+  });
+
   it("requires exact status identity and maps read ambiguity without inventing terminal state", async () => {
     const mismatch = client();
     mismatch.status.mockResolvedValueOnce(job("COMPLETED", "foreign_job"));

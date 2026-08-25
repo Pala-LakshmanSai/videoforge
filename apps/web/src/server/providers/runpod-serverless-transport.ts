@@ -24,9 +24,11 @@ export type RunPodServerlessJobPort = Pick<
   "dispatch" | "status" | "cancel"
 >;
 
-function snapshot(result: RunPodJobResult): ServerlessJobSnapshot {
+function snapshot(result: RunPodJobResult, afterRunMutation = false): ServerlessJobSnapshot {
   if (!PROVIDER_STATUSES.has(result.status as ServerlessProviderStatus)) {
-    throw new ServerlessTransportError("REQUEST_REJECTED");
+    throw new ServerlessTransportError(
+      afterRunMutation ? "DISPATCH_ACK_UNKNOWN" : "REQUEST_REJECTED",
+    );
   }
   return Object.freeze({
     id: result.id,
@@ -39,7 +41,9 @@ function mapRunPodError(
   operation: "run" | "status" | "cancel",
 ): ServerlessTransportError {
   if (!(error instanceof RunPodControlError)) {
-    return new ServerlessTransportError("REQUEST_REJECTED");
+    return new ServerlessTransportError(
+      operation === "run" ? "DISPATCH_ACK_UNKNOWN" : "REQUEST_REJECTED",
+    );
   }
   if (
     operation === "run" &&
@@ -70,7 +74,12 @@ function mapRunPodError(
   if (error.code === "RUNPOD_JOB_ID_INVALID" || error.code === "RUNPOD_JOB_ID_MISMATCH") {
     return new ServerlessTransportError("PROVIDER_JOB_UNKNOWN");
   }
-  return new ServerlessTransportError("REQUEST_REJECTED");
+  if (operation === "run" && error.code === "RUNPOD_AUTH_REJECTED") {
+    return new ServerlessTransportError("REQUEST_REJECTED");
+  }
+  return new ServerlessTransportError(
+    operation === "run" ? "DISPATCH_ACK_UNKNOWN" : "REQUEST_REJECTED",
+  );
 }
 
 /**
@@ -97,7 +106,7 @@ export class RunPodServerlessTransport implements ServerlessTransportPort {
         request.dispatchToken,
         request.envelope as JsonValue,
       );
-      return Object.freeze({ id: snapshot(result).id });
+      return Object.freeze({ id: snapshot(result, true).id });
     } catch (error) {
       if (error instanceof ServerlessTransportError) throw error;
       throw mapRunPodError(error, "run");

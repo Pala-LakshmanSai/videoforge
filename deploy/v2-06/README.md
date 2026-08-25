@@ -228,7 +228,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 - Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
   ordinary deployment of the intended restored source/config so code and deployment metadata converge;
   rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
-  available. Every migration in the committed manifest (currently through 0042) is additive and
+  available. Every migration in the committed manifest (currently through 0043) is additive and
   retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
@@ -350,7 +350,12 @@ command reuses exact R2 bytes and the same deterministic rows. Local fixture evi
 local proof only; it cannot prove hosted deployment or a successful worker render.
 Migration 0042 requires the Neon database owner to have `pgcrypto` installed; the migration
 runner verifies that prerequisite before applying or granting anything.
-The 0042 adapter remains source-only and is not connected to a production route or transport:
-the runtime role has no direct outbox/attempt transition DML, and the former three-transaction
-0040 composition fails closed. Activation still requires narrow atomic dispatch/reconcile/cancel
-transition capabilities and an independently audited runtime composition.
+Migration 0043 adds the source-only pair executor boundary. It persists `SENT` before injected
+transport only after a fresh read-only projection verifies the exact signed DB envelope hash,
+binds an exact successful provider job, and converts ambiguity or malformed responses
+to cleanup-only reconciliation without resending. Mage is sent first; SoulX is eligible only after
+Mage is durably `ASSIGNED`. Runtime has no direct attempt, outbox, assignment, token-vault, or pair
+state DML. Final terminal settlement is not granted to the runtime role; it requires a separately
+privileged reconciler so runtime cannot self-attest provider absence or release its own slot.
+Provider transport, production deployment, and credentials remain unconnected. Actual
+production execution of the `pgcrypto` prerequisite and migrations remains an external preflight.

@@ -80,6 +80,18 @@ GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_atomic_pair_predispatc
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_recover_hosted_atomic_pair_tokens(uuid,uuid,uuid)
 TO :"runtime_role";
+-- Migration 0043 is the only runtime transition surface for the paid pair. Runtime keeps no direct
+-- attempt/outbox/assignment/pair-state table DML.
+GRANT EXECUTE ON FUNCTION public.videoforge_prepare_hosted_pair_send(uuid,uuid,uuid)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_begin_hosted_pair_send(uuid,uuid,uuid,text,uuid,text)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_pair_send(uuid,uuid,uuid,text,text,text,uuid,text)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)
+TO :"runtime_role";
+-- Final settlement is intentionally absent. A separately privileged reconciler must own that
+-- capability; runtime cannot self-attest provider absence or release its own slot.
 
 GRANT SELECT, INSERT, UPDATE ON
   hosted_cpu_job_attempts,

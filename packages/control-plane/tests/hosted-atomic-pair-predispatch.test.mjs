@@ -353,6 +353,117 @@ test("0042 executes exact pair success, encrypted recovery, and restart states",
   });
 });
 
+test("0043 persists one-shot Mage SENT and refuses ghost-job absence settlement", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    const fixture = await seededPair(executor);
+    await commit(executor, fixture);
+    const begun = await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      await tx.query("SELECT set_config($1,$2,true)", [
+        "videoforge.dispatch_token_key",
+        "k".repeat(32),
+      ]);
+      const prepared = await tx.query(
+        "SELECT * FROM videoforge_prepare_hosted_pair_send($1,$2,$3)",
+        [IDS.accountA, IDS.workspaceA, fixture.generationRequestId],
+      );
+      return tx.query(
+        "SELECT * FROM videoforge_begin_hosted_pair_send($1,$2,$3,'mage_image',$4,$5)",
+        [
+          IDS.accountA,
+          IDS.workspaceA,
+          fixture.generationRequestId,
+          prepared.rows[0].attempt_id,
+          prepared.rows[0].expected_envelope_sha256,
+        ],
+      );
+    });
+    assert.equal(begun.rows.length, 1);
+    const sent = await executor.query(
+      "SELECT state,send_attempt_count,lease_id,lease_holder_sha256 FROM serverless_dispatch_outbox WHERE attempt_id=$1",
+      [begun.rows[0].attempt_id],
+    );
+    assert.deepEqual(
+      { state: sent.rows[0].state, sends: sent.rows[0].send_attempt_count },
+      { state: "SENT", sends: 1 },
+    );
+    assert.ok(sent.rows[0].lease_id && sent.rows[0].lease_holder_sha256);
+    await assert.rejects(
+      executor.transaction(async (tx) => {
+        await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+        await tx.query("SELECT set_config($1,$2,true)", [
+          "videoforge.dispatch_token_key",
+          "k".repeat(32),
+        ]);
+        return tx.query(
+          "SELECT * FROM videoforge_begin_hosted_pair_send($1,$2,$3,'mage_image',$4,$5)",
+          [
+            IDS.accountA,
+            IDS.workspaceA,
+            fixture.generationRequestId,
+            begun.rows[0].attempt_id,
+            begun.rows[0].expected_envelope_sha256,
+          ],
+        );
+      }),
+    );
+    await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      await tx.query(
+        "SELECT * FROM videoforge_finish_hosted_pair_send($1,$2,$3,'mage_image','DISPATCH_ACK_UNKNOWN',NULL,$4,$5)",
+        [
+          IDS.accountA,
+          IDS.workspaceA,
+          fixture.generationRequestId,
+          begun.rows[0].deployment_id,
+          begun.rows[0].dispatch_token_sha256,
+        ],
+      );
+    });
+    const attempts = await executor.query(
+      "SELECT id,lane,deployment_id,dispatch_token_sha256 FROM serverless_attempts WHERE generation_request_id=$1 ORDER BY lane",
+      [fixture.generationRequestId],
+    );
+    const observations = attempts.rows.map((row) => ({
+      lane: row.lane,
+      attempt_id: row.id,
+      deployment_id: row.deployment_id,
+      dispatch_token_sha256: row.dispatch_token_sha256,
+      provider_job_id: null,
+      provider_state: "ABSENT",
+      provider_proof_sha256: sha256(`forged-${row.lane}`),
+      observed_at: new Date().toISOString(),
+    }));
+    await assert.rejects(
+      executor.transaction(async (tx) => {
+        await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+        return tx.query("SELECT * FROM videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4::jsonb)", [
+          IDS.accountA,
+          IDS.workspaceA,
+          fixture.generationRequestId,
+          JSON.stringify(observations),
+        ]);
+      }),
+    );
+    await assert.rejects(
+      executor.transaction(async (tx) => {
+        await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+        return tx.query("SELECT * FROM videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4::jsonb)", [
+          IDS.accountA,
+          IDS.workspaceA,
+          fixture.generationRequestId,
+          JSON.stringify([observations[0], observations[0]]),
+        ]);
+      }),
+    );
+    const lease = await executor.query(
+      "SELECT state FROM provider_workload_leases WHERE generation_request_id=$1",
+      [fixture.generationRequestId],
+    );
+    assert.equal(lease.rows[0].state, "ACTIVE");
+  });
+});
+
 test("0042 rolls the paid claim and every pair row back after injected row-class failures", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const fixture = await seededPair(executor);

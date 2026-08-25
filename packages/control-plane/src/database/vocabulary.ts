@@ -128,6 +128,8 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "hosted_auth_verifications",
   "hosted_auth_links",
   "hosted_dispatch_token_vault",
+  "hosted_pair_runtime_states",
+  "hosted_pair_cleanup_observations",
 ] as const;
 
 /**
