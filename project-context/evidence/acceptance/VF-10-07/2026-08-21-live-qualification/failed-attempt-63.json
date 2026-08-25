@@ -1,0 +1,42 @@
+{
+  "schema_version": "videoforge.v2-07-attempt63-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 63,
+  "result": "NOT_QUALIFIED_ATTEMPT63_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE_CLEAN",
+  "primary_failure_code": "V207_LIVE_PREFLIGHT_FAILED",
+  "classified_failure_code": "V207_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE",
+  "failure_stage": "post_anchor_refresh_live_preflight_before_runpod_mutation",
+  "proposal_sha256": "sha256:83a54dbd5d4810a83fa100eaf5014af255097ae2eb7c6264deccf209d5a3e532",
+  "approved_preexecution_authority_sha256": "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798",
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "maximum_cumulative_finite_spend_usd": 4.5,
+  "runpod_mutations": 0,
+  "runpod_endpoints_created": 0,
+  "runpod_templates_created": 0,
+  "gpu_jobs_submitted": 0,
+  "accepted_units": 0,
+  "endpoint_rotation_reached": false,
+  "cloudflare_anchor_refresh_started": true,
+  "cleanup": {
+    "signer_deleted": true,
+    "worker_rolled_back_to_refreshed_disabled_anchor": true,
+    "protected_config_restored": true,
+    "route_restored": true,
+    "cleanup_errors": []
+  },
+  "reconciliation": {
+    "zero_compute_and_disposables": true,
+    "both_exact_volumes_retained": true,
+    "observed_billing_increment_usd": 0.04712827783077955,
+    "billing_increment_attribution": "UNATTRIBUTED_LATE_PROVIDER_BILLING_NO_ATTEMPT63_RUNPOD_MUTATION_OR_JOB",
+    "within_approved_cap": true,
+    "signer_absent": true,
+    "protected_config_restored": true,
+    "three_version_bound_disabled_route_reads": true
+  },
+  "qualification_status": "NOT_QUALIFIED",
+  "v2_08_authorized": false,
+  "next_boundary": "stop provider work; any future attempt requires refreshed capacity and anchor truth plus a fresh exact proposal, approval, and positive cap"
+}

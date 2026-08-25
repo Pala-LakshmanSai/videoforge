@@ -1,0 +1,47 @@
+{
+  "schema_version": "videoforge.v2-07-readonly-reconciliation/v2",
+  "attempt": 63,
+  "checked_at": "2026-08-25T10:22:16.448Z",
+  "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "idHash": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "sizeGb": 50,
+        "dataCenterId": "EU-RO-1"
+      },
+      {
+        "idHash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "sizeGb": 50,
+        "dataCenterId": "EU-RO-1"
+      }
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 2.0487612777214963,
+    "final_endpoint_spend_usd": 2.095889555552276,
+    "incremental_spend_usd": 0.04712827783077955,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS",
+    "attribution": "UNATTRIBUTED_LATE_PROVIDER_BILLING_NO_ATTEMPT63_RUNPOD_MUTATION_OR_JOB"
+  },
+  "cloudflare": {
+    "signer_present": false,
+    "unrelated_secret_count": 8,
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "route_probe_count": 3,
+    "route_status": 404,
+    "route_code": "V207_ROUTE_DISABLED",
+    "route_version_id_sha256": "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643",
+    "rollback_anchor_record_sha256": "sha256:54beafecb8d70bf99d0c3f84cee00d6bcb107e202786b1d8f7fe5bb14b33085d"
+  }
+}

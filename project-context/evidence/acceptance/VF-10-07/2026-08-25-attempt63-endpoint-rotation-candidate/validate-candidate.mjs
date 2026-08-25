@@ -11,16 +11,20 @@ const expected = {
   preflight: "sha256:fdbe49a4d9d422c24827535a17ff39c64ae1f9eea2d746bff15fe4d5c6d9e419",
   max1: "sha256:d692f9b8b59b82a68afce770970aa44ea798d4fd08c679ac47585aa1096650b8",
   max2: "sha256:29c7eabb03f62051475e5fa6513581b8d1976e760582a17e4ff4421b1b6191cb",
-  authority: "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798",
+  authority: "sha256:f5ce13a5af6f9639b2d89b3b905b14041db25aed546412c10e9abd6f854bd3b0",
+  approvedAuthority: "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798",
   harness: "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853",
   harnessTest: "sha256:24257c1567bcbe1246741a8a600a18ff5f0aea67abc02e3260497d2e13e208ad",
   qualification: "sha256:10d6a3eed7db3b6f50688cf0fc82904f2f5023e37840922c63fbb53511227605",
   qualificationTest: "sha256:d3b04834164c54fcdaf558e30b1d36cc3d7292e4aca533b873c0e21b5c251ff7",
-  orchestrator: "sha256:b53686061be569262f90744704cb312489da2b88a1b177c1378bf1d3baec1e2a",
-  orchestratorTest: "sha256:83e51030b4f2be860ff39e1770fea710381f68f2f8f3abac940a64c23bebbde8",
+  orchestrator: "sha256:ee57416707e4fbfc89998d842fbfc3492a58d5b281fa5989a4f56c628bc584d2",
+  orchestratorTest: "sha256:14e77a978e38c3785dff2d77f6f207e139bf15c5964bf98e8a67a605526100c9",
+  approvedOrchestrator: "sha256:b53686061be569262f90744704cb312489da2b88a1b177c1378bf1d3baec1e2a",
   canonicalActivation: "sha256:3569bc480f2084a9d04a94b8b47507cc8f4e6183a67308aa9039c2b485108323",
-  version: "sha256:fed54e9136fe3ac6f3788771b8bdc7d7a4507cef74a4e6f4a08e5c19d64af39f",
-  record: "sha256:5e45b9b400d33cee1ea533e64bc8177ff6418ff4e810dd880944d18e8b014031",
+  version: "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643",
+  record: "sha256:54beafecb8d70bf99d0c3f84cee00d6bcb107e202786b1d8f7fe5bb14b33085d",
+  approvedVersion: "sha256:fed54e9136fe3ac6f3788771b8bdc7d7a4507cef74a4e6f4a08e5c19d64af39f",
+  approvedRecord: "sha256:5e45b9b400d33cee1ea533e64bc8177ff6418ff4e810dd880944d18e8b014031",
   rotationCommit: "3f3bed48e69f149cf56ee6aa6c42cabb70528db4",
   anchorCommit: "9c9ca3476c976592ae73414e6a1e53cc0fcbb643",
   attempt62Authority: "sha256:932cd239e3352a14b042cf2b165a677406a62acfb157965ac42b7abba0924191",
@@ -107,8 +111,8 @@ yes(
     preflight.runpod.retained_volumes.length === 2 &&
     preflight.runpod.selected_gpu.availability === "LOW" &&
     preflight.runpod.selected_gpu.flashboot === true &&
-    preflight.cloudflare.active_version_id_sha256 === expected.version &&
-    preflight.cloudflare.active_record_sha256 === expected.record &&
+    preflight.cloudflare.active_version_id_sha256 === expected.approvedVersion &&
+    preflight.cloudflare.active_record_sha256 === expected.approvedRecord &&
     preflight.cloudflare.route_status === 404 &&
     preflight.cloudflare.route_code === "V207_ROUTE_DISABLED" &&
     preflight.cloudflare.all_route_version_hashes_match_active === true &&
@@ -135,11 +139,11 @@ for (const [config, workers] of [
       config.volume.application_read_only === true &&
       config.source.endpoint_rotation_commit === expected.rotationCommit &&
       config.source.anchor_rebind_commit === expected.anchorCommit &&
-      config.source.orchestrator_sha256 === expected.orchestrator &&
+      config.source.orchestrator_sha256 === expected.approvedOrchestrator &&
       config.source.qualification_sha256 === expected.qualification &&
       config.source.harness_sha256 === expected.harness &&
-      config.expected_old_anchor.version_id_sha256 === expected.version &&
-      config.expected_old_anchor.record_sha256 === expected.record,
+      config.expected_old_anchor.version_id_sha256 === expected.approvedVersion &&
+      config.expected_old_anchor.record_sha256 === expected.approvedRecord,
     `CONFIG_${workers}`,
   );
 }
@@ -203,19 +207,21 @@ try {
 yes(authorityExists === true, "AUTHORITY_FILE_REQUIRED");
 yes(
   authority.attempt === 63 &&
-    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.status ===
+      "CONSUMED_NON_REUSABLE_ATTEMPT63_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE_CLEAN" &&
+    authority.approved_preexecution_authority_sha256 === expected.approvedAuthority &&
     authority.proposal.sha256 === expected.proposal &&
     authority.acceptance.sha256 === expected.acceptance &&
     authority.approval.maximum_cumulative_finite_spend_usd === 4.5 &&
     authority.approval.endpoint_rotation_authorized === true &&
     authority.approval.flashboot_true_accepted === true &&
     authority.approval.low_or_better_eu_ro_1_availability_approved === true &&
-    authority.approval.anchor_refresh_authorized === true &&
-    authority.approval.consumed === false &&
+    authority.approval.anchor_refresh_authorized === false &&
+    authority.approval.consumed === true &&
     authority.execution_boundary.v2_08_authorized === false &&
-    activation.includes(`"${expected.authority}";`) &&
-    /V207_APPROVED_FINITE_CAP_USD: number \| null = 4\.5;/u.test(activation) &&
-    /V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation),
+    /V207_APPROVED_AUTHORITY_SHA256: string \| null =\s*null;/u.test(activation) &&
+    /V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation) &&
+    /V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation),
   "AUTHORITY_CONTRACT",
 );
 process.stdout.write(`PASS validate-v207-attempt63-candidate ${JSON.stringify(expected)}\n`);

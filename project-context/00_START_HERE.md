@@ -2,7 +2,20 @@
 
 ## Active handoff — read this section first
 
-Attempt63 is a provider-free endpoint-rotation candidate awaiting fresh exact approval. Attempt62
+Attempt63 is closed `NOT_QUALIFIED`. Exact proposal `sha256:83a54dbd…e532` ran once under
+pre-execution authority `sha256:16378035…a798` and the `$4.50` cap. Two-phase anchor refresh and
+signer activation succeeded, but fresh live admission stopped at
+`V207_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE` before any RunPod template, endpoint, endpoint rotation,
+job, GPU use, or accepted unit. Cleanup deleted the signer, rolled back to refreshed disabled anchor
+`sha256:f6aa5261…c643`, restored protected config mode `0600`, and proved three version-bound disabled
+route reads. Three stable RunPod reads prove zero compute/disposables and both retained volumes.
+Billing advanced `$0.04712827783077955`, recorded as unattributed late provider billing because
+Attempt63 performed zero RunPod mutation/job. Closure `sha256:b2da7105…d13`, orchestration
+`sha256:573119d1…017f`, and reconciliation `sha256:a71c1d4d…a5fe` are durable. Authority is
+consumed/non-reusable; provider work stops, any future attempt needs refreshed capacity/anchor truth
+and a fresh exact proposal/approval/cap, and V2-08 remains forbidden.
+
+Before execution, Attempt63 was the provider-free endpoint-rotation candidate. Attempt62
 failed correctly because terminal scale-zero proved inactivity but did not destroy the FlashBoot
 seed endpoint process; the same endpoint reactivated the same signed Pod. Repair
 `3f3bed48e69f149cf56ee6aa6c42cabb70528db4` now deletes only the drained seed endpoint after its
@@ -18,8 +31,8 @@ version-bound disabled route. Exact proposal
 `sha256:83a54dbd5d4810a83fa100eaf5014af255097ae2eb7c6264deccf209d5a3e532` has a `$4.25`
 finite-action estimate ceiling and requests a fresh `$4.50` maximum cumulative finite cap with
 FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1`, and continued `$7/month` volume retention.
-No live authority or executable cap exists; no provider mutation, job, GPU use, or spend occurred
-for this repair. Await exact approval and do not start V2-08.
+No provider mutation, job, GPU use, or spend occurred during that repair phase. The later exact
+authority was consumed by the clean capacity stop recorded above; do not retry or start V2-08.
 
 Attempt62 is closed `NOT_QUALIFIED`. Proposal
 `sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0` requests a fresh `$4`

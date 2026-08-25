@@ -1,0 +1,99 @@
+{
+  "schema_version": "videoforge-v207-live-orchestrator/v1",
+  "attempt": 63,
+  "authority": {
+    "proposal_sha256": "sha256:83a54dbd5d4810a83fa100eaf5014af255097ae2eb7c6264deccf209d5a3e532",
+    "approved_preexecution_authority_sha256": "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798",
+    "cap_usd": 4.5,
+    "anchor_refresh_authorized": true,
+    "endpoint_rotation_authorized": true
+  },
+  "started_at": "2026-08-25T10:16:59.661Z",
+  "finished_at": "2026-08-25T10:20:58.331Z",
+  "result": "FAILED_CLEAN",
+  "failure_code": "V207_LIVE_PREFLIGHT_FAILED",
+  "child_failure_classification": "V207_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE",
+  "runpod_mutation_started": false,
+  "runpod_endpoint_or_template_created": false,
+  "gpu_jobs_submitted": 0,
+  "accepted_units": 0,
+  "endpoint_rotation_reached": false,
+  "events": [
+    {
+      "event": "orchestration_started",
+      "at": "2026-08-25T10:16:59.661Z",
+      "local_disk_available_bytes": 3042840576
+    },
+    {
+      "event": "rollback_anchor_refresh_old_anchor_exact",
+      "at": "2026-08-25T10:17:04.886Z",
+      "version_id_hash": "sha256:fed54e9136fe3ac6f3788771b8bdc7d7a4507cef74a4e6f4a08e5c19d64af39f",
+      "record_sha256": "sha256:5e45b9b400d33cee1ea533e64bc8177ff6418ff4e810dd880944d18e8b014031"
+    },
+    {
+      "event": "rollback_anchor_refresh_pre_mutation_route_stable",
+      "at": "2026-08-25T10:17:39.611Z",
+      "consecutive_matches": 16,
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    {
+      "event": "rollback_anchor_refresh_captured",
+      "at": "2026-08-25T10:18:50.243Z",
+      "version_id_hash": "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643",
+      "record_sha256": "sha256:54beafecb8d70bf99d0c3f84cee00d6bcb107e202786b1d8f7fe5bb14b33085d",
+      "recent_version_index": 9,
+      "recent_version_window": 10
+    },
+    {
+      "event": "rollback_anchor_refresh_post_promotion_route_stable",
+      "at": "2026-08-25T10:19:21.308Z",
+      "consecutive_matches": 16,
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED"
+    },
+    {
+      "event": "signer_active_worker_identity_confirmed",
+      "at": "2026-08-25T10:19:29.519Z",
+      "version_id_hash": "sha256:c6d548e0dd74c5686d9c933b4e36bb280bf08e82411ece3454166159b6cd05ec",
+      "record_sha256": "sha256:b32732d8f5a470eabc785a1f1c5b4dc96f4d9ff73ef0c3bd6355d391841dde34"
+    },
+    {
+      "event": "active_route_identity_confirmed",
+      "at": "2026-08-25T10:20:01.167Z",
+      "consecutive_matches": 16,
+      "status": 403,
+      "version_id_hash": "sha256:c6d548e0dd74c5686d9c933b4e36bb280bf08e82411ece3454166159b6cd05ec"
+    },
+    {
+      "event": "orchestration_failed",
+      "at": "2026-08-25T10:20:06.922Z",
+      "code": "V207_LIVE_PREFLIGHT_FAILED"
+    },
+    {
+      "event": "signer_secret_deleted",
+      "at": "2026-08-25T10:20:15.692Z"
+    },
+    {
+      "event": "worker_rolled_back",
+      "at": "2026-08-25T10:20:26.661Z",
+      "version_id_hash": "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643",
+      "record_sha256": "sha256:54beafecb8d70bf99d0c3f84cee00d6bcb107e202786b1d8f7fe5bb14b33085d"
+    },
+    {
+      "event": "restored_route_confirmed",
+      "at": "2026-08-25T10:20:58.309Z",
+      "status": 404,
+      "code": "V207_ROUTE_DISABLED",
+      "version_id_hash": "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643"
+    },
+    {
+      "event": "rollback_anchor_refresh_marker_reverted",
+      "at": "2026-08-25T10:20:58.331Z",
+      "config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+      "mode": "0600"
+    }
+  ],
+  "cleanup_errors": [],
+  "cleaned_up": true
+}
