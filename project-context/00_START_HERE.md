@@ -2,6 +2,18 @@
 
 ## Active handoff — read this section first
 
+Attempt61 is the current provider-free candidate pending exact approval. Cache-only cleanup restored
+`2639282176` available bytes against the exact `2147483648`-byte orchestrator minimum. Fresh
+read-only truth through `2026-08-25T06:14:18.898Z` proves zero RunPod compute/disposables, both
+retained 50 GB EU-RO-1 volumes, MEDIUM RTX 4090 availability, unchanged `$1.10/GPU-hour` Flex and
+`$0.74/hour` Secure reference rates, cumulative billing `1.9971928337181453`, the exact retained
+Cloudflare anchor, absent signer, protected config mode `0600`, and three exact active-version-bound
+POST `404 V207_ROUTE_DISABLED` reads. Proposal
+`sha256:6693da1e345ce579ea9c7896b238e3f8bd44fcd2abee92d8e46650436c80d4c0` requests a fresh `$4`
+finite cap, FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1`, and continued `$7/month` volume
+retention. It is unapproved: authority/cap/refresh remain null, mutations/GPU/spend are forbidden,
+Attempt60 cannot be reused, V2-07 remains `NOT_QUALIFIED`, and V2-08 remains forbidden.
+
 Attempt60 is closed `NOT_QUALIFIED`. Its exact single-use execution failed closed at
 `V207_LOCAL_DISK_HEADROOM_INSUFFICIENT`: only `283267072` bytes were available against the exact
 `2147483648`-byte minimum. The check occurred before orchestration-evidence initialization and
