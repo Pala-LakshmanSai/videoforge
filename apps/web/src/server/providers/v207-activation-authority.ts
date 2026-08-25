@@ -84,15 +84,15 @@ export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
 // newest-seven window. Keep the immutable authority in evidence for audit only;
 // remove executable approval and cap so the attempt cannot be replayed.
 export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:73b81ef8e91c179d53046afabfe3801abdcfdfddea065860ccf084c71443d0cf";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+  null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap.  Keep the
  * current provider-free candidate null; a future exact authority may change
  * this to true in its own immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = true;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;

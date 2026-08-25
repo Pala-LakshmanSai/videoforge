@@ -1,0 +1,53 @@
+{
+  "schema_version": "videoforge.v2-07-attempt62-orchestrator-observation/v1",
+  "checkpoint": "V2-07",
+  "attempt": 62,
+  "proposal_sha256": "sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0",
+  "approved_preexecution_authority_sha256": "sha256:73b81ef8e91c179d53046afabfe3801abdcfdfddea065860ccf084c71443d0cf",
+  "raw_redacted_orchestrator_sha256": "sha256:e1594c1cc7635f6a5a3a382f42810150ecf6cb6f3b01fb6ce51d735093160457",
+  "started_at": "2026-08-25T08:23:14.528Z",
+  "finished_at": "2026-08-25T08:38:26.822Z",
+  "result": "FAILED_CLEAN",
+  "failure_code": "V207_LIVE_RUNNER_FAILED",
+  "child_failure_code": "RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT",
+  "authority": {
+    "image_digest": "sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "cap_usd": 4,
+    "anchor_refresh_authorized": true,
+    "activation": "two-phase-v1"
+  },
+  "pre_mutation": {
+    "local_disk_available_bytes": 9033990144,
+    "old_active_version_id_sha256": "sha256:00a52163eee4d61bec6bea3459397328f5157d1a5e34dcd838f127cad11cbafc",
+    "old_active_record_sha256": "sha256:37864db71b2ebc843495b330915d98f74582014f3861e6c417da2c71810dfb41",
+    "disabled_route_status": 404,
+    "disabled_route_code": "V207_ROUTE_DISABLED",
+    "consecutive_exact_reads": 16
+  },
+  "anchor_refresh": {
+    "refreshed_version_id_sha256": "sha256:fed54e9136fe3ac6f3788771b8bdc7d7a4507cef74a4e6f4a08e5c19d64af39f",
+    "refreshed_record_sha256": "sha256:5e45b9b400d33cee1ea533e64bc8177ff6418ff4e810dd880944d18e8b014031",
+    "disabled_route_consecutive_exact_reads": 16,
+    "post_promotion_consecutive_exact_reads": 16
+  },
+  "signer_activation": {
+    "active_version_id_sha256": "sha256:5cd1ddadee2fa3e01ca8d62de191c8d66a1468ffd00f97394516fda74e50062e",
+    "active_record_sha256": "sha256:4f68aec157c78af80e6571bf12be1fbafd3266b4c92f981197c43c474cef8ca8",
+    "route_status": 403,
+    "consecutive_exact_reads": 16,
+    "live_preflight_exit_code": 0
+  },
+  "cleanup": {
+    "signer_secret_deleted": true,
+    "worker_rolled_back": true,
+    "restored_version_id_sha256": "sha256:fed54e9136fe3ac6f3788771b8bdc7d7a4507cef74a4e6f4a08e5c19d64af39f",
+    "restored_record_sha256": "sha256:5e45b9b400d33cee1ea533e64bc8177ff6418ff4e810dd880944d18e8b014031",
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED",
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "cleanup_uncertain": false
+  },
+  "secrets_or_credentials_retained": false
+}

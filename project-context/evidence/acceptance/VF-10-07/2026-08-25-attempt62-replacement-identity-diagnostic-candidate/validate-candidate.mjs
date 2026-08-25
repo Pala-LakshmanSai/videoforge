@@ -7,7 +7,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dir, "../../../../../");
 const expected = {
   proposal: "sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0",
-  authority: "sha256:73b81ef8e91c179d53046afabfe3801abdcfdfddea065860ccf084c71443d0cf",
+  authority: "sha256:932cd239e3352a14b042cf2b165a677406a62acfb157965ac42b7abba0924191",
   acceptance: "sha256:99713e1e12fa8ee1b3e47894ab19ba3a401c4408315c3d015f6869d8d636d804",
   preflight: "sha256:4318a0dd24a4f68f9adbc5f0149270c81c1cb43bd13f3c30c0e3455a8ab9049a",
   max1: "sha256:d0c1ab6b2ebe0d8c09e9a6c39853271ecaaa6c04de4abc84521b6a93a430c1bc",
@@ -23,6 +23,10 @@ const expected = {
   consumedAuthority: "sha256:18b78f0611052937ecb53535e6efdca34eab42a43227e3729b88eb7805ca5ebb",
   closure: "sha256:902ac9f71b2d90ac80d74a6a747181ae56cd199cda2de7942dbc7b319cb9d7e5",
   reconciliation: "sha256:b44f6a9ca90281e9356db3cd1d1aea422ff58d29af4a2f7716f552130f496a75",
+  attempt62Closure: "sha256:3c3a4332dd1f0bbf2753b3ba9689f697bc38538fb99127bba47a803e94bf0aaf",
+  attempt62Orchestrator: "sha256:c0d50234319cd4cf16e37b66e20dc19380e697752377059eaf62e375bc8f0b42",
+  attempt62Summary: "sha256:a596a6447e9e7da02d5a666e645a30fff9c2e1b74f183e1dea25f9e5b3a52a57",
+  attempt62Reconciliation: "sha256:ea0678ce17f3b6489fb06c6d49653838c56f20982f563060b2dc72f0e6dfdbc6",
 };
 const sha = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const yes = (value, code) => {
@@ -157,9 +161,9 @@ yes(
   "ACCEPTANCE",
 );
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_PROPOSAL_POINTER");
-yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_ACTIVE");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4;/u.test(activation), "CAP_ACTIVE");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation), "REFRESH_ACTIVE");
+yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(activation), "AUTHORITY_NULL");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_NULL");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "REFRESH_NULL");
 const canonical = activation
   .replace(/^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/mu, `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${"0".repeat(64)}" as const;`)
   .replace(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/mu, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;")
@@ -192,15 +196,54 @@ try {
 yes(authorityExists === true, "AUTHORITY_FILE_REQUIRED");
 yes(
   authority.attempt === 62 &&
-    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.status === "CONSUMED_NON_REUSABLE_ATTEMPT62_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT" &&
     authority.proposal.sha256 === expected.proposal &&
     authority.acceptance.sha256 === expected.acceptance &&
     authority.approval.maximum_cumulative_finite_spend_usd === 4 &&
     authority.approval.flashboot_true_accepted === true &&
     authority.approval.low_or_better_eu_ro_1_availability_approved === true &&
-    authority.approval.anchor_refresh_authorized === true &&
-    authority.approval.consumed === false &&
+    authority.approval.anchor_refresh_authorized === false &&
+    authority.approval.consumed === true &&
     authority.execution_boundary.v2_08_authorized === false,
   "AUTHORITY_CONTRACT",
+);
+const liveEvidenceDir = path.join(root, "project-context/evidence/acceptance/VF-10-07/2026-08-21-live-qualification");
+const [closure, liveOrchestrator, summary, reconciliation] = await Promise.all([
+  readFile(path.join(liveEvidenceDir, "failed-attempt-62.json")),
+  readFile(path.join(liveEvidenceDir, "attempt62-live-orchestrator.json")),
+  readFile(path.join(liveEvidenceDir, "attempt62-live-qualification-summary.json")),
+  readFile(path.join(liveEvidenceDir, "attempt62-reconciliation-observation.json")),
+]);
+yes(
+  sha(closure) === expected.attempt62Closure &&
+    sha(liveOrchestrator) === expected.attempt62Orchestrator &&
+    sha(summary) === expected.attempt62Summary &&
+    sha(reconciliation) === expected.attempt62Reconciliation,
+  "ATTEMPT62_CLOSURE_HASHES",
+);
+const closureJson = JSON.parse(closure);
+const summaryJson = JSON.parse(summary);
+const reconciliationJson = JSON.parse(reconciliation);
+yes(
+  closureJson.failure_code === "RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT" &&
+    closureJson.execution.redispatch === false &&
+    closureJson.execution.later_batches_dispatched === false &&
+    summaryJson.probe.status === "COMPLETED" &&
+    summaryJson.probe.item_count === 1 &&
+    summaryJson.replacement.status === "COMPLETED" &&
+    summaryJson.replacement.accepted_units === 0 &&
+    summaryJson.replacement.identity_rejection_predicates.seed_replacement_worker_hash_equal === true &&
+    summaryJson.replacement.identity_rejection_predicates.seed_replacement_pod_hash_equal === true &&
+    reconciliationJson.paid_compute_shutdown_proven === true &&
+    reconciliationJson.stable_read_count === 3 &&
+    reconciliationJson.runpod.pods === 0 &&
+    reconciliationJson.runpod.endpoints === 0 &&
+    reconciliationJson.runpod.private_templates === 0 &&
+    reconciliationJson.runpod.active_serverless_workers === 0 &&
+    reconciliationJson.runpod.running_pods === 0 &&
+    reconciliationJson.runpod.retained_volumes.length === 2 &&
+    reconciliationJson.billing.observed_incremental_spend_usd === 0 &&
+    reconciliationJson.cloudflare.signer_present === false,
+  "ATTEMPT62_CLOSURE_TRUTH",
 );
 process.stdout.write(`PASS validate-v207-attempt62-candidate ${JSON.stringify(expected)}\n`);

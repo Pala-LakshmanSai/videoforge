@@ -1,0 +1,70 @@
+{
+  "schema_version": "videoforge.v2-07-attempt62-live-qualification-summary/v1",
+  "checkpoint": "V2-07",
+  "attempt": 62,
+  "proposal_sha256": "sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0",
+  "approved_preexecution_authority_sha256": "sha256:73b81ef8e91c179d53046afabfe3801abdcfdfddea065860ccf084c71443d0cf",
+  "raw_redacted_qualification_sha256": "sha256:a0340d97311bd6540611e0d0e33e3708432deed0f22555defd31b7bb6102420d",
+  "started_at": "2026-08-25T08:26:30.163Z",
+  "finished_at": "2026-08-25T08:37:35.458Z",
+  "success": false,
+  "qualification_status": "NOT_QUALIFIED",
+  "failure_code": "RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT",
+  "selected_offering": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "flashboot": true,
+    "serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "secure_reference_rate_usd_per_hour": 0.74
+  },
+  "probe": {
+    "status": "COMPLETED",
+    "delay_time_ms": 6981,
+    "execution_time_ms": 67712,
+    "item_count": 1,
+    "durable_readbacks": 1,
+    "replay_confirmed_receipts": 1,
+    "peak_vram_used_bytes": 14009499648
+  },
+  "replacement": {
+    "status": "COMPLETED",
+    "delay_time_ms": 1690,
+    "execution_time_ms": 76002,
+    "requested_unresolved_units": 31,
+    "accepted_units": 0,
+    "redispatch": false,
+    "identity_rejection_predicates": {
+      "boundary_schema_valid": true,
+      "boundary_terminal_scale_zero_confirmed": true,
+      "boundary_seed_hashes_valid": true,
+      "boundary_seed_axes_equal": true,
+      "boundary_provider_pod_hash_valid": true,
+      "boundary_provider_pod_matches_seed": true,
+      "boundary_provider_identity_source_valid": true,
+      "boundary_counts_valid": true,
+      "replacement_schema_valid": true,
+      "replacement_hashes_valid": true,
+      "replacement_axes_equal": true,
+      "seed_replacement_worker_hash_equal": true,
+      "seed_replacement_pod_hash_equal": true
+    }
+  },
+  "cost": {
+    "billing_baseline_usd": 2.0487612777214963,
+    "billing_final_usd": 2.0487612777214963,
+    "observed_incremental_spend_usd": 0,
+    "projected_spend_usd": 0.5725237222222224,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "billing_settlement": "THREE_STABLE_READS",
+    "provider_billing_lag_applies": true
+  },
+  "cleanup": {
+    "generated_output_rollback": "CONFIRMED",
+    "workers_zero_confirmed": true,
+    "disposable_endpoint_and_template_deleted": true,
+    "retained_mage_volume_verified": true,
+    "active_worst_case_liability_usd": 0
+  },
+  "v2_08_started": false
+}

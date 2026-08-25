@@ -2,7 +2,7 @@
 
 ## Active handoff — read this section first
 
-Attempt62 is approved single-use pending bounded execution. Proposal
+Attempt62 is closed `NOT_QUALIFIED`. Proposal
 `sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0` requests a fresh `$4`
 finite cap, FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1`, and continued `$7/month` volume
 retention. Fresh read-only truth through `2026-08-25T07:15:13.105Z` proves zero RunPod compute or
@@ -13,9 +13,14 @@ bound POST `404 V207_ROUTE_DISABLED` reads, and sufficient local disk. Repair `3
 bounded redacted predicates when replacement identity is rejected; it does not relax distinct-Pod
 acceptance or add redispatch. Anchor rebind `0b4b2d5` pins the refreshed clean Worker anchor.
 Authority `sha256:73b81ef8e91c179d53046afabfe3801abdcfdfddea065860ccf084c71443d0cf`
-binds the exact `$4` executable cap and `two-phase-v1` refresh. Attempt61 remains closed consumed/
-non-reusable after clean shutdown. Execute Attempt62 once, reconcile fail-closed, and do not start
-V2-08.
+ran once. The probe completed with one durable output/readback/receipt; the 31-unit replacement job
+completed but its signed worker and Pod hashes both equalled the seed identity, so execution stopped
+at `RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT` without redispatch or later batches. Cleanup
+deleted the disposable endpoint/template and signer, restored the refreshed exact version-bound
+disabled route and protected config, and independent three-read reconciliation proves zero compute/
+disposables, both volumes retained, and `$0` observed increment subject to billing lag. Closure is
+`failed-attempt-62.json`; authority is consumed/non-reusable, provider-free diagnosis only, and
+V2-08 remains forbidden.
 
 Attempt60 is closed `NOT_QUALIFIED`. Its exact single-use execution failed closed at
 `V207_LOCAL_DISK_HEADROOM_INSUFFICIENT`: only `283267072` bytes were available against the exact

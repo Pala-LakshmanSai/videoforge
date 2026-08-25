@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-07-attempt62-failed-closure/v1",
+  "checkpoint": "V2-07",
+  "attempt": 62,
+  "result": "NOT_QUALIFIED_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT_CLEAN",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0",
+  "approved_preexecution_authority_sha256": "sha256:73b81ef8e91c179d53046afabfe3801abdcfdfddea065860ccf084c71443d0cf",
+  "authority_state": "CONSUMED_NON_REUSABLE_ATTEMPT62_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT",
+  "failure_code": "RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT",
+  "orchestrator_path": "attempt62-live-orchestrator.json",
+  "orchestrator_sha256": "sha256:c0d50234319cd4cf16e37b66e20dc19380e697752377059eaf62e375bc8f0b42",
+  "qualification_summary_path": "attempt62-live-qualification-summary.json",
+  "qualification_summary_sha256": "sha256:a596a6447e9e7da02d5a666e645a30fff9c2e1b74f183e1dea25f9e5b3a52a57",
+  "reconciliation_path": "attempt62-reconciliation-observation.json",
+  "reconciliation_sha256": "sha256:ea0678ce17f3b6489fb06c6d49653838c56f20982f563060b2dc72f0e6dfdbc6",
+  "execution": {
+    "provider_mutations": 1,
+    "gpu_jobs_submitted": 2,
+    "probe_completed": true,
+    "probe_accepted_units": 1,
+    "replacement_completed": true,
+    "replacement_accepted_units": 0,
+    "redispatch": false,
+    "later_batches_dispatched": false,
+    "projected_spend_usd": 0.5725237222222224,
+    "observed_incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4,
+    "billing_lag_applies": true
+  },
+  "identity_diagnosis": {
+    "distinct_signed_pod_requirement_preserved": true,
+    "seed_replacement_worker_hash_equal": true,
+    "seed_replacement_pod_hash_equal": true,
+    "raw_identity_hashes_in_failure_event": false,
+    "root_cause_beyond_provider_identity_reuse": "UNPROVEN"
+  },
+  "cleanup": {
+    "generated_output_rollback": "CONFIRMED",
+    "disposable_endpoint_deleted": true,
+    "disposable_template_deleted": true,
+    "signer_deleted": true,
+    "worker_rolled_back": true,
+    "protected_config_restored": true,
+    "exact_version_bound_disabled_route_restored": true,
+    "paid_compute_shutdown_proven": true,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2
+  },
+  "remaining_gates": [
+    "provider-free diagnosis of repeated same signed Pod and worker identity after terminal scale-zero",
+    "fresh exact proposal, approval, and positive numeric cap before any future provider action",
+    "complete V2-07 qualification and independent audit before V2-08"
+  ],
+  "v2_08_authorized": false,
+  "closed_at": "2026-08-25T08:40:19.814Z"
+}
