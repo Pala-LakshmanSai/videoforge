@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T17:35:59.000Z"
+updated_at: "2026-08-26T00:00:00.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -136,15 +136,39 @@ provider_free_product_progress:
   hosted_paid_dispatch_authority_commit: "9f9ee82"
   hosted_paid_dispatch_authority_status: PROVIDER_FREE_PASS_independently_audited_migration_0040_not_deployed
   hosted_paid_dispatch_authority_note: "Migration 0040 and the SQL gate atomically claim an exact paid-dispatch approval using PostgreSQL transaction time, tenant/lease/two-lane lineage, expiry, and cumulative-cap checks. This supplies no approval and activates no dispatch."
-  remaining_provider_free_activation_blockers:
-    - lane_batch_materialization_and_task_foreign_key
-    - atomic_two_lane_predispatch
-    - concrete_callback_authority_repository_database_adapter
+  hosted_lane_batch_materialization_commit: "0f73d81"
+  hosted_lane_batch_materialization_status: PROVIDER_FREE_PASS_independently_audited_migration_0041_not_deployed
+  hosted_lane_batch_materialization_note: "Migration 0041 and the hosted persistence adapter materialize exact durable lane batches with task lineage and fail-closed replay. No migration, grant, provider call, or dispatch occurred."
+  authenticated_worker_envelope_commit: "9ef6efa"
+  authenticated_worker_envelope_status: PROVIDER_FREE_PASS_independently_audited_images_invalidated
+  authenticated_worker_envelope_note: "The shared verifier and both lane handlers authenticate exact signed job envelopes. These byte changes invalidate every earlier Mage and SoulX image-bound qualification for activation; fresh immutable images and qualification are required."
+  hosted_atomic_pair_predispatch_commit: "120b6b8"
+  hosted_atomic_pair_predispatch_status: PROVIDER_FREE_PASS_independently_audited_migration_0042_not_deployed
+  hosted_atomic_pair_predispatch_note: "Migration 0042 atomically rechecks paid authority and both exact lane qualifications before materializing the two-lane predispatch pair. It supplies no authority and performs no provider action."
+  hosted_pair_runtime_transitions_commit: "941176f"
+  hosted_pair_runtime_transitions_status: PROVIDER_FREE_PASS_independently_audited_migration_0043_not_deployed
+  hosted_pair_runtime_transitions_note: "Migration 0043 and the pair executor durably fence send, acknowledgement, ambiguous acknowledgement, cancellation, terminal observation, and settlement transitions for both lanes."
+  hosted_pair_production_recovery_commit: "3d1b439"
+  hosted_pair_production_recovery_status: PROVIDER_FREE_PASS_independently_audited_source_only
+  hosted_pair_production_recovery_note: "The fail-closed production composition loads database-trusted activation facts, exact sealed lineage, and separate runtime/reconciler bindings, then reconstructs and reconciles pair state without blind redispatch."
+  guarded_pair_workflow_commit: "4239be9"
+  guarded_pair_workflow_status: PROVIDER_FREE_PASS_independently_audited_migration_0044_not_deployed_disabled_unqualified
+  guarded_pair_workflow_note: "The guarded Workflow wires atomic pair scheduling, exact RunPod lane adapters, bounded cancellation/recovery, callback settlement, and durable zero-worker evidence. The committed production mode remains DISABLED_UNQUALIFIED and no bindings, secrets, roles, config, or migrations were deployed."
+  remaining_provider_free_activation_blockers: []
+  production_activation_requirements:
+    - fresh_immutable_mage_and_soulx_images_after_envelope_verifier_change
+    - fresh_sealed_deployment_snapshots
+    - fresh_dual_live_lane_qualification
+    - soulx_explicit_crop_visual_approval
+    - apply_migrations_0037_through_0044_and_least_privilege_grants
+    - render_validate_and_deploy_exact_production_config
+    - provision_separate_runtime_and_reconciler_roles_and_secret_bindings
+    - fresh_exact_paid_and_deployment_authority
   remaining_live_and_visual_blockers:
     - mage_live_qualification
     - soulx_live_qualification
     - soulx_explicit_crop_visual_approval
-  batch3_through_batch6_note: "Ordinary signed output acceptance, private GET rehash, SQL append-only completion persistence, render-plan materialization, canonical timing persistence, authenticated callback and paid-authority shells, production-config guards, automatic 3–5-minute pilot, two-account queue evidence, production-length economics, final release ledger, and factual readiness groundwork are implemented. Callback and dispatch activation remain source-only/uncomposed. Current canonical legacy avatar profiles cannot substitute for SoulX, whose crop remains pending explicit user visual approval."
+  batch3_through_batch6_note: "Provider-free source is complete through migration 0044 and the guarded two-lane Workflow: output acceptance, private readback, render/timing persistence, authenticated envelopes/callbacks, paid authority, durable lane batches, atomic pair predispatch, runtime recovery, zero-worker evidence, production guards, pilots, queue/economics evidence, and the release ledger are implemented. Production remains DISABLED_UNQUALIFIED and undeployed. Fresh immutable Mage/SoulX images, dual live qualification, SoulX crop approval, exact deployment/paid authority, migrations/grants/config, roles, and secrets remain required."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
   focused_v2_12_tests: 14_pass
