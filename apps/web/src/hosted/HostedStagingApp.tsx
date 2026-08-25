@@ -12,17 +12,23 @@ interface HostedStatus {
   readonly authentication: readonly ("GOOGLE" | "EMAIL_PASSWORD")[];
 }
 
+type HostedAccess =
+  | { readonly state: "SIGNED_OUT" }
+  | { readonly state: "INVITE_REQUIRED" }
+  | { readonly state: "ADMITTED"; readonly tenant: Tenant };
+
 const authClient = createAuthClient({ baseURL: window.location.origin, basePath: "/api/auth" });
 
-async function tenant(): Promise<Tenant | null> {
+async function tenantAccess(): Promise<HostedAccess> {
   const response = await fetch("/api/v2/tenant", { headers: { accept: "application/json" } });
-  if (response.status === 401 || response.status === 403) return null;
+  if (response.status === 401) return { state: "SIGNED_OUT" };
+  if (response.status === 403) return { state: "INVITE_REQUIRED" };
   if (!response.ok) throw new Error("Hosted tenant check failed.");
-  return response.json() as Promise<Tenant>;
+  return { state: "ADMITTED", tenant: (await response.json()) as Tenant };
 }
 
 export function HostedStagingApp({ children }: PropsWithChildren) {
-  const [scope, setScope] = useState<Tenant | null>(null);
+  const [access, setAccess] = useState<HostedAccess | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +38,7 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
   async function refresh() {
     setLoading(true);
     try {
-      setScope(await tenant());
+      setAccess(await tenantAccess());
     } catch {
       setMessage("Hosted staging is unavailable. No local fallback was used.");
     } finally {
@@ -81,6 +87,20 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
     );
   }
 
+  async function signOut() {
+    setMessage(null);
+    try {
+      const result = await authClient.signOut();
+      if (result.error) {
+        setMessage("Sign-out failed. Please try again.");
+        return;
+      }
+      await refresh();
+    } catch {
+      setMessage("Sign-out failed. Please try again.");
+    }
+  }
+
   if (loading)
     return (
       <main className="hosted-stage">
@@ -89,8 +109,24 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
         </section>
       </main>
     );
-  if (scope) {
+  if (access?.state === "ADMITTED") {
     return children;
+  }
+  if (access?.state === "INVITE_REQUIRED") {
+    return (
+      <main className="hosted-stage">
+        <section>
+          <p>V2-06 private staging</p>
+          <h1>Invite required</h1>
+          <p>This signed-in account does not have access to VideoForge.</p>
+          <p>Ask for an invitation, or sign out and use a different invited account.</p>
+          <button type="button" onClick={() => void signOut()}>
+            Sign out
+          </button>
+          {message ? <p role="status">{message}</p> : null}
+        </section>
+      </main>
+    );
   }
   return (
     <main className="hosted-stage">
