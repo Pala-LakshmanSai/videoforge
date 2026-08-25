@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T13:14:43.000Z"
+updated_at: "2026-08-25T13:34:39.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -39,7 +39,17 @@ two_track_execution:
   atomic_certification_gates: [compute_output_identity, cancel_timeout, max2_concurrent_readers]
   atomic_gate_validity_hours: 24
   reusable_only_if_identical_hashes:
-    [immutable_image, complete_source, endpoint_config, sealed_volume_manifest, exact_gpu, exact_region]
+    [
+      immutable_image,
+      complete_source,
+      dependency_lock,
+      acceptance_contract,
+      endpoint_template_config,
+      sealed_volume_manifest,
+      exact_gpu,
+      exact_region,
+    ]
+  disposable_endpoint_identity_recorded_per_atomic_gate: true
   relevant_dependency_or_contract_change_invalidates_affected_gate: true
   authority_cap_or_retention_consent_reusable: false
   v2_08_live_activation_authorized: false
@@ -52,6 +62,25 @@ two_track_execution:
   independent_zero_job_zero_worker_drain_required: true
   integration_cadence: one_bounded_green_product_commit_per_working_day
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
+
+provider_free_product_progress:
+  strategy_and_certification_ledger_commit: "760b0e4"
+  certification_ledger_status: PASS_independently_audited
+  certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
+  async_transport_commit: "ada2541"
+  async_transport_status: PASS_independently_audited
+  async_transport_note: "Durable dispatch now uses a provider-neutral async port; ambiguous or malformed post-mutation RunPod responses remain ACK_UNKNOWN and cannot trigger blind redispatch."
+  soulx_handler_commit: "7039092"
+  soulx_handler_status: PROVIDER_FREE_PASS_independently_audited
+  soulx_handler_note: "Exact per-envelope tenant/workspace, observed single RTX4090, measured timing, actual ffprobe validation, resume/readback, signed receipts, and scratch cleanup are implemented. Live image publication and qualification remain open and unauthorized."
+  focused_web_tests: 13_pass
+  focused_control_plane_tests: 27_pass
+  avatar_primary_tests: 14_pass
+  web_control_plane_typechecks: PASS
+  context_validation: PASS_with_preexisting_v2_06_word_budget_warning
+  provider_calls_or_mutations: 0
+  gpu_use: 0
+  external_spend_usd: 0
 
 closed_v2_07_attempt64_proposal:
   mode: closed_consumed_post_cancel_zero_unconfirmed_clean
