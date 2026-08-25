@@ -53,6 +53,14 @@ test("V2-06 live database helper verifies exact hashes, grants, and FORCE RLS", 
   assert.match(source, /rolbypassrls/u);
   assert.match(source, /relforcerowsecurity/u);
   assert.match(source, /hosted render plans are not read-only/u);
+  assert.match(
+    source,
+    /runtime role lacks the exact hosted render-plan append function capability/u,
+  );
+  assert.match(
+    source,
+    /videoforge_append_hosted_render_plan\(uuid,uuid,uuid,uuid,text,jsonb,text\)/u,
+  );
   assert.match(source, /exact table grants/u);
   assert.match(source, /runtime role must already be NOSUPERUSER/u);
   assert.doesNotMatch(source, /process\.argv[^\n]*DATABASE_URL/u);

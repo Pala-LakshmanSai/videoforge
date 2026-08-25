@@ -7,7 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
-  APPROVED_MIGRATIONS,
+  COMMITTED_MIGRATIONS,
   AUTHORITY_METADATA,
   MAX_R2_AGGREGATE_BYTES,
   MAX_R2_OBJECT_BYTES,
@@ -185,8 +185,8 @@ fixture("source path, migration chain, and activation caps are hard-pinned", asy
       ),
     /exact approved pinned V2-06 owned local-slice path/u,
   );
-  assert.equal(APPROVED_MIGRATIONS.length, 36);
-  assertMigrationLedgerRows(APPROVED_MIGRATIONS);
+  assert.equal(COMMITTED_MIGRATIONS.length, 38);
+  assertMigrationLedgerRows(COMMITTED_MIGRATIONS);
   const fixture = await verifyLocalFixture();
   const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
   assert.equal(plan.r2Budget.object_count, MAX_R2_OBJECT_COUNT);
@@ -204,6 +204,12 @@ fixture("source path, migration chain, and activation caps are hard-pinned", asy
       ]),
     /per-object byte cap/u,
   );
+});
+
+test("owned render activation uses only the narrow render-plan append function", async () => {
+  const source = await readFile(script, "utf8");
+  assert.match(source, /public\.videoforge_append_hosted_render_plan\(/u);
+  assert.doesNotMatch(source, /INSERT INTO hosted_render_plans\b/iu);
 });
 
 test("R2 conditional create is race-safe and exact after a concurrent winner", async () => {

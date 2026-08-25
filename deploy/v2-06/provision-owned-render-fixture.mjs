@@ -39,9 +39,6 @@ const APPROVED_DB_SEARCH_PATH = "public,pg_catalog";
 const APPROVED_GOOGLE_PROVIDER = "google";
 const MIGRATION_ROOT = path.join(ROOT, "packages/control-plane/migrations");
 const MIGRATION_MANIFEST_PATH = path.join(MIGRATION_ROOT, "manifest.json");
-const APPROVED_MIGRATION_MANIFEST_SHA256 =
-  "sha256:26e92fcd7b6ca30f6406d0680d56f185ccc9f5cfb2be4c044a201015a612875d";
-const BUCKET = APPROVED_R2_BUCKET;
 const FIXTURE_ID = "local_short_slice_owned_001";
 const OPERATION = "v2-06-owned-render-fixture-v5";
 const PROJECT_NAME = "V2-06 Owned Render Fixture v5";
@@ -140,16 +137,18 @@ function readApprovedMigrationManifest() {
   } catch {
     error("committed migration manifest is unavailable");
   }
-  if (sha256(bytes) !== APPROVED_MIGRATION_MANIFEST_SHA256)
-    error("migration manifest bytes do not match the approved V2-06 identity");
   let manifest;
   try {
     manifest = JSON.parse(bytes.toString("utf8"));
   } catch {
     error("committed migration manifest is invalid JSON");
   }
-  if (!manifest || !Array.isArray(manifest.migrations) || manifest.migrations.length !== 36)
-    error("V2-06 requires the complete 36-entry migration manifest");
+  if (
+    manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
+    !Array.isArray(manifest.migrations) ||
+    manifest.migrations.length === 0
+  )
+    error("committed migration manifest is invalid");
   const entries = manifest.migrations.map((entry, index) => {
     if (
       !entry ||
@@ -158,7 +157,7 @@ function readApprovedMigrationManifest() {
       typeof entry.filename !== "string" ||
       typeof entry.sha256 !== "string"
     )
-      error("migration manifest is not a contiguous 1..36 chain");
+      error("migration manifest is not one contiguous version chain");
     let sqlBytes;
     try {
       sqlBytes = readFileSync(path.join(MIGRATION_ROOT, entry.filename));
@@ -177,7 +176,7 @@ function readApprovedMigrationManifest() {
   return Object.freeze(entries);
 }
 
-const APPROVED_MIGRATIONS = readApprovedMigrationManifest();
+const COMMITTED_MIGRATIONS = readApprovedMigrationManifest();
 
 function uuid(label) {
   const hex = createHash("md5").update(label).digest("hex");
@@ -1192,9 +1191,11 @@ async function ensureR2UploadIntent(client, plan) {
 }
 
 function assertMigrationLedgerRows(rows) {
-  if (!Array.isArray(rows) || rows.length !== APPROVED_MIGRATIONS.length)
-    error("live render fixture requires the complete 36-entry migration ledger");
-  for (const [index, expected] of APPROVED_MIGRATIONS.entries()) {
+  if (!Array.isArray(rows) || rows.length !== COMMITTED_MIGRATIONS.length)
+    error(
+      `live render fixture requires the exact committed ${COMMITTED_MIGRATIONS.length}-entry migration ledger`,
+    );
+  for (const [index, expected] of COMMITTED_MIGRATIONS.entries()) {
     const actual = rows[index];
     if (
       !actual ||
@@ -1636,12 +1637,12 @@ async function ensureArtifactRows(client, plan) {
 }
 
 async function ensureRenderPlan(client, plan) {
-  await client.query(
-    `INSERT INTO hosted_render_plans (
-       account_id, workspace_id, project_id, project_revision_id,
-       schema_version, payload, payload_sha256, created_at, updated_at
-     ) VALUES ($1,$2,$3,$4,'videoforge-hosted-cpu-submission/v1',$5::jsonb,$6,$7,$7)
-     ON CONFLICT (account_id, workspace_id, project_id, project_revision_id) DO NOTHING`,
+  const append = await client.query(
+    `SELECT inserted, payload, payload_sha256
+       FROM public.videoforge_append_hosted_render_plan(
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid,
+         'videoforge-hosted-cpu-submission/v1'::text, $5::jsonb, $6::text
+       )`,
     [
       plan.scope.account_id,
       plan.scope.workspace_id,
@@ -1649,9 +1650,16 @@ async function ensureRenderPlan(client, plan) {
       plan.revisionId,
       JSON.stringify(plan.submission),
       plan.renderPlanPayloadHash,
-      plan.seedAt,
     ],
   );
+  const appended = append.rows[0];
+  if (
+    append.rows.length !== 1 ||
+    typeof appended?.inserted !== "boolean" ||
+    appended.payload_sha256 !== plan.renderPlanPayloadHash
+  )
+    error("hosted render-plan append function did not return one exact result");
+  exactJson(appended.payload, plan.submission, "hosted render-plan append result payload");
   const result = await client.query(
     `SELECT account_id::text AS account_id, workspace_id::text AS workspace_id,
             project_id::text AS project_id, project_revision_id::text AS project_revision_id,
@@ -1673,8 +1681,12 @@ async function ensureRenderPlan(client, plan) {
   )
     error("hosted render plan is not an exact immutable match");
   exactJson(row.payload, plan.submission, "hosted render plan payload");
-  exactTime(row.created_at, plan.seedAt, "hosted render plan created_at");
-  exactTime(row.updated_at, plan.seedAt, "hosted render plan updated_at");
+  if (
+    !row.created_at ||
+    !row.updated_at ||
+    new Date(row.created_at).toISOString() !== new Date(row.updated_at).toISOString()
+  )
+    error("hosted render plan timestamps are not one immutable append instant");
 }
 
 async function ensureAuditRow(client, plan) {
@@ -1951,7 +1963,7 @@ function buildAsrSubmission(fixture, scope, seedAt, preset = null) {
 
 export {
   ALLOWED_EMAILS,
-  APPROVED_MIGRATIONS,
+  COMMITTED_MIGRATIONS,
   APPROVED_NEON_DATABASE,
   APPROVED_NEON_MIGRATION_ROLE,
   APPROVED_GOOGLE_PROVIDER,

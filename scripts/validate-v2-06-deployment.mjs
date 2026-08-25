@@ -8,10 +8,36 @@ const fail = (message) => {
 };
 const parseJsonc = (source) => JSON.parse(source.replace(/,\s*([}\]])/gu, "$1"));
 
+const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
+if (
+  manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
+  !Array.isArray(manifest.migrations) ||
+  manifest.migrations.length === 0
+)
+  fail("committed migration manifest is invalid");
+for (const [index, entry] of manifest.migrations.entries()) {
+  if (entry.version !== index + 1) fail("migration manifest is not a contiguous chain");
+  const migration = await read(`packages/control-plane/migrations/${entry.filename}`);
+  const actualHash = `sha256:${createHash("sha256").update(migration).digest("hex")}`;
+  if (entry.sha256 !== actualHash) fail(`migration ${entry.version} hash is stale`);
+}
+const migrationHead = manifest.migrations.at(-1).version;
+for (const [version, name] of [
+  [37, "hosted_serverless_output_barrier"],
+  [38, "hosted_render_plan_append_contract"],
+]) {
+  const entry = manifest.migrations.find((candidate) => candidate.version === version);
+  if (entry?.name !== name) fail(`required migration ${version} is absent or misidentified`);
+}
+
 const wrangler = parseJsonc(await read("apps/web/wrangler.staging.jsonc"));
 const viteConfiguration = await read("apps/web/vite.cloudflare.config.ts");
 if (
-  !viteConfiguration.includes('VITE_VIDEOFORGE_PROVIDER_MODE === "staging"') ||
+  !viteConfiguration.includes("const requestedMode = process.env.VITE_VIDEOFORGE_PROVIDER_MODE") ||
+  !viteConfiguration.includes(
+    'const providerMode = requestedMode ?? (command === "build" ? "production" : "fixture")',
+  ) ||
+  !viteConfiguration.includes('providerMode === "staging"') ||
   !viteConfiguration.includes('"./wrangler.staging.jsonc"')
 )
   fail("staging build is not bound to its hosted Worker configuration");
@@ -87,6 +113,12 @@ if (!neonRuntimeGrants.includes('GRANT SELECT ON workspaces TO :"runtime_role";'
   fail("hosted tenant workspace read grant is missing");
 if (!neonRuntimeGrants.includes('GRANT SELECT ON hosted_render_plans TO :"runtime_role";'))
   fail("immutable hosted render-plan read grant is missing");
+if (
+  !neonRuntimeGrants.includes(
+    "GRANT EXECUTE ON FUNCTION public.videoforge_append_hosted_render_plan(",
+  )
+)
+  fail("exact hosted render-plan append function grant is missing");
 if (
   /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_render_plans\b/iu.test(
     neonRuntimeGrants,
@@ -304,7 +336,9 @@ if (
   !tenantPresetSeed.includes("V2_06_AVATAR_RIGHTS_CONFIRM=YES") ||
   !tenantPresetSeed.includes("DEFAULT_AVATAR_ENVELOPE_HASH") ||
   !tenantPresetSeed.includes("DEFAULT_STYLE_PROFILE_HASH") ||
-  !tenantPresetSeed.includes("migration head 36") ||
+  !tenantPresetSeed.includes("MIGRATION_HEAD") ||
+  !tenantPresetSeed.includes("does not match its manifest hash") ||
+  !tenantPresetSeed.includes("requires the exact committed migration ledger") ||
   !tenantPresetSeed.includes("SET LOCAL videoforge.account_id") ||
   !tenantPresetSeed.includes("ON CONFLICT (id) DO NOTHING") ||
   !tenantPresetSeed.includes(
@@ -334,6 +368,8 @@ if (
   !ownedRenderFixture.includes("@neondatabase/serverless") ||
   !ownedRenderFixture.includes("aws4fetch") ||
   !ownedRenderFixture.includes("hosted_render_plans") ||
+  !ownedRenderFixture.includes("videoforge_append_hosted_render_plan") ||
+  /INSERT INTO hosted_render_plans\b/iu.test(ownedRenderFixture) ||
   !ownedRenderFixture.includes("repository_mutation_receipts") ||
   !ownedRenderFixture.includes("APPROVED_R2_ACCOUNT_ID") ||
   !ownedRenderFixture.includes("APPROVED_R2_BUCKET") ||
@@ -363,6 +399,8 @@ if (
   !ownedFixtureProvisioner.includes("APPROVED_CLOUDFLARE_ACCOUNT_ID") ||
   !ownedFixtureProvisioner.includes("APPROVED_R2_BUCKET") ||
   !ownedFixtureProvisioner.includes("APPROVED_NEON_HOST") ||
+  !ownedFixtureProvisioner.includes("MIGRATION_LEDGER_JSON_SQL_LITERAL") ||
+  !ownedFixtureProvisioner.includes("requires the exact committed migration ledger") ||
   !ownedFixtureProvisioner.includes("fetch(signed)") ||
   ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_PROJECT_ID") ||
   ownedFixtureProvisioner.includes("V2_06_OWNED_FIXTURE_REVISION_ID") ||
@@ -389,7 +427,7 @@ if (
   !backupScript.includes("refusing to overwrite") ||
   !restoreScript.includes("RESTORE_DRILL_CONFIRM") ||
   !restoreScript.includes("RESTORE_TARGET_LABEL") ||
-  !restoreScript.includes("migration head 36") ||
+  !restoreScript.includes("derives the current head") ||
   !configRenderer.includes("refusing to overwrite the tracked template") ||
   !configRenderer.includes("__V2_06_PERSONAL_WORKER_RELEASE_MANIFEST_JSON__") ||
   !configRenderer.includes('const stagingBuildRoot = resolve(root, "apps/web/dist-staging")') ||
@@ -416,22 +454,14 @@ if (
   !migrationActivation.includes("rolbypassrls") ||
   !migrationActivation.includes("FORCE RLS") ||
   !migrationActivation.includes("hosted render plans are not read-only") ||
+  !migrationActivation.includes("hosted render-plan append function capability") ||
   !deploymentRunbook.includes("r2 bucket cors set") ||
   !deploymentRunbook.includes('--file "$CORS_CONFIG" --force') ||
   !deploymentRunbook.includes("secret list --format json") ||
-  !rollbackRunbook.includes("Keep migrations 0029-0036 applied") ||
-  rollbackRunbook.includes("Keep migrations 0029-0032 applied")
+  !rollbackRunbook.includes("Keep every migration in the committed manifest") ||
+  !rollbackRunbook.includes(`currently through ${String(migrationHead).padStart(4, "0")}`)
 )
   fail("backup/restore encryption guard or forward-only rollback contract drifted");
-
-const manifest = JSON.parse(await read("packages/control-plane/migrations/manifest.json"));
-for (const version of [29, 30, 31, 32, 33, 34, 35, 36]) {
-  const entry = manifest.migrations.find((candidate) => candidate.version === version);
-  if (!entry) fail(`migration ${version} is absent`);
-  const migration = await read(`packages/control-plane/migrations/${entry.filename}`);
-  const actualHash = `sha256:${createHash("sha256").update(migration).digest("hex")}`;
-  if (entry.sha256 !== actualHash) fail(`migration ${version} hash is stale`);
-}
 
 // The activation policy is allowed to name forbidden legacy credentials as a negative control;
 // transport scanning therefore covers only the executable Worker configuration and entrypoints.

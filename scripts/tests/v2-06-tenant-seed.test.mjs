@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   DEFAULT_AVATAR_PAYLOAD,
   DEFAULT_STYLE_PAYLOAD,
+  MIGRATION_HEAD,
   APPROVED_NEON_HOST,
   buildPlan,
   mutationSql,
@@ -133,7 +134,9 @@ test("mutation SQL is transactional, idempotent, tenant-bound, and has no delete
   });
   assert.match(source, /BEGIN;/u);
   assert.match(source, /COMMIT;/u);
-  assert.match(source, /migration head 36/u);
+  assert.equal(MIGRATION_HEAD, 38);
+  assert.match(source, new RegExp(`committed manifest head ${MIGRATION_HEAD}`, "u"));
+  assert.match(source, /requires the exact committed migration ledger/u);
   assert.match(source, /SET LOCAL videoforge\.account_id/u);
   assert.match(source, /ON CONFLICT \(id\) DO NOTHING/u);
   assert.doesNotMatch(source, /\b(?:DROP|DELETE)\s+/iu);

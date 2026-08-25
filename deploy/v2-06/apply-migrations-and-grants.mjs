@@ -52,6 +52,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_media_worker_device_scope(text)",
   "videoforge_media_worker_enrollment_consume(uuid,text)",
   "videoforge_media_worker_enrollment_poll(uuid,text,timestamp with time zone)",
+  "videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)",
 ].sort();
 
 const required = (name) => {
@@ -108,10 +109,15 @@ const query = (sql, environment) =>
 const migrationManifest = JSON.parse(
   await readFile(resolve(migrationsDirectory, "manifest.json"), "utf8"),
 );
-if (migrationManifest.schema_version !== "videoforge-migration-manifest/v1")
+if (
+  migrationManifest.schema_version !== "videoforge-migration-manifest/v1" ||
+  !Array.isArray(migrationManifest.migrations) ||
+  migrationManifest.migrations.length === 0
+)
   fail("migration manifest schema is not the committed V2 manifest");
 const migrations = [];
-for (const entry of migrationManifest.migrations) {
+for (const [index, entry] of migrationManifest.migrations.entries()) {
+  if (entry.version !== index + 1) fail("migration manifest must be one contiguous version chain");
   const sql = await readFile(resolve(migrationsDirectory, entry.filename), "utf8");
   const actual = `sha256:${sha256(sql)}`;
   if (actual !== entry.sha256) fail(`migration ${entry.filename} does not match its manifest hash`);
@@ -293,7 +299,6 @@ const main = async () => {
   }
 
   const runtimeRole = required("V2_06_RUNTIME_ROLE");
-  const roleIdentifier = safeIdentifier(runtimeRole, "V2_06_RUNTIME_ROLE");
   const role = (
     await query(
       `SELECT rolsuper::text, rolcreaterole::text, rolcreatedb::text, rolinherit::text, rolreplication::text, rolbypassrls::text FROM pg_roles WHERE rolname = ${safeLiteral(runtimeRole)}`,
@@ -329,6 +334,12 @@ const main = async () => {
   );
   if (hostedPlanPrivileges !== "true\tfalse\tfalse\tfalse")
     fail("hosted render plans are not read-only for the runtime role");
+  const hostedPlanAppendCapability = await query(
+    `SELECT has_function_privilege(${safeLiteral(runtimeRole)}, 'public.videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)', 'EXECUTE')::text`,
+    environment,
+  );
+  if (hostedPlanAppendCapability !== "true")
+    fail("runtime role lacks the exact hosted render-plan append function capability");
   const schemaPrivileges = await query(
     `SELECT has_schema_privilege(${safeLiteral(runtimeRole)}, 'public', 'USAGE')::text, has_schema_privilege(${safeLiteral(runtimeRole)}, 'public', 'CREATE')::text`,
     environment,
@@ -351,7 +362,7 @@ const main = async () => {
   if (publicFunctions)
     fail(`PUBLIC retains EXECUTE on public-schema functions: ${publicFunctions}`);
   console.log(
-    `V2-06 Neon verified: migration ${finalLedger.length}/${migrations.length}, runtime role ${runtimeRole}, FORCE RLS complete, exact table grants and function grants, hosted_render_plans SELECT-only.`,
+    `V2-06 Neon verified: migration ${finalLedger.length}/${migrations.length}, runtime role ${runtimeRole}, FORCE RLS complete, exact table grants and function grants, hosted_render_plans direct writes denied with exact append-function capability.`,
   );
 };
 

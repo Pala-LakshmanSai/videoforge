@@ -52,6 +52,12 @@ GRANT EXECUTE ON FUNCTION public.videoforge_due_hosted_cpu_retention(integer)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_cpu_retention(uuid, text)
 TO :"runtime_role";
+-- Migration 0038 exposes the only hosted-runtime render-plan write capability.  Keep the table
+-- itself read-only and grant this exact tenant-scoped, idempotent append contract instead.
+GRANT EXECUTE ON FUNCTION public.videoforge_append_hosted_render_plan(
+  uuid, uuid, uuid, uuid, text, jsonb, text
+)
+TO :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE ON
   hosted_cpu_job_attempts,
@@ -75,8 +81,9 @@ TO :"runtime_role";
 
 GRANT SELECT ON workspaces TO :"runtime_role";
 
--- Render plans are activation-owned immutable provenance.  The hosted runtime may read the exact
--- tenant/revision plan but never inserts, updates, or deletes one.
+-- Render plans are immutable provenance.  The hosted runtime may read the exact tenant/revision
+-- plan but never receives direct INSERT, UPDATE, or DELETE; the append function above is its only
+-- narrowly scoped write capability.
 GRANT SELECT ON hosted_render_plans TO :"runtime_role";
 
 GRANT SELECT, INSERT ON

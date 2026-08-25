@@ -33,6 +33,8 @@ import { fileURLToPath } from "node:url";
 import {
   DEFAULT_AVATAR_PAYLOAD,
   DEFAULT_STYLE_PAYLOAD,
+  MIGRATION_HEAD,
+  MIGRATION_LEDGER_JSON_SQL_LITERAL,
   buildPlan,
   canonicalJson,
   sha256Canonical,
@@ -70,13 +72,11 @@ const AVATAR_STORAGE_ROLE = Object.freeze({
   RUNTIME: "canonical",
   THUMBNAIL: "thumbnail",
 });
-const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 // PostgreSQL uuid accepts all canonical 128-bit UUID text, including values derived from
 // md5(... )::uuid by the hosted admission trigger. Do not require RFC-4122 version/variant bits
 // for database-owned IDs.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const TIMESTAMP = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$/u;
-const MIME = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/u;
 const ROLE_ORDER = ["ORIGINAL", "RUNTIME", "THUMBNAIL"];
 
 function canonicalize(value) {
@@ -135,7 +135,13 @@ function deterministicUuid(label) {
 }
 
 function requireText(value, name) {
-  if (typeof value !== "string" || value.length === 0 || /[\u0000\r\n]/u.test(value))
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.includes("\u0000") ||
+    value.includes("\r") ||
+    value.includes("\n")
+  )
     throw new Error(`${name} must be a non-empty single-line value`);
   return value;
 }
@@ -150,12 +156,6 @@ function requireTimestamp(value, name) {
   requireText(value, name);
   if (!TIMESTAMP.test(value) || Number.isNaN(Date.parse(value)))
     throw new Error(`${name} must be a valid RFC3339 UTC timestamp`);
-  return value;
-}
-
-function requireSha256(value, name) {
-  requireText(value, name);
-  if (!SHA256.test(value)) throw new Error(`${name} must be sha256:<64 lowercase hex>`);
   return value;
 }
 
@@ -675,8 +675,20 @@ async function ensurePresetRows(client, scope, assets, seedAt) {
   });
   await client.query(
     `DO $$ BEGIN
-       IF (SELECT max(version) FROM videoforge_schema_migrations) IS DISTINCT FROM 36
-       THEN RAISE EXCEPTION 'owned fixture requires migration head 36'; END IF;
+       IF (SELECT max(version) FROM videoforge_schema_migrations) IS DISTINCT FROM ${MIGRATION_HEAD}
+       THEN RAISE EXCEPTION 'owned fixture requires committed manifest head ${MIGRATION_HEAD}'; END IF;
+       IF (
+         SELECT jsonb_agg(
+           jsonb_build_object(
+             'version', version,
+             'name', name,
+             'filename', filename,
+             'sha256', sha256
+           ) ORDER BY version
+         )
+           FROM videoforge_schema_migrations
+       ) IS DISTINCT FROM ${MIGRATION_LEDGER_JSON_SQL_LITERAL}
+       THEN RAISE EXCEPTION 'owned fixture requires the exact committed migration ledger'; END IF;
      END $$`,
   );
   await client.query(

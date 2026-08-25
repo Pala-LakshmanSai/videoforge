@@ -33,6 +33,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const MIGRATION_ROOT = path.join(ROOT, "packages/control-plane/migrations");
+const MIGRATION_MANIFEST_PATH = path.join(MIGRATION_ROOT, "manifest.json");
 const DEFAULT_AVATAR_PAYLOAD = path.join(
   ROOT,
   "packages/contracts/generated/fixtures/avatar_profile_version.valid.json",
@@ -48,6 +50,42 @@ const DEFAULT_STYLE_PROFILE_HASH =
 const APPROVED_NEON_HOST = "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech";
 const APPROVED_NEON_DATABASE = "neondb";
 const APPROVED_NEON_MIGRATION_ROLE = "neondb_owner";
+
+async function loadMigrationIdentity() {
+  const manifestBytes = await readFile(MIGRATION_MANIFEST_PATH, "utf8");
+  const manifest = JSON.parse(manifestBytes);
+  if (
+    manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
+    !Array.isArray(manifest.migrations) ||
+    manifest.migrations.length === 0
+  )
+    throw new Error("committed migration manifest is invalid");
+  for (const [index, entry] of manifest.migrations.entries()) {
+    if (entry.version !== index + 1)
+      throw new Error("committed migration manifest is not a contiguous chain");
+    const sql = await readFile(path.join(MIGRATION_ROOT, entry.filename), "utf8");
+    const actual = `sha256:${createHash("sha256").update(sql).digest("hex")}`;
+    if (actual !== entry.sha256)
+      throw new Error(`migration ${entry.filename} does not match its manifest hash`);
+  }
+  return Object.freeze({
+    head: manifest.migrations.at(-1).version,
+    manifestSha256: `sha256:${createHash("sha256").update(manifestBytes).digest("hex")}`,
+    ledgerJsonSqlLiteral: `'${JSON.stringify(
+      manifest.migrations.map(({ version, name, filename, sha256 }) => ({
+        version,
+        name,
+        filename,
+        sha256,
+      })),
+    ).replaceAll("'", "''")}'::jsonb`,
+  });
+}
+
+const MIGRATION_IDENTITY = await loadMigrationIdentity();
+const MIGRATION_HEAD = MIGRATION_IDENTITY.head;
+const MIGRATION_MANIFEST_SHA256 = MIGRATION_IDENTITY.manifestSha256;
+const MIGRATION_LEDGER_JSON_SQL_LITERAL = MIGRATION_IDENTITY.ledgerJsonSqlLiteral;
 
 // PostgreSQL uuid accepts all canonical 128-bit UUID text, including values derived from
 // md5(... )::uuid by the hosted admission trigger. Do not require RFC-4122 version/variant bits
@@ -124,7 +162,13 @@ function parseArgs(argv) {
 }
 
 function requireText(value, name) {
-  if (typeof value !== "string" || value.length === 0 || /[\u0000\r\n]/u.test(value)) {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.includes("\u0000") ||
+    value.includes("\r") ||
+    value.includes("\n")
+  ) {
     throw new Error(`${name} must be a non-empty single-line value`);
   }
   return value;
@@ -431,7 +475,7 @@ SELECT COALESCE(json_agg(to_jsonb(found) ORDER BY found.role), '[]'::json)::text
   ) AS found;
 `;
 
-function mutationSql(plan) {
+function mutationSql() {
   return String.raw`
 BEGIN;
 SET LOCAL search_path = public, pg_catalog;
@@ -448,8 +492,21 @@ DECLARE
   existing_count integer;
 BEGIN
   SELECT max(version) INTO migration_head FROM public.videoforge_schema_migrations;
-  IF migration_head IS DISTINCT FROM 36 THEN
-    RAISE EXCEPTION 'V2-06 preset seed requires migration head 36, found %', migration_head;
+  IF migration_head IS DISTINCT FROM ${MIGRATION_HEAD} THEN
+    RAISE EXCEPTION 'V2-06 preset seed requires committed manifest head ${MIGRATION_HEAD}, found %', migration_head;
+  END IF;
+  IF (
+    SELECT jsonb_agg(
+      jsonb_build_object(
+        'version', version,
+        'name', name,
+        'filename', filename,
+        'sha256', sha256
+      ) ORDER BY version
+    )
+      FROM public.videoforge_schema_migrations
+  ) IS DISTINCT FROM ${MIGRATION_LEDGER_JSON_SQL_LITERAL} THEN
+    RAISE EXCEPTION 'V2-06 preset seed requires the exact committed migration ledger';
   END IF;
   SELECT scope_kind, status INTO account_scope, account_status
     FROM public.accounts WHERE id = :'account_id'::uuid;
@@ -920,7 +977,7 @@ async function main(argv = process.argv.slice(2)) {
   });
   const result = runPsql({
     databaseUrl,
-    sql: mutationSql(plan),
+    sql: mutationSql(),
     variables: mutationVariables(plan),
     label: "tenant preset seed transaction",
     quiet: false,
@@ -935,6 +992,9 @@ export {
   AVATAR_PAYLOAD_KEYS,
   DEFAULT_AVATAR_PAYLOAD,
   DEFAULT_STYLE_PAYLOAD,
+  MIGRATION_HEAD,
+  MIGRATION_LEDGER_JSON_SQL_LITERAL,
+  MIGRATION_MANIFEST_SHA256,
   buildPlan,
   canonicalJson,
   deterministicUuid,

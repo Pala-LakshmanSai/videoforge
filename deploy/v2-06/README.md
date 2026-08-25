@@ -218,7 +218,8 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 - Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
   ordinary deployment of the intended restored source/config so code and deployment metadata converge;
   rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
-  available. Schema migrations 0029-0036 are additive and retained. Successful final video objects are
+  available. Every migration in the committed manifest (currently through 0038) is additive and
+  retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
   than the portable metadata export because they contain secret-bearing values.
@@ -274,10 +275,12 @@ compatibility proof, and does not authorize V2-07.
 The hosted catalog intentionally returns only the authenticated account's own `READY` Avatar Profile
 and `PUBLISHED` Image Style versions. After each invited Google identity has completed its first
 session admission, seed its exact private activation presets with
-`seed-tenant-presets.mjs`. The utility requires a separate migration-owner URL, an explicit
+`seed-tenant-presets.mjs`. The utility derives and verifies the current migration head and every
+committed migration checksum from `packages/control-plane/migrations/manifest.json`; it requires a separate migration-owner URL, an explicit
 `V2_06_SEED_CONFIRM=YES`, an explicit avatar-rights confirmation, three existing tenant-owned
 `VERIFIED` avatar assets (original, runtime, thumbnail), and one fixed `V2_06_SEED_AT` timestamp.
-It refuses the hosted runtime role, missing/foreign/unverified assets, non-head-36 databases, and
+It refuses the hosted runtime role, missing/foreign/unverified assets, databases not at the exact
+committed manifest head, and
 conflicting immutable rows. Re-running the same command is safe only when every deterministic row
 already matches; it never deletes rows or creates media bytes.
 
@@ -303,7 +306,7 @@ five-megabyte aggregate / four-megabyte per-object R2 budget. It writes a durabl
 upload-intent receipt before any object mutation, uses conditional create (`If-None-Match: *`),
 and verifies an exact HEAD/GET match after every create race. Neon is pinned to `neondb`, the
 `neondb_owner` migration role, TLS/channel binding, `public,pg_catalog`, the Google auth provider,
-and the complete hash-checked 1–36 migration ledger.
+and the complete manifest-derived, hash-checked migration ledger. The current committed head is 38.
 
 ```sh
 V2_06_TENANT_EMAIL=lakshmansai121@gmail.com \
@@ -318,8 +321,11 @@ through the environment. The provisioner hard-pins the approved staging resource
 account `f9254d773a3426fcb469451b1f965d8c`, bucket `videoforge-v2-06-staging-private`, region
 `auto`, and the approved Neon project host), resolves only one of the two admitted identities,
 and uses the driver rooted at `apps/web`. It forwards the complete aws4fetch-signed request to
-`fetch`, uploads only missing exact tenant objects, verifies HEAD metadata and GET bytes/hash/type,
-then commits one Neon transaction at migration head 36. Existing objects and rows are accepted
+`fetch`, uploads only missing exact tenant objects, and verifies HEAD metadata and GET bytes/hash/type.
+It derives the exact ledger head and every migration checksum from the committed manifest, requires
+the current head, and appends the immutable render plan only through
+`videoforge_append_hosted_render_plan`; it has no direct render-plan table insert. Existing objects
+and rows are accepted
 only when every immutable fact matches; no object, row, output, GPU, or provider-generated media
 is deleted or overwritten. If R2 fails partway through, an append-only failure receipt records the
 exact expected-object cleanup scope with `automatic_delete=false`; if Neon fails after R2
