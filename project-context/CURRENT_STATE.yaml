@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T15:12:15.000Z"
+updated_at: "2026-08-25T15:45:25.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -94,8 +94,24 @@ provider_free_product_progress:
   hosted_output_persistence_status: PROVIDER_FREE_PASS_independently_audited_migration_not_deployed
   hosted_short_pilot_commit: "2379906"
   hosted_short_pilot_status: PROVIDER_FREE_GROUNDWORK_PASS_CURRENT_SOULX_PROFILE_BLOCKED
-  batch3_batch4_note: "Ordinary signed output acceptance, private GET rehash, SQL append-only completion persistence, render-plan materialization groundwork, and automatic 3–5-minute pilot groundwork are implemented. Current canonical legacy avatar profiles cannot substitute for SoulX."
+  hosted_two_account_queue_commit: "8c21d4c"
+  hosted_two_account_queue_status: PROVIDER_FREE_GROUNDWORK_PASS_independently_audited_live_max2_blocked
+  hosted_two_account_queue_note: "A pure signed-evidence evaluator now fail-closes exact two-account fairness, two slots, two simultaneous read-only readers per lane, four distinct durable receipts, full sealed lane/reader lineage, max1-to-max2-to-max1 restoration, terminal jobs, and zero workers. It owns no mutation-capable port and makes no live acceptance claim."
+  hosted_production_length_commit: "9d63159"
+  hosted_production_length_status: PROVIDER_FREE_GROUNDWORK_PASS_independently_audited_live_run_blocked
+  hosted_production_length_note: "The one-shot 29–31-minute admission and acceptance groundwork binds an automatic mixed render plan, trusted current Mage/SoulX qualification, durable output/readback, measured timing, full-cut quality review, terminal zero workers, the $1 variable-cost target, and the $2 hard ceiling. The separate $7/month retained-volume charge is disclosed and excluded."
+  final_release_certification_commit: "bd0cede"
+  final_release_certification_status: PROVIDER_FREE_GROUNDWORK_PASS_independently_audited_release_blocked
+  final_release_certification_note: "The release ledger fail-closes 15 exact gates, binds current release identity and trusted evidence classes, requires fresh two-lane smoke before independent drain and settled billing, and always leaves liveReleaseAuthorized=false pending separate explicit release authority."
+  factual_gpu_readiness_commit: "c516726"
+  factual_gpu_readiness_status: PROVIDER_FREE_PASS_independently_audited_dispatch_disabled
+  factual_gpu_readiness_note: "The authenticated hosted catalog and UI expose exact Mage and SoulX NOT_QUALIFIED state, missing gates, pending SoulX visual approval, and provider-free commit lineage while keeping GPU transport DISABLED_UNQUALIFIED and exposing no dispatch control."
+  batch3_through_batch6_note: "Ordinary signed output acceptance, private GET rehash, SQL append-only completion persistence, render-plan materialization, automatic 3–5-minute pilot, two-account queue evidence, production-length economics, final release-ledger, and factual readiness groundwork are implemented. Current canonical legacy avatar profiles cannot substitute for SoulX, whose crop remains pending explicit user visual approval."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
+  focused_v2_11_tests: 13_pass
+  focused_v2_12_tests: 14_pass
+  focused_v2_13_tests: 8_pass
+  focused_gpu_readiness_tests: 15_pass
   focused_control_plane_tests: 27_pass
   avatar_primary_tests: 28_pass
   web_control_plane_typechecks: PASS
