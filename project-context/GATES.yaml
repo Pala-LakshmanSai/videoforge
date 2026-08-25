@@ -142,27 +142,31 @@ gates:
     historical_attempt29_control_source_commit: "7ba8e9181fe210858c23a3ba7c5c9aca768ac24b"
     historical_attempt30_closure_sha256: "sha256:9846e19ee4348e73ef880202ecff5463bd076c5b1a2bd209e2815cba0500043c"
     historical_attempt30_cleanup_sha256: "sha256:112f7038d162613ebdde2176a7c257de24f629fdb3914b876a6edc490f46dbb0"
-    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/approved-authority.json"
-    latest_closed_authority_sha256: "sha256:16bfca4ceb5a673f391fad9b1fe95b30d9c8c7eac335df3cc7464960baa17dd8"
+    latest_closed_authority: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/approved-authority.json"
+    latest_closed_authority_sha256: "sha256:32534a9773874cb67388138b4c76b2a690af9c780534e9226cdb3c5c90e683bf"
     latest_closed_authority_consumed: true
-    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/combined-live-proposal.json"
-    latest_closed_proposal_sha256: "sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4"
-    latest_closed_candidate_acceptance_sha256: "sha256:6e3e2e0e3b8739a4dbf8365c263fd6e2229dd760b0dad424a18e16cbde618d36"
-    latest_closed_preflight: "evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/read-only-preflight.json"
-    latest_closed_preflight_sha256: "sha256:0af5ef859fd4b75c3abc66ca0ca8886071bd115bd09ff196a5a07c9b1a9b959c"
-    latest_closed_max1_sha256: "sha256:a97d961fc1e85cc5eb76fd4d9f6d7535876fb675df5c9ebfb734f7ed882c19b7"
-    latest_closed_max2_sha256: "sha256:e0be79500f54ab7e18c497a479afd9f3a45ae6ee7e6ac01c2fd7936320f340f9"
-    latest_closed_cleanup: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-cleanup-observation.json"
-    latest_closed_cleanup_sha256: "sha256:af01054a4b0c16fe43f4ace6a9036763e20966ac20842fb6d40210029421eae0"
-    latest_closed_reconciliation: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-reconciliation-observation.json"
-    latest_closed_reconciliation_sha256: "sha256:5895fe18b8143282e397d372b30fa56028f5003bc2ce258b5ef61cce2d1db8c6"
+    latest_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/combined-live-proposal.json"
+    latest_closed_proposal_sha256: "sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24"
+    latest_closed_candidate_acceptance_sha256: "sha256:599d28434a7b5dd63b93dfe8f6035f909ca3f1da03273582f2f9e7af6f1766a8"
+    latest_closed_preflight: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/read-only-preflight.json"
+    latest_closed_preflight_sha256: "sha256:2b1790d9b142fbf08afef6ca0a1697ebf33c77f19fcd55966b922a3f994ad83f"
+    latest_closed_max1_sha256: "sha256:8638fc1c0b6259ad5b978a11af50fb13cebe3daba52b44c402d60ed8fa0e6d65"
+    latest_closed_max2_sha256: "sha256:a4395f95d4f8fb6427a178c98d2e7ee2e2dd61b69aaf520eb2101934df6b3d79"
+    latest_closed_cleanup: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt58-cleanup-observation.json"
+    latest_closed_cleanup_sha256: "sha256:21f3c49505bf3b58ee14f1b4ebbac91ce6d21c3c6723bfa6c1417b6988f76058"
+    latest_closed_reconciliation: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt58-reconciliation-observation.json"
+    latest_closed_reconciliation_sha256: "sha256:006e64b73754ff24309572900ce88c30d502b5493862ef08ca06e756d7074106"
     latest_provider_free_repair: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-output-readback-classification-repair.json"
     latest_provider_free_repair_sha256: "sha256:87dcfe9b9ed5a2db71e142417f2d030fca051d7a50387e7f8c4df9c4ce2a2217"
-    latest_provider_free_repair_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
-    latest_provider_free_repair_source_sha256: "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43"
-    latest_provider_free_repair_test_sha256: "sha256:df4edea0050c5b3c0daf0a8a19a7d7bfd6b53d87ac5ce743b1b299945ec46555"
+    latest_provider_free_repair_commit: "8bb6583012569e595630deb3d7fe104a923dcc58"
+    latest_provider_free_repair_source_sha256: "sha256:7995f0519d61538633b005c529835b7c3864bb4378fd6a3aa010e1e67947b233"
+    latest_provider_free_repair_test_sha256: "sha256:5c44885d23b563c8d33e1b5227657112cfdbe73d265245c57745c28b5607fd10"
     latest_provider_free_repair_validator: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/validate-attempt57-output-readback-classification-repair.mjs"
     latest_provider_free_repair_validator_sha256: "sha256:6af78f39408d16da588c4901f40f5e8fae22a611eeba1fac47acab48fbe02388"
+    latest_closed_closure: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-58.json"
+    latest_closed_closure_sha256: "sha256:e617cb65f890bee0fadf538af204077f2c4e1ac46859150bf613a715ea6289f6"
+    latest_post_cancel_terminal_inventory_repair_commit: "8bb6583012569e595630deb3d7fe104a923dcc58"
+    latest_post_cancel_terminal_inventory_repair_source_sha256: "sha256:7995f0519d61538633b005c529835b7c3864bb4378fd6a3aa010e1e67947b233"
     current_candidate: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/combined-live-proposal.json"
     current_candidate_sha256: "sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24"
     current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/acceptance.json"
@@ -170,27 +174,27 @@ gates:
     current_candidate_preflight: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/read-only-preflight.json"
     current_candidate_preflight_sha256: "sha256:2b1790d9b142fbf08afef6ca0a1697ebf33c77f19fcd55966b922a3f994ad83f"
     current_candidate_authority: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/approved-authority.json"
-    current_candidate_authority_sha256: "sha256:75a2fa3b793fd5abec02dfa8749aba0cb18a43bdd25a2c6afd03878154b22b66"
+    current_candidate_authority_sha256: "sha256:32534a9773874cb67388138b4c76b2a690af9c780534e9226cdb3c5c90e683bf"
     current_candidate_approved_preexecution_authority_sha256: "sha256:75a2fa3b793fd5abec02dfa8749aba0cb18a43bdd25a2c6afd03878154b22b66"
-    current_candidate_authority_consumed: false
-    current_candidate_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION_ATTEMPT58
-    current_candidate_authority_mode: bounded_mutation_single_use
-    current_candidate_finite_cap_usd: 4
+    current_candidate_authority_consumed: true
+    current_candidate_authority_state: CONSUMED_NON_REUSABLE_ATTEMPT58_POST_CANCEL_QUIESCENCE_FAILURE_CLEAN
+    current_candidate_authority_mode: closed_consumed_non_reusable
+    current_candidate_finite_cap_usd: 0
     current_candidate_requested_finite_cap_usd: 4
-    current_candidate_executable_finite_cap_usd: 4
-    current_candidate_anchor_refresh_authorized: true
+    current_candidate_executable_finite_cap_usd: 0
+    current_candidate_anchor_refresh_authorized: false
     current_candidate_historical_approved_anchor_refresh: true
-    current_candidate_exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1
-    current_candidate_cloudflare_mutation_authorized: true
-    current_candidate_scoped_signer_worker_route_activation_authorized: true
-    current_candidate_runpod_mutation_authorized: true
-    current_candidate_gpu_use_authorized: true
+    current_candidate_exact_anchor_refresh_activation: null
+    current_candidate_cloudflare_mutation_authorized: false
+    current_candidate_scoped_signer_worker_route_activation_authorized: false
+    current_candidate_runpod_mutation_authorized: false
+    current_candidate_gpu_use_authorized: false
     current_candidate_exact_bounded_sequence_only: true
-    current_candidate_provider_calls_completed: false
-    current_candidate_provider_jobs_submitted: 0
-    current_candidate_primary_job_status_read_count: 0
-    current_candidate_gpu_use_occurred: false
-    current_candidate_accepted_units: 0
+    current_candidate_provider_calls_completed: true
+    current_candidate_provider_jobs_submitted: 5
+    current_candidate_primary_job_status_read_count: 53
+    current_candidate_gpu_use_occurred: true
+    current_candidate_accepted_units: 96
     current_candidate_external_spend_usd: 0
     current_candidate_control_source_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
     current_candidate_canonical_activation_source_sha256: "sha256:fcef15d69622c8d796d32ce7001adccb8da2ff53d999a3293d3dff884fdedba7"
@@ -208,6 +212,11 @@ gates:
     current_candidate_max2_sha256: "sha256:a4395f95d4f8fb6427a178c98d2e7ee2e2dd61b69aaf520eb2101934df6b3d79"
     current_candidate_output_readback_repair_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
     current_candidate_anchor_rebind_commit: "75ee5f3d0461f32074726e65b9a22530f0f8a292"
+    current_candidate_post_cancel_terminal_inventory_repair_commit: "8bb6583012569e595630deb3d7fe104a923dcc58"
+    current_candidate_post_cancel_terminal_inventory_source_sha256: "sha256:7995f0519d61538633b005c529835b7c3864bb4378fd6a3aa010e1e67947b233"
+    current_candidate_closure: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-58.json"
+    current_candidate_cleanup: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt58-cleanup-observation.json"
+    current_candidate_reconciliation: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt58-reconciliation-observation.json"
     latest_attempt55_closed_proposal: "evidence/acceptance/VF-10-07/2026-08-24-attempt55-config-lineage-rebind-candidate/combined-live-proposal.json"
     latest_attempt55_closed_proposal_sha256: "sha256:d3481231340fb7a4a22ae1047103024ca37e6b75c70c37d36c3bfb2a9baaff1f"
     latest_attempt55_closed_authority: "evidence/acceptance/VF-10-07/2026-08-24-attempt55-config-lineage-rebind-candidate/approved-authority.json"
@@ -225,27 +234,27 @@ gates:
     historical_attempt41_reconciliation_evidence_sha256: "sha256:2d86e63bdaa5029cc6f13495d68a38d7603c49e4830a614e466e971dd706d61e"
     publication_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json"
     publication_evidence_sha256: "sha256:c4e0363b3b37cb0bc0bb0678ce174085669cfe77a504f2af9fdf5c338814cdb7"
-    latest_closed_result: NOT_QUALIFIED_attempt57_replacement_output_contract_failure_clean
+    latest_closed_result: NOT_QUALIFIED_ATTEMPT58_POST_CANCEL_QUIESCENCE_FAILURE_CLEAN
     latest_closed_incremental_spend_usd: 0
     latest_closed_cumulative_endpoint_spend_usd: 1.7478178361488972
     latest_closed_observed_unattributed_late_billing_increment_usd: 0
     latest_closed_billing_attribution: ATTEMPT57_OBSERVED_INCREMENT_ZERO_AT_THREE_STABLE_READ_RECONCILIATION_BILLING_MAY_LAG
     latest_closed_authority_mode: closed_consumed_attempt57_replacement_output_contract_failure_clean
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
-    pending_proposal: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/combined-live-proposal.json"
-    pending_proposal_sha256: "sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24"
-    pending_authority: "evidence/acceptance/VF-10-07/2026-08-25-attempt58-output-readback-anchor-rebind-candidate/approved-authority.json"
-    pending_authority_sha256: "sha256:75a2fa3b793fd5abec02dfa8749aba0cb18a43bdd25a2c6afd03878154b22b66"
-    pending_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION_ATTEMPT58
-    pending_authority_mode: bounded_mutation_single_use
-    pending_numeric_cap_usd: 4
+    pending_proposal: null
+    pending_proposal_sha256: null
+    pending_authority: null
+    pending_authority_sha256: null
+    pending_authority_state: NONE_ATTEMPT58_CONSUMED
+    pending_authority_mode: none
+    pending_numeric_cap_usd: 0
     pending_requested_numeric_cap_usd: 4
-    pending_anchor_refresh_authorized: true
-    pending_exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1
-    pending_cloudflare_mutation_authorized: true
-    pending_scoped_signer_worker_route_activation_authorized: true
-    pending_runpod_mutation_authorized: true
-    pending_gpu_use_authorized: true
+    pending_anchor_refresh_authorized: false
+    pending_exact_anchor_refresh_activation: null
+    pending_cloudflare_mutation_authorized: false
+    pending_scoped_signer_worker_route_activation_authorized: false
+    pending_runpod_mutation_authorized: false
+    pending_gpu_use_authorized: false
     pending_exact_bounded_sequence_only: true
     pending_control_source_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
     pending_live_qualification_source_sha256: "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43"

@@ -2,17 +2,22 @@
 
 ## Active handoff — read this section first
 
-Attempt58 is approved once and pending one bounded execution. Proposal
-`sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24` binds output-readback
-classification repair `6191901`, current rollback-anchor rebind `75ee5f3`, fresh max1/max2
-definitions, and fresh read-only truth. RunPod has zero Pods/endpoints/templates/workers/running
-Pods, both exact 50 GB EU-RO-1 volumes remain, RTX 4090 availability is MEDIUM, and three stable
-billing reads hold at `1.8249728917435277`. Cloudflare signer is absent and three exact POST reads
-return version-bound `404 V207_ROUTE_DISABLED`. The finite estimate is `$3.95`; the requested cap is
-`$4`, with continued `$7/month` volume retention separate. Exact authority
-`sha256:75a2fa3b793fd5abec02dfa8749aba0cb18a43bdd25a2c6afd03878154b22b66` activates the `$4` cap and
-two-phase refresh for one execution only; it is non-transferable and non-reusable. V2-08 remains
-forbidden.
+Attempt58 is closed `NOT_QUALIFIED`. It completed the probe, 31-unit replacement resume, cold, and
+warm batches with 96 durable outputs/receipts/readbacks, proved duplicate same-job delivery, and
+confirmed cancellation. It then failed closed before timeout/readers at post-cancel scale-down with
+`RUNPOD_QUIESCENT_NOT_CONFIRMED`: `/health` retained multiple stale FlashBoot counters while exact
+inventory showed only terminal workers/Pods. Exact cleanup and three stable reconciliation reads
+prove zero Pods/endpoints/templates/workers/running Pods, both 50 GB EU-RO-1 volumes unchanged,
+`$0` observed incremental spend against the historical `$4` cap, signer absence, restored config,
+and version-bound `404 V207_ROUTE_DISABLED`. Closure is `failed-attempt-58.json`; cleanup is
+`attempt58-cleanup-observation.json`; reconciliation is `attempt58-reconciliation-observation.json`.
+Authority is consumed/non-reusable and executable authority/cap/refresh are null.
+
+Provider-free repair `8bb6583012569e595630deb3d7fe104a923dcc58` allows only the existing
+queue-bracketed, two-identical-snapshot exact terminal-inventory fallback after post-cancel drain
+when owned jobs are zero. It preserves cancellation liability fencing and no-redispatch behavior;
+114 focused tests and TypeScript pass. Any future live attempt needs a fresh exact proposal,
+approval, cap, anchor rebind, and provider truth. V2-08 remains forbidden.
 
 Attempt57 is closed `NOT_QUALIFIED` and its exact single-use authority/cap are consumed and
 non-reusable. The run accepted one durable probe unit, then failed during replacement output
