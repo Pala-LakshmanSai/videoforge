@@ -1,0 +1,54 @@
+{
+  "schema_version": "videoforge.v2-07-failed-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 60,
+  "result": "NOT_QUALIFIED_ATTEMPT60_LOCAL_DISK_HEADROOM_INSUFFICIENT_NO_MUTATION",
+  "proposal_sha256": "sha256:aa67f635d7ff9d167339b23a0ae9b389d5e4beeec688c56877d44607e426176b",
+  "approved_preexecution_authority_sha256": "sha256:89dcc4adc4a9c52ebf5f1fe8722328299e62ec48b574a559122f7b51cc3d660d",
+  "consumed_authority_sha256": "sha256:1999d19e9538e98213339e023d68505c4b4b69cfebb413692ac306495a9c388f",
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "closed_at": "2026-08-25T05:51:06.410Z",
+  "failure_code": "V207_LOCAL_DISK_HEADROOM_INSUFFICIENT",
+  "failure_stage": "local_pre_evidence_pre_mutation_disk_headroom_assertion",
+  "local_disk": {
+    "filesystem": "/System/Volumes/Data",
+    "available_kib_from_df": 276628,
+    "available_bytes": 283267072,
+    "required_minimum_bytes": 2147483648,
+    "capacity_percent": 100
+  },
+  "orchestrator_evidence": null,
+  "orchestrator_evidence_reason": "the disk-headroom assertion runs before orchestration evidence initialization, so no orchestrator evidence file was created",
+  "reconciliation": "attempt60-reconciliation-observation.json",
+  "reconciliation_sha256": "sha256:d012e06b2af2794992b2e61e72e05f4dcf20c400304934a1d08147185aeb3cc4",
+  "execution": {
+    "cloudflare_worker_mutations": 0,
+    "cloudflare_signer_mutations": 0,
+    "runpod_mutations": 0,
+    "jobs_submitted": 0,
+    "gpu_use_occurred": false,
+    "accepted_units": 0,
+    "outputs": 0,
+    "receipts": 0,
+    "observed_incremental_spend_usd": 0
+  },
+  "cleanup": {
+    "separate_cleanup_artifact_required": false,
+    "reason": "remote mutation never began",
+    "protected_config_unchanged": true,
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "runpod_three_stable_zero_reads": true,
+    "two_retained_volumes_unchanged": true
+  },
+  "timebox_stop": {
+    "unrelated_second_problem": true,
+    "repair_or_retry_performed": false,
+    "reason": "the checkpoint timebox permits one narrow repair cycle; disk exhaustion is a distinct second problem"
+  },
+  "v2_07_qualified": false,
+  "v2_08_authorized": false,
+  "next_boundary": "free local disk provider-free until at least 2147483648 bytes are available, then build a wholly fresh V2-07 proposal and obtain exact approval; Attempt60 cannot be retried"
+}

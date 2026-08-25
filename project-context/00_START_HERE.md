@@ -2,14 +2,16 @@
 
 ## Active handoff — read this section first
 
-Attempt60 is approved once and pending fresh post-approval preflight/execution. Proposal
-`sha256:aa67f635d7ff9d167339b23a0ae9b389d5e4beeec688c56877d44607e426176b` binds pre-route
-transport-gap repair `42a5a52`, post-cancel repair `8bb6583`, the exact retained Cloudflare anchor,
-and new max1/max2 definitions. Fresh post-Attempt59 RunPod truth is zero compute/disposables, both
-retained volumes, HIGH RTX 4090 EU-RO-1 availability, unchanged `$1.10/GPU-hour` Flex and
-`$0.74/hour` Secure reference rates, and billing baseline `1.9971928337181453`. Exact authority
-`sha256:89dcc4adc4a9c52ebf5f1fe8722328299e62ec48b574a559122f7b51cc3d660d` is single-use and
-unconsumed with the `$4` cap and `two-phase-v1`; V2-08 remains forbidden.
+Attempt60 is closed `NOT_QUALIFIED`. Its exact single-use execution failed closed at
+`V207_LOCAL_DISK_HEADROOM_INSUFFICIENT`: only `283267072` bytes were available against the exact
+`2147483648`-byte minimum. The check occurred before orchestration-evidence initialization and
+before any Cloudflare or RunPod mutation. The authority is consumed/non-reusable; executable
+authority, cap, and anchor refresh are null. Three stable reconciliation reads prove zero compute
+or disposable resources, both retained volumes unchanged, and `$0` observed incremental spend at
+cumulative billing `1.9971928337181453`. Closure is `failed-attempt-60.json`; reconciliation is
+`attempt60-reconciliation-observation.json`. Per the checkpoint timebox, stop on this unrelated
+second problem: free local disk provider-free, then require a wholly fresh proposal/approval.
+Do not retry Attempt60 and do not start V2-08.
 
 Attempt59 is closed `NOT_QUALIFIED`; its exact single-use authority is consumed and non-reusable.
 The first pre-mutation route read was exact version-bound `404 V207_ROUTE_DISABLED`, then a later
