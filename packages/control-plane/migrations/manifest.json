@@ -234,6 +234,12 @@
       "name": "hosted_canonical_timing_bridge",
       "filename": "0039_hosted_canonical_timing_bridge.sql",
       "sha256": "sha256:1b602747e8a5ed91c76d1a602d5b7be87a6139cdcf862dd7da10fd9f45238637"
+    },
+    {
+      "version": 40,
+      "name": "hosted_paid_dispatch_authority",
+      "filename": "0040_hosted_paid_dispatch_authority.sql",
+      "sha256": "sha256:9e7cbbecd515c8781f66a6888d1283abeb2e91baee4f61d6ad1857775a67c1a3"
     }
   ]
 }

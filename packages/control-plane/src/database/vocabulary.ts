@@ -76,6 +76,8 @@ export const RELATIONAL_TABLE_NAMES = [
   "global_generation_capacity",
   "account_queue_heads",
   "serverless_endpoint_deployments",
+  "hosted_paid_dispatch_approvals",
+  "hosted_paid_dispatch_claims",
   "serverless_attempts",
   "serverless_predispatch_authorities",
   "serverless_dispatch_outbox",

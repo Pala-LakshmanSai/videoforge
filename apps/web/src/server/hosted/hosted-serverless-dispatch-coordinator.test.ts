@@ -32,6 +32,7 @@ const MAGE_TASK = "77777777-7777-4777-8777-777777777777";
 const SOULX_TASK = "88888888-8888-4888-8888-888888888888";
 const APPROVAL = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const NOW = "2026-08-25T12:00:00.000Z";
+const DB_CLAIMED_AT = "2026-08-25T12:00:01.000Z";
 const scope = trustedTenantScope(ACCOUNT, WORKSPACE);
 const sha256 = (character: string): Sha256 => `sha256:${character.repeat(64)}`;
 
@@ -379,7 +380,7 @@ function setup(
       totalCapUsd: claim.totalCapUsd,
       cumulativeReservationUsd: claim.cumulativeReservationUsd,
       expiresAt: claim.expiresAt,
-      claimedAt: claim.now,
+      claimedAt: DB_CLAIMED_AT,
     };
   });
   const paidAuthorityGate: HostedPaidAuthorityGate = { claimOnce };
@@ -505,12 +506,14 @@ describe("hosted Serverless dispatch coordinator", () => {
           attemptId: ids.attemptId,
           authorityId: ids.authorityId,
           outboxId: ids.outboxId,
+          now: DB_CLAIMED_AT,
         }),
       );
       expect(fixture.dispatch.get(lane)).toHaveBeenCalledTimes(1);
       expect(fixture.dispatch.get(lane)).toHaveBeenCalledWith(
         scope,
         expect.objectContaining({
+          now: DB_CLAIMED_AT,
           envelope: expect.objectContaining({
             schema: "serverless-worker-job-envelope/v3",
             dispatch_token: expect.stringMatching(/^token-/u),
@@ -526,12 +529,18 @@ describe("hosted Serverless dispatch coordinator", () => {
       );
     }
     expect(fixture.bindLaneAttempt).toHaveBeenCalledTimes(2);
+    expect(fixture.bindLaneAttempt).toHaveBeenCalledWith(
+      scope,
+      expect.objectContaining({ now: DB_CLAIMED_AT }),
+    );
     expect(fixture.claimOnce).toHaveBeenCalledTimes(1);
     expect(fixture.claimOnce).toHaveBeenCalledWith(
       expect.objectContaining({
         approvalId: APPROVAL,
         approvalSha256: sha256("f"),
         generationRequestId: REQUEST,
+        generationPlanSha256: sha256("9"),
+        leaseId: "99999999-9999-4999-8999-999999999999",
         totalCapUsd: 2,
         cumulativeReservationUsd: 1.5,
         lanes: [

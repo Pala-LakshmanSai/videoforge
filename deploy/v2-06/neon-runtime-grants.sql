@@ -64,6 +64,13 @@ GRANT EXECUTE ON FUNCTION public.videoforge_append_hosted_canonical_timing(
   uuid, uuid, uuid, uuid, uuid, uuid, jsonb
 )
 TO :"runtime_role";
+-- Migration 0040 keeps operator-authored approvals and runtime claims private. The runtime can
+-- invoke only this exact atomic claim; transaction time and current lease are rechecked inside it.
+GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_paid_dispatch(
+  uuid, text, uuid, uuid, uuid, uuid, uuid, uuid, text, uuid, jsonb,
+  numeric, numeric, timestamptz
+)
+TO :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE ON
   hosted_cpu_job_attempts,

@@ -128,17 +128,25 @@ export interface HostedPaidAuthorityGate {
     readonly projectId: string;
     readonly projectRevisionId: string;
     readonly generationRequestId: string;
+    readonly generationPlanSha256: Sha256;
+    readonly leaseId: string;
     readonly lanes: readonly {
       readonly lane: ServerlessLane;
       readonly checkpointId: "V2-07" | "V2-08";
       readonly operations: readonly string[];
       readonly resources: readonly string[];
+      readonly deploymentId: string;
+      readonly endpointIdSha256: Sha256;
+      readonly endpointConfigSha256: Sha256;
+      readonly workerImageDigest: Sha256;
+      readonly modelManifestSha256: Sha256;
+      readonly volumeIdSha256: Sha256;
+      readonly volumeManifestSha256: Sha256;
       readonly deploymentSnapshotSha256: Sha256;
     }[];
     readonly totalCapUsd: number;
     readonly cumulativeReservationUsd: number;
     readonly expiresAt: string;
-    readonly now: string;
   }): Promise<HostedPaidAuthorityClaim>;
 }
 
@@ -503,6 +511,7 @@ async function preflight(input: {
   readonly plan: HostedPersistedDispatchPlan;
   readonly tasks: readonly HostedPersistedLaneDispatchTask[];
   readonly runtimeId: string;
+  readonly leaseId: string;
 }> {
   if (!exactIso(input.now)) reject("HOSTED_SERVERLESS_CLOCK_INVALID");
   const plan = input.plan;
@@ -543,7 +552,7 @@ async function preflight(input: {
   ) {
     reject("HOSTED_SERVERLESS_RUNTIME_NOT_PREPARED");
   }
-  return { plan, tasks, runtimeId: runtime.runtimeId };
+  return { plan, tasks, runtimeId: runtime.runtimeId, leaseId: request.leaseId };
 }
 
 function blocked(
@@ -592,7 +601,7 @@ export async function dispatchHostedPreparedGeneration(input: {
     throw error;
   }
 
-  const { plan, tasks, runtimeId } = await preflight({ ...input, plan: inspectedPlan });
+  const { plan, tasks, runtimeId, leaseId } = await preflight({ ...input, plan: inspectedPlan });
 
   const published = await Promise.all(
     LANES.map(
@@ -681,17 +690,25 @@ export async function dispatchHostedPreparedGeneration(input: {
     projectId: plan.projectId,
     projectRevisionId: plan.projectRevisionId,
     generationRequestId: plan.generationRequestId,
+    generationPlanSha256: plan.generationPlanSha256,
+    leaseId,
     lanes: tasks.map((task) => ({
       lane: task.lane,
       checkpointId: task.lane === "mage_image" ? "V2-07" : "V2-08",
       operations: Object.freeze([...task.checkpointAuthority.authorizedOperations]),
       resources: Object.freeze([...task.checkpointAuthority.resources]),
+      deploymentId: bindings[task.lane].deployment.deploymentId,
+      endpointIdSha256: bindings[task.lane].deployment.endpointIdSha256,
+      endpointConfigSha256: bindings[task.lane].deployment.endpointConfigSha256,
+      workerImageDigest: bindings[task.lane].deployment.workerImageDigest,
+      modelManifestSha256: bindings[task.lane].deployment.modelManifestSha256,
+      volumeIdSha256: bindings[task.lane].deployment.volumeIdSha256,
+      volumeManifestSha256: bindings[task.lane].deployment.volumeManifestSha256,
       deploymentSnapshotSha256: deploymentSnapshotSha256(bindings[task.lane]),
     })),
     totalCapUsd: plan.paidAuthority.totalCapUsd,
     cumulativeReservationUsd,
     expiresAt: plan.paidAuthority.expiresAt,
-    now: input.now,
   });
   if (
     claim.approvalId !== plan.paidAuthority.approvalId ||
@@ -703,7 +720,8 @@ export async function dispatchHostedPreparedGeneration(input: {
     claim.totalCapUsd !== plan.paidAuthority.totalCapUsd ||
     claim.cumulativeReservationUsd !== cumulativeReservationUsd ||
     claim.expiresAt !== plan.paidAuthority.expiresAt ||
-    claim.claimedAt !== input.now
+    !exactIso(claim.claimedAt) ||
+    Date.parse(claim.claimedAt) > Date.parse(claim.expiresAt)
   ) {
     reject("HOSTED_SERVERLESS_PAID_AUTHORITY_CLAIM_INVALID");
   }
@@ -737,7 +755,7 @@ export async function dispatchHostedPreparedGeneration(input: {
       reservationUsd: task.reservationUsd,
       rateSource: task.rateSource,
       rateCheckedAt: task.rateCheckedAt,
-      now: input.now,
+      now: claim.claimedAt,
       checkpointAuthority: task.checkpointAuthority,
     });
     const template = envelopeTemplates.get(task.lane);
@@ -754,7 +772,7 @@ export async function dispatchHostedPreparedGeneration(input: {
       lane: task.lane,
       attemptId: ids.attemptId,
       attemptOrdinal: task.attemptOrdinal,
-      now: input.now,
+      now: claim.claimedAt,
     });
     const outcome = await lanes[task.lane].dispatchOnce(input.scope, {
       commit,
@@ -763,7 +781,7 @@ export async function dispatchHostedPreparedGeneration(input: {
       assignmentId: ids.assignmentId,
       leaseId: ids.leaseId,
       holderSha256: ids.holderSha256,
-      now: input.now,
+      now: claim.claimedAt,
     });
     if (outcome.kind === "DISPATCH_ACK_UNKNOWN") {
       return Object.freeze({
