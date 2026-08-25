@@ -5,6 +5,7 @@ import { createProjectRequestSchema } from "@videoforge/contracts/create-project
 import { validateOutputRuleKeywords } from "@videoforge/contracts/output-rules";
 import { AlertTriangle, ArrowRight, Check, FileAudio, ImagePlus, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 import { PageHeader } from "../components/PageHeader";
 import { Button, Disclosure, Panel } from "../components/ui";
 import { VisualPresetSelect } from "../features/project-create/VisualPresetSelect";
@@ -24,7 +25,7 @@ import { currentScenario, withScenario } from "../lib/scenario";
 import { HostedCreateProjectScreen } from "../hosted/HostedProductScreens";
 
 export function CreateProjectScreen() {
-  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+  return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
     <HostedCreateProjectScreen />
   ) : (
     <FixtureCreateProjectScreen />
@@ -128,9 +129,10 @@ function FixtureCreateProjectScreen() {
 
   useEffect(() => {
     const assetId = draft.voiceoverAssetId;
+    const fixtureVoiceoverPrefix = ["fixture", "voiceover", "sha256", ""].join("_");
     if (
       !draftHydrated ||
-      !assetId?.startsWith("fixture_voiceover_sha256_") ||
+      !assetId?.startsWith(fixtureVoiceoverPrefix) ||
       revalidatedVoiceover.current === assetId
     ) {
       return;

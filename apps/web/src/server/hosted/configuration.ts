@@ -62,6 +62,8 @@ export interface HostedRuntimeEnvironment {
 
 export interface HostedRuntimeConfiguration {
   readonly commit: string;
+  readonly environment: "staging" | "production";
+  readonly gpuTransport: "DISABLED_UNQUALIFIED";
   readonly publicOrigin: string;
   readonly r2: {
     readonly accountId: string;
@@ -100,6 +102,8 @@ export interface HostedRuntimeConfiguration {
     readonly schemaVersion: "videoforge-hosted-configuration/v1";
     readonly credentials: "REDACTED";
     readonly commit: string;
+    readonly environment: "staging" | "production";
+    readonly gpuTransport: "DISABLED_UNQUALIFIED";
     readonly publicOrigin: string;
   };
 }
@@ -288,13 +292,20 @@ export function hostedRuntimeConfiguration(
   if (!source.VIDEO_WORKFLOW) missing.push("VIDEO_WORKFLOW" as never);
   if (missing.length > 0) {
     throw new HostedConfigurationError(
-      `Hosted staging requires bindings: ${missing.join(", ")}.`,
+      `Hosted runtime requires bindings: ${missing.join(", ")}.`,
       missing,
     );
   }
-  if (source.VIDEOFORGE_PROVIDER_MODE !== "staging") {
-    throw new HostedConfigurationError("The hosted V2-06 worker must run only in staging mode.");
+  if (
+    source.VIDEOFORGE_PROVIDER_MODE !== "staging" &&
+    source.VIDEOFORGE_PROVIDER_MODE !== "production"
+  ) {
+    throw new HostedConfigurationError(
+      "The hosted runtime requires an exact staging or production provider mode.",
+      ["VIDEOFORGE_PROVIDER_MODE"],
+    );
   }
+  const environment = source.VIDEOFORGE_PROVIDER_MODE;
   const publicOrigin = httpsOrigin(
     required(source, "VIDEOFORGE_PUBLIC_ORIGIN"),
     "VIDEOFORGE_PUBLIC_ORIGIN",
@@ -324,10 +335,16 @@ export function hostedRuntimeConfiguration(
     schemaVersion: "videoforge-hosted-configuration/v1" as const,
     credentials: "REDACTED" as const,
     commit: source.VIDEOFORGE_COMMIT ?? "uncommitted",
+    environment,
+    gpuTransport: "DISABLED_UNQUALIFIED" as const,
     publicOrigin,
   });
   return Object.freeze({
     commit: source.VIDEOFORGE_COMMIT ?? "uncommitted",
+    environment,
+    // V2-09 production-mode truth does not imply a qualified GPU lane. A later exact composition
+    // must replace this fail-closed value only after both live lane gates pass.
+    gpuTransport: "DISABLED_UNQUALIFIED" as const,
     publicOrigin,
     neon: Object.freeze({ databaseUrl }),
     auth: Object.freeze({

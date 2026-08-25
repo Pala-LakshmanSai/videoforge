@@ -5,9 +5,10 @@ import { Button, EmptyState, Metric, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 import { HostedUsageScreen } from "../hosted/HostedProductScreens";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 
 export function UsageScreen() {
-  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+  return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
     <HostedUsageScreen />
   ) : (
     <FixtureUsageScreen />

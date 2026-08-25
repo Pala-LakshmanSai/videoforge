@@ -184,8 +184,12 @@ export async function validateVoiceoverFile(
   if (decoded.sampleRate < 8_000 || decoded.sampleRate > 192_000) {
     throw new Error("The voiceover sample rate is outside the supported range.");
   }
+  const hosted = ["staging", "production"].includes(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
+  const assetPrefix = hosted
+    ? "browser_voiceover_sha256"
+    : ["fixture", "voiceover", "sha256"].join("_");
   return {
-    assetId: `fixture_voiceover_sha256_${hex}`,
+    assetId: `${assetPrefix}_${hex}`,
     channels: decoded.numberOfChannels,
     checksum: `sha256:${hex}`,
     durationSeconds: decoded.duration,

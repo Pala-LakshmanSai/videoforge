@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowDown, ArrowUp, Plus, Trash2, Video } from "lucide-react";
 
 import { PageHeader } from "../components/PageHeader";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 import { Badge, Button, EmptyState, Metric, Panel, ProgressBar } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
@@ -169,7 +170,7 @@ function HostedQueueScreen() {
 }
 
 export function QueueScreen() {
-  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+  return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
     <HostedQueueScreen />
   ) : (
     <FixtureQueueScreen />

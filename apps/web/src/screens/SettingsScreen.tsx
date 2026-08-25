@@ -1,6 +1,7 @@
 import { createAuthClient } from "better-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { MediaWorkerSetup } from "../hosted/MediaWorkerSetup";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, Disclosure, Panel } from "../components/ui";
 import { api } from "../lib/api";
@@ -16,7 +17,7 @@ interface HostedTenant {
   readonly user: { readonly email: string; readonly name: string };
 }
 
-function HostedSettingsScreen() {
+function HostedSettingsScreen({ environment }: { environment: "staging" | "production" }) {
   const tenant = useQuery({
     queryKey: ["hosted-tenant"],
     queryFn: async () => {
@@ -30,7 +31,10 @@ function HostedSettingsScreen() {
     <>
       <PageHeader title="Settings" />
       <div className="grid grid-2 settings-grid">
-        <Panel eyebrow="Private staging" heading={tenant.data?.workspace_name ?? "Your workspace"}>
+        <Panel
+          eyebrow={`Private ${environment}`}
+          heading={tenant.data?.workspace_name ?? "Your workspace"}
+        >
           <div className="settings-summary">
             <Badge tone={tenant.isError ? "danger" : "success"}>
               {tenant.isError ? "UNAVAILABLE" : "TENANT ISOLATED"}
@@ -49,7 +53,7 @@ function HostedSettingsScreen() {
               </span>
               <span>
                 <small>GPU</small>
-                <strong>Disabled · fake transport only</strong>
+                <strong>Disabled until exact transport qualification</strong>
               </span>
               <span>
                 <small>CPU provider cost</small>
@@ -72,15 +76,16 @@ function HostedSettingsScreen() {
 
 export function SettingsScreen() {
   const scenario = currentScenario();
-  const hostedStaging = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging";
+  const providerMode = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE;
+  const hostedBrowser = isHostedProviderMode(providerMode);
   const health = useQuery({
     queryKey: ["health", scenario],
     queryFn: () => api.health(scenario),
-    enabled: !hostedStaging,
+    enabled: !hostedBrowser,
   });
   const mode = health.data?.mode;
 
-  if (hostedStaging) return <HostedSettingsScreen />;
+  if (hostedBrowser) return <HostedSettingsScreen environment={providerMode} />;
 
   return (
     <>

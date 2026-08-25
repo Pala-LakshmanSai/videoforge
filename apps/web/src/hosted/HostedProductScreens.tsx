@@ -29,6 +29,7 @@ export interface CatalogResponse {
     version_number: number;
   }[];
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
+  readonly gpu_transport: "DISABLED_UNQUALIFIED";
 }
 
 interface HostedAttempt {
@@ -53,7 +54,7 @@ interface ProjectDetailResponse {
     revision_state: string;
   };
   readonly attempts: readonly HostedAttempt[];
-  readonly gpu_transport: "DISABLED_FAKE_ONLY";
+  readonly gpu_transport: "DISABLED_UNQUALIFIED";
 }
 
 interface HostedUsageResponse {
@@ -392,7 +393,7 @@ export function HostedCreateProjectScreen() {
             <Check size={16} /> Personal CPU compute: $0 provider charge
           </p>
           <p>
-            <Check size={16} /> GPU transport disabled during V2-06 staging
+            <Check size={16} /> GPU transport disabled until qualification
           </p>
           {catalog.data.avatars.length === 0 ? (
             <p className="validation validation-danger">
@@ -506,7 +507,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         <Panel eyebrow="Next step" heading="Use this catalog in a project">
           <p>
             Select the exact {itemLabel} version on Create Project. Personal-worker compute stays at
-            $0 provider CPU cost; GPU transport remains disabled for V2-06.
+            $0 provider CPU cost; GPU transport remains disabled until qualification.
           </p>
           <Link className="button button-primary" to="/projects/new">
             Create Project

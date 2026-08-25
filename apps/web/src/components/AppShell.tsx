@@ -14,6 +14,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useEffect, useRef, type PropsWithChildren } from "react";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 import { api } from "../lib/api";
 import {
   dockMotionTarget,
@@ -136,20 +137,20 @@ function ProjectCommandTrack({
 export function AppShell({ children }: PropsWithChildren) {
   const dockRef = useRef<HTMLElement>(null);
   const scenario = currentScenario();
-  const hostedStaging = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging";
-  const fixtureControlsEnabled = import.meta.env.DEV && !hostedStaging;
+  const hostedBrowser = isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
+  const fixtureControlsEnabled = import.meta.env.DEV && !hostedBrowser;
   const path = useRouterState({ select: (state) => state.location.pathname });
   const health = useQuery({
     queryKey: ["health", scenario],
     queryFn: () => api.health(scenario),
     refetchInterval: 10_000,
-    enabled: !hostedStaging,
+    enabled: !hostedBrowser,
   });
   const bootstrap = useQuery({
     queryKey: ["bootstrap", scenario],
     queryFn: () => api.bootstrap(scenario),
     refetchInterval: 10_000,
-    enabled: !hostedStaging,
+    enabled: !hostedBrowser,
   });
   const hostedHealth = useQuery({
     queryKey: ["hosted-status"],
@@ -158,17 +159,20 @@ export function AppShell({ children }: PropsWithChildren) {
         headers: { accept: "application/json" },
       });
       if (!response.ok) throw new Error("Hosted status is unavailable.");
-      return response.json() as Promise<{ readonly commit: string }>;
+      return response.json() as Promise<{
+        readonly commit: string;
+        readonly environment: "staging" | "production";
+      }>;
     },
     refetchInterval: 10_000,
-    enabled: hostedStaging,
+    enabled: hostedBrowser,
   });
   const fixturePickerProps = {
     enabled: fixtureControlsEnabled,
     scenario,
     onScenarioChange: setScenario,
   };
-  const isAccessFixture = !hostedStaging && accessFixtureScenarios.has(scenario);
+  const isAccessFixture = !hostedBrowser && accessFixtureScenarios.has(scenario);
   const localMode = health.data?.mode === "local";
 
   useEffect(() => {
@@ -311,7 +315,7 @@ export function AppShell({ children }: PropsWithChildren) {
   }
 
   if (
-    !hostedStaging &&
+    !hostedBrowser &&
     bootstrap.data?.access.state &&
     bootstrap.data.access.state !== "AUTHORIZED"
   ) {
@@ -328,8 +332,8 @@ export function AppShell({ children }: PropsWithChildren) {
   const projects = bootstrap.data?.projects ?? [];
   const activeProject =
     projects.find((project) => !terminalProjectStatuses.has(project.status)) ?? projects[0];
-  const healthDegraded = hostedStaging ? hostedHealth.isError : health.isError;
-  const routeSearch = (hostedStaging ? {} : { fixture: scenario }) as never;
+  const healthDegraded = hostedBrowser ? hostedHealth.isError : health.isError;
+  const routeSearch = (hostedBrowser ? {} : { fixture: scenario }) as never;
   const renderNavItem = (item: (typeof nav)[number]) => {
     const Icon = item.icon;
     const active = isNavItemActive(path, item.to);
@@ -371,11 +375,13 @@ export function AppShell({ children }: PropsWithChildren) {
             <strong>VideoForge</strong>
           </Link>
 
-          {hostedStaging ? (
+          {hostedBrowser ? (
             <Link to="/settings" className="project-command-track">
               <span className="project-command-copy">
                 <span className="project-command-status project-command-status-success">
-                  Private staging
+                  {hostedHealth.data?.environment === "production"
+                    ? "Private production"
+                    : "Private staging"}
                 </span>
                 <strong>Personal media worker</strong>
               </span>
@@ -410,7 +416,7 @@ export function AppShell({ children }: PropsWithChildren) {
               <Activity size={16} aria-hidden="true" />
               <Badge
                 tone={
-                  hostedStaging
+                  hostedBrowser
                     ? hostedHealth.isSuccess
                       ? "success"
                       : hostedHealth.isError
@@ -424,7 +430,7 @@ export function AppShell({ children }: PropsWithChildren) {
                 }
               >
                 API{" "}
-                {hostedStaging
+                {hostedBrowser
                   ? hostedHealth.isSuccess
                     ? "healthy"
                     : hostedHealth.isError
@@ -438,7 +444,7 @@ export function AppShell({ children }: PropsWithChildren) {
               </Badge>
             </div>
 
-            {import.meta.env.PROD && !hostedStaging ? (
+            {import.meta.env.PROD && !hostedBrowser ? (
               <div className="top-health top-health-degraded" role="status">
                 <AlertTriangle size={16} aria-hidden="true" />
                 <Badge tone="warning">Hosted runtime unavailable · fixtures are not live</Badge>

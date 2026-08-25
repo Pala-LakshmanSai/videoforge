@@ -29,7 +29,7 @@ import {
   whisperModelUri,
 } from "./submission";
 
-function environment(): HostedRuntimeEnvironment {
+function environment(providerMode: "staging" | "production" = "staging"): HostedRuntimeEnvironment {
   return {
     PRIVATE_ARTIFACTS: {
       async head() {
@@ -60,7 +60,7 @@ function environment(): HostedRuntimeEnvironment {
       },
     },
     VIDEOFORGE_COMMIT: "commit-v2-06",
-    VIDEOFORGE_PROVIDER_MODE: "staging",
+    VIDEOFORGE_PROVIDER_MODE: providerMode,
     VIDEOFORGE_PUBLIC_ORIGIN: "https://staging.videoforge.example.test",
     VIDEOFORGE_R2_BUCKET_NAME: "videoforge-v2-06-staging-private",
     MEDIA_WORKER_RELEASE_MANIFEST_JSON: JSON.stringify({
@@ -132,6 +132,8 @@ describe("V2-06 hosted adapters", () => {
       schemaVersion: "videoforge-hosted-configuration/v1",
       credentials: "REDACTED",
       commit: "commit-v2-06",
+      environment: "staging",
+      gpuTransport: "DISABLED_UNQUALIFIED",
       publicOrigin: "https://staging.videoforge.example.test",
     });
     for (const value of [
@@ -149,6 +151,12 @@ describe("V2-06 hosted adapters", () => {
         ...source,
         MEDIA_WORKER_TOKEN_SECRET: source.WORKFLOW_CALLBACK_SECRET,
       }),
+    ).toThrow(HostedConfigurationError);
+    const production = hostedRuntimeConfiguration(environment("production"));
+    expect(production.environment).toBe("production");
+    expect(production.gpuTransport).toBe("DISABLED_UNQUALIFIED");
+    expect(() =>
+      hostedRuntimeConfiguration({ ...source, VIDEOFORGE_PROVIDER_MODE: "fixture" }),
     ).toThrow(HostedConfigurationError);
     for (const databaseUrl of [
       "postgresql://fixture:fixture@fixture.example.test/videoforge?sslmode=disable&channel_binding=require",

@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { HostedStagingApp } from "./hosted/HostedStagingApp";
+import { isHostedProviderMode } from "./hosted/provider-mode";
 import { routeTree } from "./routeTree.gen";
 import "./styles.css";
 
@@ -24,12 +25,13 @@ declare module "@tanstack/react-router" {
 const root = document.getElementById("root");
 if (!root) throw new Error("VideoForge root element is missing");
 
-const hostedStaging = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging";
+const providerMode = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE;
+const hostedBrowser = isHostedProviderMode(providerMode);
 
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      {hostedStaging ? (
+      {hostedBrowser ? (
         <HostedStagingApp>
           <RouterProvider router={router} />
         </HostedStagingApp>

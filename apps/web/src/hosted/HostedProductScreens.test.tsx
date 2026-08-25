@@ -84,6 +84,7 @@ describe("hosted product journey", () => {
           avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
           styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
           media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
         }),
       ),
     );
@@ -107,6 +108,7 @@ describe("hosted product journey", () => {
         avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
         styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
         media_worker_state: "ONLINE",
+        gpu_transport: "DISABLED_UNQUALIFIED",
       });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -130,7 +132,14 @@ describe("hosted product journey", () => {
   it("fails closed with an explicit activation message when the hosted catalog is empty", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => Response.json({ avatars: [], styles: [], media_worker_state: "ONLINE" })),
+      vi.fn(async () =>
+        Response.json({
+          avatars: [],
+          styles: [],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+        }),
+      ),
     );
     renderHosted(<HostedAvatarHubScreen />);
 
@@ -155,6 +164,7 @@ describe("hosted product journey", () => {
           avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
           styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
           media_worker_state: "WAITING_FOR_YOUR_COMPUTER",
+          gpu_transport: "DISABLED_UNQUALIFIED",
         }),
       ),
     );
@@ -162,7 +172,7 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("Waiting for your computer.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create and transcribe" })).toBeDisabled();
-    expect(screen.getByText(/GPU transport disabled during V2-06 staging/u)).toBeInTheDocument();
+    expect(screen.getByText(/GPU transport disabled until qualification/u)).toBeInTheDocument();
   });
 
   it("offers an idempotent recovery action for a cancellation left pending", async () => {
@@ -194,7 +204,7 @@ describe("hosted product journey", () => {
             preview_url: null,
           },
         ],
-        gpu_transport: "DISABLED_FAKE_ONLY" as const,
+        gpu_transport: "DISABLED_UNQUALIFIED" as const,
       });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -232,7 +242,7 @@ describe("hosted product journey", () => {
           preview_url: null,
         },
       ],
-      gpu_transport: "DISABLED_FAKE_ONLY" as const,
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input).endsWith("/render"))
@@ -361,7 +371,7 @@ describe("hosted product journey", () => {
             ]
           : []),
       ],
-      gpu_transport: "DISABLED_FAKE_ONLY" as const,
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
     });
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);

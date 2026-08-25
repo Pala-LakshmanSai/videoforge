@@ -23,9 +23,10 @@ import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 import type { ProjectSummary } from "../lib/types";
 import { HostedProjectScreen } from "../hosted/HostedProductScreens";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 
 export function ProjectScreen({ projectId }: { projectId: string }) {
-  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+  return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
     <HostedProjectScreen projectId={projectId} />
   ) : (
     <FixtureProjectScreen projectId={projectId} />

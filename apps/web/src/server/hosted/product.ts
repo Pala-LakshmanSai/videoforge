@@ -220,7 +220,7 @@ async function catalog(
       avatars: data.avatars,
       styles: data.styles,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
-      gpu_transport: "DISABLED_FAKE_ONLY",
+      gpu_transport: "DISABLED_UNQUALIFIED",
     });
   } finally {
     await pool.end();
@@ -319,7 +319,7 @@ async function createProject(
         avatar_profile_version_id: input.avatarVersionId,
         image_style_version_id: input.styleVersionId,
         generation_mode: "LOWEST_COST",
-        gpu_transport: "DISABLED_FAKE_ONLY",
+        gpu_transport: "DISABLED_UNQUALIFIED",
       };
       const revisionHash = await sha256(canonicalJson(revisionPayload));
       await transaction.query(
@@ -1003,7 +1003,7 @@ async function projectDetail(
       schema_version: "videoforge-hosted-project-detail/v1",
       project: detail.project,
       attempts,
-      gpu_transport: "DISABLED_FAKE_ONLY",
+      gpu_transport: "DISABLED_UNQUALIFIED",
     });
   } finally {
     await pool.end();

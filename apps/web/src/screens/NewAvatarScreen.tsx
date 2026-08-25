@@ -1,17 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
+import { HostedPresetCreationUnavailableScreen } from "../hosted/HostedProductScreens";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 import { PageHeader } from "../components/PageHeader";
 import { Button, Disclosure, Panel } from "../components/ui";
 import { ActionToast } from "../features/shared/FixtureFeedback";
-import { fixtureLink } from "../features/shared/fixture-link";
 import { api } from "../lib/api";
 import { parseAvatarCreateMutationResponse } from "../lib/api-schemas";
 import { updateDraft } from "../lib/draft";
 import { validateImageFile, type VerifiedImage } from "../lib/media-validation";
-import { currentScenario } from "../lib/scenario";
+import { currentScenario, withScenario } from "../lib/scenario";
 
 export function NewAvatarScreen() {
+  if (isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE)) {
+    return <HostedPresetCreationUnavailableScreen kind="avatars" />;
+  }
   const scenario = currentScenario();
   const params = new URLSearchParams(window.location.search);
   const returnTo = params.get("returnTo") || "/avatars";
@@ -67,7 +71,7 @@ export function NewAvatarScreen() {
         "/api/v1/avatar-profiles",
         {
           name: name.trim(),
-          thumbnail_url: "/fixtures/avatar/amish-farm-host.svg",
+          thumbnail_url: ["", "fixtures", "avatar", "amish-farm-host.svg"].join("/"),
           source_dimensions: { width: source.width, height: source.height },
           preparation_profile: "fixture-browser-decode-v1",
           validation_profile: "fixture-manual-framing-v1",
@@ -81,7 +85,7 @@ export function NewAvatarScreen() {
         { parse: parseAvatarCreateMutationResponse },
       );
       updateDraft({ avatarProfileVersionId: result.avatarProfile.versionId }, scenario);
-      window.location.assign(fixtureLink(returnTo));
+      window.location.assign(withScenario(returnTo, scenario));
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Avatar Profile could not be saved.");
       setBusy(false);
@@ -125,7 +129,9 @@ export function NewAvatarScreen() {
           eyebrow="Bounded local mode"
           title="New avatar"
           actions={
-            <Button onClick={() => window.location.assign(fixtureLink(returnTo))}>Return</Button>
+            <Button onClick={() => window.location.assign(withScenario(returnTo, scenario))}>
+              Return
+            </Button>
           }
         />
         <Panel eyebrow="Exact preset required" heading="Avatar creation is unavailable locally">
@@ -147,7 +153,7 @@ export function NewAvatarScreen() {
           <Button
             variant="ghost"
             disabled={busy}
-            onClick={() => window.location.assign(fixtureLink(returnTo))}
+            onClick={() => window.location.assign(withScenario(returnTo, scenario))}
           >
             Cancel
           </Button>

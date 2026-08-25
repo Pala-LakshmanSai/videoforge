@@ -10,9 +10,10 @@ import { avatarCompatibilityLabel, humanize, statusTone } from "../features/shar
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 import { HostedAvatarHubScreen } from "../hosted/HostedProductScreens";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 
 export function AvatarHubScreen() {
-  if (import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging") {
+  if (isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE)) {
     return <HostedAvatarHubScreen />;
   }
   const scenario = currentScenario();

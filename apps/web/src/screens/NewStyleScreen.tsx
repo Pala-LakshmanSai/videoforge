@@ -2,19 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import type { ImageStyleHubVersionResponse } from "@videoforge/contracts/image-style-hub";
 import { ArrowRight, Check, Images, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { HostedPresetCreationUnavailableScreen } from "../hosted/HostedProductScreens";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 import { PageHeader } from "../components/PageHeader";
 import { Button, Disclosure, Panel } from "../components/ui";
 import { ActionToast } from "../features/shared/FixtureFeedback";
-import { fixtureLink } from "../features/shared/fixture-link";
 import { api } from "../lib/api";
 import { updateDraft } from "../lib/draft";
 import {
   normalizeImageStyleReference,
   type NormalizedStyleReference,
 } from "../lib/media-validation";
-import { currentScenario } from "../lib/scenario";
+import { currentScenario, withScenario } from "../lib/scenario";
 
 export function NewStyleScreen() {
+  if (isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE)) {
+    return <HostedPresetCreationUnavailableScreen kind="styles" />;
+  }
   const scenario = currentScenario();
   const params = new URLSearchParams(window.location.search);
   const returnTo = params.get("returnTo") || "/styles";
@@ -254,7 +258,7 @@ export function NewStyleScreen() {
         operationKeys.current.publish,
       );
       updateDraft({ imageStyleVersionId: result.version_id }, scenario);
-      window.location.assign(fixtureLink(returnTo));
+      window.location.assign(withScenario(returnTo, scenario));
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : "Image Style could not be saved.");
       setBusy(false);
@@ -298,7 +302,9 @@ export function NewStyleScreen() {
           eyebrow="Bounded local mode"
           title="New style"
           actions={
-            <Button onClick={() => window.location.assign(fixtureLink(returnTo))}>Return</Button>
+            <Button onClick={() => window.location.assign(withScenario(returnTo, scenario))}>
+              Return
+            </Button>
           }
         />
         <Panel eyebrow="Exact preset required" heading="Style creation is unavailable locally">
@@ -320,7 +326,7 @@ export function NewStyleScreen() {
           <Button
             variant="ghost"
             disabled={busy}
-            onClick={() => window.location.assign(fixtureLink(returnTo))}
+            onClick={() => window.location.assign(withScenario(returnTo, scenario))}
           >
             Cancel
           </Button>

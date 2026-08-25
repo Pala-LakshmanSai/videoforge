@@ -955,8 +955,8 @@ export async function handleHostedRequest(
     return json({
       schema_version: "videoforge-hosted-status/v1",
       commit: config.commit,
-      environment: "staging",
-      gpu_transport: "DISABLED_FAKE_ONLY",
+      environment: config.environment,
+      gpu_transport: config.gpuTransport,
       database: "NEON_POSTGRES_REQUIRED",
       artifact_plane: "PRIVATE_R2_REQUIRED",
       orchestration: "CLOUDFLARE_WORKFLOW_REQUIRED",

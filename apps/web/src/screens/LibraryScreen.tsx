@@ -4,6 +4,7 @@ import { AlertTriangle, Download, Library, Play, Trash2 } from "lucide-react";
 import { CompositionPreview } from "../components/CompositionPreview";
 import { isLocalVideoArtifact, MediaArtifactPreview } from "../components/MediaArtifactPreview";
 import { PageHeader } from "../components/PageHeader";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 import { Badge, Button, Disclosure, EmptyState, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
@@ -153,7 +154,7 @@ function HostedLibraryScreen() {
 }
 
 export function LibraryScreen() {
-  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ? (
+  return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
     <HostedLibraryScreen />
   ) : (
     <FixtureLibraryScreen />

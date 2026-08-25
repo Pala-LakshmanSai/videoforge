@@ -55,6 +55,8 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("bounded local screens", () => {
@@ -121,5 +123,49 @@ describe("bounded local screens", () => {
     expect(screen.getByRole("heading", { name: "Local media slice" })).toBeVisible();
     expect(screen.getByText("$0.10 bounded request cap")).toBeVisible();
     expect(screen.getByText("$0 authorized")).toBeInTheDocument();
+  });
+
+  it("labels production GPU transport as disabled until qualification", async () => {
+    vi.stubEnv("VITE_VIDEOFORGE_PROVIDER_MODE", "production");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input) === "/api/v2/tenant") {
+          return Response.json({
+            workspace_name: "Private workspace",
+            user: { email: "owner@example.test", name: "Owner" },
+          });
+        }
+        if (String(input) === "/api/v2/media-workers") {
+          return Response.json({
+            schema_version: "videoforge-media-worker-list/v1",
+            devices: [],
+            release: {
+              version: "1.0.0",
+              minimum_protocol_version: 1,
+              windows: {
+                url: "/worker.exe",
+                sha256: `sha256:${"a".repeat(64)}`,
+                size_bytes: 1,
+                trust: "UNSIGNED_BETA",
+              },
+              macos: {
+                url: "/worker.dmg",
+                sha256: `sha256:${"b".repeat(64)}`,
+                size_bytes: 1,
+                trust: "AD_HOC_BETA",
+              },
+            },
+          });
+        }
+        throw new Error(`Unexpected hosted request: ${String(input)}`);
+      }),
+    );
+
+    renderWithQueryClient(<SettingsScreen />);
+
+    expect(await screen.findByText("Private production")).toBeVisible();
+    expect(screen.getByText("Disabled until exact transport qualification")).toBeInTheDocument();
+    expect(screen.queryByText(/fake transport/u)).not.toBeInTheDocument();
   });
 });
