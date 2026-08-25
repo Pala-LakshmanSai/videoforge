@@ -835,6 +835,67 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain('evidence.timeout_output_cleanup = "CONFIRMED"');
   });
 
+  it("rotates the drained seed endpoint before one replacement and binds all later proof to it", () => {
+    const seedBoundaryPersisted = source.indexOf(
+      'persistCheckpoint("probe-process-replaced-boundary"',
+    );
+    const endpointRotation = source.indexOf("harness.rotateEndpointForProcessReplacement(");
+    const replacementAuthorities = source.indexOf("const resumeBatch = await createBatch(");
+    const replacementVerification = source.indexOf(
+      "const resumeEvidence = await verifyBatchWithDiagnostic",
+    );
+    const signedPodAssertion = source.indexOf("harness.assertProcessReplacementIdentity(");
+    const finalReconciliation = source.indexOf(
+      "const finalReconciliation = await reconcileV207SuccessReadonly",
+    );
+
+    expect([
+      seedBoundaryPersisted,
+      endpointRotation,
+      replacementAuthorities,
+      replacementVerification,
+      signedPodAssertion,
+      finalReconciliation,
+    ]).toEqual(
+      [
+        seedBoundaryPersisted,
+        endpointRotation,
+        replacementAuthorities,
+        replacementVerification,
+        signedPodAssertion,
+        finalReconciliation,
+      ].sort((left, right) => left - right),
+    );
+    expect(seedBoundaryPersisted).toBeGreaterThan(-1);
+    expect(source).toContain(
+      "processReplacementEndpointRotation.previousEndpointIdHash !==\n          createdIdentity.endpointIdHash",
+    );
+    expect(source).toContain(
+      "processReplacementEndpointRotation.endpointIdHash === createdIdentity.endpointIdHash",
+    );
+    expect(source).toContain(
+      "const replacementEndpointIdHash = processReplacementEndpointRotation.endpointIdHash",
+    );
+    expect(source).toContain('event: "process_replacement_endpoint_rotated"');
+    expect(source).toContain("previous_endpoint_id_hash:");
+    expect(source).toContain("replacement_endpoint_id_hash: replacementEndpointIdHash");
+    expect(
+      source.match(/const resumeJob = await harness\.dispatchBatch\(resumeBatch\.input\)/g),
+    ).toHaveLength(1);
+    expect(source.slice(replacementVerification, finalReconciliation)).not.toContain(
+      "createdIdentity.endpointIdHash",
+    );
+    expect(source.slice(replacementVerification, finalReconciliation)).toContain(
+      "replacementEndpointIdHash",
+    );
+    expect(source.slice(signedPodAssertion, finalReconciliation)).not.toMatch(
+      /dispatchBatch\(resumeBatch\.input\)/,
+    );
+    expect(source.slice(finalReconciliation)).toContain(
+      "expectedEndpointIdHash: replacementEndpointIdHash",
+    );
+  });
+
   it("uses both post-timeout reader receipts as the terminal sealed-model attestation", () => {
     const cancelTerminal = source.indexOf('persistCheckpoint("cancel-terminal")');
     const timeoutTerminal = source.indexOf('persistCheckpoint("timeout-terminal"');

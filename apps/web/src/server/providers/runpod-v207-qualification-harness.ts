@@ -660,6 +660,10 @@ export class RunPodV207QualificationHarness {
   #initialConfigHash: string | null = null;
   #concurrentReaderConfigHash: string | null = null;
   #initialQualificationComplete = false;
+  /** Exact one-shot boundary minted by prepareProcessReplacement and consumed by rotation. */
+  #preparedProcessReplacementBoundaryHash: string | null = null;
+  /** Keeps cleanup authoritative after the seed endpoint has gone but rotation has not completed. */
+  #processReplacementSeedEndpointDeleted = false;
   /** A direct warm-idle fallback is permitted only immediately after an owned terminal job. */
   #postJobWarmIdlePending = false;
   /** Blocks the primary client until every independently guarded reader has drained. */
@@ -1870,6 +1874,7 @@ export class RunPodV207QualificationHarness {
       terminal_pod_record_count: terminal.terminalPodRecordCount,
       terminal_scale_zero_confirmed: true,
     };
+    this.#preparedProcessReplacementBoundaryHash = sha256(canonicalizeJson(boundary));
     this.mark("process_replacement_seed_drained", {
       seed_job_id_hash: boundary.seed_job_id_sha256,
       seed_worker_id_sha256: boundary.seed_worker_id_sha256,
@@ -1881,6 +1886,168 @@ export class RunPodV207QualificationHarness {
       terminal_scale_zero_confirmed: true,
     });
     return boundary;
+  }
+
+  /**
+   * Force a provider allocation boundary before the replacement dispatch. The drained seed
+   * endpoint is the only resource deleted: its exact template and sealed volume remain pinned,
+   * and no job is submitted by this method.
+   */
+  async rotateEndpointForProcessReplacement(
+    boundary: RunPodV207ProcessReplacementBoundary,
+  ): Promise<{
+    readonly previousEndpointIdHash: string;
+    readonly endpointIdHash: string;
+    readonly templateIdHash: string;
+  }> {
+    this.assertCreated();
+    this.checkAbort();
+    const boundaryHash = sha256(canonicalizeJson(boundary));
+    const seedTerminalJobMatches = [...this.#terminalJobIds].filter(
+      (jobId) => sha256(jobId) === boundary.seed_job_id_sha256,
+    );
+    const boundaryValid =
+      boundary.schema_version === "videoforge-v207-process-replacement-boundary/v1" &&
+      SHA256.test(boundary.seed_job_id_sha256) &&
+      SHA256.test(boundary.seed_worker_id_sha256) &&
+      SHA256.test(boundary.seed_pod_id_sha256) &&
+      boundary.seed_worker_id_sha256 === boundary.seed_pod_id_sha256 &&
+      SHA256.test(boundary.terminal_provider_pod_id_sha256) &&
+      boundary.terminal_provider_pod_id_sha256 === boundary.seed_pod_id_sha256 &&
+      boundary.terminal_provider_identity_source === "terminal_pod_record" &&
+      Number.isSafeInteger(boundary.terminal_worker_record_count) &&
+      boundary.terminal_worker_record_count >= 0 &&
+      Number.isSafeInteger(boundary.terminal_pod_record_count) &&
+      boundary.terminal_pod_record_count >= 1 &&
+      boundary.terminal_scale_zero_confirmed === true &&
+      this.#preparedProcessReplacementBoundaryHash === boundaryHash &&
+      seedTerminalJobMatches.length === 1;
+    if (!boundaryValid) {
+      throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_BOUNDARY_INVALID");
+    }
+    if (
+      this.#ownedJobs.size !== 0 ||
+      this.#readerJobs.length !== 0 ||
+      this.#concurrentReaderFence ||
+      this.#concurrentReaderDispatchClaimed ||
+      this.#guard.snapshot() !== "zero"
+    ) {
+      throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_SEED_NOT_TERMINAL");
+    }
+
+    const template = this.#template!;
+    const seedEndpoint = this.#endpoint!;
+    this.#preparedProcessReplacementBoundaryHash = null;
+    await this.#options.control.deleteEndpoint(seedEndpoint.id, this.#guard);
+    this.#processReplacementSeedEndpointDeleted = true;
+    this.#endpoint = null;
+    this.#jobs = null;
+    this.#endpointIdentityBound = false;
+    this.#initialConfigHash = null;
+    this.#concurrentReaderConfigHash = null;
+    this.mark("process_replacement_seed_endpoint_deleted", {
+      previous_endpoint_id_hash: seedEndpoint.idHash,
+      template_id_hash: template.idHash,
+    });
+
+    try {
+      const sleep =
+        this.#options.sleep ??
+        ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+      let priorSignature: string | null = null;
+      let stableReadCount = 0;
+      for (let attempt = 0; attempt < 40 && stableReadCount < 2; attempt += 1) {
+        this.checkAbort();
+        const [inventory, resources] = await Promise.all([
+          this.#options.control.inventory(),
+          this.#options.control.inventoryDisposableResources(),
+        ]);
+        this.assertRetainedMageVolume(inventory);
+        const exactTemplate =
+          resources.templates.length === 1 &&
+          resources.templates[0]?.id === template.id &&
+          resources.templates[0]?.name === this.#options.templateName &&
+          this.templateIdentityMatches(resources.templates[0]);
+        const exactGap =
+          inventory.runningPodCount === 0 &&
+          inventory.activeServerlessWorkerCount === 0 &&
+          inventory.pods.length === 0 &&
+          inventory.endpoints.length === 0 &&
+          inventory.privateTemplateCount === 1 &&
+          resources.endpoints.length === 0 &&
+          exactTemplate;
+        if (!exactGap) {
+          priorSignature = null;
+          stableReadCount = 0;
+        } else {
+          const signature = canonicalizeJson({
+            endpoint_count: inventory.endpoints.length,
+            pod_count: inventory.pods.length,
+            private_template_count: inventory.privateTemplateCount,
+            running_pod_count: inventory.runningPodCount,
+            active_serverless_worker_count: inventory.activeServerlessWorkerCount,
+            template_id_hash: template.idHash,
+            retained_volume_id_hash: sha256(this.#options.placement.networkVolumeId),
+          });
+          stableReadCount = signature === priorSignature ? 2 : 1;
+          priorSignature = signature;
+        }
+        if (stableReadCount < 2) await sleep(250);
+      }
+      if (stableReadCount !== 2) {
+        throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_ROTATION_GAP_UNCONFIRMED");
+      }
+      this.#guard.confirmZero(0, 0);
+      this.mark("process_replacement_rotation_gap_confirmed", {
+        stable_inventory_read_count: 2,
+        endpoint_count: 0,
+        pod_count: 0,
+        active_worker_count: 0,
+        template_id_hash: template.idHash,
+        retained_volume_id_hash: sha256(this.#options.placement.networkVolumeId),
+      });
+
+      const endpointCreationLiability = this.infrastructureLiabilityUsd(1);
+      await this.reservePaidLiability(endpointCreationLiability);
+      this.checkAbort();
+      this.#endpoint = await this.#options.control.createScaleZeroEndpoint(
+        this.#options.endpointName,
+        template.id,
+        ["NVIDIA GeForce RTX 4090"],
+        this.#options.initialPolicy,
+        this.#options.placement,
+        true,
+      );
+      this.#projectedSettledLiabilityUsd += endpointCreationLiability;
+      this.#reservedInitCredits += 1;
+      if (this.#endpoint.idHash === seedEndpoint.idHash) {
+        throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_ENDPOINT_ID_NOT_DISTINCT");
+      }
+      await this.bindEndpointIdentity();
+      this.checkAbort();
+      await this.initializeEndpointAfterCreate();
+      this.checkAbort();
+      this.#processReplacementSeedEndpointDeleted = false;
+      this.mark("process_replacement_endpoint_rotated", {
+        previous_endpoint_id_hash: seedEndpoint.idHash,
+        endpoint_id_hash: this.#endpoint.idHash,
+        template_id_hash: template.idHash,
+        endpoint_config_sha256: this.#initialConfigHash!,
+      });
+      return Object.freeze({
+        previousEndpointIdHash: seedEndpoint.idHash,
+        endpointIdHash: this.#endpoint.idHash,
+        templateIdHash: template.idHash,
+      });
+    } catch (error) {
+      this.mark("process_replacement_endpoint_rotation_failed", {
+        seed_endpoint_deleted: true,
+        replacement_endpoint_tracked: this.#endpoint !== null,
+        template_retained: true,
+        retained_volume_untouched: true,
+      });
+      throw error;
+    }
   }
 
   /** Require the replacement's signed runtime identity to differ on both worker and pod axes. */
@@ -2537,7 +2704,50 @@ export class RunPodV207QualificationHarness {
     readonly deleteIfFailed: boolean;
     readonly failed: boolean;
   }): Promise<void> {
-    if (!this.#endpoint || !this.#jobs || !this.#template) return;
+    if (!this.#template) return;
+    if (!this.#endpoint) {
+      if (!this.#processReplacementSeedEndpointDeleted) return;
+      if (!options.deleteIfFailed || !options.failed) {
+        this.mark("rotation_template_retained_without_endpoint", {
+          template_id_hash: this.#template.idHash,
+          retained_volume_untouched: true,
+        });
+        return;
+      }
+      try {
+        const resources = await this.#options.control.inventoryDisposableResources();
+        if (
+          resources.endpoints.length !== 0 ||
+          resources.templates.length !== 1 ||
+          resources.templates[0]?.id !== this.#template.id ||
+          !this.templateIdentityMatches(resources.templates[0])
+        ) {
+          throw new RunPodControlError("RUNPOD_CLEANUP_UNCERTAIN");
+        }
+        await this.#options.control.deleteTemplate(this.#template.id);
+        this.#processReplacementSeedEndpointDeleted = false;
+        this.mark("rotation_orphan_template_deleted", {
+          template_id_hash: this.#template.idHash,
+          retained_volume_untouched: true,
+        });
+        return;
+      } catch {
+        this.mark("cleanup_delete_uncertain");
+        throw new RunPodControlError("RUNPOD_CLEANUP_UNCERTAIN");
+      }
+    }
+    if (!this.#jobs) {
+      if (!this.#processReplacementSeedEndpointDeleted) return;
+      this.#guard.markActive();
+      this.#jobs = new RunPodServerlessJobClient({
+        apiKey: this.#options.apiKey,
+        endpointId: this.#endpoint.id,
+        guard: this.#guard,
+        fetch: this.#options.fetch,
+        baseUrl: this.#options.baseUrl,
+        sleep: this.#options.sleep,
+      });
+    }
     try {
       await this.cancelOwnedJobs();
     } catch {

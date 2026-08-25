@@ -525,6 +525,139 @@ function terminalScaleZeroFetch(
   });
 }
 
+function processReplacementRotationFetch(
+  options: {
+    readonly retainedEndpointAfterDelete?: boolean;
+    readonly unstableZeroInventory?: boolean;
+    readonly retainedPodAfterDelete?: boolean;
+    readonly failReplacementBinding?: boolean;
+  } = {},
+) {
+  let endpointCreateCount = 0;
+  let templateCreated = false;
+  let oldEndpointDeleted = false;
+  let replacementEndpointCreated = false;
+  let zeroInventoryReads = 0;
+  let endpointEnvironment: Record<string, string> | null = null;
+  const statusReads = new Map<string, number>();
+
+  const endpoint = (id: "endpoint_01" | "endpoint_02", workers: readonly unknown[] = []) => ({
+    ...reconciledEndpoint,
+    id,
+    workers,
+  });
+  const terminalWorker = { id: "worker_seed", desiredStatus: "EXITED", status: "EXITED" };
+  const terminalPod = {
+    id: "pod_seed",
+    endpointId: "endpoint_01",
+    desiredStatus: "EXITED",
+    status: "EXITED",
+  };
+
+  return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname;
+    const body = init?.body === undefined ? null : JSON.parse(String(init.body));
+
+    if (path === "/networkvolumes") {
+      return jsonResponse([{ id: "volume_01", size: 50, dataCenterId: "EU-RO-1" }]);
+    }
+    if (path === "/templates" && init?.method === "POST") {
+      templateCreated = true;
+      return jsonResponse(reconciledTemplate, 201);
+    }
+    if (path === "/templates/template_01/update" && init?.method === "POST") {
+      endpointEnvironment = body.env;
+      if (options.failReplacementBinding && replacementEndpointCreated) {
+        return jsonResponse({ id: "template_01", env: {} });
+      }
+      return jsonResponse({ id: "template_01", env: endpointEnvironment });
+    }
+    if (path === "/templates/template_01" && init?.method === undefined) {
+      return jsonResponse({ ...reconciledTemplate, env: endpointEnvironment });
+    }
+    if (path === "/templates" && init?.method === undefined) {
+      return jsonResponse(templateCreated ? [reconciledTemplate] : []);
+    }
+    if (path === "/endpoints" && init?.method === "POST") {
+      endpointCreateCount += 1;
+      const id = endpointCreateCount === 1 ? "endpoint_01" : "endpoint_02";
+      replacementEndpointCreated = id === "endpoint_02";
+      return jsonResponse(endpoint(id), 201);
+    }
+    if (/^\/endpoints\/endpoint_0[12]\/update$/u.test(path)) {
+      const id = path.includes("endpoint_02") ? "endpoint_02" : "endpoint_01";
+      return jsonResponse({ ...endpoint(id), workersMax: body.workersMax });
+    }
+    if (/^\/endpoints\/endpoint_0[12]$/u.test(path) && init?.method === "PATCH") {
+      const id = path.endsWith("endpoint_02") ? "endpoint_02" : "endpoint_01";
+      return jsonResponse({ ...body, id, computeType: "GPU" });
+    }
+    if (/^\/endpoints\/endpoint_0[12]$/u.test(path) && init?.method === undefined) {
+      const id = path.endsWith("endpoint_02") ? "endpoint_02" : "endpoint_01";
+      return jsonResponse({ ...endpoint(id), env: endpointEnvironment });
+    }
+    if (path === "/endpoints/endpoint_01" && init?.method === "DELETE") {
+      oldEndpointDeleted = true;
+      return new Response(null, { status: 204 });
+    }
+    if (path === "/endpoints/endpoint_02" && init?.method === "DELETE") {
+      replacementEndpointCreated = false;
+      return new Response(null, { status: 204 });
+    }
+    if (path === "/templates/template_01" && init?.method === "DELETE") {
+      templateCreated = false;
+      return new Response(null, { status: 204 });
+    }
+    if (path === "/endpoints" && init?.method === undefined) {
+      if (!oldEndpointDeleted) {
+        return jsonResponse(
+          endpointCreateCount === 0 ? [] : [endpoint("endpoint_01", [terminalWorker])],
+        );
+      }
+      if (replacementEndpointCreated) return jsonResponse([endpoint("endpoint_02")]);
+      zeroInventoryReads += 1;
+      const retainOldEndpoint =
+        options.retainedEndpointAfterDelete ||
+        (options.unstableZeroInventory && zeroInventoryReads > 1);
+      return jsonResponse(retainOldEndpoint ? [endpoint("endpoint_01", [terminalWorker])] : []);
+    }
+    if (path === "/pods" && init?.method === undefined) {
+      if (!oldEndpointDeleted) return jsonResponse(endpointCreateCount === 0 ? [] : [terminalPod]);
+      if (replacementEndpointCreated) return jsonResponse([]);
+      return jsonResponse(options.retainedPodAfterDelete ? [terminalPod] : []);
+    }
+    if (/^\/endpoint_0[12]\/health$/u.test(path)) {
+      return jsonResponse({
+        workers: {
+          idle: 1,
+          running: 0,
+          initializing: 0,
+          ready: 0,
+          throttled: 0,
+          unhealthy: 0,
+        },
+        jobs: { inQueue: 0, inProgress: 0 },
+      });
+    }
+    if (/^\/endpoint_0[12]\/run$/u.test(path)) {
+      const jobId = path.includes("endpoint_02") ? "job_02" : "job_01";
+      return jsonResponse({ id: jobId, status: "IN_QUEUE" });
+    }
+    if (path.includes("/status/")) {
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      const reads = (statusReads.get(jobId) ?? 0) + 1;
+      statusReads.set(jobId, reads);
+      return jsonResponse({
+        id: jobId,
+        status: reads === 1 ? "IN_PROGRESS" : "COMPLETED",
+        executionTime: 100,
+        delayTime: 20,
+      });
+    }
+    throw new Error(`unexpected request ${path}`);
+  });
+}
+
 describe("V2-07 qualification harness", () => {
   it.each([
     ["wrong id", { id: "volume_other", size: 50, dataCenterId: "EU-RO-1" }],
@@ -1412,6 +1545,196 @@ describe("V2-07 qualification harness", () => {
         distinct_process_identity: true,
       }),
     );
+  });
+
+  it("rotates the drained seed endpoint before exactly one replacement dispatch", async () => {
+    const fetch = processReplacementRotationFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    const boundary = await instance.prepareProcessReplacement(seed.id, {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: hashValue("pod_seed"),
+      pod_id_sha256: hashValue("pod_seed"),
+    });
+
+    await expect(instance.rotateEndpointForProcessReplacement(boundary)).resolves.toMatchObject({
+      previousEndpointIdHash: hashValue("endpoint_01"),
+      endpointIdHash: hashValue("endpoint_02"),
+      templateIdHash: hashValue("template_01"),
+    });
+    await expect(
+      instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
+    ).resolves.toMatchObject({ id: "job_02", status: "IN_QUEUE" });
+
+    const calls = fetch.mock.calls.map(([input, init]) => ({
+      path: new URL(String(input)).pathname,
+      method: init?.method ?? "GET",
+    }));
+    const deleteSeedIndex = calls.findIndex(
+      ({ path, method }) => path === "/endpoints/endpoint_01" && method === "DELETE",
+    );
+    const secondCreateIndex = calls.findIndex(
+      ({ path, method }, index) =>
+        path === "/endpoints" &&
+        method === "POST" &&
+        calls.slice(0, index).some((call) => call.path === "/endpoints" && call.method === "POST"),
+    );
+    const replacementReadbackIndex = calls.findIndex(
+      ({ path, method }, index) =>
+        index > secondCreateIndex && path === "/endpoints/endpoint_02" && method === "GET",
+    );
+    const replacementRunIndex = calls.findIndex(({ path }) => path === "/endpoint_02/run");
+    const stableZeroEndpointReads = calls.filter(
+      ({ path, method }, index) =>
+        index > deleteSeedIndex &&
+        index < secondCreateIndex &&
+        path === "/endpoints" &&
+        method === "GET",
+    );
+    const stableZeroPodReads = calls.filter(
+      ({ path, method }, index) =>
+        index > deleteSeedIndex &&
+        index < secondCreateIndex &&
+        path === "/pods" &&
+        method === "GET",
+    );
+
+    expect(deleteSeedIndex).toBeGreaterThan(
+      calls.findIndex(({ path }) => path === "/endpoint_01/status/job_01"),
+    );
+    expect(stableZeroEndpointReads).toHaveLength(4); // inventory plus resource read per snapshot
+    expect(stableZeroPodReads).toHaveLength(2);
+    expect(secondCreateIndex).toBeGreaterThan(deleteSeedIndex);
+    expect(replacementReadbackIndex).toBeGreaterThan(secondCreateIndex);
+    expect(replacementRunIndex).toBeGreaterThan(replacementReadbackIndex);
+    expect(calls.filter(({ path }) => path.endsWith("/run"))).toHaveLength(2);
+    expect((await instance.evidence()).endpointIdHash).toBe(hashValue("endpoint_02"));
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({
+        event: "process_replacement_endpoint_rotated",
+        previous_endpoint_id_hash: hashValue("endpoint_01"),
+        endpoint_id_hash: hashValue("endpoint_02"),
+      }),
+    );
+  });
+
+  it.each([
+    ["persistent endpoint", { retainedEndpointAfterDelete: true }],
+    ["unstable endpoint", { unstableZeroInventory: true }],
+    ["persistent Pod", { retainedPodAfterDelete: true }],
+  ] as const)(
+    "blocks replacement recreate and dispatch on %s inventory",
+    async (_label, options) => {
+      const fetch = processReplacementRotationFetch(options);
+      const instance = makeHarness(fetch);
+      await instance.create();
+      const seed = await instance.dispatchBatch(oneItemInput());
+      await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+      const boundary = await instance.prepareProcessReplacement(seed.id, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("pod_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      });
+
+      await expect(instance.rotateEndpointForProcessReplacement(boundary)).rejects.toThrow();
+      expect(
+        fetch.mock.calls.filter(
+          ([input, init]) =>
+            new URL(String(input)).pathname === "/endpoints" && init?.method === "POST",
+        ),
+      ).toHaveLength(1);
+      expect(
+        fetch.mock.calls.filter(
+          ([input]) => new URL(String(input)).pathname === "/endpoint_02/run",
+        ),
+      ).toHaveLength(0);
+    },
+  );
+
+  it("checks finite-cap headroom before creating the replacement endpoint", async () => {
+    const fetch = processReplacementRotationFetch();
+    const spendSnapshotUsd = async () =>
+      fetch.mock.calls.some(
+        ([input, init]) =>
+          new URL(String(input)).pathname === "/endpoints/endpoint_01" && init?.method === "DELETE",
+      )
+        ? 4
+        : 0;
+    const instance = makeHarness(fetch, spendSnapshotUsd);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    const boundary = await instance.prepareProcessReplacement(seed.id, {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: hashValue("pod_seed"),
+      pod_id_sha256: hashValue("pod_seed"),
+    });
+
+    await expect(instance.rotateEndpointForProcessReplacement(boundary)).rejects.toThrow(
+      "RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT",
+    );
+    expect(
+      fetch.mock.calls.filter(
+        ([input, init]) =>
+          new URL(String(input)).pathname === "/endpoints" && init?.method === "POST",
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === "/endpoint_02/run"),
+    ).toHaveLength(0);
+  });
+
+  it("still rejects the same signed Pod after a distinct endpoint rotation", async () => {
+    const fetch = processReplacementRotationFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    const boundary = await instance.prepareProcessReplacement(seed.id, {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: hashValue("pod_seed"),
+      pod_id_sha256: hashValue("pod_seed"),
+    });
+    await instance.rotateEndpointForProcessReplacement(boundary);
+    const replacement = await instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b"));
+    await expect(instance.reconcile(replacement.id)).resolves.toMatchObject({
+      status: "COMPLETED",
+    });
+
+    expect(() =>
+      instance.assertProcessReplacementIdentity(boundary, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: hashValue("pod_seed"),
+        pod_id_sha256: hashValue("pod_seed"),
+      }),
+    ).toThrow("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
+  });
+
+  it("cleans attributable endpoints and template after replacement rotation binding fails", async () => {
+    const fetch = processReplacementRotationFetch({ failReplacementBinding: true });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const seed = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.reconcile(seed.id)).resolves.toMatchObject({ status: "COMPLETED" });
+    const boundary = await instance.prepareProcessReplacement(seed.id, {
+      schema_version: "videoforge-v207-worker-process-identity/v1",
+      worker_id_sha256: hashValue("pod_seed"),
+      pod_id_sha256: hashValue("pod_seed"),
+    });
+    await expect(instance.rotateEndpointForProcessReplacement(boundary)).rejects.toThrow();
+    await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).resolves.toBeUndefined();
+
+    const deletes = fetch.mock.calls
+      .filter(([, init]) => init?.method === "DELETE")
+      .map(([input]) => new URL(String(input)).pathname);
+    expect(deletes).toEqual([
+      "/endpoints/endpoint_01",
+      "/endpoints/endpoint_02",
+      "/templates/template_01",
+    ]);
+    expect(deletes.some((path) => path.includes("networkvolumes"))).toBe(false);
   });
 
   it("fails closed when the exact signed terminal Pod identity is unavailable", async () => {

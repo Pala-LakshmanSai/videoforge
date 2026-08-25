@@ -2460,6 +2460,37 @@ async function main(): Promise<void> {
         event: "process_replacement_seed_terminal_scale_zero",
         process_replacement_boundary: processReplacementBoundary,
       });
+      // A terminal seed on the same endpoint can be scheduled back onto the same retained
+      // FlashBoot process. Rotate the disposable endpoint before issuing any replacement
+      // authorities so the resume and every later batch are bound to a fresh endpoint identity.
+      const processReplacementEndpointRotation = await harness.rotateEndpointForProcessReplacement(
+        processReplacementBoundary,
+      );
+      if (
+        processReplacementEndpointRotation.previousEndpointIdHash !==
+          createdIdentity.endpointIdHash ||
+        processReplacementEndpointRotation.endpointIdHash === createdIdentity.endpointIdHash
+      ) {
+        throw new Error("V207_PROCESS_REPLACEMENT_ENDPOINT_ROTATION_INVALID");
+      }
+      const replacementEndpointIdHash = processReplacementEndpointRotation.endpointIdHash;
+      evidence.process_replacement_endpoint_rotation = {
+        schema_version: "videoforge-v207-process-replacement-endpoint-rotation/v1",
+        previous_endpoint_id_hash: processReplacementEndpointRotation.previousEndpointIdHash,
+        replacement_endpoint_id_hash: replacementEndpointIdHash,
+        template_id_hash: processReplacementEndpointRotation.templateIdHash,
+        previous_endpoint_matches_seed: true,
+        replacement_endpoint_differs_from_seed: true,
+      };
+      latestHarnessEvidence = (await harness.evidence()) as unknown as AnyRecord;
+      await persistCheckpoint("probe-process-replacement-endpoint-rotated", {
+        event: "process_replacement_endpoint_rotated",
+        previous_endpoint_id_hash: processReplacementEndpointRotation.previousEndpointIdHash,
+        replacement_endpoint_id_hash: replacementEndpointIdHash,
+        template_id_hash: processReplacementEndpointRotation.templateIdHash,
+        previous_endpoint_matches_seed: true,
+        replacement_endpoint_differs_from_seed: true,
+      });
       // Exercise the real replacement path with one already committed unit.  The replacement
       // envelope still carries all 32 plan items, while its signed item count and fresh PUT
       // authorities cover only the remaining 31.  The worker must read the prior unit through its
@@ -2495,7 +2526,7 @@ async function main(): Promise<void> {
         resumeBatch.input.outputAuthority.authorities as readonly AnyRecord[],
         resumeBatch.planManifest,
         resumeBatch.objectKeys.length,
-        createdIdentity.endpointIdHash,
+        replacementEndpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2555,7 +2586,7 @@ async function main(): Promise<void> {
         cold.input.outputAuthority.authorities as readonly AnyRecord[],
         cold.planManifest,
         32,
-        createdIdentity.endpointIdHash,
+        replacementEndpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2591,7 +2622,7 @@ async function main(): Promise<void> {
         warm.input.outputAuthority.authorities as readonly AnyRecord[],
         warm.planManifest,
         32,
-        createdIdentity.endpointIdHash,
+        replacementEndpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2693,7 +2724,7 @@ async function main(): Promise<void> {
         readerA.input.outputAuthority.authorities as readonly AnyRecord[],
         readerA.planManifest,
         32,
-        createdIdentity.endpointIdHash,
+        replacementEndpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2706,7 +2737,7 @@ async function main(): Promise<void> {
         readerB.input.outputAuthority.authorities as readonly AnyRecord[],
         readerB.planManifest,
         32,
-        createdIdentity.endpointIdHash,
+        replacementEndpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2741,8 +2772,8 @@ async function main(): Promise<void> {
         accountIdHash: account.accountIdHash,
         baselineEndpointSpendUsd: baseline,
         maximumCumulativeFiniteSpendUsd: finiteCapUsd,
-        expectedEndpointIdHash: createdIdentity.endpointIdHash,
-        expectedTemplateIdHash: createdIdentity.templateIdHash,
+        expectedEndpointIdHash: replacementEndpointIdHash,
+        expectedTemplateIdHash: processReplacementEndpointRotation.templateIdHash,
         expectedConfiguration: {
           endpointName: V207_ENDPOINT_NAME,
           templateName: V207_TEMPLATE_NAME,
@@ -2752,7 +2783,7 @@ async function main(): Promise<void> {
           environment: {
             LOG_LEVEL: "INFO",
             ...templateEnvironment,
-            VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: createdIdentity.endpointIdHash,
+            VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: replacementEndpointIdHash,
           },
         },
         inventory: () => control.inventory(),
