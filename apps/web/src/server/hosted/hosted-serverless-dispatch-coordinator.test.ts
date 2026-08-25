@@ -8,6 +8,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import { HostedServerlessCompositionError } from "../runtime/hosted-serverless-runtime";
+import { createHostedEnvelopePairSigner, signHostedEnvelopeBody } from "./hosted-envelope-signer";
 import {
   cancelHostedPersistedAttempt,
   deriveHostedDispatchIds,
@@ -33,6 +34,7 @@ const SOULX_TASK = "88888888-8888-4888-8888-888888888888";
 const APPROVAL = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const NOW = "2026-08-25T12:00:00.000Z";
 const DB_CLAIMED_AT = "2026-08-25T12:00:01.000Z";
+const ENVELOPE_SECRET_HEX = "cd".repeat(32);
 const scope = trustedTenantScope(ACCOUNT, WORKSPACE);
 const sha256 = (character: string): Sha256 => `sha256:${character.repeat(64)}`;
 
@@ -166,12 +168,6 @@ function plan(): HostedPersistedDispatchPlan {
           volume_mutation_permitted: false,
           pod_lifecycle_permitted: false,
           queue_purge_permitted: false,
-        },
-        authority_sha256: sha256("e"),
-        signature: {
-          algorithm: "HMAC-SHA256",
-          key_id: "qualified-fixture-key",
-          value: "f".repeat(64),
         },
       },
       spendCeilingUsd: 1,
@@ -384,6 +380,10 @@ function setup(
     };
   });
   const paidAuthorityGate: HostedPaidAuthorityGate = { claimOnce };
+  const envelopeSigner = createHostedEnvelopePairSigner({
+    keyId: "qualified-envelope-key",
+    secretHex: ENVELOPE_SECRET_HEX,
+  });
   return {
     persisted,
     inspection,
@@ -401,6 +401,7 @@ function setup(
     dispatch,
     cleanup,
     paidAuthorityGate,
+    envelopeSigner,
     claimOnce,
   };
 }
@@ -427,6 +428,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       }),
     ).resolves.toEqual({
@@ -460,6 +462,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       }),
     ).resolves.toMatchObject({ state: "DISPATCHED" });
@@ -476,6 +479,7 @@ describe("hosted Serverless dispatch coordinator", () => {
       inspection: fixture.inspection,
       runtime: fixture.runtime,
       paidAuthorityGate: fixture.paidAuthorityGate,
+      envelopeSigner: fixture.envelopeSigner,
       now: NOW,
     });
     expect(result.state).toBe("DISPATCHED");
@@ -517,7 +521,12 @@ describe("hosted Serverless dispatch coordinator", () => {
           envelope: expect.objectContaining({
             schema: "serverless-worker-job-envelope/v3",
             dispatch_token: expect.stringMatching(/^token-/u),
-            authority_sha256: sha256("a"),
+            authority_sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
+            signature: expect.objectContaining({
+              algorithm: "HMAC-SHA256",
+              key_id: "qualified-envelope-key",
+              value: expect.stringMatching(/^[0-9a-f]{64}$/u),
+            }),
             tenant: { account_id: ACCOUNT, workspace_id: WORKSPACE },
             work: expect.objectContaining({
               task_id: taskId,
@@ -527,6 +536,17 @@ describe("hosted Serverless dispatch coordinator", () => {
           }),
         }),
       );
+      const sent = fixture.dispatch.get(lane)!.mock.calls[0]![1].envelope as Record<
+        string,
+        unknown
+      >;
+      const { authority_sha256, signature, ...sentBody } = sent;
+      await expect(
+        signHostedEnvelopeBody(sentBody as never, {
+          keyId: "qualified-envelope-key",
+          secretHex: ENVELOPE_SECRET_HEX,
+        }),
+      ).resolves.toMatchObject({ authoritySha256: authority_sha256, signature });
     }
     expect(fixture.bindLaneAttempt).toHaveBeenCalledTimes(2);
     expect(fixture.bindLaneAttempt).toHaveBeenCalledWith(
@@ -551,6 +571,91 @@ describe("hosted Serverless dispatch coordinator", () => {
     );
   });
 
+  it("fails closed without a composed pair signer before authority or transport mutation", async () => {
+    const fixture = setup();
+    await expect(
+      dispatchHostedPreparedGeneration({
+        scope,
+        generationRequestId: REQUEST,
+        inspection: fixture.inspection,
+        runtime: fixture.runtime,
+        paidAuthorityGate: fixture.paidAuthorityGate,
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ENVELOPE_SIGNER_REQUIRED" });
+    expect(fixture.claimOnce).not.toHaveBeenCalled();
+    expect(fixture.predispatch.get("mage_image")).not.toHaveBeenCalled();
+    expect(fixture.predispatch.get("soulx_avatar")).not.toHaveBeenCalled();
+    expect(fixture.dispatch.get("mage_image")).not.toHaveBeenCalled();
+    expect(fixture.dispatch.get("soulx_avatar")).not.toHaveBeenCalled();
+  });
+
+  it("rejects pair-signature drift after both predispatch records and before either transport", async () => {
+    const fixture = setup();
+    const envelopeSigner = {
+      signPair: vi.fn(async (bodies: Parameters<typeof fixture.envelopeSigner.signPair>[0]) => {
+        const signed = await fixture.envelopeSigner.signPair(bodies);
+        return signed.map((entry, index) =>
+          index === 0 ? { ...entry, authoritySha256: sha256("0") } : entry,
+        );
+      }),
+      verifyPair: fixture.envelopeSigner.verifyPair.bind(fixture.envelopeSigner),
+    };
+    await expect(
+      dispatchHostedPreparedGeneration({
+        scope,
+        generationRequestId: REQUEST,
+        inspection: fixture.inspection,
+        runtime: fixture.runtime,
+        paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner,
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID" });
+    expect(fixture.predispatch.get("mage_image")).toHaveBeenCalledTimes(1);
+    expect(fixture.predispatch.get("soulx_avatar")).toHaveBeenCalledTimes(1);
+    expect(fixture.dispatch.get("mage_image")).not.toHaveBeenCalled();
+    expect(fixture.dispatch.get("soulx_avatar")).not.toHaveBeenCalled();
+  });
+
+  it.each(["wrong signature", "wrong key hash"] as const)(
+    "cryptographically rejects %s before either transport",
+    async (failure) => {
+      const fixture = setup();
+      const envelopeSigner = {
+        signPair: vi.fn(async (bodies: Parameters<typeof fixture.envelopeSigner.signPair>[0]) => {
+          const signed = await fixture.envelopeSigner.signPair(bodies);
+          return signed.map((entry, index) => {
+            if (index !== 0) return entry;
+            return failure === "wrong signature"
+              ? {
+                  ...entry,
+                  signature: { ...entry.signature, value: "0".repeat(64) },
+                }
+              : { ...entry, keyHash: sha256("0") };
+          });
+        }),
+        verifyPair: fixture.envelopeSigner.verifyPair.bind(fixture.envelopeSigner),
+      };
+      await expect(
+        dispatchHostedPreparedGeneration({
+          scope,
+          generationRequestId: REQUEST,
+          inspection: fixture.inspection,
+          runtime: fixture.runtime,
+          paidAuthorityGate: fixture.paidAuthorityGate,
+          envelopeSigner,
+          now: NOW,
+        }),
+      ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID" });
+      expect(fixture.predispatch.get("mage_image")).toHaveBeenCalledTimes(1);
+      expect(fixture.predispatch.get("soulx_avatar")).toHaveBeenCalledTimes(1);
+      expect(fixture.bindLaneAttempt).not.toHaveBeenCalled();
+      expect(fixture.dispatch.get("mage_image")).not.toHaveBeenCalled();
+      expect(fixture.dispatch.get("soulx_avatar")).not.toHaveBeenCalled();
+    },
+  );
+
   it("derives each task ordinal from its matching runtime lane, never the generation-request epoch", async () => {
     const fixture = setup();
     fixture.listOwned.mockResolvedValue([
@@ -574,6 +679,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       }),
     ).resolves.toMatchObject({ state: "DISPATCHED" });
@@ -614,6 +720,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: mismatch.inspection,
         runtime: mismatch.runtime,
         paidAuthorityGate: mismatch.paidAuthorityGate,
+        envelopeSigner: mismatch.envelopeSigner,
         now: NOW,
       }),
     ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ADMISSION_REQUIRED" });
@@ -628,6 +735,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       });
     await expect(dispatch()).resolves.toMatchObject({ state: "DISPATCHED" });
@@ -652,6 +760,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       }),
     ).rejects.toThrow("HOSTED_PAID_AUTHORITY_SCOPE_OR_CAP_REJECTED");
@@ -682,6 +791,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       }),
     ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ENVELOPE_BINDING_INVALID" });
@@ -702,6 +812,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       }),
     ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ACTIVE_DEPLOYMENT_DRIFT" });
@@ -738,6 +849,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       }),
     ).resolves.toMatchObject({
@@ -751,7 +863,7 @@ describe("hosted Serverless dispatch coordinator", () => {
     }
   });
 
-  it("never sends a second lane after an acknowledgement-unknown boundary", async () => {
+  it("predispatches and signs the pair but never sends a second lane after acknowledgement-unknown", async () => {
     const fixture = setup({ ackUnknownLane: "mage_image" });
     await expect(
       dispatchHostedPreparedGeneration({
@@ -760,6 +872,7 @@ describe("hosted Serverless dispatch coordinator", () => {
         inspection: fixture.inspection,
         runtime: fixture.runtime,
         paidAuthorityGate: fixture.paidAuthorityGate,
+        envelopeSigner: fixture.envelopeSigner,
         now: NOW,
       }),
     ).resolves.toMatchObject({
@@ -768,7 +881,7 @@ describe("hosted Serverless dispatch coordinator", () => {
       lane: "mage_image",
     });
     expect(fixture.dispatch.get("mage_image")).toHaveBeenCalledTimes(1);
-    expect(fixture.predispatch.get("soulx_avatar")).not.toHaveBeenCalled();
+    expect(fixture.predispatch.get("soulx_avatar")).toHaveBeenCalledTimes(1);
     expect(fixture.dispatch.get("soulx_avatar")).not.toHaveBeenCalled();
   });
 
@@ -816,6 +929,7 @@ describe("hosted Serverless dispatch coordinator", () => {
           inspection: fixture.inspection,
           runtime: fixture.runtime,
           paidAuthorityGate: fixture.paidAuthorityGate,
+          envelopeSigner: fixture.envelopeSigner,
           now: NOW,
         }),
       ).rejects.toBeInstanceOf(HostedDispatchCoordinationError);
@@ -842,6 +956,7 @@ describe("hosted Serverless dispatch coordinator", () => {
           inspection: fixture.inspection,
           runtime: fixture.runtime,
           paidAuthorityGate: fixture.paidAuthorityGate,
+          envelopeSigner: fixture.envelopeSigner,
           now: NOW,
         }),
       ).rejects.toBeInstanceOf(HostedDispatchCoordinationError);

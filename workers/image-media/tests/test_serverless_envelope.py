@@ -15,6 +15,7 @@ from serverless_envelope import (  # noqa: E402
     ENVELOPE_SCHEMA,
     QUARANTINED_SCHEMAS,
     EnvelopeRejection,
+    envelope_body_bytes,
     receipt_bytes,
     sign_receipt,
     validate_envelope,
@@ -24,6 +25,9 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = REPOSITORY_ROOT / "packages/contracts/generated/fixtures"
 NOW = datetime(2026, 8, 16, 7, 0, 0, tzinfo=UTC)
 SECRET = bytes([7]) * 32
+ENVELOPE_SECRET = b"differential-envelope-key-0123456789abcdef"
+ENVELOPE_KEY_ID = "envelope-key-v1"
+ENVELOPE_KEY_SHA256 = "sha256:" + hashlib.sha256(ENVELOPE_SECRET).hexdigest()
 
 EXPECTED = {
     "expected_account_id": "account-a",
@@ -32,6 +36,10 @@ EXPECTED = {
     "expected_container_digest": "sha256:" + ("3" * 64),
     "expected_model_manifest_sha256": "sha256:" + ("4" * 64),
     "expected_volume_id_sha256": "sha256:" + ("5" * 64),
+    "expected_envelope_key_id": ENVELOPE_KEY_ID,
+    "expected_envelope_key_sha256": ENVELOPE_KEY_SHA256,
+    "envelope_secret": ENVELOPE_SECRET,
+    "receipt_secret": bytes([8]) * 32,
 }
 
 
@@ -40,7 +48,27 @@ def load(name: str) -> dict:
 
 
 def envelope() -> dict:
-    return load("serverless_worker_job_envelope_v3.valid.json")
+    document = load("serverless_worker_job_envelope_v3.valid.json")
+    return sign_envelope(document)
+
+
+def sign_envelope(document: dict) -> dict:
+    body = {
+        key: value
+        for key, value in document.items()
+        if key not in {"authority_sha256", "signature"}
+    }
+    authority_sha256 = "sha256:" + hashlib.sha256(envelope_body_bytes(body)).hexdigest()
+    preimage = envelope_body_bytes(
+        {"authority_sha256": authority_sha256, "key_id": ENVELOPE_KEY_ID}
+    )
+    document["authority_sha256"] = authority_sha256
+    document["signature"] = {
+        "algorithm": "HMAC-SHA256",
+        "key_id": ENVELOPE_KEY_ID,
+        "value": hmac.new(ENVELOPE_SECRET, preimage, hashlib.sha256).hexdigest(),
+    }
+    return document
 
 
 def receipt_body() -> dict:
@@ -90,6 +118,7 @@ class ValidateEnvelopeTest(unittest.TestCase):
         for code, mutate in cases.items():
             document = envelope()
             mutate(document)
+            sign_envelope(document)
             with self.assertRaises(EnvelopeRejection) as raised:
                 validate_envelope(document, now=NOW, **EXPECTED)
             self.assertEqual(raised.exception.code, code)
@@ -107,6 +136,7 @@ class ValidateEnvelopeTest(unittest.TestCase):
         for code, mutate in cases.items():
             document = envelope()
             mutate(document)
+            sign_envelope(document)
             with self.assertRaises(EnvelopeRejection) as raised:
                 validate_envelope(document, now=NOW, **EXPECTED)
             self.assertEqual(raised.exception.code, code)
@@ -124,9 +154,66 @@ class ValidateEnvelopeTest(unittest.TestCase):
                 validate_envelope(document, now=NOW, **EXPECTED)
             self.assertEqual(raised.exception.code, "ENVELOPE_AUTHORITY_HASH_INVALID")
 
+    def test_matches_the_pinned_typescript_python_differential_vector(self) -> None:
+        body = {
+            "schema": "serverless-worker-job-envelope/v3",
+            "dispatch_token": "dispatch-token-0123456789abcdef0123456789abcdef",
+            "tenant": {"account_id": "account-a", "workspace_id": "workspace-a"},
+            "work": {"item_count": 2, "labels": ["café", "😀"]},
+            "limits": {"expires_at": "2099-01-01T00:00:00Z", "max_items": 2},
+            "policy": {"model_download_permitted": False},
+        }
+        authority = "sha256:" + hashlib.sha256(envelope_body_bytes(body)).hexdigest()
+        signature = hmac.new(
+            ENVELOPE_SECRET,
+            envelope_body_bytes({"authority_sha256": authority, "key_id": ENVELOPE_KEY_ID}),
+            hashlib.sha256,
+        ).hexdigest()
+        self.assertEqual(
+            authority,
+            "sha256:44de71c2d97cb8ca42c3670a0ebd7b3d2b6a1d0789ea84bc16f766217f59bf0d",
+        )
+        self.assertEqual(
+            ENVELOPE_KEY_SHA256,
+            "sha256:4d177e1922e6e187a483273e842b2dfabe1284751139acfe55662affb5b036cc",
+        )
+        self.assertEqual(
+            signature,
+            "ddd459747ce4f7588615ab10d845014d7d2333436db7b22630f84b455337e616",
+        )
+        with self.assertRaises(EnvelopeRejection) as raised:
+            envelope_body_bytes({"invalid_unicode": "\ud800"})
+        self.assertEqual(raised.exception.code, "ENVELOPE_CANONICAL_BODY_INVALID")
+
+    def test_rejects_missing_wrong_tampered_and_wrong_key_envelopes(self) -> None:
+        cases: list[tuple[str, dict, dict]] = []
+        missing = envelope()
+        missing.pop("signature")
+        cases.append(("ENVELOPE_AUTHORITY_SIGNATURE_INVALID", missing, EXPECTED))
+        wrong = envelope()
+        wrong["signature"]["value"] = "0" * 64
+        cases.append(("ENVELOPE_AUTHORITY_SIGNATURE_INVALID", wrong, EXPECTED))
+        tampered = envelope()
+        tampered["work"]["item_count"] = 1
+        cases.append(("ENVELOPE_AUTHORITY_BODY_MISMATCH", tampered, EXPECTED))
+        wrong_key = {**EXPECTED, "envelope_secret": b"x" * 32}
+        cases.append(("ENVELOPE_AUTHORITY_KEY_MISMATCH", envelope(), wrong_key))
+        reused_key = {**EXPECTED, "receipt_secret": ENVELOPE_SECRET}
+        cases.append(("ENVELOPE_RECEIPT_KEY_REUSE", envelope(), reused_key))
+        for code, document, expected in cases:
+            with self.assertRaises(EnvelopeRejection) as raised:
+                validate_envelope(document, now=NOW, **expected)
+            self.assertEqual(raised.exception.code, code)
+
+    def test_rejects_a_validly_signed_but_stale_envelope(self) -> None:
+        with self.assertRaises(EnvelopeRejection) as raised:
+            validate_envelope(envelope(), now=datetime(2026, 8, 17, tzinfo=UTC), **EXPECTED)
+        self.assertEqual(raised.exception.code, "ENVELOPE_EXPIRED")
+
     def test_rejects_volume_writes_pod_lifecycle_and_queue_purge(self) -> None:
         writable = envelope()
         writable["runtime"]["volume_write_policy"] = "READ_WRITE"
+        sign_envelope(writable)
         with self.assertRaises(EnvelopeRejection) as raised:
             validate_envelope(writable, now=NOW, **EXPECTED)
         self.assertEqual(raised.exception.code, "ENVELOPE_SCHEMA_INVALID")
@@ -139,6 +226,7 @@ class ValidateEnvelopeTest(unittest.TestCase):
         ):
             document = envelope()
             document["policy"][flag] = True
+            sign_envelope(document)
             with self.assertRaises(EnvelopeRejection) as raised:
                 validate_envelope(document, now=NOW, **EXPECTED)
             self.assertEqual(raised.exception.code, "ENVELOPE_SCHEMA_INVALID")
@@ -146,6 +234,7 @@ class ValidateEnvelopeTest(unittest.TestCase):
     def test_rejects_an_unqualified_gpu_class(self) -> None:
         document = envelope()
         document["runtime"]["gpu_allowlist"] = ["NVIDIA GeForce RTX 5090"]
+        sign_envelope(document)
         with self.assertRaises(EnvelopeRejection) as raised:
             validate_envelope(document, now=NOW, **EXPECTED)
         self.assertEqual(raised.exception.code, "ENVELOPE_GPU_NOT_QUALIFIED")
@@ -236,3 +325,4 @@ class SignReceiptTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+    envelope_body_bytes,

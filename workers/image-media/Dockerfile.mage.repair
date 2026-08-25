@@ -16,5 +16,6 @@ LABEL org.opencontainers.image.title="VideoForge Mage Serverless Worker (repaire
 # Keep the current immutable base image's ENV, ENTRYPOINT, runtime-hygiene
 # modules, and sealed-volume safeguards. The source-only repair changes only
 # these exact runtime files; model preparation remains outside the image definition.
+COPY workers/common/serverless_envelope.py /opt/videoforge/common/serverless_envelope.py
 COPY workers/image-media/mage_serverless.py /opt/videoforge/mage_serverless.py
 COPY packages/contracts/python/videoforge_contracts/_schema_documents.py /opt/videoforge/src/videoforge_contracts/_schema_documents.py

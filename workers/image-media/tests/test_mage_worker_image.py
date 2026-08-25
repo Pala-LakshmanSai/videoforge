@@ -19,6 +19,11 @@ BASE_IMMUTABLE_IMAGE = (
 )
 REPAIR_RUNTIME_FILES = (
     (
+        "workers/common/serverless_envelope.py",
+        "/opt/videoforge/common/serverless_envelope.py",
+        "ENVELOPE_AUTHORITY_SIGNATURE_INVALID",
+    ),
+    (
         "workers/image-media/mage_serverless.py",
         "/opt/videoforge/mage_serverless.py",
         "MAGE_SERVERLESS_GENERATED_OUTPUT_PATH_MISMATCH",
@@ -30,7 +35,8 @@ REPAIR_RUNTIME_FILES = (
     ),
 )
 REPAIR_SOURCE_HASHES = {
-    "workers/image-media/mage_serverless.py": "3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da",
+    "workers/image-media/mage_serverless.py": "a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b",
+    "workers/common/serverless_envelope.py": "2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227",
     "packages/contracts/python/videoforge_contracts/_schema_documents.py": "a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71",
 }
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]

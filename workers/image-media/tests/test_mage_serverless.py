@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import hashlib
+import hmac
 import json
 import subprocess
 import sys
@@ -36,6 +37,23 @@ class MageServerlessBoundaryTest(unittest.TestCase):
     def setUp(self) -> None:
         mage_serverless._runtime = None
         mage_serverless._claimed_deliveries.clear()
+        envelope_secret = bytes.fromhex("cd" * 32)
+        self.envelope_environment = patch.dict(
+            mage_serverless.os.environ,
+            {
+                "VIDEOFORGE_ENVELOPE_KEY_ID": "envelope-key-v1",
+                "VIDEOFORGE_ENVELOPE_KEY_SHA256": "sha256:"
+                + hashlib.sha256(envelope_secret).hexdigest(),
+                "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX": envelope_secret.hex(),
+                "VIDEOFORGE_RECEIPT_KEY_ID": "receipt-key-v1",
+                "VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": "ab" * 32,
+            },
+            clear=False,
+        )
+        self.envelope_environment.start()
+
+    def tearDown(self) -> None:
+        self.envelope_environment.stop()
 
     @staticmethod
     def _accepted(attempt_id: str = "attempt-a") -> dict[str, object]:
@@ -391,6 +409,44 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             result = asyncio.run(mage_serverless.handler(job))
         self.assertEqual(result["status"], "FAILED")
         self.assertEqual(result["error"]["code"], "ENVELOPE_SCHEMA_UNKNOWN")
+
+    def test_rejects_envelope_receipt_key_reuse_before_runtime_startup(self) -> None:
+        fixture_path = (
+            ROOT.parents[1]
+            / "packages/contracts/generated/fixtures/serverless_worker_job_envelope_v3.valid.json"
+        )
+        envelope = json.loads(fixture_path.read_text(encoding="utf-8"))
+        envelope["limits"]["expires_at"] = "2099-01-01T00:00:00Z"
+        body = {
+            key: value
+            for key, value in envelope.items()
+            if key not in {"authority_sha256", "signature"}
+        }
+        authority = canonical_json_sha256(body)
+        secret = bytes.fromhex("cd" * 32)
+        envelope["authority_sha256"] = authority
+        envelope["signature"] = {
+            "algorithm": "HMAC-SHA256",
+            "key_id": "envelope-key-v1",
+            "value": hmac.new(
+                secret,
+                canonical_json(
+                    {"authority_sha256": authority, "key_id": "envelope-key-v1"}
+                ).encode(),
+                hashlib.sha256,
+            ).hexdigest(),
+        }
+        job = self._job()
+        job["input"]["envelope"] = envelope
+        ready = AsyncMock(side_effect=AssertionError("runtime must remain untouched"))
+        with patch.dict(
+            mage_serverless.os.environ,
+            {"VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": secret.hex()},
+            clear=False,
+        ), patch.object(mage_serverless, "_ready_runtime", ready):
+            result = asyncio.run(mage_serverless.handler(job))
+        self.assertEqual(result["failure_code"], "ENVELOPE_RECEIPT_KEY_REUSE")
+        ready.assert_not_awaited()
 
     def test_scoped_port_shape_is_rejected_before_runtime_startup(self) -> None:
         accepted = self._accepted()

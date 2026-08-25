@@ -1,9 +1,9 @@
 """Fail-closed Serverless v3 envelope validation and provenance signing for the lane workers.
 
-TypeScript is the sole RFC 8785 authority (`DEC_CONTRACT_001`). This module therefore never tries
-to reproduce a canonical hash of a document it did not write: it validates the schema and the exact
-semantic joins, treats every incoming hash as an opaque exact string, and hashes only the exact
-receipt bytes it emits itself.
+TypeScript remains the sole general RFC 8785 authority (`DEC_CONTRACT_001`). Envelope authentication
+uses a deliberately restricted I-JSON subset whose canonical bytes are identical in TypeScript
+and Python: ASCII object names, Unicode scalar strings, booleans/null, safe integers, arrays and
+objects.
 """
 
 from __future__ import annotations
@@ -33,6 +33,9 @@ QUARANTINED_SCHEMAS: Final = (
 )
 
 SHA256: Final = re.compile(r"^sha256:[0-9a-f]{64}$")
+SIGNATURE: Final = re.compile(r"^[0-9a-f]{64}$")
+KEY_ID: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$")
+ASCII_PROPERTY: Final = re.compile(r"^[\x21-\x7e]+$")
 UTC_TIMESTAMP: Final = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$"
 )
@@ -52,6 +55,94 @@ def _parse_utc(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
 
 
+def _assert_restricted_ijson(value: Any) -> None:
+    if value is None or isinstance(value, bool | str):
+        if isinstance(value, str) and any(
+            0xD800 <= ord(character) <= 0xDFFF for character in value
+        ):
+            raise EnvelopeRejection("ENVELOPE_CANONICAL_BODY_INVALID")
+        return
+    if isinstance(value, int):
+        if abs(value) > 9_007_199_254_740_991:
+            raise EnvelopeRejection("ENVELOPE_CANONICAL_BODY_INVALID")
+        return
+    if isinstance(value, float):
+        raise EnvelopeRejection("ENVELOPE_CANONICAL_BODY_INVALID")
+    if isinstance(value, list):
+        for item in value:
+            _assert_restricted_ijson(item)
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str) or not ASCII_PROPERTY.fullmatch(key):
+                raise EnvelopeRejection("ENVELOPE_CANONICAL_BODY_INVALID")
+            _assert_restricted_ijson(item)
+        return
+    raise EnvelopeRejection("ENVELOPE_CANONICAL_BODY_INVALID")
+
+
+def envelope_body_bytes(body: dict[str, Any]) -> bytes:
+    """Canonical bytes for the restricted cross-runtime envelope subset."""
+    _assert_restricted_ijson(body)
+    return json.dumps(
+        body, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    ).encode("utf-8")
+
+
+def verify_envelope_authority(
+    document: dict[str, Any],
+    *,
+    expected_key_id: str,
+    expected_key_sha256: str,
+    secret: bytes,
+    receipt_secret: bytes,
+) -> None:
+    """Authenticates the final envelope body before any model/runtime work."""
+    if (
+        not isinstance(secret, bytes)
+        or len(secret) < 32
+        or not isinstance(receipt_secret, bytes)
+        or len(receipt_secret) < 32
+        or not KEY_ID.fullmatch(expected_key_id)
+        or not SHA256.fullmatch(expected_key_sha256)
+    ):
+        raise EnvelopeRejection("ENVELOPE_AUTHORITY_KEY_INVALID")
+    actual_key_sha256 = f"sha256:{hashlib.sha256(secret).hexdigest()}"
+    if not hmac.compare_digest(actual_key_sha256, expected_key_sha256):
+        raise EnvelopeRejection("ENVELOPE_AUTHORITY_KEY_MISMATCH")
+    receipt_key_sha256 = f"sha256:{hashlib.sha256(receipt_secret).hexdigest()}"
+    if hmac.compare_digest(actual_key_sha256, receipt_key_sha256):
+        raise EnvelopeRejection("ENVELOPE_RECEIPT_KEY_REUSE")
+
+    authority_sha256 = document.get("authority_sha256")
+    signature = document.get("signature")
+    if not isinstance(authority_sha256, str) or not SHA256.fullmatch(authority_sha256):
+        raise EnvelopeRejection("ENVELOPE_AUTHORITY_HASH_INVALID")
+    if (
+        not isinstance(signature, dict)
+        or signature.get("algorithm") != "HMAC-SHA256"
+        or signature.get("key_id") != expected_key_id
+        or not isinstance(signature.get("value"), str)
+        or not SIGNATURE.fullmatch(signature["value"])
+    ):
+        raise EnvelopeRejection("ENVELOPE_AUTHORITY_SIGNATURE_INVALID")
+
+    body = {
+        key: value
+        for key, value in document.items()
+        if key not in {"authority_sha256", "signature"}
+    }
+    expected_authority = f"sha256:{hashlib.sha256(envelope_body_bytes(body)).hexdigest()}"
+    if not hmac.compare_digest(authority_sha256, expected_authority):
+        raise EnvelopeRejection("ENVELOPE_AUTHORITY_BODY_MISMATCH")
+    preimage = envelope_body_bytes(
+        {"authority_sha256": authority_sha256, "key_id": expected_key_id}
+    )
+    expected_signature = hmac.new(secret, preimage, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature["value"], expected_signature):
+        raise EnvelopeRejection("ENVELOPE_AUTHORITY_SIGNATURE_INVALID")
+
+
 def validate_envelope(
     document: Any,
     *,
@@ -62,6 +153,10 @@ def validate_envelope(
     expected_container_digest: str,
     expected_model_manifest_sha256: str,
     expected_volume_id_sha256: str,
+    expected_envelope_key_id: str,
+    expected_envelope_key_sha256: str,
+    envelope_secret: bytes,
+    receipt_secret: bytes,
 ) -> dict[str, Any]:
     """Validates schema, quarantine, joins, expiry, and runtime policy before model load."""
     if not isinstance(document, dict):
@@ -72,6 +167,14 @@ def validate_envelope(
         raise EnvelopeRejection("ENVELOPE_SCHEMA_QUARANTINED")
     if declared != ENVELOPE_SCHEMA:
         raise EnvelopeRejection("ENVELOPE_SCHEMA_UNKNOWN")
+
+    verify_envelope_authority(
+        document,
+        expected_key_id=expected_envelope_key_id,
+        expected_key_sha256=expected_envelope_key_sha256,
+        secret=envelope_secret,
+        receipt_secret=receipt_secret,
+    )
 
     # Keep exact runtime joins fail-closed even when a hostile document also violates a
     # schema const/enum. The contract validator remains authoritative for shape, while these
@@ -105,10 +208,6 @@ def validate_envelope(
                 or tuple(gpu_allowlist) != QUALIFIED_GPUS
             ):
                 raise EnvelopeRejection("ENVELOPE_GPU_NOT_QUALIFIED")
-
-    authority_sha256 = document.get("authority_sha256")
-    if not isinstance(authority_sha256, str) or not SHA256.fullmatch(authority_sha256):
-        raise EnvelopeRejection("ENVELOPE_AUTHORITY_HASH_INVALID")
 
     try:
         validate_contract(ENVELOPE_CONTRACT, document)

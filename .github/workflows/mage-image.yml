@@ -102,7 +102,8 @@ jobs:
           # repaired overlay.  Pin the bytes copied into the image explicitly;
           # labels alone would allow a later checkout to silently drift.
           expected_source_hashes=(
-            "workers/image-media/mage_serverless.py|3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da"
+            "workers/image-media/mage_serverless.py|a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b"
+            "workers/common/serverless_envelope.py|2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
             "packages/contracts/python/videoforge_contracts/_schema_documents.py|a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
           )
           for source_entry in "${expected_source_hashes[@]}"; do
@@ -139,7 +140,8 @@ jobs:
           candidate_source="$RUNNER_TEMP/v207-candidate-mage_serverless.py"
           candidate_verification="$RUNNER_TEMP/v207-candidate-verification.json"
           candidate_schema="$RUNNER_TEMP/v207-candidate-schema-documents.py"
-          expected_handler_sha="3a2559dd363bdf5032b019dab3cb8fe45cba6ed4308464f860a1965cfd18f1da"
+          expected_handler_sha="a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b"
+          expected_envelope_sha="2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
           expected_schema_sha="a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
           python3 workers/image-media/verify_mage_oci_overlay.py \
             --output-dir "$MAGE_OCI_OUTPUT_DIR" \
@@ -150,6 +152,7 @@ jobs:
             --expected-layer-digest "$MAGE_EXPECTED_LAYER_DIGEST" \
             --expected-source-commit a7b7a937d08dc9032b8922cca71c602195f3094c \
             --expected-source /opt/videoforge/mage_serverless.py\|sha256:$expected_handler_sha \
+            --expected-source /opt/videoforge/common/serverless_envelope.py\|sha256:$expected_envelope_sha \
             --expected-source /opt/videoforge/src/videoforge_contracts/_schema_documents.py\|sha256:$expected_schema_sha \
             --expected-parent-image ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497 \
             --extract-source "$candidate_source" \

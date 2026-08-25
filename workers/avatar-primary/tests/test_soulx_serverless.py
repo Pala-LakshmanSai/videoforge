@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import hashlib
+import hmac
 import json
 import os
 import sys
@@ -55,6 +56,29 @@ def digest(value: bytes) -> str:
 
 def canonical(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+ENVELOPE_SECRET = bytes.fromhex("cd" * 32)
+ENVELOPE_KEY_ID = "envelope-key-v1"
+ENVELOPE_KEY_SHA256 = digest(ENVELOPE_SECRET)
+
+
+def sign_envelope(document: dict[str, object]) -> None:
+    body = {
+        key: value
+        for key, value in document.items()
+        if key not in {"authority_sha256", "signature"}
+    }
+    authority_sha256 = digest(canonical(body).encode())
+    preimage = canonical(
+        {"authority_sha256": authority_sha256, "key_id": ENVELOPE_KEY_ID}
+    ).encode()
+    document["authority_sha256"] = authority_sha256
+    document["signature"] = {
+        "algorithm": "HMAC-SHA256",
+        "key_id": ENVELOPE_KEY_ID,
+        "value": hmac.new(ENVELOPE_SECRET, preimage, hashlib.sha256).hexdigest(),
+    }
 
 
 def wav48(seconds: int) -> bytes:
@@ -193,6 +217,7 @@ class Fixture:
                 "value": "a" * 64,
             },
         }
+        sign_envelope(self.envelope)
         self.inputs = [
             self._port("port-source", digest(self.source), len(self.source), "image/png")
         ]
@@ -275,6 +300,9 @@ class SoulXServerlessTest(unittest.TestCase):
                 "VIDEOFORGE_SOULX_WARMUP_OUTPUT_SHA256": "sha256:" + "9" * 64,
                 "VIDEOFORGE_RECEIPT_KEY_ID": "worker-key-a",
                 "VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": "ab" * 32,
+                "VIDEOFORGE_ENVELOPE_KEY_ID": ENVELOPE_KEY_ID,
+                "VIDEOFORGE_ENVELOPE_KEY_SHA256": ENVELOPE_KEY_SHA256,
+                "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX": ENVELOPE_SECRET.hex(),
             },
             clear=False,
         )
@@ -312,6 +340,20 @@ class SoulXServerlessTest(unittest.TestCase):
             "SOULX_SERVERLESS_RESUME_READBACK_MISMATCH",
         ):
             soulx_serverless._verify_resume_readbacks((unit,))
+
+    def test_rejects_envelope_receipt_key_reuse_before_runtime_startup(self) -> None:
+        fixture = Fixture((2,))
+        ready = AsyncMock(side_effect=AssertionError("runtime must remain untouched"))
+        with patch.dict(
+            os.environ,
+            {"VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": ENVELOPE_SECRET.hex()},
+            clear=False,
+        ), patch.object(soulx_serverless, "_ready_runtime", ready):
+            result = asyncio.run(
+                soulx_serverless.handler({"id": "job-key-reuse", "input": fixture.payload})
+            )
+        self.assertEqual(result["failure_code"], "ENVELOPE_RECEIPT_KEY_REUSE")
+        ready.assert_not_awaited()
 
     def test_tenant_scope_comes_from_each_signed_envelope_not_endpoint_environment(self) -> None:
         fixture = Fixture((2,))
@@ -477,6 +519,7 @@ class SoulXServerlessTest(unittest.TestCase):
         )
         fixture.payload["resume_canonical_json"] = canonical(resume)
         fixture.envelope["artifacts"]["resume_manifest_sha256"] = digest(canonical(resume).encode())
+        sign_envelope(fixture.envelope)
         runtime = FakeRuntime()
 
         def trim(_body: bytes, path: Path, _span: dict[str, object]) -> bytes:
@@ -554,6 +597,7 @@ class SoulXServerlessTest(unittest.TestCase):
     def test_wrong_lane_fails_before_runtime(self) -> None:
         fixture = Fixture((2,))
         fixture.envelope["work"]["lane"] = "mage_image"
+        sign_envelope(fixture.envelope)
         runtime = AsyncMock()
         with patch.object(soulx_serverless, "_ready_runtime", runtime):
             result = asyncio.run(

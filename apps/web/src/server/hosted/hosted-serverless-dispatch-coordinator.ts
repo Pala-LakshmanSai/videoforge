@@ -14,7 +14,9 @@ import {
   type WorkspaceScope,
 } from "@videoforge/control-plane";
 import {
+  sha256CanonicalJson,
   validateAndHashContractDocument,
+  type JsonValue,
   type ServerlessWorkerJobEnvelopeV3Document,
 } from "@videoforge/contracts";
 
@@ -25,6 +27,10 @@ import {
   type HostedServerlessRuntimeComposition,
   type HostedVerifiedDeploymentSnapshot,
 } from "../runtime/hosted-serverless-runtime";
+import type {
+  HostedEnvelopePairSignature,
+  HostedEnvelopePairSigner,
+} from "./hosted-envelope-signer";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -326,16 +332,31 @@ async function validateEnvelopeBindings(input: {
   readonly ids: HostedDispatchIds;
   readonly binding: HostedPublishedDeploymentBinding;
   readonly now: string;
-}): Promise<ServerlessWorkerJobEnvelopeV3Document> {
+}): Promise<Readonly<Record<string, unknown>>> {
+  if (
+    Object.hasOwn(input.task.envelope, "authority_sha256") ||
+    Object.hasOwn(input.task.envelope, "signature")
+  ) {
+    reject("HOSTED_SERVERLESS_ENVELOPE_TEMPLATE_SIGNED");
+  }
+  const structuralCandidate = {
+    ...input.task.envelope,
+    authority_sha256: `sha256:${"0".repeat(64)}`,
+    signature: {
+      algorithm: "HMAC-SHA256",
+      key_id: "structural-validation-only",
+      value: "0".repeat(64),
+    },
+  };
   try {
-    assertDispatchableEnvelope(input.task.envelope);
+    assertDispatchableEnvelope(structuralCandidate);
   } catch {
     reject("HOSTED_SERVERLESS_ENVELOPE_INVALID");
   }
   let envelope: ServerlessWorkerJobEnvelopeV3Document;
   try {
     envelope = (
-      await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", input.task.envelope)
+      await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", structuralCandidate)
     ).value;
   } catch {
     reject("HOSTED_SERVERLESS_ENVELOPE_INVALID");
@@ -371,7 +392,8 @@ async function validateEnvelopeBindings(input: {
   ) {
     reject("HOSTED_SERVERLESS_ENVELOPE_BINDING_INVALID");
   }
-  return envelope;
+  const { authority_sha256: _authority, signature: _signature, ...body } = envelope;
+  return Object.freeze(body);
 }
 
 function validatePlan(
@@ -586,6 +608,8 @@ export async function dispatchHostedPreparedGeneration(input: {
   readonly inspection: HostedDispatchInspection;
   readonly runtime: HostedDispatchRuntime | HostedServerlessRuntimeComposition;
   readonly paidAuthorityGate: HostedPaidAuthorityGate;
+  /** Required trusted boundary; absent composition must fail before any durable mutation. */
+  readonly envelopeSigner?: HostedEnvelopePairSigner;
   readonly now: string;
 }): Promise<HostedDispatchResult> {
   if (!exactIso(input.now)) reject("HOSTED_SERVERLESS_CLOCK_INVALID");
@@ -629,7 +653,7 @@ export async function dispatchHostedPreparedGeneration(input: {
     }
     bindings[lane] = binding;
   }
-  const envelopeTemplates = new Map<ServerlessLane, ServerlessWorkerJobEnvelopeV3Document>();
+  const envelopeTemplates = new Map<ServerlessLane, Readonly<Record<string, unknown>>>();
   for (const task of tasks) {
     const ids = deriveHostedDispatchIds({
       generationRequestId: plan.generationRequestId,
@@ -672,6 +696,10 @@ export async function dispatchHostedPreparedGeneration(input: {
         committed: Object.freeze([]),
       });
     }
+  }
+
+  if (input.envelopeSigner === undefined) {
+    reject("HOSTED_SERVERLESS_ENVELOPE_SIGNER_REQUIRED");
   }
 
   const cumulativeReservationUsd = tasks.reduce((total, task) => total + task.reservationUsd, 0);
@@ -731,7 +759,16 @@ export async function dispatchHostedPreparedGeneration(input: {
     reject("HOSTED_SERVERLESS_PAID_AUTHORITY_CLAIM_INVALID");
   }
 
-  const committed: HostedCommittedDispatch[] = [];
+  // Source-only safety boundary: these lane commits are not yet one atomic database operation.
+  // Pair signing and verification prevent either transport from starting with a partial/unsigned
+  // pair, but activation remains forbidden until the persistence adapter commits both lanes
+  // atomically with the paid-authority claim.
+  const prepared: {
+    readonly task: HostedPersistedLaneDispatchTask;
+    readonly ids: HostedDispatchIds;
+    readonly commit: PredispatchCommit;
+    readonly body: Readonly<Record<string, unknown>>;
+  }[] = [];
   for (const task of tasks) {
     const ids = deriveHostedDispatchIds({
       generationRequestId: plan.generationRequestId,
@@ -765,13 +802,76 @@ export async function dispatchHostedPreparedGeneration(input: {
     });
     const template = envelopeTemplates.get(task.lane);
     if (template === undefined) reject("HOSTED_SERVERLESS_ENVELOPE_INVALID");
-    const envelope = (
-      await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", {
-        ...template,
-        dispatch_token: commit.dispatchToken,
-        authority_sha256: commit.authority.authoritySha256,
-      })
-    ).value;
+    const body = Object.freeze({ ...template, dispatch_token: commit.dispatchToken });
+    prepared.push(Object.freeze({ task, ids, commit, body }));
+  }
+
+  const beforeHashes = await Promise.all(
+    prepared.map(({ body }) => sha256CanonicalJson(body as JsonValue)),
+  );
+  let signedPair: readonly HostedEnvelopePairSignature[];
+  try {
+    signedPair = await input.envelopeSigner.signPair(
+      prepared.map(({ task, body }) => ({ lane: task.lane, body: body as JsonValue })),
+    );
+  } catch {
+    reject("HOSTED_SERVERLESS_ENVELOPE_SIGNING_FAILED");
+  }
+  if (
+    signedPair.length !== prepared.length ||
+    new Set(signedPair.map(({ lane }) => lane)).size !== prepared.length ||
+    new Set(signedPair.map(({ keyId }) => keyId)).size !== 1 ||
+    new Set(signedPair.map(({ keyHash }) => keyHash)).size !== 1
+  ) {
+    reject("HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID");
+  }
+  let pairVerified = false;
+  try {
+    pairVerified = await input.envelopeSigner.verifyPair(
+      prepared.map(({ task, body }) => ({ lane: task.lane, body: body as JsonValue })),
+      signedPair,
+    );
+  } catch {
+    reject("HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID");
+  }
+  if (!pairVerified) reject("HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID");
+  const signedEnvelopes = new Map<ServerlessLane, ServerlessWorkerJobEnvelopeV3Document>();
+  for (let index = 0; index < prepared.length; index += 1) {
+    const item = prepared[index]!;
+    const signed = signedPair.find(({ lane }) => lane === item.task.lane);
+    const afterHash = await sha256CanonicalJson(item.body as JsonValue);
+    if (
+      signed === undefined ||
+      beforeHashes[index] !== afterHash ||
+      signed.authoritySha256 !== beforeHashes[index] ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(signed.keyId) ||
+      !SHA256.test(signed.keyHash) ||
+      signed.signature.algorithm !== "HMAC-SHA256" ||
+      signed.signature.key_id !== signed.keyId ||
+      !/^[0-9a-f]{64}$/u.test(signed.signature.value)
+    ) {
+      reject("HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID");
+    }
+    try {
+      signedEnvelopes.set(
+        item.task.lane,
+        (
+          await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", {
+            ...item.body,
+            authority_sha256: signed.authoritySha256,
+            signature: signed.signature,
+          })
+        ).value,
+      );
+    } catch {
+      reject("HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID");
+    }
+  }
+
+  const committed: HostedCommittedDispatch[] = [];
+  for (const { task, ids, commit } of prepared) {
+    const envelope = signedEnvelopes.get(task.lane);
+    if (envelope === undefined) reject("HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID");
     await input.runtime.videoRuntime.bindLaneAttempt(input.scope, {
       runtimeId,
       lane: task.lane,

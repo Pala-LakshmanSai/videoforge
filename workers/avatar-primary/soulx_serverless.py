@@ -28,7 +28,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from soulx_runtime import SoulXRuntime
-from soulx_volume import expected_manifest_sha256, verify_volume
+from soulx_volume import verify_volume
 from secure_scratch import ScratchIsolationError, soulx_worker_io, validate_scoped_port
 from serverless_envelope import EnvelopeRejection, sign_receipt, validate_envelope
 
@@ -717,7 +717,13 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         payload = _required(job, "input")
         envelope = _required(payload, "envelope")
         accepted = validate_envelope(
-            envelope, now=datetime.now(UTC), **_authority_expectations(envelope)
+            envelope,
+            now=datetime.now(UTC),
+            expected_envelope_key_id=_environment("VIDEOFORGE_ENVELOPE_KEY_ID"),
+            expected_envelope_key_sha256=_environment("VIDEOFORGE_ENVELOPE_KEY_SHA256"),
+            envelope_secret=bytes.fromhex(_environment("VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX")),
+            receipt_secret=bytes.fromhex(_environment("VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX")),
+            **_authority_expectations(envelope),
         )
         if accepted["work"]["lane"] != "soulx_avatar":
             raise ServerlessSoulXError("SOULX_SERVERLESS_LANE_INVALID")

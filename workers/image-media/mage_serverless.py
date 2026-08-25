@@ -978,7 +978,13 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         batch = _required(payload, "batch")
         ports = _required(payload, "ports")
         accepted = validate_envelope(
-            envelope, now=datetime.now(UTC), **_authority_expectations(envelope)
+            envelope,
+            now=datetime.now(UTC),
+            expected_envelope_key_id=os.environ["VIDEOFORGE_ENVELOPE_KEY_ID"],
+            expected_envelope_key_sha256=os.environ["VIDEOFORGE_ENVELOPE_KEY_SHA256"],
+            envelope_secret=bytes.fromhex(os.environ["VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX"]),
+            receipt_secret=bytes.fromhex(os.environ["VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX"]),
+            **_authority_expectations(envelope),
         )
         mage_job = MageJob.from_value(batch)
         if (
