@@ -1,0 +1,39 @@
+{
+  "schema_version": "videoforge.v2-07-readonly-reconciliation/v2",
+  "attempt": 64,
+  "checked_at": "2026-08-25T11:46:36.633Z",
+  "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "stable_reads": ["2026-08-25T11:46:33.973Z", "2026-08-25T11:46:35.589Z", "2026-08-25T11:46:36.633Z"],
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "disposable_endpoints": 0,
+    "disposable_templates": 0,
+    "retained_volumes": [
+      {"idHash":"sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be","sizeGb":50,"dataCenterId":"EU-RO-1"},
+      {"idHash":"sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619","sizeGb":50,"dataCenterId":"EU-RO-1"}
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 2.095889555552276,
+    "final_endpoint_spend_usd": 2.095889555552276,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "cloudflare": {
+    "signer_present": false,
+    "unrelated_secret_count": 8,
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "route_probe_count": 3,
+    "route_status": 404,
+    "route_code": "V207_ROUTE_DISABLED",
+    "route_version_id_sha256": "sha256:1e5d35b4c2709641024655c7df5832f360aeb665068804f07ecc600a68186e19",
+    "rollback_anchor_record_sha256": "sha256:54cd4dcb8a5b2afe8ca8cad9f7aad7dd6d47ef14b36ef0f7b03c7ba90a234c89"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "videoforge.v2-07-attempt64-cleanup/v1",
+  "attempt": 64,
+  "cleanup_completed_at": "2026-08-25T11:41:00Z",
+  "failure_cleanup": true,
+  "pre_delete_gate": {
+    "stable_read_count": 3,
+    "queue_empty": true,
+    "active_workers": 0,
+    "running_pods": 0
+  },
+  "deleted": {
+    "endpoint_id_sha256": "sha256:7e34ff7fce6380bd611dc9273cbeea88d2894f98d480c51ea9b7ab85042dd038",
+    "template_id_sha256": "sha256:2803350aa8d31a5b8cc9870610b401ea08594e0c41c88cd3ecfec4edeae5a1e7"
+  },
+  "retained": {
+    "volume_count": 2,
+    "recurring_charge_usd_per_month": 7
+  }
+}

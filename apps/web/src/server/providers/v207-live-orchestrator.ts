@@ -65,9 +65,9 @@ export type V207RollbackAnchorRefreshInvocation =
       activation: typeof V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION;
     }>;
 export const V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256 =
-  "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643" as const;
+  "sha256:1e5d35b4c2709641024655c7df5832f360aeb665068804f07ecc600a68186e19" as const;
 export const V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256 =
-  "sha256:54beafecb8d70bf99d0c3f84cee00d6bcb107e202786b1d8f7fe5bb14b33085d" as const;
+  "sha256:54cd4dcb8a5b2afe8ca8cad9f7aad7dd6d47ef14b36ef0f7b03c7ba90a234c89" as const;
 /** Wrangler's versions list is limited to ten recent versions. Keep three
  * slots of headroom for the bounded deploy/secret mutations and propagation
  * churn, so the captured rollback target must be in the newest seven. */

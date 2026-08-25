@@ -2,21 +2,21 @@
 
 ## Active handoff — read this section first
 
-Attempt64 is approved once for bounded deadline-mode V2-07 execution. Exact authority
-`sha256:503e07b944176b140357325d8fe2f38e5a36cf7a6e2fce2d4e7782da989492c2` binds proposal
-`sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909`, the `$4.50`
-maximum cumulative finite cap, endpoint rotation, FlashBoot=true, exact RTX 4090 only,
-LOW-or-better EU-RO-1, two-phase-v1 anchor refresh, and continued `$7/month` volume retention.
-Commit `aa0524f` runs the complete
-exact-authority read-only admission before any remote mutation, then the live runner repeats the
-RTX 4090 EU-RO-1 catalog and zero-inventory gate immediately before its first RunPod mutation.
-Fresh truth through `2026-08-25T10:37:26.820Z` is LOW RTX 4090 capacity, zero compute/disposables,
-both exact retained volumes, cumulative billing `2.095889555552276`, absent signer, protected
-config mode `0600`, sufficient disk, and three exact version-bound disabled-route reads. Exact
-The `$4.25` estimate remains below the executable cap. GPU scope remains exact RTX 4090 only with
-no fallback. No provider mutation, GPU job, or new spend has occurred under this authority yet.
-Execute once through the full read-only admission and fail closed on drift. V2-07 remains
-`NOT_QUALIFIED`; V2-08 remains forbidden.
+Attempt64 is closed `NOT_QUALIFIED`. Deadline-mode admission and the immediate pre-RunPod recheck
+passed; the one-unit probe and three subsequent jobs produced 96 durable accepted units. Endpoint
+rotation succeeded with distinct endpoint and signed Pod identities. Cancellation reached
+`CANCELLED` with output cleanup confirmed, then the bounded runner stopped at
+`RUNPOD_ZERO_NOT_CONFIRMED` before timeout and max-two proof. Exact cleanup deleted the replacement
+endpoint/template. Three stable reads prove zero pods, endpoints, templates, workers, or running
+compute; both exact 50 GB EU-RO-1 volumes remain under the approved `$7/month` retention. Billing
+was stable at `2.095889555552276`, a `$0` observed increment within the `$4.50` cap. The signer is
+absent, protected config is restored mode `0600`, and three route reads prove version-bound
+`404 V207_ROUTE_DISABLED` on refreshed anchor `sha256:1e5d35b4…86e19` / record
+`sha256:54cd4dcb…34c89`. Exact authority `sha256:503e07b9…492c2` is consumed and executable
+authority/cap/refresh are null. Provider-free repair `1283a23` bounded-polls the first post-cancel
+health zero and still requires a separate second exact zero before settling liability; an independent
+audit found no P0/P1 and full web tests passed `713` with one skipped. Any new provider work requires
+fresh admission truth and a fresh exact proposal/approval/cap. V2-08 remains forbidden.
 
 Attempt63 is closed `NOT_QUALIFIED`. Exact proposal `sha256:83a54dbd…e532` ran once under
 pre-execution authority `sha256:16378035…a798` and the `$4.50` cap. Two-phase anchor refresh and

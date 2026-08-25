@@ -11,16 +11,15 @@ const expected = {
   preflight: "sha256:db78eac734c87bf2b114aff4431337306d142ff87af987599632786f8cbd7929",
   max1: "sha256:3c00c51f851aa7fe312042fb69c3b38e6ed47566ad4c9b2e05f6be632daa499e",
   max2: "sha256:1faf6ea1b644e93f1a3550d3c9853d95b061520d1388bb3d0d31e6ec8b05381a",
-  authority: "sha256:503e07b944176b140357325d8fe2f38e5a36cf7a6e2fce2d4e7782da989492c2",
-  orchestrator: "sha256:0125d58b4692df05e49528c929203812e16890e308655e36c7b5158919ba94ef",
-  orchestratorTest: "sha256:571b9ba2b68fd8d536b5e14f078aa6a0dc30dff1d9da9f0dbb58b3fff47baaa8",
+  authority: "sha256:a9e8deb7b421831d5b1576f386f20c4fc0f02fb94d917b7d0a527cbb85f6fcf7",
+  orchestrator: "sha256:de5bb8d7523645a951017c9c0b77bc2b9234a68407132cd21032c252e475e3ff",
+  candidateOrchestrator: "sha256:0125d58b4692df05e49528c929203812e16890e308655e36c7b5158919ba94ef",
+  orchestratorTest: "sha256:47395bb78238bd80c291488079b4b01b8e0cda0b84bf23d7c82222ca20bbb80d",
   admission: "sha256:305944852bcdef09415e1c481bb249ba3cbacbcd218308c38a7d7f5cce6ab0fa",
   qualification: "sha256:c8ce97719788f91bc546df8b6c251f99d8e3367db1c562b27e52c927cf0ec986",
   qualificationTest: "sha256:d3b04834164c54fcdaf558e30b1d36cc3d7292e4aca533b873c0e21b5c251ff7",
-  harness: "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853",
-  harnessTest: "sha256:24257c1567bcbe1246741a8a600a18ff5f0aea67abc02e3260497d2e13e208ad",
-  activation: "sha256:4ac868e6f5d54097ac7685a3ec05f04068bd463875709a203bd940815ce17853",
-  canonicalActivation: "sha256:4f177bf144457dd210193e304cf5dbab9e83efc0b316c701a86d70ae90bbeef6",
+  activation: "sha256:29cfaa7c0edfa5a530b5c317d2c5c6acba3fa76dd942b29dbe21c7ada9d08531",
+  canonicalActivation: "sha256:bae1069331d06fa8b45cb3724ce48a50eff6895c326a931be9eec9946aa017ee",
   version: "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643",
   record: "sha256:54beafecb8d70bf99d0c3f84cee00d6bcb107e202786b1d8f7fe5bb14b33085d",
   commit: "aa0524f2d340cab1a4c4693584dc626e117f7d2c",
@@ -62,8 +61,6 @@ for (const [name, expectedHash] of [
   ["apps/web/src/server/providers/v207-read-only-admission.ts", expected.admission],
   ["apps/web/src/server/providers/v207-live-qualification.ts", expected.qualification],
   ["apps/web/src/server/providers/v207-live-qualification.test.ts", expected.qualificationTest],
-  ["apps/web/src/server/providers/runpod-v207-qualification-harness.ts", expected.harness],
-  ["apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts", expected.harnessTest],
   ["apps/web/src/server/providers/v207-activation-authority.ts", expected.activation],
 ]) {
   yes((await rootSha(name)) === expectedHash, `SOURCE_${name}`);
@@ -125,7 +122,7 @@ for (const [config, workers] of [
       config.gpu === "NVIDIA GeForce RTX 4090" &&
       config.region === "EU-RO-1" &&
       config.source.deadline_mode_admission_commit === expected.commit &&
-      config.source.orchestrator_sha256 === expected.orchestrator &&
+      config.source.orchestrator_sha256 === expected.candidateOrchestrator &&
       config.source.read_only_admission_sha256 === expected.admission &&
       config.expected_old_anchor.version_id_sha256 === expected.version &&
       config.expected_old_anchor.record_sha256 === expected.record &&
@@ -148,9 +145,9 @@ yes(
 );
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_POINTER");
 yes(sha(await bytes("approved-authority.json")) === expected.authority, "AUTHORITY_HASH");
-yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_BINDING");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4\.5;/u.test(activation), "CAP_BINDING");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation), "REFRESH_BINDING");
+yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null =\s*null;/u.test(activation), "AUTHORITY_CLOSED");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_CLOSED");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "REFRESH_CLOSED");
 const canonical = activation
   .replace(/^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/mu, `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${"0".repeat(64)}" as const;`)
   .replace(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/mu, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;")
@@ -177,7 +174,7 @@ try {
 yes(authorityExists === true, "APPROVED_AUTHORITY_PRESENT");
 yes(
   authority.attempt === 64 &&
-    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.status === "CONSUMED_FAILED_CLEAN" &&
     authority.proposal.sha256 === expected.proposal &&
     authority.acceptance.sha256 === expected.acceptance &&
     authority.approval.deadline_mode_authorized === true &&
@@ -190,7 +187,10 @@ yes(
     authority.approval.low_or_better_eu_ro_1_availability_approved === true &&
     authority.approval.maximum_cumulative_finite_spend_usd === 4.5 &&
     authority.approval.anchor_refresh_authorized === true &&
-    authority.approval.consumed === false &&
+    authority.approval.consumed === true &&
+    authority.execution_boundary.runpod_mutation_authorized_pending_execution === false &&
+    authority.execution_boundary.cloudflare_mutation_authorized_pending_execution === false &&
+    authority.execution_boundary.gpu_use_authorized_pending_execution === false &&
     authority.execution_boundary.v2_08_authorized === false,
   "AUTHORITY_CONTRACT",
 );
