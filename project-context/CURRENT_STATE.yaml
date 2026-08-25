@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T15:45:25.000Z"
+updated_at: "2026-08-25T17:35:59.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -106,7 +106,45 @@ provider_free_product_progress:
   factual_gpu_readiness_commit: "c516726"
   factual_gpu_readiness_status: PROVIDER_FREE_PASS_independently_audited_dispatch_disabled
   factual_gpu_readiness_note: "The authenticated hosted catalog and UI expose exact Mage and SoulX NOT_QUALIFIED state, missing gates, pending SoulX visual approval, and provider-free commit lineage while keeping GPU transport DISABLED_UNQUALIFIED and exposing no dispatch control."
-  batch3_through_batch6_note: "Ordinary signed output acceptance, private GET rehash, SQL append-only completion persistence, render-plan materialization, automatic 3–5-minute pilot, two-account queue evidence, production-length economics, final release-ledger, and factual readiness groundwork are implemented. Current canonical legacy avatar profiles cannot substitute for SoulX, whose crop remains pending explicit user visual approval."
+  hosted_callback_render_bridge_commit: "53c5c23"
+  hosted_callback_render_bridge_status: PROVIDER_FREE_PASS_independently_audited_source_only
+  hosted_callback_render_bridge_note: "Ordinary output acceptance can bridge to render-plan materialization through migration 0038, but the current hosted route remains fail-closed and no live worker callback is composed."
+  hosted_asr_generation_commit: "655edd2"
+  hosted_asr_generation_status: PROVIDER_FREE_PASS_independently_audited_fail_closed
+  hosted_asr_generation_note: "Canonical ASR result lineage can advance generation planning through a persistence seam; the provider-free composition deliberately owns no promotable queue or global-capacity mutation."
+  hosted_migration_activation_commit: "94b2975"
+  hosted_migration_activation_status: PROVIDER_FREE_PASS_independently_audited_not_deployed
+  hosted_migration_activation_note: "Manifest-derived migration and least-privilege runtime grant tooling is current through the additive hosted migrations; no database migration or grant was applied."
+  hosted_invite_issuance_commit: "313a6f8"
+  hosted_invite_issuance_status: PROVIDER_FREE_PASS_independently_audited_not_executed
+  hosted_invite_issuance_note: "The dedicated-operator, dry-run-default invite tool uses exact least privilege, deterministic advisory locks, and one-time verifier output. No invite, database connection, credential access, or remote write occurred."
+  hosted_dispatch_groundwork_commit: "9e59ce9"
+  hosted_dispatch_groundwork_status: PROVIDER_FREE_PASS_independently_audited_source_only_uncomposed
+  hosted_dispatch_groundwork_note: "Fail-closed dispatch validation checks sealed deployment readback and paid authority before an injected one-time claim seam; it is not production-composed and cannot authorize live work."
+  hosted_invite_denial_ux_commit: "801c2e5"
+  hosted_invite_denial_ux_status: PROVIDER_FREE_PASS_independently_audited
+  hosted_invite_denial_ux_note: "The hosted UI distinguishes unauthenticated login from authenticated invite-required denial without leaking private catalog state or causing a login loop."
+  hosted_canonical_timing_bridge_commit: "cc7eed0"
+  hosted_canonical_timing_bridge_status: PROVIDER_FREE_PASS_independently_audited_migration_0039_not_deployed
+  hosted_canonical_timing_bridge_note: "Migration 0039 and its hosted composition persist canonical transcript and scene timing from exact RESULT_DOCUMENT authority with normalized append-only replay equality."
+  production_activation_config_commit: "614464b"
+  production_activation_config_status: PROVIDER_FREE_PASS_independently_audited_not_rendered_or_deployed
+  production_activation_config_note: "Dry-run-default production activation rendering, validation, deployment guard, exact Cloudflare bindings, and production bundle firewall fail closed with GPU transport DISABLED_UNQUALIFIED."
+  authenticated_worker_callback_commit: "23d4d03"
+  authenticated_worker_callback_status: PROVIDER_FREE_PASS_independently_audited_source_only_uncomposed
+  authenticated_worker_callback_note: "The worker-only callback shell authenticates opaque bearer authority before body parsing and binds the current assignment without tenant selectors; a concrete production callback authority repository adapter is still missing."
+  hosted_paid_dispatch_authority_commit: "9f9ee82"
+  hosted_paid_dispatch_authority_status: PROVIDER_FREE_PASS_independently_audited_migration_0040_not_deployed
+  hosted_paid_dispatch_authority_note: "Migration 0040 and the SQL gate atomically claim an exact paid-dispatch approval using PostgreSQL transaction time, tenant/lease/two-lane lineage, expiry, and cumulative-cap checks. This supplies no approval and activates no dispatch."
+  remaining_provider_free_activation_blockers:
+    - lane_batch_materialization_and_task_foreign_key
+    - atomic_two_lane_predispatch
+    - concrete_callback_authority_repository_database_adapter
+  remaining_live_and_visual_blockers:
+    - mage_live_qualification
+    - soulx_live_qualification
+    - soulx_explicit_crop_visual_approval
+  batch3_through_batch6_note: "Ordinary signed output acceptance, private GET rehash, SQL append-only completion persistence, render-plan materialization, canonical timing persistence, authenticated callback and paid-authority shells, production-config guards, automatic 3–5-minute pilot, two-account queue evidence, production-length economics, final release ledger, and factual readiness groundwork are implemented. Callback and dispatch activation remain source-only/uncomposed. Current canonical legacy avatar profiles cannot substitute for SoulX, whose crop remains pending explicit user visual approval."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
   focused_v2_12_tests: 14_pass

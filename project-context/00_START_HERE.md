@@ -11,12 +11,18 @@ final two-lane smoke passes, and an independent zero-job/zero-worker drain is pr
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
 Provider-free successor groundwork is now independently audited through the V2-11 two-account
-queue evidence evaluator (`8c21d4c`), V2-12 production-length economics gate (`9d63159`), V2-13
-15-gate release ledger (`bd0cede`), and factual authenticated GPU-readiness projection (`c516726`).
-These commits do not supply live evidence or authority: Mage and SoulX remain `NOT_QUALIFIED`, GPU
-transport and dispatch remain disabled, live release remains blocked, and SoulX crop selection still
-awaits explicit user visual approval. Provider/deployment/credential/GPU/spend authority remains
-false with a `$0` executable cap.
+queue evaluator (`8c21d4c`), V2-12 economics gate (`9d63159`), V2-13 release ledger (`bd0cede`),
+factual GPU readiness (`c516726`), canonical ASR/generation and callback/render bridges (`655edd2`,
+`53c5c23`), canonical timing persistence plus migration 0039 (`cc7eed0`), guarded production config
+(`614464b`), authenticated worker callback shell (`23d4d03`), and the SQL paid-authority gate plus
+migration 0040 (`9f9ee82`). Migration/grant activation (`94b2975`), safe invite issuance (`313a6f8`),
+dispatch groundwork (`9e59ce9`), and invite-denial UX (`801c2e5`) are also audited provider-free.
+None supplies live evidence or authority. Production config remains `DISABLED_UNQUALIFIED`; callback
+and dispatch activation remain source-only/uncomposed. Provider-free blockers are lane-batch
+materialization/task FK, atomic two-lane predispatch, and a concrete callback-authority database
+adapter. Mage and SoulX remain `NOT_QUALIFIED`, live release is blocked, and SoulX crop selection
+still awaits explicit user visual approval. Provider/deployment/credential/GPU/spend authority is
+false with a `$0` executable cap; migrations 0038–0040 and production config are not deployed.
 
 Attempt64 is closed `NOT_QUALIFIED`. Deadline-mode admission and the immediate pre-RunPod recheck
 passed; the one-unit probe and three subsequent jobs produced 96 durable accepted units. Endpoint
