@@ -1,0 +1,69 @@
+{
+  "schema_version": "videoforge.v2-07-attempt63-endpoint-rotation-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 63,
+  "status": "PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:83a54dbd5d4810a83fa100eaf5014af255097ae2eb7c6264deccf209d5a3e532",
+  "preflight_sha256": "sha256:fdbe49a4d9d422c24827535a17ff39c64ae1f9eea2d746bff15fe4d5c6d9e419",
+  "max1_sha256": "sha256:d692f9b8b59b82a68afce770970aa44ea798d4fd08c679ac47585aa1096650b8",
+  "max2_sha256": "sha256:29c7eabb03f62051475e5fa6513581b8d1976e760582a17e4ff4421b1b6191cb",
+  "lineage": {
+    "endpoint_rotation_commit": "3f3bed48e69f149cf56ee6aa6c42cabb70528db4",
+    "anchor_rebind_commit": "9c9ca3476c976592ae73414e6a1e53cc0fcbb643",
+    "orchestrator_source_sha256": "sha256:b53686061be569262f90744704cb312489da2b88a1b177c1378bf1d3baec1e2a",
+    "live_qualification_source_sha256": "sha256:10d6a3eed7db3b6f50688cf0fc82904f2f5023e37840922c63fbb53511227605",
+    "qualification_harness_source_sha256": "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853",
+    "attempt62_authority_reused": false,
+    "attempt62_cap_reused": false,
+    "attempt62_proposal_reused": false
+  },
+  "repair_contract": {
+    "seed_endpoint_deleted_after_terminal_proof": true,
+    "two_stable_zero_resource_reads_before_recreate": true,
+    "fresh_endpoint_id_required": true,
+    "fresh_endpoint_bound_before_replacement_authority": true,
+    "replacement_dispatch_count": 1,
+    "same_signed_pod_still_rejected": true,
+    "acceptance_relaxed": false,
+    "redispatch": false,
+    "retained_volume_mutation": false
+  },
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "requested_maximum_cumulative_finite_spend_usd": 4.5,
+    "anchor_refresh_authorized": null,
+    "endpoint_rotation_authorized": null,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "authority_file": null,
+    "v2_08_authorized": false
+  },
+  "provider_state": {
+    "zero_compute_and_disposables": true,
+    "two_existing_volumes_retained": true,
+    "billing_baseline_usd": 2.0487612777214963,
+    "availability": "LOW",
+    "exact_version_bound_disabled_route": true,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "validation": {
+    "combined_focused_tests_passed": 142,
+    "orchestrator_tests_passed": 56,
+    "web_typecheck_passed": true,
+    "focused_lint_passed": true,
+    "context_validation_required_before_handoff": true
+  },
+  "remaining_gates": [
+    "fresh exact approval of proposal sha256:83a54dbd5d4810a83fa100eaf5014af255097ae2eb7c6264deccf209d5a3e532 and a fresh USD 4.5 numeric cap",
+    "postapproval preexecution reconfirmation",
+    "one bounded live qualification with complete output, timing, cost, reader, volume-integrity, cleanup and zero-worker proof"
+  ],
+  "recorded_at": "2026-08-25T09:20:00Z",
+  "v2_08_started": false
+}

@@ -1,0 +1,97 @@
+{
+  "schema_version": "videoforge.v2-07-attempt63-endpoint-rotation-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 63,
+  "qualification_status": "NOT_QUALIFIED",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP",
+  "provider_calls_authorized": false,
+  "provider_mutations_authorized": false,
+  "gpu_use_authorized": false,
+  "v2_08_authorized": false,
+  "repair": {
+    "root_cause": "TERMINAL_SCALE_ZERO_DID_NOT_DESTROY_FLASHBOOT_SEED_ENDPOINT_PROCESS",
+    "endpoint_rotation_commit": "3f3bed48e69f149cf56ee6aa6c42cabb70528db4",
+    "anchor_rebind_commit": "9c9ca3476c976592ae73414e6a1e53cc0fcbb643",
+    "delete_drained_seed_endpoint": true,
+    "retain_exact_template_and_sealed_volume": true,
+    "two_stable_zero_resource_reads_before_recreate": true,
+    "one_fresh_max_one_endpoint": true,
+    "replacement_dispatch_count": 1,
+    "redispatch": false,
+    "distinct_signed_pod_requirement_preserved": true,
+    "acceptance_relaxed": false
+  },
+  "source_lineage": {
+    "candidate_base_commit": "9c9ca3476c976592ae73414e6a1e53cc0fcbb643",
+    "attempt62_closure_sha256": "sha256:3c3a4332dd1f0bbf2753b3ba9689f697bc38538fb99127bba47a803e94bf0aaf",
+    "attempt62_reconciliation_sha256": "sha256:ea0678ce17f3b6489fb06c6d49653838c56f20982f563060b2dc72f0e6dfdbc6",
+    "orchestrator_source_sha256": "sha256:b53686061be569262f90744704cb312489da2b88a1b177c1378bf1d3baec1e2a",
+    "orchestrator_test_sha256": "sha256:83e51030b4f2be860ff39e1770fea710381f68f2f8f3abac940a64c23bebbde8",
+    "live_qualification_source_sha256": "sha256:10d6a3eed7db3b6f50688cf0fc82904f2f5023e37840922c63fbb53511227605",
+    "live_qualification_test_sha256": "sha256:d3b04834164c54fcdaf558e30b1d36cc3d7292e4aca533b873c0e21b5c251ff7",
+    "qualification_harness_source_sha256": "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853",
+    "qualification_harness_test_sha256": "sha256:24257c1567bcbe1246741a8a600a18ff5f0aea67abc02e3260497d2e13e208ad"
+  },
+  "provider_state": {
+    "preflight_path": "read-only-preflight.json",
+    "zero_compute_and_disposables": true,
+    "two_existing_volumes_retained": true,
+    "billing_baseline_usd": 2.0487612777214963,
+    "availability": "LOW",
+    "serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "secure_reference_rate_usd_per_hour": 0.74,
+    "active_version_id_sha256": "sha256:fed54e9136fe3ac6f3788771b8bdc7d7a4507cef74a4e6f4a08e5c19d64af39f",
+    "active_record_sha256": "sha256:5e45b9b400d33cee1ea533e64bc8177ff6418ff4e810dd880944d18e8b014031",
+    "route": "POST_404_V207_ROUTE_DISABLED_EXACT_ACTIVE_VERSION_BOUND",
+    "signer_present": false
+  },
+  "runtime": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "region": "EU-RO-1",
+    "flashboot": true
+  },
+  "cost": {
+    "prior_sequence_estimate_usd_ceiling": 3.95,
+    "additional_endpoint_initialization_liability_usd": 0.24444444444444446,
+    "finite_action_estimate_usd_ceiling": 4.25,
+    "requested_maximum_cumulative_finite_spend_usd": 4.5,
+    "executable_finite_cap_usd": null,
+    "existing_two_volumes_usd_per_month": 7,
+    "volume_charge_separate_from_finite_cap": true,
+    "billing_lag_applies": true
+  },
+  "approval_request": {
+    "exact_proposal_approved": false,
+    "flashboot": true,
+    "minimum_availability": "LOW-or-better",
+    "last_observed_availability": "LOW",
+    "requested_maximum_cumulative_finite_spend_usd": 4.5,
+    "executable_cap_binding": null,
+    "anchor_refresh_mode": "two-phase-v1",
+    "anchor_refresh_authorized": null,
+    "endpoint_rotation_authorized": null,
+    "fresh_exact_approval_required": true,
+    "continued_retention_of_two_existing_volumes_at_usd_per_month": 7,
+    "provider_final_invoice_absolute_guarantee": false
+  },
+  "bounded_sequence": [
+    "reconfirm source/config/proposal/authority hashes, disk, account, inventory, catalog, billing, signer absence, and exact version-bound disabled route",
+    "apply exact two-phase-v1 anchor refresh and scoped signer/Worker route",
+    "create one exact private template and max-one seed endpoint on the sealed Mage volume",
+    "run one-unit probe and prove terminal queue-empty signed seed Pod boundary",
+    "delete only the drained seed endpoint, prove two stable zero-resource reads, reserve liability, then create and bind one fresh max-one replacement endpoint",
+    "issue exactly one 31-unit replacement request, require distinct endpoint and signed Pod identities, and merge prior one plus new thirty-one durable units",
+    "continue existing cold, warm, duplicate, cancellation, timeout, max-two readers, sealed-volume and final zero-worker gates only after replacement passes",
+    "on failure stop without redispatch or later batches, roll back generated outputs, delete attributable disposable resources/signer, restore Worker/route/config, and reconcile three stable zero-compute reads",
+    "stop before V2-08"
+  ],
+  "stop_conditions": [
+    "any source, proposal, authority, config, account, image, model, volume, GPU, region, rate, billing, cap, anchor, signer, route, disk, or provider-state mismatch",
+    "seed endpoint delete ambiguity, unstable/nonzero rotation gap, fresh endpoint create/bind/readback drift, non-distinct endpoint, or non-distinct signed replacement Pod",
+    "any output, receipt, timing, VRAM, resume, duplicate, cancellation, timeout, reader, volume-integrity, cleanup, rollback, reconciliation, or billing uncertainty",
+    "numeric cap risk or user cancellation"
+  ]
+}
