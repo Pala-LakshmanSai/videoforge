@@ -960,19 +960,24 @@ async function waitForRefreshDisabledRoute(
   signal: AbortSignal,
   failureCode = "V207_ROLLBACK_ANCHOR_REFRESH_ROUTE_UNCONFIRMED",
   expectedWorkerVersionId?: string,
+  tolerateTransportGaps = false,
+  onTransportGap?: (count: number) => Promise<void>,
 ): Promise<RouteFingerprint> {
   if (expectedWorkerVersionId !== undefined && !VERSION_ID.test(expectedWorkerVersionId)) {
     throw new V207LiveOrchestratorError("V207_ROUTE_VERSION_ID_INVALID");
   }
+  const deadline = AbortSignal.timeout(RESTORATION_PROPAGATION_WINDOW_MS);
+  const pollSignal = AbortSignal.any([signal, deadline]);
   let consecutiveMatches = 0;
+  let transportGapCount = 0;
   for (let attempt = 1; attempt <= RESTORATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
-    if (signal.aborted) break;
-    let observed: RouteFingerprint;
+    if (pollSignal.aborted) break;
+    let observed: RouteFingerprint | undefined;
     try {
       observed = await readRouteFingerprint(
         fetchImpl,
         routeUrl,
-        signal,
+        pollSignal,
         expectedWorkerVersionId !== undefined,
       );
     } catch (error) {
@@ -984,7 +989,34 @@ async function waitForRefreshDisabledRoute(
       ) {
         throw error;
       }
-      throw new V207LiveOrchestratorError(failureCode);
+      if (
+        tolerateTransportGaps &&
+        error instanceof V207LiveOrchestratorError &&
+        error.code === "V207_ROUTE_PROBE_FAILED"
+      ) {
+        transportGapCount += 1;
+        consecutiveMatches = 0;
+        await onTransportGap?.(transportGapCount);
+        if (pollSignal.aborted) break;
+      } else {
+        // Preserve bounded lower-level classification during the repaired
+        // pre-mutation window. Other refresh phases retain their established
+        // fail-closed umbrella code.
+        if (tolerateTransportGaps) throw error;
+        throw new V207LiveOrchestratorError(failureCode);
+      }
+    }
+    if (observed === undefined) {
+      if (attempt < RESTORATION_PROPAGATION_MAX_ATTEMPTS) {
+        await Promise.race([
+          sleepImpl(RESTORATION_PROPAGATION_DELAY_MS),
+          new Promise<void>((resolveAbort) => {
+            if (pollSignal.aborted) resolveAbort();
+            else pollSignal.addEventListener("abort", () => resolveAbort(), { once: true });
+          }),
+        ]);
+      }
+      continue;
     }
     if (
       expectedWorkerVersionId !== undefined &&
@@ -1004,11 +1036,16 @@ async function waitForRefreshDisabledRoute(
       await Promise.race([
         sleepImpl(RESTORATION_PROPAGATION_DELAY_MS),
         new Promise<void>((resolveAbort) => {
-          if (signal.aborted) resolveAbort();
-          else signal.addEventListener("abort", () => resolveAbort(), { once: true });
+          if (pollSignal.aborted) resolveAbort();
+          else pollSignal.addEventListener("abort", () => resolveAbort(), { once: true });
         }),
       ]);
     }
+  }
+  if (transportGapCount > 0) {
+    throw new V207LiveOrchestratorError(
+      "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_TRANSPORT_EXHAUSTED",
+    );
   }
   throw new V207LiveOrchestratorError(failureCode);
 }
@@ -1560,6 +1597,12 @@ export async function runV207LiveOrchestration(
         abortController.signal,
         "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED",
         capturedAnchor.versionId,
+        true,
+        async (count) => {
+          await record("rollback_anchor_refresh_pre_mutation_route_transport_gap", {
+            count,
+          });
+        },
       );
       await record("rollback_anchor_refresh_pre_mutation_route_stable", {
         status: stablePreMutationRoute.status,

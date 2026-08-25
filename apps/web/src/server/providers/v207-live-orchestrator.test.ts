@@ -1023,11 +1023,13 @@ describe("V2-07 live orchestrator", () => {
       }
       if (!signerSecretPresent && !rollbackSeen) {
         refreshDisabledProbeCalls += 1;
+        if (deployCalls === 0 && refreshDisabledProbeCalls === 5) {
+          throw new Error("bounded pre-route transport gap");
+        }
         return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
           status: 404,
           headers: {
-            "x-videoforge-worker-version":
-              refreshDisabledProbeCalls <= 17 ? VERSION_ID : REFRESH_VERSION_ID,
+            "x-videoforge-worker-version": deployCalls === 0 ? VERSION_ID : REFRESH_VERSION_ID,
           },
         });
       }
@@ -1075,7 +1077,7 @@ describe("V2-07 live orchestrator", () => {
     expect(deployCalls).toBe(1);
     expect(statusCalls).toBe(4);
     expect(versionsCalls).toBe(2);
-    expect(refreshDisabledProbeCalls).toBe(49);
+    expect(refreshDisabledProbeCalls).toBe(53);
     expect(restorationProbeCalls).toBe(16);
     expect(signerSecretPresent).toBe(false);
     const rollback = calls.find((call) => call.args.includes("rollback"));
@@ -1083,6 +1085,10 @@ describe("V2-07 live orchestrator", () => {
     expect(rollback?.args).not.toContain(VERSION_ID);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain('"event": "rollback_anchor_refresh_disabled_route_stable"');
+    expect(evidence).toContain(
+      '"event": "rollback_anchor_refresh_pre_mutation_route_transport_gap"',
+    );
+    expect(evidence).toContain('"count": 1');
     expect(evidence).toContain('"event": "rollback_anchor_refresh_captured"');
     expect(evidence).toContain('"event": "orchestration_complete"');
   });
@@ -1370,6 +1376,73 @@ describe("V2-07 live orchestrator", () => {
     expect(
       calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
     ).toBe(false);
+  });
+
+  it("exhausts bounded pre-mutation transport gaps without provider mutation", async () => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    let routeProbeCalls = 0;
+    const environment = {
+      ...files.environment,
+      [V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY]: V207_ROLLBACK_ANCHOR_REFRESH_ACTIVATION,
+    };
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
+      throw new Error("transport exhaustion must stop before mutation");
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureRefreshAuthority,
+        expectedOldActiveVersionIdSha256: TEST_OLD_ACTIVE_VERSION_ID_SHA256,
+        expectedOldActiveRecordSha256: TEST_OLD_ACTIVE_RECORD_SHA256,
+        environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl: async () => {
+          routeProbeCalls += 1;
+          if (routeProbeCalls === 1) {
+            return new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+              status: 404,
+              headers: { "x-videoforge-worker-version": VERSION_ID },
+            });
+          }
+          throw new Error("bounded transport failure");
+        },
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({
+      code: "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_TRANSPORT_EXHAUSTED",
+    });
+
+    expect(routeProbeCalls).toBe(61);
+    expect(calls.some((call) => call.args.includes("build:staging"))).toBe(false);
+    expect(calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(
+      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toBe(false);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain(
+      '"event": "rollback_anchor_refresh_pre_mutation_route_transport_gap"',
+    );
+    expect(evidence).toContain("V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_TRANSPORT_EXHAUSTED");
+    expect(evidence).not.toContain("bounded transport failure");
   });
 
   it("rolls back the old anchor after a refresh route mismatch without invoking qualification", async () => {
