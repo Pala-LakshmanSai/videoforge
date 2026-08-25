@@ -1294,6 +1294,78 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(1);
   });
 
+  it("recovers post-cancel scale-down from stale multi-worker health without redispatch", async () => {
+    const baseFetch = terminalScaleZeroFetch({
+      workerIds: ["worker_01", "worker_02"],
+      podIds: ["pod_01", "pod_02"],
+      healthWorkersBeforeDispatch: {
+        idle: 1,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 0,
+        unhealthy: 0,
+      },
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+      healthAfterFirstSnapshot: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+    });
+    let cancellationRequested = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      if (path.includes("/cancel/")) {
+        cancellationRequested = true;
+        return jsonResponse({ id: jobId, status: "CANCELLED" });
+      }
+      if (cancellationRequested && path.includes("/status/")) {
+        return jsonResponse({
+          id: jobId,
+          status: "CANCELLED",
+          executionTime: 100,
+          delayTime: 0,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+    const job = await instance.dispatchBatch(oneItemInput());
+    await expect(instance.cancel(job.id)).resolves.toMatchObject({
+      id: job.id,
+      status: "CANCELLED",
+    });
+    await expect(instance.scaleDownToInitial()).resolves.toBeUndefined();
+
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname === "/pods"),
+    ).toHaveLength(3); // one account-zero preflight plus two stable terminal snapshots
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({
+        event: "provider_terminal_worker_drain_confirmed",
+        post_job_health_proof: "queue_empty_only_terminal_inventory",
+        terminal_pod_record_count: 2,
+        endpoint_worker_record_count: 2,
+      }),
+    );
+  });
+
   it("fences the one-item seed at terminal scale-zero before replacement dispatch", async () => {
     const fetch = terminalScaleZeroFetch({ workerId: "worker_seed", podId: "pod_seed" });
     const instance = makeHarness(fetch);
@@ -1790,7 +1862,7 @@ describe("V2-07 qualification harness", () => {
     ).toHaveLength(0);
   });
 
-  it("keeps post-drain terminal promotion health-first", async () => {
+  it("keeps post-drain terminal promotion fail-closed without exact inventory", async () => {
     const baseFetch = harnessFetch();
     let healthReads = 0;
     const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -1825,7 +1897,7 @@ describe("V2-07 qualification harness", () => {
     });
     const instance = makeHarness(fetch);
     await instance.create();
-    await expect(instance.drain()).rejects.toThrow("RUNPOD_QUIESCENT_NOT_CONFIRMED");
+    await expect(instance.drain()).rejects.toThrow("RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED");
     expect(
       fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
     ).toHaveLength(0);

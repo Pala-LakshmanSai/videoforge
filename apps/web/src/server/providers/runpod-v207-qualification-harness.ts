@@ -2464,6 +2464,7 @@ export class RunPodV207QualificationHarness {
         await this.confirmTerminalScaleZeroBaseline(
           expectedPolicy,
           "provider_terminal_worker_drain_confirmed",
+          "post_job_queue_only",
         );
       }
     }
