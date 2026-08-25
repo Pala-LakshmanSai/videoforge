@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T13:34:39.000Z"
+updated_at: "2026-08-25T14:08:53.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -73,9 +73,18 @@ provider_free_product_progress:
   soulx_handler_commit: "7039092"
   soulx_handler_status: PROVIDER_FREE_PASS_independently_audited
   soulx_handler_note: "Exact per-envelope tenant/workspace, observed single RTX4090, measured timing, actual ffprobe validation, resume/readback, signed receipts, and scratch cleanup are implemented. Live image publication and qualification remain open and unauthorized."
-  focused_web_tests: 13_pass
+  soulx_serverless_image_commit: "84e0088"
+  soulx_serverless_image_status: PROVIDER_FREE_PASS_independently_audited
+  soulx_serverless_image_note: "Exact base/source/model hashes, offline read-only model volume, /tmp-only mutable paths, ffprobe, and the exact handler entrypoint are defined. The image has not been built or published."
+  hosted_serverless_composition_commit: "bcf3a1c"
+  hosted_serverless_composition_status: PROVIDER_FREE_PASS_independently_audited
+  hosted_serverless_composition_note: "Fresh canonical certification and full sealed lineage gate every new-work call. Expired exact evidence can acquire restart-safe cancel/reconcile-only scope and cannot dispatch."
+  production_fixture_firewall_commit: "fa1a6a9"
+  production_fixture_firewall_status: PASS_independently_audited
+  production_fixture_firewall_note: "Production and staging use hosted truth; emitted production client contains no fixture APIs, headers, query helpers, schemas, or assets. GPU transport remains DISABLED_UNQUALIFIED."
+  focused_web_tests: 58_pass_batch2
   focused_control_plane_tests: 27_pass
-  avatar_primary_tests: 14_pass
+  avatar_primary_tests: 22_pass
   web_control_plane_typechecks: PASS
   context_validation: PASS_with_preexisting_v2_06_word_budget_warning
   provider_calls_or_mutations: 0
