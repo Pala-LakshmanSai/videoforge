@@ -10,6 +10,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+  compareUtf8Bytes,
   createHostedServerlessOutputBarrier,
   type HostedLaneCompletionRecord,
   type HostedLaneCompletionRepository,
@@ -152,13 +153,13 @@ class MemoryRepository implements HostedLaneCompletionRepository {
     return this.nonces;
   }
 
-  async complete(record: HostedLaneCompletionRecord) {
+  async completeVerified({ record }: { readonly record: HostedLaneCompletionRecord }) {
     this.completeCalls += 1;
     const existing = this.records.get(record.attemptId);
-    if (existing) return existing;
+    if (existing) return { record: existing, inserted: false };
     this.records.set(record.attemptId, record);
     this.nonces.add(1);
-    return record;
+    return { record, inserted: true };
   }
 }
 
@@ -187,6 +188,10 @@ function expectCode(promise: Promise<unknown>, code: string) {
 }
 
 describe("ordinary hosted serverless output barrier", () => {
+  it("uses bytewise UTF-8 ordering for mixed case, punctuation, and non-ASCII item ids", () => {
+    expect(["a_", "é", "a-", "a", "A"].sort(compareUtf8Bytes)).toEqual(["A", "a", "a-", "a_", "é"]);
+  });
+
   it("marks complete only after exact signed receipt and every private artifact readback", async () => {
     const bound = binding();
     const artifacts = exactArtifacts(bound);

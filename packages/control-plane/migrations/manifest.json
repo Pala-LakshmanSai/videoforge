@@ -216,6 +216,12 @@
       "name": "v2_06_google_only_replay_boundaries",
       "filename": "0036_v2_06_google_only_replay_boundaries.sql",
       "sha256": "sha256:42cd8f6f0a2d9cb1e214eb8de49cc33a05dd787571e86051dad4a01e1a08528a"
+    },
+    {
+      "version": 37,
+      "name": "hosted_serverless_output_barrier",
+      "filename": "0037_hosted_serverless_output_barrier.sql",
+      "sha256": "sha256:e21a04350d2685f231bbfa8ac9a1109a22194ab0e227d49a9dfa4c68d84aa9ef"
     }
   ]
 }

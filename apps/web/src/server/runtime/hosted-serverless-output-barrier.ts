@@ -79,8 +79,12 @@ export interface HostedLaneCompletionRecord {
 export interface HostedLaneCompletionRepository {
   accepted(attemptId: string): Promise<HostedLaneCompletionRecord | null>;
   seenReceiptNonces(attemptId: string): Promise<ReadonlySet<number>>;
-  /** Must atomically insert once or return the already committed row. */
-  complete(record: HostedLaneCompletionRecord): Promise<HostedLaneCompletionRecord>;
+  /** Rechecks nonce state and atomically persists exact provenance plus completion. */
+  completeVerified(input: {
+    readonly record: HostedLaneCompletionRecord;
+    readonly binding: HostedServerlessAttemptBinding;
+    readonly receipt: ProvenanceReceipt;
+  }): Promise<{ readonly record: HostedLaneCompletionRecord; readonly inserted: boolean }>;
 }
 
 interface ParsedCallback {
@@ -187,15 +191,31 @@ function verifyReceiptObjectSet(
 }
 
 function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
-  const sortedRight = [...right].sort();
+  const sortedRight = [...right].sort(compareUtf8Bytes);
   return (
     left.length === right.length &&
-    [...left].sort().every((value, index) => value === sortedRight[index])
+    [...left].sort(compareUtf8Bytes).every((value, index) => value === sortedRight[index])
   );
 }
 
-function bindingSha256(binding: HostedServerlessAttemptBinding): Sha256 {
-  return canonicalSha256({
+const utf8 = new TextEncoder();
+
+/** PostgreSQL `COLLATE "C"` ordering: compare encoded bytes, never locale rules. */
+export function compareUtf8Bytes(left: string, right: string): number {
+  const leftBytes = utf8.encode(left);
+  const rightBytes = utf8.encode(right);
+  const length = Math.min(leftBytes.length, rightBytes.length);
+  for (let index = 0; index < length; index += 1) {
+    const difference = leftBytes[index]! - rightBytes[index]!;
+    if (difference !== 0) return difference;
+  }
+  return leftBytes.length - rightBytes.length;
+}
+
+export function hostedOutputBindingComponents(
+  binding: HostedServerlessAttemptBinding,
+): Readonly<Record<string, unknown>> {
+  return Object.freeze({
     account_id: binding.accountId,
     workspace_id: binding.workspaceId,
     project_id: binding.projectId,
@@ -212,7 +232,7 @@ function bindingSha256(binding: HostedServerlessAttemptBinding): Sha256 {
     volume_id_sha256: binding.volumeIdSha256,
     volume_manifest_sha256: binding.volumeManifestSha256,
     expected_objects: [...binding.expectedObjects]
-      .sort((left, right) => left.itemId.localeCompare(right.itemId))
+      .sort((left, right) => compareUtf8Bytes(left.itemId, right.itemId))
       .map((item) => ({
         item_id: item.itemId,
         object_key: item.objectKey,
@@ -221,6 +241,10 @@ function bindingSha256(binding: HostedServerlessAttemptBinding): Sha256 {
         checksum_sha256: item.checksumSha256,
       })),
   });
+}
+
+export function hostedOutputBindingSha256(binding: HostedServerlessAttemptBinding): Sha256 {
+  return canonicalSha256(hostedOutputBindingComponents(binding));
 }
 
 /** Ordinary tenant callback barrier. It has no qualification nonce or operator route dependency. */
@@ -242,7 +266,7 @@ export function createHostedServerlessOutputBarrier(input: {
       } catch {
         throw new HostedOutputBarrierError("HOSTED_OUTPUT_CALLBACK_MALFORMED");
       }
-      const immutableBindingSha256 = bindingSha256(binding);
+      const immutableBindingSha256 = hostedOutputBindingSha256(binding);
       const existing = await input.repository.accepted(binding.attemptId);
       if (existing) {
         if (
@@ -327,14 +351,19 @@ export function createHostedServerlessOutputBarrier(input: {
         artifactCommitReceiptSha256s: Object.freeze([...commitHashes].sort()),
         completedAt: callback.observedAt,
       });
-      const committed = await input.repository.complete(proposed);
+      const completion = await input.repository.completeVerified({
+        record: proposed,
+        binding,
+        receipt: callback.receipt,
+      });
+      const committed = completion.record;
       if (
         committed.callbackSha256 !== callbackSha256 ||
         committed.bindingSha256 !== immutableBindingSha256
       ) {
         throw new HostedOutputBarrierError("HOSTED_OUTPUT_IDEMPOTENCY_CONFLICT");
       }
-      return committed === proposed ? "LANE_COMPLETED" : "DUPLICATE_IDEMPOTENT";
+      return completion.inserted ? "LANE_COMPLETED" : "DUPLICATE_IDEMPOTENT";
     },
   });
 }

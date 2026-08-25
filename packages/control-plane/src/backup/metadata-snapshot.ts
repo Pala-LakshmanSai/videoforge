@@ -84,6 +84,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "serverless_progress_events",
   "serverless_provenance_receipts",
   "serverless_output_receipts",
+  "hosted_serverless_output_barrier_completions",
   "serverless_cancellations",
   "serverless_reconciliations",
   "serverless_cost_ledgers",
