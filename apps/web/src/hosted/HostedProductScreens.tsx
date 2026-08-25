@@ -30,6 +30,108 @@ export interface CatalogResponse {
   }[];
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
   readonly gpu_transport: "DISABLED_UNQUALIFIED";
+  readonly gpu_readiness: {
+    readonly schema_version: "videoforge-hosted-gpu-readiness/v1";
+    readonly gpu_transport: "DISABLED_UNQUALIFIED";
+    readonly provider_calls_authorized: false;
+    readonly dispatch_available: false;
+    readonly lanes: readonly {
+      readonly lane: "MAGE_IMAGE" | "SOULX_AVATAR";
+      readonly checkpoint: "V2-07" | "V2-08";
+      readonly qualification: "NOT_QUALIFIED";
+      readonly visual_approval: "NOT_APPLICABLE" | "PENDING_USER_VISUAL_APPROVAL";
+      readonly provider_free_groundwork_commits: readonly string[];
+      readonly missing_gates: readonly string[];
+    }[];
+  };
+}
+
+const GPU_READINESS_KEYS = [
+  "dispatch_available",
+  "gpu_transport",
+  "lanes",
+  "provider_calls_authorized",
+  "schema_version",
+] as const;
+const GPU_LANE_KEYS = [
+  "checkpoint",
+  "lane",
+  "missing_gates",
+  "provider_free_groundwork_commits",
+  "qualification",
+  "visual_approval",
+] as const;
+const MAGE_GROUNDWORK_COMMITS = ["1283a23248c9b79832b6fb331b00474e1df70f81"] as const;
+const MAGE_MISSING_GATES = ["identity_output", "cancellation_timeout", "max2_concurrency"] as const;
+const SOULX_GROUNDWORK_COMMITS = [
+  "7039092707103ab35e8010c009e14409a6e52f63",
+  "84e00881d98e3e77dd8aad121453ed6e7287bc74",
+  "e49b93854d58c4faeb8bdd10b9b9df07321026db",
+  "f3557059d7d5f0637ea223b3e758389fbd80a52b",
+] as const;
+const SOULX_MISSING_GATES = [
+  "V2_07_MAGE_QUALIFICATION",
+  "V2_08_USER_VISUAL_CROP_APPROVAL",
+  "V2_08_IMAGE_PUBLICATION_AND_ENDPOINT_CONFIGURATION",
+  "V2_08_MAX1_LIVE_QUALIFICATION",
+] as const;
+
+function hasExactKeys(value: object, expected: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function isExactStringArray(value: unknown, expected: readonly string[]): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((entry, index) => entry === expected[index])
+  );
+}
+
+export function isFailClosedGpuReadiness(
+  value: unknown,
+): value is CatalogResponse["gpu_readiness"] {
+  if (!value || typeof value !== "object") return false;
+  const readiness = value as Partial<CatalogResponse["gpu_readiness"]>;
+  if (
+    !hasExactKeys(readiness, GPU_READINESS_KEYS) ||
+    readiness.schema_version !== "videoforge-hosted-gpu-readiness/v1" ||
+    readiness.gpu_transport !== "DISABLED_UNQUALIFIED" ||
+    readiness.provider_calls_authorized !== false ||
+    readiness.dispatch_available !== false ||
+    !Array.isArray(readiness.lanes) ||
+    readiness.lanes.length !== 2
+  ) {
+    return false;
+  }
+  const [mage, soulx] = readiness.lanes;
+  return Boolean(
+    mage &&
+      hasExactKeys(mage, GPU_LANE_KEYS) &&
+      mage.lane === "MAGE_IMAGE" &&
+      mage.checkpoint === "V2-07" &&
+      mage.qualification === "NOT_QUALIFIED" &&
+      mage.visual_approval === "NOT_APPLICABLE" &&
+      isExactStringArray(mage.provider_free_groundwork_commits, MAGE_GROUNDWORK_COMMITS) &&
+      isExactStringArray(mage.missing_gates, MAGE_MISSING_GATES) &&
+      soulx &&
+      hasExactKeys(soulx, GPU_LANE_KEYS) &&
+      soulx.lane === "SOULX_AVATAR" &&
+      soulx.checkpoint === "V2-08" &&
+      soulx.qualification === "NOT_QUALIFIED" &&
+      soulx.visual_approval === "PENDING_USER_VISUAL_APPROVAL" &&
+      isExactStringArray(soulx.provider_free_groundwork_commits, SOULX_GROUNDWORK_COMMITS) &&
+      isExactStringArray(soulx.missing_gates, SOULX_MISSING_GATES),
+  );
+}
+
+async function readHostedCatalog(): Promise<CatalogResponse> {
+  const catalog = await readJson<CatalogResponse>("/api/v2/hosted/project-catalog");
+  if (!isFailClosedGpuReadiness(catalog.gpu_readiness)) {
+    throw new Error("Hosted GPU readiness is unavailable.");
+  }
+  return catalog;
 }
 
 interface HostedAttempt {
@@ -199,7 +301,7 @@ export async function audioDurationMs(file: File): Promise<number> {
 export function HostedCreateProjectScreen() {
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
-    queryFn: () => readJson<CatalogResponse>("/api/v2/hosted/project-catalog"),
+    queryFn: readHostedCatalog,
   });
   const [title, setTitle] = useState("");
   const [avatarVersionId, setAvatarVersionId] = useState("");
@@ -393,8 +495,19 @@ export function HostedCreateProjectScreen() {
             <Check size={16} /> Personal CPU compute: $0 provider charge
           </p>
           <p>
-            <Check size={16} /> GPU transport disabled until qualification
+            <Check size={16} /> GPU transport: {catalog.data.gpu_readiness.gpu_transport}
           </p>
+          {catalog.data.gpu_readiness.lanes.map((lane) => (
+            <div key={lane.lane}>
+              <p>
+                <AlertTriangle size={16} /> {lane.checkpoint} {lane.lane}: {lane.qualification}
+              </p>
+              {lane.visual_approval === "PENDING_USER_VISUAL_APPROVAL" ? (
+                <p>Crop: PENDING_USER_VISUAL_APPROVAL</p>
+              ) : null}
+              <p>Missing gates: {lane.missing_gates.join(", ")}</p>
+            </div>
+          ))}
           {catalog.data.avatars.length === 0 ? (
             <p className="validation validation-danger">
               Create and approve an Avatar Profile first.
@@ -431,7 +544,7 @@ type HostedPresetHubKind = "avatars" | "styles";
 function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
-    queryFn: () => readJson<CatalogResponse>("/api/v2/hosted/project-catalog"),
+    queryFn: readHostedCatalog,
   });
   const isAvatar = kind === "avatars";
   const items = catalog.data ? (isAvatar ? catalog.data.avatars : catalog.data.styles) : [];

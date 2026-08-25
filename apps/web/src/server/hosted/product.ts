@@ -5,6 +5,7 @@ import type {
   HostedRuntimeEnvironment,
 } from "./configuration";
 import { sha256 } from "./crypto";
+import { hostedGpuReadiness } from "./gpu-readiness";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
 import { canonicalJson, exactHostedRenderSubmission } from "./submission";
@@ -221,6 +222,7 @@ async function catalog(
       styles: data.styles,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
       gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: hostedGpuReadiness(),
     });
   } finally {
     await pool.end();

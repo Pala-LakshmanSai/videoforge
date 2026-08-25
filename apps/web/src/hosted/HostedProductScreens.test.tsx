@@ -15,6 +15,7 @@ import {
   HostedStylesHubScreen,
   HostedUsageScreen,
   audioDurationMs,
+  isFailClosedGpuReadiness,
   parseWavDurationMs,
 } from "./HostedProductScreens";
 
@@ -29,7 +30,86 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const gpuReadiness = {
+  schema_version: "videoforge-hosted-gpu-readiness/v1" as const,
+  gpu_transport: "DISABLED_UNQUALIFIED" as const,
+  provider_calls_authorized: false as const,
+  dispatch_available: false as const,
+  lanes: [
+    {
+      lane: "MAGE_IMAGE" as const,
+      checkpoint: "V2-07" as const,
+      qualification: "NOT_QUALIFIED" as const,
+      visual_approval: "NOT_APPLICABLE" as const,
+      provider_free_groundwork_commits: ["1283a23248c9b79832b6fb331b00474e1df70f81"],
+      missing_gates: ["identity_output", "cancellation_timeout", "max2_concurrency"],
+    },
+    {
+      lane: "SOULX_AVATAR" as const,
+      checkpoint: "V2-08" as const,
+      qualification: "NOT_QUALIFIED" as const,
+      visual_approval: "PENDING_USER_VISUAL_APPROVAL" as const,
+      provider_free_groundwork_commits: [
+        "7039092707103ab35e8010c009e14409a6e52f63",
+        "84e00881d98e3e77dd8aad121453ed6e7287bc74",
+        "e49b93854d58c4faeb8bdd10b9b9df07321026db",
+        "f3557059d7d5f0637ea223b3e758389fbd80a52b",
+      ],
+      missing_gates: [
+        "V2_07_MAGE_QUALIFICATION",
+        "V2_08_USER_VISUAL_CROP_APPROVAL",
+        "V2_08_IMAGE_PUBLICATION_AND_ENDPOINT_CONFIGURATION",
+        "V2_08_MAX1_LIVE_QUALIFICATION",
+      ],
+    },
+  ] as const,
+};
+
 describe("hosted product journey", () => {
+  it("accepts only the exact closed-world hosted GPU readiness payload", () => {
+    expect(isFailClosedGpuReadiness(gpuReadiness)).toBe(true);
+
+    const variants: unknown[] = [
+      { ...gpuReadiness, dispatch_available: true },
+      { ...gpuReadiness, extra: "unexpected" },
+      { ...gpuReadiness, schema_version: "videoforge-hosted-gpu-readiness/v0" },
+      { ...gpuReadiness, lanes: [...gpuReadiness.lanes].reverse() },
+      {
+        ...gpuReadiness,
+        lanes: [{ ...gpuReadiness.lanes[0], qualification: "QUALIFIED" }, gpuReadiness.lanes[1]],
+      },
+      {
+        ...gpuReadiness,
+        lanes: [
+          {
+            ...gpuReadiness.lanes[0],
+            missing_gates: [...gpuReadiness.lanes[0].missing_gates, "unknown_gate"],
+          },
+          gpuReadiness.lanes[1],
+        ],
+      },
+      {
+        ...gpuReadiness,
+        lanes: [
+          gpuReadiness.lanes[0],
+          {
+            ...gpuReadiness.lanes[1],
+            provider_free_groundwork_commits: [
+              ...gpuReadiness.lanes[1].provider_free_groundwork_commits.slice(1),
+              gpuReadiness.lanes[1].provider_free_groundwork_commits[0],
+            ],
+          },
+        ],
+      },
+      {
+        ...gpuReadiness,
+        lanes: [gpuReadiness.lanes[0], { ...gpuReadiness.lanes[1], endpoint_id: "forbidden" }],
+      },
+    ];
+
+    for (const variant of variants) expect(isFailClosedGpuReadiness(variant)).toBe(false);
+  });
+
   it("reads WAV duration from the uploaded container before browser media events", async () => {
     const bytes = new ArrayBuffer(44 + 640_000);
     const view = new DataView(bytes);
@@ -85,6 +165,7 @@ describe("hosted product journey", () => {
           styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
           media_worker_state: "ONLINE",
           gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
         }),
       ),
     );
@@ -109,6 +190,7 @@ describe("hosted product journey", () => {
         styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
         media_worker_state: "ONLINE",
         gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
       });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -138,6 +220,7 @@ describe("hosted product journey", () => {
           styles: [],
           media_worker_state: "ONLINE",
           gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
         }),
       ),
     );
@@ -165,6 +248,7 @@ describe("hosted product journey", () => {
           styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
           media_worker_state: "WAITING_FOR_YOUR_COMPUTER",
           gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
         }),
       ),
     );
@@ -172,7 +256,31 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("Waiting for your computer.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create and transcribe" })).toBeDisabled();
-    expect(screen.getByText(/GPU transport disabled until qualification/u)).toBeInTheDocument();
+    expect(screen.getByText(/GPU transport: DISABLED_UNQUALIFIED/u)).toBeInTheDocument();
+    expect(screen.getByText(/V2-07 MAGE_IMAGE: NOT_QUALIFIED/u)).toBeInTheDocument();
+    expect(screen.getByText(/V2-08 SOULX_AVATAR: NOT_QUALIFIED/u)).toBeInTheDocument();
+    expect(screen.getByText(/Crop: PENDING_USER_VISUAL_APPROVAL/u)).toBeInTheDocument();
+    expect(
+      screen.getByText(/identity_output, cancellation_timeout, max2_concurrency/u),
+    ).toBeInTheDocument();
+  });
+
+  it("fails closed when authenticated catalog readiness is absent", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [],
+          styles: [],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+        }),
+      ),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+
+    expect(await screen.findByText("Create Project unavailable")).toBeInTheDocument();
+    expect(screen.queryByText(/MAGE_IMAGE/u)).not.toBeInTheDocument();
   });
 
   it("offers an idempotent recovery action for a cancellation left pending", async () => {
