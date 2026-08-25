@@ -11,6 +11,7 @@ const expected = {
   preflight: "sha256:db78eac734c87bf2b114aff4431337306d142ff87af987599632786f8cbd7929",
   max1: "sha256:3c00c51f851aa7fe312042fb69c3b38e6ed47566ad4c9b2e05f6be632daa499e",
   max2: "sha256:1faf6ea1b644e93f1a3550d3c9853d95b061520d1388bb3d0d31e6ec8b05381a",
+  authority: "sha256:503e07b944176b140357325d8fe2f38e5a36cf7a6e2fce2d4e7782da989492c2",
   orchestrator: "sha256:0125d58b4692df05e49528c929203812e16890e308655e36c7b5158919ba94ef",
   orchestratorTest: "sha256:571b9ba2b68fd8d536b5e14f078aa6a0dc30dff1d9da9f0dbb58b3fff47baaa8",
   admission: "sha256:305944852bcdef09415e1c481bb249ba3cbacbcd218308c38a7d7f5cce6ab0fa",
@@ -18,8 +19,8 @@ const expected = {
   qualificationTest: "sha256:d3b04834164c54fcdaf558e30b1d36cc3d7292e4aca533b873c0e21b5c251ff7",
   harness: "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853",
   harnessTest: "sha256:24257c1567bcbe1246741a8a600a18ff5f0aea67abc02e3260497d2e13e208ad",
-  activation: "sha256:1a757cde3dbe959e880f427a871f23778382df567e19b6bb8f1b45073500ccc6",
-  canonicalActivation: "sha256:3569bc480f2084a9d04a94b8b47507cc8f4e6183a67308aa9039c2b485108323",
+  activation: "sha256:4ac868e6f5d54097ac7685a3ec05f04068bd463875709a203bd940815ce17853",
+  canonicalActivation: "sha256:4f177bf144457dd210193e304cf5dbab9e83efc0b316c701a86d70ae90bbeef6",
   version: "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643",
   record: "sha256:54beafecb8d70bf99d0c3f84cee00d6bcb107e202786b1d8f7fe5bb14b33085d",
   commit: "aa0524f2d340cab1a4c4693584dc626e117f7d2c",
@@ -33,13 +34,14 @@ const json = async (name) => JSON.parse(await bytes(name));
 const rootBytes = (name) => readFile(path.join(root, name));
 const rootSha = async (name) => sha(await rootBytes(name));
 
-const [proposal, acceptance, preflight, max1, max2, activation, orchestrator, qualification] =
+const [proposal, acceptance, preflight, max1, max2, authority, activation, orchestrator, qualification] =
   await Promise.all([
     json("combined-live-proposal.json"),
     json("acceptance.json"),
     json("read-only-preflight.json"),
     json("staged-config-max1.json"),
     json("staged-config-max2.json"),
+    json("approved-authority.json"),
     rootBytes("apps/web/src/server/providers/v207-activation-authority.ts").then(String),
     rootBytes("apps/web/src/server/providers/v207-live-orchestrator.ts").then(String),
     rootBytes("apps/web/src/server/providers/v207-live-qualification.ts").then(String),
@@ -145,9 +147,10 @@ yes(
   "ACCEPTANCE",
 );
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_POINTER");
-yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null =\s*null;/u.test(activation), "AUTHORITY_NULL");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_NULL");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "REFRESH_NULL");
+yes(sha(await bytes("approved-authority.json")) === expected.authority, "AUTHORITY_HASH");
+yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_BINDING");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4\.5;/u.test(activation), "CAP_BINDING");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation), "REFRESH_BINDING");
 const canonical = activation
   .replace(/^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/mu, `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${"0".repeat(64)}" as const;`)
   .replace(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/mu, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;")
@@ -171,5 +174,24 @@ try {
 } catch {
   authorityExists = false;
 }
-yes(authorityExists === false, "UNAPPROVED_AUTHORITY_ABSENT");
+yes(authorityExists === true, "APPROVED_AUTHORITY_PRESENT");
+yes(
+  authority.attempt === 64 &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal.sha256 === expected.proposal &&
+    authority.acceptance.sha256 === expected.acceptance &&
+    authority.approval.deadline_mode_authorized === true &&
+    authority.approval.full_read_only_admission_before_remote_mutation_authorized === true &&
+    authority.approval.immediate_catalog_inventory_recheck_before_runpod_mutation_authorized === true &&
+    authority.approval.endpoint_rotation_authorized === true &&
+    authority.approval.flashboot_true_accepted === true &&
+    authority.approval.exact_rtx4090_only_accepted === true &&
+    authority.approval.gpu_fallback_authorized === false &&
+    authority.approval.low_or_better_eu_ro_1_availability_approved === true &&
+    authority.approval.maximum_cumulative_finite_spend_usd === 4.5 &&
+    authority.approval.anchor_refresh_authorized === true &&
+    authority.approval.consumed === false &&
+    authority.execution_boundary.v2_08_authorized === false,
+  "AUTHORITY_CONTRACT",
+);
 process.stdout.write(`PASS validate-v207-attempt64-candidate ${JSON.stringify(expected)}\n`);

@@ -1,35 +1,35 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T10:40:00Z"
+updated_at: "2026-08-25T11:10:00Z"
 
-phase: serverless_v2_v2_07_attempt64_deadline_mode_candidate_pending_approval
+phase: serverless_v2_v2_07_attempt64_deadline_mode_approved_pending_execution
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt64_provider_free_deadline_mode_candidate
+current_wave: v2_07_attempt64_deadline_mode_approved_single_use
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_candidate_pending_exact_approval
+task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
+provider_calls_authorized: true
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
-gpu_use_authorized: false
-maximum_external_spend_usd: 0
+remote_or_cloud_mutations_authorized: true
+credential_access_authorized: true
+gpu_use_authorized: true
+maximum_external_spend_usd: 4.5
 
 current_goal_boundary:
-  mode: attempt64_unapproved_deadline_mode_candidate
-  live_provider_calls: false
-  remote_mutation: false
-  deployment_or_publication: false
+  mode: attempt64_approved_single_use_deadline_mode
+  live_provider_calls: true
+  remote_mutation: true
+  deployment_or_publication: scoped_ephemeral_worker_route_and_exact_runpod_resources_only
   credential_value_access: false
-  paid_requests_or_spend: false
-  runpod_mutation_or_gpu: forbidden
-  v2_07_action: "Await exact Attempt64 proposal approval and fresh positive cap; no provider call, remote mutation, GPU use, or V2-08 before approval."
+  paid_requests_or_spend: true_under_exact_usd_4_50_cap
+  runpod_mutation_or_gpu: exact_approved_sequence_only
+  v2_07_action: "Execute exact Attempt64 once through full read-only admission and immediate pre-RunPod catalog/inventory recheck; fail closed on drift and stop before V2-08."
   note: "Deadline mode gates every remote mutation on full read-only admission and repeats catalog/inventory before RunPod mutation; exact RTX 4090 only, no fallback."
 
 pending_v2_07_attempt64_proposal:
-  mode: provider_free_candidate_pending_fresh_exact_approval
+  mode: approved_single_use_pending_execution
   proposal_path: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909"
   acceptance_path: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/acceptance.json
@@ -45,14 +45,17 @@ pending_v2_07_attempt64_proposal:
   automatic_gpu_fallback: false
   requested_maximum_cumulative_finite_spend_usd: 4.5
   finite_action_estimate_usd_ceiling: 4.25
-  executable_maximum_cumulative_finite_spend_usd: 0
-  exact_proposal_approved: false
-  authority_recorded: false
-  authority_path: null
-  anchor_refresh_authorized: null
-  endpoint_rotation_authorized: null
-  provider_mutations_authorized: false
-  gpu_use_authorized: false
+  executable_maximum_cumulative_finite_spend_usd: 4.5
+  exact_proposal_approved: true
+  authority_recorded: true
+  authority_path: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/approved-authority.json
+  authority_sha256: "sha256:503e07b944176b140357325d8fe2f38e5a36cf7a6e2fce2d4e7782da989492c2"
+  authority_consumed: false
+  anchor_refresh_authorized: true
+  exact_anchor_refresh_activation: two-phase-v1
+  endpoint_rotation_authorized: true
+  provider_mutations_authorized: true
+  gpu_use_authorized: true
   fresh_runpod_checked_at: "2026-08-25T10:36:03.244Z"
   fresh_cloudflare_checked_at: "2026-08-25T10:37:26.820Z"
   last_observed_availability: LOW
@@ -2678,15 +2681,15 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: null
-  current_authority_sha256: null
+  current_authority: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/approved-authority.json
+  current_authority_sha256: "sha256:503e07b944176b140357325d8fe2f38e5a36cf7a6e2fce2d4e7782da989492c2"
   latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-25-attempt63-endpoint-rotation-candidate/approved-authority.json
   latest_closed_authority_sha256: "sha256:f5ce13a5af6f9639b2d89b3b905b14041db25aed546412c10e9abd6f854bd3b0"
-  mutation_authorized: false
-  mutation_authorization_scope: none_attempt63_consumed
-  gpu_use_authorized: false
-  gpu_authorization_scope: none_attempt63_consumed
-  spend_authorized_usd: 0
+  mutation_authorized: true
+  mutation_authorization_scope: exact_attempt64_bounded_sequence_only
+  gpu_use_authorized: true
+  gpu_authorization_scope: exact_attempt64_bounded_sequence_only
+  spend_authorized_usd: 4.5
 
 repository:
   initialized: true
@@ -2715,9 +2718,9 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
+  provider_mode: production
+  provider_calls_authorized: true
+  authorized_spend_usd: 4.5
   provider_authority_scope: "None; Attempt63 is consumed/non-reusable after clean capacity stop and V2-08 is forbidden."
 
 v2_destination:
@@ -2787,7 +2790,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: NOT_QUALIFIED_attempt64_deadline_mode_candidate_pending_approval
+  V2-07: NOT_QUALIFIED_attempt64_deadline_mode_approved_pending_execution
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
@@ -2834,7 +2837,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt64_deadline_mode_candidate_pending_approval
+    status: attempt64_deadline_mode_approved_pending_execution
     current_candidate: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/combined-live-proposal.json
     current_candidate_sha256: "sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909"
     deadline_mode_admission_commit: "aa0524f2d340cab1a4c4693584dc626e117f7d2c"
@@ -4035,49 +4038,104 @@ provider_authority_attempt63: &v2_07_provider_authority_attempt63
       usd_per_unit: 0.07
       checked_at: "2026-08-24T17:37:30.942Z"
 
-provider_authority: *v2_07_provider_authority_attempt63
+provider_authority_attempt64: &v2_07_provider_authority_attempt64
+  mode: paid
+  authority_mode: approved_single_use_pending_execution
+  provider: runpod_and_cloudflare
+  source: explicit_user_exact_attempt64_proposal_approval
+  authorized_by_user_at: "2026-08-25T11:10:00Z"
+  authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
+  proposal_path: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/combined-live-proposal.json
+  proposal_sha256: "sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909"
+  authority_path: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/approved-authority.json
+  authority_sha256: "sha256:503e07b944176b140357325d8fe2f38e5a36cf7a6e2fce2d4e7782da989492c2"
+  cap_usd: 4.5
+  maximum_cumulative_finite_spend_usd: 4.5
+  non_transferable: true
+  exact_bounded_sequence_only: true
+  provider_calls_authorized: true
+  read_only_provider_calls_authorized: false
+  provider_mutations_authorized: true
+  cloudflare_mutations_authorized: true
+  scoped_signer_worker_route_activation_authorized: true
+  gpu_use_authorized: true
+  v2_08_authorized: false
+  model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
+  resources:
+    - runpod_sujal_account_exact_attempt64_disposable_endpoint_template_jobs
+    - runpod_eu_ro_1_exact_mage_retained_volume_read_only
+    - cloudflare_v2_06_staging_scoped_v207_route_and_ephemeral_signer
+    - retained_soulx_volume_unchanged
+  authorized_operations: &v2_07_attempt64_authorized_operations
+    - full_exact_authority_read_only_admission_before_any_remote_mutation
+    - two_phase_v1_anchor_refresh_and_scoped_ephemeral_signer_route
+    - immediate_exact_rtx4090_eu_ro_1_catalog_and_zero_inventory_recheck_before_runpod_mutation
+    - exact_flashboot_true_seed_endpoint_and_private_template_on_sealed_mage_volume
+    - drained_seed_endpoint_rotation_and_one_distinct_replacement_dispatch
+    - bounded_qualification_only_after_replacement_identity_passes
+    - exact_cleanup_rollback_three_read_zero_compute_reconciliation_and_volume_retention
+  allowed_operations: *v2_07_attempt64_authorized_operations
+  rate_snapshot: &v2_07_attempt64_rate_snapshot
+    - resource_id: runpod_serverless_flex_rtx4090
+      billing_unit: gpu_hour
+      usd_per_unit: 1.1
+      checked_at: "2026-08-25T10:36:03.244Z"
+    - resource_id: runpod_eu_ro_1_secure_pod_rtx4090_reference
+      billing_unit: gpu_hour
+      usd_per_unit: 0.74
+      checked_at: "2026-08-25T10:36:03.244Z"
+    - resource_id: runpod_network_volume
+      billing_unit: gb_month
+      usd_per_unit: 0.07
+      checked_at: "2026-08-24T17:37:30.942Z"
+
+provider_authority: *v2_07_provider_authority_attempt64
 
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt64_deadline_mode_candidate_pending_approval
+  status: NOT_QUALIFIED_attempt64_deadline_mode_approved_pending_execution
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: pending_fresh_exact_attempt64_approval
-  task_stage: provider_free_candidate_pending_exact_approval
-  current_goal_authority: null
-  current_goal_authority_sha256: null
-  provider_authority: *v2_07_provider_authority_attempt63
+  authorization_status: approved_single_use_attempt64_pending_execution
+  task_stage: bounded_mutation
+  current_goal_authority: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/approved-authority.json
+  current_goal_authority_sha256: "sha256:503e07b944176b140357325d8fe2f38e5a36cf7a6e2fce2d4e7782da989492c2"
+  provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Await exact Attempt64 proposal approval and fresh USD 4.50 cap; then run once through deadline-mode read-only admission. Do not start V2-08."
-  provider_calls_authorized: false
+  goal: "Execute exact Attempt64 once through deadline-mode read-only admission and immediate pre-RunPod recheck under the USD 4.50 cap; fail closed on drift and do not start V2-08."
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  maximum_external_spend_usd: 4.5
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
   credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  resources: []
-  authorized_operations: *v2_07_attempt63_authorized_operations
-  allowed_operations: *v2_07_attempt63_authorized_operations
-  rate_snapshot: *v2_07_attempt63_rate_snapshot
-  authority_note: "Attempt64 is unapproved: authority/cap/refresh remain null. Exact RTX 4090 only; full read-only admission precedes remote mutation and catalog/inventory repeat before RunPod mutation."
+  resources:
+    - runpod_sujal_account_exact_attempt64_disposable_endpoint_template_jobs
+    - runpod_eu_ro_1_exact_mage_retained_volume_read_only
+    - cloudflare_v2_06_staging_scoped_v207_route_and_ephemeral_signer
+    - retained_soulx_volume_unchanged
+  authorized_operations: *v2_07_attempt64_authorized_operations
+  allowed_operations: *v2_07_attempt64_authorized_operations
+  rate_snapshot: *v2_07_attempt64_rate_snapshot
+  authority_note: "Attempt64 exact single-use authority is active with USD 4.50 cap, endpoint rotation, FlashBoot=true, exact RTX 4090 only, LOW-or-better EU-RO-1, and two-phase-v1. Full read-only admission precedes every mutation and catalog/inventory repeat immediately before RunPod mutation."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt64_provider_free_candidate_pending_approval
-  execution_blocker: FRESH_EXACT_PROPOSAL_APPROVAL_AND_POSITIVE_CAP_REQUIRED
+  execution_status: attempt64_approved_single_use_pending_execution
+  execution_blocker: null
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt64_candidate_pending_approval
+  state: v2_06_complete_green_independently_audited_v2_07_attempt64_approved_pending_execution
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"

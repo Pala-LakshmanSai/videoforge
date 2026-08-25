@@ -2,16 +2,21 @@
 
 ## Active handoff — read this section first
 
-Attempt64 is the unapproved deadline-mode V2-07 candidate. Commit `aa0524f` runs the complete
+Attempt64 is approved once for bounded deadline-mode V2-07 execution. Exact authority
+`sha256:503e07b944176b140357325d8fe2f38e5a36cf7a6e2fce2d4e7782da989492c2` binds proposal
+`sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909`, the `$4.50`
+maximum cumulative finite cap, endpoint rotation, FlashBoot=true, exact RTX 4090 only,
+LOW-or-better EU-RO-1, two-phase-v1 anchor refresh, and continued `$7/month` volume retention.
+Commit `aa0524f` runs the complete
 exact-authority read-only admission before any remote mutation, then the live runner repeats the
 RTX 4090 EU-RO-1 catalog and zero-inventory gate immediately before its first RunPod mutation.
 Fresh truth through `2026-08-25T10:37:26.820Z` is LOW RTX 4090 capacity, zero compute/disposables,
 both exact retained volumes, cumulative billing `2.095889555552276`, absent signer, protected
 config mode `0600`, sufficient disk, and three exact version-bound disabled-route reads. Exact
-proposal `sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909`
-requests the unchanged `$4.50` cap against a `$4.25` estimate and continued `$7/month` volume
-retention. GPU scope remains exact RTX 4090 only; no fallback, authority, executable cap, provider
-mutation, GPU job, or new spend exists. V2-07 remains `NOT_QUALIFIED`; V2-08 remains forbidden.
+The `$4.25` estimate remains below the executable cap. GPU scope remains exact RTX 4090 only with
+no fallback. No provider mutation, GPU job, or new spend has occurred under this authority yet.
+Execute once through the full read-only admission and fail closed on drift. V2-07 remains
+`NOT_QUALIFIED`; V2-08 remains forbidden.
 
 Attempt63 is closed `NOT_QUALIFIED`. Exact proposal `sha256:83a54dbd…e532` ran once under
 pre-execution authority `sha256:16378035…a798` and the `$4.50` cap. Two-phase anchor refresh and
