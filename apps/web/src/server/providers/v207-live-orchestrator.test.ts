@@ -16,6 +16,7 @@ import {
   spawnV207Command,
   V207_ORCHESTRATOR_SECRET_NAME,
   V207_ORCHESTRATOR_MIN_FREE_BYTES,
+  V207_READ_ONLY_ADMISSION_ENTRYPOINT,
   V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_RECORD_SHA256,
   V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256,
   V207_WRANGLER_DEPLOY_FAILURE_EVENT_DETAIL_KEYS,
@@ -469,6 +470,7 @@ describe("V2-07 live orchestrator", () => {
         );
       }
       if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes(V207_READ_ONLY_ADMISSION_ENTRYPOINT)) return result();
       if (request.args.includes("build:staging")) return result();
       if (request.args.includes("deploy")) {
         return {
@@ -724,7 +726,7 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).toContain('"result": "SUCCEEDED"');
     expect(evidence).toContain('"event": "captured_pre_mutation_route"');
     expect(evidence).toContain('"event": "restored_route_confirmed"');
-    expect(evidence).toContain('"event": "live_preflight_completed"');
+    expect(evidence).toContain('"event": "read_only_capacity_admission_completed"');
     expect(evidence).toContain('"event": "signer_route_activation_confirmed"');
     expect(evidence).toContain('"attempts": 17');
     expect(evidence).toContain('"code": "HOSTED_ROUTE_NOT_COMPOSED"');
@@ -742,14 +744,14 @@ describe("V2-07 live orchestrator", () => {
     );
     const preflightRunner = calls.find(
       (call) =>
-        call.args.some((argument) => argument.endsWith("v207-live-qualification.ts")) &&
+        call.args.includes(V207_READ_ONLY_ADMISSION_ENTRYPOINT) &&
         call.env.V207_PREFLIGHT_ONLY === "1",
     );
     expect(preflightRunner).toBeDefined();
     expect(preflightRunner?.command).toBe(
       join(resolve(process.cwd(), "../.."), "apps/web/node_modules/.bin/tsx"),
     );
-    expect(preflightRunner?.args).toEqual(["src/server/providers/v207-live-qualification.ts"]);
+    expect(preflightRunner?.args).toEqual([V207_READ_ONLY_ADMISSION_ENTRYPOINT]);
     expect(liveRunner?.command).toBe(
       join(resolve(process.cwd(), "../.."), "apps/web/node_modules/.bin/tsx"),
     );
@@ -763,6 +765,13 @@ describe("V2-07 live orchestrator", () => {
     expect(calls.indexOf(preflightRunner as V207CommandRequest)).toBeLessThan(
       calls.indexOf(liveRunner as V207CommandRequest),
     );
+    const firstMutation = calls.find(
+      (call) => call.args.includes("deploy") || call.args.includes("put"),
+    );
+    expect(firstMutation).toBeDefined();
+    expect(calls.indexOf(preflightRunner as V207CommandRequest)).toBeLessThan(
+      calls.indexOf(firstMutation as V207CommandRequest),
+    );
     expect(calls.some((call) => call.args.includes("build:staging"))).toBe(true);
     expect(calls.some((call) => call.args.includes("deploy"))).toBe(true);
     expect(calls.some((call) => call.args.includes("rollback"))).toBe(true);
@@ -770,6 +779,75 @@ describe("V2-07 live orchestrator", () => {
     expect(rollback?.args).toContain(VERSION_ID);
     expect(rollback?.args).not.toContain(DEPLOYMENT_ID);
     expect(calls.flatMap((call) => call.args)).not.toContain(NONCE);
+  });
+
+  it("stops a failed capacity admission before every Worker mutation", async () => {
+    const files = await fixture();
+    const calls: V207CommandRequest[] = [];
+    const baselineConfig = await readFile(files.configPath, "utf8");
+    const qualificationCommand = join(
+      resolve(process.cwd(), "../.."),
+      "apps/web/node_modules/.bin/tsx",
+    );
+    const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+      calls.push(request);
+      if (request.command === "git") return result();
+      if (request.args.includes("deployments")) {
+        return result(
+          JSON.stringify({
+            id: DEPLOYMENT_ID,
+            versions: [{ version_id: VERSION_ID, percentage: 100 }],
+          }),
+        );
+      }
+      if (request.args.includes("versions") && request.args.includes("list")) {
+        return result(RECENT_VERSION_LIST);
+      }
+      if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (
+        request.command === qualificationCommand &&
+        request.args.includes(V207_READ_ONLY_ADMISSION_ENTRYPOINT)
+      ) {
+        return {
+          exitCode: 1,
+          signal: null,
+          stdout: "provider-details-must-not-escape",
+          stderr: "V207_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE",
+        };
+      }
+      throw new Error("UNEXPECTED_COMMAND_AFTER_FAILED_CAPACITY_ADMISSION");
+    };
+
+    await expect(
+      runV207LiveOrchestration({
+        authorityParser: parseFixtureAuthority,
+        environment: files.environment,
+        cwd: resolve(process.cwd(), "../.."),
+        configPath: files.configPath,
+        evidencePath: files.evidencePath,
+        diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+        commandRunner,
+        fetchImpl: async () =>
+          new Response(JSON.stringify({ error: { code: "V207_ROUTE_DISABLED" } }), {
+            status: 404,
+          }),
+        nonceFactory: () => NONCE,
+        sleepImpl: async () => undefined,
+        installSignalHandlers: false,
+      }),
+    ).rejects.toMatchObject({ code: "V207_LIVE_PREFLIGHT" });
+
+    expect(
+      calls.filter((call) => call.args.includes(V207_READ_ONLY_ADMISSION_ENTRYPOINT)),
+    ).toHaveLength(1);
+    expect(calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(calls.some((call) => call.args.includes("put"))).toBe(false);
+    expect(calls.some((call) => call.args.includes("delete"))).toBe(false);
+    expect(await readFile(files.configPath, "utf8")).toBe(baselineConfig);
+    const evidence = await readFile(files.evidencePath, "utf8");
+    expect(evidence).toContain('"child_failure_code": "V207_CATALOG_RTX4090_EU_RO_1_UNAVAILABLE"');
+    expect(evidence).not.toContain("provider-details-must-not-escape");
+    expect(evidence).not.toContain(NONCE);
   });
 
   it.each([
@@ -873,8 +951,8 @@ describe("V2-07 live orchestrator", () => {
     ).rejects.toMatchObject({ code: expectedCode });
     expect(signerSecretPresent).toBe(false);
     expect(
-      calls.some((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
-    ).toBe(false);
+      calls.filter((call) => call.args.some((arg) => arg.endsWith("v207-live-qualification.ts"))),
+    ).toHaveLength(0);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain(expectedCode);
     expect(evidence).not.toContain(NONCE);
@@ -1645,6 +1723,7 @@ describe("V2-07 live orchestrator", () => {
         return result(versionsCalls === 2 ? REFRESHED_VERSION_LIST : RECENT_VERSION_LIST);
       }
       if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes(V207_READ_ONLY_ADMISSION_ENTRYPOINT)) return result();
       if (request.args.includes("build:staging")) return result();
       if (request.args.includes("deploy") && !request.args.includes("deployments")) return result();
       if (request.args.includes("rollback")) {
@@ -1816,6 +1895,7 @@ describe("V2-07 live orchestrator", () => {
         return result(RECENT_VERSION_LIST);
       }
       if (request.args.includes("secret") && request.args.includes("list")) return result("[]");
+      if (request.args.includes(V207_READ_ONLY_ADMISSION_ENTRYPOINT)) return result();
       if (request.args.includes("build:staging")) return result();
       if (request.args.includes("deploy") && !request.args.includes("deployments")) return result();
       if (request.args.includes("rollback")) {
@@ -2101,8 +2181,8 @@ describe("V2-07 live orchestrator", () => {
         return result();
       }
       if (request.command === qualificationCommand) {
+        if (request.args.includes(V207_READ_ONLY_ADMISSION_ENTRYPOINT)) return result();
         expect(request.args).toEqual(["src/server/providers/v207-live-qualification.ts"]);
-        if (request.env.V207_PREFLIGHT_ONLY === "1") return result();
         return {
           exitCode: null,
           signal: "SIGTERM",
@@ -2229,7 +2309,7 @@ describe("V2-07 live orchestrator", () => {
     ).toBe(false);
     const evidence = await readFile(files.evidencePath, "utf8");
     expect(evidence).toContain("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
-    expect(evidence).not.toContain('"event": "live_preflight_completed"');
+    expect(evidence).toContain('"event": "read_only_capacity_admission_completed"');
     expect(evidence).not.toContain(NONCE);
   });
 

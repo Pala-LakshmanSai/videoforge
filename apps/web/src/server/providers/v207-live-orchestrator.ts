@@ -21,6 +21,8 @@ export const V207_ORCHESTRATOR_SECRET_NAME = "VIDEOFORGE_V207_AUTHORITY_NONCE" a
 export const V207_ORCHESTRATOR_ROUTE =
   "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port" as const;
 export const V207_ORCHESTRATOR_DEFAULT_WRANGLER_CONFIG = V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH;
+export const V207_READ_ONLY_ADMISSION_ENTRYPOINT =
+  "src/server/providers/v207-read-only-admission.ts" as const;
 
 const REPOSITORY_ROOT = process.cwd().endsWith("/apps/web")
   ? resolve(process.cwd(), "../..")
@@ -1477,6 +1479,7 @@ export async function runV207LiveOrchestration(
       }),
     );
     if (clean.stdout.trim() !== "") throw new V207LiveOrchestratorError("V207_GIT_WORKTREE_DIRTY");
+
     let protectedConfig = await readProtectedConfig(configPath);
     const configuredRefreshMarker = asRecord(protectedConfig.vars)?.[
       V207_ROLLBACK_ANCHOR_REFRESH_CONFIG_KEY
@@ -1620,11 +1623,32 @@ export async function runV207LiveOrchestration(
       abortController.signal,
     );
     if (rollbackAnchorRefresh.enabled && beforeSecrets.includes(V207_ORCHESTRATOR_SECRET_NAME)) {
-      // Deleting an existing signer is a remote mutation.  Refresh mode must
-      // prove the signer is already absent before its first deploy because an
-      // unretained old anchor cannot safely protect that deletion.
+      // Deleting an existing signer is a remote mutation. Refresh mode must prove the signer is
+      // already absent before admission because an unretained old anchor cannot protect deletion.
       throw new V207LiveOrchestratorError("V207_ROLLBACK_ANCHOR_REFRESH_STALE_SIGNER_PRESENT");
     }
+
+    // Capacity, rate, account, billing, inventory, image, and disabled-route admission are all
+    // read-only. Run that complete gate after the rollback/route inputs are validated but before
+    // deleting a stale signer, deploying a Worker, or creating a signer secret. A catalog-capacity
+    // miss must be a zero-remote-mutation stop, not a deploy-and-rollback attempt.
+    nonce = nonceFactory();
+    if (!NONCE.test(nonce)) throw new V207LiveOrchestratorError("V207_NONCE_INVALID");
+    const preflight = await run({
+      command: qualificationCommand,
+      args: [V207_READ_ONLY_ADMISSION_ENTRYPOINT],
+      cwd: resolve(cwd, "apps/web"),
+      env: commandEnvironment(environment, nonce, configPath, true),
+      signal: abortController.signal,
+    });
+    if (preflight.exitCode !== 0) {
+      childFailureCode = extractV207ChildFailureCode(preflight.stderr);
+      throw new V207LiveOrchestratorError("V207_LIVE_PREFLIGHT");
+    }
+    await record("read_only_capacity_admission_completed", {
+      exit_code: preflight.exitCode ?? -1,
+    });
+
     if (!rollbackAnchorRefresh.enabled && beforeSecrets.includes(V207_ORCHESTRATOR_SECRET_NAME)) {
       nonceSecretMayExist = true;
       // Removing a stale signer secret is a remote Worker mutation too. Keep the captured version
@@ -1753,8 +1777,6 @@ export async function runV207LiveOrchestration(
       refreshCompleted = true;
     }
 
-    nonce = nonceFactory();
-    if (!NONCE.test(nonce)) throw new V207LiveOrchestratorError("V207_NONCE_INVALID");
     nonceSecretMayExist = true;
     await putNonceSecret(run, cwd, configPath, environment, nonce, abortController.signal);
     const afterPut = await secretNames(run, cwd, configPath, environment, abortController.signal);
@@ -1804,18 +1826,6 @@ export async function runV207LiveOrchestration(
     });
 
     if (abortRequested) throw new V207LiveOrchestratorError("V207_OPERATOR_ABORT");
-    const preflight = requireSuccessful(
-      "V207_LIVE_PREFLIGHT",
-      await run({
-        command: qualificationCommand,
-        args: ["src/server/providers/v207-live-qualification.ts"],
-        cwd: resolve(cwd, "apps/web"),
-        env: commandEnvironment(environment, nonce, configPath, true),
-        signal: abortController.signal,
-      }),
-    );
-    await record("live_preflight_completed", { exit_code: preflight.exitCode ?? -1 });
-
     const runner = await run({
       command: qualificationCommand,
       args: ["src/server/providers/v207-live-qualification.ts"],
@@ -1850,7 +1860,7 @@ export async function runV207LiveOrchestration(
       // attempted and any resulting uncertainty is surfaced as a bounded failure code.
     }
   } finally {
-    if (nonceSecretMayExist || nonce !== undefined) {
+    if (nonceSecretMayExist) {
       try {
         const names = await secretNames(run, cwd, configPath, environment);
         if (names.includes(V207_ORCHESTRATOR_SECRET_NAME)) {

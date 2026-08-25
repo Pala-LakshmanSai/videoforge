@@ -1392,6 +1392,20 @@ export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
   });
 }
 
+/**
+ * Standalone read-only admission used by the live orchestrator before any remote mutation.
+ * It consumes the same compiled exact proposal/cap authority as the eventual runner while
+ * intentionally omitting signer activation and every mutable provider operation.
+ */
+export async function runV207ReadOnlyAdmission(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<V207PreflightSummary> {
+  const activation = parseV207ActivationAuthority(environment);
+  IMAGE = activation.image;
+  finiteCapUsd = activation.capUsd;
+  return runV207PreflightOnly();
+}
+
 async function attestPublishedImage(): Promise<AnyRecord> {
   const digest = IMAGE.slice(IMAGE.indexOf("@") + 1);
   const repository = "/v2/pala-lakshmansai/videoforge-mage-v2-07";
