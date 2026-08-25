@@ -2,20 +2,18 @@
 
 ## Active handoff — read this section first
 
-Attempt61 is closed `NOT_QUALIFIED`. Cache-only cleanup restored
-`2639282176` available bytes against the exact `2147483648`-byte orchestrator minimum. Fresh
-read-only truth through `2026-08-25T06:14:18.898Z` proves zero RunPod compute/disposables, both
-retained 50 GB EU-RO-1 volumes, MEDIUM RTX 4090 availability, unchanged `$1.10/GPU-hour` Flex and
-`$0.74/hour` Secure reference rates, cumulative billing `1.9971928337181453`, the exact retained
-Cloudflare anchor, absent signer, protected config mode `0600`, and three exact active-version-bound
-POST `404 V207_ROUTE_DISABLED` reads. Proposal
-`sha256:6693da1e345ce579ea9c7896b238e3f8bd44fcd2abee92d8e46650436c80d4c0` requests a fresh `$4`
+Attempt62 is a provider-free candidate pending fresh exact approval. Proposal
+`sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0` requests a fresh `$4`
 finite cap, FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1`, and continued `$7/month` volume
-retention. The probe and 31-unit replacement jobs completed, but the replacement identity was not
-proven distinct and the run stopped at `RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT` before
-later paid batches. Authority is consumed/non-reusable and executable cap/refresh are null. Cleanup
-and three stable reads prove zero compute/disposables, both volumes unchanged, restored signer/route/
-config, and `$0` observed increment subject to lag. Next action is provider-free diagnosis only;
+retention. Fresh read-only truth through `2026-08-25T07:15:13.105Z` proves zero RunPod compute or
+disposables, both retained 50 GB volumes, LOW RTX 4090 availability, unchanged `$1.10/GPU-hour`
+Flex and `$0.74/hour` Secure reference rates, cumulative billing `1.9971928337181453`, the exact
+retained Cloudflare anchor, absent signer, protected config mode `0600`, three exact active-version-
+bound POST `404 V207_ROUTE_DISABLED` reads, and sufficient local disk. Repair `3921f6b` records only
+bounded redacted predicates when replacement identity is rejected; it does not relax distinct-Pod
+acceptance or add redispatch. Anchor rebind `0b4b2d5` pins the refreshed clean Worker anchor.
+No authority file, executable cap, mutation permission, GPU permission, or spend exists. Attempt61
+remains closed consumed/non-reusable after clean shutdown. Obtain only the exact Attempt62 approval;
 V2-08 remains forbidden.
 
 Attempt60 is closed `NOT_QUALIFIED`. Its exact single-use execution failed closed at

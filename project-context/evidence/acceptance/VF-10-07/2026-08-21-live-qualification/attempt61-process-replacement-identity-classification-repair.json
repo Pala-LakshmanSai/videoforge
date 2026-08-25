@@ -1,0 +1,47 @@
+{
+  "schema_version": "videoforge.v2-07-attempt61-process-replacement-identity-classification-repair/v1",
+  "checkpoint": "V2-07",
+  "recorded_at": "2026-08-25T07:16:00Z",
+  "trigger_attempt": 61,
+  "trigger_failure_code": "RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT",
+  "repair_commit": "3921f6b",
+  "anchor_rebind_commit": "0b4b2d5",
+  "harness_source_sha256": "sha256:f910d46dcb5a0149515e52e8d7967733a251c5b7ea58bc68b5ead1e6a5e99205",
+  "harness_test_sha256": "sha256:9d0902c730c22f28425d5a9f04f72dbe59c9dee29b1242990862b5f135e74bee",
+  "orchestrator_source_sha256": "sha256:6dd76f832911f3b26002e18f45b1acf17cba4cfcbf7da8c575d10eb433d8a515",
+  "orchestrator_test_sha256": "sha256:732755fd8f05cdfca6338a6e9d68f303696c913612947816c3d62ef6dcc8af5d",
+  "repair_contract": {
+    "failure_event": "process_replacement_identity_not_distinct",
+    "boundary_schema_valid_recorded": true,
+    "boundary_terminal_scale_zero_recorded": true,
+    "boundary_seed_hash_validity_recorded": true,
+    "boundary_seed_axes_equality_recorded": true,
+    "boundary_provider_pod_match_recorded": true,
+    "boundary_source_and_count_validity_recorded": true,
+    "replacement_schema_and_hash_validity_recorded": true,
+    "replacement_axes_equality_recorded": true,
+    "seed_replacement_worker_equality_recorded": true,
+    "seed_replacement_pod_equality_recorded": true,
+    "raw_provider_or_signed_identity_hashes_retained_in_failure_event": false,
+    "identity_acceptance_relaxed": false,
+    "redispatch_added": false
+  },
+  "focused_tests": {
+    "identity_tests_passed": 3,
+    "identity_tests_skipped": 92,
+    "anchor_tests_passed": 1,
+    "anchor_tests_skipped": 55,
+    "diff_check_passed": true
+  },
+  "refreshed_anchor": {
+    "active_version_id_sha256": "sha256:00a52163eee4d61bec6bea3459397328f5157d1a5e34dcd838f127cad11cbafc",
+    "active_record_sha256": "sha256:37864db71b2ebc843495b330915d98f74582014f3861e6c417da2c71810dfb41",
+    "matches_fresh_cloudflare_read_at": "2026-08-25T07:14:48.631Z"
+  },
+  "provider_calls": 0,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "qualification_status": "NOT_QUALIFIED",
+  "v2_08_started": false
+}

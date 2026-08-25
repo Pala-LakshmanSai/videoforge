@@ -72,7 +72,7 @@ function activationSourceFixture({
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the consumed Attempt61 proposal with no executable authority", () => {
+  it("pins the pending Attempt62 proposal with no executable authority", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
@@ -102,7 +102,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:6693da1e345ce579ea9c7896b238e3f8bd44fcd2abee92d8e46650436c80d4c0",
+      "sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
     expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("42a5a522402e71aef1cee9b714e4cb54c571ceb3");
@@ -360,7 +360,20 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects the consumed Attempt61 proposal without fresh authority", () => {
+  it("rejects the consumed Attempt61 proposal after its bounded invocation", () => {
+    expect(() =>
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256:
+          "sha256:6693da1e345ce579ea9c7896b238e3f8bd44fcd2abee92d8e46650436c80d4c0",
+        V207_FINITE_CAP_USD: "4",
+        V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1",
+      }),
+    ).toThrow("V207_PROPOSAL_MISMATCH");
+  });
+
+  it("rejects the pending Attempt62 proposal without fresh authority", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -372,7 +385,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects missing and alternate Attempt61 caps fail-closed", () => {
+  it("rejects missing and alternate Attempt62 caps fail-closed", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -390,7 +403,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects refresh activation without the exact pending Attempt61 proposal", () => {
+  it("rejects refresh activation without the exact pending Attempt62 proposal", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
     expect(() =>
       parseV207ActivationAuthority({

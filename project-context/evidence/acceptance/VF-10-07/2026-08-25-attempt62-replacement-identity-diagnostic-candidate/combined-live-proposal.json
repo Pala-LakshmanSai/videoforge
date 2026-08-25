@@ -1,0 +1,114 @@
+{
+  "schema_version": "videoforge.v2-07-attempt62-replacement-identity-diagnostic-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 62,
+  "recorded_at": "2026-08-25T07:16:00Z",
+  "qualification_status": "NOT_QUALIFIED",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_AND_POSITIVE_NUMERIC_CAP",
+  "provider_calls_authorized": false,
+  "provider_mutations_authorized": false,
+  "gpu_use_authorized": false,
+  "reason": "Attempt61 completed the probe and 31-unit replacement jobs but stopped fail-closed because the replacement signed process identity was not demonstrably distinct. Cleanup and three stable reads prove zero compute/disposables, both volumes retained, restored route/config/signer, and zero observed incremental billing subject to lag. Repair 3921f6b adds bounded redacted predicate classification only; it does not relax distinct identity or add redispatch. Anchor rebind 0b4b2d5 binds the refreshed clean Worker anchor. Attempt61 authority, cap, proposal, and preflight are consumed and non-reusable.",
+  "approval_request": {
+    "exact_proposal_approved": false,
+    "flashboot": true,
+    "minimum_availability": "LOW-or-better",
+    "last_observed_availability": "LOW",
+    "requested_maximum_cumulative_finite_spend_usd": 4,
+    "executable_cap_binding": null,
+    "anchor_refresh_mode": "two-phase-v1",
+    "anchor_refresh_authorized": null,
+    "fresh_exact_approval_required": true,
+    "continued_retention_of_two_existing_volumes_at_usd_per_month": 7,
+    "provider_final_invoice_absolute_guarantee": false
+  },
+  "source_lineage": {
+    "attempt61_closure_commit": "6b596eb6bb4ad866233c3cf223b29eeca3843a97",
+    "identity_classification_repair_commit": "3921f6bb4a02723073566cf46bc9353d0e46e97b",
+    "anchor_rebind_commit": "0b4b2d5b1edf31893daba54f08ecb1515aea589b",
+    "identity_classification_repair_sha256": "sha256:57007a706f81422848f826a5e3c4f3714f6d43757411723091bbdfe50f48e7da",
+    "orchestrator_source_sha256": "sha256:6dd76f832911f3b26002e18f45b1acf17cba4cfcbf7da8c575d10eb433d8a515",
+    "live_qualification_source_sha256": "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43",
+    "qualification_harness_source_sha256": "sha256:f910d46dcb5a0149515e52e8d7967733a251c5b7ea58bc68b5ead1e6a5e99205",
+    "qualification_harness_test_sha256": "sha256:9d0902c730c22f28425d5a9f04f72dbe59c9dee29b1242990862b5f135e74bee",
+    "canonical_activation_source_sha256": "sha256:3569bc480f2084a9d04a94b8b47507cc8f4e6183a67308aa9039c2b485108323"
+  },
+  "fresh_preflight": {
+    "path": "read-only-preflight.json",
+    "sha256": "sha256:4318a0dd24a4f68f9adbc5f0149270c81c1cb43bd13f3c30c0e3455a8ab9049a",
+    "zero_compute_and_disposables": true,
+    "both_retained_volumes_exact": true,
+    "billing_baseline_usd": 1.9971928337181453,
+    "selected_gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "secure_reference_rate_usd_per_hour": 0.74,
+    "active_version_id_sha256": "sha256:00a52163eee4d61bec6bea3459397328f5157d1a5e34dcd838f127cad11cbafc",
+    "active_record_sha256": "sha256:37864db71b2ebc843495b330915d98f74582014f3861e6c417da2c71810dfb41",
+    "exact_version_bound_disabled_route": true,
+    "signer_absent": true,
+    "local_disk_headroom_gate_satisfied": true
+  },
+  "runtime": {
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "image_source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "volume_mount": "/runpod-volume",
+    "volume_application_read_only": true,
+    "runtime_download_or_quantization": false,
+    "gpu_or_region_fallback": false
+  },
+  "staged_configs": {
+    "max1_path": "staged-config-max1.json",
+    "max1_sha256": "sha256:d0c1ab6b2ebe0d8c09e9a6c39853271ecaaa6c04de4abc84521b6a93a430c1bc",
+    "max2_path": "staged-config-max2.json",
+    "max2_sha256": "sha256:4a0a516098b79af713d79318ef83da5c347e9e087a11eeececc0ed56de44a7c5",
+    "max2_only_for_final_two_complete_readers": true,
+    "restore_max1_after_reader_proof": true
+  },
+  "identity_diagnostic_contract": {
+    "same_signed_pod_remains_rejected": true,
+    "distinct_signed_pod_required": true,
+    "failure_event_contains_only_fixed_predicates": true,
+    "raw_identity_hashes_in_failure_event": false,
+    "acceptance_relaxed": false,
+    "redispatch": false
+  },
+  "operations_if_approved": [
+    "reconfirm exact proposal, fresh single-use authority, cap, source/config hashes, disk, provider inventory, billing, rates, anchor, signer absence, and exact version-bound disabled route",
+    "apply two-phase-v1 anchor refresh and activate one ephemeral signer route on the refreshed version",
+    "create exact FlashBoot=true max1 EU-RO-1 private template/endpoint on the sealed Mage volume",
+    "run probe and replacement identity proof; if identity fails, record bounded predicates and stop without redispatch",
+    "only after identity passes, continue cold/warm/duplicate/cancel/timeout proofs and final max2 two-reader proof",
+    "restore max1, prove zero workers, retain success endpoint/template only on full qualification, restore route/config/signer, retain both volumes, and complete three-read reconciliation"
+  ],
+  "cost": {
+    "finite_action_estimate_usd_ceiling": 3.95,
+    "requested_maximum_cumulative_finite_spend_usd": 4,
+    "executable_finite_cap_usd": null,
+    "existing_two_volumes_usd_per_month": 7,
+    "volume_charge_separate_from_finite_cap": true,
+    "billing_lag_margin_seconds_per_worker": 60
+  },
+  "stop_conditions": [
+    "any proposal, authority, cap, source, staged-config, anchor, route, signer, disk, inventory, rate, billing, image, model, volume, or region mismatch",
+    "availability below LOW",
+    "replacement identity not demonstrably distinct",
+    "projected liability plus observed spend would exceed the approved cap",
+    "partial output, missing receipt/readback, duplicate compute, or timing/VRAM disagreement",
+    "uncertain drain, max1 restoration, rollback, config, signer, cleanup, billing, or volume reconciliation"
+  ],
+  "attempt61_reusable": false,
+  "retained_volume_mutation_authorized": false,
+  "v2_08_authorized": false,
+  "validator_gate": {
+    "required": true,
+    "proposal_digest": "COMPUTE_AFTER_FILE_CREATION",
+    "approved_authority_file_forbidden": true,
+    "activation_bindings_must_remain_null_until_approval": true
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "schema_version": "videoforge.v2-07-attempt62-replacement-identity-diagnostic-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 62,
+  "status": "PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0",
+  "preflight_sha256": "sha256:4318a0dd24a4f68f9adbc5f0149270c81c1cb43bd13f3c30c0e3455a8ab9049a",
+  "max1_sha256": "sha256:d0c1ab6b2ebe0d8c09e9a6c39853271ecaaa6c04de4abc84521b6a93a430c1bc",
+  "max2_sha256": "sha256:4a0a516098b79af713d79318ef83da5c347e9e087a11eeececc0ed56de44a7c5",
+  "lineage": {
+    "identity_classification_repair_commit": "3921f6bb4a02723073566cf46bc9353d0e46e97b",
+    "anchor_rebind_commit": "0b4b2d5b1edf31893daba54f08ecb1515aea589b",
+    "orchestrator_source_sha256": "sha256:6dd76f832911f3b26002e18f45b1acf17cba4cfcbf7da8c575d10eb433d8a515",
+    "qualification_harness_source_sha256": "sha256:f910d46dcb5a0149515e52e8d7967733a251c5b7ea58bc68b5ead1e6a5e99205",
+    "canonical_activation_source_sha256": "sha256:3569bc480f2084a9d04a94b8b47507cc8f4e6183a67308aa9039c2b485108323",
+    "attempt61_authority_reused": false,
+    "attempt61_cap_reused": false,
+    "attempt61_proposal_reused": false
+  },
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "anchor_refresh_authorized": null,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "authority_file": null,
+    "v2_08_authorized": false
+  },
+  "provider_state": {
+    "zero_compute_and_disposables": true,
+    "two_existing_volumes_retained": true,
+    "billing_baseline_usd": 1.9971928337181453,
+    "availability": "LOW",
+    "exact_version_bound_disabled_route": true,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "remaining_gates": [
+    "fresh exact approval and fresh positive USD 4 numeric cap",
+    "postapproval preexecution reconfirmation",
+    "one bounded live qualification with complete output/timing/cost/reader/cleanup proof"
+  ],
+  "recorded_at": "2026-08-25T07:16:00Z",
+  "v2_08_started": false
+}
