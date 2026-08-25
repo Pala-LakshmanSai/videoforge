@@ -26,6 +26,12 @@ test("production Worker explicitly enables the reviewed Node crypto compatibilit
   assert.match(production, /"compatibility_flags": \["nodejs_compat"\]/u);
 });
 
+test("migration activation fails closed without the pgcrypto prerequisite for 0042", () => {
+  const source = readFileSync("deploy/v2-06/apply-migrations-and-grants.mjs", "utf8");
+  assert.match(source, /FROM pg_extension WHERE extname = 'pgcrypto'/u);
+  assert.match(source, /gen_random_bytes and pgp_sym_encrypt\/decrypt/u);
+});
+
 test("V2-06 CORS verifier accepts Wrangler's exact policy output", () => {
   const result = spawnSync(process.execPath, [verifier, "--origin", origin], {
     input: output,

@@ -16,7 +16,7 @@ import {
   withMigratedDatabase,
 } from "./support/pglite.mjs";
 
-async function seedMaterialization(executor) {
+export async function seedMaterialization(executor) {
   await seedLockedProjects(executor);
   await executor.query("SELECT set_config($1,$2,false)", ["videoforge.account_id", IDS.accountA]);
   const generationRequestId = uuid(1_410_001);

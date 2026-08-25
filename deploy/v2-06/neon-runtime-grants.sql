@@ -64,18 +64,21 @@ GRANT EXECUTE ON FUNCTION public.videoforge_append_hosted_canonical_timing(
   uuid, uuid, uuid, uuid, uuid, uuid, jsonb
 )
 TO :"runtime_role";
--- Migration 0040 keeps operator-authored approvals and runtime claims private. The runtime can
--- invoke only this exact atomic claim; transaction time and current lease are rechecked inside it.
-GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_paid_dispatch(
-  uuid, text, uuid, uuid, uuid, uuid, uuid, uuid, text, uuid, jsonb,
-  numeric, numeric, timestamptz
-)
-TO :"runtime_role";
+-- Migration 0040's direct claim stays owner-only. Runtime access would allow an approval to be
+-- consumed outside the atomic 0042 pair and is therefore intentionally absent.
 -- Migration 0041 atomically appends the exact provider-inert two-lane batches. Qualification,
 -- paid claiming, predispatch, and transport remain separate fail-closed gates.
 GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_lane_batches(
   uuid, uuid, uuid, uuid, uuid, text, jsonb
 )
+TO :"runtime_role";
+-- Migration 0042 is the sole paid sendable-state capability. It rechecks durable independent
+-- qualification, consumes the 0040 approval, and commits both lanes in one DB-time transaction.
+GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_atomic_pair_predispatch(
+  uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb
+)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_recover_hosted_atomic_pair_tokens(uuid,uuid,uuid)
 TO :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE ON

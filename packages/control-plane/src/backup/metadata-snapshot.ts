@@ -77,6 +77,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "global_generation_capacity",
   "generation_queue_audits",
   "serverless_endpoint_deployments",
+  "hosted_serverless_qualification_attestations",
   "hosted_paid_dispatch_approvals",
   "hosted_paid_dispatch_claims",
   "serverless_attempts",

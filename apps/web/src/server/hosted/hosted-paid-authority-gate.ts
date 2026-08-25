@@ -5,11 +5,11 @@ import type {
 } from "@videoforge/control-plane";
 
 import {
-  dispatchHostedPreparedGeneration,
   HostedDispatchCoordinationError,
   type HostedPaidAuthorityClaim,
   type HostedPaidAuthorityGate,
 } from "./hosted-serverless-dispatch-coordinator";
+import type { dispatchHostedPreparedGeneration } from "./hosted-serverless-dispatch-coordinator";
 
 const CLAIM_FUNCTION = "public.videoforge_claim_hosted_paid_dispatch";
 
@@ -42,14 +42,11 @@ export function dispatchHostedPreparedGenerationWithSqlAuthority(
     readonly database: TransactionalSqlExecutor;
   },
 ) {
-  return dispatchHostedPreparedGeneration({
-    scope: input.scope,
-    generationRequestId: input.generationRequestId,
-    inspection: input.inspection,
-    runtime: input.runtime,
-    now: input.now,
-    paidAuthorityGate: new HostedSqlPaidAuthorityGate(input.database),
-  });
+  void input;
+  // Migration 0042 replaced this three-transaction claim + lane-commit composition. Keep the
+  // exported compatibility symbol fail-closed so no route can accidentally activate the unsafe
+  // boundary while callers move to HostedSqlAtomicPairPredispatch.
+  throw new HostedDispatchCoordinationError("HOSTED_ATOMIC_PAIR_PREDISPATCH_REQUIRED");
 }
 
 /**

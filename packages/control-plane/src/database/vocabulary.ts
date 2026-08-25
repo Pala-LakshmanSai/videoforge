@@ -78,6 +78,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "serverless_endpoint_deployments",
   "hosted_paid_dispatch_approvals",
   "hosted_paid_dispatch_claims",
+  "hosted_serverless_qualification_attestations",
   "serverless_attempts",
   "serverless_predispatch_authorities",
   "serverless_dispatch_outbox",
@@ -126,6 +127,7 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "hosted_auth_sessions",
   "hosted_auth_verifications",
   "hosted_auth_links",
+  "hosted_dispatch_token_vault",
 ] as const;
 
 /**

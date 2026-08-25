@@ -634,6 +634,29 @@ export class ServerlessDispatchService {
       const acknowledgementUnknown =
         (error instanceof FakeTransportError && error.code === "TRANSPORT_RESPONSE_LOST") ||
         (error instanceof ServerlessTransportError && error.code === "DISPATCH_ACK_UNKNOWN");
+      const definitelyRejected =
+        error instanceof ServerlessTransportError && error.code === "REQUEST_REJECTED";
+      if (definitelyRejected) {
+        // The provider proved no job was created. Preserve the one-send invariant, but do not
+        // strand a plain SENT/DISPATCHING row that restart logic could mistake for ambiguity.
+        await this.#database.transaction(async (transaction) => {
+          await assertScope(transaction, scope);
+          await transaction.query(
+            `UPDATE serverless_dispatch_outbox
+                SET state = 'DEAD_LETTER', version = version + 1, updated_at = $2
+              WHERE id = $1 AND state = 'SENT'`,
+            [input.commit.outboxId, input.now],
+          );
+          await transaction.query(
+            `UPDATE serverless_attempts
+                SET state = 'PERMANENT_FAILED', terminal_at = $2,
+                    version = version + 1, updated_at = $2
+              WHERE id = $1 AND state = 'DISPATCHING'`,
+            [input.commit.attemptId, input.now],
+          );
+        });
+        throw error;
+      }
       if (!acknowledgementUnknown) {
         throw error;
       }

@@ -192,6 +192,14 @@ const main = async () => {
   const identity = await query("SELECT current_user::text", environment);
   if (identity !== expectedOwnerRole)
     fail("connected PostgreSQL role is not the approved migration owner");
+  const pgcrypto = await query(
+    "SELECT extversion::text FROM pg_extension WHERE extname = 'pgcrypto'",
+    environment,
+  );
+  if (!pgcrypto)
+    fail(
+      "pgcrypto extension is required before migration 0042 (gen_random_bytes and pgp_sym_encrypt/decrypt)",
+    );
 
   let ledgerText;
   try {

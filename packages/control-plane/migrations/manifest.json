@@ -246,6 +246,12 @@
       "name": "hosted_lane_batch_materialization",
       "filename": "0041_hosted_lane_batch_materialization.sql",
       "sha256": "sha256:24f161e5c441f7cfa6b7837d185e64b3eae182d729c8ef21ef6850aeec9bcf84"
+    },
+    {
+      "version": 42,
+      "name": "hosted_atomic_pair_predispatch",
+      "filename": "0042_hosted_atomic_pair_predispatch.sql",
+      "sha256": "sha256:ea34a54c7044e25ca50f58f47d622e293b0c34719c74e5e32ca190cedf850fcc"
     }
   ]
 }

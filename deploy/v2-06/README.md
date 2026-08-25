@@ -228,7 +228,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 - Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
   ordinary deployment of the intended restored source/config so code and deployment metadata converge;
   rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
-  available. Every migration in the committed manifest (currently through 0041) is additive and
+  available. Every migration in the committed manifest (currently through 0042) is additive and
   retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
@@ -348,3 +348,9 @@ submission and its canonical payload SHA separately. The append-only mutation re
 the exact ASR submission to send after the tenant completes browser sign-in. Re-running the same
 command reuses exact R2 bytes and the same deterministic rows. Local fixture evidence remains
 local proof only; it cannot prove hosted deployment or a successful worker render.
+Migration 0042 requires the Neon database owner to have `pgcrypto` installed; the migration
+runner verifies that prerequisite before applying or granting anything.
+The 0042 adapter remains source-only and is not connected to a production route or transport:
+the runtime role has no direct outbox/attempt transition DML, and the former three-transaction
+0040 composition fails closed. Activation still requires narrow atomic dispatch/reconcile/cancel
+transition capabilities and an independently audited runtime composition.

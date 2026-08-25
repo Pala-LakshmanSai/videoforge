@@ -11,6 +11,7 @@ import {
   ServerlessBatchError,
   ServerlessDispatchError,
   ServerlessDispatchService,
+  ServerlessTransportError,
   buildAcceptedUnitResumeBatch,
   digestUtf8,
   providerFreeV2Authority,
@@ -801,6 +802,39 @@ test("the async provider-neutral adapter preserves fake dispatch and lost-ack se
     const outcome = await dispatch(service, scopeA(), commit, transport, 820_304);
     assert.equal(outcome.kind, "DISPATCH_ACK_UNKNOWN");
     assert.equal(fixture.acceptedJobCount(), 1);
+  });
+});
+
+test("a definite provider rejection durably dead-letters instead of stranding SENT", async () => {
+  await seeded(async ({ executor, admission, service }) => {
+    const requestId = await admitVideo(admission, actorA(), 800_305, IDS.projectA, IDS.revisionA);
+    const commit = await service.commitPredispatch(
+      scopeA(),
+      predispatchInput(810_305, scopeA(), {
+        projectId: IDS.projectA,
+        revisionId: IDS.revisionA,
+        requestId,
+      }),
+    );
+    const rejected = {
+      run() { throw new ServerlessTransportError("REQUEST_REJECTED"); },
+      status() { throw new Error("unreachable"); },
+      cancel() { throw new Error("unreachable"); },
+    };
+    await assert.rejects(
+      dispatch(service, scopeA(), commit, rejected, 820_305),
+      (error) => error instanceof ServerlessTransportError && error.code === "REQUEST_REJECTED",
+    );
+    const rows = await executor.query(
+      `SELECT a.state AS attempt_state,a.terminal_at,o.state AS outbox_state,o.send_attempt_count
+         FROM serverless_attempts a JOIN serverless_dispatch_outbox o ON o.attempt_id=a.id
+        WHERE a.id=$1`,
+      [commit.attemptId],
+    );
+    assert.equal(rows.rows[0].attempt_state, "PERMANENT_FAILED");
+    assert.ok(rows.rows[0].terminal_at);
+    assert.equal(rows.rows[0].outbox_state, "DEAD_LETTER");
+    assert.equal(rows.rows[0].send_attempt_count, 1);
   });
 });
 
