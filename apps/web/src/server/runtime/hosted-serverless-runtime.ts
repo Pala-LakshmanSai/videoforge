@@ -77,6 +77,12 @@ export interface HostedServerlessLaneBinding {
   readonly qualificationArtifact: Readonly<Record<string, unknown>>;
 }
 
+export interface HostedVerifiedDeploymentSnapshot {
+  readonly deployment: Readonly<EndpointDeploymentInput>;
+  readonly sealedLineage: HostedQualificationLineage;
+  readonly sealedLineageSha256: Sha256;
+}
+
 type DispatchOnceInput = Parameters<ServerlessDispatchService["dispatchOnce"]>[1];
 type ReconcileInput = Parameters<ServerlessDispatchService["reconcile"]>[1];
 type CancelInput = Parameters<ServerlessDispatchService["cancel"]>[1];
@@ -84,6 +90,8 @@ type CancelInput = Parameters<ServerlessDispatchService["cancel"]>[1];
 export interface HostedQualifiedLaneService {
   readonly lane: ServerlessLane;
   readonly deploymentId: string;
+  /** Immutable exact deployment and independently verified sealed lineage for downstream binding. */
+  readonly verifiedDeployment: HostedVerifiedDeploymentSnapshot;
   publishDeployment(): Promise<void>;
   commitPredispatch(
     scope: WorkspaceScope,
@@ -134,6 +142,29 @@ function exactDate(value: string): number | null {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value
     ? timestamp
     : null;
+}
+
+function deepFreeze<Value>(value: Value): Readonly<Value> {
+  if (typeof value !== "object" || value === null || Object.isFrozen(value)) return value;
+  for (const child of Array.isArray(value) ? value : Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+function verifiedDeploymentSnapshot(
+  binding: HostedServerlessLaneBinding,
+): HostedVerifiedDeploymentSnapshot {
+  const sealedLineage = deepFreeze(
+    structuredClone(
+      binding.deployment.timeoutEvidence.sealed_lineage as unknown as HostedQualificationLineage,
+    ),
+  ) as HostedQualificationLineage;
+  return deepFreeze({
+    deployment: binding.deployment,
+    sealedLineage,
+    sealedLineageSha256: canonicalSha256(
+      sealedLineage as unknown as Readonly<Record<string, unknown>>,
+    ),
+  }) as HostedVerifiedDeploymentSnapshot;
 }
 
 function sameLineage(
@@ -247,9 +278,9 @@ export function createHostedServerlessRuntimeComposition(input: {
     binding === undefined
       ? undefined
       : Object.freeze({
-          deployment: Object.freeze({
+          deployment: deepFreeze({
             ...binding.deployment,
-            timeoutEvidence: Object.freeze(structuredClone(binding.deployment.timeoutEvidence)),
+            timeoutEvidence: structuredClone(binding.deployment.timeoutEvidence),
           }),
           transportEndpointIdSha256: binding.transportEndpointIdSha256,
           transport: binding.transport,
@@ -285,6 +316,7 @@ export function createHostedServerlessRuntimeComposition(input: {
       const service: HostedQualifiedLaneService = Object.freeze({
         lane,
         deploymentId: binding.deployment.deploymentId,
+        verifiedDeployment: verifiedDeploymentSnapshot(binding),
         async publishDeployment(): Promise<void> {
           await verified(lane, binding, true);
           await dispatch.publishEndpointDeployment(binding.deployment);

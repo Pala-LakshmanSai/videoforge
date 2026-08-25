@@ -182,6 +182,19 @@ describe("hosted provider-free Serverless composition", () => {
     const lane = await composition.requireLane("mage_image");
     expect(lane.lane).toBe("mage_image");
     expect(lane.deploymentId).toBe(mage.deployment.deploymentId);
+    expect(lane.verifiedDeployment).toMatchObject({
+      deployment: mage.deployment,
+      sealedLineageSha256: canonicalSha256(
+        acceptedVerification(mage).lineage as unknown as Readonly<Record<string, unknown>>,
+      ),
+    });
+    expect(lane.verifiedDeployment.sealedLineage).toEqual(acceptedVerification(mage).lineage);
+    expect(Object.isFrozen(lane.verifiedDeployment)).toBe(true);
+    expect(Object.isFrozen(lane.verifiedDeployment.deployment)).toBe(true);
+    expect(Object.isFrozen(lane.verifiedDeployment.sealedLineage)).toBe(true);
+    expect(() => {
+      (lane.verifiedDeployment.sealedLineage as { region: string }).region = "EU-CZ-1";
+    }).toThrow();
     expect("transport" in lane).toBe(false);
     expect("dispatch" in lane).toBe(false);
     await lane.publishDeployment();
