@@ -1,0 +1,252 @@
+name: avatar-primary-serverless-image
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the verified V2-08 SoulX Serverless image"
+        required: true
+        type: boolean
+        default: false
+      registry_repository:
+        description: "Allowlisted immutable-image destination"
+        required: true
+        type: choice
+        options:
+          - pala-lakshmansai/videoforge-soulx-serverless-v2-08
+        default: pala-lakshmansai/videoforge-soulx-serverless-v2-08
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: avatar-primary-serverless-image
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    outputs:
+      immutable_image: ${{ steps.record.outputs.immutable_image }}
+      image_digest: ${{ steps.record.outputs.image_digest }}
+      published: ${{ steps.record.outputs.published }}
+      deployability_record_sha256: ${{ steps.record.outputs.deployability_record_sha256 }}
+      evidence_artifact: ${{ steps.record.outputs.evidence_artifact }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Verify exact V2-08 image-definition inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ inputs.registry_repository }}" = \
+            "pala-lakshmansai/videoforge-soulx-serverless-v2-08"
+          test "$(sha256sum workers/avatar-primary/Dockerfile.serverless | awk '{print $1}')" = \
+            "1153b833f71cdc3866ba70f7f46dbc246e56d94378403137efd02d255984a623"
+          test "$(sha256sum workers/avatar-primary/requirements.serverless.txt | awk '{print $1}')" = \
+            "938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
+          expected_sources=(
+            "workers/avatar-primary/soulx_serverless.py|2172fda27d54ac4232f5362aa4f6a82061ca8ce1c0b879de7ef45a37b1623985|/opt/videoforge/soulx_serverless.py"
+            "workers/avatar-primary/soulx-serverless-entrypoint.py|bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9|/opt/videoforge/soulx-serverless-entrypoint.py"
+            "workers/common/secure_scratch.py|7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775|/opt/videoforge/common/secure_scratch.py"
+            "workers/common/serverless_envelope.py|acf1b21efbddf17b4f8b81a3ae18e6a56646623e76986a6dd48dfae2d142c366|/opt/videoforge/common/serverless_envelope.py"
+            "packages/contracts/python/videoforge_contracts/_schema_documents.py|a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71|/opt/videoforge/src/videoforge_contracts/_schema_documents.py"
+          )
+          for source_entry in "${expected_sources[@]}"; do
+            IFS='|' read -r source_path expected_hash image_path <<<"$source_entry"
+            test "$(sha256sum "$source_path" | awk '{print $1}')" = "$expected_hash"
+            grep -F "${expected_hash} ${image_path}" \
+              workers/avatar-primary/Dockerfile.serverless >/dev/null
+          done
+          expected_contract_dependencies=(
+            "packages/contracts/python/videoforge_contracts/__init__.py|83650cf6430fd82e26c855df5f91b34cf5a4eda2beebf7650d8cf86e27f88443"
+            "packages/contracts/python/videoforge_contracts/models.py|b31ebc93f99c055c0ab158b72027d652ae9cbb4b232562167672cdde35c63c09"
+            "packages/contracts/python/videoforge_contracts/validator.py|88e5d7a6023f10c46be3be34204539231c4eee57f14519788952b3a4a686adca"
+          )
+          for source_entry in "${expected_contract_dependencies[@]}"; do
+            IFS='|' read -r source_path expected_hash <<<"$source_entry"
+            test "$(sha256sum "$source_path" | awk '{print $1}')" = "$expected_hash"
+          done
+
+      - name: Build exact linux-amd64 candidate without a model volume
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ARCH" = "X64"
+          build_context="$RUNNER_TEMP/v208-soulx-serverless-context"
+          mkdir -p \
+            "$build_context/workers/avatar-primary" \
+            "$build_context/workers/common" \
+            "$build_context/packages/contracts/python/videoforge_contracts"
+          cp -- \
+            workers/avatar-primary/Dockerfile.serverless \
+            workers/avatar-primary/requirements.serverless.txt \
+            workers/avatar-primary/soulx_serverless.py \
+            workers/avatar-primary/soulx-serverless-entrypoint.py \
+            "$build_context/workers/avatar-primary/"
+          cp -- workers/common/secure_scratch.py workers/common/serverless_envelope.py \
+            "$build_context/workers/common/"
+          cp -- \
+            packages/contracts/python/videoforge_contracts/__init__.py \
+            packages/contracts/python/videoforge_contracts/_schema_documents.py \
+            packages/contracts/python/videoforge_contracts/models.py \
+            packages/contracts/python/videoforge_contracts/validator.py \
+            "$build_context/packages/contracts/python/videoforge_contracts/"
+          local_image="videoforge-soulx-serverless-v2-08:${GITHUB_SHA}"
+          docker build \
+            --platform linux/amd64 \
+            --file "$build_context/workers/avatar-primary/Dockerfile.serverless" \
+            --tag "$local_image" \
+            "$build_context"
+          test "$(docker image inspect --format='{{.Architecture}}' "$local_image")" = "amd64"
+          test "$(docker image inspect --format='{{.Os}}' "$local_image")" = "linux"
+          test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.lane\"}}' "$local_image")" = \
+            "soulx_avatar"
+          test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.runtime-profile\"}}' "$local_image")" = \
+            "videoforge_soulx_flashhead_pro_bf16_v1"
+          docker run --rm --entrypoint /bin/sh "$local_image" -c \
+            'test ! -e /runpod-volume/soulx-flashhead-pro && test -x /usr/bin/ffprobe'
+          docker run --rm --entrypoint python "$local_image" -c \
+            'import soulx_serverless; assert callable(soulx_serverless.handler)'
+          local_image_id="$(docker image inspect --format='{{.Id}}' "$local_image")"
+          [[ "$local_image_id" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "SOULX_LOCAL_IMAGE=$local_image" >> "$GITHUB_ENV"
+          echo "SOULX_LOCAL_IMAGE_ID=$local_image_id" >> "$GITHUB_ENV"
+          echo "SOULX_PUBLISHED=false" >> "$GITHUB_ENV"
+          echo "SOULX_IMMUTABLE_IMAGE=" >> "$GITHUB_ENV"
+          echo "SOULX_IMAGE_DIGEST=" >> "$GITHUB_ENV"
+          echo "local_image_id=$local_image_id" >> "$GITHUB_STEP_SUMMARY"
+          echo "publication_requested=${{ inputs.publish }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "provider_endpoint_mutation=false" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Authenticate only for an explicitly requested publication
+        if: ${{ inputs.publish }}
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY_OWNER,,}" = "pala-lakshmansai"
+          printf '%s' "$GHCR_TOKEN" | \
+            docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin >/dev/null
+
+      - name: Publish only to the exact allowlisted repository
+        if: ${{ inputs.publish }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository="${{ inputs.registry_repository }}"
+          test "$repository" = "pala-lakshmansai/videoforge-soulx-serverless-v2-08"
+          [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
+          tagged_image="ghcr.io/${repository}:${GITHUB_SHA}"
+          docker tag "$SOULX_LOCAL_IMAGE" "$tagged_image"
+          docker push "$tagged_image" >/dev/null
+          immutable_image="$(docker image inspect --format='{{index .RepoDigests 0}}' "$tagged_image")"
+          [[ "$immutable_image" =~ ^ghcr\.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:[a-f0-9]{64}$ ]]
+          image_digest="${immutable_image##*@}"
+          echo "SOULX_PUBLISHED=true" >> "$GITHUB_ENV"
+          echo "SOULX_IMMUTABLE_IMAGE=$immutable_image" >> "$GITHUB_ENV"
+          echo "SOULX_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
+
+      - name: Remove registry credentials
+        if: ${{ always() && inputs.publish }}
+        shell: bash
+        run: docker logout ghcr.io >/dev/null 2>&1 || true
+
+      - name: Write deployability and publication evidence
+        id: record
+        if: ${{ success() }}
+        shell: bash
+        env:
+          PUBLICATION_REQUESTED: ${{ inputs.publish }}
+          REGISTRY_REPOSITORY: ${{ inputs.registry_repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-evidence
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          published = os.environ["SOULX_PUBLISHED"] == "true"
+          record = {
+              "schema_version": "videoforge-image-deployability/v1",
+              "checkpoint": "V2-08",
+              "lane": "soulx_avatar",
+              "source_commit": os.environ["GITHUB_SHA"],
+              "platform": "linux/amd64",
+              "registry_repository": os.environ["REGISTRY_REPOSITORY"],
+              "publication_requested": os.environ["PUBLICATION_REQUESTED"] == "true",
+              "published": published,
+              "status": "PUBLISHED_IMMUTABLE_IMAGE" if published else "BUILD_ONLY_VERIFIED",
+              "local_image_id": os.environ["SOULX_LOCAL_IMAGE_ID"],
+              "immutable_image": os.environ["SOULX_IMMUTABLE_IMAGE"] or None,
+              "image_digest": os.environ["SOULX_IMAGE_DIGEST"] or None,
+              "dockerfile_sha256": (
+                  "sha256:1153b833f71cdc3866ba70f7f46dbc246e56d94378403137efd02d255984a623"
+              ),
+              "requirements_sha256": (
+                  "sha256:938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
+              ),
+              "base_image": (
+                  "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@"
+                  "sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
+              ),
+              "source_sha256": {
+                  "packages/contracts/python/videoforge_contracts/_schema_documents.py": (
+                      "sha256:a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
+                  ),
+                  "packages/contracts/python/videoforge_contracts/__init__.py": (
+                      "sha256:83650cf6430fd82e26c855df5f91b34cf5a4eda2beebf7650d8cf86e27f88443"
+                  ),
+                  "packages/contracts/python/videoforge_contracts/models.py": (
+                      "sha256:b31ebc93f99c055c0ab158b72027d652ae9cbb4b232562167672cdde35c63c09"
+                  ),
+                  "packages/contracts/python/videoforge_contracts/validator.py": (
+                      "sha256:88e5d7a6023f10c46be3be34204539231c4eee57f14519788952b3a4a686adca"
+                  ),
+                  "workers/avatar-primary/soulx-serverless-entrypoint.py": (
+                      "sha256:bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9"
+                  ),
+                  "workers/avatar-primary/soulx_serverless.py": (
+                      "sha256:2172fda27d54ac4232f5362aa4f6a82061ca8ce1c0b879de7ef45a37b1623985"
+                  ),
+                  "workers/common/secure_scratch.py": (
+                      "sha256:7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775"
+                  ),
+                  "workers/common/serverless_envelope.py": (
+                      "sha256:acf1b21efbddf17b4f8b81a3ae18e6a56646623e76986a6dd48dfae2d142c366"
+                  ),
+              },
+              "model_volume": "/runpod-volume",
+              "model_volume_access": "read_only_required_at_worker_start",
+              "model_download_performed": False,
+              "provider_endpoint_mutation_performed": False,
+          }
+          destination = Path("release-evidence/soulx-serverless-v2-08.json")
+          destination.write_text(
+              json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          record_sha="sha256:$(sha256sum release-evidence/soulx-serverless-v2-08.json | awk '{print $1}')"
+          echo "immutable_image=$SOULX_IMMUTABLE_IMAGE" >> "$GITHUB_OUTPUT"
+          echo "image_digest=$SOULX_IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
+          echo "published=$SOULX_PUBLISHED" >> "$GITHUB_OUTPUT"
+          echo "deployability_record_sha256=$record_sha" >> "$GITHUB_OUTPUT"
+          echo "evidence_artifact=soulx-serverless-v2-08-deployability" >> "$GITHUB_OUTPUT"
+          echo "deployability_record_sha256=$record_sha" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$SOULX_PUBLISHED" = "true" ]]; then
+            echo "immutable_image=$SOULX_IMMUTABLE_IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload deployability record
+        if: ${{ success() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: soulx-serverless-v2-08-deployability
+          path: release-evidence/soulx-serverless-v2-08.json
+          if-no-files-found: error
+          retention-days: 30
