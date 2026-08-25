@@ -1,35 +1,35 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T09:30:00Z"
+updated_at: "2026-08-25T10:11:59Z"
 
-phase: serverless_v2_v2_07_attempt63_endpoint_rotation_candidate_pending_approval
+phase: serverless_v2_v2_07_attempt63_approved_pending_execution
 implementation_authorized_in_current_task: true
 current_milestone: mage_serverless_qualification
 current_task: VF-10-07
-current_wave: v2_07_attempt63_provider_free_candidate_pending_exact_approval
+current_wave: v2_07_attempt63_approved_single_use_pending_execution
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_candidate_ready_pending_approval
+task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
+provider_calls_authorized: true
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
-gpu_use_authorized: false
-maximum_external_spend_usd: 0
+remote_or_cloud_mutations_authorized: true
+credential_access_authorized: true
+gpu_use_authorized: true
+maximum_external_spend_usd: 4.5
 
 current_goal_boundary:
-  mode: attempt63_endpoint_rotation_candidate_pending_fresh_exact_approval
-  live_provider_calls: false
-  remote_mutation: false
+  mode: attempt63_approved_single_use_bounded_execution
+  live_provider_calls: true
+  remote_mutation: true
   deployment_or_publication: false
   credential_value_access: false
-  paid_requests_or_spend: false
-  runpod_mutation_or_gpu: forbidden
-  v2_07_action: "Await exact Attempt63 proposal approval and a fresh $4.50 cumulative finite cap; do not mutate providers or start V2-08."
-  note: "Endpoint rotation is repaired and provider-free validated. Attempt62 remains consumed/non-reusable and cleanly reconciled."
+  paid_requests_or_spend: true
+  runpod_mutation_or_gpu: exact_attempt63_sequence_only
+  v2_07_action: "Execute exact Attempt63 once under authority sha256:16378035…a798 and the $4.50 cumulative finite cap; stop and clean up on any mismatch; do not start V2-08."
+  note: "Endpoint rotation, FlashBoot=true, LOW-or-better EU-RO-1, two-phase-v1, and continued $7/month volume retention are explicitly approved."
 
 pending_v2_07_attempt63_proposal:
-  mode: pending_fresh_exact_approval_and_positive_numeric_cap
+  mode: approved_single_use_pending_execution
   proposal_path: evidence/acceptance/VF-10-07/2026-08-25-attempt63-endpoint-rotation-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:83a54dbd5d4810a83fa100eaf5014af255097ae2eb7c6264deccf209d5a3e532"
   acceptance_path: evidence/acceptance/VF-10-07/2026-08-25-attempt63-endpoint-rotation-candidate/acceptance.json
@@ -40,15 +40,15 @@ pending_v2_07_attempt63_proposal:
   staged_max2_sha256: "sha256:29c7eabb03f62051475e5fa6513581b8d1976e760582a17e4ff4421b1b6191cb"
   requested_maximum_cumulative_finite_spend_usd: 4.5
   finite_action_estimate_usd_ceiling: 4.25
-  executable_maximum_cumulative_finite_spend_usd: 0
-  exact_proposal_approved: false
-  authority_recorded: false
-  authority_path: null
-  authority_sha256: null
-  anchor_refresh_authorized: false
-  endpoint_rotation_authorized: false
-  provider_mutations_authorized: false
-  gpu_use_authorized: false
+  executable_maximum_cumulative_finite_spend_usd: 4.5
+  exact_proposal_approved: true
+  authority_recorded: true
+  authority_path: evidence/acceptance/VF-10-07/2026-08-25-attempt63-endpoint-rotation-candidate/approved-authority.json
+  authority_sha256: "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798"
+  anchor_refresh_authorized: true
+  endpoint_rotation_authorized: true
+  provider_mutations_authorized: true
+  gpu_use_authorized: true
   endpoint_rotation_commit: "3f3bed48e69f149cf56ee6aa6c42cabb70528db4"
   anchor_rebind_commit: "9c9ca3476c976592ae73414e6a1e53cc0fcbb643"
   qualification_harness_source_sha256: "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853"
@@ -394,7 +394,7 @@ closed_v2_07_attempt56_proposal:
   anchor_refresh_authorized: true
   anchor_refresh_mode: two-phase-v1
   provider_calls_authorized: false
-  read_only_provider_calls_authorized: true
+  read_only_provider_calls_authorized: false
   provider_mutations_authorized: false
   cloudflare_mutations_authorized: false
   scoped_signer_worker_route_activation_authorized: false
@@ -2630,15 +2630,15 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_future_inventory_or_mutation
-  current_authority: null
-  current_authority_sha256: null
+  current_authority: evidence/acceptance/VF-10-07/2026-08-25-attempt63-endpoint-rotation-candidate/approved-authority.json
+  current_authority_sha256: "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798"
   latest_closed_authority: evidence/acceptance/VF-10-07/2026-08-25-attempt62-replacement-identity-diagnostic-candidate/approved-authority.json
   latest_closed_authority_sha256: "sha256:932cd239e3352a14b042cf2b165a677406a62acfb157965ac42b7abba0924191"
-  mutation_authorized: false
-  mutation_authorization_scope: none_attempt62_consumed
-  gpu_use_authorized: false
-  gpu_authorization_scope: none_attempt62_consumed
-  spend_authorized_usd: 0
+  mutation_authorized: true
+  mutation_authorization_scope: exact_attempt63_endpoint_rotation_sequence_only
+  gpu_use_authorized: true
+  gpu_authorization_scope: exact_attempt63_bounded_jobs_only
+  spend_authorized_usd: 4.5
 
 repository:
   initialized: true
@@ -2667,10 +2667,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: "None; Attempt62 is consumed/non-reusable after clean shutdown and V2-08 is forbidden."
+  provider_mode: sandbox
+  provider_calls_authorized: true
+  authorized_spend_usd: 4.5
+  provider_authority_scope: "Exact single-use Attempt63 endpoint-rotation proposal only; authority sha256:16378035…a798; cleanup on any stop and V2-08 forbidden."
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -3945,32 +3945,40 @@ provider_authority_attempt62: &v2_07_provider_authority_attempt62
       checked_at: "2026-08-24T17:37:30.942Z"
 
 provider_authority_attempt63: &v2_07_provider_authority_attempt63
-  mode: none
-  authority_mode: pending_fresh_exact_approval_and_positive_numeric_cap
-  provider: null
-  source: null
-  authorized_by_user_at: null
-  authority_state: PENDING_FRESH_EXACT_ATTEMPT63_APPROVAL
+  mode: paid
+  authority_mode: approved_single_use_pending_execution
+  provider: runpod_and_cloudflare
+  source: explicit_user_exact_attempt63_proposal_approval
+  authorized_by_user_at: "2026-08-25T10:11:59Z"
+  authority_state: APPROVED_SINGLE_USE_ATTEMPT63_PENDING_EXECUTION
   proposal_path: evidence/acceptance/VF-10-07/2026-08-25-attempt63-endpoint-rotation-candidate/combined-live-proposal.json
   proposal_sha256: "sha256:83a54dbd5d4810a83fa100eaf5014af255097ae2eb7c6264deccf209d5a3e532"
-  authority_path: null
-  approved_preexecution_authority_sha256: null
-  authority_sha256: null
-  cap_usd: 0
+  authority_path: evidence/acceptance/VF-10-07/2026-08-25-attempt63-endpoint-rotation-candidate/approved-authority.json
+  approved_preexecution_authority_sha256: "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798"
+  authority_sha256: "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798"
+  cap_usd: 4.5
   requested_maximum_cumulative_finite_spend_usd: 4.5
-  maximum_cumulative_finite_spend_usd: 0
+  maximum_cumulative_finite_spend_usd: 4.5
   non_transferable: true
   exact_bounded_sequence_only: true
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  provider_mutations_authorized: false
-  cloudflare_mutations_authorized: false
-  scoped_signer_worker_route_activation_authorized: false
-  gpu_use_authorized: false
+  provider_mutations_authorized: true
+  cloudflare_mutations_authorized: true
+  scoped_signer_worker_route_activation_authorized: true
+  gpu_use_authorized: true
   v2_08_authorized: false
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  resources: []
-  authorized_operations: &v2_07_attempt63_authorized_operations []
+  resources:
+    - runpod_sujal_account_exact_attempt63_disposable_endpoint_template_jobs
+    - runpod_eu_ro_1_exact_mage_retained_volume_read_only
+    - cloudflare_v2_06_staging_scoped_v207_route_and_ephemeral_signer
+    - retained_soulx_volume_unchanged
+  authorized_operations: &v2_07_attempt63_authorized_operations
+    - execute_exact_attempt63_two_phase_anchor_refresh_and_ephemeral_signer
+    - create_probe_rotate_drained_seed_endpoint_and_create_fresh_replacement_endpoint
+    - run_exact_probe_replacement_cold_warm_duplicate_cancel_timeout_and_max_two_reader_sequence_without_redispatch
+    - restore_cleanup_reconcile_retain_both_volumes_and_stop_before_v2_08
   allowed_operations: *v2_07_attempt63_authorized_operations
   rate_snapshot: &v2_07_attempt63_rate_snapshot
     - resource_id: runpod_serverless_flex_rtx4090
@@ -3992,26 +4000,26 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt63_provider_free_candidate_pending_exact_approval
+  status: NOT_QUALIFIED_attempt63_approved_pending_execution
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: no_live_authority_attempt63_pending_fresh_exact_approval
-  task_stage: provider_free_candidate_ready_pending_approval
-  current_goal_authority: null
-  current_goal_authority_sha256: null
+  authorization_status: exact_attempt63_single_use_authority_active
+  task_stage: bounded_mutation
+  current_goal_authority: evidence/acceptance/VF-10-07/2026-08-25-attempt63-endpoint-rotation-candidate/approved-authority.json
+  current_goal_authority_sha256: "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798"
   provider_authority: *v2_07_provider_authority_attempt63
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Await exact Attempt63 endpoint-rotation proposal approval with a fresh $4.50 cap; do not mutate providers or start V2-08."
-  provider_calls_authorized: false
+  goal: "Execute exact Attempt63 once under the $4.50 cap, clean up on any stop, and do not start V2-08."
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  maximum_external_spend_usd: 4.5
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
   credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
@@ -4022,13 +4030,13 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt63_authorized_operations
   allowed_operations: *v2_07_attempt63_authorized_operations
   rate_snapshot: *v2_07_attempt63_rate_snapshot
-  authority_note: "Attempt63 is provider-free only; exact approval and a fresh $4.50 executable cap are required. Attempt62 is consumed/non-reusable and V2-08 is forbidden."
+  authority_note: "Attempt63 exact endpoint-rotation sequence is approved once under authority sha256:16378035…a798 and a $4.50 cap; Attempt62 remains consumed and V2-08 is forbidden."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt63_provider_free_candidate_pending_exact_approval
-  execution_blocker: FRESH_EXACT_PROPOSAL_APPROVAL_AND_POSITIVE_CAP_REQUIRED
+  execution_status: attempt63_approved_single_use_pending_execution
+  execution_blocker: null
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt63_candidate_pending_approval
+  state: v2_06_complete_green_independently_audited_v2_07_attempt63_approved_pending_execution
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"

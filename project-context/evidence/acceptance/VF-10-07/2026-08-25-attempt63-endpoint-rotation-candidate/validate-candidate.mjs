@@ -11,6 +11,7 @@ const expected = {
   preflight: "sha256:fdbe49a4d9d422c24827535a17ff39c64ae1f9eea2d746bff15fe4d5c6d9e419",
   max1: "sha256:d692f9b8b59b82a68afce770970aa44ea798d4fd08c679ac47585aa1096650b8",
   max2: "sha256:29c7eabb03f62051475e5fa6513581b8d1976e760582a17e4ff4421b1b6191cb",
+  authority: "sha256:163780356d07769201cb2a8470cee25fb9f1d6003f7aac8b9ed4b426d3c6a798",
   harness: "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853",
   harnessTest: "sha256:24257c1567bcbe1246741a8a600a18ff5f0aea67abc02e3260497d2e13e208ad",
   qualification: "sha256:10d6a3eed7db3b6f50688cf0fc82904f2f5023e37840922c63fbb53511227605",
@@ -35,13 +36,14 @@ const json = async (name) => JSON.parse(await bytes(name));
 const rootBytes = (name) => readFile(path.join(root, name));
 const rootSha = async (name) => sha(await rootBytes(name));
 
-const [proposal, acceptance, preflight, max1, max2, activation, harness, harnessTest, qualification, qualificationTest, orchestrator] =
+const [proposal, acceptance, preflight, max1, max2, authority, activation, harness, harnessTest, qualification, qualificationTest, orchestrator] =
   await Promise.all([
     json("combined-live-proposal.json"),
     json("acceptance.json"),
     json("read-only-preflight.json"),
     json("staged-config-max1.json"),
     json("staged-config-max2.json"),
+    json("approved-authority.json"),
     rootBytes("apps/web/src/server/providers/v207-activation-authority.ts").then(String),
     rootBytes("apps/web/src/server/providers/runpod-v207-qualification-harness.ts").then(String),
     rootBytes("apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts").then(String),
@@ -55,6 +57,7 @@ yes(sha(await bytes("acceptance.json")) === expected.acceptance, "ACCEPTANCE_HAS
 yes(sha(await bytes("read-only-preflight.json")) === expected.preflight, "PREFLIGHT_HASH");
 yes(sha(await bytes("staged-config-max1.json")) === expected.max1, "MAX1_HASH");
 yes(sha(await bytes("staged-config-max2.json")) === expected.max2, "MAX2_HASH");
+yes(sha(await bytes("approved-authority.json")) === expected.authority, "AUTHORITY_HASH");
 yes(
   (await rootSha("apps/web/src/server/providers/runpod-v207-qualification-harness.ts")) === expected.harness &&
     (await rootSha("apps/web/src/server/providers/runpod-v207-qualification-harness.test.ts")) === expected.harnessTest &&
@@ -197,5 +200,22 @@ try {
 } catch {
   authorityExists = false;
 }
-yes(authorityExists === false, "NO_AUTHORITY_FILE");
+yes(authorityExists === true, "AUTHORITY_FILE_REQUIRED");
+yes(
+  authority.attempt === 63 &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal.sha256 === expected.proposal &&
+    authority.acceptance.sha256 === expected.acceptance &&
+    authority.approval.maximum_cumulative_finite_spend_usd === 4.5 &&
+    authority.approval.endpoint_rotation_authorized === true &&
+    authority.approval.flashboot_true_accepted === true &&
+    authority.approval.low_or_better_eu_ro_1_availability_approved === true &&
+    authority.approval.anchor_refresh_authorized === true &&
+    authority.approval.consumed === false &&
+    authority.execution_boundary.v2_08_authorized === false &&
+    activation.includes(`"${expected.authority}";`) &&
+    /V207_APPROVED_FINITE_CAP_USD: number \| null = 4\.5;/u.test(activation) &&
+    /V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation),
+  "AUTHORITY_CONTRACT",
+);
 process.stdout.write(`PASS validate-v207-attempt63-candidate ${JSON.stringify(expected)}\n`);
