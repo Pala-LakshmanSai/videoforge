@@ -1,0 +1,192 @@
+{
+  "schema_version": "videoforge.v2-08-soulx-crop-profile-candidate/v1",
+  "checkpoint": "V2-08",
+  "candidate_id": "soulx-pro-vf924u-full-split-candidate-v1",
+  "recorded_at": "2026-08-25T14:26:21Z",
+  "candidate_status": "PENDING_USER_VISUAL_APPROVAL",
+  "authority_status": "NO_LIVE_AUTHORITY",
+  "qualification_status": "NOT_QUALIFIED",
+  "scope": {
+    "non_authorizing_candidate_only": true,
+    "provider_calls_performed": false,
+    "remote_mutations_performed": false,
+    "external_spend_usd": 0,
+    "renderer_activation_authorized": false,
+    "canonical_schema_or_decision_changed": false,
+    "user_visual_approval_recorded": false
+  },
+  "evidence_basis": [
+    {
+      "path": "project-context/evidence/acceptance/VF-9-24U/preflight.json",
+      "sha256": "sha256:1efa2ec95d113655c4dea5bddbcfc69aa3dea90762d9eb4be5374375af8e2ca2"
+    },
+    {
+      "path": "project-context/evidence/acceptance/VF-9-24U/acceptance.json",
+      "sha256": "sha256:1bb5334c011d4599ce68590068dce3dc528e8b337d73d82617eb9880d179c54b"
+    },
+    {
+      "path": "outputs/soulx-flashhead-pro/vf-9-24u/new-avatar-third-10.00s/qualification.json",
+      "sha256": "sha256:060ee6f8260032bfae4470233f7a9df4ed6002f3053a8ff80844bc5f28260511"
+    },
+    {
+      "path": "apps/web/src/server/providers/runpod-soulx-vf924s-live.ts",
+      "sha256": "sha256:30bedc5e5a90f802816bbfe06eee2ee1e48d1827631d8b2e21ace8253d8f9307"
+    },
+    {
+      "path": "apps/web/src/server/providers/runpod-soulx-vf924u-execute.ts",
+      "sha256": "sha256:4f5a535b01d683eab8cef57980dd5aa61916306bff6fb6c81fadb89d2983bd91"
+    }
+  ],
+  "sealed_lineage": {
+    "source_revision": "9bc03de06bb0de82cd6bc477804512ae06144bf2",
+    "model_revision": "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro",
+    "immutable_pod_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
+    "model_manifest_sha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+    "model_manifest_total_bytes": 6916084703,
+    "retained_volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "retained_volume_size_gb": 50,
+    "runtime_settings": {
+      "model_type": "pro",
+      "precision": "bfloat16",
+      "width": 512,
+      "height": 512,
+      "fps": 25,
+      "sampling_steps": 4,
+      "shift": 5,
+      "color_correction_strength": 1,
+      "seed": 42,
+      "torch_compile": true,
+      "audio_encode_mode": "stream",
+      "face_crop": false
+    }
+  },
+  "owned_inputs": {
+    "avatar_source_sha256": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+    "avatar_source_geometry": { "width": 1672, "height": 941 },
+    "avatar_source_probe": {
+      "container": "png_pipe",
+      "codec": "png",
+      "pixel_format": "rgb24",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1912005
+    },
+    "native_audio_sha256": "sha256:51765f504d1a241af1aa05040cd06bbf377768bc3b2806000191f23855e577cb",
+    "native_audio_probe": {
+      "container": "wav",
+      "codec": "pcm_s16le",
+      "sample_format": "s16",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_seconds": 10,
+      "bytes": 320278
+    },
+    "split_context_image_sha256": "sha256:844a98770bf2772becebc3dc71f3dd609fa0392295ef96d745cbdcb0ecb70f97",
+    "split_context_geometry": { "width": 1280, "height": 720 },
+    "split_context_probe": {
+      "container": "png_pipe",
+      "codec": "png",
+      "pixel_format": "rgb24",
+      "width": 1280,
+      "height": 720,
+      "bytes": 1191712
+    }
+  },
+  "samples": {
+    "native": {
+      "path": "outputs/soulx-flashhead-pro/vf-9-24u/new-avatar-third-10.00s/soulx-flashhead-pro-new-avatar-third-10.00s.mp4",
+      "sha256": "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1",
+      "bytes": 1796677,
+      "probe": {
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "video": { "codec": "h264", "pixel_format": "yuv420p", "width": 512, "height": 512, "fps": "25/1", "time_base": "1/12800", "frames": 250, "duration_seconds": 10 },
+        "audio": { "codec": "aac", "sample_rate_hz": 16000, "channels": 1, "channel_layout": "mono", "time_base": "1/16000", "duration_seconds": 10 },
+        "format_duration_seconds": 10,
+        "av_duration_delta_seconds": 0
+      }
+    },
+    "full": {
+      "path": "outputs/soulx-flashhead-pro/vf-9-24u/new-avatar-third-10.00s/ranga-style-full-16x9-corrected.mp4",
+      "sha256": "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241",
+      "bytes": 6129069,
+      "probe": {
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "video": { "codec": "h264", "pixel_format": "yuv420p", "width": 1920, "height": 1080, "fps": "30/1", "time_base": "1/15360", "frames": 300, "duration_seconds": 10 },
+        "audio": { "codec": "aac", "sample_rate_hz": 48000, "channels": 2, "channel_layout": "stereo", "time_base": "1/48000", "duration_seconds": 10 },
+        "format_duration_seconds": 10,
+        "av_duration_delta_seconds": 0
+      }
+    },
+    "split": {
+      "path": "outputs/soulx-flashhead-pro/vf-9-24u/new-avatar-third-10.00s/ranga-style-split-composite-16x9-corrected.mp4",
+      "sha256": "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993",
+      "bytes": 6980593,
+      "probe": {
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "video": { "codec": "h264", "pixel_format": "yuv420p", "width": 1920, "height": 1080, "fps": "30/1", "time_base": "1/15360", "frames": 300, "duration_seconds": 10 },
+        "audio": { "codec": "aac", "sample_rate_hz": 48000, "channels": 2, "channel_layout": "stereo", "time_base": "1/48000", "duration_seconds": 10 },
+        "format_duration_seconds": 10,
+        "av_duration_delta_seconds": 0
+      }
+    }
+  },
+  "profile_candidates": {
+    "full": {
+      "profile_id": "soulx-pro-ranga-full-source-composite-v1-candidate",
+      "native_clip_reused": true,
+      "source_background": {
+        "input_geometry": { "width": 1672, "height": 941 },
+        "transform": "scale=1920:1080:flags=lanczos,fps=30",
+        "output_geometry": { "width": 1920, "height": 1080 }
+      },
+      "native_foreground": {
+        "input_geometry": { "width": 512, "height": 512 },
+        "transform": "scale=1080:1080:flags=lanczos,fps=30,format=rgba",
+        "output_geometry": { "width": 1080, "height": 1080 },
+        "overlay": { "x": 420, "y": 0 },
+        "horizontal_alpha_feather_pixels_each_edge": 32
+      },
+      "output_geometry": { "width": 1920, "height": 1080, "fps": 30 }
+    },
+    "split": {
+      "profile_id": "soulx-pro-ranga-split-composite-v1-candidate",
+      "native_clip_reused": true,
+      "avatar_panel": {
+        "source_geometry": { "width": 512, "height": 512 },
+        "crop": { "x": 32, "y": 4, "width": 448, "height": 504 },
+        "transform": "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30",
+        "output_geometry": { "width": 960, "height": 1080 }
+      },
+      "context_panel": {
+        "source_geometry": { "width": 1280, "height": 720 },
+        "transform": "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30",
+        "scaled_geometry": { "width": 1920, "height": 1080 },
+        "center_crop": { "x": 480, "y": 0, "width": 960, "height": 1080 },
+        "output_geometry": { "width": 960, "height": 1080 },
+        "position": { "x": 960, "y": 0 }
+      },
+      "layout": "left-right-hstack-no-divider",
+      "output_geometry": { "width": 1920, "height": 1080, "fps": 30 }
+    }
+  },
+  "activation_boundary": {
+    "active_avatar_profile_version_id": null,
+    "active_crop_profile": null,
+    "serverless_image_published": false,
+    "serverless_endpoint_created": false,
+    "qualification_claimed": false,
+    "required_next_decision": "EXPLICIT_USER_VISUAL_APPROVAL_OR_ONE_PRECISE_REJECTION_NOTE",
+    "user_visual_approval_would_not_grant_live_authority": true,
+    "new_live_authority_required_for_any_prohibited_operation": true,
+    "prohibited_without_new_authority": [
+      "image_publication",
+      "provider_endpoint_or_template_mutation",
+      "live_serverless_dispatch",
+      "paid_compute_or_spend",
+      "model_download_or_substitution",
+      "retained_volume_mutation",
+      "crop_profile_activation",
+      "canonical_schema_or_decision_activation"
+    ]
+  }
+}
