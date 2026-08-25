@@ -2,7 +2,7 @@
 
 ## Active handoff — read this section first
 
-Attempt59 is a provider-free candidate pending fresh exact approval. Proposal
+Attempt59 is approved once and pending fresh post-approval preflight/execution. Proposal
 `sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647` binds post-cancel
 terminal-inventory repair `8bb6583`, refreshed anchor `74fbe8d`, new max1/max2 definitions, and
 Attempt58 clean closure. Fresh RunPod truth at `2026-08-25T04:00:10.595Z` is zero compute and
@@ -10,8 +10,10 @@ disposables, both retained volumes, MEDIUM RTX 4090 EU-RO-1 availability, `$1.10
 `$0.74/hour` Secure reference, and billing baseline `1.8568953356298152`. Fresh Cloudflare truth at
 `2026-08-25T04:09:29.719Z` proves the exact retained anchor, absent signer, protected config, and
 three exact version-bound `404 V207_ROUTE_DISABLED` reads. All provider truth must be reconfirmed
-after approval before mutation. Authority, cap, and refresh bindings remain null; no mutation/GPU/
-spend or V2-08 is authorized.
+after approval before mutation. Mutation/GPU/spend is authorized only inside the exact `$4`
+bounded sequence. Authority
+`sha256:9c8790c89c01b0b152405c59290985c20b7f07ec56ce922fc6a4fb836db558fc` is single-use and
+unconsumed; V2-08 remains forbidden.
 
 Attempt58 is closed `NOT_QUALIFIED`. It completed the probe, 31-unit replacement resume, cold, and
 warm batches with 96 durable outputs/receipts/readbacks, proved duplicate same-job delivery, and

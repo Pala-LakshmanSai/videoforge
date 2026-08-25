@@ -8,6 +8,7 @@ const root = path.resolve(dir, "../../../../../");
 const expected = {
   proposal: "sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647",
   acceptance: "sha256:553178c5015567a6ee2ddad2465face27352f9308bb2d8c36dc3b233d2eccdfb",
+  authority: "sha256:9c8790c89c01b0b152405c59290985c20b7f07ec56ce922fc6a4fb836db558fc",
   preflight: "sha256:be881595ac8493bab67d3a176e86bda42fb77e1fbb6ea9027b46501c9b1c63bf",
   max1: "sha256:977825dd9be925e886f91a50cebb5e8023a2d39114c63bb1ab7fc5779cdc07b9",
   max2: "sha256:162a40415bfb7ed0bd447a59e89fd947385b1297602a430f209699390dfe512c",
@@ -35,17 +36,19 @@ const fileSha = async (name) => sha(await readFile(path.join(dir, name)));
 const rootBytes = async (name) => readFile(path.join(root, name));
 const rootSha = async (name) => sha(await rootBytes(name));
 
-const [proposal, preflight, max1, max2, acceptance, activation, orchestrator] = await Promise.all([
+const [proposal, preflight, max1, max2, acceptance, authority, activation, orchestrator] = await Promise.all([
   json("combined-live-proposal.json"),
   json("read-only-preflight.json"),
   json("staged-config-max1.json"),
   json("staged-config-max2.json"),
   json("acceptance.json"),
+  json("approved-authority.json"),
   rootBytes("apps/web/src/server/providers/v207-activation-authority.ts").then(String),
   rootBytes("apps/web/src/server/providers/v207-live-orchestrator.ts").then(String),
 ]);
 yes((await fileSha("combined-live-proposal.json")) === expected.proposal, "PROPOSAL_HASH");
 yes((await fileSha("acceptance.json")) === expected.acceptance, "ACCEPTANCE_HASH");
+yes((await fileSha("approved-authority.json")) === expected.authority, "AUTHORITY_HASH");
 yes((await fileSha("read-only-preflight.json")) === expected.preflight, "PREFLIGHT_HASH");
 yes((await fileSha("staged-config-max1.json")) === expected.max1, "MAX1_HASH");
 yes((await fileSha("staged-config-max2.json")) === expected.max2, "MAX2_HASH");
@@ -130,11 +133,27 @@ yes(
     acceptance.authority.v2_08_authorized === false,
   "ACCEPTANCE",
 );
+yes(
+  authority.attempt === 59 &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal.sha256 === expected.proposal &&
+    authority.acceptance.sha256 === expected.acceptance &&
+    authority.approval.exact_proposal_approved === true &&
+    authority.approval.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval.anchor_refresh_authorized === true &&
+    authority.approval.single_use === true &&
+    authority.approval.consumed === false &&
+    authority.lineage.post_cancel_terminal_inventory_repair_commit === expected.postCancelRepair &&
+    authority.execution_boundary.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.execution_boundary.gpu_use_authorized_pending_execution === true &&
+    authority.execution_boundary.v2_08_authorized === false,
+  "APPROVED_AUTHORITY",
+);
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_PROPOSAL_POINTER");
 yes(activation.includes(`"${expected.readbackRepair}" as const`), "ACTIVATION_CONTROL_SOURCE");
-yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(activation), "AUTHORITY_NULL");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_NULL");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "REFRESH_NULL");
+yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_BINDING");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4;/u.test(activation), "CAP_BINDING");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation), "REFRESH_BINDING");
 const canonical = activation
   .replace(/^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/mu, `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${"0".repeat(64)}" as const;`)
   .replace(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/mu, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;")
@@ -148,5 +167,5 @@ try {
 } catch {
   authorityExists = false;
 }
-yes(authorityExists === false, "AUTHORITY_FILE_FORBIDDEN");
+yes(authorityExists === true, "AUTHORITY_FILE_REQUIRED");
 process.stdout.write(`PASS validate-v207-attempt59-candidate ${JSON.stringify(expected)}\n`);

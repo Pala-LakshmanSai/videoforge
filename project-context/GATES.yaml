@@ -173,22 +173,22 @@ gates:
     current_candidate_acceptance_sha256: "sha256:553178c5015567a6ee2ddad2465face27352f9308bb2d8c36dc3b233d2eccdfb"
     current_candidate_preflight: "evidence/acceptance/VF-10-07/2026-08-25-attempt59-post-cancel-stale-terminal-repair-candidate/read-only-preflight.json"
     current_candidate_preflight_sha256: "sha256:be881595ac8493bab67d3a176e86bda42fb77e1fbb6ea9027b46501c9b1c63bf"
-    current_candidate_authority: null
-    current_candidate_authority_sha256: null
-    current_candidate_approved_preexecution_authority_sha256: null
+    current_candidate_authority: "evidence/acceptance/VF-10-07/2026-08-25-attempt59-post-cancel-stale-terminal-repair-candidate/approved-authority.json"
+    current_candidate_authority_sha256: "sha256:9c8790c89c01b0b152405c59290985c20b7f07ec56ce922fc6a4fb836db558fc"
+    current_candidate_approved_preexecution_authority_sha256: "sha256:9c8790c89c01b0b152405c59290985c20b7f07ec56ce922fc6a4fb836db558fc"
     current_candidate_authority_consumed: false
-    current_candidate_authority_state: PENDING_FRESH_EXACT_APPROVAL
-    current_candidate_authority_mode: provider_free_candidate_unapproved
-    current_candidate_finite_cap_usd: 0
+    current_candidate_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
+    current_candidate_authority_mode: approved_single_use_pending_execution
+    current_candidate_finite_cap_usd: 4
     current_candidate_requested_finite_cap_usd: 4
-    current_candidate_executable_finite_cap_usd: 0
-    current_candidate_anchor_refresh_authorized: null
-    current_candidate_historical_approved_anchor_refresh: false
-    current_candidate_exact_anchor_refresh_activation: null
-    current_candidate_cloudflare_mutation_authorized: false
-    current_candidate_scoped_signer_worker_route_activation_authorized: false
-    current_candidate_runpod_mutation_authorized: false
-    current_candidate_gpu_use_authorized: false
+    current_candidate_executable_finite_cap_usd: 4
+    current_candidate_anchor_refresh_authorized: true
+    current_candidate_historical_approved_anchor_refresh: true
+    current_candidate_exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1
+    current_candidate_cloudflare_mutation_authorized: true
+    current_candidate_scoped_signer_worker_route_activation_authorized: true
+    current_candidate_runpod_mutation_authorized: true
+    current_candidate_gpu_use_authorized: true
     current_candidate_exact_bounded_sequence_only: true
     current_candidate_provider_calls_completed: false
     current_candidate_provider_jobs_submitted: 0
@@ -243,18 +243,18 @@ gates:
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
     pending_proposal: "evidence/acceptance/VF-10-07/2026-08-25-attempt59-post-cancel-stale-terminal-repair-candidate/combined-live-proposal.json"
     pending_proposal_sha256: "sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647"
-    pending_authority: null
-    pending_authority_sha256: null
-    pending_authority_state: PENDING_FRESH_EXACT_APPROVAL
-    pending_authority_mode: provider_free_candidate_unapproved
-    pending_numeric_cap_usd: 0
+    pending_authority: "evidence/acceptance/VF-10-07/2026-08-25-attempt59-post-cancel-stale-terminal-repair-candidate/approved-authority.json"
+    pending_authority_sha256: "sha256:9c8790c89c01b0b152405c59290985c20b7f07ec56ce922fc6a4fb836db558fc"
+    pending_authority_state: APPROVED_SINGLE_USE_PENDING_EXECUTION
+    pending_authority_mode: approved_single_use_pending_execution
+    pending_numeric_cap_usd: 4
     pending_requested_numeric_cap_usd: 4
-    pending_anchor_refresh_authorized: null
-    pending_exact_anchor_refresh_activation: null
-    pending_cloudflare_mutation_authorized: false
-    pending_scoped_signer_worker_route_activation_authorized: false
-    pending_runpod_mutation_authorized: false
-    pending_gpu_use_authorized: false
+    pending_anchor_refresh_authorized: true
+    pending_exact_anchor_refresh_activation: V207_ROLLBACK_ANCHOR_REFRESH=two-phase-v1
+    pending_cloudflare_mutation_authorized: true
+    pending_scoped_signer_worker_route_activation_authorized: true
+    pending_runpod_mutation_authorized: true
+    pending_gpu_use_authorized: true
     pending_exact_bounded_sequence_only: true
     pending_control_source_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
     pending_live_qualification_source_sha256: "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43"
@@ -292,12 +292,12 @@ gates:
     pending_current_cumulative_endpoint_spend_usd: 1.8568953356298152
     pending_late_unattributed_billing_increment_usd: 0
     pending_route_probe: 404_V207_ROUTE_DISABLED_EXACT_ACTIVE_VERSION_BOUND
-    provider_calls_authorized: false
-    provider_mutations_authorized: false
-    gpu_use_authorized: false
+    provider_calls_authorized: true
+    provider_mutations_authorized: true
+    gpu_use_authorized: true
     v2_08_authorized: false
-    authority_mode: provider_free_attempt59_candidate_pending_fresh_exact_approval
-    result: "NOT_QUALIFIED_attempt59_candidate_pending_approval"
+    authority_mode: approved_single_use_pending_execution
+    result: "NOT_QUALIFIED_attempt59_approved_single_use_pending_execution"
     attempt49_pre_activation_no_go: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/pre-activation-no-go.json"
     attempt49_pre_activation_no_go_sha256: "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-58.json"
@@ -312,7 +312,7 @@ gates:
     canonicalization_repair_commit: "f945392"
     deploy_diagnostic_repair_commit: "7066520"
     deploy_diagnostic_repair_source_sha256: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894"
-    next_boundary: "request exact approval for Attempt59 proposal sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647; authority/cap remain null until approval; do not start V2-08"
+    next_boundary: "run fresh post-approval preflight, execute Attempt59 exactly once under the approved single-use authority and USD4 cap, reconcile cleanup and spend, then stop before V2-08"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:
