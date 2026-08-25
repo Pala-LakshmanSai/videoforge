@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T00:15:00Z"
+updated_at: "2026-08-25T02:00:00Z"
 
 phase: serverless_v2_v2_07_attempt57_closed_not_qualified
 implementation_authorized_in_current_task: false
@@ -60,6 +60,13 @@ closed_v2_07_attempt57_proposal:
   orchestrator_source_sha256: "sha256:ed2b9f4edb3cac623055cbf14998c51aeba0b27d6d496c6a74e9cc302997bf62"
   live_qualification_source_sha256: "sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1"
   qualification_harness_source_sha256: "sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512"
+  output_readback_classification_repair_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
+  output_readback_classification_source_sha256: "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43"
+  output_readback_classification_test_sha256: "sha256:df4edea0050c5b3c0daf0a8a19a7d7bfd6b53d87ac5ce743b1b299945ec46555"
+  output_readback_classification_diagnosis: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-output-readback-classification-repair.json
+  output_readback_classification_diagnosis_sha256: "sha256:87dcfe9b9ed5a2db71e142417f2d030fca051d7a50387e7f8c4df9c4ce2a2217"
+  output_readback_classification_validator: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/validate-attempt57-output-readback-classification-repair.mjs
+  output_readback_classification_validator_sha256: "sha256:6af78f39408d16da588c4901f40f5e8fae22a611eeba1fac47acab48fbe02388"
   requested_maximum_cumulative_finite_spend_usd: 4
   executable_maximum_cumulative_finite_spend_usd: 0
   finite_action_estimate_usd_ceiling: 3.95
@@ -2388,11 +2395,11 @@ repository:
   branch: codex/serverless-v2-roadmap
   branch_upstream: origin/codex/serverless-v2-roadmap
   branch_published: true
-  current_source_head: "227c77acf1642f02c8cafb95752eb860d6d37c87"
-  current_source_head_semantics: attempt56_anchor_constant_rebind_source_commit_after_queued_probe_closure
+  current_source_head: "61919013c74f71995cf1631ce6ac56e633708dce"
+  current_source_head_semantics: attempt57_provider_free_output_readback_classification_repair
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt56 executable anchor-constant rebind source was used for one bounded run and is now closed NOT_QUALIFIED after the primary job stalled in queue; auditors resolve git rev-parse HEAD."
-  v2_07_latest_local_repair: "Commit 5c2fbe06ba559543c122876d32ef41cb26fd688b binds the executable anchor constants to the fresh active Cloudflare anchors; proposal record commit 227c77acf1642f02c8cafb95752eb860d6d37c87 stages the exact candidate."
+  current_source_head_note: "Attempt57 remains closed NOT_QUALIFIED. Commit 61919013c74f71995cf1631ce6ac56e633708dce adds provider-free bounded classification for output-port GET and signed artifact readback failures; auditors resolve git rev-parse HEAD."
+  v2_07_latest_local_repair: "Commit 61919013c74f71995cf1631ce6ac56e633708dce distinguishes GET transport, malformed response, signed artifact transport, and non-2xx readback without retaining response or secret material; 39 focused tests and TypeScript pass."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_after_final_live_closure_handoff_commit
@@ -2479,7 +2486,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: NOT_QUALIFIED_attempt56_primary_job_stalled_in_queue_clean
+  V2-07: NOT_QUALIFIED_attempt57_output_readback_classification_repaired_provider_free
   V2-08: blocked_on_V2-07
   V2-09: blocked_on_V2-08
   V2-10: blocked_on_V2-09
@@ -2526,7 +2533,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt56_not_qualified_primary_job_stalled_in_queue_clean
+    status: attempt57_not_qualified_output_readback_classification_repaired_provider_free
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
     immutable_image_publication_state: PUBLISHED_EXACT_DIGEST_READBACK_ATTEMPT40
@@ -2588,6 +2595,11 @@ model_runtime_evidence:
     v2_07_attempt57_cleanup_sha256: "sha256:af01054a4b0c16fe43f4ace6a9036763e20966ac20842fb6d40210029421eae0"
     v2_07_attempt57_reconciliation: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-reconciliation-observation.json
     v2_07_attempt57_reconciliation_sha256: "sha256:5895fe18b8143282e397d372b30fa56028f5003bc2ce258b5ef61cce2d1db8c6"
+    v2_07_attempt57_output_readback_classification_repair: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-output-readback-classification-repair.json
+    v2_07_attempt57_output_readback_classification_repair_sha256: "sha256:87dcfe9b9ed5a2db71e142417f2d030fca051d7a50387e7f8c4df9c4ce2a2217"
+    v2_07_attempt57_output_readback_classification_repair_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
+    v2_07_current_qualification_source_sha256: "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43"
+    v2_07_current_qualification_test_sha256: "sha256:df4edea0050c5b3c0daf0a8a19a7d7bfd6b53d87ac5ce743b1b299945ec46555"
     v2_07_attempt56_closure: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-56.json
     v2_07_attempt56_closure_sha256: "sha256:9465f6a19ef02bc763900cb14fdeaa89c2dd9a36f46d4ffcbce1022ded6731dd"
     v2_07_attempt56_cleanup: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt56-cleanup-observation.json
@@ -2642,10 +2654,10 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-08-24T16:43:56.268Z"
-  basis: attempt56_failed_queued_probe_cleanup_and_three_stable_read_only_reconciliation_reads
-  evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt56-reconciliation-observation.json
-  evidence_sha256: "sha256:e1d71ed322f705c49f31c7be0fddd056974e0e919f19911b22528aadaa2cfd3d"
+  checked_at: "2026-08-24T18:37:20.249Z"
+  basis: attempt57_failed_output_readback_cleanup_and_three_stable_read_only_reconciliation_reads
+  evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-reconciliation-observation.json
+  evidence_sha256: "sha256:5895fe18b8143282e397d372b30fa56028f5003bc2ce258b5ef61cce2d1db8c6"
   current_live_refresh_permitted_now: false
   stale_until_new_authority_and_authorized_read_only_inventory_succeeds: true
   rtx4090_eu_ro_1_availability: LOW

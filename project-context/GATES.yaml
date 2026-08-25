@@ -156,6 +156,13 @@ gates:
     latest_closed_cleanup_sha256: "sha256:af01054a4b0c16fe43f4ace6a9036763e20966ac20842fb6d40210029421eae0"
     latest_closed_reconciliation: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-reconciliation-observation.json"
     latest_closed_reconciliation_sha256: "sha256:5895fe18b8143282e397d372b30fa56028f5003bc2ce258b5ef61cce2d1db8c6"
+    latest_provider_free_repair: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt57-output-readback-classification-repair.json"
+    latest_provider_free_repair_sha256: "sha256:87dcfe9b9ed5a2db71e142417f2d030fca051d7a50387e7f8c4df9c4ce2a2217"
+    latest_provider_free_repair_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
+    latest_provider_free_repair_source_sha256: "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43"
+    latest_provider_free_repair_test_sha256: "sha256:df4edea0050c5b3c0daf0a8a19a7d7bfd6b53d87ac5ce743b1b299945ec46555"
+    latest_provider_free_repair_validator: "evidence/acceptance/VF-10-07/2026-08-21-live-qualification/validate-attempt57-output-readback-classification-repair.mjs"
+    latest_provider_free_repair_validator_sha256: "sha256:6af78f39408d16da588c4901f40f5e8fae22a611eeba1fac47acab48fbe02388"
     current_candidate: "evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/combined-live-proposal.json"
     current_candidate_sha256: "sha256:f28c0ceb4c39ce7c74c1a63d918c00acb078e8cb8c63d0728e00f9d4d2126cd4"
     current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-08-24-attempt57-queue-poll-classification-candidate/acceptance.json"
@@ -220,7 +227,7 @@ gates:
     latest_closed_incremental_spend_usd: 0
     latest_closed_cumulative_endpoint_spend_usd: 1.7478178361488972
     latest_closed_observed_unattributed_late_billing_increment_usd: 0
-    latest_closed_billing_attribution: ATTEMPT56_OBSERVED_INCREMENT_ZERO_AT_THREE_STABLE_READ_RECONCILIATION_BILLING_MAY_LAG
+    latest_closed_billing_attribution: ATTEMPT57_OBSERVED_INCREMENT_ZERO_AT_THREE_STABLE_READ_RECONCILIATION_BILLING_MAY_LAG
     latest_closed_authority_mode: closed_consumed_attempt57_replacement_output_contract_failure_clean
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
     pending_proposal: null

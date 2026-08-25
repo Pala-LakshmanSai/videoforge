@@ -1,0 +1,65 @@
+{
+  "schema_version": "videoforge.v2-07-attempt57-output-readback-classification-repair/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 57,
+  "recorded_at": "2026-08-25T01:59:12Z",
+  "result": "PASS_PROVIDER_FREE_OUTPUT_READBACK_CLASSIFICATION_REPAIR",
+  "qualification_status": "NOT_QUALIFIED",
+  "immutable_failure": {
+    "closure_path": "failed-attempt-57.json",
+    "closure_sha256": "sha256:6847f2c4f596705910c33d26581fab3b2c2c3ce5f9bb6d4e0a9c8103df052135",
+    "error": "MAGE_OUTPUT_NOT_SUCCEEDED",
+    "failure_stage": "output_readback",
+    "observed_output_status": "SUCCEEDED",
+    "observed_failure_code": "UNKNOWN",
+    "exact_remote_transport_or_response_root_cause": "UNPROVEN"
+  },
+  "repair": {
+    "commit": "61919013c74f71995cf1631ce6ac56e633708dce",
+    "source_path": "../../../../../apps/web/src/server/providers/v207-live-qualification.ts",
+    "source_sha256": "sha256:3ed15af77a48436b9864a29a03cf7a80f1d6cd4daf0ab10d2372d74f67598d43",
+    "test_path": "../../../../../apps/web/src/server/providers/v207-live-qualification.test.ts",
+    "test_sha256": "sha256:df4edea0050c5b3c0daf0a8a19a7d7bfd6b53d87ac5ce743b1b299945ec46555",
+    "stable_codes": {
+      "generated_output_port_get_transport": "V207_OUTPUT_PORT_GET_TRANSPORT",
+      "generated_output_port_get_response_invalid": "V207_OUTPUT_PORT_GET_RESPONSE_INVALID",
+      "signed_artifact_readback_transport": "MAGE_OUTPUT_READBACK_TRANSPORT",
+      "signed_artifact_readback_http_failure_preserved": "MAGE_OUTPUT_READBACK_FAILED"
+    },
+    "generated_output_port_get_attempts": 1,
+    "generated_output_port_get_503_retried": false,
+    "finalize_retry_contract_changed": false,
+    "non_get_non_finalize_behavior_changed": false,
+    "response_body_url_headers_nonce_or_error_cause_retained": false,
+    "reconciliation_behavior_changed": false
+  },
+  "validation": {
+    "focused_command": "pnpm exec vitest run src/server/providers/v207-live-qualification.test.ts --reporter=dot",
+    "focused_test_files_passed": 1,
+    "focused_tests_passed": 39,
+    "focused_tests_failed": 0,
+    "typescript_command": "pnpm exec tsc --noEmit",
+    "typescript_exit_code": 0,
+    "git_diff_check_exit_code": 0
+  },
+  "provider_state": {
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0,
+    "current_authority_sha256": null,
+    "executable_cap_usd": 0,
+    "attempt57_reusable": false,
+    "last_committed_cleanup_sha256": "sha256:af01054a4b0c16fe43f4ace6a9036763e20966ac20842fb6d40210029421eae0",
+    "last_committed_reconciliation_sha256": "sha256:5895fe18b8143282e397d372b30fa56028f5003bc2ce258b5ef61cce2d1db8c6",
+    "last_committed_disposable_resources": 0,
+    "last_committed_active_workers": 0,
+    "last_committed_running_pods": 0,
+    "retained_volume_count": 2,
+    "retained_volume_charge_usd_per_month": 7
+  },
+  "next_boundary": "NO_PAID_RETRY: REBIND_THE_REFRESHED_CLOUDFLARE_ANCHOR_AND_CREATE_A_NEW_EXACT_PROPOSAL_WITH_FRESH_APPROVAL_CAP_AND_PROVIDER_TRUTH_BEFORE_ANY_FUTURE_ATTEMPT",
+  "v2_08_authorized": false,
+  "redaction": "NO_RAW_PROVIDER_IDS_URLS_SECRETS_NONCES_RESPONSE_BODIES_HEADERS_OR_ERROR_CAUSES_RETAINED"
+}

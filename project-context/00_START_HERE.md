@@ -28,6 +28,15 @@ Attempt57 lineage is anchor rebind `2202c11f5587ddf1e61e03677401a67561f879f2`, q
 `sha256:afa9567e922f19256a47137336c6d573ec1be2e8765648812aa6d3fa96123fe1`, and harness
 `sha256:3c5f6207eead02fc197bec3ec3b85d7dc31052d25c1ea694efba7326a92ac512`.
 
+Provider-free repair `61919013c74f71995cf1631ce6ac56e633708dce` now classifies generated-output
+port GET transport as `V207_OUTPUT_PORT_GET_TRANSPORT`, malformed/non-object responses as
+`V207_OUTPUT_PORT_GET_RESPONSE_INVALID`, and signed artifact fetch/body-read transport as
+`MAGE_OUTPUT_READBACK_TRANSPORT` while preserving `MAGE_OUTPUT_READBACK_FAILED` for non-2xx.
+GET authority requests remain one-attempt and no response body, URL, header, nonce, or error cause
+is retained. Diagnosis `sha256:87dcfe9b…2a2217`, 39/39 focused tests, TypeScript, and the separate
+repair validator pass. This is provider-free evidence only: Attempt57 remains non-reusable,
+authority/cap remain null, V2-07 is `NOT_QUALIFIED`, and V2-08 is forbidden.
+
 Attempt56 is closed `NOT_QUALIFIED`. Its single-use authority is consumed and non-reusable after one
 job remained `IN_QUEUE` for 34 status reads and was cancelled with no accepted batch, output, receipt,
 execution time, or GPU use.
