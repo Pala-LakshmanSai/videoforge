@@ -72,7 +72,7 @@ function activationSourceFixture({
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the consumed closed Attempt58 authority", () => {
+  it("pins the pending provider-free Attempt59 proposal with no executable authority", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
@@ -102,7 +102,7 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:7053157f0334d262af094be9f020285c9eabb4fef0c62991ec2f2cc60d705b24",
+      "sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
     expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("61919013c74f71995cf1631ce6ac56e633708dce");
@@ -347,7 +347,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects consumed Attempt58 activation with no executable authority or cap", () => {
+  it("rejects pending Attempt59 activation with no executable authority or cap", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -359,7 +359,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects missing and alternate Attempt58 caps after consumption", () => {
+  it("rejects missing and alternate Attempt59 caps before approval", () => {
     expect(() =>
       parseV207ActivationAuthority({
         V207_IMAGE: image,
@@ -377,7 +377,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_FRESH_AUTHORITY_REQUIRED");
   });
 
-  it("rejects refresh activation without the exact pending Attempt58 proposal", () => {
+  it("rejects refresh activation without the exact pending Attempt59 proposal", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
     expect(() =>
       parseV207ActivationAuthority({
