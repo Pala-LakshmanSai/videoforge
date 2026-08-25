@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1.7
+
+# Thin Serverless overlay on the exact technically accepted SoulX Pro Pod image. The base digest
+# owns the pinned CUDA/Torch/FlashAttention stack, official source revision, single-GPU patch,
+# exact BF16 runtime, and sealed-volume verifier. This definition adds transport only; it never
+# prepares, downloads, repairs, or writes model bytes.
+FROM ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b
+
+LABEL org.opencontainers.image.title="VideoForge SoulX FlashHead Pro Serverless Worker" \
+      org.opencontainers.image.version="v2-08-serverless-candidate" \
+      org.opencontainers.image.base.name="ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s" \
+      org.opencontainers.image.base.digest="sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b" \
+      ai.videoforge.lane="soulx_avatar" \
+      ai.videoforge.runtime-profile="videoforge_soulx_flashhead_pro_bf16_v1" \
+      ai.videoforge.source-revision="9bc03de06bb0de82cd6bc477804512ae06144bf2" \
+      ai.videoforge.model-revision="59119b6c681230c3eeee157e224ae1941746711e" \
+      ai.videoforge.model-manifest="sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626"
+
+ENV SOULX_MODEL_ROOT=/runpod-volume/soulx-flashhead-pro \
+    VIDEOFORGE_JOB_SCRATCH_ROOT=/tmp/videoforge-soulx-jobs \
+    HF_HOME=/tmp/videoforge-soulx-cache/huggingface \
+    TRANSFORMERS_CACHE=/tmp/videoforge-soulx-cache/transformers \
+    DIFFUSERS_CACHE=/tmp/videoforge-soulx-cache/diffusers \
+    XDG_CACHE_HOME=/tmp/videoforge-soulx-cache \
+    XDG_CONFIG_HOME=/tmp/videoforge-soulx-config \
+    TMPDIR=/tmp/videoforge-soulx-tmp \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    DIFFUSERS_OFFLINE=1 \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/opt/videoforge:/opt/videoforge/src:/opt/videoforge/common:/opt/soulx-flashhead \
+    VIDEOFORGE_FFPROBE_PATH=/usr/bin/ffprobe
+
+WORKDIR /opt/videoforge
+
+COPY workers/avatar-primary/requirements.serverless.txt ./requirements.serverless.txt
+RUN python -m pip install --no-cache-dir --requirement requirements.serverless.txt \
+    && python -m pip check \
+    && command -v ffmpeg >/dev/null \
+    && test "$(command -v ffprobe)" = /usr/bin/ffprobe \
+    && ffprobe -version >/dev/null \
+    && rm -f soulx-entrypoint.py soulx_prepare_service.py prepare_soulx_volume.py
+
+COPY workers/common ./common
+COPY packages/contracts/python/videoforge_contracts ./src/videoforge_contracts
+COPY workers/avatar-primary/soulx_serverless.py ./soulx_serverless.py
+COPY workers/avatar-primary/soulx-serverless-entrypoint.py ./soulx-serverless-entrypoint.py
+
+# These exact source hashes deliberately make an unreviewed handler/common/schema drift a build
+# failure. Any later repair must explicitly rebind this image definition before publication.
+RUN printf '%s  %s\n' \
+      2172fda27d54ac4232f5362aa4f6a82061ca8ce1c0b879de7ef45a37b1623985 /opt/videoforge/soulx_serverless.py \
+      bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9 /opt/videoforge/soulx-serverless-entrypoint.py \
+      7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775 /opt/videoforge/common/secure_scratch.py \
+      acf1b21efbddf17b4f8b81a3ae18e6a56646623e76986a6dd48dfae2d142c366 /opt/videoforge/common/serverless_envelope.py \
+      a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
+    | sha256sum --check --strict \
+    && python -m compileall -q /opt/videoforge/soulx_serverless.py \
+       /opt/videoforge/soulx-serverless-entrypoint.py /opt/videoforge/common \
+       /opt/videoforge/src/videoforge_contracts \
+    && test ! -e /opt/videoforge/soulx_prepare_service.py \
+    && test ! -e /opt/videoforge/prepare_soulx_volume.py
+
+ENTRYPOINT ["python", "-u", "/opt/videoforge/soulx-serverless-entrypoint.py"]
