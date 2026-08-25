@@ -53,6 +53,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_media_worker_enrollment_consume(uuid,text)",
   "videoforge_media_worker_enrollment_poll(uuid,text,timestamp with time zone)",
   "videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)",
+  "videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)",
 ].sort();
 
 const required = (name) => {
@@ -340,6 +341,12 @@ const main = async () => {
   );
   if (hostedPlanAppendCapability !== "true")
     fail("runtime role lacks the exact hosted render-plan append function capability");
+  const hostedTimingAppendCapability = await query(
+    `SELECT has_function_privilege(${safeLiteral(runtimeRole)}, 'public.videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)', 'EXECUTE')::text`,
+    environment,
+  );
+  if (hostedTimingAppendCapability !== "true")
+    fail("runtime role lacks the exact hosted canonical-timing append function capability");
   const schemaPrivileges = await query(
     `SELECT has_schema_privilege(${safeLiteral(runtimeRole)}, 'public', 'USAGE')::text, has_schema_privilege(${safeLiteral(runtimeRole)}, 'public', 'CREATE')::text`,
     environment,

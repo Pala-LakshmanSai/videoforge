@@ -2,6 +2,7 @@ import { validateAndHashContractDocument } from "@videoforge/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import revisionFixture from "../../../../../packages/contracts/generated/fixtures/project_revision_config.valid.json";
+import asrInputFixture from "../../../../../packages/contracts/generated/fixtures/asr_job_input.valid.json";
 import asrResultFixture from "../../../../../packages/contracts/generated/fixtures/asr_job_result.valid.json";
 import { sha256Bytes } from "./crypto";
 import {
@@ -10,7 +11,6 @@ import {
   type HostedGenerationPersistence,
 } from "./generation-coordinator";
 import { hostedGpuReadiness } from "./gpu-readiness";
-import { unavailableHostedGenerationPersistence } from "./generation-persistence";
 
 const ACCOUNT = "11111111-1111-4111-8111-111111111111";
 const WORKSPACE = "22222222-2222-4222-8222-222222222222";
@@ -91,6 +91,41 @@ async function setup() {
   revision.scheduler_version = "scheduler-v2";
   const revisionRef = await validateAndHashContractDocument("projectRevisionConfig", revision);
   const transcript = transcriptValue();
+  const asrInput = structuredClone(asrInputFixture);
+  asrInput.project_revision_id = REVISION;
+  asrInput.attempt_id = ATTEMPT;
+  asrInput.voiceover.asset_id = VOICEOVER;
+  asrInput.voiceover.sha256 = revision.voiceover_sha256;
+  asrInput.voiceover.duration_ms = 40_000;
+  asrInput.model.sha256 = MODEL;
+  asrInput.output.result_uri = `vf-local-run://${REVISION}/${ATTEMPT}/asr-result.json`;
+  asrInput.cancel_token = ATTEMPT;
+  const prefix =
+    `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}` +
+    `/lane/input/job/${ATTEMPT}/artifact/`;
+  const resultDocumentKey = `${prefix}result-document`;
+  const jobTemplate = {
+    schema_version: "videoforge-personal-worker-job-template/v1",
+    attempt_id: ATTEMPT,
+    kind: "ASR",
+    input_document: asrInput,
+    outputs: [
+      {
+        source: "PRIMARY_RESULT_OUTPUT",
+        object_key: `${prefix}primary-result`,
+        content_type: "application/json",
+        max_bytes: 16 * 1024 ** 2,
+      },
+    ],
+    result: { object_key: resultDocumentKey, max_bytes: 1_048_576 },
+    tooling: {
+      whisper_model_sha256: MODEL,
+      whisper_version: "1.8.4",
+      ffmpeg_version: "8.1.2",
+      ffprobe_version: "8.1.2",
+    },
+  };
+  const inputBytes = new TextEncoder().encode(JSON.stringify(jobTemplate)).buffer as ArrayBuffer;
   const asrResult = structuredClone(asrResultFixture);
   asrResult.attempt_id = ATTEMPT;
   asrResult.source_voiceover_sha256 = revision.voiceover_sha256;
@@ -105,6 +140,7 @@ async function setup() {
   const persistence: HostedGenerationPersistence = { persistProviderInertPlan: persist };
   return {
     bytes,
+    inputBytes,
     persist,
     persistence,
     snapshot: {
@@ -115,9 +151,13 @@ async function setup() {
       projectRevisionId: REVISION,
       asrAttemptId: ATTEMPT,
       asrState: "SUCCEEDED" as const,
-      asrOutputObjectKey:
+      asrFinishedAt: "2026-08-25T12:00:00.000Z",
+      asrInputObjectKey:
         `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}` +
-        `/lane/input/job/${ATTEMPT}/artifact/transcript`,
+        `/lane/input/job/${ATTEMPT}/artifact/job-spec`,
+      asrInputContentLength: inputBytes.byteLength,
+      asrInputSha256: await sha256Bytes(inputBytes),
+      asrOutputObjectKey: resultDocumentKey,
       asrOutputContentType: "application/json" as const,
       asrOutputContentLength: bytes.byteLength,
       asrOutputSha256: outputSha256,
@@ -144,6 +184,7 @@ describe("hosted generation coordinator", () => {
     });
     const result = await coordinateHostedGeneration({
       snapshot: fixture.snapshot,
+      asrInputBytes: fixture.inputBytes,
       asrOutputBytes: fixture.bytes,
       persistence: fixture.persistence,
       readGpuReadiness: () => {
@@ -177,6 +218,7 @@ describe("hosted generation coordinator", () => {
     await expect(
       coordinateHostedGeneration({
         snapshot: fixture.snapshot,
+        asrInputBytes: fixture.inputBytes,
         asrOutputBytes: fixture.bytes,
         persistence: fixture.persistence,
       }),
@@ -193,6 +235,7 @@ describe("hosted generation coordinator", () => {
           asrOutputContentLength: bytes.byteLength,
           asrOutputSha256: await sha256Bytes(bytes),
         },
+        asrInputBytes: fixture.inputBytes,
         asrOutputBytes: bytes,
         persistence: fixture.persistence,
       }),
@@ -200,15 +243,41 @@ describe("hosted generation coordinator", () => {
     expect(fixture.persist).not.toHaveBeenCalled();
   });
 
-  it("fails closed without inventing promotable queue or audit-detail timing persistence", async () => {
+  it("rejects an ASR input document that is not wrapped in the exact stored personal-worker template", async () => {
     const fixture = await setup();
+    const wrapper = JSON.parse(new TextDecoder().decode(fixture.inputBytes));
+    const bytes = new TextEncoder().encode(JSON.stringify(wrapper.input_document))
+      .buffer as ArrayBuffer;
+    await expect(
+      coordinateHostedGeneration({
+        snapshot: {
+          ...fixture.snapshot,
+          asrInputContentLength: bytes.byteLength,
+          asrInputSha256: await sha256Bytes(bytes),
+        },
+        asrInputBytes: bytes,
+        asrOutputBytes: fixture.bytes,
+        persistence: fixture.persistence,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_GENERATION_ASR_JOB_TEMPLATE_INVALID" });
+    expect(fixture.persist).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when canonical persistence is unavailable without inventing dispatch state", async () => {
+    const fixture = await setup();
+    const persistence: HostedGenerationPersistence = {
+      persistProviderInertPlan: vi.fn(async () => {
+        throw new Error("database unavailable");
+      }),
+    };
     await expect(
       coordinateHostedGeneration({
         snapshot: fixture.snapshot,
+        asrInputBytes: fixture.inputBytes,
         asrOutputBytes: fixture.bytes,
-        persistence: unavailableHostedGenerationPersistence(),
+        persistence,
       }),
-    ).rejects.toMatchObject({ code: "HOSTED_CANONICAL_TIMING_PERSISTENCE_UNAVAILABLE" });
+    ).rejects.toThrow("database unavailable");
   });
 
   it.each([
@@ -238,6 +307,7 @@ describe("hosted generation coordinator", () => {
     await expect(
       coordinateHostedGeneration({
         snapshot: mutate(fixture),
+        asrInputBytes: fixture.inputBytes,
         asrOutputBytes: fixture.bytes,
         persistence: fixture.persistence,
       }),

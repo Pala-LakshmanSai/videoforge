@@ -12,6 +12,10 @@ test("the hosted runtime can append through the exact function but has no direct
     source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_append_hosted_render_plan\([\s\S]*?uuid, uuid, uuid, uuid, text, jsonb, text[\s\S]*?TO :"runtime_role";/u,
   );
+  assert.match(
+    source,
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_append_hosted_canonical_timing\([\s\S]*?uuid, uuid, uuid, uuid, uuid, uuid, jsonb[\s\S]*?TO :"runtime_role";/u,
+  );
   assert.doesNotMatch(
     source,
     /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_render_plans\b/iu,

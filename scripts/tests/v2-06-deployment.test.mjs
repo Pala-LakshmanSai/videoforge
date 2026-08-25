@@ -21,6 +21,11 @@ const output = [
   "max_age_seconds: 3600",
 ].join("\n");
 
+test("production Worker explicitly enables the reviewed Node crypto compatibility required by canonical timing", () => {
+  const production = readFileSync("apps/web/wrangler.production.jsonc", "utf8");
+  assert.match(production, /"compatibility_flags": \["nodejs_compat"\]/u);
+});
+
 test("V2-06 CORS verifier accepts Wrangler's exact policy output", () => {
   const result = spawnSync(process.execPath, [verifier, "--origin", origin], {
     input: output,

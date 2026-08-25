@@ -58,6 +58,12 @@ GRANT EXECUTE ON FUNCTION public.videoforge_append_hosted_render_plan(
   uuid, uuid, uuid, uuid, text, jsonb, text
 )
 TO :"runtime_role";
+-- Migration 0039 exposes one atomic, provider-inert hosted ASR-to-canonical-timing append. The
+-- runtime receives no direct timing/task table writes and cannot create dispatch state.
+GRANT EXECUTE ON FUNCTION public.videoforge_append_hosted_canonical_timing(
+  uuid, uuid, uuid, uuid, uuid, uuid, jsonb
+)
+TO :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE ON
   hosted_cpu_job_attempts,

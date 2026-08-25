@@ -84,6 +84,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "serverless_provenance_receipts",
   "serverless_output_receipts",
   "hosted_serverless_output_barrier_completions",
+  "hosted_canonical_timing_bridges",
   "serverless_cancellations",
   "serverless_reconciliations",
   "serverless_cost_ledgers",

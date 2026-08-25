@@ -3,10 +3,16 @@ import {
   validateAndHashContractDocument,
   type ProjectRevisionConfigDocument,
   type TimelinePlanDocument,
-  type TranscriptTimingDocument,
   type ValidatedContractDocument,
 } from "@videoforge/contracts";
-import { scheduleTimeline } from "@videoforge/pipeline/scheduler";
+import {
+  prepareDurableDeterministicTimeline,
+  prepareDurableLocalTranscription,
+  trustedTenantActorScope,
+  trustedTenantScope,
+  type PreparedDeterministicTimeline,
+  type PreparedLocalTranscription,
+} from "@videoforge/control-plane";
 import { SUPPORTED_SCHEDULER_CONFIG } from "@videoforge/pipeline/scheduler-config";
 
 import { sha256Bytes } from "./crypto";
@@ -23,6 +29,10 @@ export interface HostedGenerationSnapshot {
   readonly projectRevisionId: string;
   readonly asrAttemptId: string;
   readonly asrState: "SUCCEEDED";
+  readonly asrFinishedAt: string;
+  readonly asrInputObjectKey: string;
+  readonly asrInputContentLength: number;
+  readonly asrInputSha256: string;
   readonly asrOutputObjectKey: string;
   readonly asrOutputContentType: "application/json";
   readonly asrOutputContentLength: number;
@@ -33,6 +43,7 @@ export interface HostedGenerationSnapshot {
 }
 
 export interface HostedGenerationTaskPlan {
+  readonly taskId: string;
   readonly taskKey: string;
   readonly lane: "IMAGE" | "AVATAR";
   readonly state: "BLOCKED";
@@ -45,6 +56,8 @@ export interface HostedGenerationPersistence {
     readonly snapshot: HostedGenerationSnapshot;
     readonly transcript: ValidatedContractDocument<"transcriptTiming">;
     readonly timeline: ValidatedContractDocument<"timelinePlan">;
+    readonly preparedTranscript: PreparedLocalTranscription;
+    readonly preparedTimeline: PreparedDeterministicTimeline;
     readonly schedulerConfigSha256: string;
     readonly generationPlan: Record<string, unknown>;
     readonly generationPlanSha256: string;
@@ -87,16 +100,96 @@ function reject(code: string): never {
   throw new HostedGenerationCoordinationError(code);
 }
 
-function stableId(namespace: string, stableKey: string): string {
-  let hash = 0x811c9dc5;
-  for (const character of `${namespace}:${stableKey}`) {
-    hash ^= character.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 0x01000193);
+function exactHostedAsrJobTemplate(
+  value: unknown,
+  snapshot: HostedGenerationSnapshot,
+): { readonly inputDocument: Record<string, unknown> } {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    reject("HOSTED_GENERATION_ASR_JOB_TEMPLATE_INVALID");
   }
-  return `seg_${(hash >>> 0).toString(16).padStart(8, "0")}`;
+  const row = value as Record<string, unknown>;
+  const result = row.result as Record<string, unknown> | undefined;
+  const tooling = row.tooling as Record<string, unknown> | undefined;
+  const outputs = row.outputs;
+  const primary = Array.isArray(outputs)
+    ? (outputs[0] as Record<string, unknown> | undefined)
+    : null;
+  const inputDocument = row.input_document;
+  const inputRecord = inputDocument as Record<string, unknown> | null;
+  const inputOutput = inputRecord?.output as Record<string, unknown> | undefined;
+  if (
+    Object.keys(row).sort().join(",") !==
+      "attempt_id,input_document,kind,outputs,result,schema_version,tooling" ||
+    row.schema_version !== "videoforge-personal-worker-job-template/v1" ||
+    row.attempt_id !== snapshot.asrAttemptId ||
+    row.kind !== "ASR" ||
+    typeof inputDocument !== "object" ||
+    inputDocument === null ||
+    Array.isArray(inputDocument) ||
+    inputRecord?.schema_version !== "asr-job-input/v1" ||
+    inputRecord.project_revision_id !== snapshot.projectRevisionId ||
+    inputRecord.attempt_id !== snapshot.asrAttemptId ||
+    inputRecord.cancel_token !== snapshot.asrAttemptId ||
+    typeof inputOutput !== "object" ||
+    inputOutput === null ||
+    Array.isArray(inputOutput) ||
+    Object.keys(inputOutput).join(",") !== "result_uri" ||
+    inputOutput.result_uri !==
+      `vf-local-run://${snapshot.projectRevisionId}/${snapshot.asrAttemptId}/asr-result.json` ||
+    !Array.isArray(outputs) ||
+    outputs.length !== 1 ||
+    !primary ||
+    Object.keys(primary).sort().join(",") !== "content_type,max_bytes,object_key,source" ||
+    primary.source !== "PRIMARY_RESULT_OUTPUT" ||
+    primary.content_type !== "application/json" ||
+    typeof primary.object_key !== "string" ||
+    !primary.object_key.startsWith(
+      `tenant/${snapshot.accountId}/workspace/${snapshot.workspaceId}/project/${snapshot.projectId}` +
+        `/revision/${snapshot.projectRevisionId}/lane/input/job/${snapshot.asrAttemptId}/artifact/`,
+    ) ||
+    !Number.isSafeInteger(primary.max_bytes) ||
+    Number(primary.max_bytes) < 1 ||
+    typeof result !== "object" ||
+    result === null ||
+    Array.isArray(result) ||
+    Object.keys(result).sort().join(",") !== "max_bytes,object_key" ||
+    result.object_key !== snapshot.asrOutputObjectKey ||
+    !Number.isSafeInteger(result.max_bytes) ||
+    Number(result.max_bytes) < snapshot.asrOutputContentLength ||
+    typeof tooling !== "object" ||
+    tooling === null ||
+    Array.isArray(tooling) ||
+    Object.keys(tooling).sort().join(",") !==
+      "ffmpeg_version,ffprobe_version,whisper_model_sha256,whisper_version" ||
+    tooling.whisper_model_sha256 !== snapshot.expectedWhisperModelSha256 ||
+    tooling.whisper_version !== "1.8.4" ||
+    tooling.ffmpeg_version !== "8.1.2" ||
+    tooling.ffprobe_version !== "8.1.2"
+  ) {
+    reject("HOSTED_GENERATION_ASR_JOB_TEMPLATE_INVALID");
+  }
+  return { inputDocument: inputDocument as Record<string, unknown> };
 }
 
-function plannedTasks(timeline: TimelinePlanDocument): readonly HostedGenerationTaskPlan[] {
+async function hostedTaskUuid(revisionId: string, taskKey: string): Promise<string> {
+  const digest = (
+    await sha256Bytes(
+      new TextEncoder().encode(
+        `videoforge:hosted-generation-task:v1\u0000${revisionId}\u0000${taskKey}`,
+      ),
+    )
+  ).slice("sha256:".length);
+  const bytes = digest.slice(0, 32).split("");
+  bytes[12] = "5";
+  bytes[16] = ((Number.parseInt(bytes[16]!, 16) & 0x3) | 0x8).toString(16);
+  const hex = bytes.join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+async function plannedTasks(
+  revisionId: string,
+  timeline: TimelinePlanDocument,
+): Promise<readonly HostedGenerationTaskPlan[]> {
   const tasks = new Map<string, HostedGenerationTaskPlan>();
   const add = (
     taskKey: string,
@@ -106,6 +199,7 @@ function plannedTasks(timeline: TimelinePlanDocument): readonly HostedGeneration
   ) => {
     if (tasks.has(taskKey)) reject("HOSTED_GENERATION_TASK_KEY_COLLISION");
     tasks.set(taskKey, {
+      taskId: "",
       taskKey,
       lane,
       state: "BLOCKED",
@@ -127,11 +221,19 @@ function plannedTasks(timeline: TimelinePlanDocument): readonly HostedGeneration
       add(segment.required_slots.right_image.task_key, "IMAGE", segment.segment_id, []);
     }
   }
-  return [...tasks.values()].sort((left, right) => left.taskKey.localeCompare(right.taskKey));
+  return Promise.all(
+    [...tasks.values()]
+      .sort((left, right) => left.taskKey.localeCompare(right.taskKey))
+      .map(async (task) => ({
+        ...task,
+        taskId: await hostedTaskUuid(revisionId, task.taskKey),
+      })),
+  );
 }
 
 export async function coordinateHostedGeneration(input: {
   readonly snapshot: HostedGenerationSnapshot;
+  readonly asrInputBytes: ArrayBuffer;
   readonly asrOutputBytes: ArrayBuffer;
   readonly persistence: HostedGenerationPersistence;
   readonly readGpuReadiness?: () => HostedGpuReadiness;
@@ -147,10 +249,14 @@ export async function coordinateHostedGeneration(input: {
       snapshot.asrAttemptId,
     ].every((value) => UUID.test(value)) ||
     snapshot.asrState !== "SUCCEEDED" ||
+    Number.isNaN(Date.parse(snapshot.asrFinishedAt)) ||
+    !Number.isSafeInteger(snapshot.asrInputContentLength) ||
+    snapshot.asrInputContentLength !== input.asrInputBytes.byteLength ||
     snapshot.asrOutputContentType !== "application/json" ||
     !Number.isSafeInteger(snapshot.asrOutputContentLength) ||
     snapshot.asrOutputContentLength !== input.asrOutputBytes.byteLength ||
     !SHA256.test(snapshot.asrOutputSha256) ||
+    !SHA256.test(snapshot.asrInputSha256) ||
     !SHA256.test(snapshot.revisionConfigSha256) ||
     !SHA256.test(snapshot.expectedWhisperModelSha256)
   ) {
@@ -162,11 +268,19 @@ export async function coordinateHostedGeneration(input: {
   if (!snapshot.asrOutputObjectKey.startsWith(expectedPrefix)) {
     reject("HOSTED_GENERATION_ASR_OUTPUT_FOREIGN");
   }
+  if (!snapshot.asrInputObjectKey.startsWith(expectedPrefix)) {
+    reject("HOSTED_GENERATION_ASR_INPUT_FOREIGN");
+  }
+  if ((await sha256Bytes(input.asrInputBytes)) !== snapshot.asrInputSha256) {
+    reject("HOSTED_GENERATION_ASR_INPUT_CHECKSUM_MISMATCH");
+  }
   if ((await sha256Bytes(input.asrOutputBytes)) !== snapshot.asrOutputSha256) {
     reject("HOSTED_GENERATION_ASR_OUTPUT_CHECKSUM_MISMATCH");
   }
   let rawResult: unknown;
+  let rawJobTemplate: unknown;
   try {
+    rawJobTemplate = JSON.parse(new TextDecoder().decode(input.asrInputBytes));
     rawResult = JSON.parse(new TextDecoder().decode(input.asrOutputBytes));
   } catch {
     reject("HOSTED_GENERATION_ASR_OUTPUT_INVALID");
@@ -175,6 +289,7 @@ export async function coordinateHostedGeneration(input: {
     validateAndHashContractDocument("projectRevisionConfig", snapshot.revisionConfig),
     validateAndHashContractDocument("asrJobResult", rawResult),
   ]).catch(() => reject("HOSTED_GENERATION_DOCUMENT_INVALID"));
+  const asrTemplate = exactHostedAsrJobTemplate(rawJobTemplate, snapshot);
   if (
     asrResult.value.status !== "SUCCEEDED" ||
     asrResult.value.transcript === null ||
@@ -188,6 +303,25 @@ export async function coordinateHostedGeneration(input: {
     "transcriptTiming",
     asrResult.value.transcript,
   ).catch(() => reject("HOSTED_GENERATION_DOCUMENT_INVALID"));
+  const scope = trustedTenantActorScope(
+    trustedTenantScope(snapshot.accountId, snapshot.workspaceId),
+    snapshot.userId,
+  );
+  const preparedTranscript = await prepareDurableLocalTranscription(scope, {
+    projectId: snapshot.projectId,
+    projectRevisionId: snapshot.projectRevisionId,
+    // The pure preparer requires these fields to validate the hosted ASR envelope. They are never
+    // persisted as generic generation-task/attempt lineage by the hosted bridge.
+    taskId: snapshot.asrAttemptId,
+    attemptId: snapshot.asrAttemptId,
+    expectedHeadVersion: 0,
+    lineageSequence: 1,
+    supersedesTranscriptId: null,
+    optionalScriptHash: null,
+    asrInput: asrTemplate.inputDocument,
+    asrResult: rawResult,
+    finishedAt: snapshot.asrFinishedAt,
+  }).catch(() => reject("HOSTED_GENERATION_ASR_LINEAGE_MISMATCH"));
   if (
     revision.sha256 !== snapshot.revisionConfigSha256 ||
     revision.value.project_id !== snapshot.projectId ||
@@ -205,17 +339,24 @@ export async function coordinateHostedGeneration(input: {
   ) {
     reject("HOSTED_GENERATION_ASR_LINEAGE_MISMATCH");
   }
-  const timelineResult = await scheduleTimeline({
-    revision,
-    transcript,
-    determinism: {
-      clock: { nowIso: () => reject("HOSTED_GENERATION_SCHEDULER_CLOCK_FORBIDDEN") },
-      ids: { idFor: stableId },
-    },
-  });
-  if (!timelineResult.ok) reject("HOSTED_GENERATION_SCHEDULING_FAILED");
-  const timeline = timelineResult.value;
-  const tasks = plannedTasks(timeline.value);
+  const preparedTimeline = await prepareDurableDeterministicTimeline(scope, {
+    projectId: snapshot.projectId,
+    projectRevisionId: snapshot.projectRevisionId,
+    transcriptId: preparedTranscript.transcriptId,
+    expectedHeadVersion: 1,
+    planSequence: 1,
+    supersedesTimelinePlanId: null,
+    revision: revision.value,
+    transcript: transcript.value,
+    createdAt: snapshot.asrFinishedAt,
+  }).catch(() => reject("HOSTED_GENERATION_SCHEDULING_FAILED"));
+  const timeline = await validateAndHashContractDocument(
+    "timelinePlan",
+    preparedTimeline.timelinePersistence.canonicalDocument.payload,
+  ).catch(() => reject("HOSTED_GENERATION_SCHEDULING_FAILED"));
+  if (preparedTimeline.timelineDocumentHash !== timeline.sha256)
+    reject("HOSTED_GENERATION_TIMELINE_DERIVATION_MISMATCH");
+  const tasks = await plannedTasks(snapshot.projectRevisionId, timeline.value);
   const schedulerConfigSha256 = await sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG);
   const generationPlan = {
     schema_version: "videoforge-hosted-generation-plan/v1",
@@ -227,6 +368,7 @@ export async function coordinateHostedGeneration(input: {
     timeline_plan_sha256: timeline.sha256,
     scheduler_config_sha256: schedulerConfigSha256,
     tasks: tasks.map((task) => ({
+      task_id: task.taskId,
       task_key: task.taskKey,
       lane: task.lane,
       state: task.state,
@@ -251,6 +393,8 @@ export async function coordinateHostedGeneration(input: {
     snapshot,
     transcript,
     timeline,
+    preparedTranscript,
+    preparedTimeline,
     schedulerConfigSha256,
     generationPlan,
     generationPlanSha256,

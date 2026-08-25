@@ -197,6 +197,16 @@ provider inventory must be captured separately.
 - `neon-runtime-grants.sql` grants the staged runtime login only the current hosted auth, active
   tenant, and CPU-orchestration surfaces. The migration identity remains separate. Raw database
   credentials never enter a manifest or Git.
+- `create-invite.mjs` is the production invite operator tool. It is dry-run by default, binds an
+  invite to one normalized email and explicit expiry, persists only a SHA-256 verifier, and uses a
+  deterministic ID derived from the required idempotency key. Live issuance requires `--execute`,
+  `V2_06_INVITE_CONFIRM=YES`, `V2_06_INVITE_DATABASE_URL`, and the exact
+  `V2_06_INVITE_OPERATOR_ROLE`. The connected role must be a dedicated NOINHERIT operator with
+  direct `invite_codes` SELECT+INSERT only; neither the migration owner nor hosted runtime is
+  accepted. New issuance requires `--print-verifier` so the new
+  verifier has one explicit secure-delivery channel and is emitted once to stdout. An exact replay
+  may omit that flag; it returns only a redacted receipt and never recovers or prints plaintext. Run
+  `pnpm invite:v2-06 --help` for the bounded command contract.
 - `secrets.allowlist.json` is the exact set of Worker secret names. Values are applied only through
   the approved secret-store operation and never placed in Wrangler config, logs, evidence, or Git.
   Current V2-06 auth is Google-only with `email_provider=NONE`: `optional_together` is empty and
@@ -218,7 +228,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 - Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
   ordinary deployment of the intended restored source/config so code and deployment metadata converge;
   rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
-  available. Every migration in the committed manifest (currently through 0038) is additive and
+  available. Every migration in the committed manifest (currently through 0039) is additive and
   retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
@@ -306,7 +316,7 @@ five-megabyte aggregate / four-megabyte per-object R2 budget. It writes a durabl
 upload-intent receipt before any object mutation, uses conditional create (`If-None-Match: *`),
 and verifies an exact HEAD/GET match after every create race. Neon is pinned to `neondb`, the
 `neondb_owner` migration role, TLS/channel binding, `public,pg_catalog`, the Google auth provider,
-and the complete manifest-derived, hash-checked migration ledger. The current committed head is 38.
+and the complete manifest-derived, hash-checked migration ledger. The current committed head is 39.
 
 ```sh
 V2_06_TENANT_EMAIL=lakshmansai121@gmail.com \

@@ -6,8 +6,8 @@ import type {
 } from "./configuration";
 import { coordinateHostedGeneration } from "./generation-coordinator";
 import {
-  HostedCanonicalTimingPersistenceUnavailable,
-  unavailableHostedGenerationPersistence,
+  HostedCanonicalTimingPersistence,
+  HostedCanonicalTimingPersistenceError,
 } from "./generation-persistence";
 import { sha256 } from "./crypto";
 import { hostedGpuReadiness } from "./gpu-readiness";
@@ -888,6 +888,10 @@ async function renderHandoff(
         revision_config_payload: unknown;
         revision_config_hash: string;
         asr_attempt_id: string | null;
+        asr_terminal_at: string | null;
+        asr_input_object_key: string | null;
+        asr_input_content_length: number | string | null;
+        asr_input_sha256: string | null;
         asr_output_object_key: string | null;
         asr_output_content_type: string | null;
         asr_output_content_length: number | string | null;
@@ -895,7 +899,11 @@ async function renderHandoff(
       }>(
         `SELECT revision.id AS revision_id, revision.status AS revision_state,
                 revision.revision_config_payload, revision.revision_config_hash,
-                asr.id AS asr_attempt_id, authority.object_key AS asr_output_object_key,
+                asr.id AS asr_attempt_id, asr.terminal_at AS asr_terminal_at,
+                asr.job_spec_object_key AS asr_input_object_key,
+                asr.job_spec_content_length AS asr_input_content_length,
+                asr.job_spec_checksum_sha256 AS asr_input_sha256,
+                authority.object_key AS asr_output_object_key,
                 authority.content_type AS asr_output_content_type,
                 authority.issued_content_length AS asr_output_content_length,
                 authority.issued_checksum_sha256 AS asr_output_sha256
@@ -916,7 +924,7 @@ async function renderHandoff(
              ON authority.account_id = asr.account_id
             AND authority.workspace_id = asr.workspace_id
             AND authority.attempt_id = asr.id
-            AND authority.source = 'PRIMARY_RESULT_OUTPUT'
+            AND authority.source = 'RESULT_DOCUMENT'
             AND authority.issued_at IS NOT NULL
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
           LIMIT 1`,
@@ -932,6 +940,10 @@ async function renderHandoff(
     const bucket = environment.PRIVATE_ARTIFACTS;
     if (
       !bucket ||
+      !state.asr_terminal_at ||
+      !state.asr_input_object_key ||
+      !state.asr_input_content_length ||
+      !state.asr_input_sha256 ||
       !state.asr_output_object_key ||
       state.asr_output_content_type !== "application/json" ||
       !state.asr_output_content_length ||
@@ -939,14 +951,21 @@ async function renderHandoff(
     ) {
       return response({ error: { code: "HOSTED_ASR_OUTPUT_NOT_READY" } }, 409);
     }
-    const asrObject = await bucket.get(state.asr_output_object_key);
+    const [asrInputObject, asrObject] = await Promise.all([
+      bucket.get(state.asr_input_object_key),
+      bucket.get(state.asr_output_object_key),
+    ]);
     if (
+      !asrInputObject ||
+      asrInputObject.size !== Number(state.asr_input_content_length) ||
+      asrInputObject.httpMetadata?.contentType !== "application/json" ||
       !asrObject ||
       asrObject.size !== Number(state.asr_output_content_length) ||
       asrObject.httpMetadata?.contentType !== "application/json"
     ) {
       return response({ error: { code: "HOSTED_ASR_OUTPUT_NOT_VERIFIED" } }, 409);
     }
+    const asrInputBytes = await asrInputObject.arrayBuffer();
     const asrOutputBytes = await asrObject.arrayBuffer();
     const result = await coordinateHostedGeneration({
       snapshot: {
@@ -957,6 +976,10 @@ async function renderHandoff(
         projectRevisionId: state.revision_id,
         asrAttemptId,
         asrState: "SUCCEEDED",
+        asrFinishedAt: state.asr_terminal_at,
+        asrInputObjectKey: state.asr_input_object_key,
+        asrInputContentLength: Number(state.asr_input_content_length),
+        asrInputSha256: state.asr_input_sha256,
         asrOutputObjectKey: state.asr_output_object_key,
         asrOutputContentType: "application/json",
         asrOutputContentLength: Number(state.asr_output_content_length),
@@ -965,13 +988,14 @@ async function renderHandoff(
         revisionConfig: state.revision_config_payload as never,
         revisionConfigSha256: state.revision_config_hash,
       },
+      asrInputBytes,
       asrOutputBytes,
-      persistence: unavailableHostedGenerationPersistence(),
+      persistence: new HostedCanonicalTimingPersistence(pool, bucket),
     });
     return response(result, 202);
   } catch (error) {
-    if (error instanceof HostedCanonicalTimingPersistenceUnavailable) {
-      return response({ error: { code: error.code } }, 503);
+    if (error instanceof HostedCanonicalTimingPersistenceError) {
+      return response({ error: { code: error.code } }, 409);
     }
     throw error;
   } finally {

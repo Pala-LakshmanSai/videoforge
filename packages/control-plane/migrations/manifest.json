@@ -228,6 +228,12 @@
       "name": "hosted_render_plan_append_contract",
       "filename": "0038_hosted_render_plan_append_contract.sql",
       "sha256": "sha256:de64f32ab2b07d9e3448e29f466ea6a26e48f507cab12800abc2efd7393afe00"
+    },
+    {
+      "version": 39,
+      "name": "hosted_canonical_timing_bridge",
+      "filename": "0039_hosted_canonical_timing_bridge.sql",
+      "sha256": "sha256:1b602747e8a5ed91c76d1a602d5b7be87a6139cdcf862dd7da10fd9f45238637"
     }
   ]
 }

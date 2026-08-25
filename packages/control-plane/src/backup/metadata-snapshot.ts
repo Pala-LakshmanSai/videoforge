@@ -20,16 +20,16 @@ const MAX_SECRET_SCAN_NODES = 1_000_000;
  * restorable and keeps two databases comparable without re-inserting rows that already exist.
  */
 const RESERVED_SCOPE_ROW_FILTERS = Object.freeze({
-  accounts: `source.id NOT IN (
+  accounts: `id NOT IN (
     'ffffffff-ffff-4fff-8fff-000000000001'::uuid,
     'ffffffff-ffff-4fff-8fff-000000000002'::uuid
   )`,
-  workspaces: `source.id NOT IN (
+  workspaces: `id NOT IN (
     'ffffffff-ffff-4fff-8fff-000000000011'::uuid,
     'ffffffff-ffff-4fff-8fff-000000000012'::uuid
   )`,
-  users: `source.id <> 'ffffffff-ffff-4fff-8fff-000000000021'::uuid`,
-  memberships: `source.id <> 'ffffffff-ffff-4fff-8fff-000000000031'::uuid`,
+  users: `id <> 'ffffffff-ffff-4fff-8fff-000000000021'::uuid`,
+  memberships: `id <> 'ffffffff-ffff-4fff-8fff-000000000031'::uuid`,
 } satisfies Partial<Record<RelationalTableName, string>>);
 
 function reservedScopeFilter(tableName: RelationalTableName): string {
@@ -92,6 +92,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "artifact_reservations",
   "artifact_receipts",
   "hosted_project_create_requests",
+  "hosted_cpu_job_attempts",
+  "hosted_cpu_upload_authorities",
   "transcripts",
   "transcript_words",
   "transcript_sentences",
@@ -102,6 +104,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "timing_invalidations",
   "revision_timing_heads",
   "generation_tasks",
+  "hosted_canonical_timing_bridges",
   "attempts",
   "qa_results",
   "render_jobs",
@@ -140,10 +143,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "video_runtime_lane_states",
   "video_runtime_accepted_units",
   "video_runtime_events",
-  "hosted_cpu_job_attempts",
   "media_worker_input_objects",
   "media_worker_leases",
-  "hosted_cpu_upload_authorities",
   "hosted_cpu_job_events",
   "hosted_project_reviews",
   "media_worker_events",
@@ -466,9 +467,9 @@ async function exportFromExecutor(executor: SqlExecutor): Promise<MetadataSnapsh
   const tables: MetadataTableSnapshot[] = [];
   for (const [ordinal, tableName] of RELATIONAL_TABLE_NAMES.entries()) {
     const result = await executor.query<RowJson>(
-      `SELECT to_jsonb(source)::text AS row_json
-         FROM ${qualifiedTable(tableName)} AS source${reservedScopeFilter(tableName)}
-        ORDER BY to_jsonb(source)::text`,
+      `SELECT to_jsonb(snapshot_row)::text AS row_json
+         FROM ${qualifiedTable(tableName)} AS snapshot_row${reservedScopeFilter(tableName)}
+        ORDER BY to_jsonb(snapshot_row)::text`,
     );
     const rows = result.rows.map((row) => row.row_json);
     rows.forEach((row) => rejectSecretBearingJson(tableName, row));
