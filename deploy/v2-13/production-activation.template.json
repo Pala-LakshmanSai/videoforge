@@ -1,0 +1,34 @@
+{
+  "schema_version": "videoforge-v2-13-production-config-activation/v1",
+  "checkpoint": "V2-13",
+  "authority": {
+    "mode": "PROPOSAL_REQUIRED",
+    "config_render_only": true,
+    "deployment_authorized": false,
+    "provider_calls_authorized": false,
+    "credential_access_authorized": false,
+    "external_spend_usd": 0,
+    "approved_at": null
+  },
+  "release": {
+    "commit": "__V2_13_COMMIT__",
+    "media_worker_release_manifest_sha256": "__V2_13_RELEASE_MANIFEST_SHA256__"
+  },
+  "cloudflare": {
+    "account_id": "__V2_13_CLOUDFLARE_ACCOUNT_ID__",
+    "worker_name": "videoforge-production-runtime",
+    "workflow_name": "__V2_13_WORKFLOW_NAME__",
+    "r2_bucket_name": "__V2_13_R2_BUCKET_NAME__",
+    "public_origin": "__V2_13_PUBLIC_ORIGIN__"
+  },
+  "runtime": {
+    "environment": "production",
+    "provider_mode": "production",
+    "gpu_transport": "DISABLED_UNQUALIFIED",
+    "assets_binding": "ASSETS",
+    "r2_binding": "PRIVATE_ARTIFACTS",
+    "workflow_binding": "VIDEO_WORKFLOW",
+    "version_metadata_binding": "CF_VERSION_METADATA",
+    "observability_enabled": true
+  }
+}

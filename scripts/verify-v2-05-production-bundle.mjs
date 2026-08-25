@@ -6,7 +6,10 @@ const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const bundleDirectory = process.env.VIDEOFORGE_BUNDLE_DIR ?? "dist-cloudflare";
 if (!/^dist-[a-z0-9-]+$/u.test(bundleDirectory)) throw new Error("Invalid bundle directory.");
 const root = path.join(repositoryRoot, "apps/web", bundleDirectory);
-const forbidden = [
+const productionConfigPath = path.join(repositoryRoot, "apps/web/wrangler.production.jsonc");
+const productionEntryPath = path.join(repositoryRoot, "apps/web/worker/production-index.ts");
+const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.ts");
+const workerForbidden = [
   "@videoforge/test-fixtures",
   "packages/test-fixtures",
   "FakeServerlessEndpoint",
@@ -29,10 +32,7 @@ const forbidden = [
   "gpuTypeIds",
   "purge-queue",
   "/workspace/models",
-  "avatar_repair_profile_id",
-  "echo_avatar",
   "NVIDIA RTX A6000",
-  "NVIDIA GeForce RTX 4090",
   "legacy_compatibility_fixture",
 ];
 const clientForbidden = [
@@ -66,8 +66,46 @@ const clientForbidden = [
   "RunPodPodClient",
   "gpuTypeIds",
   "NVIDIA RTX A6000",
+  "NVIDIA GeForce RTX 4090",
   "avatar_repair_profile_id",
   "echo_avatar",
+];
+
+const productionConfigSource = await readFile(productionConfigPath, "utf8");
+const productionConfig = JSON.parse(
+  productionConfigSource.replace(/^\s*\/\/.*$/gmu, "").replace(/,\s*([}\]])/gu, "$1"),
+);
+if (!/^[a-z][a-z0-9-]{2,62}$/u.test(productionConfig.name)) {
+  throw new Error("Production Worker name must be one exact Wrangler name.");
+}
+const emittedWorkerDirectory = productionConfig.name.replaceAll("-", "_");
+
+// The deployable entry and route owner must remain a hosted-only graph. Canonical hosted schemas
+// and exact server-side qualification lineage may appear in the Worker, so source reachability is
+// a stronger boundary than banning their factual vocabulary from all emitted server code.
+const productionEntrySource = await readFile(productionEntryPath, "utf8");
+const productionImports = [
+  ...productionEntrySource.matchAll(
+    /^\s*(?:import|export)\s+(?:type\s+)?(?:[^"']+?\s+from\s+)?["']([^"']+)["'];?\s*$/gmu,
+  ),
+].map((match) => match[1]);
+const expectedProductionImports = [
+  "../src/server/hosted/app",
+  "../src/server/hosted/configuration",
+  "../src/server/hosted/retention",
+  "./hosted-workflow",
+];
+const hostedAppSource = await readFile(hostedAppPath, "utf8");
+const forbiddenProductionSource = [
+  "shared-app-fixture",
+  "src/server/local",
+  "/local/",
+  "node-video-runtime",
+  "@videoforge/test-fixtures",
+  "/api/dev/",
+  "/api/v1/shared-app",
+  "/api/v2/pods",
+  "/api/v2/gpu",
 ];
 
 async function filesBelow(directory) {
@@ -81,6 +119,27 @@ async function filesBelow(directory) {
 }
 
 const failures = [];
+if (
+  JSON.stringify([...productionImports].sort()) !==
+  JSON.stringify([...expectedProductionImports].sort())
+) {
+  failures.push("production Worker entry imports are not the exact hosted-only graph");
+}
+for (const token of forbiddenProductionSource) {
+  if (productionEntrySource.includes(token) || hostedAppSource.includes(token)) {
+    failures.push(`production Worker source or route owner exposes ${token}`);
+  }
+}
+for (const route of [
+  'url.pathname === "/api/v2/hosted/status"',
+  'url.pathname === "/api/v2/tenant"',
+  'url.pathname === "/api/v2/library"',
+  'url.pathname === "/api/v2/hosted/queue"',
+  'url.pathname === "/api/v2/cpu-attempts"',
+]) {
+  if (!hostedAppSource.includes(route))
+    failures.push(`production hosted route owner lacks ${route}`);
+}
 let workerCodeFiles = 0;
 let clientCodeFiles = 0;
 const emittedFiles = await filesBelow(root);
@@ -90,7 +149,7 @@ for (const file of emittedFiles) {
     failures.push(`${file} is an emitted production fixture asset`);
   }
   if (!/\.(?:js|mjs|map)$/u.test(file)) continue;
-  const workerFile = relative.startsWith("videoforge_production_runtime/");
+  const workerFile = relative.startsWith(`${emittedWorkerDirectory}/`);
   const clientFile = relative.startsWith("client/");
   if (!workerFile && !clientFile) continue;
   if (/\.(?:js|mjs)$/u.test(file)) {
@@ -102,7 +161,7 @@ for (const file of emittedFiles) {
     failures.push(`${file} is a fixture route/support module`);
   }
   const source = await readFile(file, "utf8");
-  const tokens = workerFile ? forbidden : clientForbidden;
+  const tokens = workerFile ? workerForbidden : clientForbidden;
   for (const token of tokens) {
     if (source.includes(token)) failures.push(`${file} contains ${token}`);
   }
@@ -115,8 +174,8 @@ if (clientCodeFiles === 0) {
   failures.push(`${root} contained no production client emitted code`);
 }
 for (const required of [
-  "videoforge_production_runtime/index.js",
-  "videoforge_production_runtime/.vite/manifest.json",
+  `${emittedWorkerDirectory}/index.js`,
+  `${emittedWorkerDirectory}/.vite/manifest.json`,
   "client/index.html",
   "client/.vite/manifest.json",
 ]) {
