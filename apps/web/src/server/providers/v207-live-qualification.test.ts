@@ -30,6 +30,7 @@ const {
   isAllowedV207GhcrBlobRedirect,
   mergeV207AcceptedUnits,
   readV207EndpointBillingAmount,
+  readV207OutputReadback,
   redactV207LiveEvidence,
   redactV207ProviderJobError,
   routePort,
@@ -218,6 +219,154 @@ describe("V2-07 live qualification runner safety", () => {
       output_failure_stage: "output_resume_readback",
       output_failure_code: "V207_OUTPUT_PORT_400",
     });
+  });
+
+  it("classifies non-FINALIZE GET transport and malformed responses without leaking details", async () => {
+    const nonce = "b".repeat(64);
+    const getRequest = { operation: "GET", object_key: "exact-object" };
+    const secret = "secret-body https://signed.example/private?sig=secret nonce-" + nonce;
+    let transportAttempts = 0;
+
+    let transportThrown: unknown;
+    try {
+      await routePort(getRequest, nonce, {
+        fetchImpl: async () => {
+          transportAttempts += 1;
+          throw new Error(secret);
+        },
+        sleepImpl: async () => undefined,
+      });
+    } catch (error) {
+      transportThrown = error;
+    }
+    expect(transportThrown).toMatchObject({ message: "V207_OUTPUT_PORT_GET_TRANSPORT" });
+    expect(transportAttempts).toBe(1);
+    expect(String(transportThrown)).not.toContain(nonce);
+
+    let bodyReadAttempts = 0;
+    const bodyReadFailure = {
+      ok: false,
+      status: 503,
+      arrayBuffer: async () => {
+        throw new Error(secret);
+      },
+    } as unknown as Response;
+    let bodyReadThrown: unknown;
+    try {
+      await routePort(getRequest, nonce, {
+        fetchImpl: async () => {
+          bodyReadAttempts += 1;
+          return bodyReadFailure;
+        },
+        sleepImpl: async () => undefined,
+      });
+    } catch (error) {
+      bodyReadThrown = error;
+    }
+    expect(bodyReadThrown).toMatchObject({ message: "V207_OUTPUT_PORT_GET_TRANSPORT" });
+    expect(bodyReadAttempts).toBe(1);
+    expect(String(bodyReadThrown)).not.toContain(nonce);
+
+    let malformedThrown: unknown;
+    let malformedAttempts = 0;
+    try {
+      await routePort(getRequest, nonce, {
+        fetchImpl: async () => {
+          malformedAttempts += 1;
+          return new Response(secret, {
+            status: 503,
+            headers: {
+              "content-type": "text/html; secret=must-not-persist",
+            },
+          });
+        },
+        sleepImpl: async () => undefined,
+      });
+    } catch (error) {
+      malformedThrown = error;
+    }
+    expect(malformedThrown).toMatchObject({ message: "V207_OUTPUT_PORT_GET_RESPONSE_INVALID" });
+    expect(malformedAttempts).toBe(1);
+    expect(JSON.stringify(malformedThrown)).not.toContain("secret-body");
+    expect(JSON.stringify(malformedThrown)).not.toContain("signed.example");
+    expect(String(malformedThrown)).not.toContain(nonce);
+
+    let valid503Attempts = 0;
+    await expect(
+      routePort(getRequest, nonce, {
+        fetchImpl: async () => {
+          valid503Attempts += 1;
+          return new Response(JSON.stringify({ error: { code: "V207_PORT_SIGNING_FAILED" } }), {
+            status: 503,
+            headers: { "content-type": "application/json" },
+          });
+        },
+        sleepImpl: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_OUTPUT_PORT_503");
+    expect(valid503Attempts).toBe(1);
+
+    expect(
+      extractV207OutputContractDiagnostics(
+        new V207OutputContractError(
+          "SUCCEEDED",
+          "V207_OUTPUT_PORT_GET_RESPONSE_INVALID",
+          { kind: "object", keys: ["items", "provenance_receipt", "status"] },
+          "output_readback",
+        ),
+      ),
+    ).toEqual({
+      error: "MAGE_OUTPUT_NOT_SUCCEEDED",
+      error_category: "output_contract",
+      output_failure_stage: "output_readback",
+      output_status: "SUCCEEDED",
+      output_failure_code: "V207_OUTPUT_PORT_GET_RESPONSE_INVALID",
+      output_shape_kind: "object",
+      output_shape_keys: ["items", "provenance_receipt", "status"],
+    });
+  });
+
+  it("classifies signed artifact readback transport and preserves non-2xx failures", async () => {
+    const signedUrl = "https://signed.example/private?sig=secret";
+    const secret = "readback transport secret " + signedUrl;
+
+    let fetchThrown: unknown;
+    try {
+      await readV207OutputReadback(signedUrl, {
+        fetchImpl: async () => {
+          throw new Error(secret);
+        },
+      });
+    } catch (error) {
+      fetchThrown = error;
+    }
+    expect(fetchThrown).toMatchObject({ message: "MAGE_OUTPUT_READBACK_TRANSPORT" });
+    expect(String(fetchThrown)).not.toContain(signedUrl);
+    expect(String(fetchThrown)).not.toContain(secret);
+
+    const bodyReadFailure = {
+      ok: true,
+      arrayBuffer: async () => {
+        throw new Error(secret);
+      },
+    } as unknown as Response;
+    let bodyReadThrown: unknown;
+    try {
+      await readV207OutputReadback(signedUrl, {
+        fetchImpl: async () => bodyReadFailure,
+      });
+    } catch (error) {
+      bodyReadThrown = error;
+    }
+    expect(bodyReadThrown).toMatchObject({ message: "MAGE_OUTPUT_READBACK_TRANSPORT" });
+    expect(String(bodyReadThrown)).not.toContain(signedUrl);
+    expect(String(bodyReadThrown)).not.toContain(secret);
+
+    await expect(
+      readV207OutputReadback(signedUrl, {
+        fetchImpl: async () => new Response("provider failure", { status: 502 }),
+      }),
+    ).rejects.toThrow("MAGE_OUTPUT_READBACK_FAILED");
   });
 
   it("routes post-timeout reader results through both full verifiers before drain", () => {

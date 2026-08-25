@@ -811,6 +811,27 @@ const V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS = 1_000;
 const V207_OUTPUT_PORT_FINALIZE_TRANSPORT_ERROR = "V207_OUTPUT_PORT_FINALIZE_TRANSPORT" as const;
 const V207_OUTPUT_PORT_FINALIZE_RESPONSE_ERROR =
   "V207_OUTPUT_PORT_FINALIZE_RESPONSE_INVALID" as const;
+const V207_OUTPUT_PORT_GET_TRANSPORT_ERROR = "V207_OUTPUT_PORT_GET_TRANSPORT" as const;
+const V207_OUTPUT_PORT_GET_RESPONSE_ERROR = "V207_OUTPUT_PORT_GET_RESPONSE_INVALID" as const;
+const V207_OUTPUT_READBACK_TRANSPORT_ERROR = "MAGE_OUTPUT_READBACK_TRANSPORT" as const;
+
+class V207OutputPortGetTransportError extends Error {
+  readonly code = V207_OUTPUT_PORT_GET_TRANSPORT_ERROR;
+
+  constructor() {
+    super(V207_OUTPUT_PORT_GET_TRANSPORT_ERROR);
+    this.name = "V207OutputPortGetTransportError";
+  }
+}
+
+class V207OutputPortGetResponseError extends Error {
+  readonly code = V207_OUTPUT_PORT_GET_RESPONSE_ERROR;
+
+  constructor() {
+    super(V207_OUTPUT_PORT_GET_RESPONSE_ERROR);
+    this.name = "V207OutputPortGetResponseError";
+  }
+}
 
 export interface V207OutputPortTestOptions {
   readonly fetchImpl?: typeof fetch;
@@ -844,6 +865,7 @@ export async function routePort(
   // FINALIZE is the only retryable POST here: the reservation/callback tuple makes it
   // idempotent, so a client timeout after the server committed can safely reconcile by replay.
   const isFinalize = body.operation === "FINALIZE";
+  const isGet = body.operation === "GET";
   const maxAttempts = isFinalize ? V207_OUTPUT_PORT_FINALIZE_MAX_ATTEMPTS : 3;
   const requestTimeoutMs = isFinalize
     ? V207_OUTPUT_PORT_FINALIZE_TIMEOUT_MS
@@ -870,6 +892,7 @@ export async function routePort(
             makeV207OutputPortFinalizeResponseDiagnostic(attempt + 1, null, "transport"),
           );
         }
+        if (isGet) throw new V207OutputPortGetTransportError();
         throw error;
       }
       await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
@@ -923,6 +946,23 @@ export async function routePort(
         await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
         continue;
       }
+    } else if (isGet) {
+      let body: ArrayBuffer;
+      try {
+        body = await response.arrayBuffer();
+      } catch {
+        throw new V207OutputPortGetTransportError();
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(new TextDecoder().decode(body));
+      } catch {
+        throw new V207OutputPortGetResponseError();
+      }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new V207OutputPortGetResponseError();
+      }
+      value = parsed as AnyRecord;
     } else {
       const parsed: unknown = await response.json();
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -946,12 +986,32 @@ export async function routePort(
         ),
       );
     }
-    if (response.status !== 503 || attempt === maxAttempts - 1) {
+    if (isGet || response.status !== 503 || attempt === maxAttempts - 1) {
       throw new Error(`V207_OUTPUT_PORT_${response.status}`);
     }
     await sleepImpl(V207_OUTPUT_PORT_FINALIZE_RETRY_DELAY_MS * (attempt + 1));
   }
   throw new Error("V207_OUTPUT_PORT_UNREACHABLE");
+}
+
+/** Read one signed generated artifact without retaining transport details in a qualification error. */
+export async function readV207OutputReadback(
+  url: string,
+  options: Pick<V207OutputPortTestOptions, "fetchImpl"> = {},
+): Promise<Uint8Array> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  let response: Response;
+  try {
+    response = await fetchImpl(url, { signal: AbortSignal.timeout(30_000) });
+  } catch {
+    throw new Error(V207_OUTPUT_READBACK_TRANSPORT_ERROR);
+  }
+  if (!response.ok) throw new Error("MAGE_OUTPUT_READBACK_FAILED");
+  try {
+    return new Uint8Array(await response.arrayBuffer());
+  } catch {
+    throw new Error(V207_OUTPUT_READBACK_TRANSPORT_ERROR);
+  }
 }
 
 async function deleteGeneratedObject(objectKey: string, nonce: string): Promise<void> {
@@ -1946,9 +2006,7 @@ async function verifyBatch(
       ) {
         throw new Error("MAGE_OUTPUT_READBACK_AUTHORITY_INVALID");
       }
-      const response = await fetch(getPort.url, { signal: AbortSignal.timeout(30_000) });
-      if (!response.ok) throw new Error("MAGE_OUTPUT_READBACK_FAILED");
-      const bytes = new Uint8Array(await response.arrayBuffer());
+      const bytes = await readV207OutputReadback(getPort.url);
       const byteHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
       if (bytes.byteLength !== item.output_bytes || byteHash !== item.output_sha256) {
         throw new Error("MAGE_OUTPUT_DURABILITY_MISMATCH");
