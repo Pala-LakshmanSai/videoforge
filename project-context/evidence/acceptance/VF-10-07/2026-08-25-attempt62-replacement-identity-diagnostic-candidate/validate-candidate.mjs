@@ -7,6 +7,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dir, "../../../../../");
 const expected = {
   proposal: "sha256:2fb475cca07fa9f76a0d6f724726d6d15a5214bea47931c1463dcfd14ef1f1d0",
+  authority: "sha256:73b81ef8e91c179d53046afabfe3801abdcfdfddea065860ccf084c71443d0cf",
   acceptance: "sha256:99713e1e12fa8ee1b3e47894ab19ba3a401c4408315c3d015f6869d8d636d804",
   preflight: "sha256:4318a0dd24a4f68f9adbc5f0149270c81c1cb43bd13f3c30c0e3455a8ab9049a",
   max1: "sha256:d0c1ab6b2ebe0d8c09e9a6c39853271ecaaa6c04de4abc84521b6a93a430c1bc",
@@ -32,9 +33,10 @@ const fileSha = async (name) => sha(await readFile(path.join(dir, name)));
 const rootBytes = async (name) => readFile(path.join(root, name));
 const rootSha = async (name) => sha(await rootBytes(name));
 
-const [proposal, acceptance, preflight, max1, max2, activation, orchestrator, harness, harnessTest] =
+const [proposal, authority, acceptance, preflight, max1, max2, activation, orchestrator, harness, harnessTest] =
   await Promise.all([
     json("combined-live-proposal.json"),
+    json("approved-authority.json"),
     json("acceptance.json"),
     json("read-only-preflight.json"),
     json("staged-config-max1.json"),
@@ -46,6 +48,7 @@ const [proposal, acceptance, preflight, max1, max2, activation, orchestrator, ha
   ]);
 
 yes((await fileSha("combined-live-proposal.json")) === expected.proposal, "PROPOSAL_HASH");
+yes((await fileSha("approved-authority.json")) === expected.authority, "AUTHORITY_HASH");
 yes((await fileSha("acceptance.json")) === expected.acceptance, "ACCEPTANCE_HASH");
 yes((await fileSha("read-only-preflight.json")) === expected.preflight, "PREFLIGHT_HASH");
 yes((await fileSha("staged-config-max1.json")) === expected.max1, "MAX1_HASH");
@@ -154,9 +157,9 @@ yes(
   "ACCEPTANCE",
 );
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_PROPOSAL_POINTER");
-yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(activation), "AUTHORITY_NULL");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_NULL");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "REFRESH_NULL");
+yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_ACTIVE");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4;/u.test(activation), "CAP_ACTIVE");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation), "REFRESH_ACTIVE");
 const canonical = activation
   .replace(/^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/mu, `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${"0".repeat(64)}" as const;`)
   .replace(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/mu, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;")
@@ -186,5 +189,18 @@ try {
 } catch {
   authorityExists = false;
 }
-yes(authorityExists === false, "AUTHORITY_FILE_FORBIDDEN");
+yes(authorityExists === true, "AUTHORITY_FILE_REQUIRED");
+yes(
+  authority.attempt === 62 &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal.sha256 === expected.proposal &&
+    authority.acceptance.sha256 === expected.acceptance &&
+    authority.approval.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval.flashboot_true_accepted === true &&
+    authority.approval.low_or_better_eu_ro_1_availability_approved === true &&
+    authority.approval.anchor_refresh_authorized === true &&
+    authority.approval.consumed === false &&
+    authority.execution_boundary.v2_08_authorized === false,
+  "AUTHORITY_CONTRACT",
+);
 process.stdout.write(`PASS validate-v207-attempt62-candidate ${JSON.stringify(expected)}\n`);
