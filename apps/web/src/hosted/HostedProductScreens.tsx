@@ -157,6 +157,15 @@ interface ProjectDetailResponse {
   };
   readonly attempts: readonly HostedAttempt[];
   readonly gpu_transport: "DISABLED_UNQUALIFIED";
+  readonly gpu_readiness: CatalogResponse["gpu_readiness"];
+  readonly generation: null | {
+    readonly id: string;
+    readonly timeline_plan_sha256: string;
+    readonly planned_tasks: number | string;
+    readonly completed_tasks: number | string;
+    readonly failed_tasks: number | string;
+    readonly stage: "WAITING_FOR_GPU_QUALIFICATION" | "READY_FOR_RENDER" | "FAILED";
+  };
 }
 
 interface HostedUsageResponse {
@@ -695,16 +704,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
   const renderHandoff = useMutation({
-    mutationFn: async (asrAttemptId: string) => {
-      const handoff = await readJson<{ cpu_submission: unknown }>(
-        `/api/v2/hosted/projects/${projectId}/render`,
-        { method: "POST", body: JSON.stringify({ asr_attempt_id: asrAttemptId }) },
-      );
-      return readJson(`/api/v2/cpu-attempts`, {
+    mutationFn: async (asrAttemptId: string) =>
+      readJson<{
+        state: "WAITING_FOR_GPU_QUALIFICATION";
+        missing_lane_gates: readonly { lane: string; gates: readonly string[] }[];
+      }>(`/api/v2/hosted/projects/${projectId}/render`, {
         method: "POST",
-        body: JSON.stringify(handoff.cpu_submission),
-      });
-    },
+        body: JSON.stringify({ asr_attempt_id: asrAttemptId }),
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
   useEffect(() => {
@@ -802,6 +809,60 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ))}
         </div>
       </Panel>
+      <Panel eyebrow="Hosted pipeline" heading="Generation stages">
+        <div className="entity-list">
+          <article className="entity-row">
+            <div>
+              <strong>Transcription</strong>
+              <small>Private word timing and exact source/model lineage</small>
+            </div>
+            <Badge tone={asr?.state === "SUCCEEDED" ? "success" : "info"}>
+              {asr?.state === "SUCCEEDED" ? "COMPLETE" : asr ? asr.state : "NOT STARTED"}
+            </Badge>
+          </article>
+          <article className="entity-row">
+            <div>
+              <strong>Deterministic planning</strong>
+              <small>scheduler-v2 timeline and tenant-owned generation tasks</small>
+            </div>
+            <Badge tone={query.data.generation ? "success" : "info"}>
+              {query.data.generation
+                ? "COMPLETE"
+                : asr?.state === "SUCCEEDED"
+                  ? "PERSISTENCE UNAVAILABLE"
+                  : "WAITING FOR TRANSCRIPTION"}
+            </Badge>
+          </article>
+          {query.data.gpu_readiness.lanes.map((lane) => (
+            <article className="entity-row" key={lane.lane}>
+              <div>
+                <strong>{lane.lane === "MAGE_IMAGE" ? "Image GPU" : "Avatar GPU"}</strong>
+                <small>
+                  {lane.checkpoint} missing: {lane.missing_gates.join(", ")}
+                </small>
+              </div>
+              <Badge tone="info">{lane.qualification.replaceAll("_", " ")}</Badge>
+            </article>
+          ))}
+          <article className="entity-row">
+            <div>
+              <strong>Final render</strong>
+              <small>Starts only after both GPU lanes produce accepted private artifacts</small>
+            </div>
+            <Badge tone="info">
+              {render
+                ? render.state.replaceAll("_", " ")
+                : !query.data.generation
+                  ? "WAITING FOR CANONICAL PLAN"
+                  : query.data.generation.stage === "FAILED"
+                    ? "BLOCKED BY FAILED GENERATION"
+                    : query.data.generation.stage === "READY_FOR_RENDER"
+                      ? "WAITING FOR RENDER WORKER"
+                      : "WAITING FOR GPU QUALIFICATION"}
+            </Badge>
+          </article>
+        </div>
+      </Panel>
       {!asr ? (
         <div className="notice" role="status">
           <strong>Project is ready for durable transcription.</strong>
@@ -819,23 +880,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <div className="notice" role="status">
           <strong>
             {renderHandoff.isError
-              ? "Transcription complete; render is waiting for the exact project plan."
+              ? "Transcription complete; generation planning could not be verified."
               : renderHandoff.isPending
-                ? "Transcription complete; preparing the owned render attempt."
-                : "Transcription complete; render handoff is queued."}
+                ? "Transcription complete; persisting the deterministic generation plan."
+                : query.data.generation
+                  ? "Planning complete; generation is waiting for GPU qualification."
+                  : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
-          {renderHandoff.isError ? (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                renderHandoffAttempt.current = null;
-                if (asr) renderHandoff.mutate(asr.id);
-              }}
-            >
-              Retry render handoff
-            </Button>
-          ) : null}
         </div>
       ) : null}
       <Button variant="secondary" onClick={() => void query.refetch()}>

@@ -4,11 +4,16 @@ import type {
   HostedRuntimeConfiguration,
   HostedRuntimeEnvironment,
 } from "./configuration";
+import { coordinateHostedGeneration } from "./generation-coordinator";
+import {
+  HostedCanonicalTimingPersistenceUnavailable,
+  unavailableHostedGenerationPersistence,
+} from "./generation-persistence";
 import { sha256 } from "./crypto";
 import { hostedGpuReadiness } from "./gpu-readiness";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
-import { canonicalJson, exactHostedRenderSubmission } from "./submission";
+import { canonicalJson } from "./submission";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -44,6 +49,63 @@ interface ProjectCreateInput {
     readonly contentLength: number;
     readonly checksumSha256: string;
     readonly durationMs: number;
+  };
+}
+
+export function hostedRevisionConfigV2(input: {
+  readonly projectId: string;
+  readonly projectRevisionId: string;
+  readonly title: string;
+  readonly voiceoverAssetId: string;
+  readonly voiceoverSha256: string;
+  readonly avatarProfileId: string;
+  readonly avatarProfileVersionId: string;
+  readonly avatarDisplayName: string;
+  readonly avatarProfileHash: string;
+  readonly avatarRuntimeSourceAssetId: string;
+  readonly avatarRuntimeSourceSha256: string;
+  readonly avatarSourcePreparationVersion: string;
+  readonly avatarSourceValidationProfileVersion: string;
+  readonly imageStyleVersionId: string;
+  readonly styleProfileHash: string;
+  readonly schedulerSeed: number;
+}) {
+  return {
+    schema_version: "project-revision-config/v2" as const,
+    project_id: input.projectId,
+    project_revision_id: input.projectRevisionId,
+    title: input.title,
+    voiceover_asset_id: input.voiceoverAssetId,
+    voiceover_sha256: input.voiceoverSha256,
+    avatar_binding: {
+      avatar_profile_id: input.avatarProfileId,
+      avatar_profile_version_id: input.avatarProfileVersionId,
+      avatar_display_name_snapshot: input.avatarDisplayName,
+      avatar_profile_hash: input.avatarProfileHash,
+      runtime_source_asset_id: input.avatarRuntimeSourceAssetId,
+      runtime_source_sha256: input.avatarRuntimeSourceSha256,
+      source_preparation_version: input.avatarSourcePreparationVersion,
+      source_validation_profile_version: input.avatarSourceValidationProfileVersion,
+      compatibility_state_at_preflight: "UNTESTED" as const,
+      compatibility_evidence: null,
+    },
+    optional_script: null,
+    image_style_version_id: input.imageStyleVersionId,
+    style_profile_hash: input.styleProfileHash,
+    extra_prompt_keywords: "",
+    apply_extra_prompt_keywords: false,
+    generation_mode: "LOWEST_COST" as const,
+    execution_profiles: {
+      image_media_profile_id: "serverless-mage-image-v1",
+      avatar_primary_profile_id: "serverless-soulx-flashhead-pro-v1",
+      avatar_repair_profile_id: null,
+      avatar_quality_profile_id: null,
+    },
+    spend_cap_usd: PERSONAL_WORKER_MINIMUM_COST_MICRO_USD / 1_000_000,
+    scheduler_version: "scheduler-v2",
+    scheduler_seed: input.schedulerSeed,
+    prompt_writer_version: "scene-prompt-writer-v1",
+    prompt_compiler_version: "mage-prompt-compiler-v1",
   };
 }
 
@@ -282,7 +344,8 @@ async function createProject(
         return replay;
       }
       const avatar = await transaction.query<Record<string, unknown>>(
-        `SELECT profile.id AS profile_id, version.id AS version_id, version.profile_hash,
+        `SELECT profile.id AS profile_id, profile.name AS profile_name,
+                version.id AS version_id, version.profile_hash,
                 version.runtime_source_asset_id, version.runtime_source_binary_sha256,
                 version.source_preparation_profile, version.source_validation_profile
            FROM avatar_profiles AS profile
@@ -314,15 +377,25 @@ async function createProject(
       const objectKey =
         `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${projectId}` +
         `/revision/${revisionId}/lane/input/job/browser-upload/artifact/voiceover`;
-      const revisionPayload = {
-        schema_version: "videoforge-hosted-revision-config/v1",
+      const schedulerSeed = Math.floor(Math.random() * 2_147_483_647);
+      const revisionPayload = hostedRevisionConfigV2({
+        projectId,
+        projectRevisionId: revisionId,
         title: input.title,
-        voiceover_sha256: input.voiceover.checksumSha256,
-        avatar_profile_version_id: input.avatarVersionId,
-        image_style_version_id: input.styleVersionId,
-        generation_mode: "LOWEST_COST",
-        gpu_transport: "DISABLED_UNQUALIFIED",
-      };
+        voiceoverAssetId: assetId,
+        voiceoverSha256: input.voiceover.checksumSha256,
+        avatarProfileId: String(avatar.rows[0].profile_id),
+        avatarProfileVersionId: input.avatarVersionId,
+        avatarDisplayName: String(avatar.rows[0].profile_name),
+        avatarProfileHash: String(avatar.rows[0].profile_hash),
+        avatarRuntimeSourceAssetId: String(avatar.rows[0].runtime_source_asset_id),
+        avatarRuntimeSourceSha256: String(avatar.rows[0].runtime_source_binary_sha256),
+        avatarSourcePreparationVersion: String(avatar.rows[0].source_preparation_profile),
+        avatarSourceValidationProfileVersion: String(avatar.rows[0].source_validation_profile),
+        imageStyleVersionId: input.styleVersionId,
+        styleProfileHash: String(style.rows[0].style_profile_hash),
+        schedulerSeed,
+      });
       const revisionHash = await sha256(canonicalJson(revisionPayload));
       await transaction.query(
         `INSERT INTO projects (id, workspace_id, owner_user_id, name, normalized_name)
@@ -363,7 +436,7 @@ async function createProject(
          ) VALUES (
            $1,$2,$3,1,'DRAFT',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
            'UNTESTED',NULL,NULL,$14,$15,$16,'',false,'LOWEST_COST',$17,$18,
-           'videoforge-hosted-revision-config','v1',$19::jsonb,$20,$21
+           'project-revision-config','v2',$19::jsonb,$20,$21
          )`,
         [
           revisionId,
@@ -383,7 +456,7 @@ async function createProject(
           String(style.rows[0].version_id),
           String(style.rows[0].style_profile_hash),
           PERSONAL_WORKER_MINIMUM_COST_MICRO_USD,
-          Math.floor(Math.random() * 2_147_483_647),
+          schedulerSeed,
           JSON.stringify(revisionPayload),
           revisionHash,
           scope.user_id,
@@ -784,6 +857,7 @@ async function asrHandoff(
 async function renderHandoff(
   request: Request,
   projectId: string,
+  environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
@@ -811,26 +885,25 @@ async function renderHandoff(
       const result = await transaction.query<{
         revision_id: string;
         revision_state: string;
-        render_plan_schema_version: string | null;
-        render_plan_payload: unknown;
-        render_plan_payload_sha256: string | null;
+        revision_config_payload: unknown;
+        revision_config_hash: string;
         asr_attempt_id: string | null;
+        asr_output_object_key: string | null;
+        asr_output_content_type: string | null;
+        asr_output_content_length: number | string | null;
+        asr_output_sha256: string | null;
       }>(
         `SELECT revision.id AS revision_id, revision.status AS revision_state,
-                render_plan.schema_version AS render_plan_schema_version,
-                render_plan.payload AS render_plan_payload,
-                render_plan.payload_sha256 AS render_plan_payload_sha256,
-                asr.id AS asr_attempt_id
+                revision.revision_config_payload, revision.revision_config_hash,
+                asr.id AS asr_attempt_id, authority.object_key AS asr_output_object_key,
+                authority.content_type AS asr_output_content_type,
+                authority.issued_content_length AS asr_output_content_length,
+                authority.issued_checksum_sha256 AS asr_output_sha256
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
             AND revision.workspace_id = project.workspace_id
             AND revision.project_id = project.id
-           LEFT JOIN hosted_render_plans AS render_plan
-             ON render_plan.account_id = revision.account_id
-            AND render_plan.workspace_id = revision.workspace_id
-            AND render_plan.project_id = revision.project_id
-            AND render_plan.project_revision_id = revision.id
            LEFT JOIN hosted_cpu_job_attempts AS asr
              ON asr.account_id = project.account_id
             AND asr.workspace_id = project.workspace_id
@@ -839,6 +912,12 @@ async function renderHandoff(
             AND asr.id = $4
             AND asr.kind = 'ASR'
             AND asr.state = 'SUCCEEDED'
+           LEFT JOIN hosted_cpu_upload_authorities AS authority
+             ON authority.account_id = asr.account_id
+            AND authority.workspace_id = asr.workspace_id
+            AND authority.attempt_id = asr.id
+            AND authority.source = 'PRIMARY_RESULT_OUTPUT'
+            AND authority.issued_at IS NOT NULL
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, asrAttemptId],
@@ -850,29 +929,51 @@ async function renderHandoff(
       return response({ error: { code: "HOSTED_PROJECT_NOT_READY" } }, 409);
     if (!state.asr_attempt_id)
       return response({ error: { code: "HOSTED_ASR_NOT_SUCCEEDED" } }, 409);
-
-    const renderPlan =
-      state.render_plan_schema_version === "videoforge-hosted-cpu-submission/v1"
-        ? state.render_plan_payload
-        : null;
-    const submission = exactHostedRenderSubmission(renderPlan, projectId, state.revision_id);
+    const bucket = environment.PRIVATE_ARTIFACTS;
     if (
-      !submission ||
-      (await sha256(canonicalJson(renderPlan))) !== state.render_plan_payload_sha256
+      !bucket ||
+      !state.asr_output_object_key ||
+      state.asr_output_content_type !== "application/json" ||
+      !state.asr_output_content_length ||
+      !state.asr_output_sha256
     ) {
-      return response({ error: { code: "HOSTED_RENDER_PLAN_NOT_READY" } }, 409);
+      return response({ error: { code: "HOSTED_ASR_OUTPUT_NOT_READY" } }, 409);
     }
-
-    return response(
-      {
-        schema_version: "videoforge-hosted-render-handoff/v1",
-        project_id: projectId,
-        project_revision_id: state.revision_id,
-        asr_attempt_id: asrAttemptId,
-        cpu_submission: renderPlan,
+    const asrObject = await bucket.get(state.asr_output_object_key);
+    if (
+      !asrObject ||
+      asrObject.size !== Number(state.asr_output_content_length) ||
+      asrObject.httpMetadata?.contentType !== "application/json"
+    ) {
+      return response({ error: { code: "HOSTED_ASR_OUTPUT_NOT_VERIFIED" } }, 409);
+    }
+    const asrOutputBytes = await asrObject.arrayBuffer();
+    const result = await coordinateHostedGeneration({
+      snapshot: {
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+        userId: scope.user_id,
+        projectId,
+        projectRevisionId: state.revision_id,
+        asrAttemptId,
+        asrState: "SUCCEEDED",
+        asrOutputObjectKey: state.asr_output_object_key,
+        asrOutputContentType: "application/json",
+        asrOutputContentLength: Number(state.asr_output_content_length),
+        asrOutputSha256: state.asr_output_sha256,
+        expectedWhisperModelSha256: config.mediaWorkerRelease.whisperModelSha256,
+        revisionConfig: state.revision_config_payload as never,
+        revisionConfigSha256: state.revision_config_hash,
       },
-      202,
-    );
+      asrOutputBytes,
+      persistence: unavailableHostedGenerationPersistence(),
+    });
+    return response(result, 202);
+  } catch (error) {
+    if (error instanceof HostedCanonicalTimingPersistenceUnavailable) {
+      return response({ error: { code: error.code } }, 503);
+    }
+    throw error;
   } finally {
     await pool.end();
   }
@@ -964,7 +1065,33 @@ async function projectDetail(
           ORDER BY attempt.created_at`,
         [scope.account_id, scope.workspace_id, projectId],
       );
-      return { project: project.rows[0], attempts: attempts.rows };
+      const generation = await transaction.query(
+        `SELECT plan.id, plan.canonical_document_hash AS timeline_plan_sha256,
+                count(task.id) FILTER (WHERE task.lane IN ('IMAGE', 'AVATAR')) AS planned_tasks,
+                count(task.id) FILTER (
+                  WHERE task.lane IN ('IMAGE', 'AVATAR') AND task.state = 'COMPLETE'
+                ) AS completed_tasks,
+                count(task.id) FILTER (
+                  WHERE task.lane IN ('IMAGE', 'AVATAR') AND task.state = 'FAILED'
+                ) AS failed_tasks
+           FROM project_revisions AS revision
+           JOIN timeline_plans AS plan
+             ON plan.workspace_id = revision.workspace_id
+            AND plan.project_revision_id = revision.id
+           LEFT JOIN generation_tasks AS task
+             ON task.workspace_id = revision.workspace_id
+            AND task.project_revision_id = revision.id
+          WHERE revision.account_id = $1 AND revision.workspace_id = $2
+            AND revision.project_id = $3
+          GROUP BY plan.id, plan.canonical_document_hash, plan.plan_sequence
+          ORDER BY plan.plan_sequence DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      return {
+        project: project.rows[0],
+        attempts: attempts.rows,
+        generation: generation.rows[0] ?? null,
+      };
     });
     if (!detail.project) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
     const signer = new HostedR2Signer(config.r2);
@@ -1006,6 +1133,21 @@ async function projectDetail(
       project: detail.project,
       attempts,
       gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: hostedGpuReadiness(),
+      generation:
+        detail.generation === null
+          ? null
+          : {
+              ...detail.generation,
+              stage:
+                Number(detail.generation.failed_tasks) > 0
+                  ? "FAILED"
+                  : Number(detail.generation.planned_tasks) > 0 &&
+                      Number(detail.generation.completed_tasks) ===
+                        Number(detail.generation.planned_tasks)
+                    ? "READY_FOR_RENDER"
+                    : "WAITING_FOR_GPU_QUALIFICATION",
+            },
     });
   } finally {
     await pool.end();
@@ -1156,7 +1298,7 @@ export async function handleHostedProductRequest(
     return commitProject(request, commit[1]!, environment, config, executionContext);
   const render = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/render$/u.exec(url.pathname);
   if (request.method === "POST" && render)
-    return renderHandoff(request, render[1]!, config, executionContext);
+    return renderHandoff(request, render[1]!, environment, config, executionContext);
   const asr = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/asr$/u.exec(url.pathname);
   if (request.method === "POST" && asr)
     return asrHandoff(request, asr[1]!, config, executionContext);
