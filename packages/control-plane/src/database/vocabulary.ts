@@ -87,6 +87,8 @@ export const RELATIONAL_TABLE_NAMES = [
   "serverless_output_receipts",
   "hosted_serverless_output_barrier_completions",
   "hosted_canonical_timing_bridges",
+  "hosted_lane_batches",
+  "hosted_lane_batch_items",
   "serverless_cancellations",
   "serverless_reconciliations",
   "serverless_cost_ledgers",

@@ -20,9 +20,17 @@ test("the hosted runtime can append through the exact function but has no direct
     source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_claim_hosted_paid_dispatch\([\s\S]*?numeric, numeric, timestamptz[\s\S]*?TO :"runtime_role";/u,
   );
+  assert.match(
+    source,
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_materialize_hosted_lane_batches\([\s\S]*?uuid, text, jsonb[\s\S]*?TO :"runtime_role";/u,
+  );
   assert.doesNotMatch(
     source,
     /GRANT\s+[^;\n]*(?:SELECT|INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_paid_dispatch_(?:approvals|claims)\b/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /GRANT\s+[^;\n]*(?:SELECT|INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_lane_batch(?:es|_items)\b/iu,
   );
   assert.doesNotMatch(
     source,

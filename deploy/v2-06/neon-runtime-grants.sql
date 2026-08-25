@@ -71,6 +71,12 @@ GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_paid_dispatch(
   numeric, numeric, timestamptz
 )
 TO :"runtime_role";
+-- Migration 0041 atomically appends the exact provider-inert two-lane batches. Qualification,
+-- paid claiming, predispatch, and transport remain separate fail-closed gates.
+GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_lane_batches(
+  uuid, uuid, uuid, uuid, uuid, text, jsonb
+)
+TO :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE ON
   hosted_cpu_job_attempts,

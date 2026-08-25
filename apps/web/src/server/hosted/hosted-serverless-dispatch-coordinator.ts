@@ -426,7 +426,9 @@ function validatePlan(
       canonicalSha256(task.requestBody) !== task.requestBodySha256 ||
       !exactObject(task.requestBody) ||
       !exactObject(task.envelope) ||
-      !task.outputPrefix.startsWith(`${expectedPrefix}${task.lane}/`) ||
+      task.outputPrefix !==
+        `${expectedPrefix}${task.lane === "mage_image" ? "mage-image" : "soulx-avatar"}` +
+          `/job/${deriveHostedDispatchIds({ generationRequestId: plan.generationRequestId, taskId: task.taskId, attemptOrdinal: task.attemptOrdinal }).attemptId}` ||
       !Number.isSafeInteger(task.maxInputBytes) ||
       task.maxInputBytes < 1 ||
       !Number.isSafeInteger(task.maxOutputBytes) ||
@@ -530,7 +532,10 @@ async function preflight(input: {
     request.leaseSlot === null ||
     request.leaseExpiresAt === null ||
     Date.parse(request.leaseExpiresAt) <= Date.parse(input.now) ||
-    tasks.some((task) => task.attemptOrdinal !== request.attemptOrdinal + 1)
+    tasks.some((task) => {
+      const lane = runtime?.lanes.find((candidate) => candidate.lane === task.lane);
+      return lane === undefined || task.attemptOrdinal !== lane.attemptOrdinal + 1;
+    })
   ) {
     reject("HOSTED_SERVERLESS_ADMISSION_REQUIRED");
   }

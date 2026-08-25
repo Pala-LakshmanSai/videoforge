@@ -240,6 +240,12 @@
       "name": "hosted_paid_dispatch_authority",
       "filename": "0040_hosted_paid_dispatch_authority.sql",
       "sha256": "sha256:9e7cbbecd515c8781f66a6888d1283abeb2e91baee4f61d6ad1857775a67c1a3"
+    },
+    {
+      "version": 41,
+      "name": "hosted_lane_batch_materialization",
+      "filename": "0041_hosted_lane_batch_materialization.sql",
+      "sha256": "sha256:24f161e5c441f7cfa6b7837d185e64b3eae182d729c8ef21ef6850aeec9bcf84"
     }
   ]
 }

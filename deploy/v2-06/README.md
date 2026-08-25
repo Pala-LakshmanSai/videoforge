@@ -228,7 +228,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 - Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
   ordinary deployment of the intended restored source/config so code and deployment metadata converge;
   rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
-  available. Every migration in the committed manifest (currently through 0040) is additive and
+  available. Every migration in the committed manifest (currently through 0041) is additive and
   retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather
@@ -316,7 +316,7 @@ five-megabyte aggregate / four-megabyte per-object R2 budget. It writes a durabl
 upload-intent receipt before any object mutation, uses conditional create (`If-None-Match: *`),
 and verifies an exact HEAD/GET match after every create race. Neon is pinned to `neondb`, the
 `neondb_owner` migration role, TLS/channel binding, `public,pg_catalog`, the Google auth provider,
-and the complete manifest-derived, hash-checked migration ledger. The current committed head is 40.
+and the complete manifest-derived, hash-checked migration ledger. The current committed head is 41.
 
 ```sh
 V2_06_TENANT_EMAIL=lakshmansai121@gmail.com \

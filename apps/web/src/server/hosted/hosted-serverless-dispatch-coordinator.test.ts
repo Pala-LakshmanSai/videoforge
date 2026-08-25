@@ -102,7 +102,7 @@ function plan(): HostedPersistedDispatchPlan {
     const inputManifestSha256 = sha256(character === "a" ? "c" : "d");
     const outputPrefix =
       `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}` +
-      `/lane/${lane}/attempt/1/`;
+      `/lane/${lane === "mage_image" ? "mage-image" : "soulx-avatar"}/job/${ids.attemptId}`;
     const resources = [
       `endpoint:${deployment.deploymentId}`,
       "gpu:nvidia-geforce-rtx-4090-eu-ro-1",
@@ -549,6 +549,74 @@ describe("hosted Serverless dispatch coordinator", () => {
         ],
       }),
     );
+  });
+
+  it("derives each task ordinal from its matching runtime lane, never the generation-request epoch", async () => {
+    const fixture = setup();
+    fixture.listOwned.mockResolvedValue([
+      {
+        requestKind: "VIDEO" as const,
+        requestId: REQUEST,
+        state: "ACTIVE" as const,
+        queueOrder: 1n,
+        version: 3,
+        attemptOrdinal: 2,
+        availableAt: NOW,
+        leaseId: "99999999-9999-4999-8999-999999999999",
+        leaseSlot: 1 as const,
+        leaseExpiresAt: "2026-08-25T13:00:00.000Z",
+      },
+    ]);
+    await expect(
+      dispatchHostedPreparedGeneration({
+        scope,
+        generationRequestId: REQUEST,
+        inspection: fixture.inspection,
+        runtime: fixture.runtime,
+        paidAuthorityGate: fixture.paidAuthorityGate,
+        now: NOW,
+      }),
+    ).resolves.toMatchObject({ state: "DISPATCHED" });
+
+    const mismatch = setup();
+    mismatch.listOwned.mockResolvedValue([
+      {
+        requestKind: "VIDEO" as const,
+        requestId: REQUEST,
+        state: "ACTIVE" as const,
+        queueOrder: 1n,
+        version: 3,
+        attemptOrdinal: 2,
+        availableAt: NOW,
+        leaseId: "99999999-9999-4999-8999-999999999999",
+        leaseSlot: 1 as const,
+        leaseExpiresAt: "2026-08-25T13:00:00.000Z",
+      },
+    ]);
+    mismatch.readPlan.mockResolvedValue({
+      ...mismatch.persisted,
+      tasks: mismatch.persisted.tasks.map((task) =>
+        task.lane === "mage_image"
+          ? {
+              ...task,
+              attemptOrdinal: 2,
+              outputPrefix:
+                `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}` +
+                `/lane/mage-image/job/${deriveHostedDispatchIds({ generationRequestId: REQUEST, taskId: task.taskId, attemptOrdinal: 2 }).attemptId}`,
+            }
+          : task,
+      ),
+    });
+    await expect(
+      dispatchHostedPreparedGeneration({
+        scope,
+        generationRequestId: REQUEST,
+        inspection: mismatch.inspection,
+        runtime: mismatch.runtime,
+        paidAuthorityGate: mismatch.paidAuthorityGate,
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ADMISSION_REQUIRED" });
   });
 
   it("atomically rejects an exact approval replay before a second predispatch", async () => {
