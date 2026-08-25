@@ -2298,10 +2298,16 @@ async function main(): Promise<void> {
       );
     };
     const control = new RunPodControlClient({ apiKey });
-    // Repeat the catalog read in the mutating branch immediately before the first
-    // disposable template/endpoint request.  The earlier preflight is diagnostic;
-    // this fresh observation is the admission fence for availability and rate drift.
-    const selectedCatalogOffering = assertV207FreshCatalogOffering(await fetchCp07Catalog(apiKey));
+    // Repeat both catalog and inventory in the mutating branch immediately before the first
+    // disposable template/endpoint request. The orchestrator admission happens before every
+    // remote mutation; this second observation closes the capacity/inventory drift window at the
+    // RunPod mutation boundary itself.
+    const [freshCatalog, immediatePreMutationInventory] = await Promise.all([
+      fetchCp07Catalog(apiKey),
+      control.inventory(),
+    ]);
+    const selectedCatalogOffering = assertV207FreshCatalogOffering(freshCatalog);
+    assertV207PreflightInventory(immediatePreMutationInventory);
     const placement: RunPodV207Placement = {
       networkVolumeId: VOLUME_ID,
       dataCenterIds: [V207_RUNPOD_REGION],
@@ -2319,6 +2325,7 @@ async function main(): Promise<void> {
       volume_id_sha256: VOLUME,
       volume_id_hash: hashText(VOLUME_ID),
       image_attestation: imageAttestation,
+      immediate_pre_mutation_inventory_checked_at: immediatePreMutationInventory.checkedAt,
       selected_catalog_offering: {
         offering_id: selectedCatalogOffering.offeringId,
         region: selectedCatalogOffering.region,

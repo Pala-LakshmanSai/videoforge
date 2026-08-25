@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-07-attempt64-staged-config/v1",
+  "attempt": 64,
+  "stage": "seed_then_exact_endpoint_rotation_then_replacement",
+  "workers_min": 0,
+  "workers_max": 1,
+  "flashboot": true,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "region": "EU-RO-1",
+  "gpu_count": 1,
+  "container_disk_gb": 120,
+  "idle_timeout_seconds": 5,
+  "init_timeout_seconds": 800,
+  "execution_timeout_seconds": 2400,
+  "authority_ttl_seconds": 7200,
+  "endpoint_rotation": {
+    "required": true,
+    "maximum_sequential_endpoints": 2,
+    "maximum_concurrent_endpoints": 1,
+    "delete_seed_only_after_terminal_queue_and_two_snapshot_proof": true,
+    "require_two_stable_zero_resource_reads_before_recreate": true,
+    "require_distinct_endpoint_id_hash": true,
+    "retain_template_and_sealed_volume": true,
+    "replacement_dispatch_count": 1,
+    "redispatch": false
+  },
+  "volume": {
+    "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "size_gb": 50,
+    "region": "EU-RO-1",
+    "mount": "/runpod-volume",
+    "application_read_only": true
+  },
+  "runtime": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "model_root": "/runpod-volume/mage-model",
+    "scratch_root": "/tmp/videoforge-jobs"
+  },
+  "source": {
+    "endpoint_rotation_commit": "3f3bed48e69f149cf56ee6aa6c42cabb70528db4",
+    "anchor_rebind_commit": "9c9ca3476c976592ae73414e6a1e53cc0fcbb643",
+    "orchestrator_sha256": "sha256:0125d58b4692df05e49528c929203812e16890e308655e36c7b5158919ba94ef",
+    "qualification_sha256": "sha256:c8ce97719788f91bc546df8b6c251f99d8e3367db1c562b27e52c927cf0ec986",
+    "harness_sha256": "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853",
+    "deadline_mode_admission_commit": "aa0524f2d340cab1a4c4693584dc626e117f7d2c",
+    "read_only_admission_sha256": "sha256:305944852bcdef09415e1c481bb249ba3cbacbcd218308c38a7d7f5cce6ab0fa"
+  },
+  "expected_old_anchor": {
+    "version_id_sha256": "sha256:f6aa5261478b4ce2a54a84a5ddad7ea4af32327f756dc15f73a399000b41c643",
+    "record_sha256": "sha256:54beafecb8d70bf99d0c3f84cee00d6bcb107e202786b1d8f7fe5bb14b33085d"
+  },
+  "admission": {
+    "full_read_only_before_remote_mutation": true,
+    "repeat_catalog_and_inventory_before_first_runpod_mutation": true,
+    "gpu_allowlist": [
+      "NVIDIA GeForce RTX 4090"
+    ],
+    "automatic_gpu_fallback": false
+  }
+}

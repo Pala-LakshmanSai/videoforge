@@ -1,0 +1,76 @@
+{
+  "schema_version": "videoforge.v2-07-attempt64-deadline-mode-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 64,
+  "status": "PROVIDER_FREE_CANDIDATE_READY_PENDING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909",
+  "preflight_sha256": "sha256:db78eac734c87bf2b114aff4431337306d142ff87af987599632786f8cbd7929",
+  "max1_sha256": "sha256:3c00c51f851aa7fe312042fb69c3b38e6ed47566ad4c9b2e05f6be632daa499e",
+  "max2_sha256": "sha256:1faf6ea1b644e93f1a3550d3c9853d95b061520d1388bb3d0d31e6ec8b05381a",
+  "lineage": {
+    "deadline_mode_admission_commit": "aa0524f2d340cab1a4c4693584dc626e117f7d2c",
+    "endpoint_rotation_commit": "3f3bed48e69f149cf56ee6aa6c42cabb70528db4",
+    "orchestrator_source_sha256": "sha256:0125d58b4692df05e49528c929203812e16890e308655e36c7b5158919ba94ef",
+    "read_only_admission_source_sha256": "sha256:305944852bcdef09415e1c481bb249ba3cbacbcd218308c38a7d7f5cce6ab0fa",
+    "live_qualification_source_sha256": "sha256:c8ce97719788f91bc546df8b6c251f99d8e3367db1c562b27e52c927cf0ec986",
+    "qualification_harness_source_sha256": "sha256:a1184497be1fc046008ca01a30903ee4dff165da990c6218b22acdcf1e304853",
+    "attempt63_authority_reused": false,
+    "attempt63_cap_reused": false,
+    "attempt63_proposal_reused": false
+  },
+  "deadline_mode_contract": {
+    "full_read_only_admission_before_remote_mutation": true,
+    "immediate_second_catalog_inventory_check_before_runpod_mutation": true,
+    "exact_gpu_allowlist": ["NVIDIA GeForce RTX 4090"],
+    "gpu_fallback_enabled": false,
+    "capacity_failure_remote_mutations": 0,
+    "runner_catalog_recheck_preserved": true
+  },
+  "repair_contract": {
+    "seed_endpoint_deleted_after_terminal_proof": true,
+    "two_stable_zero_resource_reads_before_recreate": true,
+    "fresh_endpoint_id_required": true,
+    "fresh_endpoint_bound_before_replacement_authority": true,
+    "replacement_dispatch_count": 1,
+    "same_signed_pod_still_rejected": true,
+    "acceptance_relaxed": false,
+    "redispatch": false,
+    "retained_volume_mutation": false
+  },
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_recorded": false,
+    "maximum_cumulative_finite_spend_usd": null,
+    "requested_maximum_cumulative_finite_spend_usd": 4.5,
+    "anchor_refresh_authorized": null,
+    "endpoint_rotation_authorized": null,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "authority_file": null,
+    "v2_08_authorized": false
+  },
+  "provider_state": {
+    "zero_compute_and_disposables": true,
+    "two_existing_volumes_retained": true,
+    "billing_baseline_usd": 2.095889555552276,
+    "availability": "LOW",
+    "exact_version_bound_disabled_route": true,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "validation": {
+    "orchestrator_and_live_tests_passed": 97,
+    "web_typecheck_passed": true,
+    "context_validation_required_before_handoff": true
+  },
+  "remaining_gates": [
+    "fresh exact approval of proposal sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909 and a fresh USD 4.5 numeric cap",
+    "postapproval preexecution reconfirmation through the full read-only admission",
+    "one bounded live qualification with complete output, timing, cost, reader, volume-integrity, cleanup and zero-worker proof"
+  ],
+  "recorded_at": "2026-08-25T10:40:00Z",
+  "v2_08_started": false
+}
