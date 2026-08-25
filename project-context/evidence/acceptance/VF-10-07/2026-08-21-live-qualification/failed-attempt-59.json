@@ -1,0 +1,52 @@
+{
+  "schema_version": "videoforge.v2-07-failed-attempt/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 59,
+  "result": "NOT_QUALIFIED_ATTEMPT59_PRE_ROUTE_STABILITY_UNCONFIRMED_NO_MUTATION",
+  "proposal_sha256": "sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647",
+  "approved_preexecution_authority_sha256": "sha256:9c8790c89c01b0b152405c59290985c20b7f07ec56ce922fc6a4fb836db558fc",
+  "consumed_authority_sha256": "sha256:d261d5a2a191aabbdf73154b424517f5142097f3af02ed51511d853430a5857c",
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "started_at": "2026-08-25T04:52:03.269Z",
+  "failed_at": "2026-08-25T04:52:30.628Z",
+  "failure_code": "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED",
+  "failure_stage": "pre_mutation_disabled_route_stability_window",
+  "orchestrator_evidence": "attempt59-live-orchestrator.json",
+  "orchestrator_evidence_sha256": "sha256:e1b2e91c7725e5d1e26cb9bf1ec461d526f1dee81fb618a9c378f4d380239aa8",
+  "diagnosis": "attempt59-pre-route-stability-diagnosis.json",
+  "diagnosis_sha256": "sha256:913f27c603613d1767d5f33cb6eb3e29866d5b8f3e05c0d3c7c028b949bcc265",
+  "reconciliation": "attempt59-reconciliation-observation.json",
+  "reconciliation_sha256": "sha256:d9fd8129d3787939d120eb6997b099b25ede08a545283b638ec82d9859492928",
+  "execution": {
+    "cloudflare_worker_mutations": 0,
+    "runpod_mutations": 0,
+    "jobs_submitted": 0,
+    "gpu_use_occurred": false,
+    "accepted_units": 0,
+    "outputs": 0,
+    "receipts": 0,
+    "observed_incremental_spend_usd": 0
+  },
+  "cleanup": {
+    "separate_cleanup_artifact_required": false,
+    "reason": "remote mutation never began",
+    "worker_rollback_skipped_no_mutation": true,
+    "disabled_route_probe_skipped_no_mutation": true,
+    "protected_config_marker_reverted": true,
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "runpod_three_stable_zero_reads": true
+  },
+  "repair": {
+    "commit": "42a5a522402e71aef1cee9b714e4cb54c571ceb3",
+    "orchestrator_source_sha256": "sha256:ababaea25cca2e5406d669b26d8c2a267247d0a1b8f3726bf0c8327c0cdb8400",
+    "orchestrator_test_sha256": "sha256:9c5e4057089eea350d7c3dea184216f75ec1812870ba5e2147e44b69dd0e5136",
+    "focused_tests_passed": 56,
+    "typescript_passed": true
+  },
+  "v2_07_qualified": false,
+  "v2_08_authorized": false,
+  "next_boundary": "fresh Attempt60 proposal and exact approval required; no Attempt59 retry"
+}

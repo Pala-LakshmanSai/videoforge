@@ -21,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647" as const;
+  "sha256:aa67f635d7ff9d167339b23a0ae9b389d5e4beeec688c56877d44607e426176b" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -37,7 +37,7 @@ export const V207_ANCHOR_REFRESH_HELPER_SHA256 =
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "61919013c74f71995cf1631ce6ac56e633708dce" as const;
+  "42a5a522402e71aef1cee9b714e4cb54c571ceb3" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -84,15 +84,15 @@ export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
 // newest-seven window. Keep the immutable authority in evidence for audit only;
 // remove executable approval and cap so the attempt cannot be replayed.
 export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:9c8790c89c01b0b152405c59290985c20b7f07ec56ce922fc6a4fb836db558fc";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4;
+  null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap.  Keep the
  * current provider-free candidate null; a future exact authority may change
  * this to true in its own immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = true;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;

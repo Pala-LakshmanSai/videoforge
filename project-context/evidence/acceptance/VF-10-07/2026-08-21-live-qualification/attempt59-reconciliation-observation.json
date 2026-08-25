@@ -1,0 +1,50 @@
+{
+  "schema_version": "videoforge.v2-07-attempt59-reconciliation/v1",
+  "checkpoint": "V2-07",
+  "attempt": 59,
+  "checked_at": "2026-08-25T04:54:00.388Z",
+  "result": "THREE_STABLE_READS_ZERO_COMPUTE_NO_MUTATION",
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "gpu_use_occurred": false,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 1.9971928337181453,
+    "final_endpoint_spend_usd": 1.9971928337181453,
+    "incremental_spend_usd": 0,
+    "historical_maximum_cumulative_finite_spend_usd": 4,
+    "within_historical_approved_cap": true,
+    "settlement": "THREE_STABLE_READS",
+    "provider_billing_may_lag": true
+  },
+  "cloudflare": {
+    "worker_mutation_occurred": false,
+    "worker_rollback_skipped_no_mutation": true,
+    "disabled_route_probe_skipped_no_mutation": true,
+    "captured_pre_mutation_route": "POST_404_V207_ROUTE_DISABLED_EXACT_ACTIVE_VERSION_BOUND",
+    "active_version_id_sha256": "sha256:1d830477cfdc2d91240f1226bc3556ec73067018f115b06dcc7fc4137fe9028f",
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "refresh_marker_reverted": true
+  },
+  "v2_07_qualified": false,
+  "v2_08_authorized": false
+}

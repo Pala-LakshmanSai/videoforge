@@ -2,18 +2,22 @@
 
 ## Active handoff — read this section first
 
-Attempt59 is approved once and pending fresh post-approval preflight/execution. Proposal
-`sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647` binds post-cancel
-terminal-inventory repair `8bb6583`, refreshed anchor `74fbe8d`, new max1/max2 definitions, and
-Attempt58 clean closure. Fresh RunPod truth at `2026-08-25T04:00:10.595Z` is zero compute and
-disposables, both retained volumes, MEDIUM RTX 4090 EU-RO-1 availability, `$1.10/GPU-hour` Flex,
-`$0.74/hour` Secure reference, and billing baseline `1.8568953356298152`. Fresh Cloudflare truth at
-`2026-08-25T04:09:29.719Z` proves the exact retained anchor, absent signer, protected config, and
-three exact version-bound `404 V207_ROUTE_DISABLED` reads. All provider truth must be reconfirmed
-after approval before mutation. Mutation/GPU/spend is authorized only inside the exact `$4`
-bounded sequence. Authority
-`sha256:9c8790c89c01b0b152405c59290985c20b7f07ec56ce922fc6a4fb836db558fc` is single-use and
-unconsumed; V2-08 remains forbidden.
+Attempt60 is a provider-free candidate pending fresh exact approval. Proposal
+`sha256:aa67f635d7ff9d167339b23a0ae9b389d5e4beeec688c56877d44607e426176b` binds pre-route
+transport-gap repair `42a5a52`, post-cancel repair `8bb6583`, the exact retained Cloudflare anchor,
+and new max1/max2 definitions. Fresh post-Attempt59 RunPod truth is zero compute/disposables, both
+retained volumes, HIGH RTX 4090 EU-RO-1 availability, unchanged `$1.10/GPU-hour` Flex and
+`$0.74/hour` Secure reference rates, and billing baseline `1.9971928337181453`. Authority,
+executable cap, anchor refresh, mutation, GPU use, and V2-08 are null/forbidden until exact approval.
+
+Attempt59 is closed `NOT_QUALIFIED`; its exact single-use authority is consumed and non-reusable.
+The first pre-mutation route read was exact version-bound `404 V207_ROUTE_DISABLED`, then a later
+stability probe failed as `V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED`. No Worker or RunPod
+mutation, job, GPU use, output, receipt, or observed incremental spend occurred. The protected
+config marker reverted to the exact mode-0600 baseline, and three stable RunPod reads prove zero
+compute/disposables plus both volumes. Repair `42a5a52` resets only bounded transport gaps and
+requires a fresh full 16-match window inside 120 seconds; malformed/status/version mismatches still
+fail immediately. Closure is `failed-attempt-59.json`; V2-08 remains forbidden.
 
 Attempt58 is closed `NOT_QUALIFIED`. It completed the probe, 31-unit replacement resume, cold, and
 warm batches with 96 durable outputs/receipts/readbacks, proved duplicate same-job delivery, and

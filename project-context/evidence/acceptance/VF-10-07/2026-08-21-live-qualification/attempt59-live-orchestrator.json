@@ -1,0 +1,100 @@
+{
+  "schema_version": "videoforge-v207-live-orchestrator/v1",
+  "worker_name": "videoforge-v2-06-staging",
+  "route": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port",
+  "config_path": "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+  "authority": {
+    "image_digest": "sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59",
+    "source_commit": "a7b7a937d08dc9032b8922cca71c602195f3094c",
+    "proposal_sha256": "sha256:8a40ae38c44362039ee9f271108b41b9f55c5457256944ea98bf1a322cb4d647",
+    "cap_usd": 4,
+    "anchor_refresh_authorized": true
+  },
+  "events": [
+    {
+      "event": "orchestration_started",
+      "at": "2026-08-25T04:52:03.269Z",
+      "detail": {
+        "local_disk_available_bytes": 3472576512
+      }
+    },
+    {
+      "event": "rollback_anchor_refresh_invocation_checked",
+      "at": "2026-08-25T04:52:03.270Z",
+      "detail": {
+        "activation": "two-phase-v1",
+        "authority_bound": true,
+        "environment_bound": true
+      }
+    },
+    {
+      "event": "rollback_anchor_refresh_marker_applied",
+      "at": "2026-08-25T04:52:03.306Z",
+      "detail": {
+        "sha256": "sha256:c643af2fe7d6325396b2527bcbe92d9422c6126aa3328530b8dfaa36b7bc08e5",
+        "mode": 384
+      }
+    },
+    {
+      "event": "rollback_anchor_refresh_authorized",
+      "at": "2026-08-25T04:52:03.306Z",
+      "detail": {
+        "activation": "two-phase-v1",
+        "authority_bound": true,
+        "config_bound": true
+      }
+    },
+    {
+      "event": "rollback_anchor_refresh_old_anchor_exact",
+      "at": "2026-08-25T04:52:06.735Z",
+      "detail": {
+        "version_id_hash": "sha256:1d830477cfdc2d91240f1226bc3556ec73067018f115b06dcc7fc4137fe9028f",
+        "rollback_anchor_sha256": "sha256:05054aeac4e1f20213f873463f29a19da3910ad674a65c59f13d04b0cb601b50"
+      }
+    },
+    {
+      "event": "captured_worker_version",
+      "at": "2026-08-25T04:52:09.372Z",
+      "detail": {
+        "version_id_hash": "sha256:1d830477cfdc2d91240f1226bc3556ec73067018f115b06dcc7fc4137fe9028f",
+        "rollback_anchor_sha256": "sha256:05054aeac4e1f20213f873463f29a19da3910ad674a65c59f13d04b0cb601b50",
+        "recent_version_index": 7,
+        "recent_version_window": 10,
+        "retained": true
+      }
+    },
+    {
+      "event": "captured_pre_mutation_route",
+      "at": "2026-08-25T04:52:09.473Z",
+      "detail": {
+        "status": 404,
+        "code": "V207_ROUTE_DISABLED",
+        "worker_version_id_hash": "sha256:1d830477cfdc2d91240f1226bc3556ec73067018f115b06dcc7fc4137fe9028f"
+      }
+    },
+    {
+      "event": "orchestration_failed",
+      "at": "2026-08-25T04:52:30.628Z",
+      "detail": {
+        "code": "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED"
+      }
+    },
+    {
+      "event": "worker_rollback_skipped_no_mutation",
+      "at": "2026-08-25T04:52:30.631Z"
+    },
+    {
+      "event": "disabled_route_probe_skipped_no_mutation",
+      "at": "2026-08-25T04:52:30.634Z"
+    },
+    {
+      "event": "rollback_anchor_refresh_marker_reverted",
+      "at": "2026-08-25T04:52:30.649Z",
+      "detail": {
+        "sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+        "mode": 384
+      }
+    }
+  ],
+  "result": "FAILED"
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "videoforge.v2-07-attempt59-pre-route-stability-diagnosis/v1",
+  "checkpoint": "V2-07",
+  "attempt": 59,
+  "result": "PROVIDER_FREE_DIAGNOSIS_AND_NARROW_REPAIR_COMPLETE",
+  "failure_code": "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_UNCONFIRMED",
+  "failure_stage": "pre_mutation_disabled_route_stability_window",
+  "proven": {
+    "initial_route_status": 404,
+    "initial_route_code": "V207_ROUTE_DISABLED",
+    "initial_route_version_matches_captured_anchor": true,
+    "remote_mutation_occurred": false,
+    "runpod_job_submitted": false,
+    "gpu_use_occurred": false,
+    "observed_incremental_spend_usd": 0
+  },
+  "not_proven": {
+    "exact_lower_level_probe_failure": true,
+    "cloudflare_service_defect": true
+  },
+  "timing_inference": "The approximately 21-second gap is consistent with exact probes followed by one 15-second route transport timeout, but the pre-repair runner collapsed the lower-level error and the cause is not claimed as proven.",
+  "repair": {
+    "commit": "42a5a522402e71aef1cee9b714e4cb54c571ceb3",
+    "orchestrator_source_sha256": "sha256:ababaea25cca2e5406d669b26d8c2a267247d0a1b8f3726bf0c8327c0cdb8400",
+    "orchestrator_test_sha256": "sha256:9c5e4057089eea350d7c3dea184216f75ec1812870ba5e2147e44b69dd0e5136",
+    "transport_gap_policy": "reset consecutive matches and require a fresh full 16 exact fingerprints inside the 120-second hard bound",
+    "transport_exhaustion_code": "V207_ROLLBACK_ANCHOR_REFRESH_PRE_ROUTE_TRANSPORT_EXHAUSTED",
+    "malformed_status_code_and_version_mismatches_remain_immediate_fail_closed": true,
+    "sensitive_probe_details_persisted": false,
+    "focused_tests_passed": 56,
+    "typescript_passed": true
+  },
+  "authority": {
+    "attempt59_consumed": true,
+    "reusable": false,
+    "fresh_proposal_and_exact_approval_required": true
+  },
+  "v2_07_qualified": false,
+  "v2_08_authorized": false
+}
