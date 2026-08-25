@@ -1888,26 +1888,63 @@ export class RunPodV207QualificationHarness {
     boundary: RunPodV207ProcessReplacementBoundary,
     replacementIdentity: RunPodV207WorkerProcessIdentity,
   ): void {
-    if (
-      boundary.schema_version !== "videoforge-v207-process-replacement-boundary/v1" ||
-      boundary.terminal_scale_zero_confirmed !== true ||
-      !SHA256.test(boundary.seed_worker_id_sha256) ||
-      !SHA256.test(boundary.seed_pod_id_sha256) ||
-      !SHA256.test(boundary.terminal_provider_pod_id_sha256) ||
-      boundary.seed_worker_id_sha256 !== boundary.seed_pod_id_sha256 ||
-      boundary.terminal_provider_pod_id_sha256 !== boundary.seed_pod_id_sha256 ||
-      boundary.terminal_provider_identity_source !== "terminal_pod_record" ||
-      !Number.isSafeInteger(boundary.terminal_worker_record_count) ||
-      boundary.terminal_worker_record_count < 0 ||
-      !Number.isSafeInteger(boundary.terminal_pod_record_count) ||
-      boundary.terminal_pod_record_count < 1 ||
-      replacementIdentity.schema_version !== "videoforge-v207-worker-process-identity/v1" ||
-      !SHA256.test(replacementIdentity.worker_id_sha256) ||
-      !SHA256.test(replacementIdentity.pod_id_sha256) ||
-      replacementIdentity.worker_id_sha256 !== replacementIdentity.pod_id_sha256 ||
-      replacementIdentity.worker_id_sha256 === boundary.seed_worker_id_sha256 ||
-      replacementIdentity.pod_id_sha256 === boundary.seed_pod_id_sha256
-    ) {
+    const boundarySchemaValid =
+      boundary.schema_version === "videoforge-v207-process-replacement-boundary/v1";
+    const boundarySeedHashesValid =
+      SHA256.test(boundary.seed_worker_id_sha256) && SHA256.test(boundary.seed_pod_id_sha256);
+    const boundarySeedAxesEqual = boundary.seed_worker_id_sha256 === boundary.seed_pod_id_sha256;
+    const boundaryProviderPodHashValid = SHA256.test(boundary.terminal_provider_pod_id_sha256);
+    const boundaryProviderPodMatchesSeed =
+      boundary.terminal_provider_pod_id_sha256 === boundary.seed_pod_id_sha256;
+    const boundaryCountsValid =
+      Number.isSafeInteger(boundary.terminal_worker_record_count) &&
+      boundary.terminal_worker_record_count >= 0 &&
+      Number.isSafeInteger(boundary.terminal_pod_record_count) &&
+      boundary.terminal_pod_record_count >= 1;
+    const replacementSchemaValid =
+      replacementIdentity.schema_version === "videoforge-v207-worker-process-identity/v1";
+    const replacementHashesValid =
+      SHA256.test(replacementIdentity.worker_id_sha256) &&
+      SHA256.test(replacementIdentity.pod_id_sha256);
+    const replacementAxesEqual =
+      replacementIdentity.worker_id_sha256 === replacementIdentity.pod_id_sha256;
+    const seedReplacementWorkerHashEqual =
+      replacementIdentity.worker_id_sha256 === boundary.seed_worker_id_sha256;
+    const seedReplacementPodHashEqual =
+      replacementIdentity.pod_id_sha256 === boundary.seed_pod_id_sha256;
+    const identityValid =
+      boundarySchemaValid &&
+      boundary.terminal_scale_zero_confirmed === true &&
+      boundarySeedHashesValid &&
+      boundarySeedAxesEqual &&
+      boundaryProviderPodHashValid &&
+      boundaryProviderPodMatchesSeed &&
+      boundary.terminal_provider_identity_source === "terminal_pod_record" &&
+      boundaryCountsValid &&
+      replacementSchemaValid &&
+      replacementHashesValid &&
+      replacementAxesEqual &&
+      !seedReplacementWorkerHashEqual &&
+      !seedReplacementPodHashEqual;
+    if (!identityValid) {
+      // Keep failure evidence bounded and redaction-safe. These fixed predicates identify which
+      // identity contract failed without persisting either provider or signed identity hashes.
+      this.mark("process_replacement_identity_not_distinct", {
+        boundary_schema_valid: boundarySchemaValid,
+        boundary_terminal_scale_zero_confirmed: boundary.terminal_scale_zero_confirmed === true,
+        boundary_seed_hashes_valid: boundarySeedHashesValid,
+        boundary_seed_axes_equal: boundarySeedAxesEqual,
+        boundary_provider_pod_hash_valid: boundaryProviderPodHashValid,
+        boundary_provider_pod_matches_seed: boundaryProviderPodMatchesSeed,
+        boundary_provider_identity_source_valid:
+          boundary.terminal_provider_identity_source === "terminal_pod_record",
+        boundary_counts_valid: boundaryCountsValid,
+        replacement_schema_valid: replacementSchemaValid,
+        replacement_hashes_valid: replacementHashesValid,
+        replacement_axes_equal: replacementAxesEqual,
+        seed_replacement_worker_hash_equal: seedReplacementWorkerHashEqual,
+        seed_replacement_pod_hash_equal: seedReplacementPodHashEqual,
+      });
       throw new RunPodControlError("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
     }
     this.mark("process_replacement_identity_distinct", {

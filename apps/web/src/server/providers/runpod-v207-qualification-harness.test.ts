@@ -1669,6 +1669,89 @@ describe("V2-07 qualification harness", () => {
     ).toThrow("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
   });
 
+  it("records only bounded predicates when the replacement reuses the same signed Pod", async () => {
+    const instance = makeHarness(harnessFetch());
+    const seedPodHash = hashValue("pod_seed");
+    const boundary = {
+      schema_version: "videoforge-v207-process-replacement-boundary/v1" as const,
+      seed_job_id_sha256: hashValue("job_seed"),
+      seed_worker_id_sha256: seedPodHash,
+      seed_pod_id_sha256: seedPodHash,
+      terminal_provider_pod_id_sha256: seedPodHash,
+      terminal_provider_identity_source: "terminal_pod_record" as const,
+      terminal_worker_record_count: 3,
+      terminal_pod_record_count: 3,
+      terminal_scale_zero_confirmed: true as const,
+    };
+
+    expect(() =>
+      instance.assertProcessReplacementIdentity(boundary, {
+        schema_version: "videoforge-v207-worker-process-identity/v1",
+        worker_id_sha256: seedPodHash,
+        pod_id_sha256: seedPodHash,
+      }),
+    ).toThrow("RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT");
+
+    const rejection = (await instance.evidence()).events.find(
+      (event) => event.event === "process_replacement_identity_not_distinct",
+    );
+    expect(rejection).toEqual({
+      event: "process_replacement_identity_not_distinct",
+      boundary_schema_valid: true,
+      boundary_terminal_scale_zero_confirmed: true,
+      boundary_seed_hashes_valid: true,
+      boundary_seed_axes_equal: true,
+      boundary_provider_pod_hash_valid: true,
+      boundary_provider_pod_matches_seed: true,
+      boundary_provider_identity_source_valid: true,
+      boundary_counts_valid: true,
+      replacement_schema_valid: true,
+      replacement_hashes_valid: true,
+      replacement_axes_equal: true,
+      seed_replacement_worker_hash_equal: true,
+      seed_replacement_pod_hash_equal: true,
+    });
+    expect(JSON.stringify(rejection)).not.toContain(seedPodHash);
+  });
+
+  it("accepts a distinct signed Pod without recording an identity rejection", async () => {
+    const instance = makeHarness(harnessFetch());
+    const seedPodHash = hashValue("pod_seed");
+
+    expect(() =>
+      instance.assertProcessReplacementIdentity(
+        {
+          schema_version: "videoforge-v207-process-replacement-boundary/v1",
+          seed_job_id_sha256: hashValue("job_seed"),
+          seed_worker_id_sha256: seedPodHash,
+          seed_pod_id_sha256: seedPodHash,
+          terminal_provider_pod_id_sha256: seedPodHash,
+          terminal_provider_identity_source: "terminal_pod_record",
+          terminal_worker_record_count: 3,
+          terminal_pod_record_count: 3,
+          terminal_scale_zero_confirmed: true,
+        },
+        {
+          schema_version: "videoforge-v207-worker-process-identity/v1",
+          worker_id_sha256: hashValue("pod_replacement"),
+          pod_id_sha256: hashValue("pod_replacement"),
+        },
+      ),
+    ).not.toThrow();
+
+    const events = (await instance.evidence()).events;
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: "process_replacement_identity_distinct",
+        distinct_worker_identity: true,
+        distinct_process_identity: true,
+      }),
+    );
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ event: "process_replacement_identity_not_distinct" }),
+    );
+  });
+
   it("does not resurrect an owned job on exact terminal duplicate replay", async () => {
     const fetch = terminalScaleZeroFetch({
       healthWorkersBeforeDispatch: {
