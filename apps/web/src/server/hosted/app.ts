@@ -4,6 +4,7 @@ import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { handleHostedProductRequest } from "./product";
+import { hostedServerlessCallbackDisabledResponse } from "./hosted-serverless-callback";
 import {
   deleteHostedR2ObjectsAndVerify,
   hostedCompleteAttemptArtifactKeys,
@@ -974,6 +975,32 @@ export async function handleHostedRequest(
   }
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/queue") {
     return handleHostedQueue(request, config, executionContext);
+  }
+  const serverlessCallbackMatch =
+    /^\/api\/v2\/serverless-attempts\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/output-callback$/u.exec(
+      url.pathname,
+    );
+  if (serverlessCallbackMatch && request.method === "POST") {
+    if (!sameOriginBrowserWrite(request, config)) {
+      return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+    }
+    const pool = createNeonPool(config.neon.databaseUrl);
+    try {
+      const session = await hostedSession(request, config, pool, executionContext);
+      if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+      const scope = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
+        session.session.token,
+      ]);
+      if (
+        typeof scope.rows[0]?.account_id !== "string" ||
+        typeof scope.rows[0]?.workspace_id !== "string"
+      ) {
+        return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
+      }
+      return hostedServerlessCallbackDisabledResponse();
+    } finally {
+      await pool.end();
+    }
   }
   if (request.method === "POST" && url.pathname === "/api/v2/cpu-attempts") {
     return handleCpuSubmission(request, environment, config, executionContext);

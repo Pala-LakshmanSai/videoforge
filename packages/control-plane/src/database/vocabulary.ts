@@ -204,6 +204,10 @@ export const RESERVED_LEGACY_WORKSPACE_ID = "ffffffff-ffff-4fff-8fff-00000000001
 /** The session setting every application transaction binds to its trusted principal. */
 export const TENANT_PRINCIPAL_SETTING = "videoforge.account_id" as const;
 
+/** The only hosted application capability allowed to append an immutable render plan. */
+export const HOSTED_RENDER_PLAN_APPEND_FUNCTION_NAME =
+  "videoforge_append_hosted_render_plan" as const;
+
 export const GLOBAL_SESSION_LANES = ["mage_image", "echo_avatar"] as const;
 export type GlobalSessionLane = (typeof GLOBAL_SESSION_LANES)[number];
 

@@ -222,6 +222,12 @@
       "name": "hosted_serverless_output_barrier",
       "filename": "0037_hosted_serverless_output_barrier.sql",
       "sha256": "sha256:e21a04350d2685f231bbfa8ac9a1109a22194ab0e227d49a9dfa4c68d84aa9ef"
+    },
+    {
+      "version": 38,
+      "name": "hosted_render_plan_append_contract",
+      "filename": "0038_hosted_render_plan_append_contract.sql",
+      "sha256": "sha256:de64f32ab2b07d9e3448e29f466ea6a26e48f507cab12800abc2efd7393afe00"
     }
   ]
 }
