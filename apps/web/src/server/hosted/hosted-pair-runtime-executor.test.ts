@@ -51,6 +51,13 @@ function envelope(lane: HostedPairLane) {
   } as const;
 }
 
+function unsigned(lane: HostedPairLane) {
+  const document = { ...envelope(lane).document } as Record<string, unknown>;
+  delete document.authority_sha256;
+  delete document.signature;
+  return document;
+}
+
 function fixture(run: (lane: HostedPairLane) => unknown) {
   let mageAssigned = false;
   const finishSend = vi.fn(async (input: { lane: HostedPairLane; outcome: string }) => {
@@ -60,32 +67,24 @@ function fixture(run: (lane: HostedPairLane) => unknown) {
     prepare: vi.fn(async () => {
       const prepared = await Promise.all(
         (["mage_image", "soulx_avatar"] as const).map(async (lane) => {
-          const {
-            authority_sha256: _authority,
-            signature: _signature,
-            ...unsigned
-          } = envelope(lane).document;
-          return { ...claims[lane], expectedEnvelopeSha256: await sha256CanonicalJson(unsigned) };
+          return {
+            ...claims[lane],
+            expectedEnvelopeSha256: await sha256CanonicalJson(unsigned(lane)),
+          };
         }),
       );
       return prepared as [(typeof prepared)[0], (typeof prepared)[1]];
     }),
     beginSend: vi.fn(async (input: Parameters<HostedPairRuntimeStore["beginSend"]>[0]) => {
       if (input.lane === "soulx_avatar" && !mageAssigned) throw new Error("soulx before mage");
-      const {
-        authority_sha256: _authority,
-        signature: _signature,
-        ...unsigned
-      } = envelope(input.lane).document;
       return {
         ...claims[input.lane],
-        expectedEnvelopeSha256: await sha256CanonicalJson(unsigned),
+        expectedEnvelopeSha256: await sha256CanonicalJson(unsigned(input.lane)),
       };
     }),
     finishSend,
     inspect: vi.fn(),
   };
-  const settlementStore = { settle: vi.fn() };
   const transports = {
     mage_image: { run: vi.fn(async () => run("mage_image")), status: vi.fn(), cancel: vi.fn() },
     soulx_avatar: {
@@ -94,15 +93,10 @@ function fixture(run: (lane: HostedPairLane) => unknown) {
       cancel: vi.fn(),
     },
   };
-  const executor = new HostedPairRuntimeExecutor(
-    store,
-    transports as never,
-    {
-      verifyPair: vi.fn(async () => true),
-    },
-    settlementStore,
-  );
-  return { executor, store, settlementStore, finishSend, transports };
+  const executor = new HostedPairRuntimeExecutor(store, transports as never, {
+    verifyPair: vi.fn(async () => true),
+  });
+  return { executor, store, finishSend, transports };
 }
 
 const input = {
@@ -116,14 +110,9 @@ const input = {
 describe("hosted pair runtime executor", () => {
   it("rejects the signed pair before any send-state mutation when verification fails", async () => {
     const f = fixture((lane) => ({ id: `${lane}-job` }));
-    const executor = new HostedPairRuntimeExecutor(
-      f.store,
-      f.transports as never,
-      {
-        verifyPair: vi.fn(async () => false),
-      },
-      f.settlementStore,
-    );
+    const executor = new HostedPairRuntimeExecutor(f.store, f.transports as never, {
+      verifyPair: vi.fn(async () => false),
+    });
     await expect(executor.execute(input)).rejects.toMatchObject({
       code: "HOSTED_PAIR_SIGNATURE_INVALID",
     });
@@ -202,36 +191,5 @@ describe("hosted pair runtime executor", () => {
     expect(f.finishSend).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: "REQUEST_REJECTED" }),
     );
-  });
-
-  it("reconciles assigned jobs by exact id, cancels nonterminal work, then settles once", async () => {
-    const f = fixture((lane) => ({ id: `${lane}-job` }));
-    f.store.inspect = vi.fn(async () =>
-      (["mage_image", "soulx_avatar"] as const).map((lane) => ({
-        lane,
-        attemptId: `${lane}-attempt`,
-        attemptState: "ASSIGNED",
-        outboxState: "ASSIGNED",
-        providerJobId: `${lane}-job`,
-        deploymentId: claims[lane].deploymentId,
-        dispatchTokenSha256: hash,
-        pairPhase: "BOTH_ASSIGNED",
-        recoveryAction: "RECONCILE_ASSIGNED",
-      })),
-    );
-    for (const lane of ["mage_image", "soulx_avatar"] as const) {
-      f.transports[lane].status.mockResolvedValue({ id: `${lane}-job`, status: "IN_PROGRESS" });
-      f.transports[lane].cancel.mockResolvedValue({ id: `${lane}-job`, status: "CANCELLED" });
-    }
-    await expect(
-      f.executor.reconcileAndSettle({
-        accountId: "account",
-        workspaceId: "workspace",
-        generationRequestId: "request",
-      }),
-    ).resolves.toEqual({ state: "SETTLED" });
-    expect(f.settlementStore.settle).toHaveBeenCalledTimes(1);
-    expect(f.transports.mage_image.run).not.toHaveBeenCalled();
-    expect(f.transports.soulx_avatar.run).not.toHaveBeenCalled();
   });
 });

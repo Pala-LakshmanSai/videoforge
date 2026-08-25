@@ -18,6 +18,7 @@ test("0043 exposes only narrow SECURITY DEFINER pair capabilities", async () => 
     "videoforge_begin_hosted_pair_send",
     "videoforge_finish_hosted_pair_send",
     "videoforge_inspect_hosted_pair_runtime",
+    "videoforge_load_hosted_pair_activation",
   ]) {
     assert.match(sql, new RegExp(`CREATE FUNCTION public\\.${name}`, "u"));
     assert.match(sql, new RegExp(`${name}[\\s\\S]*SECURITY DEFINER`, "u"));
@@ -49,6 +50,12 @@ test("0043 persists one-shot send ordering and fail-closed outcomes", async () =
   assert.match(sql, /state='PERMANENT_FAILED',terminal_at=db_now/u);
   assert.match(sql, /phase='SETTLED'/u);
   assert.match(sql, /state='RELEASED'/u);
+  assert.match(sql, /hosted_serverless_output_barrier_completions completion/u);
+  assert.match(sql, /WHEN 'COMPLETED' THEN 'SUCCEEDED'/u);
+  assert.match(sql, /CASE WHEN all_completed THEN 'RENDERING' ELSE 'FAILED' END/u);
+  assert.match(sql, /video_runtime_accepted_units/u);
+  assert.match(sql, /state='FAILED'.*NOT all_completed/su);
+  assert.match(sql, /HOSTED_PAIR_OUTPUTS_ACCEPTED/u);
   assert.doesNotMatch(sql, /SET state='READY_TO_DISPATCH'/u);
 });
 
@@ -58,4 +65,6 @@ test("0043 reuses the full 0042 authority and token recovery predicate", async (
   assert.match(sql, /recovered_count<>2/u);
   assert.match(sql, /pgp_sym_decrypt/u);
   assert.match(sql, /dispatch_token_sha256/u);
+  assert.match(sql, /b\.payload->'envelope'/u);
+  assert.match(sql, /JOIN public\.hosted_lane_batches b/u);
 });

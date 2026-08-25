@@ -42,7 +42,7 @@ REVOKE ALL ON FUNCTION public.videoforge_hosted_pair_assignment_uuid(uuid) FROM 
 CREATE FUNCTION public.videoforge_prepare_hosted_pair_send(uuid,uuid,uuid)
 RETURNS TABLE(lane text,attempt_id uuid,dispatch_token text,dispatch_token_sha256 text,
   endpoint_id_sha256 text,request_body_sha256 text,deployment_id uuid,expected_envelope_sha256 text,
-  attempt_state text,outbox_state text,provider_job_id text)
+  attempt_state text,outbox_state text,provider_job_id text,envelope_template jsonb)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
 DECLARE prepared_count integer; prepare_allowed boolean;
 BEGIN
@@ -65,11 +65,13 @@ BEGIN
   END IF;
   RETURN QUERY SELECT recovered.lane,recovered.attempt_id,recovered.dispatch_token,
     recovered.dispatch_token_sha256,p.endpoint_id_sha256,p.request_body_sha256,p.deployment_id,
-    p.envelope_sha256,a.state,o.state,s.provider_job_id
+    p.envelope_sha256,a.state,o.state,s.provider_job_id,b.payload->'envelope'
   FROM public.videoforge_recover_hosted_atomic_pair_tokens($1,$2,$3) recovered
   JOIN public.serverless_predispatch_authorities p ON p.attempt_id=recovered.attempt_id
   JOIN public.serverless_attempts a ON a.id=recovered.attempt_id
   JOIN public.serverless_dispatch_outbox o ON o.attempt_id=a.id
+  JOIN public.hosted_lane_batches b ON b.account_id=$1 AND b.workspace_id=$2
+    AND b.generation_request_id=$3 AND b.lane=recovered.lane
   LEFT JOIN public.serverless_provider_assignments s ON s.attempt_id=a.id AND s.is_current
   WHERE a.account_id=$1 AND a.workspace_id=$2 AND a.generation_request_id=$3
   ORDER BY CASE recovered.lane WHEN 'mage_image' THEN 1 ELSE 2 END;
@@ -257,6 +259,66 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid) FROM PUBLIC;
 
+-- Trusted activation snapshot. The runtime cannot select approval, qualification, deployment, or
+-- migration-ledger tables directly; this projection returns only exact hashes and bounded facts.
+CREATE FUNCTION public.videoforge_load_hosted_pair_activation(uuid,uuid,uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE snapshot jsonb; db_now timestamptz:=transaction_timestamp();
+BEGIN
+  IF public.videoforge_current_account_id() IS DISTINCT FROM $1 THEN
+    RAISE EXCEPTION 'hosted pair activation tenant mismatch' USING ERRCODE='42501';
+  END IF;
+  SELECT jsonb_build_object(
+    'databaseNow',to_char(db_now AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'migrationLedger',(SELECT jsonb_agg(jsonb_build_object('version',m.version,'sha256',m.sha256)
+      ORDER BY m.version) FROM public.videoforge_schema_migrations m WHERE m.version BETWEEN 37 AND 43),
+    'paidApproval',(SELECT jsonb_build_object(
+      'approved',c.id IS NOT NULL,'exact',c.approval_sha256=a.approval_sha256
+        AND c.account_id=a.account_id AND c.workspace_id=a.workspace_id
+        AND c.generation_request_id=a.generation_request_id AND c.lease_id=a.lease_id
+        AND c.lane_bindings IS NOT DISTINCT FROM a.lane_bindings
+        AND c.total_cap_usd=a.maximum_cumulative_finite_cap_usd
+        AND c.expires_at IS NOT DISTINCT FROM a.expires_at,
+      'expiresAt',to_char(c.expires_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+      FROM public.hosted_paid_dispatch_claims c JOIN public.hosted_paid_dispatch_approvals a ON a.id=c.approval_id
+      WHERE c.account_id=$1 AND c.workspace_id=$2 AND c.generation_request_id=$3),
+    'lanes',(SELECT jsonb_object_agg(a2.lane,jsonb_build_object(
+      'qualification',jsonb_build_object('accepted',q.independent_audit_accepted,
+        'verifiedAt',to_char(q.verified_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+        'expiresAt',to_char(q.expires_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+        'qualificationRecordSha256',q.qualification_record_sha256,
+        'deploymentSnapshotSha256',q.deployment_snapshot_sha256),
+      'deployment',jsonb_build_object('deploymentId',d.id,'endpointIdSha256',d.endpoint_id_sha256,
+        'endpointConfigSha256',d.endpoint_config_sha256,'workerImageDigest',d.worker_image_digest,
+        'modelManifestSha256',d.model_manifest_sha256,'volumeIdSha256',d.volume_id_sha256,
+        'volumeManifestSha256',d.volume_manifest_sha256,'region',d.region,'gpuAllowlist',d.gpu_allowlist,
+        'deploymentSnapshotSha256',public.videoforge_hosted_deployment_snapshot_sha256(d.id)),
+      'authority',jsonb_build_object('endpointIdSha256',p.endpoint_id_sha256,
+        'endpointConfigSha256',p.endpoint_config_sha256,'workerImageDigest',p.worker_image_digest,
+        'modelManifestSha256',p.model_manifest_sha256,'volumeIdSha256',p.volume_id_sha256,
+        'volumeManifestSha256',p.volume_manifest_sha256,'region',p.region,'gpuAllowlist',p.gpu_allowlist)
+    )) FROM public.serverless_attempts a2
+      JOIN public.serverless_predispatch_authorities p ON p.attempt_id=a2.id
+      JOIN public.hosted_lane_batches b ON b.account_id=a2.account_id AND b.workspace_id=a2.workspace_id
+        AND b.generation_request_id=a2.generation_request_id AND b.lane=a2.lane
+      JOIN public.hosted_paid_dispatch_claims c2 ON c2.account_id=a2.account_id
+        AND c2.workspace_id=a2.workspace_id AND c2.generation_request_id=a2.generation_request_id
+      JOIN LATERAL jsonb_array_elements(c2.lane_bindings) binding
+        ON binding->>'lane'=a2.lane
+      JOIN public.hosted_serverless_qualification_attestations q
+        ON q.id=(binding->>'qualification_attestation_id')::uuid
+      JOIN public.serverless_endpoint_deployments d ON d.id=a2.deployment_id AND d.lane=a2.lane
+      WHERE a2.account_id=$1 AND a2.workspace_id=$2 AND a2.generation_request_id=$3)
+  ) INTO snapshot;
+  IF snapshot->'paidApproval'='null'::jsonb
+     OR (SELECT count(*) FROM jsonb_object_keys(snapshot->'lanes'))<>2 THEN
+    RAISE EXCEPTION 'hosted pair activation snapshot incomplete' USING ERRCODE='42501';
+  END IF;
+  RETURN snapshot;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.videoforge_load_hosted_pair_activation(uuid,uuid,uuid) FROM PUBLIC;
+
 CREATE TABLE public.hosted_pair_cleanup_observations (
   id uuid PRIMARY KEY,
   account_id uuid NOT NULL,
@@ -292,7 +354,8 @@ CREATE FUNCTION public.videoforge_settle_hosted_pair_cleanup(
 ) RETURNS TABLE(pair_phase text,released boolean)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
 DECLARE db_now timestamptz:=transaction_timestamp(); item jsonb; target record; assigned record;
-  observation_id uuid; observed_count integer:=0; released_count integer; pair public.hosted_pair_runtime_states%ROWTYPE;
+  observation_id uuid; observed_count integer:=0; released_count integer; all_completed boolean:=true;
+  pair public.hosted_pair_runtime_states%ROWTYPE;
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id
      OR jsonb_typeof(supplied_observations)<>'array' OR jsonb_array_length(supplied_observations)<>2 THEN
@@ -325,6 +388,10 @@ BEGIN
        OR (assigned.id IS NOT NULL AND (item->>'provider_state'='ABSENT'
          OR item->>'provider_job_id' IS DISTINCT FROM assigned.provider_job_id))
        OR (assigned.id IS NULL AND item->>'provider_state'<>'ABSENT')
+       OR (item->>'provider_state'='COMPLETED' AND NOT EXISTS (
+         SELECT 1 FROM public.hosted_serverless_output_barrier_completions completion
+          WHERE completion.account_id=supplied_account_id AND completion.workspace_id=supplied_workspace_id
+            AND completion.attempt_id=target.id AND completion.provider_job_id=assigned.provider_job_id))
        OR (item->>'provider_state'='ABSENT' AND NOT (
          (target.send_attempt_count=0 AND target.outbox_state='READY_TO_DISPATCH' AND target.state='OUTBOXED')
          OR (target.outbox_state='DEAD_LETTER' AND target.state='PERMANENT_FAILED')))
@@ -343,8 +410,28 @@ BEGIN
       target.id,target.lane,target.deployment_id,target.dispatch_token_sha256,item->>'provider_job_id',
       item->>'provider_state',item->>'provider_proof_sha256',(item->>'observed_at')::timestamptz,db_now)
     ON CONFLICT(attempt_id,provider_proof_sha256) DO NOTHING;
+    IF item->>'provider_state'='COMPLETED' THEN
+      -- The 0037 barrier has already proved that every expected object is a committed tenant
+      -- artifact of this exact attempt. Materialize the durable V2-05 accepted-unit facts before
+      -- making the lane terminal; the lane trigger independently recounts these rows.
+      INSERT INTO public.video_runtime_accepted_units(
+        id,account_id,workspace_id,runtime_id,project_revision_id,lane,item_id,object_key,
+        checksum_sha256,content_length,accepted_attempt_id,accepted_at)
+      SELECT md5('hosted-pair-accepted:'||target.id::text||':'||(expected->>'item_id'))::uuid,
+        supplied_account_id,supplied_workspace_id,r.id,r.project_revision_id,target.lane,
+        expected->>'item_id',expected->>'object_key',expected->>'checksum_sha256',
+        (expected->>'content_length')::bigint,target.id,db_now
+      FROM public.hosted_serverless_output_barrier_completions completion
+      JOIN public.video_runtime_states r
+        ON r.generation_request_id=supplied_generation_request_id,
+        LATERAL jsonb_array_elements(completion.expected_objects) expected
+      WHERE completion.attempt_id=target.id
+      ON CONFLICT(runtime_id,lane,item_id) DO NOTHING;
+    END IF;
+    IF item->>'provider_state'<>'COMPLETED' THEN all_completed:=false; END IF;
     IF target.state NOT IN ('SUCCEEDED','PERMANENT_FAILED','CANCELLED') THEN
-      UPDATE public.serverless_attempts SET state=CASE item->>'provider_state' WHEN 'CANCELLED' THEN 'CANCELLED' ELSE 'PERMANENT_FAILED' END,
+      UPDATE public.serverless_attempts SET state=CASE item->>'provider_state'
+        WHEN 'COMPLETED' THEN 'SUCCEEDED' WHEN 'CANCELLED' THEN 'CANCELLED' ELSE 'PERMANENT_FAILED' END,
         terminal_at=db_now,version=version+1,updated_at=db_now WHERE id=target.id;
     END IF;
     UPDATE public.serverless_dispatch_outbox SET state=CASE WHEN item->>'provider_state'='ABSENT' THEN 'DEAD_LETTER' ELSE 'TERMINAL' END,
@@ -352,18 +439,25 @@ BEGIN
     observed_count:=observed_count+1;
   END LOOP;
   IF observed_count<>2 THEN RAISE EXCEPTION 'hosted pair cleanup requires exact pair' USING ERRCODE='23514'; END IF;
-  UPDATE public.video_runtime_lane_states SET state='FAILED',current_attempt_id=NULL,version=version+1,updated_at=db_now
+  UPDATE public.video_runtime_lane_states SET state=CASE WHEN all_completed THEN 'SUCCEEDED' ELSE 'FAILED' END,
+    accepted_item_count=CASE WHEN all_completed THEN planned_item_count ELSE accepted_item_count END,
+    current_attempt_id=NULL,version=version+1,updated_at=db_now
     WHERE account_id=supplied_account_id AND workspace_id=supplied_workspace_id
       AND runtime_id=(SELECT id FROM public.video_runtime_states WHERE generation_request_id=supplied_generation_request_id)
       AND state NOT IN ('SUCCEEDED','FAILED','CANCELED');
-  UPDATE public.video_runtime_states SET stage='FAILED',terminal_reason='LANE_PERMANENT_FAILURE',terminal_at=db_now,
+  -- GPU success ends at the render barrier. CPU rendering owns RENDERING -> COMPLETE together with
+  -- the render/final hashes and request success; provider cleanup must never forge those facts.
+  UPDATE public.video_runtime_states SET stage=CASE WHEN all_completed THEN 'RENDERING' ELSE 'FAILED' END,
+    terminal_reason=CASE WHEN all_completed THEN NULL ELSE 'LANE_PERMANENT_FAILURE' END,
+    terminal_at=CASE WHEN all_completed THEN NULL ELSE db_now END,
     version=version+1,updated_at=db_now WHERE account_id=supplied_account_id AND workspace_id=supplied_workspace_id
       AND generation_request_id=supplied_generation_request_id AND stage NOT IN ('COMPLETE','FAILED','CANCELED');
   UPDATE public.generation_requests SET state='FAILED',terminal_at=db_now,version=version+1,updated_at=db_now
     WHERE account_id=supplied_account_id AND workspace_id=supplied_workspace_id AND id=supplied_generation_request_id
-      AND state IN ('ADMITTED','ACTIVE','CANCELLING');
+      AND NOT all_completed AND state IN ('ADMITTED','ACTIVE','CANCELLING');
   UPDATE public.provider_workload_leases SET state='RELEASED',released_at=db_now,
-    release_reason='HOSTED_PAIR_PROVIDER_TERMINAL',version=version+1,heartbeat_at=db_now,expires_at=greatest(expires_at,db_now+interval '1 second')
+    release_reason=CASE WHEN all_completed THEN 'HOSTED_PAIR_OUTPUTS_ACCEPTED' ELSE 'HOSTED_PAIR_PROVIDER_TERMINAL' END,
+    version=version+1,heartbeat_at=db_now,expires_at=greatest(expires_at,db_now+interval '1 second')
     WHERE account_id=supplied_account_id AND workspace_id=supplied_workspace_id
       AND generation_request_id=supplied_generation_request_id AND state='ACTIVE';
   GET DIAGNOSTICS released_count=ROW_COUNT;
@@ -377,7 +471,12 @@ BEGIN
      OR (SELECT count(*) FROM public.video_runtime_lane_states l JOIN public.video_runtime_states r ON r.id=l.runtime_id
         WHERE r.generation_request_id=supplied_generation_request_id AND l.state IN ('SUCCEEDED','FAILED','CANCELED'))<>2
      OR EXISTS(SELECT 1 FROM public.provider_workload_leases WHERE generation_request_id=supplied_generation_request_id AND state='ACTIVE')
-     OR EXISTS(SELECT 1 FROM public.generation_requests WHERE id=supplied_generation_request_id AND state NOT IN ('FAILED','CANCELLED','SUCCEEDED')) THEN
+     OR (all_completed AND EXISTS(SELECT 1 FROM public.video_runtime_states
+          WHERE generation_request_id=supplied_generation_request_id AND stage<>'RENDERING'))
+     OR (all_completed AND EXISTS(SELECT 1 FROM public.generation_requests
+          WHERE id=supplied_generation_request_id AND state<>'ACTIVE'))
+     OR (NOT all_completed AND EXISTS(SELECT 1 FROM public.generation_requests
+          WHERE id=supplied_generation_request_id AND state NOT IN ('FAILED','CANCELLED'))) THEN
     RAISE EXCEPTION 'hosted pair terminal zero postcondition failed' USING ERRCODE='55000';
   END IF;
   pair_phase:='SETTLED'; released:=true; RETURN NEXT;

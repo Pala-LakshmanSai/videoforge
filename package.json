@@ -51,6 +51,7 @@
     "verify:v2-05-firewall": "node scripts/verify-v2-05-runtime-firewall.mjs",
     "validate:v2-06-deployment": "node scripts/validate-v2-06-deployment.mjs",
     "validate:v2-13-production-config": "node deploy/v2-13/validate-production-config.mjs",
+    "validate:v2-13-production-pair": "node deploy/v2-13/validate-production-pair-boundary.mjs",
     "verify:active-runtime": "node scripts/verify-active-runtime.mjs",
     "verify:packages": "turbo run build lint typecheck --cache=local:r,remote:r && turbo run test --concurrency=1 --cache=local:r,remote:r",
     "verify:fast": "node scripts/verify-fast.mjs",

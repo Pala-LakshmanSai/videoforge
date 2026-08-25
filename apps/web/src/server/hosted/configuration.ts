@@ -58,6 +58,14 @@ export interface HostedRuntimeEnvironment {
   readonly WORKFLOW_CALLBACK_SECRET?: string;
   readonly MEDIA_WORKER_TOKEN_SECRET?: string;
   readonly VIDEOFORGE_V207_AUTHORITY_NONCE?: string;
+  /** Paid pair bindings remain optional while production is DISABLED_UNQUALIFIED. They must be
+   * configured as secret bindings, never Wrangler vars, before the qualified composition exists. */
+  readonly VIDEOFORGE_GPU_TRANSPORT?: string;
+  readonly VIDEOFORGE_RECONCILER_DATABASE_URL?: string;
+  readonly VIDEOFORGE_DISPATCH_TOKEN_KEY?: string;
+  readonly VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX?: string;
+  readonly VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID?: string;
+  readonly VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY?: string;
 }
 
 export interface HostedRuntimeConfiguration {

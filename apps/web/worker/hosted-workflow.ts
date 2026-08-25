@@ -7,6 +7,7 @@ import {
 } from "../src/server/hosted/configuration";
 import { sha256 } from "../src/server/hosted/crypto";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
+import { hostedPairProductionBindingState } from "../src/server/hosted/hosted-pair-production-composition";
 
 interface HostedWorkflowParameters {
   readonly attemptId: string;
@@ -42,6 +43,9 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
   ): Promise<unknown> {
     const params = parameters(event.payload);
     const config = hostedRuntimeConfiguration(this.env);
+    // Provider-free activation seam. Production remains DISABLED_UNQUALIFIED, which returns before
+    // reading any paid-pair secret binding or constructing a provider transport.
+    hostedPairProductionBindingState(this.env);
 
     // Five-minute lease granularity keeps the complete 24-hour offline window inside a bounded
     // 290-observation Workflow while still repairing an abandoned device promptly. The final

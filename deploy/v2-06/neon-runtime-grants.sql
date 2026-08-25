@@ -90,6 +90,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_pair_send(uuid,uuid,uu
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_pair_activation(uuid,uuid,uuid)
+TO :"runtime_role";
 -- Final settlement is intentionally absent. A separately privileged reconciler must own that
 -- capability; runtime cannot self-attest provider absence or release its own slot.
 

@@ -226,6 +226,11 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     "R2_SECRET_ACCESS_KEY",
     "WORKFLOW_CALLBACK_SECRET",
     "MEDIA_WORKER_TOKEN_SECRET",
+    "VIDEOFORGE_RECONCILER_DATABASE_URL",
+    "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+    "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
+    "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
+    "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
   ]) {
     if (Object.hasOwn(config.vars, secret))
       fail(`secret ${secret} must use a secret binding, never vars`);

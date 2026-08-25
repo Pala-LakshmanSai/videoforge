@@ -1,0 +1,31 @@
+{
+  "schema_version": "videoforge-v2-13-production-pair-bindings/v1",
+  "state": "DISABLED_UNQUALIFIED",
+  "migration_ledger": {
+    "first": 37,
+    "last": 43,
+    "exact_manifest_required": true
+  },
+  "database_roles": {
+    "runtime": "__V2_13_RUNTIME_ROLE__",
+    "reconciler": "__V2_13_RECONCILER_ROLE__",
+    "must_be_distinct": true
+  },
+  "secret_bindings": {
+    "runtime_database": "DATABASE_URL",
+    "reconciler_database": "VIDEOFORGE_RECONCILER_DATABASE_URL",
+    "dispatch_token_key": "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+    "envelope_signing_key": "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
+    "envelope_signing_key_id": "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
+    "provider_proof_verify_key": "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY"
+  },
+  "activation": {
+    "both_fresh_qualifications_required": true,
+    "exact_paid_approval_required": true,
+    "exact_deployments_required": true,
+    "provider_calls_authorized": false,
+    "deployment_authorized": false,
+    "credential_reads_authorized": false,
+    "external_spend_usd": 0
+  }
+}

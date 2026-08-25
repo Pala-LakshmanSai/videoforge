@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  canonicalSha256,
   exportMetadataSnapshot,
   restoreMetadataSnapshot,
   serializeMetadataSnapshot,
@@ -307,6 +308,30 @@ test("0042 executes exact pair success, encrypted recovery, and restart states",
       result.rows.map((row) => row.dispatch_token),
     );
     assert.ok(recovered.rows.every((row) => row.outbox_state === "READY_TO_DISPATCH"));
+    const activation = await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      return tx.query("SELECT videoforge_load_hosted_pair_activation($1,$2,$3) AS snapshot", [
+        IDS.accountA,
+        IDS.workspaceA,
+        fixture.generationRequestId,
+      ]);
+    });
+    assert.deepEqual(
+      activation.rows[0].snapshot.migrationLedger.map((entry) => entry.version),
+      [37, 38, 39, 40, 41, 42, 43],
+    );
+    assert.equal(activation.rows[0].snapshot.paidApproval.exact, true);
+    assert.deepEqual(Object.keys(activation.rows[0].snapshot.lanes).sort(), [
+      "mage_image",
+      "soulx_avatar",
+    ]);
+    for (const lane of Object.values(activation.rows[0].snapshot.lanes)) {
+      assert.equal(
+        lane.qualification.deploymentSnapshotSha256,
+        lane.deployment.deploymentSnapshotSha256,
+      );
+      assert.deepEqual(lane.authority.gpuAllowlist, lane.deployment.gpuAllowlist);
+    }
     await assert.rejects(
       executor.transaction(async (tx) => {
         await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
@@ -464,6 +489,249 @@ test("0043 persists one-shot Mage SENT and refuses ghost-job absence settlement"
   });
 });
 
+test("0043 settles two completed barriers into render-ready zero-provider state", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    const fixture = await seededPair(executor);
+    await commit(executor, fixture);
+    const prepared = await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      await tx.query("SELECT set_config($1,$2,true)", [
+        "videoforge.dispatch_token_key",
+        "k".repeat(32),
+      ]);
+      return tx.query("SELECT * FROM videoforge_prepare_hosted_pair_send($1,$2,$3)", [
+        IDS.accountA,
+        IDS.workspaceA,
+        fixture.generationRequestId,
+      ]);
+    });
+
+    for (const lane of ["mage_image", "soulx_avatar"]) {
+      const target = prepared.rows.find((row) => row.lane === lane);
+      const providerJobId = `completed-${lane}-job`;
+      await executor.transaction(async (tx) => {
+        await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+        await tx.query("SELECT set_config($1,$2,true)", [
+          "videoforge.dispatch_token_key",
+          "k".repeat(32),
+        ]);
+        await tx.query(
+          "SELECT * FROM videoforge_begin_hosted_pair_send($1,$2,$3,$4,$5,$6)",
+          [
+            IDS.accountA,
+            IDS.workspaceA,
+            fixture.generationRequestId,
+            lane,
+            target.attempt_id,
+            target.expected_envelope_sha256,
+          ],
+        );
+        await tx.query(
+          "SELECT * FROM videoforge_finish_hosted_pair_send($1,$2,$3,$4,'ASSIGNED',$5,$6,$7)",
+          [
+            IDS.accountA,
+            IDS.workspaceA,
+            fixture.generationRequestId,
+            lane,
+            providerJobId,
+            target.deployment_id,
+            target.dispatch_token_sha256,
+          ],
+        );
+      });
+    }
+
+    const attempts = await executor.query(
+      `SELECT a.id,a.lane,a.project_revision_id,a.output_prefix,a.dispatch_token_sha256,
+              a.deployment_id,s.id assignment_id,s.provider_job_id,d.endpoint_id_sha256,
+              d.endpoint_config_sha256,d.worker_image_digest,d.model_manifest_sha256,
+              d.volume_id_sha256,d.volume_manifest_sha256
+         FROM serverless_attempts a
+         JOIN serverless_provider_assignments s ON s.attempt_id=a.id AND s.is_current
+         JOIN serverless_endpoint_deployments d ON d.id=a.deployment_id
+        WHERE a.generation_request_id=$1
+        ORDER BY CASE a.lane WHEN 'mage_image' THEN 1 ELSE 2 END`,
+      [fixture.generationRequestId],
+    );
+    const observations = [];
+    for (const [index, attempt] of attempts.rows.entries()) {
+      const itemId = fixture.batches.find((batch) => batch.lane === attempt.lane)?.items[0].item_id;
+      assert.ok(itemId);
+      const objectKey = `${attempt.output_prefix}/artifact/${itemId}`;
+      const checksumSha256 = sha256(`completed-${attempt.lane}-artifact`);
+      const artifactReceiptSha256 = sha256(`completed-${attempt.lane}-commit`);
+      const provenanceReceiptSha256 = sha256(`completed-${attempt.lane}-provenance`);
+      const expectedObjects = [
+        {
+          item_id: itemId,
+          object_key: objectKey,
+          content_type: attempt.lane === "mage_image" ? "image/png" : "video/mp4",
+          content_length: 1000 + index,
+          checksum_sha256: checksumSha256,
+        },
+      ];
+      const bindingComponents = {
+        account_id: IDS.accountA,
+        workspace_id: IDS.workspaceA,
+        project_id: IDS.projectA,
+        project_revision_id: IDS.revisionA,
+        lane: attempt.lane,
+        attempt_id: attempt.id,
+        provider_job_id: attempt.provider_job_id,
+        dispatch_token_sha256: attempt.dispatch_token_sha256,
+        deployment_id: attempt.deployment_id,
+        endpoint_id_sha256: attempt.endpoint_id_sha256,
+        endpoint_config_sha256: attempt.endpoint_config_sha256,
+        worker_image_digest: attempt.worker_image_digest,
+        model_manifest_sha256: attempt.model_manifest_sha256,
+        volume_id_sha256: attempt.volume_id_sha256,
+        volume_manifest_sha256: attempt.volume_manifest_sha256,
+        expected_objects: expectedObjects,
+      };
+      const reservationId = uuid(1_421_000 + index * 4);
+      await executor.query(
+        `INSERT INTO artifact_reservations(id,account_id,workspace_id,project_id,
+          project_revision_id,lane,job_id,artifact_id,object_key,method,content_type,
+          content_length,checksum_sha256,expires_at,max_uses,used_count,state,retention_class,
+          deletion_owner_account_id,created_at,updated_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'PUT',$10,$11,$12,
+          transaction_timestamp()+interval '1 hour',1,1,'COMMITTED','PROJECT',$2,
+          transaction_timestamp(),transaction_timestamp())`,
+        [
+          reservationId,
+          IDS.accountA,
+          IDS.workspaceA,
+          IDS.projectA,
+          IDS.revisionA,
+          attempt.lane === "mage_image" ? "MAGE_IMAGE" : "SOULX_AVATAR",
+          attempt.id,
+          itemId,
+          objectKey,
+          expectedObjects[0].content_type,
+          expectedObjects[0].content_length,
+          checksumSha256,
+        ],
+      );
+      await executor.query(
+        `INSERT INTO artifact_receipts(id,account_id,workspace_id,reservation_id,callback_id,
+          object_key,content_type,content_length,checksum_sha256,probe,receipt_sha256,committed_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'{}'::jsonb,$10,transaction_timestamp())`,
+        [
+          uuid(1_421_001 + index * 4),
+          IDS.accountA,
+          IDS.workspaceA,
+          reservationId,
+          `completed-${attempt.lane}-callback`,
+          objectKey,
+          expectedObjects[0].content_type,
+          expectedObjects[0].content_length,
+          checksumSha256,
+          artifactReceiptSha256,
+        ],
+      );
+      await executor.query(
+        `INSERT INTO serverless_provenance_receipts(id,account_id,workspace_id,
+          project_revision_id,attempt_id,assignment_id,receipt_nonce,attestation_scope,worker_id,
+          provider_job_id,gpu_name,gpu_uuid_sha256,driver_version,cuda_version,intended_region,
+          intended_volume_id_sha256,manifest_sha256_before,manifest_sha256_after,mutation_detected,
+          cross_mount_detected,model_ready,timings,items,receipt_sha256,signature_key_id,
+          signature_value,issued_at,accepted_at)
+         VALUES($1,$2,$3,$4,$5,$6,1,
+          'VIDEOFORGE_APPLICATION_SIGNED_FACTS_NOT_PROVIDER_HARDWARE_ATTESTATION',$7,$8,
+          'NVIDIA GeForce RTX 4090',$9,'550.90.07','12.4','EU-RO-1',$10,$11,$11,
+          false,false,true,'{}'::jsonb,$12::jsonb,$13,'test-signing-key',$14,
+          transaction_timestamp(),transaction_timestamp())`,
+        [
+          uuid(1_421_002 + index * 4),
+          IDS.accountA,
+          IDS.workspaceA,
+          IDS.revisionA,
+          attempt.id,
+          attempt.assignment_id,
+          `worker-${attempt.lane}`,
+          attempt.provider_job_id,
+          sha256(`completed-${attempt.lane}-gpu`),
+          attempt.volume_id_sha256,
+          attempt.volume_manifest_sha256,
+          JSON.stringify([
+            {
+              item_id: itemId,
+              state: "SUCCEEDED",
+              output_object_key: objectKey,
+              output_sha256: checksumSha256,
+              output_bytes: expectedObjects[0].content_length,
+              probe: {},
+            },
+          ]),
+          provenanceReceiptSha256,
+          "a".repeat(64),
+        ],
+      );
+      await executor.query(
+        `INSERT INTO hosted_serverless_output_barrier_completions(account_id,workspace_id,
+          attempt_id,binding_sha256,callback_sha256,binding_components,
+          provenance_receipt_sha256,artifact_commit_receipt_sha256s,completed_at)
+         VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8::jsonb,transaction_timestamp())`,
+        [
+          IDS.accountA,
+          IDS.workspaceA,
+          attempt.id,
+          canonicalSha256(bindingComponents),
+          sha256(`completed-${attempt.lane}-barrier-callback`),
+          JSON.stringify(bindingComponents),
+          provenanceReceiptSha256,
+          JSON.stringify([artifactReceiptSha256]),
+        ],
+      );
+      const proofBase = {
+        lane: attempt.lane,
+        attempt_id: attempt.id,
+        deployment_id: attempt.deployment_id,
+        dispatch_token_sha256: attempt.dispatch_token_sha256,
+        provider_job_id: attempt.provider_job_id,
+        provider_state: "COMPLETED",
+      };
+      observations.push({
+        ...proofBase,
+        provider_proof_sha256: canonicalSha256(proofBase),
+        observed_at: new Date().toISOString(),
+      });
+    }
+
+    const settled = await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      return tx.query("SELECT * FROM videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4::jsonb)", [
+        IDS.accountA,
+        IDS.workspaceA,
+        fixture.generationRequestId,
+        JSON.stringify(observations),
+      ]);
+    });
+    assert.deepEqual(settled.rows, [{ pair_phase: "SETTLED", released: true }]);
+    const state = await executor.query(
+      `SELECT
+        (SELECT count(*)::int FROM video_runtime_accepted_units WHERE runtime_id=r.id) accepted,
+        (SELECT bool_and(state='SUCCEEDED' AND accepted_item_count=planned_item_count)
+           FROM video_runtime_lane_states WHERE runtime_id=r.id) lanes_succeeded,
+        r.stage runtime_stage,g.state generation_state,l.state lease_state,p.phase pair_phase
+       FROM video_runtime_states r
+       JOIN generation_requests g ON g.id=r.generation_request_id
+       JOIN provider_workload_leases l ON l.generation_request_id=r.generation_request_id
+       JOIN hosted_pair_runtime_states p ON p.generation_request_id=r.generation_request_id
+       WHERE r.generation_request_id=$1`,
+      [fixture.generationRequestId],
+    );
+    assert.deepEqual(state.rows[0], {
+      accepted: 2,
+      lanes_succeeded: true,
+      runtime_stage: "RENDERING",
+      generation_state: "ACTIVE",
+      lease_state: "RELEASED",
+      pair_phase: "SETTLED",
+    });
+  });
+});
+
 test("0042 rolls the paid claim and every pair row back after injected row-class failures", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const fixture = await seededPair(executor);
@@ -530,7 +798,7 @@ test("0042 serializes concurrent claims and rejects cap, hash, lineage, and qual
     assert.equal(contenders.filter((result) => result.status === "rejected").length, 1);
   });
   for (const mutate of [
-    (fixture) => ({ totalCapUsd: 0.5 }),
+    () => ({ totalCapUsd: 0.5 }),
     (fixture) => {
       const pair = structuredClone(fixture.pair);
       pair[0].request_body_sha256 = sha256("drift");

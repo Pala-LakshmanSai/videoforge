@@ -63,15 +63,6 @@ export interface HostedPairRuntimeStore {
   }): Promise<readonly HostedPairInspection[]>;
 }
 
-export interface HostedPairSettlementStore {
-  settle(input: {
-    readonly accountId: string;
-    readonly workspaceId: string;
-    readonly generationRequestId: string;
-    readonly observations: JsonValue;
-  }): Promise<void>;
-}
-
 export interface HostedPairInspection {
   readonly lane: HostedPairLane;
   readonly attemptId: string;
@@ -255,32 +246,6 @@ export class HostedSqlPairRuntimeStore implements HostedPairRuntimeStore {
   }
 }
 
-/** Uses a separately privileged reconciler connection. The ordinary runtime role is not granted
- * the settlement function and therefore cannot self-attest absence or release capacity. */
-export class HostedSqlPairSettlementStore implements HostedPairSettlementStore {
-  constructor(private readonly database: TransactionalSqlExecutor) {}
-
-  async settle(input: Parameters<HostedPairSettlementStore["settle"]>[0]) {
-    await this.database.transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1,$2,true)", [
-        "videoforge.account_id",
-        input.accountId,
-      ]);
-      const result = await transaction.query(
-        "SELECT * FROM public.videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4::jsonb)",
-        [
-          input.accountId,
-          input.workspaceId,
-          input.generationRequestId,
-          JSON.stringify(input.observations),
-        ],
-      );
-      if (result.rows.length !== 1)
-        throw new HostedDispatchCoordinationError("HOSTED_PAIR_SETTLEMENT_INVALID");
-    });
-  }
-}
-
 export interface HostedSignedPairEnvelope {
   readonly lane: HostedPairLane;
   readonly document: JsonValue;
@@ -304,6 +269,13 @@ export type HostedPairExecutionResult =
 
 const PROVIDER_JOB_ID = /^[A-Za-z0-9._:-]{1,200}$/u;
 
+function unsignedEnvelope(document: ServerlessWorkerJobEnvelopeV3Document): JsonValue {
+  const unsigned = { ...document } as Record<string, JsonValue>;
+  delete unsigned.authority_sha256;
+  delete unsigned.signature;
+  return unsigned;
+}
+
 /**
  * Provider-free composition: transports are injected. The DB persists SENT before `/run`, and
  * only an explicit REQUEST_REJECTED is treated as proof that no provider job exists. Every other
@@ -314,7 +286,6 @@ export class HostedPairRuntimeExecutor {
     private readonly store: HostedPairRuntimeStore,
     private readonly transports: Readonly<Record<HostedPairLane, ServerlessTransportPort>>,
     private readonly verifier: HostedSignedEnvelopeVerifier,
-    private readonly settlementStore: HostedPairSettlementStore,
   ) {}
 
   async execute(input: {
@@ -337,7 +308,7 @@ export class HostedPairRuntimeExecutor {
       const document = (
         await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", envelope.document)
       ).value as ServerlessWorkerJobEnvelopeV3Document;
-      const { authority_sha256: _authority, signature: _signature, ...unsigned } = document;
+      const unsigned = unsignedEnvelope(document);
       if (
         document.tenant.account_id !== input.accountId ||
         document.tenant.workspace_id !== input.workspaceId ||
@@ -369,72 +340,6 @@ export class HostedPairRuntimeExecutor {
     });
   }
 
-  /** Reconcile/cancel only. It never calls run. Missing assignments require an independently
-   * supplied exact absence proof; otherwise settlement fails closed. */
-  async reconcileAndSettle(input: {
-    readonly accountId: string;
-    readonly workspaceId: string;
-    readonly generationRequestId: string;
-  }): Promise<{ readonly state: "SETTLED" }> {
-    const rows = await this.store.inspect(input);
-    const observations: JsonValue[] = [];
-    for (const row of rows) {
-      if (row.providerJobId === null) {
-        if (
-          !(
-            (row.attemptState === "OUTBOXED" && row.outboxState === "READY_TO_DISPATCH") ||
-            (row.attemptState === "PERMANENT_FAILED" && row.outboxState === "DEAD_LETTER")
-          )
-        ) {
-          throw new HostedDispatchCoordinationError("HOSTED_PAIR_ABSENCE_UNPROVEN");
-        }
-        const base = {
-          lane: row.lane,
-          attempt_id: row.attemptId,
-          deployment_id: row.deploymentId,
-          dispatch_token_sha256: row.dispatchTokenSha256,
-          provider_job_id: null,
-          provider_state: "ABSENT",
-        } as const;
-        const providerProofSha256 = await sha256CanonicalJson(base);
-        observations.push({
-          ...base,
-          provider_proof_sha256: providerProofSha256,
-          observed_at: new Date().toISOString(),
-        });
-        continue;
-      }
-      let snapshot = await this.transports[row.lane].status(row.providerJobId);
-      if (snapshot.id !== row.providerJobId)
-        throw new HostedDispatchCoordinationError("HOSTED_PAIR_STATUS_BINDING_INVALID");
-      if (["IN_QUEUE", "IN_PROGRESS"].includes(snapshot.status)) {
-        snapshot = await this.transports[row.lane].cancel(row.providerJobId);
-      }
-      if (
-        snapshot.id !== row.providerJobId ||
-        !["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(snapshot.status)
-      ) {
-        throw new HostedDispatchCoordinationError("HOSTED_PAIR_TERMINAL_UNPROVEN");
-      }
-      const base = {
-        lane: row.lane,
-        attempt_id: row.attemptId,
-        deployment_id: row.deploymentId,
-        dispatch_token_sha256: row.dispatchTokenSha256,
-        provider_job_id: row.providerJobId,
-        provider_state: snapshot.status,
-      } as const;
-      const providerProofSha256 = await sha256CanonicalJson(base);
-      observations.push({
-        ...base,
-        provider_proof_sha256: providerProofSha256,
-        observed_at: new Date().toISOString(),
-      });
-    }
-    await this.settlementStore.settle({ ...input, observations });
-    return Object.freeze({ state: "SETTLED" as const });
-  }
-
   async #send(
     input: {
       readonly accountId: string;
@@ -457,7 +362,7 @@ export class HostedPairRuntimeExecutor {
     const document = (
       await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", envelope.document)
     ).value as ServerlessWorkerJobEnvelopeV3Document;
-    const { authority_sha256: _authority, signature: _signature, ...unsigned } = document;
+    const unsigned = unsignedEnvelope(document);
     const unsignedSha256 = await sha256CanonicalJson(unsigned);
     if (
       document.dispatch_token !== claim.dispatchToken ||
