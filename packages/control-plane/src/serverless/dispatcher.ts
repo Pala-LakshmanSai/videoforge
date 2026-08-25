@@ -19,8 +19,9 @@ import {
 import { assertDispatchableEnvelope } from "./quarantine.js";
 import {
   FakeTransportError,
-  type FakeProviderStatus,
-  type FakeServerlessEndpoint,
+  ServerlessTransportError,
+  type ServerlessProviderStatus,
+  type ServerlessTransportPort,
   type FakeWebhookDelivery,
 } from "./transport.js";
 
@@ -548,7 +549,7 @@ export class ServerlessDispatchService {
     scope: WorkspaceScope,
     input: {
       readonly commit: PredispatchCommit;
-      readonly endpoint: FakeServerlessEndpoint;
+      readonly endpoint: ServerlessTransportPort;
       readonly endpointIdSha256: Sha256;
       readonly envelope: Readonly<Record<string, unknown>>;
       readonly requestBodySha256: Sha256;
@@ -616,7 +617,7 @@ export class ServerlessDispatchService {
 
     let providerJobId: string;
     try {
-      const response = input.endpoint.run({
+      const response = await input.endpoint.run({
         endpointIdSha256: input.endpointIdSha256,
         dispatchToken: input.commit.dispatchToken,
         requestBodySha256: input.requestBodySha256,
@@ -630,7 +631,12 @@ export class ServerlessDispatchService {
       }
       providerJobId = response.id;
     } catch (error) {
-      if (!(error instanceof FakeTransportError)) throw error;
+      const acknowledgementUnknown =
+        (error instanceof FakeTransportError && error.code === "TRANSPORT_RESPONSE_LOST") ||
+        (error instanceof ServerlessTransportError && error.code === "DISPATCH_ACK_UNKNOWN");
+      if (!acknowledgementUnknown) {
+        throw error;
+      }
       await this.#database.transaction(async (transaction) => {
         await assertScope(transaction, scope);
         await transaction.query(
@@ -755,7 +761,7 @@ export class ServerlessDispatchService {
       readonly eventId: string;
       readonly attemptId: string;
       readonly providerJobId: string;
-      readonly providerStatus: FakeProviderStatus;
+      readonly providerStatus: ServerlessProviderStatus;
       readonly attemptState: string;
       readonly itemsCompleted: number;
       readonly observedAt: string;
@@ -812,7 +818,7 @@ export class ServerlessDispatchService {
       readonly eventId: string;
       readonly attemptId: string;
       readonly providerJobId: string;
-      readonly providerStatus: FakeProviderStatus;
+      readonly providerStatus: ServerlessProviderStatus;
       readonly attemptState: string;
       readonly itemsCompleted: number;
       readonly observedAt: string;
@@ -1253,7 +1259,7 @@ export class ServerlessDispatchService {
         | "RESULT_WINDOW_EXPIRY_RISK"
         | "OWNER_CANCELLATION";
       readonly durableReceipts: readonly ProvenanceReceipt[];
-      readonly endpoint: Pick<FakeServerlessEndpoint, "status">;
+      readonly endpoint: Pick<ServerlessTransportPort, "status">;
       readonly possibleDuplicateComputeUsd: number;
       readonly now: string;
     },
@@ -1342,7 +1348,7 @@ export class ServerlessDispatchService {
       attempt.provider_result_expires_at ??
       isoPlusSeconds(attempt.ttl_expires_at ?? attempt.deadline_at, PROVIDER_RESULT_WINDOW_SECONDS);
     if (assignment !== null && Date.parse(input.now) < Date.parse(statusDeadline)) {
-      const snapshot = input.endpoint.status(assignment.provider_job_id);
+      const snapshot = await input.endpoint.status(assignment.provider_job_id);
       if (snapshot.id !== assignment.provider_job_id) {
         throw new ServerlessDispatchError(
           "ASSIGNMENT_CONFLICT",
@@ -1466,11 +1472,11 @@ export class ServerlessDispatchService {
         | "SYSTEM_DEADLINE"
         | "SYSTEM_TTL_EXPIRY"
         | "SYSTEM_SPEND_CEILING";
-      readonly endpoint: FakeServerlessEndpoint;
+      readonly endpoint: Pick<ServerlessTransportPort, "cancel">;
       readonly settledCostUsd: number;
       readonly now: string;
     },
-  ): Promise<{ readonly providerTerminalState: FakeProviderStatus | null }> {
+  ): Promise<{ readonly providerTerminalState: ServerlessProviderStatus | null }> {
     const attempt = await this.attempt(input.attemptId);
     const assignment = await this.currentAssignment(input.attemptId);
 
@@ -1487,9 +1493,9 @@ export class ServerlessDispatchService {
 
     if (!cancellationStarted) return { providerTerminalState: null };
 
-    let providerTerminalState: FakeProviderStatus | null = null;
+    let providerTerminalState: ServerlessProviderStatus | null = null;
     if (assignment !== null) {
-      providerTerminalState = input.endpoint.cancel(assignment.provider_job_id).status;
+      providerTerminalState = (await input.endpoint.cancel(assignment.provider_job_id)).status;
     }
 
     await this.#database.transaction(async (transaction) => {

@@ -9,13 +9,54 @@ import type { ProvenanceReceipt } from "./receipts.js";
  * purge operation to call, so ordinary code cannot reach one even by mistake, and no method
  * promises client idempotency or exactly-once execution.
  */
-export type FakeProviderStatus =
+export type ServerlessProviderStatus =
   | "IN_QUEUE"
   | "IN_PROGRESS"
   | "COMPLETED"
   | "FAILED"
   | "CANCELLED"
   | "TIMED_OUT";
+
+/** The minimum factual provider job view consumed by durable dispatch/reconciliation. */
+export interface ServerlessJobSnapshot {
+  readonly id: string;
+  readonly status: ServerlessProviderStatus;
+}
+
+export interface ServerlessRunRequest {
+  readonly endpointIdSha256: Sha256;
+  readonly dispatchToken: string;
+  readonly requestBodySha256: Sha256;
+  readonly envelope: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Provider-neutral asynchronous transport boundary. It intentionally exposes no endpoint-wide
+ * mutation or queue-purge operation. A dispatch acknowledgement ambiguity is distinct from a
+ * definite rejection because only the former may have created paid work.
+ */
+export interface ServerlessTransportPort {
+  run(request: ServerlessRunRequest): Promise<Readonly<{ id: string }>> | Readonly<{ id: string }>;
+  status(providerJobId: string): Promise<ServerlessJobSnapshot> | ServerlessJobSnapshot;
+  cancel(providerJobId: string): Promise<ServerlessJobSnapshot> | ServerlessJobSnapshot;
+}
+
+export type ServerlessTransportErrorCode =
+  | "DISPATCH_ACK_UNKNOWN"
+  | "REQUEST_REJECTED"
+  | "PROVIDER_JOB_UNKNOWN"
+  | "STATUS_UNKNOWN"
+  | "CANCEL_UNKNOWN";
+
+export class ServerlessTransportError extends Error {
+  constructor(readonly code: ServerlessTransportErrorCode) {
+    super(code);
+    this.name = "ServerlessTransportError";
+  }
+}
+
+/** Backward-compatible names retained for the deterministic provider-free fixture. */
+export type FakeProviderStatus = ServerlessProviderStatus;
 
 export type FakeTransportFault =
   /** The request never reached the endpoint. No job exists. */
@@ -38,12 +79,7 @@ export class FakeTransportError extends Error {
   }
 }
 
-export interface FakeRunRequest {
-  readonly endpointIdSha256: Sha256;
-  readonly dispatchToken: string;
-  readonly requestBodySha256: Sha256;
-  readonly envelope: Readonly<Record<string, unknown>>;
-}
+export type FakeRunRequest = ServerlessRunRequest;
 
 export interface FakeJobSnapshot {
   readonly id: string;
@@ -51,6 +87,26 @@ export interface FakeJobSnapshot {
   readonly executionCount: number;
   readonly workerId: string | null;
   readonly billedSeconds: number;
+}
+
+/**
+ * Async adapter used by production-shaped orchestration tests. The underlying fixture remains
+ * synchronous so its execution/fault introspection API does not change.
+ */
+export class FakeServerlessTransport implements ServerlessTransportPort {
+  constructor(readonly endpoint: FakeServerlessEndpoint) {}
+
+  async run(request: ServerlessRunRequest): Promise<Readonly<{ id: string }>> {
+    return this.endpoint.run(request);
+  }
+
+  async status(providerJobId: string): Promise<ServerlessJobSnapshot> {
+    return this.endpoint.status(providerJobId);
+  }
+
+  async cancel(providerJobId: string): Promise<ServerlessJobSnapshot> {
+    return this.endpoint.cancel(providerJobId);
+  }
 }
 
 export interface FakeWebhookDelivery {

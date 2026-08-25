@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   FakeServerlessEndpoint,
+  FakeServerlessTransport,
   FakeTransportError,
   PROVENANCE_ATTESTATION_SCOPE,
   ProvenanceReceiptSigner,
@@ -781,6 +782,27 @@ test("canonical output requires a complete exact join between signed items and d
 // ---------------------------------------------------------------------------------------------
 // Response loss before and after provider acceptance
 // ---------------------------------------------------------------------------------------------
+
+test("the async provider-neutral adapter preserves fake dispatch and lost-ack semantics", async () => {
+  await seeded(async ({ admission, service }) => {
+    const requestId = await admitVideo(admission, actorA(), 800_304, IDS.projectA, IDS.revisionA);
+    const commit = await service.commitPredispatch(
+      scopeA(),
+      predispatchInput(810_304, scopeA(), {
+        projectId: IDS.projectA,
+        revisionId: IDS.revisionA,
+        requestId,
+      }),
+    );
+    const fixture = endpoint();
+    fixture.injectFault("RUN_RESPONSE_LOST_AFTER_ACCEPT");
+    const transport = new FakeServerlessTransport(fixture);
+
+    const outcome = await dispatch(service, scopeA(), commit, transport, 820_304);
+    assert.equal(outcome.kind, "DISPATCH_ACK_UNKNOWN");
+    assert.equal(fixture.acceptedJobCount(), 1);
+  });
+});
 
 test("a response lost before provider acceptance never resubmits blindly and stops when unprovable", async () => {
   await seeded(async ({ executor, admission, service }) => {
