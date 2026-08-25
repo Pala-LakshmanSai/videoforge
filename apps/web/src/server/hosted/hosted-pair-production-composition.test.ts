@@ -181,6 +181,8 @@ async function restartFixture() {
     activation,
     reconstruction,
     finishSend,
+    store,
+    signer,
   };
 }
 
@@ -203,7 +205,7 @@ describe("hosted production pair composition", () => {
 
   it("rejects ledger, qualification, approval, role, or key drift", () => {
     expect(evaluateHostedPairProductionGate(gate({ migrationLedger: [] }))).toMatchObject({
-      reason: "MIGRATION_LEDGER_0037_0043_INVALID",
+      reason: "MIGRATION_LEDGER_0037_0044_INVALID",
     });
     expect(
       evaluateHostedPairProductionGate(
@@ -259,6 +261,107 @@ describe("hosted production pair composition", () => {
       "mage_image",
       "soulx_avatar",
     ]);
+  });
+
+  it("recovers a crashed Workflow into observation without a blind resend", async () => {
+    const fixture = await restartFixture();
+    fixture.store.inspect = vi.fn(async () =>
+      (["mage_image", "soulx_avatar"] as const).map((lane) => ({
+        lane,
+        attemptId: lane === "mage_image" ? ids.mageAttempt : ids.soulxAttempt,
+        attemptState: "ASSIGNED",
+        outboxState: "ASSIGNED",
+        providerJobId: `${lane}-existing-job`,
+        deploymentId: ids.deployment,
+        dispatchTokenSha256: digest("b"),
+        pairPhase: "BOTH_ASSIGNED",
+        recoveryAction: "RECONCILE_ASSIGNED",
+      })),
+    );
+    const recovered = new HostedPairProductionComposition(
+      fixture.activation,
+      fixture.reconstruction,
+      {} as never,
+      fixture.signer,
+      fixture.store,
+    );
+    await expect(
+      recovered.resume({
+        environment: {
+          VIDEOFORGE_GPU_TRANSPORT: "QUALIFIED_EXACT",
+          DATABASE_URL: "postgres-runtime-binding",
+          VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres-reconciler-binding",
+          VIDEOFORGE_DISPATCH_TOKEN_KEY: "dispatch-token-binding",
+          VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: "envelope-signing-binding",
+          VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: "envelope-signing-key-id",
+          VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: "provider-proof-binding",
+        },
+        accountId: ids.account,
+        workspaceId: ids.workspace,
+        generationRequestId: ids.request,
+        dispatchTokenKey: "dispatch-token-key-material-never-logged",
+      }),
+    ).resolves.toEqual({
+      state: "BOTH_ASSIGNED",
+      providerJobIds: ["mage_image-existing-job", "soulx_avatar-existing-job"],
+    });
+    expect(fixture.reconstruction.reconstruct).not.toHaveBeenCalled();
+  });
+
+  it("continues SoulX after a durable Mage assignment on Workflow restart", async () => {
+    const fixture = await restartFixture();
+    fixture.store.inspect = vi.fn(async () => [
+      {
+        lane: "mage_image" as const,
+        attemptId: ids.mageAttempt,
+        attemptState: "ASSIGNED",
+        outboxState: "ASSIGNED",
+        providerJobId: "mage-existing-job",
+        deploymentId: ids.deployment,
+        dispatchTokenSha256: digest("b"),
+        pairPhase: "MAGE_ASSIGNED",
+        recoveryAction: "CLEANUP_ONLY",
+      },
+      {
+        lane: "soulx_avatar" as const,
+        attemptId: ids.soulxAttempt,
+        attemptState: "OUTBOXED",
+        outboxState: "READY_TO_DISPATCH",
+        providerJobId: null,
+        deploymentId: ids.deployment,
+        dispatchTokenSha256: digest("c"),
+        pairPhase: "MAGE_ASSIGNED",
+        recoveryAction: "SEND_SOULX_ONLY",
+      },
+    ]);
+    const execute = vi.fn(async () => ({
+      state: "BOTH_ASSIGNED" as const,
+      providerJobIds: ["mage-existing-job", "soulx-new-job"] as const,
+    }));
+    const recovered = new HostedPairProductionComposition(
+      fixture.activation,
+      fixture.reconstruction,
+      { execute } as never,
+      fixture.signer,
+      fixture.store,
+    );
+    await recovered.resume({
+      environment: {
+        VIDEOFORGE_GPU_TRANSPORT: "QUALIFIED_EXACT",
+        DATABASE_URL: "postgres-runtime-binding",
+        VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres-reconciler-binding",
+        VIDEOFORGE_DISPATCH_TOKEN_KEY: "dispatch-token-binding",
+        VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: "envelope-signing-binding",
+        VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: "envelope-signing-key-id",
+        VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: "provider-proof-binding",
+      },
+      accountId: ids.account,
+      workspaceId: ids.workspace,
+      generationRequestId: ids.request,
+      dispatchTokenKey: "dispatch-token-key-material-never-logged",
+    });
+    expect(fixture.reconstruction.reconstruct).toHaveBeenCalledTimes(1);
+    expect(execute).toHaveBeenCalledTimes(1);
   });
 
   it("concretely signs and verifies exact provider proof scope", async () => {

@@ -41,6 +41,7 @@ export interface HostedRuntimeEnvironment {
   };
   readonly PRIVATE_ARTIFACTS?: HostedR2BucketBinding;
   readonly VIDEO_WORKFLOW?: HostedWorkflowBinding;
+  readonly HOSTED_PAIR_WORKFLOW?: HostedWorkflowBinding;
   readonly VIDEOFORGE_COMMIT?: string;
   readonly VIDEOFORGE_ENVIRONMENT?: string;
   readonly VIDEOFORGE_PROVIDER_MODE?: string;
@@ -63,9 +64,17 @@ export interface HostedRuntimeEnvironment {
   readonly VIDEOFORGE_GPU_TRANSPORT?: string;
   readonly VIDEOFORGE_RECONCILER_DATABASE_URL?: string;
   readonly VIDEOFORGE_DISPATCH_TOKEN_KEY?: string;
+  readonly VIDEOFORGE_DISPATCH_TOKEN_KEY_ID?: string;
   readonly VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX?: string;
   readonly VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID?: string;
   readonly VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY?: string;
+  readonly VIDEOFORGE_PROVIDER_PROOF_KEY_ID?: string;
+  readonly RUNPOD_API_KEY?: string;
+  readonly RUNPOD_API_BASE_URL?: string;
+  readonly VIDEOFORGE_MAGE_ENDPOINT_ID?: string;
+  readonly VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256?: string;
+  readonly VIDEOFORGE_SOULX_ENDPOINT_ID?: string;
+  readonly VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256?: string;
 }
 
 export interface HostedRuntimeConfiguration {

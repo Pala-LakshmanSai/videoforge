@@ -258,6 +258,12 @@
       "name": "hosted_pair_runtime_executor",
       "filename": "0043_hosted_pair_runtime_executor.sql",
       "sha256": "sha256:590386f350c606da0be673376d14a9609df5f221268b2a932d4e00d608b2b927"
+    },
+    {
+      "version": 44,
+      "name": "hosted_pair_zero_worker_evidence",
+      "filename": "0044_hosted_pair_zero_worker_evidence.sql",
+      "sha256": "sha256:e6df2e0121177de593f16347c540188449257de81c116eb0e1364dfeba7ecfb2"
     }
   ]
 }

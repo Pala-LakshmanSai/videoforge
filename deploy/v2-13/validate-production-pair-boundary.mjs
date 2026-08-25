@@ -30,10 +30,10 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
     bindings.state !== "DISABLED_UNQUALIFIED" ||
     !exactKeys(bindings.migration_ledger, ["exact_manifest_required", "first", "last"]) ||
     bindings.migration_ledger.first !== 37 ||
-    bindings.migration_ledger.last !== 43 ||
+    bindings.migration_ledger.last !== 44 ||
     bindings.migration_ledger.exact_manifest_required !== true
   )
-    fail("binding contract or exact 0037-0043 ledger gate drifted");
+    fail("binding contract or exact 0037-0044 ledger gate drifted");
   if (
     !exactKeys(bindings.database_roles, ["must_be_distinct", "reconciler", "runtime"]) ||
     bindings.database_roles.must_be_distinct !== true ||
@@ -46,16 +46,32 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
     "DATABASE_URL",
     "VIDEOFORGE_RECONCILER_DATABASE_URL",
     "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+    "VIDEOFORGE_DISPATCH_TOKEN_KEY_ID",
     "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
     "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
     "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+    "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+    "RUNPOD_API_KEY",
+    "RUNPOD_API_BASE_URL",
+    "VIDEOFORGE_MAGE_ENDPOINT_ID",
+    "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
   ];
   if (
     !exactKeys(bindings.secret_bindings, [
       "dispatch_token_key",
+      "dispatch_token_key_id",
       "envelope_signing_key",
       "envelope_signing_key_id",
       "provider_proof_verify_key",
+      "provider_proof_key_id",
+      "runpod_api_key",
+      "runpod_api_base_url",
+      "mage_endpoint_id",
+      "mage_endpoint_id_sha256",
+      "soulx_endpoint_id",
+      "soulx_endpoint_id_sha256",
       "reconciler_database",
       "runtime_database",
     ]) ||
@@ -89,10 +105,11 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
     "NOT rolreplication AND NOT rolbypassrls",
     `REVOKE EXECUTE ON FUNCTION ${settlement}\nFROM PUBLIC`,
     `REVOKE EXECUTE ON FUNCTION ${settlement}\nFROM :"runtime_role"`,
-    `GRANT EXECUTE ON FUNCTION ${settlement}\nTO :"reconciler_role"`,
+    `REVOKE EXECUTE ON FUNCTION ${settlement}\nFROM :"runtime_role"`,
+    "GRANT EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb)",
     "NOT has_function_privilege(:'runtime_role'",
     "NOT has_function_privilege('PUBLIC'",
-    "has_function_privilege(:'reconciler_role'",
+    "NOT has_function_privilege(:'reconciler_role'",
     "NOT has_table_privilege(:'reconciler_role','public.serverless_attempts','SELECT')",
     "NOT has_table_privilege(:'reconciler_role','public.provider_workload_leases','UPDATE')",
   ]) {
@@ -103,9 +120,12 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
   if (
     /GRANT EXECUTE ON FUNCTION public\.videoforge_settle_hosted_pair_cleanup\(uuid,uuid,uuid,jsonb\)\s+TO :"runtime_role"/u.test(
       runtimeSql,
+    ) ||
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_record_hosted_pair_zero_worker\(uuid,uuid,uuid,jsonb\)\s+TO :"reconciler_role"/u.test(
+      reconcilerSql,
     )
   )
-    fail("ordinary runtime grants settlement");
+    fail("runtime or reconciler can bypass atomic v2 settlement");
   if (
     /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE)[^;]*\bON\s+hosted_lane_batch(?:es|_items)\b/iu.test(
       runtimeSql,

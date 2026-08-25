@@ -7,6 +7,7 @@ import { runHostedRetention } from "../src/server/hosted/retention";
 import { handleV207GeneratedOutputPort } from "../src/server/hosted/v207-output-ports";
 
 export { HostedVideoWorkflow } from "./hosted-workflow";
+export { HostedPairWorkflow } from "./hosted-pair-workflow";
 
 const V207_OUTPUT_PORT_ROUTE = "/api/v2/v207/generated-output-port";
 const V207_WORKER_VERSION_HEADER = "x-videoforge-worker-version";

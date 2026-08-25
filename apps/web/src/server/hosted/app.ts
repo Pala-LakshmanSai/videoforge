@@ -4,6 +4,7 @@ import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { handleHostedProductRequest } from "./product";
+import { commitAndScheduleHostedPair } from "./hosted-pair-live-wiring";
 import { hostedServerlessCallbackDisabledResponse } from "./hosted-serverless-callback";
 import type { HostedAuthenticatedServerlessCallbackRoute } from "./hosted-serverless-callback-auth";
 import {
@@ -920,6 +921,112 @@ export async function startHostedCpuRecoveryWorkflow(
   return workflow.create({ id: `recovery-${crypto.randomUUID()}`, params });
 }
 
+const hostedPairDispatchDependencies = Object.freeze({
+  createPool: createNeonPool,
+  createExecutor: createNeonExecutor,
+  session: hostedSession,
+  commitAndSchedule: commitAndScheduleHostedPair,
+});
+
+export async function handleHostedPairDispatch(
+  request: Request,
+  environment: HostedRuntimeEnvironment,
+  config: ReturnType<typeof hostedRuntimeConfiguration>,
+  executionContext: HostedExecutionContext,
+  generationRequestId: string,
+  dependencies: typeof hostedPairDispatchDependencies = hostedPairDispatchDependencies,
+): Promise<Response> {
+  if (environment.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT")
+    return json({ error: { code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED" } }, 503);
+  if (!sameOriginBrowserWrite(request, config))
+    return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const pool = dependencies.createPool(config.neon.databaseUrl);
+  try {
+    const session = await dependencies.session(request, config, pool, executionContext);
+    if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+    const scoped = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
+      session.session.token,
+    ]);
+    const accountId = scoped.rows[0]?.account_id;
+    const workspaceId = scoped.rows[0]?.workspace_id;
+    if (typeof accountId !== "string" || typeof workspaceId !== "string")
+      return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: { code: "HOSTED_PAIR_REQUEST_INVALID" } }, 400);
+    }
+    if (typeof body !== "object" || body === null || Array.isArray(body))
+      return json({ error: { code: "HOSTED_PAIR_REQUEST_INVALID" } }, 400);
+    const value = body as Record<string, unknown>;
+    if (
+      Object.keys(value).sort().join(",") !==
+        "approvalId,approvalSha256,claimId,expiresAt,generationPlanSha256,laneBindings,leaseId,pair,projectId,projectRevisionId,totalCapUsd" ||
+      ![
+        value.approvalId,
+        value.claimId,
+        value.projectId,
+        value.projectRevisionId,
+        value.leaseId,
+        generationRequestId,
+      ].every((item) => typeof item === "string" && UUID.test(item)) ||
+      typeof value.approvalSha256 !== "string" ||
+      !/^sha256:[0-9a-f]{64}$/u.test(value.approvalSha256) ||
+      typeof value.generationPlanSha256 !== "string" ||
+      !/^sha256:[0-9a-f]{64}$/u.test(value.generationPlanSha256) ||
+      typeof value.expiresAt !== "string" ||
+      !Number.isFinite(Date.parse(value.expiresAt)) ||
+      typeof value.totalCapUsd !== "number" ||
+      !Number.isFinite(value.totalCapUsd) ||
+      value.totalCapUsd <= 0 ||
+      typeof value.laneBindings !== "object" ||
+      value.laneBindings === null ||
+      typeof value.pair !== "object" ||
+      value.pair === null
+    )
+      return json({ error: { code: "HOSTED_PAIR_REQUEST_INVALID" } }, 400);
+    const reconcilerPool = dependencies.createPool(environment.VIDEOFORGE_RECONCILER_DATABASE_URL!);
+    let scheduled;
+    try {
+      scheduled = await dependencies.commitAndSchedule(
+        environment,
+        dependencies.createExecutor(pool),
+        dependencies.createExecutor(reconcilerPool),
+        {
+          approvalId: value.approvalId as string,
+          approvalSha256: value.approvalSha256,
+          claimId: value.claimId as string,
+          accountId,
+          workspaceId,
+          projectId: value.projectId as string,
+          projectRevisionId: value.projectRevisionId as string,
+          generationRequestId,
+          generationPlanSha256: value.generationPlanSha256,
+          leaseId: value.leaseId as string,
+          laneBindings: value.laneBindings as never,
+          totalCapUsd: value.totalCapUsd,
+          expiresAt: value.expiresAt,
+          pair: value.pair as never,
+        },
+      );
+    } finally {
+      await reconcilerPool.end();
+    }
+    return json(
+      {
+        schema_version: "videoforge-hosted-pair-workflow/v1",
+        state: "SCHEDULED",
+        workflow_id: scheduled.id,
+        recovered: scheduled.recovered,
+      },
+      202,
+    );
+  } finally {
+    await pool.end();
+  }
+}
+
 export async function handleHostedRequest(
   request: Request,
   environment: HostedRuntimeEnvironment,
@@ -978,6 +1085,16 @@ export async function handleHostedRequest(
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/queue") {
     return handleHostedQueue(request, config, executionContext);
   }
+  const pairDispatch =
+    /^\/api\/v2\/hosted\/generations\/([0-9a-f]{8}-[0-9a-f-]{27,})\/dispatch$/u.exec(url.pathname);
+  if (request.method === "POST" && pairDispatch && UUID.test(pairDispatch[1]!))
+    return handleHostedPairDispatch(
+      request,
+      environment,
+      config,
+      executionContext,
+      pairDispatch[1]!,
+    );
   const serverlessCallbackMatch =
     /^\/api\/v2\/serverless-attempts\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/output-callback$/u.exec(
       url.pathname,

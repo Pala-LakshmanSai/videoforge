@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { createHash, createHmac } from "node:crypto";
 import test from "node:test";
+
+import { canonicalizeJson } from "@videoforge/contracts";
 
 import {
   canonicalSha256,
@@ -8,24 +11,32 @@ import {
   serializeMetadataSnapshot,
 } from "../dist/src/index.js";
 import { IDS } from "./support/fixtures.mjs";
-import { createMigratedDatabase, sha256, uuid, withMigratedDatabase } from "./support/pglite.mjs";
+import {
+  createMigratedDatabase,
+  sha256,
+  uuid,
+  withMigratedDatabase,
+  withPgcryptoMigratedDatabase,
+} from "./support/pglite.mjs";
 import { seedMaterialization } from "./hosted-lane-batch-materialization.test.mjs";
 
-async function seededPair(executor) {
+async function seededPair(executor, productionPgcrypto = false) {
   // PGlite exposes digest/UUID primitives but not pgcrypto's random/envelope helpers. These
   // provider-free test shims preserve the production function signatures, randomness, encrypted
   // at-rest bytes, and wrong-key failure semantics exercised below.
-  await executor.execute(`CREATE FUNCTION public.gen_random_bytes(count integer) RETURNS bytea
-    LANGUAGE sql VOLATILE AS $$ SELECT decode(substring(replace(gen_random_uuid()::text,'-','')||
-      replace(gen_random_uuid()::text,'-','') FROM 1 FOR count*2),'hex') $$`);
-  await executor.execute(`CREATE FUNCTION public.pgp_sym_encrypt(data text,key text,options text)
-    RETURNS bytea LANGUAGE sql STRICT AS $$ SELECT convert_to(encode(sha256(convert_to(key,'UTF8')),'hex')||
-      ':'||reverse(data),'UTF8') $$`);
-  await executor.execute(`CREATE FUNCTION public.pgp_sym_decrypt(data bytea,key text)
-    RETURNS text LANGUAGE plpgsql STRICT AS $$ DECLARE decoded text:=convert_from(data,'UTF8');
-    expected text:=encode(sha256(convert_to(key,'UTF8')),'hex'); BEGIN
-      IF split_part(decoded,':',1)<>expected THEN RAISE EXCEPTION 'Wrong key or corrupt data'; END IF;
-      RETURN reverse(substring(decoded FROM 66)); END $$`);
+  if (!productionPgcrypto) {
+    await executor.execute(`CREATE FUNCTION public.gen_random_bytes(count integer) RETURNS bytea
+      LANGUAGE sql VOLATILE AS $$ SELECT decode(substring(replace(gen_random_uuid()::text,'-','')||
+        replace(gen_random_uuid()::text,'-','') FROM 1 FOR count*2),'hex') $$`);
+    await executor.execute(`CREATE FUNCTION public.pgp_sym_encrypt(data text,key text,options text)
+      RETURNS bytea LANGUAGE sql STRICT AS $$ SELECT convert_to(encode(sha256(convert_to(key,'UTF8')),'hex')||
+        ':'||reverse(data),'UTF8') $$`);
+    await executor.execute(`CREATE FUNCTION public.pgp_sym_decrypt(data bytea,key text)
+      RETURNS text LANGUAGE plpgsql STRICT AS $$ DECLARE decoded text:=convert_from(data,'UTF8');
+      expected text:=encode(sha256(convert_to(key,'UTF8')),'hex'); BEGIN
+        IF split_part(decoded,':',1)<>expected THEN RAISE EXCEPTION 'Wrong key or corrupt data'; END IF;
+        RETURN reverse(substring(decoded FROM 66)); END $$`);
+  }
   const seeded = await seedMaterialization(executor);
   await executor.transaction(async (tx) => {
     await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
@@ -251,6 +262,19 @@ test("0042 runtime capability allows atomic pair but denies direct 0040 claim an
 test("0042 executes exact pair success, encrypted recovery, and restart states", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const fixture = await seededPair(executor);
+    const prospectiveSchedule = await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      return tx.query(
+        "SELECT * FROM videoforge_load_hosted_pair_workflow_schedule($1,$2,$3)",
+        [IDS.accountA, IDS.workspaceA, fixture.generationRequestId],
+      );
+    });
+    assert.equal(prospectiveSchedule.rows[0].existing_pair, false);
+    assert.equal(
+      new Date(prospectiveSchedule.rows[0].stop_at).getTime() -
+        new Date(prospectiveSchedule.rows[0].cancel_at).getTime(),
+      10 * 60 * 1_000,
+    );
     const result = await commit(executor, fixture);
     assert.deepEqual(
       result.rows.map((row) => row.lane),
@@ -308,6 +332,26 @@ test("0042 executes exact pair success, encrypted recovery, and restart states",
       result.rows.map((row) => row.dispatch_token),
     );
     assert.ok(recovered.rows.every((row) => row.outbox_state === "READY_TO_DISPATCH"));
+    const persistedSchedule = await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      return tx.query(
+        `SELECT s.*,c.claimed_at FROM videoforge_load_hosted_pair_workflow_schedule($1,$2,$3) s
+          JOIN hosted_paid_dispatch_claims c ON c.account_id=$1 AND c.workspace_id=$2
+            AND c.generation_request_id=$3`,
+        [IDS.accountA, IDS.workspaceA, fixture.generationRequestId],
+      );
+    });
+    assert.equal(persistedSchedule.rows[0].existing_pair, true);
+    assert.equal(
+      new Date(persistedSchedule.rows[0].cancel_at).getTime() -
+        new Date(persistedSchedule.rows[0].claimed_at).getTime(),
+      20 * 60 * 1_000,
+    );
+    assert.equal(
+      new Date(persistedSchedule.rows[0].stop_at).getTime() -
+        new Date(persistedSchedule.rows[0].claimed_at).getTime(),
+      30 * 60 * 1_000,
+    );
     const activation = await executor.transaction(async (tx) => {
       await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
       return tx.query("SELECT videoforge_load_hosted_pair_activation($1,$2,$3) AS snapshot", [
@@ -489,9 +533,9 @@ test("0043 persists one-shot Mage SENT and refuses ghost-job absence settlement"
   });
 });
 
-test("0043 settles two completed barriers into render-ready zero-provider state", async () => {
-  await withMigratedDatabase(async ({ executor }) => {
-    const fixture = await seededPair(executor);
+test("0044 atomically persists signed two-lane zero proof and settles render readiness", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const fixture = await seededPair(executor, true);
     await commit(executor, fixture);
     const prepared = await executor.transaction(async (tx) => {
       await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
@@ -698,16 +742,57 @@ test("0043 settles two completed barriers into render-ready zero-provider state"
       });
     }
 
+    const proofSecretHex = "ab".repeat(32);
+    await executor.query(
+      "INSERT INTO hosted_provider_proof_keys(key_id,secret_hex) VALUES($1,$2)",
+      ["proof-key-v1", proofSecretHex],
+    );
+    const zeroWorkerProofs = attempts.rows.map((attempt) => {
+      const unsigned = {
+        schema_version: "videoforge-hosted-zero-worker-proof/v1",
+        account_id: IDS.accountA,
+        workspace_id: IDS.workspaceA,
+        generation_request_id: fixture.generationRequestId,
+        lane: attempt.lane,
+        endpoint_id_sha256: attempt.endpoint_id_sha256,
+        workers_total: 0,
+        queued_jobs: 0,
+        observed_at: new Date().toISOString(),
+      };
+      const signatureValue = createHmac("sha256", Buffer.from(proofSecretHex, "hex"))
+        .update(canonicalizeJson(unsigned))
+        .digest("hex");
+      return {
+        ...unsigned,
+        proof_sha256: canonicalSha256(unsigned),
+        signature_key_id: "proof-key-v1",
+        signature_value: signatureValue,
+        signature_sha256: `sha256:${createHash("sha256").update(signatureValue).digest("hex")}`,
+      };
+    });
     const settled = await executor.transaction(async (tx) => {
       await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
-      return tx.query("SELECT * FROM videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4::jsonb)", [
-        IDS.accountA,
-        IDS.workspaceA,
-        fixture.generationRequestId,
-        JSON.stringify(observations),
-      ]);
+      return tx.query(
+        "SELECT * FROM videoforge_settle_hosted_pair_cleanup_v2($1,$2,$3,$4::jsonb,$5::jsonb)",
+        [
+          IDS.accountA,
+          IDS.workspaceA,
+          fixture.generationRequestId,
+          JSON.stringify(observations),
+          JSON.stringify(zeroWorkerProofs),
+        ],
+      );
     });
     assert.deepEqual(settled.rows, [{ pair_phase: "SETTLED", released: true }]);
+    const zeroEvidence = await executor.query(
+      `SELECT lane,workers_total,queued_jobs FROM hosted_pair_zero_worker_observations
+        WHERE generation_request_id=$1 ORDER BY lane`,
+      [fixture.generationRequestId],
+    );
+    assert.deepEqual(zeroEvidence.rows, [
+      { lane: "mage_image", workers_total: 0, queued_jobs: 0 },
+      { lane: "soulx_avatar", workers_total: 0, queued_jobs: 0 },
+    ]);
     const state = await executor.query(
       `SELECT
         (SELECT count(*)::int FROM video_runtime_accepted_units WHERE runtime_id=r.id) accepted,

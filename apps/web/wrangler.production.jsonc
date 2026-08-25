@@ -32,6 +32,11 @@
       "name": "videoforge-v2-13-workflow-unresolved",
       "class_name": "HostedVideoWorkflow",
     },
+    {
+      "binding": "HOSTED_PAIR_WORKFLOW",
+      "name": "videoforge-v2-13-pair-workflow-unresolved",
+      "class_name": "HostedPairWorkflow",
+    },
   ],
   "vars": {
     "VIDEOFORGE_COMMIT": "0000000000000000000000000000000000000000",

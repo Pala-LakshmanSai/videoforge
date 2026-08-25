@@ -3,6 +3,7 @@ import type { HostedRuntimeEnvironment } from "../src/server/hosted/configuratio
 import { runHostedRetention } from "../src/server/hosted/retention";
 
 export { HostedVideoWorkflow } from "./hosted-workflow";
+export { HostedPairWorkflow } from "./hosted-pair-workflow";
 
 export default {
   fetch(request, environment, executionContext) {

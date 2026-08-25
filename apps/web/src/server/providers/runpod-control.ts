@@ -1552,7 +1552,11 @@ export class RunPodServerlessJobClient {
     throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
   }
 
-  async confirmDrained(maxAttempts = 30): Promise<void> {
+  async confirmDrained(maxAttempts = 30): Promise<{
+    readonly workersTotal: 0;
+    readonly queuedJobs: 0;
+    readonly observedAt: string;
+  }> {
     if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 180) {
       throw new RunPodControlError("RUNPOD_DRAIN_POLICY_INVALID");
     }
@@ -1563,11 +1567,16 @@ export class RunPodServerlessJobClient {
       const queuedJobs = strictCounter(jobs, "inQueue") + strictCounter(jobs, "inProgress");
       if (workers.total === 0 && queuedJobs === 0) {
         this.options.guard.confirmZero(0, 0);
-        return;
+        return Object.freeze({
+          workersTotal: 0,
+          queuedJobs: 0,
+          observedAt: new Date().toISOString(),
+        });
       }
       if (attempt + 1 < maxAttempts) await this.sleep(2_000);
     }
     this.options.guard.confirmZero(Number.NaN, Number.NaN);
+    throw new RunPodControlError("RUNPOD_ZERO_NOT_CONFIRMED");
   }
 
   async confirmWarmIdle(maxAttempts = 30, pollIntervalMs = 2_000): Promise<void> {

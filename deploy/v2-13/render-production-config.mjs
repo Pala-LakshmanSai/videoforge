@@ -103,6 +103,7 @@ function renderConfig(template, activation, releaseJson) {
   rendered.account_id = activation.cloudflare.account_id;
   rendered.r2_buckets[0].bucket_name = activation.cloudflare.r2_bucket_name;
   rendered.workflows[0].name = activation.cloudflare.workflow_name;
+  rendered.workflows[1].name = `${activation.cloudflare.workflow_name}-pair`;
   Object.assign(rendered.vars, {
     VIDEOFORGE_COMMIT: activation.release.commit,
     VIDEOFORGE_PUBLIC_ORIGIN: activation.cloudflare.public_origin,

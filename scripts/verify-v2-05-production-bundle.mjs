@@ -94,6 +94,7 @@ const expectedProductionImports = [
   "../src/server/hosted/configuration",
   "../src/server/hosted/retention",
   "./hosted-workflow",
+  "./hosted-pair-workflow",
 ];
 const hostedAppSource = await readFile(hostedAppPath, "utf8");
 const forbiddenProductionSource = [

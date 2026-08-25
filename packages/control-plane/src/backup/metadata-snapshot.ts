@@ -110,6 +110,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "hosted_canonical_timing_bridges",
   "hosted_lane_batches",
   "hosted_lane_batch_items",
+  "hosted_pair_zero_worker_observations",
   "attempts",
   "qa_results",
   "render_jobs",

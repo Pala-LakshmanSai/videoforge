@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import { PGlite } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
 import { applyMigrations, MIGRATION_MANIFEST } from "../../dist/src/index.js";
 
@@ -72,6 +73,19 @@ export async function withMigratedDatabase(work) {
     return await work(context);
   } finally {
     await context.database.close();
+  }
+}
+
+export async function withPgcryptoMigratedDatabase(work) {
+  const database = new PGlite({ extensions: { pgcrypto } });
+  try {
+    await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+    const executor = new PGliteExecutor(database);
+    const sources = await loadMigrationSources();
+    await applyMigrations(executor, sources);
+    return await work({ database, executor, sources });
+  } finally {
+    await database.close();
   }
 }
 

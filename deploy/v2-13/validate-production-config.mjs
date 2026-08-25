@@ -17,6 +17,7 @@ const PLACEHOLDERS = Object.freeze([
   "https://v2-13-public-origin-unresolved.invalid",
   "videoforge-v2-13-r2-unresolved",
   "videoforge-v2-13-workflow-unresolved",
+  "videoforge-v2-13-pair-workflow-unresolved",
 ]);
 
 const exactKeys = (value, expected) =>
@@ -178,10 +179,13 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     !exactKeys(config.r2_buckets[0], ["binding", "bucket_name"]) ||
     config.r2_buckets[0].binding !== "PRIVATE_ARTIFACTS" ||
     !Array.isArray(config.workflows) ||
-    config.workflows.length !== 1 ||
+    config.workflows.length !== 2 ||
     !exactKeys(config.workflows[0], ["binding", "class_name", "name"]) ||
     config.workflows[0].binding !== "VIDEO_WORKFLOW" ||
-    config.workflows[0].class_name !== "HostedVideoWorkflow"
+    config.workflows[0].class_name !== "HostedVideoWorkflow" ||
+    !exactKeys(config.workflows[1], ["binding", "class_name", "name"]) ||
+    config.workflows[1].binding !== "HOSTED_PAIR_WORKFLOW" ||
+    config.workflows[1].class_name !== "HostedPairWorkflow"
   )
     fail("R2 or Workflow binding drifted");
   const expectedVars = [
@@ -228,9 +232,17 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     "MEDIA_WORKER_TOKEN_SECRET",
     "VIDEOFORGE_RECONCILER_DATABASE_URL",
     "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+    "VIDEOFORGE_DISPATCH_TOKEN_KEY_ID",
     "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
     "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
     "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+    "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+    "RUNPOD_API_KEY",
+    "RUNPOD_API_BASE_URL",
+    "VIDEOFORGE_MAGE_ENDPOINT_ID",
+    "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
   ]) {
     if (Object.hasOwn(config.vars, secret))
       fail(`secret ${secret} must use a secret binding, never vars`);
@@ -256,7 +268,8 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     if (
       !/^[a-z][a-z0-9-]{2,62}$/u.test(config.name) ||
       !/^[a-z][a-z0-9-]{2,62}$/u.test(config.r2_buckets[0].bucket_name) ||
-      !/^[a-z][a-z0-9-]{2,62}$/u.test(config.workflows[0].name)
+      !config.workflows.every(({ name }) => /^[a-z][a-z0-9-]{2,62}$/u.test(name)) ||
+      config.workflows[0].name === config.workflows[1].name
     )
       fail("activated Worker, R2, or Workflow name is malformed");
     if (config.name !== "videoforge-production-runtime")

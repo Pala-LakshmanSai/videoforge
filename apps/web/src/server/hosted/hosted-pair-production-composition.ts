@@ -31,6 +31,7 @@ export const HOSTED_PAIR_REQUIRED_MIGRATIONS = Object.freeze([
   [41, "sha256:24f161e5c441f7cfa6b7837d185e64b3eae182d729c8ef21ef6850aeec9bcf84"],
   [42, "sha256:ea34a54c7044e25ca50f58f47d622e293b0c34719c74e5e32ca190cedf850fcc"],
   [43, "sha256:590386f350c606da0be673376d14a9609df5f221268b2a932d4e00d608b2b927"],
+  [44, "sha256:e6df2e0121177de593f16347c540188449257de81c116eb0e1364dfeba7ecfb2"],
 ] as const);
 
 export interface HostedPairProductionBindingEnvironment {
@@ -38,9 +39,17 @@ export interface HostedPairProductionBindingEnvironment {
   readonly DATABASE_URL?: string;
   readonly VIDEOFORGE_RECONCILER_DATABASE_URL?: string;
   readonly VIDEOFORGE_DISPATCH_TOKEN_KEY?: string;
+  readonly VIDEOFORGE_DISPATCH_TOKEN_KEY_ID?: string;
   readonly VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX?: string;
   readonly VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID?: string;
   readonly VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY?: string;
+  readonly VIDEOFORGE_PROVIDER_PROOF_KEY_ID?: string;
+  readonly RUNPOD_API_KEY?: string;
+  readonly RUNPOD_API_BASE_URL?: string;
+  readonly VIDEOFORGE_MAGE_ENDPOINT_ID?: string;
+  readonly VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256?: string;
+  readonly VIDEOFORGE_SOULX_ENDPOINT_ID?: string;
+  readonly VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256?: string;
 }
 
 /** The deployed production config is intentionally disabled, so this function returns before
@@ -130,7 +139,7 @@ export function evaluateHostedPairProductionGate(
         input.migrationLedger[index]?.sha256 !== sha256,
     )
   )
-    return disabled("MIGRATION_LEDGER_0037_0043_INVALID");
+    return disabled("MIGRATION_LEDGER_0037_0044_INVALID");
   const now = Date.parse(input.now);
   if (!Number.isFinite(now)) return disabled("CLOCK_INVALID");
   for (const lane of ["mage_image", "soulx_avatar"] as const) {
@@ -227,7 +236,7 @@ export class HostedSqlPairActivationStore implements HostedPairActivationStore {
         input.accountId,
       ]);
       const result = await transaction.query<{ snapshot: unknown } & Record<string, unknown>>(
-        "SELECT public.videoforge_load_hosted_pair_activation($1,$2,$3) AS snapshot",
+        "SELECT public.videoforge_load_hosted_pair_activation_v2($1,$2,$3) AS snapshot",
         [input.accountId, input.workspaceId, input.generationRequestId],
       );
       const snapshot = result.rows[0]?.snapshot;
@@ -438,6 +447,7 @@ export class HostedPairProductionComposition {
     private readonly reconstruction: HostedPairReconstructionStore,
     private readonly runtime: HostedPairRuntimeExecutor,
     private readonly signer: HostedEnvelopePairSigner,
+    private readonly inspection?: Pick<HostedPairRuntimeStore, "inspect">,
   ) {}
 
   async resume(input: {
@@ -465,6 +475,32 @@ export class HostedPairProductionComposition {
       },
     });
     if (gate.state !== "READY") return gate;
+    if (this.inspection) {
+      const rows = await this.inspection.inspect(input);
+      if (
+        rows.every(
+          (row) => row.recoveryAction === "RECONCILE_ASSIGNED" && row.providerJobId !== null,
+        )
+      ) {
+        return Object.freeze({
+          state: "BOTH_ASSIGNED" as const,
+          providerJobIds: Object.freeze([
+            rows[0]!.providerJobId!,
+            rows[1]!.providerJobId!,
+          ]) as readonly [string, string],
+        });
+      }
+      const sendable = rows.some((row) =>
+        ["SEND_MAGE_ONLY", "SEND_SOULX_ONLY"].includes(row.recoveryAction),
+      );
+      const blocked = rows.find((row) => row.recoveryAction === "CLEANUP_ONLY");
+      if (!sendable && blocked)
+        return Object.freeze({
+          state: "CLEANUP_ONLY" as const,
+          lane: blocked.lane,
+          reason: "DISPATCH_ACK_UNKNOWN" as const,
+        });
+    }
     const rebuilt = await this.reconstruction.reconstruct(input);
     const envelopes = await signReconstructedPair(rebuilt, this.signer);
     return this.runtime.execute({ ...input, envelopes });
@@ -477,6 +513,7 @@ export interface HostedPairSettlementStore {
     readonly workspaceId: string;
     readonly generationRequestId: string;
     readonly observations: JsonValue;
+    readonly zeroWorkerProofs: JsonValue;
   }): Promise<void>;
 }
 
@@ -490,12 +527,13 @@ export class HostedSqlPairSettlementStore implements HostedPairSettlementStore {
         input.accountId,
       ]);
       const result = await transaction.query(
-        "SELECT * FROM public.videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4::jsonb)",
+        "SELECT * FROM public.videoforge_settle_hosted_pair_cleanup_v2($1,$2,$3,$4::jsonb,$5::jsonb)",
         [
           input.accountId,
           input.workspaceId,
           input.generationRequestId,
           JSON.stringify(input.observations),
+          JSON.stringify(input.zeroWorkerProofs),
         ],
       );
       if (result.rows.length !== 1)
@@ -636,11 +674,16 @@ export class HostedPairProductionReconciler {
     readonly accountId: string;
     readonly workspaceId: string;
     readonly generationRequestId: string;
+    readonly zeroWorkerProofs?: JsonValue;
   }) {
     const rows = await this.inspection.inspect(input);
     const observations: JsonValue[] = [];
     for (const row of rows) observations.push(await this.#proof(input, row));
-    await this.settlement.settle({ ...input, observations });
+    await this.settlement.settle({
+      ...input,
+      observations,
+      zeroWorkerProofs: input.zeroWorkerProofs ?? [],
+    });
     return Object.freeze({ state: "SETTLED" as const });
   }
 

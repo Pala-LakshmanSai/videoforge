@@ -3,7 +3,7 @@
   "state": "DISABLED_UNQUALIFIED",
   "migration_ledger": {
     "first": 37,
-    "last": 43,
+    "last": 44,
     "exact_manifest_required": true
   },
   "database_roles": {
@@ -15,9 +15,17 @@
     "runtime_database": "DATABASE_URL",
     "reconciler_database": "VIDEOFORGE_RECONCILER_DATABASE_URL",
     "dispatch_token_key": "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+    "dispatch_token_key_id": "VIDEOFORGE_DISPATCH_TOKEN_KEY_ID",
     "envelope_signing_key": "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
     "envelope_signing_key_id": "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
-    "provider_proof_verify_key": "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY"
+    "provider_proof_verify_key": "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+    "provider_proof_key_id": "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+    "runpod_api_key": "RUNPOD_API_KEY",
+    "runpod_api_base_url": "RUNPOD_API_BASE_URL",
+    "mage_endpoint_id": "VIDEOFORGE_MAGE_ENDPOINT_ID",
+    "mage_endpoint_id_sha256": "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+    "soulx_endpoint_id": "VIDEOFORGE_SOULX_ENDPOINT_ID",
+    "soulx_endpoint_id_sha256": "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256"
   },
   "activation": {
     "both_fresh_qualifications_required": true,

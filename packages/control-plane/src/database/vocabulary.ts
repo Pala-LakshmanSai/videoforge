@@ -90,6 +90,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "hosted_canonical_timing_bridges",
   "hosted_lane_batches",
   "hosted_lane_batch_items",
+  "hosted_pair_zero_worker_observations",
   "serverless_cancellations",
   "serverless_reconciliations",
   "serverless_cost_ledgers",
@@ -130,6 +131,7 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "hosted_dispatch_token_vault",
   "hosted_pair_runtime_states",
   "hosted_pair_cleanup_observations",
+  "hosted_provider_proof_keys",
 ] as const;
 
 /**

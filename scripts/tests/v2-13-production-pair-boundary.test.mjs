@@ -44,7 +44,7 @@ test("boundary rejects runtime settlement, shared roles, plaintext secrets, and 
         ...source,
         runtimeSql: `${source.runtimeSql}\nGRANT EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup(uuid,uuid,uuid,jsonb) TO :"runtime_role";`,
       }),
-    /ordinary runtime grants settlement/u,
+    /bypass atomic v2 settlement/u,
   );
   assert.throws(
     () =>
