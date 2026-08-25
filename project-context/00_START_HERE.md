@@ -2,6 +2,14 @@
 
 ## Active handoff — read this section first
 
+`DEC_DELIVERY_002` now governs execution. V2-08 through V2-13 provider-free product implementation
+may proceed in parallel behind fail-closed unqualified adapters. Live certification remains serial:
+V2-07 Mage first, then V2-08 SoulX and successor live gates. Successful atomic live evidence is
+reusable for at most 24 hours only with identical immutable image, complete source, endpoint-template/config,
+sealed volume-manifest, GPU, and region hashes. Release remains blocked until both lanes pass, a
+final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
+call, mutation, deployment, GPU use, or spend is currently authorized.
+
 Attempt64 is closed `NOT_QUALIFIED`. Deadline-mode admission and the immediate pre-RunPod recheck
 passed; the one-unit probe and three subsequent jobs produced 96 durable accepted units. Endpoint
 rotation succeeded with distinct endpoint and signed Pod identities. Cancellation reached
@@ -16,7 +24,8 @@ absent, protected config is restored mode `0600`, and three route reads prove ve
 authority/cap/refresh are null. Provider-free repair `1283a23` bounded-polls the first post-cancel
 health zero and still requires a separate second exact zero before settling liability; an independent
 audit found no P0/P1 and full web tests passed `713` with one skipped. Any new provider work requires
-fresh admission truth and a fresh exact proposal/approval/cap. V2-08 remains forbidden.
+fresh admission truth and a fresh exact proposal/approval/cap. V2-08 live activation remains
+forbidden; provider-free product implementation is active under `DEC_DELIVERY_002`.
 
 Attempt63 is closed `NOT_QUALIFIED`. Exact proposal `sha256:83a54dbd…e532` ran once under
 pre-execution authority `sha256:16378035…a798` and the `$4.50` cap. Two-phase anchor refresh and

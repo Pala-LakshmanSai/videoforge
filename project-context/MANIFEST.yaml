@@ -1,11 +1,11 @@
 schema_version: "2.0"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-08-24"
+last_updated: "2026-08-25"
 source_of_truth: project-context
 
-current_selected_profile: v2_07_mage_serverless
-current_selected_brief: tasks/VF-10-07.md
+current_selected_profile: v2_08_soulx_serverless
+current_selected_brief: tasks/VF-10-08.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -206,6 +206,9 @@ hard_rules:
   - ordinary_users_have_no_gpu_or_pod_lifecycle_controls
   - production_is_autoscaling_only_and_browser_state_projects_durable_tenant_truth
   - zero_workers_required_after_drain_fixed_volume_billing_reported_separately
+  - provider_free_v2_08_through_v2_13_may_advance_in_parallel_with_live_certification
+  - live_certification_serial_atomic_and_reusable_only_for_24h_identical_sealed_lineage
+  - final_two_lane_smoke_and_independent_zero_worker_drain_required_before_release
   - no_motion_graphics_text_overlays_captions_borders_or_watermarks
   - no_decorative_transitions_hard_cuts_only
   - slow_smooth_centered_image_zoom_required
@@ -230,6 +233,7 @@ approved_decisions:
   DEC_DB_001: additive_postgres_contracts_pglite_tests_neon_production
   DEC_DISPATCH_001: two_phase_serverless_authority_at_most_one_accepted_output
   DEC_DELIVERY_001: fast_bounded_checkpoints_focused_tests_sample_driven_hardening
+  DEC_DELIVERY_002: two_track_provider_free_product_and_serial_atomic_live_certification
   DEC_HOSTING_001: superseded_cloud_run_hosting_decision_history
   DEC_IMAGE_001: exact_mage_flow_int8_convrot_profile
   DEC_IMAGE_002: mage_terms_risk_accepted_no_clear_permission_claim

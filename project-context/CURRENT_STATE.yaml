@@ -1,14 +1,14 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-25T11:46:36.633Z"
+updated_at: "2026-08-25T13:14:43.000Z"
 
-phase: serverless_v2_v2_07_attempt64_closed_provider_free_repair_complete
+phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: mage_serverless_qualification
-current_task: VF-10-07
-current_wave: v2_07_attempt64_closed_post_cancel_zero_repair_complete
+current_milestone: parallel_provider_free_product_and_mage_certification
+current_task: VF-10-08_PROVIDER_FREE_PRODUCT_TRACK
+current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_repair_complete
+task_stage: provider_free_product_execution
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,15 +18,40 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: attempt64_closed_provider_free_repair_complete
+  mode: two_track_provider_free_product_active_live_certification_blocked
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Do not start V2-08."
-  note: "Attempt64 accepted 96 durable units and passed endpoint rotation, then failed closed after cancel. Exact cleanup and three stable zero-resource reads are complete; commit 1283a23 repairs the bounded cancellation drain without redispatch or acceptance relaxation."
+  v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
+  provider_free_product_action: "Implement V2-08 through V2-13 provider-free in parallel behind fail-closed unqualified adapters, focused tests, and bounded daily integration commits."
+  note: "DEC_DELIVERY_002 activates two tracks. Attempt64 remains NOT_QUALIFIED and clean. Provider-free product work may advance; provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
+
+two_track_execution:
+  decision: DEC_DELIVERY_002
+  activated_at: "2026-08-25"
+  product_track_status: ACTIVE_PROVIDER_FREE
+  product_track_scope: V2-08_through_V2-13
+  certification_track_status: V2-07_NOT_QUALIFIED
+  certification_order: [V2-07_MAGE, V2-08_SOULX, V2-09_THROUGH_V2-12_LIVE, V2-13_FINAL_SMOKE_DRAIN]
+  atomic_certification_gates: [compute_output_identity, cancel_timeout, max2_concurrent_readers]
+  atomic_gate_validity_hours: 24
+  reusable_only_if_identical_hashes:
+    [immutable_image, complete_source, endpoint_config, sealed_volume_manifest, exact_gpu, exact_region]
+  relevant_dependency_or_contract_change_invalidates_affected_gate: true
+  authority_cap_or_retention_consent_reusable: false
+  v2_08_live_activation_authorized: false
+  provider_calls_authorized: false
+  remote_mutation_authorized: false
+  gpu_use_authorized: false
+  external_spend_cap_usd: 0
+  release_blocked_until_mage_and_soulx_pass: true
+  final_two_lane_smoke_required: true
+  independent_zero_job_zero_worker_drain_required: true
+  integration_cadence: one_bounded_green_product_commit_per_working_day
+  verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 closed_v2_07_attempt64_proposal:
   mode: closed_consumed_post_cancel_zero_unconfirmed_clean
@@ -2800,12 +2825,12 @@ roadmap_state:
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
   V2-07: NOT_QUALIFIED_attempt64_post_cancel_zero_unconfirmed_clean
-  V2-08: blocked_on_V2-07
-  V2-09: blocked_on_V2-08
-  V2-10: blocked_on_V2-09
-  V2-11: blocked_on_V2-10
-  V2-12: blocked_on_V2-11
-  V2-13: blocked_on_V2-12
+  V2-08: provider_free_in_progress_live_blocked_on_V2-07
+  V2-09: provider_free_authorized_live_blocked_on_V2-07_and_V2-08
+  V2-10: provider_free_authorized_live_blocked_on_V2-09
+  V2-11: provider_free_authorized_live_blocked_on_lane_max1_and_V2-10
+  V2-12: provider_free_authorized_live_blocked_on_V2-11
+  V2-13: provider_free_authorized_release_blocked_on_all_live_gates
 
 context_cleanup:
   decision: DEC_CONTEXT_001
@@ -3028,7 +3053,7 @@ last_known_provider_resource_truth:
   cloudflare_active_record_sha256: "sha256:54cd4dcb8a5b2afe8ca8cad9f7aad7dd6d47ef14b36ef0f7b03c7ba90a234c89"
   cloudflare_stale_signer_present: false
   cloudflare_exact_post_route_fingerprint: 404_V207_ROUTE_DISABLED
-  note: "Attempt64 closure reconciliation proves zero Pods/endpoints/private templates/workers/running Pods after exact disposable cleanup, both retained 50 GB EU-RO-1 volumes, cumulative billing USD 2.095889555552276 with USD 0 observed increment subject to provider lag, absent signer, protected config mode 0600, refreshed anchor hashes, and three exact version-bound POST 404 V207_ROUTE_DISABLED reads. Attempt64 authority is consumed; V2-08 forbidden."
+  note: "Attempt64 closure reconciliation proves zero Pods/endpoints/private templates/workers/running Pods after exact disposable cleanup, both retained 50 GB EU-RO-1 volumes, cumulative billing USD 2.095889555552276 with USD 0 observed increment subject to provider lag, absent signer, protected config mode 0600, refreshed anchor hashes, and three exact version-bound POST 404 V207_ROUTE_DISABLED reads. Attempt64 authority is consumed; V2-08 live activation remains forbidden, while DEC_DELIVERY_002 permits provider-free V2-08 product work."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_MAGE_001
@@ -3043,7 +3068,8 @@ blocking_gates_for_production:
   - GATE_STYLE_002
 
 active_ownership: []
-in_progress_checkpoint: V2-07
+in_progress_checkpoint: V2-08_PROVIDER_FREE_PRODUCT_TRACK
+certification_checkpoint: V2-07_NOT_QUALIFIED
 
 provider_authority_closed: &v2_07_provider_authority_closed
   mode: none
@@ -4096,19 +4122,19 @@ provider_authority_attempt64: &v2_07_provider_authority_attempt64
 provider_authority: *v2_07_provider_authority_attempt64
 
 recommended_next_task:
-  task_id: VF-10-07
-  checkpoint: V2-07
-  milestone: mage_serverless_qualification
-  status: NOT_QUALIFIED_attempt64_post_cancel_zero_unconfirmed_clean
+  task_id: VF-10-08
+  checkpoint: V2-08
+  milestone: parallel_provider_free_product_and_mage_certification
+  status: provider_free_implementation_authorized_live_activation_blocked
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: none_attempt64_consumed
-  task_stage: provider_free_repair_complete
+  task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
-  read_profile: v2_07_mage_serverless
-  task_brief: tasks/VF-10-07.md
-  goal: "Prepare no live successor until fresh admission truth can bind a new exact proposal/approval/cap; do not start V2-08."
+  read_profile: v2_08_soulx_serverless
+  task_brief: tasks/VF-10-08.md
+  goal: "Implement the exact SoulX and downstream product path provider-free behind fail-closed live fences while V2-07 certification remains NOT_QUALIFIED."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

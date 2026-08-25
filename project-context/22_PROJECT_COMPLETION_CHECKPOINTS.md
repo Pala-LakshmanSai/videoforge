@@ -2,10 +2,11 @@
 
 Status: authoritative completion roadmap from the exact 2026-08-24 repository state
 
-This file is the handoff map for new chats. Complete one checkpoint at a time, make one green
-handoff commit, then run its paired read-only audit prompt from
-`templates/CHECKPOINT_CHAT_PROMPTS.md`. V2-00 through V2-06 are accepted foundations and must not be
-reimplemented.
+This file is the handoff map for new chats. V2-00 through V2-06 are accepted foundations and must
+not be reimplemented. From V2-07 onward, use the product and certification tracks below: make small
+green provider-free integration commits while live qualifications proceed as separately sealed
+atomic gates. Use the paired read-only audit prompt at material integration and certification
+boundaries.
 
 ## Locked product destination
 
@@ -114,16 +115,40 @@ Tenant isolation, authority/cap checks, artifact lineage, model-volume protectio
 cleanup are never reduced. P0/P1 blocks promotion. P2 is recorded for V2-13 unless it directly
 breaks the checkpoint outcome.
 
-## Aggressive three-day order
+## Product track and certification track
+
+Provider-free implementation for V2-08 through V2-13 may proceed in parallel immediately. This
+includes handlers behind fixture transport, hosted composition, UI, security, cost guards,
+observability, runbooks, and focused integration tests. Mark every unqualified lane and live path
+fail-closed; provider-free progress is never described as deployed, live-qualified, or production
+ready. Prefer one bounded integration commit per working day.
+
+Live acceptance remains serial and release-gated:
+
+1. V2-07 Mage atomic certifications;
+2. V2-08 SoulX atomic certifications after Mage live PASS;
+3. V2-09 through V2-12 bounded live acceptance in dependency order;
+4. V2-13 final smoke, independent drain, and release.
+
+For each lane, seal atomic evidence separately for compute/output identity, cancel/timeout, and
+max-two/concurrent readers. Successful atomic evidence remains reusable for 24 hours
+only when image digest, complete source hash, endpoint-template/config hash, volume-manifest hash,
+GPU hash, and region hash are identical and no relevant dependency or acceptance contract changed;
+each atomic record also binds that run's disposable provider endpoint identity. A later
+unrelated failure does not erase matching successful evidence. Expired or mismatched evidence must
+be rerun only for the affected atomic gate. Final release always requires a fresh bounded two-lane
+smoke and independent zero-job/zero-worker drain/inventory readback.
+
+## Aggressive overlapping order
 
 This is a best-case plan, not a guarantee. It assumes provider capacity, timely spend approval and
 visual review, and no second unrelated provider defect.
 
 | Day | Checkpoints | Visible result |
 |---|---|---|
-| Day 1 | V2-07 Mage; V2-08 SoulX | Both exact autoscaling GPU lanes accepted and drained |
-| Day 2 | V2-09 real hosted integration; V2-10 3–5-minute pilot | Generate-to-MP4 works automatically in the app and a real quality sample exists |
-| Day 3 | V2-11 live two-user queue; V2-12 production-length economics; V2-13 release | 5–10 invited users can queue work, two can run, cost is measured, release is guarded and operable |
+| Day 1 | Product: V2-08/V2-09 provider-free. Certification: V2-07 atomic gates | SoulX handler and hosted bridge advance while Mage capacity is pursued |
+| Day 2 | Product: V2-10–V2-13 preparation. Certification: Mage/SoulX serial gates | Product integration and hardening continue without claiming live activation |
+| Day 3+ | Live V2-09–V2-12 gates; V2-13 final smoke/drain/release | Release only after both lanes and all live dependencies pass |
 
 Expected active work is roughly 25–36 hours across the seven checkpoints. Provider cold starts,
 capacity, visual rejection, or a new integration defect can extend elapsed time. Do not hide a
@@ -133,13 +158,9 @@ failed gate to preserve the calendar.
 
 ```text
 V2-00..V2-06 accepted foundations
-  -> V2-07 Mage Serverless
-  -> V2-08 SoulX Serverless
-  -> V2-09 hosted real-GPU bridge + short E2E
-  -> V2-10 automatic 3–5-minute quality pilot
-  -> V2-11 live two-user autoscaling/fair queue
-  -> V2-12 production-length quality/economics
-  -> V2-13 invited-team production release
+  -> product track: V2-08..V2-13 provider-free implementation in parallel
+  -> certification track: V2-07 Mage -> V2-08 SoulX -> V2-09..V2-12 live gates
+  -> V2-13 final two-lane smoke + independent drain -> invited-team release
 ```
 
 ## V2-00 through V2-06 — complete; do not reopen
@@ -176,16 +197,17 @@ the candidate is unapproved and `NOT_QUALIFIED`.
 **Essential proof:** candidate validator, any test directly touched by a repair, exact paid evidence,
 settled cost, and independent drain/inventory readback. Do not rerun hundreds of unchanged tests.
 
-**Stop:** identity drift, cap risk, missing durable receipt, unexpected second dispatch, volume
-uncertainty, cleanup uncertainty, or a second unrelated failure. V2-08 remains blocked until audit
-PASS.
+**Stop live work:** identity drift, cap risk, missing durable receipt, unexpected second dispatch,
+volume uncertainty, cleanup uncertainty, or a second unrelated failure. V2-08 live activation
+remains blocked until Mage audit PASS; V2-08 through V2-13 provider-free product work may continue.
 
 ## V2-08 — SoulX Serverless and visual activation
 
 **Timebox:** 4–6 hours best case.
 
 **Starting point:** exact SoulX Pro BF16 bytes, sealed 50 GB volume, image, and owned native/full/
-split Pod samples exist. Serverless, deployability record, user crop approval, and cost are open.
+split Pod samples exist. Provider-free handler/integration work is authorized; Serverless live
+activation, deployability record, user crop approval, and cost are open.
 
 **Work:**
 

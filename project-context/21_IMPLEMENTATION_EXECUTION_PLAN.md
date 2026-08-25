@@ -14,7 +14,7 @@ Only V2 task briefs belong in the working tree; Git history records removed plan
 cap, resource grant, or acceptance authorizes a V2 operation. Retain evidence only when an active
 foundation, gate, artifact identity, cost fact, or audit depends on it.
 
-## Required order
+## Two-track execution order
 
 1. `V2-00`: reset active architecture, references, roadmap, selectors, and prompts.
 2. `V2-01`: enforce tenant-private identity and data access.
@@ -35,8 +35,42 @@ foundation, gate, artifact identity, cost fact, or audit depends on it.
     RTX 4090 lanes.
 14. `V2-13`: harden security, release production, and prove operations/rollback.
 
-Checkpoint promotion stays serial. Disjoint worker code may be built in parallel after V2-04, but
-shared contracts, provider resources, and acceptance do not advance out of order.
+V2-00 through V2-06 remain accepted foundations. Remaining work runs on two coordinated tracks:
+
+- **Product track:** provider-free V2-08 through V2-13 implementation, fixtures, local integration,
+  focused tests, security hardening, runbooks, and release preparation may advance in parallel. A
+  downstream module must use explicit fixture/unqualified adapters until its live dependencies pass.
+- **Certification track:** Mage then SoulX live proof remains serial. Split qualification into small
+  atomic gates rather than one all-or-nothing run: compute/output and identity; cancel/timeout;
+  max-two/concurrent readers; then release-lineage smoke and drain.
+
+Provider-free completion is not live activation, production qualification, or release authority.
+V2-08 live dispatch remains blocked on V2-07 Mage PASS, and production release remains blocked on
+both exact lanes plus the successor live gates.
+
+Integrate one bounded green product-track commit per working day. Run focused changed-surface tests
+during development and the canonical aggregate only at V2-09 provider-free integration and V2-13
+release preparation, unless a shared contract change requires it earlier.
+
+## Cumulative sealed-lineage certification
+
+A successful atomic live gate is cumulative evidence and is not rerun merely because a later,
+unrelated atomic gate fails. Reuse is allowed only when all of the following are true:
+
+- the evidence is no more than 24 hours old;
+- immutable image digest, complete source commit/hash, endpoint-template/config hash, sealed
+  volume-manifest hash, exact GPU hash, and exact region hash all match the next run and release
+  candidate; each atomic record also binds the disposable provider endpoint identity observed in
+  that run;
+- the gate includes durable outputs/readbacks/receipts, exact timing and cost, terminal provider
+  state, and its required cleanup proof;
+- no intervening source, dependency, model, volume, provider configuration, or acceptance-contract
+  change can affect that gate.
+
+Expiry or any lineage mismatch invalidates only the affected atomic evidence. Every release candidate
+still requires a final bounded smoke on both lanes and an independent zero-job/zero-worker drain and
+inventory readback. Atomic reuse never transfers authority, cap, resource retention permission, or
+spend approval to a later operation.
 
 ## External-boundary protocol
 
@@ -109,6 +143,7 @@ a shared contract/runtime change makes focused proof insufficient. Required proo
   timings, VRAM, hashes/probes, durable receipts, settled finite cost, retained fixed charges, and
   independent zero-worker-after-drain proof.
 
-Update evidence, gates, context, and `CURRENT_STATE.yaml`; commit one bounded green checkpoint; and
-do not begin its successor. If cleanup or worker state is uncertain, stop dispatch, reconcile it,
-and report the active-cost risk rather than claiming completion.
+Update evidence, gates, context, and `CURRENT_STATE.yaml`; commit bounded green product increments
+and separately sealed certification gates. If cleanup or worker state is uncertain, stop dispatch,
+reconcile it, and report the active-cost risk rather than claiming completion. Product-track work
+may continue provider-free when that work does not depend on the uncertain live result.

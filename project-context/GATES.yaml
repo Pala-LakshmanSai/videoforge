@@ -2,6 +2,24 @@ schema_version: "2.0"
 updated_at: "2026-08-25"
 evidence_root: "evidence/gates"
 
+execution_model:
+  decision: DEC_DELIVERY_002
+  product_track: provider_free_v2_08_through_v2_13_parallel
+  certification_track: serial_atomic_live_gates
+  atomic_gate_validity_hours: 24
+  reusable_lineage_fields:
+    - immutable_image_sha256
+    - complete_source_sha256
+    - endpoint_config_sha256
+    - sealed_volume_manifest_sha256
+    - exact_gpu_sha256
+    - exact_region_sha256
+  reuse_requires_no_relevant_dependency_or_contract_change: true
+  authority_or_cap_reusable: false
+  final_two_lane_smoke_required: true
+  independent_zero_job_zero_worker_drain_required: true
+  release_blocked_until_mage_and_soulx_live_pass: true
+
 # This registry contains only active V2 gates and accepted foundations still used by V2.
 gates:
   GATE_TENANCY_001:
