@@ -2,13 +2,14 @@
 
 ## Active handoff — read this section first
 
-Attempt60 is a provider-free candidate pending fresh exact approval. Proposal
+Attempt60 is approved once and pending fresh post-approval preflight/execution. Proposal
 `sha256:aa67f635d7ff9d167339b23a0ae9b389d5e4beeec688c56877d44607e426176b` binds pre-route
 transport-gap repair `42a5a52`, post-cancel repair `8bb6583`, the exact retained Cloudflare anchor,
 and new max1/max2 definitions. Fresh post-Attempt59 RunPod truth is zero compute/disposables, both
 retained volumes, HIGH RTX 4090 EU-RO-1 availability, unchanged `$1.10/GPU-hour` Flex and
-`$0.74/hour` Secure reference rates, and billing baseline `1.9971928337181453`. Authority,
-executable cap, anchor refresh, mutation, GPU use, and V2-08 are null/forbidden until exact approval.
+`$0.74/hour` Secure reference rates, and billing baseline `1.9971928337181453`. Exact authority
+`sha256:89dcc4adc4a9c52ebf5f1fe8722328299e62ec48b574a559122f7b51cc3d660d` is single-use and
+unconsumed with the `$4` cap and `two-phase-v1`; V2-08 remains forbidden.
 
 Attempt59 is closed `NOT_QUALIFIED`; its exact single-use authority is consumed and non-reusable.
 The first pre-mutation route read was exact version-bound `404 V207_ROUTE_DISABLED`, then a later

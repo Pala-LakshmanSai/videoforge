@@ -7,7 +7,8 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dir, "../../../../../");
 const expected = {
   proposal: "sha256:aa67f635d7ff9d167339b23a0ae9b389d5e4beeec688c56877d44607e426176b",
-  acceptance: "sha256:759f78a2bcb88c110c378a364ff6978ef599ec07f961b11170584bfe51456858",
+  authority: "sha256:89dcc4adc4a9c52ebf5f1fe8722328299e62ec48b574a559122f7b51cc3d660d",
+  acceptance: "sha256:f0fe4849f1773642aab5aefb5424314b2344c7fd59b969c1b8d971d76f820793",
   preflight: "sha256:b418e2b646310c7c2dc1b5fe0d7e1d01d803bcb7c808bf9cbfee5b3a09c050dd",
   max1: "sha256:341a887ee12bc6c88d2fff055abb617ae35120038804715aa506515c22f57d55",
   max2: "sha256:2d455ebd73d58ea95d7ffa903bddcef9111347332d6595b0a14c5e0abdafdcc9",
@@ -38,8 +39,9 @@ const fileSha = async (name) => sha(await readFile(path.join(dir, name)));
 const rootBytes = async (name) => readFile(path.join(root, name));
 const rootSha = async (name) => sha(await rootBytes(name));
 
-const [proposal, preflight, max1, max2, acceptance, activation, orchestrator] = await Promise.all([
+const [proposal, authority, preflight, max1, max2, acceptance, activation, orchestrator] = await Promise.all([
   json("combined-live-proposal.json"),
+  json("approved-authority.json"),
   json("read-only-preflight.json"),
   json("staged-config-max1.json"),
   json("staged-config-max2.json"),
@@ -48,6 +50,7 @@ const [proposal, preflight, max1, max2, acceptance, activation, orchestrator] = 
   rootBytes("apps/web/src/server/providers/v207-live-orchestrator.ts").then(String),
 ]);
 yes((await fileSha("combined-live-proposal.json")) === expected.proposal, "PROPOSAL_HASH");
+yes((await fileSha("approved-authority.json")) === expected.authority, "AUTHORITY_HASH");
 yes((await fileSha("acceptance.json")) === expected.acceptance, "ACCEPTANCE_HASH");
 yes((await fileSha("read-only-preflight.json")) === expected.preflight, "PREFLIGHT_HASH");
 yes((await fileSha("staged-config-max1.json")) === expected.max1, "MAX1_HASH");
@@ -137,15 +140,20 @@ yes(
     acceptance.preflight_sha256 === expected.preflight &&
     acceptance.max1_sha256 === expected.max1 &&
     acceptance.max2_sha256 === expected.max2 &&
+    acceptance.lineage_acceptance.control_source_commit === expected.controlRepair &&
+    acceptance.lineage_acceptance.pre_route_transport_gap_repair_commit === expected.preRouteRepair &&
+    acceptance.provider_state.fresh_runpod_truth_checked_at === "2026-08-25T04:54:00.388Z" &&
+    acceptance.provider_state.billing_baseline_usd === expected.billingBaseline &&
+    acceptance.provider_state.billing_increment_usd === 0 &&
     acceptance.authority.maximum_cumulative_finite_spend_usd === null &&
     acceptance.authority.v2_08_authorized === false,
   "ACCEPTANCE",
 );
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_PROPOSAL_POINTER");
 yes(activation.includes(`"${expected.controlRepair}" as const`), "ACTIVATION_CONTROL_SOURCE");
-yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(activation), "AUTHORITY_NULL");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_NULL");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "REFRESH_NULL");
+yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_BINDING");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4;/u.test(activation), "CAP_BINDING");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation), "REFRESH_BINDING");
 const canonical = activation
   .replace(/^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/mu, `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${"0".repeat(64)}" as const;`)
   .replace(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/mu, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;")
@@ -159,5 +167,17 @@ try {
 } catch {
   authorityExists = false;
 }
-yes(authorityExists === false, "AUTHORITY_FILE_FORBIDDEN");
+yes(authorityExists === true, "AUTHORITY_FILE_REQUIRED");
+yes(
+  authority.attempt === 60 &&
+    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.proposal.sha256 === expected.proposal &&
+    authority.approval.maximum_cumulative_finite_spend_usd === 4 &&
+    authority.approval.flashboot_true_accepted === true &&
+    authority.approval.low_or_better_eu_ro_1_availability_approved === true &&
+    authority.approval.anchor_refresh_authorized === true &&
+    authority.approval.consumed === false &&
+    authority.execution_boundary.v2_08_authorized === false,
+  "AUTHORITY_CONTRACT",
+);
 process.stdout.write(`PASS validate-v207-attempt60-candidate ${JSON.stringify(expected)}\n`);
