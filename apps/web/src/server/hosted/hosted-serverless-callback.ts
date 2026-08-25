@@ -58,6 +58,7 @@ export class HostedServerlessCallbackError extends Error {
     readonly code:
       | "HOSTED_SERVERLESS_CALLBACK_MALFORMED"
       | "HOSTED_SERVERLESS_CALLBACK_FOREIGN"
+      | "HOSTED_SERVERLESS_CALLBACK_UNAUTHENTICATED"
       | "HOSTED_SERVERLESS_CALLBACK_SCHEMA_MISSING"
       | "HOSTED_SERVERLESS_CALLBACK_DISABLED_UNQUALIFIED",
   ) {
@@ -124,7 +125,49 @@ export function createHostedServerlessCallback(input: {
   readonly signer: ProvenanceReceiptSigner;
   readonly loaders: HostedServerlessCallbackLoaders;
 }) {
+  async function acceptBound(
+    binding: HostedServerlessAttemptBinding,
+    callbackValue: unknown,
+  ): Promise<HostedServerlessCallbackResult> {
+    const scope = Object.freeze({
+      accountId: binding.accountId,
+      workspaceId: binding.workspaceId,
+    });
+    if (
+      !UUID.test(scope.accountId) ||
+      !UUID.test(scope.workspaceId) ||
+      !UUID.test(binding.attemptId)
+    ) {
+      throw new HostedServerlessCallbackError("HOSTED_SERVERLESS_CALLBACK_MALFORMED");
+    }
+    const repository = new HostedSqlOutputBarrierRepository(input.database, scope);
+    if (!(await repository.schemaReady())) {
+      throw new HostedServerlessCallbackError("HOSTED_SERVERLESS_CALLBACK_SCHEMA_MISSING");
+    }
+    const barrier = createHostedServerlessOutputBarrier({
+      signer: input.signer,
+      artifacts: new HostedR2OutputArtifactBarrier(input.database, input.bucket),
+      repository,
+    });
+    const outcome = await barrier.accept(binding, callbackValue);
+    const ready = await input.loaders.loadReadyRenderPlan(scope, binding);
+    if (!ready) return Object.freeze({ barrier: outcome, renderPlan: null });
+    if (
+      ready.accountId !== scope.accountId ||
+      ready.workspaceId !== scope.workspaceId ||
+      ready.revision.projectId !== binding.projectId ||
+      ready.revision.projectRevisionId !== binding.projectRevisionId
+    ) {
+      throw new HostedServerlessCallbackError("HOSTED_SERVERLESS_CALLBACK_FOREIGN");
+    }
+    const renderPlan = await materializeHostedRenderPlan(
+      new HostedRenderPlanAppendDatabase(input.database),
+      ready,
+    );
+    return Object.freeze({ barrier: outcome, renderPlan });
+  }
   return Object.freeze({
+    acceptBound,
     async accept(
       scope: HostedAuthenticatedTenantScope,
       attemptId: string,
@@ -142,31 +185,7 @@ export function createHostedServerlessCallback(input: {
       ) {
         throw new HostedServerlessCallbackError("HOSTED_SERVERLESS_CALLBACK_FOREIGN");
       }
-      const repository = new HostedSqlOutputBarrierRepository(input.database, scope);
-      if (!(await repository.schemaReady())) {
-        throw new HostedServerlessCallbackError("HOSTED_SERVERLESS_CALLBACK_SCHEMA_MISSING");
-      }
-      const barrier = createHostedServerlessOutputBarrier({
-        signer: input.signer,
-        artifacts: new HostedR2OutputArtifactBarrier(input.database, input.bucket),
-        repository,
-      });
-      const outcome = await barrier.accept(binding, callbackValue);
-      const ready = await input.loaders.loadReadyRenderPlan(scope, binding);
-      if (!ready) return Object.freeze({ barrier: outcome, renderPlan: null });
-      if (
-        ready.accountId !== scope.accountId ||
-        ready.workspaceId !== scope.workspaceId ||
-        ready.revision.projectId !== binding.projectId ||
-        ready.revision.projectRevisionId !== binding.projectRevisionId
-      ) {
-        throw new HostedServerlessCallbackError("HOSTED_SERVERLESS_CALLBACK_FOREIGN");
-      }
-      const renderPlan = await materializeHostedRenderPlan(
-        new HostedRenderPlanAppendDatabase(input.database),
-        ready,
-      );
-      return Object.freeze({ barrier: outcome, renderPlan });
+      return acceptBound(binding, callbackValue);
     },
   });
 }
@@ -228,11 +247,13 @@ export function hostedServerlessCallbackErrorResponse(error: unknown): Response 
   }
   if (error instanceof HostedServerlessCallbackError) {
     const status =
-      error.code === "HOSTED_SERVERLESS_CALLBACK_FOREIGN"
-        ? 403
-        : error.code === "HOSTED_SERVERLESS_CALLBACK_MALFORMED"
-          ? 400
-          : 503;
+      error.code === "HOSTED_SERVERLESS_CALLBACK_UNAUTHENTICATED"
+        ? 401
+        : error.code === "HOSTED_SERVERLESS_CALLBACK_FOREIGN"
+          ? 403
+          : error.code === "HOSTED_SERVERLESS_CALLBACK_MALFORMED"
+            ? 400
+            : 503;
     return callbackJson({ error: { code: error.code, retryable: false } }, status);
   }
   return callbackJson(

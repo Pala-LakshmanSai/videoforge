@@ -121,4 +121,14 @@ describe("hosted serverless callback composition", () => {
     expect(source).toContain("HostedR2OutputArtifactBarrier");
     expect(source).toContain("materializeHostedRenderPlan");
   });
+
+  it("keeps production callback activation injected and the default route disabled", async () => {
+    const source = await readFile(resolve(process.cwd(), "src/server/hosted/app.ts"), "utf8");
+    expect(source).toContain("serverlessCallback?: HostedAuthenticatedServerlessCallbackRoute");
+    const route = source.slice(source.indexOf("const serverlessCallbackMatch"));
+    expect(route.indexOf("if (serverlessCallback) {")).toBeLessThan(
+      route.indexOf("if (!sameOriginBrowserWrite(request, config))"),
+    );
+    expect(route).toContain("return hostedServerlessCallbackDisabledResponse()");
+  });
 });

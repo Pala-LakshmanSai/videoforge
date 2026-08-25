@@ -5,6 +5,7 @@ import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { handleHostedProductRequest } from "./product";
 import { hostedServerlessCallbackDisabledResponse } from "./hosted-serverless-callback";
+import type { HostedAuthenticatedServerlessCallbackRoute } from "./hosted-serverless-callback-auth";
 import {
   deleteHostedR2ObjectsAndVerify,
   hostedCompleteAttemptArtifactKeys,
@@ -923,6 +924,7 @@ export async function handleHostedRequest(
   request: Request,
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
+  serverlessCallback?: HostedAuthenticatedServerlessCallbackRoute,
 ): Promise<Response> {
   let config;
   try {
@@ -981,6 +983,9 @@ export async function handleHostedRequest(
       url.pathname,
     );
   if (serverlessCallbackMatch && request.method === "POST") {
+    if (serverlessCallback) {
+      return serverlessCallback.handle(request, serverlessCallbackMatch[1]!);
+    }
     if (!sameOriginBrowserWrite(request, config)) {
       return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
     }
