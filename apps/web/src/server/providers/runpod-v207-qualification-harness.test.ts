@@ -3140,54 +3140,112 @@ describe("V2-07 qualification harness", () => {
     expect(evidence.activeWorstCaseLiabilityUsd).toBe(0);
   });
 
-  it.each([1, 2])(
-    "retains full cancel liability when stable-zero read %i fails",
-    async (failedRead) => {
-      const baseFetch = harnessFetch();
-      let cancelled = false;
-      let postCancelHealthReads = 0;
-      const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-        const path = new URL(String(input)).pathname;
-        const jobId = path.split("/").at(-1) ?? "job_01";
-        if (path.includes("/cancel/")) {
-          cancelled = true;
-          return jsonResponse({ id: jobId, status: "CANCELLED" });
-        }
-        if (path.includes("/status/")) {
-          return jsonResponse({ id: jobId, status: "CANCELLED", executionTime: null });
-        }
-        if (path.endsWith("/health") && cancelled) {
-          postCancelHealthReads += 1;
-          const running = postCancelHealthReads === failedRead ? 1 : 0;
-          return jsonResponse({
-            workers: {
-              idle: 0,
-              running,
-              initializing: 0,
-              ready: 0,
-              throttled: 0,
-              unhealthy: 0,
-            },
-            jobs: { inQueue: 0, inProgress: 0 },
-          });
-        }
-        return baseFetch(input, init);
-      });
-      const instance = makeHarness(
-        fetch,
-        async () => 0,
-        4,
-        () => 100,
-      );
-      await instance.create();
-      const job = await instance.dispatchBatch(oneItemInput());
-      await instance.cancel(job.id);
-      await expect(instance.scaleDownToInitial()).rejects.toThrow();
-      const evidence = await instance.evidence();
-      expect(evidence.newPaidWorkFenced).toBe(true);
-      expect(evidence.activeWorstCaseLiabilityUsd).toBeGreaterThan(0);
-    },
-  );
+  it("polls an asynchronous cancellation to first zero, then requires a second zero to settle", async () => {
+    const baseFetch = harnessFetch();
+    let cancelled = false;
+    let postCancelHealthReads = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      if (path.includes("/cancel/")) {
+        cancelled = true;
+        return jsonResponse({ id: jobId, status: "CANCELLED" });
+      }
+      if (path.includes("/status/")) {
+        return jsonResponse({ id: jobId, status: "CANCELLED", executionTime: null });
+      }
+      if (path.endsWith("/health") && cancelled) {
+        postCancelHealthReads += 1;
+        return jsonResponse({
+          workers: {
+            idle: 0,
+            running: postCancelHealthReads === 1 ? 1 : 0,
+            initializing: 0,
+            ready: 0,
+            throttled: 0,
+            unhealthy: 0,
+          },
+          jobs: { inQueue: 0, inProgress: 0 },
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const clock = vi.fn().mockReturnValueOnce(100).mockReturnValue(1_100);
+    const instance = makeHarness(fetch, async () => 0, 4, clock);
+    await instance.create();
+    const job = await instance.dispatchBatch(oneItemInput());
+    await instance.cancel(job.id);
+
+    await expect(instance.scaleDownToInitial()).resolves.toBeUndefined();
+
+    expect(postCancelHealthReads).toBeGreaterThanOrEqual(3);
+    const evidence = await instance.evidence();
+    expect(evidence.newPaidWorkFenced).toBe(false);
+    expect(evidence.activeWorstCaseLiabilityUsd).toBe(0);
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "cancel_liability_settled_after_stable_zero",
+        stable_zero_read_count: 2,
+      }),
+    );
+  });
+
+  it("retains full cancel liability and fences paid work while health stays nonzero", async () => {
+    const baseFetch = harnessFetch();
+    let cancelled = false;
+    let postCancelHealthReads = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      if (path.includes("/cancel/")) {
+        cancelled = true;
+        return jsonResponse({ id: jobId, status: "CANCELLED" });
+      }
+      if (path.includes("/status/")) {
+        return jsonResponse({ id: jobId, status: "CANCELLED", executionTime: null });
+      }
+      if (path.endsWith("/health") && cancelled) {
+        postCancelHealthReads += 1;
+        return jsonResponse({
+          workers: {
+            idle: 0,
+            running: 1,
+            initializing: 0,
+            ready: 0,
+            throttled: 0,
+            unhealthy: 0,
+          },
+          jobs: { inQueue: 0, inProgress: 0 },
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(
+      fetch,
+      async () => 0,
+      4,
+      () => 100,
+    );
+    await instance.create();
+    const job = await instance.dispatchBatch(oneItemInput());
+    await instance.cancel(job.id);
+
+    await expect(instance.scaleDownToInitial()).rejects.toThrow("RUNPOD_ZERO_NOT_CONFIRMED");
+
+    expect(postCancelHealthReads).toBe(30);
+    await expect(
+      instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
+    ).rejects.toThrow("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");
+    const evidence = await instance.evidence();
+    expect(evidence.newPaidWorkFenced).toBe(true);
+    expect(evidence.activeWorstCaseLiabilityUsd).toBeGreaterThan(0);
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "cancel_liability_retained_drain_uncertain",
+        no_new_paid_action: true,
+      }),
+    );
+  });
 
   it("does not reset the cancellation clock on exact dispatch replay", async () => {
     const baseFetch = harnessFetch();

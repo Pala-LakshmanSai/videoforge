@@ -2641,7 +2641,9 @@ export class RunPodV207QualificationHarness {
         // A terminal CANCELLED status can precede actual worker shutdown. Require two separate,
         // exact endpoint health reads with both queue and every worker counter at zero before
         // using elapsed time to narrow its reservation.
-        await this.#jobs!.confirmDrained(1);
+        // Cancellation is asynchronous: poll the first exact health-zero through the client's
+        // existing bounded drain window, then require a separately sampled zero before settling.
+        await this.#jobs!.confirmDrained();
         const stableReadSleep =
           this.#options.sleep ??
           ((milliseconds: number) =>
