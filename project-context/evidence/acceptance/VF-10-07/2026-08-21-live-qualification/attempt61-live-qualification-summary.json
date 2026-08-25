@@ -1,0 +1,40 @@
+{
+  "schema_version": "videoforge.v2-07-attempt61-live-qualification-summary/v1",
+  "attempt": 61,
+  "started_at": "2026-08-25T06:43:03.161Z",
+  "finished_at": "2026-08-25T06:55:01.096Z",
+  "source_redacted_result_sha256": "sha256:26748b0f329ab82283045420be23ce4915f0c30345454bf04409b6e773e64734",
+  "failure_code": "RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT",
+  "qualification_status": "NOT_QUALIFIED",
+  "probe": {
+    "status": "COMPLETED",
+    "item_count": 1,
+    "delay_time_ms": 6770,
+    "execution_time_ms": 63130,
+    "peak_vram_used_bytes": 14009434112,
+    "durable_readback_count": 1,
+    "replay_confirmed_commit_receipt_count": 1
+  },
+  "replacement": {
+    "status": "COMPLETED",
+    "unresolved_unit_count": 31,
+    "delay_time_ms": 1403,
+    "execution_time_ms": 89167,
+    "distinct_process_identity_proven": false
+  },
+  "later_paid_work_dispatched": false,
+  "cold_batch_dispatched": false,
+  "warm_batch_dispatched": false,
+  "max_two_readers_dispatched": false,
+  "cleanup": {
+    "workers_zero_confirmed": true,
+    "disposable_endpoint_and_template_deleted": true,
+    "active_worst_case_liability_usd": 0,
+    "new_paid_work_fenced": false,
+    "measured_spend_usd_subject_to_billing_lag": 0,
+    "projected_spend_usd": 0.5751463055555557
+  },
+  "provider_job_count": 2,
+  "gpu_use_occurred": true,
+  "v2_08_started": false
+}

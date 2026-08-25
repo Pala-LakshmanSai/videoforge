@@ -2,7 +2,7 @@
 
 ## Active handoff — read this section first
 
-Attempt61 is approved single-use and pending one exact bounded execution. Cache-only cleanup restored
+Attempt61 is closed `NOT_QUALIFIED`. Cache-only cleanup restored
 `2639282176` available bytes against the exact `2147483648`-byte orchestrator minimum. Fresh
 read-only truth through `2026-08-25T06:14:18.898Z` proves zero RunPod compute/disposables, both
 retained 50 GB EU-RO-1 volumes, MEDIUM RTX 4090 availability, unchanged `$1.10/GPU-hour` Flex and
@@ -11,9 +11,12 @@ Cloudflare anchor, absent signer, protected config mode `0600`, and three exact 
 POST `404 V207_ROUTE_DISABLED` reads. Proposal
 `sha256:6693da1e345ce579ea9c7896b238e3f8bd44fcd2abee92d8e46650436c80d4c0` requests a fresh `$4`
 finite cap, FlashBoot=true, LOW-or-better EU-RO-1, `two-phase-v1`, and continued `$7/month` volume
-retention. Authority `sha256:85640ad5…5769`, cap `$4`, and `two-phase-v1` are executable only for
-this exact sequence. Attempt60 cannot be reused, V2-07 remains `NOT_QUALIFIED`, and V2-08 remains
-forbidden.
+retention. The probe and 31-unit replacement jobs completed, but the replacement identity was not
+proven distinct and the run stopped at `RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT` before
+later paid batches. Authority is consumed/non-reusable and executable cap/refresh are null. Cleanup
+and three stable reads prove zero compute/disposables, both volumes unchanged, restored signer/route/
+config, and `$0` observed increment subject to lag. Next action is provider-free diagnosis only;
+V2-08 remains forbidden.
 
 Attempt60 is closed `NOT_QUALIFIED`. Its exact single-use execution failed closed at
 `V207_LOCAL_DISK_HEADROOM_INSUFFICIENT`: only `283267072` bytes were available against the exact

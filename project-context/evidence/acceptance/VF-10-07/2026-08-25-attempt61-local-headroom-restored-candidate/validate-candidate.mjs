@@ -7,7 +7,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dir, "../../../../../");
 const expected = {
   proposal: "sha256:6693da1e345ce579ea9c7896b238e3f8bd44fcd2abee92d8e46650436c80d4c0",
-  authority: "sha256:85640ad57c2048f413e2b63ede9e33548b32a557831e8bab8ca3d1fa483a5769",
+  authority: "sha256:18b78f0611052937ecb53535e6efdca34eab42a43227e3729b88eb7805ca5ebb",
   acceptance: "sha256:a4696155bb9fd2f7087aed116ae19d7cf5b22e9a0893b8dd343aa8b0d0d9a5b3",
   preflight: "sha256:60f4c7587144ec98abcde4a3b6ca84546b44db28439215416cea62b17248b7a7",
   max1: "sha256:8252181cc2dec27f5303f3e2cc18cd0f8a95f99d2f28948981889be77d0206de",
@@ -148,9 +148,9 @@ yes(
 );
 yes(activation.includes(`"${expected.proposal}" as const`), "ACTIVATION_PROPOSAL_POINTER");
 yes(activation.includes(`"${expected.controlRepair}" as const`), "ACTIVATION_CONTROL_SOURCE");
-yes(activation.includes(`"${expected.authority}";`), "AUTHORITY_BINDING");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4;/u.test(activation), "CAP_BINDING");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = true;/u.test(activation), "REFRESH_BINDING");
+yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(activation), "AUTHORITY_NULL");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_NULL");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "REFRESH_NULL");
 const canonical = activation
   .replace(/^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/mu, `export const V207_PENDING_PROPOSAL_SHA256 = "sha256:${"0".repeat(64)}" as const;`)
   .replace(/^export\s+const\s+V207_APPROVED_AUTHORITY_SHA256\s*:\s*string\s*\|\s*null\s*=\s*(?:"sha256:[a-f0-9]{64}"|null)\s*;/mu, "export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;")
@@ -167,14 +167,14 @@ try {
 yes(authorityExists === true, "AUTHORITY_FILE_REQUIRED");
 yes(
   authority.attempt === 61 &&
-    authority.status === "APPROVED_SINGLE_USE_PENDING_EXECUTION" &&
+    authority.status === "CONSUMED_NON_REUSABLE_ATTEMPT61_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT" &&
     authority.proposal.sha256 === expected.proposal &&
     authority.acceptance.sha256 === expected.acceptance &&
     authority.approval.maximum_cumulative_finite_spend_usd === 4 &&
     authority.approval.flashboot_true_accepted === true &&
     authority.approval.low_or_better_eu_ro_1_availability_approved === true &&
-    authority.approval.anchor_refresh_authorized === true &&
-    authority.approval.consumed === false &&
+    authority.approval.anchor_refresh_authorized === false &&
+    authority.approval.consumed === true &&
     authority.execution_boundary.v2_08_authorized === false,
   "AUTHORITY_CONTRACT",
 );

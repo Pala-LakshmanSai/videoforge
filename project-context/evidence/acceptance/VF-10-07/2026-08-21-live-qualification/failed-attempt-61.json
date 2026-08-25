@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-07-failed-attempt-61/v1",
+  "checkpoint": "V2-07",
+  "attempt": 61,
+  "closed_at": "2026-08-25T06:58:04Z",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:6693da1e345ce579ea9c7896b238e3f8bd44fcd2abee92d8e46650436c80d4c0",
+  "approved_preexecution_authority_sha256": "sha256:85640ad57c2048f413e2b63ede9e33548b32a557831e8bab8ca3d1fa483a5769",
+  "consumed_authority_sha256": "sha256:18b78f0611052937ecb53535e6efdca34eab42a43227e3729b88eb7805ca5ebb",
+  "failure_code": "RUNPOD_PROCESS_REPLACEMENT_IDENTITY_NOT_DISTINCT",
+  "failure_stage": "replacement_process_identity_proof",
+  "orchestrator_path": "attempt61-live-orchestrator.json",
+  "orchestrator_sha256": "sha256:77f183b7d98fbb0c81a2f8125e3d08edad926eddfabd11e8ba5baa59b4352e01",
+  "qualification_summary_path": "attempt61-live-qualification-summary.json",
+  "qualification_summary_sha256": "sha256:2afa4f353f0d0f757f5611dee1437b1f94f743119c2ae888f2e263bb9eff5021",
+  "reconciliation_path": "attempt61-reconciliation-observation.json",
+  "reconciliation_sha256": "sha256:b44f6a9ca90281e9356db3cd1d1aea422ff58d29af4a2f7716f552130f496a75",
+  "execution": {
+    "probe_job_status": "COMPLETED",
+    "probe_durable_readbacks": 1,
+    "probe_replay_confirmed_receipts": 1,
+    "replacement_job_status": "COMPLETED",
+    "replacement_unit_count": 31,
+    "replacement_process_identity_distinct": false,
+    "provider_job_count": 2,
+    "later_paid_work_dispatched": false,
+    "gpu_use_occurred": true,
+    "accepted_checkpoint_units": 1
+  },
+  "cost": {
+    "approved_cap_usd": 4,
+    "projected_spend_usd": 0.5751463055555557,
+    "observed_incremental_spend_usd": 0,
+    "billing_may_lag": true,
+    "within_approved_cap": true
+  },
+  "cleanup": {
+    "owned_workers_zero": true,
+    "disposable_endpoint_deleted": true,
+    "disposable_private_template_deleted": true,
+    "signer_deleted": true,
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED",
+    "restored_active_version_id_sha256": "sha256:00a52163eee4d61bec6bea3459397328f5157d1a5e34dcd838f127cad11cbafc",
+    "restored_active_record_sha256": "sha256:37864db71b2ebc843495b330915d98f74582014f3861e6c417da2c71810dfb41",
+    "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+    "protected_config_mode": "0600",
+    "stable_zero_resource_reads": 3,
+    "both_existing_volumes_retained_unchanged": true,
+    "paid_compute_shutdown_proven": true
+  },
+  "authority": {
+    "single_use_invoked": true,
+    "consumed": true,
+    "reusable": false,
+    "executable_cap_after_closure_usd": 0,
+    "anchor_refresh_authorized_after_closure": false
+  },
+  "next_boundary": "Provider-free diagnosis and one narrow repair of replacement process identity proof only; any later live attempt requires fresh anchor rebind, preflight, immutable proposal, exact approval, and fresh numeric cap.",
+  "v2_08_started": false
+}
