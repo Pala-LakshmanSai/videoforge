@@ -10,15 +10,15 @@
     "V2-13"
   ],
   "task_id": "VF-10-13",
-  "authority_id": "v2-13-full-live-20260826-101824z-12dfae9",
+  "authority_id": "v2-13-full-live-20260826-173620z-a4bc4fd",
   "approval_source": "explicit_user_approval_in_current_codex_task",
-  "approved_at": "2026-08-26T10:18:24Z",
-  "expires_at": "2026-08-27T10:18:24Z",
+  "approved_at": "2026-08-26T17:36:20Z",
+  "expires_at": "2026-08-27T17:36:20Z",
   "proposal": {
     "path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json",
-    "sha256": "sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a",
-    "proposal_record_commit": "12dfae95d14fedf6fde440d1e6367c2d0564e2d4",
-    "release_source_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47"
+    "sha256": "sha256:2e6a605d3b1fd973a438207006d938bdedcc6456135f09cefaecc013295d2958",
+    "proposal_record_commit": "9eaf276ebeda4d1fa63032d4c908a21415415678",
+    "release_source_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
   },
   "approval": {
     "exact_proposal_approved": true,
@@ -69,7 +69,7 @@
     "immutable_github_release_ref": {
       "creation_authorized": true,
       "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-      "exact_target_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
+      "exact_target_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
       "tag_kind": "LIGHTWEIGHT",
       "maximum_new_refs": 1,
       "force_update_authorized": false,
@@ -77,6 +77,7 @@
       "other_ref_creation_authorized": false
     },
     "database_roles": {
+      "exact_operator_role": "videoforge_hosted_operator",
       "exact_runtime_role": "videoforge_hosted_runtime",
       "exact_reconciler_role": "videoforge_hosted_reconciler",
       "roles_must_be_fresh_absent_distinct_login_noinherit_hardened": true
@@ -98,5 +99,5 @@
     "cleanup_zero_worker_billing_and_max_one_restoration_required": true,
     "user_cancellation_is_immediate_stop": true
   },
-  "statement": "I approve proposal sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a at commit 12dfae95d14fedf6fde440d1e6367c2d0564e2d4 for one single-use execution, including creation of lightweight tag videoforge-v2-13-release-20260826-v3 pointing to source e737eac44458a04c7de47a0f3f42d82cb9506d47, with maximum cumulative RunPod spend USD 17.50, phase caps USD 4.50, 1.00, 2.00, 2.00, 4.00, 2.00, and 2.00, NVIDIA GeForce RTX 4090 in EU-RO-1 at LOW-or-better availability and at or below USD 1.10 per GPU-hour with no fallback, exact roles videoforge_hosted_runtime and videoforge_hosted_reconciler, and retention of only the same two exact 50 GB EU-RO-1 volumes at USD 7 per month total outside the finite cap."
+  "statement": "I approve proposal sha256:2e6a605d3b1fd973a438207006d938bdedcc6456135f09cefaecc013295d2958 at commit 9eaf276ebeda4d1fa63032d4c908a21415415678 for one single-use execution, including creation of lightweight tag videoforge-v2-13-release-20260826-v3 pointing to source a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1, with maximum cumulative RunPod spend USD 17.50, phase caps USD 4.50, 1.00, 2.00, 2.00, 4.00, 2.00, and 2.00, NVIDIA GeForce RTX 4090 in EU-RO-1 at LOW-or-better availability and at or below USD 1.10 per GPU-hour with no fallback, exact roles videoforge_hosted_operator, videoforge_hosted_runtime, and videoforge_hosted_reconciler, and retention of only the same two exact 50 GB EU-RO-1 volumes at USD 7 per month total outside the finite cap. Any failure, cancellation, expiry, uncertainty, or billing ambiguity requires immediate compute drain, cleanup-only, zero-worker proof, and no redispatch."
 }

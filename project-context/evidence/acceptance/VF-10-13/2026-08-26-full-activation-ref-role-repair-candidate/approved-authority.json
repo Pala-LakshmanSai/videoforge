@@ -10,21 +10,22 @@
     "V2-13"
   ],
   "task_id": "VF-10-13",
-  "authority_id": "v2-13-full-live-20260826-101824z-12dfae9",
-  "status": "SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_AND_SCOPE_REPAIR_REQUIRED",
-  "approved_at": "2026-08-26T10:18:24Z",
-  "expires_at": "2026-08-27T10:18:24Z",
+  "authority_id": "v2-13-full-live-20260826-173620z-a4bc4fd",
+  "status": "SUPERSEDED_UNCONSUMED_NO_MUTATION",
+  "approved_at": "2026-08-26T17:36:20Z",
+  "expires_at": "2026-08-27T17:36:20Z",
   "single_use": true,
   "consumed": false,
   "consumed_at": null,
   "authority_record_commit": null,
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json",
-    "proposal_sha256": "sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a",
-    "proposal_record_commit": "12dfae95d14fedf6fde440d1e6367c2d0564e2d4",
-    "release_source_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
+    "proposal_sha256": "sha256:2e6a605d3b1fd973a438207006d938bdedcc6456135f09cefaecc013295d2958",
+    "proposal_record_commit": "9eaf276ebeda4d1fa63032d4c908a21415415678",
+    "release_source_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
     "user_approval_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/user-approval.json",
-    "user_approval_sha256": "sha256:82edfb264c8fa8383b2becafe2ff991127cccf6d7b52a46e47ea0878d3744d21"
+    "user_approval_sha256": "sha256:23b911037f79bf3628429822824406bbfc66930d138b022acf8aa9fc7f6c649f",
+    "authority_record_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/approved-authority.json"
   },
   "combined_execution_authority": {
     "execute_authorized": false,
@@ -61,21 +62,21 @@
   },
   "github_release_ref": {
     "required_for_workflow_dispatch": true,
-    "exact_target_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
+    "exact_target_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-    "ref_creation_authorized_by_approved_proposal": true,
+    "ref_creation_authorized_by_approved_proposal": false,
     "status": "SUPERSEDED_NEVER_CREATE",
     "external_action_taken": false
   },
   "outer_orchestration": {
     "approval_schema_validator_path": "deploy/v2-13/validate-full-live-approval.mjs",
-    "approval_schema_validator_sha256": "sha256:b3f59b731f260b7b8872f669e5720634d77506ea9735a44918c5cfca10bcc68c",
+    "approval_schema_validator_sha256": "sha256:e6844f5dee02d85bbad5a2c49f9fc3ef4a375c02b9c76b8cdb973b5cd95bcbda",
     "orchestration_tool_path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-    "orchestration_tool_sha256": "sha256:be1bbca1d933cd555baa768d13a9ebf33cd75be4c4214df79e09cbe7e505b241",
+    "orchestration_tool_sha256": "sha256:e19d6f2bbce9e9634cc9d2dae21fc1e0451f4a06a1bd2bc076f813a236660be3",
     "full_live_executor_path": "deploy/v2-13/full-live-executor.mjs",
-    "full_live_executor_sha256": "sha256:2b782863fef0222527a10fcd1d4bb1c8bacfc58d601ebd764e1919968d781830",
+    "full_live_executor_sha256": "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230",
     "guarded_activation_path": "deploy/v2-13/guarded-activation.mjs",
-    "guarded_activation_sha256": "sha256:8946676cae1ab8c414880e2d093fc8bbc957d97af6ee0f6a30ee052aea9bf8d0",
+    "guarded_activation_sha256": "sha256:5c3ab93ee301ec4f597b5e422dc62d35c27d6d075ff017b8e56b8396e92372ab",
     "consumption_record_created": false,
     "consumption_record_sha256": null,
     "consumption_required_before_credentials_or_external_calls": true,
@@ -108,11 +109,12 @@
     "database": [
       "pgcrypto extension",
       "migrations 0037 through 0045 from exact prefix 1 through 36",
+      "fresh hardened LOGIN NOINHERIT role videoforge_hosted_operator after migration prefix 45",
       "fresh hardened LOGIN NOINHERIT role videoforge_hosted_runtime",
       "distinct fresh hardened LOGIN NOINHERIT role videoforge_hosted_reconciler"
     ],
     "github_refs": [
-      "one lightweight tag videoforge-v2-13-release-20260826-v3 at e737eac44458a04c7de47a0f3f42d82cb9506d47"
+      "one lightweight tag videoforge-v2-13-release-20260826-v3 at a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
     ],
     "r2_buckets": [],
     "volumes": [],
@@ -121,7 +123,7 @@
   },
   "guarded_activation_child": {
     "status": "NEVER_ISSUE_FROM_SUPERSEDED_AUTHORITY",
-    "approved_parent_authority_id": "v2-13-full-live-20260826-101824z-12dfae9",
+    "approved_parent_authority_id": "v2-13-full-live-20260826-173620z-a4bc4fd",
     "executor": "deploy/v2-13/guarded-activation.mjs",
     "future_authority_basename": "guarded-activation-authority.json",
     "future_authority_must_reuse_parent_proposal_and_approval_hashes": true,
@@ -175,6 +177,6 @@
     "guarded_child_authority_created": false,
     "authority_consumed": false,
     "superseded_before_external_action": true,
-    "supersession_reason": "SEALED_PROPOSAL_SECRET_COUNT_DRIFT_AND_EXECUTION_ORDER_SOURCE_REPAIR_REQUIRED"
+    "supersession_reason": "SOURCE_LINEAGE_REPAIR_REQUIRED"
   }
 }

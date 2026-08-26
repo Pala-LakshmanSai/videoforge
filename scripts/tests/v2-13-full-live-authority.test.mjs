@@ -710,7 +710,10 @@ test("V3 proposal separates proposal and authority-record commit lineage without
 test("trusted lineage accepts an ancestor source and exact proposal-record diff chain", () => {
   const proposalPath =
     "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
-  const proposalBytes = readFileSync(proposalPath);
+  const proposalBytes = execFileSync(
+    "git",
+    ["show", `9eaf276ebeda4d1fa63032d4c908a21415415678:${proposalPath}`],
+  );
   const exact = {
     releaseSourceCommit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
     proposalRecordCommit: "9eaf276ebeda4d1fa63032d4c908a21415415678",
@@ -872,18 +875,17 @@ test("trusted lineage rejects rename, merge, and extra-path proposal histories",
   });
 });
 
-test("candidate validator refuses the unresealed authority after a source repair", () => {
-  assert.throws(
-    () =>
-      execFileSync(
-        "node",
-        [
-          "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/validate-candidate.mjs",
-        ],
-        { encoding: "utf8" },
-      ),
-    /V2_13_FULL_LIVE_APPROVAL_V3_SUPERSESSION_OR_AUTHORITY/u,
+test("candidate validator accepts the resealed proposal with a superseded authority", () => {
+  const output = execFileSync(
+    "node",
+    [
+      "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/validate-candidate.mjs",
+    ],
+    { encoding: "utf8" },
   );
+  const result = JSON.parse(output);
+  assert.equal(result.status, "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL");
+  assert.equal(result.authority, "SUPERSEDED_UNCONSUMED_NO_MUTATION");
 });
 
 test("V3 proposal binds the exact 22-name Cloudflare secret allowlist", () => {
