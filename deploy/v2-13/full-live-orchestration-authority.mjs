@@ -38,6 +38,15 @@ const PHASES = Object.freeze([
 ]);
 const BOOTSTRAP_PHASE = "bootstrap_prequalification_database";
 const BOOTSTRAP_OPERATION = "bootstrap-prequalification-database";
+const PROPOSAL_RECORD_PATH =
+  "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
+const PROPOSAL_RECORD_ALLOWED_DIFF_PATHS = Object.freeze([
+  "project-context/00_START_HERE.md",
+  "project-context/CURRENT_STATE.yaml",
+  PROPOSAL_RECORD_PATH,
+  "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/validate-candidate.mjs",
+  "project-context/tasks/VF-10-13.md",
+]);
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 // State and result records are hashed from canonical JSON so a restart can recover a settled
 // result without trusting property insertion order. Keep this local to the authority file: the
@@ -753,12 +762,85 @@ function updateState(path, expectedSha256, operation) {
   }
 }
 
-function trustedCommitLineage(validated) {
-  const parent = execFileSync("git", ["rev-parse", `${validated.proposalRecordCommit}^`], {
-    cwd: ROOT,
-    encoding: "utf8",
-  }).trim();
-  if (parent !== validated.releaseSourceCommit) fail("COMMIT_LINEAGE");
+function trustedCommitLineage(
+  validated,
+  { proposalPath = PROPOSAL_RECORD_PATH, proposalBytes } = {},
+) {
+  const commit = /^[0-9a-f]{40}$/u;
+  if (
+    !commit.test(validated?.releaseSourceCommit ?? "") ||
+    !commit.test(validated?.proposalRecordCommit ?? "") ||
+    validated.releaseSourceCommit === validated.proposalRecordCommit ||
+    proposalPath !== PROPOSAL_RECORD_PATH ||
+    !Buffer.isBuffer(proposalBytes) ||
+    sha256(proposalBytes) !== validated.proposalSha256
+  )
+    fail("COMMIT_LINEAGE");
+  const git = (...args) =>
+    execFileSync("git", args, {
+      cwd: ROOT,
+      encoding: "utf8",
+      maxBuffer: 4 * 1024 * 1024,
+    }).trim();
+  try {
+    if (
+      git("rev-parse", `${validated.releaseSourceCommit}^{commit}`) !==
+        validated.releaseSourceCommit ||
+      git("rev-parse", `${validated.proposalRecordCommit}^{commit}`) !==
+        validated.proposalRecordCommit
+    )
+      fail("COMMIT_LINEAGE");
+    execFileSync(
+      "git",
+      [
+        "merge-base",
+        "--is-ancestor",
+        validated.releaseSourceCommit,
+        validated.proposalRecordCommit,
+      ],
+      { cwd: ROOT, stdio: "ignore" },
+    );
+    const chain = git(
+      "rev-list",
+      "--first-parent",
+      "--reverse",
+      `${validated.releaseSourceCommit}..${validated.proposalRecordCommit}`,
+    )
+      .split("\n")
+      .filter(Boolean);
+    if (chain.length === 0) fail("COMMIT_LINEAGE");
+    const allowed = new Set(PROPOSAL_RECORD_ALLOWED_DIFF_PATHS);
+    const changed = new Set();
+    let parent = validated.releaseSourceCommit;
+    for (const commitSha of chain) {
+      const parents = git("rev-list", "--parents", "-n", "1", commitSha).split(/\s+/u).slice(1);
+      if (parents.length !== 1 || parents[0] !== parent) fail("COMMIT_LINEAGE");
+      const paths = git(
+        "diff-tree",
+        "--no-commit-id",
+        "--no-ext-diff",
+        "--no-renames",
+        "--name-only",
+        "-r",
+        commitSha,
+      )
+        .split("\n")
+        .filter(Boolean);
+      if (paths.length === 0 || paths.some((path) => !allowed.has(path))) fail("COMMIT_LINEAGE");
+      for (const path of paths) changed.add(path);
+      parent = commitSha;
+    }
+    if (!changed.has(PROPOSAL_RECORD_PATH)) fail("COMMIT_LINEAGE");
+    const committedProposal = execFileSync(
+      "git",
+      ["show", `${validated.proposalRecordCommit}:${proposalPath}`],
+      { cwd: ROOT, maxBuffer: 4 * 1024 * 1024 },
+    );
+    if (sha256(committedProposal) !== validated.proposalSha256) fail("COMMIT_LINEAGE");
+  } catch (error) {
+    if (error?.message === "V2_13_FULL_LIVE_ORCHESTRATION_COMMIT_LINEAGE") throw error;
+    fail("COMMIT_LINEAGE");
+  }
 }
 
 function validateAuthorityRecordCommit({
@@ -833,7 +915,10 @@ async function main() {
     });
     if (args.has("trusted-iso")) fail("CALLER_TRUSTED_TIME_FORBIDDEN");
     assertTrustedTime(validated.approvedAt, validated.expiresAt, readAuthenticatedTrustedTime());
-    trustedCommitLineage(validated);
+    trustedCommitLineage(validated, {
+      proposalPath: authority.lineage?.proposal_path,
+      proposalBytes,
+    });
     const state = validateState(
       initialConsumptionRecord(authority, authorityBytes, { ...validated, ...record }),
     );
@@ -926,6 +1011,7 @@ export {
   recordVerifiedReleaseRef,
   settleWork,
   settleCleanupWork,
+  trustedCommitLineage,
   updateState,
   validateOuterAuthority,
   validateAuthorityRecordCommit,

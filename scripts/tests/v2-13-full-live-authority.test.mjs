@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import {
@@ -17,6 +26,7 @@ import {
   recordVerifiedReleaseRef,
   settleWork,
   settleCleanupWork,
+  trustedCommitLineage,
   updateState,
   validateOuterAuthority,
   validateState,
@@ -60,6 +70,9 @@ function v3Fixture() {
   v3Proposal.source.release_source_commit = v3ReleaseSourceCommit;
   delete v3Proposal.source.base_source_commit_before_semantic_tag_repair;
   v3Proposal.immutable_github_release_ref_request.exact_target_commit = v3ReleaseSourceCommit;
+  v3Proposal.source.exact_release_components.orchestration_authority.sha256 = hash(
+    readFileSync("deploy/v2-13/full-live-orchestration-authority.mjs"),
+  );
   const v3ProposalBytes = Buffer.from(`${JSON.stringify(v3Proposal, null, 2)}\n`);
   const v3ProposalSha256 = hash(v3ProposalBytes);
   const v3Commit = "f".repeat(40);
@@ -692,6 +705,185 @@ test("V3 proposal separates proposal and authority-record commit lineage without
   );
   assert.deepEqual(proposal.source.exact_release_components, EXACT_V3_RELEASE_COMPONENTS);
   assert.match(proposal.ordered_operations[3].operations.join("\n"), /authority-record commit/u);
+});
+
+test("trusted lineage accepts an ancestor source and exact proposal-record diff chain", () => {
+  const proposalPath =
+    "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
+  const proposalBytes = readFileSync(proposalPath);
+  const exact = {
+    releaseSourceCommit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
+    proposalRecordCommit: "9eaf276ebeda4d1fa63032d4c908a21415415678",
+    proposalSha256: hash(proposalBytes),
+  };
+  assert.doesNotThrow(() => trustedCommitLineage(exact, { proposalPath, proposalBytes }));
+  assert.throws(
+    () =>
+      trustedCommitLineage(
+        { ...exact, proposalRecordCommit: "255e47156d369942167fc8069a26a66d984682cf" },
+        { proposalPath, proposalBytes },
+      ),
+    /COMMIT_LINEAGE/u,
+  );
+  assert.throws(
+    () =>
+      trustedCommitLineage(
+        { ...exact, releaseSourceCommit: "e737eac44458a04c7de47a0f3f42d82cb9506d47" },
+        { proposalPath, proposalBytes },
+      ),
+    /COMMIT_LINEAGE/u,
+  );
+});
+
+test("trusted lineage rejects rename, merge, and extra-path proposal histories", () => {
+  const proposalPath =
+    "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
+  const exactProposalBytes = readFileSync(proposalPath);
+  const oldEnvironment = {
+    GIT_DIR: process.env.GIT_DIR,
+    GIT_WORK_TREE: process.env.GIT_WORK_TREE,
+  };
+  const gitEnvironment = () => {
+    const environment = { ...process.env, GIT_CONFIG_NOSYSTEM: "1" };
+    delete environment.GIT_DIR;
+    delete environment.GIT_WORK_TREE;
+    return environment;
+  };
+  const git = (repository, ...args) =>
+    execFileSync("git", args, {
+      cwd: repository,
+      encoding: "utf8",
+      env: gitEnvironment(),
+      maxBuffer: 4 * 1024 * 1024,
+    }).trim();
+  const commit = (repository, message) => {
+    git(repository, "add", "--all");
+    git(repository, "commit", "--quiet", "-m", message);
+    return git(repository, "rev-parse", "HEAD");
+  };
+  const withRepository = (callback) => {
+    const repository = mkdtempSync(join(tmpdir(), "videoforge-lineage-"));
+    const gitDirectory = join(repository, ".git");
+    try {
+      git(repository, "init", "--quiet");
+      git(repository, "config", "user.email", "videoforge-tests@example.invalid");
+      git(repository, "config", "user.name", "VideoForge Tests");
+      process.env.GIT_DIR = gitDirectory;
+      process.env.GIT_WORK_TREE = repository;
+      callback(repository);
+    } finally {
+      if (oldEnvironment.GIT_DIR === undefined) delete process.env.GIT_DIR;
+      else process.env.GIT_DIR = oldEnvironment.GIT_DIR;
+      if (oldEnvironment.GIT_WORK_TREE === undefined) delete process.env.GIT_WORK_TREE;
+      else process.env.GIT_WORK_TREE = oldEnvironment.GIT_WORK_TREE;
+      rmSync(repository, { recursive: true, force: true });
+    }
+  };
+
+  withRepository((repository) => {
+    mkdirSync(join(repository, dirname(proposalPath)), {
+      recursive: true,
+    });
+    writeFileSync(join(repository, "evil.txt"), exactProposalBytes);
+    const source = commit(repository, "source");
+    git(repository, "mv", "evil.txt", proposalPath);
+    const proposalRecordCommit = commit(repository, "malicious rename");
+    assert.match(
+      git(
+        repository,
+        "diff-tree",
+        "--no-commit-id",
+        "--name-status",
+        "-r",
+        "-M",
+        proposalRecordCommit,
+      ),
+      /R\d+\tevil\.txt\tproject-context\/evidence\/acceptance\/VF-10-13\/2026-08-26-full-activation-ref-role-repair-candidate\/combined-live-proposal\.json/u,
+    );
+    assert.throws(
+      () =>
+        trustedCommitLineage(
+          {
+            releaseSourceCommit: source,
+            proposalRecordCommit,
+            proposalSha256: hash(exactProposalBytes),
+          },
+          { proposalPath, proposalBytes: exactProposalBytes },
+        ),
+      /COMMIT_LINEAGE/u,
+    );
+  });
+
+  withRepository((repository) => {
+    mkdirSync(join(repository, dirname(proposalPath)), {
+      recursive: true,
+    });
+    writeFileSync(join(repository, proposalPath), Buffer.from(`${exactProposalBytes}old`));
+    const source = commit(repository, "source");
+    const baseBranch = git(repository, "branch", "--show-current");
+    git(repository, "checkout", "--quiet", "-b", "side");
+    writeFileSync(join(repository, "project-context/00_START_HERE.md"), "side\n");
+    commit(repository, "side change");
+    git(repository, "checkout", "--quiet", baseBranch);
+    writeFileSync(join(repository, proposalPath), exactProposalBytes);
+    commit(repository, "proposal change");
+    git(repository, "merge", "--quiet", "--no-edit", "--no-ff", "side");
+    const mergeProposalRecordCommit = git(repository, "rev-parse", "HEAD");
+    assert.equal(
+      git(repository, "rev-list", "--parents", "-n", "1", mergeProposalRecordCommit).split(" ")
+        .length,
+      3,
+    );
+    assert.throws(
+      () =>
+        trustedCommitLineage(
+          {
+            releaseSourceCommit: source,
+            proposalRecordCommit: mergeProposalRecordCommit,
+            proposalSha256: hash(exactProposalBytes),
+          },
+          { proposalPath, proposalBytes: exactProposalBytes },
+        ),
+      /COMMIT_LINEAGE/u,
+    );
+  });
+
+  withRepository((repository) => {
+    mkdirSync(join(repository, dirname(proposalPath)), {
+      recursive: true,
+    });
+    writeFileSync(join(repository, proposalPath), Buffer.from(`${exactProposalBytes}old`));
+    const source = commit(repository, "source");
+    writeFileSync(join(repository, proposalPath), exactProposalBytes);
+    writeFileSync(join(repository, "unexpected.txt"), "unexpected\n");
+    const proposalRecordCommit = commit(repository, "extra path");
+    assert.throws(
+      () =>
+        trustedCommitLineage(
+          {
+            releaseSourceCommit: source,
+            proposalRecordCommit,
+            proposalSha256: hash(exactProposalBytes),
+          },
+          { proposalPath, proposalBytes: exactProposalBytes },
+        ),
+      /COMMIT_LINEAGE/u,
+    );
+  });
+});
+
+test("candidate validator refuses the unresealed authority after a source repair", () => {
+  assert.throws(
+    () =>
+      execFileSync(
+        "node",
+        [
+          "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/validate-candidate.mjs",
+        ],
+        { encoding: "utf8" },
+      ),
+    /V2_13_FULL_LIVE_APPROVAL_V3_SUPERSESSION_OR_AUTHORITY/u,
+  );
 });
 
 test("V3 proposal binds the exact 22-name Cloudflare secret allowlist", () => {
