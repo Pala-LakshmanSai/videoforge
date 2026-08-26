@@ -12,6 +12,7 @@ import {
 
 import { HostedDispatchCoordinationError } from "./hosted-serverless-dispatch-coordinator";
 import type { HostedEnvelopePairSigner } from "./hosted-envelope-signer";
+import type { V209ShortLiveAdmission } from "../runtime/v209-short-live-cost";
 
 const COMMIT_FUNCTION = "public.videoforge_commit_hosted_atomic_pair_predispatch";
 
@@ -79,6 +80,7 @@ export class HostedSqlAtomicPairPredispatch {
     readonly totalCapUsd: number;
     readonly expiresAt: string;
     readonly pair: JsonValue;
+    readonly v209Admission: V209ShortLiveAdmission;
     readonly dispatchTokenKey: string;
   }): Promise<readonly HostedAtomicPairCommit[]> {
     return this.database.transaction(async (transaction) => {
@@ -93,7 +95,7 @@ export class HostedSqlAtomicPairPredispatch {
       const result = await this.#query<CommitRow>(
         transaction,
         `SELECT * FROM ${COMMIT_FUNCTION}(
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::numeric,$13::timestamptz,$14::jsonb)`,
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::numeric,$13::timestamptz,$14::jsonb,$15::jsonb)`,
         [
           input.approvalId,
           input.approvalSha256,
@@ -109,6 +111,7 @@ export class HostedSqlAtomicPairPredispatch {
           input.totalCapUsd,
           input.expiresAt,
           JSON.stringify(input.pair),
+          JSON.stringify(input.v209Admission),
         ],
       );
       if (

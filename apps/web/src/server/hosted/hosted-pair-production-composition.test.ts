@@ -440,6 +440,7 @@ describe("separately privileged hosted pair reconciler", () => {
         accountId: ids.account,
         workspaceId: ids.workspace,
         generationRequestId: ids.request,
+        settlementCostGuard: { schemaVersion: "test-settlement-cost-guard/v1" },
       }),
     ).resolves.toEqual({ state: "SETTLED" });
     expect(settlement.settle).toHaveBeenCalledTimes(1);
@@ -459,6 +460,7 @@ describe("separately privileged hosted pair reconciler", () => {
         accountId: ids.account,
         workspaceId: ids.workspace,
         generationRequestId: ids.request,
+        settlementCostGuard: { schemaVersion: "test-settlement-cost-guard/v1" },
       }),
     ).rejects.toMatchObject({ code: "HOSTED_PAIR_PROVIDER_PROOF_INVALID" });
     expect(settlement.settle).not.toHaveBeenCalled();

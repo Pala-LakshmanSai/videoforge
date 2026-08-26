@@ -80,6 +80,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "hosted_serverless_qualification_attestations",
   "hosted_paid_dispatch_approvals",
   "hosted_paid_dispatch_claims",
+  "hosted_v209_short_admissions",
   "serverless_attempts",
   "serverless_predispatch_authorities",
   "serverless_dispatch_outbox",

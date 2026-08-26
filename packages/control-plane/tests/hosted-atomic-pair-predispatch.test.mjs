@@ -13,6 +13,7 @@ import {
 import { IDS } from "./support/fixtures.mjs";
 import {
   createMigratedDatabase,
+  expectDatabaseError,
   sha256,
   uuid,
   withMigratedDatabase,
@@ -20,7 +21,7 @@ import {
 } from "./support/pglite.mjs";
 import { seedMaterialization } from "./hosted-lane-batch-materialization.test.mjs";
 
-async function seededPair(executor, productionPgcrypto = false) {
+async function seededPair(executor, productionPgcrypto = false, seedOptions = {}) {
   // PGlite exposes digest/UUID primitives but not pgcrypto's random/envelope helpers. These
   // provider-free test shims preserve the production function signatures, randomness, encrypted
   // at-rest bytes, and wrong-key failure semantics exercised below.
@@ -37,7 +38,7 @@ async function seededPair(executor, productionPgcrypto = false) {
         IF split_part(decoded,':',1)<>expected THEN RAISE EXCEPTION 'Wrong key or corrupt data'; END IF;
         RETURN reverse(substring(decoded FROM 66)); END $$`);
   }
-  const seeded = await seedMaterialization(executor);
+  const seeded = await seedMaterialization(executor, { canonicalV209: true, ...seedOptions });
   await executor.transaction(async (tx) => {
     await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
     await tx.query(
@@ -158,6 +159,7 @@ function commit(executor, fixture, claimId = uuid(1_420_300), overrides = {}) {
     tokenKey: "k".repeat(32),
     lanes: fixture.lanes,
     pair: fixture.pair,
+    generationPlanSha256: fixture.planSha256,
     ...overrides,
   };
   return executor.transaction(async (tx) => {
@@ -171,9 +173,48 @@ function commit(executor, fixture, claimId = uuid(1_420_300), overrides = {}) {
         "videoforge.test_fail_table",
         values.failTable,
       ]);
+    const clock = await tx.query("SELECT transaction_timestamp() AS database_now");
+    const databaseNow = new Date(clock.rows[0].database_now).toISOString();
+    const durableWork = await tx.query(
+      `SELECT b.lane,i.item_ordinal,i.artifact_input FROM hosted_lane_batches b
+        JOIN hosted_lane_batch_items i ON i.batch_id=b.id
+       WHERE b.generation_request_id=$1 ORDER BY b.batch_ordinal,i.item_ordinal`,
+      [fixture.generationRequestId],
+    );
+    const work = { mage_image: [], soulx_avatar: [] };
+    for (const row of durableWork.rows) {
+      work[row.lane].push({
+        segmentId: row.artifact_input.segment_id,
+        role: row.artifact_input.role,
+        assetId: row.artifact_input.asset_id,
+        sha256: row.artifact_input.sha256,
+      });
+    }
+    const admittedWork = values.admissionWork ?? work;
+    const admissionBase = {
+      schemaVersion: "videoforge-v2-09-short-live-admission/v1",
+      planSha256: values.generationPlanSha256,
+      workManifestSha256: sha256(canonicalizeJson(admittedWork)),
+      work: admittedWork,
+      cost: {
+        hardVariableCostCeilingMicroUsd: 2_000_000,
+        combinedCompletionCapMicroUsd: 17_500_000,
+        noRedispatch: true,
+      },
+      billingBaselineMicroUsd: values.billingBaselineMicroUsd ?? 2_000_000,
+      billingBaselineCheckedAt: databaseNow,
+      databaseNow,
+      providerObservedAt: databaseNow,
+      cancelAt: new Date(Date.parse(databaseNow) + 20 * 60_000).toISOString(),
+      stopAt: new Date(Date.parse(databaseNow) + 30 * 60_000).toISOString(),
+    };
+    const admission = {
+      ...admissionBase,
+      admissionSha256: sha256(canonicalizeJson(admissionBase)),
+    };
     return tx.query(
       `SELECT * FROM videoforge_commit_hosted_atomic_pair_predispatch(
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::numeric,$13,$14::jsonb)`,
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::numeric,$13,$14::jsonb,$15::jsonb)`,
       [
         fixture.approvalId,
         fixture.approvalSha256,
@@ -183,12 +224,13 @@ function commit(executor, fixture, claimId = uuid(1_420_300), overrides = {}) {
         IDS.projectA,
         IDS.revisionA,
         fixture.generationRequestId,
-        fixture.planSha256,
+        values.generationPlanSha256,
         fixture.leaseId,
         JSON.stringify(values.lanes),
         values.totalCapUsd,
         fixture.expiresAt,
         JSON.stringify(values.pair),
+        JSON.stringify(admission),
       ],
     );
   });
@@ -197,7 +239,7 @@ function commit(executor, fixture, claimId = uuid(1_420_300), overrides = {}) {
 test("0042 installs only the narrow atomic pair capability", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const signature =
-      "public.videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamp with time zone,jsonb)";
+      "public.videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamp with time zone,jsonb,jsonb)";
     const source = await executor.query(
       `SELECT pg_get_functiondef($1::regprocedure) AS source, has_function_privilege('public',$1,'EXECUTE') AS allowed`,
       [signature],
@@ -233,6 +275,60 @@ test("0042 raw tokens have no durable text column", async () => {
   });
 });
 
+test("0042 rejects empty/foreign caller work and cumulative completion-cap overflow", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    const fixture = await seededPair(executor);
+    await expectDatabaseError(
+      () =>
+        commit(executor, fixture, uuid(1_420_301), {
+          admissionWork: { mage_image: [], soulx_avatar: [] },
+        }),
+      "23514",
+    );
+    const foreign = structuredClone({ mage_image: [], soulx_avatar: [] });
+    foreign.mage_image.push({
+      segmentId: "foreign",
+      role: "right_image",
+      assetId: "foreign",
+      sha256: sha256("foreign"),
+    });
+    await expectDatabaseError(
+      () => commit(executor, fixture, uuid(1_420_302), { admissionWork: foreign }),
+      "23514",
+    );
+    await expectDatabaseError(
+      () =>
+        commit(executor, fixture, uuid(1_420_303), {
+          generationPlanSha256: sha256("foreign-v209-plan"),
+        }),
+      "23514",
+    );
+    await expectDatabaseError(
+      () => commit(executor, fixture, uuid(1_420_304), { billingBaselineMicroUsd: 15_500_001 }),
+      "23514",
+    );
+    const counts = await executor.query(
+      `SELECT (SELECT count(*)::int FROM hosted_paid_dispatch_claims) claims,
+        (SELECT count(*)::int FROM hosted_v209_short_admissions) admissions,
+        (SELECT count(*)::int FROM serverless_attempts) attempts`,
+    );
+    assert.deepEqual(counts.rows[0], { claims: 0, admissions: 0, attempts: 0 });
+  });
+});
+
+test("0042 rejects caller-matched durable work drift from the canonical V2-09 plan", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    const fixture = await seededPair(executor, false, { canonicalWorkDrift: true });
+    await expectDatabaseError(() => commit(executor, fixture, uuid(1_420_305)), "23514");
+    const counts = await executor.query(
+      `SELECT (SELECT count(*)::int FROM hosted_paid_dispatch_claims) claims,
+        (SELECT count(*)::int FROM hosted_v209_short_admissions) admissions,
+        (SELECT count(*)::int FROM serverless_attempts) attempts`,
+    );
+    assert.deepEqual(counts.rows[0], { claims: 0, admissions: 0, attempts: 0 });
+  });
+});
+
 test("0042 runtime capability allows atomic pair but denies direct 0040 claim and tables", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     await executor.execute(
@@ -240,7 +336,7 @@ test("0042 runtime capability allows atomic pair but denies direct 0040 claim an
     );
     await executor.execute(`GRANT USAGE ON SCHEMA public TO vf_0042_runtime;
       GRANT EXECUTE ON FUNCTION videoforge_commit_hosted_atomic_pair_predispatch(
-        uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb)
+        uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb,jsonb)
       TO vf_0042_runtime;
       GRANT EXECUTE ON FUNCTION videoforge_recover_hosted_atomic_pair_tokens(uuid,uuid,uuid)
       TO vf_0042_runtime`);
@@ -248,7 +344,7 @@ test("0042 runtime capability allows atomic pair but denies direct 0040 claim an
       `SELECT has_function_privilege('vf_0042_runtime',
         'videoforge_claim_hosted_paid_dispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,numeric,timestamptz)','EXECUTE') direct_claim,
         has_function_privilege('vf_0042_runtime',
-        'videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb)','EXECUTE') atomic_pair,
+        'videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb,jsonb)','EXECUTE') atomic_pair,
         has_table_privilege('vf_0042_runtime','hosted_dispatch_token_vault','SELECT') vault_select`,
     );
     assert.deepEqual(privileges.rows[0], {
@@ -264,10 +360,11 @@ test("0042 executes exact pair success, encrypted recovery, and restart states",
     const fixture = await seededPair(executor);
     const prospectiveSchedule = await executor.transaction(async (tx) => {
       await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
-      return tx.query(
-        "SELECT * FROM videoforge_load_hosted_pair_workflow_schedule($1,$2,$3)",
-        [IDS.accountA, IDS.workspaceA, fixture.generationRequestId],
-      );
+      return tx.query("SELECT * FROM videoforge_load_hosted_pair_workflow_schedule($1,$2,$3)", [
+        IDS.accountA,
+        IDS.workspaceA,
+        fixture.generationRequestId,
+      ]);
     });
     assert.equal(prospectiveSchedule.rows[0].existing_pair, false);
     assert.equal(
@@ -299,6 +396,7 @@ test("0042 executes exact pair success, encrypted recovery, and restart states",
     );
     const counts = await executor.query(
       `SELECT (SELECT count(*)::int FROM hosted_paid_dispatch_claims) claims,
+        (SELECT count(*)::int FROM hosted_v209_short_admissions) admissions,
         (SELECT count(*)::int FROM serverless_attempts) attempts,
         (SELECT count(*)::int FROM serverless_predispatch_authorities) authorities,
         (SELECT count(*)::int FROM serverless_dispatch_outbox) outboxes,
@@ -308,6 +406,7 @@ test("0042 executes exact pair success, encrypted recovery, and restart states",
     );
     assert.deepEqual(counts.rows[0], {
       claims: 1,
+      admissions: 1,
       attempts: 2,
       authorities: 2,
       outboxes: 2,
@@ -559,17 +658,14 @@ test("0044 atomically persists signed two-lane zero proof and settles render rea
           "videoforge.dispatch_token_key",
           "k".repeat(32),
         ]);
-        await tx.query(
-          "SELECT * FROM videoforge_begin_hosted_pair_send($1,$2,$3,$4,$5,$6)",
-          [
-            IDS.accountA,
-            IDS.workspaceA,
-            fixture.generationRequestId,
-            lane,
-            target.attempt_id,
-            target.expected_envelope_sha256,
-          ],
-        );
+        await tx.query("SELECT * FROM videoforge_begin_hosted_pair_send($1,$2,$3,$4,$5,$6)", [
+          IDS.accountA,
+          IDS.workspaceA,
+          fixture.generationRequestId,
+          lane,
+          target.attempt_id,
+          target.expected_envelope_sha256,
+        ]);
         await tx.query(
           "SELECT * FROM videoforge_finish_hosted_pair_send($1,$2,$3,$4,'ASSIGNED',$5,$6,$7)",
           [
@@ -599,21 +695,19 @@ test("0044 atomically persists signed two-lane zero proof and settles render rea
     );
     const observations = [];
     for (const [index, attempt] of attempts.rows.entries()) {
-      const itemId = fixture.batches.find((batch) => batch.lane === attempt.lane)?.items[0].item_id;
-      assert.ok(itemId);
-      const objectKey = `${attempt.output_prefix}/artifact/${itemId}`;
-      const checksumSha256 = sha256(`completed-${attempt.lane}-artifact`);
-      const artifactReceiptSha256 = sha256(`completed-${attempt.lane}-commit`);
+      const batchItems = fixture.batches.find((batch) => batch.lane === attempt.lane)?.items;
+      assert.ok(batchItems?.length);
+      const expectedObjects = batchItems.map((item, itemIndex) => ({
+        item_id: item.item_id,
+        object_key: `${attempt.output_prefix}/artifact/${item.item_id}`,
+        content_type: attempt.lane === "mage_image" ? "image/png" : "video/mp4",
+        content_length: 1000 + index * 10 + itemIndex,
+        checksum_sha256: sha256(`completed-${attempt.lane}-artifact-${itemIndex}`),
+      }));
+      const artifactReceiptSha256s = batchItems.map((_item, itemIndex) =>
+        sha256(`completed-${attempt.lane}-commit-${itemIndex}`),
+      );
       const provenanceReceiptSha256 = sha256(`completed-${attempt.lane}-provenance`);
-      const expectedObjects = [
-        {
-          item_id: itemId,
-          object_key: objectKey,
-          content_type: attempt.lane === "mage_image" ? "image/png" : "video/mp4",
-          content_length: 1000 + index,
-          checksum_sha256: checksumSha256,
-        },
-      ];
       const bindingComponents = {
         account_id: IDS.accountA,
         workspace_id: IDS.workspaceA,
@@ -632,47 +726,49 @@ test("0044 atomically persists signed two-lane zero proof and settles render rea
         volume_manifest_sha256: attempt.volume_manifest_sha256,
         expected_objects: expectedObjects,
       };
-      const reservationId = uuid(1_421_000 + index * 4);
-      await executor.query(
-        `INSERT INTO artifact_reservations(id,account_id,workspace_id,project_id,
+      for (const [itemIndex, expectedObject] of expectedObjects.entries()) {
+        const reservationId = uuid(1_421_000 + index * 20 + itemIndex * 2);
+        await executor.query(
+          `INSERT INTO artifact_reservations(id,account_id,workspace_id,project_id,
           project_revision_id,lane,job_id,artifact_id,object_key,method,content_type,
           content_length,checksum_sha256,expires_at,max_uses,used_count,state,retention_class,
           deletion_owner_account_id,created_at,updated_at)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'PUT',$10,$11,$12,
           transaction_timestamp()+interval '1 hour',1,1,'COMMITTED','PROJECT',$2,
           transaction_timestamp(),transaction_timestamp())`,
-        [
-          reservationId,
-          IDS.accountA,
-          IDS.workspaceA,
-          IDS.projectA,
-          IDS.revisionA,
-          attempt.lane === "mage_image" ? "MAGE_IMAGE" : "SOULX_AVATAR",
-          attempt.id,
-          itemId,
-          objectKey,
-          expectedObjects[0].content_type,
-          expectedObjects[0].content_length,
-          checksumSha256,
-        ],
-      );
-      await executor.query(
-        `INSERT INTO artifact_receipts(id,account_id,workspace_id,reservation_id,callback_id,
+          [
+            reservationId,
+            IDS.accountA,
+            IDS.workspaceA,
+            IDS.projectA,
+            IDS.revisionA,
+            attempt.lane === "mage_image" ? "MAGE_IMAGE" : "SOULX_AVATAR",
+            attempt.id,
+            expectedObject.item_id,
+            expectedObject.object_key,
+            expectedObject.content_type,
+            expectedObject.content_length,
+            expectedObject.checksum_sha256,
+          ],
+        );
+        await executor.query(
+          `INSERT INTO artifact_receipts(id,account_id,workspace_id,reservation_id,callback_id,
           object_key,content_type,content_length,checksum_sha256,probe,receipt_sha256,committed_at)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'{}'::jsonb,$10,transaction_timestamp())`,
-        [
-          uuid(1_421_001 + index * 4),
-          IDS.accountA,
-          IDS.workspaceA,
-          reservationId,
-          `completed-${attempt.lane}-callback`,
-          objectKey,
-          expectedObjects[0].content_type,
-          expectedObjects[0].content_length,
-          checksumSha256,
-          artifactReceiptSha256,
-        ],
-      );
+          [
+            uuid(1_421_001 + index * 20 + itemIndex * 2),
+            IDS.accountA,
+            IDS.workspaceA,
+            reservationId,
+            `completed-${attempt.lane}-${itemIndex}-callback`,
+            expectedObject.object_key,
+            expectedObject.content_type,
+            expectedObject.content_length,
+            expectedObject.checksum_sha256,
+            artifactReceiptSha256s[itemIndex],
+          ],
+        );
+      }
       await executor.query(
         `INSERT INTO serverless_provenance_receipts(id,account_id,workspace_id,
           project_revision_id,attempt_id,assignment_id,receipt_nonce,attestation_scope,worker_id,
@@ -697,16 +793,16 @@ test("0044 atomically persists signed two-lane zero proof and settles render rea
           sha256(`completed-${attempt.lane}-gpu`),
           attempt.volume_id_sha256,
           attempt.volume_manifest_sha256,
-          JSON.stringify([
-            {
-              item_id: itemId,
+          JSON.stringify(
+            expectedObjects.map((expectedObject) => ({
+              item_id: expectedObject.item_id,
               state: "SUCCEEDED",
-              output_object_key: objectKey,
-              output_sha256: checksumSha256,
-              output_bytes: expectedObjects[0].content_length,
+              output_object_key: expectedObject.object_key,
+              output_sha256: expectedObject.checksum_sha256,
+              output_bytes: expectedObject.content_length,
               probe: {},
-            },
-          ]),
+            })),
+          ),
           provenanceReceiptSha256,
           "a".repeat(64),
         ],
@@ -724,7 +820,7 @@ test("0044 atomically persists signed two-lane zero proof and settles render rea
           sha256(`completed-${attempt.lane}-barrier-callback`),
           JSON.stringify(bindingComponents),
           provenanceReceiptSha256,
-          JSON.stringify([artifactReceiptSha256]),
+          JSON.stringify(artifactReceiptSha256s),
         ],
       );
       const proofBase = {
@@ -770,16 +866,81 @@ test("0044 atomically persists signed two-lane zero proof and settles render rea
         signature_sha256: `sha256:${createHash("sha256").update(signatureValue).digest("hex")}`,
       };
     });
+    await executor.execute(
+      "CREATE ROLE vf_0044_reconciler NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS",
+    );
+    await executor.execute(`GRANT USAGE ON SCHEMA public TO vf_0044_reconciler;
+      GRANT EXECUTE ON FUNCTION videoforge_settle_hosted_pair_cleanup_v2(
+        uuid,uuid,uuid,jsonb,jsonb,jsonb) TO vf_0044_reconciler`);
+    await assert.rejects(
+      executor.transaction(async (tx) => {
+        await tx.execute("SET ROLE vf_0044_reconciler");
+        return tx.query("SELECT * FROM videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4::jsonb)", [
+          IDS.accountA,
+          IDS.workspaceA,
+          fixture.generationRequestId,
+          JSON.stringify(observations),
+        ]);
+      }),
+      /permission denied/u,
+    );
+    const admissionRecord = await executor.query(
+      "SELECT admission_sha256 FROM hosted_v209_short_admissions WHERE generation_request_id=$1",
+      [fixture.generationRequestId],
+    );
+    const invalidCostGuard = {
+      schemaVersion: "videoforge-v2-09-settlement-cost-guard/v1",
+      admissionSha256: admissionRecord.rows[0].admission_sha256,
+      finalCumulativeEndpointBillingMicroUsd: 17_500_001,
+      providerObservedAt: new Date().toISOString(),
+    };
+    await expectDatabaseError(
+      () =>
+        executor.transaction(async (tx) => {
+          await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+          return tx.query(
+            "SELECT * FROM videoforge_settle_hosted_pair_cleanup_v2($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb)",
+            [
+              IDS.accountA,
+              IDS.workspaceA,
+              fixture.generationRequestId,
+              JSON.stringify(observations),
+              JSON.stringify(zeroWorkerProofs),
+              JSON.stringify(invalidCostGuard),
+            ],
+          );
+        }),
+      "23514",
+    );
+    assert.equal(
+      (await executor.query("SELECT count(*)::int count FROM hosted_pair_zero_worker_observations"))
+        .rows[0].count,
+      0,
+    );
     const settled = await executor.transaction(async (tx) => {
       await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      const admission = await tx.query(
+        `SELECT admission_sha256,billing_baseline_micro_usd,
+          transaction_timestamp() AS database_now
+         FROM hosted_v209_short_admissions WHERE generation_request_id=$1`,
+        [fixture.generationRequestId],
+      );
+      const settlementGuard = {
+        schemaVersion: "videoforge-v2-09-settlement-cost-guard/v1",
+        admissionSha256: admission.rows[0].admission_sha256,
+        finalCumulativeEndpointBillingMicroUsd:
+          Number(admission.rows[0].billing_baseline_micro_usd) + 500_000,
+        providerObservedAt: new Date(admission.rows[0].database_now).toISOString(),
+      };
       return tx.query(
-        "SELECT * FROM videoforge_settle_hosted_pair_cleanup_v2($1,$2,$3,$4::jsonb,$5::jsonb)",
+        "SELECT * FROM videoforge_settle_hosted_pair_cleanup_v2($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb)",
         [
           IDS.accountA,
           IDS.workspaceA,
           fixture.generationRequestId,
           JSON.stringify(observations),
           JSON.stringify(zeroWorkerProofs),
+          JSON.stringify(settlementGuard),
         ],
       );
     });
@@ -807,7 +968,7 @@ test("0044 atomically persists signed two-lane zero proof and settles render rea
       [fixture.generationRequestId],
     );
     assert.deepEqual(state.rows[0], {
-      accepted: 2,
+      accepted: 3,
       lanes_succeeded: true,
       runtime_stage: "RENDERING",
       generation_state: "ACTIVE",

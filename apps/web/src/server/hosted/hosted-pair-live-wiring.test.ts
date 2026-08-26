@@ -1,5 +1,7 @@
 import { ServerlessTransportError } from "@videoforge/control-plane";
 import { describe, expect, it, vi } from "vitest";
+import canonicalPlan from "../../../../../project-context/evidence/fixtures/resolved_render_manifest.v209-short.valid.json";
+import { freezeV209ShortLiveAdmission } from "../runtime/v209-short-live-cost";
 
 import {
   HostedPairWorkflowReconciler,
@@ -44,6 +46,28 @@ async function enabledEnvironment() {
     VIDEOFORGE_SOULX_ENDPOINT_ID: soulx,
     VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256: await endpointHash(soulx),
   } as const;
+}
+
+async function admission() {
+  return freezeV209ShortLiveAdmission(structuredClone(canonicalPlan), {
+    databaseNow: "2026-08-26T01:00:00.000Z",
+    providerObservedAt: "2026-08-26T00:59:30.000Z",
+    rate: {
+      gpu: "NVIDIA GeForce RTX 4090",
+      region: "EU-RO-1",
+      availability: "HIGH",
+      secureReferenceRateMicroUsdPerGpuHour: 740_000,
+      flexRateMicroUsdPerGpuHour: 1_100_000,
+      checkedAt: "2026-08-26T00:59:30.000Z",
+    },
+    billing: {
+      cumulativeEndpointBillingMicroUsd: 2_000_000,
+      checkedAt: "2026-08-26T00:59:30.000Z",
+    },
+    phaseCapMicroUsd: 2_000_000,
+    combinedCompletionCapMicroUsd: 17_500_000,
+    redispatchAuthorized: false,
+  });
 }
 
 function rows(providerJobId: string | null = "job-1") {
@@ -193,6 +217,7 @@ describe("hosted pair live provider wiring", () => {
         runtimeDatabase as never,
         reconcilerDatabase,
         input,
+        await admission(),
       ),
     ).resolves.toEqual({
       id: `hosted-pair-${ids.generationRequestId}`,
@@ -214,6 +239,7 @@ describe("hosted pair live provider wiring", () => {
         runtimeDatabase as never,
         reconcilerDatabase,
         input,
+        await admission(),
       ),
     ).resolves.toEqual({ id: `hosted-pair-${ids.generationRequestId}`, recovered: true });
     expect(workflow.create).toHaveBeenCalledTimes(2);
@@ -306,6 +332,7 @@ describe("hosted pair live provider wiring", () => {
     const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
     const mageDrain = vi.fn();
     const soulxDrain = vi.fn();
+    const settlementGuard = vi.fn(async () => ({ guard: "exact" }));
     const reconciler = new HostedPairWorkflowReconciler(
       { inspect: vi.fn(async () => rows()) } as never,
       {
@@ -314,13 +341,42 @@ describe("hosted pair live provider wiring", () => {
       },
       settle as never,
       { mage_image: mageDrain, soulx_avatar: soulxDrain },
+      settlementGuard,
     );
     await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "SETTLED" });
     expect(mageDrain).toHaveBeenCalledTimes(1);
     expect(soulxDrain).toHaveBeenCalledTimes(1);
+    expect(settlementGuard).toHaveBeenCalledWith(ids);
     expect(settle.reconcile).toHaveBeenCalledWith({
       ...ids,
       zeroWorkerProofs: [{}, {}],
+      settlementCostGuard: { guard: "exact" },
     });
+  });
+
+  it("fails closed before settlement when the V2-09 cost guard is absent", async () => {
+    const status = vi.fn(async (id: string) => ({ id, status: "COMPLETED" as const }));
+    const settle = { reconcile: vi.fn() };
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      { mage_image: { status, cancel: vi.fn() }, soulx_avatar: { status, cancel: vi.fn() } },
+      settle as never,
+      {
+        mage_image: vi.fn(async () => ({
+          workersTotal: 0 as const,
+          queuedJobs: 0 as const,
+          observedAt: "2026-08-26T06:00:00.000Z",
+        })),
+        soulx_avatar: vi.fn(async () => ({
+          workersTotal: 0 as const,
+          queuedJobs: 0 as const,
+          observedAt: "2026-08-26T06:00:00.000Z",
+        })),
+      },
+    );
+    await expect(reconciler.observe(ids, false)).rejects.toMatchObject({
+      code: "HOSTED_V209_SETTLEMENT_GUARD_MISSING",
+    });
+    expect(settle.reconcile).not.toHaveBeenCalled();
   });
 });

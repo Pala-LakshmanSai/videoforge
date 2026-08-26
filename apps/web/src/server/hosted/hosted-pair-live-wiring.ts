@@ -26,6 +26,11 @@ import {
 import { HostedDispatchCoordinationError } from "./hosted-serverless-dispatch-coordinator";
 import { RunPodDrainGuard, RunPodServerlessJobClient } from "../providers/runpod-control";
 import { RunPodServerlessTransport } from "../providers/runpod-serverless-transport";
+import {
+  assertV209ShortSettlement,
+  readV209ShortProviderObservation,
+  type V209ShortLiveAdmission,
+} from "../runtime/v209-short-live-cost";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
@@ -53,7 +58,7 @@ export interface HostedPairWorkflowParameters extends HostedPairWorkflowScope {
 
 type HostedPairPredispatchInput = Omit<
   Parameters<HostedSqlAtomicPairPredispatch["commit"]>[0],
-  "dispatchTokenKey"
+  "dispatchTokenKey" | "v209Admission"
 >;
 
 type LaneClients = Readonly<Record<HostedPairLane, RunPodServerlessJobClient>>;
@@ -195,37 +200,48 @@ export async function commitAndScheduleHostedPair(
   runtimeDatabase: TransactionalSqlExecutor,
   reconcilerDatabase: TransactionalSqlExecutor,
   input: HostedPairPredispatchInput,
+  v209Admission: V209ShortLiveAdmission,
 ): Promise<{ readonly id: string; readonly recovered: boolean }> {
   await assertHostedPairLiveBindings(environment);
   await assertHostedPairDatabasePrincipals(runtimeDatabase, reconcilerDatabase);
   await createHostedRunPodPair(environment);
   const workflow = environment.HOSTED_PAIR_WORKFLOW;
   if (!workflow) throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_BINDING_MISSING");
-  const loadSchedule = () => runtimeDatabase.transaction(async (transaction) => {
-    await transaction.query("SELECT set_config($1,$2,true)", [
-      "videoforge.account_id",
-      input.accountId,
-    ]);
-    const result = await transaction.query<{
-      existing_pair: boolean;
-      cancel_at: string | Date;
-      stop_at: string | Date;
-    }>("SELECT * FROM public.videoforge_load_hosted_pair_workflow_schedule($1,$2,$3)", [
-      input.accountId,
-      input.workspaceId,
-      input.generationRequestId,
-    ]);
-    const row = result.rows[0];
-    if (result.rows.length !== 1 || !row)
-      throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
-    return Object.freeze({
-      existingPair: row.existing_pair,
-      cancelAt: new Date(row.cancel_at).toISOString(),
-      stopAt: new Date(row.stop_at).toISOString(),
+  const loadSchedule = () =>
+    runtimeDatabase.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        input.accountId,
+      ]);
+      const result = await transaction.query<{
+        existing_pair: boolean;
+        cancel_at: string | Date;
+        stop_at: string | Date;
+      }>("SELECT * FROM public.videoforge_load_hosted_pair_workflow_schedule($1,$2,$3)", [
+        input.accountId,
+        input.workspaceId,
+        input.generationRequestId,
+      ]);
+      const row = result.rows[0];
+      if (result.rows.length !== 1 || !row)
+        throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
+      return Object.freeze({
+        existingPair: row.existing_pair,
+        cancelAt: new Date(row.cancel_at).toISOString(),
+        stopAt: new Date(row.stop_at).toISOString(),
+      });
     });
-  });
   const preflightSchedule = await loadSchedule();
-  if (Date.parse(preflightSchedule.stopAt) - Date.parse(preflightSchedule.cancelAt) !== 10 * 60 * 1_000)
+  if (
+    preflightSchedule.existingPair &&
+    (preflightSchedule.cancelAt !== v209Admission.cancelAt ||
+      preflightSchedule.stopAt !== v209Admission.stopAt)
+  )
+    throw new HostedDispatchCoordinationError("HOSTED_V209_SCHEDULE_DRIFT");
+  if (
+    Date.parse(preflightSchedule.stopAt) - Date.parse(preflightSchedule.cancelAt) !==
+    10 * 60 * 1_000
+  )
     throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
   const dispatchTokenKey = exact(
     environment.VIDEOFORGE_DISPATCH_TOKEN_KEY,
@@ -235,12 +251,18 @@ export async function commitAndScheduleHostedPair(
     const committed = await new HostedSqlAtomicPairPredispatch(runtimeDatabase).commit({
       ...input,
       dispatchTokenKey,
+      v209Admission,
     });
     if (committed.length !== 2)
       throw new HostedDispatchCoordinationError("HOSTED_ATOMIC_PAIR_INVALID");
   }
   const schedule = await loadSchedule();
-  if (!schedule.existingPair || Date.parse(schedule.stopAt) - Date.parse(schedule.cancelAt) !== 10 * 60 * 1_000)
+  if (schedule.cancelAt !== v209Admission.cancelAt || schedule.stopAt !== v209Admission.stopAt)
+    throw new HostedDispatchCoordinationError("HOSTED_V209_SCHEDULE_DRIFT");
+  if (
+    !schedule.existingPair ||
+    Date.parse(schedule.stopAt) - Date.parse(schedule.cancelAt) !== 10 * 60 * 1_000
+  )
     throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
   const id = `hosted-pair-${input.generationRequestId}`;
   const params: HostedPairWorkflowParameters = Object.freeze({
@@ -261,6 +283,59 @@ export async function commitAndScheduleHostedPair(
     await existing.status();
     return Object.freeze({ id, recovered: true });
   }
+}
+
+/** The only V2-09 short-project mutation entrypoint. The exact plan/work/cost admission is checked
+ * before 0042, and PostgreSQL's own schedule must equal its DB-time-derived cancel/stop boundary. */
+export async function commitAndScheduleV209ShortPair(
+  environment: HostedPairLiveEnvironment & {
+    readonly HOSTED_PAIR_WORKFLOW?: HostedWorkflowBinding;
+  },
+  runtimeDatabase: TransactionalSqlExecutor,
+  reconcilerDatabase: TransactionalSqlExecutor,
+  input: HostedPairPredispatchInput,
+  admission: V209ShortLiveAdmission,
+  laneItemIds: Readonly<{ mage_image: readonly string[]; soulx_avatar: readonly string[] }>,
+): Promise<{ readonly id: string; readonly recovered: boolean }> {
+  const expectedItems = {
+    mage_image: admission.work.mage_image.map((item) => item.assetId),
+    soulx_avatar: admission.work.soulx_avatar.map((item) => item.assetId),
+  };
+  if (
+    input.generationPlanSha256 !== admission.planSha256 ||
+    input.totalCapUsd !== 2 ||
+    Date.parse(input.expiresAt) < Date.parse(admission.stopAt) ||
+    JSON.stringify(laneItemIds) !== JSON.stringify(expectedItems) ||
+    admission.cost.hardVariableCostCeilingMicroUsd !== 2_000_000 ||
+    admission.cost.combinedCompletionCapMicroUsd !== 17_500_000 ||
+    admission.cost.noRedispatch !== true
+  )
+    throw new HostedDispatchCoordinationError("HOSTED_V209_COST_ADMISSION_INVALID");
+  return commitAndScheduleHostedPair(
+    environment,
+    runtimeDatabase,
+    reconcilerDatabase,
+    input,
+    admission,
+  );
+}
+
+export async function observeV209ShortAdmission(
+  environment: HostedPairLiveEnvironment,
+  database: TransactionalSqlExecutor,
+): Promise<Awaited<ReturnType<typeof readV209ShortProviderObservation>>> {
+  const apiKey = exact(environment.RUNPOD_API_KEY, "HOSTED_PAIR_RUNPOD_BINDINGS_INVALID");
+  return readV209ShortProviderObservation(apiKey, () =>
+    database.transaction(async (transaction) => {
+      const result = await transaction.query<{ database_now: string | Date }>(
+        "SELECT transaction_timestamp() AS database_now",
+      );
+      const value = result.rows[0]?.database_now;
+      if (result.rows.length !== 1 || value === undefined)
+        throw new HostedDispatchCoordinationError("HOSTED_V209_DATABASE_TIME_INVALID");
+      return new Date(value).toISOString();
+    }),
+  );
 }
 
 export function createHostedRunPodObservationSource(
@@ -312,6 +387,11 @@ export class HostedPairWorkflowReconciler {
         }>
       >
     >,
+    private readonly settlementGuard: (
+      scope: HostedPairWorkflowScope,
+    ) => Promise<JsonValue> = async () => {
+      throw new HostedDispatchCoordinationError("HOSTED_V209_SETTLEMENT_GUARD_MISSING");
+    },
     private readonly signZeroProof: (
       lane: HostedPairLane,
       scope: HostedPairWorkflowScope,
@@ -358,11 +438,12 @@ export class HostedPairWorkflowReconciler {
       this.confirmDrained.mage_image(),
       this.confirmDrained.soulx_avatar(),
     ]);
+    const settlementCostGuard = await this.settlementGuard(scope);
     const zeroWorkerProofs = await Promise.all([
       this.signZeroProof("mage_image", scope, drained[0]),
       this.signZeroProof("soulx_avatar", scope, drained[1]),
     ]);
-    await this.settle.reconcile({ ...scope, zeroWorkerProofs });
+    await this.settle.reconcile({ ...scope, zeroWorkerProofs, settlementCostGuard });
     return Object.freeze({ state: "SETTLED" as const });
   }
 
@@ -446,6 +527,56 @@ export async function createHostedPairLiveComposition(
     proofAuthority,
     new HostedSqlPairSettlementStore(reconcilerDatabase),
   );
+  const settlementGuard = async (scope: HostedPairWorkflowScope) => {
+    const snapshot = await reconcilerDatabase.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        scope.accountId,
+      ]);
+      const result = await transaction.query<{ snapshot: JsonValue }>(
+        "SELECT public.videoforge_load_hosted_v209_settlement_guard($1,$2,$3) AS snapshot",
+        [scope.accountId, scope.workspaceId, scope.generationRequestId],
+      );
+      if (result.rows.length !== 1 || !result.rows[0])
+        throw new HostedDispatchCoordinationError("HOSTED_V209_SETTLEMENT_SNAPSHOT_INVALID");
+      return result.rows[0].snapshot as unknown as {
+        readonly admission: V209ShortLiveAdmission;
+        readonly terminalJobCount: number;
+        readonly redispatchCount: number;
+        readonly settledVariableCostMicroUsd: number;
+        readonly possibleDuplicateCostMicroUsd: number;
+      };
+    });
+    const provider = await readV209ShortProviderObservation(
+      exact(environment.RUNPOD_API_KEY, "HOSTED_PAIR_RUNPOD_BINDINGS_INVALID"),
+      () =>
+        reconcilerDatabase.transaction(async (transaction) => {
+          const result = await transaction.query<{ database_now: string | Date }>(
+            "SELECT transaction_timestamp() AS database_now",
+          );
+          const value = result.rows[0]?.database_now;
+          if (result.rows.length !== 1 || value === undefined)
+            throw new HostedDispatchCoordinationError("HOSTED_V209_DATABASE_TIME_INVALID");
+          return new Date(value).toISOString();
+        }),
+    );
+    assertV209ShortSettlement({
+      admission: snapshot.admission,
+      finalCumulativeEndpointBillingMicroUsd: provider.billing.cumulativeEndpointBillingMicroUsd,
+      settledVariableCostMicroUsd: snapshot.settledVariableCostMicroUsd,
+      possibleDuplicateCostMicroUsd: snapshot.possibleDuplicateCostMicroUsd,
+      terminalJobCount: 2,
+      activeWorkers: 0,
+      runningPods: 0,
+      redispatchCount: snapshot.redispatchCount as 0,
+    });
+    return Object.freeze({
+      schemaVersion: "videoforge-v2-09-settlement-cost-guard/v1" as const,
+      admissionSha256: snapshot.admission.admissionSha256,
+      finalCumulativeEndpointBillingMicroUsd: provider.billing.cumulativeEndpointBillingMicroUsd,
+      providerObservedAt: provider.providerObservedAt,
+    });
+  };
   const signZeroProof = async (
     lane: HostedPairLane,
     scope: HostedPairWorkflowScope,
@@ -504,6 +635,7 @@ export async function createHostedPairLiveComposition(
           return provider.clients.soulx_avatar.confirmDrained(30);
         },
       }),
+      settlementGuard,
       signZeroProof,
     ),
   });

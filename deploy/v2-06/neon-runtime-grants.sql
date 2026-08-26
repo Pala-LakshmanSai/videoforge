@@ -75,7 +75,7 @@ TO :"runtime_role";
 -- Migration 0042 is the sole paid sendable-state capability. It rechecks durable independent
 -- qualification, consumes the 0040 approval, and commits both lanes in one DB-time transaction.
 GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_atomic_pair_predispatch(
-  uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb
+  uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb,jsonb
 )
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_recover_hosted_atomic_pair_tokens(uuid,uuid,uuid)

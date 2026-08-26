@@ -31,20 +31,55 @@ CREATE TABLE public.hosted_dispatch_token_vault (
   UNIQUE(account_id,workspace_id,attempt_id),
   FOREIGN KEY(account_id,workspace_id,attempt_id) REFERENCES public.serverless_attempts(account_id,workspace_id,id)
 );
+
+-- Exact V2-09 admission is durable authority state, not a browser assertion. It is inserted in the
+-- same transaction as the paid claim and pair, and is immutable thereafter.
+CREATE TABLE public.hosted_v209_short_admissions (
+  account_id uuid NOT NULL,
+  workspace_id uuid NOT NULL,
+  generation_request_id uuid PRIMARY KEY,
+  admission_sha256 text NOT NULL UNIQUE CHECK(admission_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  plan_sha256 text NOT NULL CHECK(plan_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  work_manifest_sha256 text NOT NULL CHECK(work_manifest_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  phase_cap_micro_usd integer NOT NULL CHECK(phase_cap_micro_usd=2000000),
+  combined_cap_micro_usd integer NOT NULL CHECK(combined_cap_micro_usd=17500000),
+  billing_baseline_micro_usd bigint NOT NULL CHECK(billing_baseline_micro_usd>=0),
+  billing_baseline_checked_at timestamptz NOT NULL,
+  database_observed_at timestamptz NOT NULL,
+  provider_observed_at timestamptz NOT NULL,
+  cancel_at timestamptz NOT NULL,
+  stop_at timestamptz NOT NULL,
+  no_redispatch boolean NOT NULL CHECK(no_redispatch),
+  admission_document jsonb NOT NULL,
+  created_at timestamptz NOT NULL,
+  UNIQUE(account_id,workspace_id,generation_request_id),
+  FOREIGN KEY(account_id,workspace_id,generation_request_id)
+    REFERENCES public.generation_requests(account_id,workspace_id,id),
+  CHECK(cancel_at=database_observed_at+interval '20 minutes'),
+  CHECK(stop_at=database_observed_at+interval '30 minutes')
+);
 CREATE TRIGGER hosted_serverless_qualification_attestations_append_only BEFORE UPDATE OR DELETE
   ON public.hosted_serverless_qualification_attestations FOR EACH ROW
   EXECUTE FUNCTION public.videoforge_vnext_append_only();
 CREATE TRIGGER hosted_dispatch_token_vault_append_only BEFORE UPDATE OR DELETE
   ON public.hosted_dispatch_token_vault FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
+CREATE TRIGGER hosted_v209_short_admissions_append_only BEFORE UPDATE OR DELETE
+  ON public.hosted_v209_short_admissions FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
 CREATE TRIGGER hosted_dispatch_token_vault_tenant_write_guard BEFORE INSERT
   ON public.hosted_dispatch_token_vault FOR EACH ROW EXECUTE FUNCTION public.videoforge_assert_tenant_write();
 ALTER TABLE public.hosted_dispatch_token_vault ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hosted_dispatch_token_vault FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.hosted_v209_short_admissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hosted_v209_short_admissions FORCE ROW LEVEL SECURITY;
 CREATE POLICY hosted_dispatch_token_vault_tenant_rls ON public.hosted_dispatch_token_vault
+  USING(account_id=public.videoforge_current_account_id())
+  WITH CHECK(account_id=public.videoforge_current_account_id());
+CREATE POLICY hosted_v209_short_admissions_tenant_rls ON public.hosted_v209_short_admissions
   USING(account_id=public.videoforge_current_account_id())
   WITH CHECK(account_id=public.videoforge_current_account_id());
 REVOKE ALL ON TABLE public.hosted_serverless_qualification_attestations FROM PUBLIC;
 REVOKE ALL ON TABLE public.hosted_dispatch_token_vault FROM PUBLIC;
+REVOKE ALL ON TABLE public.hosted_v209_short_admissions FROM PUBLIC;
 
 CREATE FUNCTION public.videoforge_hosted_predispatch_uuid(
   supplied_kind text, supplied_generation_request_id uuid, supplied_task_id uuid,
@@ -70,7 +105,8 @@ CREATE FUNCTION public.videoforge_commit_hosted_atomic_pair_predispatch(
   supplied_account_id uuid, supplied_workspace_id uuid, supplied_project_id uuid,
   supplied_project_revision_id uuid, supplied_generation_request_id uuid,
   supplied_generation_plan_sha256 text, supplied_lease_id uuid, supplied_lane_bindings jsonb,
-  supplied_total_cap_usd numeric, supplied_expires_at timestamptz, supplied_pair jsonb
+  supplied_total_cap_usd numeric, supplied_expires_at timestamptz, supplied_pair jsonb,
+  supplied_v209_admission jsonb
 ) RETURNS TABLE (
   lane text, attempt_id uuid, authority_id uuid, outbox_id uuid, dispatch_token text,
   dispatch_token_sha256 text, unsigned_envelope jsonb, unsigned_envelope_sha256 text,
@@ -90,11 +126,50 @@ DECLARE
   qualification public.hosted_serverless_qualification_attestations%ROWTYPE;
   approval_binding jsonb;
   token_key text:=current_setting('videoforge.dispatch_token_key',true);
+  admission_hash text;
+  expected_work jsonb;
+  canonical_v209_work jsonb:=jsonb_build_object(
+    'mage_image',jsonb_build_array(jsonb_build_object('segmentId','seg_v209_split','role','right_image',
+      'assetId','asset_v209_split_right','sha256','sha256:'||repeat('6',64))),
+    'soulx_avatar',jsonb_build_array(
+      jsonb_build_object('segmentId','seg_v209_full','role','avatar','assetId','asset_v209_avatar_full',
+        'sha256','sha256:'||repeat('4',64)),
+      jsonb_build_object('segmentId','seg_v209_split','role','avatar','assetId','asset_v209_avatar_split',
+        'sha256','sha256:'||repeat('5',64))));
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id
      OR jsonb_typeof(supplied_pair)<>'array' OR jsonb_array_length(supplied_pair)<>2
-     OR supplied_total_cap_usd<=0 OR token_key IS NULL OR length(token_key)<32 THEN
+     OR supplied_total_cap_usd<>2 OR token_key IS NULL OR length(token_key)<32
+     OR jsonb_typeof(supplied_v209_admission)<>'object' THEN
     RAISE EXCEPTION 'hosted atomic pair input invalid' USING ERRCODE='42501';
+  END IF;
+  admission_hash:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
+    supplied_v209_admission-'admissionSha256'),'UTF8')),'hex');
+  IF supplied_v209_admission->>'schemaVersion'<>'videoforge-v2-09-short-live-admission/v1'
+     OR supplied_v209_admission->>'admissionSha256'<>admission_hash
+     OR supplied_generation_plan_sha256<>
+        'sha256:f975e2be15db227e96c6ea06f025c3f7ead025a5f80b80e9e2b0ac1f9fd6a4ea'
+     OR supplied_v209_admission->>'planSha256'<>supplied_generation_plan_sha256
+     OR supplied_v209_admission->>'workManifestSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied_v209_admission->>'workManifestSha256'<>'sha256:'||encode(sha256(convert_to(
+        public.videoforge_canonical_jsonb(supplied_v209_admission->'work'),'UTF8')),'hex')
+     OR (supplied_v209_admission#>>'{cost,hardVariableCostCeilingMicroUsd}')::integer<>2000000
+     OR (supplied_v209_admission#>>'{cost,combinedCompletionCapMicroUsd}')::integer<>17500000
+     OR (supplied_v209_admission#>>'{cost,noRedispatch}')::boolean IS DISTINCT FROM true
+     OR (supplied_v209_admission->>'billingBaselineMicroUsd')::bigint<0
+     OR (supplied_v209_admission->>'databaseNow')::timestamptz>db_now
+     OR (supplied_v209_admission->>'databaseNow')::timestamptz<db_now-interval '5 minutes'
+     OR (supplied_v209_admission->>'providerObservedAt')::timestamptz>
+        (supplied_v209_admission->>'databaseNow')::timestamptz
+     OR (supplied_v209_admission->>'billingBaselineCheckedAt')::timestamptz>
+        (supplied_v209_admission->>'databaseNow')::timestamptz
+     OR (supplied_v209_admission->>'providerObservedAt')::timestamptz<db_now-interval '5 minutes'
+     OR (supplied_v209_admission->>'billingBaselineCheckedAt')::timestamptz<db_now-interval '5 minutes'
+     OR (supplied_v209_admission->>'cancelAt')::timestamptz<>
+        (supplied_v209_admission->>'databaseNow')::timestamptz+interval '20 minutes'
+     OR (supplied_v209_admission->>'stopAt')::timestamptz<>
+        (supplied_v209_admission->>'databaseNow')::timestamptz+interval '30 minutes' THEN
+    RAISE EXCEPTION 'hosted V2-09 admission invalid' USING ERRCODE='23514';
   END IF;
   IF (SELECT array_agg(value->>'lane' ORDER BY value->>'lane') FROM jsonb_array_elements(supplied_pair))
        IS DISTINCT FROM ARRAY['mage_image','soulx_avatar']::text[] THEN
@@ -102,15 +177,42 @@ BEGIN
   END IF;
   -- Same namespace as 0041 materialization; materialize/claim/predispatch cannot interleave.
   PERFORM pg_advisory_xact_lock(hashtextextended(supplied_generation_request_id::text,41));
+  SELECT jsonb_build_object(
+    'mage_image',coalesce((SELECT jsonb_agg(jsonb_build_object(
+      'segmentId',i.artifact_input->>'segment_id','role',i.artifact_input->>'role',
+      'assetId',i.artifact_input->>'asset_id','sha256',i.artifact_input->>'sha256')
+      ORDER BY i.item_ordinal) FROM public.hosted_lane_batches b
+      JOIN public.hosted_lane_batch_items i ON i.batch_id=b.id
+      WHERE b.account_id=supplied_account_id AND b.workspace_id=supplied_workspace_id
+        AND b.generation_request_id=supplied_generation_request_id AND b.lane='mage_image'),'[]'::jsonb),
+    'soulx_avatar',coalesce((SELECT jsonb_agg(jsonb_build_object(
+      'segmentId',i.artifact_input->>'segment_id','role',i.artifact_input->>'role',
+      'assetId',i.artifact_input->>'asset_id','sha256',i.artifact_input->>'sha256')
+      ORDER BY i.item_ordinal) FROM public.hosted_lane_batches b
+      JOIN public.hosted_lane_batch_items i ON i.batch_id=b.id
+      WHERE b.account_id=supplied_account_id AND b.workspace_id=supplied_workspace_id
+        AND b.generation_request_id=supplied_generation_request_id AND b.lane='soulx_avatar'),'[]'::jsonb))
+    INTO expected_work;
+  IF supplied_v209_admission->'work' IS DISTINCT FROM expected_work
+     OR EXISTS(SELECT 1 FROM public.hosted_lane_batches b JOIN public.hosted_lane_batch_items i
+       ON i.batch_id=b.id WHERE b.account_id=supplied_account_id
+       AND b.workspace_id=supplied_workspace_id AND b.generation_request_id=supplied_generation_request_id
+       AND (i.artifact_input->>'segment_id' IS NULL OR i.artifact_input->>'asset_id' IS NULL
+         OR i.artifact_input->>'sha256' !~ '^sha256:[0-9a-f]{64}$'
+         OR i.artifact_input->>'role' NOT IN ('image','right_image','avatar')))
+     OR expected_work IS DISTINCT FROM canonical_v209_work THEN
+    RAISE EXCEPTION 'hosted V2-09 durable work mismatch' USING ERRCODE='23514';
+  END IF;
   IF EXISTS (SELECT 1 FROM public.serverless_attempts a
     WHERE a.account_id=supplied_account_id AND a.workspace_id=supplied_workspace_id
-      AND a.generation_request_id=supplied_generation_request_id
-      AND a.state NOT IN ('SUCCEEDED','PERMANENT_FAILED','CANCELLED')) THEN
-    RAISE EXCEPTION 'hosted atomic pair already has live attempts' USING ERRCODE='23505';
+      AND a.generation_request_id=supplied_generation_request_id) THEN
+    RAISE EXCEPTION 'hosted V2-09 redispatch forbidden' USING ERRCODE='23505';
   END IF;
   SELECT coalesce(sum((value->>'reservation_usd')::numeric),0) INTO reservation_total
     FROM jsonb_array_elements(supplied_pair);
   IF reservation_total<0 OR reservation_total>supplied_total_cap_usd
+     OR (supplied_v209_admission->>'billingBaselineMicroUsd')::bigint+
+        2000000>17500000
      OR EXISTS (SELECT 1 FROM jsonb_array_elements(supplied_pair) value
        WHERE (value->>'reservation_usd')::numeric<0
          OR (value->>'reservation_usd')::numeric>(value->>'spend_ceiling_usd')::numeric) THEN
@@ -123,6 +225,19 @@ BEGIN
     supplied_workspace_id,supplied_project_id,supplied_project_revision_id,
     supplied_generation_request_id,supplied_generation_plan_sha256,supplied_lease_id,
     supplied_lane_bindings,supplied_total_cap_usd,reservation_total,supplied_expires_at);
+
+  INSERT INTO public.hosted_v209_short_admissions(account_id,workspace_id,generation_request_id,
+    admission_sha256,plan_sha256,work_manifest_sha256,phase_cap_micro_usd,combined_cap_micro_usd,
+    billing_baseline_micro_usd,billing_baseline_checked_at,database_observed_at,provider_observed_at,
+    cancel_at,stop_at,no_redispatch,admission_document,created_at)
+  VALUES(supplied_account_id,supplied_workspace_id,supplied_generation_request_id,admission_hash,
+    supplied_generation_plan_sha256,supplied_v209_admission->>'workManifestSha256',2000000,17500000,
+    (supplied_v209_admission->>'billingBaselineMicroUsd')::bigint,
+    (supplied_v209_admission->>'billingBaselineCheckedAt')::timestamptz,
+    (supplied_v209_admission->>'databaseNow')::timestamptz,
+    (supplied_v209_admission->>'providerObservedAt')::timestamptz,
+    (supplied_v209_admission->>'cancelAt')::timestamptz,
+    (supplied_v209_admission->>'stopAt')::timestamptz,true,supplied_v209_admission,db_now);
 
   SELECT * INTO runtime FROM public.video_runtime_states r
    WHERE r.account_id=supplied_account_id AND r.workspace_id=supplied_workspace_id
@@ -185,7 +300,7 @@ BEGIN
     END IF;
     ordinal:=runtime_lane.attempt_ordinal+1;
     expected_attempt:=public.videoforge_hosted_dispatch_uuid('attempt',supplied_generation_request_id,task_id,ordinal);
-    IF item->>'attempt_id'<>expected_attempt::text OR ordinal NOT BETWEEN 1 AND 3 THEN
+    IF item->>'attempt_id'<>expected_attempt::text OR ordinal<>1 THEN
       RAISE EXCEPTION 'hosted atomic pair attempt lineage mismatch' USING ERRCODE='23514';
     END IF;
     authority_id:=public.videoforge_hosted_predispatch_uuid('authority',supplied_generation_request_id,task_id,ordinal);
@@ -270,7 +385,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.videoforge_hosted_predispatch_uuid(text,uuid,uuid,integer) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_commit_hosted_atomic_pair_predispatch(
-  uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb) FROM PUBLIC;
+  uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamptz,jsonb,jsonb) FROM PUBLIC;
 
 CREATE FUNCTION public.videoforge_recover_hosted_atomic_pair_tokens(
   supplied_account_id uuid,supplied_workspace_id uuid,supplied_generation_request_id uuid

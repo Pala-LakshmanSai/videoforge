@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import canonicalPlan from "../../../../../project-context/evidence/fixtures/resolved_render_manifest.v209-short.valid.json";
 
 import { handleHostedPairDispatch } from "./app";
 
@@ -33,13 +34,14 @@ const body = () => ({
   approvalSha256: `sha256:${"a".repeat(64)}`,
   claimId: ids.claim,
   expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  generationPlanSha256: `sha256:${"b".repeat(64)}`,
+  generationPlanSha256: "sha256:f975e2be15db227e96c6ea06f025c3f7ead025a5f80b80e9e2b0ac1f9fd6a4ea",
   laneBindings: [{ lane: "mage_image" }, { lane: "soulx_avatar" }],
   leaseId: ids.lease,
   pair: [{ lane: "mage_image" }, { lane: "soulx_avatar" }],
+  renderPlan: structuredClone(canonicalPlan),
   projectId: ids.project,
   projectRevisionId: ids.revision,
-  totalCapUsd: 4.5,
+  totalCapUsd: 2,
 });
 
 function dependencies() {
@@ -50,17 +52,34 @@ function dependencies() {
     end: vi.fn().mockResolvedValue(undefined),
   };
   const reconciler = { query: vi.fn(), end: vi.fn().mockResolvedValue(undefined) };
-  const createPool = vi
-    .fn()
-    .mockReturnValueOnce(runtime)
-    .mockReturnValueOnce(reconciler);
+  const createPool = vi.fn().mockReturnValueOnce(runtime).mockReturnValueOnce(reconciler);
   const commitAndSchedule = vi
     .fn()
     .mockResolvedValue({ id: `hosted-pair-${ids.generation}`, recovered: false });
+  const observeAdmission = vi.fn().mockResolvedValue({
+    databaseNow: "2026-08-26T06:00:00.000Z",
+    providerObservedAt: "2026-08-26T05:59:30.000Z",
+    rate: {
+      gpu: "NVIDIA GeForce RTX 4090",
+      region: "EU-RO-1",
+      availability: "HIGH",
+      secureReferenceRateMicroUsdPerGpuHour: 740_000,
+      flexRateMicroUsdPerGpuHour: 1_100_000,
+      checkedAt: "2026-08-26T05:59:30.000Z",
+    },
+    billing: {
+      cumulativeEndpointBillingMicroUsd: 2_000_000,
+      checkedAt: "2026-08-26T05:59:30.000Z",
+    },
+    phaseCapMicroUsd: 2_000_000,
+    combinedCompletionCapMicroUsd: 17_500_000,
+    redispatchAuthorized: false,
+  });
   return {
     runtime,
     reconciler,
     commitAndSchedule,
+    observeAdmission,
     value: {
       createPool,
       createExecutor: (pool: unknown) => pool,
@@ -68,6 +87,7 @@ function dependencies() {
         user: { id: "user-1" },
         session: { token: "opaque-session" },
       }),
+      observeAdmission,
       commitAndSchedule,
     } as never,
   };
@@ -130,10 +150,16 @@ describe("authenticated hosted pair dispatch route", () => {
     );
     expect(response.status).toBe(202);
     expect(deps.commitAndSchedule).toHaveBeenCalledTimes(1);
+    expect(deps.observeAdmission).toHaveBeenCalledTimes(1);
     expect(deps.commitAndSchedule.mock.calls[0]?.[3]).toMatchObject({
       accountId: ids.account,
       workspaceId: ids.workspace,
       generationRequestId: ids.generation,
+    });
+    expect(deps.commitAndSchedule.mock.calls[0]?.[4]).toMatchObject({
+      planSha256: body().generationPlanSha256,
+      cancelAt: "2026-08-26T06:20:00.000Z",
+      stopAt: "2026-08-26T06:30:00.000Z",
     });
     expect(deps.runtime.end).toHaveBeenCalledOnce();
     expect(deps.reconciler.end).toHaveBeenCalledOnce();

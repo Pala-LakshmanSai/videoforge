@@ -16,13 +16,14 @@ import {
   withMigratedDatabase,
 } from "./support/pglite.mjs";
 
-export async function seedMaterialization(executor) {
+export async function seedMaterialization(executor, options = {}) {
   await seedLockedProjects(executor);
   await executor.query("SELECT set_config($1,$2,false)", ["videoforge.account_id", IDS.accountA]);
   const generationRequestId = uuid(1_410_001);
   const leaseId = uuid(1_410_002);
   const runtimeId = uuid(1_410_003);
-  const planSha256 = sha256("0041-plan");
+  const canonicalV209 = options.canonicalV209 === true;
+  const planSha256 = "sha256:f975e2be15db227e96c6ea06f025c3f7ead025a5f80b80e9e2b0ac1f9fd6a4ea";
   const tasks = [
     { id: uuid(1_410_011), task_key: "image:segment:001", lane: "IMAGE", segment: uuid(1_410_021) },
     {
@@ -31,6 +32,16 @@ export async function seedMaterialization(executor) {
       lane: "AVATAR",
       segment: uuid(1_410_022),
     },
+    ...(canonicalV209
+      ? [
+          {
+            id: uuid(1_410_013),
+            task_key: "avatar:segment:003",
+            lane: "AVATAR",
+            segment: uuid(1_410_023),
+          },
+        ]
+      : []),
   ];
   await executor.query(
     `INSERT INTO generation_requests(id,account_id,workspace_id,project_id,project_revision_id,
@@ -103,39 +114,34 @@ export async function seedMaterialization(executor) {
     ],
   );
   const laneDefinitions = [
-    [
-      "mage_image",
-      canonicalSha256([
-        {
-          item_id: tasks[0].id,
-          task_id: tasks[0].id,
-          task_key: tasks[0].task_key,
-          timeline_segment_id: tasks[0].segment,
-        },
-      ]),
-      uuid(1_410_041),
-    ],
-    [
-      "soulx_avatar",
-      canonicalSha256([
-        {
-          item_id: tasks[1].id,
-          task_id: tasks[1].id,
-          task_key: tasks[1].task_key,
-          timeline_segment_id: tasks[1].segment,
-        },
-      ]),
-      uuid(1_410_042),
-    ],
+    ["mage_image", tasks.filter((task) => task.lane === "IMAGE"), uuid(1_410_041)],
+    ["soulx_avatar", tasks.filter((task) => task.lane === "AVATAR"), uuid(1_410_042)],
   ];
-  for (const [lane, manifest, id] of laneDefinitions) {
+  for (const [lane, laneTasks, id] of laneDefinitions) {
+    const manifest = canonicalSha256(
+      laneTasks.map((task) => ({
+        item_id: task.id,
+        task_id: task.id,
+        task_key: task.task_key,
+        timeline_segment_id: task.segment,
+      })),
+    );
     await executor.query(
       `INSERT INTO video_runtime_lane_states(id,account_id,workspace_id,runtime_id,
         project_revision_id,lane,state,items_manifest_sha256,planned_item_count,attempt_ordinal,
         current_attempt_id,created_at,updated_at)
-       VALUES($1,$2,$3,$4,$5,$6,'MANIFEST_DURABLE',$7,1,0,NULL,
+       VALUES($1,$2,$3,$4,$5,$6,'MANIFEST_DURABLE',$7,$8,0,NULL,
          transaction_timestamp(),transaction_timestamp())`,
-      [id, IDS.accountA, IDS.workspaceA, runtimeId, IDS.revisionA, lane, manifest],
+      [
+        id,
+        IDS.accountA,
+        IDS.workspaceA,
+        runtimeId,
+        IDS.revisionA,
+        lane,
+        manifest,
+        laneTasks.length,
+      ],
     );
   }
   const deployments = [];
@@ -195,49 +201,76 @@ export async function seedMaterialization(executor) {
     deployments.push({ id, lane, snapshot: snapshot.rows[0].sha256 });
   }
   const batches = [];
-  for (const [index, task] of tasks.entries()) {
-    const lane = task.lane === "IMAGE" ? "mage_image" : "soulx_avatar";
+  for (const [index, lane] of ["mage_image", "soulx_avatar"].entries()) {
+    const laneTasks = tasks.filter((task) =>
+      lane === "mage_image" ? task.lane === "IMAGE" : task.lane === "AVATAR",
+    );
     const dispatchTaskId = uuid(1_410_060 + index);
     const attempt = await executor.query(
       "SELECT videoforge_hosted_dispatch_uuid('attempt',$1,$2,1)::text AS id",
       [generationRequestId, dispatchTaskId],
     );
     const outputPrefix = `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/${lane === "mage_image" ? "mage-image" : "soulx-avatar"}/job/${attempt.rows[0].id}`;
-    const artifactInput = {
-      reservation_id: uuid(1_410_070 + index * 2),
-      object_key: `${outputPrefix}/artifact/input-${index}`,
-    };
-    const outputReservation = {
-      reservation_id: uuid(1_410_071 + index * 2),
-      object_prefix: outputPrefix,
-    };
-    const item = {
-      item_ordinal: 1,
-      item_id: task.id,
-      task_id: task.id,
-      task_key: task.task_key,
-      timeline_segment_id: task.segment,
-      input_reservation_id: artifactInput.reservation_id,
-      output_reservation_id: outputReservation.reservation_id,
-      artifact_input: artifactInput,
-      output_reservation: outputReservation,
-    };
-    const itemManifest = [
-      {
-        item_id: item.item_id,
-        task_id: item.task_id,
-        task_key: item.task_key,
-        timeline_segment_id: item.timeline_segment_id,
-      },
-    ];
-    const reservationManifest = [
-      {
-        input_reservation_id: item.input_reservation_id,
-        output_reservation_id: item.output_reservation_id,
+    const items = laneTasks.map((task, itemIndex) => {
+      const canonicalBinding =
+        lane === "mage_image"
+          ? {
+              segment_id: "seg_v209_split",
+              asset_id: "asset_v209_split_right",
+              sha256: `sha256:${"6".repeat(64)}`,
+            }
+          : itemIndex === 0
+            ? {
+                segment_id: "seg_v209_full",
+                asset_id: "asset_v209_avatar_full",
+                sha256: `sha256:${"4".repeat(64)}`,
+              }
+            : {
+                segment_id: "seg_v209_split",
+                asset_id: "asset_v209_avatar_split",
+                sha256: `sha256:${"5".repeat(64)}`,
+              };
+      const artifactInput = {
+        reservation_id: uuid(1_410_070 + index * 10 + itemIndex * 2),
+        object_key: `${outputPrefix}/artifact/input-${itemIndex}`,
+        segment_id: canonicalV209 ? canonicalBinding.segment_id : task.segment,
+        role: lane === "mage_image" ? "right_image" : "avatar",
+        asset_id:
+          canonicalV209 && options.canonicalWorkDrift === true && lane === "mage_image"
+            ? "asset_v209_foreign_right"
+            : canonicalV209
+              ? canonicalBinding.asset_id
+              : `asset-${task.id}`,
+        sha256: canonicalV209 ? canonicalBinding.sha256 : sha256(`artifact-${task.id}`),
+      };
+      const outputReservation = {
+        reservation_id: uuid(1_410_071 + index * 10 + itemIndex * 2),
+        object_prefix: outputPrefix,
+      };
+      return {
+        item_ordinal: itemIndex + 1,
+        item_id: task.id,
+        task_id: task.id,
+        task_key: task.task_key,
+        timeline_segment_id: task.segment,
+        input_reservation_id: artifactInput.reservation_id,
+        output_reservation_id: outputReservation.reservation_id,
         artifact_input: artifactInput,
         output_reservation: outputReservation,
-      },
-    ];
+      };
+    });
+    const itemManifest = items.map((item) => ({
+      item_id: item.item_id,
+      task_id: item.task_id,
+      task_key: item.task_key,
+      timeline_segment_id: item.timeline_segment_id,
+    }));
+    const reservationManifest = items.map((item) => ({
+      input_reservation_id: item.input_reservation_id,
+      output_reservation_id: item.output_reservation_id,
+      artifact_input: item.artifact_input,
+      output_reservation: item.output_reservation,
+    }));
     const requestBody = { schema_version: "serverless-v3", lane, task_id: dispatchTaskId };
     const envelope = {
       schema: "serverless-worker-job-envelope/v3",
@@ -249,13 +282,16 @@ export async function seedMaterialization(executor) {
         attempt_id: attempt.rows[0].id,
         lane,
         items_manifest_sha256: canonicalSha256(itemManifest),
-        item_count: 1,
+        item_count: items.length,
       },
       artifacts: {
-        input_manifest_sha256: canonicalSha256([artifactInput]),
+        input_manifest_sha256: canonicalSha256(items.map((item) => item.artifact_input)),
         output_prefix: outputPrefix,
         plan_manifest_sha256: planSha256,
-        transfer_port_reservation_ids: [item.input_reservation_id, item.output_reservation_id],
+        transfer_port_reservation_ids: items.flatMap((item) => [
+          item.input_reservation_id,
+          item.output_reservation_id,
+        ]),
       },
     };
     batches.push({
@@ -268,9 +304,9 @@ export async function seedMaterialization(executor) {
       generation_plan_sha256: planSha256,
       deployment_id: deployments[index].id,
       deployment_snapshot_sha256: deployments[index].snapshot,
-      items: [item],
+      items,
       items_manifest_sha256: canonicalSha256(itemManifest),
-      input_manifest_sha256: canonicalSha256([artifactInput]),
+      input_manifest_sha256: canonicalSha256(items.map((item) => item.artifact_input)),
       reservation_manifest_sha256: canonicalSha256(reservationManifest),
       request_body: requestBody,
       request_body_sha256: canonicalSha256(requestBody),

@@ -251,7 +251,7 @@
       "version": 42,
       "name": "hosted_atomic_pair_predispatch",
       "filename": "0042_hosted_atomic_pair_predispatch.sql",
-      "sha256": "sha256:ea34a54c7044e25ca50f58f47d622e293b0c34719c74e5e32ca190cedf850fcc"
+      "sha256": "sha256:dbac0515ce760e9e82a5ec145de664a08bce90b209b1fa4ee3bb21ded6657a4f"
     },
     {
       "version": 43,
@@ -263,7 +263,7 @@
       "version": 44,
       "name": "hosted_pair_zero_worker_evidence",
       "filename": "0044_hosted_pair_zero_worker_evidence.sql",
-      "sha256": "sha256:e6df2e0121177de593f16347c540188449257de81c116eb0e1364dfeba7ecfb2"
+      "sha256": "sha256:ccd6e7dd60646e02fcc5dc640733bebad811868923f17aff5d60e6bafdf90d0b"
     }
   ]
 }

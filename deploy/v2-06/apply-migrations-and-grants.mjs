@@ -55,7 +55,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)",
   "videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)",
   "videoforge_begin_hosted_pair_send(uuid,uuid,uuid,text,uuid,text)",
-  "videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamp with time zone,jsonb)",
+  "videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamp with time zone,jsonb,jsonb)",
   "videoforge_finish_hosted_pair_send(uuid,uuid,uuid,text,text,text,uuid,text)",
   "videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)",
   "videoforge_load_hosted_pair_activation(uuid,uuid,uuid)",

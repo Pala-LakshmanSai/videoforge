@@ -58,6 +58,7 @@ describe("hosted atomic pair predispatch", () => {
       totalCapUsd: 1,
       expiresAt: "2026-08-25T11:00:00.000Z",
       pair: [],
+      v209Admission: {} as never,
       dispatchTokenKey: "k".repeat(32),
     });
     expect(database.transaction).toHaveBeenCalledTimes(1);

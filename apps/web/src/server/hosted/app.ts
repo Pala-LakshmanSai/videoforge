@@ -4,7 +4,11 @@ import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { handleHostedProductRequest } from "./product";
-import { commitAndScheduleHostedPair } from "./hosted-pair-live-wiring";
+import {
+  commitAndScheduleV209ShortPair,
+  observeV209ShortAdmission,
+} from "./hosted-pair-live-wiring";
+import { freezeV209ShortLiveAdmission } from "../runtime/v209-short-live-cost";
 import { hostedServerlessCallbackDisabledResponse } from "./hosted-serverless-callback";
 import type { HostedAuthenticatedServerlessCallbackRoute } from "./hosted-serverless-callback-auth";
 import {
@@ -925,7 +929,8 @@ const hostedPairDispatchDependencies = Object.freeze({
   createPool: createNeonPool,
   createExecutor: createNeonExecutor,
   session: hostedSession,
-  commitAndSchedule: commitAndScheduleHostedPair,
+  observeAdmission: observeV209ShortAdmission,
+  commitAndSchedule: commitAndScheduleV209ShortPair,
 });
 
 export async function handleHostedPairDispatch(
@@ -962,7 +967,7 @@ export async function handleHostedPairDispatch(
     const value = body as Record<string, unknown>;
     if (
       Object.keys(value).sort().join(",") !==
-        "approvalId,approvalSha256,claimId,expiresAt,generationPlanSha256,laneBindings,leaseId,pair,projectId,projectRevisionId,totalCapUsd" ||
+        "approvalId,approvalSha256,claimId,expiresAt,generationPlanSha256,laneBindings,leaseId,pair,projectId,projectRevisionId,renderPlan,totalCapUsd" ||
       ![
         value.approvalId,
         value.claimId,
@@ -983,15 +988,20 @@ export async function handleHostedPairDispatch(
       typeof value.laneBindings !== "object" ||
       value.laneBindings === null ||
       typeof value.pair !== "object" ||
-      value.pair === null
+      value.pair === null ||
+      typeof value.renderPlan !== "object" ||
+      value.renderPlan === null
     )
       return json({ error: { code: "HOSTED_PAIR_REQUEST_INVALID" } }, 400);
     const reconcilerPool = dependencies.createPool(environment.VIDEOFORGE_RECONCILER_DATABASE_URL!);
     let scheduled;
     try {
+      const runtimeDatabase = dependencies.createExecutor(pool);
+      const observation = await dependencies.observeAdmission(environment, runtimeDatabase);
+      const admission = await freezeV209ShortLiveAdmission(value.renderPlan, observation);
       scheduled = await dependencies.commitAndSchedule(
         environment,
-        dependencies.createExecutor(pool),
+        runtimeDatabase,
         dependencies.createExecutor(reconcilerPool),
         {
           approvalId: value.approvalId as string,
@@ -1008,6 +1018,11 @@ export async function handleHostedPairDispatch(
           totalCapUsd: value.totalCapUsd,
           expiresAt: value.expiresAt,
           pair: value.pair as never,
+        },
+        admission,
+        {
+          mage_image: admission.work.mage_image.map((item) => item.assetId),
+          soulx_avatar: admission.work.soulx_avatar.map((item) => item.assetId),
         },
       );
     } finally {

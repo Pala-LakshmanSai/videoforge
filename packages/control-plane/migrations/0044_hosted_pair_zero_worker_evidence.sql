@@ -85,17 +85,50 @@ BEGIN
 END; $$;
 REVOKE ALL ON FUNCTION public.videoforge_record_hosted_pair_zero_worker(uuid,uuid,uuid,jsonb) FROM PUBLIC;
 
-CREATE FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb)
+CREATE FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)
 RETURNS TABLE(pair_phase text,released boolean) LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE admission public.hosted_v209_short_admissions%ROWTYPE; db_now timestamptz:=transaction_timestamp();
+  final_billing bigint; provider_at timestamptz; settled numeric; duplicates numeric; reserved numeric;
+  terminal_count integer; attempt_count integer; settled_phase text; settled_released boolean;
 BEGIN
+  SELECT * INTO admission FROM public.hosted_v209_short_admissions a WHERE a.account_id=$1
+    AND a.workspace_id=$2 AND a.generation_request_id=$3 FOR SHARE;
+  final_billing:=($6->>'finalCumulativeEndpointBillingMicroUsd')::bigint;
+  provider_at:=($6->>'providerObservedAt')::timestamptz;
+  IF admission.generation_request_id IS NULL
+     OR $6->>'schemaVersion'<>'videoforge-v2-09-settlement-cost-guard/v1'
+     OR $6->>'admissionSha256'<>admission.admission_sha256
+     OR final_billing<admission.billing_baseline_micro_usd OR final_billing>17500000
+     OR provider_at>db_now OR provider_at<db_now-interval '5 minutes' THEN
+    RAISE EXCEPTION 'V2-09 settlement cost guard invalid' USING ERRCODE='23514';
+  END IF;
   PERFORM public.videoforge_record_hosted_pair_zero_worker($1,$2,$3,$5);
   IF EXISTS(SELECT 1 FROM jsonb_array_elements($5) p WHERE NOT EXISTS(
     SELECT 1 FROM public.hosted_pair_zero_worker_observations z WHERE z.account_id=$1 AND z.workspace_id=$2
       AND z.generation_request_id=$3 AND z.lane=p->>'lane' AND z.proof_sha256=p->>'proof_sha256')) THEN
     RAISE EXCEPTION 'zero proof persistence mismatch' USING ERRCODE='23514'; END IF;
-  RETURN QUERY SELECT * FROM public.videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4);
+  SELECT * INTO settled_phase,settled_released
+    FROM public.videoforge_settle_hosted_pair_cleanup($1,$2,$3,$4);
+  SELECT count(*),count(*) FILTER(WHERE state IN ('SUCCEEDED','PERMANENT_FAILED','CANCELLED'))
+    INTO attempt_count,terminal_count FROM public.serverless_attempts a
+    WHERE a.account_id=$1 AND a.workspace_id=$2 AND a.generation_request_id=$3
+      AND a.lane IN ('mage_image','soulx_avatar');
+  SELECT coalesce(sum(l.settled_usd),0),coalesce(sum(l.possible_duplicate_usd),0),
+    coalesce(sum(l.reserved_usd),0) INTO settled,duplicates,reserved
+    FROM public.serverless_cost_ledgers l JOIN public.serverless_attempts a ON a.id=l.attempt_id
+    WHERE a.account_id=$1 AND a.workspace_id=$2 AND a.generation_request_id=$3;
+  IF attempt_count<>2 OR terminal_count<>2
+     OR greatest(final_billing-admission.billing_baseline_micro_usd,
+          round((settled+duplicates)*1000000)::bigint)>admission.phase_cap_micro_usd
+     OR admission.billing_baseline_micro_usd+greatest(
+          final_billing-admission.billing_baseline_micro_usd,
+          round((settled+duplicates)*1000000)::bigint,
+          round(reserved*1000000)::bigint)>admission.combined_cap_micro_usd THEN
+    RAISE EXCEPTION 'V2-09 settlement cumulative cost invalid' USING ERRCODE='23514';
+  END IF;
+  pair_phase:=settled_phase; released:=settled_released; RETURN NEXT;
 END; $$;
-REVOKE ALL ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb) FROM PUBLIC;
 
 CREATE FUNCTION public.videoforge_load_hosted_pair_activation_v2(uuid,uuid,uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
@@ -111,15 +144,50 @@ REVOKE ALL ON FUNCTION public.videoforge_load_hosted_pair_activation_v2(uuid,uui
 CREATE FUNCTION public.videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid)
 RETURNS TABLE(existing_pair boolean,cancel_at timestamptz,stop_at timestamptz)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
-DECLARE claim public.hosted_paid_dispatch_claims%ROWTYPE; pair_count integer; schedule_anchor timestamptz;
+DECLARE claim public.hosted_paid_dispatch_claims%ROWTYPE; admission public.hosted_v209_short_admissions%ROWTYPE;
+  pair_count integer; schedule_anchor timestamptz;
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM $1 THEN RAISE EXCEPTION 'tenant mismatch' USING ERRCODE='42501'; END IF;
   SELECT * INTO claim FROM public.hosted_paid_dispatch_claims c WHERE c.account_id=$1 AND c.workspace_id=$2
     AND c.generation_request_id=$3;
+  SELECT * INTO admission FROM public.hosted_v209_short_admissions a WHERE a.account_id=$1
+    AND a.workspace_id=$2 AND a.generation_request_id=$3;
   SELECT count(*) INTO pair_count FROM public.serverless_attempts a WHERE a.account_id=$1 AND a.workspace_id=$2
     AND a.generation_request_id=$3 AND a.lane IN ('mage_image','soulx_avatar');
   IF pair_count NOT IN (0,2) THEN RAISE EXCEPTION 'partial hosted pair invalid' USING ERRCODE='23514'; END IF;
-  existing_pair:=pair_count=2; schedule_anchor:=coalesce(claim.claimed_at,transaction_timestamp());
-  cancel_at:=schedule_anchor+interval '20 minutes'; stop_at:=schedule_anchor+interval '30 minutes'; RETURN NEXT;
+  existing_pair:=pair_count=2;
+  IF existing_pair AND admission.generation_request_id IS NULL THEN
+    RAISE EXCEPTION 'V2-09 admission missing' USING ERRCODE='23514';
+  END IF;
+  schedule_anchor:=coalesce(admission.database_observed_at,claim.claimed_at,transaction_timestamp());
+  cancel_at:=coalesce(admission.cancel_at,schedule_anchor+interval '20 minutes');
+  stop_at:=coalesce(admission.stop_at,schedule_anchor+interval '30 minutes'); RETURN NEXT;
 END; $$;
 REVOKE ALL ON FUNCTION public.videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid) FROM PUBLIC;
+
+CREATE FUNCTION public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE admission public.hosted_v209_short_admissions%ROWTYPE; attempt_count integer;
+  terminal_count integer; redispatch_count integer; settled numeric; duplicates numeric;
+BEGIN
+  IF public.videoforge_current_account_id() IS DISTINCT FROM $1 THEN
+    RAISE EXCEPTION 'tenant mismatch' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO admission FROM public.hosted_v209_short_admissions a WHERE a.account_id=$1
+    AND a.workspace_id=$2 AND a.generation_request_id=$3;
+  SELECT count(*),count(*) FILTER(WHERE state IN ('SUCCEEDED','PERMANENT_FAILED','CANCELLED')),
+    greatest(count(*)-2,0) INTO attempt_count,terminal_count,redispatch_count
+    FROM public.serverless_attempts a WHERE a.account_id=$1 AND a.workspace_id=$2
+      AND a.generation_request_id=$3 AND a.lane IN ('mage_image','soulx_avatar');
+  SELECT coalesce(sum(l.settled_usd),0),coalesce(sum(l.possible_duplicate_usd),0)
+    INTO settled,duplicates FROM public.serverless_cost_ledgers l JOIN public.serverless_attempts a
+      ON a.id=l.attempt_id AND a.account_id=l.account_id AND a.workspace_id=l.workspace_id
+    WHERE a.account_id=$1 AND a.workspace_id=$2 AND a.generation_request_id=$3;
+  IF admission.generation_request_id IS NULL OR attempt_count<>2 OR redispatch_count<>0 THEN
+    RAISE EXCEPTION 'V2-09 settlement admission invalid' USING ERRCODE='23514';
+  END IF;
+  RETURN jsonb_build_object('admission',admission.admission_document,'terminalJobCount',terminal_count,
+    'redispatchCount',redispatch_count,'settledVariableCostMicroUsd',round(settled*1000000)::bigint,
+    'possibleDuplicateCostMicroUsd',round(duplicates*1000000)::bigint);
+END; $$;
+REVOKE ALL ON FUNCTION public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid) FROM PUBLIC;

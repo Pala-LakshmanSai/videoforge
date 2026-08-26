@@ -78,6 +78,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "serverless_endpoint_deployments",
   "hosted_paid_dispatch_approvals",
   "hosted_paid_dispatch_claims",
+  "hosted_v209_short_admissions",
   "hosted_serverless_qualification_attestations",
   "serverless_attempts",
   "serverless_predispatch_authorities",

@@ -32,7 +32,8 @@ FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup(uuid,uuid,uuid,jsonb)
 FROM :"runtime_role";
 REVOKE EXECUTE ON FUNCTION public.videoforge_record_hosted_pair_zero_worker(uuid,uuid,uuid,jsonb) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid) FROM PUBLIC;
 
 GRANT USAGE ON SCHEMA public TO :"reconciler_role";
 REVOKE CREATE ON SCHEMA public FROM :"reconciler_role";
@@ -44,7 +45,9 @@ GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id()
 TO :"reconciler_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)
 TO :"reconciler_role";
-GRANT EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb)
+GRANT EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)
+TO :"reconciler_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)
 TO :"reconciler_role";
 
 SELECT
@@ -57,7 +60,9 @@ SELECT
   AND (NOT has_function_privilege(:'reconciler_role',
     'public.videoforge_record_hosted_pair_zero_worker(uuid,uuid,uuid,jsonb)','EXECUTE'))
   AND has_function_privilege(:'reconciler_role',
-    'public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb)','EXECUTE')
+    'public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)','EXECUTE')
+  AND has_function_privilege(:'reconciler_role',
+    'public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)','EXECUTE')
   AND (NOT has_table_privilege(:'reconciler_role','public.serverless_attempts','SELECT'))
   AND (NOT has_table_privilege(:'reconciler_role','public.provider_workload_leases','UPDATE'))
   AS pair_acl_exact

@@ -514,6 +514,7 @@ export interface HostedPairSettlementStore {
     readonly generationRequestId: string;
     readonly observations: JsonValue;
     readonly zeroWorkerProofs: JsonValue;
+    readonly settlementCostGuard: JsonValue;
   }): Promise<void>;
 }
 
@@ -527,13 +528,14 @@ export class HostedSqlPairSettlementStore implements HostedPairSettlementStore {
         input.accountId,
       ]);
       const result = await transaction.query(
-        "SELECT * FROM public.videoforge_settle_hosted_pair_cleanup_v2($1,$2,$3,$4::jsonb,$5::jsonb)",
+        "SELECT * FROM public.videoforge_settle_hosted_pair_cleanup_v2($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb)",
         [
           input.accountId,
           input.workspaceId,
           input.generationRequestId,
           JSON.stringify(input.observations),
           JSON.stringify(input.zeroWorkerProofs),
+          JSON.stringify(input.settlementCostGuard),
         ],
       );
       if (result.rows.length !== 1)
@@ -675,6 +677,7 @@ export class HostedPairProductionReconciler {
     readonly workspaceId: string;
     readonly generationRequestId: string;
     readonly zeroWorkerProofs?: JsonValue;
+    readonly settlementCostGuard: JsonValue;
   }) {
     const rows = await this.inspection.inspect(input);
     const observations: JsonValue[] = [];
@@ -683,6 +686,7 @@ export class HostedPairProductionReconciler {
       ...input,
       observations,
       zeroWorkerProofs: input.zeroWorkerProofs ?? [],
+      settlementCostGuard: input.settlementCostGuard,
     });
     return Object.freeze({ state: "SETTLED" as const });
   }
