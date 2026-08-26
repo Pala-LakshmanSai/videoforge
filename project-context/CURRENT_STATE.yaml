@@ -64,9 +64,9 @@ two_track_execution:
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 provider_free_product_progress:
-  full_live_execution_source_commit: "cfa759a"
+  full_live_execution_source_commit: "a8521f8"
   full_live_execution_source_status: PROVIDER_FREE_REPAIR_COMMITTED_TEST_GREEN_PROPOSAL_BLOCKED_UNSEALED_FRESH_APPROVAL_REQUIRED
-  full_live_execution_source_note: "Commit cfa759a preserves the closed default-no-op catalog and adds the zero-cap bootstrap_prequalification_database operation after SoulX verification and before fresh-live-preflight. The replacement blocked proposal now binds the 25-operation graph, including zero-cap record-workflow-start-authority after promotion, exact 36-to-45 recovery modes, pgcrypto/migrations 0045, full receipt/ACL/public-revoke readback, guarded receipt verification before secret reads, durable billing, and a separate early no-database cleanup seam. The split bridge exposes only request, RunPod key, and operator database seams before the verified receipt; runtime/reconciler roles remain absent until guarded activation. Focused source/test evidence remains provider-free; independent audit, fresh sealing, and exact approval remain required. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
+  full_live_execution_source_note: "Commit a8521f8 preserves the closed default-no-op catalog and adds the zero-cap bootstrap_prequalification_database operation after SoulX verification and before fresh-live-preflight. The replacement blocked proposal now binds the 25-operation graph, including zero-cap record-workflow-start-authority after promotion, exact 36-to-45 recovery modes, pgcrypto/migrations 0045, full receipt/ACL/public-revoke readback, guarded receipt verification before secret reads, durable billing, and a separate early no-database cleanup seam. The split bridge exposes only request, RunPod key, and operator database seams before the verified receipt; runtime/reconciler roles remain absent until guarded activation. Focused source/test evidence remains provider-free; independent audit, fresh sealing, and exact approval remain required. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
   full_live_executor_sha256: "sha256:d91f8e6f4ed33c8dc1cbfb7ce41d7155e03d1459e457016e45235ebce53c366f"
   full_live_source_component_hashes:
     full_live_executor: "sha256:d91f8e6f4ed33c8dc1cbfb7ce41d7155e03d1459e457016e45235ebce53c366f"
@@ -95,7 +95,7 @@ provider_free_product_progress:
   fresh_v2_13_blocked_draft_sha256: "sha256:6e9d7ac9b4525198a02da1f041658d0f9c36ae67950c184276cba0520e80b1b0"
   fresh_v2_13_release_source_commit: null
   fresh_v2_13_release_tag: null
-  next_v2_13_action: "Independently audit the committed provider-free source repair and the blocked 25-operation proposal contract, bind the final repaired source commit and exact component hashes including the external validator tree entry, then seal a new proposal and request fresh exact approval."
+  next_v2_13_action: "Independently audit committed repair a8521f8 and the blocked 25-operation proposal contract, bind the final repaired source commit and exact component hashes including the external validator tree entry, then seal a new proposal and request fresh exact approval."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."

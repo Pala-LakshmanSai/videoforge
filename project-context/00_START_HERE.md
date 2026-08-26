@@ -18,7 +18,7 @@ migration 0044 (`4239be9`). Source commit `e737eac` adds the independently audit
 executor and migration 0045: exact protected-input preflight, DB authority registration, staged
 Mage/SoulX qualification, immutable max1 deployments, qualified Cloudflare promotion, V2-09 terminal
 output/Chrome/cost acceptance, V2-10 through V2-13 acceptance, encrypted handoff escrow, and exact
-crash-safe cleanup. Repair commit `cfa759a` adds the zero-cap
+crash-safe cleanup. Repair commit `a8521f8` adds the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, with exact 36-to-45 recovery modes, pgcrypto/migrations 0045, a fresh
 operator-only role, protected receipt CAS, and no runtime/reconciler roles or provider calls during
