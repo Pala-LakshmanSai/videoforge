@@ -136,6 +136,8 @@ async function acceptedCanonicalFixture(executor) {
     receipt_id: "barrier-provenance",
     attestation_scope: PROVENANCE_ATTESTATION_SCOPE,
     dispatch_token: commit.dispatchToken,
+    envelope_sha256: commit.envelopeSha256,
+    request_sha256: commit.requestBodySha256,
     attempt_id: attemptId,
     provider_job_id: dispatch.providerJobId,
     worker_id: "worker-a",

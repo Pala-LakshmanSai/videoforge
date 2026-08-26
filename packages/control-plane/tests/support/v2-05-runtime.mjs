@@ -132,6 +132,8 @@ export function receiptFor({ commit, lane, deployment, scope, itemIds, options =
     receipt_id: options.receiptId ?? `provenance-${commit.attemptId}`,
     attestation_scope: PROVENANCE_ATTESTATION_SCOPE,
     dispatch_token: commit.dispatchToken,
+    envelope_sha256: commit.envelopeSha256,
+    request_sha256: commit.requestBodySha256,
     attempt_id: commit.attemptId,
     provider_job_id: options.providerJobId ?? null,
     worker_id: options.workerId ?? `worker-${lane}`,

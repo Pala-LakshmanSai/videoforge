@@ -195,6 +195,13 @@ const REQUIRED_HARDENING_FOREIGN_KEYS = [
   "transcripts_supersedes_fk",
 ].sort();
 
+// These evidence tables carry tenant identity for lineage, but are written only by
+// owner-controlled SECURITY DEFINER functions and intentionally have no tenant write guard.
+const OPERATOR_ONLY_TABLES = [
+  "hosted_v209_settlement_cost_evidence",
+  "hosted_v209_terminal_acceptances",
+].sort();
+
 test("the migration exposes the expected tables, indexes, foreign keys, and invariant triggers", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const tables = await executor.query(
@@ -286,7 +293,12 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
                 SELECT 1 FROM pg_policy policy
                  WHERE policy.polrelid = relation.oid
                    AND policy.polname = relation.relname || '_tenant_rls'
-              ) AS has_policy
+              ) AS has_policy,
+              EXISTS (
+                SELECT 1 FROM pg_policy policy
+                 WHERE policy.polrelid = relation.oid
+                   AND policy.polname = relation.relname || '_owner_only'
+              ) AS has_owner_only_policy
          FROM pg_class relation
          JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
          JOIN pg_attribute owner
@@ -297,14 +309,65 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
         WHERE namespace.nspname = 'public'
           AND relation.relkind = 'r'
           AND relation.relname <> 'accounts'
+          AND relation.relname <> ALL($1::text[])
         ORDER BY relation.relname`,
+      [OPERATOR_ONLY_TABLES],
     );
     assert.ok(guarded.rows.length >= 55, "every tenant table must be discoverable");
     for (const row of guarded.rows) {
       assert.ok(row.rls_enabled, `${row.table_name} must enable row level security`);
       assert.ok(row.rls_forced, `${row.table_name} must force row level security`);
+      if (OPERATOR_ONLY_TABLES.includes(row.table_name)) {
+        assert.equal(row.has_write_guard, false, `${row.table_name} must remain owner-written`);
+        assert.equal(row.has_policy, false, `${row.table_name} must not expose a tenant policy`);
+        assert.ok(
+          row.has_owner_only_policy,
+          `${row.table_name} must declare its owner-only policy`,
+        );
+        continue;
+      }
       assert.ok(row.has_write_guard, `${row.table_name} must carry the tenant write guard`);
       assert.ok(row.has_policy, `${row.table_name} must declare its tenant policy`);
+      assert.equal(
+        row.has_owner_only_policy,
+        false,
+        `${row.table_name} must not use an owner-only policy`,
+      );
+    }
+
+    const operatorOnly = await executor.query(
+      `SELECT relation.relname AS table_name,
+              relation.relrowsecurity AS rls_enabled,
+              relation.relforcerowsecurity AS rls_forced,
+              policy.polname AS policy_name,
+              pg_get_expr(policy.polqual, policy.polrelid) AS policy_qual,
+              pg_get_expr(policy.polwithcheck, policy.polrelid) AS policy_with_check,
+              EXISTS (
+                SELECT 1 FROM pg_trigger guard
+                 WHERE guard.tgrelid = relation.oid
+                   AND guard.tgname = relation.relname || '_tenant_write_guard'
+              ) AS has_write_guard
+         FROM pg_class relation
+         JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+         JOIN pg_policy policy ON policy.polrelid = relation.oid
+        WHERE namespace.nspname = 'public'
+          AND relation.relkind = 'r'
+          AND relation.relname = ANY($1::text[])
+        ORDER BY relation.relname`,
+      [OPERATOR_ONLY_TABLES],
+    );
+    assert.equal(operatorOnly.rows.length, OPERATOR_ONLY_TABLES.length);
+    assert.deepEqual(
+      operatorOnly.rows.map((row) => row.table_name),
+      OPERATOR_ONLY_TABLES,
+    );
+    for (const row of operatorOnly.rows) {
+      assert.equal(row.rls_enabled, true, `${row.table_name} must enable row level security`);
+      assert.equal(row.rls_forced, true, `${row.table_name} must force row level security`);
+      assert.equal(row.policy_name, `${row.table_name}_owner_only`);
+      assert.equal(row.policy_qual, "false");
+      assert.equal(row.policy_with_check, "false");
+      assert.equal(row.has_write_guard, false, `${row.table_name} must remain operator-only`);
     }
   });
 });
