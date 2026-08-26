@@ -31,14 +31,18 @@ executor is the only combined database/secret/deployment procedure. Its tracked 
 is a proposal surface, never authority. A future execution record must pin the clean exact HEAD,
 the migration-manifest bytes, production-config activation bytes, media-worker release bytes, both
 fresh qualification and deployment hashes, the paid-authority hash, the approved SoulX full/split
-layout decision, a fresh readback hash proving the exact Worker/R2/Workflow resources already
-exist, two distinct hardened database roles, and the SHA-256 of every protected secret input.
+layout decision, fresh readback hashes proving the production Worker and both exact Workflow names
+are absent while the exact R2 bucket already exists, two distinct hardened database roles, and the
+SHA-256 of every protected secret input.
 Qualification, deployment, paid-authority, and preexisting-resource hashes are external evidence
 inputs: this executor checks their exact closed-world shape and cross-bindings but does not prove
 their live truth. A separate live verifier must produce and authenticate those records immediately
 before an execution authority can be issued.
 
 `--plan` performs only local read-only validation and prints names/operations, never secret values.
+Both plan and execute require `--proposal-file` and `--user-approval-file`; the executor reads the
+exact bytes at those paths and rehashes them against `authority.proposal_sha256` and
+`authority.approval_sha256` before authority consumption, credential access, or mutation.
 `--execute` additionally requires the literal confirmation
 `EXECUTE_EXACT_GUARDED_V2_13_ACTIVATION`, an exact mode-0600 approved authority file, a private
 mode-0700 PostgreSQL input directory, a separate exact mode-0700 secret directory containing only
@@ -47,6 +51,14 @@ and a new evidence path under a mode-0700 directory. Secret values are read only
 and are streamed to Wrangler stdin; they never enter argv, stdout, the plan, or evidence. Every
 child process receives a closed environment allowlist, so ambient provider or database credentials
 cannot enter the procedure.
+
+The approved activation record also binds an exact authority ID, repository-relative proposal path
+and hash, repository-relative user-approval path and hash,
+approval time, at-most-24-hour expiry, and `single_use=true`. The first execute invocation writes an
+exclusive durable consumption marker under the repository Git common directory before credential
+access or any external call. A failure never removes that marker: retry requires a fresh authority,
+which prevents replay after an ambiguous process exit or partial mutation. Cloudflare's
+authenticated HTTP `Date` is the trusted expiry clock at both pre-mutation inventory reads.
 
 Execution requires both exact target role names to be absent cluster-wide; it never rotates a
 password onto a reused role whose privileges in other databases cannot be proven from this
@@ -58,17 +70,24 @@ ledger, role flags/memberships/ownership, exact runtime function allowlist, reco
 allowlist, and absence of reconciler table grants. It refuses migration unless the database already
 has the exact 36-row manifest prefix, so this activation can apply only migrations 0037-0044.
 
-Before database mutation, the executor rechecks the authority-pinned Cloudflare deployment-status
-and active-version bytes and proves one exact disabled version with an empty secret set. It repeats
-that read immediately before Cloudflare mutation, deploys and reads back the exact new
-`DISABLED_UNQUALIFIED` quarantine with automatic resource creation disabled, and only then uploads
-the closed-world secret names. Every secret-created version and the final version are read back as
-the exact disabled commit. A partial failure deletes only names introduced by that run, redeploys
-the disabled quarantine, and verifies the rollback; inability to verify rollback is a hard manual
-reconciliation stop. Database changes are staged and are never described as cross-provider atomic
-rollback; a failure after database role/grant mutation is a hard manual reconciliation stop rather
-than an automatic replay. The tool never creates a bucket, Workflow, endpoint, volume, or another
-retained resource.
+Before database mutation, the executor twice rechecks authority-pinned Cloudflare API bytes proving
+the exact account, a 404 for `videoforge-production-runtime`, absence of both exact Workflow names,
+presence of the exact preexisting R2 bucket, and the unconfigured 503 route. Creation is two-stage:
+a bootstrap config removes the R2 binding and enables auto-create only while creating the exact
+Worker and two exact Workflows; the full exact config then attaches the already-existing R2 bucket
+with auto-create disabled. Both stages must read back as `DISABLED_UNQUALIFIED`, with the exact
+structural `HOSTED_PAIR_WORKFLOW` binding to the exact `${workflow_name}-pair`, closed single-page
+Workflow/R2 inventory metadata, expected route state, and no secrets, before database mutation. Only then are
+the 21 closed-world secret names uploaded. Every secret-created version and final version are read
+back as the exact disabled commit.
+
+The explicit failure policy keeps a resource only when it is verified as the exact disabled,
+secret-free quarantine. Otherwise it deletes only the Worker and Workflow names proven absent
+immediately before this attempt and then re-verifies the original absence/inventory/route hashes.
+It never creates an R2 bucket, endpoint, volume, other resource, paid retained resource, or plan
+change. Database changes are staged and are never described as cross-provider atomic rollback; a
+failure after database role/grant mutation is a hard manual reconciliation stop rather than an
+automatic replay.
 
 Run `pnpm validate:v2-13-production-pair` for the provider-free source/ACL/config validation. Before
 any future activation, independently verify the exact 0037-0044 migration ledger, both fresh live

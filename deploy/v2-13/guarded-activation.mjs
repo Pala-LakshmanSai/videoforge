@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import {
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -43,6 +44,7 @@ const SECRET_NAMES = Object.freeze([
 ]);
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const ROLE = /^[a-z_][a-z0-9_]{0,62}$/u;
+const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const SOULX_APPROVAL_SHA256 =
   "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
 const SOULX_CANDIDATE_SHA256 =
@@ -90,6 +92,11 @@ function mode(path, type, permissions, label) {
     fail(`${label} must be a regular mode-${permissions.toString(8)} ${type}`);
 }
 
+function regularFile(path, label) {
+  const metadata = lstatSync(path);
+  if (metadata.isSymbolicLink() || !metadata.isFile()) fail(`${label} must be a regular file`);
+}
+
 function run(command, args, { env = safeEnvironment(), input, capture = false } = {}) {
   const result = spawnSync(command, args, {
     cwd: ROOT,
@@ -129,30 +136,55 @@ function validateAuthority(value) {
   if (
     !exactKeys(value.authority, [
       "approved_at",
+      "approval_path",
+      "approval_sha256",
+      "authority_id",
       "cloudflare_secret_mutation_authorized",
       "confirmation_sha256",
       "credential_access_authorized",
       "database_mutation_authorized",
       "deployment_authorized",
+      "exact_quarantine_creation_authorized",
       "execute_authorized",
+      "expires_at",
       "gpu_use_authorized",
       "maximum_cumulative_finite_external_spend_usd",
       "mode",
-      "new_retained_resources_authorized",
+      "new_paid_retained_resources_authorized",
+      "other_resource_creation_authorized",
+      "plan_change_authorized",
+      "proposal_path",
+      "proposal_sha256",
       "provider_calls_authorized",
+      "single_use",
     ]) ||
     value.authority.mode !== "APPROVED_EXECUTE" ||
+    !AUTHORITY_ID.test(value.authority.authority_id) ||
+    !HASH.test(value.authority.proposal_sha256) ||
+    !HASH.test(value.authority.approval_sha256) ||
+    !/^project-context\/evidence\/[A-Za-z0-9._/-]+$/u.test(value.authority.proposal_path) ||
+    !/^project-context\/evidence\/[A-Za-z0-9._/-]+$/u.test(value.authority.approval_path) ||
+    value.authority.proposal_path.includes("..") ||
+    value.authority.approval_path.includes("..") ||
+    value.authority.single_use !== true ||
     value.authority.execute_authorized !== true ||
     value.authority.credential_access_authorized !== true ||
     value.authority.database_mutation_authorized !== true ||
     value.authority.cloudflare_secret_mutation_authorized !== true ||
     value.authority.deployment_authorized !== true ||
+    value.authority.exact_quarantine_creation_authorized !== true ||
     value.authority.provider_calls_authorized !== true ||
     value.authority.gpu_use_authorized !== false ||
     value.authority.maximum_cumulative_finite_external_spend_usd !== 0 ||
-    value.authority.new_retained_resources_authorized !== false ||
+    value.authority.new_paid_retained_resources_authorized !== false ||
+    value.authority.other_resource_creation_authorized !== false ||
+    value.authority.plan_change_authorized !== false ||
     typeof value.authority.approved_at !== "string" ||
     Number.isNaN(Date.parse(value.authority.approved_at)) ||
+    typeof value.authority.expires_at !== "string" ||
+    Number.isNaN(Date.parse(value.authority.expires_at)) ||
+    Date.parse(value.authority.expires_at) <= Date.parse(value.authority.approved_at) ||
+    Date.parse(value.authority.expires_at) - Date.parse(value.authority.approved_at) > 86_400_000 ||
     value.authority.confirmation_sha256 !== sha256(CONFIRMATION)
   )
     fail("activation authority is absent, non-exact, spend-bearing, or resource-expanding");
@@ -199,11 +231,13 @@ function validateAuthority(value) {
     !exactKeys(value.cloudflare, [
       "account_id",
       "api_token_sha256",
-      "pre_mutation_active_commit",
-      "pre_mutation_active_version_id",
-      "pre_mutation_active_version_readback_sha256",
-      "pre_mutation_deployments_status_sha256",
+      "exact_quarantine_creation_authorized",
+      "failure_policy",
+      "pre_mutation_account_readback_sha256",
+      "pre_mutation_r2_inventory_sha256",
       "pre_mutation_route_readback_sha256",
+      "pre_mutation_worker_absence_sha256",
+      "pre_mutation_workflow_inventory_sha256",
       "preexisting_secret_set_must_be_empty",
       "preexisting_worker_required",
       "public_origin",
@@ -212,20 +246,22 @@ function validateAuthority(value) {
       "workflow_name",
     ]) ||
     !/^[0-9a-f]{32}$/u.test(value.cloudflare.account_id) ||
-    !/^[0-9a-f-]{36}$/u.test(value.cloudflare.pre_mutation_active_version_id) ||
-    !/^[0-9a-f]{40}$/u.test(value.cloudflare.pre_mutation_active_commit) ||
     !HASH.test(value.cloudflare.api_token_sha256) ||
-    !HASH.test(value.cloudflare.pre_mutation_deployments_status_sha256) ||
-    !HASH.test(value.cloudflare.pre_mutation_active_version_readback_sha256) ||
+    !HASH.test(value.cloudflare.pre_mutation_account_readback_sha256) ||
+    !HASH.test(value.cloudflare.pre_mutation_worker_absence_sha256) ||
+    !HASH.test(value.cloudflare.pre_mutation_workflow_inventory_sha256) ||
+    !HASH.test(value.cloudflare.pre_mutation_r2_inventory_sha256) ||
     !HASH.test(value.cloudflare.pre_mutation_route_readback_sha256) ||
     value.cloudflare.worker_name !== "videoforge-production-runtime" ||
-    value.cloudflare.preexisting_worker_required !== true ||
+    value.cloudflare.preexisting_worker_required !== false ||
+    value.cloudflare.exact_quarantine_creation_authorized !== true ||
+    value.cloudflare.failure_policy !== "KEEP_EXACT_DISABLED_QUARANTINE_ELSE_DELETE_ATTRIBUTABLE" ||
     value.cloudflare.preexisting_secret_set_must_be_empty !== true ||
     !/^[a-z][a-z0-9-]{2,62}$/u.test(value.cloudflare.r2_bucket_name) ||
     !/^[a-z][a-z0-9-]{2,62}$/u.test(value.cloudflare.workflow_name) ||
     !value.cloudflare.public_origin.startsWith("https://")
   )
-    fail("Cloudflare identity does not bind the quarantined preexisting Worker");
+    fail("Cloudflare identity does not bind exact absent-to-quarantine creation");
   if (
     !exactKeys(value.gates, [
       "mage_deployment_snapshot_sha256",
@@ -290,6 +326,51 @@ function validateAuthority(value) {
   )
     fail("secret fingerprint allowlist is not exact");
   return value;
+}
+
+function assertTrustedAuthorityTime(authority, trustedDate) {
+  const trusted = Date.parse(trustedDate ?? "");
+  if (
+    Number.isNaN(trusted) ||
+    trusted < Date.parse(authority.authority.approved_at) ||
+    trusted > Date.parse(authority.authority.expires_at)
+  )
+    fail("authority is not current under trusted provider time");
+  return true;
+}
+
+function defaultConsumptionDirectory() {
+  const gitDirectory = git("rev-parse", "--git-common-dir");
+  return resolve(ROOT, gitDirectory, "videoforge-authority-consumption", "v2-13");
+}
+
+function consumeAuthorityOnce(
+  authority,
+  authorityBytes,
+  directory = defaultConsumptionDirectory(),
+) {
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  mode(directory, "directory", 0o700, "authority consumption directory");
+  const path = join(directory, `${authority.authority.authority_id}.json`);
+  const record = {
+    schema_version: "videoforge-v2-13-authority-consumption/v1",
+    authority_id: authority.authority.authority_id,
+    proposal_sha256: authority.authority.proposal_sha256,
+    approval_sha256: authority.authority.approval_sha256,
+    activation_authority_sha256: sha256(authorityBytes),
+    release_commit: authority.release.commit,
+    state: "CONSUMED_SINGLE_EXECUTION_NO_RETRY",
+  };
+  try {
+    writeFileSync(path, `${JSON.stringify(record)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+  } catch {
+    fail("activation authority was already consumed; a fresh authority is required");
+  }
+  return path;
 }
 
 function parseArgs(tokens) {
@@ -361,12 +442,23 @@ function validateSoulxApprovalRecords(crop, approvalBytes, candidateBytes, readM
 }
 
 function prevalidate(args) {
-  for (const name of ["activation-record", "config-activation-record", "release-manifest-file"])
+  for (const name of [
+    "activation-record",
+    "config-activation-record",
+    "proposal-file",
+    "release-manifest-file",
+    "user-approval-file",
+  ])
     if (!args.has(name)) fail(`--${name} is required`);
   for (const name of ["activation-record", "config-activation-record", "release-manifest-file"])
     mode(resolve(args.get(name)), "file", 0o600, name);
   const authority = validateAuthority(
     JSON.parse(readFileSync(resolve(args.get("activation-record")), "utf8")),
+  );
+  validateAuthoritySourceFiles(
+    authority,
+    resolve(args.get("proposal-file")),
+    resolve(args.get("user-approval-file")),
   );
   const head = git("rev-parse", "HEAD");
   if (head !== authority.release.commit) fail("authority commit is not exact HEAD");
@@ -430,6 +522,20 @@ function prevalidate(args) {
   return authority;
 }
 
+function validateAuthoritySourceFiles(authority, proposalPath, approvalPath) {
+  regularFile(proposalPath, "proposal file");
+  regularFile(approvalPath, "user approval file");
+  if (resolve(proposalPath) !== resolve(ROOT, authority.authority.proposal_path))
+    fail("proposal file path does not match activation authority");
+  if (resolve(approvalPath) !== resolve(ROOT, authority.authority.approval_path))
+    fail("user approval file path does not match activation authority");
+  if (sha256(readFileSync(proposalPath)) !== authority.authority.proposal_sha256)
+    fail("proposal file bytes do not match activation authority");
+  if (sha256(readFileSync(approvalPath)) !== authority.authority.approval_sha256)
+    fail("user approval file bytes do not match activation authority");
+  return true;
+}
+
 function plan(authority) {
   return {
     schema_version: "videoforge-v2-13-guarded-activation-plan/v1",
@@ -447,14 +553,20 @@ function plan(authority) {
       "render and validate exact production config",
       "build and firewall-scan production bundle",
       "wrangler deploy dry-run",
-      "recheck authority-pinned deployment, version, route, and empty secret set",
-      "deploy and read back exact disabled quarantine with auto-create off",
+      "recheck exact Worker/workflow absence, existing R2 binding, and unconfigured route",
+      "create only the exact disabled Worker plus two exact Workflows and read back all bindings",
       `require empty secret set, put ${SECRET_NAMES.length} exact allowlisted names from mode-0600 files`,
       "read back exact secret names",
       "deploy and read back exact still-disabled rendered config",
     ],
-    cleanup: "delete only secrets introduced by this run on any partial Cloudflare failure",
-    new_retained_resources: 0,
+    cleanup:
+      "keep only an exact secret-free disabled quarantine; otherwise delete only absence-proven attributable Worker/Workflows",
+    exact_product_resources_created: [
+      authority.cloudflare.worker_name,
+      authority.cloudflare.workflow_name,
+      `${authority.cloudflare.workflow_name}-pair`,
+    ],
+    new_paid_retained_resources: 0,
     secret_names: SECRET_NAMES,
     secret_values_in_plan: false,
   };
@@ -734,6 +846,165 @@ function wrangler(environment, args, { input, capture = false } = {}) {
   });
 }
 
+function wranglerResult(environment, args) {
+  const result = spawnSync("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
+    cwd: ROOT,
+    env: environment,
+    encoding: "utf8",
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (result.error) fail("wrangler absence probe failed with redacted output");
+  return JSON.stringify({
+    status: result.status,
+    stdout: result.stdout.trim(),
+    stderr: result.stderr.trim(),
+  });
+}
+
+function resourceNames(bytes, label) {
+  let value;
+  try {
+    value = JSON.parse(bytes);
+  } catch {
+    fail(`${label} inventory was not exact JSON`);
+  }
+  const names = [];
+  const visit = (item) => {
+    if (!item || typeof item !== "object") return;
+    if (typeof item.name === "string") names.push(item.name);
+    for (const child of Object.values(item)) visit(child);
+  };
+  visit(value);
+  return [...new Set(names)].sort();
+}
+
+function assertExactAccountReadback(bytes, authority) {
+  let value;
+  try {
+    value = JSON.parse(bytes);
+  } catch {
+    fail("Cloudflare account readback was not exact JSON");
+  }
+  if (
+    !exactKeys(value, ["body", "status"]) ||
+    value.status !== 200 ||
+    value.body?.success !== true ||
+    !value.body.result ||
+    Array.isArray(value.body.result) ||
+    value.body.result.id !== authority.cloudflare.account_id
+  )
+    fail("Cloudflare account readback was not an exact successful response");
+}
+
+async function cloudflareApiResponse(environment, authority, path) {
+  let response;
+  try {
+    response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${authority.cloudflare.account_id}${path}`,
+      {
+        headers: { Authorization: `Bearer ${environment.CLOUDFLARE_API_TOKEN}` },
+        method: "GET",
+        redirect: "error",
+      },
+    );
+  } catch {
+    fail("Cloudflare API readback transport failed with redacted output");
+  }
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    fail("Cloudflare API readback was not exact JSON");
+  }
+  return {
+    bytes: JSON.stringify({ body, status: response.status }),
+    trustedDate: response.headers.get("date"),
+  };
+}
+
+async function cloudflareApiReadback(environment, authority, path) {
+  return (await cloudflareApiResponse(environment, authority, path)).bytes;
+}
+
+function assertCompleteSinglePage(body, count, label) {
+  const infos = [body?.result_info, body?.result?.result_info].filter(Boolean);
+  if (infos.length !== 1) fail(`${label} inventory pagination metadata is missing or ambiguous`);
+  const [info] = infos;
+  if (
+    ![info.count, info.page, info.total_count, info.total_pages].every(Number.isInteger) ||
+    info.count !== count ||
+    info.page !== 1 ||
+    info.total_count !== count ||
+    info.total_pages !== 1 ||
+    (Object.hasOwn(info, "cursor") && info.cursor !== null && info.cursor !== "") ||
+    (Object.hasOwn(info, "cursors") &&
+      (!info.cursors ||
+        typeof info.cursors !== "object" ||
+        (info.cursors.after !== null &&
+          info.cursors.after !== "" &&
+          info.cursors.after !== undefined)))
+  )
+    fail(`${label} inventory pagination is incomplete`);
+}
+
+function validateAbsentInventoryReadbacks(authority, { account, absence, workflows, buckets }) {
+  if (sha256(account) !== authority.cloudflare.pre_mutation_account_readback_sha256)
+    fail("Cloudflare account readback changed from approved preflight");
+  assertExactAccountReadback(account, authority);
+  if (sha256(absence) !== authority.cloudflare.pre_mutation_worker_absence_sha256)
+    fail("Cloudflare Worker absence changed from approved read-only preflight");
+  let absenceResult;
+  try {
+    absenceResult = JSON.parse(absence);
+  } catch {
+    fail("Cloudflare Worker absence probe was not canonical JSON");
+  }
+  if (!exactKeys(absenceResult, ["body", "status"]) || absenceResult.status !== 404)
+    fail("production Worker unexpectedly exists; refusing collision or overwrite");
+  if (sha256(workflows) !== authority.cloudflare.pre_mutation_workflow_inventory_sha256)
+    fail("Cloudflare Workflow inventory changed from approved preflight");
+  let workflowResponse;
+  try {
+    workflowResponse = JSON.parse(workflows);
+  } catch {
+    fail("Cloudflare Workflow inventory was not canonical JSON");
+  }
+  if (
+    !exactKeys(workflowResponse, ["body", "status"]) ||
+    workflowResponse.status !== 200 ||
+    workflowResponse.body?.success !== true
+  )
+    fail("Cloudflare Workflow inventory response was not successful");
+  const workflowNames = resourceNames(workflows, "Cloudflare Workflow");
+  assertCompleteSinglePage(workflowResponse.body, workflowNames.length, "Cloudflare Workflow");
+  const intendedWorkflows = [
+    authority.cloudflare.workflow_name,
+    `${authority.cloudflare.workflow_name}-pair`,
+  ];
+  if (intendedWorkflows.some((name) => workflowNames.includes(name)))
+    fail("exact production Workflow name collision detected");
+  if (sha256(buckets) !== authority.cloudflare.pre_mutation_r2_inventory_sha256)
+    fail("Cloudflare R2 inventory changed from approved preflight");
+  let bucketResponse;
+  try {
+    bucketResponse = JSON.parse(buckets);
+  } catch {
+    fail("Cloudflare R2 inventory was not canonical JSON");
+  }
+  if (
+    !exactKeys(bucketResponse, ["body", "status"]) ||
+    bucketResponse.status !== 200 ||
+    bucketResponse.body?.success !== true
+  )
+    fail("Cloudflare R2 inventory response was not successful");
+  const bucketNames = resourceNames(buckets, "Cloudflare R2");
+  assertCompleteSinglePage(bucketResponse.body, bucketNames.length, "Cloudflare R2");
+  if (bucketNames.filter((name) => name === authority.cloudflare.r2_bucket_name).length !== 1)
+    fail("exact preexisting R2 assets bucket is absent or ambiguous");
+  return { intendedWorkflows, workflowNames };
+}
+
 function extractSingleActiveVersion(statusBytes) {
   let status;
   try {
@@ -756,7 +1027,12 @@ function extractSingleActiveVersion(statusBytes) {
   return candidates[0];
 }
 
-function assertDisabledVersionReadback(versionBytes, authority, expectedCommit) {
+function assertDisabledVersionReadback(
+  versionBytes,
+  authority,
+  expectedCommit,
+  { requireR2 = true } = {},
+) {
   let version;
   try {
     version = JSON.parse(versionBytes);
@@ -769,15 +1045,39 @@ function assertDisabledVersionReadback(versionBytes, authority, expectedCommit) 
     else if (value && typeof value === "object") Object.values(value).forEach(collect);
   };
   collect(version);
-  for (const expected of [
+  const workflowBindings = new Map([
+    ["VIDEO_WORKFLOW", []],
+    ["HOSTED_PAIR_WORKFLOW", []],
+  ]);
+  const collectWorkflowBindings = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      value.forEach(collectWorkflowBindings);
+      return;
+    }
+    if (workflowBindings.has(value.binding) && typeof value.name === "string")
+      workflowBindings.get(value.binding).push(value.name);
+    if (workflowBindings.has(value.name) && typeof value.namespace === "string")
+      workflowBindings.get(value.name).push(value.namespace);
+    Object.values(value).forEach(collectWorkflowBindings);
+  };
+  collectWorkflowBindings(version);
+  const expectedValues = [
     expectedCommit,
     "DISABLED_UNQUALIFIED",
-    "PRIVATE_ARTIFACTS",
     "VIDEO_WORKFLOW",
     "HOSTED_PAIR_WORKFLOW",
-    authority.cloudflare.r2_bucket_name,
     authority.cloudflare.workflow_name,
-  ]) {
+    `${authority.cloudflare.workflow_name}-pair`,
+  ];
+  if (requireR2) expectedValues.push("PRIVATE_ARTIFACTS", authority.cloudflare.r2_bucket_name);
+  const primaryBindings = workflowBindings.get("VIDEO_WORKFLOW");
+  const pairBindings = workflowBindings.get("HOSTED_PAIR_WORKFLOW");
+  if (primaryBindings.length !== 1 || primaryBindings[0] !== authority.cloudflare.workflow_name)
+    fail("deployed quarantine VIDEO_WORKFLOW binding is not the exact primary Workflow");
+  if (pairBindings.length !== 1 || pairBindings[0] !== `${authority.cloudflare.workflow_name}-pair`)
+    fail("deployed quarantine HOSTED_PAIR_WORKFLOW binding is not the exact pair Workflow");
+  for (const expected of expectedValues) {
     if (!stringLeaves.includes(expected))
       fail("deployed quarantine version identity is incomplete");
   }
@@ -823,54 +1123,30 @@ async function assertQuarantineRoute(authority, configured) {
     fail("unconfigured quarantine route is not exact fail-closed status");
 }
 
-async function cloudflareReadOnlyPreflight(config, authority, environment) {
-  const status = wrangler(
+async function cloudflareReadOnlyPreflight(authority, environment) {
+  const accountResponse = await cloudflareApiResponse(environment, authority, "");
+  assertTrustedAuthorityTime(authority, accountResponse.trustedDate);
+  const account = accountResponse.bytes;
+  const absence = await cloudflareApiReadback(
     environment,
-    [
-      "deployments",
-      "status",
-      "--json",
-      "--name",
-      authority.cloudflare.worker_name,
-      "--config",
-      config,
-    ],
-    { capture: true },
-  );
-  if (sha256(status) !== authority.cloudflare.pre_mutation_deployments_status_sha256)
-    fail("Cloudflare deployment status changed from approved read-only preflight");
-  const versionId = extractSingleActiveVersion(status);
-  if (versionId !== authority.cloudflare.pre_mutation_active_version_id)
-    fail("Cloudflare active version changed from approved read-only preflight");
-  const version = wrangler(
-    environment,
-    [
-      "versions",
-      "view",
-      versionId,
-      "--json",
-      "--name",
-      authority.cloudflare.worker_name,
-      "--config",
-      config,
-    ],
-    { capture: true },
-  );
-  if (sha256(version) !== authority.cloudflare.pre_mutation_active_version_readback_sha256)
-    fail("Cloudflare active-version readback changed from approved preflight");
-  assertDisabledVersionReadback(
-    version,
     authority,
-    authority.cloudflare.pre_mutation_active_commit,
+    `/workers/scripts/${authority.cloudflare.worker_name}`,
   );
+  const workflows = await cloudflareApiReadback(environment, authority, "/workflows");
+  const buckets = await cloudflareApiReadback(environment, authority, "/r2/buckets");
+  const inventories = validateAbsentInventoryReadbacks(authority, {
+    account,
+    absence,
+    workflows,
+    buckets,
+  });
   if (
     sha256(await routeReadback(authority)) !==
     authority.cloudflare.pre_mutation_route_readback_sha256
   )
     fail("production route changed from approved read-only preflight");
   await assertQuarantineRoute(authority, false);
-  if (cloudflareSecretNames(config, environment).length !== 0)
-    fail("preexisting production Worker secret set is not empty; refusing overwrite");
+  return inventories;
 }
 
 function cloudflareSecretNames(configPath, environment) {
@@ -886,6 +1162,46 @@ function cloudflareSecretNames(configPath, environment) {
   if (!Array.isArray(value) || value.some((item) => !exactKeys(item, ["name", "type"])))
     fail("Cloudflare secret-name readback shape drifted");
   return value.map((item) => item.name).sort();
+}
+
+async function assertExactCreatedWorkflows(environment, authority, beforeNames, intendedNames) {
+  const bytes = await cloudflareApiReadback(environment, authority, "/workflows");
+  let response;
+  try {
+    response = JSON.parse(bytes);
+  } catch {
+    fail("post-create Workflow inventory was not canonical JSON");
+  }
+  if (
+    !exactKeys(response, ["body", "status"]) ||
+    response.status !== 200 ||
+    response.body?.success !== true
+  )
+    fail("post-create Workflow inventory response was not successful");
+  const names = resourceNames(bytes, "Cloudflare Workflow");
+  assertCompleteSinglePage(response.body, names.length, "Cloudflare Workflow");
+  const expected = [...new Set([...beforeNames, ...intendedNames])].sort();
+  if (JSON.stringify(names) !== JSON.stringify(expected))
+    fail("post-create Workflow inventory is not the exact absence-proven pair");
+}
+
+async function recoverQuarantineCreation({
+  verifyExactDisabled,
+  deleteWorker,
+  deleteWorkflow,
+  intendedWorkflows,
+  verifyAbsent,
+}) {
+  try {
+    await verifyExactDisabled();
+    return "KEPT_EXACT_DISABLED_QUARANTINE";
+  } catch {
+    // Only names proven absent immediately before creation are attributable to this attempt.
+  }
+  await deleteWorker();
+  for (const name of intendedWorkflows) await deleteWorkflow(name);
+  await verifyAbsent();
+  return "DELETED_ATTRIBUTABLE_AND_REVERIFIED_ABSENT";
 }
 
 async function secretMutationTransaction({
@@ -952,20 +1268,43 @@ function renderAndDryRunConfig(args, environment, temporaryDirectory) {
   return config;
 }
 
+function workflowBootstrapConfig(value) {
+  if (!Array.isArray(value.r2_buckets) || value.r2_buckets.length !== 1)
+    fail("activated config does not have the exact single preexisting R2 binding");
+  if (!Array.isArray(value.workflows) || value.workflows.length !== 2)
+    fail("activated config does not have the exact two Workflow bindings");
+  const video = value.workflows.filter((item) => item?.binding === "VIDEO_WORKFLOW");
+  const pair = value.workflows.filter((item) => item?.binding === "HOSTED_PAIR_WORKFLOW");
+  if (
+    video.length !== 1 ||
+    pair.length !== 1 ||
+    typeof video[0].name !== "string" ||
+    pair[0].name !== `${video[0].name}-pair`
+  )
+    fail("activated config does not have the exact structural Workflow bindings");
+  const bootstrap = structuredClone(value);
+  delete bootstrap.r2_buckets;
+  return bootstrap;
+}
+
+function renderWorkflowBootstrapConfig(config, temporaryDirectory) {
+  const value = workflowBootstrapConfig(JSON.parse(readFileSync(config, "utf8")));
+  const path = join(temporaryDirectory, "wrangler.production.workflow-bootstrap.json");
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+  return path;
+}
+
 async function cloudflarePreflight(args, authority, environment) {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-preflight-"));
   try {
-    await cloudflareReadOnlyPreflight(
-      renderAndDryRunConfig(args, environment, directory),
-      authority,
-      environment,
-    );
+    renderAndDryRunConfig(args, environment, directory);
+    await cloudflareReadOnlyPreflight(authority, environment);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
 }
 
-function readBackDisabledQuarantine(config, authority, environment) {
+function readBackDisabledQuarantine(config, authority, environment, options) {
   const status = wrangler(
     environment,
     [
@@ -994,17 +1333,41 @@ function readBackDisabledQuarantine(config, authority, environment) {
     ],
     { capture: true },
   );
-  assertDisabledVersionReadback(version, authority, authority.release.commit);
+  assertDisabledVersionReadback(version, authority, authority.release.commit, options);
   return versionId;
 }
 
 async function cloudflareActivation(args, authority, values, environment, databaseStage) {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-activation-"));
   let config;
+  let bootstrapConfig;
   let quarantineDeployed = false;
+  let creationAttempted = false;
+  let preflight;
   try {
     config = renderAndDryRunConfig(args, environment, directory);
-    await cloudflareReadOnlyPreflight(config, authority, environment);
+    bootstrapConfig = renderWorkflowBootstrapConfig(config, directory);
+    preflight = await cloudflareReadOnlyPreflight(authority, environment);
+    creationAttempted = true;
+    wrangler(environment, [
+      "deploy",
+      "--config",
+      bootstrapConfig,
+      "--message",
+      `videoforge-v2-13-workflow-bootstrap:${authority.release.commit}`,
+      "--x-auto-create",
+      "true",
+    ]);
+    await assertExactCreatedWorkflows(
+      environment,
+      authority,
+      preflight.workflowNames,
+      preflight.intendedWorkflows,
+    );
+    readBackDisabledQuarantine(bootstrapConfig, authority, environment, { requireR2: false });
+    await assertQuarantineRoute(authority, false);
+    if (cloudflareSecretNames(bootstrapConfig, environment).length !== 0)
+      fail("workflow bootstrap unexpectedly inherited secret bindings");
     wrangler(environment, [
       "deploy",
       "--config",
@@ -1014,8 +1377,14 @@ async function cloudflareActivation(args, authority, values, environment, databa
       "--x-auto-create",
       "false",
     ]);
-    quarantineDeployed = true;
     readBackDisabledQuarantine(config, authority, environment);
+    quarantineDeployed = true;
+    await assertExactCreatedWorkflows(
+      environment,
+      authority,
+      preflight.workflowNames,
+      preflight.intendedWorkflows,
+    );
     await assertQuarantineRoute(authority, false);
     if (cloudflareSecretNames(config, environment).length !== 0)
       fail("new quarantine unexpectedly inherited secret bindings");
@@ -1027,8 +1396,14 @@ async function cloudflareActivation(args, authority, values, environment, databa
           input: values.get(name),
         });
       },
-      afterPut() {
+      async afterPut() {
         readBackDisabledQuarantine(config, authority, environment);
+        await assertExactCreatedWorkflows(
+          environment,
+          authority,
+          preflight.workflowNames,
+          preflight.intendedWorkflows,
+        );
       },
       verify() {
         if (
@@ -1060,23 +1435,52 @@ async function cloudflareActivation(args, authority, values, environment, databa
       },
     });
   } catch (error) {
-    if (quarantineDeployed && config) {
+    if (creationAttempted && config && preflight) {
       try {
-        wrangler(environment, [
-          "deploy",
-          "--config",
-          config,
-          "--message",
-          `videoforge-v2-13-disabled-rollback:${authority.release.commit}`,
-          "--x-auto-create",
-          "false",
-        ]);
-        readBackDisabledQuarantine(config, authority, environment);
-        await assertQuarantineRoute(authority, false);
-        if (cloudflareSecretNames(config, environment).length !== 0)
-          fail("rollback quarantine retained a secret binding");
+        await recoverQuarantineCreation({
+          async verifyExactDisabled() {
+            if (!quarantineDeployed) fail("quarantine deploy did not complete");
+            wrangler(environment, [
+              "deploy",
+              "--config",
+              config,
+              "--message",
+              `videoforge-v2-13-disabled-rollback:${authority.release.commit}`,
+              "--x-auto-create",
+              "false",
+            ]);
+            readBackDisabledQuarantine(config, authority, environment);
+            await assertExactCreatedWorkflows(
+              environment,
+              authority,
+              preflight.workflowNames,
+              preflight.intendedWorkflows,
+            );
+            await assertQuarantineRoute(authority, false);
+            if (cloudflareSecretNames(config, environment).length !== 0)
+              fail("rollback quarantine retained a secret binding");
+          },
+          deleteWorker() {
+            wranglerResult(environment, [
+              "delete",
+              authority.cloudflare.worker_name,
+              "--config",
+              config,
+              "--force",
+            ]);
+          },
+          deleteWorkflow(name) {
+            wranglerResult(environment, ["workflows", "delete", name, "--config", config]);
+          },
+          intendedWorkflows: preflight.intendedWorkflows,
+          verifyAbsent() {
+            return cloudflareReadOnlyPreflight(authority, environment);
+          },
+        });
       } catch {
-        fail("Cloudflare rollback could not restore and verify the exact disabled quarantine");
+        fail(
+          "quarantine was neither exact-disabled nor deletable with original absence reverified",
+        );
       }
     }
     throw error;
@@ -1104,7 +1508,9 @@ async function main() {
   const allowed = [
     "activation-record",
     "config-activation-record",
+    "proposal-file",
     "release-manifest-file",
+    "user-approval-file",
     ...(execute
       ? [
           "cloudflare-api-token-file",
@@ -1130,14 +1536,26 @@ async function main() {
   ])
     if (!args.has(name)) fail(`--${name} is required for execute`);
   prevalidateEvidencePath(args.get("evidence-output"));
+  const authorityBytes = readFileSync(resolve(args.get("activation-record")));
+  validateAuthoritySourceFiles(
+    authority,
+    resolve(args.get("proposal-file")),
+    resolve(args.get("user-approval-file")),
+  );
+  consumeAuthorityOnce(authority, authorityBytes);
   const evidenceBase = {
     schema_version: "videoforge-v2-13-guarded-activation-evidence/v1",
-    activation_authority_sha256: sha256(readFileSync(resolve(args.get("activation-record")))),
+    authority_id: authority.authority.authority_id,
+    proposal_sha256: authority.authority.proposal_sha256,
+    approval_sha256: authority.authority.approval_sha256,
+    activation_authority_sha256: sha256(authorityBytes),
     commit: authority.release.commit,
     secret_names: SECRET_NAMES,
     secret_values_written_to_evidence: false,
     external_spend_cap_usd: 0,
-    new_retained_resources_authorized: false,
+    exact_product_resource_creation_authorized: true,
+    new_paid_retained_resources_authorized: false,
+    other_resource_creation_authorized: false,
   };
   try {
     const cloudflareEnv = cloudflareEnvironment(
@@ -1159,7 +1577,8 @@ async function main() {
       secret_name_readback: `${SECRET_NAMES.length}/${SECRET_NAMES.length} exact`,
       secret_value_fingerprints: "matched authority before mutation",
       deployment_attempted: true,
-      new_retained_resources: 0,
+      exact_product_resources_created: 3,
+      new_paid_retained_resources: 0,
     };
     writeEvidence(args.get("evidence-output"), {
       ...evidenceBase,
@@ -1187,14 +1606,20 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await mai
 
 export {
   assertDisabledVersionReadback,
+  assertTrustedAuthorityTime,
   CONFIRMATION,
+  consumeAuthorityOnce,
   extractSingleActiveVersion,
   SECRET_NAMES,
   plan,
   protectedSecrets,
+  recoverQuarantineCreation,
   rolePrecheckQuery,
   secretMutationTransaction,
   safeEnvironment,
   validateSoulxApprovalRecords,
+  validateAuthoritySourceFiles,
+  validateAbsentInventoryReadbacks,
   validateAuthority,
+  workflowBootstrapConfig,
 };

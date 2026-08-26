@@ -9,16 +9,22 @@ import test from "node:test";
 import { EXPECTED_RUNTIME_FUNCTIONS } from "../../deploy/v2-06/apply-migrations-and-grants.mjs";
 import {
   assertDisabledVersionReadback,
+  assertTrustedAuthorityTime,
   CONFIRMATION,
+  consumeAuthorityOnce,
   extractSingleActiveVersion,
   SECRET_NAMES,
   plan,
   protectedSecrets,
+  recoverQuarantineCreation,
   rolePrecheckQuery,
   safeEnvironment,
   secretMutationTransaction,
+  validateAbsentInventoryReadbacks,
+  validateAuthoritySourceFiles,
   validateSoulxApprovalRecords,
   validateAuthority,
+  workflowBootstrapConfig,
 } from "../../deploy/v2-13/guarded-activation.mjs";
 
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -48,6 +54,12 @@ function authority() {
     checkpoint: "V2-13",
     authority: {
       mode: "APPROVED_EXECUTE",
+      authority_id: "v2-13-test-authority-0001",
+      proposal_path: "project-context/evidence/test-proposal.json",
+      proposal_sha256: fingerprint,
+      approval_path: "project-context/evidence/test-user-approval.txt",
+      approval_sha256: `sha256:${"b".repeat(64)}`,
+      single_use: true,
       execute_authorized: true,
       credential_access_authorized: true,
       database_mutation_authorized: true,
@@ -56,8 +68,12 @@ function authority() {
       provider_calls_authorized: true,
       gpu_use_authorized: false,
       maximum_cumulative_finite_external_spend_usd: 0,
-      new_retained_resources_authorized: false,
+      exact_quarantine_creation_authorized: true,
+      new_paid_retained_resources_authorized: false,
+      other_resource_creation_authorized: false,
+      plan_change_authorized: false,
       approved_at: "2026-08-26T00:00:00.000Z",
+      expires_at: "2026-08-26T12:00:00.000Z",
       confirmation_sha256: hash(CONFIRMATION),
     },
     release: {
@@ -80,16 +96,18 @@ function authority() {
     cloudflare: {
       account_id: "1".repeat(32),
       worker_name: "videoforge-production-runtime",
-      preexisting_worker_required: true,
+      preexisting_worker_required: false,
+      exact_quarantine_creation_authorized: true,
+      failure_policy: "KEEP_EXACT_DISABLED_QUARANTINE_ELSE_DELETE_ATTRIBUTABLE",
       preexisting_secret_set_must_be_empty: true,
       r2_bucket_name: "videoforge-production-private",
       workflow_name: "videoforge-production-video",
       public_origin: "https://videoforge.example",
       api_token_sha256: fingerprint,
-      pre_mutation_active_commit: "2".repeat(40),
-      pre_mutation_active_version_id: "11111111-1111-4111-8111-111111111111",
-      pre_mutation_deployments_status_sha256: fingerprint,
-      pre_mutation_active_version_readback_sha256: fingerprint,
+      pre_mutation_account_readback_sha256: fingerprint,
+      pre_mutation_worker_absence_sha256: fingerprint,
+      pre_mutation_workflow_inventory_sha256: fingerprint,
+      pre_mutation_r2_inventory_sha256: fingerprint,
       pre_mutation_route_readback_sha256: fingerprint,
     },
     gates: {
@@ -165,7 +183,12 @@ test("authority and plan are exact, zero-spend, and closed-world", () => {
   assert.deepEqual(Object.keys(value.secret_sha256).sort(), [...SECRET_NAMES].sort());
   const result = plan(value);
   assert.equal(result.secret_values_in_plan, false);
-  assert.equal(result.new_retained_resources, 0);
+  assert.equal(result.new_paid_retained_resources, 0);
+  assert.deepEqual(result.exact_product_resources_created, [
+    "videoforge-production-runtime",
+    "videoforge-production-video",
+    "videoforge-production-video-pair",
+  ]);
   assert.deepEqual(result.migration_range, [37, 44]);
   assert.throws(
     () =>
@@ -179,6 +202,76 @@ test("authority and plan are exact, zero-spend, and closed-world", () => {
     () => validateAuthority({ ...authority(), secret_sha256: { DATABASE_URL: fingerprint } }),
     /allowlist is not exact/u,
   );
+  assert.throws(
+    () =>
+      validateAuthority({
+        ...authority(),
+        authority: { ...authority().authority, single_use: false },
+      }),
+    /authority is absent/u,
+  );
+  assert.throws(
+    () =>
+      validateAuthority({
+        ...authority(),
+        authority: {
+          ...authority().authority,
+          expires_at: "2026-08-28T00:00:00.000Z",
+        },
+      }),
+    /authority is absent/u,
+  );
+});
+
+test("trusted expiry and durable authority consumption are exact and non-replayable", () => {
+  const value = validateAuthority(authority());
+  assert.equal(assertTrustedAuthorityTime(value, "Wed, 26 Aug 2026 06:00:00 GMT"), true);
+  assert.throws(
+    () => assertTrustedAuthorityTime(value, "Wed, 26 Aug 2026 13:00:00 GMT"),
+    /not current under trusted provider time/u,
+  );
+  const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-consumption-"));
+  chmodSync(directory, 0o700);
+  try {
+    const bytes = Buffer.from(JSON.stringify(value));
+    const path = consumeAuthorityOnce(value, bytes, directory);
+    const record = JSON.parse(readFileSync(path, "utf8"));
+    assert.equal(record.authority_id, value.authority.authority_id);
+    assert.equal(record.state, "CONSUMED_SINGLE_EXECUTION_NO_RETRY");
+    assert.throws(() => consumeAuthorityOnce(value, bytes, directory), /already consumed/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("authority rehashes the exact proposal and user-approval source files", () => {
+  const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-authority-sources-"));
+  chmodSync(directory, 0o700);
+  const proposal = join(directory, "proposal.json");
+  const approval = join(directory, "approval.txt");
+  const value = authority();
+  try {
+    writeFileSync(proposal, "exact proposal bytes\n");
+    writeFileSync(approval, "exact user approval bytes\n");
+    value.authority.proposal_path = proposal;
+    value.authority.approval_path = approval;
+    value.authority.proposal_sha256 = hash("exact proposal bytes\n");
+    value.authority.approval_sha256 = hash("exact user approval bytes\n");
+    assert.equal(validateAuthoritySourceFiles(value, proposal, approval), true);
+    value.authority.proposal_path = approval;
+    assert.throws(
+      () => validateAuthoritySourceFiles(value, proposal, approval),
+      /proposal file path does not match/u,
+    );
+    value.authority.proposal_path = proposal;
+    writeFileSync(approval, "drifted approval bytes\n");
+    assert.throws(
+      () => validateAuthoritySourceFiles(value, proposal, approval),
+      /user approval file bytes do not match/u,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("invalid authority fails before credential seams or mutation commands are reached", () => {
@@ -186,13 +279,17 @@ test("invalid authority fails before credential seams or mutation commands are r
   chmodSync(directory, 0o700);
   const activation = join(directory, "activation.json");
   const config = join(directory, "config.json");
+  const proposal = join(directory, "proposal.json");
   const release = join(directory, "release.json");
+  const approval = join(directory, "approval.txt");
   try {
     writeFileSync(activation, JSON.stringify({ ...authority(), authority: { mode: "DENIED" } }), {
       mode: 0o600,
     });
     writeFileSync(config, "{}", { mode: 0o600 });
+    writeFileSync(proposal, "proposal");
     writeFileSync(release, "{}", { mode: 0o600 });
+    writeFileSync(approval, "approval");
     const result = spawnSync(
       process.execPath,
       [
@@ -202,8 +299,12 @@ test("invalid authority fails before credential seams or mutation commands are r
         activation,
         "--config-activation-record",
         config,
+        "--proposal-file",
+        proposal,
         "--release-manifest-file",
         release,
+        "--user-approval-file",
+        approval,
       ],
       { encoding: "utf8" },
     );
@@ -316,6 +417,8 @@ test("post-mutation readback failure still deletes the introduced secret", async
 
 test("stale, enabled, or split Cloudflare versions fail before secret mutation", () => {
   const value = authority();
+  value.cloudflare.pre_mutation_active_version_id = "11111111-1111-4111-8111-111111111111";
+  value.cloudflare.pre_mutation_active_commit = "2".repeat(40);
   const exact = JSON.stringify({
     versions: [{ version_id: value.cloudflare.pre_mutation_active_version_id, percentage: 100 }],
   });
@@ -337,11 +440,9 @@ test("stale, enabled, or split Cloudflare versions fail before secret mutation",
     vars: { VIDEOFORGE_GPU_TRANSPORT: "DISABLED_UNQUALIFIED" },
     worker: "videoforge-production-runtime",
     bindings: [
-      "PRIVATE_ARTIFACTS",
-      "VIDEO_WORKFLOW",
-      "HOSTED_PAIR_WORKFLOW",
-      value.cloudflare.r2_bucket_name,
-      value.cloudflare.workflow_name,
+      { binding: "PRIVATE_ARTIFACTS", bucket_name: value.cloudflare.r2_bucket_name },
+      { binding: "VIDEO_WORKFLOW", name: value.cloudflare.workflow_name },
+      { binding: "HOSTED_PAIR_WORKFLOW", name: `${value.cloudflare.workflow_name}-pair` },
     ],
   };
   assert.equal(
@@ -369,6 +470,263 @@ test("stale, enabled, or split Cloudflare versions fail before secret mutation",
         value.cloudflare.pre_mutation_active_commit,
       ),
     /identity is incomplete|enabled GPU/u,
+  );
+  assert.throws(
+    () =>
+      assertDisabledVersionReadback(
+        JSON.stringify({
+          ...readback,
+          bindings: readback.bindings.map((binding) =>
+            binding.binding === "HOSTED_PAIR_WORKFLOW"
+              ? { ...binding, name: value.cloudflare.workflow_name }
+              : binding,
+          ),
+        }),
+        value,
+        value.cloudflare.pre_mutation_active_commit,
+      ),
+    /HOSTED_PAIR_WORKFLOW binding is not the exact pair/u,
+  );
+  assert.throws(
+    () =>
+      assertDisabledVersionReadback(
+        JSON.stringify({
+          ...readback,
+          bindings: readback.bindings.map((binding) =>
+            binding.binding === "VIDEO_WORKFLOW"
+              ? { ...binding, name: `${value.cloudflare.workflow_name}-wrong` }
+              : binding,
+          ),
+        }),
+        value,
+        value.cloudflare.pre_mutation_active_commit,
+      ),
+    /VIDEO_WORKFLOW binding is not the exact primary/u,
+  );
+});
+
+test("absent Worker preflight accepts only exact account, no Workflow collision, and existing R2", () => {
+  const value = authority();
+  const account = JSON.stringify({
+    body: { result: { id: value.cloudflare.account_id }, success: true },
+    status: 200,
+  });
+  const absence = JSON.stringify({ body: { success: false }, status: 404 });
+  const workflows = JSON.stringify({
+    body: {
+      result: [{ name: "unrelated-workflow" }],
+      result_info: { count: 1, page: 1, total_count: 1, total_pages: 1 },
+      success: true,
+    },
+    status: 200,
+  });
+  const buckets = JSON.stringify({
+    body: {
+      result: { buckets: [{ name: value.cloudflare.r2_bucket_name }] },
+      result_info: { count: 1, page: 1, total_count: 1, total_pages: 1 },
+      success: true,
+    },
+    status: 200,
+  });
+  value.cloudflare.pre_mutation_account_readback_sha256 = hash(account);
+  value.cloudflare.pre_mutation_worker_absence_sha256 = hash(absence);
+  value.cloudflare.pre_mutation_workflow_inventory_sha256 = hash(workflows);
+  value.cloudflare.pre_mutation_r2_inventory_sha256 = hash(buckets);
+  assert.deepEqual(
+    validateAbsentInventoryReadbacks(value, { account, absence, workflows, buckets }),
+    {
+      intendedWorkflows: [value.cloudflare.workflow_name, `${value.cloudflare.workflow_name}-pair`],
+      workflowNames: ["unrelated-workflow"],
+    },
+  );
+  const wrongAccount = JSON.stringify({
+    body: { result: { id: "2".repeat(32) }, success: true },
+    status: 200,
+  });
+  value.cloudflare.pre_mutation_account_readback_sha256 = hash(wrongAccount);
+  assert.throws(
+    () =>
+      validateAbsentInventoryReadbacks(value, {
+        account: wrongAccount,
+        absence,
+        workflows,
+        buckets,
+      }),
+    /exact successful response/u,
+  );
+  value.cloudflare.pre_mutation_account_readback_sha256 = hash(account);
+  const existing = JSON.stringify({ body: { success: true }, status: 200 });
+  value.cloudflare.pre_mutation_worker_absence_sha256 = hash(existing);
+  assert.throws(
+    () =>
+      validateAbsentInventoryReadbacks(value, {
+        account,
+        absence: existing,
+        workflows,
+        buckets,
+      }),
+    /unexpectedly exists/u,
+  );
+  const collision = JSON.stringify({
+    body: {
+      result: [{ name: value.cloudflare.workflow_name }],
+      result_info: { count: 1, page: 1, total_count: 1, total_pages: 1 },
+      success: true,
+    },
+    status: 200,
+  });
+  value.cloudflare.pre_mutation_worker_absence_sha256 = hash(absence);
+  value.cloudflare.pre_mutation_workflow_inventory_sha256 = hash(collision);
+  assert.throws(
+    () =>
+      validateAbsentInventoryReadbacks(value, {
+        account,
+        absence,
+        workflows: collision,
+        buckets,
+      }),
+    /name collision/u,
+  );
+  const paged = JSON.stringify({
+    body: {
+      result: [{ name: "unrelated-workflow" }],
+      result_info: { count: 1, page: 1, total_count: 2, total_pages: 2 },
+      success: true,
+    },
+    status: 200,
+  });
+  value.cloudflare.pre_mutation_workflow_inventory_sha256 = hash(paged);
+  assert.throws(
+    () =>
+      validateAbsentInventoryReadbacks(value, {
+        account,
+        absence,
+        workflows: paged,
+        buckets,
+      }),
+    /pagination is incomplete/u,
+  );
+  const missingPagination = JSON.stringify({ body: { result: [], success: true }, status: 200 });
+  value.cloudflare.pre_mutation_workflow_inventory_sha256 = hash(missingPagination);
+  assert.throws(
+    () =>
+      validateAbsentInventoryReadbacks(value, {
+        account,
+        absence,
+        workflows: missingPagination,
+        buckets,
+      }),
+    /pagination metadata is missing or ambiguous/u,
+  );
+  const ambiguousPagination = JSON.stringify({
+    body: {
+      result: {
+        result_info: { count: 0, page: 1, total_count: 0, total_pages: 1 },
+      },
+      result_info: { count: 0, page: 1, total_count: 0, total_pages: 1 },
+      success: true,
+    },
+    status: 200,
+  });
+  value.cloudflare.pre_mutation_workflow_inventory_sha256 = hash(ambiguousPagination);
+  assert.throws(
+    () =>
+      validateAbsentInventoryReadbacks(value, {
+        account,
+        absence,
+        workflows: ambiguousPagination,
+        buckets,
+      }),
+    /pagination metadata is missing or ambiguous/u,
+  );
+  const pagedBuckets = JSON.stringify({
+    body: {
+      result: { buckets: [{ name: value.cloudflare.r2_bucket_name }] },
+      result_info: { count: 1, page: 1, total_count: 2, total_pages: 2 },
+      success: true,
+    },
+    status: 200,
+  });
+  value.cloudflare.pre_mutation_workflow_inventory_sha256 = hash(workflows);
+  value.cloudflare.pre_mutation_r2_inventory_sha256 = hash(pagedBuckets);
+  assert.throws(
+    () =>
+      validateAbsentInventoryReadbacks(value, {
+        account,
+        absence,
+        workflows,
+        buckets: pagedBuckets,
+      }),
+    /pagination is incomplete/u,
+  );
+});
+
+test("partial quarantine creation keeps only exact disabled state or deletes attributable names", async () => {
+  const kept = [];
+  assert.equal(
+    await recoverQuarantineCreation({
+      async verifyExactDisabled() {
+        kept.push("verified-disabled");
+      },
+      async deleteWorker() {
+        kept.push("unexpected-delete");
+      },
+      async deleteWorkflow() {},
+      intendedWorkflows: ["a", "b"],
+      async verifyAbsent() {},
+    }),
+    "KEPT_EXACT_DISABLED_QUARANTINE",
+  );
+  assert.deepEqual(kept, ["verified-disabled"]);
+  const cleaned = [];
+  assert.equal(
+    await recoverQuarantineCreation({
+      async verifyExactDisabled() {
+        throw new Error("partial create");
+      },
+      async deleteWorker() {
+        cleaned.push("worker");
+      },
+      async deleteWorkflow(name) {
+        cleaned.push(name);
+      },
+      intendedWorkflows: ["workflow", "workflow-pair"],
+      async verifyAbsent() {
+        cleaned.push("absence");
+      },
+    }),
+    "DELETED_ATTRIBUTABLE_AND_REVERIFIED_ABSENT",
+  );
+  assert.deepEqual(cleaned, ["worker", "workflow", "workflow-pair", "absence"]);
+});
+
+test("auto-create bootstrap can create only the exact Worker and two Workflows", () => {
+  const full = {
+    name: "videoforge-production-runtime",
+    r2_buckets: [{ binding: "PRIVATE_ARTIFACTS", bucket_name: "existing-bucket" }],
+    workflows: [
+      { binding: "VIDEO_WORKFLOW", name: "video" },
+      { binding: "HOSTED_PAIR_WORKFLOW", name: "video-pair" },
+    ],
+    assets: { binding: "ASSETS", directory: "dist" },
+  };
+  const bootstrap = workflowBootstrapConfig(full);
+  assert.equal(Object.hasOwn(bootstrap, "r2_buckets"), false);
+  assert.deepEqual(bootstrap.workflows, full.workflows);
+  assert.deepEqual(full.r2_buckets, [
+    { binding: "PRIVATE_ARTIFACTS", bucket_name: "existing-bucket" },
+  ]);
+  assert.throws(
+    () => workflowBootstrapConfig({ ...full, workflows: [full.workflows[0]] }),
+    /exact two Workflow bindings/u,
+  );
+  assert.throws(
+    () =>
+      workflowBootstrapConfig({
+        ...full,
+        workflows: [full.workflows[0], { ...full.workflows[1], name: "wrong-pair" }],
+      }),
+    /exact structural Workflow bindings/u,
   );
 });
 
