@@ -75,8 +75,8 @@ test("boundary rejects runtime settlement, shared roles, plaintext secrets, and 
 
 test("boundary requires the exact protected secret-name allowlist", async () => {
   const source = await fixture();
-  const { workflow_operator_token: _, ...missingWorkflowOperatorToken } =
-    source.bindings.secret_bindings;
+  const missingWorkflowOperatorToken = { ...source.bindings.secret_bindings };
+  delete missingWorkflowOperatorToken.workflow_operator_token;
   assert.throws(
     () =>
       validateProductionPairBoundary({

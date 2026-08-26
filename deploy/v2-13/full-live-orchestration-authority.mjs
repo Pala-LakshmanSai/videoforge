@@ -251,7 +251,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:ae12285cfe9fba5ad1afaa946f4d6e5a57adf686729e88167c147e00e9bfc73f" ||
+      "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230" ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||
     ![
@@ -289,7 +289,7 @@ function validateState(state) {
           (finiteUsd(work.settled_usd, "WORK_SETTLEMENT") > work.reservation_usd ||
             !/^[a-z0-9][a-z0-9._:-]{7,191}$/u.test(work.settlement_event_id ?? "") ||
             !state.event_ids.includes(work.settlement_event_id))) ||
-        (hasSettledResult !== hasSettledResultHash) ||
+        hasSettledResult !== hasSettledResultHash ||
         (hasSettledResult &&
           (work.state !== "SETTLED_TERMINAL" ||
             work.settled_result === null ||
@@ -478,15 +478,21 @@ function recordSettledResult(state, { phaseName, workId, result }) {
     if (
       work.settled_result_sha256 !== resultSha256 ||
       settledResultSha256(work.settled_result) !== resultSha256
-      )
-        fail("SETTLED_RESULT_REPLAY");
-    if (phaseName === BOOTSTRAP_PHASE && workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase())
+    )
+      fail("SETTLED_RESULT_REPLAY");
+    if (
+      phaseName === BOOTSTRAP_PHASE &&
+      workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase()
+    )
       state.operator_role_verified = true;
     return validateState(state);
   }
   work.settled_result = result;
   work.settled_result_sha256 = resultSha256;
-  if (phaseName === BOOTSTRAP_PHASE && workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase())
+  if (
+    phaseName === BOOTSTRAP_PHASE &&
+    workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase()
+  )
     state.operator_role_verified = true;
   return validateState(state);
 }
@@ -517,7 +523,10 @@ function settleWork(state, { phaseName, workId, actualUsd, eventId, result }) {
     work.settled_result = result;
     work.settled_result_sha256 = settledResultSha256(result);
   }
-  if (phaseName === BOOTSTRAP_PHASE && workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase())
+  if (
+    phaseName === BOOTSTRAP_PHASE &&
+    workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase()
+  )
     state.operator_role_verified = true;
   phase.settled_usd = finiteUsd(phase.settled_usd + actual, "PHASE_SETTLE_SUM");
   state.total_settled_usd = finiteUsd(state.total_settled_usd + actual, "TOTAL_SETTLE_SUM");
@@ -758,8 +767,7 @@ function validateAuthorityRecordCommit({
   authorityBytes,
   authorityRecordCommit,
 }) {
-  if (!/^[0-9a-f]{40}$/u.test(authorityRecordCommit ?? ""))
-    fail("AUTHORITY_RECORD_COMMIT");
+  if (!/^[0-9a-f]{40}$/u.test(authorityRecordCommit ?? "")) fail("AUTHORITY_RECORD_COMMIT");
   const approvalPath = authority.lineage?.user_approval_path;
   const authorityPath = authority.lineage?.authority_record_path;
   for (const [path, code] of [
@@ -824,11 +832,7 @@ async function main() {
       authorityRecordCommit: args.get("authority-record-commit"),
     });
     if (args.has("trusted-iso")) fail("CALLER_TRUSTED_TIME_FORBIDDEN");
-    assertTrustedTime(
-      validated.approvedAt,
-      validated.expiresAt,
-      readAuthenticatedTrustedTime(),
-    );
+    assertTrustedTime(validated.approvedAt, validated.expiresAt, readAuthenticatedTrustedTime());
     trustedCommitLineage(validated);
     const state = validateState(
       initialConsumptionRecord(authority, authorityBytes, { ...validated, ...record }),

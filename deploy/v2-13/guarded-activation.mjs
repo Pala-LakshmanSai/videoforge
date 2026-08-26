@@ -45,8 +45,7 @@ const SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
 ]);
 const HASH = /^sha256:[0-9a-f]{64}$/u;
-const PREQUALIFICATION_SCHEMA =
-  "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v1";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_ADVISORY_LOCK = "1448494662,1";
 const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
@@ -100,10 +99,8 @@ const fail = (message) => {
   throw new Error(`V2-13 guarded activation: ${message}`);
 };
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-const PREQUALIFICATION_MIGRATION_MANIFEST_PATH =
-  "packages/control-plane/migrations/manifest.json";
-const PREQUALIFICATION_OPERATOR_GRANTS_PATH =
-  "deploy/v2-13/neon-full-live-operator-grants.sql";
+const PREQUALIFICATION_MIGRATION_MANIFEST_PATH = "packages/control-plane/migrations/manifest.json";
+const PREQUALIFICATION_OPERATOR_GRANTS_PATH = "deploy/v2-13/neon-full-live-operator-grants.sql";
 const PREQUALIFICATION_MIGRATION_MANIFEST_SHA256 = sha256(
   readFileSync(resolve(ROOT, PREQUALIFICATION_MIGRATION_MANIFEST_PATH)),
 );
@@ -131,7 +128,9 @@ function readPrequalificationReceipt(directory) {
     mode(path, "file", 0o600, "prequalification database bootstrap receipt");
   } catch (error) {
     if (error?.code === "ENOENT")
-      fail("prequalification database bootstrap receipt is missing; manual database reconciliation required");
+      fail(
+        "prequalification database bootstrap receipt is missing; manual database reconciliation required",
+      );
     throw error;
   }
   let value;
@@ -141,7 +140,10 @@ function readPrequalificationReceipt(directory) {
     fail("prequalification database bootstrap receipt is not JSON");
   }
   if (
-    !exactKeys(value, [...PREQUALIFICATION_RECEIPT_FIELDS, "prequalification_database_bootstrap_sha256"]) ||
+    !exactKeys(value, [
+      ...PREQUALIFICATION_RECEIPT_FIELDS,
+      "prequalification_database_bootstrap_sha256",
+    ]) ||
     value.schema_version !== PREQUALIFICATION_SCHEMA ||
     ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
@@ -160,7 +162,10 @@ function readPrequalificationReceipt(directory) {
     fail("prequalification database bootstrap receipt contract drifted");
   const body = { ...value };
   delete body.prequalification_database_bootstrap_sha256;
-  if (value.prequalification_database_bootstrap_sha256 !== sha256(Buffer.from(`${canonicalJson(body)}\n`)))
+  if (
+    value.prequalification_database_bootstrap_sha256 !==
+    sha256(Buffer.from(`${canonicalJson(body)}\n`))
+  )
     fail("prequalification database bootstrap receipt hash drifted");
   return Object.freeze(value);
 }
@@ -202,20 +207,23 @@ function prequalificationLedger(text, manifest, expectedCount = 45) {
   const rows =
     text === ""
       ? []
-      : text.split(/\r?\n/u).filter(Boolean).map((line) => {
-          const fields = line.split("\t");
-          if (fields.length !== 4 || !/^\d+$/u.test(fields[0]))
-            fail("prequalification migration ledger row is malformed");
-          const row = {
-            version: Number(fields[0]),
-            name: fields[1],
-            filename: fields[2],
-            sha256: fields[3],
-          };
-          if (!Number.isSafeInteger(row.version) || !HASH.test(row.sha256))
-            fail("prequalification migration ledger row is malformed");
-          return row;
-        });
+      : text
+          .split(/\r?\n/u)
+          .filter(Boolean)
+          .map((line) => {
+            const fields = line.split("\t");
+            if (fields.length !== 4 || !/^\d+$/u.test(fields[0]))
+              fail("prequalification migration ledger row is malformed");
+            const row = {
+              version: Number(fields[0]),
+              name: fields[1],
+              filename: fields[2],
+              sha256: fields[3],
+            };
+            if (!Number.isSafeInteger(row.version) || !HASH.test(row.sha256))
+              fail("prequalification migration ledger row is malformed");
+            return row;
+          });
   if (rows.length !== expectedCount) fail("prequalification migration ledger count drifted");
   rows.forEach((row, index) => {
     const expected = manifest.migrations[index];
@@ -327,7 +335,8 @@ async function verifyPrequalificationDatabase(
   postgresInputDirectory,
   { runCommand = run } = {},
 ) {
-  if (typeof runCommand !== "function") fail("prequalification database verifier runner is invalid");
+  if (typeof runCommand !== "function")
+    fail("prequalification database verifier runner is invalid");
   const manifestResult = prequalificationManifest();
   if (sha256(manifestResult.bytes) !== authority.release.migration_manifest_sha256)
     fail("prequalification migration manifest does not match authority");
@@ -878,9 +887,7 @@ function prevalidate(args) {
   );
   if (sha256(manifestBytes) !== authority.release.migration_manifest_sha256)
     fail("migration manifest bytes do not match authority");
-  if (
-    PREQUALIFICATION_OPERATOR_GRANTS_SHA256 !== authority.release.operator_grants_sha256
-  )
+  if (PREQUALIFICATION_OPERATOR_GRANTS_SHA256 !== authority.release.operator_grants_sha256)
     fail("operator grants bytes do not match authority");
   const manifest = JSON.parse(manifestBytes);
   const tail = manifest.migrations.slice(-9);
@@ -1163,7 +1170,8 @@ function rolePrecheckQuery(authority) {
   const roles = `'${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}'`;
   // Keep the catalog names visible in this contract for audit tooling; every executable ACL
   // expression below wraps nullable ACL columns with their PostgreSQL defaults first.
-  const aclCatalogNames = "/* aclexplode(d.datacl) aclexplode(n.nspacl) aclexplode(c.relacl) aclexplode(p.proacl) */";
+  const aclCatalogNames =
+    "/* aclexplode(d.datacl) aclexplode(n.nspacl) aclexplode(c.relacl) aclexplode(p.proacl) */";
   return `SELECT ${aclCatalogNames} ((SELECT count(*)=0 FROM pg_roles WHERE rolname IN (${roles}))
 	AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN (${roles}) OR granted_role.rolname IN (${roles}))
 	AND NOT EXISTS (SELECT 1 FROM pg_database d JOIN pg_roles r ON r.oid=d.datdba WHERE r.rolname IN (${roles}))
@@ -1283,7 +1291,10 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
       const [version, name, filename, sha256Value] = line.split("\t");
       return { version: Number(version), name, filename, sha256: sha256Value };
     });
-  if (ledger.length !== 45 || sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== bootstrapReceipt.ledger_after_sha256)
+  if (
+    ledger.length !== 45 ||
+    sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== bootstrapReceipt.ledger_after_sha256
+  )
     fail("prequalification database bootstrap ledger receipt does not match exact prefix 45");
   const rolePrecheck = run(
     "psql",
@@ -1366,14 +1377,10 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
     ],
     { env, capture: true },
   );
-  const ledgerAfter = prequalificationLedger(
-    ledgerAfterText,
-    prequalificationManifest().manifest,
-  );
+  const ledgerAfter = prequalificationLedger(ledgerAfterText, prequalificationManifest().manifest);
   if (
     ledgerAfter.length !== 45 ||
-    sha256(Buffer.from(`${canonicalJson(ledgerAfter)}\n`)) !==
-      bootstrapReceipt.ledger_after_sha256
+    sha256(Buffer.from(`${canonicalJson(ledgerAfter)}\n`)) !== bootstrapReceipt.ledger_after_sha256
   )
     fail("prequalification database bootstrap was not consumed at exact prefix 45");
   const reconcilerSignature = prequalificationFunctionSignatureSql("p", "n");
@@ -2138,8 +2145,12 @@ async function main() {
     // All Cloudflare state/config/version reads run before the first database or secret mutation.
     await cloudflarePreflight(args, authority, cloudflareEnv);
     const values = protectedSecrets(resolve(args.get("secret-input-dir")), authority);
-    const activationReadback = await cloudflareActivation(args, authority, values, cloudflareEnv, () =>
-      databaseActivation(authority, values, resolve(args.get("postgres-input-dir"))),
+    const activationReadback = await cloudflareActivation(
+      args,
+      authority,
+      values,
+      cloudflareEnv,
+      () => databaseActivation(authority, values, resolve(args.get("postgres-input-dir"))),
     );
     const result = {
       schema_version: "videoforge-v2-13-guarded-activation-result/v1",

@@ -18,7 +18,6 @@ import {
   plan,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
   PREQUALIFICATION_OPERATOR_GRANTS_SHA256,
-  readPrequalificationReceipt,
   protectedSecrets,
   recoverQuarantineCreation,
   rolePrecheckQuery,
@@ -995,9 +994,10 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
     calls.push(sql);
     if (sql.includes("current_user")) return "videoforge_owner";
     if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock"))
-      return ledger.map((row) => `${row.version}\t${row.name}\t${row.filename}\t${row.sha256}`).join("\n");
-    if (sql.includes("FROM pg_extension WHERE extname='pgcrypto'"))
-      return JSON.stringify(pgcrypto);
+      return ledger
+        .map((row) => `${row.version}\t${row.name}\t${row.filename}\t${row.sha256}`)
+        .join("\n");
+    if (sql.includes("FROM pg_extension WHERE extname='pgcrypto'")) return JSON.stringify(pgcrypto);
     if (sql.includes("json_build_object('flags'")) return JSON.stringify(role);
     throw new Error(`unexpected guarded fake psql SQL: ${sql.slice(0, 100)}`);
   };
@@ -1005,12 +1005,18 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
     const verified = await verifyPrequalificationDatabase(currentAuthority, directory, {
       runCommand,
     });
-    assert.equal(verified.receipt.prequalification_database_bootstrap_sha256, receipt.prequalification_database_bootstrap_sha256);
+    assert.equal(
+      verified.receipt.prequalification_database_bootstrap_sha256,
+      receipt.prequalification_database_bootstrap_sha256,
+    );
     assert.equal(verified.ledger.length, 45);
     assert.equal(verified.pgcrypto.name, "pgcrypto");
     assert.equal(verified.role.function_acl.length, 17);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
-    assert.equal(calls.every((sql) => !sql.includes("CLOUDFLARE") && !sql.includes("production_secrets")), true);
+    assert.equal(
+      calls.every((sql) => !sql.includes("CLOUDFLARE") && !sql.includes("production_secrets")),
+      true,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

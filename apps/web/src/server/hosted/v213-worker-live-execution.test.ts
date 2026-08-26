@@ -85,7 +85,9 @@ describe("V213 in-Worker Workflow live transport", () => {
       evidence() as never,
       false,
       () => clock,
-      async (milliseconds) => { clock += milliseconds; },
+      async (milliseconds) => {
+        clock += milliseconds;
+      },
     );
     await expect(transport.execute(request)).rejects.toThrow("V213_WORKFLOW_ACK_UNKNOWN");
     cleanup = true;

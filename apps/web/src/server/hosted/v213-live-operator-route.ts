@@ -42,7 +42,10 @@ export interface V213OperatorRouteDependencies {
     readonly tokenSha256: Sha256;
     readonly document: V213OperatorExecutionDocument;
   }): Promise<
-    | { readonly action: "EXECUTE" | "RECONCILE"; readonly execution: Readonly<Record<string, unknown>> }
+    | {
+        readonly action: "EXECUTE" | "RECONCILE";
+        readonly execution: Readonly<Record<string, unknown>>;
+      }
     | { readonly action: "EXISTING"; readonly result: V213OperatorExecutionResult }
     | null
   >;

@@ -36,8 +36,7 @@ const EXECUTOR_SHA256 = `sha256:${createHash("sha256")
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const PREQUALIFICATION_SCHEMA =
-  "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v1";
 const PREQUALIFICATION_RECOVERY_MODES = new Set([
   "FRESH_36_TO_45",
   "RESUME_EXACT_PREFIX",
@@ -45,19 +44,19 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:6574bf363a3c54b953a7f02b9ab1aa6968487726116ac8588e620705ffeee31d",
+    "sha256:1fefe3b25027120d5da6340c8361174bbf8bacbe03bab3de1864e23855c52ac0",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:656a10fc8d510c50a248ec191b6a12777223d00d718b50643db8b59dee0672ea",
+    "sha256:5c3ab93ee301ec4f597b5e422dc62d35c27d6d075ff017b8e56b8396e92372ab",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:0af4d4ff120ec7f09d2302eeb7cb8f8aaa300391de1f4ac33dee2c9e1274014f",
+    "sha256:2a5a29c71bf5f0c2aa776e4ad8ba2a66b7144d9b12108d37819d8a3baa9efcd7",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
     "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
   "deploy/v2-13/neon-full-live-operator-grants.sql":
-    "sha256:e0903ba88c0a0af006dc60d908ef300b020cba8748ec41f3cade834b0b98ac85",
+    "sha256:60922d36e5aeb05fe34705198967aa3adf20cdf9ec61283810a565b6690b2c39",
   "packages/control-plane/migrations/manifest.json":
     "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa",
 });
@@ -443,21 +442,16 @@ async function executeFullLive({
 
   const verifyChainAtBoundary = async (operation, boundary) => {
     if (chainVerifier === undefined) return;
-    await chainVerifier(
-      structuredClone(current.state),
-      new Map(results),
-      {
-        operation: structuredClone(operation),
-        boundary,
-        outerStateSha256: current.sha256,
-        settledResultSha256:
-          current.state.phases[operation.phase]?.work?.[workIdFor(operation)]
-            ?.settled_result_sha256,
-        earlyFailure:
-          current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
-          operatorRoleVerified !== true,
-      },
-    );
+    await chainVerifier(structuredClone(current.state), new Map(results), {
+      operation: structuredClone(operation),
+      boundary,
+      outerStateSha256: current.sha256,
+      settledResultSha256:
+        current.state.phases[operation.phase]?.work?.[workIdFor(operation)]?.settled_result_sha256,
+      earlyFailure:
+        current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
+        operatorRoleVerified !== true,
+    });
   };
 
   // Rebuild the in-memory predecessor map in graph order before any resumed adapter is called.
@@ -705,7 +699,9 @@ async function executeFullLive({
   }
 
   try {
-    for (const operation of OPERATIONS.filter((item) => item.phase === "cleanup_and_reconciliation"))
+    for (const operation of OPERATIONS.filter(
+      (item) => item.phase === "cleanup_and_reconciliation",
+    ))
       await runOne(operation);
 
     const zero = results.get("prove-zero-workers");

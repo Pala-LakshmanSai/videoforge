@@ -31,9 +31,10 @@ test("V2-13 operator readback canonicalizes function argument OIDs under PGlite"
       JOIN pg_namespace n ON n.oid=p.pronamespace
       WHERE n.nspname='public' AND p.proname='videoforge_v213_signature_fixture';
     `);
-    assert.deepEqual(result.rows.map(({ signature }) => signature), [
-      "videoforge_v213_signature_fixture(uuid,jsonb,text,timestamptz)",
-    ]);
+    assert.deepEqual(
+      result.rows.map(({ signature }) => signature),
+      ["videoforge_v213_signature_fixture(uuid,jsonb,text,timestamptz)"],
+    );
   } finally {
     await database.close();
   }

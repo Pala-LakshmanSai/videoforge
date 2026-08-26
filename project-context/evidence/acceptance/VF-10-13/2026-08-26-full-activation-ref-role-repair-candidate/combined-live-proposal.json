@@ -31,12 +31,12 @@
     "exact_release_components": {
       "full_live_executor": {
         "path": "deploy/v2-13/full-live-executor.mjs",
-        "sha256": "sha256:ae12285cfe9fba5ad1afaa946f4d6e5a57adf686729e88167c147e00e9bfc73f",
+        "sha256": "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230",
         "sole_canonical_live_mutation_path": true
       },
       "full_live_adapters": {
         "path": "deploy/v2-13/full-live-adapters.mjs",
-        "sha256": "sha256:6574bf363a3c54b953a7f02b9ab1aa6968487726116ac8588e620705ffeee31d"
+        "sha256": "sha256:1fefe3b25027120d5da6340c8361174bbf8bacbe03bab3de1864e23855c52ac0"
       },
       "promotion": {
         "path": "deploy/v2-13/promote-qualified-production.mjs",
@@ -44,15 +44,15 @@
       },
       "guarded_activation": {
         "path": "deploy/v2-13/guarded-activation.mjs",
-        "sha256": "sha256:656a10fc8d510c50a248ec191b6a12777223d00d718b50643db8b59dee0672ea"
+        "sha256": "sha256:5c3ab93ee301ec4f597b5e422dc62d35c27d6d075ff017b8e56b8396e92372ab"
       },
       "orchestration_authority": {
         "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-        "sha256": "sha256:f6d832ef52d9aaf089c3b16bc8233ee29509fa5e3d5f33342fd6068737546c18"
+        "sha256": "sha256:e19d6f2bbce9e9634cc9d2dae21fc1e0451f4a06a1bd2bc076f813a236660be3"
       },
       "typescript_cli_bridge": {
         "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-        "sha256": "sha256:0af4d4ff120ec7f09d2302eeb7cb8f8aaa300391de1f4ac33dee2c9e1274014f"
+        "sha256": "sha256:2a5a29c71bf5f0c2aa776e4ad8ba2a66b7144d9b12108d37819d8a3baa9efcd7"
       },
       "runpod_dual_lane_transport": {
         "path": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
@@ -64,7 +64,7 @@
       },
       "operator_grants": {
         "path": "deploy/v2-13/neon-full-live-operator-grants.sql",
-        "sha256": "sha256:e0903ba88c0a0af006dc60d908ef300b020cba8748ec41f3cade834b0b98ac85"
+        "sha256": "sha256:60922d36e5aeb05fe34705198967aa3adf20cdf9ec61283810a565b6690b2c39"
       },
       "migration_manifest": {
         "path": "packages/control-plane/migrations/manifest.json",

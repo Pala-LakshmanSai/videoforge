@@ -210,9 +210,11 @@ export function evaluateHostedPairProductionGate(
     return disabled("PAID_APPROVAL_INVALID");
   if (
     !/^[0-9a-f]{40}$/u.test(input.cloudflare.sourceCommit) ||
-    ![input.cloudflare.versionIdSha256, input.cloudflare.deployedConfigSha256, input.cloudflare.readbackSha256].every(
-      (value) => SHA256.test(value),
-    ) ||
+    ![
+      input.cloudflare.versionIdSha256,
+      input.cloudflare.deployedConfigSha256,
+      input.cloudflare.readbackSha256,
+    ].every((value) => SHA256.test(value)) ||
     !Number.isFinite(Date.parse(input.cloudflare.observedAt)) ||
     Date.parse(input.cloudflare.observedAt) > now ||
     now - Date.parse(input.cloudflare.observedAt) > 5 * 60 * 1_000

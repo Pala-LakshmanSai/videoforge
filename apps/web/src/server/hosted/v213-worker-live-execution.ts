@@ -169,11 +169,11 @@ export class V213WorkflowLiveTransport implements V213LiveTransport {
     while (this.now() <= deadline && reads.length < 3) {
       const output = workflowOutput(await instance.status());
       if (output) reads.push(output);
-      if (reads.length < 3 && this.now() <= deadline) await this.sleep(this.execution.pollIntervalMs);
+      if (reads.length < 3 && this.now() <= deadline)
+        await this.sleep(this.execution.pollIntervalMs);
     }
     const output = reads[2];
-    if (!output || reads.length !== 3)
-      throw new Error("V213_WORKFLOW_CLEANUP_ACK_UNKNOWN");
+    if (!output || reads.length !== 3) throw new Error("V213_WORKFLOW_CLEANUP_ACK_UNKNOWN");
     const referenceSha256 = canonicalSha256({ workflowId, kind: "cleanup" });
     const cleanup = patchArtifactHash(output.cleanup, "canonicalArtifactSha256", referenceSha256);
     return {

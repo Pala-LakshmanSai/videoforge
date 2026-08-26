@@ -587,7 +587,10 @@ test("workflow-start authority adapter records one exact operator function call 
   const adapter = createWorkflowStartAuthorityAdapter({ database, input });
   const resultValue = await adapter({}, {}, new Map());
   assert.equal(calls.length, 2);
-  assert.match(calls[0].sql, /FROM public\.hosted_full_live_workflow_start_authorities WHERE id=\$1::uuid/u);
+  assert.match(
+    calls[0].sql,
+    /FROM public\.hosted_full_live_workflow_start_authorities WHERE id=\$1::uuid/u,
+  );
   assert.deepEqual(resultValue, {
     actualUsd: 0,
     authorityId: input.workflowAuthorityId,
@@ -656,10 +659,7 @@ test("workflow-start authority stops on an existing replay drift", async () => {
     },
   };
   const adapter = createWorkflowStartAuthorityAdapter({ database, input });
-  await assert.rejects(
-    adapter({}, {}, new Map()),
-    /DATABASE_WORKFLOW_AUTHORITY_REPLAY_DRIFT/u,
-  );
+  await assert.rejects(adapter({}, {}, new Map()), /DATABASE_WORKFLOW_AUTHORITY_REPLAY_DRIFT/u);
 });
 
 test("prequalification bootstrap executes the exact manifest tail through a locked fake-psql seam", async () => {
@@ -772,7 +772,10 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(receipt.recovery_mode, "FRESH_36_TO_45");
     assert.equal(receipt.ledger_before_count, 36);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
-    assert.equal(calls.every(([command]) => command === "psql"), true);
+    assert.equal(
+      calls.every(([command]) => command === "psql"),
+      true,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

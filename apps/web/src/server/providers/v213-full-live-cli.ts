@@ -675,10 +675,7 @@ export function readV213PrequalificationProtectedInputs(
     environment[V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd],
     "OPERATOR_DATABASE_FD_INVALID",
   );
-  if (
-    runpodApiKey.trim() !== runpodApiKey ||
-    runpodApiKey.length < 20
-  )
+  if (runpodApiKey.trim() !== runpodApiKey || runpodApiKey.length < 20)
     fail("PREQUALIFICATION_PROTECTED_INPUT_INVALID");
   try {
     exactOperatorDatabaseUrl(operatorDatabaseUrl);
@@ -784,7 +781,9 @@ export function readV213CleanupProtectedInputs(
   return Object.freeze({ request, runpodApiKey, operatorDatabaseUrl, cleanupInput });
 }
 
-function exactEarlyCleanupInput(value: unknown): V213EarlyCleanupProtectedInputs["earlyCleanupInput"] {
+function exactEarlyCleanupInput(
+  value: unknown,
+): V213EarlyCleanupProtectedInputs["earlyCleanupInput"] {
   const item = object(value);
   if (
     item?.schemaVersion !== V213_EARLY_CLEANUP_INPUT_SCHEMA ||
@@ -807,8 +806,7 @@ export function readV213EarlyCleanupProtectedInputs(
   )
     fail("EARLY_CLEANUP_AMBIENT_BINDING_REJECTED");
   const command = environment[V213_BRIDGE_ENVIRONMENT.command];
-  if (!CLEANUP_COMMANDS.has(command as V213FullLiveCommand))
-    fail("EARLY_CLEANUP_COMMAND_INVALID");
+  if (!CLEANUP_COMMANDS.has(command as V213FullLiveCommand)) fail("EARLY_CLEANUP_COMMAND_INVALID");
   let request: V213FullLiveCommandRequest;
   try {
     request = exactRequest(
@@ -2349,9 +2347,9 @@ export async function runV213FullLiveCli(
       environment[V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd] === undefined
     ) {
       const inputs = readV213EarlyCleanupProtectedInputs(environment, readFd);
-      const runtime = await (
-        options.createEarlyCleanupRuntime ?? createV213EarlyCleanupRuntime
-      )(inputs);
+      const runtime = await (options.createEarlyCleanupRuntime ?? createV213EarlyCleanupRuntime)(
+        inputs,
+      );
       result = await executeV213FullLiveCommand(inputs.request, runtime);
     } else if (CLEANUP_COMMANDS.has(command as V213FullLiveCommand)) {
       const inputs = readV213CleanupProtectedInputs(environment, readFd);

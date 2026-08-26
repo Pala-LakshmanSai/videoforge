@@ -614,12 +614,7 @@ async function complete(
       : null;
   if (
     !validSha(receiptEvidenceSha256) ||
-    !(await store.complete(
-      requestSha256,
-      completionSha256,
-      receiptEvidenceSha256,
-      result,
-    ))
+    !(await store.complete(requestSha256, completionSha256, receiptEvidenceSha256, result))
   )
     fail("LIVE_ACCEPTANCE_DURABLE_COMPLETION_FAILED");
   return completionSha256;

@@ -140,6 +140,7 @@ SELECT
   AND NOT EXISTS (SELECT 1 FROM public_default_functions)
   AND EXISTS (SELECT 1 FROM pg_extension WHERE extname='pgcrypto' AND extnamespace='public'::regnamespace)
   AS operator_acl_exact
+FROM role_acl
 \gset
 \if :operator_acl_exact
 COMMIT;

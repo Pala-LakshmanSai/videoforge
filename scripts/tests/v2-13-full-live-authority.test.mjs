@@ -297,23 +297,19 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.prequalification_database_bootstrap_policy.receipt_full_exact_fields.pop();
     },
     (proposal) => {
-      proposal.exact_execution_graph.prequalification_database_bootstrap_policy
-        .recovery_mode_ledger_before_count.RESUME_EXACT_PREFIX.pop();
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.recovery_mode_ledger_before_count.RESUME_EXACT_PREFIX.pop();
     },
     (proposal) => {
-      proposal.exact_execution_graph.prequalification_database_bootstrap_policy
-        .guarded_activation_reapplies_migrations_or_operator_role = true;
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.guarded_activation_reapplies_migrations_or_operator_role = true;
     },
     (proposal) => {
-      proposal.exact_execution_graph.prequalification_database_bootstrap_policy
-        .operator_grants_sql_revoke_public_execute = false;
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.operator_grants_sql_revoke_public_execute = false;
     },
     (proposal) => {
       proposal.exact_execution_graph.prequalification_database_bootstrap_policy.operator_role_flags.rolinherit = true;
     },
     (proposal) => {
-      proposal.exact_execution_graph.prequalification_database_bootstrap_policy
-        .guarded_activation_receipt_verified_before_application_secret_reads = false;
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.guarded_activation_receipt_verified_before_application_secret_reads = false;
     },
     (proposal) => {
       proposal.exact_execution_graph.workflow_start_authority_policy.phase_cap_usd = 1;
@@ -330,8 +326,7 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.crash_safe_cleanup_policy.resumes_only_unsettled_cleanup_work = false;
     },
     (proposal) => {
-      proposal.exact_execution_graph.prequalification_bridge_policy.receipt_gate
-        .require_prior_result_and_file_hash_match = false;
+      proposal.exact_execution_graph.prequalification_bridge_policy.receipt_gate.require_prior_result_and_file_hash_match = false;
     },
     (proposal) => {
       proposal.exact_execution_graph.prequalification_bridge_policy.prequalification_allowed_environment_names.push(
@@ -339,8 +334,7 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       );
     },
     (proposal) => {
-      proposal.exact_execution_graph.prequalification_bridge_policy.staged_full_preflight
-        .bootstrap_receipt_cas_must_have_passed = false;
+      proposal.exact_execution_graph.prequalification_bridge_policy.staged_full_preflight.bootstrap_receipt_cas_must_have_passed = false;
     },
   ];
   for (const mutate of mutations) {
@@ -533,8 +527,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     prequalification_database_bootstrap_operator_function_signature_namespace: "public",
     prequalification_database_bootstrap_operator_function_signature_canonicalization:
       "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
-    prequalification_database_bootstrap_operator_acl_comparison:
-      "OID_SET_SORTED_EXACT_ALLOWLIST",
+    prequalification_database_bootstrap_operator_acl_comparison: "OID_SET_SORTED_EXACT_ALLOWLIST",
     prequalification_database_bootstrap_public_execute_readback_count: 0,
     prequalification_database_bootstrap_public_default_execute_readback_count: 0,
     prequalification_database_bootstrap_ownership_catalogs: [
@@ -556,10 +549,8 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "pg_ts_config.cfgowner",
     ],
     prequalification_database_bootstrap_ownership_readback_is_cluster_wide: true,
-    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count:
-      45,
-    prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit:
-      true,
+    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 45,
+    prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit: true,
     prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
     prequalification_database_bootstrap_phase_cap_usd: 0,
     prequalification_database_bootstrap_receipt_path: "prequalification-database-bootstrap.json",
@@ -644,6 +635,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     grants,
     /ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;/u,
   );
+  assert.match(grants, /\nFROM role_acl\s*\\gset/u);
   assert.doesNotMatch(
     grants.slice(grantStart, grantEnd),
     /GRANT\s+EXECUTE\s+ON\s+FUNCTION[\s\S]*?\bTO\s+PUBLIC\b/iu,

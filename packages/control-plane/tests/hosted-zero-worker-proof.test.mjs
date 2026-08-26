@@ -51,7 +51,9 @@ test("0044 pins pgcrypto HMAC and rejects forged and cross-scope proofs before p
         /zero evidence binding invalid/u,
       );
     }
-    const count = await executor.query("SELECT count(*)::integer AS count FROM hosted_pair_zero_worker_observations");
+    const count = await executor.query(
+      "SELECT count(*)::integer AS count FROM hosted_pair_zero_worker_observations",
+    );
     assert.equal(count.rows[0].count, 0);
   } finally {
     await database.close();
