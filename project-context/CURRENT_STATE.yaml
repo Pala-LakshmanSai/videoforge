@@ -64,9 +64,9 @@ two_track_execution:
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 provider_free_product_progress:
-  full_live_execution_source_commit: "a8521f8"
-  full_live_execution_source_status: PROVIDER_FREE_REPAIR_SOURCE_AND_PROPOSAL_DIRTY_TEST_GREEN_FRESH_APPROVAL_REQUIRED
-  full_live_execution_source_note: "The coordinated provider-free repair extends the zero-cap bootstrap_prequalification_database boundary with exact canonical 17-function ACL/PUBLIC-zero and cluster-wide ownership readback, late operator-DSN value access, operator verification transition, materialization-chain verification, early RunPod-only no-database cleanup, three-read stable billing, and bounded bridge child timeouts. The replacement blocked proposal binds the 25-operation graph and these contracts; current source/proposal bytes are not sealed, the prior authority is superseded and unconsumed, and fresh independent audit plus exact approval remain required. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
+  full_live_execution_source_commit: "ac472e01b841db49f4cfd9b53442709e8afaf6ed"
+  full_live_execution_source_status: PROVIDER_FREE_REPAIR_COMMITTED_TEST_GREEN_PROPOSAL_BLOCKED_UNSEALED_FRESH_APPROVAL_REQUIRED
+  full_live_execution_source_note: "Coordinated commit ac472e0 extends the zero-cap bootstrap_prequalification_database boundary with exact canonical 17-function ACL/PUBLIC-zero and cluster-wide ownership readback, late operator-DSN value access, operator verification transition, materialization-chain verification, early RunPod-only no-database cleanup, three-read stable billing, and bounded bridge child timeouts. The replacement blocked proposal binds the 25-operation graph and these contracts; it is not sealed, the prior authority is superseded and unconsumed, and fresh independent audit plus exact approval remain required. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
   full_live_executor_sha256: "sha256:ae12285cfe9fba5ad1afaa946f4d6e5a57adf686729e88167c147e00e9bfc73f"
   full_live_source_component_hashes:
     full_live_executor: "sha256:ae12285cfe9fba5ad1afaa946f4d6e5a57adf686729e88167c147e00e9bfc73f"
@@ -96,7 +96,7 @@ provider_free_product_progress:
   fresh_v2_13_blocked_draft_sha256: "sha256:4c9fd59e47690a3f3d6eac09fdd7fd41384da388194d09e4545ab23520d72329"
   fresh_v2_13_release_source_commit: null
   fresh_v2_13_release_tag: null
-  next_v2_13_action: "Independently audit committed repair a8521f8 and the blocked 25-operation proposal contract, bind the final repaired source commit and exact component hashes including the external validator tree entry, then seal a new proposal and request fresh exact approval."
+  next_v2_13_action: "Independently audit committed repair ac472e0 and the blocked 25-operation proposal contract, then seal a new proposal and request fresh exact approval."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
