@@ -41,6 +41,9 @@ const migration0045Sql = await readFile(
   ),
   "utf8",
 );
+const migrationManifest = await readFile(
+  path.resolve(directory, "../../../../../packages/control-plane/migrations/manifest.json"),
+);
 
 assert(proposal.schema_version === "videoforge.v2-13-full-live-completion-proposal/v3", "SCHEMA");
 assert(proposal.proposal_status === "BLOCKED_UNSEALED_SOURCE_REPAIR_PENDING", "STATUS");
@@ -65,6 +68,10 @@ assert(
 assert(
   sha256(operatorGrantsSql) === EXACT_V3_RELEASE_COMPONENTS.operator_grants.sha256,
   "OPERATOR_GRANTS_SOURCE_HASH",
+);
+assert(
+  sha256(migrationManifest) === EXACT_V3_RELEASE_COMPONENTS.migration_manifest.sha256,
+  "MIGRATION_MANIFEST_SOURCE_HASH",
 );
 assert(
   JSON.stringify(proposal.exact_execution_graph.ordered_operation_ids) ===
@@ -138,6 +145,35 @@ assert(
   operatorGrantsSql.includes('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"operator_role";'),
   "OPERATOR_GRANTS_REVOKE_ALL_FUNCTIONS",
 );
+const grantStart = operatorGrantsSql.indexOf("GRANT EXECUTE ON FUNCTION");
+const grantEnd = operatorGrantsSql.indexOf("\nWITH target AS", grantStart);
+assert(grantStart >= 0 && grantEnd > grantStart, "OPERATOR_GRANTS_ALLOWLIST_BLOCK");
+const canonicalizeSignature = (signature) =>
+  signature.replace(/\s+/gu, "").replaceAll("timestampwithtimezone", "timestamptz");
+const grantedSignatures = [
+  ...operatorGrantsSql
+    .slice(grantStart, grantEnd)
+    .matchAll(/public\.(videoforge_[a-z0-9_]+\([^)]*\))/gu),
+].map(([match]) => canonicalizeSignature(match.slice("public.".length)));
+const expectedSignatures = EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures
+  .map(canonicalizeSignature)
+  .sort();
+assert(grantedSignatures.length === 17, "OPERATOR_GRANTS_SIGNATURE_COUNT");
+assert(new Set(grantedSignatures).size === grantedSignatures.length, "OPERATOR_GRANTS_DUPLICATE_SIGNATURE");
+assert(
+  JSON.stringify([...grantedSignatures].sort()) === JSON.stringify(expectedSignatures),
+  "OPERATOR_GRANTS_EXACT_SIGNATURE_ALLOWLIST",
+);
+assert(
+  operatorGrantsSql.includes("REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;") &&
+    operatorGrantsSql.includes(
+      "ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;",
+    ) &&
+    !/GRANT\s+EXECUTE\s+ON\s+FUNCTION[\s\S]*?\bTO\s+PUBLIC\b/iu.test(
+      operatorGrantsSql.slice(grantStart, grantEnd),
+    ),
+  "OPERATOR_GRANTS_PUBLIC_ZERO",
+);
 for (const signature of EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures)
   assert(
     migration0045Sql.includes(`REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC;`),
@@ -171,6 +207,37 @@ assert(
       exact_reconciler_role: "videoforge_hosted_reconciler",
       roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
       pgcrypto_required: true,
+      prequalification_database_bootstrap_operator_function_signature_count: 17,
+      prequalification_database_bootstrap_operator_function_signature_namespace: "public",
+      prequalification_database_bootstrap_operator_function_signature_canonicalization:
+        "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
+      prequalification_database_bootstrap_operator_acl_comparison:
+        "OID_SET_SORTED_EXACT_ALLOWLIST",
+      prequalification_database_bootstrap_public_execute_readback_count: 0,
+      prequalification_database_bootstrap_public_default_execute_readback_count: 0,
+      prequalification_database_bootstrap_ownership_catalogs: [
+        "pg_database.datdba",
+        "pg_extension.extowner",
+        "pg_class.relowner",
+        "pg_namespace.nspowner",
+        "pg_proc.proowner",
+        "pg_type.typowner",
+        "pg_foreign_data_wrapper.fdwowner",
+        "pg_foreign_server.srvowner",
+        "pg_event_trigger.evtowner",
+        "pg_tablespace.spcowner",
+        "pg_publication.pubowner",
+        "pg_subscription.subowner",
+        "pg_largeobject_metadata.lomowner",
+        "pg_collation.collowner",
+        "pg_ts_dict.dictowner",
+        "pg_ts_config.cfgowner",
+      ],
+      prequalification_database_bootstrap_ownership_readback_is_cluster_wide: true,
+      prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count:
+        45,
+      prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit:
+        true,
       prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
       prequalification_database_bootstrap_phase_cap_usd: 0,
       prequalification_database_bootstrap_receipt_path: "prequalification-database-bootstrap.json",

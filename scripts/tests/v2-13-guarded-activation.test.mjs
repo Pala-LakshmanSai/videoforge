@@ -17,6 +17,7 @@ import {
   SECRET_NAMES,
   plan,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
+  PREQUALIFICATION_OPERATOR_GRANTS_SHA256,
   readPrequalificationReceipt,
   protectedSecrets,
   recoverQuarantineCreation,
@@ -95,6 +96,7 @@ function authority() {
     release: {
       commit: "1".repeat(40),
       migration_manifest_sha256: fingerprint,
+      operator_grants_sha256: PREQUALIFICATION_OPERATOR_GRANTS_SHA256,
       production_config_activation_sha256: fingerprint,
       media_worker_release_manifest_sha256: fingerprint,
     },

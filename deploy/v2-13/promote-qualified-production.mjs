@@ -138,6 +138,42 @@ function assertDatabasePromotion(snapshot, record) {
 function createPromotionDatabaseAdapter(database) {
   if (database === null || typeof database !== "object" || typeof database.query !== "function")
     fail("DATABASE_ADAPTER_CONTRACT");
+  const canonicalExpiresAt = (value) => {
+    const parsed = Date.parse(value ?? "");
+    if (Number.isNaN(parsed)) fail("DATABASE_WORKFLOW_AUTHORITY_INPUT");
+    return new Date(parsed).toISOString();
+  };
+  const workflowAuthorityReadSql =
+    'SELECT id::text AS "workflowAuthorityId",full_live_authority_id::text AS "authorityId",token_sha256 AS "tokenSha256",to_char(expires_at AT TIME ZONE \'UTC\',\'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"\') AS "expiresAt" FROM public.hosted_full_live_workflow_start_authorities WHERE id=$1::uuid';
+  const readWorkflowStartAuthority = async ({ workflowAuthorityId }) => {
+    let result;
+    try {
+      result = await database.query(workflowAuthorityReadSql, [workflowAuthorityId]);
+    } catch {
+      fail("DATABASE_WORKFLOW_AUTHORITY_READ");
+    }
+    if (!Array.isArray(result?.rows) || result.rows.length > 1)
+      fail("DATABASE_WORKFLOW_AUTHORITY_READ_RESULT");
+    return result.rows.length === 0 ? null : result.rows[0];
+  };
+  const exactWorkflowAuthority = (row, input) => {
+    if (
+      row === null ||
+      typeof row !== "object" ||
+      JSON.stringify(Object.keys(row).sort()) !==
+        JSON.stringify(["authorityId", "expiresAt", "tokenSha256", "workflowAuthorityId"].sort()) ||
+      row.workflowAuthorityId !== input.workflowAuthorityId ||
+      row.authorityId !== input.authorityId ||
+      row.tokenSha256 !== input.tokenSha256 ||
+      canonicalExpiresAt(row.expiresAt) !== canonicalExpiresAt(input.expiresAt)
+    )
+      return false;
+    return Object.freeze({
+      authorityId: row.workflowAuthorityId,
+      tokenSha256: row.tokenSha256,
+      expiresAt: canonicalExpiresAt(row.expiresAt),
+    });
+  };
   return Object.freeze({
     async recordAuthority({ authorityId, authority }) {
       const result = await database.query(
@@ -168,11 +204,40 @@ function createPromotionDatabaseAdapter(database) {
         Number.isNaN(Date.parse(expiresAt ?? ""))
       )
         fail("DATABASE_WORKFLOW_AUTHORITY_INPUT");
-      const result = await database.query(
-        "SELECT public.videoforge_record_v213_workflow_start_authority($1::uuid,$2::uuid,$3,$4::timestamptz) AS authority",
-        [workflowAuthorityId, authorityId, tokenSha256, expiresAt],
-      );
-      if (result?.rows?.length !== 1) fail("DATABASE_WORKFLOW_AUTHORITY_RESULT");
+      const input = { workflowAuthorityId, authorityId, tokenSha256, expiresAt };
+      // The migration function intentionally has no replay insert guard.  Always reconcile the
+      // exact prior row before inserting, so a retry after an ambiguous commit cannot duplicate
+      // or drift the workflow-start authority.
+      const existing = await readWorkflowStartAuthority(input);
+      if (existing !== null) {
+        const reconciled = exactWorkflowAuthority(existing, input);
+        if (reconciled === false) fail("DATABASE_WORKFLOW_AUTHORITY_REPLAY_DRIFT");
+        return reconciled;
+      }
+      let result;
+      try {
+        result = await database.query(
+          "SELECT public.videoforge_record_v213_workflow_start_authority($1::uuid,$2::uuid,$3,$4::timestamptz) AS authority",
+          [workflowAuthorityId, authorityId, tokenSha256, expiresAt],
+        );
+        if (result?.rows?.length !== 1 || result.rows[0]?.authority === null)
+          throw new Error("malformed workflow authority result");
+      } catch {
+        // The insert may have committed before the transport failed.  A second exact read is the
+        // only safe recovery; never blindly call the INSERT function again.
+        let reconciled;
+        try {
+          reconciled = await readWorkflowStartAuthority(input);
+        } catch {
+          fail("DATABASE_WORKFLOW_AUTHORITY_AMBIGUOUS");
+        }
+        if (reconciled !== null) {
+          const exact = exactWorkflowAuthority(reconciled, input);
+          if (exact !== false) return exact;
+          fail("DATABASE_WORKFLOW_AUTHORITY_REPLAY_DRIFT");
+        }
+        fail("DATABASE_WORKFLOW_AUTHORITY_AMBIGUOUS");
+      }
       return Object.freeze(result.rows[0].authority);
     },
     async recordCloudflareActivation({ activationId, promotionId, readback }) {

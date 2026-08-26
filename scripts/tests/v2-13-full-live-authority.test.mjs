@@ -529,6 +529,37 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     exact_reconciler_role: "videoforge_hosted_reconciler",
     roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
     pgcrypto_required: true,
+    prequalification_database_bootstrap_operator_function_signature_count: 17,
+    prequalification_database_bootstrap_operator_function_signature_namespace: "public",
+    prequalification_database_bootstrap_operator_function_signature_canonicalization:
+      "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
+    prequalification_database_bootstrap_operator_acl_comparison:
+      "OID_SET_SORTED_EXACT_ALLOWLIST",
+    prequalification_database_bootstrap_public_execute_readback_count: 0,
+    prequalification_database_bootstrap_public_default_execute_readback_count: 0,
+    prequalification_database_bootstrap_ownership_catalogs: [
+      "pg_database.datdba",
+      "pg_extension.extowner",
+      "pg_class.relowner",
+      "pg_namespace.nspowner",
+      "pg_proc.proowner",
+      "pg_type.typowner",
+      "pg_foreign_data_wrapper.fdwowner",
+      "pg_foreign_server.srvowner",
+      "pg_event_trigger.evtowner",
+      "pg_tablespace.spcowner",
+      "pg_publication.pubowner",
+      "pg_subscription.subowner",
+      "pg_largeobject_metadata.lomowner",
+      "pg_collation.collowner",
+      "pg_ts_dict.dictowner",
+      "pg_ts_config.cfgowner",
+    ],
+    prequalification_database_bootstrap_ownership_readback_is_cluster_wide: true,
+    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count:
+      45,
+    prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit:
+      true,
     prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
     prequalification_database_bootstrap_phase_cap_usd: 0,
     prequalification_database_bootstrap_receipt_path: "prequalification-database-bootstrap.json",
@@ -596,11 +627,27 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   const grantEnd = grants.indexOf("\nWITH target AS", grantStart);
   assert.notEqual(grantStart, -1);
   assert.notEqual(grantEnd, -1);
-  const grantedSignatures = [...grants.slice(grantStart, grantEnd).matchAll(/public\.(videoforge_[a-z0-9_]+\([^)]*\))/gu)].map(
-    ([match]) => match.slice("public.".length),
-  );
-  assert.deepEqual(grantedSignatures, bootstrap.exact_operator_function_signatures);
+  const canonicalizeSignature = (signature) =>
+    signature.replace(/\s+/gu, "").replaceAll("timestampwithtimezone", "timestamptz");
+  const grantedSignatures = [
+    ...grants.slice(grantStart, grantEnd).matchAll(/public\.(videoforge_[a-z0-9_]+\([^)]*\))/gu),
+  ].map(([match]) => canonicalizeSignature(match.slice("public.".length)));
+  const expectedSignatures = bootstrap.exact_operator_function_signatures
+    .map(canonicalizeSignature)
+    .sort();
+  assert.equal(grantedSignatures.length, 17);
+  assert.equal(new Set(grantedSignatures).size, grantedSignatures.length);
+  assert.deepEqual([...grantedSignatures].sort(), expectedSignatures);
   assert.match(grants, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"operator_role";/u);
+  assert.match(grants, /REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;/u);
+  assert.match(
+    grants,
+    /ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;/u,
+  );
+  assert.doesNotMatch(
+    grants.slice(grantStart, grantEnd),
+    /GRANT\s+EXECUTE\s+ON\s+FUNCTION[\s\S]*?\bTO\s+PUBLIC\b/iu,
+  );
   const migration = readFileSync(
     "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
     "utf8",

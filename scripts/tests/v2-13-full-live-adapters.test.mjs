@@ -557,6 +557,10 @@ test("workflow-start authority adapter records one exact operator function call 
   const database = {
     async query(sql, parameters) {
       calls.push({ sql, parameters });
+      if (sql.startsWith('SELECT id::text AS "workflowAuthorityId"')) {
+        assert.deepEqual(parameters, [input.workflowAuthorityId]);
+        return { rows: [] };
+      }
       assert.equal(
         sql,
         "SELECT public.videoforge_record_v213_workflow_start_authority($1::uuid,$2::uuid,$3,$4::timestamptz) AS authority",
@@ -582,13 +586,80 @@ test("workflow-start authority adapter records one exact operator function call 
   };
   const adapter = createWorkflowStartAuthorityAdapter({ database, input });
   const resultValue = await adapter({}, {}, new Map());
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].sql, /FROM public\.hosted_full_live_workflow_start_authorities WHERE id=\$1::uuid/u);
   assert.deepEqual(resultValue, {
     actualUsd: 0,
     authorityId: input.workflowAuthorityId,
     tokenSha256: input.tokenSha256,
     expiresAt: input.expiresAt,
   });
+});
+
+test("workflow-start authority reconciles an ambiguous insert without redispatch", async () => {
+  const input = {
+    workflowAuthorityId: "11111111-1111-4111-8111-111111111111",
+    authorityId: "22222222-2222-4222-8222-222222222222",
+    tokenSha256: `sha256:${"a".repeat(64)}`,
+    expiresAt: "2026-08-26T12:00:00.000Z",
+  };
+  let reads = 0;
+  let inserts = 0;
+  const database = {
+    async query(sql) {
+      if (sql.startsWith('SELECT id::text AS "workflowAuthorityId"')) {
+        reads += 1;
+        return reads === 1
+          ? { rows: [] }
+          : {
+              rows: [
+                {
+                  workflowAuthorityId: input.workflowAuthorityId,
+                  authorityId: input.authorityId,
+                  tokenSha256: input.tokenSha256,
+                  expiresAt: input.expiresAt,
+                },
+              ],
+            };
+      }
+      inserts += 1;
+      throw new Error("transport lost after commit");
+    },
+  };
+  const adapter = createWorkflowStartAuthorityAdapter({ database, input });
+  await assert.doesNotReject(adapter({}, {}, new Map()));
+  assert.equal(reads, 2);
+  assert.equal(inserts, 1);
+});
+
+test("workflow-start authority stops on an existing replay drift", async () => {
+  const input = {
+    workflowAuthorityId: "11111111-1111-4111-8111-111111111111",
+    authorityId: "22222222-2222-4222-8222-222222222222",
+    tokenSha256: `sha256:${"a".repeat(64)}`,
+    expiresAt: "2026-08-26T12:00:00.000Z",
+  };
+  const database = {
+    async query(sql) {
+      if (sql.startsWith('SELECT id::text AS "workflowAuthorityId"'))
+        return {
+          rows: [
+            {
+              workflowAuthorityId: input.workflowAuthorityId,
+              authorityId: "33333333-3333-4333-8333-333333333333",
+              tokenSha256: input.tokenSha256,
+              expiresAt: input.expiresAt,
+            },
+          ],
+        };
+      throw new Error("insert must not be attempted");
+    },
+  };
+  const adapter = createWorkflowStartAuthorityAdapter({ database, input });
+  await assert.rejects(
+    adapter({}, {}, new Map()),
+    /DATABASE_WORKFLOW_AUTHORITY_REPLAY_DRIFT/u,
+  );
 });
 
 test("prequalification bootstrap executes the exact manifest tail through a locked fake-psql seam", async () => {

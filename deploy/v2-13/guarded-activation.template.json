@@ -28,6 +28,7 @@
   "release": {
     "commit": "__V2_13_COMMIT__",
     "migration_manifest_sha256": "__V2_13_MIGRATION_MANIFEST_SHA256__",
+    "operator_grants_sha256": "__V2_13_OPERATOR_GRANTS_SHA256__",
     "production_config_activation_sha256": "__V2_13_CONFIG_ACTIVATION_SHA256__",
     "media_worker_release_manifest_sha256": "__V2_13_RELEASE_MANIFEST_SHA256__"
   },

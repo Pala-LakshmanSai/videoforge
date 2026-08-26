@@ -25,6 +25,7 @@ import {
   createConcreteFullLiveAdapters,
   preflightConcreteFullLiveInputs,
   readAuthenticatedGithubTime,
+  verifyMaterializationChainFile,
 } from "./full-live-adapters.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -44,17 +45,21 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:d0373598f0044527d194107c04d1a124e9f6124f4fa952957ee1ad98efb8fa6a",
+    "sha256:6574bf363a3c54b953a7f02b9ab1aa6968487726116ac8588e620705ffeee31d",
   "deploy/v2-13/promote-qualified-production.mjs":
-    "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
+    "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:56ed1aa3e729c30d35a5432c3931305d3bc65d4aefd601b021a8c5064dfc450d",
+    "sha256:656a10fc8d510c50a248ec191b6a12777223d00d718b50643db8b59dee0672ea",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:7d10c80918b2f47fac9f9732720c66580427f0c7aac6bde72fbb32cd27769b43",
+    "sha256:0af4d4ff120ec7f09d2302eeb7cb8f8aaa300391de1f4ac33dee2c9e1274014f",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
     "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
+  "deploy/v2-13/neon-full-live-operator-grants.sql":
+    "sha256:e0903ba88c0a0af006dc60d908ef300b020cba8748ec41f3cade834b0b98ac85",
+  "packages/control-plane/migrations/manifest.json":
+    "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -387,6 +392,7 @@ async function executeFullLive({
       fail("EXECUTOR_SOURCE_DRIFT");
     return state;
   });
+  operatorRoleVerified = current.state.operator_role_verified === true;
   if (
     [
       "CONSUMED_SINGLE_EXECUTION_COMPLETE",
@@ -447,6 +453,9 @@ async function executeFullLive({
         settledResultSha256:
           current.state.phases[operation.phase]?.work?.[workIdFor(operation)]
             ?.settled_result_sha256,
+        earlyFailure:
+          current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
+          operatorRoleVerified !== true,
       },
     );
   };
@@ -482,8 +491,20 @@ async function executeFullLive({
       }
       if (prior === undefined) fail("SETTLED_RESULT_UNAVAILABLE", operation.id);
       const result = assertResult(operation, durableResult(prior), current.state, results);
+      if (
+        operation.id === "bootstrap-prequalification-database" &&
+        current.state.operator_role_verified !== true
+      ) {
+        current = stateMutation(statePath, current.sha256, (state) =>
+          recordSettledResult(state, {
+            phaseName: operation.phase,
+            workId: workIdFor(operation),
+            result,
+          }),
+        );
+      }
       results.set(operation.id, result);
-      if (operation.id === "bootstrap-prequalification-database") operatorRoleVerified = true;
+      operatorRoleVerified = current.state.operator_role_verified === true;
       await verifyChainAtBoundary(operation, "hydrated");
     }
   };
@@ -510,8 +531,16 @@ async function executeFullLive({
       }
       if (prior === undefined) fail("SETTLED_RESULT_UNAVAILABLE", operation.id);
       const result = assertResult(operation, durableResult(prior), current.state, results);
+      if (
+        operation.id === "bootstrap-prequalification-database" &&
+        current.state.operator_role_verified !== true
+      ) {
+        current = stateMutation(statePath, current.sha256, (state) =>
+          recordSettledResult(state, { phaseName: operation.phase, workId, result }),
+        );
+      }
       results.set(operation.id, result);
-      if (operation.id === "bootstrap-prequalification-database") operatorRoleVerified = true;
+      operatorRoleVerified = current.state.operator_role_verified === true;
       await verifyChainAtBoundary(operation, "settled");
       return result;
     }
@@ -575,6 +604,7 @@ async function executeFullLive({
         result,
       });
     });
+    operatorRoleVerified = current.state.operator_role_verified === true;
     results.set(operation.id, result);
     await verifyChainAtBoundary(operation, "settled");
     return result;
@@ -657,7 +687,10 @@ async function executeFullLive({
       } else throw error;
     }
   } else {
-    if (preflight !== undefined)
+    // An unverified bootstrap restart must enter the request+RunPod-only child directly.  The
+    // normal cleanup preflight reads the operator DSN (and may inspect materialized input); both
+    // are unavailable by contract until the bootstrap result has settled and been hydrated.
+    if (preflight !== undefined && !earlyCleanupFailure)
       await preflight(structuredClone(current.state), current.sha256, {
         cleanupOnly: true,
         earlyFailure: earlyCleanupFailure,
@@ -784,6 +817,14 @@ async function main() {
     runOperation: runConcreteOperation,
     runCleanupOperation: runConcreteOperation,
     runEarlyCleanupOperation: runConcreteOperation,
+    verifyMaterializationChain: (state, priorResults, context) =>
+      verifyMaterializationChainFile({
+        environment: process.env,
+        state,
+        priorResults,
+        operation: context.operation,
+        earlyFailure: context.earlyFailure === true,
+      }),
   });
   process.stdout.write(
     `${JSON.stringify({ state_file: statePath, state_sha256: result.sha256, state: result.state.state, failed: result.failed })}\n`,

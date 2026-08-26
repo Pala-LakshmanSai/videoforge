@@ -65,19 +65,20 @@ two_track_execution:
 
 provider_free_product_progress:
   full_live_execution_source_commit: "a8521f8"
-  full_live_execution_source_status: PROVIDER_FREE_REPAIR_COMMITTED_TEST_GREEN_PROPOSAL_BLOCKED_UNSEALED_FRESH_APPROVAL_REQUIRED
-  full_live_execution_source_note: "Commit a8521f8 preserves the closed default-no-op catalog and adds the zero-cap bootstrap_prequalification_database operation after SoulX verification and before fresh-live-preflight. The replacement blocked proposal now binds the 25-operation graph, including zero-cap record-workflow-start-authority after promotion, exact 36-to-45 recovery modes, pgcrypto/migrations 0045, full receipt/ACL/public-revoke readback, guarded receipt verification before secret reads, durable billing, and a separate early no-database cleanup seam. The split bridge exposes only request, RunPod key, and operator database seams before the verified receipt; runtime/reconciler roles remain absent until guarded activation. Focused source/test evidence remains provider-free; independent audit, fresh sealing, and exact approval remain required. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
-  full_live_executor_sha256: "sha256:d91f8e6f4ed33c8dc1cbfb7ce41d7155e03d1459e457016e45235ebce53c366f"
+  full_live_execution_source_status: PROVIDER_FREE_REPAIR_SOURCE_AND_PROPOSAL_DIRTY_TEST_GREEN_FRESH_APPROVAL_REQUIRED
+  full_live_execution_source_note: "The coordinated provider-free repair extends the zero-cap bootstrap_prequalification_database boundary with exact canonical 17-function ACL/PUBLIC-zero and cluster-wide ownership readback, late operator-DSN value access, operator verification transition, materialization-chain verification, early RunPod-only no-database cleanup, three-read stable billing, and bounded bridge child timeouts. The replacement blocked proposal binds the 25-operation graph and these contracts; current source/proposal bytes are not sealed, the prior authority is superseded and unconsumed, and fresh independent audit plus exact approval remain required. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
+  full_live_executor_sha256: "sha256:ae12285cfe9fba5ad1afaa946f4d6e5a57adf686729e88167c147e00e9bfc73f"
   full_live_source_component_hashes:
-    full_live_executor: "sha256:d91f8e6f4ed33c8dc1cbfb7ce41d7155e03d1459e457016e45235ebce53c366f"
-    full_live_adapters: "sha256:d0373598f0044527d194107c04d1a124e9f6124f4fa952957ee1ad98efb8fa6a"
-    promotion: "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66"
-    guarded_activation: "sha256:56ed1aa3e729c30d35a5432c3931305d3bc65d4aefd601b021a8c5064dfc450d"
-    orchestration_authority: "sha256:bc7cf4709d43ee86016c391a8484ab295478d1e17db78b773ee9433f488bff02"
-    typescript_cli_bridge: "sha256:7d10c80918b2f47fac9f9732720c66580427f0c7aac6bde72fbb32cd27769b43"
+    full_live_executor: "sha256:ae12285cfe9fba5ad1afaa946f4d6e5a57adf686729e88167c147e00e9bfc73f"
+    full_live_adapters: "sha256:6574bf363a3c54b953a7f02b9ab1aa6968487726116ac8588e620705ffeee31d"
+    promotion: "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0"
+    guarded_activation: "sha256:656a10fc8d510c50a248ec191b6a12777223d00d718b50643db8b59dee0672ea"
+    orchestration_authority: "sha256:f6d832ef52d9aaf089c3b16bc8233ee29509fa5e3d5f33342fd6068737546c18"
+    typescript_cli_bridge: "sha256:0af4d4ff120ec7f09d2302eeb7cb8f8aaa300391de1f4ac33dee2c9e1274014f"
     runpod_dual_lane_transport: "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6"
     migration_0045: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
-    operator_grants: "sha256:eff9aad6a3bb73ccf041b6eccc7641d2ff3c83a31481a733e47b3599f864cacd"
+    operator_grants: "sha256:e0903ba88c0a0af006dc60d908ef300b020cba8748ec41f3cade834b0b98ac85"
+    migration_manifest: "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa"
     approval_validator: null
   approval_validator_source_binding:
     mode: EXTERNAL_GIT_COMMIT_TREE_ENTRY
@@ -92,7 +93,7 @@ provider_free_product_progress:
   fresh_v2_13_proposal_status: BLOCKED_UNSEALED_SOURCE_REPAIR_PENDING_OLD_AUTHORITY_SUPERSEDED_UNCONSUMED
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json"
   fresh_v2_13_proposal_sha256: null
-  fresh_v2_13_blocked_draft_sha256: "sha256:6e9d7ac9b4525198a02da1f041658d0f9c36ae67950c184276cba0520e80b1b0"
+  fresh_v2_13_blocked_draft_sha256: "sha256:4c9fd59e47690a3f3d6eac09fdd7fd41384da388194d09e4545ab23520d72329"
   fresh_v2_13_release_source_commit: null
   fresh_v2_13_release_tag: null
   next_v2_13_action: "Independently audit committed repair a8521f8 and the blocked 25-operation proposal contract, bind the final repaired source commit and exact component hashes including the external validator tree entry, then seal a new proposal and request fresh exact approval."

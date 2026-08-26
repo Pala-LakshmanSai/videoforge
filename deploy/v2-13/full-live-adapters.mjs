@@ -55,7 +55,20 @@ const GUARDED_SECRET_NAMES = Object.freeze([
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const BRIDGE_PATH = "apps/web/src/server/providers/v213-full-live-cli.ts";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
+const PREQUALIFICATION_MIGRATION_MANIFEST_PATH =
+  "packages/control-plane/migrations/manifest.json";
+const PREQUALIFICATION_OPERATOR_GRANTS_PATH =
+  "deploy/v2-13/neon-full-live-operator-grants.sql";
+const PREQUALIFICATION_MIGRATION_MANIFEST_SHA256 = sha256(
+  readFileSync(resolve(ROOT, PREQUALIFICATION_MIGRATION_MANIFEST_PATH)),
+);
+const PREQUALIFICATION_OPERATOR_GRANTS_SHA256 = sha256(
+  readFileSync(resolve(ROOT, PREQUALIFICATION_OPERATOR_GRANTS_PATH)),
+);
 const BRIDGE_CONFIRMATION = "EXECUTE_EXACT_V2_13_TYPESCRIPT_BRIDGE_COMMAND";
+const BRIDGE_CHILD_MAX_TIMEOUT_MS = 1_800_000;
+const BRIDGE_CLEANUP_CHILD_MAX_TIMEOUT_MS = 60_000;
+const EARLY_CLEANUP_INPUT_SCHEMA = "videoforge.v213-full-live-early-cleanup-input/v1";
 const PREQUALIFICATION_SCHEMA =
   "videoforge.v213-prequalification-database-bootstrap-result/v1";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
@@ -923,7 +936,7 @@ function createProtectedPromotionAdapter({
         "PROMOTION_OPERATOR_DATABASE_URL_FILE",
       ),
       "utf8",
-    ).trim();
+    );
     const cloudflareToken = readFileSync(
       protectedFile(
         environment.VIDEOFORGE_V2_13_CLOUDFLARE_API_TOKEN_FILE,
@@ -937,8 +950,16 @@ function createProtectedPromotionAdapter({
     } catch {
       fail("PROMOTION_RECORD_JSON");
     }
-    if (!/^postgres(?:ql)?:\/\//u.test(databaseUrl) || cloudflareToken.length < 32)
-      fail("PROMOTION_PROTECTED_INPUT");
+    const promotionService = ownerServiceEndpoint(
+      environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
+      "PROMOTION_OWNER_SERVICE",
+    );
+    parseExactOperatorDatabaseUrl(
+      databaseUrl,
+      { host: promotionService.host, database: promotionService.dbname },
+      "PROMOTION_OPERATOR_DATABASE_URL",
+    );
+    if (cloudflareToken.length < 32) fail("PROMOTION_PROTECTED_INPUT");
     const disabledConfigBytes = readFileSync(disabledPath);
     const { Pool } = requireWeb("@neondatabase/serverless");
     const pool = new Pool({ connectionString: databaseUrl, max: 1 });
@@ -1296,9 +1317,84 @@ function protectedFile(path, code) {
   return path;
 }
 
+function parseExactOperatorDatabaseUrl(raw, { host, database, role = PREQUALIFICATION_OPERATOR_ROLE }, code = "PREQUALIFICATION_OPERATOR_BINDING") {
+  if (
+    typeof raw !== "string" ||
+    raw === "" ||
+    raw !== raw.trim() ||
+    raw.includes("\0") ||
+    typeof host !== "string" ||
+    host === "" ||
+    typeof database !== "string" ||
+    database === "" ||
+    typeof role !== "string" ||
+    role === ""
+  )
+    fail(code);
+  let parsed;
+  try {
+    parsed = new URL(raw);
+    if (decodeURIComponent(parsed.username) !== role || decodeURIComponent(parsed.password) === "")
+      fail(code);
+  } catch {
+    fail(code);
+  }
+  const parameters = [...parsed.searchParams.entries()].sort(([left], [right]) => left.localeCompare(right));
+  if (
+    !["postgres:", "postgresql:"].includes(parsed.protocol) ||
+    parsed.hostname !== host ||
+    decodeURIComponent(parsed.pathname.slice(1)) !== database ||
+    parsed.pathname !== `/${encodeURIComponent(database)}` && parsed.pathname !== `/${database}` ||
+    parsed.hash !== "" ||
+    parameters.length !== 2 ||
+    JSON.stringify(parameters) !==
+      JSON.stringify([
+        ["channel_binding", "require"],
+        ["sslmode", "require"],
+      ])
+  )
+    fail(code);
+  return parsed;
+}
+
+function ownerServiceEndpoint(directory, code = "PREQUALIFICATION_OWNER_SERVICE") {
+  const servicePath = join(
+    protectedDirectory(directory, "PREQUALIFICATION_POSTGRES_DIRECTORY"),
+    "owner.pg_service.conf",
+  );
+  protectedFile(servicePath, code);
+  const serviceText = readFileSync(servicePath, "utf8");
+  const values = Object.fromEntries(
+    [...serviceText.matchAll(/^\s*(host|dbname)\s*=\s*(\S+)\s*$/gmu)].map((match) => [
+      match[1],
+      match[2],
+    ]),
+  );
+  if (typeof values.host !== "string" || values.host === "" || typeof values.dbname !== "string" || values.dbname === "")
+    fail(code);
+  return Object.freeze(values);
+}
+
 const MATERIALIZATION_GENESIS = sha256(
   Buffer.from("videoforge.v213-full-live-materialization-chain/v1:genesis"),
 );
+const MATERIALIZATION_CHAIN_SCHEMA = "videoforge.v213-full-live-materialization-chain/v1";
+const MATERIALIZATION_ENTRY_KEYS = Object.freeze([
+  "authority_id",
+  "entry_sha256",
+  "kind",
+  "ordered_output_sha256s",
+  "ordered_prior_operation_evidence_sha256s",
+  "outer_state_sha256",
+  "prior_chain_sha256",
+]);
+const MATERIALIZATION_STAGE_ORDER = Object.freeze([
+  "production-input",
+  "max-one-endpoint-bindings",
+  "activation-record",
+  "promotion-record",
+  "cleanup-pre-endpoint-descriptor",
+]);
 
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
@@ -1308,6 +1404,145 @@ function canonicalJson(value) {
       .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
       .join(",")}}`;
   return JSON.stringify(value);
+}
+
+function validateMaterializationPairs(value, code) {
+  if (!Array.isArray(value)) fail(code);
+  const names = new Set();
+  for (const pair of value) {
+    if (
+      !Array.isArray(pair) ||
+      pair.length !== 2 ||
+      typeof pair[0] !== "string" ||
+      pair[0] === "" ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,191}$/u.test(pair[0]) ||
+      names.has(pair[0]) ||
+      !HASH.test(pair[1] ?? "")
+    )
+      fail(code);
+    names.add(pair[0]);
+  }
+}
+
+/**
+ * Verify the complete materialization chain, including every prior link and the canonical bytes
+ * used for each entry hash.  A valid tail is not enough: accepting a tampered predecessor would
+ * let a later production input appear to be bound to an unrelated authority or result.
+ */
+function validateMaterializationChainDocument(chain) {
+  if (
+    chain === null ||
+    typeof chain !== "object" ||
+    Array.isArray(chain) ||
+    chain.schema_version !== MATERIALIZATION_CHAIN_SCHEMA ||
+    Object.keys(chain).sort().join(",") !== "entries,schema_version" ||
+    !Array.isArray(chain.entries) ||
+    chain.entries.length > MATERIALIZATION_STAGE_ORDER.length
+  )
+    fail("MATERIALIZATION_CHAIN_CONTRACT");
+  const entries = chain.entries;
+  const seenKinds = new Set();
+  let previous = MATERIALIZATION_GENESIS;
+  let authorityId;
+  for (const entry of entries) {
+    if (
+      entry === null ||
+      typeof entry !== "object" ||
+      Array.isArray(entry) ||
+      Object.keys(entry).sort().join(",") !== MATERIALIZATION_ENTRY_KEYS.slice().sort().join(",") ||
+      !MATERIALIZATION_STAGE_ORDER.includes(entry.kind) ||
+      seenKinds.has(entry.kind) ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,191}$/u.test(entry.authority_id ?? "") ||
+      !HASH.test(entry.outer_state_sha256 ?? "") ||
+      !HASH.test(entry.prior_chain_sha256 ?? "") ||
+      !HASH.test(entry.entry_sha256 ?? "") ||
+      entry.prior_chain_sha256 !== previous ||
+      (authorityId !== undefined && entry.authority_id !== authorityId)
+    )
+      fail("MATERIALIZATION_CHAIN_LINK");
+    authorityId ??= entry.authority_id;
+    validateMaterializationPairs(
+      entry.ordered_prior_operation_evidence_sha256s,
+      "MATERIALIZATION_CHAIN_PRIOR_EVIDENCE",
+    );
+    validateMaterializationPairs(
+      entry.ordered_output_sha256s,
+      "MATERIALIZATION_CHAIN_OUTPUT_EVIDENCE",
+    );
+    const unsigned = { ...entry };
+    delete unsigned.entry_sha256;
+    const recomputed = sha256(Buffer.from(`${canonicalJson(unsigned)}\n`));
+    if (recomputed !== entry.entry_sha256) fail("MATERIALIZATION_CHAIN_ENTRY_HASH");
+    seenKinds.add(entry.kind);
+    previous = entry.entry_sha256;
+  }
+  const kinds = entries.map((entry) => entry.kind);
+  if (kinds[0] === "cleanup-pre-endpoint-descriptor") {
+    if (kinds.length !== 1) fail("MATERIALIZATION_CHAIN_ORDER");
+  } else {
+    for (let index = 0; index < kinds.length; index += 1) {
+      if (kinds[index] !== MATERIALIZATION_STAGE_ORDER[index])
+        fail("MATERIALIZATION_CHAIN_ORDER");
+    }
+  }
+  return chain;
+}
+
+const materializationStageForOperation = (operationId) => {
+  if (operationId === "fresh-live-preflight") return "production-input";
+  if (operationId === "create-exact-max-one-endpoints") return "max-one-endpoint-bindings";
+  if (operationId === "guarded-activation-once") return "activation-record";
+  if (operationId === "promote-qualified-production") return "promotion-record";
+  if (
+    [
+      "restore-endpoints-max-one",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources",
+    ].includes(operationId)
+  )
+    return "cleanup-pre-endpoint-descriptor";
+  return null;
+};
+
+/** Verify the chain file at an executor operation boundary. */
+function verifyMaterializationChainFile({
+  environment = process.env,
+  operation,
+  state,
+  earlyFailure = false,
+} = {}) {
+  const operationId = typeof operation === "string" ? operation : operation?.id;
+  const expectedKind = materializationStageForOperation(operationId);
+  if (expectedKind === null) return true;
+  const path = environment.VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE;
+  if (typeof path !== "string" || path === "" || path.includes("\0"))
+    fail("MATERIALIZATION_CHAIN_PATH");
+  if (!lstatExists(path)) {
+    // A failure before the bootstrap settle boundary has not materialized any production or
+    // cleanup descriptor.  The endpoint-free cleanup child is intentionally still runnable with
+    // only its request and RunPod FD; it must not manufacture a database-backed claim just to
+    // satisfy the normal post-bootstrap chain requirement.
+    if (expectedKind === "cleanup-pre-endpoint-descriptor" && earlyFailure) return true;
+    fail("MATERIALIZATION_CHAIN_UNAVAILABLE");
+  }
+  let chain;
+  try {
+    chain = JSON.parse(readFileSync(protectedFile(path, "MATERIALIZATION_CHAIN_FILE"), "utf8"));
+  } catch {
+    fail("MATERIALIZATION_CHAIN_JSON");
+  }
+  validateMaterializationChainDocument(chain);
+  const matched = chain.entries.find((entry) => entry.kind === expectedKind);
+  if (!matched || matched.authority_id !== state?.authority_id)
+    fail("MATERIALIZATION_CHAIN_STAGE");
+  const expectedLength =
+    expectedKind === "cleanup-pre-endpoint-descriptor"
+      ? 1
+      : MATERIALIZATION_STAGE_ORDER.indexOf(expectedKind) + 1;
+  if (chain.entries.length !== expectedLength)
+    fail("MATERIALIZATION_CHAIN_STAGE_ORDER");
+  return true;
 }
 
 function exactProductionDeploymentMaterialization(production) {
@@ -1395,16 +1630,9 @@ function atomicChainUpdate(path, entry) {
         fail("MATERIALIZATION_CHAIN_JSON");
       }
     }
-    if (
-      chain?.schema_version !== "videoforge.v213-full-live-materialization-chain/v1" ||
-      !Array.isArray(chain.entries)
-    )
-      fail("MATERIALIZATION_CHAIN_CONTRACT");
+    validateMaterializationChainDocument(chain);
     const priorIndex = chain.entries.findIndex((item) => item?.kind === entry.kind);
-    const previous =
-      priorIndex === chain.entries.length - 1
-        ? (chain.entries.at(-2)?.entry_sha256 ?? MATERIALIZATION_GENESIS)
-        : (chain.entries.at(-1)?.entry_sha256 ?? MATERIALIZATION_GENESIS);
+    const previous = chain.entries.at(-1)?.entry_sha256 ?? MATERIALIZATION_GENESIS;
     const unsigned = { ...entry, prior_chain_sha256: previous };
     const entrySha256 = sha256(Buffer.from(`${canonicalJson(unsigned)}\n`));
     if (priorIndex >= 0) {
@@ -1501,10 +1729,14 @@ function prequalificationLedger(text, manifest) {
 const PREQUALIFICATION_ADVISORY_LOCK = "1448494662,1";
 
 function prequalificationFunctionSignatureSql(functionAlias = "p", namespaceAlias = "n") {
-  // pg_get_function_identity_arguments may render timestamptz as "timestamp with time zone".
-  // Normalize only the SQL spelling we permit, then remove formatting whitespace so that the
-  // readback has one stable representation across PostgreSQL versions.
-  return `replace(replace(${namespaceAlias}.nspname||'.'||${functionAlias}.proname||'('||pg_get_function_identity_arguments(${functionAlias}.oid)||')',' ',''),'timestampwithtimezone','timestamptz')`;
+  // Do not use pg_get_function_identity_arguments here: its output contains argument names and
+  // version-dependent spellings such as "timestamp with time zone".  Resolve the argument OIDs
+  // directly and format each type, preserving order.  This is stable in PostgreSQL and PGlite,
+  // and is the same canonical spelling used by the policy's 17-function allowlist.
+  const argumentsSql = `(SELECT COALESCE(string_agg(CASE format_type(a.type_oid,NULL) WHEN 'timestamp with time zone' THEN 'timestamptz' ELSE format_type(a.type_oid,NULL) END, ',' ORDER BY a.ordinality),'') FROM unnest(${functionAlias}.proargtypes::oid[]) WITH ORDINALITY AS a(type_oid,ordinality))`;
+  // The normative policy stores public function signatures without a schema prefix.  The query
+  // still filters to nspname='public', and callers that need namespace identity compare OIDs.
+  return `(${functionAlias}.proname||'('||${argumentsSql}||')')`;
 }
 
 function prequalificationPrefixGuardSql(manifest, count) {
@@ -1532,7 +1764,10 @@ function prequalificationLockedLedger(query, manifest) {
 
 function prequalificationManifest() {
   const directory = resolve(ROOT, "packages/control-plane/migrations");
-  const manifest = JSON.parse(readFileSync(resolve(directory, "manifest.json"), "utf8"));
+  const manifestBytes = readFileSync(resolve(directory, "manifest.json"));
+  if (sha256(manifestBytes) !== PREQUALIFICATION_MIGRATION_MANIFEST_SHA256)
+    fail("PREQUALIFICATION_MANIFEST_SOURCE_DRIFT");
+  const manifest = JSON.parse(manifestBytes);
   if (manifest?.schema_version !== "videoforge-migration-manifest/v1" || !Array.isArray(manifest.migrations) || manifest.migrations.length !== 45)
     fail("PREQUALIFICATION_MANIFEST");
   for (const [index, migration] of manifest.migrations.entries()) {
@@ -1556,7 +1791,7 @@ function prequalificationRoleReadbackSql(role) {
   const effectiveSchemaDangerousAcl = `(SELECT count(*) FROM pg_namespace n WHERE has_schema_privilege(r.oid,n.oid,'CREATE'))`;
   const effectiveTableAcl = `(SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ('r','p','v','m','f') AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' AND (has_table_privilege(r.oid,c.oid,'SELECT') OR has_table_privilege(r.oid,c.oid,'INSERT') OR has_table_privilege(r.oid,c.oid,'UPDATE') OR has_table_privilege(r.oid,c.oid,'DELETE') OR has_table_privilege(r.oid,c.oid,'TRUNCATE') OR has_table_privilege(r.oid,c.oid,'REFERENCES') OR has_table_privilege(r.oid,c.oid,'TRIGGER')))`;
   const effectiveSequenceAcl = `(SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind='S' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' AND (has_sequence_privilege(r.oid,c.oid,'USAGE') OR has_sequence_privilege(r.oid,c.oid,'SELECT') OR has_sequence_privilege(r.oid,c.oid,'UPDATE')))`;
-  return `SELECT json_build_object('flags',json_build_object('rolcanlogin',r.rolcanlogin,'rolsuper',r.rolsuper,'rolcreaterole',r.rolcreaterole,'rolcreatedb',r.rolcreatedb,'rolinherit',r.rolinherit,'rolreplication',r.rolreplication,'rolbypassrls',r.rolbypassrls,'rolconfig',r.rolconfig),'memberships',(SELECT count(*) FROM pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid),'ownership',(SELECT count(*) FROM (SELECT 1 FROM pg_database WHERE datdba=r.oid UNION ALL SELECT 1 FROM pg_extension WHERE extowner=r.oid UNION ALL SELECT 1 FROM pg_class WHERE relowner=r.oid UNION ALL SELECT 1 FROM pg_namespace WHERE nspowner=r.oid UNION ALL SELECT 1 FROM pg_proc WHERE proowner=r.oid UNION ALL SELECT 1 FROM pg_type WHERE typowner=r.oid) owned),'extension_ownership',(SELECT count(*) FROM pg_extension WHERE extowner=r.oid),'database_acl',(SELECT count(*) FROM pg_database d CROSS JOIN LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a WHERE a.grantee=r.oid),'effective_database_dangerous_acl',${effectiveDatabaseDangerousAcl},'schema_acl',COALESCE((SELECT json_agg(n.nspname||':'||a.privilege_type ORDER BY n.nspname||':'||a.privilege_type) FROM pg_namespace n CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a WHERE a.grantee=r.oid),'[]'::json),'effective_schema_dangerous_acl',${effectiveSchemaDangerousAcl},'table_acl',(SELECT count(*) FROM pg_class c CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a WHERE a.grantee=r.oid),'effective_table_acl',${effectiveTableAcl},'sequence_acl',(SELECT count(*) FROM pg_class c CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('S',c.relowner))) a WHERE a.grantee=r.oid AND c.relkind='S'),'effective_sequence_acl',${effectiveSequenceAcl},'default_acl',(SELECT count(*) FROM pg_default_acl d CROSS JOIN LATERAL aclexplode(d.defaclacl) a WHERE a.grantee=r.oid),'function_acl',${functionAcl},'public_function_acl',${publicAcl},'public_default_function_acl',${publicDefaultFunctionAcl})::text FROM pg_roles r WHERE r.rolname=${name}`;
+  return `SELECT json_build_object('flags',json_build_object('rolcanlogin',r.rolcanlogin,'rolsuper',r.rolsuper,'rolcreaterole',r.rolcreaterole,'rolcreatedb',r.rolcreatedb,'rolinherit',r.rolinherit,'rolreplication',r.rolreplication,'rolbypassrls',r.rolbypassrls,'rolconfig',r.rolconfig),'memberships',(SELECT count(*) FROM pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid),'ownership',(SELECT count(*) FROM (SELECT 1 FROM pg_database WHERE datdba=r.oid UNION ALL SELECT 1 FROM pg_extension WHERE extowner=r.oid UNION ALL SELECT 1 FROM pg_class WHERE relowner=r.oid UNION ALL SELECT 1 FROM pg_namespace WHERE nspowner=r.oid UNION ALL SELECT 1 FROM pg_proc WHERE proowner=r.oid UNION ALL SELECT 1 FROM pg_type WHERE typowner=r.oid UNION ALL SELECT 1 FROM pg_foreign_data_wrapper WHERE fdwowner=r.oid UNION ALL SELECT 1 FROM pg_foreign_server WHERE srvowner=r.oid UNION ALL SELECT 1 FROM pg_event_trigger WHERE evtowner=r.oid UNION ALL SELECT 1 FROM pg_tablespace WHERE spcowner=r.oid UNION ALL SELECT 1 FROM pg_publication WHERE pubowner=r.oid UNION ALL SELECT 1 FROM pg_subscription WHERE subowner=r.oid UNION ALL SELECT 1 FROM pg_largeobject_metadata WHERE lomowner=r.oid UNION ALL SELECT 1 FROM pg_collation WHERE collowner=r.oid UNION ALL SELECT 1 FROM pg_ts_dict WHERE dictowner=r.oid UNION ALL SELECT 1 FROM pg_ts_config WHERE cfgowner=r.oid) owned),'extension_ownership',(SELECT count(*) FROM pg_extension WHERE extowner=r.oid),'database_acl',(SELECT count(*) FROM pg_database d CROSS JOIN LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a WHERE a.grantee=r.oid),'effective_database_dangerous_acl',${effectiveDatabaseDangerousAcl},'schema_acl',COALESCE((SELECT json_agg(n.nspname||':'||a.privilege_type ORDER BY n.nspname||':'||a.privilege_type) FROM pg_namespace n CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a WHERE a.grantee=r.oid),'[]'::json),'effective_schema_dangerous_acl',${effectiveSchemaDangerousAcl},'table_acl',(SELECT count(*) FROM pg_class c CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a WHERE a.grantee=r.oid),'effective_table_acl',${effectiveTableAcl},'sequence_acl',(SELECT count(*) FROM pg_class c CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('S',c.relowner))) a WHERE a.grantee=r.oid AND c.relkind='S'),'effective_sequence_acl',${effectiveSequenceAcl},'default_acl',(SELECT count(*) FROM pg_default_acl d CROSS JOIN LATERAL aclexplode(d.defaclacl) a WHERE a.grantee=r.oid),'function_acl',${functionAcl},'public_function_acl',${publicAcl},'public_default_function_acl',${publicDefaultFunctionAcl})::text FROM pg_roles r WHERE r.rolname=${name}`;
 }
 
 function assertPrequalificationRoleExact(role) {
@@ -1677,11 +1912,6 @@ function createPrequalificationDatabaseBootstrapAdapter({ environment = process.
     const service = await parseService(servicePath, "videoforge_v2_13_owner");
     protectedFile(passPath, "PREQUALIFICATION_OWNER_PASS");
     protectedFile(operatorPath, "PREQUALIFICATION_OPERATOR_DSN");
-    const operatorRaw = readFileSync(operatorPath, "utf8");
-    if (operatorRaw !== operatorRaw.trim() || operatorRaw.includes("\0")) fail("PREQUALIFICATION_OPERATOR_DSN");
-    let operator;
-    try { operator = new URL(operatorRaw); } catch { fail("PREQUALIFICATION_OPERATOR_DSN"); }
-    if (!["postgres:", "postgresql:"].includes(operator.protocol) || decodeURIComponent(operator.username) !== PREQUALIFICATION_OPERATOR_ROLE || !operator.password || operator.hash || operator.searchParams.size !== 2 || operator.searchParams.get("sslmode") !== "require" || operator.searchParams.get("channel_binding") !== "require" || operator.hostname !== service.get("host") || operator.pathname.slice(1) !== service.get("dbname")) fail("PREQUALIFICATION_OPERATOR_BINDING");
     await validateServiceFile(servicePath, "videoforge_v2_13_owner", service.get("host"), service.get("dbname"), service.get("user"));
     if (service.get("user") === PREQUALIFICATION_OPERATOR_ROLE) fail("PREQUALIFICATION_OWNER_OPERATOR_COLLISION");
     const dbEnv = { PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin", HOME: environment.HOME ?? process.env.HOME ?? "/tmp", PGSERVICEFILE: servicePath, PGSERVICE: "videoforge_v2_13_owner", PGPASSFILE: passPath };
@@ -1715,7 +1945,22 @@ function createPrequalificationDatabaseBootstrapAdapter({ environment = process.
       }
     }
     if (!existing && operatorCount === 0) {
-      const operatorEnv = { ...dbEnv, V2_13_OPERATOR_PASSWORD: decodeURIComponent(operator.password) };
+      // The operator DSN is deliberately not decoded or opened until the migration prefix is
+      // complete.  Owner credentials are the only database inputs used for prefix discovery and
+      // migrations; the operator password is needed only for the post-migration role creation.
+      const operatorRaw = readFileSync(operatorPath, "utf8");
+      const operator = parseExactOperatorDatabaseUrl(
+        operatorRaw,
+        { host: service.get("host"), database: service.get("dbname") },
+        "PREQUALIFICATION_OPERATOR_BINDING",
+      );
+      let operatorPassword;
+      try {
+        operatorPassword = decodeURIComponent(operator.password);
+      } catch {
+        fail("PREQUALIFICATION_OPERATOR_BINDING");
+      }
+      const operatorEnv = { ...dbEnv, V2_13_OPERATOR_PASSWORD: operatorPassword };
       // Role creation and grant application run after the migration prefix has reached 45.  The
       // role password is supplied through psql's private environment channel and never argv/logs.
       const createRoleSql = String.raw`BEGIN;
@@ -1725,7 +1970,21 @@ ${prequalificationPrefixGuardSql(manifest, 45)}
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}, :'operator_password') WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}) \gexec`;
       const roleSql = `${createRoleSql}\nCOMMIT;\n`;
       prequalificationCommand(run, "psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--command", roleSql], operatorEnv, "PREQUALIFICATION_OPERATOR_CREATE");
-      prequalificationCommand(run, "psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--variable", `operator_role=${PREQUALIFICATION_OPERATOR_ROLE}`, "--file", resolve(ROOT, "deploy/v2-13/neon-full-live-operator-grants.sql")], dbEnv, "PREQUALIFICATION_OPERATOR_GRANTS");
+      prequalificationCommand(
+        run,
+        "psql",
+        [
+          "--no-psqlrc",
+          "--set",
+          "ON_ERROR_STOP=1",
+          "--variable",
+          `operator_role=${PREQUALIFICATION_OPERATOR_ROLE}`,
+          "--file",
+          resolve(ROOT, PREQUALIFICATION_OPERATOR_GRANTS_PATH),
+        ],
+        dbEnv,
+        "PREQUALIFICATION_OPERATOR_GRANTS",
+      );
     }
     const ledger = prequalificationLockedLedger(query, manifest);
     if (ledger.length !== 45) fail("PREQUALIFICATION_LEDGER_FINAL");
@@ -2134,6 +2393,8 @@ function createProtectedInputMaterializer({
       });
       Object.assign(activation.release, {
         commit: state.release_source_commit,
+        migration_manifest_sha256: PREQUALIFICATION_MIGRATION_MANIFEST_SHA256,
+        operator_grants_sha256: PREQUALIFICATION_OPERATOR_GRANTS_SHA256,
         production_config_activation_sha256: configSha256,
         media_worker_release_manifest_sha256: manifestSha256,
       });
@@ -2247,13 +2508,41 @@ function createProtectedInputMaterializer({
   };
 }
 
-function productionBridgeSpawn({ environment, request }) {
+function bridgeChildTimeoutMs(state, context, command) {
+  const cleanup =
+    context?.cleanupOnly === true ||
+    context?.earlyFailure === true ||
+    [
+      "restore-endpoints-max-one",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources",
+    ].includes(command);
+  const expiresAt = Date.parse(state?.expires_at ?? "");
+  const maximum = cleanup ? BRIDGE_CLEANUP_CHILD_MAX_TIMEOUT_MS : BRIDGE_CHILD_MAX_TIMEOUT_MS;
+  if (cleanup) {
+    // Cleanup is allowed to finish after authority expiry, but it is still bounded.  While the
+    // authority is live we cannot let the child outlast the authority; after expiry use the
+    // bounded cleanup window rather than silently granting an unbounded process lifetime.
+    const remaining = Number.isNaN(expiresAt) ? maximum : expiresAt - Date.now();
+    return Math.max(1, Math.min(maximum, remaining > 0 ? remaining : maximum));
+  }
+  if (Number.isNaN(expiresAt) || expiresAt <= Date.now()) fail("BRIDGE_AUTHORITY_EXPIRED");
+  return Math.max(1, Math.min(maximum, expiresAt - Date.now()));
+}
+
+function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_MAX_TIMEOUT_MS }) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > BRIDGE_CHILD_MAX_TIMEOUT_MS)
+    fail("BRIDGE_CHILD_TIMEOUT_INVALID");
   const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v213-bridge-"));
   const requestPath = resolve(directory, "request.json");
   const opened = [];
   try {
     writeFileSync(requestPath, `${JSON.stringify(request)}\n`, { encoding: "utf8", mode: 0o600 });
-    const protectedFiles = request.command === "fresh-live-preflight"
+    const earlyCleanup = request.input?.schemaVersion === EARLY_CLEANUP_INPUT_SCHEMA;
+    const protectedFiles = earlyCleanup
+      ? BRIDGE_PROTECTED_FILES.filter(([fdName]) => fdName === "RUNPOD_API_KEY_FD")
+      : request.command === "fresh-live-preflight"
       ? BRIDGE_PROTECTED_FILES.filter(([fdName]) =>
           ["RUNPOD_API_KEY_FD", "OPERATOR_DATABASE_URL_FD"].includes(fdName),
         )
@@ -2286,8 +2575,15 @@ function productionBridgeSpawn({ environment, request }) {
         env: childEnvironment,
         stdio: ["ignore", "pipe", "pipe", ...opened],
         maxBuffer: 4 * 1024 * 1024,
+        timeout: timeoutMs,
+        killSignal: "SIGTERM",
       },
     );
+    if (
+      result.error?.code === "ETIMEDOUT" ||
+      (result.signal !== null && result.signal !== undefined)
+    )
+      fail("BRIDGE_CHILD_TIMEOUT");
     if (result.status !== 0 || typeof result.stdout !== "string") fail("BRIDGE_EXECUTION");
     return JSON.parse(result.stdout);
   } finally {
@@ -2493,31 +2789,17 @@ function preflightConcreteFullLiveInputs({
       if (value.length === 0 || value.length > 65_536 || value.includes("\0"))
         fail("BRIDGE_PROTECTED_CONTENT", variable);
       if (variable.endsWith("OPERATOR_DATABASE_URL_FILE")) {
-        let parsed;
-        try {
-          parsed = new URL(value);
-        } catch {
-          fail("BRIDGE_PROTECTED_URL", variable);
-        }
-        if (
-          value.trim() !== value ||
-          !["postgres:", "postgresql:"].includes(parsed.protocol) ||
-          parsed.username !== "videoforge_hosted_operator"
-        )
-          fail("BRIDGE_PROTECTED_URL", variable);
-        const directory = protectedDirectory(
+        const serviceValues = ownerServiceEndpoint(
           environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
-          "PREQUALIFICATION_POSTGRES_DIRECTORY",
         );
-        const serviceText = readFileSync(join(directory, "owner.pg_service.conf"), "utf8");
-        const serviceValues = Object.fromEntries(
-          [...serviceText.matchAll(/^\s*(host|dbname)\s*=\s*(\S+)\s*$/gmu)].map((m) => [m[1], m[2]]),
+        parseExactOperatorDatabaseUrl(
+          value,
+          {
+            host: serviceValues.host,
+            database: serviceValues.dbname,
+          },
+          "BRIDGE_PROTECTED_URL",
         );
-        if (
-          parsed.hostname !== serviceValues.host ||
-          decodeURIComponent(parsed.pathname.slice(1)) !== serviceValues.dbname
-        )
-          fail("BRIDGE_PROTECTED_URL", variable);
       }
     }
     return Object.freeze({ production, operatorOnly: true });
@@ -2536,6 +2818,15 @@ function preflightConcreteFullLiveInputs({
     bridgeValues.VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE,
     bridgeValues.VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE,
   ];
+  const serviceValues = ownerServiceEndpoint(
+    environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
+    "BRIDGE_OWNER_SERVICE",
+  );
+  parseExactOperatorDatabaseUrl(
+    bridgeValues.VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE,
+    { host: serviceValues.host, database: serviceValues.dbname },
+    "BRIDGE_PROTECTED_URL",
+  );
   let workerOrigin;
   try {
     workerOrigin = new URL(bridgeValues.VIDEOFORGE_V2_13_WORKER_ORIGIN_FILE);
@@ -2653,19 +2944,26 @@ function createTypeScriptBridgeAdapters({
   environment = process.env,
   spawnBridge = productionBridgeSpawn,
   requirePrequalificationReceipt = false,
-  expectedCliSha256 = "sha256:7d10c80918b2f47fac9f9732720c66580427f0c7aac6bde72fbb32cd27769b43",
+  expectedCliSha256 = "sha256:0af4d4ff120ec7f09d2302eeb7cb8f8aaa300391de1f4ac33dee2c9e1274014f",
   expectedTransportSha256 = "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
 } = {}) {
   const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
   const actualTransportSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_TRANSPORT_PATH)));
   if (actualCliSha256 !== expectedCliSha256) fail("BRIDGE_SOURCE_DRIFT");
   if (actualTransportSha256 !== expectedTransportSha256) fail("BRIDGE_TRANSPORT_SOURCE_DRIFT");
-  const run = (command) => async (_context, state, priorResults, outerStateSha256) => {
+  const run = (command) => async (context = {}, state, priorResults, outerStateSha256) => {
     if (!HASH.test(outerStateSha256 ?? "")) fail("BRIDGE_OUTER_STATE");
-    const cleanup = CLEANUP_BRIDGE_COMMANDS.has(command)
+    const earlyCleanup = CLEANUP_BRIDGE_COMMANDS.has(command) && context?.earlyFailure === true;
+    const cleanup = CLEANUP_BRIDGE_COMMANDS.has(command) && !earlyCleanup
       ? loadBridgeCleanupInput(environment)
       : null;
-    const production = cleanup === null ? loadBridgeProductionInput(environment) : null;
+    const production = cleanup === null && !earlyCleanup ? loadBridgeProductionInput(environment) : null;
+    const earlyCleanupInput = earlyCleanup
+      ? {
+          schemaVersion: EARLY_CLEANUP_INPUT_SCHEMA,
+          fullLiveAuthorityId: state.authority_id,
+        }
+      : null;
     if (requirePrequalificationReceipt && command === "mage-live-qualification") {
       preflightConcreteFullLiveInputs({
         environment,
@@ -2719,11 +3017,13 @@ function createTypeScriptBridgeAdapters({
       commandPayload = {};
     const request = {
       schemaVersion: "videoforge.v213-full-live-command/v1",
-      commandId: `v213:${(production ?? cleanup).fullLiveAuthorityId}:${command}`,
-      stageAuthorityId: (production ?? cleanup).fullLiveAuthorityId,
+      commandId: `v213:${(production ?? cleanup ?? earlyCleanupInput).fullLiveAuthorityId}:${command}`,
+      stageAuthorityId: (production ?? cleanup ?? earlyCleanupInput).fullLiveAuthorityId,
       command,
       input:
-        cleanup === null
+        earlyCleanupInput !== null
+          ? earlyCleanupInput
+          : cleanup === null
           ? {
               schemaVersion: "videoforge.v213-full-live-production-input/v1",
               outerStateSha256,
@@ -2733,7 +3033,11 @@ function createTypeScriptBridgeAdapters({
             }
           : cleanup,
     };
-    const result = await spawnBridge({ environment, request });
+    const result = await spawnBridge({
+      environment,
+      request,
+      timeoutMs: bridgeChildTimeoutMs(state, context, command),
+    });
     if (
       result?.schemaVersion !== "videoforge.v213-full-live-command-result/v1" ||
       result.commandId !== request.commandId ||
@@ -2864,7 +3168,15 @@ function createConcreteFullLiveAdapters(options = {}) {
       Object.entries(adapters).map(([operationId, adapter]) => [
         operationId,
         async (context, state, priorResults, outerStateSha256) => {
-          await materialize({ operationId, state, priorResults, outerStateSha256 });
+          const earlyCleanup =
+            context?.earlyFailure === true &&
+            [
+              "restore-endpoints-max-one",
+              "prove-zero-workers",
+              "read-settled-billing",
+              "reconcile-exact-resources",
+            ].includes(operationId);
+          if (!earlyCleanup) await materialize({ operationId, state, priorResults, outerStateSha256 });
           return adapter(context, state, priorResults, outerStateSha256);
         },
       ]),
@@ -2878,6 +3190,10 @@ export {
   createPrequalificationDatabaseAdapter,
   createWorkflowStartAuthorityAdapter,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
+  PREQUALIFICATION_MIGRATION_MANIFEST_PATH,
+  PREQUALIFICATION_MIGRATION_MANIFEST_SHA256,
+  PREQUALIFICATION_OPERATOR_GRANTS_PATH,
+  PREQUALIFICATION_OPERATOR_GRANTS_SHA256,
   PREQUALIFICATION_RECEIPT_FIELDS,
   closedTrustedTimeCommand,
   createGitReleaseAdapters,
@@ -2888,6 +3204,8 @@ export {
   createV213AcceptanceAdapters,
   createStagedQualificationAdapters,
   createTypeScriptBridgeAdapters,
+  verifyMaterializationChainFile,
+  productionBridgeSpawn,
   createGithubDispatchAdapters,
   createGithubVerificationAdapters,
   preflightGuardedActivationInputs,

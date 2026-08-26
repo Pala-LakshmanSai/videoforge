@@ -22,28 +22,28 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:d91f8e6f4ed33c8dc1cbfb7ce41d7155e03d1459e457016e45235ebce53c366f",
+    sha256: "sha256:ae12285cfe9fba5ad1afaa946f4d6e5a57adf686729e88167c147e00e9bfc73f",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:d0373598f0044527d194107c04d1a124e9f6124f4fa952957ee1ad98efb8fa6a",
+    sha256: "sha256:6574bf363a3c54b953a7f02b9ab1aa6968487726116ac8588e620705ffeee31d",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
-    sha256: "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
+    sha256: "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:56ed1aa3e729c30d35a5432c3931305d3bc65d4aefd601b021a8c5064dfc450d",
+    sha256: "sha256:656a10fc8d510c50a248ec191b6a12777223d00d718b50643db8b59dee0672ea",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:bc7cf4709d43ee86016c391a8484ab295478d1e17db78b773ee9433f488bff02",
+    sha256: "sha256:f6d832ef52d9aaf089c3b16bc8233ee29509fa5e3d5f33342fd6068737546c18",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
-    sha256: "sha256:7d10c80918b2f47fac9f9732720c66580427f0c7aac6bde72fbb32cd27769b43",
+    sha256: "sha256:0af4d4ff120ec7f09d2302eeb7cb8f8aaa300391de1f4ac33dee2c9e1274014f",
   }),
   runpod_dual_lane_transport: Object.freeze({
     path: "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
@@ -55,7 +55,11 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   operator_grants: Object.freeze({
     path: "deploy/v2-13/neon-full-live-operator-grants.sql",
-    sha256: "sha256:eff9aad6a3bb73ccf041b6eccc7641d2ff3c83a31481a733e47b3599f864cacd",
+    sha256: "sha256:e0903ba88c0a0af006dc60d908ef300b020cba8748ec41f3cade834b0b98ac85",
+  }),
+  migration_manifest: Object.freeze({
+    path: "packages/control-plane/migrations/manifest.json",
+    sha256: "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
@@ -216,6 +220,18 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
     "entry_sha256",
   ]),
   entry_sha256_is_hash_of_preceding_six_fields: true,
+  chain_verifier_required_in_production_entrypoint: true,
+  chain_verifier_function: "verifyMaterializationChainFile",
+  chain_verifier_boundaries: Object.freeze(["hydrated", "settled"]),
+  missing_chain_verifier_is_hard_stop_before_external_action: true,
+  chain_stage_order: Object.freeze([
+    "production-input",
+    "max-one-endpoint-bindings",
+    "activation-record",
+    "promotion-record",
+    "cleanup-pre-endpoint-descriptor",
+  ]),
+  early_cleanup_missing_chain_file_allowed_only_before_operator_verification: true,
   validate_each_output_immediately_at_first_use: true,
   records: Object.freeze([
     Object.freeze({
@@ -355,6 +371,33 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "no-table-acl",
     "exact-operator-function-acl",
   ]),
+  exact_operator_function_signature_count: 17,
+  exact_operator_function_signature_namespace: "public",
+  exact_operator_function_signature_canonicalization:
+    "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
+  exact_operator_function_acl_comparison: "OID_SET_SORTED_EXACT_ALLOWLIST",
+  exact_operator_function_acl_must_have_no_duplicates: true,
+  public_function_execute_readback_count: 0,
+  public_default_function_execute_readback_count: 0,
+  ownership_catalogs: Object.freeze([
+    "pg_database.datdba",
+    "pg_extension.extowner",
+    "pg_class.relowner",
+    "pg_namespace.nspowner",
+    "pg_proc.proowner",
+    "pg_type.typowner",
+    "pg_foreign_data_wrapper.fdwowner",
+    "pg_foreign_server.srvowner",
+    "pg_event_trigger.evtowner",
+    "pg_tablespace.spcowner",
+    "pg_publication.pubowner",
+    "pg_subscription.subowner",
+    "pg_largeobject_metadata.lomowner",
+    "pg_collation.collowner",
+    "pg_ts_dict.dictowner",
+    "pg_ts_config.cfgowner",
+  ]),
+  ownership_readback_is_cluster_wide: true,
   receipt_exact_fields: Object.freeze([
     "schema_version",
     "ledger_before_count",
@@ -437,7 +480,20 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     channel_binding: "require",
     host_and_database_match_owner_service: true,
     only_after_migrations: true,
+    metadata_read_before_migrations_allowed: true,
+    value_read_after_migration_prefix_commit_count: 45,
+    value_read_forbidden_before_migration_prefix_commit: true,
+    used_for_role_creation_or_recovery_only_after_migrations: true,
     password_never_in_argv_or_logs: true,
+  }),
+  operator_verification_transition: Object.freeze({
+    state_field: "operator_role_verified",
+    initial_value: false,
+    set_true_only_after: "SETTLED_TERMINAL_BOOTSTRAP_RESULT_AND_EXACT_RECEIPT_LEDGER45_OPERATOR_ACL_READBACK",
+    restart_source: "SETTLED_TERMINAL_BOOTSTRAP_RESULT_ONLY",
+    role_presence_or_preflight_is_not_sufficient: true,
+    monotonic: true,
+    required_before_normal_operator_dsn_cleanup: true,
   }),
   exact_operator_function_signatures: Object.freeze([
     "videoforge_load_v213_bridge_acceptance_call(jsonb)",
@@ -506,7 +562,20 @@ const EXACT_WORKFLOW_START_AUTHORITY_POLICY = Object.freeze({
 const EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY = Object.freeze({
   schema: "videoforge.v213-full-live-early-cleanup-input/v1",
   trigger: "BEFORE_OPERATOR_ROLE_VERIFIED",
+  runpod_only: true,
+  runpod_key_required: true,
+  exact_allowed_environment_names: Object.freeze([
+    "VIDEOFORGE_V213_BRIDGE_COMMAND",
+    "VIDEOFORGE_V213_BRIDGE_REQUEST_FD",
+    "VIDEOFORGE_V213_BRIDGE_RUNPOD_API_KEY_FD",
+  ]),
   exact_child_fd_environment: Object.freeze(["REQUEST_FD", "RUNPOD_API_KEY_FD"]),
+  allowed_operation_ids: Object.freeze([
+    "restore-endpoints-max-one",
+    "prove-zero-workers",
+    "read-settled-billing",
+    "reconcile-exact-resources",
+  ]),
   forbidden_inputs: Object.freeze([
     "OPERATOR_DATABASE_URL_FD",
     "RUNTIME_DATABASE_URL_FD",
@@ -519,12 +588,15 @@ const EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY = Object.freeze({
   ]),
   database_calls: 0,
   cloudflare_mutations: 0,
+  cloudflare_calls: 0,
   provider_mutations: 0,
   runpod_calls: 0,
+  runpod_mutations: 0,
   application_secret_reads: 0,
   gpu_use: false,
   external_spend_usd: 0,
   accepted_only_before_operator_verification: true,
+  database_cleanup_claimed: false,
   never_claims_database_cleanup: true,
   after_operator_verified_cleanup: "NORMAL_OPERATOR_DSN_CLEANUP_RUNTIME",
 });
@@ -557,6 +629,17 @@ const EXACT_DURABLE_BILLING_POLICY = Object.freeze({
   settle_only_after_terminal_jobs_and_zero_workers: true,
   final_billing_readback_required: true,
   final_billing_stable_read_count: 3,
+  stable_read_contract: Object.freeze({
+    consecutive_authenticated_reads: true,
+    exact_read_count: 3,
+    equal_cumulative_values_required: true,
+    no_provider_mutation_between_reads: true,
+    inter_read_spacing_ms: 2_000,
+    establish_current_mode_baseline_read_count: 1,
+    establish_current_mode_total_provider_reads: 4,
+    all_three_final_reads_are_included_in_proof: true,
+    malformed_or_transport_read_is_hard_stop: true,
+  }),
   observed_billing_is_not_settlement: true,
   ambiguous_or_late_billing_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
   cumulative_cap_usd: 17.5,
@@ -611,6 +694,32 @@ const EXACT_PREQUALIFICATION_BRIDGE_POLICY = Object.freeze({
     before_command: "mage-live-qualification",
     bootstrap_receipt_cas_must_have_passed: true,
     require_endpoint_secrets: false,
+  }),
+  child_process_timeout_policy: Object.freeze({
+    production_child_max_timeout_ms: 1_800_000,
+    cleanup_child_max_timeout_ms: 60_000,
+    timeout_must_be_positive: true,
+    timeout_must_be_bounded_by_authority_deadline: true,
+    cleanup_timeout_remains_bounded_after_authority_expiry: true,
+    spawn_timeout_is_required: true,
+    kill_signal: "SIGTERM",
+    timeout_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
+  }),
+  promotion_database_dsn_policy: Object.freeze({
+    protected_file: "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE",
+    exact_path: "operator.database-url",
+    exact_role: "videoforge_hosted_operator",
+    accepted_protocols: Object.freeze(["postgres:", "postgresql:"]),
+    exact_query_parameters: Object.freeze({
+      sslmode: "require",
+      channel_binding: "require",
+    }),
+    host_and_database_source: "owner.pg_service.conf",
+    fingerprint_field: "database.operator_database_url_sha256",
+    fingerprint_algorithm: "SHA256_EXACT_PROTECTED_FILE_BYTES",
+    fingerprint_must_match_guarded_authority_before_pool_creation: true,
+    runtime_reconciler_and_owner_dsns_forbidden: true,
+    password_never_in_argv_or_logs: true,
   }),
   post_bootstrap_full_bridge_commands: Object.freeze([
     "mage-live-qualification",
@@ -954,6 +1063,16 @@ function validateFullLiveUserApproval({
         "exact_reconciler_role",
         "roles_must_be_fresh_absent_distinct_login_noinherit_hardened",
         "pgcrypto_required",
+        "prequalification_database_bootstrap_operator_function_signature_count",
+        "prequalification_database_bootstrap_operator_function_signature_namespace",
+        "prequalification_database_bootstrap_operator_function_signature_canonicalization",
+        "prequalification_database_bootstrap_operator_acl_comparison",
+        "prequalification_database_bootstrap_public_execute_readback_count",
+        "prequalification_database_bootstrap_public_default_execute_readback_count",
+        "prequalification_database_bootstrap_ownership_catalogs",
+        "prequalification_database_bootstrap_ownership_readback_is_cluster_wide",
+        "prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count",
+        "prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit",
         "prequalification_database_bootstrap_phase",
         "prequalification_database_bootstrap_phase_cap_usd",
         "prequalification_database_bootstrap_receipt_path",
@@ -971,6 +1090,26 @@ function validateFullLiveUserApproval({
       requestedDatabase.exact_reconciler_role !== "videoforge_hosted_reconciler" ||
       requestedDatabase.roles_must_be_fresh_absent_distinct_login_noinherit_hardened !== true ||
       requestedDatabase.pgcrypto_required !== true ||
+      requestedDatabase.prequalification_database_bootstrap_operator_function_signature_count !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signature_count ||
+      requestedDatabase.prequalification_database_bootstrap_operator_function_signature_namespace !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signature_namespace ||
+      requestedDatabase.prequalification_database_bootstrap_operator_function_signature_canonicalization !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signature_canonicalization ||
+      requestedDatabase.prequalification_database_bootstrap_operator_acl_comparison !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_acl_comparison ||
+      requestedDatabase.prequalification_database_bootstrap_public_execute_readback_count !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.public_function_execute_readback_count ||
+      requestedDatabase.prequalification_database_bootstrap_public_default_execute_readback_count !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.public_default_function_execute_readback_count ||
+      JSON.stringify(requestedDatabase.prequalification_database_bootstrap_ownership_catalogs) !==
+        JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.ownership_catalogs) ||
+      requestedDatabase.prequalification_database_bootstrap_ownership_readback_is_cluster_wide !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.ownership_readback_is_cluster_wide ||
+      requestedDatabase.prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.operator_dsn_policy.value_read_after_migration_prefix_commit_count ||
+      requestedDatabase.prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.operator_dsn_policy.value_read_forbidden_before_migration_prefix_commit ||
       requestedDatabase.prequalification_database_bootstrap_phase !==
         EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.phase ||
       requestedDatabase.prequalification_database_bootstrap_phase_cap_usd !==

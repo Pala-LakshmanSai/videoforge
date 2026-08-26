@@ -7,12 +7,14 @@ import {
   V213_FULL_LIVE_COMMANDS,
   V213FullLiveBridgeError,
   createV213CleanupRuntime,
+  createV213EarlyCleanupRuntime,
   createV213FullLiveProductionRuntime,
   createV213PrequalificationRuntime,
   createV213ProductionRuntime,
   createV213WorkflowHttpBinding,
   executeV213FullLiveCommand,
   readV213CleanupProtectedInputs,
+  readV213EarlyCleanupProtectedInputs,
   readV213PrequalificationProtectedInputs,
   readV213ProtectedInputs,
   redactV213Output,
@@ -470,6 +472,133 @@ describe("V2-13 full-live TypeScript bridge", () => {
     expect(database.query).toHaveBeenCalledTimes(2);
     expect([...values.values()].join("\n")).not.toContain("runtimeDatabaseUrl");
     expect([...values.values()].join("\n")).not.toContain("mageEndpointId");
+  });
+
+  it("executes pre-bootstrap cleanup with only request and RunPod inputs and zero database calls", async () => {
+    const authorityId = "11111111-1111-4111-8111-111111111111";
+    const earlyRequest = {
+      schemaVersion: "videoforge.v213-full-live-command/v1",
+      commandId: "cleanup:early:prove-zero",
+      stageAuthorityId: authorityId,
+      command: "prove-zero-workers",
+      input: {
+        schemaVersion: "videoforge.v213-full-live-early-cleanup-input/v1",
+        fullLiveAuthorityId: authorityId,
+      },
+    } as const;
+    const values = new Map([
+      ["10", JSON.stringify(earlyRequest)],
+      ["11", "r".repeat(32)],
+    ]);
+    const environment = {
+      [V213_BRIDGE_ENVIRONMENT.command]: "prove-zero-workers",
+      [V213_BRIDGE_ENVIRONMENT.requestFd]: "10",
+      [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "11",
+    };
+    const database = vi.fn();
+    const createEarlyRuntime = vi.fn((inputs) => createV213EarlyCleanupRuntime(inputs));
+    const createCleanupRuntime = vi.fn(() => {
+      throw new Error("normal cleanup runtime must not be constructed");
+    });
+    const createRuntime = vi.fn(() => {
+      throw new Error("production runtime must not be constructed");
+    });
+    const reads: string[] = [];
+    const readFd = (fd: string | undefined) => {
+      reads.push(fd ?? "");
+      return values.get(fd ?? "") ?? "";
+    };
+    let output = "";
+    await runV213FullLiveCli(["--execute", "EXECUTE_EXACT_V2_13_TYPESCRIPT_BRIDGE_COMMAND"], {
+      environment,
+      readFd,
+      createRuntime,
+      createCleanupRuntime,
+      createEarlyCleanupRuntime: createEarlyRuntime,
+      write: (value) => (output += value),
+    });
+    expect(reads).toEqual(["10", "11"]);
+    expect(createEarlyRuntime).toHaveBeenCalledOnce();
+    expect(createCleanupRuntime).not.toHaveBeenCalled();
+    expect(createRuntime).not.toHaveBeenCalled();
+    expect(database).not.toHaveBeenCalled();
+    expect(JSON.parse(output)).toMatchObject({
+      command: "prove-zero-workers",
+      state: "TERMINAL",
+      summary: {
+        zeroWorkers: true,
+        databaseCleanupClaimed: false,
+        databaseCalls: 0,
+        runpodCalls: 0,
+        cloudflareCalls: 0,
+        applicationSecretReads: 0,
+        externalSpendUsd: 0,
+        gpuUse: false,
+      },
+    });
+    expect(() => readV213EarlyCleanupProtectedInputs(environment, readFd)).not.toThrow();
+  });
+
+  it("requires three equal, spaced final billing reads for either cleanup baseline mode", async () => {
+    const authorityId = "11111111-1111-4111-8111-111111111111";
+    for (const [billingBaselineMode, billingBaselineUsd, expectedReads, expectedSleeps] of [
+      ["PRIOR_FRESH_PREFLIGHT", 2, 3, 2],
+      ["ESTABLISH_CURRENT_NO_RUNPOD_MUTATION", null, 4, 3],
+    ] as const) {
+      const requestValue = {
+        schemaVersion: "videoforge.v213-full-live-command/v1",
+        commandId: `cleanup:billing:${billingBaselineMode}`,
+        stageAuthorityId: authorityId,
+        command: "read-settled-billing",
+        input: {
+          schemaVersion: "videoforge.v213-full-live-cleanup-input/v1",
+          fullLiveAuthorityId: authorityId,
+          billingBaselineMode,
+          billingBaselineUsd,
+          totalCapUsd: 17.5,
+          retainedLanes: [
+            { lane: "mage", volumeIdSha256: HASH, volumeManifestSha256: HASH },
+            {
+              lane: "soulx",
+              volumeIdSha256: `sha256:${"b".repeat(64)}`,
+              volumeManifestSha256: `sha256:${"c".repeat(64)}`,
+            },
+          ],
+        },
+      } as const;
+      let reads = 0;
+      const sleeps: number[] = [];
+      const runtime = await createV213CleanupRuntime(
+        {
+          request: requestValue,
+          runpodApiKey: "r".repeat(32),
+          operatorDatabaseUrl:
+            "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+          cleanupInput: requestValue.input,
+        },
+        {
+          createOperatorDatabase: () => ({ query: vi.fn(), transaction: vi.fn() }) as never,
+          createTransport: () =>
+            ({
+              billingAmount: vi.fn(async () => {
+                reads += 1;
+                return 2;
+              }),
+              inventory: vi.fn(),
+              cleanupAttributableResources: vi.fn(),
+            }) as never,
+          sleep: async (milliseconds) => {
+            sleeps.push(milliseconds);
+          },
+        },
+      );
+      const handled = await runtime.handlers["read-settled-billing"](requestValue);
+      expect((handled.summary as Record<string, unknown>).billingReads).toEqual([2, 2, 2]);
+      expect((handled.summary as Record<string, unknown>).billingReadCount).toBe(3);
+      expect((handled.summary as Record<string, unknown>).billingStable).toBe(true);
+      expect(reads).toBe(expectedReads);
+      expect(sleeps).toEqual(Array(expectedSleeps).fill(2_000));
+    }
   });
 
   it("rejects cleanup input drift before runtime construction", () => {

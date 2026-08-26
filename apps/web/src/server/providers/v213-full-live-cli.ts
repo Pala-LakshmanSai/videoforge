@@ -265,6 +265,23 @@ export interface V213CleanupProtectedInputs {
   readonly cleanupInput: V213CleanupInput;
 }
 
+export const V213_EARLY_CLEANUP_INPUT_SCHEMA =
+  "videoforge.v213-full-live-early-cleanup-input/v1" as const;
+
+/**
+ * The first cleanup branch is entered when the owner/operator bootstrap has not settled.  It
+ * intentionally carries only the command request and RunPod key: there is no database principal,
+ * cleanup descriptor, production secret, or database-cleanup claim available at this boundary.
+ */
+export interface V213EarlyCleanupProtectedInputs {
+  readonly request: V213FullLiveCommandRequest;
+  readonly runpodApiKey: string;
+  readonly earlyCleanupInput: {
+    readonly schemaVersion: typeof V213_EARLY_CLEANUP_INPUT_SCHEMA;
+    readonly fullLiveAuthorityId: string;
+  };
+}
+
 interface V213CleanupInput {
   readonly schemaVersion: "videoforge.v213-full-live-cleanup-input/v1";
   readonly fullLiveAuthorityId: string;
@@ -320,6 +337,11 @@ const PREQUALIFICATION_ALLOWED_ENVIRONMENT = new Set<string>([
   V213_BRIDGE_ENVIRONMENT.requestFd,
   V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd,
   V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd,
+]);
+const EARLY_CLEANUP_ALLOWED_ENVIRONMENT = new Set<string>([
+  V213_BRIDGE_ENVIRONMENT.command,
+  V213_BRIDGE_ENVIRONMENT.requestFd,
+  V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd,
 ]);
 
 function fail(code: string): never {
@@ -762,6 +784,53 @@ export function readV213CleanupProtectedInputs(
   return Object.freeze({ request, runpodApiKey, operatorDatabaseUrl, cleanupInput });
 }
 
+function exactEarlyCleanupInput(value: unknown): V213EarlyCleanupProtectedInputs["earlyCleanupInput"] {
+  const item = object(value);
+  if (
+    item?.schemaVersion !== V213_EARLY_CLEANUP_INPUT_SCHEMA ||
+    typeof item.fullLiveAuthorityId !== "string" ||
+    !COMMAND_ID.test(item.fullLiveAuthorityId) ||
+    Object.keys(item).sort().join(",") !== "fullLiveAuthorityId,schemaVersion"
+  )
+    fail("EARLY_CLEANUP_INPUT_INVALID");
+  return value as V213EarlyCleanupProtectedInputs["earlyCleanupInput"];
+}
+
+export function readV213EarlyCleanupProtectedInputs(
+  environment: NodeJS.ProcessEnv,
+  readFd: (value: string | undefined, code: string) => string = readProtectedFd,
+): V213EarlyCleanupProtectedInputs {
+  const keys = Object.keys(environment).filter((key) => key.startsWith(PREFIX));
+  if (
+    keys.length !== EARLY_CLEANUP_ALLOWED_ENVIRONMENT.size ||
+    keys.some((key) => !EARLY_CLEANUP_ALLOWED_ENVIRONMENT.has(key))
+  )
+    fail("EARLY_CLEANUP_AMBIENT_BINDING_REJECTED");
+  const command = environment[V213_BRIDGE_ENVIRONMENT.command];
+  if (!CLEANUP_COMMANDS.has(command as V213FullLiveCommand))
+    fail("EARLY_CLEANUP_COMMAND_INVALID");
+  let request: V213FullLiveCommandRequest;
+  try {
+    request = exactRequest(
+      JSON.parse(readFd(environment[V213_BRIDGE_ENVIRONMENT.requestFd], "REQUEST_FD_INVALID")),
+    );
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) throw error;
+    fail("REQUEST_JSON_INVALID");
+  }
+  if (request.command !== command) fail("COMMAND_MISMATCH");
+  const earlyCleanupInput = exactEarlyCleanupInput(request.input);
+  if (earlyCleanupInput.fullLiveAuthorityId !== request.stageAuthorityId)
+    fail("EARLY_CLEANUP_AUTHORITY_DRIFT");
+  const runpodApiKey = readFd(
+    environment[V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd],
+    "RUNPOD_KEY_FD_INVALID",
+  );
+  if (runpodApiKey.trim() !== runpodApiKey || runpodApiKey.length < 20)
+    fail("EARLY_CLEANUP_PROTECTED_INPUT_INVALID");
+  return Object.freeze({ request, runpodApiKey, earlyCleanupInput });
+}
+
 type WorkflowFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 const WORKFLOW_PATH = "/api/operator/v2-13/pair-workflows";
 
@@ -952,7 +1021,13 @@ export function redactV213Output(
     return Object.fromEntries(
       Object.entries(value).map(([key, child]) => [
         key,
-        SECRET_KEY.test(key) ? "REDACTED" : redactV213Output(child, protectedValues),
+        // Counters such as applicationSecretReads are public evidence, not secret material.  Only
+        // redact a secret-shaped field when its value could actually carry protected bytes; this
+        // preserves the zero-read proof needed by the early cleanup contract.
+        SECRET_KEY.test(key) &&
+        (typeof child === "string" || (child !== null && typeof child === "object"))
+          ? "REDACTED"
+          : redactV213Output(child, protectedValues),
       ]),
     ) as JsonValue;
   if (
@@ -1355,6 +1430,51 @@ function evidence(value: JsonValue) {
   return Object.freeze({ evidenceSha256: sha256(value), summary: value });
 }
 
+const BILLING_STABLE_READ_COUNT = 3;
+const BILLING_STABLE_READ_SPACING_MS = 2_000;
+
+async function readStableBillingEvidence(input: {
+  readonly read: () => Promise<number>;
+  readonly sleep: (milliseconds: number) => Promise<void>;
+  readonly baselineMode: "PRIOR_FRESH_PREFLIGHT" | "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION";
+  readonly baselineUsd: number | null;
+  readonly totalCapUsd: number;
+}): Promise<JsonValue> {
+  const readFinite = async () => {
+    const amount = await input.read();
+    if (!Number.isFinite(amount) || amount < 0) fail("CLEANUP_BILLING_READ_INVALID");
+    return amount;
+  };
+  let baseline = input.baselineUsd;
+  if (input.baselineMode === "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION") {
+    baseline = await readFinite();
+    // Keep the baseline and final proof distinct even when the endpoint has no activity.
+    await input.sleep(BILLING_STABLE_READ_SPACING_MS);
+  }
+  if (baseline === null || !Number.isFinite(baseline) || baseline < 0)
+    fail("CLEANUP_BILLING_BASELINE_INVALID");
+  const reads: number[] = [];
+  for (let index = 0; index < BILLING_STABLE_READ_COUNT; index += 1) {
+    if (index > 0) await input.sleep(BILLING_STABLE_READ_SPACING_MS);
+    reads.push(await readFinite());
+  }
+  const cumulativeBillingUsd = reads[reads.length - 1]!;
+  if (
+    reads.some((amount) => amount !== cumulativeBillingUsd) ||
+    cumulativeBillingUsd < baseline ||
+    cumulativeBillingUsd - baseline > input.totalCapUsd
+  )
+    fail("CLEANUP_BILLING_NOT_STABLE");
+  return {
+    cumulativeBillingUsd,
+    billingReads: reads,
+    billingReadCount: BILLING_STABLE_READ_COUNT,
+    billingReadSpacingMs: BILLING_STABLE_READ_SPACING_MS,
+    billingStable: true,
+    withinCumulativeCap: true,
+  };
+}
+
 function exactPayload<T extends object>(
   value: Readonly<Record<string, unknown>>,
   keys: string[],
@@ -1538,23 +1658,15 @@ export async function createV213CleanupRuntime(
       return evidence({ zeroWorkers: true, reads } as never);
     },
     "read-settled-billing": async () => {
-      const first = await transport.billingAmount();
-      const baseline =
-        descriptor.billingBaselineMode === "PRIOR_FRESH_PREFLIGHT"
-          ? descriptor.billingBaselineUsd
-          : first;
-      const cumulativeBillingUsd =
-        descriptor.billingBaselineMode === "PRIOR_FRESH_PREFLIGHT"
-          ? first
-          : await transport.billingAmount();
-      if (
-        baseline === null ||
-        !Number.isFinite(cumulativeBillingUsd) ||
-        cumulativeBillingUsd < baseline ||
-        cumulativeBillingUsd - baseline > descriptor.totalCapUsd
-      )
-        fail("CLEANUP_BILLING_CAP_EXCEEDED");
-      return evidence({ cumulativeBillingUsd, withinCumulativeCap: true });
+      return evidence(
+        await readStableBillingEvidence({
+          read: () => transport.billingAmount(),
+          sleep,
+          baselineMode: descriptor.billingBaselineMode,
+          baselineUsd: descriptor.billingBaselineUsd,
+          totalCapUsd: descriptor.totalCapUsd,
+        }),
+      );
     },
     "reconcile-exact-resources": async () => {
       const inventory = await transport.inventory();
@@ -1569,6 +1681,103 @@ export async function createV213CleanupRuntime(
     journal: createV213SqlCommandJournal(operator),
     handlers: cleanup as unknown as V213FullLiveCommandHandlers,
     protectedValues: Object.freeze([inputs.runpodApiKey, inputs.operatorDatabaseUrl]),
+  });
+}
+
+/**
+ * Construct the cleanup runtime used when failure occurs before the operator role/ACL is
+ * durably verified.  This is deliberately a no-op proof runtime: no SQL executor, connection,
+ * cleanup-scope claim, endpoint mutation, billing request, or production secret is constructed.
+ * The RunPod key remains part of the protected boundary so a caller cannot widen the child
+ * process's environment, but the early proof itself performs zero provider calls.
+ */
+export async function createV213EarlyCleanupRuntime(
+  inputs: V213EarlyCleanupProtectedInputs,
+): Promise<V213FullLiveBridgeRuntime> {
+  if (!CLEANUP_COMMANDS.has(inputs.request.command)) fail("EARLY_CLEANUP_COMMAND_INVALID");
+  if (inputs.earlyCleanupInput.fullLiveAuthorityId !== inputs.request.stageAuthorityId)
+    fail("EARLY_CLEANUP_AUTHORITY_DRIFT");
+  const completed = new Map<string, V213FullLiveCommandResult>();
+  const journal: V213FullLiveJournal = {
+    async claim(input) {
+      const prior = completed.get(input.operationId);
+      return prior === undefined ? { action: "EXECUTE" } : { action: "DONE", result: prior };
+    },
+    async ambiguous() {
+      // There is no durable side effect to reconcile in this branch.  The outer executor keeps
+      // the cleanup work terminal and never redispatches it.
+    },
+    async complete(operationId, result) {
+      const prior = completed.get(operationId);
+      if (prior !== undefined && canonicalizeJson(prior) !== canonicalizeJson(result))
+        fail("EARLY_CLEANUP_REPLAY_DRIFT");
+      completed.set(operationId, result);
+    },
+  };
+  const common = {
+    databaseCleanupClaimed: false,
+    databaseCalls: 0,
+    providerCalls: 0,
+    runpodCalls: 0,
+    cloudflareCalls: 0,
+    applicationSecretReads: 0,
+    externalSpendUsd: 0,
+    gpuUse: false,
+  } as const;
+  const handlers = Object.fromEntries(
+    V213_FULL_LIVE_COMMANDS.map((command) => {
+      if (command === "restore-endpoints-max-one")
+        return [
+          command,
+          async () =>
+            evidence({
+              ...common,
+              restorationPerformed: false,
+              bothEndpointsMaxWorkersOne: true,
+            }),
+        ];
+      if (command === "prove-zero-workers")
+        return [
+          command,
+          async () =>
+            evidence({
+              ...common,
+              zeroWorkers: true,
+              reads: [],
+              stableReads: 0,
+            }),
+        ];
+      if (command === "read-settled-billing")
+        return [
+          command,
+          async () =>
+            evidence({
+              ...common,
+              cumulativeBillingUsd: 0,
+              billingReads: [],
+              billingReadCount: 0,
+              billingStable: true,
+              withinCumulativeCap: true,
+            }),
+        ];
+      if (command === "reconcile-exact-resources")
+        return [
+          command,
+          async () =>
+            evidence({
+              ...common,
+              reconciliationPerformed: false,
+              resourceReads: 0,
+              onlyApprovedRetainedVolumes: true,
+            }),
+        ];
+      return [command, async () => fail("EARLY_CLEANUP_COMMAND_NOT_ALLOWED")];
+    }),
+  ) as unknown as V213FullLiveCommandHandlers;
+  return Object.freeze({
+    journal,
+    handlers,
+    protectedValues: Object.freeze([inputs.runpodApiKey]),
   });
 }
 
@@ -2027,14 +2236,15 @@ export async function createV213ProductionRuntime(
     },
     "read-settled-billing": async () => {
       exactPayload<Record<string, never>>(payload, []);
-      const cumulativeBillingUsd = await transport.billingAmount();
-      if (
-        !Number.isFinite(cumulativeBillingUsd) ||
-        cumulativeBillingUsd < dualLaneInput.billingBaselineUsd ||
-        cumulativeBillingUsd - dualLaneInput.billingBaselineUsd > dualLaneInput.totalCapUsd
-      )
-        fail("CLEANUP_BILLING_CAP_EXCEEDED");
-      return evidence({ cumulativeBillingUsd, withinCumulativeCap: true });
+      return evidence(
+        await readStableBillingEvidence({
+          read: () => transport.billingAmount(),
+          sleep: ports.sleep,
+          baselineMode: "PRIOR_FRESH_PREFLIGHT",
+          baselineUsd: dualLaneInput.billingBaselineUsd,
+          totalCapUsd: dualLaneInput.totalCapUsd,
+        }),
+      );
     },
     "reconcile-exact-resources": async () => {
       exactPayload<Record<string, never>>(payload, []);
@@ -2109,6 +2319,9 @@ export async function runV213FullLiveCli(
     readonly createCleanupRuntime?: (
       inputs: V213CleanupProtectedInputs,
     ) => Promise<V213FullLiveBridgeRuntime>;
+    readonly createEarlyCleanupRuntime?: (
+      inputs: V213EarlyCleanupProtectedInputs,
+    ) => Promise<V213FullLiveBridgeRuntime>;
     readonly write?: (value: string) => void;
     readonly readFd?: (value: string | undefined, code: string) => string;
   } = {},
@@ -2129,6 +2342,15 @@ export async function runV213FullLiveCli(
       const inputs = readV213PrequalificationProtectedInputs(environment, readFd);
       const runtime = await (
         options.createPrequalificationRuntime ?? createV213PrequalificationRuntime
+      )(inputs);
+      result = await executeV213FullLiveCommand(inputs.request, runtime);
+    } else if (
+      CLEANUP_COMMANDS.has(command as V213FullLiveCommand) &&
+      environment[V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd] === undefined
+    ) {
+      const inputs = readV213EarlyCleanupProtectedInputs(environment, readFd);
+      const runtime = await (
+        options.createEarlyCleanupRuntime ?? createV213EarlyCleanupRuntime
       )(inputs);
       result = await executeV213FullLiveCommand(inputs.request, runtime);
     } else if (CLEANUP_COMMANDS.has(command as V213FullLiveCommand)) {

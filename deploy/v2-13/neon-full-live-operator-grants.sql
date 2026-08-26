@@ -41,7 +41,17 @@ WITH target AS (
   SELECT oid FROM pg_roles WHERE rolname=:'operator_role'
 ),
 effective_functions AS (
-  SELECT replace(replace(n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')',' ',''),'timestampwithtimezone','timestamptz') AS signature
+  SELECT p.oid,
+    p.proname||'('||(
+      SELECT COALESCE(string_agg(
+        CASE format_type(a.type_oid,NULL)
+          WHEN 'timestamp with time zone' THEN 'timestamptz'
+          ELSE format_type(a.type_oid,NULL)
+        END,
+        ',' ORDER BY a.ordinality
+      ),'')
+      FROM unnest(p.proargtypes::oid[]) WITH ORDINALITY AS a(type_oid,ordinality)
+    )||')' AS signature
   FROM pg_proc p
   JOIN pg_namespace n ON n.oid=p.pronamespace
   CROSS JOIN target t
@@ -60,24 +70,24 @@ public_default_functions AS (
   CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
   WHERE d.defaclobjtype='f' AND acl.grantee=0 AND acl.privilege_type='EXECUTE'
 ),
-expected_functions(signature) AS (VALUES
-  ('videoforge_claim_v213_bridge_command(jsonb)'),
-  ('videoforge_claim_v213_operation(jsonb)'),
-  ('videoforge_claim_v213_stage_authority(jsonb)'),
-  ('videoforge_complete_v213_stage_authority(text,text,jsonb)'),
-  ('videoforge_load_v213_bridge_acceptance_call(jsonb)'),
-  ('videoforge_load_v213_cleanup_scope(uuid)'),
-  ('videoforge_load_v213_stage_handoff(uuid,text,text)'),
-  ('videoforge_promote_hosted_full_live(uuid,uuid,jsonb)'),
-  ('videoforge_publish_v213_qualified_deployments(jsonb)'),
-  ('videoforge_record_hosted_full_live_authority(uuid,jsonb)'),
-  ('videoforge_record_v213_cloudflare_activation(uuid,jsonb)'),
-  ('videoforge_record_v213_cloudflare_rollback(uuid,jsonb)'),
-  ('videoforge_record_v213_receipt_verification_key(text,text)'),
-  ('videoforge_record_v213_stage_authority(uuid,jsonb)'),
-  ('videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)'),
-  ('videoforge_transition_v213_bridge_command(jsonb)'),
-  ('videoforge_transition_v213_operation(jsonb)')
+expected_functions(oid,signature) AS (VALUES
+  ('public.videoforge_claim_v213_bridge_command(jsonb)'::regprocedure::oid,'videoforge_claim_v213_bridge_command(jsonb)'),
+  ('public.videoforge_claim_v213_operation(jsonb)'::regprocedure::oid,'videoforge_claim_v213_operation(jsonb)'),
+  ('public.videoforge_claim_v213_stage_authority(jsonb)'::regprocedure::oid,'videoforge_claim_v213_stage_authority(jsonb)'),
+  ('public.videoforge_complete_v213_stage_authority(text,text,jsonb)'::regprocedure::oid,'videoforge_complete_v213_stage_authority(text,text,jsonb)'),
+  ('public.videoforge_load_v213_bridge_acceptance_call(jsonb)'::regprocedure::oid,'videoforge_load_v213_bridge_acceptance_call(jsonb)'),
+  ('public.videoforge_load_v213_cleanup_scope(uuid)'::regprocedure::oid,'videoforge_load_v213_cleanup_scope(uuid)'),
+  ('public.videoforge_load_v213_stage_handoff(uuid,text,text)'::regprocedure::oid,'videoforge_load_v213_stage_handoff(uuid,text,text)'),
+  ('public.videoforge_promote_hosted_full_live(uuid,uuid,jsonb)'::regprocedure::oid,'videoforge_promote_hosted_full_live(uuid,uuid,jsonb)'),
+  ('public.videoforge_publish_v213_qualified_deployments(jsonb)'::regprocedure::oid,'videoforge_publish_v213_qualified_deployments(jsonb)'),
+  ('public.videoforge_record_hosted_full_live_authority(uuid,jsonb)'::regprocedure::oid,'videoforge_record_hosted_full_live_authority(uuid,jsonb)'),
+  ('public.videoforge_record_v213_cloudflare_activation(uuid,jsonb)'::regprocedure::oid,'videoforge_record_v213_cloudflare_activation(uuid,jsonb)'),
+  ('public.videoforge_record_v213_cloudflare_rollback(uuid,jsonb)'::regprocedure::oid,'videoforge_record_v213_cloudflare_rollback(uuid,jsonb)'),
+  ('public.videoforge_record_v213_receipt_verification_key(text,text)'::regprocedure::oid,'videoforge_record_v213_receipt_verification_key(text,text)'),
+  ('public.videoforge_record_v213_stage_authority(uuid,jsonb)'::regprocedure::oid,'videoforge_record_v213_stage_authority(uuid,jsonb)'),
+  ('public.videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)'::regprocedure::oid,'videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)'),
+  ('public.videoforge_transition_v213_bridge_command(jsonb)'::regprocedure::oid,'videoforge_transition_v213_bridge_command(jsonb)'),
+  ('public.videoforge_transition_v213_operation(jsonb)'::regprocedure::oid,'videoforge_transition_v213_operation(jsonb)')
 ),
 role_acl AS (
   SELECT r.oid,
@@ -91,6 +101,16 @@ role_acl AS (
       UNION ALL SELECT 1 FROM pg_namespace n WHERE n.nspowner=r.oid
       UNION ALL SELECT 1 FROM pg_proc p WHERE p.proowner=r.oid
       UNION ALL SELECT 1 FROM pg_type t WHERE t.typowner=r.oid
+      UNION ALL SELECT 1 FROM pg_foreign_data_wrapper f WHERE f.fdwowner=r.oid
+      UNION ALL SELECT 1 FROM pg_foreign_server s WHERE s.srvowner=r.oid
+      UNION ALL SELECT 1 FROM pg_event_trigger e WHERE e.evtowner=r.oid
+      UNION ALL SELECT 1 FROM pg_tablespace t WHERE t.spcowner=r.oid
+      UNION ALL SELECT 1 FROM pg_publication p WHERE p.pubowner=r.oid
+      UNION ALL SELECT 1 FROM pg_subscription s WHERE s.subowner=r.oid
+      UNION ALL SELECT 1 FROM pg_largeobject_metadata l WHERE l.lomowner=r.oid
+      UNION ALL SELECT 1 FROM pg_collation c WHERE c.collowner=r.oid
+      UNION ALL SELECT 1 FROM pg_ts_dict d WHERE d.dictowner=r.oid
+      UNION ALL SELECT 1 FROM pg_ts_config c WHERE c.cfgowner=r.oid
     ) owned) AS ownership,
     (SELECT count(*) FROM pg_extension e WHERE e.extowner=r.oid) AS extension_ownership,
     (SELECT count(*) FROM pg_database d CROSS JOIN LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) acl WHERE acl.grantee=r.oid) AS database_acl,
@@ -113,9 +133,9 @@ SELECT
   AND role_acl.schema_acl=ARRAY['public:USAGE']::text[] AND role_acl.effective_schema_dangerous_acl=0
   AND role_acl.table_acl=0 AND role_acl.effective_table_acl=0
   AND role_acl.sequence_acl=0 AND role_acl.effective_sequence_acl=0 AND role_acl.default_acl=0
-  AND (SELECT COALESCE(array_agg(signature ORDER BY signature),'{}'::text[]) FROM effective_functions)=
-      (SELECT array_agg(signature ORDER BY signature) FROM expected_functions)
-  AND NOT EXISTS (SELECT 1 FROM effective_functions WHERE signature NOT IN (SELECT signature FROM expected_functions))
+  AND (SELECT COALESCE(array_agg(oid ORDER BY oid),'{}'::oid[]) FROM effective_functions)=
+      (SELECT array_agg(oid ORDER BY oid) FROM expected_functions)
+  AND NOT EXISTS (SELECT 1 FROM effective_functions WHERE oid NOT IN (SELECT oid FROM expected_functions))
   AND NOT EXISTS (SELECT 1 FROM public_functions)
   AND NOT EXISTS (SELECT 1 FROM public_default_functions)
   AND EXISTS (SELECT 1 FROM pg_extension WHERE extname='pgcrypto' AND extnamespace='public'::regnamespace)

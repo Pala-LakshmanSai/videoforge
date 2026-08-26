@@ -36,6 +36,8 @@ const PHASES = Object.freeze([
   ["v2_13_final_two_lane_smoke", 2],
   ["cleanup_and_reconciliation", 0],
 ]);
+const BOOTSTRAP_PHASE = "bootstrap_prequalification_database";
+const BOOTSTRAP_OPERATION = "bootstrap-prequalification-database";
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 // State and result records are hashed from canonical JSON so a restart can recover a settled
 // result without trusting property insertion order. Keep this local to the authority file: the
@@ -214,6 +216,10 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     total_reserved_usd: 0,
     total_settled_usd: 0,
     no_redispatch: true,
+    // This is the durable boundary for the operator-only cleanup seam.  It is set in the same
+    // state CAS that settles the bootstrap result and is repaired during result hydration after
+    // a restart; never infer it from a preflight having run.
+    operator_role_verified: false,
     current_phase_index: 0,
     phases: phaseMap(),
     event_ids: [],
@@ -245,8 +251,9 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:d91f8e6f4ed33c8dc1cbfb7ce41d7155e03d1459e457016e45235ebce53c366f" ||
+      "sha256:ae12285cfe9fba5ad1afaa946f4d6e5a57adf686729e88167c147e00e9bfc73f" ||
     state.no_redispatch !== true ||
+    typeof state.operator_role_verified !== "boolean" ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
       "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
@@ -297,6 +304,15 @@ function validateState(state) {
     }
   }
   const actualWorkIds = Object.values(state.phases).flatMap((phase) => Object.keys(phase.work));
+  const bootstrapWorkId = `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase();
+  const bootstrapWork = state.phases[BOOTSTRAP_PHASE]?.work?.[bootstrapWorkId];
+  if (
+    state.operator_role_verified === true &&
+    (bootstrapWork?.state !== "SETTLED_TERMINAL" ||
+      bootstrapWork?.settled_result === undefined ||
+      bootstrapWork?.settled_result === null)
+  )
+    fail("OPERATOR_ROLE_VERIFICATION");
   const reserved = finiteUsd(
     Object.values(state.phases).reduce((sum, phase) => sum + phase.reserved_usd, 0),
     "TOTAL_RESERVED",
@@ -462,12 +478,16 @@ function recordSettledResult(state, { phaseName, workId, result }) {
     if (
       work.settled_result_sha256 !== resultSha256 ||
       settledResultSha256(work.settled_result) !== resultSha256
-    )
-      fail("SETTLED_RESULT_REPLAY");
-    return state;
+      )
+        fail("SETTLED_RESULT_REPLAY");
+    if (phaseName === BOOTSTRAP_PHASE && workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase())
+      state.operator_role_verified = true;
+    return validateState(state);
   }
   work.settled_result = result;
   work.settled_result_sha256 = resultSha256;
+  if (phaseName === BOOTSTRAP_PHASE && workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase())
+    state.operator_role_verified = true;
   return validateState(state);
 }
 
@@ -482,6 +502,12 @@ function settleWork(state, { phaseName, workId, actualUsd, eventId, result }) {
     fail("WORK_NOT_SETTLEABLE");
   if (actual > work.reservation_usd || state.event_ids.includes(eventId))
     fail("SETTLEMENT_OR_EVENT");
+  if (
+    phaseName === BOOTSTRAP_PHASE &&
+    workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase() &&
+    (result === undefined || result === null || typeof result !== "object" || Array.isArray(result))
+  )
+    fail("OPERATOR_ROLE_VERIFICATION");
   work.state = "SETTLED_TERMINAL";
   work.settled_usd = actual;
   work.settlement_event_id = eventId;
@@ -491,6 +517,8 @@ function settleWork(state, { phaseName, workId, actualUsd, eventId, result }) {
     work.settled_result = result;
     work.settled_result_sha256 = settledResultSha256(result);
   }
+  if (phaseName === BOOTSTRAP_PHASE && workId === `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase())
+    state.operator_role_verified = true;
   phase.settled_usd = finiteUsd(phase.settled_usd + actual, "PHASE_SETTLE_SUM");
   state.total_settled_usd = finiteUsd(state.total_settled_usd + actual, "TOTAL_SETTLE_SUM");
   state.event_ids.push(eventId);
