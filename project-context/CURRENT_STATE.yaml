@@ -90,6 +90,8 @@ provider_free_product_progress:
   hosted_render_plan_materializer_status: MAGE_AND_EXACT_APPROVED_SOULX_PROFILE_PROVIDER_FREE_PASS_LIVE_BLOCKED
   soulx_crop_candidate_commit: "f355705"
   soulx_crop_candidate_status: APPROVED_EXACT_FULL_AND_SPLIT_PROVIDER_FREE_PROFILE_ACTIVE_NO_LIVE_AUTHORITY_NOT_QUALIFIED
+  soulx_crop_renderer_commit: "417ab1c"
+  soulx_crop_renderer_status: PROVIDER_FREE_PASS_INDEPENDENTLY_AUDITED_LIVE_QUALIFICATION_BLOCKED
   soulx_crop_candidate_sha256: "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
   soulx_crop_approval_path: "evidence/acceptance/VF-10-08/2026-08-26-soulx-crop-profile-approval.json"
   soulx_crop_approval_sha256: "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
@@ -135,6 +137,9 @@ provider_free_product_progress:
   production_activation_config_commit: "614464b"
   production_activation_config_status: PROVIDER_FREE_PASS_independently_audited_not_rendered_or_deployed
   production_activation_config_note: "Dry-run-default production activation rendering, validation, deployment guard, exact Cloudflare bindings, and production bundle firewall fail closed with GPU transport DISABLED_UNQUALIFIED."
+  guarded_activation_executor_commit: "09c3cde"
+  guarded_activation_executor_status: PROVIDER_FREE_PASS_INDEPENDENTLY_AUDITED_NOT_EXECUTED
+  guarded_activation_executor_note: "The guarded executor binds clean committed bytes, exact SoulX approval media, ledger prefix 36 then migrations 0037-0044, fresh hardened database roles, a closed 21-secret seam, and an exact disabled Cloudflare quarantine before secret mutation. It is a default no-op and no live gate hash is self-proving."
   authenticated_worker_callback_commit: "23d4d03"
   authenticated_worker_callback_status: PROVIDER_FREE_PASS_independently_audited_source_only_uncomposed
   authenticated_worker_callback_note: "The worker-only callback shell authenticates opaque bearer authority before body parsing and binds the current assignment without tenant selectors; a concrete production callback authority repository adapter is still missing."

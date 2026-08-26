@@ -24,6 +24,12 @@ qualification. The user explicitly approved the exact hash-bound SoulX full/spli
 deployment authority is required before any activation. Provider/deployment/credential/GPU/spend
 authority is false with a `$0` executable cap, and no provider call or spend is authorized.
 
+Commit `417ab1c` activates only the exact approved provider-free SoulX full/split renderer profile,
+including the source-background feathered overlay and split-only path. Commit `09c3cde` adds an
+independently audited, default-no-op activation executor that requires a clean pinned release,
+fresh database roles, ledger prefix 36, disabled Cloudflare quarantine, and a closed secret seam.
+Neither commit supplies live qualification, credentials, deployment authority, or spend authority.
+
 Attempt64 is closed `NOT_QUALIFIED`. Deadline-mode admission and the immediate pre-RunPod recheck
 passed; the one-unit probe and three subsequent jobs produced 96 durable accepted units. Endpoint
 rotation succeeded with distinct endpoint and signed Pod identities. Cancellation reached
