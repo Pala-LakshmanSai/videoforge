@@ -244,7 +244,9 @@ export interface V213ProtectedInputs {
 }
 
 export interface V213ProductionSecrets {
-  readonly schemaVersion: "videoforge.v213-full-live-production-secrets/v1";
+  readonly schemaVersion:
+    | "videoforge.v213-full-live-pre-endpoint-secrets/v1"
+    | "videoforge.v213-full-live-production-secrets/v1";
   readonly stageAuthoritySigningKeyBase64: string;
   readonly provenanceReceiptHmacKeyBase64: string;
   readonly provenanceReceiptKeyId: string;
@@ -255,8 +257,8 @@ export interface V213ProductionSecrets {
   readonly pairEnvelopeSigningKeyId: string;
   readonly pairProviderProofKeyHex: string;
   readonly pairProviderProofKeyId: string;
-  readonly mageEndpointId: string;
-  readonly soulxEndpointId: string;
+  readonly mageEndpointId?: string;
+  readonly soulxEndpointId?: string;
 }
 
 export const V213_BRIDGE_ENVIRONMENT = Object.freeze({
@@ -327,7 +329,10 @@ function readProtectedFd(value: string | undefined, code: string): string {
 
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 
-function productionSecrets(raw: string): V213ProductionSecrets {
+function productionSecrets(
+  raw: string,
+  endpointMode: "pre-endpoint" | "final" | "either",
+): V213ProductionSecrets {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -335,9 +340,9 @@ function productionSecrets(raw: string): V213ProductionSecrets {
     fail("PRODUCTION_SECRETS_JSON_INVALID");
   }
   const value = object(parsed);
-  const keys = [
+  if (value === null) fail("PRODUCTION_SECRETS_INVALID");
+  const baseKeys = [
     "acceptanceEvidenceSigningKeyBase64",
-    "mageEndpointId",
     "pairDispatchTokenKeyBase64",
     "pairDispatchTokenKeyId",
     "pairEnvelopeSigningKeyHex",
@@ -347,11 +352,19 @@ function productionSecrets(raw: string): V213ProductionSecrets {
     "provenanceReceiptHmacKeyBase64",
     "provenanceReceiptKeyId",
     "schemaVersion",
-    "soulxEndpointId",
     "stageAuthoritySigningKeyBase64",
   ];
+  const hasEndpoints = value?.schemaVersion === "videoforge.v213-full-live-production-secrets/v1";
+  const keys = hasEndpoints
+    ? [...baseKeys, "mageEndpointId", "soulxEndpointId"].sort()
+    : baseKeys;
   if (
-    value?.schemaVersion !== "videoforge.v213-full-live-production-secrets/v1" ||
+    ![
+      "videoforge.v213-full-live-pre-endpoint-secrets/v1",
+      "videoforge.v213-full-live-production-secrets/v1",
+    ].includes(value?.schemaVersion as string) ||
+    (endpointMode === "pre-endpoint" && hasEndpoints) ||
+    (endpointMode === "final" && !hasEndpoints) ||
     Object.keys(value).sort().join(",") !== keys.join(",") ||
     typeof value.stageAuthoritySigningKeyBase64 !== "string" ||
     typeof value.provenanceReceiptHmacKeyBase64 !== "string" ||
@@ -362,8 +375,6 @@ function productionSecrets(raw: string): V213ProductionSecrets {
     typeof value.pairEnvelopeSigningKeyId !== "string" ||
     typeof value.pairProviderProofKeyHex !== "string" ||
     typeof value.pairProviderProofKeyId !== "string" ||
-    typeof value.mageEndpointId !== "string" ||
-    typeof value.soulxEndpointId !== "string" ||
     typeof value.provenanceReceiptKeyId !== "string" ||
     ![
       value.provenanceReceiptKeyId,
@@ -377,9 +388,10 @@ function productionSecrets(raw: string): V213ProductionSecrets {
       value.pairEnvelopeSigningKeyId,
       value.pairProviderProofKeyId,
     ]).size !== 4 ||
-    !ENDPOINT_ID.test(value.mageEndpointId) ||
-    !ENDPOINT_ID.test(value.soulxEndpointId) ||
-    value.mageEndpointId === value.soulxEndpointId ||
+    (hasEndpoints &&
+      (!ENDPOINT_ID.test(value.mageEndpointId as string) ||
+        !ENDPOINT_ID.test(value.soulxEndpointId as string) ||
+        value.mageEndpointId === value.soulxEndpointId)) ||
     !/^(?:[0-9a-f]{2}){32,}$/u.test(value.pairEnvelopeSigningKeyHex) ||
     !/^(?:[0-9a-f]{2}){32,}$/u.test(value.pairProviderProofKeyHex)
   )
@@ -457,7 +469,10 @@ export function readV213ProtectedInputs(
     environment[V213_BRIDGE_ENVIRONMENT.productionSecretsFd],
     "PRODUCTION_SECRETS_FD_INVALID",
   );
-  const secrets = productionSecrets(productionSecretsRaw);
+  const secrets = productionSecrets(
+    productionSecretsRaw,
+    CLEANUP_COMMANDS.has(command) ? "either" : command.startsWith("v2-") ? "final" : "pre-endpoint",
+  );
   let parsedOrigin: URL;
   try {
     parsedOrigin = new URL(workerOrigin);
@@ -1403,11 +1418,14 @@ export async function createV213ProductionRuntime(
       outerStateSha256: production.outerStateSha256,
       fetch: ports.fetch,
     });
+    const mageEndpointId = secrets.mageEndpointId;
+    const soulxEndpointId = secrets.soulxEndpointId;
+    if (!mageEndpointId || !soulxEndpointId) fail("PRODUCTION_ENDPOINT_BINDINGS_REQUIRED");
     const mageEndpointIdSha256 = `sha256:${createHash("sha256")
-      .update(secrets.mageEndpointId, "utf8")
+      .update(mageEndpointId, "utf8")
       .digest("hex")}`;
     const soulxEndpointIdSha256 = `sha256:${createHash("sha256")
-      .update(secrets.soulxEndpointId, "utf8")
+      .update(soulxEndpointId, "utf8")
       .digest("hex")}`;
     const scheduled = await commitAndScheduleV209ShortPair(
       {
@@ -1423,9 +1441,9 @@ export async function createV213ProductionRuntime(
         VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: secrets.pairProviderProofKeyHex,
         VIDEOFORGE_PROVIDER_PROOF_KEY_ID: secrets.pairProviderProofKeyId,
         VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: inputs.workerOperatorBearer,
-        VIDEOFORGE_MAGE_ENDPOINT_ID: secrets.mageEndpointId,
+        VIDEOFORGE_MAGE_ENDPOINT_ID: mageEndpointId,
         VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256: mageEndpointIdSha256,
-        VIDEOFORGE_SOULX_ENDPOINT_ID: secrets.soulxEndpointId,
+        VIDEOFORGE_SOULX_ENDPOINT_ID: soulxEndpointId,
         VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256: soulxEndpointIdSha256,
         HOSTED_PAIR_WORKFLOW: workflow,
       } as never,
@@ -1556,8 +1574,8 @@ export async function createV213ProductionRuntime(
       secrets.pairProviderProofKeyHex,
       Buffer.from(secrets.pairEnvelopeSigningKeyHex, "hex").toString("utf8"),
       Buffer.from(secrets.pairProviderProofKeyHex, "hex").toString("utf8"),
-      secrets.mageEndpointId,
-      secrets.soulxEndpointId,
+      ...(secrets.mageEndpointId ? [secrets.mageEndpointId] : []),
+      ...(secrets.soulxEndpointId ? [secrets.soulxEndpointId] : []),
     ]),
   });
 }

@@ -120,12 +120,22 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
   protected_seed_schema: "videoforge.v213-full-live-materialization-seed/v1",
   protected_seed_contains_only: Object.freeze([
     "outer-production-base",
+    "pre-endpoint-secrets-base",
     "guarded-authority-base",
     "config-activation-base",
     "media-manifest",
     "promotion-base",
   ]),
   protected_seed_future_output_hashes_authorized: false,
+  initial_production_secrets_schema: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
+  initial_seed_endpoint_identity_fields_present: false,
+  initial_seed_forbidden_endpoint_identity_fields: Object.freeze([
+    "mageEndpointId",
+    "mageEndpointIdSha256",
+    "soulxEndpointId",
+    "soulxEndpointIdSha256",
+  ]),
+  final_production_secrets_schema: "videoforge.v213-full-live-production-secrets/v1",
   storage_parent: "OUTER_STATE_MODE_0700_DIRECTORY",
   record_file_mode: "0600",
   exclusive_create_or_exact_hash_cas_required: true,
@@ -155,6 +165,22 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
       writes: Object.freeze(["production-input"]),
     }),
     Object.freeze({
+      kind: "max-one-endpoint-bindings",
+      materialize_after_operations: Object.freeze(["create-exact-max-one-endpoints"]),
+      derives_only_from: "receipt.materialization.production",
+      consume_before_materialization: "activation-record",
+      writes: Object.freeze([
+        "production-secrets",
+        "mage-deployment-snapshot",
+        "soulx-deployment-snapshot",
+      ]),
+      ordered_output_names: Object.freeze([
+        "production_secrets_sha256",
+        "mage_deployment_snapshot_sha256",
+        "soulx_deployment_snapshot_sha256",
+      ]),
+    }),
+    Object.freeze({
       kind: "activation-record",
       materialize_after_operations: Object.freeze([
         "mage-live-qualification",
@@ -162,6 +188,7 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
         "create-exact-max-one-endpoints",
       ]),
       consume_before_operation: "guarded-activation-once",
+      requires_prior_materialization_kinds: Object.freeze(["max-one-endpoint-bindings"]),
       writes: Object.freeze([
         "media-manifest",
         "config-activation-record",
@@ -179,6 +206,22 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
       ]),
       consume_before_operation: "promote-qualified-production",
       writes: Object.freeze(["promotion-record"]),
+    }),
+    Object.freeze({
+      kind: "cleanup-pre-endpoint-descriptor",
+      cleanup_only: true,
+      materialize_after_operations: Object.freeze([]),
+      consume_before_operations: Object.freeze([
+        "restore-endpoints-max-one",
+        "prove-zero-workers",
+        "read-settled-billing",
+        "reconcile-exact-resources",
+      ]),
+      ordered_output_names: Object.freeze([
+        "cleanup_production_input_sha256",
+        "pre_endpoint_secrets_sha256",
+      ]),
+      accepted_for_normal_or_acceptance_work: false,
     }),
   ]),
   missing_prior_result_receipt_path_mode_hash_chain_or_replay_is_hard_stop: true,

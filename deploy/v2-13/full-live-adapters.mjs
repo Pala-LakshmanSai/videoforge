@@ -754,6 +754,9 @@ function createStagedQualificationAdapters({ api, transport, input }) {
         bothMaxWorkersOne: true,
         bothWorkersMinZero: true,
         evidenceSha256: sha256(Buffer.from(JSON.stringify(result))),
+        materialization: {
+          production: exactProductionDeploymentMaterialization(result.production),
+        },
       };
     },
   });
@@ -1225,6 +1228,33 @@ function canonicalJson(value) {
   return JSON.stringify(value);
 }
 
+function exactProductionDeploymentMaterialization(production) {
+  const output = {};
+  for (const lane of ["mage", "soulx"]) {
+    const deployment = production?.[lane];
+    if (
+      deployment === null ||
+      typeof deployment !== "object" ||
+      typeof deployment.endpointId !== "string" ||
+      deployment.endpointId === "" ||
+      deployment.endpointId.includes("\0") ||
+      sha256(Buffer.from(deployment.endpointId)) !== deployment.endpointIdSha256 ||
+      deployment.workersMin !== 0 ||
+      deployment.workersMax !== 1 ||
+      !HASH.test(deployment.deploymentSha256 ?? "")
+    )
+      fail("MAX_ONE_DEPLOYMENT_MATERIALIZATION", lane);
+    output[lane] = Object.freeze({
+      endpointId: deployment.endpointId,
+      endpointIdSha256: deployment.endpointIdSha256,
+      deploymentSnapshotSha256: sha256(Buffer.from(`${canonicalJson(deployment)}\n`)),
+    });
+  }
+  if (output.mage.endpointId === output.soulx.endpointId)
+    fail("MAX_ONE_DEPLOYMENT_MATERIALIZATION_DISTINCT");
+  return Object.freeze(output);
+}
+
 function protectedDirectory(path, code) {
   const status = lstatSync(path);
   if (!status.isDirectory() || status.isSymbolicLink() || (status.mode & 0o077) !== 0) fail(code);
@@ -1247,6 +1277,19 @@ function exclusiveAtomicBytes(path, bytes) {
   }
   protectedFile(path, "MATERIALIZATION_OUTPUT_FILE");
   if (sha256(readFileSync(path)) !== sha256(bytes)) fail("MATERIALIZATION_OUTPUT_READBACK");
+}
+
+function atomicExactTransition(path, currentBytes, nextBytes) {
+  protectedDirectory(dirname(path), "MATERIALIZATION_OUTPUT_DIRECTORY");
+  protectedFile(path, "MATERIALIZATION_OUTPUT_FILE");
+  const observed = readFileSync(path);
+  if (sha256(observed) === sha256(nextBytes)) return;
+  if (sha256(observed) !== sha256(currentBytes)) fail("MATERIALIZATION_TRANSITION_CAS", path);
+  const temporary = `${path}.${randomBytes(8).toString("hex")}.next`;
+  writeFileSync(temporary, nextBytes, { mode: 0o600, flag: "wx" });
+  renameSync(temporary, path);
+  protectedFile(path, "MATERIALIZATION_OUTPUT_FILE");
+  if (sha256(readFileSync(path)) !== sha256(nextBytes)) fail("MATERIALIZATION_OUTPUT_READBACK");
 }
 
 function atomicChainUpdate(path, entry) {
@@ -1276,11 +1319,25 @@ function atomicChainUpdate(path, entry) {
       !Array.isArray(chain.entries)
     )
       fail("MATERIALIZATION_CHAIN_CONTRACT");
-    const previous = chain.entries.at(-1)?.entry_sha256 ?? MATERIALIZATION_GENESIS;
-    if (chain.entries.some((item) => item?.kind === entry.kind))
-      fail("MATERIALIZATION_CHAIN_STAGE_REPLAY", entry.kind);
+    const priorIndex = chain.entries.findIndex((item) => item?.kind === entry.kind);
+    const previous =
+      priorIndex === chain.entries.length - 1
+        ? chain.entries.at(-2)?.entry_sha256 ?? MATERIALIZATION_GENESIS
+        : chain.entries.at(-1)?.entry_sha256 ?? MATERIALIZATION_GENESIS;
     const unsigned = { ...entry, prior_chain_sha256: previous };
     const entrySha256 = sha256(Buffer.from(`${canonicalJson(unsigned)}\n`));
+    if (priorIndex >= 0) {
+      const stored = chain.entries[priorIndex];
+      const storedUnsigned = { ...stored };
+      delete storedUnsigned.entry_sha256;
+      if (
+        priorIndex !== chain.entries.length - 1 ||
+        stored.entry_sha256 !== entrySha256 ||
+        canonicalJson(storedUnsigned) !== canonicalJson(unsigned)
+      )
+        fail("MATERIALIZATION_CHAIN_STAGE_REPLAY", entry.kind);
+      return stored.entry_sha256;
+    }
     chain.entries.push({ ...unsigned, entry_sha256: entrySha256 });
     const bytes = Buffer.from(`${canonicalJson(chain)}\n`);
     const temporary = `${path}.${randomBytes(8).toString("hex")}.next`;
@@ -1330,6 +1387,46 @@ function createProtectedInputMaterializer({
     } catch {
       fail("MATERIALIZATION_SEED_JSON");
     }
+    const forbiddenFutureKeys = new Set([
+      "mageEndpointId",
+      "soulxEndpointId",
+      "endpointId",
+      "endpointIdSha256",
+      "deploymentSnapshotSha256",
+      "deployment_snapshot_sha256",
+      "mage_deployment_snapshot_sha256",
+      "soulx_deployment_snapshot_sha256",
+    ]);
+    const hasForbiddenFutureKey = (item) =>
+      item !== null &&
+      typeof item === "object" &&
+      Object.entries(item).some(
+        ([key, nested]) => forbiddenFutureKeys.has(key) || hasForbiddenFutureKey(nested),
+      );
+    const dynamicSeedValues = [
+      value?.production_input_base?.dualLaneInput?.mage?.publicImage,
+      value?.production_input_base?.dualLaneInput?.mage?.deploymentSha256,
+      value?.production_input_base?.dualLaneInput?.mage?.sourceCommit,
+      value?.production_input_base?.dualLaneInput?.soulx?.publicImage,
+      value?.production_input_base?.dualLaneInput?.soulx?.deploymentSha256,
+      value?.production_input_base?.dualLaneInput?.soulx?.sourceCommit,
+      value?.activation_record_base?.release?.production_config_activation_sha256,
+      value?.activation_record_base?.release?.media_worker_release_manifest_sha256,
+      value?.activation_record_base?.gates?.mage_qualification_sha256,
+      value?.activation_record_base?.gates?.soulx_qualification_sha256,
+      value?.activation_record_base?.gates?.mage_deployment_snapshot_sha256,
+      value?.activation_record_base?.gates?.soulx_deployment_snapshot_sha256,
+      value?.activation_record_base?.gates?.paid_dispatch_authority_sha256,
+      value?.promotion_record_base?.release?.disabled_config_sha256,
+      value?.promotion_record_base?.release?.enabled_config_sha256,
+      value?.promotion_record_base?.database?.authority_document_sha256,
+      value?.promotion_record_base?.lanes?.mage_image?.qualification_record_sha256,
+      value?.promotion_record_base?.lanes?.mage_image?.deployment_snapshot_sha256,
+      value?.promotion_record_base?.lanes?.soulx_avatar?.qualification_record_sha256,
+      value?.promotion_record_base?.lanes?.soulx_avatar?.deployment_snapshot_sha256,
+      value?.promotion_record_base?.cloudflare?.disabled_version_id,
+      value?.promotion_record_base?.cloudflare?.disabled_version_sha256,
+    ];
     if (
       value?.schema_version !== "videoforge.v213-full-live-materialization-seed/v1" ||
       value.static_only !== true ||
@@ -1346,7 +1443,9 @@ function createProtectedInputMaterializer({
             "schema_version",
             "static_only",
           ].sort(),
-        )
+        ) ||
+      hasForbiddenFutureKey(value) ||
+      dynamicSeedValues.some((item) => item !== undefined && item !== null)
     )
       fail("MATERIALIZATION_SEED_CONTRACT");
     return value;
@@ -1380,6 +1479,9 @@ function createProtectedInputMaterializer({
       !lstatExists(environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE)
     ) {
       const source = seed();
+      const preEndpointSecrets = loadBridgeProductionSecrets(environment, {
+        requireEndpoints: false,
+      });
       const production = structuredClone(source.production_input_base);
       production.authorityDocument = {
         ...production.authorityDocument,
@@ -1399,11 +1501,14 @@ function createProtectedInputMaterializer({
       const output = writeJson(environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE, production);
       validateProduction(environment);
       record({
-        stage: "cleanup-production-input",
+        stage: "cleanup-pre-endpoint-descriptor",
         state,
         outerStateSha256,
         inputs: {},
-        outputs: { production_input_sha256: output },
+        outputs: {
+          cleanup_production_input_sha256: output,
+          pre_endpoint_secrets_sha256: sha256(Buffer.from(preEndpointSecrets.raw)),
+        },
       });
     }
     if (operationId === "fresh-live-preflight") {
@@ -1451,6 +1556,49 @@ function createProtectedInputMaterializer({
       const mage = exactReceipt(priorResults, "mage-live-qualification");
       const soulx = exactReceipt(priorResults, "soulx-live-qualification");
       const endpoints = exactReceipt(priorResults, "create-exact-max-one-endpoints");
+      const mageProduction = endpoints.materialization?.production?.mage;
+      const soulxProduction = endpoints.materialization?.production?.soulx;
+      if (
+        !HASH.test(mageProduction?.deploymentSnapshotSha256 ?? "") ||
+        !HASH.test(soulxProduction?.deploymentSnapshotSha256 ?? "") ||
+        sha256(Buffer.from(mageProduction?.endpointId ?? "")) !== mageProduction?.endpointIdSha256 ||
+        sha256(Buffer.from(soulxProduction?.endpointId ?? "")) !== soulxProduction?.endpointIdSha256 ||
+        mageProduction.endpointId === soulxProduction.endpointId
+      )
+        fail("MATERIALIZATION_MAX_ONE_ENDPOINT_BINDINGS");
+      const preEndpointSecrets = loadBridgeProductionSecrets(environment, {
+        requireEndpoints: false,
+        allowEither: true,
+      });
+      const productionSecrets = {
+        ...preEndpointSecrets.value,
+        schemaVersion: "videoforge.v213-full-live-production-secrets/v1",
+        mageEndpointId: mageProduction.endpointId,
+        soulxEndpointId: soulxProduction.endpointId,
+      };
+      const productionSecretsBytes = Buffer.from(`${canonicalJson(productionSecrets)}\n`);
+      if (
+        preEndpointSecrets.hasEndpoints &&
+        sha256(Buffer.from(preEndpointSecrets.raw)) !== sha256(productionSecretsBytes)
+      )
+        fail("MATERIALIZATION_ENDPOINT_BINDING_DRIFT");
+      atomicExactTransition(
+        environment.VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE,
+        Buffer.from(preEndpointSecrets.raw),
+        productionSecretsBytes,
+      );
+      loadBridgeProductionSecrets(environment, { requireEndpoints: true });
+      record({
+        stage: "max-one-endpoint-bindings",
+        state,
+        outerStateSha256,
+        inputs: { "create-exact-max-one-endpoints": endpoints.evidenceSha256 },
+        outputs: {
+          production_secrets_sha256: sha256(productionSecretsBytes),
+          mage_deployment_snapshot_sha256: mageProduction.deploymentSnapshotSha256,
+          soulx_deployment_snapshot_sha256: soulxProduction.deploymentSnapshotSha256,
+        },
+      });
       const manifestSha256 = writeJson(
         environment.VIDEOFORGE_V2_13_RELEASE_MANIFEST_FILE,
         source.release_manifest,
@@ -1513,8 +1661,8 @@ function createProtectedInputMaterializer({
       Object.assign(activation.gates, {
         mage_qualification_sha256: mage.evidenceSha256,
         soulx_qualification_sha256: soulx.evidenceSha256,
-        mage_deployment_snapshot_sha256: mage.deploymentSha256,
-        soulx_deployment_snapshot_sha256: soulx.deploymentSha256,
+        mage_deployment_snapshot_sha256: mageProduction.deploymentSnapshotSha256,
+        soulx_deployment_snapshot_sha256: soulxProduction.deploymentSnapshotSha256,
         paid_dispatch_authority_sha256: endpoints.evidenceSha256,
       });
       const activationSha256 = writeJson(
@@ -1523,7 +1671,7 @@ function createProtectedInputMaterializer({
       );
       validateGuarded({ environment, state });
       record({
-        stage: "guarded-activation",
+        stage: "activation-record",
         state,
         outerStateSha256,
         inputs: {
@@ -1547,6 +1695,14 @@ function createProtectedInputMaterializer({
       const mage = exactReceipt(priorResults, "mage-live-qualification");
       const soulx = exactReceipt(priorResults, "soulx-live-qualification");
       const guarded = exactReceipt(priorResults, "guarded-activation-once");
+      const endpoints = exactReceipt(priorResults, "create-exact-max-one-endpoints");
+      const mageProduction = endpoints.materialization?.production?.mage;
+      const soulxProduction = endpoints.materialization?.production?.soulx;
+      if (
+        !HASH.test(mageProduction?.deploymentSnapshotSha256 ?? "") ||
+        !HASH.test(soulxProduction?.deploymentSnapshotSha256 ?? "")
+      )
+        fail("MATERIALIZATION_MAX_ONE_ENDPOINT_BINDINGS");
       const production = validateProduction(environment);
       const disabledBytes = readFileSync(
         protectedFile(
@@ -1581,11 +1737,11 @@ function createProtectedInputMaterializer({
       });
       Object.assign(promotion.lanes.mage_image, {
         qualification_record_sha256: mage.evidenceSha256,
-        deployment_snapshot_sha256: mage.deploymentSha256,
+        deployment_snapshot_sha256: mageProduction.deploymentSnapshotSha256,
       });
       Object.assign(promotion.lanes.soulx_avatar, {
         qualification_record_sha256: soulx.evidenceSha256,
-        deployment_snapshot_sha256: soulx.deploymentSha256,
+        deployment_snapshot_sha256: soulxProduction.deploymentSnapshotSha256,
       });
       Object.assign(promotion.cloudflare, {
         disabled_version_id: guarded.materialization?.disabledVersionId,
@@ -1597,12 +1753,13 @@ function createProtectedInputMaterializer({
       );
       validatePromotion({ environment, state });
       record({
-        stage: "qualified-promotion",
+        stage: "promotion-record",
         state,
         outerStateSha256,
         inputs: {
           mage_qualification: mage.evidenceSha256,
           soulx_qualification: soulx.evidenceSha256,
+          max_one_endpoints: endpoints.evidenceSha256,
           guarded_activation: guarded.evidenceSha256,
         },
         outputs: { promotion_record_sha256: promotionSha256 },
@@ -1678,11 +1835,81 @@ function loadBridgeProductionInput(environment) {
   return value;
 }
 
+function loadBridgeProductionSecrets(environment, { requireEndpoints = false, allowEither = false } = {}) {
+  const raw = readFileSync(
+    protectedFile(
+      environment.VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE,
+      "BRIDGE_PRODUCTION_SECRETS_FILE",
+    ),
+    "utf8",
+  );
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    fail("BRIDGE_PRODUCTION_SECRETS_JSON");
+  }
+  const baseKeys = [
+    "acceptanceEvidenceSigningKeyBase64",
+    "pairDispatchTokenKeyBase64",
+    "pairDispatchTokenKeyId",
+    "pairEnvelopeSigningKeyHex",
+    "pairEnvelopeSigningKeyId",
+    "pairProviderProofKeyHex",
+    "pairProviderProofKeyId",
+    "provenanceReceiptHmacKeyBase64",
+    "provenanceReceiptKeyId",
+    "schemaVersion",
+    "stageAuthoritySigningKeyBase64",
+  ];
+  const hasEndpoints = value?.schemaVersion === "videoforge.v213-full-live-production-secrets/v1";
+  if (
+    (!allowEither && hasEndpoints !== requireEndpoints) ||
+    (allowEither &&
+      ![
+        "videoforge.v213-full-live-pre-endpoint-secrets/v1",
+        "videoforge.v213-full-live-production-secrets/v1",
+      ].includes(value?.schemaVersion)) ||
+    JSON.stringify(Object.keys(value ?? {}).sort()) !==
+      JSON.stringify((hasEndpoints ? [...baseKeys, "mageEndpointId", "soulxEndpointId"] : baseKeys).sort()) ||
+    (hasEndpoints &&
+      (typeof value.mageEndpointId !== "string" ||
+        typeof value.soulxEndpointId !== "string" ||
+        value.mageEndpointId === value.soulxEndpointId ||
+        value.mageEndpointId === "" ||
+        value.soulxEndpointId === ""))
+  )
+    fail("BRIDGE_PRODUCTION_SECRETS");
+  const protectedKeyFields = [
+    "stageAuthoritySigningKeyBase64",
+    "provenanceReceiptHmacKeyBase64",
+    "acceptanceEvidenceSigningKeyBase64",
+    "pairDispatchTokenKeyBase64",
+  ];
+  const keyHashes = protectedKeyFields.map((field) => {
+    const encoded = value?.[field];
+    if (typeof encoded !== "string") fail("BRIDGE_PRODUCTION_SECRETS");
+    const bytes = Buffer.from(encoded, "base64");
+    if (bytes.length < 32 || bytes.toString("base64") !== encoded)
+      fail("BRIDGE_PRODUCTION_SECRETS");
+    return sha256(bytes);
+  });
+  for (const field of ["pairEnvelopeSigningKeyHex", "pairProviderProofKeyHex"]) {
+    const encoded = value?.[field];
+    if (typeof encoded !== "string" || !/^(?:[0-9a-f]{2}){32,}$/u.test(encoded))
+      fail("BRIDGE_PRODUCTION_SECRETS");
+    keyHashes.push(sha256(Buffer.from(encoded, "hex")));
+  }
+  if (new Set(keyHashes).size !== keyHashes.length) fail("BRIDGE_PRODUCTION_SECRETS");
+  return Object.freeze({ value, raw, hasEndpoints });
+}
+
 function preflightConcreteFullLiveInputs({
   environment = process.env,
   state,
   cleanupOnly = false,
   allowUnmaterializedProductionInput = false,
+  requireEndpointSecrets = false,
 }) {
   const productionPath = environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE;
   if (typeof productionPath !== "string" || productionPath === "" || productionPath.includes("\0"))
@@ -1740,42 +1967,19 @@ function preflightConcreteFullLiveInputs({
     bridgeValues.VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE.length < 32
   )
     fail("BRIDGE_PROTECTED_CONTENT");
-  let productionSecrets;
-  try {
-    productionSecrets = JSON.parse(bridgeValues.VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE);
-  } catch {
-    fail("BRIDGE_PRODUCTION_SECRETS_JSON");
-  }
-  const protectedKeyFields = [
-    "stageAuthoritySigningKeyBase64",
-    "provenanceReceiptHmacKeyBase64",
-    "acceptanceEvidenceSigningKeyBase64",
-    "pairDispatchTokenKeyBase64",
-  ];
-  const keyHashes = protectedKeyFields.map((field) => {
-    const encoded = productionSecrets?.[field];
-    if (typeof encoded !== "string") fail("BRIDGE_PRODUCTION_SECRETS");
-    const bytes = Buffer.from(encoded, "base64");
-    if (bytes.length < 32 || bytes.toString("base64") !== encoded)
-      fail("BRIDGE_PRODUCTION_SECRETS");
-    return sha256(bytes);
+  loadBridgeProductionSecrets(environment, {
+    requireEndpoints: requireEndpointSecrets,
+    allowEither: !requireEndpointSecrets && cleanupOnly,
   });
-  for (const field of ["pairEnvelopeSigningKeyHex", "pairProviderProofKeyHex"]) {
-    const encoded = productionSecrets?.[field];
-    if (typeof encoded !== "string" || !/^(?:[0-9a-f]{2}){32,}$/u.test(encoded))
-      fail("BRIDGE_PRODUCTION_SECRETS");
-    keyHashes.push(sha256(Buffer.from(encoded, "hex")));
-  }
-  if (
-    productionSecrets?.schemaVersion !== "videoforge.v213-full-live-production-secrets/v1" ||
-    new Set(keyHashes).size !== keyHashes.length
-  )
-    fail("BRIDGE_PRODUCTION_SECRETS");
   return Object.freeze({ production, cleanupOnly });
 }
 
 function preflightPromotionInputs({ environment = process.env, state }) {
-  const { production } = preflightConcreteFullLiveInputs({ environment, state });
+  const { production } = preflightConcreteFullLiveInputs({
+    environment,
+    state,
+    requireEndpointSecrets: true,
+  });
   for (const variable of [
     "VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE",
     "VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE",
@@ -1816,7 +2020,7 @@ function preflightPromotionInputs({ environment = process.env, state }) {
 }
 
 function preflightGuardedActivationInputs({ environment = process.env, state }) {
-  preflightConcreteFullLiveInputs({ environment, state });
+  preflightConcreteFullLiveInputs({ environment, state, requireEndpointSecrets: true });
   for (const [argument, variable] of GUARDED_INPUTS) {
     const value = environment[variable];
     if (typeof value !== "string" || value === "" || value.includes("\0"))
@@ -1859,7 +2063,7 @@ function preflightGuardedActivationInputs({ environment = process.env, state }) 
 function createTypeScriptBridgeAdapters({
   environment = process.env,
   spawnBridge = productionBridgeSpawn,
-  expectedCliSha256 = "sha256:ec6c459294769a04d3126e37d4e2d94be1578095a2ec11bfd9221fc02a6f8123",
+  expectedCliSha256 = "sha256:ade1711e644eb23d282665bdfc6d280e6a48c589d56e25fd921f585d7ffa663e",
   expectedTransportSha256 = "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
 } = {}) {
   const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
@@ -1955,13 +2159,17 @@ function createTypeScriptBridgeAdapters({
       };
     }
     if (command === "create-exact-max-one-endpoints") {
-      const deployments = Object.values(summary.result?.production ?? {});
+      const productionDeployments = summary.result?.production ?? {};
+      const deployments = Object.values(productionDeployments);
       return {
         ...base,
         createdExactTwoEndpoints: deployments.length === 2,
         distinctEndpointIds: new Set(deployments.map((item) => item.endpointIdSha256)).size === 2,
         bothMaxWorkersOne: deployments.every((item) => item.workersMax === 1),
         bothWorkersMinZero: deployments.every((item) => item.workersMin === 0),
+        materialization: {
+          production: exactProductionDeploymentMaterialization(productionDeployments),
+        },
       };
     }
     if (command.startsWith("v2-")) {

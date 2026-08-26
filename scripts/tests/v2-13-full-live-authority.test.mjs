@@ -230,6 +230,14 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.internal_materialization_policy.entry_sha256_is_hash_of_preceding_six_fields = false;
     },
     (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.initial_seed_endpoint_identity_fields_present = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.records.find(
+        ({ kind }) => kind === "cleanup-pre-endpoint-descriptor",
+      ).accepted_for_normal_or_acceptance_work = true;
+    },
+    (proposal) => {
       proposal.exact_execution_graph.trusted_time_policy.caller_supplied_trusted_time_forbidden = false;
     },
     (proposal) => {
@@ -299,15 +307,27 @@ test("V3 proposal binds durable prior-result materialization before each consume
     EXACT_INTERNAL_MATERIALIZATION_POLICY,
   );
   assert.deepEqual(
-    proposal.exact_execution_graph.internal_materialization_policy.records.map(
-      ({ kind, consume_before_operation: consumer }) => [kind, consumer],
-    ),
+    proposal.exact_execution_graph.internal_materialization_policy.records.map(({ kind }) => kind),
     [
-      ["production-input", "fresh-live-preflight"],
-      ["activation-record", "guarded-activation-once"],
-      ["promotion-record", "promote-qualified-production"],
+      "production-input",
+      "max-one-endpoint-bindings",
+      "activation-record",
+      "promotion-record",
+      "cleanup-pre-endpoint-descriptor",
     ],
   );
+  const endpointBindings =
+    proposal.exact_execution_graph.internal_materialization_policy.records[1];
+  assert.equal(endpointBindings.derives_only_from, "receipt.materialization.production");
+  assert.deepEqual(endpointBindings.ordered_output_names, [
+    "production_secrets_sha256",
+    "mage_deployment_snapshot_sha256",
+    "soulx_deployment_snapshot_sha256",
+  ]);
+  const cleanupDescriptor =
+    proposal.exact_execution_graph.internal_materialization_policy.records[4];
+  assert.equal(cleanupDescriptor.cleanup_only, true);
+  assert.equal(cleanupDescriptor.accepted_for_normal_or_acceptance_work, false);
   assert.deepEqual(
     proposal.exact_execution_graph.internal_materialization_policy.chain_record_exact_fields,
     [

@@ -26,8 +26,11 @@ longer match. Proposal `sha256:9425de8e…899a` was approved and recorded at `67
 superseded unconsumed before mutation: its 21-secret text conflicts with the exact 22-secret executor,
 and the staged-preflight, isolated-source-worktree, authority-record publication, durable hash-chained
 internal future-record materialization, true 30-minute end-to-end workflow deadline, and closed-env
-credential-free CA-verified HTTPS trusted-time contracts require provider-free repair. The active proposal
-surface is `BLOCKED_UNSEALED`; no repaired source hash or fresh approval exists. Both lanes require fresh immutable images, sealed
+credential-free CA-verified HTTPS trusted-time contracts require provider-free repair. The replacement
+draft also forbids endpoint IDs in the initial seed: exact endpoint IDs, hashes, and actual max-one
+deployment snapshots must be materialized only from the max-one result, with a separate cleanup-only
+pre-endpoint descriptor for failures before endpoint creation. The active proposal surface is
+`BLOCKED_UNSEALED`; no repaired source hash or fresh approval exists. Both lanes require fresh immutable images, sealed
 deployment snapshots, dual live qualification, and that new single-use approval.
 Provider/deployment/credential/GPU/spend authority remains false with a `$0` executable cap, and no
 provider call or spend is authorized.

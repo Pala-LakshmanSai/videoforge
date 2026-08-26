@@ -231,7 +231,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:15c4cf255dfc96a9300685e37253b628ac63e3cde020e6ea259c3e4259994e88" ||
+      "sha256:244a5f8e4cb93251d18ccde1a2be92fb70be41e0cd99100e69a6ce8585bfc8f6" ||
     state.no_redispatch !== true ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",

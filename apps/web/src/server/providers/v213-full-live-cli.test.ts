@@ -189,7 +189,7 @@ describe("V2-13 full-live TypeScript bridge", () => {
       [
         "17",
         JSON.stringify({
-          schemaVersion: "videoforge.v213-full-live-production-secrets/v1",
+          schemaVersion: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
           stageAuthoritySigningKeyBase64: Buffer.alloc(32, 1).toString("base64"),
           provenanceReceiptHmacKeyBase64: Buffer.alloc(32, 2).toString("base64"),
           provenanceReceiptKeyId: "receipt-key-1",
@@ -200,8 +200,6 @@ describe("V2-13 full-live TypeScript bridge", () => {
           pairEnvelopeSigningKeyId: "pair-envelope-key-1",
           pairProviderProofKeyHex: Buffer.alloc(32, 6).toString("hex"),
           pairProviderProofKeyId: "pair-proof-key-1",
-          mageEndpointId: "mage-endpoint-1",
-          soulxEndpointId: "soulx-endpoint-1",
         }),
       ],
     ]);
@@ -220,6 +218,28 @@ describe("V2-13 full-live TypeScript bridge", () => {
     expect(readV213ProtectedInputs(environment, readFd).request.command).toBe(
       "fresh-live-preflight",
     );
+    const preEndpoint = JSON.parse(values.get("17") ?? "{}");
+    values.set(
+      "17",
+      JSON.stringify({
+        ...preEndpoint,
+        schemaVersion: "videoforge.v213-full-live-production-secrets/v1",
+        mageEndpointId: "mage-endpoint-1",
+        soulxEndpointId: "soulx-endpoint-1",
+      }),
+    );
+    expect(() => readV213ProtectedInputs(environment, readFd)).toThrowError(
+      expect.objectContaining({ code: "PRODUCTION_SECRETS_INVALID" }),
+    );
+    values.set("10", JSON.stringify(request("v2-09-short-hosted-project")));
+    values.set("17", JSON.stringify(preEndpoint));
+    expect(() =>
+      readV213ProtectedInputs(
+        { ...environment, [V213_BRIDGE_ENVIRONMENT.command]: "v2-09-short-hosted-project" },
+        readFd,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "PRODUCTION_SECRETS_INVALID" }));
+    values.set("10", JSON.stringify(request("fresh-live-preflight")));
     expect(() =>
       readV213ProtectedInputs(
         { ...environment, VIDEOFORGE_V213_BRIDGE_EXTRA_SECRET: "bad" },
