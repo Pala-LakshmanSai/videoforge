@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Present freshly audited proposal sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a for exact user approval; perform no external action before approval."
-  note: "Source e737eac closes the guarded full-live path through migration 0045 and received an independent no-P0/P1 source audit. Proposal sha256:9425de8e...899a is sealed against those exact bytes with authority absent. The earlier f2d183 proposal/approval is superseded unconsumed. Provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized until the new proposal receives exact approval."
+  provider_free_product_action: "Repair and independently audit the full-live execution-order/source-worktree contracts, then bind a new sealed proposal. Do not request or consume authority from the BLOCKED_UNSEALED draft."
+  note: "Proposal sha256:9425de8e...899a was approved and recorded at 67f6fb2, then superseded unconsumed before mutation after 21-versus-22 secret scope drift and execution-order/source-worktree blockers were found. The repair also replaces caller or credential-backed time with a credential-free system-CA-verified HTTPS HEAD Date before consumption and each non-cleanup operation. The replacement surface is BLOCKED_UNSEALED with repaired source identity unset. Provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -71,12 +71,12 @@ provider_free_product_progress:
   full_live_migration_0045_sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
   prior_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_HASH_DRIFT
   prior_v2_13_proposal_sha256: "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32"
-  fresh_v2_13_proposal_status: PENDING_FRESH_EXACT_USER_APPROVAL_AUTHORITY_ABSENT
+  fresh_v2_13_proposal_status: BLOCKED_UNSEALED_SOURCE_REPAIR_PENDING_OLD_AUTHORITY_SUPERSEDED_UNCONSUMED
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json"
-  fresh_v2_13_proposal_sha256: "sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a"
-  fresh_v2_13_release_source_commit: "e737eac44458a04c7de47a0f3f42d82cb9506d47"
-  fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Request exact user approval of proposal sha256:9425de8e...899a. Only after approval, record one fresh single-use authority and rerun the full read-only preflight before any mutation or spend."
+  fresh_v2_13_proposal_sha256: null
+  fresh_v2_13_release_source_commit: null
+  fresh_v2_13_release_tag: null
+  next_v2_13_action: "Finish and independently audit the provider-free source repair, bind its exact hashes into the BLOCKED_UNSEALED draft, seal a new proposal, and request fresh exact approval."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -191,7 +191,7 @@ provider_free_product_progress:
   remaining_live_blockers:
     - mage_live_qualification
     - soulx_live_qualification
-  batch3_through_batch6_note: "Provider-free source is complete through migration 0045 and the guarded full-live executor. The exact hash-bound SoulX full/split renderer profile is visually approved and provider-free active. Proposal sha256:9425de8e...899a is sealed with authority absent. Production remains DISABLED_UNQUALIFIED and undeployed. Fresh exact approval, immutable Mage/SoulX images, dual live qualification, migrations/grants/config, roles, secrets, and all ordered acceptance gates remain required."
+  batch3_through_batch6_note: "Provider-free source through migration 0045 is under a narrow execution-order/source-worktree repair. The exact hash-bound SoulX full/split renderer profile remains visually approved and provider-free active. Proposal sha256:9425de8e...899a and authority 67f6fb2 are superseded unconsumed before mutation; the replacement is BLOCKED_UNSEALED with no repaired source hash. Production remains DISABLED_UNQUALIFIED and undeployed."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
   focused_v2_12_tests: 14_pass
@@ -4277,8 +4277,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_fresh_proposal_sealed_exact_approval_required
-  status: provider_free_source_and_proposal_audited_fresh_exact_approval_required
+  milestone: v2_13_execution_order_repair_blocked_unsealed
+  status: provider_free_repair_in_progress_old_authority_superseded_unconsumed
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: none_attempt64_consumed
   task_stage: provider_free_product_execution
@@ -4287,7 +4287,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Obtain exact user approval for proposal sha256:9425de8e...899a before any publication, deployment, provider call, GPU use, or spend."
+  goal: "Finish and independently audit the provider-free execution-order/source-worktree repair, then seal a new exact proposal before any publication, deployment, provider call, GPU use, or spend."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4308,10 +4308,10 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Attempt64 remains consumed/non-reusable, and the earlier V2-13 f2d183 approval is superseded unconsumed by source drift. No provider calls, mutations, GPU use, or spend are authorized until a wholly fresh exact proposal is approved."
+  authority_note: "Attempt64 remains consumed/non-reusable. V2-13 authority recorded at 67f6fb2 is superseded unconsumed before mutation because its approved proposal described 21 secrets while the executor owns 22 and the execution-order/source-worktree contracts require repair. No provider calls, mutations, GPU use, or spend are authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: full_live_source_audited_no_live_authority
-  execution_blocker: fresh_exact_proposal_approval_and_positive_cap_required
+  execution_status: provider_free_execution_order_repair_in_progress_blocked_unsealed
+  execution_blocker: repaired_source_audit_reseal_and_fresh_exact_approval_required
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean

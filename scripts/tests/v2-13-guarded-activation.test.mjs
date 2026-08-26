@@ -299,14 +299,14 @@ test("authority source paths and approval schema fail closed", () => {
     value.authority.approval_sha256 = hash("exact user approval bytes\n");
     assert.throws(
       () => validateAuthoritySourceFiles(value, proposal, approval),
-      /not valid JSON|exact full-live schema/u,
+      /safe repository-relative path/u,
     );
-    value.authority.proposal_path = approval;
+    value.authority.proposal_path = "evidence/proposal.json";
+    value.authority.approval_path = "evidence/approval.json";
     assert.throws(
       () => validateAuthoritySourceFiles(value, proposal, approval),
-      /proposal file path does not match/u,
+      /not valid JSON|exact full-live schema/u,
     );
-    value.authority.proposal_path = proposal;
     writeFileSync(approval, "drifted approval bytes\n");
     assert.throws(
       () => validateAuthoritySourceFiles(value, proposal, approval),

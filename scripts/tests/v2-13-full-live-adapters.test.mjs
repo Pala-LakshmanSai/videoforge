@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -14,12 +15,15 @@ import {
   createV213DurableStageStore,
   createGithubDispatchAdapters,
   createGithubVerificationAdapters,
+  readAuthenticatedGithubTime,
   TAG,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
 
 const sourceCommit = "4".repeat(40);
 const state = {
   release_source_commit: sourceCommit,
+  approved_at: "2026-01-01T00:00:00Z",
+  expires_at: "2099-01-01T00:00:00Z",
   release_ref: {
     exact_tag_name: TAG,
     exact_target_commit: sourceCommit,
@@ -27,6 +31,7 @@ const state = {
   },
 };
 const result = (status = 0, stdout = "", stderr = "") => ({ status, stdout, stderr });
+const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
 test("git release adapters require absence, create one lightweight tag, push non-force, and read it back", async () => {
   const calls = [];
@@ -72,6 +77,44 @@ test("git release adapter rejects either local or remote tag collision before cr
   await assert.rejects(exactRemote["release-tag-create"]({}, state), /REMOTE_TAG_ALREADY_EXISTS/u);
 });
 
+test("approval publication pushes the exact authority-record commit with FF and tree-byte proof", async () => {
+  const approval = "{\"approval\":true}\n";
+  const authority = "{\"authority\":true}\n";
+  const proposalCommit = "2".repeat(40);
+  const authorityCommit = "3".repeat(40);
+  const remoteCommit = "1".repeat(40);
+  const publicationState = {
+    ...state,
+    proposal_record_commit: proposalCommit,
+    authority_record_commit: authorityCommit,
+    approval_record_path: "evidence/user-approval.json",
+    authority_record_path: "evidence/approved-authority.json",
+    approval_sha256: hash(approval),
+    authority_sha256: hash(authority),
+  };
+  const replies = [
+    result(0, "commit\n"),
+    result(0, `${proposalCommit}\n`),
+    result(0, approval),
+    result(0, authority),
+    result(0, `${remoteCommit}\trefs/heads/codex/serverless-v2-roadmap\n`),
+    result(0),
+    result(0, "ok\n"),
+    result(0, `${authorityCommit}\trefs/heads/codex/serverless-v2-roadmap\n`),
+  ];
+  const calls = [];
+  const adapters = createGitReleaseAdapters({
+    run: (command, args) => {
+      calls.push([command, args]);
+      return replies.shift();
+    },
+  });
+  const published = await adapters["approval-commit-push"]({}, publicationState);
+  assert.equal(published.commit, authorityCommit);
+  assert.deepEqual(calls[5][1], ["merge-base", "--is-ancestor", remoteCommit, authorityCommit]);
+  assert.equal(replies.length, 0);
+});
+
 test("GitHub workflow dispatch is single-shot and binds the one new exact-head run", async () => {
   const calls = [];
   const oldRun = {
@@ -114,6 +157,29 @@ test("GitHub workflow dispatch is single-shot and binds the one new exact-head r
     "--field",
     "publish=true",
   ]);
+});
+
+test("trusted time uses credential-free bounded HTTPS and one exact Date header", () => {
+  const trusted = readAuthenticatedGithubTime({
+    run: (command, args) => {
+      assert.equal(command, "curl");
+      assert.deepEqual(args, [
+        "--silent",
+        "--show-error",
+        "--head",
+        "--proto",
+        "=https",
+        "--tlsv1.2",
+        "--connect-timeout",
+        "5",
+        "--max-time",
+        "10",
+        "https://api.github.com/rate_limit",
+      ]);
+      return result(0, "HTTP/2 200\r\ndate: Wed, 26 Aug 2026 12:00:00 GMT\r\n\r\n");
+    },
+  });
+  assert.equal(trusted, "2026-08-26T12:00:00.000Z");
 });
 
 test("GitHub dispatch rejects ambiguous new runs and never redispatches", async () => {
@@ -168,19 +234,26 @@ test("GitHub verification binds exact successful run and immutable deployability
     immutable_image: `ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@${digest}`,
     manifest_digest: digest,
   };
+  const statuses = ["queued", "in_progress", "completed"];
+  let viewCalls = 0;
   const adapters = createGithubVerificationAdapters({
+    maximumPolls: 3,
+    pollIntervalMs: 0,
+    trustedTime: async () => "2026-08-26T12:00:00Z",
     run: (_command, args) => {
-      if (args[1] === "view")
+      if (args[1] === "view") {
+        const status = statuses[viewCalls++];
         return result(
           0,
           JSON.stringify({
             databaseId: 11,
             headSha: sourceCommit,
             workflowName: "mage-image",
-            status: "completed",
-            conclusion: "success",
+            status,
+            conclusion: status === "completed" ? "success" : null,
           }),
         );
+      }
       const directory = args.at(-1);
       writeFileSync(
         resolve(directory, "mage-serverless-v2-07.json"),
@@ -192,8 +265,38 @@ test("GitHub verification binds exact successful run and immutable deployability
   const prior = new Map([["mage-image-workflow-dispatch", { runId: "11" }]]);
   const verified = await adapters["mage-image-workflow-verification"]({}, state, prior);
   assert.equal(verified.imageDigest, digest);
+  assert.equal(viewCalls, 3);
   assert.equal(verified.publicAllBlobsVerified, true);
   assert.match(verified.evidenceSha256, /^sha256:[0-9a-f]{64}$/u);
+});
+
+test("GitHub verification never redispatches and fails closed on bounded terminal timeout", async () => {
+  let calls = 0;
+  const adapters = createGithubVerificationAdapters({
+    maximumPolls: 2,
+    pollIntervalMs: 0,
+    trustedTime: async () => "2026-08-26T12:00:00Z",
+    run: (_command, args) => {
+      calls += 1;
+      assert.deepEqual(args.slice(0, 3), ["run", "view", "11"]);
+      return result(
+        0,
+        JSON.stringify({
+          databaseId: 11,
+          headSha: sourceCommit,
+          workflowName: "mage-image",
+          status: "in_progress",
+          conclusion: null,
+        }),
+      );
+    },
+  });
+  const prior = new Map([["mage-image-workflow-dispatch", { runId: "11" }]]);
+  await assert.rejects(
+    adapters["mage-image-workflow-verification"]({}, state, prior),
+    /WORKFLOW_RUN_TERMINAL_TIMEOUT/u,
+  );
+  assert.equal(calls, 2);
 });
 
 test("guarded adapter calls the existing executor once and authenticates its durable evidence", async () => {
@@ -223,9 +326,12 @@ test("guarded adapter calls the existing executor once and authenticates its dur
   const adapter = createGuardedActivationAdapter({
     environment,
     readEvidence: () => evidence,
+    preflight: () => true,
+    prepareSource: () => ({ root: "/isolated-release-source", cleanup: () => {} }),
     run: (command, args) => {
       calls += 1;
       assert.equal(command, process.execPath);
+      assert.equal(args[0], "/isolated-release-source/deploy/v2-13/guarded-activation.mjs");
       assert.equal(args.filter((value) => value === "--execute").length, 1);
       assert.equal(args.at(-1), "EXECUTE_EXACT_GUARDED_V2_13_ACTIVATION");
       return result(
@@ -349,6 +455,25 @@ test("concrete catalog exposes publication, guarded activation, and the protecte
     "v2-12-long-output",
     "v2-13-final-two-lane-smoke",
   ]);
+});
+
+test("global preflight excludes future artifacts and stage adapters validate them at first use", () => {
+  const source = readFileSync("deploy/v2-13/full-live-adapters.mjs", "utf8");
+  const global = source.slice(
+    source.indexOf("function preflightConcreteFullLiveInputs"),
+    source.indexOf("function preflightPromotionInputs"),
+  );
+  assert.doesNotMatch(global, /PROMOTION_RECORD_FILE|GUARDED_INPUTS/u);
+  const guarded = source.slice(
+    source.indexOf("function createGuardedActivationAdapter"),
+    source.indexOf("function createStagedQualificationAdapters"),
+  );
+  assert.match(guarded, /preflight\(\{ environment, state \}\)/u);
+  const promotion = source.slice(
+    source.indexOf("function createProtectedPromotionAdapter"),
+    source.indexOf("function createV213DurableStageStore"),
+  );
+  assert.match(promotion, /preflightPromotionInputs\(\{ environment, state \}\)/u);
 });
 
 test("protected TypeScript bridge chains only opaque qualification hashes across processes", async () => {

@@ -3,11 +3,11 @@
   "checkpoint_range": ["V2-07", "V2-08", "V2-09", "V2-10", "V2-11", "V2-12", "V2-13"],
   "task_id": "VF-10-13",
   "candidate_date": "2026-08-26",
-  "proposal_status": "PENDING_FRESH_EXACT_USER_APPROVAL",
+  "proposal_status": "BLOCKED_UNSEALED_SOURCE_REPAIR_PENDING",
   "sealing": {
-    "sealed_for_exact_user_approval": true,
-    "current_bytes_are_approval_ineligible": false,
-    "required_next_action": "commit and independently audit these exact proposal bytes, then request fresh exact user approval of the final proposal sha256 and proposal record commit"
+    "sealed_for_exact_user_approval": false,
+    "current_bytes_are_approval_ineligible": true,
+    "required_next_action": "bind the forthcoming independently audited repaired source commit and exact component hashes, then seal a new proposal and request fresh exact user approval"
   },
   "supersession": {
     "supersedes_proposal_sha256": "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32",
@@ -19,8 +19,10 @@
   },
   "source": {
     "release_source_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
+    "repaired_release_source_commit": null,
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
+    "future_authority_record_commit": null,
     "branch": "codex/serverless-v2-roadmap",
     "branch_push_target": "origin/codex/serverless-v2-roadmap",
     "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json",
@@ -66,6 +68,13 @@
       }
     }
   },
+  "authority_record_commit_binding": {
+    "strategy": "EXTERNAL_GIT_COMMIT_INPUT_VERIFIED_BEFORE_CONSUMPTION_NO_SELF_HASH",
+    "proposal_record_commit_is_distinct": true,
+    "authority_record_commit_must_contain_exact_approval_and_authority_bytes": true,
+    "remote_readback_required": true,
+    "embedded_self_commit_hash_forbidden": true
+  },
   "authority": {
     "exact_proposal_approved": false,
     "authority_id": null,
@@ -89,6 +98,46 @@
   },
   "exact_execution_graph": {
     "preflight_before_first_external_action": "after durable single-use outer consumption, validate the exact source pins, state hash, protected inputs, distinct database roles, authority lineage, expiry, caps, and closed adapter catalog; fail before the first external action",
+    "image_workflow_verification_policy": {
+      "bind_only_previously_captured_run_id": true,
+      "maximum_reads": 180,
+      "poll_interval_ms": 10000,
+      "wall_timeout_ms": 1800000,
+      "pollable_statuses": ["queued", "in_progress"],
+      "accepted_terminal_status": "completed",
+      "accepted_conclusion": "success",
+      "immediate_stop_on_completed_non_success": true,
+      "immediate_stop_on_identity_drift": true,
+      "immediate_stop_on_authority_expiry": true,
+      "immediate_stop_on_injected_cancellation": true,
+      "verifier_dispatch_authorized": false,
+      "redispatch_authorized": false,
+      "timeout_transition": "OUTER_CLEANUP_ONLY_NO_RETRY"
+    },
+    "trusted_time_policy": {
+      "credential_free_command": "curl --silent --show-error --head --proto =https --tlsv1.2 --connect-timeout 5 --max-time 10 https://api.github.com/rate_limit",
+      "exact_url": "https://api.github.com/rate_limit",
+      "request_method": "HEAD",
+      "transport_authentication": "SYSTEM_CA_VERIFIED_HTTPS_TLS_MINIMUM_1_2",
+      "credential_environment_or_authorization_header_allowed": false,
+      "ambient_gh_configuration_used": false,
+      "required_date_header_count": 1,
+      "date_header_match": "CASE_INSENSITIVE_^date:",
+      "date_parse_valid_required": true,
+      "caller_supplied_trusted_time_forbidden": true,
+      "reread_before_every_non_cleanup_operation": true,
+      "check_before_local_reservation_or_phase_mutation": true,
+      "valid_interval": "approved_at<=trusted_time<=expires_at",
+      "invalid_or_expired_transition": "OUTER_CLEANUP_ONLY_NO_RETRY",
+      "cleanup_after_expiry_authorized_only_for": [
+        "drain",
+        "restore_max_one",
+        "prove_zero_workers",
+        "read_settled_billing",
+        "reconcile_exact_resources"
+      ],
+      "normal_or_paid_operation_resume_after_expiry": false
+    },
     "ordered_operation_ids": [
       "release-tag-create",
       "release-tag-push",
@@ -181,6 +230,31 @@
       "disabled Workflow videoforge-production-runtime",
       "disabled Workflow videoforge-production-runtime-pair"
     ],
+    "cloudflare_secret_allowlist_count": 22,
+    "cloudflare_secret_allowlist": [
+      "DATABASE_URL",
+      "BETTER_AUTH_SECRET",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "WORKFLOW_CALLBACK_SECRET",
+      "MEDIA_WORKER_TOKEN_SECRET",
+      "VIDEOFORGE_RECONCILER_DATABASE_URL",
+      "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+      "VIDEOFORGE_DISPATCH_TOKEN_KEY_ID",
+      "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
+      "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
+      "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+      "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+      "RUNPOD_API_KEY",
+      "RUNPOD_API_BASE_URL",
+      "VIDEOFORGE_MAGE_ENDPOINT_ID",
+      "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+      "VIDEOFORGE_SOULX_ENDPOINT_ID",
+      "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+      "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN"
+    ],
     "runpod_creation_allowlist_after_both_fresh_qualifications": [
       "one exact Mage immutable production template",
       "one exact Mage production endpoint with workersMin=0 and workersMax=1",
@@ -227,9 +301,10 @@
       "order": 4,
       "phase": "push_exact_approval_branch_commit",
       "operations": [
-        "push the exact independently audited local approval-record commit to origin/codex/serverless-v2-roadmap without force",
-        "require exact remote branch equality to the approved local commit and stop on divergence",
-        "rehash proposal, approval, authority, validators, orchestration tool, and guarded activation from that exact remote commit"
+        "accept the authority-record commit as a distinct external Git commit input after the approval and authority bytes are committed; never embed that commit's self-hash inside those same bytes",
+        "push the exact independently audited local authority-record commit containing both exact approval and authority records to origin/codex/serverless-v2-roadmap without force",
+        "require exact remote branch equality to the authority-record commit and stop on divergence",
+        "rehash proposal, approval, authority, validators, orchestration tool, and guarded activation from that exact remote authority-record commit"
       ]
     },
     {
@@ -237,6 +312,8 @@
       "phase": "publish_public_lane_images",
       "operations": [
         "dispatch mage-image.yml and avatar-primary-serverless-image.yml with publish=true using only ref videoforge-v2-13-release-20260826-v3",
+        "verify only each previously captured exact run ID with at most 180 reads at 10000 ms intervals inside a 1800000 ms wall bound; accept queued or in_progress only while polling, require completed plus success, and never dispatch or redispatch from verification",
+        "stop immediately on completed non-success, run identity drift, authority expiry, or injected cancellation; verification timeout enters outer cleanup-only with no retry",
         "require each Actions run head SHA equals e737eac44458a04c7de47a0f3f42d82cb9506d47",
         "bind only returned post-run immutable manifest, config, layer, source, and deployability hashes; never pre-claim an image digest",
         "prove anonymous public manifest and every referenced blob before RunPod mutation"
@@ -267,7 +344,7 @@
       "operations": [
         "only after both qualifications PASS create the exact two immutable templates and two max-one workersMin=0 production endpoints bound to the same exact volumes and qualified images",
         "invoke the guarded child exactly once with GPU=false and external-spend-cap USD 0",
-        "create/read back the exact secret-free disabled Cloudflare quarantine, then create pgcrypto, apply only migrations 0037 through 0045, provision exact fresh roles videoforge_hosted_runtime and videoforge_hosted_reconciler with exact grants/readbacks, then provision 21 secrets and final disabled deployment",
+        "create/read back the exact secret-free disabled Cloudflare quarantine, then create pgcrypto, apply only migrations 0037 through 0045, provision exact fresh roles videoforge_hosted_runtime and videoforge_hosted_reconciler with exact grants/readbacks, then provision 22 exact allowlisted secrets and final disabled deployment",
         "promote exactly once only from the current consumed database authority, both durable qualification PASS records, both exact max-one endpoint deployments, and exact disabled Cloudflare readback; require atomic enabled-config and route readback or roll back to the disabled quarantine",
         "create no R2 bucket, volume, paid retained resource, other Cloudflare resource, or plan change"
       ]

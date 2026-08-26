@@ -143,6 +143,32 @@ function assertTrustedTime(approvedAt, expiresAt, trustedIso) {
     fail("TRUSTED_TIME");
 }
 
+function readAuthenticatedTrustedTime() {
+  const output = execFileSync(
+    "curl",
+    [
+      "--silent",
+      "--show-error",
+      "--head",
+      "--proto",
+      "=https",
+      "--tlsv1.2",
+      "--connect-timeout",
+      "5",
+      "--max-time",
+      "10",
+      "https://api.github.com/rate_limit",
+    ],
+    { cwd: ROOT, encoding: "utf8" },
+  );
+  const dates = output
+    .split(/\r?\n/u)
+    .filter((line) => /^date:/iu.test(line))
+    .map((line) => line.slice(line.indexOf(":") + 1).trim());
+  if (dates.length !== 1 || Number.isNaN(Date.parse(dates[0]))) fail("TRUSTED_TIME_READBACK");
+  return new Date(Date.parse(dates[0])).toISOString();
+}
+
 function initialConsumptionRecord(authority, authorityBytes, validated) {
   return {
     schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v1",
@@ -151,6 +177,9 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     proposal_sha256: validated.proposalSha256,
     approval_sha256: validated.approvalSha256,
     proposal_record_commit: validated.proposalRecordCommit,
+    authority_record_commit: validated.authorityRecordCommit,
+    approval_record_path: validated.approvalRecordPath,
+    authority_record_path: validated.authorityRecordPath,
     release_source_commit: validated.releaseSourceCommit,
     full_live_executor_path: authority.outer_orchestration.full_live_executor_path,
     full_live_executor_sha256: authority.outer_orchestration.full_live_executor_sha256,
@@ -181,10 +210,18 @@ function validateState(state) {
     state?.schema_version !== "videoforge.v2-13-full-live-orchestration-consumption/v1" ||
     !AUTHORITY_ID.test(state.authority_id ?? "") ||
     !HASH.test(state.authority_sha256 ?? "") ||
+    !/^[0-9a-f]{40}$/u.test(state.authority_record_commit ?? "") ||
+    ![state.approval_record_path, state.authority_record_path].every(
+      (path) =>
+        typeof path === "string" &&
+        path !== "" &&
+        !path.startsWith("/") &&
+        !path.split("/").includes(".."),
+    ) ||
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:2b782863fef0222527a10fcd1d4bb1c8bacfc58d601ebd764e1919968d781830" ||
+      "sha256:2dd92c2e3e8537f5950669ccc895dfccc10596e2c2f26db6f2f8ecad1b2e6c67" ||
     state.no_redispatch !== true ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
@@ -615,6 +652,53 @@ function trustedCommitLineage(validated) {
   if (parent !== validated.releaseSourceCommit) fail("COMMIT_LINEAGE");
 }
 
+function validateAuthorityRecordCommit({
+  authority,
+  approvalBytes,
+  authorityBytes,
+  authorityRecordCommit,
+}) {
+  if (!/^[0-9a-f]{40}$/u.test(authorityRecordCommit ?? ""))
+    fail("AUTHORITY_RECORD_COMMIT");
+  const approvalPath = authority.lineage?.user_approval_path;
+  const authorityPath = authority.lineage?.authority_record_path;
+  for (const [path, code] of [
+    [approvalPath, "APPROVAL_RECORD_PATH"],
+    [authorityPath, "AUTHORITY_RECORD_PATH"],
+  ])
+    if (
+      typeof path !== "string" ||
+      path === "" ||
+      path.startsWith("/") ||
+      path.split("/").includes("..")
+    )
+      fail(code);
+  const git = (...args) =>
+    execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 4 * 1024 * 1024 }).trim();
+  if (
+    git("rev-parse", `${authorityRecordCommit}^{commit}`) !== authorityRecordCommit ||
+    git("rev-parse", `${authorityRecordCommit}^`) !== authority.lineage.proposal_record_commit
+  )
+    fail("AUTHORITY_RECORD_LINEAGE");
+  const committedApproval = execFileSync(
+    "git",
+    ["show", `${authorityRecordCommit}:${approvalPath}`],
+    { cwd: ROOT, maxBuffer: 4 * 1024 * 1024 },
+  );
+  const committedAuthority = execFileSync(
+    "git",
+    ["show", `${authorityRecordCommit}:${authorityPath}`],
+    { cwd: ROOT, maxBuffer: 4 * 1024 * 1024 },
+  );
+  if (sha256(committedApproval) !== sha256(approvalBytes)) fail("APPROVAL_RECORD_TREE_BYTES");
+  if (sha256(committedAuthority) !== sha256(authorityBytes)) fail("AUTHORITY_RECORD_TREE_BYTES");
+  return Object.freeze({
+    authorityRecordCommit,
+    approvalRecordPath: approvalPath,
+    authorityRecordPath: authorityPath,
+  });
+}
+
 async function main() {
   const { command, args } = parseArgs(process.argv.slice(2));
   if (command === "dry-run") {
@@ -633,9 +717,22 @@ async function main() {
       approvalBytes,
       authorityBytes,
     });
-    assertTrustedTime(validated.approvedAt, validated.expiresAt, args.get("trusted-iso"));
+    const record = validateAuthorityRecordCommit({
+      authority,
+      approvalBytes,
+      authorityBytes,
+      authorityRecordCommit: args.get("authority-record-commit"),
+    });
+    if (args.has("trusted-iso")) fail("CALLER_TRUSTED_TIME_FORBIDDEN");
+    assertTrustedTime(
+      validated.approvedAt,
+      validated.expiresAt,
+      readAuthenticatedTrustedTime(),
+    );
     trustedCommitLineage(validated);
-    const state = validateState(initialConsumptionRecord(authority, authorityBytes, validated));
+    const state = validateState(
+      initialConsumptionRecord(authority, authorityBytes, { ...validated, ...record }),
+    );
     const statePath = resolve(args.get("state-file"));
     writeExclusive(statePath, state);
     process.stdout.write(
@@ -726,6 +823,8 @@ export {
   settleCleanupWork,
   updateState,
   validateOuterAuthority,
+  validateAuthorityRecordCommit,
   validateState,
+  readAuthenticatedTrustedTime,
   writeExclusive,
 };

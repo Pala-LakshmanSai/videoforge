@@ -68,6 +68,40 @@ function productionCommand(command, args) {
   return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
 }
 
+function prepareReleaseSourceWorktree(targetCommit) {
+  if (!COMMIT.test(targetCommit ?? "")) fail("RELEASE_SOURCE_WORKTREE_COMMIT");
+  const parent = mkdtempSync(resolve(tmpdir(), "videoforge-v213-release-source-"));
+  const worktree = resolve(parent, "worktree");
+  let added = false;
+  try {
+    exactCommand(productionCommand, "git", ["cat-file", "-e", `${targetCommit}^{commit}`]);
+    exactCommand(productionCommand, "git", ["worktree", "add", "--detach", worktree, targetCommit]);
+    added = true;
+    const head = exactCommand(productionCommand, "git", ["-C", worktree, "rev-parse", "HEAD"]);
+    const status = exactCommand(productionCommand, "git", [
+      "-C",
+      worktree,
+      "status",
+      "--porcelain=v1",
+      "--untracked-files=all",
+    ]);
+    if (head.stdout.trim() !== targetCommit || status.stdout !== "")
+      fail("RELEASE_SOURCE_WORKTREE_READBACK");
+    return Object.freeze({
+      root: worktree,
+      cleanup() {
+        if (added)
+          exactCommand(productionCommand, "git", ["worktree", "remove", "--force", worktree]);
+        rmSync(parent, { recursive: true, force: true });
+      },
+    });
+  } catch (error) {
+    if (added) productionCommand("git", ["worktree", "remove", "--force", worktree]);
+    rmSync(parent, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 function exactCommand(run, command, args, allowedStatuses = [0]) {
   const result = run(command, args);
   if (
@@ -91,6 +125,28 @@ function exactRemoteTag(stdout, tag, expectedCommit, allowAbsent = false) {
   )
     fail("REMOTE_TAG_READBACK");
   return true;
+}
+
+function readAuthenticatedGithubTime({ run = productionCommand } = {}) {
+  const response = exactCommand(run, "curl", [
+    "--silent",
+    "--show-error",
+    "--head",
+    "--proto",
+    "=https",
+    "--tlsv1.2",
+    "--connect-timeout",
+    "5",
+    "--max-time",
+    "10",
+    "https://api.github.com/rate_limit",
+  ]);
+  const dates = response.stdout
+    .split(/\r?\n/u)
+    .filter((line) => /^date:/iu.test(line))
+    .map((line) => line.slice(line.indexOf(":") + 1).trim());
+  if (dates.length !== 1 || Number.isNaN(Date.parse(dates[0]))) fail("TRUSTED_TIME_READBACK");
+  return new Date(Date.parse(dates[0])).toISOString();
 }
 
 function createGitReleaseAdapters({ run = productionCommand } = {}) {
@@ -141,10 +197,37 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
       return { actualUsd: 0, tagName: tag, targetCommit: target };
     },
     "approval-commit-push": async (_operation, state) => {
-      const commit = state.proposal_record_commit;
+      const commit = state.authority_record_commit;
       if (!COMMIT.test(commit ?? "")) fail("APPROVAL_COMMIT");
       const object = exactCommand(run, "git", ["cat-file", "-t", commit]);
       if (object.stdout.trim() !== "commit") fail("APPROVAL_COMMIT_OBJECT");
+      const parent = exactCommand(run, "git", ["rev-parse", `${commit}^`]);
+      if (parent.stdout.trim() !== state.proposal_record_commit) fail("APPROVAL_COMMIT_LINEAGE");
+      for (const [path, expected, code] of [
+        [state.approval_record_path, state.approval_sha256, "APPROVAL_TREE_BYTES"],
+        [state.authority_record_path, state.authority_sha256, "AUTHORITY_TREE_BYTES"],
+      ]) {
+        if (
+          typeof path !== "string" ||
+          path === "" ||
+          path.startsWith("/") ||
+          path.split("/").includes("..") ||
+          !HASH.test(expected ?? "")
+        )
+          fail(code);
+        const bytes = exactCommand(run, "git", ["show", `${commit}:${path}`]).stdout;
+        if (sha256(Buffer.from(bytes)) !== expected) fail(code);
+      }
+      const remoteBefore = exactCommand(run, "git", [
+        "ls-remote",
+        "--heads",
+        "origin",
+        `refs/heads/${APPROVAL_BRANCH}`,
+      ]).stdout.trim();
+      if (!/^[0-9a-f]{40}\trefs\/heads\/codex\/serverless-v2-roadmap$/u.test(remoteBefore))
+        fail("APPROVAL_BRANCH_READBACK");
+      const remoteCommit = remoteBefore.slice(0, 40);
+      exactCommand(run, "git", ["merge-base", "--is-ancestor", remoteCommit, commit]);
       exactCommand(run, "git", [
         "push",
         "--porcelain",
@@ -283,7 +366,18 @@ const WORKFLOW_EVIDENCE = Object.freeze({
   },
 });
 
-function createGithubVerificationAdapters({ run = productionCommand } = {}) {
+function createGithubVerificationAdapters({
+  run = productionCommand,
+  wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds)),
+  maximumPolls = 180,
+  pollIntervalMs = 10_000,
+  trustedTime = () => readAuthenticatedGithubTime({ run }),
+  isCancelled = () => false,
+} = {}) {
+  if (!Number.isInteger(maximumPolls) || maximumPolls < 1 || maximumPolls > 180)
+    fail("GITHUB_VERIFICATION_POLL_BOUND");
+  if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 0 || pollIntervalMs > 10_000)
+    fail("GITHUB_VERIFICATION_POLL_INTERVAL");
   return Object.fromEntries(
     Object.entries(WORKFLOW_EVIDENCE).map(([operationId, expected]) => [
       operationId,
@@ -291,27 +385,42 @@ function createGithubVerificationAdapters({ run = productionCommand } = {}) {
         const dispatchId = operationId.replace("verification", "dispatch");
         const runId = priorResults.get(dispatchId)?.runId;
         if (!/^[1-9][0-9]*$/u.test(runId ?? "")) fail("WORKFLOW_RUN_ID");
-        const viewed = exactCommand(run, "gh", [
-          "run",
-          "view",
-          runId,
-          "--json",
-          "databaseId,headSha,workflowName,status,conclusion",
-        ]);
         let runRecord;
-        try {
-          runRecord = JSON.parse(viewed.stdout);
-        } catch {
-          fail("WORKFLOW_RUN_JSON");
+        for (let poll = 0; poll < maximumPolls; poll += 1) {
+          if (isCancelled()) fail("WORKFLOW_VERIFICATION_CANCELLED");
+          const trustedMs = Date.parse(await trustedTime());
+          if (
+            Number.isNaN(trustedMs) ||
+            trustedMs < Date.parse(state.approved_at ?? "") ||
+            trustedMs > Date.parse(state.expires_at ?? "")
+          )
+            fail("WORKFLOW_AUTHORITY_EXPIRED");
+          if (poll > 0) await wait(pollIntervalMs);
+          const viewed = exactCommand(run, "gh", [
+            "run",
+            "view",
+            runId,
+            "--json",
+            "databaseId,headSha,workflowName,status,conclusion",
+          ]);
+          try {
+            runRecord = JSON.parse(viewed.stdout);
+          } catch {
+            fail("WORKFLOW_RUN_JSON");
+          }
+          if (
+            String(runRecord?.databaseId) !== runId ||
+            runRecord.headSha !== state.release_source_commit ||
+            runRecord.workflowName !== expected.workflowName ||
+            !["queued", "in_progress", "completed"].includes(runRecord.status)
+          )
+            fail("WORKFLOW_RUN_READBACK");
+          if (runRecord.status === "completed") {
+            if (runRecord.conclusion !== "success") fail("WORKFLOW_RUN_TERMINAL_FAILURE");
+            break;
+          }
         }
-        if (
-          String(runRecord?.databaseId) !== runId ||
-          runRecord.headSha !== state.release_source_commit ||
-          runRecord.workflowName !== expected.workflowName ||
-          runRecord.status !== "completed" ||
-          runRecord.conclusion !== "success"
-        )
-          fail("WORKFLOW_RUN_READBACK");
+        if (runRecord?.status !== "completed") fail("WORKFLOW_RUN_TERMINAL_TIMEOUT");
         const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v2-13-workflow-evidence-"));
         try {
           exactCommand(run, "gh", [
@@ -390,49 +499,62 @@ function createGuardedActivationAdapter({
   run = productionCommand,
   environment = process.env,
   readEvidence = (path) => readFileSync(path),
+  prepareSource = prepareReleaseSourceWorktree,
+  preflight = preflightGuardedActivationInputs,
 } = {}) {
   return async (_operation, state) => {
-    const args = ["deploy/v2-13/guarded-activation.mjs", "--execute"];
+    preflight({ environment, state });
+    const source = prepareSource(state.release_source_commit);
+    if (
+      source === null ||
+      typeof source !== "object" ||
+      typeof source.root !== "string" ||
+      typeof source.cleanup !== "function"
+    )
+      fail("RELEASE_SOURCE_WORKTREE_CONTRACT");
+    const args = [resolve(source.root, "deploy/v2-13/guarded-activation.mjs"), "--execute"];
     const paths = {};
-    for (const [argument, variable] of GUARDED_INPUTS) {
-      const value = environment[variable];
-      if (typeof value !== "string" || value === "" || value.includes("\0"))
-        fail("GUARDED_INPUT", variable);
-      paths[argument] = value;
-      args.push(`--${argument}`, value);
-    }
-    args.push("--confirm", "EXECUTE_EXACT_GUARDED_V2_13_ACTIVATION");
-    const executed = exactCommand(run, process.execPath, args);
-    let output;
     try {
-      output = JSON.parse(executed.stdout);
-    } catch {
-      fail("GUARDED_RESULT_JSON");
+      for (const [argument, variable] of GUARDED_INPUTS) {
+        const value = environment[variable];
+        paths[argument] = value;
+        args.push(`--${argument}`, value);
+      }
+      args.push("--confirm", "EXECUTE_EXACT_GUARDED_V2_13_ACTIVATION");
+      const executed = exactCommand(run, process.execPath, args);
+      let output;
+      try {
+        output = JSON.parse(executed.stdout);
+      } catch {
+        fail("GUARDED_RESULT_JSON");
+      }
+      if (
+        output?.schema_version !== "videoforge-v2-13-guarded-activation-result/v1" ||
+        output.state !== "DISABLED_UNQUALIFIED" ||
+        output.commit !== state.release_source_commit
+      )
+        fail("GUARDED_RESULT");
+      const evidenceBytes = readEvidence(paths["evidence-output"]);
+      let evidence;
+      try {
+        evidence = JSON.parse(evidenceBytes);
+      } catch {
+        fail("GUARDED_EVIDENCE_JSON");
+      }
+      const evidenceSha256 = sha256(evidenceBytes);
+      if (
+        !HASH.test(evidenceSha256) ||
+        evidence?.schema_version !== "videoforge-v2-13-guarded-activation-evidence/v1" ||
+        evidence.commit !== state.release_source_commit ||
+        evidence.outcome !== "SUCCEEDED" ||
+        evidence.external_spend_cap_usd !== 0 ||
+        evidence.new_paid_retained_resources_authorized !== false
+      )
+        fail("GUARDED_EVIDENCE");
+      return { actualUsd: 0, executedOnce: true, evidenceSha256 };
+    } finally {
+      source.cleanup();
     }
-    if (
-      output?.schema_version !== "videoforge-v2-13-guarded-activation-result/v1" ||
-      output.state !== "DISABLED_UNQUALIFIED" ||
-      output.commit !== state.release_source_commit
-    )
-      fail("GUARDED_RESULT");
-    const evidenceBytes = readEvidence(paths["evidence-output"]);
-    let evidence;
-    try {
-      evidence = JSON.parse(evidenceBytes);
-    } catch {
-      fail("GUARDED_EVIDENCE_JSON");
-    }
-    const evidenceSha256 = sha256(evidenceBytes);
-    if (
-      !HASH.test(evidenceSha256) ||
-      evidence?.schema_version !== "videoforge-v2-13-guarded-activation-evidence/v1" ||
-      evidence.commit !== state.release_source_commit ||
-      evidence.outcome !== "SUCCEEDED" ||
-      evidence.external_spend_cap_usd !== 0 ||
-      evidence.new_paid_retained_resources_authorized !== false
-    )
-      fail("GUARDED_EVIDENCE");
-    return { actualUsd: 0, executedOnce: true, evidenceSha256 };
   };
 }
 
@@ -637,7 +759,8 @@ function createProtectedPromotionAdapter({
   spawn = spawnSync,
   fetchImpl = fetch,
 } = {}) {
-  return async () => {
+  return async (_operation, state) => {
+    preflightPromotionInputs({ environment, state });
     const recordPath = protectedFile(
       environment.VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE,
       "PROMOTION_RECORD_FILE",
@@ -1177,7 +1300,11 @@ function preflightConcreteFullLiveInputs({
     new Set(keyHashes).size !== keyHashes.length
   )
     fail("BRIDGE_PRODUCTION_SECRETS");
-  if (cleanupOnly) return Object.freeze({ production });
+  return Object.freeze({ production, cleanupOnly });
+}
+
+function preflightPromotionInputs({ environment = process.env, state }) {
+  const { production } = preflightConcreteFullLiveInputs({ environment, state });
   for (const variable of [
     "VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE",
     "VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE",
@@ -1214,6 +1341,11 @@ function preflightConcreteFullLiveInputs({
     cloudflareToken.length < 32
   )
     fail("PROMOTION_PROTECTED_CONTENT");
+  return Object.freeze({ production, promotion });
+}
+
+function preflightGuardedActivationInputs({ environment = process.env, state }) {
+  preflightConcreteFullLiveInputs({ environment, state });
   for (const [argument, variable] of GUARDED_INPUTS) {
     const value = environment[variable];
     if (typeof value !== "string" || value === "" || value.includes("\0"))
@@ -1244,11 +1376,13 @@ function preflightConcreteFullLiveInputs({
   )
     fail("GUARDED_OPERATOR_DATABASE_URL_LINEAGE");
   if (
+    guardedAuthority?.release?.commit !== state.release_source_commit ||
+    guardedAuthority?.authority?.authority_id !== state.authority_id ||
     sha256(readFileSync(environment.VIDEOFORGE_V2_13_PROPOSAL_FILE)) !== state.proposal_sha256 ||
     sha256(readFileSync(environment.VIDEOFORGE_V2_13_USER_APPROVAL_FILE)) !== state.approval_sha256
   )
     fail("GUARDED_OUTER_AUTHORITY_LINEAGE");
-  return Object.freeze({ production, promotion });
+  return Object.freeze({ guardedAuthority });
 }
 
 function createTypeScriptBridgeAdapters({
@@ -1422,7 +1556,11 @@ export {
   createTypeScriptBridgeAdapters,
   createGithubDispatchAdapters,
   createGithubVerificationAdapters,
+  preflightGuardedActivationInputs,
   preflightConcreteFullLiveInputs,
+  preflightPromotionInputs,
+  prepareReleaseSourceWorktree,
+  readAuthenticatedGithubTime,
   exactRemoteTag,
   TAG,
 };

@@ -11,7 +11,7 @@
   ],
   "task_id": "VF-10-13",
   "authority_id": "v2-13-full-live-20260826-101824z-12dfae9",
-  "status": "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS",
+  "status": "SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_AND_SCOPE_REPAIR_REQUIRED",
   "approved_at": "2026-08-26T10:18:24Z",
   "expires_at": "2026-08-27T10:18:24Z",
   "single_use": true,
@@ -27,16 +27,16 @@
     "user_approval_sha256": "sha256:82edfb264c8fa8383b2becafe2ff991127cccf6d7b52a46e47ea0878d3744d21"
   },
   "combined_execution_authority": {
-    "execute_authorized": true,
-    "credential_access_authorized": true,
-    "database_mutation_authorized": true,
-    "cloudflare_secret_mutation_authorized": true,
-    "deployment_authorized": true,
-    "provider_calls_authorized": true,
-    "provider_mutations_authorized": true,
-    "gpu_use_authorized": true,
-    "external_runpod_spend_authorized": true,
-    "maximum_cumulative_finite_runpod_spend_usd": 17.5,
+    "execute_authorized": false,
+    "credential_access_authorized": false,
+    "database_mutation_authorized": false,
+    "cloudflare_secret_mutation_authorized": false,
+    "deployment_authorized": false,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "external_runpod_spend_authorized": false,
+    "maximum_cumulative_finite_runpod_spend_usd": null,
     "redispatch_authorized": false,
     "new_volume_authorized": false,
     "new_paid_retained_resource_authorized": false,
@@ -64,7 +64,7 @@
     "exact_target_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
     "ref_creation_authorized_by_approved_proposal": true,
-    "status": "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
+    "status": "SUPERSEDED_NEVER_CREATE",
     "external_action_taken": false
   },
   "outer_orchestration": {
@@ -120,7 +120,7 @@
     "paid_retained_resources": []
   },
   "guarded_activation_child": {
-    "status": "PENDING_FRESH_INPUTS_AFTER_OUTER_CONSUMPTION",
+    "status": "NEVER_ISSUE_FROM_SUPERSEDED_AUTHORITY",
     "approved_parent_authority_id": "v2-13-full-live-20260826-101824z-12dfae9",
     "executor": "deploy/v2-13/guarded-activation.mjs",
     "future_authority_basename": "guarded-activation-authority.json",
@@ -139,7 +139,7 @@
     "new_paid_retained_resources_authorized": false,
     "other_resource_creation_authorized": false,
     "plan_change_authorized": false,
-    "issuance_fence": "CREATE_ONLY_AFTER_DURABLE_OUTER_CONSUMPTION_AND_FRESH_EXACT_INPUT_READBACKS"
+    "issuance_fence": "DO_NOT_CREATE_EXECUTABLE_GUARDED_AUTHORITY_FROM_THIS_SUPERSEDED_PARENT"
   },
   "ordered_execution": {
     "all_and_only_proposal_operations_in_order": true,
@@ -173,6 +173,8 @@
     "gpu_use": 0,
     "runpod_spend_usd": 0,
     "guarded_child_authority_created": false,
-    "authority_consumed": false
+    "authority_consumed": false,
+    "superseded_before_external_action": true,
+    "supersession_reason": "SEALED_PROPOSAL_SECRET_COUNT_DRIFT_AND_EXECUTION_ORDER_SOURCE_REPAIR_REQUIRED"
   }
 }

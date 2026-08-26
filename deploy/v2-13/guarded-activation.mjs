@@ -535,10 +535,18 @@ function prevalidate(args) {
 function validateAuthoritySourceFiles(authority, proposalPath, approvalPath) {
   regularFile(proposalPath, "proposal file");
   regularFile(approvalPath, "user approval file");
-  if (resolve(proposalPath) !== resolve(ROOT, authority.authority.proposal_path))
-    fail("proposal file path does not match activation authority");
-  if (resolve(approvalPath) !== resolve(ROOT, authority.authority.approval_path))
-    fail("user approval file path does not match activation authority");
+  for (const [path, label] of [
+    [authority.authority.proposal_path, "proposal"],
+    [authority.authority.approval_path, "user approval"],
+  ]) {
+    if (
+      typeof path !== "string" ||
+      path === "" ||
+      path.startsWith("/") ||
+      path.split("/").includes("..")
+    )
+      fail(`${label} authority path is not a safe repository-relative path`);
+  }
   const proposalBytes = readFileSync(proposalPath);
   const approvalBytes = readFileSync(approvalPath);
   if (sha256(proposalBytes) !== authority.authority.proposal_sha256)

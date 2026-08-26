@@ -64,6 +64,71 @@ const CHECKPOINT_RANGE = Object.freeze([
   "V2-12",
   "V2-13",
 ]);
+const EXACT_CLOUDFLARE_SECRET_NAMES = Object.freeze([
+  "DATABASE_URL",
+  "BETTER_AUTH_SECRET",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "WORKFLOW_CALLBACK_SECRET",
+  "MEDIA_WORKER_TOKEN_SECRET",
+  "VIDEOFORGE_RECONCILER_DATABASE_URL",
+  "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+  "VIDEOFORGE_DISPATCH_TOKEN_KEY_ID",
+  "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
+  "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
+  "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+  "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+  "RUNPOD_API_KEY",
+  "RUNPOD_API_BASE_URL",
+  "VIDEOFORGE_MAGE_ENDPOINT_ID",
+  "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+  "VIDEOFORGE_SOULX_ENDPOINT_ID",
+  "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+  "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
+]);
+const EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY = Object.freeze({
+  bind_only_previously_captured_run_id: true,
+  maximum_reads: 180,
+  poll_interval_ms: 10_000,
+  wall_timeout_ms: 1_800_000,
+  pollable_statuses: Object.freeze(["queued", "in_progress"]),
+  accepted_terminal_status: "completed",
+  accepted_conclusion: "success",
+  immediate_stop_on_completed_non_success: true,
+  immediate_stop_on_identity_drift: true,
+  immediate_stop_on_authority_expiry: true,
+  immediate_stop_on_injected_cancellation: true,
+  verifier_dispatch_authorized: false,
+  redispatch_authorized: false,
+  timeout_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
+});
+const EXACT_TRUSTED_TIME_POLICY = Object.freeze({
+  credential_free_command:
+    "curl --silent --show-error --head --proto =https --tlsv1.2 --connect-timeout 5 --max-time 10 https://api.github.com/rate_limit",
+  exact_url: "https://api.github.com/rate_limit",
+  request_method: "HEAD",
+  transport_authentication: "SYSTEM_CA_VERIFIED_HTTPS_TLS_MINIMUM_1_2",
+  credential_environment_or_authorization_header_allowed: false,
+  ambient_gh_configuration_used: false,
+  required_date_header_count: 1,
+  date_header_match: "CASE_INSENSITIVE_^date:",
+  date_parse_valid_required: true,
+  caller_supplied_trusted_time_forbidden: true,
+  reread_before_every_non_cleanup_operation: true,
+  check_before_local_reservation_or_phase_mutation: true,
+  valid_interval: "approved_at<=trusted_time<=expires_at",
+  invalid_or_expired_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
+  cleanup_after_expiry_authorized_only_for: Object.freeze([
+    "drain",
+    "restore_max_one",
+    "prove_zero_workers",
+    "read_settled_billing",
+    "reconcile_exact_resources",
+  ]),
+  normal_or_paid_operation_resume_after_expiry: false,
+});
 const EXACT_OPERATION_IDS = Object.freeze([
   "release-tag-create",
   "release-tag-push",
@@ -154,6 +219,13 @@ function validateFullLiveUserApproval({
       proposal.sealing?.current_bytes_are_approval_ineligible !== false ||
       proposal.supersession?.prior_approval_reusable !== false ||
       proposal.supersession?.fresh_exact_approval_required !== true ||
+      proposal.authority_record_commit_binding?.strategy !==
+        "EXTERNAL_GIT_COMMIT_INPUT_VERIFIED_BEFORE_CONSUMPTION_NO_SELF_HASH" ||
+      proposal.authority_record_commit_binding?.proposal_record_commit_is_distinct !== true ||
+      proposal.authority_record_commit_binding
+        ?.authority_record_commit_must_contain_exact_approval_and_authority_bytes !== true ||
+      proposal.authority_record_commit_binding?.remote_readback_required !== true ||
+      proposal.authority_record_commit_binding?.embedded_self_commit_hash_forbidden !== true ||
       proposal.authority?.exact_proposal_approved !== false ||
       proposal.authority?.execute_authorized !== false ||
       proposal.authority?.immutable_release_ref_creation_authorized !== false ||
@@ -161,6 +233,14 @@ function validateFullLiveUserApproval({
         JSON.stringify(EXACT_OPERATION_IDS) ||
       proposal.exact_execution_graph?.operation_order_is_closed_and_non_reorderable !== true ||
       proposal.exact_execution_graph?.missing_extra_or_repeated_operation_is_a_hard_stop !== true ||
+      JSON.stringify(proposal.exact_execution_graph?.image_workflow_verification_policy) !==
+        JSON.stringify(EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY) ||
+      JSON.stringify(proposal.exact_execution_graph?.trusted_time_policy) !==
+        JSON.stringify(EXACT_TRUSTED_TIME_POLICY) ||
+      proposal.requested_scope?.cloudflare_secret_allowlist_count !==
+        EXACT_CLOUDFLARE_SECRET_NAMES.length ||
+      JSON.stringify(proposal.requested_scope?.cloudflare_secret_allowlist) !==
+        JSON.stringify(EXACT_CLOUDFLARE_SECRET_NAMES) ||
       JSON.stringify(proposal.source?.exact_release_components) !==
         JSON.stringify(EXACT_V3_RELEASE_COMPONENTS))
   )
@@ -388,4 +468,10 @@ function validateFullLiveUserApproval({
   });
 }
 
-export { EXPECTED_PHASE_CAPS, validateFullLiveUserApproval };
+export {
+  EXACT_CLOUDFLARE_SECRET_NAMES,
+  EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  EXACT_TRUSTED_TIME_POLICY,
+  EXPECTED_PHASE_CAPS,
+  validateFullLiveUserApproval,
+};

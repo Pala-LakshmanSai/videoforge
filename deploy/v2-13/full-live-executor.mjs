@@ -22,6 +22,7 @@ import {
 import {
   createConcreteFullLiveAdapters,
   preflightConcreteFullLiveInputs,
+  readAuthenticatedGithubTime,
 } from "./full-live-adapters.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -33,11 +34,11 @@ const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:2d59c91bfcfd57e9b2f2ecfcdce2e85e4f288fe2dc63aedf7adcd86b14f10dea",
+    "sha256:e1e8d75e8e2d07d654b43bb9559f1a733bc55b7ab3e16379fa4ac426a01f2a3c",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:8946676cae1ab8c414880e2d093fc8bbc957d97af6ee0f6a30ee052aea9bf8d0",
+    "sha256:43b76121760d2688af493afe30ec8d8974d39ed95884c39c23b16888c76c127b",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
     "sha256:ec6c459294769a04d3126e37d4e2d94be1578095a2ec11bfd9221fc02a6f8123",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
@@ -155,7 +156,7 @@ function assertResult(operation, result, state, results) {
   }
   if (operation.id === "approval-commit-push") {
     if (
-      result.commit !== state.proposal_record_commit ||
+      result.commit !== state.authority_record_commit ||
       result.exactRemoteReadback !== true ||
       !/^[A-Za-z0-9._/-]{1,191}$/u.test(result.branch ?? "")
     )
@@ -271,8 +272,15 @@ function stateMutation(statePath, currentSha256, operation) {
   return { state: updated.state, sha256: updated.sha256 };
 }
 
-async function executeFullLive({ statePath, expectedStateSha256, runOperation, preflight }) {
+async function executeFullLive({
+  statePath,
+  expectedStateSha256,
+  runOperation,
+  preflight,
+  trustedTime,
+}) {
   if (typeof runOperation !== "function") fail("RUNNER_REQUIRED");
+  if (typeof trustedTime !== "function") fail("TRUSTED_TIME_REQUIRED");
   let current = { state: null, sha256: expectedStateSha256 };
   const results = new Map();
   const first = OPERATIONS[0];
@@ -351,6 +359,14 @@ async function executeFullLive({ statePath, expectedStateSha256, runOperation, p
       for (const operation of OPERATIONS.filter(
         (item) => item.phase !== "cleanup_and_reconciliation",
       )) {
+        const trustedIso = await trustedTime(structuredClone(current.state));
+        const trustedMs = Date.parse(trustedIso ?? "");
+        if (
+          Number.isNaN(trustedMs) ||
+          trustedMs < Date.parse(current.state.approved_at) ||
+          trustedMs > Date.parse(current.state.expires_at)
+        )
+          fail("TRUSTED_TIME_EXPIRED_OR_FORGED");
         if (operation.phase !== activePhase) {
           if (activePhase !== null) complete(activePhase);
           begin(operation.phase);
@@ -455,6 +471,7 @@ async function main() {
     expectedStateSha256,
     preflight: (state, _sha256, mode) =>
       preflightConcreteFullLiveInputs({ state, cleanupOnly: mode.cleanupOnly }),
+    trustedTime: () => readAuthenticatedGithubTime(),
     runOperation: async (operation, state, priorResults, outerStateSha256) =>
       CONCRETE_LIVE_ADAPTERS[operation.id](
         { ROOT, operation, state, priorResults, outerStateSha256 },

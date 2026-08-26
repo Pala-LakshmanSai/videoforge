@@ -22,7 +22,12 @@ import {
   validateState,
   writeExclusive,
 } from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
-import { validateFullLiveUserApproval } from "../../deploy/v2-13/validate-full-live-approval.mjs";
+import {
+  EXACT_CLOUDFLARE_SECRET_NAMES,
+  EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  EXACT_TRUSTED_TIME_POLICY,
+  validateFullLiveUserApproval,
+} from "../../deploy/v2-13/validate-full-live-approval.mjs";
 
 const directory =
   "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate";
@@ -131,7 +136,13 @@ function v3Fixture() {
 function freshStateFixture() {
   const fixture = v3Fixture();
   const { validated } = validateOuterAuthority(fixture);
-  return initialConsumptionRecord(fixture.authority, fixture.authorityBytes, validated);
+  return initialConsumptionRecord(fixture.authority, fixture.authorityBytes, {
+    ...validated,
+    authorityRecordCommit: "e".repeat(40),
+    approvalRecordPath: "project-context/evidence/acceptance/VF-10-13/test/user-approval.json",
+    authorityRecordPath:
+      "project-context/evidence/acceptance/VF-10-13/test/approved-authority.json",
+  });
 }
 
 test("exact full-live approval schema binds proposal, caps, GPU, retention, and expiry", () => {
@@ -189,6 +200,31 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
         proposal.exact_execution_graph.ordered_operation_ids[0],
       ];
     },
+    (proposal) => {
+      proposal.requested_scope.cloudflare_secret_allowlist_count = 21;
+    },
+    (proposal) => {
+      proposal.requested_scope.cloudflare_secret_allowlist =
+        proposal.requested_scope.cloudflare_secret_allowlist.slice(0, -1);
+    },
+    (proposal) => {
+      proposal.authority_record_commit_binding.embedded_self_commit_hash_forbidden = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.image_workflow_verification_policy.maximum_reads = 181;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.image_workflow_verification_policy.verifier_dispatch_authorized = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.trusted_time_policy.caller_supplied_trusted_time_forbidden = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.trusted_time_policy.normal_or_paid_operation_resume_after_expiry = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.trusted_time_policy.credential_environment_or_authorization_header_allowed = true;
+    },
   ];
   for (const mutate of mutations) {
     const proposal = structuredClone(JSON.parse(fixture.proposalBytes));
@@ -206,6 +242,76 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       /V3_SUPERSESSION_OR_AUTHORITY/u,
     );
   }
+});
+
+test("V3 proposal binds authenticated time at every non-cleanup boundary", () => {
+  const fixture = v3Fixture();
+  const proposal = JSON.parse(fixture.proposalBytes);
+  assert.deepEqual(proposal.exact_execution_graph.trusted_time_policy, EXACT_TRUSTED_TIME_POLICY);
+  assert.equal(
+    proposal.exact_execution_graph.trusted_time_policy.caller_supplied_trusted_time_forbidden,
+    true,
+  );
+  assert.equal(
+    proposal.exact_execution_graph.trusted_time_policy
+      .credential_environment_or_authorization_header_allowed,
+    false,
+  );
+  assert.equal(
+    proposal.exact_execution_graph.trusted_time_policy.ambient_gh_configuration_used,
+    false,
+  );
+  assert.equal(
+    proposal.exact_execution_graph.trusted_time_policy.normal_or_paid_operation_resume_after_expiry,
+    false,
+  );
+});
+
+test("V3 proposal binds exact run-ID terminal polling without verifier dispatch", () => {
+  const fixture = v3Fixture();
+  const proposal = JSON.parse(fixture.proposalBytes);
+  assert.deepEqual(
+    proposal.exact_execution_graph.image_workflow_verification_policy,
+    EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  );
+  assert.equal(
+    proposal.exact_execution_graph.image_workflow_verification_policy.maximum_reads *
+      proposal.exact_execution_graph.image_workflow_verification_policy.poll_interval_ms,
+    1_800_000,
+  );
+  assert.equal(
+    proposal.exact_execution_graph.image_workflow_verification_policy.redispatch_authorized,
+    false,
+  );
+});
+
+test("V3 proposal separates proposal and authority-record commit lineage without a self hash", () => {
+  const fixture = v3Fixture();
+  const proposal = JSON.parse(fixture.proposalBytes);
+  assert.equal(proposal.source.proposal_record_commit, null);
+  assert.equal(proposal.source.future_authority_record_commit, null);
+  assert.deepEqual(proposal.authority_record_commit_binding, {
+    strategy: "EXTERNAL_GIT_COMMIT_INPUT_VERIFIED_BEFORE_CONSUMPTION_NO_SELF_HASH",
+    proposal_record_commit_is_distinct: true,
+    authority_record_commit_must_contain_exact_approval_and_authority_bytes: true,
+    remote_readback_required: true,
+    embedded_self_commit_hash_forbidden: true,
+  });
+  assert.match(proposal.ordered_operations[3].operations.join("\n"), /authority-record commit/u);
+});
+
+test("V3 proposal binds the exact 22-name Cloudflare secret allowlist", () => {
+  const fixture = v3Fixture();
+  const proposal = JSON.parse(fixture.proposalBytes);
+  assert.equal(proposal.requested_scope.cloudflare_secret_allowlist_count, 22);
+  assert.deepEqual(
+    proposal.requested_scope.cloudflare_secret_allowlist,
+    EXACT_CLOUDFLARE_SECRET_NAMES,
+  );
+  assert.match(
+    proposal.ordered_operations.flatMap((phase) => phase.operations).join("\n"),
+    /provision 22 exact allowlisted secrets/u,
+  );
 });
 
 test("single-use ledger enforces phase order, phase caps, cumulative cap, and no redispatch", () => {
@@ -409,13 +515,27 @@ test("forged terminal state is rejected and every normal mutation stays closed",
     expectedProposalRecordCommit: "f".repeat(40),
     expectedReleaseSourceCommit: v3ReleaseSourceCommit,
   });
-  const forged = initialConsumptionRecord(fixture.authority, fixture.authorityBytes, validated);
+  const recordValidated = {
+    ...validated,
+    authorityRecordCommit: "e".repeat(40),
+    approvalRecordPath: "evidence/user-approval.json",
+    authorityRecordPath: "evidence/approved-authority.json",
+  };
+  const forged = initialConsumptionRecord(
+    fixture.authority,
+    fixture.authorityBytes,
+    recordValidated,
+  );
   forged.state = "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY";
   forged.terminal = "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_MAX_ONE";
   assert.throws(() => validateState(forged), /CLEANUP_COMPLETE_STATE_INVARIANT/u);
   assert.throws(() => beginPhase(forged, "publication"), /CLEANUP_COMPLETE_STATE_INVARIANT/u);
 
-  const terminal = initialConsumptionRecord(fixture.authority, fixture.authorityBytes, validated);
+  const terminal = initialConsumptionRecord(
+    fixture.authority,
+    fixture.authorityBytes,
+    recordValidated,
+  );
   beginPhase(terminal, "publication");
   enterCleanupOnly(terminal, {
     failureCode: "RELEASE_REF_COLLISION",

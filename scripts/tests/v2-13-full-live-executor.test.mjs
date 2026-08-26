@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
-  executeFullLive,
+  executeFullLive as executeFullLiveRaw,
   missingConcreteTools,
   OPERATIONS,
 } from "../../deploy/v2-13/full-live-executor.mjs";
@@ -19,6 +19,8 @@ import {
 
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
+const executeFullLive = (options) =>
+  executeFullLiveRaw({ trustedTime: async () => "2026-08-26T12:00:00.000Z", ...options });
 
 function stateFixture() {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-full-live-executor-"));
@@ -36,6 +38,9 @@ function stateFixture() {
     proposalSha256: proof("1"),
     approvalSha256: proof("2"),
     proposalRecordCommit: "b".repeat(40),
+    authorityRecordCommit: "c".repeat(40),
+    approvalRecordPath: "evidence/user-approval.json",
+    authorityRecordPath: "evidence/approved-authority.json",
     releaseSourceCommit: "a".repeat(40),
     approvedAt: "2026-08-26T00:00:00.000Z",
     expiresAt: "2026-08-27T00:00:00.000Z",
@@ -61,7 +66,7 @@ function fakeResult(operation, state, priorResults) {
     });
   if (operation.id === "approval-commit-push")
     Object.assign(result, {
-      commit: state.proposal_record_commit,
+      commit: state.authority_record_commit,
       exactRemoteReadback: true,
       branch: "codex/serverless-v2-roadmap",
     });
@@ -193,6 +198,32 @@ test("global protected-input preflight fails before any operation runner", async
       /PROTECTED_INPUT_MISSING/u,
     );
     assert.equal(calls, 0);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("expired authenticated time enters cleanup-only before any normal mutation operation", async () => {
+  const fixture = stateFixture();
+  const called = [];
+  try {
+    const result = await executeFullLiveRaw({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      trustedTime: async () => "2026-08-27T00:00:01.000Z",
+      runOperation: async (operation, current, prior) => {
+        called.push(operation.id);
+        return fakeResult(operation, current, prior);
+      },
+    });
+    assert.deepEqual(called, [
+      "restore-endpoints-max-one",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources",
+    ]);
+    assert.equal(result.failed, true);
+    assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
   } finally {
     rmSync(fixture.directory, { recursive: true, force: true });
   }
