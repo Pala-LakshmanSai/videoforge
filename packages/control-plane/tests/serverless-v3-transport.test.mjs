@@ -13,7 +13,9 @@ import {
   ServerlessDispatchService,
   ServerlessTransportError,
   buildAcceptedUnitResumeBatch,
+  canonicalSha256,
   digestUtf8,
+  mintDispatchToken,
   providerFreeV2Authority,
   trustedTenantActorScope,
   trustedTenantScope,
@@ -78,7 +80,10 @@ function predispatchInput(
   { projectId, revisionId, requestId, lane = "mage_image" },
 ) {
   const attemptId = uuid(serial);
+  const dispatchToken = mintDispatchToken();
   return {
+    dispatchToken,
+    envelope: { schema: "serverless-worker-job-envelope/v3" },
     attemptId,
     authorityId: uuid(serial + 1),
     outboxId: uuid(serial + 2),
@@ -112,6 +117,9 @@ function receiptFor(commit, options = {}) {
     receipt_id: options.receiptId ?? `provenance-${commit.attemptId}`,
     attestation_scope: options.attestationScope ?? PROVENANCE_ATTESTATION_SCOPE,
     dispatch_token: options.dispatchToken ?? commit.dispatchToken,
+    envelope_sha256:
+      options.envelopeSha256 ?? canonicalSha256({ schema: "serverless-worker-job-envelope/v3" }),
+    request_sha256: options.requestSha256 ?? commit.requestBodySha256,
     attempt_id: options.attemptId ?? commit.attemptId,
     provider_job_id: options.providerJobId ?? null,
     worker_id: options.workerId ?? "worker-a",
@@ -128,6 +136,8 @@ function receiptFor(commit, options = {}) {
     runtime_probe: {
       gpu_name: options.gpuName ?? "NVIDIA GeForce RTX 4090",
       gpu_count: 1,
+      total_vram_bytes: 24 * 1024 ** 3,
+      peak_vram_bytes: 12 * 1024 ** 3,
       gpu_uuid_sha256: sha256("gpu-uuid"),
       driver_version: "550.90.07",
       cuda_version: "12.4",
@@ -439,7 +449,7 @@ test("a stable dispatch token and outbox row exist before the fake /run call", a
     const authority = await executor.query(
       `SELECT checkpoint_id, authority_mode, allowed_operations, spend_ceiling_usd,
               request_ttl_seconds, execution_timeout_seconds, init_timeout_seconds,
-              volume_id_sha256, gpu_allowlist, region
+              volume_id_sha256, gpu_allowlist, region, envelope_sha256
          FROM serverless_predispatch_authorities WHERE attempt_id = $1`,
       [commit.attemptId],
     );
@@ -456,6 +466,11 @@ test("a stable dispatch token and outbox row exist before the fake /run call", a
     assert.equal(bound.volume_id_sha256, DEPLOYMENT.volumeIdSha256);
     assert.deepEqual(bound.gpu_allowlist, ["NVIDIA GeForce RTX 4090"]);
     assert.equal(bound.region, "EU-RO-1");
+    assert.equal(
+      bound.envelope_sha256,
+      canonicalSha256({ schema: "serverless-worker-job-envelope/v3" }),
+    );
+    assert.equal(commit.envelopeSha256, bound.envelope_sha256);
 
     // The reservation is committed with the authority, not after the provider answers.
     const ledger = await executor.query(
@@ -506,6 +521,20 @@ test("endpoint and request bytes must match predispatch before the outbox can be
         assignmentId: uuid(820_103),
         leaseId: uuid(820_104),
         holderSha256: sha256("holder-810102"),
+        now: t(2),
+      }),
+      (error) => error instanceof ServerlessDispatchError && error.code === "REQUEST_BODY_MISMATCH",
+    );
+    await assert.rejects(
+      service.dispatchOnce(scopeA(), {
+        commit,
+        endpoint: transport,
+        endpointIdSha256: commit.endpointIdSha256,
+        envelope: { schema: "serverless-worker-job-envelope/v3", mutated_after_commit: true },
+        requestBodySha256: commit.requestBodySha256,
+        assignmentId: uuid(820_105),
+        leaseId: uuid(820_106),
+        holderSha256: sha256("holder-810103"),
         now: t(2),
       }),
       (error) => error instanceof ServerlessDispatchError && error.code === "REQUEST_BODY_MISMATCH",
@@ -817,9 +846,15 @@ test("a definite provider rejection durably dead-letters instead of stranding SE
       }),
     );
     const rejected = {
-      run() { throw new ServerlessTransportError("REQUEST_REJECTED"); },
-      status() { throw new Error("unreachable"); },
-      cancel() { throw new Error("unreachable"); },
+      run() {
+        throw new ServerlessTransportError("REQUEST_REJECTED");
+      },
+      status() {
+        throw new Error("unreachable");
+      },
+      cancel() {
+        throw new Error("unreachable");
+      },
     };
     await assert.rejects(
       dispatch(service, scopeA(), commit, rejected, 820_305),

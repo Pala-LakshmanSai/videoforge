@@ -1,4 +1,4 @@
--- Apply only with the migration owner after migrations 0037-0044 have an exact manifest ledger.
+-- Apply only with the migration owner after migrations 0037-0045 have an exact manifest ledger.
 -- Both login roles are pre-created, unprivileged, NOINHERIT roles. Credentials are provisioned
 -- separately and must never be passed through this file.
 --   psql --variable=runtime_role=... --variable=reconciler_role=... --file=...
@@ -34,6 +34,7 @@ FROM :"runtime_role";
 REVOKE EXECUTE ON FUNCTION public.videoforge_record_hosted_pair_zero_worker(uuid,uuid,uuid,jsonb) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.videoforge_complete_v209_terminal_acceptance(jsonb) FROM PUBLIC;
 
 GRANT USAGE ON SCHEMA public TO :"reconciler_role";
 REVOKE CREATE ON SCHEMA public FROM :"reconciler_role";
@@ -49,6 +50,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,u
 TO :"reconciler_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)
 TO :"reconciler_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_complete_v209_terminal_acceptance(jsonb)
+TO :"reconciler_role";
 
 SELECT
   (NOT has_function_privilege('PUBLIC',
@@ -63,6 +66,8 @@ SELECT
     'public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)','EXECUTE')
   AND has_function_privilege(:'reconciler_role',
     'public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)','EXECUTE')
+  AND has_function_privilege(:'reconciler_role',
+    'public.videoforge_complete_v209_terminal_acceptance(jsonb)','EXECUTE')
   AND (NOT has_table_privilege(:'reconciler_role','public.serverless_attempts','SELECT'))
   AND (NOT has_table_privilege(:'reconciler_role','public.provider_workload_leases','UPDATE'))
   AS pair_acl_exact

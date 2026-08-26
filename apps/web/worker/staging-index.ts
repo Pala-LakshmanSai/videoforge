@@ -66,7 +66,10 @@ export default {
         return unavailable(environment);
       }
     }
-    return handleHostedRequest(request, environment, executionContext);
+    return withWorkerVersionIdentity(
+      await handleHostedRequest(request, environment, executionContext),
+      environment,
+    );
   },
   scheduled(_controller, environment, executionContext) {
     executionContext.waitUntil(runHostedRetention(environment));

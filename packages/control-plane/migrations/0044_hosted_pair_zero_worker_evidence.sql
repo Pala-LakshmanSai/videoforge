@@ -28,6 +28,8 @@ CREATE TABLE public.hosted_pair_zero_worker_observations (
 );
 CREATE TRIGGER hosted_pair_zero_worker_observations_append_only BEFORE UPDATE OR DELETE
   ON public.hosted_pair_zero_worker_observations FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
+CREATE TRIGGER hosted_pair_zero_worker_observations_tenant_write_guard BEFORE INSERT
+  ON public.hosted_pair_zero_worker_observations FOR EACH ROW EXECUTE FUNCTION public.videoforge_assert_tenant_write();
 ALTER TABLE public.hosted_pair_zero_worker_observations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hosted_pair_zero_worker_observations FORCE ROW LEVEL SECURITY;
 CREATE POLICY hosted_pair_zero_worker_observations_tenant_rls ON public.hosted_pair_zero_worker_observations

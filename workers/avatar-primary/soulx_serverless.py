@@ -30,7 +30,13 @@ from urllib.request import Request, urlopen
 from soulx_runtime import SoulXRuntime
 from soulx_volume import verify_volume
 from secure_scratch import ScratchIsolationError, soulx_worker_io, validate_scoped_port
-from serverless_envelope import EnvelopeRejection, sign_receipt, validate_envelope
+from serverless_envelope import (
+    EnvelopeRejection,
+    restricted_canonical_sha256,
+    request_body_from_payload,
+    sign_receipt,
+    validate_envelope,
+)
 
 
 class ServerlessSoulXError(RuntimeError):
@@ -153,7 +159,10 @@ def _observed_gpu(runtime_health: dict[str, Any]) -> dict[str, object]:
         name = gpu.get("name")
     if count != 1 or name != "NVIDIA GeForce RTX 4090":
         raise ServerlessSoulXError("SOULX_SERVERLESS_GPU_NOT_QUALIFIED")
-    return {"name": name, "count": count}
+    total_vram_bytes = gpu.get("vram_bytes")
+    if not isinstance(total_vram_bytes, int) or total_vram_bytes <= 0:
+        raise ServerlessSoulXError("SOULX_SERVERLESS_GPU_NOT_QUALIFIED")
+    return {"name": name, "count": count, "total_vram_bytes": total_vram_bytes}
 
 
 def _validate_url(value: object) -> str:
@@ -716,6 +725,8 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         handler_started_epoch = time.time()
         payload = _required(job, "input")
         envelope = _required(payload, "envelope")
+        envelope_sha256 = restricted_canonical_sha256(envelope)
+        request_sha256 = restricted_canonical_sha256(request_body_from_payload(payload))
         accepted = validate_envelope(
             envelope,
             now=datetime.now(UTC),
@@ -812,6 +823,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         scratch_root = Path(os.environ.get("VIDEOFORGE_JOB_SCRATCH_ROOT", "/tmp/videoforge-jobs"))
         receipt_items: list[dict[str, Any]] = []
         results: list[dict[str, Any]] = []
+        peak_vram_bytes = 0
         started = time.monotonic()
         with _terminal_worker_io(
             root=scratch_root,
@@ -851,6 +863,10 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                     _generate(runtime, source_bytes, audio_16k.read_bytes()),
                     timeout=remaining_seconds,
                 )
+                observed_peak = generated.get("peak_vram_bytes")
+                if not isinstance(observed_peak, int) or observed_peak <= 0:
+                    raise ServerlessSoulXError("SOULX_SERVERLESS_VRAM_EVIDENCE_INVALID")
+                peak_vram_bytes = max(peak_vram_bytes, observed_peak)
                 inference_ms = round((time.monotonic() - inference_started) * 1000)
                 if index == 0:
                     first_inference_ms = inference_ms
@@ -925,6 +941,8 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 ),
                 "receipt_id": f"soulx-{accepted['work']['attempt_id']}",
                 "dispatch_token": accepted["dispatch_token"],
+                "envelope_sha256": envelope_sha256,
+                "request_sha256": request_sha256,
                 "attempt_id": accepted["work"]["attempt_id"],
                 "provider_job_id": str(job.get("id", "unknown")),
                 "worker_id": os.environ.get("RUNPOD_POD_ID", "serverless"),
@@ -944,6 +962,8 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 "runtime_probe": {
                     "gpu_name": gpu["name"],
                     "gpu_count": gpu["count"],
+                    "total_vram_bytes": gpu["total_vram_bytes"],
+                    "peak_vram_bytes": peak_vram_bytes,
                     "gpu_uuid_sha256": None,
                     "driver_version": os.environ.get("VIDEOFORGE_SOULX_DRIVER_VERSION", "UNKNOWN"),
                     "cuda_version": os.environ.get("VIDEOFORGE_SOULX_CUDA_VERSION", "UNKNOWN"),
@@ -982,7 +1002,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 "receipt_nonce": 1,
                 "issued_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             }
-            receipt, _ = sign_receipt(
+            receipt, receipt_body_bytes = sign_receipt(
                 receipt_body,
                 key_id=_environment("VIDEOFORGE_RECEIPT_KEY_ID"),
                 secret=bytes.fromhex(_environment("VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX")),
@@ -992,6 +1012,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             "items": results,
             "carried_forward_item_ids": [unit["item_id"] for unit in resumed],
             "provenance_receipt": receipt,
+            "provenance_receipt_body_base64": base64.b64encode(receipt_body_bytes).decode("ascii"),
         }
     except TimeoutError:
         code = "SOULX_SERVERLESS_TIMEOUT"

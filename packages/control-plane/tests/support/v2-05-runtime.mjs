@@ -2,6 +2,7 @@ import {
   FakeServerlessEndpoint,
   PROVENANCE_ATTESTATION_SCOPE,
   ProvenanceReceiptSigner,
+  mintDispatchToken,
   providerFreeV2Authority,
 } from "../../dist/src/index.js";
 
@@ -89,11 +90,14 @@ export function predispatchFor({
 }) {
   const attemptId = uuid(serial);
   const itemsManifestSha256 = sha256(`${lane}-items-${itemIds.join("|")}`);
+  const dispatchToken = mintDispatchToken();
   return {
     attemptId,
     itemsManifestSha256,
     itemIds,
     input: {
+      dispatchToken,
+      envelope: { schema: "serverless-worker-job-envelope/v3" },
       attemptId,
       authorityId: uuid(serial + 1),
       outboxId: uuid(serial + 2),
@@ -144,6 +148,8 @@ export function receiptFor({ commit, lane, deployment, scope, itemIds, options =
     runtime_probe: {
       gpu_name: "NVIDIA GeForce RTX 4090",
       gpu_count: 1,
+      total_vram_bytes: 24 * 1024 ** 3,
+      peak_vram_bytes: 12 * 1024 ** 3,
       gpu_uuid_sha256: sha256(`gpu-uuid-${lane}`),
       driver_version: "550.90.07",
       cuda_version: "12.4",

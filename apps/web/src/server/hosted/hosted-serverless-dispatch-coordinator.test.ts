@@ -242,14 +242,20 @@ function runtimeView(source = plan()) {
   };
 }
 
-function commit(attemptId: string, outboxId: string): PredispatchCommit {
+function commit(
+  attemptId: string,
+  outboxId: string,
+  dispatchToken = `token-${attemptId}`,
+  envelope: Readonly<Record<string, unknown>> = { schema: "serverless-worker-job-envelope/v3" },
+): PredispatchCommit {
   return {
     attemptId,
-    dispatchToken: `token-${attemptId}`,
+    dispatchToken,
     dispatchTokenSha256: sha256("1"),
     outboxId,
     endpointIdSha256: sha256("2"),
     requestBodySha256: sha256("3"),
+    envelopeSha256: canonicalSha256(envelope),
     outputPrefix: `tenant/${ACCOUNT}/output/`,
     authority: {
       document: {},
@@ -294,7 +300,12 @@ function setup(
     (["mage_image", "soulx_avatar"] as const).map((lane) => {
       const publishDeployment = vi.fn(async () => undefined);
       const commitPredispatch = vi.fn(async (_scope, operation) =>
-        commit(operation.attemptId, operation.outboxId),
+        commit(
+          operation.attemptId,
+          operation.outboxId,
+          operation.dispatchToken,
+          operation.envelope,
+        ),
       );
       const dispatchOnce = vi.fn(async () =>
         input.ackUnknownLane === lane
@@ -520,7 +531,7 @@ describe("hosted Serverless dispatch coordinator", () => {
           now: DB_CLAIMED_AT,
           envelope: expect.objectContaining({
             schema: "serverless-worker-job-envelope/v3",
-            dispatch_token: expect.stringMatching(/^token-/u),
+            dispatch_token: expect.stringMatching(/^dt-[0-9a-f]+$/u),
             authority_sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
             signature: expect.objectContaining({
               algorithm: "HMAC-SHA256",
@@ -535,6 +546,17 @@ describe("hosted Serverless dispatch coordinator", () => {
             }),
           }),
         }),
+      );
+      const committedOperation = fixture.predispatch.get(lane)!.mock.calls[0]![1];
+      const dispatchedOperation = fixture.dispatch.get(lane)!.mock.calls[0]![1];
+      expect(committedOperation.dispatchToken).toBe(
+        (dispatchedOperation.envelope as { dispatch_token: string }).dispatch_token,
+      );
+      expect(canonicalSha256(committedOperation.envelope)).toBe(
+        canonicalSha256(dispatchedOperation.envelope),
+      );
+      expect(dispatchedOperation.commit.envelopeSha256).toBe(
+        canonicalSha256(committedOperation.envelope),
       );
       const sent = fixture.dispatch.get(lane)!.mock.calls[0]![1].envelope as Record<
         string,
@@ -590,7 +612,7 @@ describe("hosted Serverless dispatch coordinator", () => {
     expect(fixture.dispatch.get("soulx_avatar")).not.toHaveBeenCalled();
   });
 
-  it("rejects pair-signature drift after both predispatch records and before either transport", async () => {
+  it("rejects pair-signature drift before any predispatch record or transport", async () => {
     const fixture = setup();
     const envelopeSigner = {
       signPair: vi.fn(async (bodies: Parameters<typeof fixture.envelopeSigner.signPair>[0]) => {
@@ -612,8 +634,8 @@ describe("hosted Serverless dispatch coordinator", () => {
         now: NOW,
       }),
     ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID" });
-    expect(fixture.predispatch.get("mage_image")).toHaveBeenCalledTimes(1);
-    expect(fixture.predispatch.get("soulx_avatar")).toHaveBeenCalledTimes(1);
+    expect(fixture.predispatch.get("mage_image")).not.toHaveBeenCalled();
+    expect(fixture.predispatch.get("soulx_avatar")).not.toHaveBeenCalled();
     expect(fixture.dispatch.get("mage_image")).not.toHaveBeenCalled();
     expect(fixture.dispatch.get("soulx_avatar")).not.toHaveBeenCalled();
   });
@@ -648,8 +670,8 @@ describe("hosted Serverless dispatch coordinator", () => {
           now: NOW,
         }),
       ).rejects.toMatchObject({ code: "HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID" });
-      expect(fixture.predispatch.get("mage_image")).toHaveBeenCalledTimes(1);
-      expect(fixture.predispatch.get("soulx_avatar")).toHaveBeenCalledTimes(1);
+      expect(fixture.predispatch.get("mage_image")).not.toHaveBeenCalled();
+      expect(fixture.predispatch.get("soulx_avatar")).not.toHaveBeenCalled();
       expect(fixture.bindLaneAttempt).not.toHaveBeenCalled();
       expect(fixture.dispatch.get("mage_image")).not.toHaveBeenCalled();
       expect(fixture.dispatch.get("soulx_avatar")).not.toHaveBeenCalled();

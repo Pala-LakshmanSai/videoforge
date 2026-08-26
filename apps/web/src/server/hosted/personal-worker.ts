@@ -1622,8 +1622,9 @@ export async function handlePersonalWorkerRequest(
   request: Request,
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
+  resolvedConfiguration?: HostedRuntimeConfiguration,
 ): Promise<Response | null> {
-  const config = hostedRuntimeConfiguration(environment);
+  const config = resolvedConfiguration ?? hostedRuntimeConfiguration(environment);
   const url = new URL(request.url);
   if (request.method === "POST" && url.pathname === "/api/v2/media-worker-enrollments") {
     return createEnrollment(request, config);

@@ -16,7 +16,9 @@ from serverless_envelope import (  # noqa: E402
     QUARANTINED_SCHEMAS,
     EnvelopeRejection,
     envelope_body_bytes,
+    request_body_from_payload,
     receipt_bytes,
+    restricted_canonical_sha256,
     sign_receipt,
     validate_envelope,
 )
@@ -79,6 +81,14 @@ def receipt_body() -> dict:
 
 
 class ValidateEnvelopeTest(unittest.TestCase):
+    def test_request_hash_excludes_only_the_separately_bound_envelope(self) -> None:
+        payload = {"batch": {"id": "batch-a"}, "envelope": {"schema": ENVELOPE_SCHEMA}}
+        self.assertEqual(request_body_from_payload(payload), {"batch": {"id": "batch-a"}})
+        self.assertEqual(
+            restricted_canonical_sha256(request_body_from_payload(payload)),
+            "sha256:" + hashlib.sha256(b'{"batch":{"id":"batch-a"}}').hexdigest(),
+        )
+
     def test_accepts_the_exact_v3_envelope(self) -> None:
         accepted = validate_envelope(envelope(), now=NOW, **EXPECTED)
         self.assertEqual(accepted["schema"], ENVELOPE_SCHEMA)

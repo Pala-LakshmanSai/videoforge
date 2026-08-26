@@ -6,6 +6,8 @@ import {
   ProvenanceReceiptSigner,
   ServerlessDispatchService,
   VideoRuntimeService,
+  canonicalSha256,
+  mintDispatchToken,
   providerFreeV2Authority,
   type ProvenanceReceipt,
   type ServerlessLane,
@@ -389,8 +391,12 @@ export class NodeVideoRuntime {
     const laneSegment = lane === "mage_image" ? "mage-image" : "soulx-avatar";
     const outputPrefix = `tenant/${scope.accountId}/workspace/${scope.workspaceId}/project/${input.projectId}/revision/${input.revisionId}/lane/${laneSegment}/job/${attemptId}`;
     const now = new Date().toISOString();
+    const dispatchToken = mintDispatchToken();
+    const envelope = Object.freeze({ schema: "serverless-worker-job-envelope/v3" });
 
     const commit = await dispatch.commitPredispatch(scope, {
+      dispatchToken,
+      envelope,
       attemptId,
       authorityId: uuid(`authority:${attemptId}`),
       outboxId: uuid(`outbox:${attemptId}`),
@@ -422,7 +428,7 @@ export class NodeVideoRuntime {
       commit,
       endpoint,
       endpointIdSha256: bound.endpointIdSha256,
-      envelope: { schema: "serverless-worker-job-envelope/v3" },
+      envelope,
       requestBodySha256: commit.requestBodySha256,
       assignmentId: uuid(`assignment:${attemptId}`),
       leaseId: uuid(`lease:${attemptId}`),
@@ -515,7 +521,11 @@ export class NodeVideoRuntime {
   }
 
   #sign(input: {
-    readonly commit: { readonly dispatchToken: string; readonly attemptId: string };
+    readonly commit: {
+      readonly dispatchToken: string;
+      readonly attemptId: string;
+      readonly requestBodySha256: Sha256;
+    };
     readonly lane: ServerlessLane;
     readonly scope: WorkspaceScope;
     readonly itemIds: readonly string[];
@@ -528,6 +538,8 @@ export class NodeVideoRuntime {
       receipt_id: `provenance-${input.commit.attemptId}`,
       attestation_scope: PROVENANCE_ATTESTATION_SCOPE,
       dispatch_token: input.commit.dispatchToken,
+      envelope_sha256: canonicalSha256({ schema: "serverless-worker-job-envelope/v3" }),
+      request_sha256: input.commit.requestBodySha256,
       attempt_id: input.commit.attemptId,
       provider_job_id: input.providerJobId,
       worker_id: `worker-${input.providerJobId}`,
@@ -544,6 +556,8 @@ export class NodeVideoRuntime {
       runtime_probe: {
         gpu_name: "NVIDIA GeForce RTX 4090",
         gpu_count: 1,
+        total_vram_bytes: 24 * 1024 ** 3,
+        peak_vram_bytes: 12 * 1024 ** 3,
         gpu_uuid_sha256: sha256(`gpu:${input.lane}`),
         driver_version: "550.90.07",
         cuda_version: "12.4",

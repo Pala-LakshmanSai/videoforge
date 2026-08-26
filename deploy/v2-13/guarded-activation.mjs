@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateServiceFile } from "../v2-06/validate-pg-service.mjs";
+import { validateFullLiveUserApproval } from "./validate-full-live-approval.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const CONFIRMATION = "EXECUTE_EXACT_GUARDED_V2_13_ACTIVATION";
@@ -41,10 +42,12 @@ const SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
   "VIDEOFORGE_SOULX_ENDPOINT_ID",
   "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+  "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
 ]);
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const ROLE = /^[a-z_][a-z0-9_]{0,62}$/u;
 const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
+const WORKFLOW_INVENTORY_PATH = "/workflows?page=1&per_page=100";
 const SOULX_APPROVAL_SHA256 =
   "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
 const SOULX_CANDIDATE_SHA256 =
@@ -209,24 +212,31 @@ function validateAuthority(value) {
       "host",
       "last_migration",
       "owner_role",
+      "operator_role",
+      "operator_database_url_sha256",
       "pgcrypto_required",
       "reconciler_role",
       "runtime_role",
     ]) ||
     value.database.pgcrypto_required !== true ||
     value.database.first_migration !== 37 ||
-    value.database.last_migration !== 44 ||
+    value.database.last_migration !== 45 ||
     value.database.exact_manifest_ledger_required !== true ||
-    ![value.database.owner_role, value.database.runtime_role, value.database.reconciler_role].every(
-      (item) => ROLE.test(item),
-    ) ||
-    new Set([
+    ![
       value.database.owner_role,
+      value.database.operator_role,
       value.database.runtime_role,
       value.database.reconciler_role,
-    ]).size !== 3
+    ].every((item) => ROLE.test(item)) ||
+    new Set([
+      value.database.owner_role,
+      value.database.operator_role,
+      value.database.runtime_role,
+      value.database.reconciler_role,
+    ]).size !== 4 ||
+    !HASH.test(value.database.operator_database_url_sha256 ?? "")
   )
-    fail("database identity, roles, or exact 0037-0044 gate drifted");
+    fail("database identity, roles, or exact 0037-0045 gate drifted");
   if (
     !exactKeys(value.cloudflare, [
       "account_id",
@@ -480,9 +490,9 @@ function prevalidate(args) {
   if (sha256(manifestBytes) !== authority.release.migration_manifest_sha256)
     fail("migration manifest bytes do not match authority");
   const manifest = JSON.parse(manifestBytes);
-  const tail = manifest.migrations.slice(-8);
+  const tail = manifest.migrations.slice(-9);
   if (
-    tail.length !== 8 ||
+    tail.length !== 9 ||
     tail.some((entry, index) => entry.version !== 37 + index) ||
     tail.some(
       (entry) =>
@@ -490,7 +500,7 @@ function prevalidate(args) {
         entry.sha256,
     )
   )
-    fail("migration 0037-0044 bytes do not match the exact manifest tail");
+    fail("migration 0037-0045 bytes do not match the exact manifest tail");
   if (
     sha256(readFileSync(resolve(args.get("config-activation-record")))) !==
       authority.release.production_config_activation_sha256 ||
@@ -529,10 +539,55 @@ function validateAuthoritySourceFiles(authority, proposalPath, approvalPath) {
     fail("proposal file path does not match activation authority");
   if (resolve(approvalPath) !== resolve(ROOT, authority.authority.approval_path))
     fail("user approval file path does not match activation authority");
-  if (sha256(readFileSync(proposalPath)) !== authority.authority.proposal_sha256)
+  const proposalBytes = readFileSync(proposalPath);
+  const approvalBytes = readFileSync(approvalPath);
+  if (sha256(proposalBytes) !== authority.authority.proposal_sha256)
     fail("proposal file bytes do not match activation authority");
-  if (sha256(readFileSync(approvalPath)) !== authority.authority.approval_sha256)
+  if (sha256(approvalBytes) !== authority.authority.approval_sha256)
     fail("user approval file bytes do not match activation authority");
+  let approval;
+  try {
+    approval = JSON.parse(approvalBytes);
+  } catch {
+    fail("user approval is not valid JSON");
+  }
+  let validated;
+  try {
+    validated = validateFullLiveUserApproval({
+      proposalBytes,
+      approvalBytes,
+      expectedProposalSha256: authority.authority.proposal_sha256,
+      expectedProposalRecordCommit: approval.proposal?.proposal_record_commit,
+      expectedReleaseSourceCommit: approval.proposal?.release_source_commit,
+    });
+  } catch {
+    fail("user approval does not satisfy the exact full-live schema");
+  }
+  if (
+    validated.authorityId !== authority.authority.authority_id ||
+    validated.approvalSha256 !== authority.authority.approval_sha256 ||
+    validated.approvedAt !== authority.authority.approved_at ||
+    validated.expiresAt !== authority.authority.expires_at
+  )
+    fail("user approval identity or time does not match activation authority");
+  assertFullLiveActivationBinding(authority, validated);
+  if (
+    git("rev-parse", `${validated.proposalRecordCommit}^`) !== validated.releaseSourceCommit ||
+    git("hash-object", proposalPath) !==
+      git("rev-parse", `${validated.proposalRecordCommit}:${authority.authority.proposal_path}`)
+  )
+    fail("proposal commit or release-source lineage is not exact");
+  return true;
+}
+
+function assertFullLiveActivationBinding(authority, validated) {
+  if (validated.proposalSchema !== "videoforge.v2-13-full-live-completion-proposal/v3")
+    fail("superseded full-live proposal approval cannot authorize guarded activation");
+  if (
+    authority.database.runtime_role !== validated.exactRuntimeRole ||
+    authority.database.reconciler_role !== validated.exactReconcilerRole
+  )
+    fail("database roles do not match the exact approved V3 role pins");
   return true;
 }
 
@@ -540,12 +595,12 @@ function plan(authority) {
   return {
     schema_version: "videoforge-v2-13-guarded-activation-plan/v1",
     release_commit: authority.release.commit,
-    migration_range: [37, 44],
+    migration_range: [37, 45],
     database: [
       "verify owner service identity",
       "create pgcrypto extension",
       "provision two distinct LOGIN NOINHERIT hardened roles",
-      "apply exact manifest migrations through 0044",
+      "apply exact manifest migrations through 0045",
       "apply exact runtime and reconciler ACLs",
       "read back exact ledger, role flags, table ACLs, and function ACLs",
     ],
@@ -665,6 +720,12 @@ function protectedSecrets(directory, authority) {
     new Set(keyMaterials.map((value) => sha256(value))).size !== 3
   )
     fail("dispatch, envelope, and proof keys are malformed or not separate");
+  const workflowOperatorToken = values.get("VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN");
+  if (
+    workflowOperatorToken.length < 32 ||
+    keyMaterials.some((value) => sha256(value) === sha256(workflowOperatorToken))
+  )
+    fail("Workflow operator token is malformed or not separate");
   return values;
 }
 
@@ -699,7 +760,7 @@ function psql(environment, args, input) {
 }
 
 function rolePrecheckQuery(authority) {
-  const roles = `'${authority.database.runtime_role}','${authority.database.reconciler_role}'`;
+  const roles = `'${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}'`;
   return `SELECT ((SELECT count(*)=0 FROM pg_roles WHERE rolname IN (${roles}))
 AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN (${roles}) OR granted_role.rolname IN (${roles}))
 AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname IN (${roles}))
@@ -728,6 +789,32 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
   const env = ownerEnvironment(postgresInputDirectory, authority);
   const runtime = new URL(values.get("DATABASE_URL").trim());
   const reconciler = new URL(values.get("VIDEOFORGE_RECONCILER_DATABASE_URL").trim());
+  const operatorPath = join(postgresInputDirectory, "operator.database-url");
+  mode(operatorPath, "file", 0o600, "operator database URL file");
+  const operatorRaw = readFileSync(operatorPath, "utf8");
+  if (
+    operatorRaw !== operatorRaw.trim() ||
+    sha256(operatorRaw) !== authority.database.operator_database_url_sha256
+  )
+    fail("operator database URL does not match its approved fingerprint");
+  let operator;
+  try {
+    operator = new URL(operatorRaw);
+  } catch {
+    fail("operator database URL is invalid");
+  }
+  if (
+    !["postgres:", "postgresql:"].includes(operator.protocol) ||
+    operator.hostname !== authority.database.host ||
+    operator.pathname.slice(1) !== authority.database.database ||
+    decodeURIComponent(operator.username) !== authority.database.operator_role ||
+    !operator.password ||
+    operator.hash ||
+    operator.searchParams.size !== 2 ||
+    operator.searchParams.get("sslmode") !== "require" ||
+    operator.searchParams.get("channel_binding") !== "require"
+  )
+    fail("operator database URL does not bind the exact approved hardened role");
   const ownerIdentity = run(
     "psql",
     ["--no-psqlrc", "--tuples-only", "--no-align", "--command", "SELECT current_user::text"],
@@ -787,11 +874,14 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
     fail("database role names are not fresh or have cluster privilege drift");
   env.V2_13_RUNTIME_PASSWORD = decodeURIComponent(runtime.password);
   env.V2_13_RECONCILER_PASSWORD = decodeURIComponent(reconciler.password);
+  env.V2_13_OPERATOR_PASSWORD = decodeURIComponent(operator.password);
   const bootstrap = String.raw`\getenv runtime_password V2_13_RUNTIME_PASSWORD
 \getenv reconciler_password V2_13_RECONCILER_PASSWORD
+\getenv operator_password V2_13_OPERATOR_PASSWORD
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',:'runtime_role',:'runtime_password') \gexec
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',:'reconciler_role',:'reconciler_password') \gexec
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',:'operator_role',:'operator_password') \gexec
 `;
   psql(
     env,
@@ -800,6 +890,8 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
       `runtime_role=${authority.database.runtime_role}`,
       "--variable",
       `reconciler_role=${authority.database.reconciler_role}`,
+      "--variable",
+      `operator_role=${authority.database.operator_role}`,
     ],
     bootstrap,
   );
@@ -814,20 +906,31 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
     "--file",
     resolve(ROOT, "deploy/v2-13/neon-pair-reconciler-grants.sql"),
   ]);
+  psql(env, [
+    "--variable",
+    `operator_role=${authority.database.operator_role}`,
+    "--file",
+    resolve(ROOT, "deploy/v2-13/neon-full-live-operator-grants.sql"),
+  ]);
   run(
     process.execPath,
     ["deploy/v2-06/apply-migrations-and-grants.mjs", "--verify-only", "--apply-grants"],
     { env },
   );
-  const exactReconcilerReadback = `SELECT ((SELECT count(*)=2 AND bool_and(rolcanlogin AND NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls AND rolconfig IS NULL) FROM pg_roles WHERE rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}')) AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}') OR granted_role.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}')) AND NOT EXISTS (SELECT 1 FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}')) AND NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}')) AND (SELECT array_agg(p.oid::regprocedure::text ORDER BY p.oid::regprocedure::text)=ARRAY['videoforge_current_account_id()','videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)','videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)','videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)']::text[] FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND has_function_privilege('${authority.database.reconciler_role}',p.oid,'EXECUTE')) AND NOT EXISTS (SELECT 1 FROM information_schema.role_table_grants WHERE grantee='${authority.database.reconciler_role}' AND table_schema='public'))::text;`;
+  const exactReconcilerReadback = `SELECT ((SELECT count(*)=3 AND bool_and(rolcanlogin AND NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls AND rolconfig IS NULL) FROM pg_roles WHERE rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}') OR granted_role.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND (SELECT array_agg(p.oid::regprocedure::text ORDER BY p.oid::regprocedure::text)=ARRAY['videoforge_current_account_id()','videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)','videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)','videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)']::text[] FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND has_function_privilege('${authority.database.reconciler_role}',p.oid,'EXECUTE')) AND NOT EXISTS (SELECT 1 FROM information_schema.role_table_grants WHERE grantee IN ('${authority.database.reconciler_role}','${authority.database.operator_role}') AND table_schema='public'))::text;`;
+  const reconcilerReadbackWithV209 = exactReconcilerReadback.replace(
+    "ARRAY['videoforge_current_account_id()'",
+    "ARRAY['videoforge_complete_v209_terminal_acceptance(jsonb)','videoforge_current_account_id()'",
+  );
   const result = run(
     "psql",
-    ["--no-psqlrc", "--tuples-only", "--no-align", "--command", exactReconcilerReadback],
+    ["--no-psqlrc", "--tuples-only", "--no-align", "--command", reconcilerReadbackWithV209],
     { env, capture: true },
   );
   if (result !== "true") fail("reconciler role/ACL post-readback is not exact");
   delete env.V2_13_RUNTIME_PASSWORD;
   delete env.V2_13_RECONCILER_PASSWORD;
+  delete env.V2_13_OPERATOR_PASSWORD;
 }
 
 function cloudflareEnvironment(tokenPath, authority) {
@@ -925,6 +1028,10 @@ async function cloudflareApiResponse(environment, authority, path) {
 
 async function cloudflareApiReadback(environment, authority, path) {
   return (await cloudflareApiResponse(environment, authority, path)).bytes;
+}
+
+async function cloudflareWorkflowInventoryReadback(environment, authority) {
+  return cloudflareApiReadback(environment, authority, WORKFLOW_INVENTORY_PATH);
 }
 
 function assertCompleteSinglePage(body, count, label) {
@@ -1132,7 +1239,7 @@ async function cloudflareReadOnlyPreflight(authority, environment) {
     authority,
     `/workers/scripts/${authority.cloudflare.worker_name}`,
   );
-  const workflows = await cloudflareApiReadback(environment, authority, "/workflows");
+  const workflows = await cloudflareWorkflowInventoryReadback(environment, authority);
   const buckets = await cloudflareApiReadback(environment, authority, "/r2/buckets");
   const inventories = validateAbsentInventoryReadbacks(authority, {
     account,
@@ -1165,7 +1272,7 @@ function cloudflareSecretNames(configPath, environment) {
 }
 
 async function assertExactCreatedWorkflows(environment, authority, beforeNames, intendedNames) {
-  const bytes = await cloudflareApiReadback(environment, authority, "/workflows");
+  const bytes = await cloudflareWorkflowInventoryReadback(environment, authority);
   let response;
   try {
     response = JSON.parse(bytes);
@@ -1572,7 +1679,7 @@ async function main() {
       schema_version: "videoforge-v2-13-guarded-activation-result/v1",
       state: "DISABLED_UNQUALIFIED",
       commit: authority.release.commit,
-      migration_ledger: "44/44 exact",
+      migration_ledger: "45/45 exact",
       role_acl_readback: "exact",
       secret_name_readback: `${SECRET_NAMES.length}/${SECRET_NAMES.length} exact`,
       secret_value_fingerprints: "matched authority before mutation",
@@ -1583,7 +1690,7 @@ async function main() {
     writeEvidence(args.get("evidence-output"), {
       ...evidenceBase,
       outcome: "SUCCEEDED",
-      migration_ledger: "44/44 exact",
+      migration_ledger: "45/45 exact",
       role_acl_readback: "exact",
       secret_name_readback: `${SECRET_NAMES.length}/${SECRET_NAMES.length} exact`,
       partial_secret_cleanup_required: false,
@@ -1605,6 +1712,7 @@ async function main() {
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await main();
 
 export {
+  assertFullLiveActivationBinding,
   assertDisabledVersionReadback,
   assertTrustedAuthorityTime,
   CONFIRMATION,
@@ -1621,5 +1729,6 @@ export {
   validateAuthoritySourceFiles,
   validateAbsentInventoryReadbacks,
   validateAuthority,
+  WORKFLOW_INVENTORY_PATH,
   workflowBootstrapConfig,
 };

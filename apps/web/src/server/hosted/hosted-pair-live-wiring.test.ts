@@ -5,6 +5,7 @@ import { freezeV209ShortLiveAdmission } from "../runtime/v209-short-live-cost";
 
 import {
   HostedPairWorkflowReconciler,
+  awaitV209TerminalAcceptance,
   commitAndScheduleHostedPair,
   createDrainPrimedTransport,
   createHostedPairLiveComposition,
@@ -39,6 +40,7 @@ async function enabledEnvironment() {
     VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: "hosted-envelope-v1",
     VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: "cd".repeat(32),
     VIDEOFORGE_PROVIDER_PROOF_KEY_ID: "hosted-proof-v1",
+    VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: "w".repeat(32),
     RUNPOD_API_KEY: "r".repeat(32),
     RUNPOD_API_BASE_URL: "https://api.runpod.ai/v2",
     VIDEOFORGE_MAGE_ENDPOINT_ID: mage,
@@ -378,5 +380,110 @@ describe("hosted pair live provider wiring", () => {
       code: "HOSTED_V209_SETTLEMENT_GUARD_MISSING",
     });
     expect(settle.reconcile).not.toHaveBeenCalled();
+  });
+
+  it("resumes one deterministic Workflow and accepts only the DB-derived V2-09 terminal record", async () => {
+    const status = vi.fn(async () => ({ state: "EXISTING" }));
+    const get = vi.fn(async () => ({ status, sendEvent: vi.fn() }));
+    const create = vi.fn();
+    let attempt = 0;
+    const terminal = {
+      schemaVersion: "videoforge.v2-09-terminal-acceptance/v1",
+      workflowId: `hosted-pair-${ids.generationRequestId}`,
+      generationRequestId: ids.generationRequestId,
+      accepted: true,
+      terminal: true,
+      zeroWorkersAfter: true,
+      durationSeconds: 40,
+      settledCostUsd: 0.75,
+      evidenceSha256: digest("7"),
+      resultSha256: digest("9"),
+    };
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("set_config")) return { rows: [{ set_config: ids.accountId }] };
+      attempt += 1;
+      if (attempt === 1) throw Object.assign(new Error("not terminal"), { code: "23514" });
+      return { rows: [{ value: terminal }] };
+    });
+    let clock = Date.parse("2026-08-26T06:00:00.000Z");
+    const sleep = vi.fn(async (milliseconds: number) => {
+      clock += milliseconds;
+    });
+    await expect(
+      awaitV209TerminalAcceptance({
+        workflow: { create, get },
+        database: {
+          transaction: (work: never) => (work as (value: unknown) => unknown)({ query }),
+        } as never,
+        scope: ids,
+        workflowId: terminal.workflowId,
+        chromeEvidenceSha256: digest("8"),
+        deadlineAt: "2026-08-26T06:01:00.000Z",
+        now: () => clock,
+        sleep,
+        pollIntervalMs: 1_000,
+      }),
+    ).resolves.toEqual(terminal);
+    expect(create).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledOnce();
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledOnce();
+    expect(query.mock.calls.filter(([sql]) => String(sql).includes("complete_v209"))).toHaveLength(
+      2,
+    );
+  });
+
+  it("rejects a DB terminal row that omits the trusted V2-09 result contract", async () => {
+    const value = {
+      schemaVersion: "videoforge.v2-09-terminal-acceptance/v1",
+      workflowId: `hosted-pair-${ids.generationRequestId}`,
+      generationRequestId: ids.generationRequestId,
+      resultSha256: digest("9"),
+    };
+    const query = vi.fn(async (sql: string) =>
+      sql.includes("set_config") ? { rows: [{}] } : { rows: [{ value }] },
+    );
+    await expect(
+      awaitV209TerminalAcceptance({
+        workflow: {
+          create: vi.fn(),
+          get: vi.fn(async () => ({ status: vi.fn(), sendEvent: vi.fn() })),
+        },
+        database: {
+          transaction: (work: never) => (work as (value: unknown) => unknown)({ query }),
+        } as never,
+        scope: ids,
+        workflowId: value.workflowId,
+        chromeEvidenceSha256: digest("8"),
+        deadlineAt: "2026-08-26T06:01:00.000Z",
+        now: () => Date.parse("2026-08-26T06:00:00.000Z"),
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_V209_TERMINAL_RESULT_INVALID" });
+  });
+
+  it("does not turn Workflow acknowledgement into V2-09 success", async () => {
+    const status = vi.fn(async () => ({ state: "STARTED" }));
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("set_config")) return { rows: [{}] };
+      throw Object.assign(new Error("not terminal"), { code: "23514" });
+    });
+    let clock = Date.parse("2026-08-26T06:00:00.000Z");
+    await expect(
+      awaitV209TerminalAcceptance({
+        workflow: { create: vi.fn(), get: vi.fn(async () => ({ status, sendEvent: vi.fn() })) },
+        database: {
+          transaction: (work: never) => (work as (value: unknown) => unknown)({ query }),
+        } as never,
+        scope: ids,
+        workflowId: `hosted-pair-${ids.generationRequestId}`,
+        chromeEvidenceSha256: digest("8"),
+        deadlineAt: "2026-08-26T06:00:01.000Z",
+        now: () => clock,
+        sleep: vi.fn(async (milliseconds: number) => {
+          clock += milliseconds;
+        }),
+        pollIntervalMs: 1_000,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED" });
   });
 });

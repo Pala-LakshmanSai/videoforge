@@ -89,6 +89,18 @@ def envelope_body_bytes(body: dict[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
+def restricted_canonical_sha256(value: dict[str, Any]) -> str:
+    """Hash exact worker-received restricted-I-JSON values with the shared envelope encoding."""
+    return f"sha256:{hashlib.sha256(envelope_body_bytes(value)).hexdigest()}"
+
+
+def request_body_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the exact worker-received request fields, excluding its separately bound envelope."""
+    if not isinstance(payload, dict) or "envelope" not in payload:
+        raise EnvelopeRejection("ENVELOPE_SHAPE_INVALID")
+    return {key: value for key, value in payload.items() if key != "envelope"}
+
+
 def verify_envelope_authority(
     document: dict[str, Any],
     *,

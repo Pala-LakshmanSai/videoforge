@@ -1,1 +1,75 @@
-{"schema_version":"serverless-provenance-receipt/v1","receipt_id":"provenance-a","attestation_scope":"VIDEOFORGE_APPLICATION_SIGNED_FACTS_NOT_PROVIDER_HARDWARE_ATTESTATION","dispatch_token":"dispatch-token-0123456789abcdef0123456789abcdef","attempt_id":"attempt-a","provider_job_id":"provider-job-a","worker_id":"worker-a","tenant":{"account_id":"account-a","workspace_id":"workspace-a"},"lane":"mage_image","deployment":{"deployment_id":"deployment-mage-1","endpoint_id_sha256":"sha256:1111111111111111111111111111111111111111111111111111111111111111","container_digest":"sha256:3333333333333333333333333333333333333333333333333333333333333333","intended_region":"EU-RO-1","intended_volume_id_sha256":"sha256:5555555555555555555555555555555555555555555555555555555555555555","model_manifest_sha256":"sha256:4444444444444444444444444444444444444444444444444444444444444444"},"runtime_probe":{"gpu_name":"NVIDIA GeForce RTX 4090","gpu_count":1,"gpu_uuid_sha256":"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff","driver_version":"550.90.07","cuda_version":"12.4","probe_source":"WORKER_RUNTIME_SELF_REPORT"},"volume_verification":{"manifest_sha256_before":"sha256:6666666666666666666666666666666666666666666666666666666666666666","manifest_sha256_after":"sha256:0000000000000000000000000000000000000000000000000000000000000000","mutation_detected":true,"cross_mount_detected":false},"model_ready_evidence":{"state":"MODEL_READY","warmup_completed":true,"warmup_output_sha256":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"timings":{"allocation_ms":1200,"container_ready_ms":8000,"volume_verified_ms":900,"model_load_ms":41000,"warmup_ms":6000,"first_inference_ms":2100,"upload_ms":3000,"total_ms":62200},"items":[{"item_id":"scene-1","state":"SUCCEEDED","output_object_key":"tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/mage-image/job/attempt-a/artifact/scene-1","output_sha256":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","output_bytes":812345,"probe":{"width":1280,"height":720,"format":"png"}}],"scratch_cleanup":{"terminal_reason":"SUCCESS","removed":true,"scratch_on_model_volume":false},"receipt_nonce":1,"issued_at":"2026-08-16T07:01:10.000Z","receipt_sha256":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","signature":{"algorithm":"HMAC-SHA256","key_id":"worker-key-1","value":"0000000000000000000000000000000000000000000000000000000000000000"}}
+{
+  "schema_version": "serverless-provenance-receipt/v1",
+  "receipt_id": "provenance-a",
+  "attestation_scope": "VIDEOFORGE_APPLICATION_SIGNED_FACTS_NOT_PROVIDER_HARDWARE_ATTESTATION",
+  "dispatch_token": "dispatch-token-0123456789abcdef0123456789abcdef",
+  "envelope_sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "request_sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "attempt_id": "attempt-a",
+  "provider_job_id": "provider-job-a",
+  "worker_id": "worker-a",
+  "tenant": { "account_id": "account-a", "workspace_id": "workspace-a" },
+  "lane": "mage_image",
+  "deployment": {
+    "deployment_id": "deployment-mage-1",
+    "endpoint_id_sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "container_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "intended_region": "EU-RO-1",
+    "intended_volume_id_sha256": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "model_manifest_sha256": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "runtime_probe": {
+    "gpu_name": "NVIDIA GeForce RTX 4090",
+    "gpu_count": 1,
+    "total_vram_bytes": 25769803776,
+    "peak_vram_bytes": 12884901888,
+    "gpu_uuid_sha256": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "driver_version": "550.90.07",
+    "cuda_version": "12.4",
+    "probe_source": "WORKER_RUNTIME_SELF_REPORT"
+  },
+  "volume_verification": {
+    "manifest_sha256_before": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "manifest_sha256_after": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "mutation_detected": true,
+    "cross_mount_detected": false
+  },
+  "model_ready_evidence": {
+    "state": "MODEL_READY",
+    "warmup_completed": true,
+    "warmup_output_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "timings": {
+    "allocation_ms": 1200,
+    "container_ready_ms": 8000,
+    "volume_verified_ms": 900,
+    "model_load_ms": 41000,
+    "warmup_ms": 6000,
+    "first_inference_ms": 2100,
+    "upload_ms": 3000,
+    "total_ms": 62200
+  },
+  "items": [
+    {
+      "item_id": "scene-1",
+      "state": "SUCCEEDED",
+      "output_object_key": "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/mage-image/job/attempt-a/artifact/scene-1",
+      "output_sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "output_bytes": 812345,
+      "probe": { "width": 1280, "height": 720, "format": "png" }
+    }
+  ],
+  "scratch_cleanup": {
+    "terminal_reason": "SUCCESS",
+    "removed": true,
+    "scratch_on_model_volume": false
+  },
+  "receipt_nonce": 1,
+  "issued_at": "2026-08-16T07:01:10.000Z",
+  "receipt_sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "signature": {
+    "algorithm": "HMAC-SHA256",
+    "key_id": "worker-key-1",
+    "value": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

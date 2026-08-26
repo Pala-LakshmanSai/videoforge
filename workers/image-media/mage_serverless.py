@@ -22,7 +22,13 @@ from mage_volume import verify_model_root
 from videoforge_image_media import MageInlineJob, MageJob
 
 from secure_scratch import ScratchIsolationError, mage_worker_io, validate_scoped_port
-from serverless_envelope import EnvelopeRejection, sign_receipt, validate_envelope
+from serverless_envelope import (
+    EnvelopeRejection,
+    restricted_canonical_sha256,
+    request_body_from_payload,
+    sign_receipt,
+    validate_envelope,
+)
 
 
 class ServerlessMageError(RuntimeError):
@@ -975,6 +981,8 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         handler_started_at = time.monotonic()
         payload = _required(job, "input")
         envelope = _required(payload, "envelope")
+        envelope_sha256 = restricted_canonical_sha256(envelope)
+        request_sha256 = restricted_canonical_sha256(request_body_from_payload(payload))
         batch = _required(payload, "batch")
         ports = _required(payload, "ports")
         accepted = validate_envelope(
@@ -1152,11 +1160,29 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 ready_at=runtime_ready_at,
                 handler_started_at=handler_started_at,
             )
+            total_vram_bytes = runtime.gpu.get("total_memory_bytes")
+            peak_vram_bytes = max(
+                (
+                    result.get("runtime_evidence", {}).get("gpu", {}).get("peak_vram_used_bytes", 0)
+                    for result in results
+                ),
+                default=0,
+            )
+            if (
+                not isinstance(total_vram_bytes, int)
+                or not isinstance(peak_vram_bytes, int)
+                or total_vram_bytes <= 0
+                or peak_vram_bytes <= 0
+                or peak_vram_bytes > total_vram_bytes
+            ):
+                raise ServerlessMageError("MAGE_SERVERLESS_VRAM_EVIDENCE_INVALID")
             receipt_body = {
                 "schema_version": "serverless-provenance-receipt/v1",
                 "attestation_scope": "VIDEOFORGE_APPLICATION_SIGNED_FACTS_NOT_PROVIDER_HARDWARE_ATTESTATION",
                 "receipt_id": f"mage-{mage_job.attempt_id}",
                 "dispatch_token": accepted["dispatch_token"],
+                "envelope_sha256": envelope_sha256,
+                "request_sha256": request_sha256,
                 "attempt_id": mage_job.attempt_id,
                 "provider_job_id": str(job.get("id", "unknown")),
                 "worker_id": os.environ.get("RUNPOD_POD_ID", "serverless"),
@@ -1173,6 +1199,8 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 "runtime_probe": {
                     "gpu_name": runtime.gpu.get("name"),
                     "gpu_count": 1,
+                    "total_vram_bytes": total_vram_bytes,
+                    "peak_vram_bytes": peak_vram_bytes,
                     "gpu_uuid_sha256": None,
                     "driver_version": os.environ.get("VIDEOFORGE_MAGE_DRIVER_VERSION", "UNKNOWN"),
                     "cuda_version": runtime.gpu.get("cuda_version"),
@@ -1229,7 +1257,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 "issued_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             }
             # Signing key is injected only at endpoint publication; this fails closed locally otherwise.
-            receipt, _ = sign_receipt(
+            receipt, receipt_body_bytes = sign_receipt(
                 receipt_body,
                 key_id=os.environ["VIDEOFORGE_RECEIPT_KEY_ID"],
                 secret=bytes.fromhex(os.environ["VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX"]),
@@ -1238,6 +1266,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             "status": "SUCCEEDED",
             "items": results,
             "provenance_receipt": receipt,
+            "provenance_receipt_body_base64": base64.b64encode(receipt_body_bytes).decode("ascii"),
         }
     except TimeoutError:
         # `error` is a RunPod-reserved result key.  SLS-Core moves it outside the

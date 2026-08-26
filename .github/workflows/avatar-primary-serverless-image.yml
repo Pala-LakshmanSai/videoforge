@@ -51,15 +51,15 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
           test "$(sha256sum workers/avatar-primary/Dockerfile.serverless | awk '{print $1}')" = \
-            "6f7c4332e7475d7402ecf22f44cf4b26505f73feeb5966b7f3e9084e0ad4b24c"
+            "a55f1e1ad3fe03f4c229c6eb48d84e138085f8e91bf2e0eaffe377cef7446863"
           test "$(sha256sum workers/avatar-primary/requirements.serverless.txt | awk '{print $1}')" = \
             "938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
           expected_sources=(
-            "workers/avatar-primary/soulx_serverless.py|00da39aafc8c8b5564901e263abe70ae67a90f6054dd1a78a01ce74d3705fb4c|/opt/videoforge/soulx_serverless.py"
+            "workers/avatar-primary/soulx_serverless.py|a99c18e24cdc804cde09bf8f105ce8dd7d9f3c66e143adaf04f5c71e406878f5|/opt/videoforge/soulx_serverless.py"
             "workers/avatar-primary/soulx-serverless-entrypoint.py|bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9|/opt/videoforge/soulx-serverless-entrypoint.py"
             "workers/common/secure_scratch.py|7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775|/opt/videoforge/common/secure_scratch.py"
-            "workers/common/serverless_envelope.py|2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227|/opt/videoforge/common/serverless_envelope.py"
-            "packages/contracts/python/videoforge_contracts/_schema_documents.py|0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92|/opt/videoforge/src/videoforge_contracts/_schema_documents.py"
+            "workers/common/serverless_envelope.py|34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0|/opt/videoforge/common/serverless_envelope.py"
+            "packages/contracts/python/videoforge_contracts/_schema_documents.py|6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6|/opt/videoforge/src/videoforge_contracts/_schema_documents.py"
           )
           for source_entry in "${expected_sources[@]}"; do
             IFS='|' read -r source_path expected_hash image_path <<<"$source_entry"
@@ -224,11 +224,11 @@ jobs:
             test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.source-commit\"}}' "$remote_image")" = "$GITHUB_SHA"
             docker run --rm --entrypoint /bin/sh "$remote_image" -c \
               'printf "%s  %s\n" \
-                00da39aafc8c8b5564901e263abe70ae67a90f6054dd1a78a01ce74d3705fb4c /opt/videoforge/soulx_serverless.py \
+                a99c18e24cdc804cde09bf8f105ce8dd7d9f3c66e143adaf04f5c71e406878f5 /opt/videoforge/soulx_serverless.py \
                 bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9 /opt/videoforge/soulx-serverless-entrypoint.py \
                 7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775 /opt/videoforge/common/secure_scratch.py \
-                2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227 /opt/videoforge/common/serverless_envelope.py \
-                0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
+                34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
+                6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
                 | sha256sum --check --strict'
             echo "SOULX_EXISTING_EXACT=true" >> "$GITHUB_ENV"
             echo "SOULX_PUBLISHED=true" >> "$GITHUB_ENV"
@@ -281,11 +281,11 @@ jobs:
           test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.source-commit\"}}' "$immutable_image")" = "$GITHUB_SHA"
           docker run --rm --entrypoint /bin/sh "$immutable_image" -c \
             'printf "%s  %s\n" \
-              00da39aafc8c8b5564901e263abe70ae67a90f6054dd1a78a01ce74d3705fb4c /opt/videoforge/soulx_serverless.py \
+              a99c18e24cdc804cde09bf8f105ce8dd7d9f3c66e143adaf04f5c71e406878f5 /opt/videoforge/soulx_serverless.py \
               bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9 /opt/videoforge/soulx-serverless-entrypoint.py \
               7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775 /opt/videoforge/common/secure_scratch.py \
-              2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227 /opt/videoforge/common/serverless_envelope.py \
-              0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
+              34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
+              6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
               | sha256sum --check --strict'
           unset registry_token
           echo "SOULX_PUBLISHED=true" >> "$GITHUB_ENV"
@@ -363,7 +363,7 @@ jobs:
               "immutable_image": os.environ["SOULX_IMMUTABLE_IMAGE"] or None,
               "image_digest": os.environ["SOULX_IMAGE_DIGEST"] or None,
               "dockerfile_sha256": (
-                  "sha256:6f7c4332e7475d7402ecf22f44cf4b26505f73feeb5966b7f3e9084e0ad4b24c"
+                  "sha256:a55f1e1ad3fe03f4c229c6eb48d84e138085f8e91bf2e0eaffe377cef7446863"
               ),
               "requirements_sha256": (
                   "sha256:938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
@@ -374,7 +374,7 @@ jobs:
               ),
               "source_sha256": {
                   "packages/contracts/python/videoforge_contracts/_schema_documents.py": (
-                      "sha256:0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92"
+                      "sha256:6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6"
                   ),
                   "packages/contracts/python/videoforge_contracts/__init__.py": (
                       "sha256:83650cf6430fd82e26c855df5f91b34cf5a4eda2beebf7650d8cf86e27f88443"
@@ -389,13 +389,13 @@ jobs:
                       "sha256:bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9"
                   ),
                   "workers/avatar-primary/soulx_serverless.py": (
-                      "sha256:00da39aafc8c8b5564901e263abe70ae67a90f6054dd1a78a01ce74d3705fb4c"
+                      "sha256:a99c18e24cdc804cde09bf8f105ce8dd7d9f3c66e143adaf04f5c71e406878f5"
                   ),
                   "workers/common/secure_scratch.py": (
                       "sha256:7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775"
                   ),
                   "workers/common/serverless_envelope.py": (
-                      "sha256:2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
+                      "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"
                   ),
               },
               "model_volume": "/runpod-volume",

@@ -35,11 +35,13 @@
     "host": "__V2_13_NEON_HOST__",
     "database": "__V2_13_NEON_DATABASE__",
     "owner_role": "__V2_13_NEON_OWNER_ROLE__",
+    "operator_role": "__V2_13_OPERATOR_ROLE__",
+    "operator_database_url_sha256": "__SHA256__",
     "runtime_role": "__V2_13_RUNTIME_ROLE__",
     "reconciler_role": "__V2_13_RECONCILER_ROLE__",
     "pgcrypto_required": true,
     "first_migration": 37,
-    "last_migration": 44,
+    "last_migration": 45,
     "exact_manifest_ledger_required": true
   },
   "cloudflare": {
@@ -104,6 +106,7 @@
     "VIDEOFORGE_MAGE_ENDPOINT_ID": "__SHA256__",
     "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256": "__SHA256__",
     "VIDEOFORGE_SOULX_ENDPOINT_ID": "__SHA256__",
-    "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256": "__SHA256__"
+    "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256": "__SHA256__",
+    "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN": "__SHA256__"
   }
 }

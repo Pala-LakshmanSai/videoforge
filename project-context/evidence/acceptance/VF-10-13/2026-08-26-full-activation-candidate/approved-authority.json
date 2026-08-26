@@ -1,0 +1,185 @@
+{
+  "schema_version": "videoforge.v2-13-full-live-approved-authority/v1",
+  "checkpoint_range": ["V2-07", "V2-08", "V2-09", "V2-10", "V2-11", "V2-12", "V2-13"],
+  "task_id": "VF-10-13",
+  "authority_id": "v2-13-full-live-20260826-033320z-e3bdabc",
+  "status": "SUPERSEDED_UNCONSUMED_NO_MUTATION",
+  "approved_at": "2026-08-26T03:33:20Z",
+  "expires_at": "2026-08-27T03:33:20Z",
+  "single_use": true,
+  "consumed": false,
+  "consumed_at": null,
+  "authority_record_commit": null,
+  "lineage": {
+    "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate/combined-live-proposal.json",
+    "proposal_sha256": "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32",
+    "proposal_record_commit": "e3bdabc161c60e5334c4055b5636b7fd768a86df",
+    "release_source_commit": "407dc070f4b83bd78b1d4aa1cb546ec63c91f32f",
+    "user_approval_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate/user-approval.json",
+    "user_approval_sha256": "sha256:a8e60fdd7bf77a1362cc89a0dc272ac281f2ba92bf610101e59d5e3bc2ef6e6e"
+  },
+  "combined_execution_authority": {
+    "execute_authorized": false,
+    "credential_access_authorized": false,
+    "database_mutation_authorized": false,
+    "cloudflare_secret_mutation_authorized": false,
+    "deployment_authorized": false,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "external_runpod_spend_authorized": false,
+    "maximum_cumulative_finite_runpod_spend_usd": null,
+    "redispatch_authorized": false,
+    "new_volume_authorized": false,
+    "new_paid_retained_resource_authorized": false,
+    "recurring_plan_change_authorized": false
+  },
+  "phase_caps_usd": {
+    "mage_qualification": 4.5,
+    "soulx_qualification": 1,
+    "v2_09_short_hosted_project": 2,
+    "v2_10_operator_free_ranga_pilot": 2,
+    "v2_11_two_concurrent_owned_projects": 4,
+    "v2_12_long_output": 2,
+    "v2_13_final_two_lane_smoke": 2
+  },
+  "gpu_and_rate": {
+    "exact_offering": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "minimum_availability_at_each_mutation_boundary": "LOW-or-better",
+    "maximum_serverless_flex_rate_usd_per_gpu_hour": 1.1,
+    "fallback_allowed": false,
+    "fresh_rate_catalog_inventory_and_billing_required": true
+  },
+  "github_release_ref": {
+    "required_for_workflow_dispatch": true,
+    "exact_target_commit": "407dc070f4b83bd78b1d4aa1cb546ec63c91f32f",
+    "exact_ref_name": null,
+    "ref_creation_authorized_by_approved_proposal": false,
+    "status": "BLOCKED_EXACT_IMMUTABLE_REF_CREATION_REQUIRES_SEPARATE_AUTHORITY",
+    "external_action_taken": false
+  },
+  "outer_orchestration": {
+    "approval_schema_validator_path": "deploy/v2-13/validate-full-live-approval.mjs",
+    "approval_schema_validator_sha256": "sha256:ddbef10235333d08f35c908f801dc27fb01b92dea8540edd1a2af24e17dcc2d2",
+    "orchestration_tool_path": "deploy/v2-13/full-live-orchestration-authority.mjs",
+    "orchestration_tool_sha256": "sha256:3f5e2c65ab2fe8e6827f135462e1aec6d5e6b5eeaa162cf4d38082abfa6333c4",
+    "full_live_executor_path": "deploy/v2-13/full-live-executor.mjs",
+    "full_live_executor_sha256": "sha256:15528fd626142e389bb065b6234f8294005c687304b5f10119d719829cd55002",
+    "guarded_activation_path": "deploy/v2-13/guarded-activation.mjs",
+    "guarded_activation_sha256": "sha256:d909f756cd4d7e8fda8c07af0766ae9292171abc680613f628b3639b55004165",
+    "consumption_record_created": false,
+    "consumption_record_sha256": null,
+    "consumption_required_before_credentials_or_external_calls": true,
+    "state_updates_require_exact_prior_state_sha256_and_exclusive_lock": true,
+    "phase_order_caps_cumulative_cap_and_no_redispatch_enforced": true
+  },
+  "retained_volume_consent": {
+    "authorized": true,
+    "retain_only_same_two_exact_volumes": true,
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "soulx_volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "size_gb_each": 50,
+    "region": "EU-RO-1",
+    "combined_recurring_usd_per_month": 7,
+    "recurring_charge_separate_from_finite_cap": true,
+    "resize_move_replace_or_add_authorized": false
+  },
+  "creation_allowlist": {
+    "cloudflare": [
+      "disabled Worker videoforge-production-runtime",
+      "disabled Workflow videoforge-production-runtime",
+      "disabled Workflow videoforge-production-runtime-pair"
+    ],
+    "runpod_after_both_fresh_lane_qualifications_only": [
+      "one exact qualified Mage immutable template",
+      "one exact qualified Mage endpoint with workersMin=0 and workersMax=1",
+      "one exact qualified SoulX immutable template",
+      "one exact qualified SoulX endpoint with workersMin=0 and workersMax=1"
+    ],
+    "database": [
+      "pgcrypto extension",
+      "migrations 0037 through 0044 from exact prefix 1 through 36",
+      "one fresh hardened runtime role",
+      "one distinct fresh hardened reconciler role"
+    ],
+    "r2_buckets": [],
+    "volumes": [],
+    "other_resources": [],
+    "paid_retained_resources": []
+  },
+  "guarded_activation_child": {
+    "status": "NEVER_ISSUE_FROM_SUPERSEDED_AUTHORITY",
+    "approved_parent_authority_id": "v2-13-full-live-20260826-033320z-e3bdabc",
+    "executor": "deploy/v2-13/guarded-activation.mjs",
+    "future_authority_basename": "guarded-activation-authority.json",
+    "future_authority_must_reuse_parent_proposal_and_approval_hashes": true,
+    "future_authority_must_use_exact_parent_authority_id": true,
+    "future_authority_expiry_must_not_exceed_parent_expiry": true,
+    "future_execute_authorized": false,
+    "future_credential_access_authorized": false,
+    "future_database_mutation_authorized": false,
+    "future_cloudflare_secret_mutation_authorized": false,
+    "future_deployment_authorized": false,
+    "future_provider_calls_authorized": false,
+    "gpu_use_authorized": false,
+    "maximum_cumulative_finite_external_spend_usd": 0,
+    "exact_quarantine_creation_authorized": true,
+    "new_paid_retained_resources_authorized": false,
+    "other_resource_creation_authorized": false,
+    "plan_change_authorized": false,
+    "unresolved_exact_inputs": [
+      "fresh immutable Mage image and public deployability hashes returned after publication",
+      "fresh immutable SoulX image and public deployability hashes returned after publication",
+      "fresh Mage qualification and sealed deployment snapshot hashes",
+      "fresh SoulX qualification and sealed deployment snapshot hashes",
+      "fresh paid-dispatch authority hash",
+      "exact existing R2 bucket name and complete inventory/readback hash",
+      "fresh exact Cloudflare account, Worker absence, two-Workflow absence, route, and API-token hashes",
+      "fresh exact Neon host, database, owner, absent runtime role, absent reconciler role, and trusted-time readbacks",
+      "fresh exact distinct runtime and reconciler role names",
+      "exact production config activation and media-worker release manifest hashes",
+      "exact 21-name secret-file hashes without secret values"
+    ],
+    "issuance_fence": "DO_NOT_CREATE_EXECUTABLE_GUARDED_AUTHORITY_FROM_THIS_SUPERSEDED_PARENT"
+  },
+  "ordered_execution": {
+    "all_and_only_proposal_operations_in_order": true,
+    "publication_before_provider_mutation": true,
+    "mage_before_soulx": true,
+    "both_qualifications_before_production_endpoints": true,
+    "guarded_child_once_only": true,
+    "guarded_child_internal_order": [
+      "exact secret-free disabled Cloudflare quarantine",
+      "database pgcrypto, migrations 0037 through 0044, fresh roles, grants, and readbacks",
+      "exact closed-world 21 secrets and final disabled deployment"
+    ],
+    "v2_09_then_v2_10_then_v2_11_then_v2_12_then_v2_13": true,
+    "final_cleanup_drain_billing_and_consumption_required": true
+  },
+  "stop_and_cleanup": {
+    "stop_on_expiry_or_consumption_marker": true,
+    "stop_on_any_hash_account_config_image_model_volume_gpu_region_rate_billing_cap_ledger_role_acl_secret_route_or_inventory_drift": true,
+    "stop_on_any_phase_or_cumulative_cap_risk_after_open_liability_reservation": true,
+    "stop_on_metered_plan_or_new_paid_retained_resource": true,
+    "stop_on_unavailable_or_above_rate_rtx4090": true,
+    "stop_on_redispatch_fallback_relaxed_acceptance_or_scope_expansion": true,
+    "stop_on_qualification_acceptance_cleanup_zero_worker_billing_or_chrome_uncertainty": true,
+    "stop_on_user_cancellation": true,
+    "no_redispatch": true,
+    "cleanup_only_after_stop": true,
+    "restore_workers_max_one_and_workers_min_zero": true,
+    "delete_only_attributable_disposables": true,
+    "retain_only_exact_approved_volumes_and_zero_idle_product_control_resources": true,
+    "three_stable_zero_compute_reads_and_settled_billing_required": true
+  },
+  "provider_free_recording": {
+    "credentials_accessed": false,
+    "external_calls": 0,
+    "provider_mutations": 0,
+    "gpu_use": 0,
+    "runpod_spend_usd": 0,
+    "guarded_child_authority_created": false,
+    "superseded_before_external_action": true
+  }
+}

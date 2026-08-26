@@ -117,8 +117,9 @@ export function parseProductionConfig(bytes, label = "production config") {
 }
 
 export function validateProductionConfig(config, { mode = "template" } = {}) {
-  const expectedMain = mode === "activated" ? ACTIVATED_MAIN_PATH : "./worker/production-index.ts";
-  const expectedAssets = mode === "activated" ? ACTIVATED_ASSETS_PATH : "./dist-cloudflare/client";
+  const activated = mode === "activated" || mode === "qualified";
+  const expectedMain = activated ? ACTIVATED_MAIN_PATH : "./worker/production-index.ts";
+  const expectedAssets = activated ? ACTIVATED_ASSETS_PATH : "./dist-cloudflare/client";
   if (
     !exactKeys(config, [
       "$schema",
@@ -203,7 +204,8 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     !exactKeys(config.vars, expectedVars) ||
     config.vars.VIDEOFORGE_ENVIRONMENT !== "production" ||
     config.vars.VIDEOFORGE_PROVIDER_MODE !== "production" ||
-    config.vars.VIDEOFORGE_GPU_TRANSPORT !== "DISABLED_UNQUALIFIED" ||
+    config.vars.VIDEOFORGE_GPU_TRANSPORT !==
+      (mode === "qualified" ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED") ||
     config.vars.VIDEOFORGE_R2_REGION !== "auto"
   )
     fail("production variables drifted");
@@ -243,6 +245,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
     "VIDEOFORGE_SOULX_ENDPOINT_ID",
     "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+    "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
   ]) {
     if (Object.hasOwn(config.vars, secret))
       fail(`secret ${secret} must use a secret binding, never vars`);
@@ -251,7 +254,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     for (const placeholder of PLACEHOLDERS) {
       if (!serialized.includes(placeholder)) fail(`template is missing placeholder ${placeholder}`);
     }
-  } else if (mode === "activated") {
+  } else if (activated) {
     if (/__V2_13_[A-Z0-9_]+__|v2-13-[a-z-]+-unresolved/u.test(serialized))
       fail("activated config retains a placeholder");
     if (
@@ -287,7 +290,11 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     }
     validateMediaWorkerReleaseManifest(releaseManifest);
   } else fail("validation mode must be template or activated");
-  return Object.freeze({ mode, gpu_transport: "DISABLED_UNQUALIFIED", valid: true });
+  return Object.freeze({
+    mode,
+    gpu_transport: mode === "qualified" ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED",
+    valid: true,
+  });
 }
 
 async function main() {

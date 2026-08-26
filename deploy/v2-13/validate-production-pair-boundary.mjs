@@ -30,10 +30,10 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
     bindings.state !== "DISABLED_UNQUALIFIED" ||
     !exactKeys(bindings.migration_ledger, ["exact_manifest_required", "first", "last"]) ||
     bindings.migration_ledger.first !== 37 ||
-    bindings.migration_ledger.last !== 44 ||
+    bindings.migration_ledger.last !== 45 ||
     bindings.migration_ledger.exact_manifest_required !== true
   )
-    fail("binding contract or exact 0037-0044 ledger gate drifted");
+    fail("binding contract or exact 0037-0045 ledger gate drifted");
   if (
     !exactKeys(bindings.database_roles, ["must_be_distinct", "reconciler", "runtime"]) ||
     bindings.database_roles.must_be_distinct !== true ||
@@ -57,6 +57,7 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
     "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
     "VIDEOFORGE_SOULX_ENDPOINT_ID",
     "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+    "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
   ];
   if (
     !exactKeys(bindings.secret_bindings, [
@@ -72,6 +73,7 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
       "mage_endpoint_id_sha256",
       "soulx_endpoint_id",
       "soulx_endpoint_id_sha256",
+      "workflow_operator_token",
       "reconciler_database",
       "runtime_database",
     ]) ||
@@ -108,6 +110,7 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
     `REVOKE EXECUTE ON FUNCTION ${settlement}\nFROM :"runtime_role"`,
     "GRANT EXECUTE ON FUNCTION public.videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)",
     "GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)",
+    "GRANT EXECUTE ON FUNCTION public.videoforge_complete_v209_terminal_acceptance(jsonb)",
     "NOT has_function_privilege(:'runtime_role'",
     "NOT has_function_privilege('PUBLIC'",
     "NOT has_function_privilege(:'reconciler_role'",

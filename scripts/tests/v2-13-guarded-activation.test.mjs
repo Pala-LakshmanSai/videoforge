@@ -9,6 +9,7 @@ import test from "node:test";
 import { EXPECTED_RUNTIME_FUNCTIONS } from "../../deploy/v2-06/apply-migrations-and-grants.mjs";
 import {
   assertDisabledVersionReadback,
+  assertFullLiveActivationBinding,
   assertTrustedAuthorityTime,
   CONFIRMATION,
   consumeAuthorityOnce,
@@ -24,6 +25,7 @@ import {
   validateAuthoritySourceFiles,
   validateSoulxApprovalRecords,
   validateAuthority,
+  WORKFLOW_INVENTORY_PATH,
   workflowBootstrapConfig,
 } from "../../deploy/v2-13/guarded-activation.mjs";
 
@@ -86,11 +88,13 @@ function authority() {
       host: "example.neon.tech",
       database: "videoforge",
       owner_role: "videoforge_owner",
+      operator_role: "videoforge_full_live_operator",
+      operator_database_url_sha256: fingerprint,
       runtime_role: "videoforge_runtime",
       reconciler_role: "videoforge_reconciler",
       pgcrypto_required: true,
       first_migration: 37,
-      last_migration: 44,
+      last_migration: 45,
       exact_manifest_ledger_required: true,
     },
     cloudflare: {
@@ -179,7 +183,7 @@ test("SoulX approval validator binds exact records, media bytes, statement, tran
 
 test("authority and plan are exact, zero-spend, and closed-world", () => {
   const value = validateAuthority(authority());
-  assert.equal(SECRET_NAMES.length, 21);
+  assert.equal(SECRET_NAMES.length, 22);
   assert.deepEqual(Object.keys(value.secret_sha256).sort(), [...SECRET_NAMES].sort());
   const result = plan(value);
   assert.equal(result.secret_values_in_plan, false);
@@ -189,7 +193,7 @@ test("authority and plan are exact, zero-spend, and closed-world", () => {
     "videoforge-production-video",
     "videoforge-production-video-pair",
   ]);
-  assert.deepEqual(result.migration_range, [37, 44]);
+  assert.deepEqual(result.migration_range, [37, 45]);
   assert.throws(
     () =>
       validateAuthority({
@@ -244,7 +248,43 @@ test("trusted expiry and durable authority consumption are exact and non-replaya
   }
 });
 
-test("authority rehashes the exact proposal and user-approval source files", () => {
+test("guarded activation rejects the exact but superseded V2 approval", () => {
+  const proposal =
+    "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate/combined-live-proposal.json";
+  const approval =
+    "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate/user-approval.json";
+  const value = authority();
+  value.authority.authority_id = "v2-13-full-live-20260826-033320z-e3bdabc";
+  value.authority.proposal_path = proposal;
+  value.authority.approval_path = approval;
+  value.authority.proposal_sha256 = hash(readFileSync(proposal));
+  value.authority.approval_sha256 = hash(readFileSync(approval));
+  value.authority.approved_at = "2026-08-26T03:33:20Z";
+  value.authority.expires_at = "2026-08-27T03:33:20Z";
+  assert.throws(
+    () => validateAuthoritySourceFiles(value, proposal, approval),
+    /superseded full-live proposal approval/u,
+  );
+});
+
+test("guarded activation binds exact V3 runtime and reconciler roles", () => {
+  const value = authority();
+  value.database.runtime_role = "videoforge_hosted_runtime";
+  value.database.reconciler_role = "videoforge_hosted_reconciler";
+  const validated = {
+    proposalSchema: "videoforge.v2-13-full-live-completion-proposal/v3",
+    exactRuntimeRole: "videoforge_hosted_runtime",
+    exactReconcilerRole: "videoforge_hosted_reconciler",
+  };
+  assert.equal(assertFullLiveActivationBinding(value, validated), true);
+  value.database.runtime_role = "videoforge_other_runtime";
+  assert.throws(
+    () => assertFullLiveActivationBinding(value, validated),
+    /database roles do not match/u,
+  );
+});
+
+test("authority source paths and approval schema fail closed", () => {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-authority-sources-"));
   chmodSync(directory, 0o700);
   const proposal = join(directory, "proposal.json");
@@ -257,7 +297,10 @@ test("authority rehashes the exact proposal and user-approval source files", () 
     value.authority.approval_path = approval;
     value.authority.proposal_sha256 = hash("exact proposal bytes\n");
     value.authority.approval_sha256 = hash("exact user approval bytes\n");
-    assert.equal(validateAuthoritySourceFiles(value, proposal, approval), true);
+    assert.throws(
+      () => validateAuthoritySourceFiles(value, proposal, approval),
+      /not valid JSON|exact full-live schema/u,
+    );
     value.authority.proposal_path = approval;
     assert.throws(
       () => validateAuthoritySourceFiles(value, proposal, approval),
@@ -329,6 +372,9 @@ test("protected secret seam checks exact names, mode, hashes, and separate datab
       if (name === "VIDEOFORGE_RECONCILER_DATABASE_URL")
         secret =
           "postgresql://videoforge_reconciler:reconciler-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
+      if (name === "VIDEOFORGE_OPERATOR_DATABASE_URL")
+        secret =
+          "postgresql://videoforge_full_live_operator:operator-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
       if (name === "RUNPOD_API_BASE_URL") secret = "https://api.runpod.ai/v2";
       if (name === "VIDEOFORGE_MAGE_ENDPOINT_ID") secret = "mage-endpoint-1";
       if (name === "VIDEOFORGE_SOULX_ENDPOINT_ID") secret = "soulx-endpoint-1";
@@ -344,7 +390,7 @@ test("protected secret seam checks exact names, mode, hashes, and separate datab
       value.secret_sha256[name] = hash(secret);
     }
     const secrets = protectedSecrets(directory, validateAuthority(value));
-    assert.equal(secrets.size, 21);
+    assert.equal(secrets.size, 22);
     assert.equal(JSON.stringify(secrets).includes("runtime-password"), false);
     const malformed = "postgresql://runtime:raw-password-that-must-not-leak@[";
     writeFileSync(join(directory, "DATABASE_URL"), malformed, { mode: 0o600 });
@@ -760,7 +806,35 @@ test("activation source orders exact readback and disabled quarantine before cre
     assert.equal(Object.hasOwn(environment, name), false);
 });
 
-test("runtime post-check allowlist exactly covers granted 0038-0044 runtime functions", () => {
+test("guarded activation creates and grants the narrow full-live operator role", () => {
+  const source = readFileSync("deploy/v2-13/guarded-activation.mjs", "utf8");
+  const grants = readFileSync("deploy/v2-13/neon-full-live-operator-grants.sql", "utf8");
+  assert.match(source, /neon-full-live-operator-grants\.sql/u);
+  assert.match(source, /operator\.database-url/u);
+  for (const signature of [
+    "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+    "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+    "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+    "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+  ])
+    assert.match(grants, new RegExp(signature.replaceAll(/[()]/gu, "\\$&"), "u"));
+});
+
+test("Workflow inventory readbacks request one explicit closed 100-item page", () => {
+  const source = readFileSync("deploy/v2-13/guarded-activation.mjs", "utf8");
+  assert.equal(WORKFLOW_INVENTORY_PATH, "/workflows?page=1&per_page=100");
+  assert.equal(
+    (source.match(/await cloudflareWorkflowInventoryReadback\(environment, authority\)/gu) ?? [])
+      .length,
+    2,
+  );
+  assert.equal(
+    (source.match(/cloudflareApiReadback\(environment, authority, "\/workflows"\)/gu) ?? []).length,
+    0,
+  );
+});
+
+test("runtime post-check allowlist exactly covers granted 0038-0045 runtime functions", () => {
   const required = [
     "videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)",
     "videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)",
@@ -770,6 +844,10 @@ test("runtime post-check allowlist exactly covers granted 0038-0044 runtime func
     "videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)",
     "videoforge_load_hosted_pair_activation(uuid,uuid,uuid)",
     "videoforge_load_hosted_pair_activation_v2(uuid,uuid,uuid)",
+    "videoforge_load_hosted_gpu_activation_v1()",
+    "videoforge_claim_v213_workflow_start(jsonb)",
+    "videoforge_complete_v213_workflow_start(jsonb)",
+    "videoforge_load_v213_workflow_start(jsonb)",
     "videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid)",
     "videoforge_materialize_hosted_lane_batches(uuid,uuid,uuid,uuid,uuid,text,jsonb)",
     "videoforge_prepare_hosted_pair_send(uuid,uuid,uuid)",

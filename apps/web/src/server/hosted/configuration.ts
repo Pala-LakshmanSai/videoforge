@@ -1,4 +1,11 @@
 import type { Pool } from "@neondatabase/serverless";
+import { canonicalSha256, type Sha256 } from "@videoforge/control-plane";
+
+import {
+  evaluateHostedPairProductionGate,
+  hostedPairProductionBindingState,
+  type HostedPairProductionGateInput,
+} from "./hosted-pair-production-composition";
 
 export interface HostedWorkflowBinding {
   create(options?: { id?: string; params?: unknown }): Promise<{ id: string }>;
@@ -69,6 +76,7 @@ export interface HostedRuntimeEnvironment {
   readonly VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID?: string;
   readonly VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY?: string;
   readonly VIDEOFORGE_PROVIDER_PROOF_KEY_ID?: string;
+  readonly VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN?: string;
   readonly RUNPOD_API_KEY?: string;
   readonly RUNPOD_API_BASE_URL?: string;
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID?: string;
@@ -80,7 +88,8 @@ export interface HostedRuntimeEnvironment {
 export interface HostedRuntimeConfiguration {
   readonly commit: string;
   readonly environment: "staging" | "production";
-  readonly gpuTransport: "DISABLED_UNQUALIFIED";
+  readonly gpuTransport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
+  readonly gpuActivation: HostedQualifiedGpuActivationSummary | null;
   readonly publicOrigin: string;
   readonly r2: {
     readonly accountId: string;
@@ -120,9 +129,53 @@ export interface HostedRuntimeConfiguration {
     readonly credentials: "REDACTED";
     readonly commit: string;
     readonly environment: "staging" | "production";
-    readonly gpuTransport: "DISABLED_UNQUALIFIED";
+    readonly gpuTransport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
     readonly publicOrigin: string;
   };
+}
+
+export interface HostedQualifiedGpuActivationSummary {
+  readonly evidenceSha256: Sha256;
+  readonly activationSnapshotSha256: Sha256;
+  readonly paidApprovalLedgerSha256: Sha256;
+  readonly migrationLedgerSha256: Sha256;
+  readonly qualificationRecordSha256s: Readonly<{
+    mage_image: Sha256;
+    soulx_avatar: Sha256;
+  }>;
+  readonly deploymentSnapshotSha256s: Readonly<{
+    mage_image: Sha256;
+    soulx_avatar: Sha256;
+  }>;
+}
+
+export interface HostedVerifiedQualifiedGpuActivation {
+  readonly verifierId: "videoforge-hosted-qualified-gpu-activation-verifier-v1";
+  readonly accepted: true;
+  readonly signatureVerified: true;
+  readonly canonicalEvidenceSha256: Sha256;
+  readonly verifierSignatureSha256: Sha256;
+  readonly sourceCommit: string;
+  readonly databaseObservedAt: string;
+  readonly expiresAt: string;
+  readonly activationSnapshotSha256: Sha256;
+  readonly paidApprovalLedgerSha256: Sha256;
+  readonly gate: HostedPairProductionGateInput;
+}
+
+export interface HostedQualifiedGpuActivationVerifier {
+  /** Verifies the opaque database-backed activation snapshot and its independent signature. */
+  verify(
+    evidence: Readonly<Record<string, unknown>>,
+  ): Promise<HostedVerifiedQualifiedGpuActivation>;
+}
+
+export interface HostedQualifiedGpuActivationDatabaseSource {
+  /** Reads one SECURITY DEFINER snapshot from the runtime database. No caller evidence is trusted. */
+  load(): Promise<{
+    readonly evidence: Readonly<Record<string, unknown>>;
+    readonly verification: HostedVerifiedQualifiedGpuActivation;
+  }>;
 }
 
 export class HostedConfigurationError extends Error {
@@ -134,6 +187,13 @@ export class HostedConfigurationError extends Error {
     this.name = "HostedConfigurationError";
     this.missing = Object.freeze([...missing]);
   }
+}
+
+async function rawSha256(value: string): Promise<Sha256> {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return `sha256:${[...new Uint8Array(bytes)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")}` as Sha256;
 }
 
 const REQUIRED = [
@@ -362,6 +422,7 @@ export function hostedRuntimeConfiguration(
     // V2-09 production-mode truth does not imply a qualified GPU lane. A later exact composition
     // must replace this fail-closed value only after both live lane gates pass.
     gpuTransport: "DISABLED_UNQUALIFIED" as const,
+    gpuActivation: null,
     publicOrigin,
     neon: Object.freeze({ databaseUrl }),
     auth: Object.freeze({
@@ -380,6 +441,136 @@ export function hostedRuntimeConfiguration(
     workflowCallbackSecret,
     mediaWorkerTokenSecret,
     toJSON: () => redacted,
+  });
+}
+
+const GPU_ACTIVATION_MAX_AGE_MS = 5 * 60 * 1_000;
+const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
+
+/** Resolves the enabled transport only from a freshly verified DB-backed activation snapshot.
+ * The environment flag is necessary but never sufficient. The default configuration above stays
+ * disabled for every caller that does not cross this verifier boundary. */
+export async function qualifiedHostedRuntimeConfiguration(input: {
+  readonly source: HostedRuntimeEnvironment;
+  readonly evidence: Readonly<Record<string, unknown>>;
+  readonly verifier: HostedQualifiedGpuActivationVerifier;
+  readonly now?: () => Date;
+}): Promise<HostedRuntimeConfiguration> {
+  const disabled = hostedRuntimeConfiguration(input.source);
+  if (
+    disabled.environment !== "production" ||
+    input.source.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT"
+  )
+    return disabled;
+  try {
+    if (hostedPairProductionBindingState(input.source).state !== "BINDINGS_PRESENT")
+      return disabled;
+  } catch {
+    return disabled;
+  }
+
+  let verified: HostedVerifiedQualifiedGpuActivation;
+  try {
+    verified = await input.verifier.verify(structuredClone(input.evidence));
+  } catch {
+    return disabled;
+  }
+  const now = (input.now ?? (() => new Date()))().getTime();
+  const observedAt = Date.parse(verified.databaseObservedAt);
+  const expiresAt = Date.parse(verified.expiresAt);
+  const activationSnapshotSha256 = canonicalSha256(verified.gate);
+  const deployedVersionId = input.source.CF_VERSION_METADATA?.id;
+  const deployedVersionIdSha256 =
+    typeof deployedVersionId === "string" ? await rawSha256(deployedVersionId) : null;
+  const enabledConfigSha256 = (input.evidence as Record<string, unknown>).enabledConfigSha256;
+  if (
+    verified.verifierId !== "videoforge-hosted-qualified-gpu-activation-verifier-v1" ||
+    verified.accepted !== true ||
+    verified.signatureVerified !== true ||
+    verified.canonicalEvidenceSha256 !== canonicalSha256(input.evidence) ||
+    !SHA256_PATTERN.test(verified.verifierSignatureSha256) ||
+    !/^[0-9a-f]{40}$/u.test(verified.sourceCommit) ||
+    verified.sourceCommit !== disabled.commit ||
+    !Number.isFinite(now) ||
+    !Number.isFinite(observedAt) ||
+    !Number.isFinite(expiresAt) ||
+    observedAt > now ||
+    now - observedAt > GPU_ACTIVATION_MAX_AGE_MS ||
+    expiresAt <= now ||
+    expiresAt - observedAt > GPU_ACTIVATION_MAX_AGE_MS ||
+    verified.databaseObservedAt !== verified.gate.now ||
+    verified.activationSnapshotSha256 !== activationSnapshotSha256 ||
+    !SHA256_PATTERN.test(verified.paidApprovalLedgerSha256) ||
+    verified.gate.gpuTransport !== "QUALIFIED_EXACT" ||
+    deployedVersionIdSha256 === null ||
+    verified.gate.cloudflare.versionIdSha256 !== deployedVersionIdSha256 ||
+    verified.gate.cloudflare.sourceCommit !== disabled.commit ||
+    verified.gate.cloudflare.deployedConfigSha256 !== enabledConfigSha256 ||
+    verified.gate.bindings.runtimeDatabase !== "VIDEOFORGE_RUNTIME_DATABASE" ||
+    verified.gate.bindings.reconcilerDatabase !== "VIDEOFORGE_RECONCILER_DATABASE" ||
+    verified.gate.bindings.dispatchTokenKey !== "VIDEOFORGE_DISPATCH_TOKEN_KEY" ||
+    verified.gate.bindings.envelopeSignerKey !== "VIDEOFORGE_ENVELOPE_SIGNING_KEY" ||
+    verified.gate.bindings.providerProofVerifierKey !== "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY" ||
+    verified.gate.bindings.workflowOperatorToken !== "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN" ||
+    evaluateHostedPairProductionGate(verified.gate).state !== "READY"
+  ) {
+    return disabled;
+  }
+
+  const summary: HostedQualifiedGpuActivationSummary = Object.freeze({
+    evidenceSha256: verified.canonicalEvidenceSha256,
+    activationSnapshotSha256,
+    paidApprovalLedgerSha256: verified.paidApprovalLedgerSha256,
+    migrationLedgerSha256: canonicalSha256(verified.gate.migrationLedger),
+    qualificationRecordSha256s: Object.freeze({
+      mage_image: verified.gate.qualifications.mage_image.qualificationRecordSha256 as Sha256,
+      soulx_avatar: verified.gate.qualifications.soulx_avatar.qualificationRecordSha256 as Sha256,
+    }),
+    deploymentSnapshotSha256s: Object.freeze({
+      mage_image: verified.gate.deployments.mage_image.deploymentSnapshotSha256 as Sha256,
+      soulx_avatar: verified.gate.deployments.soulx_avatar.deploymentSnapshotSha256 as Sha256,
+    }),
+  });
+  const redacted = Object.freeze({
+    schemaVersion: "videoforge-hosted-configuration/v1" as const,
+    credentials: "REDACTED" as const,
+    commit: disabled.commit,
+    environment: disabled.environment,
+    gpuTransport: "QUALIFIED_EXACT" as const,
+    publicOrigin: disabled.publicOrigin,
+  });
+  return Object.freeze({
+    ...disabled,
+    gpuTransport: "QUALIFIED_EXACT" as const,
+    gpuActivation: summary,
+    toJSON: () => redacted,
+  });
+}
+
+/** Production request resolver. An absent, failing, or drifted database seam stays disabled. */
+export async function configuredHostedRuntimeConfiguration(input: {
+  readonly source: HostedRuntimeEnvironment;
+  readonly databaseSource?: HostedQualifiedGpuActivationDatabaseSource;
+  readonly now?: () => Date;
+}): Promise<HostedRuntimeConfiguration> {
+  const disabled = hostedRuntimeConfiguration(input.source);
+  if (
+    disabled.environment !== "production" ||
+    input.source.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT" ||
+    !input.databaseSource
+  )
+    return disabled;
+  let loaded: Awaited<ReturnType<HostedQualifiedGpuActivationDatabaseSource["load"]>>;
+  try {
+    loaded = await input.databaseSource.load();
+  } catch {
+    return disabled;
+  }
+  return qualifiedHostedRuntimeConfiguration({
+    source: input.source,
+    evidence: loaded.evidence,
+    verifier: { verify: async () => loaded.verification },
+    now: input.now,
   });
 }
 

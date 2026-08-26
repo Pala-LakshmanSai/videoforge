@@ -1,5 +1,11 @@
 import { createHostedAuth, type HostedExecutionContext } from "./auth";
-import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
+import {
+  configuredHostedRuntimeConfiguration,
+  hostedRuntimeConfiguration,
+  type HostedQualifiedGpuActivationDatabaseSource,
+  type HostedRuntimeConfiguration,
+  type HostedRuntimeEnvironment,
+} from "./configuration";
 import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
@@ -23,6 +29,12 @@ import {
   exactHostedCpuSubmission,
   exactHostedRenderSubmission,
 } from "./submission";
+import { handleV213OperatorWorkflowStart } from "./v213-operator-workflow";
+import {
+  handleV213LiveOperatorRequest,
+  type V213OperatorRouteDependencies,
+} from "./v213-live-operator-route";
+import { createV213WorkerLiveAcceptanceExecute } from "./v213-worker-live-execution";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -941,7 +953,7 @@ export async function handleHostedPairDispatch(
   generationRequestId: string,
   dependencies: typeof hostedPairDispatchDependencies = hostedPairDispatchDependencies,
 ): Promise<Response> {
-  if (environment.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT")
+  if (config.gpuTransport !== "QUALIFIED_EXACT" || !config.gpuActivation)
     return json({ error: { code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED" } }, 503);
   if (!sameOriginBrowserWrite(request, config))
     return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
@@ -1042,23 +1054,89 @@ export async function handleHostedPairDispatch(
   }
 }
 
+export interface HostedConfigurationDependencies {
+  readonly databaseSource?: (
+    environment: HostedRuntimeEnvironment,
+    disabled: HostedRuntimeConfiguration,
+  ) => HostedQualifiedGpuActivationDatabaseSource | undefined;
+  readonly now?: () => Date;
+  readonly liveAcceptanceExecute?: V213OperatorRouteDependencies["execute"];
+  readonly liveAcceptanceRouteDependencies?: V213OperatorRouteDependencies;
+}
+
+const hostedConfigurationDependencies: HostedConfigurationDependencies = Object.freeze({
+  databaseSource(environment: HostedRuntimeEnvironment, disabled: HostedRuntimeConfiguration) {
+    if (
+      disabled.environment !== "production" ||
+      environment.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT"
+    )
+      return undefined;
+    return {
+      async load() {
+        const pool = createNeonPool(disabled.neon.databaseUrl);
+        try {
+          const result = await pool.query<{ snapshot: unknown } & Record<string, unknown>>(
+            "SELECT public.videoforge_load_hosted_gpu_activation_v1() AS snapshot",
+          );
+          const snapshot = result.rows[0]?.snapshot;
+          if (result.rows.length !== 1 || typeof snapshot !== "object" || snapshot === null)
+            throw new Error("HOSTED_GPU_ACTIVATION_SNAPSHOT_INVALID");
+          const value = snapshot as Record<string, unknown>;
+          if (
+            Object.keys(value).sort().join(",") !== "evidence,verification" ||
+            typeof value.evidence !== "object" ||
+            value.evidence === null ||
+            typeof value.verification !== "object" ||
+            value.verification === null
+          )
+            throw new Error("HOSTED_GPU_ACTIVATION_SNAPSHOT_INVALID");
+          return {
+            evidence: value.evidence as Readonly<Record<string, unknown>>,
+            verification: value.verification as never,
+          };
+        } finally {
+          await pool.end();
+        }
+      },
+    };
+  },
+});
+
 export async function handleHostedRequest(
   request: Request,
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
   serverlessCallback?: HostedAuthenticatedServerlessCallbackRoute,
+  configurationDependencies: HostedConfigurationDependencies = hostedConfigurationDependencies,
 ): Promise<Response> {
   let config;
   try {
-    config = hostedRuntimeConfiguration(environment);
+    const disabled = hostedRuntimeConfiguration(environment);
+    config = await configuredHostedRuntimeConfiguration({
+      source: environment,
+      databaseSource: configurationDependencies.databaseSource?.(environment, disabled),
+      now: configurationDependencies.now,
+    });
   } catch {
     return json({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }, 503);
   }
   const url = new URL(request.url);
+  const liveAcceptance = await handleV213LiveOperatorRequest(
+    request,
+    environment,
+    config,
+    configurationDependencies.liveAcceptanceExecute ??
+      createV213WorkerLiveAcceptanceExecute(environment, config),
+    configurationDependencies.liveAcceptanceRouteDependencies,
+  );
+  if (liveAcceptance) return liveAcceptance;
+  const operatorWorkflow = await handleV213OperatorWorkflowStart(request, environment, config);
+  if (operatorWorkflow) return operatorWorkflow;
   const personalWorkerResponse = await handlePersonalWorkerRequest(
     request,
     environment,
     executionContext,
+    config,
   );
   if (personalWorkerResponse) return personalWorkerResponse;
   const productResponse = await handleHostedProductRequest(

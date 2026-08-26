@@ -29,9 +29,10 @@ export const HOSTED_PAIR_REQUIRED_MIGRATIONS = Object.freeze([
   [39, "sha256:1b602747e8a5ed91c76d1a602d5b7be87a6139cdcf862dd7da10fd9f45238637"],
   [40, "sha256:9e7cbbecd515c8781f66a6888d1283abeb2e91baee4f61d6ad1857775a67c1a3"],
   [41, "sha256:24f161e5c441f7cfa6b7837d185e64b3eae182d729c8ef21ef6850aeec9bcf84"],
-  [42, "sha256:ea34a54c7044e25ca50f58f47d622e293b0c34719c74e5e32ca190cedf850fcc"],
+  [42, "sha256:d7168a4143a813df7b9114f76f1efe71aa287bec4b1f137ab414a98e65e6b967"],
   [43, "sha256:590386f350c606da0be673376d14a9609df5f221268b2a932d4e00d608b2b927"],
-  [44, "sha256:e6df2e0121177de593f16347c540188449257de81c116eb0e1364dfeba7ecfb2"],
+  [44, "sha256:8ab2a30c7df970531e521fac0662f666ef2689a908057fa4525a623c11622a6f"],
+  [45, "sha256:af0f4d78f5e973f62535dc79bc3c895eb39ff772ddfb5764a04096ab3cc82cac"],
 ] as const);
 
 export interface HostedPairProductionBindingEnvironment {
@@ -50,6 +51,7 @@ export interface HostedPairProductionBindingEnvironment {
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256?: string;
   readonly VIDEOFORGE_SOULX_ENDPOINT_ID?: string;
   readonly VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256?: string;
+  readonly VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN?: string;
 }
 
 /** The deployed production config is intentionally disabled, so this function returns before
@@ -66,6 +68,7 @@ export function hostedPairProductionBindingState(
     environment.VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX,
     environment.VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID,
     environment.VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY,
+    environment.VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN,
   ].every((value) => typeof value === "string" && value.length >= 16);
   if (!present)
     throw new HostedDispatchCoordinationError("HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING");
@@ -113,6 +116,13 @@ export interface HostedPairProductionGateInput {
     readonly exact: boolean;
     readonly expiresAt: string;
   };
+  readonly cloudflare: {
+    readonly sourceCommit: string;
+    readonly versionIdSha256: string;
+    readonly deployedConfigSha256: string;
+    readonly readbackSha256: string;
+    readonly observedAt: string;
+  };
   /** These are public binding identities only. Raw credentials never enter this document. */
   readonly bindings: {
     readonly runtimeDatabase: string;
@@ -120,6 +130,7 @@ export interface HostedPairProductionGateInput {
     readonly dispatchTokenKey: string;
     readonly envelopeSignerKey: string;
     readonly providerProofVerifierKey: string;
+    readonly workflowOperatorToken: string;
   };
 }
 
@@ -139,7 +150,7 @@ export function evaluateHostedPairProductionGate(
         input.migrationLedger[index]?.sha256 !== sha256,
     )
   )
-    return disabled("MIGRATION_LEDGER_0037_0044_INVALID");
+    return disabled("MIGRATION_LEDGER_0037_0045_INVALID");
   const now = Date.parse(input.now);
   if (!Number.isFinite(now)) return disabled("CLOCK_INVALID");
   for (const lane of ["mage_image", "soulx_avatar"] as const) {
@@ -197,6 +208,16 @@ export function evaluateHostedPairProductionGate(
     approvalExpiry <= now
   )
     return disabled("PAID_APPROVAL_INVALID");
+  if (
+    !/^[0-9a-f]{40}$/u.test(input.cloudflare.sourceCommit) ||
+    ![input.cloudflare.versionIdSha256, input.cloudflare.deployedConfigSha256, input.cloudflare.readbackSha256].every(
+      (value) => SHA256.test(value),
+    ) ||
+    !Number.isFinite(Date.parse(input.cloudflare.observedAt)) ||
+    Date.parse(input.cloudflare.observedAt) > now ||
+    now - Date.parse(input.cloudflare.observedAt) > 5 * 60 * 1_000
+  )
+    return disabled("CLOUDFLARE_ACTIVATION_INVALID");
   const bindingIds = Object.values(input.bindings);
   if (bindingIds.some((value) => !BINDING_ID.test(value))) return disabled("BINDING_MISSING");
   if (input.bindings.runtimeDatabase === input.bindings.reconcilerDatabase)
@@ -206,7 +227,8 @@ export function evaluateHostedPairProductionGate(
       input.bindings.dispatchTokenKey,
       input.bindings.envelopeSignerKey,
       input.bindings.providerProofVerifierKey,
-    ]).size !== 3
+      input.bindings.workflowOperatorToken,
+    ]).size !== 4
   )
     return disabled("KEY_BINDINGS_NOT_SEPARATE");
   return Object.freeze({ state: "READY" as const });
@@ -472,6 +494,7 @@ export class HostedPairProductionComposition {
         dispatchTokenKey: "VIDEOFORGE_DISPATCH_TOKEN_KEY",
         envelopeSignerKey: "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
         providerProofVerifierKey: "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+        workflowOperatorToken: "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
       },
     });
     if (gate.state !== "READY") return gate;

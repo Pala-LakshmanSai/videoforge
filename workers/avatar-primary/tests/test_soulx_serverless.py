@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import copy
 import hashlib
 import hmac
@@ -99,12 +100,19 @@ class FakeRuntime:
     def _generate(self, source_b64: str, audio_b64: str) -> dict[str, object]:
         self.calls.append((source_b64, audio_b64))
         body = b"padded-native-mp4-" + str(len(self.calls)).encode()
-        return {"output_base64": __import__("base64").b64encode(body).decode()}
+        return {
+            "output_base64": __import__("base64").b64encode(body).decode(),
+            "peak_vram_bytes": 12 * 1024**3,
+        }
 
     def health(self) -> dict[str, object]:
         return {
             "state": "ready",
-            "gpu": {"name": "NVIDIA GeForce RTX 4090", "count": 1},
+            "gpu": {
+                "name": "NVIDIA GeForce RTX 4090",
+                "count": 1,
+                "vram_bytes": 24 * 1024**3,
+            },
             "timings": {
                 "manifest_verify_ms": 2,
                 "model_load_ms": 3,
@@ -471,6 +479,18 @@ class SoulXServerlessTest(unittest.TestCase):
                 )
             )
             self.assertEqual(result["provenance_receipt"]["lane"], "soulx_avatar")
+            receipt_body = base64.b64decode(result["provenance_receipt_body_base64"])
+            self.assertEqual(digest(receipt_body), result["provenance_receipt"]["receipt_sha256"])
+            self.assertEqual(
+                result["provenance_receipt"]["envelope_sha256"],
+                soulx_serverless.restricted_canonical_sha256(fixture.payload["envelope"]),
+            )
+            self.assertEqual(
+                result["provenance_receipt"]["request_sha256"],
+                soulx_serverless.restricted_canonical_sha256(
+                    soulx_serverless.request_body_from_payload(fixture.payload)
+                ),
+            )
             self.assertEqual(len(runtime.calls), 4)
             self.assertFalse((Path(root) / "jobs" / fixture.attempt).exists())
 

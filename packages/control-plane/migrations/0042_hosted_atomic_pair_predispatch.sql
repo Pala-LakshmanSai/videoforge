@@ -65,6 +65,8 @@ CREATE TRIGGER hosted_dispatch_token_vault_append_only BEFORE UPDATE OR DELETE
   ON public.hosted_dispatch_token_vault FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
 CREATE TRIGGER hosted_v209_short_admissions_append_only BEFORE UPDATE OR DELETE
   ON public.hosted_v209_short_admissions FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
+CREATE TRIGGER hosted_v209_short_admissions_tenant_write_guard BEFORE INSERT
+  ON public.hosted_v209_short_admissions FOR EACH ROW EXECUTE FUNCTION public.videoforge_assert_tenant_write();
 CREATE TRIGGER hosted_dispatch_token_vault_tenant_write_guard BEFORE INSERT
   ON public.hosted_dispatch_token_vault FOR EACH ROW EXECUTE FUNCTION public.videoforge_assert_tenant_write();
 ALTER TABLE public.hosted_dispatch_token_vault ENABLE ROW LEVEL SECURITY;

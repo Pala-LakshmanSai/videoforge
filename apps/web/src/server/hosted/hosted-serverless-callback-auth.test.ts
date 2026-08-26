@@ -20,6 +20,8 @@ const binding: HostedServerlessAttemptBinding = Object.freeze({
   attemptId: ATTEMPT,
   providerJobId: "provider-job-1",
   dispatchTokenSha256: `sha256:${"1".repeat(64)}`,
+  envelopeSha256: `sha256:${"8".repeat(64)}`,
+  requestSha256: `sha256:${"9".repeat(64)}`,
   deploymentId: "00000000-0000-4000-8000-000000000007",
   endpointIdSha256: `sha256:${"2".repeat(64)}`,
   endpointConfigSha256: `sha256:${"3".repeat(64)}`,

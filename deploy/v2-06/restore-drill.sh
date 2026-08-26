@@ -90,6 +90,12 @@ if ! grep -Eq '[[:space:]]TABLE[[:space:]]+public[[:space:]]+videoforge_schema_m
   echo "backup archive does not contain the V2-06 migration ledger" >&2
   exit 1
 fi
+for required_table in hosted_full_live_authorities hosted_full_live_promotions hosted_full_live_cloudflare_activations hosted_full_live_cloudflare_rollbacks hosted_full_live_stage_authorities hosted_full_live_stage_consumptions hosted_full_live_stage_completions hosted_full_live_operation_events hosted_full_live_bridge_command_events hosted_full_live_workflow_start_authorities hosted_full_live_workflow_start_claims hosted_full_live_workflow_start_results hosted_full_live_acceptance_authorities hosted_full_live_acceptance_claims hosted_full_live_acceptance_results hosted_full_live_acceptance_operator_results hosted_full_live_signed_evidence hosted_full_live_acceptance_repository_records hosted_v209_settlement_cost_evidence hosted_v209_terminal_acceptances; do
+  if ! grep -Eq "[[:space:]]TABLE[[:space:]]+public[[:space:]]+${required_table}[[:space:]]" "$archive_list"; then
+    echo "backup archive does not contain durable full-live authority table ${required_table}" >&2
+    exit 1
+  fi
+done
 pg_restore --exit-on-error --single-transaction --no-owner --no-privileges \
   --dbname "service=$PGSERVICE" "$decrypted_backup"
 

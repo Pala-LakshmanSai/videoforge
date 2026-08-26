@@ -121,10 +121,14 @@ test("no canonical Serverless contract claims exactly-once execution or billing"
   assert.equal(manifest.serverless_lineage.guarantees.queue_purge_used, false);
 });
 
-test("a worker-emitted receipt is verified against its exact bytes, not a re-serialization", async () => {
-  const { ProvenanceReceiptSigner, ReceiptVerificationError, digestBytes } = await import(
-    "../dist/src/index.js"
-  );
+test("a worker-emitted receipt is verified against its exact bytes and request bindings", async () => {
+  const {
+    ProvenanceReceiptSigner,
+    ReceiptVerificationError,
+    digestBytes,
+    digestUtf8,
+    verifyProvenanceReceipt,
+  } = await import("../dist/src/index.js");
   const signer = new ProvenanceReceiptSigner("worker-key-1", Buffer.alloc(32, 7));
   const fixture = await loadFixture("serverless_provenance_receipt_v1.valid.json");
   const body = { ...fixture };
@@ -140,6 +144,39 @@ test("a worker-emitted receipt is verified against its exact bytes, not a re-ser
 
   assert.equal(receipt.receipt_sha256, digestBytes(emitted));
   signer.verifySignature(receipt, emitted);
+  const expectation = {
+    dispatchTokenSha256: digestUtf8(receipt.dispatch_token),
+    envelopeSha256: receipt.envelope_sha256,
+    requestSha256: receipt.request_sha256,
+    attemptId: receipt.attempt_id,
+    providerJobId: receipt.provider_job_id,
+    accountId: receipt.tenant.account_id,
+    workspaceId: receipt.tenant.workspace_id,
+    deploymentId: receipt.deployment.deployment_id,
+    endpointIdSha256: receipt.deployment.endpoint_id_sha256,
+    containerDigest: receipt.deployment.container_digest,
+    volumeIdSha256: receipt.deployment.intended_volume_id_sha256,
+    volumeManifestSha256: receipt.volume_verification.manifest_sha256_before,
+    modelManifestSha256: receipt.deployment.model_manifest_sha256,
+    gpuAllowlist: ["NVIDIA GeForce RTX 4090"],
+    seenNonces: new Set(),
+  };
+  verifyProvenanceReceipt(signer, receipt, expectation, emitted);
+  for (const [field, code] of [
+    ["envelopeSha256", "RECEIPT_ENVELOPE_MISMATCH"],
+    ["requestSha256", "RECEIPT_REQUEST_MISMATCH"],
+  ]) {
+    assert.throws(
+      () =>
+        verifyProvenanceReceipt(
+          signer,
+          receipt,
+          { ...expectation, [field]: `sha256:${"0".repeat(64)}` },
+          emitted,
+        ),
+      (error) => error instanceof ReceiptVerificationError && error.code === code,
+    );
+  }
 
   // The same receipt fails when checked against a different serialization of the same facts.
   assert.throws(

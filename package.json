@@ -11,6 +11,8 @@
     "build": "turbo run build",
     "build:check-generated": "node scripts/build-check-generated.mjs",
     "activate:v2-13-guarded": "node deploy/v2-13/guarded-activation.mjs",
+    "execute:v2-13-full-live": "node deploy/v2-13/full-live-executor.mjs",
+    "promote:v2-13-qualified": "node deploy/v2-13/promote-qualified-production.mjs",
     "ci:python": "pnpm python:lint && pnpm --filter @videoforge/contracts test:python && pnpm test:workers",
     "ci:static": "pnpm format:check && pnpm verify:graph && pnpm verify:vnext-dispatch-firewall && pnpm verify:v2-05-firewall && pnpm validate:v2-06-deployment && pnpm contracts:check && pnpm context:validate && pnpm secret:scan && pnpm audit:dependencies",
     "ci:typescript": "pnpm lint:root && turbo run build lint typecheck test:typescript && pnpm test:scripts && pnpm build:check-generated",

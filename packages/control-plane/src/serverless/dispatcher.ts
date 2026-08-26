@@ -5,7 +5,6 @@ import {
   buildPredispatchAuthority,
   canonicalSha256,
   digestUtf8,
-  mintDispatchToken,
   type PredispatchAuthorityRecord,
   type PredispatchDeploymentBinding,
   type V2ProviderAuthority,
@@ -91,6 +90,10 @@ export interface EndpointDeploymentRow extends Record<string, unknown> {
 }
 
 export interface CommitPredispatchInput {
+  /** Opaque one-time bearer minted immediately before the final worker envelope is signed. */
+  readonly dispatchToken: string;
+  /** Exact final signed worker envelope whose immutable hash is committed before transport. */
+  readonly envelope: Readonly<Record<string, unknown>>;
   readonly attemptId: string;
   readonly authorityId: string;
   readonly outboxId: string;
@@ -126,6 +129,7 @@ export interface PredispatchCommit {
   readonly outboxId: string;
   readonly endpointIdSha256: Sha256;
   readonly requestBodySha256: Sha256;
+  readonly envelopeSha256: Sha256;
   readonly outputPrefix: string;
   readonly authority: PredispatchAuthorityRecord;
   readonly deadlineAt: string;
@@ -312,9 +316,11 @@ export class ServerlessDispatchService {
     input: CommitPredispatchInput,
   ): Promise<PredispatchCommit> {
     const deployment = await this.activeDeployment(input.lane);
-    const dispatchToken = mintDispatchToken();
+    const dispatchToken = input.dispatchToken;
     const dispatchTokenSha256 = digestUtf8(dispatchToken);
     const requestBodySha256 = canonicalSha256(input.requestBody);
+    assertDispatchableEnvelope(input.envelope);
+    const envelopeSha256 = canonicalSha256(input.envelope);
     const deadlineAt = isoPlusSeconds(input.now, deployment.request_ttl_seconds);
     const reconciliationDeadlineAt = isoPlusSeconds(
       input.now,
@@ -445,7 +451,7 @@ export class ServerlessDispatchService {
           input.itemsManifestSha256,
           input.inputManifestSha256,
           requestBodySha256,
-          canonicalSha256(authority.document),
+          envelopeSha256,
           deadlineAt,
           reconciliationDeadlineAt,
           deployment.request_ttl_seconds,
@@ -532,6 +538,7 @@ export class ServerlessDispatchService {
       outboxId: input.outboxId,
       endpointIdSha256: deployment.endpoint_id_sha256,
       requestBodySha256,
+      envelopeSha256,
       outputPrefix: input.outputPrefix,
       authority,
       deadlineAt,
@@ -574,9 +581,21 @@ export class ServerlessDispatchService {
         "The transport request bytes do not match the committed predispatch request hash.",
       );
     }
+    const envelopeSha256 = canonicalSha256(input.envelope);
 
     await this.#database.transaction(async (transaction) => {
       await assertScope(transaction, scope);
+      const existing = await transaction.query<
+        { envelope_sha256: Sha256 } & Record<string, unknown>
+      >(`SELECT envelope_sha256 FROM serverless_predispatch_authorities WHERE attempt_id = $1`, [
+        input.commit.attemptId,
+      ]);
+      if (existing.rows.length !== 1 || existing.rows[0]!.envelope_sha256 !== envelopeSha256) {
+        throw new ServerlessDispatchError(
+          "REQUEST_BODY_MISMATCH",
+          "The signed worker envelope does not match the immutable predispatch envelope hash.",
+        );
+      }
       const leased = await transaction.query(
         `UPDATE serverless_dispatch_outbox
             SET state = 'LEASED', lease_id = $2, lease_holder_sha256 = $3, leased_at = $4,
@@ -777,6 +796,32 @@ export class ServerlessDispatchService {
     return row;
   }
 
+  async requestHashes(attemptId: string): Promise<{
+    readonly envelope_sha256: Sha256;
+    readonly request_body_sha256: Sha256;
+  }> {
+    const result = await this.#database.query<
+      {
+        readonly envelope_sha256: Sha256;
+        readonly request_body_sha256: Sha256;
+      } & Record<string, unknown>
+    >(
+      `SELECT authority.envelope_sha256, outbox.request_body_sha256
+         FROM serverless_predispatch_authorities authority
+         JOIN serverless_dispatch_outbox outbox ON outbox.attempt_id = authority.attempt_id
+        WHERE authority.attempt_id = $1`,
+      [attemptId],
+    );
+    const row = result.rows[0];
+    if (row === undefined) {
+      throw new ServerlessDispatchError(
+        "ATTEMPT_NOT_FOUND",
+        "The canonical request hashes are missing.",
+      );
+    }
+    return row;
+  }
+
   /** Records an authoritative polled status observation. */
   async recordPolledStatus(
     scope: WorkspaceScope,
@@ -962,9 +1007,12 @@ export class ServerlessDispatchService {
       `SELECT receipt_nonce FROM serverless_provenance_receipts WHERE attempt_id = $1`,
       [input.attemptId],
     );
+    const requestHashes = await this.requestHashes(attempt.id);
     try {
       verifyProvenanceReceipt(this.#signer, input.receipt, {
         dispatchTokenSha256: attempt.dispatch_token_sha256,
+        envelopeSha256: requestHashes.envelope_sha256,
+        requestSha256: requestHashes.request_body_sha256,
         attemptId: attempt.id,
         providerJobId: assignment.provider_job_id,
         accountId: scope.accountId,
@@ -1303,12 +1351,15 @@ export class ServerlessDispatchService {
       attempt.id,
     ]);
     const seenNonces = new Set(storedNonces.rows.map((row) => Number(row.receipt_nonce)));
+    const requestHashes = await this.requestHashes(attempt.id);
     const matching: ProvenanceReceipt[] = [];
     for (const receipt of input.durableReceipts) {
       if (receipt.provider_job_id === null) continue;
       try {
         verifyProvenanceReceipt(this.#signer, receipt, {
           dispatchTokenSha256: attempt.dispatch_token_sha256,
+          envelopeSha256: requestHashes.envelope_sha256,
+          requestSha256: requestHashes.request_body_sha256,
           attemptId: attempt.id,
           providerJobId: receipt.provider_job_id,
           accountId: scope.accountId,

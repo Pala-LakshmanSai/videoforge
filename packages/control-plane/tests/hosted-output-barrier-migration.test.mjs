@@ -6,6 +6,7 @@ import {
   PROVENANCE_ATTESTATION_SCOPE,
   ProvenanceReceiptSigner,
   ServerlessDispatchService,
+  mintDispatchToken,
   providerFreeV2Authority,
   trustedTenantActorScope,
   trustedTenantScope,
@@ -77,6 +78,8 @@ async function acceptedCanonicalFixture(executor) {
     `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}` +
     `/revision/${IDS.revisionA}/lane/mage-image/job/${attemptId}`;
   const commit = await service.commitPredispatch(scope, {
+    dispatchToken: mintDispatchToken(),
+    envelope: { schema: "serverless-worker-job-envelope/v3" },
     attemptId,
     authorityId: uuid(970_106),
     outboxId: uuid(970_107),
@@ -149,6 +152,8 @@ async function acceptedCanonicalFixture(executor) {
     runtime_probe: {
       gpu_name: "NVIDIA GeForce RTX 4090",
       gpu_count: 1,
+      total_vram_bytes: 24 * 1024 ** 3,
+      peak_vram_bytes: 12 * 1024 ** 3,
       gpu_uuid_sha256: sha256("gpu"),
       driver_version: "550.90.07",
       cuda_version: "12.4",

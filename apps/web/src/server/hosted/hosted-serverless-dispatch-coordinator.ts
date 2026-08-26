@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   canonicalSha256,
   assertDispatchableEnvelope,
+  mintDispatchToken,
   validateV2ProviderAuthority,
   type FairAdmissionRepository,
   type PredispatchCommit,
@@ -766,7 +767,7 @@ export async function dispatchHostedPreparedGeneration(input: {
   const prepared: {
     readonly task: HostedPersistedLaneDispatchTask;
     readonly ids: HostedDispatchIds;
-    readonly commit: PredispatchCommit;
+    readonly dispatchToken: string;
     readonly body: Readonly<Record<string, unknown>>;
   }[] = [];
   for (const task of tasks) {
@@ -775,35 +776,11 @@ export async function dispatchHostedPreparedGeneration(input: {
       taskId: task.taskId,
       attemptOrdinal: task.attemptOrdinal,
     });
-    const commit: PredispatchCommit = await lanes[task.lane].commitPredispatch(input.scope, {
-      attemptId: ids.attemptId,
-      authorityId: ids.authorityId,
-      outboxId: ids.outboxId,
-      ledgerId: ids.ledgerId,
-      costEventId: ids.costEventId,
-      projectId: plan.projectId,
-      projectRevisionId: plan.projectRevisionId,
-      generationRequestId: plan.generationRequestId,
-      taskId: task.taskId,
-      attemptOrdinal: task.attemptOrdinal,
-      itemsManifestSha256: task.itemsManifestSha256,
-      itemCount: task.itemIds.length,
-      inputManifestSha256: task.inputManifestSha256,
-      outputPrefix: task.outputPrefix,
-      maxInputBytes: task.maxInputBytes,
-      maxOutputBytes: task.maxOutputBytes,
-      requestBody: task.requestBody,
-      spendCeilingUsd: task.spendCeilingUsd,
-      reservationUsd: task.reservationUsd,
-      rateSource: task.rateSource,
-      rateCheckedAt: task.rateCheckedAt,
-      now: claim.claimedAt,
-      checkpointAuthority: task.checkpointAuthority,
-    });
     const template = envelopeTemplates.get(task.lane);
     if (template === undefined) reject("HOSTED_SERVERLESS_ENVELOPE_INVALID");
-    const body = Object.freeze({ ...template, dispatch_token: commit.dispatchToken });
-    prepared.push(Object.freeze({ task, ids, commit, body }));
+    const dispatchToken = mintDispatchToken();
+    const body = Object.freeze({ ...template, dispatch_token: dispatchToken });
+    prepared.push(Object.freeze({ task, ids, dispatchToken, body }));
   }
 
   const beforeHashes = await Promise.all(
@@ -868,10 +845,47 @@ export async function dispatchHostedPreparedGeneration(input: {
     }
   }
 
-  const committed: HostedCommittedDispatch[] = [];
-  for (const { task, ids, commit } of prepared) {
+  const predispatchCommits = new Map<ServerlessLane, PredispatchCommit>();
+  for (const { task, ids, dispatchToken } of prepared) {
     const envelope = signedEnvelopes.get(task.lane);
     if (envelope === undefined) reject("HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID");
+    const commit = await lanes[task.lane].commitPredispatch(input.scope, {
+      dispatchToken,
+      envelope: envelope as unknown as Readonly<Record<string, unknown>>,
+      attemptId: ids.attemptId,
+      authorityId: ids.authorityId,
+      outboxId: ids.outboxId,
+      ledgerId: ids.ledgerId,
+      costEventId: ids.costEventId,
+      projectId: plan.projectId,
+      projectRevisionId: plan.projectRevisionId,
+      generationRequestId: plan.generationRequestId,
+      taskId: task.taskId,
+      attemptOrdinal: task.attemptOrdinal,
+      itemsManifestSha256: task.itemsManifestSha256,
+      itemCount: task.itemIds.length,
+      inputManifestSha256: task.inputManifestSha256,
+      outputPrefix: task.outputPrefix,
+      maxInputBytes: task.maxInputBytes,
+      maxOutputBytes: task.maxOutputBytes,
+      requestBody: task.requestBody,
+      spendCeilingUsd: task.spendCeilingUsd,
+      reservationUsd: task.reservationUsd,
+      rateSource: task.rateSource,
+      rateCheckedAt: task.rateCheckedAt,
+      now: claim.claimedAt,
+      checkpointAuthority: task.checkpointAuthority,
+    });
+    predispatchCommits.set(task.lane, commit);
+  }
+
+  const committed: HostedCommittedDispatch[] = [];
+  for (const { task, ids } of prepared) {
+    const envelope = signedEnvelopes.get(task.lane);
+    const commit = predispatchCommits.get(task.lane);
+    if (envelope === undefined || commit === undefined) {
+      reject("HOSTED_SERVERLESS_ENVELOPE_SIGNATURE_INVALID");
+    }
     await input.runtime.videoRuntime.bindLaneAttempt(input.scope, {
       runtimeId,
       lane: task.lane,

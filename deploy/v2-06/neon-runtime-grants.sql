@@ -94,6 +94,32 @@ GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_pair_activation(uuid,uui
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_pair_activation_v2(uuid,uuid,uuid)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_gpu_activation_v1()
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_workflow_start(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_workflow_start(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_load_v213_workflow_start(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_operator_acceptance(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_operator_acceptance(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_live_acceptance(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_live_acceptance(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_fail_v213_live_acceptance(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_record_v213_signed_evidence(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_load_v213_signed_evidence(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_v213_short_pilot_repository(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_v213_production_length_repository(jsonb)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid)
 TO :"runtime_role";
 -- Final settlement is intentionally absent. A separately privileged reconciler must own that

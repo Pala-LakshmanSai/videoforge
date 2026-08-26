@@ -16,6 +16,8 @@ export const PROVENANCE_ATTESTATION_SCOPE =
 export interface ProvenanceRuntimeProbe {
   readonly gpu_name: string;
   readonly gpu_count: 1;
+  readonly total_vram_bytes: number;
+  readonly peak_vram_bytes: number;
   readonly gpu_uuid_sha256: Sha256 | null;
   readonly driver_version: string;
   readonly cuda_version: string;
@@ -36,6 +38,8 @@ export interface ProvenanceReceipt {
   readonly receipt_id: string;
   readonly attestation_scope: typeof PROVENANCE_ATTESTATION_SCOPE;
   readonly dispatch_token: string;
+  readonly envelope_sha256: Sha256;
+  readonly request_sha256: Sha256;
   readonly attempt_id: string;
   readonly provider_job_id: string | null;
   readonly worker_id: string | null;
@@ -84,11 +88,13 @@ export type ReceiptVerificationErrorCode =
   | "RECEIPT_ATTEMPT_MISMATCH"
   | "RECEIPT_ATTESTATION_SCOPE_INVALID"
   | "RECEIPT_DEPLOYMENT_MISMATCH"
+  | "RECEIPT_ENVELOPE_MISMATCH"
   | "RECEIPT_GPU_NOT_ALLOWED"
   | "RECEIPT_HASH_MISMATCH"
   | "RECEIPT_JOB_MISMATCH"
   | "RECEIPT_NONCE_REPLAYED"
   | "RECEIPT_REGION_MISMATCH"
+  | "RECEIPT_REQUEST_MISMATCH"
   | "RECEIPT_SCRATCH_UNSAFE"
   | "RECEIPT_SIGNATURE_INVALID"
   | "RECEIPT_TENANT_MISMATCH"
@@ -190,6 +196,8 @@ export class ProvenanceReceiptSigner {
 
 export interface ReceiptExpectation {
   readonly dispatchTokenSha256: Sha256;
+  readonly envelopeSha256: Sha256;
+  readonly requestSha256: Sha256;
   readonly attemptId: string;
   readonly providerJobId: string | null;
   readonly accountId: string;
@@ -227,6 +235,18 @@ export function verifyProvenanceReceipt(
     throw new ReceiptVerificationError(
       "RECEIPT_TOKEN_MISMATCH",
       "The receipt was issued for a different dispatch token.",
+    );
+  }
+  if (receipt.envelope_sha256 !== expectation.envelopeSha256) {
+    throw new ReceiptVerificationError(
+      "RECEIPT_ENVELOPE_MISMATCH",
+      "The receipt names a different canonical envelope.",
+    );
+  }
+  if (receipt.request_sha256 !== expectation.requestSha256) {
+    throw new ReceiptVerificationError(
+      "RECEIPT_REQUEST_MISMATCH",
+      "The receipt names a different canonical provider request.",
     );
   }
   if (receipt.attempt_id !== expectation.attemptId) {

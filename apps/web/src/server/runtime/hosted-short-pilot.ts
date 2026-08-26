@@ -21,6 +21,15 @@ import type {
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
 const MAX_AGE_MS = 24 * 60 * 60 * 1_000;
+const APPROVED_SOULX_PROFILE = "soulx-pro-vf924u-approved-v1";
+const APPROVED_SOULX_PROFILE_GROUP = "soulx-pro-vf924u-full-split-v1";
+const APPROVED_SOULX_CANDIDATE_SHA256 =
+  "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442";
+const APPROVED_SOULX_APPROVAL_SHA256 =
+  "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
+const APPROVED_SOULX_AVATAR_SOURCE_SHA256 =
+  "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83";
+const APPROVED_SOULX_SPLIT_CROP = "448:504:32:4";
 
 export type HostedShortPilotErrorCode =
   | "SHORT_PILOT_ADMISSION_INVALID"
@@ -207,10 +216,11 @@ export interface HostedShortPilotBarrierVerification {
   readonly artifacts: readonly HostedShortPilotAcceptedArtifact[];
   readonly soulxProfile: null | {
     readonly sourceProfile: string;
-    readonly fullCrop: string;
+    readonly fullCrop: string | null;
     readonly splitCrop: string;
     readonly acceptanceContractSha256: Sha256;
     readonly cropProfileEvidenceSha256: Sha256;
+    readonly cropProfileApprovalSha256: Sha256;
   };
 }
 
@@ -647,27 +657,55 @@ async function verifyBarrierArtifacts(input: {
         throw new HostedShortPilotError("SHORT_PILOT_QUALIFICATION_REJECTED");
     } else {
       const profile = verified.soulxProfile;
+      const approval = input.plan.soulx_crop_profile_approval;
       const profileMatchesPlan = input.plan.segments.every((segment) => {
         if (segment.timeline_composition === "IMAGE_FULL") return true;
-        const expectedCrop =
-          segment.timeline_composition === "AVATAR_FULL" ? profile?.fullCrop : profile?.splitCrop;
+        if (!profile || segment.render.avatar_source_profile !== profile.sourceProfile)
+          return false;
+        if (segment.timeline_composition === "AVATAR_FULL") {
+          return (
+            profile.fullCrop === null &&
+            segment.render.avatar_crop === undefined &&
+            segment.render.crop_profile_id === "soulx-pro-ranga-full-source-composite-v1" &&
+            segment.render.crop_profile_evidence_sha256 === APPROVED_SOULX_CANDIDATE_SHA256 &&
+            segment.render.crop_profile_acceptance_sha256 === APPROVED_SOULX_APPROVAL_SHA256 &&
+            segment.accepted_assets.source_background?.sha256 ===
+              APPROVED_SOULX_AVATAR_SOURCE_SHA256 &&
+            segment.render.source_background_transform === "scale=1920:1080:flags=lanczos,fps=30" &&
+            segment.render.native_foreground_transform ===
+              "scale=1080:1080:flags=lanczos,fps=30,format=rgba" &&
+            segment.render.native_foreground_overlay?.x === 420 &&
+            segment.render.native_foreground_overlay.y === 0 &&
+            segment.render.horizontal_alpha_feather_pixels_each_edge === 32
+          );
+        }
         return (
-          profile !== null &&
-          segment.render.avatar_source_profile === profile.sourceProfile &&
-          segment.render.avatar_crop === expectedCrop
+          segment.render.avatar_crop === profile.splitCrop &&
+          segment.render.avatar_crop === APPROVED_SOULX_SPLIT_CROP &&
+          segment.render.crop_profile_id === "soulx-pro-ranga-split-composite-v1" &&
+          segment.render.crop_profile_evidence_sha256 === APPROVED_SOULX_CANDIDATE_SHA256 &&
+          segment.render.crop_profile_acceptance_sha256 === APPROVED_SOULX_APPROVAL_SHA256 &&
+          segment.render.context_transform ===
+            "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30"
         );
       });
       if (
         !profile ||
+        !approval ||
+        approval.profile_group_id !== APPROVED_SOULX_PROFILE_GROUP ||
+        approval.candidate_sha256 !== APPROVED_SOULX_CANDIDATE_SHA256 ||
+        approval.approval_sha256 !== APPROVED_SOULX_APPROVAL_SHA256 ||
+        approval.avatar_source_sha256 !== APPROVED_SOULX_AVATAR_SOURCE_SHA256 ||
+        profile.sourceProfile !== APPROVED_SOULX_PROFILE ||
+        profile.fullCrop !== null ||
+        profile.splitCrop !== APPROVED_SOULX_SPLIT_CROP ||
         !profileMatchesPlan ||
-        !validSha(profile.cropProfileEvidenceSha256) ||
+        profile.cropProfileEvidenceSha256 !== APPROVED_SOULX_CANDIDATE_SHA256 ||
+        profile.cropProfileApprovalSha256 !== APPROVED_SOULX_APPROVAL_SHA256 ||
         profile.acceptanceContractSha256 !==
           input.qualificationVerifications.soulx_avatar.lineage.acceptanceContractSha256
       )
         throw new HostedShortPilotError("SHORT_PILOT_QUALIFICATION_REJECTED");
-      // Even exact evidence cannot turn a legacy schema enum into an approved SoulX profile. The
-      // future canonical contract revision must add that exact profile before this path can admit.
-      throw new HostedShortPilotError("SHORT_PILOT_QUALIFICATION_REJECTED");
     }
     hashes[lane] = canonicalSha256(verified);
   }

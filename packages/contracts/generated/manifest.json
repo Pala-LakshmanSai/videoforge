@@ -59,8 +59,8 @@
     {
       "source": "project-context/evidence/serverless_provenance_receipt_v1.schema.json",
       "destination": "generated/schemas/serverless_provenance_receipt_v1.schema.json",
-      "bytes": 8010,
-      "sha256": "sha256:c476f1044fd062f3e6996f85309986cac58849c0f2892a4a8370be4543a1caf6"
+      "bytes": 8362,
+      "sha256": "sha256:593e26de69ca8b0d538e27035b5b8e0ccb04ed5fb01782eea5b74680c63998ab"
     },
     {
       "source": "project-context/evidence/serverless_progress_event_v3.schema.json",
@@ -365,20 +365,20 @@
     {
       "source": "project-context/evidence/fixtures/serverless_provenance_receipt_v1.valid.json",
       "destination": "generated/fixtures/serverless_provenance_receipt_v1.valid.json",
-      "bytes": 2502,
-      "sha256": "sha256:81b6df16d61d5ea4b0d0a8954a556f3db7a2a799fcd398bc753f9dc756f6a0d5"
+      "bytes": 3139,
+      "sha256": "sha256:1713e6133d710542dcb7dd76577576ef7f36e43423bf78ae98334f2ecfe7b101"
     },
     {
       "source": "project-context/evidence/fixtures/serverless_provenance_receipt_v1.invalid.hardware_attestation_claim.json",
       "destination": "generated/fixtures/serverless_provenance_receipt_v1.invalid.hardware_attestation_claim.json",
-      "bytes": 2469,
-      "sha256": "sha256:b865449a77449558c1cd140b8d0a88c4ce159689c124ed45181b09cd075a3368"
+      "bytes": 3106,
+      "sha256": "sha256:77485a7cce99c68c61d4e762addf944bf240a35b029884bd9124999fbe8b2b8e"
     },
     {
       "source": "project-context/evidence/fixtures/serverless_provenance_receipt_v1.invalid.volume_mutation.json",
       "destination": "generated/fixtures/serverless_provenance_receipt_v1.invalid.volume_mutation.json",
-      "bytes": 2501,
-      "sha256": "sha256:ae91829cab12a8967f8ad64f3379e79a827d12d078c255bb16dd1454d7b2df87"
+      "bytes": 3138,
+      "sha256": "sha256:0e1df2996f94d1d9798df7504dcf07636c8ee9296a4125c10a07a1b044b6943a"
     },
     {
       "source": "project-context/evidence/fixtures/serverless_progress_event_v3.valid.json",

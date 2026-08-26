@@ -41,6 +41,8 @@ export interface HostedServerlessAttemptBinding {
   readonly attemptId: string;
   readonly providerJobId: string;
   readonly dispatchTokenSha256: Sha256;
+  readonly envelopeSha256: Sha256;
+  readonly requestSha256: Sha256;
   readonly deploymentId: string;
   readonly endpointIdSha256: Sha256;
   readonly endpointConfigSha256: Sha256;
@@ -224,6 +226,8 @@ export function hostedOutputBindingComponents(
     attempt_id: binding.attemptId,
     provider_job_id: binding.providerJobId,
     dispatch_token_sha256: binding.dispatchTokenSha256,
+    envelope_sha256: binding.envelopeSha256,
+    request_sha256: binding.requestSha256,
     deployment_id: binding.deploymentId,
     endpoint_id_sha256: binding.endpointIdSha256,
     endpoint_config_sha256: binding.endpointConfigSha256,
@@ -281,6 +285,8 @@ export function createHostedServerlessOutputBarrier(input: {
       try {
         verifyProvenanceReceipt(input.signer, callback.receipt, {
           dispatchTokenSha256: binding.dispatchTokenSha256,
+          envelopeSha256: binding.envelopeSha256,
+          requestSha256: binding.requestSha256,
           attemptId: binding.attemptId,
           providerJobId: binding.providerJobId,
           accountId: binding.accountId,

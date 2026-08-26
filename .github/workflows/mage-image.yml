@@ -114,9 +114,9 @@ jobs:
           # Pin the current checkout bytes copied into the image explicitly;
           # labels alone would allow a workflow change to silently drift.
           expected_source_hashes=(
-            "workers/image-media/mage_serverless.py|a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b"
-            "workers/common/serverless_envelope.py|2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
-            "packages/contracts/python/videoforge_contracts/_schema_documents.py|0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92"
+            "workers/image-media/mage_serverless.py|e61786748d321124ab39267622ccb647f614e8fac0d560d2e72c6d2a158b528d"
+            "workers/common/serverless_envelope.py|34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"
+            "packages/contracts/python/videoforge_contracts/_schema_documents.py|6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6"
           )
           for source_entry in "${expected_source_hashes[@]}"; do
             source_path="${source_entry%%|*}"
@@ -154,9 +154,9 @@ jobs:
           candidate_source="$RUNNER_TEMP/v207-candidate-mage_serverless.py"
           candidate_verification="$RUNNER_TEMP/v207-candidate-verification.json"
           candidate_schema="$RUNNER_TEMP/v207-candidate-schema-documents.py"
-          expected_handler_sha="a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b"
-          expected_envelope_sha="2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
-          expected_schema_sha="0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92"
+          expected_handler_sha="e61786748d321124ab39267622ccb647f614e8fac0d560d2e72c6d2a158b528d"
+          expected_envelope_sha="34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"
+          expected_schema_sha="6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6"
           python3 workers/image-media/verify_mage_oci_overlay.py \
             --output-dir "$MAGE_OCI_OUTPUT_DIR" \
             --base-manifest "$MAGE_OCI_BASE_MANIFEST" \
@@ -293,13 +293,13 @@ jobs:
               ),
               "source_sha256": {
                   "packages/contracts/python/videoforge_contracts/_schema_documents.py": (
-                      "sha256:0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92"
+                      "sha256:6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6"
                   ),
                   "workers/common/serverless_envelope.py": (
-                      "sha256:2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
+                      "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"
                   ),
                   "workers/image-media/mage_serverless.py": (
-                      "sha256:a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b"
+                      "sha256:e61786748d321124ab39267622ccb647f614e8fac0d560d2e72c6d2a158b528d"
                   ),
               },
               "model_volume": "/runpod-volume",

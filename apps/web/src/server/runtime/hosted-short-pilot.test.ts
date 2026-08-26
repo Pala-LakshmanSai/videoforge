@@ -1,6 +1,7 @@
 import type { ResolvedRenderManifestDocument } from "@videoforge/contracts";
 import type { TechnicalProbeDocument } from "@videoforge/contracts/generated/contract-types.js";
 import manifestFixture from "@videoforge/contracts/generated/fixtures/resolved_render_manifest.valid.json";
+import soulxApprovedFixture from "@videoforge/contracts/generated/fixtures/resolved_render_manifest.soulx-approved.valid.json";
 import {
   FakeServerlessEndpoint,
   FakeServerlessTransport,
@@ -162,6 +163,20 @@ function candidate(): HostedShortPilotAdmissionInput {
   };
 }
 
+function approvedCandidate(): HostedShortPilotAdmissionInput {
+  const plan = structuredClone(soulxApprovedFixture) as Mutable<ResolvedRenderManifestDocument>;
+  plan.total_frames = 7_200;
+  plan.segments[0]!.end_frame_exclusive = 1_800;
+  plan.segments[1]!.start_frame = 1_800;
+  plan.segments[1]!.end_frame_exclusive = 7_200;
+  return {
+    ...candidate(),
+    projectRevisionId: plan.project_revision_id,
+    revisionConfigSha256: plan.revision_config_hash as Sha256,
+    renderPlanDocument: plan,
+  };
+}
+
 function barrierVerifier(
   candidateValue: HostedShortPilotAdmissionInput,
   transform?: (value: HostedShortPilotBarrierVerification) => HostedShortPilotBarrierVerification,
@@ -206,16 +221,31 @@ function barrierVerifier(
         soulxProfile:
           lane === "mage_image"
             ? null
-            : {
-                sourceProfile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-                fullCrop: "992:558:16:0",
-                splitCrop: "496:558:280:0",
-                acceptanceContractSha256: (
-                  bindings.soulx_avatar.deployment.timeoutEvidence
-                    .sealed_lineage as HostedQualificationLineage
-                ).acceptanceContractSha256,
-                cropProfileEvidenceSha256: sha("soulx-crop-profile"),
-              },
+            : candidateValue.renderPlanDocument.soulx_crop_profile_approval
+              ? {
+                  sourceProfile: "soulx-pro-vf924u-approved-v1",
+                  fullCrop: null,
+                  splitCrop: "448:504:32:4",
+                  acceptanceContractSha256: (
+                    bindings.soulx_avatar.deployment.timeoutEvidence
+                      .sealed_lineage as HostedQualificationLineage
+                  ).acceptanceContractSha256,
+                  cropProfileEvidenceSha256:
+                    candidateValue.renderPlanDocument.soulx_crop_profile_approval.candidate_sha256,
+                  cropProfileApprovalSha256:
+                    candidateValue.renderPlanDocument.soulx_crop_profile_approval.approval_sha256,
+                }
+              : {
+                  sourceProfile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
+                  fullCrop: "992:558:16:0",
+                  splitCrop: "496:558:280:0",
+                  acceptanceContractSha256: (
+                    bindings.soulx_avatar.deployment.timeoutEvidence
+                      .sealed_lineage as HostedQualificationLineage
+                  ).acceptanceContractSha256,
+                  cropProfileEvidenceSha256: sha("soulx-crop-profile"),
+                  cropProfileApprovalSha256: sha("legacy-no-approval"),
+                },
       };
       return transform?.(value) ?? value;
     }),
@@ -567,6 +597,48 @@ const code = async (action: () => unknown | Promise<unknown>) => {
 };
 
 describe("hosted short pilot durable groundwork", () => {
+  it("admits only the exact approved SoulX full/split profile with bound qualification evidence", async () => {
+    const repository = new AsyncTransactionalRepository();
+    const { value } = await admission(repository, approvedCandidate());
+
+    expect(value).toMatchObject({
+      groundworkOnly: true,
+      submissionState: "READY",
+      submissionCount: 0,
+      replayed: false,
+      totalFrames: 7_200,
+      expectedCutCount: 1,
+    });
+    expect(repository.mintCount).toBe(1);
+  });
+
+  it("rejects approved-profile barrier evidence when its exact user approval hash drifts", async () => {
+    const repository = new AsyncTransactionalRepository();
+    const candidateValue = approvedCandidate();
+    expect(
+      await code(() =>
+        admitHostedShortPilot({
+          repository,
+          verifier: verifier(),
+          barrierVerifier: barrierVerifier(candidateValue, (value) =>
+            value.lane === "soulx_avatar" && value.soulxProfile
+              ? {
+                  ...value,
+                  soulxProfile: {
+                    ...value.soulxProfile,
+                    cropProfileApprovalSha256: sha("foreign-approval"),
+                  },
+                }
+              : value,
+          ),
+          candidate: candidateValue,
+          now: () => new Date(NOW),
+        }),
+      ),
+    ).toBe("SHORT_PILOT_QUALIFICATION_REJECTED");
+    expect(repository.mintCount).toBe(0);
+  });
+
   it.each([
     ["echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1", "992:558:16:0", "496:558:280:0"],
     ["avatarforcing-centered-832x480p25-v1", "832:468:0:6", "416:468:208:6"],

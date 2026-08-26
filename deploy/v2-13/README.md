@@ -4,7 +4,32 @@ This directory contains provider-free deployment preparation only. The checked-i
 and pair binding contract remain `DISABLED_UNQUALIFIED`; none of these commands reads credentials,
 calls a provider, deploys, or spends money by default.
 
-The paid pair has two database principals:
+`pnpm execute:v2-13-full-live` is the sole canonical full-live entrypoint and is a zero-action
+inspection by default. It owns the exact release publication, workflow, fresh preflight, dual
+qualification, max-one activation, V2-09 through V2-13, and cleanup order, with a durable outer
+state transition before and after every external operation. Execute mode fails closed before
+authority consumption while any catalog operation lacks a concrete reviewed adapter; arbitrary
+runtime shell commands are not accepted as substitutes. The executor pins the exact adapter,
+promotion, guarded activation, TypeScript bridge, RunPod transport, and migration 0045 source
+bytes before even release publication can run.
+
+The post-qualification promotion is a distinct zero-GPU-provider-send operation. It first commits
+the actual 0045 promotion decision binding migrations 0037–0045, the paid approval, both fresh
+independent qualification records, and both max-one deployment snapshots. It permits exactly one config
+difference (`DISABLED_UNQUALIFIED` to `QUALIFIED_EXACT`), requires the production bundle firewall,
+records the exact Cloudflare version/config readback in 0045, then requires the enabled route to
+read back that same version and qualified DB projection. Any drift rolls back to the exact disabled
+version and appends a rollback tombstone that makes the activation projection unavailable. `node deploy/v2-13/promote-qualified-production.mjs` is zero-action by default; the outer
+executor supplies its protected database and Cloudflare transport.
+
+Migration 0045 also owns the durable full-live stage fence. Mage, SoulX, and production authorities
+are signed, single-use, ordered by exact predecessor handoff, and consumed through append-only
+FORCE-RLS rows. Every create/readback/dispatch/status/cancel/delete operation is claimed before
+execution and advanced through an advisory-lock CAS event journal; ambiguous acknowledgement can
+reconcile but cannot redispatch. The runtime receives only the narrow activation read projection
+and has no authority, promotion, or journal table DML.
+
+The paid pair has three database principals:
 
 - `DATABASE_URL` is the ordinary runtime role. It can use the narrow 0041-0043 materialize,
   predispatch, prepare, begin, finish, and inspect functions. The 0043 prepare projection returns
@@ -13,6 +38,10 @@ The paid pair has two database principals:
 - `VIDEOFORGE_RECONCILER_DATABASE_URL` is a distinct reconciler role. It can inspect the exact pair
   and call the 0044 zero-worker evidence and v2 settlement functions; it has no table access and
   cannot dispatch.
+- `VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE` is a distinct protected operator connection. The
+  guarded activation creates that no-inherit role from the fingerprinted
+  `operator.database-url` file and grants only the 0045 authority, journal, publication,
+  promotion, and Cloudflare activation/rollback functions; it has no table access.
 
 The dispatch-token encryption key, envelope signing key, provider-proof key, RunPod API key, and
 both raw endpoint IDs plus their exact SHA-256 bindings are separate Cloudflare secrets. They must
@@ -46,7 +75,7 @@ exact bytes at those paths and rehashes them against `authority.proposal_sha256`
 `--execute` additionally requires the literal confirmation
 `EXECUTE_EXACT_GUARDED_V2_13_ACTIVATION`, an exact mode-0600 approved authority file, a private
 mode-0700 PostgreSQL input directory, a separate exact mode-0700 secret directory containing only
-the 21 allowlisted mode-0600 files, a separately fingerprinted mode-0600 Cloudflare API-token file,
+the 22 allowlisted mode-0600 files, a separately fingerprinted mode-0600 Cloudflare API-token file,
 and a new evidence path under a mode-0700 directory. Secret values are read only from those files
 and are streamed to Wrangler stdin; they never enter argv, stdout, the plan, or evidence. Every
 child process receives a closed environment allowlist, so ambient provider or database credentials
@@ -65,10 +94,10 @@ password onto a reused role whose privileges in other databases cannot be proven
 connection. It also keeps explicit membership, ownership, ACL, default-ACL, and dangerous effective
 privilege predicates as defense in depth. Only then does it create `pgcrypto`, provision the two
 exact `LOGIN NOINHERIT` roles, apply the exact
-manifest through migration 0044, applies runtime/reconciler grants, and then rechecks the full
+manifest through migration 0045, applies runtime/reconciler grants, and then rechecks the full
 ledger, role flags/memberships/ownership, exact runtime function allowlist, reconciler function
 allowlist, and absence of reconciler table grants. It refuses migration unless the database already
-has the exact 36-row manifest prefix, so this activation can apply only migrations 0037-0044.
+has the exact 36-row manifest prefix, so this activation can apply only migrations 0037-0045.
 
 Before database mutation, the executor twice rechecks authority-pinned Cloudflare API bytes proving
 the exact account, a 404 for `videoforge-production-runtime`, absence of both exact Workflow names,
@@ -78,7 +107,7 @@ Worker and two exact Workflows; the full exact config then attaches the already-
 with auto-create disabled. Both stages must read back as `DISABLED_UNQUALIFIED`, with the exact
 structural `HOSTED_PAIR_WORKFLOW` binding to the exact `${workflow_name}-pair`, closed single-page
 Workflow/R2 inventory metadata, expected route state, and no secrets, before database mutation. Only then are
-the 21 closed-world secret names uploaded. Every secret-created version and final version are read
+the 22 closed-world secret names uploaded. Every secret-created version and final version are read
 back as the exact disabled commit.
 
 The explicit failure policy keeps a resource only when it is verified as the exact disabled,
@@ -90,9 +119,10 @@ failure after database role/grant mutation is a hard manual reconciliation stop 
 automatic replay.
 
 Run `pnpm validate:v2-13-production-pair` for the provider-free source/ACL/config validation. Before
-any future activation, independently verify the exact 0037-0044 migration ledger, both fresh live
+any future activation, independently verify the exact 0037-0045 migration ledger, both fresh live
 lane qualifications, the exact paid approval/cap, both exact published deployment snapshots, the
-two distinct database-role bindings, and all three separate key bindings. Activation still requires
+two distinct database-role bindings, all three provider key bindings, and the separate one-shot
+Workflow operator token. Activation still requires
 a fresh authorized deployment procedure; this source slice does not supply that authority.
 
 `HostedPairWorkflow` is a second durable Workflow binding. It resumes the 0043 Mage-then-SoulX
@@ -101,3 +131,9 @@ minutes, and stops after 30 minutes as `MANUAL_RECONCILIATION_REQUIRED`. It neve
 Successful settlement requires both exact callback/output barriers and zero workers on both
 endpoints. Migration 0044 persists both signed zero-worker proofs before delegating to the 0043
 settlement that advances the CPU-render stage to `RENDERING`.
+
+The qualified Worker exposes one non-browser operator route at
+`/api/operator/v2-13/pair-workflows`. It accepts only an opaque authority token plus an exact
+HMAC-bound request/outer-state hash. Migration 0045 must claim that one request before the exact
+deterministic Workflow ID is created; ambiguous create acknowledgements are recovered with one
+`get/status` read and replay returns the same append-only result without a second dispatch.

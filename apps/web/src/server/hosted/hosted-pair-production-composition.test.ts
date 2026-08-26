@@ -80,12 +80,20 @@ function gate(
     },
     deployments: { mage_image: deployment, soulx_avatar: deployment },
     paidApproval: { approved: true, exact: true, expiresAt: "2026-08-26T09:00:00.000Z" },
+    cloudflare: {
+      sourceCommit: "a".repeat(40),
+      versionIdSha256: digest("7"),
+      deployedConfigSha256: digest("8"),
+      readbackSha256: digest("9"),
+      observedAt: "2026-08-26T07:59:00.000Z",
+    },
     bindings: {
       runtimeDatabase: "NEON_RUNTIME_DATABASE_URL",
       reconcilerDatabase: "NEON_RECONCILER_DATABASE_URL",
       dispatchTokenKey: "HOSTED_DISPATCH_TOKEN_KEY",
       envelopeSignerKey: "HOSTED_ENVELOPE_SIGNING_KEY",
       providerProofVerifierKey: "HOSTED_PROVIDER_PROOF_VERIFY_KEY",
+      workflowOperatorToken: "HOSTED_WORKFLOW_OPERATOR_TOKEN",
     },
     ...overrides,
   };
@@ -174,6 +182,7 @@ async function restartFixture() {
       qualifications: trusted.qualifications,
       deployments: trusted.deployments,
       paidApproval: trusted.paidApproval,
+      cloudflare: trusted.cloudflare,
     })),
   };
   return {
@@ -205,7 +214,7 @@ describe("hosted production pair composition", () => {
 
   it("rejects ledger, qualification, approval, role, or key drift", () => {
     expect(evaluateHostedPairProductionGate(gate({ migrationLedger: [] }))).toMatchObject({
-      reason: "MIGRATION_LEDGER_0037_0044_INVALID",
+      reason: "MIGRATION_LEDGER_0037_0045_INVALID",
     });
     expect(
       evaluateHostedPairProductionGate(
@@ -246,6 +255,7 @@ describe("hosted production pair composition", () => {
           VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: "envelope-signing-binding",
           VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: "envelope-signing-key-id",
           VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: "provider-proof-binding",
+          VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: "workflow-operator-token-binding",
         },
         accountId: ids.account,
         workspaceId: ids.workspace,
@@ -295,6 +305,7 @@ describe("hosted production pair composition", () => {
           VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: "envelope-signing-binding",
           VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: "envelope-signing-key-id",
           VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: "provider-proof-binding",
+          VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: "workflow-operator-token-binding",
         },
         accountId: ids.account,
         workspaceId: ids.workspace,
@@ -354,6 +365,7 @@ describe("hosted production pair composition", () => {
         VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: "envelope-signing-binding",
         VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: "envelope-signing-key-id",
         VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: "provider-proof-binding",
+        VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: "workflow-operator-token-binding",
       },
       accountId: ids.account,
       workspaceId: ids.workspace,

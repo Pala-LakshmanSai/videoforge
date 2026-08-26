@@ -4,12 +4,14 @@
   "title": "VideoForge application-signed Serverless provenance receipt v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "receipt_id", "attestation_scope", "dispatch_token", "attempt_id", "provider_job_id", "worker_id", "tenant", "lane", "deployment", "runtime_probe", "volume_verification", "model_ready_evidence", "timings", "items", "scratch_cleanup", "receipt_nonce", "issued_at", "receipt_sha256", "signature"],
+  "required": ["schema_version", "receipt_id", "attestation_scope", "dispatch_token", "envelope_sha256", "request_sha256", "attempt_id", "provider_job_id", "worker_id", "tenant", "lane", "deployment", "runtime_probe", "volume_verification", "model_ready_evidence", "timings", "items", "scratch_cleanup", "receipt_nonce", "issued_at", "receipt_sha256", "signature"],
   "properties": {
     "schema_version": {"const": "serverless-provenance-receipt/v1"},
     "receipt_id": {"$ref": "#/$defs/id"},
     "attestation_scope": {"const": "VIDEOFORGE_APPLICATION_SIGNED_FACTS_NOT_PROVIDER_HARDWARE_ATTESTATION"},
     "dispatch_token": {"type": "string", "minLength": 32, "maxLength": 200, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "envelope_sha256": {"$ref": "#/$defs/sha256"},
+    "request_sha256": {"$ref": "#/$defs/sha256"},
     "attempt_id": {"$ref": "#/$defs/id"},
     "provider_job_id": {
       "oneOf": [
@@ -49,10 +51,12 @@
     "runtime_probe": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["gpu_name", "gpu_count", "gpu_uuid_sha256", "driver_version", "cuda_version", "probe_source"],
+      "required": ["gpu_name", "gpu_count", "total_vram_bytes", "peak_vram_bytes", "gpu_uuid_sha256", "driver_version", "cuda_version", "probe_source"],
       "properties": {
         "gpu_name": {"type": "string", "minLength": 1, "maxLength": 200},
         "gpu_count": {"const": 1},
+        "total_vram_bytes": {"type": "integer", "minimum": 1, "maximum": 107374182400},
+        "peak_vram_bytes": {"type": "integer", "minimum": 1, "maximum": 107374182400},
         "gpu_uuid_sha256": {
           "oneOf": [
             {"$ref": "#/$defs/sha256"},

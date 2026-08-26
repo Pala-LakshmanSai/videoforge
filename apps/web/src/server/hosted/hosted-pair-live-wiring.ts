@@ -320,6 +320,105 @@ export async function commitAndScheduleV209ShortPair(
   );
 }
 
+export interface V209TerminalAcceptance extends Record<string, unknown> {
+  readonly schemaVersion: "videoforge.v2-09-terminal-acceptance/v1";
+  readonly workflowId: string;
+  readonly generationRequestId: string;
+  readonly accepted: true;
+  readonly terminal: true;
+  readonly zeroWorkersAfter: true;
+  readonly durationSeconds: number;
+  readonly settledCostUsd: number;
+  readonly evidenceSha256: string;
+  readonly resultSha256: string;
+}
+
+/** Resumes only the deterministic Workflow identity and waits for PostgreSQL to derive terminal
+ * acceptance from 0044 settlement, durable output/readback, and signed Chrome evidence. It never
+ * creates or redispatches work. */
+export async function awaitV209TerminalAcceptance(input: {
+  readonly workflow: HostedWorkflowBinding;
+  readonly database: TransactionalSqlExecutor;
+  readonly scope: HostedPairWorkflowScope;
+  readonly workflowId: string;
+  readonly chromeEvidenceSha256: string;
+  readonly deadlineAt: string;
+  readonly now?: () => number;
+  readonly sleep?: (milliseconds: number) => Promise<void>;
+  readonly pollIntervalMs?: number;
+}): Promise<V209TerminalAcceptance> {
+  if (
+    input.workflowId !== `hosted-pair-${input.scope.generationRequestId}` ||
+    !SHA256.test(input.chromeEvidenceSha256) ||
+    !Number.isFinite(Date.parse(input.deadlineAt))
+  )
+    throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_IDENTITY_INVALID");
+  const now = input.now ?? Date.now;
+  const sleep =
+    input.sleep ??
+    ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const interval = input.pollIntervalMs ?? 2_000;
+  if (!Number.isInteger(interval) || interval < 100 || interval > 10_000)
+    throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_POLL_INVALID");
+  const deadline = Date.parse(input.deadlineAt);
+  const existing = await input.workflow.get(input.workflowId);
+  while (now() <= deadline) {
+    await existing.status();
+    try {
+      const accepted = await input.database.transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1,$2,true)", [
+          "videoforge.account_id",
+          input.scope.accountId,
+        ]);
+        const result = await transaction.query<{ value: unknown }>(
+          "SELECT public.videoforge_complete_v209_terminal_acceptance($1::jsonb) AS value",
+          [
+            JSON.stringify({
+              accountId: input.scope.accountId,
+              workspaceId: input.scope.workspaceId,
+              generationRequestId: input.scope.generationRequestId,
+              workflowId: input.workflowId,
+              chromeEvidenceSha256: input.chromeEvidenceSha256,
+            }),
+          ],
+        );
+        return result.rows[0]?.value;
+      });
+      if (
+        accepted &&
+        typeof accepted === "object" &&
+        !Array.isArray(accepted) &&
+        (accepted as Record<string, unknown>).schemaVersion ===
+          "videoforge.v2-09-terminal-acceptance/v1" &&
+        (accepted as Record<string, unknown>).workflowId === input.workflowId &&
+        (accepted as Record<string, unknown>).generationRequestId ===
+          input.scope.generationRequestId &&
+        (accepted as Record<string, unknown>).accepted === true &&
+        (accepted as Record<string, unknown>).terminal === true &&
+        (accepted as Record<string, unknown>).zeroWorkersAfter === true &&
+        typeof (accepted as Record<string, unknown>).durationSeconds === "number" &&
+        Number.isFinite((accepted as Record<string, unknown>).durationSeconds) &&
+        ((accepted as Record<string, unknown>).durationSeconds as number) >= 30 &&
+        ((accepted as Record<string, unknown>).durationSeconds as number) <= 60 &&
+        typeof (accepted as Record<string, unknown>).settledCostUsd === "number" &&
+        Number.isFinite((accepted as Record<string, unknown>).settledCostUsd) &&
+        ((accepted as Record<string, unknown>).settledCostUsd as number) >= 0 &&
+        ((accepted as Record<string, unknown>).settledCostUsd as number) <= 2 &&
+        SHA256.test((accepted as Record<string, unknown>).evidenceSha256 as string) &&
+        SHA256.test((accepted as Record<string, unknown>).resultSha256 as string)
+      )
+        return accepted as V209TerminalAcceptance;
+      throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_RESULT_INVALID");
+    } catch (error) {
+      const code = (error as { code?: unknown })?.code;
+      if (code !== "23514" && code !== "55000") throw error;
+    }
+    if (now() >= deadline) break;
+    await sleep(Math.min(interval, Math.max(0, deadline - now())));
+  }
+  throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED");
+}
+
 export async function observeV209ShortAdmission(
   environment: HostedPairLiveEnvironment,
   database: TransactionalSqlExecutor,

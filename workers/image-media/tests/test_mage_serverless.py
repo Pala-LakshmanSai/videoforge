@@ -827,11 +827,16 @@ print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": le
             "model_revision": "b" * 40,
             "renderer_source_profile": "mage-landscape-native-1280x720-v1",
             "generation_duration_ms": 12,
+            "runtime_evidence": {"gpu": {"peak_vram_used_bytes": 12 * 1024**3}},
         }
         runtime = SimpleNamespace(
             started=time.monotonic() - 0.001,
             ready=True,
-            gpu={"name": "NVIDIA GeForce RTX 4090", "cuda_version": "12"},
+            gpu={
+                "name": "NVIDIA GeForce RTX 4090",
+                "cuda_version": "12",
+                "total_memory_bytes": 24 * 1024**3,
+            },
             warmup_output_sha256="sha256:" + "3" * 64,
             bootstrap_evidence={"duration_ms": 1},
             phase_timings_ms={"gpu_load": 2, "warmup": 3},
@@ -1030,11 +1035,16 @@ print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": le
             "model_revision": "b" * 40,
             "renderer_source_profile": "mage-landscape-native-1280x720-v1",
             "generation_duration_ms": 12,
+            "runtime_evidence": {"gpu": {"peak_vram_used_bytes": 12 * 1024**3}},
         }
         runtime = SimpleNamespace(
             started=time.monotonic() - 0.001,
             ready=True,
-            gpu={"name": "NVIDIA GeForce RTX 4090", "cuda_version": "12"},
+            gpu={
+                "name": "NVIDIA GeForce RTX 4090",
+                "cuda_version": "12",
+                "total_memory_bytes": 24 * 1024**3,
+            },
             warmup_output_sha256="sha256:" + "3" * 64,
             bootstrap_evidence={"duration_ms": 1},
             phase_timings_ms={"gpu_load": 2, "warmup": 3},
@@ -1086,6 +1096,16 @@ print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": le
         self.assertEqual(result["items"][0]["output_bytes"], len(body))
         self.assertEqual(result["provenance_receipt"]["items"][0]["output_sha256"], checksum)
         self.assertEqual(result["provenance_receipt"]["items"][0]["output_bytes"], len(body))
+        self.assertEqual(
+            result["provenance_receipt"]["envelope_sha256"],
+            mage_serverless.restricted_canonical_sha256(job["input"]["envelope"]),
+        )
+        self.assertEqual(
+            result["provenance_receipt"]["request_sha256"],
+            mage_serverless.restricted_canonical_sha256(
+                mage_serverless.request_body_from_payload(job["input"])
+            ),
+        )
         timings = result["provenance_receipt"]["timings"]
         self.assertGreaterEqual(timings["allocation_ms"], 1)
         self.assertGreaterEqual(timings["container_ready_ms"], timings["allocation_ms"])

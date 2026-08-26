@@ -17,6 +17,14 @@ const ids = {
 const config = {
   publicOrigin: "https://videoforge.example",
   neon: { databaseUrl: "postgres://runtime.invalid/db" },
+  gpuTransport: "QUALIFIED_EXACT",
+  gpuActivation: { evidenceSha256: `sha256:${"e".repeat(64)}` },
+} as never;
+const disabledConfig = {
+  publicOrigin: "https://videoforge.example",
+  neon: { databaseUrl: "postgres://runtime.invalid/db" },
+  gpuTransport: "DISABLED_UNQUALIFIED",
+  gpuActivation: null,
 } as never;
 const context = { waitUntil: vi.fn() } as never;
 const qualifiedEnvironment = {
@@ -99,7 +107,7 @@ describe("authenticated hosted pair dispatch route", () => {
     const response = await handleHostedPairDispatch(
       request(body()),
       { VIDEOFORGE_GPU_TRANSPORT: "DISABLED_UNQUALIFIED" } as never,
-      config,
+      disabledConfig,
       context,
       ids.generation,
       deps.value,

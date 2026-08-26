@@ -72,3 +72,34 @@ test("boundary rejects runtime settlement, shared roles, plaintext secrets, and 
     /must never be a plaintext Wrangler var/u,
   );
 });
+
+test("boundary requires the exact protected secret-name allowlist", async () => {
+  const source = await fixture();
+  const { workflow_operator_token: _, ...missingWorkflowOperatorToken } =
+    source.bindings.secret_bindings;
+  assert.throws(
+    () =>
+      validateProductionPairBoundary({
+        ...source,
+        bindings: {
+          ...source.bindings,
+          secret_bindings: missingWorkflowOperatorToken,
+        },
+      }),
+    /secret binding names drifted/u,
+  );
+  assert.throws(
+    () =>
+      validateProductionPairBoundary({
+        ...source,
+        bindings: {
+          ...source.bindings,
+          secret_bindings: {
+            ...source.bindings.secret_bindings,
+            unexpected_secret: "UNEXPECTED_SECRET_NAME",
+          },
+        },
+      }),
+    /secret binding names drifted/u,
+  );
+});

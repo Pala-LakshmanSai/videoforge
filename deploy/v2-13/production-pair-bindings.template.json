@@ -3,7 +3,7 @@
   "state": "DISABLED_UNQUALIFIED",
   "migration_ledger": {
     "first": 37,
-    "last": 44,
+    "last": 45,
     "exact_manifest_required": true
   },
   "database_roles": {
@@ -25,7 +25,8 @@
     "mage_endpoint_id": "VIDEOFORGE_MAGE_ENDPOINT_ID",
     "mage_endpoint_id_sha256": "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
     "soulx_endpoint_id": "VIDEOFORGE_SOULX_ENDPOINT_ID",
-    "soulx_endpoint_id_sha256": "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256"
+    "soulx_endpoint_id_sha256": "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+    "workflow_operator_token": "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN"
   },
   "activation": {
     "both_fresh_qualifications_required": true,

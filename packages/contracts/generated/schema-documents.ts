@@ -1595,6 +1595,8 @@ export const canonicalSchemaDocuments = {
       "receipt_id",
       "attestation_scope",
       "dispatch_token",
+      "envelope_sha256",
+      "request_sha256",
       "attempt_id",
       "provider_job_id",
       "worker_id",
@@ -1627,6 +1629,12 @@ export const canonicalSchemaDocuments = {
         "minLength": 32,
         "maxLength": 200,
         "pattern": "^[A-Za-z0-9._:-]+$"
+      },
+      "envelope_sha256": {
+        "$ref": "#/$defs/sha256"
+      },
+      "request_sha256": {
+        "$ref": "#/$defs/sha256"
       },
       "attempt_id": {
         "$ref": "#/$defs/id"
@@ -1717,6 +1725,8 @@ export const canonicalSchemaDocuments = {
         "required": [
           "gpu_name",
           "gpu_count",
+          "total_vram_bytes",
+          "peak_vram_bytes",
           "gpu_uuid_sha256",
           "driver_version",
           "cuda_version",
@@ -1730,6 +1740,16 @@ export const canonicalSchemaDocuments = {
           },
           "gpu_count": {
             "const": 1
+          },
+          "total_vram_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 107374182400
+          },
+          "peak_vram_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 107374182400
           },
           "gpu_uuid_sha256": {
             "oneOf": [
