@@ -3,11 +3,11 @@
   "checkpoint_range": ["V2-07", "V2-08", "V2-09", "V2-10", "V2-11", "V2-12", "V2-13"],
   "task_id": "VF-10-13",
   "candidate_date": "2026-08-26",
-  "proposal_status": "BLOCKED_UNSEALED_SOURCE_REPAIR_PENDING",
+  "proposal_status": "PENDING_FRESH_EXACT_USER_APPROVAL",
   "sealing": {
-    "sealed_for_exact_user_approval": false,
-    "current_bytes_are_approval_ineligible": true,
-    "required_next_action": "bind the forthcoming independently audited repaired source commit and exact component hashes, then seal a new proposal and request fresh exact user approval"
+    "sealed_for_exact_user_approval": true,
+    "current_bytes_are_approval_ineligible": false,
+    "required_next_action": "obtain fresh exact user approval for this sealed proposal before any authority record, credential access, provider call, mutation, GPU use, or spend"
   },
   "supersession": {
     "supersedes_proposal_sha256": "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32",
@@ -18,8 +18,8 @@
     "fresh_exact_approval_required": true
   },
   "source": {
-    "release_source_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
-    "repaired_release_source_commit": null,
+    "release_source_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
+    "repaired_release_source_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
     "future_authority_record_commit": null,
@@ -796,7 +796,7 @@
     "creation_requested": true,
     "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-    "exact_target_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
+    "exact_target_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
     "tag_kind": "LIGHTWEIGHT",
     "maximum_new_refs": 1,
     "force_update_authorized": false,
@@ -807,10 +807,10 @@
       "fresh exact approval of this v3 proposal and a committed exact authority record",
       "outer single-use authority consumed locally before credential access or external action",
       "remote exact tag absence proved immediately before creation",
-      "local exact target resolves to e737eac44458a04c7de47a0f3f42d82cb9506d47"
+      "local exact target resolves to a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
     ],
     "exact_mutation": "create one lightweight tag locally and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
-    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to e737eac44458a04c7de47a0f3f42d82cb9506d47",
+    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
     "stop_on_presence_collision_or_drift": true
   },
   "requested_scope": {
@@ -986,8 +986,8 @@
       "phase": "create_and_verify_exact_release_tag",
       "operations": [
         "prove refs/tags/videoforge-v2-13-release-20260826-v3 is absent remotely and locally immediately before mutation",
-        "create exactly one lightweight tag videoforge-v2-13-release-20260826-v3 at e737eac44458a04c7de47a0f3f42d82cb9506d47 and push it to origin without force",
-        "read back the exact remote tag and require it resolves to e737eac44458a04c7de47a0f3f42d82cb9506d47; stop on collision, ambiguity, retarget, or drift",
+        "create exactly one lightweight tag videoforge-v2-13-release-20260826-v3 at a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1 and push it to origin without force",
+        "read back the exact remote tag and require it resolves to a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1; stop on collision, ambiguity, retarget, or drift",
         "do not create, update, force, delete, or retarget any other Git ref"
       ]
     },
@@ -1008,7 +1008,7 @@
         "dispatch mage-image.yml and avatar-primary-serverless-image.yml with publish=true using only ref videoforge-v2-13-release-20260826-v3",
         "verify only each previously captured exact run ID with at most 180 reads at 10000 ms intervals inside a 1800000 ms wall bound; accept queued or in_progress only while polling, require completed plus success, and never dispatch or redispatch from verification",
         "stop immediately on completed non-success, run identity drift, authority expiry, or injected cancellation; verification timeout enters outer cleanup-only with no retry",
-        "require each Actions run head SHA equals e737eac44458a04c7de47a0f3f42d82cb9506d47",
+        "require each Actions run head SHA equals a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
         "bind only returned post-run immutable manifest, config, layer, source, and deployability hashes; never pre-claim an image digest",
         "prove anonymous public manifest and every referenced blob before RunPod mutation"
       ]
@@ -1082,7 +1082,7 @@
   ],
   "stop_conditions": [
     "fresh exact v3 approval and authority are absent, stale, mismatched, expired, consumed, or not independently audited",
-    "the exact release tag exists before mutation, cannot be created once without force, does not read back to e737eac44458a04c7de47a0f3f42d82cb9506d47, or any other Git ref mutation would be required",
+    "the exact release tag exists before mutation, cannot be created once without force, does not read back to a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1, or any other Git ref mutation would be required",
     "the exact approval branch commit cannot be pushed without force or remote equality cannot be proved",
     "source, proposal, approval, authority, tool, workflow-run, image, model, account, volume, endpoint, template, Worker, Workflow, R2, route, config, secret-set, database ledger, exact role, ACL, RLS, GPU, region, rate, billing, cap, or inventory drift or uncertainty",
     "RTX4090 EU-RO-1 is below LOW availability or Serverless Flex exceeds USD 1.10/GPU-hour at any mutation boundary; no fallback",
@@ -1098,7 +1098,7 @@
     "requested_exact_phase_caps_usd": [4.5, 1, 2, 2, 4, 2, 2],
     "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, at or below USD 1.10/GPU-hour, no fallback",
     "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
-    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to exact commit e737eac44458a04c7de47a0f3f42d82cb9506d47 without force, then prove exact remote readback",
+    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to exact commit a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1 without force, then prove exact remote readback",
     "requested_exact_database_roles": ["videoforge_hosted_runtime", "videoforge_hosted_reconciler"],
     "authority_becomes_executable_only_after_exact_hash_and_commit_approval_is_recorded": true
   }

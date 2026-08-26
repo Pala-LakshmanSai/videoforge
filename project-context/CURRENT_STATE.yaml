@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Repair and independently audit the full-live execution-order/source-worktree contracts, then bind a new sealed proposal. Do not request or consume authority from the BLOCKED_UNSEALED draft."
-  note: "Proposal sha256:9425de8e...899a was approved and recorded at 67f6fb2, then superseded unconsumed before mutation. The remaining provider-free repair must recursively reject future endpoint identities/hashes from the initial seed, materialize the four guarded endpoint secret files plus all 22 rebound hashes and actual max-one deployment snapshots only from result.production, provide a separate endpoint-free cleanup runtime using only operator DB and RunPod inputs, enforce durable prior-result hash chains and a true 30-minute workflow deadline, and use curl --disable in a closed environment for trusted time. The replacement surface is BLOCKED_UNSEALED with repaired source identity unset. Provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
+  provider_free_product_action: "Independently audit the sealed proposal sha256:4cb0ba1a...be9ea at its proposal-record commit, then request one fresh exact approval. Do not reuse the superseded 9425de8e approval."
+  note: "The repaired source is exact commit a4bc4fd and the replacement proposal is sealed as sha256:4cb0ba1a...be9ea for fresh exact approval. The prior 9425de8e proposal and 67f6fb2 authority remain superseded, unconsumed, and mutation-free. Until fresh approval is recorded, provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -64,9 +64,9 @@ two_track_execution:
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 provider_free_product_progress:
-  full_live_execution_source_commit: "ac472e01b841db49f4cfd9b53442709e8afaf6ed"
-  full_live_execution_source_status: PROVIDER_FREE_REPAIR_COMMITTED_TEST_GREEN_PROPOSAL_BLOCKED_UNSEALED_FRESH_APPROVAL_REQUIRED
-  full_live_execution_source_note: "Coordinated commit ac472e0 extends the zero-cap bootstrap_prequalification_database boundary with exact canonical 17-function ACL/PUBLIC-zero and cluster-wide ownership readback, late operator-DSN value access, operator verification transition, materialization-chain verification, early RunPod-only no-database cleanup, three-read stable billing, and bounded bridge child timeouts. The replacement blocked proposal binds the 25-operation graph and these contracts; it is not sealed, the prior authority is superseded and unconsumed, and fresh independent audit plus exact approval remain required. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
+  full_live_execution_source_commit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
+  full_live_execution_source_status: PROVIDER_FREE_SOURCE_AUDITED_GO_PROPOSAL_SEALED_FRESH_APPROVAL_REQUIRED
+  full_live_execution_source_note: "Source commit a4bc4fd includes the audited V2-13 release graph plus aligned broad control-plane receipt and owner-only schema fixtures. Provider-free gates pass 175/175 scripts, web typecheck, format, lint, firewall, context, focused PGlite, and 13/13 formerly failing broad tests. The replacement proposal is sealed but has no authority; prior authority remains superseded and unconsumed. No provider call, mutation, GPU use, spend, or deploy occurred."
   full_live_executor_sha256: "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230"
   full_live_source_component_hashes:
     full_live_executor: "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230"
@@ -90,13 +90,13 @@ provider_free_product_progress:
   full_live_migration_0045_sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
   prior_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_HASH_DRIFT
   prior_v2_13_proposal_sha256: "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32"
-  fresh_v2_13_proposal_status: BLOCKED_UNSEALED_SOURCE_REPAIR_PENDING_OLD_AUTHORITY_SUPERSEDED_UNCONSUMED
+  fresh_v2_13_proposal_status: SEALED_AWAITING_FRESH_EXACT_APPROVAL_OLD_AUTHORITY_SUPERSEDED_UNCONSUMED
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json"
-  fresh_v2_13_proposal_sha256: null
-  fresh_v2_13_blocked_draft_sha256: "sha256:4c9fd59e47690a3f3d6eac09fdd7fd41384da388194d09e4545ab23520d72329"
-  fresh_v2_13_release_source_commit: null
-  fresh_v2_13_release_tag: null
-  next_v2_13_action: "Independently audit committed repair ac472e0 and the blocked 25-operation proposal contract, then seal a new proposal and request fresh exact approval."
+  fresh_v2_13_proposal_sha256: "sha256:4cb0ba1a39885c614cc7ebc349dc5d679828ab38e38f067c00349f25538be9ea"
+  fresh_v2_13_blocked_draft_sha256: null
+  fresh_v2_13_release_source_commit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
+  fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
+  next_v2_13_action: "Commit and independently audit the sealed proposal record, then request fresh exact approval for sha256:4cb0ba1a...be9ea."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."

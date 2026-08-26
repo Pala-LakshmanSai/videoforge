@@ -44,12 +44,17 @@ const migration0045Sql = await readFile(
 const migrationManifest = await readFile(
   path.resolve(directory, "../../../../../packages/control-plane/migrations/manifest.json"),
 );
+const RELEASE_SOURCE_COMMIT = "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1";
 
 assert(proposal.schema_version === "videoforge.v2-13-full-live-completion-proposal/v3", "SCHEMA");
-assert(proposal.proposal_status === "BLOCKED_UNSEALED_SOURCE_REPAIR_PENDING", "STATUS");
-assert(proposal.sealing.sealed_for_exact_user_approval === false, "NOT_SEALED");
-assert(proposal.sealing.current_bytes_are_approval_ineligible === true, "APPROVAL_INELIGIBLE");
-assert(proposal.source.repaired_release_source_commit === null, "REPAIRED_SOURCE_MUST_BE_UNSET");
+assert(proposal.proposal_status === "PENDING_FRESH_EXACT_USER_APPROVAL", "STATUS");
+assert(proposal.sealing.sealed_for_exact_user_approval === true, "SEALED");
+assert(proposal.sealing.current_bytes_are_approval_ineligible === false, "APPROVAL_ELIGIBLE");
+assert(proposal.source.release_source_commit === RELEASE_SOURCE_COMMIT, "RELEASE_SOURCE_COMMIT");
+assert(
+  proposal.source.repaired_release_source_commit === RELEASE_SOURCE_COMMIT,
+  "REPAIRED_SOURCE_COMMIT",
+);
 assert(proposal.source.future_authority_record_commit === null, "AUTHORITY_COMMIT_MUST_BE_UNSET");
 assert(
   JSON.stringify(proposal.source.exact_release_components.approval_validator) ===
@@ -331,9 +336,9 @@ assert(authority.provider_free_recording.superseded_before_external_action === t
 
 console.log(
   JSON.stringify({
-    status: "PASS_BLOCKED_UNSEALED",
-    draft_sha256: sha256(proposalBytes),
-    repaired_release_source_commit: null,
+    status: "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+    proposal_sha256: sha256(proposalBytes),
+    release_source_commit: RELEASE_SOURCE_COMMIT,
     cloudflare_secret_count: EXACT_CLOUDFLARE_SECRET_NAMES.length,
     authority: "SUPERSEDED_UNCONSUMED_NO_MUTATION",
     external_calls: 0,
