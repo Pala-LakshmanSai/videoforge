@@ -32,7 +32,7 @@ const authorityBytes = readFileSync(`${directory}/approved-authority.json`);
 const proposalSha256 = "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32";
 const proposalRecordCommit = "e3bdabc161c60e5334c4055b5636b7fd768a86df";
 const releaseSourceCommit = "407dc070f4b83bd78b1d4aa1cb546ec63c91f32f";
-const v3ReleaseSourceCommit = "7e561fd8fdb4e6281650c09a5a7859849f473a00";
+const v3ReleaseSourceCommit = "e737eac44458a04c7de47a0f3f42d82cb9506d47";
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
 function v3Fixture() {
@@ -169,6 +169,43 @@ test("outer authority accepts a future exact V3 ref-authorized record", () => {
     result.authority.github_release_ref.status,
     "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
   );
+});
+
+test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-order drift", () => {
+  const fixture = v3Fixture();
+  const mutations = [
+    (proposal) => {
+      proposal.sealing.sealed_for_exact_user_approval = false;
+    },
+    (proposal) => {
+      proposal.source.exact_release_components.approval_validator.sha256 = `sha256:${"0".repeat(64)}`;
+    },
+    (proposal) => {
+      [
+        proposal.exact_execution_graph.ordered_operation_ids[0],
+        proposal.exact_execution_graph.ordered_operation_ids[1],
+      ] = [
+        proposal.exact_execution_graph.ordered_operation_ids[1],
+        proposal.exact_execution_graph.ordered_operation_ids[0],
+      ];
+    },
+  ];
+  for (const mutate of mutations) {
+    const proposal = structuredClone(JSON.parse(fixture.proposalBytes));
+    mutate(proposal);
+    const mutatedBytes = Buffer.from(`${JSON.stringify(proposal, null, 2)}\n`);
+    assert.throws(
+      () =>
+        validateFullLiveUserApproval({
+          proposalBytes: mutatedBytes,
+          approvalBytes: fixture.approvalBytes,
+          expectedProposalSha256: hash(mutatedBytes),
+          expectedProposalRecordCommit: "f".repeat(40),
+          expectedReleaseSourceCommit: v3ReleaseSourceCommit,
+        }),
+      /V3_SUPERSESSION_OR_AUTHORITY/u,
+    );
+  }
 });
 
 test("single-use ledger enforces phase order, phase caps, cumulative cap, and no redispatch", () => {

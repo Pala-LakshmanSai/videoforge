@@ -41,6 +41,10 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
     path: "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
     sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
   }),
+  approval_validator: Object.freeze({
+    path: "deploy/v2-13/validate-full-live-approval.mjs",
+    sha256: "sha256:b6ddaeda44f5d0921e6fb7b55549df0c603f57ab356327f7dfd06ec1ab0009e5",
+  }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({
   mage_qualification: 4.5,

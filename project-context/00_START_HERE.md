@@ -14,7 +14,7 @@ Provider-free successor source is now independently audited through durable lane
 migration 0041 (`0f73d81`), authenticated worker envelopes (`9ef6efa`), atomic two-lane predispatch
 and migration 0042 (`120b6b8`), pair runtime transitions and migration 0043 (`941176f`), fail-closed
 production/recovery composition (`3d1b439`), and the guarded Workflow plus zero-worker evidence
-migration 0044 (`4239be9`). Commit `7f64982` adds the independently audited default-no-op full-live
+migration 0044 (`4239be9`). Source commit `e737eac` adds the independently audited default-no-op full-live
 executor and migration 0045: exact protected-input preflight, DB authority registration, staged
 Mage/SoulX qualification, immutable max1 deployments, qualified Cloudflare promotion, V2-09 terminal
 output/Chrome/cost acceptance, V2-10 through V2-13 acceptance, encrypted handoff escrow, and exact
@@ -22,9 +22,11 @@ crash-safe cleanup. This is source/test proof only. Production remains `DISABLED
 migrations/grants/config are undeployed, and no production secrets or database roles are provisioned.
 The worker receipt/envelope changes invalidate every earlier image-bound qualification. The user's
 earlier full-live approval is recorded as superseded and unconsumed because its source hashes no
-longer match. Both lanes require fresh immutable images, sealed deployment snapshots, dual live
-qualification, and a wholly fresh exact proposal/approval. Provider/deployment/credential/GPU/spend
-authority is false with a `$0` executable cap, and no provider call or spend is authorized.
+longer match. Proposal `sha256:9425de8e…899a` is freshly sealed against `e737eac` and awaits exact
+user approval; it creates no authority by itself. Both lanes require fresh immutable images, sealed
+deployment snapshots, dual live qualification, and that new single-use approval.
+Provider/deployment/credential/GPU/spend authority remains false with a `$0` executable cap, and no
+provider call or spend is authorized.
 
 Commit `417ab1c` activates only the exact approved provider-free SoulX full/split renderer profile,
 including the source-background feathered overlay and split-only path. Commit `09c3cde` adds an

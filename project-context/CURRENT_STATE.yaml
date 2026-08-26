@@ -4,7 +4,7 @@ updated_at: "2026-08-26T00:00:00.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_full_live_source_sealed_fresh_proposal_required
+current_milestone: v2_13_fresh_proposal_sealed_exact_approval_required
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Keep commit 7f64982 provider-free and default-no-op while a fresh source-bound V2-13 proposal is generated and independently audited."
-  note: "Commit 7f64982 closes the guarded full-live source path through migration 0045 and received an independent no-P0/P1 source audit. The earlier f2d183 proposal/approval is superseded and unusable because its source hashes are stale. Provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized until a wholly fresh exact proposal and approval exist."
+  provider_free_product_action: "Present freshly audited proposal sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a for exact user approval; perform no external action before approval."
+  note: "Source e737eac closes the guarded full-live path through migration 0045 and received an independent no-P0/P1 source audit. Proposal sha256:9425de8e...899a is sealed against those exact bytes with authority absent. The earlier f2d183 proposal/approval is superseded unconsumed. Provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized until the new proposal receives exact approval."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -64,14 +64,19 @@ two_track_execution:
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 provider_free_product_progress:
-  full_live_execution_source_commit: "7f64982"
-  full_live_execution_source_status: PROVIDER_FREE_PASS_INDEPENDENTLY_AUDITED_FRESH_PROPOSAL_REQUIRED
+  full_live_execution_source_commit: "e737eac"
+  full_live_execution_source_status: PROVIDER_FREE_PASS_INDEPENDENTLY_AUDITED_PROPOSAL_SEALED_FRESH_APPROVAL_REQUIRED
   full_live_execution_source_note: "The closed default-no-op catalog now owns exact publication, full protected-input preflight, DB authority registration, staged Mage/SoulX qualification, immutable max1 deployment publication, qualified Cloudflare promotion/readback, V2-09 terminal output/Chrome/cost acceptance, V2-10 through V2-13 acceptance, and crash-safe exact cleanup. Migration 0045 supplies append-only authority, promotion, stage/operation, encrypted handoff escrow, signed evidence, Workflow, terminal-acceptance, Cloudflare activation/rollback, and cleanup scope. Independent re-audit found no P0/P1; canonical scripts passed 154/154, focused outer 47/47, web 72/72, migration 9/9, TypeScript/build/contracts/production firewall/context checks passed. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
-  full_live_executor_sha256: "sha256:4d35818ad5b383f07fa6d3a9ec76a5a886e0d68ed66520d02397de731ddfed13"
+  full_live_executor_sha256: "sha256:2b782863fef0222527a10fcd1d4bb1c8bacfc58d601ebd764e1919968d781830"
   full_live_migration_0045_sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
   prior_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_HASH_DRIFT
   prior_v2_13_proposal_sha256: "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32"
-  next_v2_13_action: "Generate and audit a new proposal against exact commit 7f64982 or its context-only successor, then request wholly fresh user approval before any remote mutation or spend."
+  fresh_v2_13_proposal_status: PENDING_FRESH_EXACT_USER_APPROVAL_AUTHORITY_ABSENT
+  fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json"
+  fresh_v2_13_proposal_sha256: "sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a"
+  fresh_v2_13_release_source_commit: "e737eac44458a04c7de47a0f3f42d82cb9506d47"
+  fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
+  next_v2_13_action: "Request exact user approval of proposal sha256:9425de8e...899a. Only after approval, record one fresh single-use authority and rerun the full read-only preflight before any mutation or spend."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -179,14 +184,14 @@ provider_free_product_progress:
     - fresh_immutable_mage_and_soulx_images_after_envelope_verifier_change
     - fresh_sealed_deployment_snapshots
     - fresh_dual_live_lane_qualification
-    - apply_migrations_0037_through_0044_and_least_privilege_grants
+    - apply_migrations_0037_through_0045_and_least_privilege_grants
     - render_validate_and_deploy_exact_production_config
     - provision_separate_runtime_and_reconciler_roles_and_secret_bindings
     - fresh_exact_paid_and_deployment_authority
   remaining_live_blockers:
     - mage_live_qualification
     - soulx_live_qualification
-  batch3_through_batch6_note: "Provider-free source is complete through migration 0044 and the guarded two-lane Workflow. The exact hash-bound SoulX full/split renderer profile is visually approved and provider-free active. Production remains DISABLED_UNQUALIFIED and undeployed. Fresh immutable Mage/SoulX images, dual live qualification, exact deployment/paid authority, migrations/grants/config, roles, and secrets remain required."
+  batch3_through_batch6_note: "Provider-free source is complete through migration 0045 and the guarded full-live executor. The exact hash-bound SoulX full/split renderer profile is visually approved and provider-free active. Proposal sha256:9425de8e...899a is sealed with authority absent. Production remains DISABLED_UNQUALIFIED and undeployed. Fresh exact approval, immutable Mage/SoulX images, dual live qualification, migrations/grants/config, roles, secrets, and all ordered acceptance gates remain required."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
   focused_v2_12_tests: 14_pass
@@ -4272,8 +4277,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_full_live_source_sealed_fresh_proposal_required
-  status: provider_free_source_audited_fresh_proposal_and_approval_required
+  milestone: v2_13_fresh_proposal_sealed_exact_approval_required
+  status: provider_free_source_and_proposal_audited_fresh_exact_approval_required
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: none_attempt64_consumed
   task_stage: provider_free_product_execution
@@ -4282,7 +4287,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Seal and independently audit a fresh V2-13 proposal against commit 7f64982 before any publication, deployment, provider call, GPU use, or spend."
+  goal: "Obtain exact user approval for proposal sha256:9425de8e...899a before any publication, deployment, provider call, GPU use, or spend."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

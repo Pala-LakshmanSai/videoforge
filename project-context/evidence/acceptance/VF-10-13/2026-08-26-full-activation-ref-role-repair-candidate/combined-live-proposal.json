@@ -3,11 +3,11 @@
   "checkpoint_range": ["V2-07", "V2-08", "V2-09", "V2-10", "V2-11", "V2-12", "V2-13"],
   "task_id": "VF-10-13",
   "candidate_date": "2026-08-26",
-  "proposal_status": "BLOCKED_PENDING_NEW_CLEAN_SOURCE_COMMIT_AND_RESEAL",
+  "proposal_status": "PENDING_FRESH_EXACT_USER_APPROVAL",
   "sealing": {
-    "sealed_for_exact_user_approval": false,
-    "current_bytes_are_approval_ineligible": true,
-    "required_next_action": "commit and independently audit the provider-free semantic tag source repair, then replace every pending source target and reseal the proposal hash"
+    "sealed_for_exact_user_approval": true,
+    "current_bytes_are_approval_ineligible": false,
+    "required_next_action": "commit and independently audit these exact proposal bytes, then request fresh exact user approval of the final proposal sha256 and proposal record commit"
   },
   "supersession": {
     "supersedes_proposal_sha256": "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32",
@@ -18,8 +18,7 @@
     "fresh_exact_approval_required": true
   },
   "source": {
-    "release_source_commit": null,
-    "base_source_commit_before_semantic_tag_repair": "7e561fd8fdb4e6281650c09a5a7859849f473a00",
+    "release_source_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
     "branch": "codex/serverless-v2-roadmap",
@@ -60,6 +59,10 @@
       "migration_0045": {
         "path": "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
         "sha256": "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
+      },
+      "approval_validator": {
+        "path": "deploy/v2-13/validate-full-live-approval.mjs",
+        "sha256": "sha256:b6ddaeda44f5d0921e6fb7b55549df0c603f57ab356327f7dfd06ec1ab0009e5"
       }
     }
   },
@@ -118,7 +121,7 @@
     "creation_requested": true,
     "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-    "exact_target_commit": null,
+    "exact_target_commit": "e737eac44458a04c7de47a0f3f42d82cb9506d47",
     "tag_kind": "LIGHTWEIGHT",
     "maximum_new_refs": 1,
     "force_update_authorized": false,
@@ -129,10 +132,10 @@
       "fresh exact approval of this v3 proposal and a committed exact authority record",
       "outer single-use authority consumed locally before credential access or external action",
       "remote exact tag absence proved immediately before creation",
-      "a new clean source commit containing the audited semantic tag repair is pinned before reseal"
+      "local exact target resolves to e737eac44458a04c7de47a0f3f42d82cb9506d47"
     ],
     "exact_mutation": "create one lightweight tag locally and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
-    "required_readback": "after reseal, remote refs/tags/videoforge-v2-13-release-20260826-v3 must resolve exactly and only to the newly pinned clean source commit",
+    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to e737eac44458a04c7de47a0f3f42d82cb9506d47",
     "stop_on_presence_collision_or_drift": true
   },
   "requested_scope": {
@@ -215,8 +218,8 @@
       "phase": "create_and_verify_exact_release_tag",
       "operations": [
         "prove refs/tags/videoforge-v2-13-release-20260826-v3 is absent remotely and locally immediately before mutation",
-        "after reseal, create exactly one lightweight tag videoforge-v2-13-release-20260826-v3 at the newly pinned clean source commit and push it to origin without force",
-        "read back the exact remote tag and require it resolves to that exact newly pinned clean source commit; stop on collision, ambiguity, retarget, or drift",
+        "create exactly one lightweight tag videoforge-v2-13-release-20260826-v3 at e737eac44458a04c7de47a0f3f42d82cb9506d47 and push it to origin without force",
+        "read back the exact remote tag and require it resolves to e737eac44458a04c7de47a0f3f42d82cb9506d47; stop on collision, ambiguity, retarget, or drift",
         "do not create, update, force, delete, or retarget any other Git ref"
       ]
     },
@@ -234,7 +237,7 @@
       "phase": "publish_public_lane_images",
       "operations": [
         "dispatch mage-image.yml and avatar-primary-serverless-image.yml with publish=true using only ref videoforge-v2-13-release-20260826-v3",
-        "require each Actions run head SHA equals the exact newly pinned clean source commit",
+        "require each Actions run head SHA equals e737eac44458a04c7de47a0f3f42d82cb9506d47",
         "bind only returned post-run immutable manifest, config, layer, source, and deployability hashes; never pre-claim an image digest",
         "prove anonymous public manifest and every referenced blob before RunPod mutation"
       ]
@@ -293,7 +296,7 @@
   ],
   "stop_conditions": [
     "fresh exact v3 approval and authority are absent, stale, mismatched, expired, consumed, or not independently audited",
-    "the exact release tag exists before mutation, cannot be created once without force, does not read back to the newly pinned clean source commit, or any other Git ref mutation would be required",
+    "the exact release tag exists before mutation, cannot be created once without force, does not read back to e737eac44458a04c7de47a0f3f42d82cb9506d47, or any other Git ref mutation would be required",
     "the exact approval branch commit cannot be pushed without force or remote equality cannot be proved",
     "source, proposal, approval, authority, tool, workflow-run, image, model, account, volume, endpoint, template, Worker, Workflow, R2, route, config, secret-set, database ledger, exact role, ACL, RLS, GPU, region, rate, billing, cap, or inventory drift or uncertainty",
     "RTX4090 EU-RO-1 is below LOW availability or Serverless Flex exceeds USD 1.10/GPU-hour at any mutation boundary; no fallback",
@@ -304,12 +307,12 @@
     "user cancellation"
   ],
   "approval_request": {
-    "requested_exact_action": "No approval requested for these blocked draft bytes; after a new clean source commit and reseal, approve only the final exact v3 proposal sha256 for one single-use ordered execution including exactly one new immutable release tag and exact database roles",
+    "requested_exact_action": "Approve this exact v3 proposal sha256 for one single-use ordered execution including exactly one new immutable release tag and exact database roles",
     "requested_maximum_cumulative_finite_runpod_spend_usd": 17.5,
     "requested_exact_phase_caps_usd": [4.5, 1, 2, 2, 4, 2, 2],
     "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, at or below USD 1.10/GPU-hour, no fallback",
     "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
-    "requested_exact_git_ref_mutation": "After source commit and reseal, create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to the exact newly pinned clean source commit without force, then prove exact remote readback",
+    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to exact commit e737eac44458a04c7de47a0f3f42d82cb9506d47 without force, then prove exact remote readback",
     "requested_exact_database_roles": ["videoforge_hosted_runtime", "videoforge_hosted_reconciler"],
     "authority_becomes_executable_only_after_exact_hash_and_commit_approval_is_recorded": true
   }
