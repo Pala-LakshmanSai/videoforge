@@ -12,7 +12,9 @@ import {
   completeCleanupOnly,
   completePhase,
   enterCleanupOnly,
+  PHASES,
   recordCleanupProof,
+  recordSettledResult,
   recordVerifiedReleaseRef,
   settleWork,
   settleCleanupWork,
@@ -32,6 +34,7 @@ const EXECUTOR_SHA256 = `sha256:${createHash("sha256")
   .digest("hex")}`;
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const PREQUALIFICATION_SCHEMA =
   "videoforge.v213-prequalification-database-bootstrap-result/v1";
 const PREQUALIFICATION_RECOVERY_MODES = new Set([
@@ -41,13 +44,13 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:706214cdb77574adb8ebd3b0166ef6f04b98492de9ef01e1cd092fd3ba0e635d",
+    "sha256:d0373598f0044527d194107c04d1a124e9f6124f4fa952957ee1ad98efb8fa6a",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:acb5e297264ba9059302bd9a7f8b372494726aa4f409ab03fb6da8a2acff4dd9",
+    "sha256:56ed1aa3e729c30d35a5432c3931305d3bc65d4aefd601b021a8c5064dfc450d",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:2b1a5b2fd5a257b2156ca4f66af6f30b2179ee06056e03907c9f71b73c334003",
+    "sha256:7d10c80918b2f47fac9f9732720c66580427f0c7aac6bde72fbb32cd27769b43",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
@@ -93,6 +96,11 @@ const OPERATIONS = Object.freeze([
   {
     phase: "max_one_control_plane_and_guarded_activation",
     id: "promote-qualified-production",
+    reserveUsd: 0,
+  },
+  {
+    phase: "max_one_control_plane_and_guarded_activation",
+    id: "record-workflow-start-authority",
     reserveUsd: 0,
   },
   { phase: "v2_09_short_hosted_project", id: "v2-09-short-hosted-project", reserveUsd: 2 },
@@ -267,6 +275,17 @@ function assertResult(operation, result, state, results) {
       !HASH.test(result.databasePromotionSha256 ?? ""))
   )
     fail("QUALIFIED_PROMOTION_READBACK", operation.id);
+  if (operation.id === "record-workflow-start-authority") {
+    if (
+      JSON.stringify(Object.keys(result).sort()) !==
+        JSON.stringify(["actualUsd", "authorityId", "expiresAt", "tokenSha256"].sort()) ||
+      !UUID.test(result.authorityId ?? "") ||
+      !HASH.test(result.tokenSha256 ?? "") ||
+      typeof result.expiresAt !== "string" ||
+      Number.isNaN(Date.parse(result.expiresAt))
+    )
+      fail("WORKFLOW_START_AUTHORITY_READBACK", operation.id);
+  }
   if (operation.id === "create-exact-max-one-endpoints") {
     if (
       result.createdExactTwoEndpoints !== true ||
@@ -331,13 +350,32 @@ async function executeFullLive({
   statePath,
   expectedStateSha256,
   runOperation,
+  runCleanupOperation,
+  runEarlyCleanupOperation,
   preflight,
   trustedTime,
+  loadSettledResult,
+  verifyMaterializationChain,
+  verifyChain,
 }) {
   if (typeof runOperation !== "function") fail("RUNNER_REQUIRED");
   if (typeof trustedTime !== "function") fail("TRUSTED_TIME_REQUIRED");
+  if (runCleanupOperation !== undefined && typeof runCleanupOperation !== "function")
+    fail("CLEANUP_RUNNER_CONTRACT");
+  if (runEarlyCleanupOperation !== undefined && typeof runEarlyCleanupOperation !== "function")
+    fail("EARLY_CLEANUP_RUNNER_CONTRACT");
+  if (preflight !== undefined && typeof preflight !== "function") fail("PREFLIGHT_CONTRACT");
+  if (loadSettledResult !== undefined && typeof loadSettledResult !== "function")
+    fail("SETTLED_RESULT_LOADER_CONTRACT");
+  const chainVerifier = verifyMaterializationChain ?? verifyChain;
+  if (chainVerifier !== undefined && typeof chainVerifier !== "function")
+    fail("CHAIN_VERIFIER_CONTRACT");
   let current = { state: null, sha256: expectedStateSha256 };
   const results = new Map();
+  // A settled bootstrap receipt is the durable boundary proving the operator role/ACL.  Do not
+  // infer that boundary from whether the initial preflight happened: bootstrap can fail after
+  // preflight, and a restarted process must derive it from settled work only.
+  let operatorRoleVerified = false;
   const first = OPERATIONS[0];
   if (!first) fail("EMPTY_GRAPH");
   current = stateMutation(statePath, current.sha256, (state) => {
@@ -349,12 +387,13 @@ async function executeFullLive({
       fail("EXECUTOR_SOURCE_DRIFT");
     return state;
   });
-  if (preflight !== undefined) {
-    if (typeof preflight !== "function") fail("PREFLIGHT_CONTRACT");
-    await preflight(structuredClone(current.state), current.sha256, {
-      cleanupOnly: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
-    });
-  }
+  if (
+    [
+      "CONSUMED_SINGLE_EXECUTION_COMPLETE",
+      "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+    ].includes(current.state.state)
+  )
+    fail("NOT_IN_PROGRESS");
 
   const begin = (phase) => {
     current = stateMutation(statePath, current.sha256, (state) => beginPhase(state, phase));
@@ -362,8 +401,122 @@ async function executeFullLive({
   const complete = (phase) => {
     current = stateMutation(statePath, current.sha256, (state) => completePhase(state, phase));
   };
+
+  const workIdFor = (operation, state = current.state) =>
+    `${state.authority_id}:${operation.id}`.toLowerCase();
+  const workFor = (operation, state = current.state) =>
+    state.phases[operation.phase]?.work?.[workIdFor(operation, state)];
+  const isSettled = (operation, state = current.state) =>
+    workFor(operation, state)?.state === "SETTLED_TERMINAL";
+
+  const durableResult = (value) => {
+    if (value === null || typeof value !== "object" || Array.isArray(value))
+      fail("RESULT_CONTRACT");
+    try {
+      const parsed = JSON.parse(JSON.stringify(value));
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+        fail("RESULT_CONTRACT");
+      return parsed;
+    } catch {
+      fail("RESULT_NOT_SERIALIZABLE");
+    }
+  };
+
+  const checkTrustedTime = async () => {
+    const trustedIso = await trustedTime(structuredClone(current.state));
+    const trustedMs = Date.parse(trustedIso ?? "");
+    if (
+      Number.isNaN(trustedMs) ||
+      trustedMs < Date.parse(current.state.approved_at) ||
+      trustedMs > Date.parse(current.state.expires_at)
+    )
+      fail("TRUSTED_TIME_EXPIRED_OR_FORGED");
+  };
+
+  let earlyCleanupFailure = false;
+
+  const verifyChainAtBoundary = async (operation, boundary) => {
+    if (chainVerifier === undefined) return;
+    await chainVerifier(
+      structuredClone(current.state),
+      new Map(results),
+      {
+        operation: structuredClone(operation),
+        boundary,
+        outerStateSha256: current.sha256,
+        settledResultSha256:
+          current.state.phases[operation.phase]?.work?.[workIdFor(operation)]
+            ?.settled_result_sha256,
+      },
+    );
+  };
+
+  // Rebuild the in-memory predecessor map in graph order before any resumed adapter is called.
+  // Settled work is terminal: a missing durable result is a hard stop, never a reason to invoke
+  // the adapter again. A deployment may provide a separate read-only result store for states
+  // written by an older executor that did not embed the result, but it must return the exact
+  // operation result and is persisted back through the state CAS below.
+  const hydrateSettledResults = async () => {
+    for (const operation of OPERATIONS) {
+      const existing = workFor(operation);
+      if (existing?.state !== "SETTLED_TERMINAL") continue;
+      let prior = existing.settled_result;
+      if (prior === undefined && loadSettledResult !== undefined) {
+        prior = await loadSettledResult({
+          operation: structuredClone(operation),
+          state: structuredClone(current.state),
+          workId: workIdFor(operation),
+          work: structuredClone(existing),
+          outerStateSha256: current.sha256,
+        });
+        prior = durableResult(prior);
+        const loaded = assertResult(operation, prior, current.state, results);
+        current = stateMutation(statePath, current.sha256, (state) =>
+          recordSettledResult(state, {
+            phaseName: operation.phase,
+            workId: workIdFor(operation),
+            result: loaded,
+          }),
+        );
+        prior = loaded;
+      }
+      if (prior === undefined) fail("SETTLED_RESULT_UNAVAILABLE", operation.id);
+      const result = assertResult(operation, durableResult(prior), current.state, results);
+      results.set(operation.id, result);
+      if (operation.id === "bootstrap-prequalification-database") operatorRoleVerified = true;
+      await verifyChainAtBoundary(operation, "hydrated");
+    }
+  };
+
   const runOne = async (operation) => {
-    const workId = `${current.state.authority_id}:${operation.id}`.toLowerCase();
+    const workId = workIdFor(operation);
+    const existing = workFor(operation);
+    if (existing?.state === "SETTLED_TERMINAL") {
+      let prior = results.get(operation.id) ?? existing.settled_result;
+      if (prior === undefined && loadSettledResult !== undefined) {
+        prior = await loadSettledResult({
+          operation: structuredClone(operation),
+          state: structuredClone(current.state),
+          workId,
+          work: structuredClone(existing),
+          outerStateSha256: current.sha256,
+        });
+        prior = durableResult(prior);
+        const loaded = assertResult(operation, prior, current.state, results);
+        current = stateMutation(statePath, current.sha256, (state) =>
+          recordSettledResult(state, { phaseName: operation.phase, workId, result: loaded }),
+        );
+        prior = loaded;
+      }
+      if (prior === undefined) fail("SETTLED_RESULT_UNAVAILABLE", operation.id);
+      const result = assertResult(operation, durableResult(prior), current.state, results);
+      results.set(operation.id, result);
+      if (operation.id === "bootstrap-prequalification-database") operatorRoleVerified = true;
+      await verifyChainAtBoundary(operation, "settled");
+      return result;
+    }
+    if (existing?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE")
+      fail("REDISPATCH_FORBIDDEN", operation.id);
     current = stateMutation(statePath, current.sha256, (state) => {
       const event = eventId(state.authority_id, operation.id, "reserved");
       if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
@@ -377,13 +530,30 @@ async function executeFullLive({
     });
     // The reservation is durably written before this call. An ambiguous exit therefore leaves a
     // non-redispatchable work ID and can proceed only to cleanup.
-    const raw = await runOperation(
+    const cleanupOnly = current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY";
+    const earlyCleanup = cleanupOnly && !operatorRoleVerified;
+    const runner =
+      earlyCleanup && runEarlyCleanupOperation !== undefined
+        ? runEarlyCleanupOperation
+        : cleanupOnly && runCleanupOperation !== undefined
+          ? runCleanupOperation
+          : runOperation;
+    const executionContext = {
+      operationId: operation.id,
+      cleanupOnly,
+      earlyFailure: earlyCleanup,
+      endpointFree: earlyCleanup,
+      operatorRoleVerified,
+      resumed: existing !== undefined,
+    };
+    const raw = await runner(
       operation,
       structuredClone(current.state),
       new Map(results),
       current.sha256,
+      executionContext,
     );
-    const result = assertResult(operation, raw, current.state, results);
+    const result = assertResult(operation, durableResult(raw), current.state, results);
     if (operation.id === "release-tag-readback") {
       current = stateMutation(statePath, current.sha256, (state) =>
         recordVerifiedReleaseRef(state, {
@@ -396,56 +566,113 @@ async function executeFullLive({
     current = stateMutation(statePath, current.sha256, (state) => {
       const event = eventId(state.authority_id, operation.id, "settled");
       if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
-        return settleCleanupWork(state, { workId, eventId: event });
+        return settleCleanupWork(state, { workId, eventId: event, result });
       return settleWork(state, {
         phaseName: operation.phase,
         workId,
         actualUsd: result.actualUsd,
         eventId: event,
+        result,
       });
     });
     results.set(operation.id, result);
+    await verifyChainAtBoundary(operation, "settled");
+    return result;
   };
 
-  let activePhase = null;
   const resumedCleanupOnly = current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY";
+  if (resumedCleanupOnly) {
+    // Hydrate before selecting the cleanup seam.  A restart must not widen a cleanup-only child
+    // merely because its in-memory predecessor map started empty.
+    await hydrateSettledResults();
+    earlyCleanupFailure = !operatorRoleVerified;
+  }
   if (!resumedCleanupOnly) {
     try {
-      for (const operation of OPERATIONS.filter(
-        (item) => item.phase !== "cleanup_and_reconciliation",
-      )) {
-        const trustedIso = await trustedTime(structuredClone(current.state));
-        const trustedMs = Date.parse(trustedIso ?? "");
+      await hydrateSettledResults();
+      if (preflight !== undefined)
+        await preflight(structuredClone(current.state), current.sha256, {
+          cleanupOnly: false,
+          earlyFailure: false,
+          endpointFree: false,
+          operatorRoleVerified,
+          bootstrapOnly: true,
+          operatorOnly: false,
+          initial: true,
+          staged: false,
+          requireEndpointSecrets: false,
+        });
+      const normalPhases = [
+        ...new Set(
+          OPERATIONS.filter((operation) => operation.phase !== "cleanup_and_reconciliation").map(
+            (operation) => operation.phase,
+          ),
+        ),
+      ];
+      for (const phaseName of normalPhases) {
+        const phase = current.state.phases[phaseName];
+        if (phase?.state === "COMPLETE") continue;
+        const expectedPhaseIndex = PHASES.findIndex(([name]) => name === phaseName);
         if (
-          Number.isNaN(trustedMs) ||
-          trustedMs < Date.parse(current.state.approved_at) ||
-          trustedMs > Date.parse(current.state.expires_at)
+          expectedPhaseIndex < 0 ||
+          current.state.current_phase_index !== expectedPhaseIndex ||
+          !phase
         )
-          fail("TRUSTED_TIME_EXPIRED_OR_FORGED");
-        if (operation.phase !== activePhase) {
-          if (activePhase !== null) complete(activePhase);
-          begin(operation.phase);
-          activePhase = operation.phase;
+          fail("PHASE_ORDER");
+        if (phase.state === "PENDING") begin(phaseName);
+        else if (phase.state !== "ACTIVE") fail("PHASE_ORDER");
+        for (const operation of OPERATIONS.filter((item) => item.phase === phaseName)) {
+          if (!isSettled(operation)) await checkTrustedTime();
+          await runOne(operation);
+          if (operation.id === "fresh-live-preflight" && preflight !== undefined) {
+            await checkTrustedTime();
+            await preflight(structuredClone(current.state), current.sha256, {
+              cleanupOnly: false,
+              earlyFailure: false,
+              endpointFree: false,
+              operatorRoleVerified,
+              bootstrapOnly: false,
+              operatorOnly: false,
+              initial: false,
+              staged: true,
+              requireEndpointSecrets: false,
+            });
+          }
         }
-        await runOne(operation);
+        if (current.state.phases[phaseName].state === "ACTIVE") complete(phaseName);
       }
-      if (activePhase !== null) complete(activePhase);
-      begin("cleanup_and_reconciliation");
+      const cleanupPhase = current.state.phases.cleanup_and_reconciliation;
+      if (cleanupPhase.state === "PENDING") begin("cleanup_and_reconciliation");
+      else if (cleanupPhase.state !== "ACTIVE") fail("PHASE_ORDER");
     } catch (error) {
-      current = stateMutation(statePath, current.sha256, (state) =>
-        enterCleanupOnly(state, {
-          failureCode: "FULL_LIVE_OPERATION_FAILED",
-          eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
-        }),
-      );
-      results.set("failure", { message: error instanceof Error ? error.message : String(error) });
+      if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
+        earlyCleanupFailure = !operatorRoleVerified;
+        current = stateMutation(statePath, current.sha256, (state) =>
+          enterCleanupOnly(state, {
+            failureCode: "FULL_LIVE_OPERATION_FAILED",
+            eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
+          }),
+        );
+        results.set("failure", { message: error instanceof Error ? error.message : String(error) });
+      } else throw error;
     }
+  } else {
+    if (preflight !== undefined)
+      await preflight(structuredClone(current.state), current.sha256, {
+        cleanupOnly: true,
+        earlyFailure: earlyCleanupFailure,
+        endpointFree: earlyCleanupFailure,
+        operatorRoleVerified,
+        bootstrapOnly: false,
+        operatorOnly: true,
+        initial: true,
+        staged: false,
+        requireEndpointSecrets: false,
+      });
   }
 
   try {
-    for (const operation of OPERATIONS.filter(
-      (item) => item.phase === "cleanup_and_reconciliation",
-    ))
+    for (const operation of OPERATIONS.filter((item) => item.phase === "cleanup_and_reconciliation"))
       await runOne(operation);
 
     const zero = results.get("prove-zero-workers");
@@ -488,7 +715,13 @@ async function executeFullLive({
     }
     throw error;
   }
-  return { ...current, results, failed: results.has("failure") };
+  return {
+    ...current,
+    results,
+    failed:
+      results.has("failure") ||
+      current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+  };
 }
 
 function parseArgs(argv) {
@@ -521,6 +754,20 @@ async function main() {
   const statePath = resolve(ROOT, args.get("state-file") ?? "");
   const expectedStateSha256 = args.get("expected-state-sha256");
   if (!HASH.test(expectedStateSha256 ?? "")) fail("EXPECTED_STATE_SHA256");
+  const runConcreteOperation = async (
+    operation,
+    state,
+    priorResults,
+    outerStateSha256,
+    executionContext,
+  ) =>
+    CONCRETE_LIVE_ADAPTERS[operation.id](
+      { ROOT, operation, state, priorResults, outerStateSha256, ...executionContext },
+      state,
+      priorResults,
+      outerStateSha256,
+      executionContext,
+    );
   const result = await executeFullLive({
     statePath,
     expectedStateSha256,
@@ -528,17 +775,15 @@ async function main() {
       preflightConcreteFullLiveInputs({
         state,
         cleanupOnly: mode.cleanupOnly,
-        bootstrapOnly: !mode.cleanupOnly,
+        bootstrapOnly: mode.bootstrapOnly === true,
+        operatorOnly: mode.operatorOnly === true,
+        requireEndpointSecrets: mode.requireEndpointSecrets === true,
         allowUnmaterializedProductionInput: true,
       }),
     trustedTime: () => readAuthenticatedGithubTime(),
-    runOperation: async (operation, state, priorResults, outerStateSha256) =>
-      CONCRETE_LIVE_ADAPTERS[operation.id](
-        { ROOT, operation, state, priorResults, outerStateSha256 },
-        state,
-        priorResults,
-        outerStateSha256,
-      ),
+    runOperation: runConcreteOperation,
+    runCleanupOperation: runConcreteOperation,
+    runEarlyCleanupOperation: runConcreteOperation,
   });
   process.stdout.write(
     `${JSON.stringify({ state_file: statePath, state_sha256: result.sha256, state: result.state.state, failed: result.failed })}\n`,

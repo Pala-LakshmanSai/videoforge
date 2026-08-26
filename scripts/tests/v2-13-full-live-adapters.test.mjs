@@ -16,8 +16,10 @@ import test from "node:test";
 import {
   closedTrustedTimeCommand,
   createConcreteFullLiveAdapters,
+  createPrequalificationDatabaseBootstrapAdapter,
   createGitReleaseAdapters,
   createGuardedActivationAdapter,
+  createWorkflowStartAuthorityAdapter,
   createProtectedInputMaterializer,
   createStagedQualificationAdapters,
   createTypeScriptBridgeAdapters,
@@ -25,6 +27,7 @@ import {
   createV213DurableStageStore,
   createGithubDispatchAdapters,
   createGithubVerificationAdapters,
+  PREQUALIFICATION_OPERATOR_FUNCTIONS,
   readAuthenticatedGithubTime,
   TAG,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
@@ -527,6 +530,7 @@ test("concrete catalog exposes publication, guarded activation, and the protecte
     "prove-zero-workers",
     "read-settled-billing",
     "reconcile-exact-resources",
+    "record-workflow-start-authority",
     "release-tag-create",
     "release-tag-push",
     "release-tag-readback",
@@ -540,6 +544,167 @@ test("concrete catalog exposes publication, guarded activation, and the protecte
     "v2-12-long-output",
     "v2-13-final-two-lane-smoke",
   ]);
+});
+
+test("workflow-start authority adapter records one exact operator function call and returns no token", async () => {
+  const input = {
+    workflowAuthorityId: "11111111-1111-4111-8111-111111111111",
+    authorityId: "22222222-2222-4222-8222-222222222222",
+    tokenSha256: `sha256:${"a".repeat(64)}`,
+    expiresAt: "2026-08-26T12:00:00.000Z",
+  };
+  const calls = [];
+  const database = {
+    async query(sql, parameters) {
+      calls.push({ sql, parameters });
+      assert.equal(
+        sql,
+        "SELECT public.videoforge_record_v213_workflow_start_authority($1::uuid,$2::uuid,$3,$4::timestamptz) AS authority",
+      );
+      assert.deepEqual(parameters, [
+        input.workflowAuthorityId,
+        input.authorityId,
+        input.tokenSha256,
+        input.expiresAt,
+      ]);
+      return {
+        rows: [
+          {
+            authority: {
+              authorityId: input.workflowAuthorityId,
+              tokenSha256: input.tokenSha256,
+              expiresAt: input.expiresAt,
+            },
+          },
+        ],
+      };
+    },
+  };
+  const adapter = createWorkflowStartAuthorityAdapter({ database, input });
+  const resultValue = await adapter({}, {}, new Map());
+  assert.equal(calls.length, 1);
+  assert.deepEqual(resultValue, {
+    actualUsd: 0,
+    authorityId: input.workflowAuthorityId,
+    tokenSha256: input.tokenSha256,
+    expiresAt: input.expiresAt,
+  });
+});
+
+test("prequalification bootstrap executes the exact manifest tail through a locked fake-psql seam", async () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-prequalification-test-"));
+  chmodSync(directory, 0o700);
+  const servicePath = resolve(directory, "owner.pg_service.conf");
+  const passPath = resolve(directory, "owner.pgpass");
+  const operatorPath = resolve(directory, "operator.database-url");
+  writeFileSync(
+    servicePath,
+    "[videoforge_v2_13_owner]\nhost=example.neon.tech\ndbname=videoforge\nuser=videoforge_owner\nsslmode=require\nchannel_binding=require\n",
+    { mode: 0o600 },
+  );
+  writeFileSync(passPath, "example.neon.tech:5432:videoforge:videoforge_owner:owner-password\n", {
+    mode: 0o600,
+  });
+  writeFileSync(
+    operatorPath,
+    "postgresql://videoforge_hosted_operator:operator-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require",
+    { mode: 0o600 },
+  );
+  const manifest = JSON.parse(
+    readFileSync("packages/control-plane/migrations/manifest.json", "utf8"),
+  );
+  const rows = (count) =>
+    manifest.migrations
+      .slice(0, count)
+      .map(({ version, name, filename, sha256 }) => `${version}\t${name}\t${filename}\t${sha256}`)
+      .join("\n");
+  const role = {
+    flags: {
+      rolcanlogin: true,
+      rolsuper: false,
+      rolcreaterole: false,
+      rolcreatedb: false,
+      rolinherit: false,
+      rolreplication: false,
+      rolbypassrls: false,
+      rolconfig: null,
+    },
+    memberships: 0,
+    ownership: 0,
+    extension_ownership: 0,
+    database_acl: 0,
+    effective_database_dangerous_acl: 0,
+    schema_acl: ["public:USAGE"],
+    effective_schema_dangerous_acl: 0,
+    table_acl: 0,
+    effective_table_acl: 0,
+    sequence_acl: 0,
+    effective_sequence_acl: 0,
+    default_acl: 0,
+    function_acl: [...PREQUALIFICATION_OPERATOR_FUNCTIONS].sort(),
+    public_function_acl: [],
+    public_default_function_acl: 0,
+  };
+  const migrationSqls = [];
+  const calls = [];
+  let lockedLedgerReads = 0;
+  const run = (command, args) => {
+    calls.push([command, args]);
+    assert.equal(command, "psql");
+    const fileIndex = args.indexOf("--file");
+    if (fileIndex >= 0) {
+      const path = args[fileIndex + 1];
+      if (path.endsWith("neon-full-live-operator-grants.sql")) return result();
+      const sql = readFileSync(path, "utf8");
+      migrationSqls.push(sql);
+      return result();
+    }
+    const sql = args[args.indexOf("--command") + 1] ?? "";
+    if (sql.includes("CREATE EXTENSION IF NOT EXISTS pgcrypto")) return result();
+    if (sql.includes("CREATE ROLE")) return result();
+    if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock")) {
+      lockedLedgerReads += 1;
+      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 45)}\n`);
+    }
+    if (sql.includes("rolname IN")) return result(0, "0\n");
+    if (sql.includes("count(*)::text FROM pg_roles")) return result(0, "0\n");
+    if (sql.includes("FROM pg_extension WHERE extname='pgcrypto'"))
+      return result(0, '{"name":"pgcrypto","version":"1.3","schema":"public"}\n');
+    if (sql.includes("json_build_object('flags'")) return result(0, `${JSON.stringify(role)}\n`);
+    throw new Error(`unexpected fake psql SQL: ${sql.slice(0, 120)}`);
+  };
+  try {
+    const adapter = createPrequalificationDatabaseBootstrapAdapter({
+      environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+      run,
+    });
+    const output = await adapter({}, state);
+    assert.equal(output.actualUsd, 0);
+    assert.equal(output.recovery_mode, "FRESH_36_TO_45");
+    assert.equal(output.ledger_before_count, 36);
+    assert.equal(output.runpod_calls, 0);
+    assert.equal(output.cloudflare_calls, 0);
+    assert.equal(output.application_secret_reads, 0);
+    assert.equal(output.gpu_use, false);
+    assert.equal(output.external_spend_usd, 0);
+    assert.equal(lockedLedgerReads, 2);
+    assert.equal(migrationSqls.length, 9);
+    for (const [index, sql] of migrationSqls.entries()) {
+      assert.match(sql, /BEGIN;/u);
+      assert.match(sql, /pg_advisory_xact_lock\(1448494662,1\)/u);
+      assert.match(sql, new RegExp(`version=${37 + index}`));
+      assert.match(sql, /migration ledger prefix drift/u);
+      assert.match(sql, /INSERT INTO public\.videoforge_schema_migrations/u);
+    }
+    const receiptPath = resolve(directory, "prequalification-database-bootstrap.json");
+    const receipt = JSON.parse(readFileSync(receiptPath, "utf8"));
+    assert.equal(receipt.recovery_mode, "FRESH_36_TO_45");
+    assert.equal(receipt.ledger_before_count, 36);
+    assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
+    assert.equal(calls.every(([command]) => command === "psql"), true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("global preflight excludes future artifacts and stage adapters validate them at first use", () => {
@@ -796,7 +961,6 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
   const directory = mkdtempSync(resolve(tmpdir(), "v213-cleanup-descriptor-test-"));
   chmodSync(directory, 0o700);
   const seedPath = resolve(directory, "seed.json");
-  const secretsPath = resolve(directory, "production-secrets.json");
   const outputPath = resolve(directory, "production-input.json");
   const chainPath = resolve(directory, "chain.json");
   const seed = {
@@ -816,13 +980,11 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
     promotion_record_base: {},
   };
   writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
-  writeFileSync(secretsPath, `${JSON.stringify(preEndpointSecrets())}\n`, { mode: 0o600 });
   const materialize = createProtectedInputMaterializer({
     environment: {
       VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: seedPath,
       VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE: chainPath,
       VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE: outputPath,
-      VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE: secretsPath,
     },
     validateProduction: () => JSON.parse(readFileSync(outputPath, "utf8")),
   });
@@ -841,16 +1003,13 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
       priorResults: new Map(),
       outerStateSha256: `sha256:${"5".repeat(64)}`,
     });
-    const secrets = JSON.parse(readFileSync(secretsPath, "utf8"));
-    assert.equal(secrets.schemaVersion, "videoforge.v213-full-live-pre-endpoint-secrets/v1");
-    assert.equal("mageEndpointId" in secrets, false);
-    assert.equal("soulxEndpointId" in secrets, false);
+    assert.equal(lstatSync(outputPath).mode & 0o777, 0o600);
     const chain = JSON.parse(readFileSync(chainPath, "utf8"));
     assert.equal(chain.entries.length, 1);
     assert.equal(chain.entries[0].kind, "cleanup-pre-endpoint-descriptor");
     assert.deepEqual(
       chain.entries[0].ordered_output_sha256s.map(([name]) => name),
-      ["cleanup_input_sha256", "pre_endpoint_secrets_sha256"],
+      ["cleanup_input_sha256"],
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });

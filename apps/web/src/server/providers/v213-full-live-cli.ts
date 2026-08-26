@@ -57,6 +57,7 @@ const MAX_PROTECTED_BYTES = 2 * 1024 * 1024;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,190}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
+const OPERATOR_DATABASE_ROLE = "videoforge_hosted_operator";
 
 export function summarizeV213EndpointRestoration(result: V213AttributableCleanupResult): JsonValue {
   return {
@@ -373,6 +374,67 @@ function readProtectedFd(value: string | undefined, code: string): string {
   return bytes.toString("utf8");
 }
 
+function operatorDatabaseUrlSha256(value: string): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+}
+
+/**
+ * Parse the only database URL allowed across a cleanup/prequalification process boundary. The
+ * URL is deliberately checked here, before a pool/client can be constructed: a postgres-looking
+ * string is not enough because a runtime/reconciler principal, an unencrypted connection, or a
+ * different host/database would widen the cleanup authority. The returned fingerprint is the
+ * exact protected-file byte identity and is safe to carry as evidence.
+ */
+function exactOperatorDatabaseUrl(
+  value: string,
+  expected: Readonly<{
+    host?: string;
+    database?: string;
+    sha256?: string;
+  }> = {},
+): Readonly<{ url: string; host: string; database: string; sha256: `sha256:${string}` }> {
+  if (value.trim() !== value || value.length === 0 || value.includes("\0"))
+    fail("OPERATOR_DATABASE_URL_INVALID");
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    fail("OPERATOR_DATABASE_URL_INVALID");
+  }
+  const sslModes = parsed.searchParams.getAll("sslmode");
+  const channelBindings = parsed.searchParams.getAll("channel_binding");
+  let username: string;
+  let database: string;
+  try {
+    username = decodeURIComponent(parsed.username);
+    database = decodeURIComponent(parsed.pathname.slice(1));
+  } catch {
+    fail("OPERATOR_DATABASE_URL_INVALID");
+  }
+  const fingerprint = operatorDatabaseUrlSha256(value);
+  if (
+    !["postgres:", "postgresql:"].includes(parsed.protocol) ||
+    parsed.hostname === "" ||
+    parsed.port !== "" ||
+    username !== OPERATOR_DATABASE_ROLE ||
+    parsed.password === "" ||
+    parsed.hash !== "" ||
+    parsed.pathname === "/" ||
+    database === "" ||
+    database.includes("/") ||
+    parsed.searchParams.size !== 2 ||
+    sslModes.length !== 1 ||
+    sslModes[0] !== "require" ||
+    channelBindings.length !== 1 ||
+    channelBindings[0] !== "require" ||
+    (expected.host !== undefined && parsed.hostname !== expected.host) ||
+    (expected.database !== undefined && database !== expected.database) ||
+    (expected.sha256 !== undefined && fingerprint !== expected.sha256)
+  )
+    fail("OPERATOR_DATABASE_URL_BINDING");
+  return Object.freeze({ url: value, host: parsed.hostname, database, sha256: fingerprint });
+}
+
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 
 function productionSecrets(
@@ -591,21 +653,22 @@ export function readV213PrequalificationProtectedInputs(
     environment[V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd],
     "OPERATOR_DATABASE_FD_INVALID",
   );
-  let parsedOperator: URL;
-  try {
-    parsedOperator = new URL(operatorDatabaseUrl);
-  } catch {
-    fail("PREQUALIFICATION_OPERATOR_DATABASE_INVALID");
-  }
   if (
     runpodApiKey.trim() !== runpodApiKey ||
-    runpodApiKey.length < 20 ||
-    operatorDatabaseUrl.trim() !== operatorDatabaseUrl ||
-    !["postgres:", "postgresql:"].includes(parsedOperator.protocol) ||
-    parsedOperator.hostname === "" ||
-    parsedOperator.pathname === "/"
+    runpodApiKey.length < 20
   )
     fail("PREQUALIFICATION_PROTECTED_INPUT_INVALID");
+  try {
+    exactOperatorDatabaseUrl(operatorDatabaseUrl);
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) {
+      if (error.code === "OPERATOR_DATABASE_URL_INVALID")
+        fail("PREQUALIFICATION_OPERATOR_DATABASE_INVALID");
+      if (error.code === "OPERATOR_DATABASE_URL_BINDING")
+        fail("PREQUALIFICATION_OPERATOR_DATABASE_INVALID");
+    }
+    throw error;
+  }
   return Object.freeze({ request, runpodApiKey, operatorDatabaseUrl });
 }
 
@@ -682,13 +745,20 @@ export function readV213CleanupProtectedInputs(
     environment[V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd],
     "OPERATOR_DATABASE_FD_INVALID",
   );
-  if (
-    runpodApiKey.trim() !== runpodApiKey ||
-    runpodApiKey.length < 20 ||
-    operatorDatabaseUrl.trim() !== operatorDatabaseUrl ||
-    !operatorDatabaseUrl.startsWith("postgres")
-  )
+  if (runpodApiKey.trim() !== runpodApiKey || runpodApiKey.length < 20)
     fail("CLEANUP_PROTECTED_INPUT_INVALID");
+  try {
+    exactOperatorDatabaseUrl(operatorDatabaseUrl);
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) {
+      if (
+        error.code === "OPERATOR_DATABASE_URL_INVALID" ||
+        error.code === "OPERATOR_DATABASE_URL_BINDING"
+      )
+        fail("CLEANUP_OPERATOR_DATABASE_INVALID");
+    }
+    throw error;
+  }
   return Object.freeze({ request, runpodApiKey, operatorDatabaseUrl, cleanupInput });
 }
 

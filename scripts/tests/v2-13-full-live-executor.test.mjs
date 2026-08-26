@@ -132,6 +132,12 @@ function fakeResult(operation, state, priorResults) {
       versionSha256: proof("2"),
       databasePromotionSha256: proof("3"),
     });
+  if (operation.id === "record-workflow-start-authority")
+    Object.assign(result, {
+      authorityId: "11111111-1111-4111-8111-111111111111",
+      tokenSha256: proof("6"),
+      expiresAt: "2026-08-27T00:00:00.000Z",
+    });
   if (operation.id === "create-exact-max-one-endpoints")
     Object.assign(result, {
       createdExactTwoEndpoints: true,
@@ -195,25 +201,26 @@ test("execute mode has a closed concrete catalog and requires exact state bindin
   assert.doesNotMatch(result.stderr, /STATE_FILE|ENOENT/u);
 });
 
-test("global protected-input preflight fails before any operation runner", async () => {
+test("global protected-input preflight enters endpoint-free cleanup before normal operations", async () => {
   const fixture = stateFixture();
   let calls = 0;
   try {
-    await assert.rejects(
-      executeFullLive({
-        statePath: fixture.path,
-        expectedStateSha256: fixture.sha256,
-        preflight: async () => {
-          throw new Error("PROTECTED_INPUT_MISSING");
-        },
-        runOperation: async () => {
-          calls += 1;
-          throw new Error("must not run");
-        },
-      }),
-      /PROTECTED_INPUT_MISSING/u,
-    );
+    const result = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      preflight: async (_state, _sha256, mode) => {
+        if (mode.initial) throw new Error("PROTECTED_INPUT_MISSING");
+      },
+      runOperation: async () => {
+        calls += 1;
+        throw new Error("must not run");
+      },
+      runCleanupOperation: async (operation, state, priorResults) =>
+        fakeResult(operation, state, priorResults),
+    });
     assert.equal(calls, 0);
+    assert.equal(result.failed, true);
+    assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
   } finally {
     rmSync(fixture.directory, { recursive: true, force: true });
   }
@@ -376,6 +383,65 @@ test("cleanup failure is durably cleanup-only and the ambiguous work is never re
     );
     assert.equal(called.filter((id) => id === "prove-zero-workers").length, 1);
     assert.equal(called.includes("read-settled-billing"), false);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("restart hydrates settled cleanup evidence and runs only unsettled cleanup work", async () => {
+  const fixture = stateFixture();
+  const firstCalled = [];
+  let interruptAfterBilling = true;
+  try {
+    await assert.rejects(
+      executeFullLive({
+        statePath: fixture.path,
+        expectedStateSha256: fixture.sha256,
+        runOperation: async (operation, state, priorResults) => {
+          firstCalled.push(operation.id);
+          return fakeResult(operation, state, priorResults);
+        },
+        verifyChain: async (_state, _prior, context) => {
+          if (interruptAfterBilling && context.operation.id === "read-settled-billing") {
+            interruptAfterBilling = false;
+            throw new Error("lost cleanup acknowledgement");
+          }
+        },
+      }),
+      /lost cleanup acknowledgement/u,
+    );
+    const interrupted = JSON.parse(readFileSync(fixture.path, "utf8"));
+    const restore =
+      interrupted.phases.cleanup_and_reconciliation.work[
+        "v2-13-test-executor-0001:restore-endpoints-max-one"
+      ];
+    const prove =
+      interrupted.phases.cleanup_and_reconciliation.work[
+        "v2-13-test-executor-0001:prove-zero-workers"
+      ];
+    const billing =
+      interrupted.phases.cleanup_and_reconciliation.work[
+        "v2-13-test-executor-0001:read-settled-billing"
+      ];
+    assert.equal(restore.state, "SETTLED_TERMINAL");
+    assert.equal(typeof restore.settled_result_sha256, "string");
+    assert.equal(prove.state, "SETTLED_TERMINAL");
+    assert.equal(billing.state, "SETTLED_TERMINAL");
+
+    const resumedCalled = [];
+    const resumed = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: hash(readFileSync(fixture.path)),
+      runOperation: async (operation, state, priorResults) => {
+        resumedCalled.push(operation.id);
+        return fakeResult(operation, state, priorResults);
+      },
+    });
+    assert.deepEqual(resumedCalled, ["reconcile-exact-resources"]);
+    assert.equal(resumed.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
+    assert.equal(resumed.failed, true);
+    assert.equal(firstCalled.includes("restore-endpoints-max-one"), true);
+    assert.equal(firstCalled.includes("prove-zero-workers"), true);
   } finally {
     rmSync(fixture.directory, { recursive: true, force: true });
   }

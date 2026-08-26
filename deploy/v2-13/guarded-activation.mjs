@@ -48,6 +48,31 @@ const HASH = /^sha256:[0-9a-f]{64}$/u;
 const PREQUALIFICATION_SCHEMA =
   "videoforge.v213-prequalification-database-bootstrap-result/v1";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
+const PREQUALIFICATION_ADVISORY_LOCK = "1448494662,1";
+const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
+  "FRESH_36_TO_45",
+  "RESUME_EXACT_PREFIX",
+  "VERIFIED_EXISTING_45",
+]);
+const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
+  "videoforge_load_v213_bridge_acceptance_call(jsonb)",
+  "videoforge_record_v213_stage_authority(uuid,jsonb)",
+  "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+  "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+  "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+  "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+  "videoforge_claim_v213_stage_authority(jsonb)",
+  "videoforge_complete_v213_stage_authority(text,text,jsonb)",
+  "videoforge_load_v213_stage_handoff(uuid,text,text)",
+  "videoforge_load_v213_cleanup_scope(uuid)",
+  "videoforge_claim_v213_operation(jsonb)",
+  "videoforge_transition_v213_operation(jsonb)",
+  "videoforge_claim_v213_bridge_command(jsonb)",
+  "videoforge_transition_v213_bridge_command(jsonb)",
+  "videoforge_record_v213_receipt_verification_key(text,text)",
+  "videoforge_publish_v213_qualified_deployments(jsonb)",
+  "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+]);
 const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "schema_version",
   "ledger_before_count",
@@ -92,7 +117,13 @@ const canonicalJson = (value) =>
 
 function readPrequalificationReceipt(directory) {
   const path = join(directory, "prequalification-database-bootstrap.json");
-  mode(path, "file", 0o600, "prequalification database bootstrap receipt");
+  try {
+    mode(path, "file", 0o600, "prequalification database bootstrap receipt");
+  } catch (error) {
+    if (error?.code === "ENOENT")
+      fail("prequalification database bootstrap receipt is missing; manual database reconciliation required");
+    throw error;
+  }
   let value;
   try {
     value = JSON.parse(readFileSync(path, "utf8"));
@@ -104,7 +135,11 @@ function readPrequalificationReceipt(directory) {
     value.schema_version !== PREQUALIFICATION_SCHEMA ||
     ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
-    !["FRESH_36_TO_45", "RESUME_EXACT_PREFIX", "VERIFIED_EXISTING_45"].includes(value.recovery_mode) ||
+    !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
+    (value.recovery_mode === "FRESH_36_TO_45" && value.ledger_before_count !== 36) ||
+    (value.recovery_mode === "RESUME_EXACT_PREFIX" &&
+      ![37, 38, 39, 40, 41, 42, 43, 44].includes(value.ledger_before_count)) ||
+    (value.recovery_mode === "VERIFIED_EXISTING_45" && value.ledger_before_count !== 45) ||
     !HASH.test(value.ledger_after_sha256 ?? "") ||
     !HASH.test(value.operator_acl_sha256 ?? "") ||
     !HASH.test(value.pgcrypto_sha256 ?? "") ||
@@ -118,6 +153,236 @@ function readPrequalificationReceipt(directory) {
   if (value.prequalification_database_bootstrap_sha256 !== sha256(Buffer.from(`${canonicalJson(body)}\n`)))
     fail("prequalification database bootstrap receipt hash drifted");
   return Object.freeze(value);
+}
+
+const prequalificationLiteral = (value) => `'${String(value).replaceAll("'", "''")}'`;
+
+function prequalificationManifest() {
+  const directory = resolve(ROOT, "packages/control-plane/migrations");
+  const path = resolve(directory, "manifest.json");
+  const bytes = readFileSync(path);
+  let manifest;
+  try {
+    manifest = JSON.parse(bytes);
+  } catch {
+    fail("prequalification migration manifest is not valid JSON");
+  }
+  if (
+    manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
+    !Array.isArray(manifest.migrations) ||
+    manifest.migrations.length !== 45
+  )
+    fail("prequalification migration manifest is not the exact 45-row contract");
+  for (const [index, migration] of manifest.migrations.entries()) {
+    if (
+      migration?.version !== index + 1 ||
+      typeof migration.name !== "string" ||
+      typeof migration.filename !== "string" ||
+      !HASH.test(migration.sha256 ?? "") ||
+      sha256(readFileSync(resolve(directory, migration.filename))) !== migration.sha256
+    )
+      fail("prequalification migration manifest bytes drifted");
+  }
+  return Object.freeze({ manifest, bytes });
+}
+
+function prequalificationLedger(text, manifest, expectedCount = 45) {
+  const rows =
+    text === ""
+      ? []
+      : text.split(/\r?\n/u).filter(Boolean).map((line) => {
+          const fields = line.split("\t");
+          if (fields.length !== 4 || !/^\d+$/u.test(fields[0]))
+            fail("prequalification migration ledger row is malformed");
+          const row = {
+            version: Number(fields[0]),
+            name: fields[1],
+            filename: fields[2],
+            sha256: fields[3],
+          };
+          if (!Number.isSafeInteger(row.version) || !HASH.test(row.sha256))
+            fail("prequalification migration ledger row is malformed");
+          return row;
+        });
+  if (rows.length !== expectedCount) fail("prequalification migration ledger count drifted");
+  rows.forEach((row, index) => {
+    const expected = manifest.migrations[index];
+    if (
+      !expected ||
+      row.version !== expected.version ||
+      row.name !== expected.name ||
+      row.filename !== expected.filename ||
+      row.sha256 !== expected.sha256
+    )
+      fail("prequalification migration ledger manifest drifted");
+  });
+  return Object.freeze(rows);
+}
+
+function prequalificationFunctionSignatureSql(functionAlias = "p", namespaceAlias = "n") {
+  return `replace(replace(${namespaceAlias}.nspname||'.'||${functionAlias}.proname||'('||pg_get_function_identity_arguments(${functionAlias}.oid)||')',' ',''),'timestampwithtimezone','timestamptz')`;
+}
+
+function prequalificationRoleReadbackSql(role) {
+  const name = prequalificationLiteral(role);
+  const signature = prequalificationFunctionSignatureSql();
+  const functionAcl = `COALESCE((SELECT json_agg(${signature} ORDER BY ${signature}) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_roles rr ON rr.rolname=${name} WHERE n.nspname='public' AND has_function_privilege(rr.oid,p.oid,'EXECUTE')),'[]'::json)`;
+  const publicAcl = `COALESCE((SELECT json_agg(${signature} ORDER BY ${signature}) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE n.nspname='public' AND a.grantee=0 AND a.privilege_type='EXECUTE'),'[]'::json)`;
+  const publicDefaultFunctionAcl = `(SELECT count(*) FROM pg_default_acl d CROSS JOIN LATERAL aclexplode(d.defaclacl) a WHERE d.defaclobjtype='f' AND a.grantee=0 AND a.privilege_type='EXECUTE')`;
+  const effectiveDatabaseDangerousAcl = `(SELECT count(*) FROM pg_database d WHERE has_database_privilege(r.oid,d.oid,'CREATE'))`;
+  const effectiveSchemaDangerousAcl = `(SELECT count(*) FROM pg_namespace n WHERE has_schema_privilege(r.oid,n.oid,'CREATE'))`;
+  const effectiveTableAcl = `(SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ('r','p','v','m','f') AND n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND (has_table_privilege(r.oid,c.oid,'SELECT') OR has_table_privilege(r.oid,c.oid,'INSERT') OR has_table_privilege(r.oid,c.oid,'UPDATE') OR has_table_privilege(r.oid,c.oid,'DELETE') OR has_table_privilege(r.oid,c.oid,'TRUNCATE') OR has_table_privilege(r.oid,c.oid,'REFERENCES') OR has_table_privilege(r.oid,c.oid,'TRIGGER')))`;
+  const effectiveSequenceAcl = `(SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind='S' AND n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND (has_sequence_privilege(r.oid,c.oid,'USAGE') OR has_sequence_privilege(r.oid,c.oid,'SELECT') OR has_sequence_privilege(r.oid,c.oid,'UPDATE')))`;
+  return `SELECT json_build_object('flags',json_build_object('rolcanlogin',r.rolcanlogin,'rolsuper',r.rolsuper,'rolcreaterole',r.rolcreaterole,'rolcreatedb',r.rolcreatedb,'rolinherit',r.rolinherit,'rolreplication',r.rolreplication,'rolbypassrls',r.rolbypassrls,'rolconfig',r.rolconfig),'memberships',(SELECT count(*) FROM pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid),'ownership',(SELECT count(*) FROM (SELECT 1 FROM pg_database WHERE datdba=r.oid UNION ALL SELECT 1 FROM pg_extension WHERE extowner=r.oid UNION ALL SELECT 1 FROM pg_class WHERE relowner=r.oid UNION ALL SELECT 1 FROM pg_namespace WHERE nspowner=r.oid UNION ALL SELECT 1 FROM pg_proc WHERE proowner=r.oid UNION ALL SELECT 1 FROM pg_type WHERE typowner=r.oid) owned),'extension_ownership',(SELECT count(*) FROM pg_extension WHERE extowner=r.oid),'database_acl',(SELECT count(*) FROM pg_database d CROSS JOIN LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a WHERE a.grantee=r.oid),'effective_database_dangerous_acl',${effectiveDatabaseDangerousAcl},'schema_acl',COALESCE((SELECT json_agg(n.nspname||':'||a.privilege_type ORDER BY n.nspname||':'||a.privilege_type) FROM pg_namespace n CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a WHERE a.grantee=r.oid),'[]'::json),'effective_schema_dangerous_acl',${effectiveSchemaDangerousAcl},'table_acl',(SELECT count(*) FROM pg_class c CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a WHERE a.grantee=r.oid),'effective_table_acl',${effectiveTableAcl},'sequence_acl',(SELECT count(*) FROM pg_class c CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('S',c.relowner))) a WHERE a.grantee=r.oid AND c.relkind='S'),'effective_sequence_acl',${effectiveSequenceAcl},'default_acl',(SELECT count(*) FROM pg_default_acl d CROSS JOIN LATERAL aclexplode(d.defaclacl) a WHERE a.grantee=r.oid),'function_acl',${functionAcl},'public_function_acl',${publicAcl},'public_default_function_acl',${publicDefaultFunctionAcl})::text FROM pg_roles r WHERE r.rolname=${name}`;
+}
+
+function assertPrequalificationRoleExact(role) {
+  const expectedKeys = [
+    "flags",
+    "memberships",
+    "ownership",
+    "extension_ownership",
+    "database_acl",
+    "effective_database_dangerous_acl",
+    "schema_acl",
+    "effective_schema_dangerous_acl",
+    "table_acl",
+    "effective_table_acl",
+    "sequence_acl",
+    "effective_sequence_acl",
+    "default_acl",
+    "function_acl",
+    "public_function_acl",
+    "public_default_function_acl",
+  ];
+  if (
+    role === null ||
+    typeof role !== "object" ||
+    Array.isArray(role) ||
+    JSON.stringify(Object.keys(role).sort()) !== JSON.stringify([...expectedKeys].sort())
+  )
+    fail("prequalification operator ACL readback is not exact");
+  const flags = role.flags;
+  if (
+    flags === null ||
+    typeof flags !== "object" ||
+    flags.rolcanlogin !== true ||
+    flags.rolsuper !== false ||
+    flags.rolcreaterole !== false ||
+    flags.rolcreatedb !== false ||
+    flags.rolinherit !== false ||
+    flags.rolreplication !== false ||
+    flags.rolbypassrls !== false ||
+    flags.rolconfig !== null ||
+    role.memberships !== 0 ||
+    role.ownership !== 0 ||
+    role.extension_ownership !== 0 ||
+    role.database_acl !== 0 ||
+    role.effective_database_dangerous_acl !== 0 ||
+    role.effective_schema_dangerous_acl !== 0 ||
+    role.table_acl !== 0 ||
+    role.effective_table_acl !== 0 ||
+    role.sequence_acl !== 0 ||
+    role.effective_sequence_acl !== 0 ||
+    role.default_acl !== 0 ||
+    role.public_default_function_acl !== 0 ||
+    JSON.stringify(role.schema_acl) !== JSON.stringify(["public:USAGE"]) ||
+    JSON.stringify(role.function_acl) !==
+      JSON.stringify([...PREQUALIFICATION_OPERATOR_FUNCTIONS].sort()) ||
+    JSON.stringify(role.public_function_acl) !== "[]"
+  )
+    fail("prequalification operator ACL readback is not exact");
+  return role;
+}
+
+function parsePrequalificationRole(text) {
+  let role;
+  try {
+    role = JSON.parse(text);
+  } catch {
+    fail("prequalification operator ACL readback is not JSON");
+  }
+  return assertPrequalificationRoleExact(role);
+}
+
+async function verifyPrequalificationDatabase(
+  authority,
+  postgresInputDirectory,
+  { runCommand = run } = {},
+) {
+  if (typeof runCommand !== "function") fail("prequalification database verifier runner is invalid");
+  const manifestResult = prequalificationManifest();
+  if (sha256(manifestResult.bytes) !== authority.release.migration_manifest_sha256)
+    fail("prequalification migration manifest does not match authority");
+  await validateServiceFile(
+    join(postgresInputDirectory, "owner.pg_service.conf"),
+    "videoforge_v2_13_owner",
+    authority.database.host,
+    authority.database.database,
+    authority.database.owner_role,
+  );
+  const env = ownerEnvironment(postgresInputDirectory, authority);
+  const capture = (sql) =>
+    runCommand(
+      "psql",
+      [
+        "--no-psqlrc",
+        "--tuples-only",
+        "--no-align",
+        "--field-separator",
+        "\t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--command",
+        sql,
+      ],
+      { env, capture: true },
+    );
+  if (capture("SELECT current_user::text") !== authority.database.owner_role)
+    fail("prequalification database connection is not the approved owner");
+  const receipt = readPrequalificationReceipt(postgresInputDirectory);
+  const ledgerText = capture(
+    `BEGIN; SELECT pg_advisory_xact_lock(${PREQUALIFICATION_ADVISORY_LOCK}); SELECT version::text,name,filename,sha256 FROM public.videoforge_schema_migrations ORDER BY version; COMMIT;`,
+  );
+  const ledger = prequalificationLedger(ledgerText, manifestResult.manifest);
+  const ledgerAfterSha256 = sha256(Buffer.from(`${canonicalJson(ledger)}\n`));
+  if (ledgerAfterSha256 !== receipt.ledger_after_sha256)
+    fail("prequalification database ledger receipt does not match exact 45-row manifest");
+  const beforePrefix = ledger.slice(0, receipt.ledger_before_count);
+  if (
+    sha256(Buffer.from(`${canonicalJson(beforePrefix)}\n`)) !== receipt.ledger_before_sha256 ||
+    (receipt.recovery_mode === "FRESH_36_TO_45" && receipt.ledger_before_count !== 36) ||
+    (receipt.recovery_mode === "RESUME_EXACT_PREFIX" &&
+      ![37, 38, 39, 40, 41, 42, 43, 44].includes(receipt.ledger_before_count)) ||
+    (receipt.recovery_mode === "VERIFIED_EXISTING_45" && receipt.ledger_before_count !== 45)
+  )
+    fail("prequalification database receipt before-prefix hash is not exact");
+  let pgcrypto;
+  try {
+    pgcrypto = JSON.parse(
+      capture(
+        "SELECT json_build_object('name',extname,'version',extversion,'schema',extnamespace::regnamespace::text)::text FROM pg_extension WHERE extname='pgcrypto'",
+      ),
+    );
+  } catch {
+    fail("prequalification pgcrypto readback is not JSON");
+  }
+  if (
+    JSON.stringify(Object.keys(pgcrypto ?? {}).sort()) !==
+      JSON.stringify(["name", "schema", "version"]) ||
+    pgcrypto.name !== "pgcrypto" ||
+    pgcrypto.schema !== "public" ||
+    typeof pgcrypto.version !== "string" ||
+    pgcrypto.version === "" ||
+    sha256(Buffer.from(`${canonicalJson(pgcrypto)}\n`)) !== receipt.pgcrypto_sha256
+  )
+    fail("prequalification pgcrypto fingerprint is not exact");
+  const role = parsePrequalificationRole(
+    capture(prequalificationRoleReadbackSql(authority.database.operator_role)),
+  );
+  if (sha256(Buffer.from(`${canonicalJson(role)}\n`)) !== receipt.operator_acl_sha256)
+    fail("prequalification operator ACL fingerprint is not exact");
+  return Object.freeze({ receipt, ledger, pgcrypto, role });
 }
 
 function safeEnvironment(extra = {}) {
@@ -824,15 +1089,21 @@ function psql(environment, args, input) {
 
 function rolePrecheckQuery(authority) {
   const roles = `'${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}'`;
-  return `SELECT ((SELECT count(*)=0 FROM pg_roles WHERE rolname IN (${roles}))
+  // Keep the catalog names visible in this contract for audit tooling; every executable ACL
+  // expression below wraps nullable ACL columns with their PostgreSQL defaults first.
+  const aclCatalogNames = "/* aclexplode(d.datacl) aclexplode(n.nspacl) aclexplode(c.relacl) aclexplode(p.proacl) */";
+  return `SELECT ${aclCatalogNames} ((SELECT count(*)=0 FROM pg_roles WHERE rolname IN (${roles}))
 AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN (${roles}) OR granted_role.rolname IN (${roles}))
+AND NOT EXISTS (SELECT 1 FROM pg_database d JOIN pg_roles r ON r.oid=d.datdba WHERE r.rolname IN (${roles}))
+AND NOT EXISTS (SELECT 1 FROM pg_extension e JOIN pg_roles r ON r.oid=e.extowner WHERE r.rolname IN (${roles}))
 AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname IN (${roles}))
 AND NOT EXISTS (SELECT 1 FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE r.rolname IN (${roles}))
 AND NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE r.rolname IN (${roles}))
-AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_database d ON d.datname=current_database() CROSS JOIN LATERAL aclexplode(d.datacl) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
-AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_namespace n ON true CROSS JOIN LATERAL aclexplode(n.nspacl) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
-AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_class c ON c.relkind IN ('r','p','v','m','f','S') CROSS JOIN LATERAL aclexplode(c.relacl) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
-AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_proc p ON true CROSS JOIN LATERAL aclexplode(p.proacl) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+AND NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_roles r ON r.oid=t.typowner WHERE r.rolname IN (${roles}))
+AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_database d ON true CROSS JOIN LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_namespace n ON true CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_class c ON c.relkind IN ('r','p','v','m','f','S') CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_proc p ON true CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
 AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_default_acl d ON true CROSS JOIN LATERAL aclexplode(d.defaclacl) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
 AND NOT EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname IN (${roles}) AND has_database_privilege(r.oid,current_database(),'CREATE'))
 AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_namespace n ON n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' WHERE r.rolname IN (${roles}) AND has_schema_privilege(r.oid,n.oid,'CREATE'))
@@ -843,12 +1114,30 @@ AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_proc p ON true JOIN pg_namespac
 
 function runtimeReconcilerRolePrecheckQuery(authority) {
   const roles = `'${authority.database.runtime_role}','${authority.database.reconciler_role}'`;
-  return `SELECT (count(*)=0 AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN (${roles}) OR granted_role.rolname IN (${roles})))::text FROM pg_roles WHERE rolname IN (${roles});`;
+  return `SELECT (count(*)=0
+    AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN (${roles}) OR granted_role.rolname IN (${roles}))
+    AND NOT EXISTS (SELECT 1 FROM pg_database d JOIN pg_roles r ON r.oid=d.datdba WHERE r.rolname IN (${roles}))
+    AND NOT EXISTS (SELECT 1 FROM pg_extension e JOIN pg_roles r ON r.oid=e.extowner WHERE r.rolname IN (${roles}))
+    AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname IN (${roles}))
+    AND NOT EXISTS (SELECT 1 FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE r.rolname IN (${roles}))
+    AND NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE r.rolname IN (${roles}))
+    AND NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_roles r ON r.oid=t.typowner WHERE r.rolname IN (${roles}))
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_database d ON true CROSS JOIN LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_namespace n ON true CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_class c ON c.relkind IN ('r','p','v','m','f','S') CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_proc p ON true CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_default_acl d ON true CROSS JOIN LATERAL aclexplode(d.defaclacl) acl WHERE r.rolname IN (${roles}) AND acl.grantee=r.oid)
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname IN (${roles}) AND has_database_privilege(r.oid,current_database(),'CREATE'))
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_namespace n ON n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' WHERE r.rolname IN (${roles}) AND has_schema_privilege(r.oid,n.oid,'CREATE'))
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_class c ON c.relkind IN ('r','p','v','m','f') JOIN pg_namespace n ON n.oid=c.relnamespace AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' WHERE r.rolname IN (${roles}) AND (has_table_privilege(r.oid,c.oid,'SELECT') OR has_table_privilege(r.oid,c.oid,'INSERT') OR has_table_privilege(r.oid,c.oid,'UPDATE') OR has_table_privilege(r.oid,c.oid,'DELETE') OR has_table_privilege(r.oid,c.oid,'TRUNCATE') OR has_table_privilege(r.oid,c.oid,'REFERENCES') OR has_table_privilege(r.oid,c.oid,'TRIGGER')))
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_class c ON c.relkind='S' JOIN pg_namespace n ON n.oid=c.relnamespace AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' WHERE r.rolname IN (${roles}) AND (has_sequence_privilege(r.oid,c.oid,'USAGE') OR has_sequence_privilege(r.oid,c.oid,'SELECT') OR has_sequence_privilege(r.oid,c.oid,'UPDATE')))
+    AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_proc p ON true JOIN pg_namespace n ON n.oid=p.pronamespace AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' WHERE r.rolname IN (${roles}) AND has_function_privilege(r.oid,p.oid,'EXECUTE')))::text FROM pg_roles WHERE rolname IN (${roles});`;
 }
 
 async function databaseActivation(authority, values, postgresInputDirectory) {
   // The bootstrap operation alone consumes neon-full-live-operator-grants.sql; guarded activation
   // deliberately never reapplies that operator grant surface.
+  await verifyPrequalificationDatabase(authority, postgresInputDirectory);
   await validateServiceFile(
     join(postgresInputDirectory, "owner.pg_service.conf"),
     "videoforge_v2_13_owner",
@@ -1720,6 +2009,9 @@ async function main() {
     resolve(args.get("user-approval-file")),
   );
   consumeAuthorityOnce(authority, authorityBytes);
+  // The database receipt, exact 45-row manifest, pgcrypto fingerprint, and operator ACL are
+  // verified before reading any Cloudflare token or application/runtime secret.
+  await verifyPrequalificationDatabase(authority, resolve(args.get("postgres-input-dir")));
   const evidenceBase = {
     schema_version: "videoforge-v2-13-guarded-activation-evidence/v1",
     authority_id: authority.authority.authority_id,
@@ -1804,4 +2096,7 @@ export {
   validateAuthority,
   WORKFLOW_INVENTORY_PATH,
   workflowBootstrapConfig,
+  readPrequalificationReceipt,
+  PREQUALIFICATION_OPERATOR_FUNCTIONS,
+  verifyPrequalificationDatabase,
 };

@@ -4,12 +4,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
+  EXACT_DURABLE_BILLING_POLICY,
+  EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY,
+  EXACT_CRASH_SAFE_CLEANUP_POLICY,
+  EXACT_OPERATION_IDS,
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
+  EXACT_V3_RELEASE_COMPONENTS,
+  EXACT_WORKFLOW_START_AUTHORITY_POLICY,
 } from "../../../../../deploy/v2-13/validate-full-live-approval.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -23,6 +30,17 @@ const proposalBytes = await readFile(path.join(directory, "combined-live-proposa
 const proposal = JSON.parse(proposalBytes);
 const approval = await readJson("user-approval.json");
 const authority = await readJson("approved-authority.json");
+const operatorGrantsSql = await readFile(
+  path.resolve(directory, "../../../../../deploy/v2-13/neon-full-live-operator-grants.sql"),
+  "utf8",
+);
+const migration0045Sql = await readFile(
+  path.resolve(
+    directory,
+    "../../../../../packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
+  ),
+  "utf8",
+);
 
 assert(proposal.schema_version === "videoforge.v2-13-full-live-completion-proposal/v3", "SCHEMA");
 assert(proposal.proposal_status === "BLOCKED_UNSEALED_SOURCE_REPAIR_PENDING", "STATUS");
@@ -30,6 +48,30 @@ assert(proposal.sealing.sealed_for_exact_user_approval === false, "NOT_SEALED");
 assert(proposal.sealing.current_bytes_are_approval_ineligible === true, "APPROVAL_INELIGIBLE");
 assert(proposal.source.repaired_release_source_commit === null, "REPAIRED_SOURCE_MUST_BE_UNSET");
 assert(proposal.source.future_authority_record_commit === null, "AUTHORITY_COMMIT_MUST_BE_UNSET");
+assert(
+  JSON.stringify(proposal.source.exact_release_components.approval_validator) ===
+    JSON.stringify({
+      path: "deploy/v2-13/validate-full-live-approval.mjs",
+      source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
+    }) &&
+    !Object.hasOwn(proposal.source.exact_release_components.approval_validator, "sha256"),
+  "VALIDATOR_EXTERNAL_TREE_BINDING",
+);
+assert(
+  JSON.stringify(proposal.source.exact_release_components) ===
+    JSON.stringify(EXACT_V3_RELEASE_COMPONENTS),
+  "EXACT_RELEASE_COMPONENTS",
+);
+assert(
+  sha256(operatorGrantsSql) === EXACT_V3_RELEASE_COMPONENTS.operator_grants.sha256,
+  "OPERATOR_GRANTS_SOURCE_HASH",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.ordered_operation_ids) ===
+    JSON.stringify(EXACT_OPERATION_IDS) &&
+    proposal.exact_execution_graph.ordered_operation_ids.length === 25,
+  "EXACT_25_OPERATION_GRAPH",
+);
 assert(
   proposal.authority_record_commit_binding.strategy ===
     "EXTERNAL_GIT_COMMIT_INPUT_VERIFIED_BEFORE_CONSUMPTION_NO_SELF_HASH" &&
@@ -68,10 +110,39 @@ assert(
   "EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY",
 );
 assert(
+  JSON.stringify(proposal.exact_execution_graph.workflow_start_authority_policy) ===
+    JSON.stringify(EXACT_WORKFLOW_START_AUTHORITY_POLICY),
+  "EXACT_WORKFLOW_START_AUTHORITY_POLICY",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.early_no_database_cleanup_policy) ===
+    JSON.stringify(EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY),
+  "EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.durable_billing_policy) ===
+    JSON.stringify(EXACT_DURABLE_BILLING_POLICY),
+  "EXACT_DURABLE_BILLING_POLICY",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.crash_safe_cleanup_policy) ===
+    JSON.stringify(EXACT_CRASH_SAFE_CLEANUP_POLICY),
+  "EXACT_CRASH_SAFE_CLEANUP_POLICY",
+);
+assert(
   JSON.stringify(proposal.exact_execution_graph.prequalification_bridge_policy) ===
     JSON.stringify(EXACT_PREQUALIFICATION_BRIDGE_POLICY),
   "EXACT_PREQUALIFICATION_BRIDGE_POLICY",
 );
+assert(
+  operatorGrantsSql.includes('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"operator_role";'),
+  "OPERATOR_GRANTS_REVOKE_ALL_FUNCTIONS",
+);
+for (const signature of EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures)
+  assert(
+    migration0045Sql.includes(`REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC;`),
+    `PUBLIC_EXECUTE_REVOKE:${signature}`,
+  );
 assert(
   JSON.stringify(proposal.exact_execution_graph.ordered_operation_ids.slice(7, 10)) ===
     JSON.stringify([
@@ -80,6 +151,17 @@ assert(
       "fresh-live-preflight",
     ]),
   "PREQUALIFICATION_DATABASE_BOOTSTRAP_ORDER",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.ordered_operation_ids.slice(13, 18)) ===
+    JSON.stringify([
+      "guarded-activation-once",
+      "promote-qualified-production",
+      "record-workflow-start-authority",
+      "v2-09-short-hosted-project",
+      "v2-10-operator-free-ranga-pilot",
+    ]),
+  "WORKFLOW_START_AUTHORITY_ORDER",
 );
 assert(
   JSON.stringify(proposal.requested_scope.database) ===
@@ -130,6 +212,21 @@ assert(
     .flatMap((phase) => phase.operations)
     .some((operation) => operation.includes("provision 22 exact allowlisted secrets")),
   "EXACT_22_SECRET_OPERATION",
+);
+assert(
+  proposal.ordered_operations.flatMap((phase) => phase.operations).some((operation) =>
+    operation.includes("videoforge.v213-full-live-early-cleanup-input/v1") &&
+    operation.includes("REQUEST_FD and RUNPOD_API_KEY_FD") &&
+    operation.includes("never claim database cleanup"),
+  ),
+  "EARLY_NO_DATABASE_CLEANUP_OPERATION",
+);
+assert(
+  proposal.ordered_operations.flatMap((phase) => phase.operations).some((operation) =>
+    operation.includes("record-workflow-start-authority exactly once") &&
+    operation.includes("phase cap USD 0"),
+  ),
+  "WORKFLOW_START_AUTHORITY_OPERATION",
 );
 assert(
   proposal.ordered_operations[3].operations.some((operation) =>

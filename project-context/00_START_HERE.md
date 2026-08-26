@@ -26,6 +26,11 @@ bootstrap. Its split bridge admits only request, RunPod key, and operator DB sea
 preflight; full runtime inputs are staged only after the verified bootstrap receipt. This is
 source/test proof only. Production remains `DISABLED_UNQUALIFIED`;
 migrations/grants/config are undeployed, and no production secrets or database roles are provisioned.
+The blocked replacement proposal now closes a 25-operation graph by placing zero-cap
+`record-workflow-start-authority` after promotion and before V2-09, and binds full receipt/ACL/public-
+revoke readback, guarded receipt verification before secret reads, durable billing, and a separate
+early no-database cleanup seam. The approval-validator component is externally bound to the exact
+release-commit tree entry rather than embedding a self hash.
 The worker receipt/envelope changes invalidate every earlier image-bound qualification. The user's
 earlier full-live approval is recorded as superseded and unconsumed because its source hashes no
 longer match. Proposal `sha256:9425de8e…899a` was approved and recorded at `67f6fb2`, but is now
@@ -36,8 +41,9 @@ credential-free CA-verified HTTPS trusted-time contracts require provider-free r
 draft also forbids endpoint IDs in the initial seed: exact endpoint IDs, hashes, and actual max-one
 deployment snapshots must be materialized only from the max-one result, with a separate cleanup-only
 pre-endpoint descriptor for failures before endpoint creation. That endpoint-free cleanup path uses
-only the operator database and RunPod credential, never the normal production input, guarded roles,
-endpoint identities, or signing/key-registration inputs. Seed validation recursively rejects endpoint
+only the operator database and RunPod credential after operator verification; before that verification,
+the early no-database path uses only request and RunPod inputs and never claims database cleanup. Neither
+path loads the normal production input, guarded roles, endpoint identities, or signing/key-registration inputs. Seed validation recursively rejects endpoint
 identity case variants and future hashes; max-one materialization writes the four guarded endpoint
 secret files and rebinds all 22 secret hashes. The active proposal surface is
 `BLOCKED_UNSEALED`; its repaired source commit field remains unset until fresh sealing and no fresh approval exists. Both lanes require fresh immutable images, sealed

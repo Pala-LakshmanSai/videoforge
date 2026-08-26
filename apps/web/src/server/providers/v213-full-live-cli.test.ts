@@ -238,7 +238,8 @@ describe("V2-13 full-live TypeScript bridge", () => {
     const inputs = {
       request: prequalificationRequest(),
       runpodApiKey: "r".repeat(32),
-      operatorDatabaseUrl: "postgres://operator@example/db",
+      operatorDatabaseUrl:
+        "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
     } as const;
     const runtime = await createV213PrequalificationRuntime(inputs, {
       fetch: vi.fn(),
@@ -261,7 +262,10 @@ describe("V2-13 full-live TypeScript bridge", () => {
     const values = new Map([
       ["10", JSON.stringify(request("fresh-live-preflight"))],
       ["11", "r".repeat(32)],
-      ["12", "postgres://operator@example/db"],
+      [
+        "12",
+        "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+      ],
     ]);
     const environment = {
       [V213_BRIDGE_ENVIRONMENT.command]: "fresh-live-preflight",
@@ -277,7 +281,8 @@ describe("V2-13 full-live TypeScript bridge", () => {
     expect(readV213PrequalificationProtectedInputs(environment, readFd)).toMatchObject({
       request: { command: "fresh-live-preflight" },
       runpodApiKey: "r".repeat(32),
-      operatorDatabaseUrl: "postgres://operator@example/db",
+      operatorDatabaseUrl:
+        "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
     });
     expect(reads).toEqual(["10", "11", "12"]);
     expect(() => readV213ProtectedInputs(environment, readFd)).toThrowError(
@@ -297,13 +302,46 @@ describe("V2-13 full-live TypeScript bridge", () => {
     ).toThrowError(expect.objectContaining({ code: "PREQUALIFICATION_AMBIENT_BINDING_REJECTED" }));
   });
 
+  it("rejects cleanup and prequalification DSNs that are not the hardened operator binding", () => {
+    const values = new Map([
+      ["10", JSON.stringify(request("fresh-live-preflight"))],
+      ["11", "r".repeat(32)],
+      [
+        "12",
+        "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+      ],
+    ]);
+    const environment = {
+      [V213_BRIDGE_ENVIRONMENT.command]: "fresh-live-preflight",
+      [V213_BRIDGE_ENVIRONMENT.requestFd]: "10",
+      [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "11",
+      [V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd]: "12",
+    };
+    const readFd = (fd: string | undefined) => values.get(fd ?? "") ?? "";
+    for (const malformed of [
+      "postgresql://runtime:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+      "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=disable&channel_binding=require",
+      "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require",
+      "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require&channel_binding=require",
+      "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge/extra?sslmode=require&channel_binding=require",
+    ]) {
+      values.set("12", malformed);
+      expect(() => readV213PrequalificationProtectedInputs(environment, readFd)).toThrowError(
+        expect.objectContaining({ code: "PREQUALIFICATION_OPERATOR_DATABASE_INVALID" }),
+      );
+    }
+  });
+
   it("keeps the normal post-bootstrap descriptor strict", () => {
     const values = new Map([
       ["10", JSON.stringify(request("mage-live-qualification"))],
       ["11", "r".repeat(32)],
       ["12", "postgres://runtime@example/db"],
       ["13", "postgres://reconciler@example/db"],
-      ["14", "postgres://operator@example/db"],
+      [
+        "14",
+        "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+      ],
       ["15", "https://videoforge.example"],
       ["16", "o".repeat(48)],
       [
@@ -378,7 +416,10 @@ describe("V2-13 full-live TypeScript bridge", () => {
     const values = new Map([
       ["10", JSON.stringify(cleanupRequest)],
       ["11", "r".repeat(32)],
-      ["12", "postgres://operator@example/db"],
+      [
+        "12",
+        "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+      ],
     ]);
     const environment = {
       [V213_BRIDGE_ENVIRONMENT.command]: "prove-zero-workers",
@@ -458,7 +499,10 @@ describe("V2-13 full-live TypeScript bridge", () => {
       const values = new Map([
         ["10", JSON.stringify(requestValue)],
         ["11", "r".repeat(32)],
-        ["12", "postgres://operator@example/db"],
+        [
+          "12",
+          "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+        ],
       ]);
       return () =>
         readV213CleanupProtectedInputs(

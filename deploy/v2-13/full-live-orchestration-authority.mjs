@@ -37,6 +37,19 @@ const PHASES = Object.freeze([
   ["cleanup_and_reconciliation", 0],
 ]);
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+// State and result records are hashed from canonical JSON so a restart can recover a settled
+// result without trusting property insertion order. Keep this local to the authority file: the
+// outer record must remain usable before the application package has been built.
+const canonicalJson = (value) => {
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(",")}}`;
+  return JSON.stringify(value);
+};
+const settledResultSha256 = (value) => sha256(Buffer.from(`${canonicalJson(value)}\n`));
 const fail = (code) => {
   throw new Error(`V2_13_FULL_LIVE_ORCHESTRATION_${code}`);
 };
@@ -232,7 +245,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:a00df6bc22b24042ec4ac93357bf1b6c5ada9579203d3968c2d37de1ea92f9f3" ||
+      "sha256:d91f8e6f4ed33c8dc1cbfb7ce41d7155e03d1459e457016e45235ebce53c366f" ||
     state.no_redispatch !== true ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
@@ -256,6 +269,8 @@ function validateState(state) {
     )
       fail("PHASE_CONTRACT");
     for (const [workId, work] of Object.entries(phase.work)) {
+      const hasSettledResult = work?.settled_result !== undefined;
+      const hasSettledResultHash = work?.settled_result_sha256 !== undefined;
       if (
         !/^[a-z0-9][a-z0-9._:-]{7,191}$/u.test(workId) ||
         !["AUTHORIZED_ONCE_NOT_REDISPATCHABLE", "SETTLED_TERMINAL"].includes(work?.state) ||
@@ -266,7 +281,17 @@ function validateState(state) {
         (work.state === "SETTLED_TERMINAL" &&
           (finiteUsd(work.settled_usd, "WORK_SETTLEMENT") > work.reservation_usd ||
             !/^[a-z0-9][a-z0-9._:-]{7,191}$/u.test(work.settlement_event_id ?? "") ||
-            !state.event_ids.includes(work.settlement_event_id)))
+            !state.event_ids.includes(work.settlement_event_id))) ||
+        (hasSettledResult !== hasSettledResultHash) ||
+        (hasSettledResult &&
+          (work.state !== "SETTLED_TERMINAL" ||
+            work.settled_result === null ||
+            typeof work.settled_result !== "object" ||
+            Array.isArray(work.settled_result) ||
+            !HASH.test(work.settled_result_sha256 ?? "") ||
+            settledResultSha256(work.settled_result) !== work.settled_result_sha256)) ||
+        (work.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE" &&
+          (hasSettledResult || hasSettledResultHash))
       )
         fail("WORK_CONTRACT");
     }
@@ -422,7 +447,31 @@ function recordVerifiedReleaseRef(state, { tagName, targetCommit, eventId }) {
   return validateState(state);
 }
 
-function settleWork(state, { phaseName, workId, actualUsd, eventId }) {
+function recordSettledResult(state, { phaseName, workId, result }) {
+  validateState(state);
+  const work = state.phases[phaseName]?.work?.[workId];
+  if (
+    work?.state !== "SETTLED_TERMINAL" ||
+    result === null ||
+    typeof result !== "object" ||
+    Array.isArray(result)
+  )
+    fail("SETTLED_RESULT_CONTRACT");
+  const resultSha256 = settledResultSha256(result);
+  if (work.settled_result !== undefined) {
+    if (
+      work.settled_result_sha256 !== resultSha256 ||
+      settledResultSha256(work.settled_result) !== resultSha256
+    )
+      fail("SETTLED_RESULT_REPLAY");
+    return state;
+  }
+  work.settled_result = result;
+  work.settled_result_sha256 = resultSha256;
+  return validateState(state);
+}
+
+function settleWork(state, { phaseName, workId, actualUsd, eventId, result }) {
   validateState(state);
   requireInProgress(state);
   const phase = state.phases[phaseName];
@@ -436,6 +485,12 @@ function settleWork(state, { phaseName, workId, actualUsd, eventId }) {
   work.state = "SETTLED_TERMINAL";
   work.settled_usd = actual;
   work.settlement_event_id = eventId;
+  if (result !== undefined) {
+    if (result === null || typeof result !== "object" || Array.isArray(result))
+      fail("SETTLED_RESULT_CONTRACT");
+    work.settled_result = result;
+    work.settled_result_sha256 = settledResultSha256(result);
+  }
   phase.settled_usd = finiteUsd(phase.settled_usd + actual, "PHASE_SETTLE_SUM");
   state.total_settled_usd = finiteUsd(state.total_settled_usd + actual, "TOTAL_SETTLE_SUM");
   state.event_ids.push(eventId);
@@ -502,7 +557,7 @@ function authorizeCleanupWork(state, { workId, eventId }) {
   return validateState(state);
 }
 
-function settleCleanupWork(state, { workId, eventId }) {
+function settleCleanupWork(state, { workId, eventId, result }) {
   validateState(state);
   const work = state.phases.cleanup_and_reconciliation.work[workId];
   if (
@@ -516,6 +571,12 @@ function settleCleanupWork(state, { workId, eventId }) {
   work.state = "SETTLED_TERMINAL";
   work.settled_usd = 0;
   work.settlement_event_id = eventId;
+  if (result !== undefined) {
+    if (result === null || typeof result !== "object" || Array.isArray(result))
+      fail("SETTLED_RESULT_CONTRACT");
+    work.settled_result = result;
+    work.settled_result_sha256 = settledResultSha256(result);
+  }
   state.event_ids.push(eventId);
   return validateState(state);
 }
@@ -829,6 +890,7 @@ export {
   initialConsumptionRecord,
   PHASES,
   recordCleanupProof,
+  recordSettledResult,
   recordVerifiedReleaseRef,
   settleWork,
   settleCleanupWork,

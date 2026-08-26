@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -16,6 +16,8 @@ import {
   extractSingleActiveVersion,
   SECRET_NAMES,
   plan,
+  PREQUALIFICATION_OPERATOR_FUNCTIONS,
+  readPrequalificationReceipt,
   protectedSecrets,
   recoverQuarantineCreation,
   rolePrecheckQuery,
@@ -25,12 +27,24 @@ import {
   validateAuthoritySourceFiles,
   validateSoulxApprovalRecords,
   validateAuthority,
+  verifyPrequalificationDatabase,
   WORKFLOW_INVENTORY_PATH,
   workflowBootstrapConfig,
 } from "../../deploy/v2-13/guarded-activation.mjs";
 
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const fingerprint = `sha256:${"a".repeat(64)}`;
+const PREQUALIFICATION_SCHEMA_FOR_TEST =
+  "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const canonicalJson = (value) =>
+  Array.isArray(value)
+    ? `[${value.map((item) => canonicalJson(item)).join(",")}]`
+    : value !== null && typeof value === "object"
+      ? `{${Object.keys(value)
+          .sort()
+          .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+          .join(",")}}`
+      : JSON.stringify(value);
 const cropApproval = Object.freeze({
   approval_path:
     "project-context/evidence/acceptance/VF-10-08/2026-08-26-soulx-crop-profile-approval.json",
@@ -901,4 +915,101 @@ test("role precheck rejects direct and dangerous effective privileges before pas
   assert.ok(
     source.indexOf("rolePrecheckQuery(authority)") < source.indexOf("CREATE ROLE %I LOGIN"),
   );
+});
+
+test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, and effective operator ACL before any provider seam", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "v213-guarded-prequalification-test-"));
+  chmodSync(directory, 0o700);
+  const servicePath = join(directory, "owner.pg_service.conf");
+  const passPath = join(directory, "owner.pgpass");
+  const manifestBytes = readFileSync("packages/control-plane/migrations/manifest.json");
+  const manifest = JSON.parse(manifestBytes);
+  const ledger = manifest.migrations.map(({ version, name, filename, sha256 }) => ({
+    version,
+    name,
+    filename,
+    sha256,
+  }));
+  const role = {
+    flags: {
+      rolcanlogin: true,
+      rolsuper: false,
+      rolcreaterole: false,
+      rolcreatedb: false,
+      rolinherit: false,
+      rolreplication: false,
+      rolbypassrls: false,
+      rolconfig: null,
+    },
+    memberships: 0,
+    ownership: 0,
+    extension_ownership: 0,
+    database_acl: 0,
+    effective_database_dangerous_acl: 0,
+    schema_acl: ["public:USAGE"],
+    effective_schema_dangerous_acl: 0,
+    table_acl: 0,
+    effective_table_acl: 0,
+    sequence_acl: 0,
+    effective_sequence_acl: 0,
+    default_acl: 0,
+    function_acl: [...PREQUALIFICATION_OPERATOR_FUNCTIONS].sort(),
+    public_function_acl: [],
+    public_default_function_acl: 0,
+  };
+  const before = ledger.slice(0, 36);
+  const pgcrypto = { name: "pgcrypto", version: "1.3", schema: "public" };
+  const body = {
+    schema_version: PREQUALIFICATION_SCHEMA_FOR_TEST,
+    ledger_before_count: 36,
+    ledger_before_sha256: hash(`${canonicalJson(before)}\n`),
+    ledger_after_sha256: hash(`${canonicalJson(ledger)}\n`),
+    operator_acl_sha256: hash(`${canonicalJson(role)}\n`),
+    pgcrypto_sha256: hash(`${canonicalJson(pgcrypto)}\n`),
+    recovery_mode: "FRESH_36_TO_45",
+    runpod_calls: 0,
+    cloudflare_calls: 0,
+    application_secret_reads: 0,
+  };
+  const receipt = {
+    ...body,
+    prequalification_database_bootstrap_sha256: hash(`${canonicalJson(body)}\n`),
+  };
+  writeFileSync(
+    servicePath,
+    "[videoforge_v2_13_owner]\nhost=example.neon.tech\ndbname=videoforge\nuser=videoforge_owner\nsslmode=require\nchannel_binding=require\n",
+    { mode: 0o600 },
+  );
+  writeFileSync(passPath, "example.neon.tech:5432:videoforge:videoforge_owner:owner-password\n", {
+    mode: 0o600,
+  });
+  const receiptPath = join(directory, "prequalification-database-bootstrap.json");
+  writeFileSync(receiptPath, `${JSON.stringify(receipt)}\n`, { mode: 0o600 });
+  const currentAuthority = structuredClone(authority());
+  currentAuthority.release.migration_manifest_sha256 = hash(manifestBytes);
+  const calls = [];
+  const runCommand = (_command, args) => {
+    const sql = args[args.indexOf("--command") + 1] ?? "";
+    calls.push(sql);
+    if (sql.includes("current_user")) return "videoforge_owner";
+    if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock"))
+      return ledger.map((row) => `${row.version}\t${row.name}\t${row.filename}\t${row.sha256}`).join("\n");
+    if (sql.includes("FROM pg_extension WHERE extname='pgcrypto'"))
+      return JSON.stringify(pgcrypto);
+    if (sql.includes("json_build_object('flags'")) return JSON.stringify(role);
+    throw new Error(`unexpected guarded fake psql SQL: ${sql.slice(0, 100)}`);
+  };
+  try {
+    const verified = await verifyPrequalificationDatabase(currentAuthority, directory, {
+      runCommand,
+    });
+    assert.equal(verified.receipt.prequalification_database_bootstrap_sha256, receipt.prequalification_database_bootstrap_sha256);
+    assert.equal(verified.ledger.length, 45);
+    assert.equal(verified.pgcrypto.name, "pgcrypto");
+    assert.equal(verified.role.function_acl.length, 17);
+    assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
+    assert.equal(calls.every((sql) => !sql.includes("CLOUDFLARE") && !sql.includes("production_secrets")), true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

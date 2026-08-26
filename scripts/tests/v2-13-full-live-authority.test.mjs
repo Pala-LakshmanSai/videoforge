@@ -23,11 +23,18 @@ import {
   writeExclusive,
 } from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
 import {
+  EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
   EXACT_CLOUDFLARE_SECRET_NAMES,
+  EXACT_DURABLE_BILLING_POLICY,
+  EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY,
+  EXACT_CRASH_SAFE_CLEANUP_POLICY,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
+  EXACT_OPERATION_IDS,
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,
+  EXACT_V3_RELEASE_COMPONENTS,
+  EXACT_WORKFLOW_START_AUTHORITY_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
   validateFullLiveUserApproval,
 } from "../../deploy/v2-13/validate-full-live-approval.mjs";
@@ -194,7 +201,8 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.sealing.sealed_for_exact_user_approval = false;
     },
     (proposal) => {
-      proposal.source.exact_release_components.approval_validator.sha256 = `sha256:${"0".repeat(64)}`;
+      proposal.source.exact_release_components.approval_validator.source_commit_tree_binding.mode =
+        "CURRENT_WORKTREE_SELF_HASH";
     },
     (proposal) => {
       [
@@ -286,12 +294,40 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.prequalification_database_bootstrap_policy.receipt_exact_fields.pop();
     },
     (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.receipt_full_exact_fields.pop();
+    },
+    (proposal) => {
       proposal.exact_execution_graph.prequalification_database_bootstrap_policy
         .recovery_mode_ledger_before_count.RESUME_EXACT_PREFIX.pop();
     },
     (proposal) => {
       proposal.exact_execution_graph.prequalification_database_bootstrap_policy
         .guarded_activation_reapplies_migrations_or_operator_role = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy
+        .operator_grants_sql_revoke_public_execute = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.operator_role_flags.rolinherit = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy
+        .guarded_activation_receipt_verified_before_application_secret_reads = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.workflow_start_authority_policy.phase_cap_usd = 1;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.early_no_database_cleanup_policy.exact_child_fd_environment.push(
+        "OPERATOR_DATABASE_URL_FD",
+      );
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.durable_billing_policy.reserve_open_liability_before_paid_dispatch = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.crash_safe_cleanup_policy.resumes_only_unsettled_cleanup_work = false;
     },
     (proposal) => {
       proposal.exact_execution_graph.prequalification_bridge_policy.receipt_gate
@@ -464,6 +500,24 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     proposal.exact_execution_graph.prequalification_bridge_policy,
     EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   );
+  assert.deepEqual(
+    proposal.exact_execution_graph.workflow_start_authority_policy,
+    EXACT_WORKFLOW_START_AUTHORITY_POLICY,
+  );
+  assert.deepEqual(
+    proposal.exact_execution_graph.early_no_database_cleanup_policy,
+    EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY,
+  );
+  assert.deepEqual(
+    proposal.exact_execution_graph.durable_billing_policy,
+    EXACT_DURABLE_BILLING_POLICY,
+  );
+  assert.deepEqual(
+    proposal.exact_execution_graph.crash_safe_cleanup_policy,
+    EXACT_CRASH_SAFE_CLEANUP_POLICY,
+  );
+  assert.equal(proposal.exact_execution_graph.ordered_operation_ids.length, 25);
+  assert.deepEqual(proposal.exact_execution_graph.ordered_operation_ids, EXACT_OPERATION_IDS);
   assert.deepEqual(proposal.exact_execution_graph.ordered_operation_ids.slice(7, 10), [
     "soulx-image-workflow-verification",
     "bootstrap-prequalification-database",
@@ -522,21 +576,52 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     "cloudflare_calls",
     "application_secret_reads",
   ]);
+  assert.deepEqual(bootstrap.receipt_full_exact_fields, [
+    ...bootstrap.receipt_exact_fields,
+    "prequalification_database_bootstrap_sha256",
+  ]);
+  assert.equal(bootstrap.receipt_hash_is_sha256_of_canonical_body, true);
+  assert.equal(bootstrap.receipt_file_mode, "0600");
+  assert.equal(bootstrap.receipt_parent_directory_mode, "0700");
+  assert.equal(bootstrap.receipt_secret_free, true);
+  assert.equal(bootstrap.receipt_replay_requires_exact_all_fields, true);
+  assert.equal(bootstrap.receipt_final_ledger_count, 45);
+  assert.equal(bootstrap.operator_grants_sql_revoke_public_execute, true);
+  assert.equal(bootstrap.public_execute_readback_must_be_empty, true);
+  assert.equal(bootstrap.exact_operator_acl_order, "LEXICAL_CANONICAL_SIGNATURE");
+  assert.equal(bootstrap.operator_dsn_policy.only_after_migrations, true);
+  assert.equal(bootstrap.owner_dsn_policy.owner_only_for_migrations_and_readback, true);
   const grants = readFileSync("deploy/v2-13/neon-full-live-operator-grants.sql", "utf8");
   const grantStart = grants.indexOf("GRANT EXECUTE ON FUNCTION");
-  const grantEnd = grants.indexOf("\nSELECT has_function_privilege", grantStart);
+  const grantEnd = grants.indexOf("\nWITH target AS", grantStart);
   assert.notEqual(grantStart, -1);
   assert.notEqual(grantEnd, -1);
   const grantedSignatures = [...grants.slice(grantStart, grantEnd).matchAll(/public\.(videoforge_[a-z0-9_]+\([^)]*\))/gu)].map(
     ([match]) => match.slice("public.".length),
   );
   assert.deepEqual(grantedSignatures, bootstrap.exact_operator_function_signatures);
+  assert.match(grants, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"operator_role";/u);
+  const migration = readFileSync(
+    "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
+    "utf8",
+  );
+  for (const signature of bootstrap.exact_operator_function_signatures)
+    assert.equal(
+      migration.includes(`REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC;`),
+      true,
+      `public execute revoke missing for ${signature}`,
+    );
   assert.equal(bootstrap.runpod_calls, 0);
   assert.equal(bootstrap.cloudflare_calls, 0);
   assert.equal(bootstrap.application_secret_reads, 0);
   assert.equal(bootstrap.gpu_use, false);
   assert.equal(bootstrap.external_spend_usd, 0);
   assert.equal(bootstrap.guarded_activation_consumes_verified_receipt, true);
+  assert.equal(bootstrap.guarded_activation_receipt_verified_before_application_secret_reads, true);
+  assert.equal(
+    bootstrap.guarded_activation_receipt_verified_before_cloudflare_or_runtime_secret_reads,
+    true,
+  );
   assert.deepEqual(bootstrap.recovery_mode_ledger_before_count, {
     FRESH_36_TO_45: 36,
     RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44],
@@ -558,6 +643,15 @@ test("V3 proposal separates proposal and authority-record commit lineage without
     remote_readback_required: true,
     embedded_self_commit_hash_forbidden: true,
   });
+  assert.deepEqual(proposal.source.exact_release_components.approval_validator, {
+    path: "deploy/v2-13/validate-full-live-approval.mjs",
+    source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
+  });
+  assert.equal(
+    Object.hasOwn(proposal.source.exact_release_components.approval_validator, "sha256"),
+    false,
+  );
+  assert.deepEqual(proposal.source.exact_release_components, EXACT_V3_RELEASE_COMPONENTS);
   assert.match(proposal.ordered_operations[3].operations.join("\n"), /authority-record commit/u);
 });
 
