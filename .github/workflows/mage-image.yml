@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 90
     outputs:
       immutable_image: ${{ steps.publish.outputs.immutable_image }}
+      deployability_record_sha256: ${{ steps.record.outputs.deployability_record_sha256 }}
+      evidence_artifact: ${{ steps.record.outputs.evidence_artifact }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -43,11 +45,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
           parent_digest="sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
           parent_config_digest="sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2"
-          expected_manifest_digest="sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
-          expected_config_digest="sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6"
-          expected_layer_digest="sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a"
+          source_epoch="$(git show -s --format=%ct "$GITHUB_SHA")"
+          [[ "$source_epoch" =~ ^[0-9]+$ ]]
+          created="$(date -u -d "@$source_epoch" +'%Y-%m-%dT%H:%M:%SZ')"
           overlay_dir="$RUNNER_TEMP/v207-mage-oci-overlay"
           mkdir -p "$overlay_dir/input" "$overlay_dir/output"
           registry_token="$(
@@ -70,20 +74,26 @@ jobs:
             --base-manifest "$overlay_dir/input/manifest.json" \
             --base-config "$overlay_dir/input/config.json" \
             --source workers/image-media/mage_serverless.py \
+            --source workers/common/serverless_envelope.py \
             --source packages/contracts/python/videoforge_contracts/_schema_documents.py \
             --destination /opt/videoforge/mage_serverless.py \
+            --destination /opt/videoforge/common/serverless_envelope.py \
             --destination /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
-            --source-commit a7b7a937d08dc9032b8922cca71c602195f3094c \
+            --source-commit "$GITHUB_SHA" \
             --parent-image "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@$parent_digest" \
-            --created 2026-08-23T02:38:33Z \
+            --created "$created" \
             --output-dir "$overlay_dir/output"
-          test "$(jq -r '.manifest_digest' "$overlay_dir/output/identity.json")" = "$expected_manifest_digest"
-          test "$(jq -r '.config_digest' "$overlay_dir/output/identity.json")" = "$expected_config_digest"
-          test "$(jq -r '.layer_digest' "$overlay_dir/output/identity.json")" = "$expected_layer_digest"
+          expected_manifest_digest="$(jq -r '.manifest_digest' "$overlay_dir/output/identity.json")"
+          expected_config_digest="$(jq -r '.config_digest' "$overlay_dir/output/identity.json")"
+          expected_layer_digest="$(jq -r '.layer_digest' "$overlay_dir/output/identity.json")"
+          [[ "$expected_manifest_digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          [[ "$expected_config_digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          [[ "$expected_layer_digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          test "$(jq -r '.source_commit' "$overlay_dir/output/identity.json")" = "$GITHUB_SHA"
           python3 workers/image-media/publish_mage_oci_overlay.py \
             --output-dir "$overlay_dir/output" \
             --repository pala-lakshmansai/videoforge-mage-v2-07 \
-            --tag v2-07-lineage-a7b7a93
+            --tag "v2-07-lineage-${GITHUB_SHA:0:12}"
           echo "MAGE_OCI_OUTPUT_DIR=$overlay_dir/output" >> "$GITHUB_ENV"
           echo "MAGE_OCI_BASE_MANIFEST=$overlay_dir/input/manifest.json" >> "$GITHUB_ENV"
           echo "MAGE_OCI_BASE_CONFIG=$overlay_dir/input/config.json" >> "$GITHUB_ENV"
@@ -91,20 +101,22 @@ jobs:
           echo "MAGE_EXPECTED_CONFIG_DIGEST=$expected_config_digest" >> "$GITHUB_ENV"
           echo "MAGE_EXPECTED_LAYER_DIGEST=$expected_layer_digest" >> "$GITHUB_ENV"
           echo "candidate_manifest_digest=$expected_manifest_digest" >> "$GITHUB_STEP_SUMMARY"
+          echo "qualification_status=REQUIRES_FRESH_LIVE_REQUALIFICATION" >> "$GITHUB_STEP_SUMMARY"
+          echo "prior_qualification_reused=false" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build and smoke V2-07 repaired Mage INT8 Serverless candidate
         shell: bash
         run: |
           set -euo pipefail
           test "$RUNNER_ARCH" = "X64"
-          expected_source_commit="a7b7a937d08dc9032b8922cca71c602195f3094c"
-          # The checkout may be newer than the source commit that defines the
-          # repaired overlay.  Pin the bytes copied into the image explicitly;
-          # labels alone would allow a later checkout to silently drift.
+          expected_source_commit="$GITHUB_SHA"
+          [[ "$expected_source_commit" =~ ^[a-f0-9]{40}$ ]]
+          # Pin the current checkout bytes copied into the image explicitly;
+          # labels alone would allow a workflow change to silently drift.
           expected_source_hashes=(
             "workers/image-media/mage_serverless.py|a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b"
             "workers/common/serverless_envelope.py|2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
-            "packages/contracts/python/videoforge_contracts/_schema_documents.py|a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
+            "packages/contracts/python/videoforge_contracts/_schema_documents.py|0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92"
           )
           for source_entry in "${expected_source_hashes[@]}"; do
             source_path="${source_entry%%|*}"
@@ -112,7 +124,9 @@ jobs:
             test "$(sha256sum "$source_path" | awk '{print $1}')" = "$expected_hash"
           done
           image="videoforge-mage-v2-07:${GITHUB_SHA}"
-          docker build --platform linux/amd64 --file workers/image-media/Dockerfile.mage.repair --tag "$image" .
+          docker build --platform linux/amd64 \
+            --build-arg "VIDEOFORGE_SOURCE_COMMIT=$expected_source_commit" \
+            --file workers/image-media/Dockerfile.mage.repair --tag "$image" .
           architecture="$(docker image inspect --format='{{.Architecture}}' "$image")"
           operating_system="$(docker image inspect --format='{{.Os}}' "$image")"
           test "$architecture" = "amd64"
@@ -142,7 +156,7 @@ jobs:
           candidate_schema="$RUNNER_TEMP/v207-candidate-schema-documents.py"
           expected_handler_sha="a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b"
           expected_envelope_sha="2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
-          expected_schema_sha="a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71"
+          expected_schema_sha="0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92"
           python3 workers/image-media/verify_mage_oci_overlay.py \
             --output-dir "$MAGE_OCI_OUTPUT_DIR" \
             --base-manifest "$MAGE_OCI_BASE_MANIFEST" \
@@ -150,7 +164,7 @@ jobs:
             --expected-manifest-digest "$MAGE_EXPECTED_MANIFEST_DIGEST" \
             --expected-config-digest "$MAGE_EXPECTED_CONFIG_DIGEST" \
             --expected-layer-digest "$MAGE_EXPECTED_LAYER_DIGEST" \
-            --expected-source-commit a7b7a937d08dc9032b8922cca71c602195f3094c \
+            --expected-source-commit "$GITHUB_SHA" \
             --expected-source /opt/videoforge/mage_serverless.py\|sha256:$expected_handler_sha \
             --expected-source /opt/videoforge/common/serverless_envelope.py\|sha256:$expected_envelope_sha \
             --expected-source /opt/videoforge/src/videoforge_contracts/_schema_documents.py\|sha256:$expected_schema_sha \
@@ -193,11 +207,122 @@ jobs:
             python3 workers/image-media/publish_mage_oci_overlay.py \
               --output-dir "$MAGE_OCI_OUTPUT_DIR" \
               --repository pala-lakshmansai/videoforge-mage-v2-07 \
-              --tag v2-07-lineage-a7b7a93 \
+              --tag "v2-07-lineage-${GITHUB_SHA:0:12}" \
               --publish
           )"
           test "$(jq -r '.manifest_digest' <<<"$publication")" = \
             "$MAGE_EXPECTED_MANIFEST_DIGEST"
           immutable_image="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@$MAGE_EXPECTED_MANIFEST_DIGEST"
+          publication_state="$(jq -r '.publication_state' <<<"$publication")"
+          [[ "$publication_state" =~ ^(PUBLISHED_NEW_DIGEST|EXACT_EXISTING_DIGEST_REUSED)$ ]]
           echo "immutable_image=$immutable_image" >> "$GITHUB_OUTPUT"
+          echo "MAGE_PUBLICATION_STATE=$publication_state" >> "$GITHUB_ENV"
           echo "immutable_image=$immutable_image" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prove anonymous public pull visibility of exact Mage digest
+        if: ${{ inputs.publish }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository="pala-lakshmansai/videoforge-mage-v2-07"
+          anonymous_token="$(
+            curl -fsSL \
+              "https://ghcr.io/token?service=ghcr.io&scope=repository:${repository}:pull" \
+              | jq -r '.token'
+          )"
+          test -n "$anonymous_token"
+          public_manifest="$RUNNER_TEMP/v207-public-manifest.json"
+          public_headers="$RUNNER_TEMP/v207-public-manifest.headers"
+          curl -fsSL -D "$public_headers" \
+            -H "Authorization: Bearer $anonymous_token" \
+            -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
+            "https://ghcr.io/v2/${repository}/manifests/$MAGE_EXPECTED_MANIFEST_DIGEST" \
+            -o "$public_manifest"
+          public_digest="sha256:$(sha256sum "$public_manifest" | awk '{print $1}')"
+          header_digest="$(awk 'BEGIN { IGNORECASE=1 } /^Docker-Content-Digest:/ { gsub("\r", "", $2); print $2 }' "$public_headers" | tail -1)"
+          test "$public_digest" = "$MAGE_EXPECTED_MANIFEST_DIGEST"
+          test "$header_digest" = "$MAGE_EXPECTED_MANIFEST_DIGEST"
+          while IFS= read -r blob; do
+            [[ "$blob" =~ ^sha256:[a-f0-9]{64}$ ]]
+            test "$(curl -sS -L -o /dev/null -w '%{http_code}' -I \
+              -H "Authorization: Bearer $anonymous_token" \
+              "https://ghcr.io/v2/${repository}/blobs/$blob")" = "200"
+          done < <(jq -r '.config.digest, .layers[].digest' "$public_manifest")
+          unset anonymous_token
+          echo "anonymous_public_pull=passed" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write durable Mage deployability evidence
+        id: record
+        if: ${{ success() }}
+        shell: bash
+        env:
+          PUBLICATION_REQUESTED: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-evidence
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          published = os.environ["PUBLICATION_REQUESTED"] == "true"
+          manifest_digest = os.environ["MAGE_EXPECTED_MANIFEST_DIGEST"]
+          record = {
+              "schema_version": "videoforge-image-deployability/v1",
+              "checkpoint": "V2-07",
+              "lane": "mage_image",
+              "source_commit": os.environ["GITHUB_SHA"],
+              "platform": "linux/amd64",
+              "registry_repository": "pala-lakshmansai/videoforge-mage-v2-07",
+              "publication_requested": published,
+              "published": published,
+              "publication_state": os.environ.get("MAGE_PUBLICATION_STATE") if published else None,
+              "status": "PUBLISHED_IMMUTABLE_IMAGE" if published else "BUILD_ONLY_VERIFIED",
+              "qualification_status": "REQUIRES_FRESH_LIVE_REQUALIFICATION",
+              "prior_qualification_reused": False,
+              "immutable_image": (
+                  f"ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@{manifest_digest}"
+                  if published else None
+              ),
+              "manifest_digest": manifest_digest,
+              "config_digest": os.environ["MAGE_EXPECTED_CONFIG_DIGEST"],
+              "layer_digest": os.environ["MAGE_EXPECTED_LAYER_DIGEST"],
+              "parent_image": (
+                  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
+                  "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
+              ),
+              "source_sha256": {
+                  "packages/contracts/python/videoforge_contracts/_schema_documents.py": (
+                      "sha256:0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92"
+                  ),
+                  "workers/common/serverless_envelope.py": (
+                      "sha256:2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227"
+                  ),
+                  "workers/image-media/mage_serverless.py": (
+                      "sha256:a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b"
+                  ),
+              },
+              "model_volume": "/runpod-volume",
+              "model_volume_access": "sealed_read_only_required_at_worker_start",
+              "model_download_performed": False,
+              "provider_endpoint_mutation_performed": False,
+          }
+          destination = Path("release-evidence/mage-serverless-v2-07.json")
+          destination.write_text(
+              json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          record_sha="sha256:$(sha256sum release-evidence/mage-serverless-v2-07.json | awk '{print $1}')"
+          echo "deployability_record_sha256=$record_sha" >> "$GITHUB_OUTPUT"
+          echo "evidence_artifact=mage-serverless-v2-07-deployability" >> "$GITHUB_OUTPUT"
+          echo "deployability_record_sha256=$record_sha" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Mage deployability evidence
+        if: ${{ success() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mage-serverless-v2-07-deployability
+          path: release-evidence/mage-serverless-v2-07.json
+          if-no-files-found: error
+          retention-days: 30

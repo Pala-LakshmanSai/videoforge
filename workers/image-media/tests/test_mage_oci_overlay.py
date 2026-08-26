@@ -26,6 +26,7 @@ from publish_mage_oci_overlay import (  # noqa: E402
     PublishError,
     RegistryClient,
     _validate_artifacts,
+    main as publish_main,
 )
 from verify_mage_oci_overlay import CandidateError, verify_candidate  # noqa: E402
 
@@ -377,6 +378,7 @@ class MageOciOverlayTest(unittest.TestCase):
             registry = ExactRegistry()
             published = registry.publish(tag="candidate", artifacts=artifacts)
             self.assertEqual(published["manifest_digest"], artifacts["manifest_digest"])
+            self.assertEqual(published["publication_state"], "PUBLISHED_NEW_DIGEST")
             self.assertEqual(
                 registry.uploaded,
                 {
@@ -384,6 +386,68 @@ class MageOciOverlayTest(unittest.TestCase):
                     artifacts["layer_digest"]: artifacts["layer_bytes"],
                 },
             )
+
+    def test_publisher_reuses_only_the_exact_existing_manifest_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            _write_output(_overlay_result(), output)
+            artifacts = _validate_artifacts(output)
+
+            class ExistingRegistry(RegistryClient):
+                def __init__(self, body: bytes) -> None:
+                    super().__init__(
+                        host="ghcr.io", repository="example/repository", token="hidden"
+                    )
+                    self.body = body
+
+                def _request(self, method, path, *, body=b"", content_type=None, accept=None):
+                    if method == "HEAD" and path == "manifests/candidate":
+                        return 200, {}, b""
+                    if method == "GET" and path == "manifests/candidate":
+                        digest = "sha256:" + hashlib.sha256(self.body).hexdigest()
+                        return 200, {"Docker-Content-Digest": digest}, self.body
+                    raise AssertionError((method, path, content_type, accept))
+
+            existing = ExistingRegistry(artifacts["manifest_bytes"])
+            published = existing.publish(tag="candidate", artifacts=artifacts)
+            self.assertEqual(published["publication_state"], "EXACT_EXISTING_DIGEST_REUSED")
+            with self.assertRaisesRegex(PublishError, "different existing image tag"):
+                ExistingRegistry(artifacts["manifest_bytes"] + b"drift").publish(
+                    tag="candidate", artifacts=artifacts
+                )
+
+    def test_publisher_rejects_non_allowlisted_registry_before_credentials_or_artifacts(
+        self,
+    ) -> None:
+        base = [
+            "--output-dir",
+            "/does/not/matter",
+            "--repository",
+            "pala-lakshmansai/videoforge-mage-v2-07",
+            "--tag",
+            "v2-07-lineage-0123456789ab",
+            "--publish",
+        ]
+        mutations = (
+            [*base, "--registry-host", "attacker.example"],
+            [
+                *base[:3],
+                "attacker/repository",
+                *base[4:],
+            ],
+            [*base, "--token-env", "UNRELATED_SECRET"],
+            [*base, "--actor-env", "UNRELATED_ACTOR"],
+        )
+        for argv in mutations:
+            with (
+                self.subTest(argv=argv),
+                patch("publish_mage_oci_overlay._validate_artifacts") as validate,
+                patch("publish_mage_oci_overlay._registry_token") as token,
+            ):
+                with self.assertRaisesRegex(PublishError, "not allowlisted"):
+                    publish_main(argv)
+                validate.assert_not_called()
+                token.assert_not_called()
 
     def test_blob_completion_request_sets_exact_http_headers(self) -> None:
         class Response:

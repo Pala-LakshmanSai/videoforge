@@ -54,13 +54,16 @@ class SoulXServerlessImageDefinitionTests(unittest.TestCase):
         from_lines = [line for line in self.instructions if line.startswith("FROM ")]
         self.assertEqual(from_lines, [f"FROM {BASE}"])
         for value in (
+            'org.opencontainers.image.revision="${VIDEOFORGE_SOURCE_COMMIT}"',
             'ai.videoforge.lane="soulx_avatar"',
+            'ai.videoforge.source-commit="${VIDEOFORGE_SOURCE_COMMIT}"',
             'ai.videoforge.runtime-profile="videoforge_soulx_flashhead_pro_bf16_v1"',
             f'ai.videoforge.source-revision="{SOURCE_REVISION}"',
             f'ai.videoforge.model-revision="{MODEL_REVISION}"',
             f'ai.videoforge.model-manifest="{MODEL_MANIFEST}"',
         ):
             self.assertIn(value, self.source)
+        self.assertIn("ARG VIDEOFORGE_SOURCE_COMMIT", self.source)
 
     def test_exact_entrypoint_and_ffprobe_are_packaged(self) -> None:
         self.assertEqual(
@@ -124,8 +127,7 @@ class SoulXServerlessImageDefinitionTests(unittest.TestCase):
                 REPO_ROOT / "workers/common/serverless_envelope.py"
             ),
             "/opt/videoforge/src/videoforge_contracts/_schema_documents.py": (
-                REPO_ROOT
-                / "packages/contracts/python/videoforge_contracts/_schema_documents.py"
+                REPO_ROOT / "packages/contracts/python/videoforge_contracts/_schema_documents.py"
             ),
         }
         declared = dict(
@@ -176,8 +178,11 @@ class ReadOnlyModelMountTests(unittest.TestCase):
                 "SOULX_MODEL_VOLUME_NOT_READ_ONLY",
             ),
         ):
-            with self.subTest(code=code), mock.patch.dict(
-                os.environ, {"SOULX_MODEL_ROOT": "/runpod-volume/soulx-flashhead-pro"}
+            with (
+                self.subTest(code=code),
+                mock.patch.dict(
+                    os.environ, {"SOULX_MODEL_ROOT": "/runpod-volume/soulx-flashhead-pro"}
+                ),
             ):
                 with self.assertRaisesRegex(RuntimeError, code):
                     self.entrypoint.require_read_only_model_mount(self._mountinfo(contents))

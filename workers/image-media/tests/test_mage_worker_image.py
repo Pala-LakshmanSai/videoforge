@@ -12,7 +12,6 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 REPAIR_DOCKERFILE = ROOT / "Dockerfile.mage.repair"
-REPAIRED_SOURCE_COMMIT = "a7b7a937d08dc9032b8922cca71c602195f3094c"
 BASE_IMMUTABLE_IMAGE = (
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
     "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
@@ -37,7 +36,7 @@ REPAIR_RUNTIME_FILES = (
 REPAIR_SOURCE_HASHES = {
     "workers/image-media/mage_serverless.py": "a137d7efb3c808992a86df93457de65c5a643802f7322a93531afaa8f947739b",
     "workers/common/serverless_envelope.py": "2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227",
-    "packages/contracts/python/videoforge_contracts/_schema_documents.py": "a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71",
+    "packages/contracts/python/videoforge_contracts/_schema_documents.py": "0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92",
 }
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
@@ -71,11 +70,9 @@ class MageWorkerImageTest(unittest.TestCase):
             dockerfile,
             rf"(?m)^FROM {re.escape(BASE_IMMUTABLE_IMAGE)}$",
         )
-        self.assertIn(
-            f'org.opencontainers.image.revision="{REPAIRED_SOURCE_COMMIT}"',
-            dockerfile,
-        )
-        self.assertIn(f'ai.videoforge.source-commit="{REPAIRED_SOURCE_COMMIT}"', dockerfile)
+        self.assertIn("ARG VIDEOFORGE_SOURCE_COMMIT", dockerfile)
+        self.assertIn('org.opencontainers.image.revision="${VIDEOFORGE_SOURCE_COMMIT}"', dockerfile)
+        self.assertIn('ai.videoforge.source-commit="${VIDEOFORGE_SOURCE_COMMIT}"', dockerfile)
         self.assertIn(
             f'org.opencontainers.image.base.digest="{BASE_IMMUTABLE_IMAGE.split("@", 1)[1]}"',
             dockerfile,
@@ -87,17 +84,11 @@ class MageWorkerImageTest(unittest.TestCase):
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        dockerfile_match = re.search(r'ai\.videoforge\.source-commit="([0-9a-f]{40})"', dockerfile)
-        workflow_match = re.search(r'expected_source_commit="([0-9a-f]{40})"', workflow)
-        self.assertIsNotNone(dockerfile_match)
-        self.assertIsNotNone(workflow_match)
-        self.assertEqual(
-            [
-                dockerfile_match.group(1),
-                workflow_match.group(1),
-            ],
-            [REPAIRED_SOURCE_COMMIT] * 2,
-        )
+        self.assertIn('ai.videoforge.source-commit="${VIDEOFORGE_SOURCE_COMMIT}"', dockerfile)
+        self.assertIn('expected_source_commit="$GITHUB_SHA"', workflow)
+        self.assertIn('--source-commit "$GITHUB_SHA"', workflow)
+        self.assertIn('--build-arg "VIDEOFORGE_SOURCE_COMMIT=$expected_source_commit"', workflow)
+        self.assertNotRegex(workflow, r"--source-commit [0-9a-f]{40}")
 
     def test_repair_image_overlays_handler_and_inherits_entrypoint(self) -> None:
         dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
@@ -129,8 +120,11 @@ class MageWorkerImageTest(unittest.TestCase):
 
     def test_repair_image_has_no_volume_mutation_or_download_instruction(self) -> None:
         dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")
-        for instruction in ("ADD", "ARG", "ENV", "RUN", "VOLUME", "WORKDIR"):
+        for instruction in ("ADD", "ENV", "RUN", "VOLUME", "WORKDIR"):
             self.assertNotRegex(dockerfile, rf"(?m)^\s*{instruction}(?:\s|$)")
+        self.assertEqual(
+            re.findall(r"(?m)^\s*ARG\s+(.+)$", dockerfile), ["VIDEOFORGE_SOURCE_COMMIT"]
+        )
         for forbidden in ("apt-get", "curl", "git clone", "hf_hub_download", "pip install", "wget"):
             self.assertNotIn(forbidden, dockerfile)
         self.assertNotIn("MAGE_MODEL_ROOT=", dockerfile)
@@ -144,9 +138,10 @@ class MageWorkerImageTest(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn(
-            "docker build --platform linux/amd64 --file workers/image-media/Dockerfile.mage.repair",
+            "docker build --platform linux/amd64",
             workflow,
         )
+        self.assertIn("--file workers/image-media/Dockerfile.mage.repair", workflow)
         self.assertIn(
             'architecture="$(docker image inspect --format=\'{{.Architecture}}\' "$image")"',
             workflow,
@@ -158,25 +153,38 @@ class MageWorkerImageTest(unittest.TestCase):
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        self.assertIn(f'expected_source_commit="{REPAIRED_SOURCE_COMMIT}"', workflow)
+        self.assertIn('expected_source_commit="$GITHUB_SHA"', workflow)
         self.assertIn("expected_source_hashes=(", workflow)
         for source, expected_hash in REPAIR_SOURCE_HASHES.items():
             source_path = ROOT.parents[1] / source
             self.assertEqual(hashlib.sha256(source_path.read_bytes()).hexdigest(), expected_hash)
             self.assertIn(f'"{source}|{expected_hash}"', workflow)
+        for source, destination, _sentinel in REPAIR_RUNTIME_FILES:
+            self.assertIn(f"--source {source}", workflow)
+            self.assertIn(f"--destination {destination}", workflow)
 
     def test_hosted_publication_uses_exact_precomputed_manifest_not_docker_push(self) -> None:
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
             encoding="utf-8"
         )
-        expected_manifest = (
-            "sha256:79fe7e40b69c011c15cc31b2d84b356cd2c755ea338976172cd78cc581304d59"
+        self.assertIn(
+            'expected_manifest_digest="$(jq -r \'.manifest_digest\' "$overlay_dir/output/identity.json")"',
+            workflow,
         )
-        expected_config = "sha256:b6c43cb1f2782540f52ac1f2f4584fea763237f1c75c8c7c1341ea70bcc915e6"
-        expected_layer = "sha256:f31fc51513e3573eb859897b7bcacd4b28bb525567b7523af1c98e4f370c8c3a"
-        self.assertIn(f'expected_manifest_digest="{expected_manifest}"', workflow)
-        self.assertIn(f'expected_config_digest="{expected_config}"', workflow)
-        self.assertIn(f'expected_layer_digest="{expected_layer}"', workflow)
+        self.assertIn(
+            'expected_config_digest="$(jq -r \'.config_digest\' "$overlay_dir/output/identity.json")"',
+            workflow,
+        )
+        self.assertIn(
+            'expected_layer_digest="$(jq -r \'.layer_digest\' "$overlay_dir/output/identity.json")"',
+            workflow,
+        )
+        self.assertIn('source_epoch="$(git show -s --format=%ct "$GITHUB_SHA")"', workflow)
+        self.assertIn('--created "$created"', workflow)
+        self.assertNotRegex(
+            workflow,
+            r'expected_(?:manifest|config|layer)_digest="sha256:[0-9a-f]{64}"',
+        )
         self.assertIn("build_mage_oci_overlay.py", workflow)
         self.assertIn("publish_mage_oci_overlay.py", workflow)
         self.assertIn("--publish", workflow)
@@ -185,6 +193,33 @@ class MageWorkerImageTest(unittest.TestCase):
             workflow,
         )
         self.assertNotIn("docker push", workflow)
+
+    def test_hosted_publication_invalidates_prior_live_qualification(self) -> None:
+        workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("qualification_status=REQUIRES_FRESH_LIVE_REQUALIFICATION", workflow)
+        self.assertIn("prior_qualification_reused=false", workflow)
+        self.assertIn('"prior_qualification_reused": False', workflow)
+
+    def test_hosted_publication_writes_durable_hash_lineage_and_proves_public_pull(self) -> None:
+        workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(
+            encoding="utf-8"
+        )
+        for field in (
+            '"manifest_digest": manifest_digest',
+            '"config_digest": os.environ["MAGE_EXPECTED_CONFIG_DIGEST"]',
+            '"layer_digest": os.environ["MAGE_EXPECTED_LAYER_DIGEST"]',
+            '"source_sha256":',
+            '"qualification_status": "REQUIRES_FRESH_LIVE_REQUALIFICATION"',
+        ):
+            self.assertIn(field, workflow)
+        self.assertIn("mage-serverless-v2-07-deployability", workflow)
+        self.assertIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflow)
+        self.assertIn("Prove anonymous public pull visibility of exact Mage digest", workflow)
+        self.assertIn(".config.digest, .layers[].digest", workflow)
+        self.assertIn('test "$public_digest" = "$MAGE_EXPECTED_MANIFEST_DIGEST"', workflow)
+        self.assertIn("curl -sS -L -o /dev/null -w '%{http_code}' -I", workflow)
 
     def test_hosted_smoke_binds_exact_candidate_layer_payload(self) -> None:
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(

@@ -4,8 +4,9 @@ The default mode is validation only and performs no network access.  Passing
 ``--publish`` is the sole mutation switch.  The publisher uploads exactly the
 ``config.json`` and ``layer.tar.gz`` bytes produced by
 ``build_mage_oci_overlay.py`` and then PUTs the exact ``manifest.json`` bytes;
-it never invokes Docker or rewrites a manifest.  Existing tags are rejected to
-keep the image reference immutable by policy.
+it never invokes Docker or rewrites a manifest. Existing tags are reused only
+when their exact manifest bytes match the deterministic candidate; mismatches
+are rejected without mutation.
 """
 
 from __future__ import annotations
@@ -30,6 +31,11 @@ DOCKER_BLOB_CONTENT_TYPE = "application/octet-stream"
 SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 REPOSITORY = re.compile(r"^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+$")
 TAG = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
+ALLOWED_REGISTRY_HOST = "ghcr.io"
+ALLOWED_REPOSITORY = "pala-lakshmansai/videoforge-mage-v2-07"
+ALLOWED_TAG = re.compile(r"^v2-07-lineage-[0-9a-f]{12}$")
+ALLOWED_TOKEN_ENV = "GHCR_TOKEN"
+ALLOWED_ACTOR_ENV = "GITHUB_ACTOR"
 
 
 class PublishError(ValueError):
@@ -218,7 +224,25 @@ class RegistryClient:
                 raise
             status = 404
         if status != 404:
-            raise PublishError("refusing to overwrite an existing image tag")
+            read_status, readback_headers, readback = self._request(
+                "GET",
+                f"manifests/{tag}",
+                accept=DOCKER_MANIFEST_MEDIA_TYPE,
+            )
+            readback_digest = _sha256(readback)
+            header_digest = readback_headers.get("Docker-Content-Digest")
+            if (
+                status != 200
+                or read_status != 200
+                or readback_digest != artifacts["manifest_digest"]
+                or (header_digest and header_digest != artifacts["manifest_digest"])
+            ):
+                raise PublishError("refusing to overwrite a different existing image tag")
+            return {
+                "tag": tag,
+                "manifest_digest": artifacts["manifest_digest"],
+                "publication_state": "EXACT_EXISTING_DIGEST_REUSED",
+            }
         self._upload_blob(artifacts["config_digest"], artifacts["config_bytes"])
         self._upload_blob(artifacts["layer_digest"], artifacts["layer_bytes"])
         status, headers, _body = self._request(
@@ -243,7 +267,11 @@ class RegistryClient:
         readback_digest = readback_headers.get("Docker-Content-Digest")
         if readback_digest and readback_digest != artifacts["manifest_digest"]:
             raise PublishError("registry manifest readback digest mismatch")
-        return {"tag": tag, "manifest_digest": artifacts["manifest_digest"]}
+        return {
+            "tag": tag,
+            "manifest_digest": artifacts["manifest_digest"],
+            "publication_state": "PUBLISHED_NEW_DIGEST",
+        }
 
 
 def _registry_token(*, host: str, repository: str, actor: str, secret: str) -> str:
@@ -289,6 +317,14 @@ def main(argv: list[str] | None = None) -> int:
         raise PublishError("repository must be a simple registry repository path")
     if not TAG.fullmatch(args.tag):
         raise PublishError("tag contains unsupported characters")
+    if (
+        args.registry_host != ALLOWED_REGISTRY_HOST
+        or args.repository != ALLOWED_REPOSITORY
+        or not ALLOWED_TAG.fullmatch(args.tag)
+        or args.token_env != ALLOWED_TOKEN_ENV
+        or args.actor_env != ALLOWED_ACTOR_ENV
+    ):
+        raise PublishError("registry host, repository, tag, or credential seam is not allowlisted")
     artifacts = _validate_artifacts(args.output_dir)
     result: dict[str, Any] = {
         "publication_requested": bool(args.publish),

@@ -6,11 +6,15 @@
 # prepares, downloads, repairs, or writes model bytes.
 FROM ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b
 
+ARG VIDEOFORGE_SOURCE_COMMIT
+
 LABEL org.opencontainers.image.title="VideoForge SoulX FlashHead Pro Serverless Worker" \
       org.opencontainers.image.version="v2-08-serverless-candidate" \
+      org.opencontainers.image.revision="${VIDEOFORGE_SOURCE_COMMIT}" \
       org.opencontainers.image.base.name="ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s" \
       org.opencontainers.image.base.digest="sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b" \
       ai.videoforge.lane="soulx_avatar" \
+      ai.videoforge.source-commit="${VIDEOFORGE_SOURCE_COMMIT}" \
       ai.videoforge.runtime-profile="videoforge_soulx_flashhead_pro_bf16_v1" \
       ai.videoforge.source-revision="9bc03de06bb0de82cd6bc477804512ae06144bf2" \
       ai.videoforge.model-revision="59119b6c681230c3eeee157e224ae1941746711e" \
@@ -55,7 +59,7 @@ RUN printf '%s  %s\n' \
       bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9 /opt/videoforge/soulx-serverless-entrypoint.py \
       7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775 /opt/videoforge/common/secure_scratch.py \
       2ec7704eb3893876d0633f1384555fde9ec491dc42984f6e24a1b4568694c227 /opt/videoforge/common/serverless_envelope.py \
-      a94bf2c8c4175eef3f84ab719118c2b9b5b501ce8b2708c28713b25521b71c71 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
+      0913e3d49d959585854ad17f9fbd8a31dec74e26ab84187b4993f2ddcd75eb92 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
     | sha256sum --check --strict \
     && python -m compileall -q /opt/videoforge/soulx_serverless.py \
        /opt/videoforge/soulx-serverless-entrypoint.py /opt/videoforge/common \
