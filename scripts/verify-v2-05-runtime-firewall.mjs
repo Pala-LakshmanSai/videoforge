@@ -155,6 +155,7 @@ const allowedProductionImports = new Set([
   "../src/server/hosted/configuration",
   "../src/server/hosted/retention",
   "./hosted-workflow",
+  "./hosted-pair-workflow",
 ]);
 const productionImports = [
   ...productionEntry.matchAll(
