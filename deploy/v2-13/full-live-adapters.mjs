@@ -7,12 +7,13 @@ import {
   mkdtempSync,
   openSync,
   readFileSync,
+  readdirSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
@@ -26,6 +27,30 @@ const TAG = "videoforge-v2-13-release-20260826-v3";
 const APPROVAL_BRANCH = "codex/serverless-v2-roadmap";
 const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const GUARDED_SECRET_NAMES = Object.freeze([
+  "DATABASE_URL",
+  "BETTER_AUTH_SECRET",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "WORKFLOW_CALLBACK_SECRET",
+  "MEDIA_WORKER_TOKEN_SECRET",
+  "VIDEOFORGE_RECONCILER_DATABASE_URL",
+  "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+  "VIDEOFORGE_DISPATCH_TOKEN_KEY_ID",
+  "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
+  "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
+  "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+  "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+  "RUNPOD_API_KEY",
+  "RUNPOD_API_BASE_URL",
+  "VIDEOFORGE_MAGE_ENDPOINT_ID",
+  "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+  "VIDEOFORGE_SOULX_ENDPOINT_ID",
+  "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+  "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
+]);
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const BRIDGE_PATH = "apps/web/src/server/providers/v213-full-live-cli.ts";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
@@ -41,6 +66,12 @@ const BRIDGE_COMMANDS = Object.freeze([
   "v2-11-two-concurrent-owned-projects",
   "v2-12-long-output",
   "v2-13-final-two-lane-smoke",
+  "restore-endpoints-max-one",
+  "prove-zero-workers",
+  "read-settled-billing",
+  "reconcile-exact-resources",
+]);
+const CLEANUP_BRIDGE_COMMANDS = new Set([
   "restore-endpoints-max-one",
   "prove-zero-workers",
   "read-settled-billing",
@@ -442,14 +473,11 @@ function createGithubVerificationAdapters({
             await wait(Math.min(pollIntervalMs, remaining()));
             remaining();
           }
-          const viewed = exactCommand((command, args) =>
-            run(command, args, Math.min(60_000, remaining())), "gh", [
-            "run",
-            "view",
-            runId,
-            "--json",
-            "databaseId,headSha,workflowName,status,conclusion",
-          ]);
+          const viewed = exactCommand(
+            (command, args) => run(command, args, Math.min(60_000, remaining())),
+            "gh",
+            ["run", "view", runId, "--json", "databaseId,headSha,workflowName,status,conclusion"],
+          );
           remaining();
           try {
             runRecord = JSON.parse(viewed.stdout);
@@ -471,8 +499,7 @@ function createGithubVerificationAdapters({
         if (runRecord?.status !== "completed") fail("WORKFLOW_RUN_TERMINAL_TIMEOUT");
         const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v2-13-workflow-evidence-"));
         try {
-          exactCommand((command, args) =>
-            run(command, args, Math.min(60_000, remaining())), "gh", [
+          exactCommand((command, args) => run(command, args, Math.min(60_000, remaining())), "gh", [
             "run",
             "download",
             runId,
@@ -1270,8 +1297,7 @@ function exclusiveAtomicBytes(path, bytes) {
   } catch {
     if (!lstatExists(path)) fail("MATERIALIZATION_OUTPUT_CREATE", path);
     protectedFile(path, "MATERIALIZATION_OUTPUT_FILE");
-    if (sha256(readFileSync(path)) !== sha256(bytes))
-      fail("MATERIALIZATION_OUTPUT_HASH_CAS", path);
+    if (sha256(readFileSync(path)) !== sha256(bytes)) fail("MATERIALIZATION_OUTPUT_HASH_CAS", path);
   } finally {
     rmSync(temporary, { force: true });
   }
@@ -1322,8 +1348,8 @@ function atomicChainUpdate(path, entry) {
     const priorIndex = chain.entries.findIndex((item) => item?.kind === entry.kind);
     const previous =
       priorIndex === chain.entries.length - 1
-        ? chain.entries.at(-2)?.entry_sha256 ?? MATERIALIZATION_GENESIS
-        : chain.entries.at(-1)?.entry_sha256 ?? MATERIALIZATION_GENESIS;
+        ? (chain.entries.at(-2)?.entry_sha256 ?? MATERIALIZATION_GENESIS)
+        : (chain.entries.at(-1)?.entry_sha256 ?? MATERIALIZATION_GENESIS);
     const unsigned = { ...entry, prior_chain_sha256: previous };
     const entrySha256 = sha256(Buffer.from(`${canonicalJson(unsigned)}\n`));
     if (priorIndex >= 0) {
@@ -1392,16 +1418,25 @@ function createProtectedInputMaterializer({
       "soulxEndpointId",
       "endpointId",
       "endpointIdSha256",
+      "publicImage",
+      "sourceCommit",
+      "deploymentSha256",
       "deploymentSnapshotSha256",
       "deployment_snapshot_sha256",
       "mage_deployment_snapshot_sha256",
       "soulx_deployment_snapshot_sha256",
     ]);
+    const forbiddenFutureKeysLower = new Set(
+      [...forbiddenFutureKeys, ...GUARDED_SECRET_NAMES.slice(17, 21)].map((key) =>
+        key.toLowerCase(),
+      ),
+    );
     const hasForbiddenFutureKey = (item) =>
       item !== null &&
       typeof item === "object" &&
       Object.entries(item).some(
-        ([key, nested]) => forbiddenFutureKeys.has(key) || hasForbiddenFutureKey(nested),
+        ([key, nested]) =>
+          forbiddenFutureKeysLower.has(key.toLowerCase()) || hasForbiddenFutureKey(nested),
       );
     const dynamicSeedValues = [
       value?.production_input_base?.dualLaneInput?.mage?.publicImage,
@@ -1476,37 +1511,49 @@ function createProtectedInputMaterializer({
         "read-settled-billing",
         "reconcile-exact-resources",
       ].includes(operationId) &&
-      !lstatExists(environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE)
+      !lstatExists(environment.VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE)
     ) {
       const source = seed();
       const preEndpointSecrets = loadBridgeProductionSecrets(environment, {
         requireEndpoints: false,
       });
-      const production = structuredClone(source.production_input_base);
-      production.authorityDocument = {
-        ...production.authorityDocument,
-        authorityId: state.authority_id,
-        proposalSha256: state.proposal_sha256,
-        approvalSha256: state.approval_sha256,
-        proposalCommit: state.proposal_record_commit,
-        sourceCommit: state.release_source_commit,
-        executorSha256: state.full_live_executor_sha256,
-        approvedAt: state.approved_at,
-        expiresAt: state.expires_at,
-        maximumCumulativeSpendUsd: 17.5,
-        singleUse: true,
+      const preflight = priorResults.get("fresh-live-preflight");
+      const noRunPodMutationReceipts = [
+        "mage-live-qualification",
+        "soulx-live-qualification",
+        "create-exact-max-one-endpoints",
+      ].every((id) => !priorResults.has(id));
+      const billingBaselineUsd = preflight?.bridgeSummary?.admission?.cumulativeBillingUsd ?? null;
+      if (
+        (billingBaselineUsd === null && !noRunPodMutationReceipts) ||
+        (billingBaselineUsd !== null &&
+          (!Number.isFinite(billingBaselineUsd) || billingBaselineUsd < 0))
+      )
+        fail("MATERIALIZATION_CLEANUP_BILLING_BASELINE");
+      const cleanup = {
+        schemaVersion: "videoforge.v213-full-live-cleanup-input/v1",
+        fullLiveAuthorityId: source.production_input_base.fullLiveAuthorityId,
+        billingBaselineMode:
+          billingBaselineUsd === null
+            ? "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION"
+            : "PRIOR_FRESH_PREFLIGHT",
+        billingBaselineUsd,
+        totalCapUsd: 17.5,
+        retainedLanes: ["mage", "soulx"].map((lane) => ({
+          lane,
+          volumeIdSha256: source.production_input_base.dualLaneInput[lane].volumeIdSha256,
+          volumeManifestSha256:
+            source.production_input_base.dualLaneInput[lane].volumeManifestSha256,
+        })),
       };
-      production.dualLaneInput.mage.sourceCommit = state.release_source_commit;
-      production.dualLaneInput.soulx.sourceCommit = state.release_source_commit;
-      const output = writeJson(environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE, production);
-      validateProduction(environment);
+      const output = writeJson(environment.VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE, cleanup);
       record({
         stage: "cleanup-pre-endpoint-descriptor",
         state,
         outerStateSha256,
         inputs: {},
         outputs: {
-          cleanup_production_input_sha256: output,
+          cleanup_input_sha256: output,
           pre_endpoint_secrets_sha256: sha256(Buffer.from(preEndpointSecrets.raw)),
         },
       });
@@ -1561,8 +1608,10 @@ function createProtectedInputMaterializer({
       if (
         !HASH.test(mageProduction?.deploymentSnapshotSha256 ?? "") ||
         !HASH.test(soulxProduction?.deploymentSnapshotSha256 ?? "") ||
-        sha256(Buffer.from(mageProduction?.endpointId ?? "")) !== mageProduction?.endpointIdSha256 ||
-        sha256(Buffer.from(soulxProduction?.endpointId ?? "")) !== soulxProduction?.endpointIdSha256 ||
+        sha256(Buffer.from(mageProduction?.endpointId ?? "")) !==
+          mageProduction?.endpointIdSha256 ||
+        sha256(Buffer.from(soulxProduction?.endpointId ?? "")) !==
+          soulxProduction?.endpointIdSha256 ||
         mageProduction.endpointId === soulxProduction.endpointId
       )
         fail("MATERIALIZATION_MAX_ONE_ENDPOINT_BINDINGS");
@@ -1588,6 +1637,40 @@ function createProtectedInputMaterializer({
         productionSecretsBytes,
       );
       loadBridgeProductionSecrets(environment, { requireEndpoints: true });
+      const secretDirectory = protectedDirectory(
+        environment.VIDEOFORGE_V2_13_SECRET_INPUT_DIR,
+        "MATERIALIZATION_SECRET_INPUT_DIRECTORY",
+      );
+      const endpointSecrets = Object.freeze({
+        VIDEOFORGE_MAGE_ENDPOINT_ID: mageProduction.endpointId,
+        VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256: mageProduction.endpointIdSha256,
+        VIDEOFORGE_SOULX_ENDPOINT_ID: soulxProduction.endpointId,
+        VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256: soulxProduction.endpointIdSha256,
+      });
+      const existingSecretNames = readdirSync(secretDirectory).sort();
+      if (
+        existingSecretNames.some((name) => !GUARDED_SECRET_NAMES.includes(name)) ||
+        GUARDED_SECRET_NAMES.filter((name) => !(name in endpointSecrets)).some(
+          (name) => !existingSecretNames.includes(name),
+        )
+      )
+        fail("MATERIALIZATION_SECRET_INPUT_ALLOWLIST");
+      for (const [name, value] of Object.entries(endpointSecrets))
+        exclusiveAtomicBytes(join(secretDirectory, name), Buffer.from(value));
+      if (
+        JSON.stringify(readdirSync(secretDirectory).sort()) !==
+        JSON.stringify([...GUARDED_SECRET_NAMES].sort())
+      )
+        fail("MATERIALIZATION_SECRET_INPUT_ALLOWLIST");
+      const secretSha256 = Object.fromEntries(
+        GUARDED_SECRET_NAMES.map((name) => {
+          const value = readFileSync(
+            protectedFile(join(secretDirectory, name), "MATERIALIZATION_SECRET_INPUT_FILE"),
+          );
+          if (value.length === 0 || value.includes(0)) fail("MATERIALIZATION_SECRET_INPUT_FILE");
+          return [name, sha256(value)];
+        }),
+      );
       record({
         stage: "max-one-endpoint-bindings",
         state,
@@ -1597,6 +1680,10 @@ function createProtectedInputMaterializer({
           production_secrets_sha256: sha256(productionSecretsBytes),
           mage_deployment_snapshot_sha256: mageProduction.deploymentSnapshotSha256,
           soulx_deployment_snapshot_sha256: soulxProduction.deploymentSnapshotSha256,
+          mage_endpoint_secret_sha256: secretSha256.VIDEOFORGE_MAGE_ENDPOINT_ID,
+          mage_endpoint_hash_secret_sha256: secretSha256.VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256,
+          soulx_endpoint_secret_sha256: secretSha256.VIDEOFORGE_SOULX_ENDPOINT_ID,
+          soulx_endpoint_hash_secret_sha256: secretSha256.VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256,
         },
       });
       const manifestSha256 = writeJson(
@@ -1607,10 +1694,7 @@ function createProtectedInputMaterializer({
       config.authority.approved_at = state.approved_at;
       config.release.commit = state.release_source_commit;
       config.release.media_worker_release_manifest_sha256 = manifestSha256;
-      const configSha256 = writeJson(
-        environment.VIDEOFORGE_V2_13_CONFIG_ACTIVATION_RECORD,
-        config,
-      );
+      const configSha256 = writeJson(environment.VIDEOFORGE_V2_13_CONFIG_ACTIVATION_RECORD, config);
       let renderedBytes;
       if (typeof renderDisabledConfig === "function") {
         renderedBytes = renderDisabledConfig({ environment, state });
@@ -1638,6 +1722,7 @@ function createProtectedInputMaterializer({
       if (!Buffer.isBuffer(renderedBytes)) fail("MATERIALIZATION_DISABLED_CONFIG_BYTES");
       exclusiveAtomicBytes(environment.VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE, renderedBytes);
       const activation = structuredClone(source.activation_record_base);
+      activation.secret_sha256 = secretSha256;
       Object.assign(activation.authority, {
         mode: "APPROVED_EXECUTE",
         authority_id: state.authority_id,
@@ -1774,9 +1859,14 @@ function productionBridgeSpawn({ environment, request }) {
   const opened = [];
   try {
     writeFileSync(requestPath, `${JSON.stringify(request)}\n`, { encoding: "utf8", mode: 0o600 });
+    const protectedFiles = CLEANUP_BRIDGE_COMMANDS.has(request.command)
+      ? BRIDGE_PROTECTED_FILES.filter(([fdName]) =>
+          ["RUNPOD_API_KEY_FD", "OPERATOR_DATABASE_URL_FD"].includes(fdName),
+        )
+      : BRIDGE_PROTECTED_FILES;
     const files = [
       ["REQUEST_FD", requestPath],
-      ...BRIDGE_PROTECTED_FILES.map(([fdName, variable]) => [
+      ...protectedFiles.map(([fdName, variable]) => [
         fdName,
         protectedFile(environment[variable], `BRIDGE_PROTECTED_FILE:${variable}`),
       ]),
@@ -1835,7 +1925,51 @@ function loadBridgeProductionInput(environment) {
   return value;
 }
 
-function loadBridgeProductionSecrets(environment, { requireEndpoints = false, allowEither = false } = {}) {
+function loadBridgeCleanupInput(environment) {
+  let value;
+  try {
+    value = JSON.parse(
+      readFileSync(
+        protectedFile(environment.VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE, "BRIDGE_CLEANUP_INPUT_FILE"),
+        "utf8",
+      ),
+    );
+  } catch {
+    fail("BRIDGE_CLEANUP_INPUT_JSON");
+  }
+  if (
+    value?.schemaVersion !== "videoforge.v213-full-live-cleanup-input/v1" ||
+    Object.keys(value).sort().join(",") !==
+      "billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,retainedLanes,schemaVersion,totalCapUsd" ||
+    !/^[0-9a-f-]{36}$/u.test(value.fullLiveAuthorityId ?? "") ||
+    !["PRIOR_FRESH_PREFLIGHT", "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION"].includes(
+      value.billingBaselineMode,
+    ) ||
+    (value.billingBaselineMode === "PRIOR_FRESH_PREFLIGHT" &&
+      (!Number.isFinite(value.billingBaselineUsd) || value.billingBaselineUsd < 0)) ||
+    (value.billingBaselineMode === "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION" &&
+      value.billingBaselineUsd !== null) ||
+    value.totalCapUsd !== 17.5 ||
+    !Array.isArray(value.retainedLanes) ||
+    value.retainedLanes.length !== 2 ||
+    value.retainedLanes.some(
+      (lane) =>
+        !["mage", "soulx"].includes(lane?.lane) ||
+        !HASH.test(lane?.volumeIdSha256 ?? "") ||
+        !HASH.test(lane?.volumeManifestSha256 ?? "") ||
+        Object.keys(lane ?? {})
+          .sort()
+          .join(",") !== "lane,volumeIdSha256,volumeManifestSha256",
+    )
+  )
+    fail("BRIDGE_CLEANUP_INPUT");
+  return value;
+}
+
+function loadBridgeProductionSecrets(
+  environment,
+  { requireEndpoints = false, allowEither = false } = {},
+) {
   const raw = readFileSync(
     protectedFile(
       environment.VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE,
@@ -1871,7 +2005,9 @@ function loadBridgeProductionSecrets(environment, { requireEndpoints = false, al
         "videoforge.v213-full-live-production-secrets/v1",
       ].includes(value?.schemaVersion)) ||
     JSON.stringify(Object.keys(value ?? {}).sort()) !==
-      JSON.stringify((hasEndpoints ? [...baseKeys, "mageEndpointId", "soulxEndpointId"] : baseKeys).sort()) ||
+      JSON.stringify(
+        (hasEndpoints ? [...baseKeys, "mageEndpointId", "soulxEndpointId"] : baseKeys).sort(),
+      ) ||
     (hasEndpoints &&
       (typeof value.mageEndpointId !== "string" ||
         typeof value.soulxEndpointId !== "string" ||
@@ -1922,15 +2058,15 @@ function preflightConcreteFullLiveInputs({
   if (
     production !== null &&
     (authority.authorityId !== state.authority_id ||
-    authority.proposalSha256 !== state.proposal_sha256 ||
-    authority.approvalSha256 !== state.approval_sha256 ||
-    authority.proposalCommit !== state.proposal_record_commit ||
-    authority.sourceCommit !== state.release_source_commit ||
-    authority.executorSha256 !== state.full_live_executor_sha256 ||
-    authority.approvedAt !== state.approved_at ||
-    authority.expiresAt !== state.expires_at ||
-    authority.maximumCumulativeSpendUsd !== 17.5 ||
-    authority.singleUse !== true)
+      authority.proposalSha256 !== state.proposal_sha256 ||
+      authority.approvalSha256 !== state.approval_sha256 ||
+      authority.proposalCommit !== state.proposal_record_commit ||
+      authority.sourceCommit !== state.release_source_commit ||
+      authority.executorSha256 !== state.full_live_executor_sha256 ||
+      authority.approvedAt !== state.approved_at ||
+      authority.expiresAt !== state.expires_at ||
+      authority.maximumCumulativeSpendUsd !== 17.5 ||
+      authority.singleUse !== true)
   )
     fail("BRIDGE_OUTER_AUTHORITY_LINEAGE");
   const bridgeValues = Object.fromEntries(
@@ -2063,7 +2199,7 @@ function preflightGuardedActivationInputs({ environment = process.env, state }) 
 function createTypeScriptBridgeAdapters({
   environment = process.env,
   spawnBridge = productionBridgeSpawn,
-  expectedCliSha256 = "sha256:ade1711e644eb23d282665bdfc6d280e6a48c589d56e25fd921f585d7ffa663e",
+  expectedCliSha256 = "sha256:efdc16084ba42a512604bfa207708aeed83af9b5c6a17079f73291a3218fbb7e",
   expectedTransportSha256 = "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
 } = {}) {
   const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
@@ -2072,13 +2208,17 @@ function createTypeScriptBridgeAdapters({
   if (actualTransportSha256 !== expectedTransportSha256) fail("BRIDGE_TRANSPORT_SOURCE_DRIFT");
   const run = (command) => async (_context, state, priorResults, outerStateSha256) => {
     if (!HASH.test(outerStateSha256 ?? "")) fail("BRIDGE_OUTER_STATE");
-    const production = loadBridgeProductionInput(environment);
+    const cleanup = CLEANUP_BRIDGE_COMMANDS.has(command)
+      ? loadBridgeCleanupInput(environment)
+      : null;
+    const production = cleanup === null ? loadBridgeProductionInput(environment) : null;
     if (
-      production.dualLaneInput?.mage?.sourceCommit !== state.release_source_commit ||
-      production.dualLaneInput?.soulx?.sourceCommit !== state.release_source_commit
+      production !== null &&
+      (production.dualLaneInput?.mage?.sourceCommit !== state.release_source_commit ||
+        production.dualLaneInput?.soulx?.sourceCommit !== state.release_source_commit)
     )
       fail("BRIDGE_SOURCE_LINEAGE");
-    let commandPayload = production.commandPayloads[command] ?? {};
+    let commandPayload = production?.commandPayloads[command] ?? {};
     if (command === "fresh-live-preflight")
       commandPayload = { authorityDocument: production.authorityDocument };
     if (command === "mage-live-qualification")
@@ -2103,16 +2243,19 @@ function createTypeScriptBridgeAdapters({
       commandPayload = {};
     const request = {
       schemaVersion: "videoforge.v213-full-live-command/v1",
-      commandId: `v213:${production.fullLiveAuthorityId}:${command}`,
-      stageAuthorityId: production.fullLiveAuthorityId,
+      commandId: `v213:${(production ?? cleanup).fullLiveAuthorityId}:${command}`,
+      stageAuthorityId: (production ?? cleanup).fullLiveAuthorityId,
       command,
-      input: {
-        schemaVersion: "videoforge.v213-full-live-production-input/v1",
-        outerStateSha256,
-        fullLiveAuthorityId: production.fullLiveAuthorityId,
-        dualLaneInput: production.dualLaneInput,
-        commandPayload,
-      },
+      input:
+        cleanup === null
+          ? {
+              schemaVersion: "videoforge.v213-full-live-production-input/v1",
+              outerStateSha256,
+              fullLiveAuthorityId: production.fullLiveAuthorityId,
+              dualLaneInput: production.dualLaneInput,
+              commandPayload,
+            }
+          : cleanup,
     };
     const result = await spawnBridge({ environment, request });
     if (
@@ -2225,8 +2368,8 @@ function createConcreteFullLiveAdapters(options = {}) {
   const materialize =
     options.materializer === false
       ? null
-      : options.materializer?.materialize ??
-        createProtectedInputMaterializer(options.materializer);
+      : (options.materializer?.materialize ??
+        createProtectedInputMaterializer(options.materializer));
   if (materialize === null) return Object.freeze(adapters);
   return Object.freeze(
     Object.fromEntries(

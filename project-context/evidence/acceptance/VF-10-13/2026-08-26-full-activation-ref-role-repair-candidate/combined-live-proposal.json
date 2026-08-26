@@ -31,12 +31,12 @@
     "exact_release_components": {
       "full_live_executor": {
         "path": "deploy/v2-13/full-live-executor.mjs",
-        "sha256": "sha256:2b782863fef0222527a10fcd1d4bb1c8bacfc58d601ebd764e1919968d781830",
+      "sha256": "sha256:2b782863fef0222527a10fcd1d4bb1c8bacfc58d601ebd764e1919968d781830",
         "sole_canonical_live_mutation_path": true
       },
       "full_live_adapters": {
         "path": "deploy/v2-13/full-live-adapters.mjs",
-        "sha256": "sha256:2d59c91bfcfd57e9b2f2ecfcdce2e85e4f288fe2dc63aedf7adcd86b14f10dea"
+      "sha256": "sha256:2d59c91bfcfd57e9b2f2ecfcdce2e85e4f288fe2dc63aedf7adcd86b14f10dea"
       },
       "promotion": {
         "path": "deploy/v2-13/promote-qualified-production.mjs",
@@ -44,15 +44,15 @@
       },
       "guarded_activation": {
         "path": "deploy/v2-13/guarded-activation.mjs",
-        "sha256": "sha256:8946676cae1ab8c414880e2d093fc8bbc957d97af6ee0f6a30ee052aea9bf8d0"
+      "sha256": "sha256:8946676cae1ab8c414880e2d093fc8bbc957d97af6ee0f6a30ee052aea9bf8d0"
       },
       "orchestration_authority": {
         "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-        "sha256": "sha256:be1bbca1d933cd555baa768d13a9ebf33cd75be4c4214df79e09cbe7e505b241"
+      "sha256": "sha256:be1bbca1d933cd555baa768d13a9ebf33cd75be4c4214df79e09cbe7e505b241"
       },
       "typescript_cli_bridge": {
         "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-        "sha256": "sha256:ec6c459294769a04d3126e37d4e2d94be1578095a2ec11bfd9221fc02a6f8123"
+      "sha256": "sha256:ec6c459294769a04d3126e37d4e2d94be1578095a2ec11bfd9221fc02a6f8123"
       },
       "runpod_dual_lane_transport": {
         "path": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
@@ -64,7 +64,7 @@
       },
       "approval_validator": {
         "path": "deploy/v2-13/validate-full-live-approval.mjs",
-        "sha256": "sha256:b6ddaeda44f5d0921e6fb7b55549df0c603f57ab356327f7dfd06ec1ab0009e5"
+      "sha256": "sha256:b6ddaeda44f5d0921e6fb7b55549df0c603f57ab356327f7dfd06ec1ab0009e5"
       }
     }
   },
@@ -145,7 +145,60 @@
         "soulxEndpointId",
         "soulxEndpointIdSha256"
       ],
+      "guarded_endpoint_secret_file_names": [
+        "VIDEOFORGE_MAGE_ENDPOINT_ID",
+        "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+        "VIDEOFORGE_SOULX_ENDPOINT_ID",
+        "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256"
+      ],
+      "seed_recursively_rejects_endpoint_identity_key_case_variants": true,
+      "production_input_base_lane_fields_must_be_absent_or_null_before_receipt_derivation": [
+        "publicImage",
+        "deploymentSha256",
+        "sourceCommit"
+      ],
+      "command_payloads_recursively_forbid_endpoint_or_deployment_snapshot_selectors": true,
+      "future_output_hash_or_identity_anywhere_in_seed_is_hard_stop": true,
       "final_production_secrets_schema": "videoforge.v213-full-live-production-secrets/v1",
+      "cleanup_pre_endpoint_runtime": {
+        "schema": "videoforge.v213-full-live-cleanup-input/v1",
+        "exact_fields": [
+          "schemaVersion",
+          "fullLiveAuthorityId",
+          "billingBaselineMode",
+          "billingBaselineUsd",
+          "totalCapUsd",
+          "retainedLanes"
+        ],
+        "retained_lane_exact_fields": [
+          "lane",
+          "volumeIdSha256",
+          "volumeManifestSha256"
+        ],
+        "billing_baseline_modes": [
+          "PRIOR_FRESH_PREFLIGHT",
+          "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION"
+        ],
+        "null_billing_baseline_allowed_only_for_establish_current_mode_with_no_prior_fresh_preflight_or_runpod_mutation_receipt": true,
+        "establish_current_mode_first_authenticated_current_read_is_baseline_then_bounded_final_read_with_no_intervening_provider_mutation": true,
+        "exact_child_fd_environment": [
+          "REQUEST_FD",
+          "RUNPOD_API_KEY_FD",
+          "OPERATOR_DATABASE_URL_FD"
+        ],
+        "forbidden_inputs": [
+          "exactProductionInput",
+          "runtime-database-url",
+          "reconciler-database-url",
+          "worker-origin",
+          "worker-token",
+          "production-secrets-fd",
+          "endpoint-ids-or-hashes",
+          "receipt-or-signing-keys",
+          "key-registration"
+        ],
+        "accepted_for_normal_guarded_or_acceptance_work": false
+      },
       "storage_parent": "OUTER_STATE_MODE_0700_DIRECTORY",
       "record_file_mode": "0600",
       "exclusive_create_or_exact_hash_cas_required": true,
@@ -181,13 +234,22 @@
           "consume_before_materialization": "activation-record",
           "writes": [
             "production-secrets",
+            "VIDEOFORGE_MAGE_ENDPOINT_ID",
+            "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+            "VIDEOFORGE_SOULX_ENDPOINT_ID",
+            "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
             "mage-deployment-snapshot",
             "soulx-deployment-snapshot"
           ],
+          "rebinds_all_guarded_secret_sha256_entries": 22,
           "ordered_output_names": [
             "production_secrets_sha256",
             "mage_deployment_snapshot_sha256",
-            "soulx_deployment_snapshot_sha256"
+            "soulx_deployment_snapshot_sha256",
+            "mage_endpoint_secret_sha256",
+            "mage_endpoint_hash_secret_sha256",
+            "soulx_endpoint_secret_sha256",
+            "soulx_endpoint_hash_secret_sha256"
           ]
         },
         {
@@ -228,7 +290,7 @@
             "reconcile-exact-resources"
           ],
           "ordered_output_names": [
-            "cleanup_production_input_sha256",
+            "cleanup_input_sha256",
             "pre_endpoint_secrets_sha256"
           ],
           "accepted_for_normal_or_acceptance_work": false
@@ -474,6 +536,7 @@
       "phase": "max_one_endpoints_and_guarded_activation",
       "operations": [
         "only after both qualifications PASS create the exact two immutable templates and two max-one workersMin=0 production endpoints bound to the same exact volumes and qualified images",
+        "derive endpoint identities and deployment snapshots only from the exact max-one result; atomically materialize the final production-secrets record and exact four guarded endpoint secret files, hash-chain all seven outputs, and rebind all 22 guarded secret hashes before activation materialization",
         "invoke the guarded child exactly once with GPU=false and external-spend-cap USD 0",
         "create/read back the exact secret-free disabled Cloudflare quarantine, then create pgcrypto, apply only migrations 0037 through 0045, provision exact fresh roles videoforge_hosted_runtime and videoforge_hosted_reconciler with exact grants/readbacks, then provision 22 exact allowlisted secrets and final disabled deployment",
         "promote exactly once only from the current consumed database authority, both durable qualification PASS records, both exact max-one endpoint deployments, and exact disabled Cloudflare readback; require atomic enabled-config and route readback or roll back to the disabled quarantine",
@@ -495,6 +558,7 @@
       "order": 10,
       "phase": "cleanup_and_close",
       "operations": [
+        "for failures before guarded roles exist, use only the separate videoforge.v213-full-live-cleanup-input/v1 runtime with REQUEST_FD, RUNPOD_API_KEY_FD, and OPERATOR_DATABASE_URL_FD; never load exactProductionInput, runtime or reconciler database roles, production secrets, endpoint identities, signing keys, or key registration",
         "restore workersMax=1 and workersMin=0, require every owned queue empty, and delete only attributable disposable resources",
         "retain only the same two exact 50 GB EU-RO-1 volumes at the separately approved USD 7/month and intended zero-idle product control resources",
         "prove three stable zero-worker/zero-running-Pod reads, protected config, final route, final billing after lag, every phase cap, and the USD 17.50 cumulative cap",

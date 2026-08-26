@@ -38,6 +38,7 @@ import { fetchCp07Catalog } from "./runpod-echo-cp07-preflight.js";
 import {
   createV213RunPodDualLaneTransport,
   type V213AttributableCleanupResult,
+  type V213RunPodDualLaneTransport,
 } from "./v213-runpod-dual-lane-transport.js";
 import {
   awaitV209TerminalAcceptance,
@@ -243,6 +244,26 @@ export interface V213ProtectedInputs {
   readonly productionSecretsRaw: string;
 }
 
+export interface V213CleanupProtectedInputs {
+  readonly request: V213FullLiveCommandRequest;
+  readonly runpodApiKey: string;
+  readonly operatorDatabaseUrl: string;
+  readonly cleanupInput: V213CleanupInput;
+}
+
+interface V213CleanupInput {
+  readonly schemaVersion: "videoforge.v213-full-live-cleanup-input/v1";
+  readonly fullLiveAuthorityId: string;
+  readonly billingBaselineMode: "PRIOR_FRESH_PREFLIGHT" | "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION";
+  readonly billingBaselineUsd: number | null;
+  readonly totalCapUsd: 17.5;
+  readonly retainedLanes: readonly Readonly<{
+    lane: "mage" | "soulx";
+    volumeIdSha256: `sha256:${string}`;
+    volumeManifestSha256: `sha256:${string}`;
+  }>[];
+}
+
 export interface V213ProductionSecrets {
   readonly schemaVersion:
     | "videoforge.v213-full-live-pre-endpoint-secrets/v1"
@@ -274,6 +295,12 @@ export const V213_BRIDGE_ENVIRONMENT = Object.freeze({
 } as const);
 
 const ALLOWED_ENVIRONMENT = new Set<string>(Object.values(V213_BRIDGE_ENVIRONMENT));
+const CLEANUP_ALLOWED_ENVIRONMENT = new Set<string>([
+  V213_BRIDGE_ENVIRONMENT.command,
+  V213_BRIDGE_ENVIRONMENT.requestFd,
+  V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd,
+  V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd,
+]);
 
 function fail(code: string): never {
   throw new V213FullLiveBridgeError(code);
@@ -355,9 +382,7 @@ function productionSecrets(
     "stageAuthoritySigningKeyBase64",
   ];
   const hasEndpoints = value?.schemaVersion === "videoforge.v213-full-live-production-secrets/v1";
-  const keys = hasEndpoints
-    ? [...baseKeys, "mageEndpointId", "soulxEndpointId"].sort()
-    : baseKeys;
+  const keys = hasEndpoints ? [...baseKeys, "mageEndpointId", "soulxEndpointId"].sort() : baseKeys;
   if (
     ![
       "videoforge.v213-full-live-pre-endpoint-secrets/v1",
@@ -509,6 +534,89 @@ export function readV213ProtectedInputs(
     productionSecrets: secrets,
     productionSecretsRaw,
   });
+}
+
+function exactCleanupInput(value: unknown): V213CleanupInput {
+  const item = object(value);
+  const lanes = Array.isArray(item?.retainedLanes) ? item.retainedLanes : [];
+  if (
+    item?.schemaVersion !== "videoforge.v213-full-live-cleanup-input/v1" ||
+    typeof item.fullLiveAuthorityId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+      item.fullLiveAuthorityId,
+    ) ||
+    !["PRIOR_FRESH_PREFLIGHT", "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION"].includes(
+      item.billingBaselineMode as string,
+    ) ||
+    (item.billingBaselineMode === "PRIOR_FRESH_PREFLIGHT" &&
+      (typeof item.billingBaselineUsd !== "number" ||
+        !Number.isFinite(item.billingBaselineUsd) ||
+        item.billingBaselineUsd < 0)) ||
+    (item.billingBaselineMode === "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION" &&
+      item.billingBaselineUsd !== null) ||
+    item.totalCapUsd !== 17.5 ||
+    lanes.length !== 2 ||
+    lanes.some((value) => {
+      const lane = object(value);
+      return (
+        !lane ||
+        !["mage", "soulx"].includes(lane.lane as string) ||
+        typeof lane.volumeIdSha256 !== "string" ||
+        !SHA256.test(lane.volumeIdSha256) ||
+        typeof lane.volumeManifestSha256 !== "string" ||
+        !SHA256.test(lane.volumeManifestSha256) ||
+        Object.keys(lane).sort().join(",") !== "lane,volumeIdSha256,volumeManifestSha256"
+      );
+    }) ||
+    new Set(lanes.map((value) => object(value)?.lane)).size !== 2 ||
+    Object.keys(item).sort().join(",") !==
+      "billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,retainedLanes,schemaVersion,totalCapUsd"
+  )
+    fail("CLEANUP_INPUT_INVALID");
+  return value as V213CleanupInput;
+}
+
+export function readV213CleanupProtectedInputs(
+  environment: NodeJS.ProcessEnv,
+  readFd: (value: string | undefined, code: string) => string = readProtectedFd,
+): V213CleanupProtectedInputs {
+  const keys = Object.keys(environment).filter((key) => key.startsWith(PREFIX));
+  if (
+    keys.length !== CLEANUP_ALLOWED_ENVIRONMENT.size ||
+    keys.some((key) => !CLEANUP_ALLOWED_ENVIRONMENT.has(key))
+  )
+    fail("CLEANUP_AMBIENT_BINDING_REJECTED");
+  const command = environment[V213_BRIDGE_ENVIRONMENT.command];
+  if (!CLEANUP_COMMANDS.has(command as V213FullLiveCommand)) fail("CLEANUP_COMMAND_INVALID");
+  let request: V213FullLiveCommandRequest;
+  try {
+    request = exactRequest(
+      JSON.parse(readFd(environment[V213_BRIDGE_ENVIRONMENT.requestFd], "REQUEST_FD_INVALID")),
+    );
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) throw error;
+    fail("REQUEST_JSON_INVALID");
+  }
+  if (request.command !== command) fail("COMMAND_MISMATCH");
+  const cleanupInput = exactCleanupInput(request.input);
+  if (cleanupInput.fullLiveAuthorityId !== request.stageAuthorityId)
+    fail("CLEANUP_AUTHORITY_DRIFT");
+  const runpodApiKey = readFd(
+    environment[V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd],
+    "RUNPOD_KEY_FD_INVALID",
+  );
+  const operatorDatabaseUrl = readFd(
+    environment[V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd],
+    "OPERATOR_DATABASE_FD_INVALID",
+  );
+  if (
+    runpodApiKey.trim() !== runpodApiKey ||
+    runpodApiKey.length < 20 ||
+    operatorDatabaseUrl.trim() !== operatorDatabaseUrl ||
+    !operatorDatabaseUrl.startsWith("postgres")
+  )
+    fail("CLEANUP_PROTECTED_INPUT_INVALID");
+  return Object.freeze({ request, runpodApiKey, operatorDatabaseUrl, cleanupInput });
 }
 
 type WorkflowFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -1173,6 +1281,138 @@ async function postAcceptance(
   };
 }
 
+type V213CleanupTransport = Pick<
+  V213RunPodDualLaneTransport,
+  "cleanupAttributableResources" | "inventory" | "billingAmount"
+>;
+
+export async function createV213CleanupRuntime(
+  inputs: V213CleanupProtectedInputs,
+  ports: {
+    readonly createOperatorDatabase?: (url: string) => TransactionalSqlExecutor;
+    readonly createTransport?: (inputs: V213CleanupProtectedInputs) => V213CleanupTransport;
+    readonly sleep?: (milliseconds: number) => Promise<void>;
+  } = {},
+): Promise<V213FullLiveBridgeRuntime> {
+  const operator = (
+    ports.createOperatorDatabase ?? ((url) => createNeonExecutor(createNeonPool(url)))
+  )(inputs.operatorDatabaseUrl);
+  const descriptor = inputs.cleanupInput;
+  const transport = (
+    ports.createTransport ??
+    ((cleanupInputs) => {
+      const control = new RunPodControlClient({ apiKey: cleanupInputs.runpodApiKey });
+      const lanes = Object.fromEntries(
+        descriptor.retainedLanes.map((lane) => [
+          lane.lane,
+          {
+            lane: lane.lane,
+            volumeIdSha256: lane.volumeIdSha256,
+            volumeManifestSha256: lane.volumeManifestSha256,
+          },
+        ]),
+      );
+      return createV213RunPodDualLaneTransport({
+        durable: {} as never,
+        input: lanes as never,
+        control,
+        accountPreflight: async () => ({}) as never,
+        readAdmissionFacts: async () => ({
+          checkedAt: new Date().toISOString(),
+          availability: "LOW",
+          flexRateUsdPerGpuHour: 0,
+          cumulativeBillingUsd: await readEndpointBilling(
+            cleanupInputs.runpodApiKey,
+            globalThis.fetch,
+          ),
+        }),
+        verifyOutputReadback: async () => true,
+        createJobClient: (endpointId) =>
+          new RunPodServerlessJobClient({
+            apiKey: cleanupInputs.runpodApiKey,
+            endpointId,
+            guard: new RunPodDrainGuard(),
+          }),
+        sleep: ports.sleep,
+      });
+    })
+  )(inputs);
+  const loadCleanupScope = async () => {
+    const value = object(
+      await oneDatabaseValue(
+        operator,
+        "SELECT public.videoforge_load_v213_cleanup_scope($1::uuid) value",
+        [descriptor.fullLiveAuthorityId],
+        "CLEANUP_SCOPE_UNAVAILABLE",
+      ),
+    );
+    if (
+      value?.schemaVersion !== "videoforge.v213-cleanup-scope/v1" ||
+      value.fullLiveAuthorityId !== descriptor.fullLiveAuthorityId ||
+      !Array.isArray(value.stages)
+    )
+      fail("CLEANUP_SCOPE_INVALID");
+    return value.stages as Parameters<V213CleanupTransport["cleanupAttributableResources"]>[0];
+  };
+  const sleep =
+    ports.sleep ?? ((milliseconds) => new Promise((done) => setTimeout(done, milliseconds)));
+  const cleanup: Readonly<Record<CleanupCommand, V213FullLiveCommandHandler>> = Object.freeze({
+    "restore-endpoints-max-one": async () =>
+      evidence(
+        summarizeV213EndpointRestoration(
+          await transport.cleanupAttributableResources(await loadCleanupScope()),
+        ),
+      ),
+    "prove-zero-workers": async () => {
+      const reads = [];
+      for (let index = 0; index < 3; index += 1) {
+        const inventory = await transport.inventory();
+        if (
+          inventory.runningPods !== 0 ||
+          inventory.activeWorkers !== 0 ||
+          inventory.queuedJobs !== 0
+        )
+          fail("ZERO_WORKERS_NOT_PROVEN");
+        reads.push(inventory);
+        if (index < 2) await sleep(2_000);
+      }
+      return evidence({ zeroWorkers: true, reads } as never);
+    },
+    "read-settled-billing": async () => {
+      const first = await transport.billingAmount();
+      const baseline =
+        descriptor.billingBaselineMode === "PRIOR_FRESH_PREFLIGHT"
+          ? descriptor.billingBaselineUsd
+          : first;
+      const cumulativeBillingUsd =
+        descriptor.billingBaselineMode === "PRIOR_FRESH_PREFLIGHT"
+          ? first
+          : await transport.billingAmount();
+      if (
+        baseline === null ||
+        !Number.isFinite(cumulativeBillingUsd) ||
+        cumulativeBillingUsd < baseline ||
+        cumulativeBillingUsd - baseline > descriptor.totalCapUsd
+      )
+        fail("CLEANUP_BILLING_CAP_EXCEEDED");
+      return evidence({ cumulativeBillingUsd, withinCumulativeCap: true });
+    },
+    "reconcile-exact-resources": async () => {
+      const inventory = await transport.inventory();
+      const expected = descriptor.retainedLanes.map((lane) => lane.volumeIdSha256).sort();
+      const actual = inventory.volumes.map((volume) => volume.idSha256).sort();
+      if (canonicalizeJson(actual as never) !== canonicalizeJson(expected as never))
+        fail("CLEANUP_RETAINED_VOLUME_DRIFT");
+      return evidence({ ...inventory, onlyApprovedRetainedVolumes: true } as never);
+    },
+  });
+  return Object.freeze({
+    journal: createV213SqlCommandJournal(operator),
+    handlers: cleanup as unknown as V213FullLiveCommandHandlers,
+    protectedValues: Object.freeze([inputs.runpodApiKey, inputs.operatorDatabaseUrl]),
+  });
+}
+
 /** The direct-process production factory. It constructs all concrete clients and every command
  * handler solely from protected descriptors. Optional ports exist only for provider-free tests;
  * the executable entrypoint never accepts or consults them. */
@@ -1604,6 +1844,9 @@ export async function runV213FullLiveCli(
   options: {
     readonly environment?: NodeJS.ProcessEnv;
     readonly createRuntime?: (inputs: V213ProtectedInputs) => Promise<V213FullLiveBridgeRuntime>;
+    readonly createCleanupRuntime?: (
+      inputs: V213CleanupProtectedInputs,
+    ) => Promise<V213FullLiveBridgeRuntime>;
     readonly write?: (value: string) => void;
     readonly readFd?: (value: string | undefined, code: string) => string;
   } = {},
@@ -1615,25 +1858,31 @@ export async function runV213FullLiveCli(
   }
   if (argv.length !== 2 || argv[0] !== "--execute" || argv[1] !== CONFIRMATION)
     fail("ARGUMENTS_INVALID");
-  const inputs = readV213ProtectedInputs(
-    options.environment ?? process.env,
-    options.readFd ?? readProtectedFd,
-  );
+  const environment = options.environment ?? process.env;
+  const command = environment[V213_BRIDGE_ENVIRONMENT.command];
+  const readFd = options.readFd ?? readProtectedFd;
   let result: V213FullLiveCommandResult;
   try {
-    const runtime = await (options.createRuntime ?? createV213ProductionRuntime)(inputs);
-    result = await executeV213FullLiveCommand(inputs.request, {
-      ...runtime,
-      protectedValues: Object.freeze([
-        ...runtime.protectedValues,
-        inputs.runpodApiKey,
-        inputs.operatorDatabaseUrl,
-        inputs.runtimeDatabaseUrl,
-        inputs.reconcilerDatabaseUrl,
-        inputs.workerOrigin,
-        inputs.workerOperatorBearer,
-      ]),
-    });
+    if (CLEANUP_COMMANDS.has(command as V213FullLiveCommand)) {
+      const inputs = readV213CleanupProtectedInputs(environment, readFd);
+      const runtime = await (options.createCleanupRuntime ?? createV213CleanupRuntime)(inputs);
+      result = await executeV213FullLiveCommand(inputs.request, runtime);
+    } else {
+      const inputs = readV213ProtectedInputs(environment, readFd);
+      const runtime = await (options.createRuntime ?? createV213ProductionRuntime)(inputs);
+      result = await executeV213FullLiveCommand(inputs.request, {
+        ...runtime,
+        protectedValues: Object.freeze([
+          ...runtime.protectedValues,
+          inputs.runpodApiKey,
+          inputs.operatorDatabaseUrl,
+          inputs.runtimeDatabaseUrl,
+          inputs.reconcilerDatabaseUrl,
+          inputs.workerOrigin,
+          inputs.workerOperatorBearer,
+        ]),
+      });
+    }
   } catch (error) {
     if (error instanceof V213FullLiveBridgeError) throw error;
     fail("EXECUTION_FAILED");
@@ -1642,6 +1891,6 @@ export async function runV213FullLiveCli(
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await runV213FullLiveCli(process.argv.slice(2), { createRuntime: createV213ProductionRuntime });
+  await runV213FullLiveCli(process.argv.slice(2));
 
 export const V213_FULL_LIVE_CLI_CONFIRMATION = CONFIRMATION;

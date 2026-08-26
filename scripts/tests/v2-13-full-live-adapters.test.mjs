@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
-import { chmodSync, lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -93,8 +101,8 @@ test("git release adapter rejects either local or remote tag collision before cr
 });
 
 test("approval publication pushes the exact authority-record commit with FF and tree-byte proof", async () => {
-  const approval = "{\"approval\":true}\n";
-  const authority = "{\"authority\":true}\n";
+  const approval = '{"approval":true}\n';
+  const authority = '{"authority":true}\n';
   const proposalCommit = "2".repeat(40);
   const authorityCommit = "3".repeat(40);
   const remoteCommit = "1".repeat(40);
@@ -556,7 +564,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
   const directory = mkdtempSync(resolve(tmpdir(), "v213-materializer-test-"));
   chmodSync(directory, 0o700);
   const seedPath = resolve(directory, "seed.json");
-  const outputPath = resolve(directory, "production-input.json");
+  const outputPath = resolve(directory, "cleanup-input.json");
   const chainPath = resolve(directory, "chain.json");
   const manifestPath = resolve(directory, "release-manifest.json");
   const configPath = resolve(directory, "config-activation.json");
@@ -564,6 +572,30 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
   const activationPath = resolve(directory, "activation.json");
   const promotionPath = resolve(directory, "promotion.json");
   const productionSecretsPath = resolve(directory, "production-secrets.json");
+  const secretInputDirectory = resolve(directory, "secret-input");
+  mkdirSync(secretInputDirectory, { mode: 0o700 });
+  const staticSecretNames = [
+    "DATABASE_URL",
+    "BETTER_AUTH_SECRET",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "WORKFLOW_CALLBACK_SECRET",
+    "MEDIA_WORKER_TOKEN_SECRET",
+    "VIDEOFORGE_RECONCILER_DATABASE_URL",
+    "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+    "VIDEOFORGE_DISPATCH_TOKEN_KEY_ID",
+    "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
+    "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
+    "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+    "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+    "RUNPOD_API_KEY",
+    "RUNPOD_API_BASE_URL",
+    "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
+  ];
+  for (const [index, name] of staticSecretNames.entries())
+    writeFileSync(resolve(secretInputDirectory, name), `static-${index}`, { mode: 0o600 });
   const seed = {
     schema_version: "videoforge.v213-full-live-materialization-seed/v1",
     static_only: true,
@@ -572,7 +604,16 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       schemaVersion: "videoforge.v213-full-live-outer-input/v1",
       fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
       authorityDocument: {},
-      dualLaneInput: { mage: {}, soulx: {} },
+      dualLaneInput: {
+        mage: {
+          volumeIdSha256: `sha256:${"6".repeat(64)}`,
+          volumeManifestSha256: `sha256:${"7".repeat(64)}`,
+        },
+        soulx: {
+          volumeIdSha256: `sha256:${"8".repeat(64)}`,
+          volumeManifestSha256: `sha256:${"9".repeat(64)}`,
+        },
+      },
       commandPayloads: {},
     },
     activation_record_base: { authority: {}, release: {}, gates: {}, database: {} },
@@ -587,11 +628,9 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     },
   };
   writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
-  writeFileSync(
-    productionSecretsPath,
-    `${JSON.stringify(preEndpointSecrets())}\n`,
-    { mode: 0o600 },
-  );
+  writeFileSync(productionSecretsPath, `${JSON.stringify(preEndpointSecrets())}\n`, {
+    mode: 0o600,
+  });
   const environment = {
     VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: seedPath,
     VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE: chainPath,
@@ -602,6 +641,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     VIDEOFORGE_V2_13_ACTIVATION_RECORD: activationPath,
     VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE: promotionPath,
     VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE: productionSecretsPath,
+    VIDEOFORGE_V2_13_SECRET_INPUT_DIR: secretInputDirectory,
   };
   const validated = { production: 0, guarded: 0, promotion: 0 };
   const factory = () =>
@@ -618,7 +658,9 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
         validated.promotion += 1;
       },
       renderDisabledConfig: () =>
-        Buffer.from(`${JSON.stringify({ vars: { VIDEOFORGE_GPU_TRANSPORT: "DISABLED_UNQUALIFIED" } })}\n`),
+        Buffer.from(
+          `${JSON.stringify({ vars: { VIDEOFORGE_GPU_TRANSPORT: "DISABLED_UNQUALIFIED" } })}\n`,
+        ),
     });
   const materialize = factory();
   const materialState = {
@@ -700,12 +742,10 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       outerStateSha256: `sha256:${"2".repeat(64)}`,
     });
     const completeChain = JSON.parse(readFileSync(chainPath, "utf8"));
-    assert.deepEqual(completeChain.entries.map((entry) => entry.kind), [
-      "production-input",
-      "max-one-endpoint-bindings",
-      "activation-record",
-      "promotion-record",
-    ]);
+    assert.deepEqual(
+      completeChain.entries.map((entry) => entry.kind),
+      ["production-input", "max-one-endpoint-bindings", "activation-record", "promotion-record"],
+    );
     assert.equal(
       completeChain.entries[1].prior_chain_sha256,
       completeChain.entries[0].entry_sha256,
@@ -721,7 +761,10 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     for (const path of [manifestPath, configPath, disabledPath, activationPath, promotionPath])
       assert.equal(lstatSync(path).mode & 0o777, 0o600);
     const promotion = JSON.parse(readFileSync(promotionPath, "utf8"));
-    assert.equal(promotion.lanes.mage_image.qualification_record_sha256, `sha256:${"a".repeat(64)}`);
+    assert.equal(
+      promotion.lanes.mage_image.qualification_record_sha256,
+      `sha256:${"a".repeat(64)}`,
+    );
     assert.equal(promotion.cloudflare.disabled_version_sha256, `sha256:${"1".repeat(64)}`);
     const finalSecrets = JSON.parse(readFileSync(productionSecretsPath, "utf8"));
     assert.equal(finalSecrets.mageEndpointId, "mage-endpoint");
@@ -730,6 +773,9 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       promotion.lanes.soulx_avatar.deployment_snapshot_sha256,
       `sha256:${"f".repeat(64)}`,
     );
+    const activation = JSON.parse(readFileSync(activationPath, "utf8"));
+    assert.equal(Object.keys(activation.secret_sha256).length, 22);
+    assert.equal(activation.secret_sha256.VIDEOFORGE_MAGE_ENDPOINT_ID, hash("mage-endpoint"));
     assert.deepEqual(validated, { production: 2, guarded: 1, promotion: 1 });
     await assert.rejects(
       factory()({
@@ -774,7 +820,7 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
     environment: {
       VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: seedPath,
       VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE: chainPath,
-      VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: outputPath,
+      VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE: outputPath,
       VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE: secretsPath,
     },
     validateProduction: () => JSON.parse(readFileSync(outputPath, "utf8")),
@@ -803,7 +849,7 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
     assert.equal(chain.entries[0].kind, "cleanup-pre-endpoint-descriptor");
     assert.deepEqual(
       chain.entries[0].ordered_output_sha256s.map(([name]) => name),
-      ["cleanup_production_input_sha256", "pre_endpoint_secrets_sha256"],
+      ["cleanup_input_sha256", "pre_endpoint_secrets_sha256"],
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -892,15 +938,27 @@ test("protected TypeScript bridge chains only opaque qualification hashes across
 test("protected cleanup bridge returns the exact four outer proof contracts without prior deployments", async () => {
   const directory = mkdtempSync(resolve(tmpdir(), "v213-cleanup-adapter-test-"));
   chmodSync(directory, 0o700);
-  const inputPath = resolve(directory, "production-input.json");
+  const inputPath = resolve(directory, "cleanup-input.json");
   writeFileSync(
     inputPath,
     JSON.stringify({
-      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
+      schemaVersion: "videoforge.v213-full-live-cleanup-input/v1",
       fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
-      authorityDocument: { exact: true },
-      dualLaneInput: { mage: { sourceCommit }, soulx: { sourceCommit } },
-      commandPayloads: {},
+      billingBaselineMode: "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION",
+      billingBaselineUsd: null,
+      totalCapUsd: 17.5,
+      retainedLanes: [
+        {
+          lane: "mage",
+          volumeIdSha256: `sha256:${"1".repeat(64)}`,
+          volumeManifestSha256: `sha256:${"2".repeat(64)}`,
+        },
+        {
+          lane: "soulx",
+          volumeIdSha256: `sha256:${"3".repeat(64)}`,
+          volumeManifestSha256: `sha256:${"4".repeat(64)}`,
+        },
+      ],
     }),
     { mode: 0o600 },
   );
@@ -913,7 +971,7 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
   try {
     const requests = [];
     const adapters = createTypeScriptBridgeAdapters({
-      environment: { VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: inputPath },
+      environment: { VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE: inputPath },
       spawnBridge: async ({ request }) => {
         requests.push(request);
         return {
@@ -939,7 +997,11 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
     assert.equal(outputs[2].withinCumulativeCap, true);
     assert.equal(outputs[3].onlyApprovedRetainedVolumes, true);
     assert.equal(
-      requests.every((request) => JSON.stringify(request.input.commandPayload) === "{}"),
+      requests.every(
+        (request) =>
+          request.input.schemaVersion === "videoforge.v213-full-live-cleanup-input/v1" &&
+          !("dualLaneInput" in request.input),
+      ),
       true,
     );
   } finally {

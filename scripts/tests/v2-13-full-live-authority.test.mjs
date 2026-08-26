@@ -233,9 +233,32 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.internal_materialization_policy.initial_seed_endpoint_identity_fields_present = true;
     },
     (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.seed_recursively_rejects_endpoint_identity_key_case_variants = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.records.find(
+        ({ kind }) => kind === "max-one-endpoint-bindings",
+      ).rebinds_all_guarded_secret_sha256_entries = 21;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.guarded_endpoint_secret_file_names[0] =
+        "videoforge_mage_endpoint_id";
+    },
+    (proposal) => {
       proposal.exact_execution_graph.internal_materialization_policy.records.find(
         ({ kind }) => kind === "cleanup-pre-endpoint-descriptor",
       ).accepted_for_normal_or_acceptance_work = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.cleanup_pre_endpoint_runtime.exact_child_fd_environment.push(
+        "RUNTIME_DATABASE_URL_FD",
+      );
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.cleanup_pre_endpoint_runtime.forbidden_inputs =
+        proposal.exact_execution_graph.internal_materialization_policy.cleanup_pre_endpoint_runtime.forbidden_inputs.filter(
+          (field) => field !== "exactProductionInput",
+        );
     },
     (proposal) => {
       proposal.exact_execution_graph.trusted_time_policy.caller_supplied_trusted_time_forbidden = false;
@@ -319,15 +342,51 @@ test("V3 proposal binds durable prior-result materialization before each consume
   const endpointBindings =
     proposal.exact_execution_graph.internal_materialization_policy.records[1];
   assert.equal(endpointBindings.derives_only_from, "receipt.materialization.production");
+  assert.deepEqual(
+    proposal.exact_execution_graph.internal_materialization_policy
+      .guarded_endpoint_secret_file_names,
+    [
+      "VIDEOFORGE_MAGE_ENDPOINT_ID",
+      "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+      "VIDEOFORGE_SOULX_ENDPOINT_ID",
+      "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+    ],
+  );
+  assert.equal(endpointBindings.rebinds_all_guarded_secret_sha256_entries, 22);
+  assert.deepEqual(endpointBindings.writes.slice(1, 5), [
+    "VIDEOFORGE_MAGE_ENDPOINT_ID",
+    "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+  ]);
   assert.deepEqual(endpointBindings.ordered_output_names, [
     "production_secrets_sha256",
     "mage_deployment_snapshot_sha256",
     "soulx_deployment_snapshot_sha256",
+    "mage_endpoint_secret_sha256",
+    "mage_endpoint_hash_secret_sha256",
+    "soulx_endpoint_secret_sha256",
+    "soulx_endpoint_hash_secret_sha256",
   ]);
   const cleanupDescriptor =
     proposal.exact_execution_graph.internal_materialization_policy.records[4];
   assert.equal(cleanupDescriptor.cleanup_only, true);
   assert.equal(cleanupDescriptor.accepted_for_normal_or_acceptance_work, false);
+  assert.deepEqual(cleanupDescriptor.ordered_output_names, [
+    "cleanup_input_sha256",
+    "pre_endpoint_secrets_sha256",
+  ]);
+  const cleanupRuntime =
+    proposal.exact_execution_graph.internal_materialization_policy.cleanup_pre_endpoint_runtime;
+  assert.equal(cleanupRuntime.schema, "videoforge.v213-full-live-cleanup-input/v1");
+  assert.deepEqual(cleanupRuntime.exact_child_fd_environment, [
+    "REQUEST_FD",
+    "RUNPOD_API_KEY_FD",
+    "OPERATOR_DATABASE_URL_FD",
+  ]);
+  assert.equal(cleanupRuntime.forbidden_inputs.includes("exactProductionInput"), true);
+  assert.equal(cleanupRuntime.forbidden_inputs.includes("runtime-database-url"), true);
+  assert.equal(cleanupRuntime.forbidden_inputs.includes("reconciler-database-url"), true);
   assert.deepEqual(
     proposal.exact_execution_graph.internal_materialization_policy.chain_record_exact_fields,
     [

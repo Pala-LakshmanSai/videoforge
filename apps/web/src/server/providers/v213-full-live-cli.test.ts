@@ -6,10 +6,12 @@ import {
   V213_BRIDGE_ENVIRONMENT,
   V213_FULL_LIVE_COMMANDS,
   V213FullLiveBridgeError,
+  createV213CleanupRuntime,
   createV213FullLiveProductionRuntime,
   createV213ProductionRuntime,
   createV213WorkflowHttpBinding,
   executeV213FullLiveCommand,
+  readV213CleanupProtectedInputs,
   readV213ProtectedInputs,
   redactV213Output,
   runV213FullLiveCli,
@@ -252,6 +254,137 @@ describe("V2-13 full-live TypeScript bridge", () => {
         readFd,
       ),
     ).toThrowError(expect.objectContaining({ code: "REQUEST_JSON_INVALID" }));
+  });
+
+  it("executes early cleanup through only the operator and RunPod seams", async () => {
+    const authorityId = "11111111-1111-4111-8111-111111111111";
+    const cleanupRequest = {
+      schemaVersion: "videoforge.v213-full-live-command/v1",
+      commandId: "cleanup:prove-zero",
+      stageAuthorityId: authorityId,
+      command: "prove-zero-workers",
+      input: {
+        schemaVersion: "videoforge.v213-full-live-cleanup-input/v1",
+        fullLiveAuthorityId: authorityId,
+        billingBaselineMode: "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION",
+        billingBaselineUsd: null,
+        totalCapUsd: 17.5,
+        retainedLanes: [
+          { lane: "mage", volumeIdSha256: HASH, volumeManifestSha256: HASH },
+          {
+            lane: "soulx",
+            volumeIdSha256: `sha256:${"b".repeat(64)}`,
+            volumeManifestSha256: `sha256:${"c".repeat(64)}`,
+          },
+        ],
+      },
+    } as const;
+    const values = new Map([
+      ["10", JSON.stringify(cleanupRequest)],
+      ["11", "r".repeat(32)],
+      ["12", "postgres://operator@example/db"],
+    ]);
+    const environment = {
+      [V213_BRIDGE_ENVIRONMENT.command]: "prove-zero-workers",
+      [V213_BRIDGE_ENVIRONMENT.requestFd]: "10",
+      [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "11",
+      [V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd]: "12",
+    };
+    const database = {
+      query: vi.fn(async (sql: string) => ({
+        rows: sql.includes("videoforge_claim_v213_bridge_command")
+          ? [{ value: { action: "EXECUTE" } }]
+          : [],
+      })),
+      transaction: vi.fn(),
+    };
+    const inventory = vi.fn(async () => ({
+      runningPods: 0,
+      activeWorkers: 0,
+      queuedJobs: 0,
+      volumes: [{ idSha256: HASH }, { idSha256: `sha256:${"b".repeat(64)}` }],
+    }));
+    let output = "";
+    const createRuntime = vi.fn();
+    await runV213FullLiveCli(["--execute", "EXECUTE_EXACT_V2_13_TYPESCRIPT_BRIDGE_COMMAND"], {
+      environment,
+      readFd: (fd) => values.get(fd ?? "") ?? "",
+      createRuntime,
+      createCleanupRuntime: (inputs) =>
+        createV213CleanupRuntime(inputs, {
+          createOperatorDatabase: () => database as never,
+          createTransport: () =>
+            ({
+              inventory,
+              billingAmount: vi.fn(async () => 0),
+              cleanupAttributableResources: vi.fn(),
+            }) as never,
+          sleep: vi.fn(),
+        }),
+      write: (value) => (output += value),
+    });
+    expect(JSON.parse(output)).toMatchObject({
+      command: "prove-zero-workers",
+      state: "TERMINAL",
+      summary: { zeroWorkers: true },
+    });
+    expect(createRuntime).not.toHaveBeenCalled();
+    expect(inventory).toHaveBeenCalledTimes(3);
+    expect(database.query).toHaveBeenCalledTimes(2);
+    expect([...values.values()].join("\n")).not.toContain("runtimeDatabaseUrl");
+    expect([...values.values()].join("\n")).not.toContain("mageEndpointId");
+  });
+
+  it("rejects cleanup input drift before runtime construction", () => {
+    const authorityId = "11111111-1111-4111-8111-111111111111";
+    const base = {
+      schemaVersion: "videoforge.v213-full-live-command/v1",
+      commandId: "cleanup:reconcile",
+      stageAuthorityId: authorityId,
+      command: "reconcile-exact-resources",
+      input: {
+        schemaVersion: "videoforge.v213-full-live-cleanup-input/v1",
+        fullLiveAuthorityId: authorityId,
+        billingBaselineMode: "PRIOR_FRESH_PREFLIGHT",
+        billingBaselineUsd: 0,
+        totalCapUsd: 17.5,
+        retainedLanes: [
+          { lane: "mage", volumeIdSha256: HASH, volumeManifestSha256: HASH },
+          {
+            lane: "soulx",
+            volumeIdSha256: `sha256:${"b".repeat(64)}`,
+            volumeManifestSha256: `sha256:${"c".repeat(64)}`,
+          },
+        ],
+      },
+    } as const;
+    const read = (requestValue: unknown, extraEnvironment = {}) => {
+      const values = new Map([
+        ["10", JSON.stringify(requestValue)],
+        ["11", "r".repeat(32)],
+        ["12", "postgres://operator@example/db"],
+      ]);
+      return () =>
+        readV213CleanupProtectedInputs(
+          {
+            [V213_BRIDGE_ENVIRONMENT.command]: "reconcile-exact-resources",
+            [V213_BRIDGE_ENVIRONMENT.requestFd]: "10",
+            [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "11",
+            [V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd]: "12",
+            ...extraEnvironment,
+          },
+          (fd) => values.get(fd ?? "") ?? "",
+        );
+    };
+    expect(read({ ...base, input: { ...base.input, mageEndpointId: "future" } })).toThrowError(
+      expect.objectContaining({ code: "CLEANUP_INPUT_INVALID" }),
+    );
+    expect(
+      read({ ...base, stageAuthorityId: "22222222-2222-4222-8222-222222222222" }),
+    ).toThrowError(expect.objectContaining({ code: "CLEANUP_AUTHORITY_DRIFT" }));
+    expect(read(base, { [V213_BRIDGE_ENVIRONMENT.runtimeDatabaseUrlFd]: "13" })).toThrowError(
+      expect.objectContaining({ code: "CLEANUP_AMBIENT_BINDING_REJECTED" }),
+    );
   });
 
   it("never redispatches an ambiguous non-cleanup command but permits cleanup reconciliation", async () => {

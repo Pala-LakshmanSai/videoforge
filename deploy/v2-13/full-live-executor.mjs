@@ -34,13 +34,13 @@ const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:6017440c9cf5b2c22ac7622452c09dbe0e3c68f40a9a0387c3cc63e8a16e57bb",
+    "sha256:ea4de7d530317893c0c36c5551292de4be7fa629922cd6c37868863869856c60",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
   "deploy/v2-13/guarded-activation.mjs":
     "sha256:7a8f9a44f1dbe712aa37d3fcfacba810b123750c81890704b6f0904764fb63ae",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:ade1711e644eb23d282665bdfc6d280e6a48c589d56e25fd921f585d7ffa663e",
+    "sha256:efdc16084ba42a512604bfa207708aeed83af9b5c6a17079f73291a3218fbb7e",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":

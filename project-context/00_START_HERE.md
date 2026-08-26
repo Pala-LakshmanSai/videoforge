@@ -29,7 +29,11 @@ internal future-record materialization, true 30-minute end-to-end workflow deadl
 credential-free CA-verified HTTPS trusted-time contracts require provider-free repair. The replacement
 draft also forbids endpoint IDs in the initial seed: exact endpoint IDs, hashes, and actual max-one
 deployment snapshots must be materialized only from the max-one result, with a separate cleanup-only
-pre-endpoint descriptor for failures before endpoint creation. The active proposal surface is
+pre-endpoint descriptor for failures before endpoint creation. That endpoint-free cleanup path uses
+only the operator database and RunPod credential, never the normal production input, guarded roles,
+endpoint identities, or signing/key-registration inputs. Seed validation recursively rejects endpoint
+identity case variants and future hashes; max-one materialization writes the four guarded endpoint
+secret files and rebinds all 22 secret hashes. The active proposal surface is
 `BLOCKED_UNSEALED`; no repaired source hash or fresh approval exists. Both lanes require fresh immutable images, sealed
 deployment snapshots, dual live qualification, and that new single-use approval.
 Provider/deployment/credential/GPU/spend authority remains false with a `$0` executable cap, and no
