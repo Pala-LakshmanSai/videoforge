@@ -4,8 +4,8 @@ updated_at: "2026-08-26T00:00:00.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: parallel_provider_free_product_and_mage_certification
-current_task: VF-10-08_PROVIDER_FREE_PRODUCT_TRACK
+current_milestone: v2_13_full_live_source_sealed_fresh_proposal_required
+current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: provider_free_product_execution
@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Implement V2-08 through V2-13 provider-free in parallel behind fail-closed unqualified adapters, focused tests, and bounded daily integration commits."
-  note: "DEC_DELIVERY_002 activates two tracks. Attempt64 remains NOT_QUALIFIED and clean. Provider-free product work may advance; provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
+  provider_free_product_action: "Keep commit 7f64982 provider-free and default-no-op while a fresh source-bound V2-13 proposal is generated and independently audited."
+  note: "Commit 7f64982 closes the guarded full-live source path through migration 0045 and received an independent no-P0/P1 source audit. The earlier f2d183 proposal/approval is superseded and unusable because its source hashes are stale. Provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized until a wholly fresh exact proposal and approval exist."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -64,6 +64,14 @@ two_track_execution:
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 provider_free_product_progress:
+  full_live_execution_source_commit: "7f64982"
+  full_live_execution_source_status: PROVIDER_FREE_PASS_INDEPENDENTLY_AUDITED_FRESH_PROPOSAL_REQUIRED
+  full_live_execution_source_note: "The closed default-no-op catalog now owns exact publication, full protected-input preflight, DB authority registration, staged Mage/SoulX qualification, immutable max1 deployment publication, qualified Cloudflare promotion/readback, V2-09 terminal output/Chrome/cost acceptance, V2-10 through V2-13 acceptance, and crash-safe exact cleanup. Migration 0045 supplies append-only authority, promotion, stage/operation, encrypted handoff escrow, signed evidence, Workflow, terminal-acceptance, Cloudflare activation/rollback, and cleanup scope. Independent re-audit found no P0/P1; canonical scripts passed 154/154, focused outer 47/47, web 72/72, migration 9/9, TypeScript/build/contracts/production firewall/context checks passed. No external call, credential read, mutation, GPU use, spend, or deploy occurred."
+  full_live_executor_sha256: "sha256:4d35818ad5b383f07fa6d3a9ec76a5a886e0d68ed66520d02397de731ddfed13"
+  full_live_migration_0045_sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
+  prior_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_HASH_DRIFT
+  prior_v2_13_proposal_sha256: "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32"
+  next_v2_13_action: "Generate and audit a new proposal against exact commit 7f64982 or its context-only successor, then request wholly fresh user approval before any remote mutation or spend."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -4262,19 +4270,19 @@ provider_authority_attempt64: &v2_07_provider_authority_attempt64
 provider_authority: *v2_07_provider_authority_attempt64
 
 recommended_next_task:
-  task_id: VF-10-08
-  checkpoint: V2-08
-  milestone: parallel_provider_free_product_and_mage_certification
-  status: provider_free_implementation_authorized_live_activation_blocked
+  task_id: VF-10-13
+  checkpoint: V2-13
+  milestone: v2_13_full_live_source_sealed_fresh_proposal_required
+  status: provider_free_source_audited_fresh_proposal_and_approval_required
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: none_attempt64_consumed
   task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
-  read_profile: v2_08_soulx_serverless
-  task_brief: tasks/VF-10-08.md
-  goal: "Implement the exact SoulX and downstream product path provider-free behind fail-closed live fences while V2-07 certification remains NOT_QUALIFIED."
+  read_profile: v2_13_release_operations
+  task_brief: tasks/VF-10-13.md
+  goal: "Seal and independently audit a fresh V2-13 proposal against commit 7f64982 before any publication, deployment, provider call, GPU use, or spend."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4295,9 +4303,9 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Attempt64 exact single-use authority is consumed/non-reusable. No provider calls, mutations, GPU use, or spend are authorized."
+  authority_note: "Attempt64 remains consumed/non-reusable, and the earlier V2-13 f2d183 approval is superseded unconsumed by source drift. No provider calls, mutations, GPU use, or spend are authorized until a wholly fresh exact proposal is approved."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: attempt64_failed_clean_provider_free_repair_complete
+  execution_status: full_live_source_audited_no_live_authority
   execution_blocker: fresh_exact_proposal_approval_and_positive_cap_required
 
 verification:
