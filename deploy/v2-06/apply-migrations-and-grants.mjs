@@ -54,6 +54,16 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_media_worker_enrollment_poll(uuid,text,timestamp with time zone)",
   "videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)",
   "videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)",
+  "videoforge_begin_hosted_pair_send(uuid,uuid,uuid,text,uuid,text)",
+  "videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamp with time zone,jsonb)",
+  "videoforge_finish_hosted_pair_send(uuid,uuid,uuid,text,text,text,uuid,text)",
+  "videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)",
+  "videoforge_load_hosted_pair_activation(uuid,uuid,uuid)",
+  "videoforge_load_hosted_pair_activation_v2(uuid,uuid,uuid)",
+  "videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid)",
+  "videoforge_materialize_hosted_lane_batches(uuid,uuid,uuid,uuid,uuid,text,jsonb)",
+  "videoforge_prepare_hosted_pair_send(uuid,uuid,uuid)",
+  "videoforge_recover_hosted_atomic_pair_tokens(uuid,uuid,uuid)",
 ].sort();
 
 const required = (name) => {
@@ -212,6 +222,12 @@ const main = async () => {
   }
   const ledger = parseLedger(ledgerText);
   if (!verifyOnly) {
+    const requiredPrefix = process.env.V2_06_REQUIRED_LEDGER_PREFIX_VERSION;
+    if (
+      requiredPrefix !== undefined &&
+      (!/^\d+$/u.test(requiredPrefix) || ledger.length !== Number(requiredPrefix))
+    )
+      fail(`database must have exactly ${requiredPrefix} manifest rows before this activation`);
     if (ledger.length > migrations.length)
       fail("database migration ledger is longer than the committed manifest");
     for (const [index, applied] of ledger.entries()) {
@@ -259,7 +275,7 @@ const main = async () => {
     }
   }
 
-  if (applyGrants) {
+  if (applyGrants && !verifyOnly) {
     const runtimeRole = required("V2_06_RUNTIME_ROLE");
     const roleIdentifier = safeIdentifier(runtimeRole, "V2_06_RUNTIME_ROLE");
     const roleRows = await query(

@@ -24,6 +24,52 @@ The provider-proof acquisition implementation must sign an
 exact tenant/request/lane/attempt/deployment/token/job/state/observation document; the reconciler
 verifies that signature and scope before its privileged settlement call.
 
+## Guarded activation executor
+
+`pnpm activate:v2-13-guarded` is a zero-read, zero-mutation dry run by default. The guarded
+executor is the only combined database/secret/deployment procedure. Its tracked authority template
+is a proposal surface, never authority. A future execution record must pin the clean exact HEAD,
+the migration-manifest bytes, production-config activation bytes, media-worker release bytes, both
+fresh qualification and deployment hashes, the paid-authority hash, the approved SoulX full/split
+layout decision, a fresh readback hash proving the exact Worker/R2/Workflow resources already
+exist, two distinct hardened database roles, and the SHA-256 of every protected secret input.
+Qualification, deployment, paid-authority, and preexisting-resource hashes are external evidence
+inputs: this executor checks their exact closed-world shape and cross-bindings but does not prove
+their live truth. A separate live verifier must produce and authenticate those records immediately
+before an execution authority can be issued.
+
+`--plan` performs only local read-only validation and prints names/operations, never secret values.
+`--execute` additionally requires the literal confirmation
+`EXECUTE_EXACT_GUARDED_V2_13_ACTIVATION`, an exact mode-0600 approved authority file, a private
+mode-0700 PostgreSQL input directory, a separate exact mode-0700 secret directory containing only
+the 21 allowlisted mode-0600 files, a separately fingerprinted mode-0600 Cloudflare API-token file,
+and a new evidence path under a mode-0700 directory. Secret values are read only from those files
+and are streamed to Wrangler stdin; they never enter argv, stdout, the plan, or evidence. Every
+child process receives a closed environment allowlist, so ambient provider or database credentials
+cannot enter the procedure.
+
+Execution requires both exact target role names to be absent cluster-wide; it never rotates a
+password onto a reused role whose privileges in other databases cannot be proven from this
+connection. It also keeps explicit membership, ownership, ACL, default-ACL, and dangerous effective
+privilege predicates as defense in depth. Only then does it create `pgcrypto`, provision the two
+exact `LOGIN NOINHERIT` roles, apply the exact
+manifest through migration 0044, applies runtime/reconciler grants, and then rechecks the full
+ledger, role flags/memberships/ownership, exact runtime function allowlist, reconciler function
+allowlist, and absence of reconciler table grants. It refuses migration unless the database already
+has the exact 36-row manifest prefix, so this activation can apply only migrations 0037-0044.
+
+Before database mutation, the executor rechecks the authority-pinned Cloudflare deployment-status
+and active-version bytes and proves one exact disabled version with an empty secret set. It repeats
+that read immediately before Cloudflare mutation, deploys and reads back the exact new
+`DISABLED_UNQUALIFIED` quarantine with automatic resource creation disabled, and only then uploads
+the closed-world secret names. Every secret-created version and the final version are read back as
+the exact disabled commit. A partial failure deletes only names introduced by that run, redeploys
+the disabled quarantine, and verifies the rollback; inability to verify rollback is a hard manual
+reconciliation stop. Database changes are staged and are never described as cross-provider atomic
+rollback; a failure after database role/grant mutation is a hard manual reconciliation stop rather
+than an automatic replay. The tool never creates a bucket, Workflow, endpoint, volume, or another
+retained resource.
+
 Run `pnpm validate:v2-13-production-pair` for the provider-free source/ACL/config validation. Before
 any future activation, independently verify the exact 0037-0044 migration ledger, both fresh live
 lane qualifications, the exact paid approval/cap, both exact published deployment snapshots, the
