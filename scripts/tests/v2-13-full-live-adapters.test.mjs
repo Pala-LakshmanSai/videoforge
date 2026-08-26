@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
 import {
+  closedTrustedTimeCommand,
   createConcreteFullLiveAdapters,
   createGitReleaseAdapters,
   createGuardedActivationAdapter,
+  createProtectedInputMaterializer,
   createStagedQualificationAdapters,
   createTypeScriptBridgeAdapters,
   createV213AcceptanceAdapters,
@@ -164,6 +166,7 @@ test("trusted time uses credential-free bounded HTTPS and one exact Date header"
     run: (command, args) => {
       assert.equal(command, "curl");
       assert.deepEqual(args, [
+        "--disable",
         "--silent",
         "--show-error",
         "--head",
@@ -180,6 +183,15 @@ test("trusted time uses credential-free bounded HTTPS and one exact Date header"
     },
   });
   assert.equal(trusted, "2026-08-26T12:00:00.000Z");
+  closedTrustedTimeCommand("curl", ["--disable"], 12_000, (command, args, options) => {
+    assert.equal(command, "curl");
+    assert.deepEqual(args, ["--disable"]);
+    assert.deepEqual(Object.keys(options.env).sort(), ["NO_PROXY", "PATH", "no_proxy"]);
+    assert.equal(options.env.NO_PROXY, "*");
+    assert.equal(options.env.no_proxy, "*");
+    assert.equal(options.timeout, 12_000);
+    return result(0);
+  });
 });
 
 test("GitHub dispatch rejects ambiguous new runs and never redispatches", async () => {
@@ -299,6 +311,41 @@ test("GitHub verification never redispatches and fails closed on bounded termina
   assert.equal(calls, 2);
 });
 
+test("GitHub verification enforces one monotonic 1800000ms deadline across subprocess time", async () => {
+  let clock = 0;
+  let timeoutSeen = null;
+  const adapters = createGithubVerificationAdapters({
+    deadlineNow: () => clock,
+    maximumPolls: 180,
+    pollIntervalMs: 10_000,
+    trustedTime: async (timeoutMs) => {
+      assert.ok(timeoutMs <= 12_000);
+      clock += 1_000;
+      return "2026-08-26T12:00:00Z";
+    },
+    run: (_command, _args, timeoutMs) => {
+      timeoutSeen = timeoutMs;
+      clock = 1_800_001;
+      return result(
+        0,
+        JSON.stringify({
+          databaseId: 11,
+          headSha: sourceCommit,
+          workflowName: "mage-image",
+          status: "in_progress",
+          conclusion: null,
+        }),
+      );
+    },
+  });
+  const prior = new Map([["mage-image-workflow-dispatch", { runId: "11" }]]);
+  await assert.rejects(
+    adapters["mage-image-workflow-verification"]({}, state, prior),
+    /WORKFLOW_RUN_TERMINAL_TIMEOUT/u,
+  );
+  assert.ok(timeoutSeen > 0 && timeoutSeen <= 60_000);
+});
+
 test("guarded adapter calls the existing executor once and authenticates its durable evidence", async () => {
   const environment = Object.fromEntries(
     [
@@ -318,6 +365,8 @@ test("guarded adapter calls the existing executor once and authenticates its dur
       schema_version: "videoforge-v2-13-guarded-activation-evidence/v1",
       commit: sourceCommit,
       outcome: "SUCCEEDED",
+      disabled_version_id: "11111111-1111-4111-8111-111111111111",
+      disabled_version_sha256: hash("11111111-1111-4111-8111-111111111111"),
       external_spend_cap_usd: 0,
       new_paid_retained_resources_authorized: false,
     })}\n`,
@@ -474,6 +523,166 @@ test("global preflight excludes future artifacts and stage adapters validate the
     source.indexOf("function createV213DurableStageStore"),
   );
   assert.match(promotion, /preflightPromotionInputs\(\{ environment, state \}\)/u);
+});
+
+test("canonical materializer derives all first-use artifacts, survives restart, and hash-chains mode-0600 bytes", async () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-materializer-test-"));
+  chmodSync(directory, 0o700);
+  const seedPath = resolve(directory, "seed.json");
+  const outputPath = resolve(directory, "production-input.json");
+  const chainPath = resolve(directory, "chain.json");
+  const manifestPath = resolve(directory, "release-manifest.json");
+  const configPath = resolve(directory, "config-activation.json");
+  const disabledPath = resolve(directory, "disabled-config.json");
+  const activationPath = resolve(directory, "activation.json");
+  const promotionPath = resolve(directory, "promotion.json");
+  const seed = {
+    schema_version: "videoforge.v213-full-live-materialization-seed/v1",
+    static_only: true,
+    future_output_hashes_present: false,
+    production_input_base: {
+      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
+      fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+      authorityDocument: {},
+      dualLaneInput: { mage: {}, soulx: {} },
+      commandPayloads: {},
+    },
+    activation_record_base: { authority: {}, release: {}, gates: {}, database: {} },
+    config_activation_base: { authority: {}, release: {} },
+    release_manifest: {},
+    promotion_record_base: {
+      release: {},
+      approval: {},
+      database: {},
+      lanes: { mage_image: {}, soulx_avatar: {} },
+      cloudflare: {},
+    },
+  };
+  writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
+  const environment = {
+    VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: seedPath,
+    VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE: chainPath,
+    VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: outputPath,
+    VIDEOFORGE_V2_13_RELEASE_MANIFEST_FILE: manifestPath,
+    VIDEOFORGE_V2_13_CONFIG_ACTIVATION_RECORD: configPath,
+    VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE: disabledPath,
+    VIDEOFORGE_V2_13_ACTIVATION_RECORD: activationPath,
+    VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE: promotionPath,
+  };
+  const validated = { production: 0, guarded: 0, promotion: 0 };
+  const factory = () =>
+    createProtectedInputMaterializer({
+      environment,
+      validateProduction: () => {
+        validated.production += 1;
+        return JSON.parse(readFileSync(outputPath, "utf8"));
+      },
+      validateGuarded: () => {
+        validated.guarded += 1;
+      },
+      validatePromotion: () => {
+        validated.promotion += 1;
+      },
+      renderDisabledConfig: () =>
+        Buffer.from(`${JSON.stringify({ vars: { VIDEOFORGE_GPU_TRANSPORT: "DISABLED_UNQUALIFIED" } })}\n`),
+    });
+  const materialize = factory();
+  const materialState = {
+    ...state,
+    authority_id: "v2-13-materializer-test-0001",
+    proposal_sha256: `sha256:${"1".repeat(64)}`,
+    approval_sha256: `sha256:${"2".repeat(64)}`,
+    proposal_record_commit: "3".repeat(40),
+    full_live_executor_sha256: `sha256:${"4".repeat(64)}`,
+    approval_record_path: "evidence/user-approval.json",
+  };
+  const prior = new Map([
+    [
+      "mage-image-workflow-verification",
+      { evidenceSha256: `sha256:${"5".repeat(64)}`, imageDigest: `sha256:${"6".repeat(64)}` },
+    ],
+    [
+      "soulx-image-workflow-verification",
+      { evidenceSha256: `sha256:${"7".repeat(64)}`, imageDigest: `sha256:${"8".repeat(64)}` },
+    ],
+  ]);
+  try {
+    await materialize({
+      operationId: "fresh-live-preflight",
+      state: materialState,
+      priorResults: prior,
+      outerStateSha256: `sha256:${"9".repeat(64)}`,
+    });
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    const chain = JSON.parse(readFileSync(chainPath, "utf8"));
+    assert.match(output.dualLaneInput.mage.publicImage, /@sha256:6{64}$/u);
+    assert.equal(output.dualLaneInput.soulx.deploymentSha256, `sha256:${"7".repeat(64)}`);
+    assert.equal(chain.entries.length, 1);
+    assert.equal(chain.entries[0].kind, "production-input");
+    assert.equal(lstatSync(outputPath).mode & 0o777, 0o600);
+    const later = new Map(prior);
+    later.set("mage-live-qualification", {
+      evidenceSha256: `sha256:${"a".repeat(64)}`,
+      deploymentSha256: `sha256:${"b".repeat(64)}`,
+    });
+    later.set("soulx-live-qualification", {
+      evidenceSha256: `sha256:${"c".repeat(64)}`,
+      deploymentSha256: `sha256:${"d".repeat(64)}`,
+    });
+    later.set("create-exact-max-one-endpoints", {
+      evidenceSha256: `sha256:${"e".repeat(64)}`,
+    });
+    await factory()({
+      operationId: "guarded-activation-once",
+      state: materialState,
+      priorResults: later,
+      outerStateSha256: `sha256:${"f".repeat(64)}`,
+    });
+    later.set("guarded-activation-once", {
+      evidenceSha256: `sha256:${"0".repeat(64)}`,
+      materialization: {
+        disabledVersionId: "11111111-1111-4111-8111-111111111111",
+        disabledVersionSha256: `sha256:${"1".repeat(64)}`,
+      },
+    });
+    await factory()({
+      operationId: "promote-qualified-production",
+      state: materialState,
+      priorResults: later,
+      outerStateSha256: `sha256:${"2".repeat(64)}`,
+    });
+    const completeChain = JSON.parse(readFileSync(chainPath, "utf8"));
+    assert.deepEqual(completeChain.entries.map((entry) => entry.kind), [
+      "production-input",
+      "guarded-activation",
+      "qualified-promotion",
+    ]);
+    assert.equal(
+      completeChain.entries[1].prior_chain_sha256,
+      completeChain.entries[0].entry_sha256,
+    );
+    assert.equal(
+      completeChain.entries[2].prior_chain_sha256,
+      completeChain.entries[1].entry_sha256,
+    );
+    for (const path of [manifestPath, configPath, disabledPath, activationPath, promotionPath])
+      assert.equal(lstatSync(path).mode & 0o777, 0o600);
+    const promotion = JSON.parse(readFileSync(promotionPath, "utf8"));
+    assert.equal(promotion.lanes.mage_image.qualification_record_sha256, `sha256:${"a".repeat(64)}`);
+    assert.equal(promotion.cloudflare.disabled_version_sha256, `sha256:${"1".repeat(64)}`);
+    assert.deepEqual(validated, { production: 2, guarded: 1, promotion: 1 });
+    await assert.rejects(
+      factory()({
+        operationId: "fresh-live-preflight",
+        state: materialState,
+        priorResults: prior,
+        outerStateSha256: `sha256:${"a".repeat(64)}`,
+      }),
+      /MATERIALIZATION_CHAIN_STAGE_REPLAY/u,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("protected TypeScript bridge chains only opaque qualification hashes across processes", async () => {

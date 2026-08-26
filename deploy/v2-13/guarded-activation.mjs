@@ -45,6 +45,7 @@ const SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
 ]);
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const ROLE = /^[a-z_][a-z0-9_]{0,62}$/u;
 const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const WORKFLOW_INVENTORY_PATH = "/workflows?page=1&per_page=100";
@@ -1459,6 +1460,7 @@ async function cloudflareActivation(args, authority, values, environment, databa
   let quarantineDeployed = false;
   let creationAttempted = false;
   let preflight;
+  let finalDisabledVersionId = null;
   try {
     config = renderAndDryRunConfig(args, environment, directory);
     bootstrapConfig = renderWorkflowBootstrapConfig(config, directory);
@@ -1512,7 +1514,7 @@ async function cloudflareActivation(args, authority, values, environment, databa
         });
       },
       async afterPut() {
-        readBackDisabledQuarantine(config, authority, environment);
+        finalDisabledVersionId = readBackDisabledQuarantine(config, authority, environment);
         await assertExactCreatedWorkflows(
           environment,
           authority,
@@ -1602,6 +1604,9 @@ async function cloudflareActivation(args, authority, values, environment, databa
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+  if (!UUID.test(finalDisabledVersionId ?? ""))
+    fail("final disabled quarantine version identity is not exact");
+  return Object.freeze({ disabledVersionId: finalDisabledVersionId });
 }
 
 async function main() {
@@ -1680,7 +1685,7 @@ async function main() {
     // All Cloudflare state/config/version reads run before the first database or secret mutation.
     await cloudflarePreflight(args, authority, cloudflareEnv);
     const values = protectedSecrets(resolve(args.get("secret-input-dir")), authority);
-    await cloudflareActivation(args, authority, values, cloudflareEnv, () =>
+    const activationReadback = await cloudflareActivation(args, authority, values, cloudflareEnv, () =>
       databaseActivation(authority, values, resolve(args.get("postgres-input-dir"))),
     );
     const result = {
@@ -1698,6 +1703,8 @@ async function main() {
     writeEvidence(args.get("evidence-output"), {
       ...evidenceBase,
       outcome: "SUCCEEDED",
+      disabled_version_id: activationReadback.disabledVersionId,
+      disabled_version_sha256: sha256(activationReadback.disabledVersionId),
       migration_ledger: "45/45 exact",
       role_acl_readback: "exact",
       secret_name_readback: `${SECRET_NAMES.length}/${SECRET_NAMES.length} exact`,

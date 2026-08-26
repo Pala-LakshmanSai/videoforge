@@ -34,11 +34,11 @@ const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:e1e8d75e8e2d07d654b43bb9559f1a733bc55b7ab3e16379fa4ac426a01f2a3c",
+    "sha256:d064b8c531fad08abeb263b675a6da83f31d67c35dab22c90aee5fb581b6d319",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:43b76121760d2688af493afe30ec8d8974d39ed95884c39c23b16888c76c127b",
+    "sha256:7a8f9a44f1dbe712aa37d3fcfacba810b123750c81890704b6f0904764fb63ae",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
     "sha256:ec6c459294769a04d3126e37d4e2d94be1578095a2ec11bfd9221fc02a6f8123",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
@@ -470,7 +470,11 @@ async function main() {
     statePath,
     expectedStateSha256,
     preflight: (state, _sha256, mode) =>
-      preflightConcreteFullLiveInputs({ state, cleanupOnly: mode.cleanupOnly }),
+      preflightConcreteFullLiveInputs({
+        state,
+        cleanupOnly: mode.cleanupOnly,
+        allowUnmaterializedProductionInput: true,
+      }),
     trustedTime: () => readAuthenticatedGithubTime(),
     runOperation: async (operation, state, priorResults, outerStateSha256) =>
       CONCRETE_LIVE_ADAPTERS[operation.id](

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  EXACT_INTERNAL_MATERIALIZATION_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
 } from "../../../../../deploy/v2-13/validate-full-live-approval.mjs";
 
@@ -48,6 +49,11 @@ assert(
   JSON.stringify(proposal.exact_execution_graph.image_workflow_verification_policy) ===
     JSON.stringify(EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY),
   "EXACT_WORKFLOW_TERMINAL_POLLING",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.internal_materialization_policy) ===
+    JSON.stringify(EXACT_INTERNAL_MATERIALIZATION_POLICY),
+  "EXACT_INTERNAL_MATERIALIZATION_POLICY",
 );
 assert(
   JSON.stringify(proposal.exact_execution_graph.trusted_time_policy) ===

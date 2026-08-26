@@ -24,8 +24,9 @@ The worker receipt/envelope changes invalidate every earlier image-bound qualifi
 earlier full-live approval is recorded as superseded and unconsumed because its source hashes no
 longer match. Proposal `sha256:9425de8e…899a` was approved and recorded at `67f6fb2`, but is now
 superseded unconsumed before mutation: its 21-secret text conflicts with the exact 22-secret executor,
-and the staged-preflight, isolated-source-worktree, authority-record publication, bounded workflow
-polling, and credential-free CA-verified HTTPS trusted-time contracts require provider-free repair. The active proposal
+and the staged-preflight, isolated-source-worktree, authority-record publication, durable hash-chained
+internal future-record materialization, true 30-minute end-to-end workflow deadline, and closed-env
+credential-free CA-verified HTTPS trusted-time contracts require provider-free repair. The active proposal
 surface is `BLOCKED_UNSEALED`; no repaired source hash or fresh approval exists. Both lanes require fresh immutable images, sealed
 deployment snapshots, dual live qualification, and that new single-use approval.
 Provider/deployment/credential/GPU/spend authority remains false with a `$0` executable cap, and no

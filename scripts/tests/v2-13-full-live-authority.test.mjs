@@ -25,6 +25,7 @@ import {
 import {
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  EXACT_INTERNAL_MATERIALIZATION_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
   validateFullLiveUserApproval,
 } from "../../deploy/v2-13/validate-full-live-approval.mjs";
@@ -217,6 +218,18 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.image_workflow_verification_policy.verifier_dispatch_authorized = true;
     },
     (proposal) => {
+      proposal.exact_execution_graph.image_workflow_verification_policy.deadline_covers_trusted_time_subprocess_poll_subprocess_wait_download_and_evidence_validation = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.external_mid_run_writer_authorized = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.records[1].materialize_after_operations.pop();
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.entry_sha256_is_hash_of_preceding_six_fields = false;
+    },
+    (proposal) => {
       proposal.exact_execution_graph.trusted_time_policy.caller_supplied_trusted_time_forbidden = false;
     },
     (proposal) => {
@@ -224,6 +237,12 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
     },
     (proposal) => {
       proposal.exact_execution_graph.trusted_time_policy.credential_environment_or_authorization_header_allowed = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.trusted_time_policy.curl_disable_is_first_argument = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.trusted_time_policy.proxy_environment_allowed = true;
     },
   ];
   for (const mutate of mutations) {
@@ -261,9 +280,50 @@ test("V3 proposal binds authenticated time at every non-cleanup boundary", () =>
     proposal.exact_execution_graph.trusted_time_policy.ambient_gh_configuration_used,
     false,
   );
+  assert.deepEqual(
+    proposal.exact_execution_graph.trusted_time_policy.subprocess_environment_exact,
+    { PATH: "INHERITED_ONLY_PATH", NO_PROXY: "*", no_proxy: "*" },
+  );
+  assert.equal(proposal.exact_execution_graph.trusted_time_policy.subprocess_timeout_ms, 12_000);
   assert.equal(
     proposal.exact_execution_graph.trusted_time_policy.normal_or_paid_operation_resume_after_expiry,
     false,
+  );
+});
+
+test("V3 proposal binds durable prior-result materialization before each consumer", () => {
+  const fixture = v3Fixture();
+  const proposal = JSON.parse(fixture.proposalBytes);
+  assert.deepEqual(
+    proposal.exact_execution_graph.internal_materialization_policy,
+    EXACT_INTERNAL_MATERIALIZATION_POLICY,
+  );
+  assert.deepEqual(
+    proposal.exact_execution_graph.internal_materialization_policy.records.map(
+      ({ kind, consume_before_operation: consumer }) => [kind, consumer],
+    ),
+    [
+      ["production-input", "fresh-live-preflight"],
+      ["activation-record", "guarded-activation-once"],
+      ["promotion-record", "promote-qualified-production"],
+    ],
+  );
+  assert.deepEqual(
+    proposal.exact_execution_graph.internal_materialization_policy.chain_record_exact_fields,
+    [
+      "kind",
+      "authority_id",
+      "prior_chain_sha256",
+      "outer_state_sha256",
+      "ordered_prior_operation_evidence_sha256s",
+      "ordered_output_sha256s",
+      "entry_sha256",
+    ],
+  );
+  assert.equal(
+    proposal.exact_execution_graph.internal_materialization_policy
+      .entry_sha256_is_hash_of_preceding_six_fields,
+    true,
   );
 });
 

@@ -147,6 +147,7 @@ function readAuthenticatedTrustedTime() {
   const output = execFileSync(
     "curl",
     [
+      "--disable",
       "--silent",
       "--show-error",
       "--head",
@@ -159,7 +160,16 @@ function readAuthenticatedTrustedTime() {
       "10",
       "https://api.github.com/rate_limit",
     ],
-    { cwd: ROOT, encoding: "utf8" },
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      env: {
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        NO_PROXY: "*",
+        no_proxy: "*",
+      },
+      timeout: 12_000,
+    },
   );
   const dates = output
     .split(/\r?\n/u)
@@ -221,7 +231,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:2dd92c2e3e8537f5950669ccc895dfccc10596e2c2f26db6f2f8ecad1b2e6c67" ||
+      "sha256:15c4cf255dfc96a9300685e37253b628ac63e3cde020e6ea259c3e4259994e88" ||
     state.no_redispatch !== true ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",

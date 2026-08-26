@@ -93,6 +93,15 @@ const EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY = Object.freeze({
   maximum_reads: 180,
   poll_interval_ms: 10_000,
   wall_timeout_ms: 1_800_000,
+  deadline_clock: "MONOTONIC",
+  deadline_starts_before_first_cancellation_or_trusted_time_check: true,
+  deadline_covers_trusted_time_subprocess_poll_subprocess_wait_download_and_evidence_validation: true,
+  every_subprocess_timeout_is_positive_remaining_deadline_ms: true,
+  trusted_time_subprocess_timeout_ms: 12_000,
+  gh_subprocess_timeout_ms_or_remaining_if_less: 60_000,
+  remaining_time_checked_before_and_after_every_await_or_spawn: true,
+  every_wait_is_capped_to_positive_remaining_deadline_ms: true,
+  no_positive_remaining_time_is_immediate_timeout: true,
   pollable_statuses: Object.freeze(["queued", "in_progress"]),
   accepted_terminal_status: "completed",
   accepted_conclusion: "success",
@@ -104,14 +113,93 @@ const EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY = Object.freeze({
   redispatch_authorized: false,
   timeout_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
 });
+const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
+  writer: "FULL_LIVE_EXECUTOR_INTERNAL_ONLY",
+  external_mid_run_writer_authorized: false,
+  future_result_files_required_at_initial_preflight: false,
+  protected_seed_schema: "videoforge.v213-full-live-materialization-seed/v1",
+  protected_seed_contains_only: Object.freeze([
+    "outer-production-base",
+    "guarded-authority-base",
+    "config-activation-base",
+    "media-manifest",
+    "promotion-base",
+  ]),
+  protected_seed_future_output_hashes_authorized: false,
+  storage_parent: "OUTER_STATE_MODE_0700_DIRECTORY",
+  record_file_mode: "0600",
+  exclusive_create_or_exact_hash_cas_required: true,
+  canonical_json_required: true,
+  hash_chain_required: true,
+  chain_binds_previous_outer_state_sha256_and_ordered_prior_result_sha256s: true,
+  materialization_chain_committed_before_consumer_operation: true,
+  chain_record_exact_fields: Object.freeze([
+    "kind",
+    "authority_id",
+    "prior_chain_sha256",
+    "outer_state_sha256",
+    "ordered_prior_operation_evidence_sha256s",
+    "ordered_output_sha256s",
+    "entry_sha256",
+  ]),
+  entry_sha256_is_hash_of_preceding_six_fields: true,
+  validate_each_output_immediately_at_first_use: true,
+  records: Object.freeze([
+    Object.freeze({
+      kind: "production-input",
+      materialize_after_operations: Object.freeze([
+        "mage-image-workflow-verification",
+        "soulx-image-workflow-verification",
+      ]),
+      consume_before_operation: "fresh-live-preflight",
+      writes: Object.freeze(["production-input"]),
+    }),
+    Object.freeze({
+      kind: "activation-record",
+      materialize_after_operations: Object.freeze([
+        "mage-live-qualification",
+        "soulx-live-qualification",
+        "create-exact-max-one-endpoints",
+      ]),
+      consume_before_operation: "guarded-activation-once",
+      writes: Object.freeze([
+        "media-manifest",
+        "config-activation-record",
+        "disabled-config",
+        "activation-record",
+      ]),
+    }),
+    Object.freeze({
+      kind: "promotion-record",
+      materialize_after_operations: Object.freeze([
+        "mage-live-qualification",
+        "soulx-live-qualification",
+        "create-exact-max-one-endpoints",
+        "guarded-activation-once",
+      ]),
+      consume_before_operation: "promote-qualified-production",
+      writes: Object.freeze(["promotion-record"]),
+    }),
+  ]),
+  missing_prior_result_receipt_path_mode_hash_chain_or_replay_is_hard_stop: true,
+});
 const EXACT_TRUSTED_TIME_POLICY = Object.freeze({
   credential_free_command:
-    "curl --silent --show-error --head --proto =https --tlsv1.2 --connect-timeout 5 --max-time 10 https://api.github.com/rate_limit",
+    "curl --disable --silent --show-error --head --proto =https --tlsv1.2 --connect-timeout 5 --max-time 10 https://api.github.com/rate_limit",
+  curl_disable_is_first_argument: true,
   exact_url: "https://api.github.com/rate_limit",
   request_method: "HEAD",
   transport_authentication: "SYSTEM_CA_VERIFIED_HTTPS_TLS_MINIMUM_1_2",
   credential_environment_or_authorization_header_allowed: false,
   ambient_gh_configuration_used: false,
+  subprocess_environment_exact: Object.freeze({
+    PATH: "INHERITED_ONLY_PATH",
+    NO_PROXY: "*",
+    no_proxy: "*",
+  }),
+  proxy_environment_allowed: false,
+  curl_default_config_allowed: false,
+  subprocess_timeout_ms: 12_000,
   required_date_header_count: 1,
   date_header_match: "CASE_INSENSITIVE_^date:",
   date_parse_valid_required: true,
@@ -235,6 +323,8 @@ function validateFullLiveUserApproval({
       proposal.exact_execution_graph?.missing_extra_or_repeated_operation_is_a_hard_stop !== true ||
       JSON.stringify(proposal.exact_execution_graph?.image_workflow_verification_policy) !==
         JSON.stringify(EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY) ||
+      JSON.stringify(proposal.exact_execution_graph?.internal_materialization_policy) !==
+        JSON.stringify(EXACT_INTERNAL_MATERIALIZATION_POLICY) ||
       JSON.stringify(proposal.exact_execution_graph?.trusted_time_policy) !==
         JSON.stringify(EXACT_TRUSTED_TIME_POLICY) ||
       proposal.requested_scope?.cloudflare_secret_allowlist_count !==
@@ -471,6 +561,7 @@ function validateFullLiveUserApproval({
 export {
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  EXACT_INTERNAL_MATERIALIZATION_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
   EXPECTED_PHASE_CAPS,
   validateFullLiveUserApproval,

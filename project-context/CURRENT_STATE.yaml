@@ -4,7 +4,7 @@ updated_at: "2026-08-26T00:00:00.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_fresh_proposal_sealed_exact_approval_required
+current_milestone: v2_13_execution_order_repair_blocked_unsealed
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -27,7 +27,7 @@ current_goal_boundary:
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
   provider_free_product_action: "Repair and independently audit the full-live execution-order/source-worktree contracts, then bind a new sealed proposal. Do not request or consume authority from the BLOCKED_UNSEALED draft."
-  note: "Proposal sha256:9425de8e...899a was approved and recorded at 67f6fb2, then superseded unconsumed before mutation after 21-versus-22 secret scope drift and execution-order/source-worktree blockers were found. The repair also replaces caller or credential-backed time with a credential-free system-CA-verified HTTPS HEAD Date before consumption and each non-cleanup operation. The replacement surface is BLOCKED_UNSEALED with repaired source identity unset. Provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
+  note: "Proposal sha256:9425de8e...899a was approved and recorded at 67f6fb2, then superseded unconsumed before mutation. The remaining provider-free repair must internally materialize production-input/activation/promotion records from durable prior-result hash chains, enforce a true 30-minute end-to-end workflow verification deadline, and use curl --disable in a closed no-proxy/no-auth environment for the system-CA-verified HTTPS HEAD clock. The replacement surface is BLOCKED_UNSEALED with repaired source identity unset. Provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
 
 two_track_execution:
   decision: DEC_DELIVERY_002

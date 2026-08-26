@@ -2,15 +2,17 @@ import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
   closeSync,
+  linkSync,
   lstatSync,
   mkdtempSync,
   openSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
@@ -64,6 +66,32 @@ function productionCommand(command, args) {
     encoding: "utf8",
     env: process.env,
     maxBuffer: 4 * 1024 * 1024,
+  });
+  return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+}
+
+function boundedCommand(command, args, timeoutMs, environment = process.env) {
+  const result = spawnSync(command, args, {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: environment,
+    maxBuffer: 4 * 1024 * 1024,
+    timeout: timeoutMs,
+  });
+  return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+}
+
+function closedTrustedTimeCommand(command, args, timeoutMs = 12_000, spawn = spawnSync) {
+  const result = spawn(command, args, {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: {
+      PATH: process.env.PATH ?? "/usr/bin:/bin",
+      NO_PROXY: "*",
+      no_proxy: "*",
+    },
+    maxBuffer: 4 * 1024 * 1024,
+    timeout: timeoutMs,
   });
   return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
 }
@@ -127,8 +155,12 @@ function exactRemoteTag(stdout, tag, expectedCommit, allowAbsent = false) {
   return true;
 }
 
-function readAuthenticatedGithubTime({ run = productionCommand } = {}) {
-  const response = exactCommand(run, "curl", [
+function readAuthenticatedGithubTime({
+  run = closedTrustedTimeCommand,
+  spawnTimeoutMs = 12_000,
+} = {}) {
+  const response = exactCommand((command, args) => run(command, args, spawnTimeoutMs), "curl", [
+    "--disable",
     "--silent",
     "--show-error",
     "--head",
@@ -367,42 +399,58 @@ const WORKFLOW_EVIDENCE = Object.freeze({
 });
 
 function createGithubVerificationAdapters({
-  run = productionCommand,
+  run = (command, args, timeoutMs) => boundedCommand(command, args, timeoutMs),
   wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds)),
   maximumPolls = 180,
   pollIntervalMs = 10_000,
-  trustedTime = () => readAuthenticatedGithubTime({ run }),
+  wallTimeoutMs = 1_800_000,
+  deadlineNow = () => performance.now(),
+  trustedTime = (timeoutMs) =>
+    readAuthenticatedGithubTime({ spawnTimeoutMs: Math.min(12_000, timeoutMs) }),
   isCancelled = () => false,
 } = {}) {
   if (!Number.isInteger(maximumPolls) || maximumPolls < 1 || maximumPolls > 180)
     fail("GITHUB_VERIFICATION_POLL_BOUND");
   if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 0 || pollIntervalMs > 10_000)
     fail("GITHUB_VERIFICATION_POLL_INTERVAL");
+  if (wallTimeoutMs !== 1_800_000) fail("GITHUB_VERIFICATION_WALL_TIMEOUT");
   return Object.fromEntries(
     Object.entries(WORKFLOW_EVIDENCE).map(([operationId, expected]) => [
       operationId,
       async (_operation, state, priorResults) => {
+        const deadline = deadlineNow() + wallTimeoutMs;
+        const remaining = () => {
+          const value = Math.floor(deadline - deadlineNow());
+          if (!Number.isFinite(value) || value <= 0) fail("WORKFLOW_RUN_TERMINAL_TIMEOUT");
+          return value;
+        };
         const dispatchId = operationId.replace("verification", "dispatch");
         const runId = priorResults.get(dispatchId)?.runId;
         if (!/^[1-9][0-9]*$/u.test(runId ?? "")) fail("WORKFLOW_RUN_ID");
         let runRecord;
         for (let poll = 0; poll < maximumPolls; poll += 1) {
           if (isCancelled()) fail("WORKFLOW_VERIFICATION_CANCELLED");
-          const trustedMs = Date.parse(await trustedTime());
+          const trustedMs = Date.parse(await trustedTime(Math.min(12_000, remaining())));
+          remaining();
           if (
             Number.isNaN(trustedMs) ||
             trustedMs < Date.parse(state.approved_at ?? "") ||
             trustedMs > Date.parse(state.expires_at ?? "")
           )
             fail("WORKFLOW_AUTHORITY_EXPIRED");
-          if (poll > 0) await wait(pollIntervalMs);
-          const viewed = exactCommand(run, "gh", [
+          if (poll > 0) {
+            await wait(Math.min(pollIntervalMs, remaining()));
+            remaining();
+          }
+          const viewed = exactCommand((command, args) =>
+            run(command, args, Math.min(60_000, remaining())), "gh", [
             "run",
             "view",
             runId,
             "--json",
             "databaseId,headSha,workflowName,status,conclusion",
           ]);
+          remaining();
           try {
             runRecord = JSON.parse(viewed.stdout);
           } catch {
@@ -423,7 +471,8 @@ function createGithubVerificationAdapters({
         if (runRecord?.status !== "completed") fail("WORKFLOW_RUN_TERMINAL_TIMEOUT");
         const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v2-13-workflow-evidence-"));
         try {
-          exactCommand(run, "gh", [
+          exactCommand((command, args) =>
+            run(command, args, Math.min(60_000, remaining())), "gh", [
             "run",
             "download",
             runId,
@@ -432,10 +481,12 @@ function createGithubVerificationAdapters({
             "--dir",
             directory,
           ]);
+          remaining();
           const evidencePath = resolve(directory, expected.fileName);
           const metadata = lstatSync(evidencePath);
           if (metadata.isSymbolicLink() || !metadata.isFile()) fail("WORKFLOW_EVIDENCE_FILE");
           const evidenceBytes = readFileSync(evidencePath);
+          remaining();
           let evidence;
           try {
             evidence = JSON.parse(evidenceBytes);
@@ -465,6 +516,7 @@ function createGithubVerificationAdapters({
             evidence.immutable_image !== `ghcr.io/${expected.repository}@${digest}`
           )
             fail("WORKFLOW_EVIDENCE_CONTRACT");
+          remaining();
           return {
             actualUsd: 0,
             runId,
@@ -547,11 +599,22 @@ function createGuardedActivationAdapter({
         evidence?.schema_version !== "videoforge-v2-13-guarded-activation-evidence/v1" ||
         evidence.commit !== state.release_source_commit ||
         evidence.outcome !== "SUCCEEDED" ||
+        !/^[0-9a-f]{8}-[0-9a-f-]{27}$/u.test(evidence.disabled_version_id ?? "") ||
+        sha256(Buffer.from(evidence.disabled_version_id ?? "")) !==
+          evidence.disabled_version_sha256 ||
         evidence.external_spend_cap_usd !== 0 ||
         evidence.new_paid_retained_resources_authorized !== false
       )
         fail("GUARDED_EVIDENCE");
-      return { actualUsd: 0, executedOnce: true, evidenceSha256 };
+      return {
+        actualUsd: 0,
+        executedOnce: true,
+        evidenceSha256,
+        materialization: {
+          disabledVersionId: evidence.disabled_version_id,
+          disabledVersionSha256: evidence.disabled_version_sha256,
+        },
+      };
     } finally {
       source.cleanup();
     }
@@ -1148,6 +1211,406 @@ function protectedFile(path, code) {
   return path;
 }
 
+const MATERIALIZATION_GENESIS = sha256(
+  Buffer.from("videoforge.v213-full-live-materialization-chain/v1:genesis"),
+);
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(",")}}`;
+  return JSON.stringify(value);
+}
+
+function protectedDirectory(path, code) {
+  const status = lstatSync(path);
+  if (!status.isDirectory() || status.isSymbolicLink() || (status.mode & 0o077) !== 0) fail(code);
+  return path;
+}
+
+function exclusiveAtomicBytes(path, bytes) {
+  protectedDirectory(dirname(path), "MATERIALIZATION_OUTPUT_DIRECTORY");
+  const temporary = `${path}.${randomBytes(8).toString("hex")}.next`;
+  writeFileSync(temporary, bytes, { mode: 0o600, flag: "wx" });
+  try {
+    linkSync(temporary, path);
+  } catch {
+    if (!lstatExists(path)) fail("MATERIALIZATION_OUTPUT_CREATE", path);
+    protectedFile(path, "MATERIALIZATION_OUTPUT_FILE");
+    if (sha256(readFileSync(path)) !== sha256(bytes))
+      fail("MATERIALIZATION_OUTPUT_HASH_CAS", path);
+  } finally {
+    rmSync(temporary, { force: true });
+  }
+  protectedFile(path, "MATERIALIZATION_OUTPUT_FILE");
+  if (sha256(readFileSync(path)) !== sha256(bytes)) fail("MATERIALIZATION_OUTPUT_READBACK");
+}
+
+function atomicChainUpdate(path, entry) {
+  protectedDirectory(dirname(path), "MATERIALIZATION_CHAIN_DIRECTORY");
+  const lockPath = `${path}.lock`;
+  let lock;
+  try {
+    lock = openSync(lockPath, "wx", 0o600);
+  } catch {
+    fail("MATERIALIZATION_CHAIN_LOCKED");
+  }
+  try {
+    let chain = {
+      schema_version: "videoforge.v213-full-live-materialization-chain/v1",
+      entries: [],
+    };
+    if (lstatExists(path)) {
+      protectedFile(path, "MATERIALIZATION_CHAIN_FILE");
+      try {
+        chain = JSON.parse(readFileSync(path, "utf8"));
+      } catch {
+        fail("MATERIALIZATION_CHAIN_JSON");
+      }
+    }
+    if (
+      chain?.schema_version !== "videoforge.v213-full-live-materialization-chain/v1" ||
+      !Array.isArray(chain.entries)
+    )
+      fail("MATERIALIZATION_CHAIN_CONTRACT");
+    const previous = chain.entries.at(-1)?.entry_sha256 ?? MATERIALIZATION_GENESIS;
+    if (chain.entries.some((item) => item?.kind === entry.kind))
+      fail("MATERIALIZATION_CHAIN_STAGE_REPLAY", entry.kind);
+    const unsigned = { ...entry, prior_chain_sha256: previous };
+    const entrySha256 = sha256(Buffer.from(`${canonicalJson(unsigned)}\n`));
+    chain.entries.push({ ...unsigned, entry_sha256: entrySha256 });
+    const bytes = Buffer.from(`${canonicalJson(chain)}\n`);
+    const temporary = `${path}.${randomBytes(8).toString("hex")}.next`;
+    writeFileSync(temporary, bytes, { mode: 0o600, flag: "wx" });
+    renameSync(temporary, path);
+    protectedFile(path, "MATERIALIZATION_CHAIN_FILE");
+    return entrySha256;
+  } finally {
+    if (lock !== undefined) closeSync(lock);
+    rmSync(lockPath, { force: true });
+  }
+}
+
+function lstatExists(path) {
+  try {
+    lstatSync(path);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function exactReceipt(priorResults, operationId) {
+  const receipt = priorResults.get(operationId);
+  if (!HASH.test(receipt?.evidenceSha256 ?? "")) fail("MATERIALIZATION_PRIOR_RECEIPT", operationId);
+  return receipt;
+}
+
+function createProtectedInputMaterializer({
+  environment = process.env,
+  run = productionCommand,
+  validateProduction = loadBridgeProductionInput,
+  validateGuarded = preflightGuardedActivationInputs,
+  validatePromotion = preflightPromotionInputs,
+  renderDisabledConfig,
+} = {}) {
+  const seedPath = () =>
+    protectedFile(
+      environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE,
+      "MATERIALIZATION_SEED_FILE",
+    );
+  const seed = () => {
+    let value;
+    try {
+      value = JSON.parse(readFileSync(seedPath(), "utf8"));
+    } catch {
+      fail("MATERIALIZATION_SEED_JSON");
+    }
+    if (
+      value?.schema_version !== "videoforge.v213-full-live-materialization-seed/v1" ||
+      value.static_only !== true ||
+      value.future_output_hashes_present !== false ||
+      JSON.stringify(Object.keys(value).sort()) !==
+        JSON.stringify(
+          [
+            "activation_record_base",
+            "config_activation_base",
+            "future_output_hashes_present",
+            "production_input_base",
+            "promotion_record_base",
+            "release_manifest",
+            "schema_version",
+            "static_only",
+          ].sort(),
+        )
+    )
+      fail("MATERIALIZATION_SEED_CONTRACT");
+    return value;
+  };
+  const writeJson = (path, value) => {
+    const bytes = Buffer.from(`${canonicalJson(value)}\n`);
+    exclusiveAtomicBytes(path, bytes);
+    return sha256(bytes);
+  };
+  const record = ({ stage, state, outerStateSha256, inputs, outputs }) => {
+    const chainPath = environment.VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE;
+    if (typeof chainPath !== "string" || chainPath === "" || chainPath.includes("\0"))
+      fail("MATERIALIZATION_CHAIN_PATH");
+    atomicChainUpdate(chainPath, {
+      kind: stage,
+      authority_id: state.authority_id,
+      outer_state_sha256: outerStateSha256,
+      ordered_prior_operation_evidence_sha256s: Object.entries(inputs),
+      ordered_output_sha256s: Object.entries(outputs),
+    });
+  };
+  return async ({ operationId, state, priorResults, outerStateSha256 }) => {
+    if (!HASH.test(outerStateSha256 ?? "")) fail("MATERIALIZATION_OUTER_STATE");
+    if (
+      [
+        "restore-endpoints-max-one",
+        "prove-zero-workers",
+        "read-settled-billing",
+        "reconcile-exact-resources",
+      ].includes(operationId) &&
+      !lstatExists(environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE)
+    ) {
+      const source = seed();
+      const production = structuredClone(source.production_input_base);
+      production.authorityDocument = {
+        ...production.authorityDocument,
+        authorityId: state.authority_id,
+        proposalSha256: state.proposal_sha256,
+        approvalSha256: state.approval_sha256,
+        proposalCommit: state.proposal_record_commit,
+        sourceCommit: state.release_source_commit,
+        executorSha256: state.full_live_executor_sha256,
+        approvedAt: state.approved_at,
+        expiresAt: state.expires_at,
+        maximumCumulativeSpendUsd: 17.5,
+        singleUse: true,
+      };
+      production.dualLaneInput.mage.sourceCommit = state.release_source_commit;
+      production.dualLaneInput.soulx.sourceCommit = state.release_source_commit;
+      const output = writeJson(environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE, production);
+      validateProduction(environment);
+      record({
+        stage: "cleanup-production-input",
+        state,
+        outerStateSha256,
+        inputs: {},
+        outputs: { production_input_sha256: output },
+      });
+    }
+    if (operationId === "fresh-live-preflight") {
+      const source = seed();
+      const mage = exactReceipt(priorResults, "mage-image-workflow-verification");
+      const soulx = exactReceipt(priorResults, "soulx-image-workflow-verification");
+      const production = structuredClone(source.production_input_base);
+      production.authorityDocument = {
+        ...production.authorityDocument,
+        authorityId: state.authority_id,
+        proposalSha256: state.proposal_sha256,
+        approvalSha256: state.approval_sha256,
+        proposalCommit: state.proposal_record_commit,
+        sourceCommit: state.release_source_commit,
+        executorSha256: state.full_live_executor_sha256,
+        approvedAt: state.approved_at,
+        expiresAt: state.expires_at,
+        maximumCumulativeSpendUsd: 17.5,
+        singleUse: true,
+      };
+      for (const [lane, receipt, repository] of [
+        ["mage", mage, "pala-lakshmansai/videoforge-mage-v2-07"],
+        ["soulx", soulx, "pala-lakshmansai/videoforge-soulx-serverless-v2-08"],
+      ]) {
+        production.dualLaneInput[lane].sourceCommit = state.release_source_commit;
+        production.dualLaneInput[lane].publicImage = `ghcr.io/${repository}@${receipt.imageDigest}`;
+        production.dualLaneInput[lane].deploymentSha256 = receipt.evidenceSha256;
+      }
+      const output = writeJson(environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE, production);
+      validateProduction(environment);
+      record({
+        stage: "production-input",
+        state,
+        outerStateSha256,
+        inputs: {
+          mage_image: mage.evidenceSha256,
+          soulx_image: soulx.evidenceSha256,
+        },
+        outputs: { production_input_sha256: output },
+      });
+      return;
+    }
+    if (operationId === "guarded-activation-once") {
+      const source = seed();
+      const mage = exactReceipt(priorResults, "mage-live-qualification");
+      const soulx = exactReceipt(priorResults, "soulx-live-qualification");
+      const endpoints = exactReceipt(priorResults, "create-exact-max-one-endpoints");
+      const manifestSha256 = writeJson(
+        environment.VIDEOFORGE_V2_13_RELEASE_MANIFEST_FILE,
+        source.release_manifest,
+      );
+      const config = structuredClone(source.config_activation_base);
+      config.authority.approved_at = state.approved_at;
+      config.release.commit = state.release_source_commit;
+      config.release.media_worker_release_manifest_sha256 = manifestSha256;
+      const configSha256 = writeJson(
+        environment.VIDEOFORGE_V2_13_CONFIG_ACTIVATION_RECORD,
+        config,
+      );
+      let renderedBytes;
+      if (typeof renderDisabledConfig === "function") {
+        renderedBytes = renderDisabledConfig({ environment, state });
+      } else {
+        const renderedDirectory = mkdtempSync(
+          resolve(tmpdir(), "videoforge-v213-materialized-config-"),
+        );
+        try {
+          const rendered = resolve(renderedDirectory, "disabled.json");
+          exactCommand(run, process.execPath, [
+            "deploy/v2-13/render-production-config.mjs",
+            "--activate",
+            "--activation-record",
+            environment.VIDEOFORGE_V2_13_CONFIG_ACTIVATION_RECORD,
+            "--release-manifest-file",
+            environment.VIDEOFORGE_V2_13_RELEASE_MANIFEST_FILE,
+            "--output",
+            rendered,
+          ]);
+          renderedBytes = readFileSync(rendered);
+        } finally {
+          rmSync(renderedDirectory, { recursive: true, force: true });
+        }
+      }
+      if (!Buffer.isBuffer(renderedBytes)) fail("MATERIALIZATION_DISABLED_CONFIG_BYTES");
+      exclusiveAtomicBytes(environment.VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE, renderedBytes);
+      const activation = structuredClone(source.activation_record_base);
+      Object.assign(activation.authority, {
+        mode: "APPROVED_EXECUTE",
+        authority_id: state.authority_id,
+        proposal_sha256: state.proposal_sha256,
+        approval_sha256: state.approval_sha256,
+        approval_path: state.approval_record_path,
+        approved_at: state.approved_at,
+        expires_at: state.expires_at,
+        execute_authorized: true,
+        credential_access_authorized: true,
+        database_mutation_authorized: true,
+        cloudflare_secret_mutation_authorized: true,
+        deployment_authorized: true,
+        provider_calls_authorized: true,
+      });
+      Object.assign(activation.release, {
+        commit: state.release_source_commit,
+        production_config_activation_sha256: configSha256,
+        media_worker_release_manifest_sha256: manifestSha256,
+      });
+      Object.assign(activation.gates, {
+        mage_qualification_sha256: mage.evidenceSha256,
+        soulx_qualification_sha256: soulx.evidenceSha256,
+        mage_deployment_snapshot_sha256: mage.deploymentSha256,
+        soulx_deployment_snapshot_sha256: soulx.deploymentSha256,
+        paid_dispatch_authority_sha256: endpoints.evidenceSha256,
+      });
+      const activationSha256 = writeJson(
+        environment.VIDEOFORGE_V2_13_ACTIVATION_RECORD,
+        activation,
+      );
+      validateGuarded({ environment, state });
+      record({
+        stage: "guarded-activation",
+        state,
+        outerStateSha256,
+        inputs: {
+          mage_qualification: mage.evidenceSha256,
+          soulx_qualification: soulx.evidenceSha256,
+          max_one_endpoints: endpoints.evidenceSha256,
+        },
+        outputs: {
+          activation_record_sha256: activationSha256,
+          config_activation_sha256: configSha256,
+          disabled_config_sha256: sha256(
+            readFileSync(environment.VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE),
+          ),
+          release_manifest_sha256: manifestSha256,
+        },
+      });
+      return;
+    }
+    if (operationId === "promote-qualified-production") {
+      const source = seed();
+      const mage = exactReceipt(priorResults, "mage-live-qualification");
+      const soulx = exactReceipt(priorResults, "soulx-live-qualification");
+      const guarded = exactReceipt(priorResults, "guarded-activation-once");
+      const production = validateProduction(environment);
+      const disabledBytes = readFileSync(
+        protectedFile(
+          environment.VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE,
+          "MATERIALIZATION_DISABLED_CONFIG",
+        ),
+      );
+      const enabled = JSON.parse(disabledBytes);
+      enabled.vars.VIDEOFORGE_GPU_TRANSPORT = "QUALIFIED_EXACT";
+      const enabledBytes = Buffer.from(`${JSON.stringify(enabled, null, 2)}\n`);
+      const promotion = structuredClone(source.promotion_record_base);
+      Object.assign(promotion.release, {
+        commit: state.release_source_commit,
+        disabled_config_sha256: sha256(disabledBytes),
+        enabled_config_sha256: sha256(enabledBytes),
+      });
+      Object.assign(promotion.approval, {
+        authority_id: state.authority_id,
+        proposal_sha256: state.proposal_sha256,
+        approval_sha256: state.approval_sha256,
+        approved_at: state.approved_at,
+        expires_at: state.expires_at,
+        single_use: true,
+      });
+      Object.assign(promotion.database, {
+        full_live_authority_id: production.fullLiveAuthorityId,
+        authority_document_sha256: sha256(
+          Buffer.from(`${canonicalJson(production.authorityDocument)}\n`),
+        ),
+        executor_sha256: state.full_live_executor_sha256,
+        paid_approval_sha256: state.approval_sha256,
+      });
+      Object.assign(promotion.lanes.mage_image, {
+        qualification_record_sha256: mage.evidenceSha256,
+        deployment_snapshot_sha256: mage.deploymentSha256,
+      });
+      Object.assign(promotion.lanes.soulx_avatar, {
+        qualification_record_sha256: soulx.evidenceSha256,
+        deployment_snapshot_sha256: soulx.deploymentSha256,
+      });
+      Object.assign(promotion.cloudflare, {
+        disabled_version_id: guarded.materialization?.disabledVersionId,
+        disabled_version_sha256: guarded.materialization?.disabledVersionSha256,
+      });
+      const promotionSha256 = writeJson(
+        environment.VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE,
+        promotion,
+      );
+      validatePromotion({ environment, state });
+      record({
+        stage: "qualified-promotion",
+        state,
+        outerStateSha256,
+        inputs: {
+          mage_qualification: mage.evidenceSha256,
+          soulx_qualification: soulx.evidenceSha256,
+          guarded_activation: guarded.evidenceSha256,
+        },
+        outputs: { promotion_record_sha256: promotionSha256 },
+      });
+    }
+  };
+}
+
 function productionBridgeSpawn({ environment, request }) {
   const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v213-bridge-"));
   const requestPath = resolve(directory, "request.json");
@@ -1219,11 +1682,19 @@ function preflightConcreteFullLiveInputs({
   environment = process.env,
   state,
   cleanupOnly = false,
+  allowUnmaterializedProductionInput = false,
 }) {
-  const production = loadBridgeProductionInput(environment);
-  const authority = production.authorityDocument;
+  const productionPath = environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE;
+  if (typeof productionPath !== "string" || productionPath === "" || productionPath.includes("\0"))
+    fail("BRIDGE_PRODUCTION_INPUT_FILE");
+  const production =
+    allowUnmaterializedProductionInput && !lstatExists(productionPath)
+      ? null
+      : loadBridgeProductionInput(environment);
+  const authority = production?.authorityDocument;
   if (
-    authority.authorityId !== state.authority_id ||
+    production !== null &&
+    (authority.authorityId !== state.authority_id ||
     authority.proposalSha256 !== state.proposal_sha256 ||
     authority.approvalSha256 !== state.approval_sha256 ||
     authority.proposalCommit !== state.proposal_record_commit ||
@@ -1232,7 +1703,7 @@ function preflightConcreteFullLiveInputs({
     authority.approvedAt !== state.approved_at ||
     authority.expiresAt !== state.expires_at ||
     authority.maximumCumulativeSpendUsd !== 17.5 ||
-    authority.singleUse !== true
+    authority.singleUse !== true)
   )
     fail("BRIDGE_OUTER_AUTHORITY_LINEAGE");
   const bridgeValues = Object.fromEntries(
@@ -1530,7 +2001,7 @@ function createTypeScriptBridgeAdapters({
 }
 
 function createConcreteFullLiveAdapters(options = {}) {
-  return Object.freeze({
+  const adapters = {
     ...createGitReleaseAdapters(options.git),
     ...createGithubDispatchAdapters(options.github),
     ...createGithubVerificationAdapters(options.githubVerification),
@@ -1542,13 +2013,32 @@ function createConcreteFullLiveAdapters(options = {}) {
     ...(options.acceptance ? createV213AcceptanceAdapters(options.acceptance) : {}),
     ...createTypeScriptBridgeAdapters(options.bridge),
     ...(options.cleanup?.adapters ?? {}),
-  });
+  };
+  const materialize =
+    options.materializer === false
+      ? null
+      : options.materializer?.materialize ??
+        createProtectedInputMaterializer(options.materializer);
+  if (materialize === null) return Object.freeze(adapters);
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(adapters).map(([operationId, adapter]) => [
+        operationId,
+        async (context, state, priorResults, outerStateSha256) => {
+          await materialize({ operationId, state, priorResults, outerStateSha256 });
+          return adapter(context, state, priorResults, outerStateSha256);
+        },
+      ]),
+    ),
+  );
 }
 
 export {
   createConcreteFullLiveAdapters,
+  closedTrustedTimeCommand,
   createGitReleaseAdapters,
   createGuardedActivationAdapter,
+  createProtectedInputMaterializer,
   createQualifiedPromotionAdapter,
   createV213DurableStageStore,
   createV213AcceptanceAdapters,
