@@ -101,7 +101,7 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     validated.proposalSchema !== "videoforge.v2-13-full-live-completion-proposal/v3" ||
     authority.github_release_ref?.status !== "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION" ||
     authority.github_release_ref?.ref_creation_authorized_by_approved_proposal !== true ||
-    authority.github_release_ref?.exact_tag_name !== "videoforge-v2-13-release-407dc070" ||
+    authority.github_release_ref?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
     authority.github_release_ref?.exact_target_commit !== validated.releaseSourceCommit ||
     authority.github_release_ref?.external_action_taken !== false
   )
@@ -166,7 +166,7 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     event_ids: [],
     work_ids: [],
     release_ref: {
-      exact_tag_name: "videoforge-v2-13-release-407dc070",
+      exact_tag_name: "videoforge-v2-13-release-20260826-v3",
       exact_target_commit: validated.releaseSourceCommit,
       state: "AUTHORIZED_PENDING_CREATION",
       verification_event_id: null,
@@ -184,7 +184,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:4d35818ad5b383f07fa6d3a9ec76a5a886e0d68ed66520d02397de731ddfed13" ||
+      "sha256:2b782863fef0222527a10fcd1d4bb1c8bacfc58d601ebd764e1919968d781830" ||
     state.no_redispatch !== true ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
@@ -240,7 +240,7 @@ function validateState(state) {
     new Set(state.event_ids).size !== state.event_ids.length ||
     new Set(state.work_ids).size !== state.work_ids.length ||
     JSON.stringify([...actualWorkIds].sort()) !== JSON.stringify([...state.work_ids].sort()) ||
-    state.release_ref?.exact_tag_name !== "videoforge-v2-13-release-407dc070" ||
+    state.release_ref?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
     state.release_ref?.exact_target_commit !== state.release_source_commit ||
     !["AUTHORIZED_PENDING_CREATION", "VERIFIED_EXACT_REMOTE"].includes(state.release_ref?.state)
   )

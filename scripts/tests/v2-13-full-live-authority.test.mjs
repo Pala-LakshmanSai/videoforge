@@ -32,12 +32,20 @@ const authorityBytes = readFileSync(`${directory}/approved-authority.json`);
 const proposalSha256 = "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32";
 const proposalRecordCommit = "e3bdabc161c60e5334c4055b5636b7fd768a86df";
 const releaseSourceCommit = "407dc070f4b83bd78b1d4aa1cb546ec63c91f32f";
+const v3ReleaseSourceCommit = "7e561fd8fdb4e6281650c09a5a7859849f473a00";
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
 function v3Fixture() {
   const v3Directory =
     "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate";
-  const v3ProposalBytes = readFileSync(`${v3Directory}/combined-live-proposal.json`);
+  const v3Proposal = JSON.parse(readFileSync(`${v3Directory}/combined-live-proposal.json`));
+  v3Proposal.proposal_status = "PENDING_FRESH_EXACT_USER_APPROVAL";
+  v3Proposal.sealing.sealed_for_exact_user_approval = true;
+  v3Proposal.sealing.current_bytes_are_approval_ineligible = false;
+  v3Proposal.source.release_source_commit = v3ReleaseSourceCommit;
+  delete v3Proposal.source.base_source_commit_before_semantic_tag_repair;
+  v3Proposal.immutable_github_release_ref_request.exact_target_commit = v3ReleaseSourceCommit;
+  const v3ProposalBytes = Buffer.from(`${JSON.stringify(v3Proposal, null, 2)}\n`);
   const v3ProposalSha256 = hash(v3ProposalBytes);
   const v3Commit = "f".repeat(40);
   const approval = structuredClone(JSON.parse(approvalBytes));
@@ -47,12 +55,12 @@ function v3Fixture() {
     path: `${v3Directory}/combined-live-proposal.json`,
     sha256: v3ProposalSha256,
     proposal_record_commit: v3Commit,
-    release_source_commit: releaseSourceCommit,
+    release_source_commit: v3ReleaseSourceCommit,
   };
   approval.approval.immutable_github_release_ref = {
     creation_authorized: true,
-    exact_tag_name: "videoforge-v2-13-release-407dc070",
-    exact_target_commit: releaseSourceCommit,
+    exact_tag_name: "videoforge-v2-13-release-20260826-v3",
+    exact_target_commit: v3ReleaseSourceCommit,
     tag_kind: "LIGHTWEIGHT",
     maximum_new_refs: 1,
     force_update_authorized: false,
@@ -64,7 +72,7 @@ function v3Fixture() {
     exact_reconciler_role: "videoforge_hosted_reconciler",
     roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
   };
-  approval.statement = `I approve ${v3ProposalSha256} at ${v3Commit} with USD 17.50, USD 7 per month, no fallback, tag videoforge-v2-13-release-407dc070, and roles videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
+  approval.statement = `I approve ${v3ProposalSha256} at ${v3Commit} with USD 17.50, USD 7 per month, no fallback, tag videoforge-v2-13-release-20260826-v3, and roles videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
   const v3ApprovalBytes = Buffer.from(`${JSON.stringify(approval, null, 2)}\n`);
   const authority = structuredClone(JSON.parse(authorityBytes));
   authority.authority_id = approval.authority_id;
@@ -75,7 +83,7 @@ function v3Fixture() {
     proposal_path: approval.proposal.path,
     proposal_sha256: v3ProposalSha256,
     proposal_record_commit: v3Commit,
-    release_source_commit: releaseSourceCommit,
+    release_source_commit: v3ReleaseSourceCommit,
     user_approval_path: `${v3Directory}/user-approval.json`,
     user_approval_sha256: hash(v3ApprovalBytes),
   };
@@ -94,8 +102,8 @@ function v3Fixture() {
     authority.combined_execution_authority[key] = true;
   authority.github_release_ref = {
     required_for_workflow_dispatch: true,
-    exact_target_commit: releaseSourceCommit,
-    exact_tag_name: "videoforge-v2-13-release-407dc070",
+    exact_target_commit: v3ReleaseSourceCommit,
+    exact_tag_name: "videoforge-v2-13-release-20260826-v3",
     ref_creation_authorized_by_approved_proposal: true,
     status: "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
     external_action_taken: false,
@@ -168,8 +176,8 @@ test("single-use ledger enforces phase order, phase caps, cumulative cap, and no
   beginPhase(state, "publication");
   assert.throws(() => completePhase(state, "publication"), /RELEASE_REF_NOT_VERIFIED/u);
   recordVerifiedReleaseRef(state, {
-    tagName: "videoforge-v2-13-release-407dc070",
-    targetCommit: releaseSourceCommit,
+    tagName: "videoforge-v2-13-release-20260826-v3",
+    targetCommit: v3ReleaseSourceCommit,
     eventId: "release-ref-readback-event-0001",
   });
   completePhase(state, "publication");
@@ -362,7 +370,7 @@ test("forged terminal state is rejected and every normal mutation stays closed",
     approvalBytes: fixture.approvalBytes,
     expectedProposalSha256: hash(fixture.proposalBytes),
     expectedProposalRecordCommit: "f".repeat(40),
-    expectedReleaseSourceCommit: releaseSourceCommit,
+    expectedReleaseSourceCommit: v3ReleaseSourceCommit,
   });
   const forged = initialConsumptionRecord(fixture.authority, fixture.authorityBytes, validated);
   forged.state = "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY";

@@ -33,7 +33,7 @@ const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:ff85270391966f873dad5bcac6a9bcbf041f0f54d96cd0629ccc0cb5284159d5",
+    "sha256:2d59c91bfcfd57e9b2f2ecfcdce2e85e4f288fe2dc63aedf7adcd86b14f10dea",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
   "deploy/v2-13/guarded-activation.mjs":

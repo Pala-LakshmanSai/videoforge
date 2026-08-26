@@ -7,6 +7,41 @@ const PROPOSAL_SCHEMA_V2 = "videoforge.v2-13-full-live-completion-proposal/v2";
 const PROPOSAL_SCHEMA_V3 = "videoforge.v2-13-full-live-completion-proposal/v3";
 const APPROVAL_SCHEMA_V1 = "videoforge.v2-13-full-live-user-approval/v1";
 const APPROVAL_SCHEMA_V2 = "videoforge.v2-13-full-live-user-approval/v2";
+const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
+  full_live_executor: Object.freeze({
+    path: "deploy/v2-13/full-live-executor.mjs",
+    sha256: "sha256:2b782863fef0222527a10fcd1d4bb1c8bacfc58d601ebd764e1919968d781830",
+    sole_canonical_live_mutation_path: true,
+  }),
+  full_live_adapters: Object.freeze({
+    path: "deploy/v2-13/full-live-adapters.mjs",
+    sha256: "sha256:2d59c91bfcfd57e9b2f2ecfcdce2e85e4f288fe2dc63aedf7adcd86b14f10dea",
+  }),
+  promotion: Object.freeze({
+    path: "deploy/v2-13/promote-qualified-production.mjs",
+    sha256: "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
+  }),
+  guarded_activation: Object.freeze({
+    path: "deploy/v2-13/guarded-activation.mjs",
+    sha256: "sha256:8946676cae1ab8c414880e2d093fc8bbc957d97af6ee0f6a30ee052aea9bf8d0",
+  }),
+  orchestration_authority: Object.freeze({
+    path: "deploy/v2-13/full-live-orchestration-authority.mjs",
+    sha256: "sha256:be1bbca1d933cd555baa768d13a9ebf33cd75be4c4214df79e09cbe7e505b241",
+  }),
+  typescript_cli_bridge: Object.freeze({
+    path: "apps/web/src/server/providers/v213-full-live-cli.ts",
+    sha256: "sha256:ec6c459294769a04d3126e37d4e2d94be1578095a2ec11bfd9221fc02a6f8123",
+  }),
+  runpod_dual_lane_transport: Object.freeze({
+    path: "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
+    sha256: "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
+  }),
+  migration_0045: Object.freeze({
+    path: "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
+    sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
+  }),
+});
 const EXPECTED_PHASE_CAPS = Object.freeze({
   mage_qualification: 4.5,
   soulx_qualification: 1,
@@ -24,6 +59,31 @@ const CHECKPOINT_RANGE = Object.freeze([
   "V2-11",
   "V2-12",
   "V2-13",
+]);
+const EXACT_OPERATION_IDS = Object.freeze([
+  "release-tag-create",
+  "release-tag-push",
+  "release-tag-readback",
+  "approval-commit-push",
+  "mage-image-workflow-dispatch",
+  "mage-image-workflow-verification",
+  "soulx-image-workflow-dispatch",
+  "soulx-image-workflow-verification",
+  "fresh-live-preflight",
+  "mage-live-qualification",
+  "soulx-live-qualification",
+  "create-exact-max-one-endpoints",
+  "guarded-activation-once",
+  "promote-qualified-production",
+  "v2-09-short-hosted-project",
+  "v2-10-operator-free-ranga-pilot",
+  "v2-11-two-concurrent-owned-projects",
+  "v2-12-long-output",
+  "v2-13-final-two-lane-smoke",
+  "restore-endpoints-max-one",
+  "prove-zero-workers",
+  "read-settled-billing",
+  "reconcile-exact-resources",
 ]);
 const EXECUTION_FENCE_KEYS = Object.freeze([
   "proposal_bytes_must_rehash_exactly",
@@ -86,20 +146,19 @@ function validateFullLiveUserApproval({
     fail("PROPOSAL_CONTRACT");
   if (
     isV3 &&
-    (proposal.supersession?.prior_approval_reusable !== false ||
+    (proposal.sealing?.sealed_for_exact_user_approval !== true ||
+      proposal.sealing?.current_bytes_are_approval_ineligible !== false ||
+      proposal.supersession?.prior_approval_reusable !== false ||
       proposal.supersession?.fresh_exact_approval_required !== true ||
       proposal.authority?.exact_proposal_approved !== false ||
       proposal.authority?.execute_authorized !== false ||
       proposal.authority?.immutable_release_ref_creation_authorized !== false ||
-      !exactKeys(proposal.source?.exact_full_live_executor, [
-        "path",
-        "sha256",
-        "sole_canonical_live_mutation_path",
-      ]) ||
-      proposal.source.exact_full_live_executor.path !== "deploy/v2-13/full-live-executor.mjs" ||
-      proposal.source.exact_full_live_executor.sha256 !==
-        "sha256:15528fd626142e389bb065b6234f8294005c687304b5f10119d719829cd55002" ||
-      proposal.source.exact_full_live_executor.sole_canonical_live_mutation_path !== true)
+      JSON.stringify(proposal.exact_execution_graph?.ordered_operation_ids) !==
+        JSON.stringify(EXACT_OPERATION_IDS) ||
+      proposal.exact_execution_graph?.operation_order_is_closed_and_non_reorderable !== true ||
+      proposal.exact_execution_graph?.missing_extra_or_repeated_operation_is_a_hard_stop !== true ||
+      JSON.stringify(proposal.source?.exact_release_components) !==
+        JSON.stringify(EXACT_V3_RELEASE_COMPONENTS))
   )
     fail("V3_SUPERSESSION_OR_AUTHORITY");
   if (
@@ -265,7 +324,7 @@ function validateFullLiveUserApproval({
     )
       fail("V3_NESTED_SCHEMA");
     if (
-      requestedRef?.exact_tag_name !== "videoforge-v2-13-release-407dc070" ||
+      requestedRef?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
       requestedRef.exact_target_commit !== expectedReleaseSourceCommit ||
       requestedRef.tag_kind !== "LIGHTWEIGHT" ||
       requestedRef.maximum_new_refs !== 1 ||
@@ -286,6 +345,8 @@ function validateFullLiveUserApproval({
       requestedDatabase?.exact_runtime_role !== "videoforge_hosted_runtime" ||
       requestedDatabase.exact_reconciler_role !== "videoforge_hosted_reconciler" ||
       requestedDatabase.roles_must_be_fresh_absent_distinct_login_noinherit_hardened !== true ||
+      JSON.stringify(requestedDatabase.exact_migrations_to_apply) !==
+        JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45]) ||
       approvedDatabase?.exact_runtime_role !== requestedDatabase.exact_runtime_role ||
       approvedDatabase.exact_reconciler_role !== requestedDatabase.exact_reconciler_role ||
       approvedDatabase.roles_must_be_fresh_absent_distinct_login_noinherit_hardened !== true
@@ -302,7 +363,7 @@ function validateFullLiveUserApproval({
     !approval.statement.includes("USD 7 per month") ||
     !approval.statement.includes("no fallback") ||
     (isV3 &&
-      (!approval.statement.includes("videoforge-v2-13-release-407dc070") ||
+      (!approval.statement.includes("videoforge-v2-13-release-20260826-v3") ||
         !approval.statement.includes("videoforge_hosted_runtime") ||
         !approval.statement.includes("videoforge_hosted_reconciler")))
   )

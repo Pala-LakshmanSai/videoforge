@@ -20,7 +20,7 @@ import {
 } from "./promote-qualified-production.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
-const TAG = "videoforge-v2-13-release-407dc070";
+const TAG = "videoforge-v2-13-release-20260826-v3";
 const APPROVAL_BRANCH = "codex/serverless-v2-roadmap";
 const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
