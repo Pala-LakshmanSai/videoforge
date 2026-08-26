@@ -95,6 +95,14 @@ assert(
   "AUTHORITY_COMMIT_BINDING",
 );
 assert(
+  proposal.supersession.supersedes_proposal_sha256 === approval.proposal.sha256 &&
+    proposal.supersession.supersedes_proposal_record_commit ===
+      approval.proposal.proposal_record_commit &&
+    proposal.supersession.superseded_authority_id === authority.authority_id &&
+    proposal.supersession.superseded_authority_state === "SUPERSEDED_UNCONSUMED_NO_MUTATION",
+  "LATEST_SUPERSEDED_LINEAGE",
+);
+assert(
   proposal.requested_scope.cloudflare_secret_allowlist_count ===
     EXACT_CLOUDFLARE_SECRET_NAMES.length &&
     JSON.stringify(proposal.requested_scope.cloudflare_secret_allowlist) ===

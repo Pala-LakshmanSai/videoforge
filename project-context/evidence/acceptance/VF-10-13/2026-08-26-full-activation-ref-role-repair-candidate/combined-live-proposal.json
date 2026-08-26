@@ -10,9 +10,9 @@
     "required_next_action": "obtain fresh exact user approval for this sealed proposal before any authority record, credential access, provider call, mutation, GPU use, or spend"
   },
   "supersession": {
-    "supersedes_proposal_sha256": "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32",
-    "supersedes_proposal_record_commit": "e3bdabc161c60e5334c4055b5636b7fd768a86df",
-    "superseded_authority_id": "v2-13-full-live-20260826-033320z-e3bdabc",
+    "supersedes_proposal_sha256": "sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a",
+    "supersedes_proposal_record_commit": "12dfae95d14fedf6fde440d1e6367c2d0564e2d4",
+    "superseded_authority_id": "v2-13-full-live-20260826-101824z-12dfae9",
     "superseded_authority_state": "SUPERSEDED_UNCONSUMED_NO_MUTATION",
     "prior_approval_reusable": false,
     "fresh_exact_approval_required": true

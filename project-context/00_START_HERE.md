@@ -46,7 +46,7 @@ the early no-database path uses only request and RunPod inputs and never claims 
 path loads the normal production input, guarded roles, endpoint identities, or signing/key-registration inputs. Seed validation recursively rejects endpoint
 identity case variants and future hashes; max-one materialization writes the four guarded endpoint
 secret files and rebinds all 22 secret hashes. Repaired source `a4bc4fd` is provider-free audited and
-the replacement proposal is sealed as `sha256:4cb0ba1a…be9ea`; no fresh approval or authority exists. Both lanes require fresh immutable images, sealed
+the replacement proposal is sealed as `sha256:2e6a605d…d2958`; no fresh approval or authority exists. Both lanes require fresh immutable images, sealed
 deployment snapshots, dual live qualification, and that new single-use approval.
 Provider/deployment/credential/GPU/spend authority remains false with a `$0` executable cap, and no
 provider call or spend is authorized.

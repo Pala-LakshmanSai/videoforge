@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Independently audit the sealed proposal sha256:4cb0ba1a...be9ea at its proposal-record commit, then request one fresh exact approval. Do not reuse the superseded 9425de8e approval."
-  note: "The repaired source is exact commit a4bc4fd and the replacement proposal is sealed as sha256:4cb0ba1a...be9ea for fresh exact approval. The prior 9425de8e proposal and 67f6fb2 authority remain superseded, unconsumed, and mutation-free. Until fresh approval is recorded, provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
+  provider_free_product_action: "Independently audit the sealed proposal sha256:2e6a605d...d2958 at its proposal-record commit, then request one fresh exact approval. Do not reuse the superseded 9425de8e approval."
+  note: "The repaired source is exact commit a4bc4fd and the replacement proposal is sealed as sha256:2e6a605d...d2958 for fresh exact approval. The prior 9425de8e proposal and 67f6fb2 authority remain superseded, unconsumed, and mutation-free. Until fresh approval is recorded, provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -92,11 +92,11 @@ provider_free_product_progress:
   prior_v2_13_proposal_sha256: "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32"
   fresh_v2_13_proposal_status: SEALED_AWAITING_FRESH_EXACT_APPROVAL_OLD_AUTHORITY_SUPERSEDED_UNCONSUMED
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json"
-  fresh_v2_13_proposal_sha256: "sha256:4cb0ba1a39885c614cc7ebc349dc5d679828ab38e38f067c00349f25538be9ea"
+  fresh_v2_13_proposal_sha256: "sha256:2e6a605d3b1fd973a438207006d938bdedcc6456135f09cefaecc013295d2958"
   fresh_v2_13_blocked_draft_sha256: null
   fresh_v2_13_release_source_commit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Commit and independently audit the sealed proposal record, then request fresh exact approval for sha256:4cb0ba1a...be9ea."
+  next_v2_13_action: "Commit and independently audit the sealed proposal record, then request fresh exact approval for sha256:2e6a605d...d2958."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
