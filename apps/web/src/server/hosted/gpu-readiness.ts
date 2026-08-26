@@ -4,7 +4,7 @@ export interface HostedGpuLaneReadiness {
   readonly lane: "MAGE_IMAGE" | "SOULX_AVATAR";
   readonly checkpoint: "V2-07" | "V2-08";
   readonly qualification: "NOT_QUALIFIED";
-  readonly visual_approval: "NOT_APPLICABLE" | "PENDING_USER_VISUAL_APPROVAL";
+  readonly visual_approval: "NOT_APPLICABLE" | "APPROVED_EXACT_FULL_AND_SPLIT";
   readonly provider_free_groundwork_commits: readonly string[];
   readonly missing_gates: readonly string[];
 }
@@ -35,7 +35,7 @@ const READINESS: HostedGpuReadiness = Object.freeze({
       lane: "SOULX_AVATAR",
       checkpoint: "V2-08",
       qualification: "NOT_QUALIFIED",
-      visual_approval: "PENDING_USER_VISUAL_APPROVAL",
+      visual_approval: "APPROVED_EXACT_FULL_AND_SPLIT",
       provider_free_groundwork_commits: Object.freeze([
         "7039092707103ab35e8010c009e14409a6e52f63",
         "84e00881d98e3e77dd8aad121453ed6e7287bc74",
@@ -44,7 +44,6 @@ const READINESS: HostedGpuReadiness = Object.freeze({
       ]),
       missing_gates: Object.freeze([
         "V2_07_MAGE_QUALIFICATION",
-        "V2_08_USER_VISUAL_CROP_APPROVAL",
         "V2_08_IMAGE_PUBLICATION_AND_ENDPOINT_CONFIGURATION",
         "V2_08_MAX1_LIVE_QUALIFICATION",
       ]),

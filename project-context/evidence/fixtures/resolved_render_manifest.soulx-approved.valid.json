@@ -1,0 +1,90 @@
+{
+  "schema_version": "resolved-render-manifest/v1",
+  "project_revision_id": "revision_soulx_approved_001",
+  "revision_config_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "timeline_plan_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "render_profile_version": "ffmpeg-render-v3",
+  "voiceover": {
+    "asset_id": "asset_voiceover_soulx_approved",
+    "sha256": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "output": {
+    "width": 1920,
+    "height": 1080,
+    "fps_num": 30,
+    "fps_den": 1,
+    "video_codec": "h264",
+    "pixel_format": "yuv420p",
+    "audio_codec": "aac",
+    "audio_sample_rate_hz": 48000,
+    "loudness_profile": "voiceover-minus16lufs-v1"
+  },
+  "total_frames": 300,
+  "soulx_crop_profile_approval": {
+    "profile_group_id": "soulx-pro-vf924u-full-split-v1",
+    "candidate_sha256": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442",
+    "approval_sha256": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45",
+    "avatar_source_sha256": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+    "native_sample_sha256": "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1",
+    "full_sample_sha256": "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241",
+    "split_sample_sha256": "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993"
+  },
+  "segments": [
+    {
+      "segment_id": "seg_soulx_full",
+      "start_frame": 0,
+      "end_frame_exclusive": 150,
+      "timeline_composition": "AVATAR_FULL",
+      "accepted_assets": {
+        "avatar": {
+          "asset_id": "asset_soulx_full",
+          "sha256": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+        },
+        "source_background": {
+          "asset_id": "asset_avatar_source_soulx_vf924u",
+          "sha256": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
+        }
+      },
+      "render": {
+        "avatar_source_profile": "soulx-pro-vf924u-approved-v1",
+        "crop_profile_id": "soulx-pro-ranga-full-source-composite-v1",
+        "crop_profile_evidence_sha256": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442",
+        "crop_profile_acceptance_sha256": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45",
+        "source_background_transform": "scale=1920:1080:flags=lanczos,fps=30",
+        "native_foreground_transform": "scale=1080:1080:flags=lanczos,fps=30,format=rgba",
+        "native_foreground_overlay": { "x": 420, "y": 0 },
+        "horizontal_alpha_feather_pixels_each_edge": 32,
+        "avatar_scale": "1920:1080",
+        "avatar_fps": "30:round=near"
+      }
+    },
+    {
+      "segment_id": "seg_soulx_split",
+      "start_frame": 150,
+      "end_frame_exclusive": 300,
+      "timeline_composition": "AVATAR_SPLIT_IMAGE",
+      "accepted_assets": {
+        "avatar": {
+          "asset_id": "asset_soulx_split",
+          "sha256": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+        },
+        "right_image": {
+          "asset_id": "asset_soulx_split_right",
+          "sha256": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+        }
+      },
+      "render": {
+        "avatar_source_profile": "soulx-pro-vf924u-approved-v1",
+        "crop_profile_id": "soulx-pro-ranga-split-composite-v1",
+        "crop_profile_evidence_sha256": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442",
+        "crop_profile_acceptance_sha256": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45",
+        "context_transform": "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30",
+        "avatar_crop": "448:504:32:4",
+        "avatar_scale": "960:1080",
+        "avatar_fps": "30:round=near",
+        "right_image_scale": "960:1080",
+        "right_image_zoom_profile": "split-right-zoom-v3"
+      }
+    }
+  ]
+}

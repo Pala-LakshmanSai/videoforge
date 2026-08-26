@@ -14,6 +14,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const OBJECT_KEY =
   /^tenant\/([^/]+)\/workspace\/([^/]+)\/project\/([^/]+)\/revision\/([^/]+)\/lane\/(input|mage-image|soulx-avatar|render)\/job\/([^/]+)\/artifact\/([^/]+)$/u;
+const SOULX_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1";
+const SOULX_SOURCE_SHA256 =
+  "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83";
+const SOULX_CANDIDATE_SHA256 =
+  "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442";
+const SOULX_APPROVAL_SHA256 =
+  "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
 
 type Lane = "INPUT" | "MAGE_IMAGE" | "SOULX_AVATAR" | "RENDER";
 type MediaKind = "VOICEOVER" | "IMAGE" | "AVATAR_CLIP" | "RESOLVED_RENDER_MANIFEST";
@@ -82,6 +89,7 @@ export interface HostedRenderPlanMaterializationInput {
   readonly revisionDocument: ProjectRevisionConfigDocument;
   readonly timing: HostedTimingSnapshot;
   readonly voiceover: HostedCommittedArtifact;
+  readonly avatarSource?: HostedCommittedArtifact;
   readonly acceptedVisuals: readonly HostedCommittedArtifact[];
   readonly resolvedManifest: HostedResolvedManifestSnapshot;
   readonly tools: {
@@ -185,6 +193,7 @@ function validateManifestSegments(
   timeline: TimelinePlanDocument,
   manifest: ResolvedRenderManifestDocument,
   accepted: ReadonlyMap<string, HostedCommittedArtifact>,
+  avatarSource: HostedCommittedArtifact | undefined,
 ): void {
   if (manifest.segments.length !== timeline.segments.length)
     reject("HOSTED_RENDER_MANIFEST_PARTIAL");
@@ -223,7 +232,10 @@ function validateManifestSegments(
       if (
         !artifact ||
         segment.accepted_assets.avatar.asset_id !== artifact.assetId ||
-        segment.accepted_assets.avatar.sha256 !== artifact.checksumSha256
+        segment.accepted_assets.avatar.sha256 !== artifact.checksumSha256 ||
+        (segment.render.avatar_source_profile === SOULX_SOURCE_PROFILE &&
+          (segment.accepted_assets.source_background?.asset_id !== avatarSource?.assetId ||
+            segment.accepted_assets.source_background?.sha256 !== SOULX_SOURCE_SHA256))
       ) {
         reject("HOSTED_RENDER_MANIFEST_ARTIFACT_DRIFT");
       }
@@ -248,6 +260,87 @@ function validateManifestSegments(
   }
   if (nextFrame !== timeline.total_frames || manifest.total_frames !== timeline.total_frames) {
     reject("HOSTED_RENDER_MANIFEST_TIMELINE_DRIFT");
+  }
+}
+
+function validateSoulxCropApproval(
+  input: HostedRenderPlanMaterializationInput,
+  manifest: ResolvedRenderManifestDocument,
+): void {
+  type AvatarSegment = Extract<
+    ResolvedRenderManifestDocument["segments"][number],
+    { readonly timeline_composition: "AVATAR_FULL" | "AVATAR_SPLIT_IMAGE" }
+  >;
+  const avatarSegments = manifest.segments.filter(
+    (segment): segment is AvatarSegment => segment.timeline_composition !== "IMAGE_FULL",
+  );
+  const soulxSegments = avatarSegments.filter(
+    (segment) => segment.render.avatar_source_profile === SOULX_SOURCE_PROFILE,
+  );
+  const hasAvatarTimeline = avatarSegments.length > 0;
+  const hasSoulxArtifact = input.acceptedVisuals.some(
+    (artifact) => artifact.lane === "SOULX_AVATAR" || artifact.kind === "AVATAR_CLIP",
+  );
+  if (!hasAvatarTimeline && !hasSoulxArtifact) {
+    if (manifest.soulx_crop_profile_approval !== undefined || input.avatarSource !== undefined)
+      reject("SOULX_CROP_PROFILE_UNQUALIFIED");
+    return;
+  }
+  if (
+    soulxSegments.length !== avatarSegments.length ||
+    !hasSoulxArtifact ||
+    input.revision.avatarRuntimeSourceSha256 !== SOULX_SOURCE_SHA256
+  ) {
+    reject("SOULX_CROP_PROFILE_UNQUALIFIED");
+  }
+  const approval = manifest.soulx_crop_profile_approval;
+  if (
+    approval?.profile_group_id !== "soulx-pro-vf924u-full-split-v1" ||
+    approval.candidate_sha256 !== SOULX_CANDIDATE_SHA256 ||
+    approval.approval_sha256 !== SOULX_APPROVAL_SHA256 ||
+    approval.avatar_source_sha256 !== SOULX_SOURCE_SHA256
+  ) {
+    reject("SOULX_CROP_PROFILE_UNQUALIFIED");
+  }
+  const hasSoulxFull = soulxSegments.some(
+    (segment) => segment.timeline_composition === "AVATAR_FULL",
+  );
+  const source = input.avatarSource;
+  if (
+    (hasSoulxFull &&
+      (!source ||
+        source.lane !== "INPUT" ||
+        source.kind !== "IMAGE" ||
+        source.taskKey !== null ||
+        source.acceptedAttemptId !== null ||
+        source.barrierAcceptance !== "COMMITTED_INPUT" ||
+        source.assetId !== input.revisionDocument.avatar_binding.runtime_source_asset_id ||
+        source.checksumSha256 !== SOULX_SOURCE_SHA256 ||
+        !["image/jpeg", "image/png"].includes(source.contentType))) ||
+    (!hasSoulxFull && source !== undefined)
+  ) {
+    reject("SOULX_CROP_PROFILE_UNQUALIFIED");
+  }
+  for (const segment of soulxSegments) {
+    const render = segment.render;
+    if (
+      render.crop_profile_evidence_sha256 !== SOULX_CANDIDATE_SHA256 ||
+      render.crop_profile_acceptance_sha256 !== SOULX_APPROVAL_SHA256 ||
+      (segment.timeline_composition === "AVATAR_FULL"
+        ? render.crop_profile_id !== "soulx-pro-ranga-full-source-composite-v1" ||
+          render.source_background_transform !== "scale=1920:1080:flags=lanczos,fps=30" ||
+          render.native_foreground_transform !==
+            "scale=1080:1080:flags=lanczos,fps=30,format=rgba" ||
+          render.native_foreground_overlay?.x !== 420 ||
+          render.native_foreground_overlay.y !== 0 ||
+          render.horizontal_alpha_feather_pixels_each_edge !== 32
+        : render.crop_profile_id !== "soulx-pro-ranga-split-composite-v1" ||
+          render.context_transform !==
+            "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30" ||
+          render.avatar_crop !== "448:504:32:4")
+    ) {
+      reject("SOULX_CROP_PROFILE_UNQUALIFIED");
+    }
   }
 }
 
@@ -325,15 +418,11 @@ export async function materializeHostedRenderPlan(
   }
 
   const required = requiredTasks(timeline.value);
-  if (
-    timeline.value.segments.some((segment) => segment.timeline_composition !== "IMAGE_FULL") ||
-    input.acceptedVisuals.some(
-      (artifact) => artifact.lane === "SOULX_AVATAR" || artifact.kind === "AVATAR_CLIP",
-    )
-  ) {
-    reject("SOULX_CROP_PROFILE_UNQUALIFIED");
-  }
+  validateSoulxCropApproval(input, manifest.value);
   const accepted = new Map<string, HostedCommittedArtifact>();
+  if (input.avatarSource !== undefined) {
+    exactScope(input.avatarSource, input);
+  }
   for (const artifact of input.acceptedVisuals) {
     exactScope(artifact, input);
     if (
@@ -356,7 +445,7 @@ export async function materializeHostedRenderPlan(
   if (accepted.size !== required.size || [...required.keys()].some((key) => !accepted.has(key))) {
     reject("HOSTED_RENDER_ARTIFACT_BARRIER_PARTIAL");
   }
-  validateManifestSegments(timeline.value, manifest.value, accepted);
+  validateManifestSegments(timeline.value, manifest.value, accepted, input.avatarSource);
 
   exactScope(input.resolvedManifest.artifact, input);
   if (
@@ -372,7 +461,11 @@ export async function materializeHostedRenderPlan(
   }
 
   const uniqueMedia = new Map<string, HostedCommittedArtifact>();
-  for (const artifact of [input.voiceover, ...input.acceptedVisuals]) {
+  for (const artifact of [
+    input.voiceover,
+    ...(input.avatarSource === undefined ? [] : [input.avatarSource]),
+    ...input.acceptedVisuals,
+  ]) {
     const uri = objectUri(artifact);
     const existing = uniqueMedia.get(uri);
     if (existing && existing.receiptId !== artifact.receiptId) {

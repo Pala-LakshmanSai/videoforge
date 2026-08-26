@@ -87,13 +87,18 @@ provider_free_product_progress:
   hosted_output_barrier_commit: "9ba4b64"
   hosted_output_barrier_status: PROVIDER_FREE_PASS_independently_audited
   hosted_render_plan_materializer_commit: "789bd1d"
-  hosted_render_plan_materializer_status: MAGE_IMAGE_GROUNDWORK_PASS_SOULX_CROP_BLOCKED
+  hosted_render_plan_materializer_status: MAGE_AND_EXACT_APPROVED_SOULX_PROFILE_PROVIDER_FREE_PASS_LIVE_BLOCKED
   soulx_crop_candidate_commit: "f355705"
-  soulx_crop_candidate_status: PENDING_USER_VISUAL_APPROVAL_NO_LIVE_AUTHORITY_NOT_QUALIFIED
+  soulx_crop_candidate_status: APPROVED_EXACT_FULL_AND_SPLIT_PROVIDER_FREE_PROFILE_ACTIVE_NO_LIVE_AUTHORITY_NOT_QUALIFIED
+  soulx_crop_candidate_sha256: "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
+  soulx_crop_approval_path: "evidence/acceptance/VF-10-08/2026-08-26-soulx-crop-profile-approval.json"
+  soulx_crop_approval_sha256: "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
+  soulx_crop_profile_group_id: "soulx-pro-vf924u-full-split-v1"
+  soulx_crop_visual_approval_note: "The user explicitly approved both exact full and split layouts. Approval activates only the hash-bound provider-free renderer profile; SoulX remains NOT_QUALIFIED and no live, deployment, provider, GPU, or spend authority exists."
   hosted_output_persistence_commit: "6249673"
   hosted_output_persistence_status: PROVIDER_FREE_PASS_independently_audited_migration_not_deployed
   hosted_short_pilot_commit: "2379906"
-  hosted_short_pilot_status: PROVIDER_FREE_GROUNDWORK_PASS_CURRENT_SOULX_PROFILE_BLOCKED
+  hosted_short_pilot_status: PROVIDER_FREE_GROUNDWORK_PASS_SOULX_VISUAL_PROFILE_ACTIVE_LIVE_QUALIFICATION_BLOCKED
   hosted_two_account_queue_commit: "8c21d4c"
   hosted_two_account_queue_status: PROVIDER_FREE_GROUNDWORK_PASS_independently_audited_live_max2_blocked
   hosted_two_account_queue_note: "A pure signed-evidence evaluator now fail-closes exact two-account fairness, two slots, two simultaneous read-only readers per lane, four distinct durable receipts, full sealed lane/reader lineage, max1-to-max2-to-max1 restoration, terminal jobs, and zero workers. It owns no mutation-capable port and makes no live acceptance claim."
@@ -105,7 +110,7 @@ provider_free_product_progress:
   final_release_certification_note: "The release ledger fail-closes 15 exact gates, binds current release identity and trusted evidence classes, requires fresh two-lane smoke before independent drain and settled billing, and always leaves liveReleaseAuthorized=false pending separate explicit release authority."
   factual_gpu_readiness_commit: "c516726"
   factual_gpu_readiness_status: PROVIDER_FREE_PASS_independently_audited_dispatch_disabled
-  factual_gpu_readiness_note: "The authenticated hosted catalog and UI expose exact Mage and SoulX NOT_QUALIFIED state, missing gates, pending SoulX visual approval, and provider-free commit lineage while keeping GPU transport DISABLED_UNQUALIFIED and exposing no dispatch control."
+  factual_gpu_readiness_note: "The authenticated hosted catalog and UI expose exact Mage and SoulX NOT_QUALIFIED state, exact SoulX full/split visual approval, remaining live gates, and provider-free lineage while keeping GPU transport DISABLED_UNQUALIFIED and exposing no dispatch control."
   hosted_callback_render_bridge_commit: "53c5c23"
   hosted_callback_render_bridge_status: PROVIDER_FREE_PASS_independently_audited_source_only
   hosted_callback_render_bridge_note: "Ordinary output acceptance can bridge to render-plan materialization through migration 0038, but the current hosted route remains fail-closed and no live worker callback is composed."
@@ -159,16 +164,14 @@ provider_free_product_progress:
     - fresh_immutable_mage_and_soulx_images_after_envelope_verifier_change
     - fresh_sealed_deployment_snapshots
     - fresh_dual_live_lane_qualification
-    - soulx_explicit_crop_visual_approval
     - apply_migrations_0037_through_0044_and_least_privilege_grants
     - render_validate_and_deploy_exact_production_config
     - provision_separate_runtime_and_reconciler_roles_and_secret_bindings
     - fresh_exact_paid_and_deployment_authority
-  remaining_live_and_visual_blockers:
+  remaining_live_blockers:
     - mage_live_qualification
     - soulx_live_qualification
-    - soulx_explicit_crop_visual_approval
-  batch3_through_batch6_note: "Provider-free source is complete through migration 0044 and the guarded two-lane Workflow: output acceptance, private readback, render/timing persistence, authenticated envelopes/callbacks, paid authority, durable lane batches, atomic pair predispatch, runtime recovery, zero-worker evidence, production guards, pilots, queue/economics evidence, and the release ledger are implemented. Production remains DISABLED_UNQUALIFIED and undeployed. Fresh immutable Mage/SoulX images, dual live qualification, SoulX crop approval, exact deployment/paid authority, migrations/grants/config, roles, and secrets remain required."
+  batch3_through_batch6_note: "Provider-free source is complete through migration 0044 and the guarded two-lane Workflow. The exact hash-bound SoulX full/split renderer profile is visually approved and provider-free active. Production remains DISABLED_UNQUALIFIED and undeployed. Fresh immutable Mage/SoulX images, dual live qualification, exact deployment/paid authority, migrations/grants/config, roles, and secrets remain required."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
   focused_v2_12_tests: 14_pass
@@ -3120,7 +3123,7 @@ model_runtime_evidence:
     v2_07_attempt_23_increment_usd_settled: 0
     v2_07_attempt_24_increment_usd_settled: 0.03767574962694198
   soulx:
-    status: pod_technical_pass_serverless_visual_crop_license_and_settlement_gates_open
+    status: pod_technical_pass_visual_crop_approved_serverless_license_and_settlement_gates_open
     exact_source: "Soul-AILab/SoulX-FlashHead@9bc03de06bb0de82cd6bc477804512ae06144bf2"
     exact_model: "Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
@@ -3133,7 +3136,8 @@ model_runtime_evidence:
     worker_inference_10s_ms: 20268
     pod_projected_30m_avatar_gpu_cost_at_observed_074_rate_usd: 0.40203785517777774
     settled_external_spend_usd: null
-    visual_crop_approval: pending
+    visual_crop_approval: approved_exact_full_and_split_provider_free_profile_active
+    visual_crop_approval_evidence: evidence/acceptance/VF-10-08/2026-08-26-soulx-crop-profile-approval.json
     commercial_and_publication_terms_evidence: pending
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 

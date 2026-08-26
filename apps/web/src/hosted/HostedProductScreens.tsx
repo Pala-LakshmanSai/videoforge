@@ -39,7 +39,7 @@ export interface CatalogResponse {
       readonly lane: "MAGE_IMAGE" | "SOULX_AVATAR";
       readonly checkpoint: "V2-07" | "V2-08";
       readonly qualification: "NOT_QUALIFIED";
-      readonly visual_approval: "NOT_APPLICABLE" | "PENDING_USER_VISUAL_APPROVAL";
+      readonly visual_approval: "NOT_APPLICABLE" | "APPROVED_EXACT_FULL_AND_SPLIT";
       readonly provider_free_groundwork_commits: readonly string[];
       readonly missing_gates: readonly string[];
     }[];
@@ -71,7 +71,6 @@ const SOULX_GROUNDWORK_COMMITS = [
 ] as const;
 const SOULX_MISSING_GATES = [
   "V2_07_MAGE_QUALIFICATION",
-  "V2_08_USER_VISUAL_CROP_APPROVAL",
   "V2_08_IMAGE_PUBLICATION_AND_ENDPOINT_CONFIGURATION",
   "V2_08_MAX1_LIVE_QUALIFICATION",
 ] as const;
@@ -120,7 +119,7 @@ export function isFailClosedGpuReadiness(
       soulx.lane === "SOULX_AVATAR" &&
       soulx.checkpoint === "V2-08" &&
       soulx.qualification === "NOT_QUALIFIED" &&
-      soulx.visual_approval === "PENDING_USER_VISUAL_APPROVAL" &&
+      soulx.visual_approval === "APPROVED_EXACT_FULL_AND_SPLIT" &&
       isExactStringArray(soulx.provider_free_groundwork_commits, SOULX_GROUNDWORK_COMMITS) &&
       isExactStringArray(soulx.missing_gates, SOULX_MISSING_GATES),
   );
@@ -511,8 +510,8 @@ export function HostedCreateProjectScreen() {
               <p>
                 <AlertTriangle size={16} /> {lane.checkpoint} {lane.lane}: {lane.qualification}
               </p>
-              {lane.visual_approval === "PENDING_USER_VISUAL_APPROVAL" ? (
-                <p>Crop: PENDING_USER_VISUAL_APPROVAL</p>
+              {lane.visual_approval === "APPROVED_EXACT_FULL_AND_SPLIT" ? (
+                <p>Crop: APPROVED_EXACT_FULL_AND_SPLIT</p>
               ) : null}
               <p>Missing gates: {lane.missing_gates.join(", ")}</p>
             </div>

@@ -25,6 +25,22 @@ export const SUPPORTED_RENDER_PROFILE_VERSION = "ffmpeg-render-v3";
 
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 
+export const SOULX_APPROVED_AVATAR_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1";
+export const SOULX_CROP_PROFILE_CANDIDATE_SHA256 =
+  "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442";
+export const SOULX_CROP_PROFILE_APPROVAL_SHA256 =
+  "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
+
+const SOULX_CROP_PROFILE_APPROVAL = {
+  profile_group_id: "soulx-pro-vf924u-full-split-v1",
+  candidate_sha256: SOULX_CROP_PROFILE_CANDIDATE_SHA256,
+  approval_sha256: SOULX_CROP_PROFILE_APPROVAL_SHA256,
+  avatar_source_sha256: "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+  native_sample_sha256: "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1",
+  full_sample_sha256: "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241",
+  split_sample_sha256: "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993",
+} as const;
+
 const AVATAR_GEOMETRY = {
   "local-fixture-centered-832x480p25-v1": {
     AVATAR_FULL: {
@@ -78,6 +94,31 @@ const AVATAR_GEOMETRY = {
     AVATAR_SPLIT_IMAGE: {
       avatar_source_profile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
       avatar_crop: "496:558:280:0",
+      avatar_scale: "960:1080",
+      avatar_fps: "30:round=near",
+    },
+  },
+  [SOULX_APPROVED_AVATAR_SOURCE_PROFILE]: {
+    AVATAR_FULL: {
+      avatar_source_profile: SOULX_APPROVED_AVATAR_SOURCE_PROFILE,
+      crop_profile_id: "soulx-pro-ranga-full-source-composite-v1",
+      crop_profile_evidence_sha256: SOULX_CROP_PROFILE_CANDIDATE_SHA256,
+      crop_profile_acceptance_sha256: SOULX_CROP_PROFILE_APPROVAL_SHA256,
+      source_background_transform: "scale=1920:1080:flags=lanczos,fps=30",
+      native_foreground_transform: "scale=1080:1080:flags=lanczos,fps=30,format=rgba",
+      native_foreground_overlay: { x: 420, y: 0 },
+      horizontal_alpha_feather_pixels_each_edge: 32,
+      avatar_scale: "1920:1080",
+      avatar_fps: "30:round=near",
+    },
+    AVATAR_SPLIT_IMAGE: {
+      avatar_source_profile: SOULX_APPROVED_AVATAR_SOURCE_PROFILE,
+      crop_profile_id: "soulx-pro-ranga-split-composite-v1",
+      crop_profile_evidence_sha256: SOULX_CROP_PROFILE_CANDIDATE_SHA256,
+      crop_profile_acceptance_sha256: SOULX_CROP_PROFILE_APPROVAL_SHA256,
+      context_transform:
+        "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30",
+      avatar_crop: "448:504:32:4",
       avatar_scale: "960:1080",
       avatar_fps: "30:round=near",
     },
@@ -483,6 +524,7 @@ function resolvedSegment(
   segment: TimelineSegment,
   index: number,
   resolution: AcceptedAssetResolution,
+  revision: RenderPlanRequest["revision"]["value"],
 ): ResolvedRenderManifestDocument["segments"][number] | PipelineFailure {
   const base = {
     segment_id: segment.segment_id,
@@ -511,10 +553,32 @@ function resolvedSegment(
   }
   if (segment.timeline_composition === "AVATAR_FULL") {
     const geometry = AVATAR_GEOMETRY[avatar.rendererSourceProfile].AVATAR_FULL;
+    const isApprovedSoulx = avatar.rendererSourceProfile === SOULX_APPROVED_AVATAR_SOURCE_PROFILE;
+    if (
+      isApprovedSoulx &&
+      revision.avatar_binding.runtime_source_sha256 !==
+        SOULX_CROP_PROFILE_APPROVAL.avatar_source_sha256
+    ) {
+      return fail(
+        "ASSET_HASH_MISMATCH",
+        "The SoulX full-layout source background does not match the approved avatar source.",
+        ["revision", "avatar_binding", "runtime_source_sha256"],
+      );
+    }
     return {
       ...base,
       timeline_composition: "AVATAR_FULL",
-      accepted_assets: { avatar: acceptedAsset(avatar) },
+      accepted_assets: {
+        avatar: acceptedAsset(avatar),
+        ...(isApprovedSoulx
+          ? {
+              source_background: {
+                asset_id: revision.avatar_binding.runtime_source_asset_id,
+                sha256: SOULX_CROP_PROFILE_APPROVAL.avatar_source_sha256,
+              },
+            }
+          : {}),
+      },
       render: geometry,
     };
   }
@@ -576,7 +640,7 @@ export async function planResolvedRenderManifest(
 
   const segments: ResolvedRenderManifestDocument["segments"][number][] = [];
   for (const [index, segment] of request.timeline.value.segments.entries()) {
-    const resolved = resolvedSegment(segment, index, resolution.value);
+    const resolved = resolvedSegment(segment, index, resolution.value, request.revision.value);
     if ("code" in resolved) return pipelineFailure(resolved);
     segments.push(resolved);
   }
@@ -601,6 +665,13 @@ export async function planResolvedRenderManifest(
     },
     total_frames: request.timeline.value.total_frames,
     segments,
+    ...(segments.some(
+      (segment) =>
+        segment.timeline_composition !== "IMAGE_FULL" &&
+        segment.render.avatar_source_profile === SOULX_APPROVED_AVATAR_SOURCE_PROFILE,
+    )
+      ? { soulx_crop_profile_approval: SOULX_CROP_PROFILE_APPROVAL }
+      : {}),
   };
 
   try {

@@ -48,7 +48,7 @@ const gpuReadiness = {
       lane: "SOULX_AVATAR" as const,
       checkpoint: "V2-08" as const,
       qualification: "NOT_QUALIFIED" as const,
-      visual_approval: "PENDING_USER_VISUAL_APPROVAL" as const,
+      visual_approval: "APPROVED_EXACT_FULL_AND_SPLIT" as const,
       provider_free_groundwork_commits: [
         "7039092707103ab35e8010c009e14409a6e52f63",
         "84e00881d98e3e77dd8aad121453ed6e7287bc74",
@@ -57,7 +57,6 @@ const gpuReadiness = {
       ],
       missing_gates: [
         "V2_07_MAGE_QUALIFICATION",
-        "V2_08_USER_VISUAL_CROP_APPROVAL",
         "V2_08_IMAGE_PUBLICATION_AND_ENDPOINT_CONFIGURATION",
         "V2_08_MAX1_LIVE_QUALIFICATION",
       ],
@@ -259,7 +258,7 @@ describe("hosted product journey", () => {
     expect(screen.getByText(/GPU transport: DISABLED_UNQUALIFIED/u)).toBeInTheDocument();
     expect(screen.getByText(/V2-07 MAGE_IMAGE: NOT_QUALIFIED/u)).toBeInTheDocument();
     expect(screen.getByText(/V2-08 SOULX_AVATAR: NOT_QUALIFIED/u)).toBeInTheDocument();
-    expect(screen.getByText(/Crop: PENDING_USER_VISUAL_APPROVAL/u)).toBeInTheDocument();
+    expect(screen.getByText(/Crop: APPROVED_EXACT_FULL_AND_SPLIT/u)).toBeInTheDocument();
     expect(
       screen.getByText(/identity_output, cancellation_timeout, max2_concurrency/u),
     ).toBeInTheDocument();

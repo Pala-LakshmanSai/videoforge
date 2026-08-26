@@ -239,6 +239,7 @@
       "schema": "resolved_render_manifest.schema.json",
       "fixtures": [
         {"path": "fixtures/resolved_render_manifest.valid.json", "expected": true},
+        {"path": "fixtures/resolved_render_manifest.soulx-approved.valid.json", "expected": true},
         {"path": "fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json", "expected": false}
       ]
     },

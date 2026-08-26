@@ -40,7 +40,9 @@ AVATAR_SOURCE_PROFILES = {
     "local-fixture-centered-832x480p25-v1": (832, 480, 25, 1),
     "avatarforcing-centered-832x480p25-v1": (832, 480, 25, 1),
     "skyreels-centered-960x960p25-v2": (960, 960, 25, 1),
+    "soulx-pro-vf924u-approved-v1": (512, 512, 25, 1),
 }
+SOULX_SOURCE_SHA256 = "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
 
 
 @dataclass(frozen=True)
@@ -175,6 +177,8 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
         bindings: Sequence[tuple[dict[str, str], str]]
         if composition == "AVATAR_FULL":
             bindings = ((accepted["avatar"], "AVATAR_CLIP"),)
+            if render["avatar_source_profile"] == "soulx-pro-vf924u-approved-v1":
+                bindings = (*bindings, (accepted["source_background"], "IMAGE"))
         elif composition == "IMAGE_FULL":
             bindings = ((accepted["image"], "IMAGE"),)
         else:
@@ -622,6 +626,12 @@ class RenderJob:
                 if binding.kind == "IMAGE":
                     if codec not in IMAGE_CODECS:
                         raise ValueError("Image input does not use a still-image codec")
+                    if binding.sha256 == SOULX_SOURCE_SHA256 and (
+                        video.get("width") != 1672 or video.get("height") != 941
+                    ):
+                        raise ValueError(
+                            "SoulX source background geometry does not match its approval"
+                        )
                 else:
                     expected_profile = AVATAR_SOURCE_PROFILES.get(
                         binding.renderer_source_profile or ""

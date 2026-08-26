@@ -24,6 +24,12 @@ const AVATAR_ONE_HASH = `sha256:${"2".repeat(64)}`;
 const IMAGE_ONE_HASH = `sha256:${"3".repeat(64)}`;
 const AVATAR_TWO_HASH = `sha256:${"4".repeat(64)}`;
 const IMAGE_TWO_HASH = `sha256:${"5".repeat(64)}`;
+const SOULX_SOURCE_SHA256 =
+  "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83";
+const SOULX_CANDIDATE_SHA256 =
+  "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442";
+const SOULX_APPROVAL_SHA256 =
+  "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
 
 class MemoryDatabase implements HostedRenderPlanDatabase, HostedRenderPlanSql {
   existing: { payload: unknown; payload_sha256: string } | null = null;
@@ -65,11 +71,13 @@ function artifact(
 ): HostedCommittedArtifact {
   const lane = values.lane.toLowerCase().replace("_", "-");
   const acceptedAttemptId =
-    values.kind === "IMAGE"
-      ? "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
-      : values.kind === "AVATAR_CLIP"
-        ? "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
-        : null;
+    values.lane === "INPUT"
+      ? null
+      : values.kind === "IMAGE"
+        ? "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        : values.kind === "AVATAR_CLIP"
+          ? "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+          : null;
   return {
     accountId: ACCOUNT,
     workspaceId: WORKSPACE,
@@ -83,7 +91,7 @@ function artifact(
     receiptDeletedAt: null,
     acceptedAttemptId,
     barrierAcceptance:
-      values.kind === "VOICEOVER"
+      values.lane === "INPUT"
         ? "COMMITTED_INPUT"
         : values.kind === "RESOLVED_RENDER_MANIFEST"
           ? "COMMITTED_MANIFEST"
@@ -98,6 +106,7 @@ async function validInput(includeSoulx = false): Promise<HostedRenderPlanMateria
   revisionDocument.project_revision_id = REVISION;
   revisionDocument.voiceover_asset_id = "voiceover-owned";
   revisionDocument.voiceover_sha256 = VOICEOVER_HASH;
+  if (includeSoulx) revisionDocument.avatar_binding.runtime_source_sha256 = SOULX_SOURCE_SHA256;
   const revision = await validateAndHashContractDocument("projectRevisionConfig", revisionDocument);
 
   const transcript = structuredClone(transcriptFixture);
@@ -164,10 +173,20 @@ async function validInput(includeSoulx = false): Promise<HostedRenderPlanMateria
                 asset_id: visualByTask["avatar:seg_0001"].assetId,
                 sha256: visualByTask["avatar:seg_0001"].hash,
               },
+              source_background: {
+                asset_id: revisionDocument.avatar_binding.runtime_source_asset_id,
+                sha256: SOULX_SOURCE_SHA256,
+              },
             },
             render: {
-              avatar_source_profile: "local-fixture-centered-832x480p25-v1",
-              avatar_crop: "832:468:0:6",
+              avatar_source_profile: "soulx-pro-vf924u-approved-v1",
+              crop_profile_id: "soulx-pro-ranga-full-source-composite-v1",
+              crop_profile_evidence_sha256: SOULX_CANDIDATE_SHA256,
+              crop_profile_acceptance_sha256: SOULX_APPROVAL_SHA256,
+              source_background_transform: "scale=1920:1080:flags=lanczos,fps=30",
+              native_foreground_transform: "scale=1080:1080:flags=lanczos,fps=30,format=rgba",
+              native_foreground_overlay: { x: 420, y: 0 },
+              horizontal_alpha_feather_pixels_each_edge: 32,
               avatar_scale: "1920:1080",
               avatar_fps: "30:round=near",
             },
@@ -201,8 +220,13 @@ async function validInput(includeSoulx = false): Promise<HostedRenderPlanMateria
               },
             },
             render: {
-              avatar_source_profile: "local-fixture-centered-832x480p25-v1",
-              avatar_crop: "416:468:208:6",
+              avatar_source_profile: "soulx-pro-vf924u-approved-v1",
+              crop_profile_id: "soulx-pro-ranga-split-composite-v1",
+              crop_profile_evidence_sha256: SOULX_CANDIDATE_SHA256,
+              crop_profile_acceptance_sha256: SOULX_APPROVAL_SHA256,
+              context_transform:
+                "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30",
+              avatar_crop: "448:504:32:4",
               avatar_scale: "960:1080",
               avatar_fps: "30:round=near",
               right_image_scale: "960:1080",
@@ -225,6 +249,22 @@ async function validInput(includeSoulx = false): Promise<HostedRenderPlanMateria
             render: { image_scale: "1920:1080", zoom_profile: "image-full-zoom-v3" },
           },
         ],
+    ...(includeSoulx
+      ? {
+          soulx_crop_profile_approval: {
+            profile_group_id: "soulx-pro-vf924u-full-split-v1",
+            candidate_sha256: SOULX_CANDIDATE_SHA256,
+            approval_sha256: SOULX_APPROVAL_SHA256,
+            avatar_source_sha256: SOULX_SOURCE_SHA256,
+            native_sample_sha256:
+              "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1",
+            full_sample_sha256:
+              "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241",
+            split_sample_sha256:
+              "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993",
+          },
+        }
+      : {}),
   } as ResolvedRenderManifestDocument;
   const manifest = await validateAndHashContractDocument(
     "resolvedRenderManifest",
@@ -262,6 +302,19 @@ async function validInput(includeSoulx = false): Promise<HostedRenderPlanMateria
       contentType: "audio/wav",
       kind: "VOICEOVER",
     }),
+    ...(includeSoulx
+      ? {
+          avatarSource: artifact({
+            lane: "INPUT",
+            taskKey: null,
+            assetId: revisionDocument.avatar_binding.runtime_source_asset_id,
+            receiptId: "12121212-1212-4121-8121-121212121212",
+            checksumSha256: SOULX_SOURCE_SHA256,
+            contentType: "image/png",
+            kind: "IMAGE",
+          }),
+        }
+      : {}),
     acceptedVisuals: includeSoulx
       ? [
           artifact({
@@ -328,6 +381,54 @@ async function validInput(includeSoulx = false): Promise<HostedRenderPlanMateria
   };
 }
 
+async function splitOnlySoulxInput(): Promise<HostedRenderPlanMaterializationInput> {
+  const input = await validInput(true);
+  const splitTimeline = input.timing.timeline.segments[2]!;
+  const timeline = {
+    ...input.timing.timeline,
+    segments: [
+      {
+        ...splitTimeline,
+        start_frame: 0,
+        end_frame_exclusive: 300,
+        source_audio_start_ms: 0,
+        source_audio_end_ms: 10_000,
+      },
+    ],
+    total_frames: 300,
+  };
+  const timelineRef = await validateAndHashContractDocument("timelinePlan", timeline);
+  const splitManifest = input.resolvedManifest.document.segments[2]!;
+  const document = {
+    ...input.resolvedManifest.document,
+    segments: [{ ...splitManifest, start_frame: 0, end_frame_exclusive: 300 }],
+    total_frames: 300,
+    timeline_plan_hash: timelineRef.sha256,
+  };
+  const manifest = await validateAndHashContractDocument("resolvedRenderManifest", document);
+  const acceptedVisuals = input.acceptedVisuals.filter(
+    (artifact) =>
+      artifact.taskKey === "avatar:seg_0003" || artifact.taskKey === "image:seg_0003:right",
+  );
+  return {
+    ...input,
+    avatarSource: undefined,
+    timing: {
+      ...input.timing,
+      timeline: timelineRef.value,
+      timelineSha256: timelineRef.sha256,
+    },
+    acceptedVisuals,
+    resolvedManifest: {
+      document: manifest.value,
+      artifact: {
+        ...input.resolvedManifest.artifact,
+        checksumSha256: manifest.sha256,
+      },
+    },
+  };
+}
+
 async function expectCode(promise: Promise<unknown>, code: string) {
   await expect(promise).rejects.toMatchObject({ code });
 }
@@ -346,10 +447,78 @@ describe("hosted render-plan materialization", () => {
     expect(JSON.stringify(input.resolvedManifest.document)).toContain("image-full-zoom-v3");
   });
 
-  it("fails closed for every SoulX segment until its crop contract is qualified", async () => {
+  it("writes one mixed plan only for the exact approved SoulX full/split profile", async () => {
+    const input = await validInput(true);
+    const result = await materializeHostedRenderPlan(new MemoryDatabase(), input);
+    expect(result.replayed).toBe(false);
+    expect(input.resolvedManifest.document.soulx_crop_profile_approval?.profile_group_id).toBe(
+      "soulx-pro-vf924u-full-split-v1",
+    );
+    expect(input.resolvedManifest.document.soulx_crop_profile_approval?.approval_sha256).toBe(
+      SOULX_APPROVAL_SHA256,
+    );
+    expect(JSON.stringify(result.payload)).toContain(SOULX_SOURCE_SHA256);
+  });
+
+  it("fails closed when the approved SoulX source background is absent", async () => {
+    const input = await validInput(true);
     await expectCode(
-      materializeHostedRenderPlan(new MemoryDatabase(), await validInput(true)),
+      materializeHostedRenderPlan(new MemoryDatabase(), {
+        ...input,
+        avatarSource: undefined,
+      }),
       "SOULX_CROP_PROFILE_UNQUALIFIED",
+    );
+  });
+
+  it("materializes split-only SoulX without submitting unreferenced background bytes", async () => {
+    const input = await splitOnlySoulxInput();
+    const result = await materializeHostedRenderPlan(new MemoryDatabase(), input);
+    const payload = result.payload.input_document as { assets: Array<{ sha256: string }> };
+    expect(payload.assets.map((asset) => asset.sha256)).not.toContain(SOULX_SOURCE_SHA256);
+    expect(payload.assets).toHaveLength(3);
+  });
+
+  it("fails closed when the locked avatar source drifts from the exact approved profile", async () => {
+    const input = await validInput(true);
+    await expectCode(
+      materializeHostedRenderPlan(new MemoryDatabase(), {
+        ...input,
+        revision: { ...input.revision, avatarRuntimeSourceSha256: `sha256:${"e".repeat(64)}` },
+      }),
+      "HOSTED_RENDER_REVISION_DRIFT",
+    );
+  });
+
+  it("rejects a forged SoulX approval hash at canonical contract validation", async () => {
+    const input = await validInput(true);
+    const document = structuredClone(input.resolvedManifest.document) as Record<string, unknown>;
+    (document.soulx_crop_profile_approval as Record<string, unknown>).approval_sha256 =
+      `sha256:${"e".repeat(64)}`;
+    await expectCode(
+      materializeHostedRenderPlan(new MemoryDatabase(), {
+        ...input,
+        resolvedManifest: {
+          ...input.resolvedManifest,
+          document: document as unknown as ResolvedRenderManifestDocument,
+        },
+      }),
+      "HOSTED_RENDER_DOCUMENT_INVALID",
+    );
+  });
+
+  it("rejects SoulX split context-transform drift at canonical validation", async () => {
+    const input = await validInput(true);
+    const document = structuredClone(input.resolvedManifest.document) as Record<string, unknown>;
+    const segments = document.segments as Array<Record<string, unknown>>;
+    (segments[2]!.render as Record<string, unknown>).context_transform =
+      "scale=1920:1080,crop=960:1080,zoompan=z=min(zoom+0.1,2):d=120:s=960x1080:fps=30";
+    await expectCode(
+      materializeHostedRenderPlan(new MemoryDatabase(), {
+        ...input,
+        resolvedManifest: { ...input.resolvedManifest, document: document as never },
+      }),
+      "HOSTED_RENDER_DOCUMENT_INVALID",
     );
   });
 

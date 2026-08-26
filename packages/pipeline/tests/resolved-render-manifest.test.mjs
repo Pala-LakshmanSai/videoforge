@@ -97,8 +97,19 @@ function requireSuccess(result) {
   return result.value;
 }
 
-async function requestWith(candidates = CANDIDATES) {
-  const { revision, timeline } = await canonicalInputs();
+async function requestWith(candidates = CANDIDATES, soulxSource = false) {
+  let { revision, timeline } = await canonicalInputs();
+  if (soulxSource) {
+    const revisionValue = structuredClone(revision.value);
+    revisionValue.avatar_binding.runtime_source_asset_id = "asset_avatar_source_soulx_vf924u";
+    revisionValue.avatar_binding.runtime_source_sha256 =
+      "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83";
+    revision = await validateAndHashContractDocument("projectRevisionConfig", revisionValue);
+    timeline = await validateAndHashContractDocument("timelinePlan", {
+      ...timeline.value,
+      revision_config_hash: revision.sha256,
+    });
+  }
   const acceptedAssets = requireSuccess(
     resolveAcceptedAssets({
       timeline,
@@ -189,6 +200,59 @@ test("uses an explicit provider-free local fixture profile without legacy runtim
   assert.deepEqual(split?.render, {
     avatar_source_profile: "local-fixture-centered-832x480p25-v1",
     avatar_crop: "416:468:208:6",
+    avatar_scale: "960:1080",
+    avatar_fps: "30:round=near",
+    right_image_scale: "960:1080",
+    right_image_zoom_profile: "split-right-zoom-v3",
+  });
+});
+
+test("locks the exact approved SoulX full/split profile and approval hashes", async () => {
+  const soulxCandidates = CANDIDATES.map((candidate) =>
+    candidate.kind === "AVATAR_CLIP"
+      ? { ...candidate, rendererSourceProfile: "soulx-pro-vf924u-approved-v1" }
+      : candidate,
+  );
+  const manifest = requireSuccess(
+    await planResolvedRenderManifest(await requestWith(soulxCandidates, true)),
+  ).value;
+  const full = manifest.segments.find((segment) => segment.timeline_composition === "AVATAR_FULL");
+  const split = manifest.segments.find(
+    (segment) => segment.timeline_composition === "AVATAR_SPLIT_IMAGE",
+  );
+
+  assert.equal(
+    manifest.soulx_crop_profile_approval?.approval_sha256,
+    "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45",
+  );
+  assert.deepEqual(full?.accepted_assets.source_background, {
+    asset_id: "asset_avatar_source_soulx_vf924u",
+    sha256: "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+  });
+  assert.deepEqual(full?.render, {
+    avatar_source_profile: "soulx-pro-vf924u-approved-v1",
+    crop_profile_id: "soulx-pro-ranga-full-source-composite-v1",
+    crop_profile_evidence_sha256:
+      "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442",
+    crop_profile_acceptance_sha256:
+      "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45",
+    source_background_transform: "scale=1920:1080:flags=lanczos,fps=30",
+    native_foreground_transform: "scale=1080:1080:flags=lanczos,fps=30,format=rgba",
+    native_foreground_overlay: { x: 420, y: 0 },
+    horizontal_alpha_feather_pixels_each_edge: 32,
+    avatar_scale: "1920:1080",
+    avatar_fps: "30:round=near",
+  });
+  assert.deepEqual(split?.render, {
+    avatar_source_profile: "soulx-pro-vf924u-approved-v1",
+    crop_profile_id: "soulx-pro-ranga-split-composite-v1",
+    crop_profile_evidence_sha256:
+      "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442",
+    crop_profile_acceptance_sha256:
+      "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45",
+    context_transform:
+      "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30",
+    avatar_crop: "448:504:32:4",
     avatar_scale: "960:1080",
     avatar_fps: "30:round=near",
     right_image_scale: "960:1080",

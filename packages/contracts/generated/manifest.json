@@ -179,8 +179,8 @@
     {
       "source": "project-context/evidence/resolved_render_manifest.schema.json",
       "destination": "generated/schemas/resolved_render_manifest.schema.json",
-      "bytes": 8669,
-      "sha256": "sha256:08bdc5b8cd364f79083694920ddd8ebabc9a4b942924d297fe3eecf3e01dfb2e"
+      "bytes": 15787,
+      "sha256": "sha256:68fe17b4c77a7a542662f5eca5930f2ce9c590d3c1db81224d4033f58a3dc0f9"
     },
     {
       "source": "project-context/evidence/production_manifest.schema.json",
@@ -603,6 +603,12 @@
       "sha256": "sha256:e417a50383d12d8ae3d82cf00f5956ebbfbdaeb65847face96bf86abf3f4dda6"
     },
     {
+      "source": "project-context/evidence/fixtures/resolved_render_manifest.soulx-approved.valid.json",
+      "destination": "generated/fixtures/resolved_render_manifest.soulx-approved.valid.json",
+      "bytes": 4155,
+      "sha256": "sha256:ddabbb8c0c15f704aee5e09f14a639d983587b0488a2bd1d64d9a169824cde99"
+    },
+    {
       "source": "project-context/evidence/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
       "destination": "generated/fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
       "bytes": 1397,
@@ -737,8 +743,8 @@
     {
       "source": "project-context/evidence/contract-index.v1.json",
       "destination": "generated/contract-index.v1.json",
-      "bytes": 13079,
-      "sha256": "sha256:dc1c8da11b0c15c7b8110fb73af7f218307d25a85170c52d17862ccc0350b162"
+      "bytes": 13178,
+      "sha256": "sha256:9a4a4bf7064c9833ff60da39e9f5689efac8555070727c29898df28c6a22bf97"
     }
   ]
 }

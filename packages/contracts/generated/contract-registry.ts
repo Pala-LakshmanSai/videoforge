@@ -424,6 +424,10 @@ export const canonicalContractRegistry = {
           "expected": true
         },
         {
+          "path": "fixtures/resolved_render_manifest.soulx-approved.valid.json",
+          "expected": true
+        },
+        {
           "path": "fixtures/resolved_render_manifest.invalid.avatar_profile_crop.json",
           "expected": false
         }

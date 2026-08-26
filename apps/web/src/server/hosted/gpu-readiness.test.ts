@@ -24,10 +24,9 @@ describe("hosted GPU readiness", () => {
         lane: "SOULX_AVATAR",
         checkpoint: "V2-08",
         qualification: "NOT_QUALIFIED",
-        visual_approval: "PENDING_USER_VISUAL_APPROVAL",
+        visual_approval: "APPROVED_EXACT_FULL_AND_SPLIT",
         missing_gates: [
           "V2_07_MAGE_QUALIFICATION",
-          "V2_08_USER_VISUAL_CROP_APPROVAL",
           "V2_08_IMAGE_PUBLICATION_AND_ENDPOINT_CONFIGURATION",
           "V2_08_MAX1_LIVE_QUALIFICATION",
         ],

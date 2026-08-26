@@ -480,6 +480,68 @@ class RenderJobTests(unittest.TestCase):
         self.assertIn("1+0.020000*", graph)
         self.assertIn("1+0.015000*", graph)
 
+    def test_split_only_soulx_render_needs_no_unreferenced_source_background(self) -> None:
+        fixture = RenderFixture()
+        keep = {
+            "asset_voiceover_local_001",
+            "asset_avatar_split_001",
+            "asset_image_split_001",
+        }
+        fixture.document["assets"] = [
+            asset for asset in fixture.document["assets"] if asset["asset_id"] in keep
+        ]
+        avatar = next(
+            asset
+            for asset in fixture.document["assets"]
+            if asset["asset_id"] == "asset_avatar_split_001"
+        )
+        fixture.process.visual_probes[fixture.resolver.objects[avatar["artifact_uri"]]] = (
+            "h264",
+            512,
+            512,
+            "25/1",
+        )
+
+        def split_only(manifest: dict[str, Any]) -> None:
+            split = manifest["segments"][2]
+            split["start_frame"] = 0
+            split["end_frame_exclusive"] = 360
+            split["render"] = {
+                "avatar_source_profile": "soulx-pro-vf924u-approved-v1",
+                "crop_profile_id": "soulx-pro-ranga-split-composite-v1",
+                "crop_profile_evidence_sha256": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442",
+                "crop_profile_acceptance_sha256": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45",
+                "context_transform": "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30",
+                "avatar_crop": "448:504:32:4",
+                "avatar_scale": "960:1080",
+                "avatar_fps": "30:round=near",
+                "right_image_scale": "960:1080",
+                "right_image_zoom_profile": "split-right-zoom-v3",
+            }
+            manifest["segments"] = [split]
+            manifest["total_frames"] = 360
+            manifest["soulx_crop_profile_approval"] = {
+                "profile_group_id": "soulx-pro-vf924u-full-split-v1",
+                "candidate_sha256": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442",
+                "approval_sha256": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45",
+                "avatar_source_sha256": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+                "native_sample_sha256": "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1",
+                "full_sample_sha256": "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241",
+                "split_sample_sha256": "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993",
+            }
+
+        fixture.replace_manifest(split_only)
+        result = fixture.job().run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+
+        self.assertEqual(result["status"], "SUCCEEDED")
+        render_call = next(call for call in fixture.process.calls if "-filter_complex" in call)
+        graph = render_call[render_call.index("-filter_complex") + 1]
+        self.assertIn("zoompan=z='min(zoom+0.000133333\\,1.04)':d=300", graph)
+        self.assertNotIn("source_background", graph)
+
     def test_rejects_render_and_zoom_profile_version_mixing(self) -> None:
         fixture = RenderFixture()
         fixture.replace_manifest(

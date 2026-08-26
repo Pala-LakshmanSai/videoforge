@@ -148,8 +148,8 @@ Only active/proposed avatar runtime:
   `9,660,950,528` peak inference bytes, model ready 189.786s from service start, and 10.12-second
   inference 22.892s. Output was exact 253-frame 512x512 H.264/AAC with zero A/V delta.
 - A later 1672x941-source run measured provider start-to-ready 672.035s and 10-second inference
-  20.268s and produced source-aware full/split outputs for review. Production visual/crop approval
-  remains open. The difference between
+  20.268s and produced source-aware full/split outputs. The user explicitly approved both exact
+  hash-bound layouts on 2026-08-26; live SoulX qualification remains open. The difference between
   service-ready and provider-start timing is retained; neither is generalized as Serverless cold
   start.
 - Final audits proved zero Pods/templates/endpoints/workers and exactly the retained Mage/SoulX

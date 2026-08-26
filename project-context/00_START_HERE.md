@@ -19,7 +19,8 @@ live evidence or authority. Production remains `DISABLED_UNQUALIFIED`; migration
 undeployed, and no production secrets or database roles are provisioned. The shared envelope verifier
 changed the Mage and SoulX image bytes, invalidating every earlier image-bound qualification for
 activation. Both lanes require fresh immutable images, sealed deployment snapshots, and dual live
-qualification; SoulX crop selection still awaits explicit user visual approval. Fresh exact paid and
+qualification. The user explicitly approved the exact hash-bound SoulX full/split crop profile on
+2026-08-26; this closes only the visual decision, not live qualification. Fresh exact paid and
 deployment authority is required before any activation. Provider/deployment/credential/GPU/spend
 authority is false with a `$0` executable cap, and no provider call or spend is authorized.
 
@@ -844,8 +845,8 @@ workers after drain and continue billing only for the two explicitly retained vo
 - Mage foundation: exact INT8 runtime and sealed 50 GB volume, accepted visual quality, valid offline
   worker proof, and zero-compute settlement. Bounded worker qualification does not prove Serverless compatibility.
 - SoulX foundation: exact Pro runtime and sealed 50 GB volume, valid offline worker samples,
-  source-aware full/split review outputs, measured RTX 4090 behavior, and zero compute. The latest
-  Avatar Profile visual/crop approval remains open. Pod proof does not prove Serverless handler,
+  source-aware full/split review outputs, measured RTX 4090 behavior, and zero compute. Exact
+  full/split visual approval is recorded and hash-bound. Pod proof does not prove Serverless handler,
   endpoint, scale-to-zero, concurrency, or recovery behavior.
 
 No inactive avatar runtime, repair route, model substitute, or alternate volume is dispatchable.

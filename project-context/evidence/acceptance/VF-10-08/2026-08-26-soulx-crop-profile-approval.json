@@ -1,0 +1,52 @@
+{
+  "schema_version": "videoforge.v2-08-soulx-crop-profile-approval/v1",
+  "checkpoint": "V2-08",
+  "approval_id": "soulx-pro-vf924u-full-split-approval-v1",
+  "approved_at": "2026-08-26T00:29:52Z",
+  "approval_source": "EXPLICIT_USER_CURRENT_CODEX_TASK",
+  "approval_statement": "i approve the SoulX full and split layouts.",
+  "candidate": {
+    "candidate_id": "soulx-pro-vf924u-full-split-candidate-v1",
+    "path": "project-context/evidence/candidates/VF-10-08/soulx-crop-profile-candidate.json",
+    "sha256": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
+  },
+  "approved_profile": {
+    "profile_group_id": "soulx-pro-vf924u-full-split-v1",
+    "avatar_source_profile_id": "soulx-pro-vf924u-approved-v1",
+    "avatar_source_sha256": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+    "avatar_source_geometry": { "width": 1672, "height": 941 },
+    "native_sample_sha256": "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1",
+    "native_sample_geometry": { "width": 512, "height": 512, "fps": 25 },
+    "full": {
+      "profile_id": "soulx-pro-ranga-full-source-composite-v1",
+      "sample_sha256": "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241",
+      "source_background_transform": "scale=1920:1080:flags=lanczos,fps=30",
+      "native_foreground_transform": "scale=1080:1080:flags=lanczos,fps=30,format=rgba",
+      "native_foreground_overlay": { "x": 420, "y": 0 },
+      "horizontal_alpha_feather_pixels_each_edge": 32,
+      "output_geometry": { "width": 1920, "height": 1080, "fps": 30 }
+    },
+    "split": {
+      "profile_id": "soulx-pro-ranga-split-composite-v1",
+      "sample_sha256": "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993",
+      "avatar_crop": { "x": 32, "y": 4, "width": 448, "height": 504 },
+      "avatar_transform": "crop=448:504:32:4,scale=960:1080:flags=lanczos,fps=30",
+      "context_transform": "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30",
+      "context_center_crop": { "x": 480, "y": 0, "width": 960, "height": 1080 },
+      "layout": "left-right-hstack-no-divider",
+      "output_geometry": { "width": 1920, "height": 1080, "fps": 30 }
+    }
+  },
+  "activation": {
+    "visual_approval_status": "APPROVED_EXACT_FULL_AND_SPLIT",
+    "provider_free_renderer_profile_active": true,
+    "serverless_image_published": false,
+    "serverless_endpoint_created": false,
+    "qualification_status": "NOT_QUALIFIED",
+    "live_dispatch_authorized": false,
+    "deployment_authorized": false,
+    "provider_mutation_authorized": false,
+    "gpu_use_authorized": false,
+    "spend_authorized_usd": 0
+  }
+}

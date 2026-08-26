@@ -7578,6 +7578,9 @@ export const canonicalSchemaDocuments = {
         "type": "integer",
         "minimum": 1
       },
+      "soulx_crop_profile_approval": {
+        "$ref": "#/$defs/soulxCropProfileApproval"
+      },
       "segments": {
         "type": "array",
         "minItems": 1,
@@ -7596,7 +7599,83 @@ export const canonicalSchemaDocuments = {
         }
       }
     },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "segments": {
+              "type": "array",
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "render": {
+                    "type": "object",
+                    "properties": {
+                      "avatar_source_profile": {
+                        "const": "soulx-pro-vf924u-approved-v1"
+                      }
+                    },
+                    "required": [
+                      "avatar_source_profile"
+                    ]
+                  }
+                },
+                "required": [
+                  "render"
+                ]
+              }
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "soulx_crop_profile_approval"
+          ],
+          "properties": {
+            "soulx_crop_profile_approval": {
+              "$ref": "#/$defs/soulxCropProfileApproval"
+            }
+          }
+        }
+      }
+    ],
     "$defs": {
+      "soulxCropProfileApproval": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profile_group_id",
+          "candidate_sha256",
+          "approval_sha256",
+          "avatar_source_sha256",
+          "native_sample_sha256",
+          "full_sample_sha256",
+          "split_sample_sha256"
+        ],
+        "properties": {
+          "profile_group_id": {
+            "const": "soulx-pro-vf924u-full-split-v1"
+          },
+          "candidate_sha256": {
+            "const": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
+          },
+          "approval_sha256": {
+            "const": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
+          },
+          "avatar_source_sha256": {
+            "const": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
+          },
+          "native_sample_sha256": {
+            "const": "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1"
+          },
+          "full_sample_sha256": {
+            "const": "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241"
+          },
+          "split_sample_sha256": {
+            "const": "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993"
+          }
+        }
+      },
       "asset": {
         "type": "object",
         "additionalProperties": false,
@@ -7653,6 +7732,9 @@ export const canonicalSchemaDocuments = {
             "properties": {
               "avatar": {
                 "$ref": "#/$defs/asset"
+              },
+              "source_background": {
+                "$ref": "#/$defs/asset"
               }
             }
           },
@@ -7661,7 +7743,6 @@ export const canonicalSchemaDocuments = {
             "additionalProperties": false,
             "required": [
               "avatar_source_profile",
-              "avatar_crop",
               "avatar_scale",
               "avatar_fps"
             ],
@@ -7671,7 +7752,8 @@ export const canonicalSchemaDocuments = {
                   "local-fixture-centered-832x480p25-v1",
                   "avatarforcing-centered-832x480p25-v1",
                   "skyreels-centered-960x960p25-v2",
-                  "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
+                  "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
+                  "soulx-pro-vf924u-approved-v1"
                 ]
               },
               "avatar_crop": {
@@ -7680,6 +7762,40 @@ export const canonicalSchemaDocuments = {
                   "960:540:0:210",
                   "992:558:16:0"
                 ]
+              },
+              "crop_profile_id": {
+                "const": "soulx-pro-ranga-full-source-composite-v1"
+              },
+              "crop_profile_evidence_sha256": {
+                "const": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
+              },
+              "crop_profile_acceptance_sha256": {
+                "const": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
+              },
+              "source_background_transform": {
+                "const": "scale=1920:1080:flags=lanczos,fps=30"
+              },
+              "native_foreground_transform": {
+                "const": "scale=1080:1080:flags=lanczos,fps=30,format=rgba"
+              },
+              "native_foreground_overlay": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "const": 420
+                  },
+                  "y": {
+                    "const": 0
+                  }
+                }
+              },
+              "horizontal_alpha_feather_pixels_each_edge": {
+                "const": 32
               },
               "avatar_scale": {
                 "const": "1920:1080"
@@ -7698,6 +7814,9 @@ export const canonicalSchemaDocuments = {
                   }
                 },
                 "then": {
+                  "required": [
+                    "avatar_crop"
+                  ],
                   "properties": {
                     "avatar_crop": {
                       "const": "832:468:0:6"
@@ -7714,6 +7833,9 @@ export const canonicalSchemaDocuments = {
                   }
                 },
                 "then": {
+                  "required": [
+                    "avatar_crop"
+                  ],
                   "properties": {
                     "avatar_crop": {
                       "const": "832:468:0:6"
@@ -7730,6 +7852,9 @@ export const canonicalSchemaDocuments = {
                   }
                 },
                 "then": {
+                  "required": [
+                    "avatar_crop"
+                  ],
                   "properties": {
                     "avatar_crop": {
                       "const": "960:540:0:210"
@@ -7746,16 +7871,124 @@ export const canonicalSchemaDocuments = {
                   }
                 },
                 "then": {
+                  "required": [
+                    "avatar_crop"
+                  ],
                   "properties": {
                     "avatar_crop": {
                       "const": "992:558:16:0"
                     }
                   }
                 }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "soulx-pro-vf924u-approved-v1"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "crop_profile_id",
+                    "crop_profile_evidence_sha256",
+                    "crop_profile_acceptance_sha256",
+                    "source_background_transform",
+                    "native_foreground_transform",
+                    "native_foreground_overlay",
+                    "horizontal_alpha_feather_pixels_each_edge"
+                  ],
+                  "properties": {
+                    "crop_profile_id": {
+                      "const": "soulx-pro-ranga-full-source-composite-v1"
+                    },
+                    "crop_profile_evidence_sha256": {
+                      "const": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
+                    },
+                    "crop_profile_acceptance_sha256": {
+                      "const": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
+                    },
+                    "source_background_transform": {
+                      "const": "scale=1920:1080:flags=lanczos,fps=30"
+                    },
+                    "native_foreground_transform": {
+                      "const": "scale=1080:1080:flags=lanczos,fps=30,format=rgba"
+                    },
+                    "native_foreground_overlay": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "properties": {
+                        "x": {
+                          "const": 420
+                        },
+                        "y": {
+                          "const": 0
+                        }
+                      }
+                    },
+                    "horizontal_alpha_feather_pixels_each_edge": {
+                      "const": 32
+                    }
+                  }
+                }
               }
             ]
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "render": {
+                  "type": "object",
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "soulx-pro-vf924u-approved-v1"
+                    }
+                  },
+                  "required": [
+                    "avatar_source_profile"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "accepted_assets": {
+                  "type": "object",
+                  "required": [
+                    "source_background"
+                  ],
+                  "properties": {
+                    "source_background": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "asset_id",
+                        "sha256"
+                      ],
+                      "properties": {
+                        "asset_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "sha256": {
+                          "const": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
       },
       "imageFull": {
         "type": "object",
@@ -7880,15 +8113,29 @@ export const canonicalSchemaDocuments = {
                   "local-fixture-centered-832x480p25-v1",
                   "avatarforcing-centered-832x480p25-v1",
                   "skyreels-centered-960x960p25-v2",
-                  "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
+                  "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
+                  "soulx-pro-vf924u-approved-v1"
                 ]
               },
               "avatar_crop": {
                 "enum": [
                   "416:468:208:6",
                   "480:540:240:210",
-                  "496:558:280:0"
+                  "496:558:280:0",
+                  "448:504:32:4"
                 ]
+              },
+              "crop_profile_id": {
+                "const": "soulx-pro-ranga-split-composite-v1"
+              },
+              "crop_profile_evidence_sha256": {
+                "const": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
+              },
+              "crop_profile_acceptance_sha256": {
+                "const": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
+              },
+              "context_transform": {
+                "const": "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30"
               },
               "avatar_scale": {
                 "const": "960:1080"
@@ -7968,6 +8215,40 @@ export const canonicalSchemaDocuments = {
                   "properties": {
                     "avatar_crop": {
                       "const": "496:558:280:0"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "soulx-pro-vf924u-approved-v1"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "crop_profile_id",
+                    "crop_profile_evidence_sha256",
+                    "crop_profile_acceptance_sha256",
+                    "context_transform"
+                  ],
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "448:504:32:4"
+                    },
+                    "crop_profile_id": {
+                      "const": "soulx-pro-ranga-split-composite-v1"
+                    },
+                    "crop_profile_evidence_sha256": {
+                      "const": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
+                    },
+                    "crop_profile_acceptance_sha256": {
+                      "const": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
+                    },
+                    "context_transform": {
+                      "const": "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30"
                     }
                   }
                 }

@@ -120,9 +120,9 @@ an unqualified RTX 5090, or activate a profile/crop automatically.
 
 The accepted bounded-worker evidence includes technically valid Ranga-style full and split
 composition candidates made from one native SoulX output. Their exact filters/hashes are indexed by
-`CURRENT_STATE.yaml.model_runtime_evidence.soulx`; treat them as review evidence, not active
-production configuration, until `GATE_SERVERLESS_SOULX_001` and the explicit human crop decision
-pass.
+`CURRENT_STATE.yaml.model_runtime_evidence.soulx`. The user approved both exact layouts on
+2026-08-26, activating only the hash-bound provider-free renderer profile. Production configuration
+still requires `GATE_SERVERLESS_SOULX_001`.
 
 The active renderer contract, once approved, must pin:
 

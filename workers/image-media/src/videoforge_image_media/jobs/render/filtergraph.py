@@ -30,6 +30,19 @@ LEGACY_RENDER_PROFILE_VERSION = "ffmpeg-render-v1"
 SUBTLE_RENDER_PROFILE_VERSION = "ffmpeg-render-v2"
 SMOOTH_RENDER_PROFILE_VERSION = "ffmpeg-render-v3"
 
+SOULX_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1"
+SOULX_PROFILE_GROUP = "soulx-pro-vf924u-full-split-v1"
+SOULX_CANDIDATE_SHA256 = "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
+SOULX_APPROVAL_SHA256 = "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
+SOULX_SOURCE_SHA256 = "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
+SOULX_NATIVE_SAMPLE_SHA256 = (
+    "sha256:db70cd410062572052313278f12d67393aba213ca607fa3a3b9e3f6aad948bf1"
+)
+SOULX_FULL_SAMPLE_SHA256 = "sha256:da31d87c2389769272733ff50a9114d4507a36aced1ebe48480c9ccf486de241"
+SOULX_SPLIT_SAMPLE_SHA256 = (
+    "sha256:f0b02351e38e2e8570e4e586b314da30813bb0a0eb09a567912bba9725b74993"
+)
+
 _ZOOM_PRECISION_FACTOR = 4
 
 
@@ -148,6 +161,66 @@ def _audio_filter(measurement: LoudnessMeasurement) -> str:
     )
 
 
+def _validate_soulx_approval(manifest: Mapping[str, Any]) -> None:
+    segments = cast(list[dict[str, Any]], manifest["segments"])
+    soulx = [
+        segment
+        for segment in segments
+        if segment["timeline_composition"] != "IMAGE_FULL"
+        and segment["render"]["avatar_source_profile"] == SOULX_SOURCE_PROFILE
+    ]
+    if not soulx:
+        if "soulx_crop_profile_approval" in manifest:
+            raise ValueError("SoulX approval cannot accompany a non-SoulX render")
+        return
+    approval = cast(dict[str, str], manifest.get("soulx_crop_profile_approval"))
+    expected = {
+        "profile_group_id": SOULX_PROFILE_GROUP,
+        "candidate_sha256": SOULX_CANDIDATE_SHA256,
+        "approval_sha256": SOULX_APPROVAL_SHA256,
+        "avatar_source_sha256": SOULX_SOURCE_SHA256,
+        "native_sample_sha256": SOULX_NATIVE_SAMPLE_SHA256,
+        "full_sample_sha256": SOULX_FULL_SAMPLE_SHA256,
+        "split_sample_sha256": SOULX_SPLIT_SAMPLE_SHA256,
+    }
+    if approval != expected:
+        raise ValueError("SoulX approval evidence is absent or drifted")
+    for segment in soulx:
+        composition = segment["timeline_composition"]
+        accepted = segment["accepted_assets"]
+        render = segment["render"]
+        if (
+            render.get("crop_profile_evidence_sha256") != SOULX_CANDIDATE_SHA256
+            or render.get("crop_profile_acceptance_sha256") != SOULX_APPROVAL_SHA256
+        ):
+            raise ValueError("SoulX segment evidence is drifted")
+        if composition == "AVATAR_FULL":
+            if (
+                accepted.get("source_background", {}).get("sha256") != SOULX_SOURCE_SHA256
+                or render.get("crop_profile_id") != "soulx-pro-ranga-full-source-composite-v1"
+                or render.get("source_background_transform")
+                != "scale=1920:1080:flags=lanczos,fps=30"
+                or render.get("native_foreground_transform")
+                != "scale=1080:1080:flags=lanczos,fps=30,format=rgba"
+                or render.get("native_foreground_overlay") != {"x": 420, "y": 0}
+                or render.get("horizontal_alpha_feather_pixels_each_edge") != 32
+            ):
+                raise ValueError("SoulX full profile is absent or drifted")
+        elif composition == "AVATAR_SPLIT_IMAGE":
+            if (
+                render.get("crop_profile_id") != "soulx-pro-ranga-split-composite-v1"
+                or render.get("avatar_crop") != "448:504:32:4"
+                or render.get("context_transform")
+                != "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,"
+                "crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):"
+                "d=300:s=960x1080:fps=30"
+                or render.get("right_image_zoom_profile") != "split-right-zoom-v3"
+            ):
+                raise ValueError("SoulX split profile is absent or drifted")
+        else:
+            raise ValueError("SoulX profile cannot be used by this composition")
+
+
 def compile_render_command(
     *,
     ffmpeg: Path,
@@ -158,6 +231,8 @@ def compile_render_command(
     input_loudness: LoudnessMeasurement,
 ) -> RenderCommandPlan:
     """Compile one direct FFmpeg argument array; no command shell is involved."""
+
+    _validate_soulx_approval(manifest)
 
     total_frames = cast(int, manifest["total_frames"])
     if total_frames <= 0:
@@ -194,12 +269,40 @@ def compile_render_command(
         render = cast(dict[str, str], segment["render"])
 
         if composition == "AVATAR_FULL":
-            avatar_index = add_input(accepted["avatar"]["asset_id"], still=False)
-            graph.append(
-                f"[{avatar_index}:v:0]crop={render['avatar_crop']},"
-                f"scale=1920:1080,setsar=1,fps=30:round=near,"
-                f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{label}]"
-            )
+            if render["avatar_source_profile"] == SOULX_SOURCE_PROFILE:
+                background_index = add_input(accepted["source_background"]["asset_id"], still=True)
+                avatar_index = add_input(accepted["avatar"]["asset_id"], still=False)
+                background_label = f"background{segment_index}"
+                foreground_label = f"foreground{segment_index}"
+                mask_label = f"mask{segment_index}"
+                feathered_label = f"feathered{segment_index}"
+                duration_seconds = frame_count / 30
+                graph.append(
+                    f"[{background_index}:v:0]scale=1920:1080:flags=lanczos,fps=30,"
+                    f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{background_label}]"
+                )
+                graph.append(
+                    f"[{avatar_index}:v:0]scale=1080:1080:flags=lanczos,fps=30,"
+                    f"format=rgba,trim=end_frame={frame_count},"
+                    f"setpts=PTS-STARTPTS[{foreground_label}]"
+                )
+                graph.append(
+                    f"color=white:s=1080x1080:r=30:d={duration_seconds:.6f},format=gray,"
+                    "geq=lum='if(lt(X,32),255*X/32,"
+                    f"if(gt(X,W-33),255*(W-1-X)/32,255))'[{mask_label}]"
+                )
+                graph.append(f"[{foreground_label}][{mask_label}]alphamerge[{feathered_label}]")
+                graph.append(
+                    f"[{background_label}][{feathered_label}]overlay=420:0:shortest=1,"
+                    f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{label}]"
+                )
+            else:
+                avatar_index = add_input(accepted["avatar"]["asset_id"], still=False)
+                graph.append(
+                    f"[{avatar_index}:v:0]crop={render['avatar_crop']},"
+                    f"scale=1920:1080,setsar=1,fps=30:round=near,"
+                    f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{label}]"
+                )
         elif composition == "IMAGE_FULL":
             image_index = add_input(accepted["image"]["asset_id"], still=True)
             delta = _zoom_delta(
@@ -215,19 +318,33 @@ def compile_render_command(
             image_index = add_input(accepted["right_image"]["asset_id"], still=True)
             avatar_label = f"avatar{segment_index}"
             image_label = f"image{segment_index}"
-            graph.append(
-                f"[{avatar_index}:v:0]crop={render['avatar_crop']},"
-                "scale=960:1080,setsar=1,fps=30:round=near,"
-                f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{avatar_label}]"
-            )
-            delta = _zoom_delta(
-                frame_count=frame_count,
-                split=True,
-                profile_version=profile_version,
-            )
-            graph.append(
-                f"{_image_filter(image_index, 960, frame_count, delta, profile_version=profile_version)}[{image_label}]"
-            )
+            if render["avatar_source_profile"] == SOULX_SOURCE_PROFILE:
+                graph.append(
+                    f"[{avatar_index}:v:0]crop=448:504:32:4,"
+                    "scale=960:1080:flags=lanczos,fps=30,"
+                    f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{avatar_label}]"
+                )
+                graph.append(
+                    f"[{image_index}:v:0]scale=1920:1080:"
+                    "force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,"
+                    "zoompan=z='min(zoom+0.000133333\\,1.04)':"
+                    "d=300:s=960x1080:fps=30,"
+                    f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{image_label}]"
+                )
+            else:
+                graph.append(
+                    f"[{avatar_index}:v:0]crop={render['avatar_crop']},"
+                    "scale=960:1080,setsar=1,fps=30:round=near,"
+                    f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{avatar_label}]"
+                )
+                delta = _zoom_delta(
+                    frame_count=frame_count,
+                    split=True,
+                    profile_version=profile_version,
+                )
+                graph.append(
+                    f"{_image_filter(image_index, 960, frame_count, delta, profile_version=profile_version)}[{image_label}]"
+                )
             graph.append(
                 f"[{avatar_label}][{image_label}]hstack=inputs=2,"
                 f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{label}]"
