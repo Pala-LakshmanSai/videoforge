@@ -516,6 +516,7 @@ test("staged qualification adapters preserve admission, Mage, SoulX, then max-on
 test("concrete catalog exposes publication, guarded activation, and the protected TS bridge", () => {
   assert.deepEqual(Object.keys(createConcreteFullLiveAdapters()).sort(), [
     "approval-commit-push",
+    "bootstrap-prequalification-database",
     "create-exact-max-one-endpoints",
     "fresh-live-preflight",
     "guarded-activation-once",

@@ -25,6 +25,7 @@ const HASH = /^sha256:[0-9a-f]{64}$/u;
 const CONFIRMATION = "CONSUME_EXACT_V2_13_FULL_LIVE_AUTHORITY";
 const PHASES = Object.freeze([
   ["publication", 0],
+  ["bootstrap_prequalification_database", 0],
   ["mage_qualification", 4.5],
   ["soulx_qualification", 1],
   ["max_one_control_plane_and_guarded_activation", 0],
@@ -231,7 +232,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:0e0f3526330ea2bb151750ba70456b5d8d81ae47755db4df9fbae5cec4267c97" ||
+      "sha256:a00df6bc22b24042ec4ac93357bf1b6c5ada9579203d3968c2d37de1ea92f9f3" ||
     state.no_redispatch !== true ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",

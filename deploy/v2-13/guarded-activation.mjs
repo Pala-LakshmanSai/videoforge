@@ -45,6 +45,21 @@ const SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
 ]);
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const PREQUALIFICATION_SCHEMA =
+  "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
+const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
+  "schema_version",
+  "ledger_before_count",
+  "ledger_before_sha256",
+  "ledger_after_sha256",
+  "operator_acl_sha256",
+  "pgcrypto_sha256",
+  "recovery_mode",
+  "runpod_calls",
+  "cloudflare_calls",
+  "application_secret_reads",
+]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const ROLE = /^[a-z_][a-z0-9_]{0,62}$/u;
 const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
@@ -65,6 +80,45 @@ const exactKeys = (value, names) =>
   typeof value === "object" &&
   !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...names].sort());
+const canonicalJson = (value) =>
+  Array.isArray(value)
+    ? `[${value.map((item) => canonicalJson(item)).join(",")}]`
+    : value !== null && typeof value === "object"
+      ? `{${Object.keys(value)
+          .sort()
+          .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+          .join(",")}}`
+      : JSON.stringify(value);
+
+function readPrequalificationReceipt(directory) {
+  const path = join(directory, "prequalification-database-bootstrap.json");
+  mode(path, "file", 0o600, "prequalification database bootstrap receipt");
+  let value;
+  try {
+    value = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    fail("prequalification database bootstrap receipt is not JSON");
+  }
+  if (
+    !exactKeys(value, [...PREQUALIFICATION_RECEIPT_FIELDS, "prequalification_database_bootstrap_sha256"]) ||
+    value.schema_version !== PREQUALIFICATION_SCHEMA ||
+    ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(value.ledger_before_count) ||
+    !HASH.test(value.ledger_before_sha256 ?? "") ||
+    !["FRESH_36_TO_45", "RESUME_EXACT_PREFIX", "VERIFIED_EXISTING_45"].includes(value.recovery_mode) ||
+    !HASH.test(value.ledger_after_sha256 ?? "") ||
+    !HASH.test(value.operator_acl_sha256 ?? "") ||
+    !HASH.test(value.pgcrypto_sha256 ?? "") ||
+    value.runpod_calls !== 0 ||
+    value.cloudflare_calls !== 0 ||
+    value.application_secret_reads !== 0
+  )
+    fail("prequalification database bootstrap receipt contract drifted");
+  const body = { ...value };
+  delete body.prequalification_database_bootstrap_sha256;
+  if (value.prequalification_database_bootstrap_sha256 !== sha256(Buffer.from(`${canonicalJson(body)}\n`)))
+    fail("prequalification database bootstrap receipt hash drifted");
+  return Object.freeze(value);
+}
 
 function safeEnvironment(extra = {}) {
   const environment = {};
@@ -235,6 +289,7 @@ function validateAuthority(value) {
       value.database.runtime_role,
       value.database.reconciler_role,
     ]).size !== 4 ||
+    value.database.operator_role !== PREQUALIFICATION_OPERATOR_ROLE ||
     !HASH.test(value.database.operator_database_url_sha256 ?? "")
   )
     fail("database identity, roles, or exact 0037-0045 gate drifted");
@@ -756,7 +811,6 @@ function ownerEnvironment(directory, authority) {
     V2_06_EXPECTED_DATABASE: authority.database.database,
     V2_06_EXPECTED_OWNER_ROLE: authority.database.owner_role,
     V2_06_RUNTIME_ROLE: authority.database.runtime_role,
-    V2_06_REQUIRED_LEDGER_PREFIX_VERSION: "36",
   });
   return env;
 }
@@ -787,7 +841,14 @@ AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_class c ON c.relkind='S' JOIN p
 AND NOT EXISTS (SELECT 1 FROM pg_roles r JOIN pg_proc p ON true JOIN pg_namespace n ON n.oid=p.pronamespace AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' WHERE r.rolname IN (${roles}) AND has_function_privilege(r.oid,p.oid,'EXECUTE')))::text;`;
 }
 
+function runtimeReconcilerRolePrecheckQuery(authority) {
+  const roles = `'${authority.database.runtime_role}','${authority.database.reconciler_role}'`;
+  return `SELECT (count(*)=0 AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN (${roles}) OR granted_role.rolname IN (${roles})))::text FROM pg_roles WHERE rolname IN (${roles});`;
+}
+
 async function databaseActivation(authority, values, postgresInputDirectory) {
+  // The bootstrap operation alone consumes neon-full-live-operator-grants.sql; guarded activation
+  // deliberately never reapplies that operator grant surface.
   await validateServiceFile(
     join(postgresInputDirectory, "owner.pg_service.conf"),
     "videoforge_v2_13_owner",
@@ -796,6 +857,7 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
     authority.database.owner_role,
   );
   const env = ownerEnvironment(postgresInputDirectory, authority);
+  const bootstrapReceipt = readPrequalificationReceipt(postgresInputDirectory);
   const runtime = new URL(values.get("DATABASE_URL").trim());
   const reconciler = new URL(values.get("VIDEOFORGE_RECONCILER_DATABASE_URL").trim());
   const operatorPath = join(postgresInputDirectory, "operator.database-url");
@@ -816,7 +878,7 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
     !["postgres:", "postgresql:"].includes(operator.protocol) ||
     operator.hostname !== authority.database.host ||
     operator.pathname.slice(1) !== authority.database.database ||
-    decodeURIComponent(operator.username) !== authority.database.operator_role ||
+    decodeURIComponent(operator.username) !== PREQUALIFICATION_OPERATOR_ROLE ||
     !operator.password ||
     operator.hash ||
     operator.searchParams.size !== 2 ||
@@ -831,9 +893,6 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
   );
   if (ownerIdentity !== authority.database.owner_role)
     fail("database connection is not the exact approved migration owner");
-  const manifest = JSON.parse(
-    readFileSync(resolve(ROOT, "packages/control-plane/migrations/manifest.json"), "utf8"),
-  );
   const ledgerText = run(
     "psql",
     [
@@ -852,20 +911,12 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
   const ledger = ledgerText
     .split(/\r?\n/u)
     .filter(Boolean)
-    .map((line) => line.split("\t"));
-  if (
-    ledger.length !== 36 ||
-    ledger.some((row, index) => {
-      const expected = manifest.migrations[index];
-      return (
-        row[0] !== String(expected.version) ||
-        row[1] !== expected.name ||
-        row[2] !== expected.filename ||
-        row[3] !== expected.sha256
-      );
-    })
-  )
-    fail("database ledger is not the exact committed 36-row prefix before mutation");
+    .map((line) => {
+      const [version, name, filename, sha256Value] = line.split("\t");
+      return { version: Number(version), name, filename, sha256: sha256Value };
+    });
+  if (ledger.length !== 45 || sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== bootstrapReceipt.ledger_after_sha256)
+    fail("prequalification database bootstrap ledger receipt does not match exact prefix 45");
   const rolePrecheck = run(
     "psql",
     [
@@ -875,22 +926,32 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
       "--set",
       "ON_ERROR_STOP=1",
       "--command",
-      rolePrecheckQuery(authority),
+      runtimeReconcilerRolePrecheckQuery(authority),
     ],
     { env, capture: true },
   );
   if (rolePrecheck !== "true")
     fail("database role names are not fresh or have cluster privilege drift");
+  const operatorReadback = run(
+    "psql",
+    [
+      "--no-psqlrc",
+      "--tuples-only",
+      "--no-align",
+      "--set",
+      "ON_ERROR_STOP=1",
+      "--command",
+      `SELECT (count(*)=1 AND bool_and(rolcanlogin AND NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls AND rolconfig IS NULL) AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member OR r.oid=m.roleid WHERE r.rolname='${PREQUALIFICATION_OPERATOR_ROLE}') AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname='${PREQUALIFICATION_OPERATOR_ROLE}') AND NOT EXISTS (SELECT 1 FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) a JOIN pg_roles r ON r.oid=a.grantee WHERE r.rolname='${PREQUALIFICATION_OPERATOR_ROLE}') FROM pg_roles WHERE rolname='${PREQUALIFICATION_OPERATOR_ROLE}')::text;`,
+    ],
+    { env, capture: true },
+  );
+  if (operatorReadback !== "true") fail("prequalification operator ACL is not exact");
   env.V2_13_RUNTIME_PASSWORD = decodeURIComponent(runtime.password);
   env.V2_13_RECONCILER_PASSWORD = decodeURIComponent(reconciler.password);
-  env.V2_13_OPERATOR_PASSWORD = decodeURIComponent(operator.password);
   const bootstrap = String.raw`\getenv runtime_password V2_13_RUNTIME_PASSWORD
 \getenv reconciler_password V2_13_RECONCILER_PASSWORD
-\getenv operator_password V2_13_OPERATOR_PASSWORD
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',:'runtime_role',:'runtime_password') \gexec
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',:'reconciler_role',:'reconciler_password') \gexec
-SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',:'operator_role',:'operator_password') \gexec
 `;
   psql(
     env,
@@ -899,14 +960,15 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
       `runtime_role=${authority.database.runtime_role}`,
       "--variable",
       `reconciler_role=${authority.database.reconciler_role}`,
-      "--variable",
-      `operator_role=${authority.database.operator_role}`,
     ],
     bootstrap,
   );
-  run(process.execPath, ["deploy/v2-06/apply-migrations-and-grants.mjs", "--apply-grants"], {
-    env,
-  });
+  psql(env, [
+    "--variable",
+    `runtime_role=${authority.database.runtime_role}`,
+    "--file",
+    resolve(ROOT, "deploy/v2-06/neon-runtime-grants.sql"),
+  ]);
   psql(env, [
     "--variable",
     `runtime_role=${authority.database.runtime_role}`,
@@ -915,17 +977,13 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
     "--file",
     resolve(ROOT, "deploy/v2-13/neon-pair-reconciler-grants.sql"),
   ]);
-  psql(env, [
-    "--variable",
-    `operator_role=${authority.database.operator_role}`,
-    "--file",
-    resolve(ROOT, "deploy/v2-13/neon-full-live-operator-grants.sql"),
-  ]);
-  run(
-    process.execPath,
-    ["deploy/v2-06/apply-migrations-and-grants.mjs", "--verify-only", "--apply-grants"],
-    { env },
+  const ledgerAfter = run(
+    "psql",
+    ["--no-psqlrc", "--tuples-only", "--no-align", "--command", "SELECT count(*)::text FROM public.videoforge_schema_migrations WHERE version=45"],
+    { env, capture: true },
   );
+  if (ledgerAfter !== "1" || bootstrapReceipt.ledger_after_sha256 === "")
+    fail("prequalification database bootstrap was not consumed at exact prefix 45");
   const exactReconcilerReadback = `SELECT ((SELECT count(*)=3 AND bool_and(rolcanlogin AND NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls AND rolconfig IS NULL) FROM pg_roles WHERE rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}') OR granted_role.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND (SELECT array_agg(p.oid::regprocedure::text ORDER BY p.oid::regprocedure::text)=ARRAY['videoforge_current_account_id()','videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)','videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)','videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)']::text[] FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND has_function_privilege('${authority.database.reconciler_role}',p.oid,'EXECUTE')) AND NOT EXISTS (SELECT 1 FROM information_schema.role_table_grants WHERE grantee IN ('${authority.database.reconciler_role}','${authority.database.operator_role}') AND table_schema='public'))::text;`;
   const reconcilerReadbackWithV209 = exactReconcilerReadback.replace(
     "ARRAY['videoforge_current_account_id()'",
@@ -939,7 +997,6 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
   if (result !== "true") fail("reconciler role/ACL post-readback is not exact");
   delete env.V2_13_RUNTIME_PASSWORD;
   delete env.V2_13_RECONCILER_PASSWORD;
-  delete env.V2_13_OPERATOR_PASSWORD;
 }
 
 function cloudflareEnvironment(tokenPath, authority) {
@@ -1738,6 +1795,7 @@ export {
   protectedSecrets,
   recoverQuarantineCreation,
   rolePrecheckQuery,
+  runtimeReconcilerRolePrecheckQuery,
   secretMutationTransaction,
   safeEnvironment,
   validateSoulxApprovalRecords,

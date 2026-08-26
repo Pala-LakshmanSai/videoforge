@@ -32,15 +32,22 @@ const EXECUTOR_SHA256 = `sha256:${createHash("sha256")
   .digest("hex")}`;
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const PREQUALIFICATION_SCHEMA =
+  "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const PREQUALIFICATION_RECOVERY_MODES = new Set([
+  "FRESH_36_TO_45",
+  "RESUME_EXACT_PREFIX",
+  "VERIFIED_EXISTING_45",
+]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:ea4de7d530317893c0c36c5551292de4be7fa629922cd6c37868863869856c60",
+    "sha256:706214cdb77574adb8ebd3b0166ef6f04b98492de9ef01e1cd092fd3ba0e635d",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:efaf573c00109cc52ecedd617bebe48d03747d467f3ffc481fd6d2cb0d95ce66",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:7a8f9a44f1dbe712aa37d3fcfacba810b123750c81890704b6f0904764fb63ae",
+    "sha256:acb5e297264ba9059302bd9a7f8b372494726aa4f409ab03fb6da8a2acff4dd9",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:efdc16084ba42a512604bfa207708aeed83af9b5c6a17079f73291a3218fbb7e",
+    "sha256:2b1a5b2fd5a257b2156ca4f66af6f30b2179ee06056e03907c9f71b73c334003",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
@@ -65,6 +72,11 @@ const OPERATIONS = Object.freeze([
   { phase: "publication", id: "mage-image-workflow-verification", reserveUsd: 0 },
   { phase: "publication", id: "soulx-image-workflow-dispatch", reserveUsd: 0 },
   { phase: "publication", id: "soulx-image-workflow-verification", reserveUsd: 0 },
+  {
+    phase: "bootstrap_prequalification_database",
+    id: "bootstrap-prequalification-database",
+    reserveUsd: 0,
+  },
   { phase: "mage_qualification", id: "fresh-live-preflight", reserveUsd: 0 },
   { phase: "mage_qualification", id: "mage-live-qualification", reserveUsd: 4.5 },
   { phase: "soulx_qualification", id: "soulx-live-qualification", reserveUsd: 1 },
@@ -196,6 +208,49 @@ function assertResult(operation, result, state, results) {
       !HASH.test(result.billingBaselineSha256 ?? "")
     )
       fail("PREFLIGHT_READBACK", operation.id);
+  }
+  if (operation.id === "bootstrap-prequalification-database") {
+    const bootstrapKeys = [
+      "actualUsd",
+      "application_secret_reads",
+      "cloudflare_calls",
+      "external_spend_usd",
+      "gpu_use",
+      "ledger_after_sha256",
+      "ledger_before_count",
+      "ledger_before_sha256",
+      "operator_acl_sha256",
+      "pgcrypto_sha256",
+      "prequalification_database_bootstrap_sha256",
+      "recovery_mode",
+      "runpod_calls",
+      "schema_version",
+    ];
+    if (
+      JSON.stringify(Object.keys(result).sort()) !== JSON.stringify(bootstrapKeys.sort()) ||
+      result.schema_version !== PREQUALIFICATION_SCHEMA ||
+      !Number.isInteger(result.ledger_before_count) ||
+      ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(result.ledger_before_count) ||
+      !HASH.test(result.ledger_after_sha256 ?? "") ||
+      !HASH.test(result.ledger_before_sha256 ?? "") ||
+      !HASH.test(result.operator_acl_sha256 ?? "") ||
+      !HASH.test(result.pgcrypto_sha256 ?? "") ||
+      !HASH.test(result.prequalification_database_bootstrap_sha256 ?? "") ||
+      !PREQUALIFICATION_RECOVERY_MODES.has(result.recovery_mode) ||
+      result.runpod_calls !== 0 ||
+      result.cloudflare_calls !== 0 ||
+      result.application_secret_reads !== 0 ||
+      result.gpu_use !== false ||
+      result.external_spend_usd !== 0
+    )
+      fail("PREQUALIFICATION_DATABASE_BOOTSTRAP_READBACK", operation.id);
+    if (
+      (result.recovery_mode === "FRESH_36_TO_45" && result.ledger_before_count !== 36) ||
+      (result.recovery_mode === "RESUME_EXACT_PREFIX" &&
+        ![37, 38, 39, 40, 41, 42, 43, 44].includes(result.ledger_before_count)) ||
+      (result.recovery_mode === "VERIFIED_EXISTING_45" && result.ledger_before_count !== 45)
+    )
+      fail("PREQUALIFICATION_RECOVERY_MODE", operation.id);
   }
   if (
     operation.id === "guarded-activation-once" &&
@@ -473,6 +528,7 @@ async function main() {
       preflightConcreteFullLiveInputs({
         state,
         cleanupOnly: mode.cleanupOnly,
+        bootstrapOnly: !mode.cleanupOnly,
         allowUnmaterializedProductionInput: true,
       }),
     trustedTime: () => readAuthenticatedGithubTime(),

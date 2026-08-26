@@ -26,6 +26,8 @@ import {
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
+  EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
+  EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
   validateFullLiveUserApproval,
 } from "../../deploy/v2-13/validate-full-live-approval.mjs";
@@ -74,11 +76,12 @@ function v3Fixture() {
     other_ref_creation_authorized: false,
   };
   approval.approval.database_roles = {
+    exact_operator_role: "videoforge_hosted_operator",
     exact_runtime_role: "videoforge_hosted_runtime",
     exact_reconciler_role: "videoforge_hosted_reconciler",
     roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
   };
-  approval.statement = `I approve ${v3ProposalSha256} at ${v3Commit} with USD 17.50, USD 7 per month, no fallback, tag videoforge-v2-13-release-20260826-v3, and roles videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
+  approval.statement = `I approve ${v3ProposalSha256} at ${v3Commit} with USD 17.50, USD 7 per month, no fallback, tag videoforge-v2-13-release-20260826-v3, and roles videoforge_hosted_operator, videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
   const v3ApprovalBytes = Buffer.from(`${JSON.stringify(approval, null, 2)}\n`);
   const authority = structuredClone(JSON.parse(authorityBytes));
   authority.authority_id = approval.authority_id;
@@ -177,6 +180,7 @@ test("outer authority accepts a future exact V3 ref-authorized record", () => {
     "videoforge.v2-13-full-live-completion-proposal/v3",
   );
   assert.equal(result.validated.exactRuntimeRole, "videoforge_hosted_runtime");
+  assert.equal(result.validated.exactOperatorRole, "videoforge_hosted_operator");
   assert.equal(
     result.authority.github_release_ref.status,
     "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
@@ -274,6 +278,33 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
     },
     (proposal) => {
       proposal.exact_execution_graph.trusted_time_policy.proxy_environment_allowed = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.runpod_calls = 1;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.receipt_exact_fields.pop();
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy
+        .recovery_mode_ledger_before_count.RESUME_EXACT_PREFIX.pop();
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy
+        .guarded_activation_reapplies_migrations_or_operator_role = true;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_bridge_policy.receipt_gate
+        .require_prior_result_and_file_hash_match = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_bridge_policy.prequalification_allowed_environment_names.push(
+        "VIDEOFORGE_V213_BRIDGE_RUNTIME_DATABASE_URL_FD",
+      );
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_bridge_policy.staged_full_preflight
+        .bootstrap_receipt_cas_must_have_passed = false;
     },
   ];
   for (const mutate of mutations) {
@@ -424,6 +455,97 @@ test("V3 proposal binds exact run-ID terminal polling without verifier dispatch"
   );
 });
 
+test("V3 proposal binds the zero-provider prequalification database bootstrap", () => {
+  const fixture = v3Fixture();
+  const proposal = JSON.parse(fixture.proposalBytes);
+  const bootstrap = proposal.exact_execution_graph.prequalification_database_bootstrap_policy;
+  assert.deepEqual(bootstrap, EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY);
+  assert.deepEqual(
+    proposal.exact_execution_graph.prequalification_bridge_policy,
+    EXACT_PREQUALIFICATION_BRIDGE_POLICY,
+  );
+  assert.deepEqual(proposal.exact_execution_graph.ordered_operation_ids.slice(7, 10), [
+    "soulx-image-workflow-verification",
+    "bootstrap-prequalification-database",
+    "fresh-live-preflight",
+  ]);
+  assert.deepEqual(proposal.requested_scope.database, {
+    exact_operator_role: "videoforge_hosted_operator",
+    exact_runtime_role: "videoforge_hosted_runtime",
+    exact_reconciler_role: "videoforge_hosted_reconciler",
+    roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
+    pgcrypto_required: true,
+    prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
+    prequalification_database_bootstrap_phase_cap_usd: 0,
+    prequalification_database_bootstrap_receipt_path: "prequalification-database-bootstrap.json",
+    prequalification_database_bootstrap_receipt_hash_field:
+      "prequalification_database_bootstrap_sha256",
+    prequalification_database_bootstrap_receipt_replay_cas_required: true,
+    prequalification_database_bootstrap_recovery_mode_ledger_before_count: {
+      FRESH_36_TO_45: 36,
+      RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44],
+      VERIFIED_EXISTING_45: 45,
+    },
+    prequalification_database_bootstrap_recovery_mode_final_ledger_count: 45,
+    exact_operator_function_signatures: [
+      "videoforge_load_v213_bridge_acceptance_call(jsonb)",
+      "videoforge_record_v213_stage_authority(uuid,jsonb)",
+      "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+      "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+      "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+      "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+      "videoforge_claim_v213_stage_authority(jsonb)",
+      "videoforge_complete_v213_stage_authority(text,text,jsonb)",
+      "videoforge_load_v213_stage_handoff(uuid,text,text)",
+      "videoforge_load_v213_cleanup_scope(uuid)",
+      "videoforge_claim_v213_operation(jsonb)",
+      "videoforge_transition_v213_operation(jsonb)",
+      "videoforge_claim_v213_bridge_command(jsonb)",
+      "videoforge_transition_v213_bridge_command(jsonb)",
+      "videoforge_record_v213_receipt_verification_key(text,text)",
+      "videoforge_publish_v213_qualified_deployments(jsonb)",
+      "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+    ],
+    exact_initial_ledger_prefix_count: 36,
+    exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45],
+    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45],
+  });
+  assert.deepEqual(bootstrap.receipt_exact_fields, [
+    "schema_version",
+    "ledger_before_count",
+    "ledger_before_sha256",
+    "ledger_after_sha256",
+    "operator_acl_sha256",
+    "pgcrypto_sha256",
+    "recovery_mode",
+    "runpod_calls",
+    "cloudflare_calls",
+    "application_secret_reads",
+  ]);
+  const grants = readFileSync("deploy/v2-13/neon-full-live-operator-grants.sql", "utf8");
+  const grantStart = grants.indexOf("GRANT EXECUTE ON FUNCTION");
+  const grantEnd = grants.indexOf("\nSELECT has_function_privilege", grantStart);
+  assert.notEqual(grantStart, -1);
+  assert.notEqual(grantEnd, -1);
+  const grantedSignatures = [...grants.slice(grantStart, grantEnd).matchAll(/public\.(videoforge_[a-z0-9_]+\([^)]*\))/gu)].map(
+    ([match]) => match.slice("public.".length),
+  );
+  assert.deepEqual(grantedSignatures, bootstrap.exact_operator_function_signatures);
+  assert.equal(bootstrap.runpod_calls, 0);
+  assert.equal(bootstrap.cloudflare_calls, 0);
+  assert.equal(bootstrap.application_secret_reads, 0);
+  assert.equal(bootstrap.gpu_use, false);
+  assert.equal(bootstrap.external_spend_usd, 0);
+  assert.equal(bootstrap.guarded_activation_consumes_verified_receipt, true);
+  assert.deepEqual(bootstrap.recovery_mode_ledger_before_count, {
+    FRESH_36_TO_45: 36,
+    RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44],
+    VERIFIED_EXISTING_45: 45,
+  });
+  assert.equal(bootstrap.recovery_mode_final_ledger_count, 45);
+  assert.equal(bootstrap.guarded_activation_reapplies_migrations_or_operator_role, false);
+});
+
 test("V3 proposal separates proposal and authority-record commit lineage without a self hash", () => {
   const fixture = v3Fixture();
   const proposal = JSON.parse(fixture.proposalBytes);
@@ -463,6 +585,8 @@ test("single-use ledger enforces phase order, phase caps, cumulative cap, and no
     eventId: "release-ref-readback-event-0001",
   });
   completePhase(state, "publication");
+  beginPhase(state, "bootstrap_prequalification_database");
+  completePhase(state, "bootstrap_prequalification_database");
   beginPhase(state, "mage_qualification");
   authorizeWork(state, {
     phaseName: "mage_qualification",

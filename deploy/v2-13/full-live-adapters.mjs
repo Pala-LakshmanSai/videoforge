@@ -21,6 +21,7 @@ import {
   createPromotionDatabaseAdapter,
   promoteQualifiedProduction,
 } from "./promote-qualified-production.mjs";
+import { parseService, validateServiceFile } from "../v2-06/validate-pg-service.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const TAG = "videoforge-v2-13-release-20260826-v3";
@@ -55,6 +56,49 @@ const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("h
 const BRIDGE_PATH = "apps/web/src/server/providers/v213-full-live-cli.ts";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
 const BRIDGE_CONFIRMATION = "EXECUTE_EXACT_V2_13_TYPESCRIPT_BRIDGE_COMMAND";
+const PREQUALIFICATION_SCHEMA =
+  "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
+const PREQUALIFICATION_RUNTIME_ROLE = "videoforge_hosted_runtime";
+const PREQUALIFICATION_RECONCILER_ROLE = "videoforge_hosted_reconciler";
+const PREQUALIFICATION_RECEIPT_NAME = "prequalification-database-bootstrap.json";
+const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
+  "FRESH_36_TO_45",
+  "RESUME_EXACT_PREFIX",
+  "VERIFIED_EXISTING_45",
+]);
+const PREQUALIFICATION_LEDGER_PREFIX_COUNTS = Object.freeze([36, 37, 38, 39, 40, 41, 42, 43, 44, 45]);
+const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
+  "videoforge_load_v213_bridge_acceptance_call(jsonb)",
+  "videoforge_record_v213_stage_authority(uuid,jsonb)",
+  "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+  "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+  "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+  "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+  "videoforge_claim_v213_stage_authority(jsonb)",
+  "videoforge_complete_v213_stage_authority(text,text,jsonb)",
+  "videoforge_load_v213_stage_handoff(uuid,text,text)",
+  "videoforge_load_v213_cleanup_scope(uuid)",
+  "videoforge_claim_v213_operation(jsonb)",
+  "videoforge_transition_v213_operation(jsonb)",
+  "videoforge_claim_v213_bridge_command(jsonb)",
+  "videoforge_transition_v213_bridge_command(jsonb)",
+  "videoforge_record_v213_receipt_verification_key(text,text)",
+  "videoforge_publish_v213_qualified_deployments(jsonb)",
+  "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+]);
+const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
+  "schema_version",
+  "ledger_before_count",
+  "ledger_before_sha256",
+  "ledger_after_sha256",
+  "operator_acl_sha256",
+  "pgcrypto_sha256",
+  "recovery_mode",
+  "runpod_calls",
+  "cloudflare_calls",
+  "application_secret_reads",
+]);
 const requireWeb = createRequire(resolve(ROOT, "apps/web/package.json"));
 const BRIDGE_COMMANDS = Object.freeze([
   "fresh-live-preflight",
@@ -91,11 +135,12 @@ const fail = (code, detail = "") => {
   throw new Error(`V2_13_FULL_LIVE_ADAPTER_${code}${detail ? `:${detail}` : ""}`);
 };
 
-function productionCommand(command, args) {
+function productionCommand(command, args, { environment = process.env, env, input } = {}) {
   const result = spawnSync(command, args, {
     cwd: ROOT,
     encoding: "utf8",
-    env: process.env,
+    env: env ?? environment,
+    input,
     maxBuffer: 4 * 1024 * 1024,
   });
   return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
@@ -580,8 +625,18 @@ function createGuardedActivationAdapter({
   readEvidence = (path) => readFileSync(path),
   prepareSource = prepareReleaseSourceWorktree,
   preflight = preflightGuardedActivationInputs,
+  requirePrequalificationReceipt = false,
 } = {}) {
-  return async (_operation, state) => {
+  return async (_operation, state, priorResults = new Map()) => {
+    if (requirePrequalificationReceipt) {
+      const bootstrap = priorResults.get("bootstrap-prequalification-database");
+      const receipt = prequalificationReceiptFromFile(prequalificationPath(environment));
+      if (
+        bootstrap?.prequalification_database_bootstrap_sha256 !==
+        receipt?.prequalification_database_bootstrap_sha256
+      )
+        fail("GUARDED_PREQUALIFICATION_RECEIPT");
+    }
     preflight({ environment, state });
     const source = prepareSource(state.release_source_commit);
     if (
@@ -1393,6 +1448,164 @@ function exactReceipt(priorResults, operationId) {
   return receipt;
 }
 
+const prequalificationLiteral = (value) => `'${String(value).replaceAll("'", "''")}'`;
+const prequalificationQueryArgs = (sql) => [
+  "--no-psqlrc",
+  "--tuples-only",
+  "--no-align",
+  "--set",
+  "ON_ERROR_STOP=1",
+  "--command",
+  sql,
+];
+
+function prequalificationPath(environment) {
+  const directory = protectedDirectory(
+    environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
+    "PREQUALIFICATION_POSTGRES_DIRECTORY",
+  );
+  const configured = environment.VIDEOFORGE_V2_13_PREQUALIFICATION_DATABASE_BOOTSTRAP_RECEIPT_FILE;
+  const path = configured ?? join(directory, PREQUALIFICATION_RECEIPT_NAME);
+  if (resolve(dirname(path)) !== resolve(directory)) fail("PREQUALIFICATION_RECEIPT_PATH");
+  return path;
+}
+
+function prequalificationCommand(run, command, args, environment, code) {
+  const result = run(command, args, { environment, env: environment });
+  if (
+    result === null ||
+    typeof result !== "object" ||
+    result.status !== 0 ||
+    typeof result.stdout !== "string" ||
+    typeof result.stderr !== "string"
+  )
+    fail(code);
+  return result.stdout.trim();
+}
+
+function prequalificationLedger(text, manifest) {
+  const rows = text === "" ? [] : text.split(/\r?\n/u).filter(Boolean).map((line) => {
+    const fields = line.split("\t");
+    if (fields.length !== 4) fail("PREQUALIFICATION_LEDGER_ROW");
+    return { version: Number(fields[0]), name: fields[1], filename: fields[2], sha256: fields[3] };
+  });
+  if (!PREQUALIFICATION_LEDGER_PREFIX_COUNTS.includes(rows.length)) fail("PREQUALIFICATION_LEDGER_PREFIX");
+  rows.forEach((row, index) => {
+    const expected = manifest.migrations[index];
+    if (!expected || row.version !== expected.version || row.name !== expected.name || row.filename !== expected.filename || row.sha256 !== expected.sha256)
+      fail("PREQUALIFICATION_LEDGER_DRIFT");
+  });
+  return rows;
+}
+
+function prequalificationManifest() {
+  const directory = resolve(ROOT, "packages/control-plane/migrations");
+  const manifest = JSON.parse(readFileSync(resolve(directory, "manifest.json"), "utf8"));
+  if (manifest?.schema_version !== "videoforge-migration-manifest/v1" || !Array.isArray(manifest.migrations) || manifest.migrations.length !== 45)
+    fail("PREQUALIFICATION_MANIFEST");
+  for (const [index, migration] of manifest.migrations.entries()) {
+    if (migration.version !== index + 1) fail("PREQUALIFICATION_MANIFEST_ORDER");
+    const sql = readFileSync(resolve(directory, migration.filename), "utf8");
+    if (sha256(sql) !== migration.sha256) fail("PREQUALIFICATION_MIGRATION_HASH", migration.filename);
+    migration.sql = sql;
+  }
+  return manifest;
+}
+
+function prequalificationRoleReadbackSql(role) {
+  const name = prequalificationLiteral(role);
+  const functionAcl = `COALESCE((SELECT json_agg(replace(n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')',' ','') ORDER BY replace(n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')',' ','')) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_roles rr ON rr.rolname=${name} WHERE n.nspname='public' AND EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE a.grantee=rr.oid AND a.privilege_type='EXECUTE')),'[]'::json)`;
+  const publicAcl = `COALESCE((SELECT json_agg(replace(n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')',' ','') ORDER BY p.oid::regprocedure::text) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND has_function_privilege('PUBLIC',p.oid,'EXECUTE') AND replace(n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')',' ','') = ANY(ARRAY[${PREQUALIFICATION_OPERATOR_FUNCTIONS.map(prequalificationLiteral).join(",")}])),'[]'::json)`;
+  return `SELECT json_build_object('flags',json_build_object('rolcanlogin',r.rolcanlogin,'rolsuper',r.rolsuper,'rolcreaterole',r.rolcreaterole,'rolcreatedb',r.rolcreatedb,'rolinherit',r.rolinherit,'rolreplication',r.rolreplication,'rolbypassrls',r.rolbypassrls,'rolconfig',r.rolconfig),'memberships',(SELECT count(*) FROM pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid),'ownership',(SELECT count(*) FROM (SELECT 1 FROM pg_class WHERE relowner=r.oid UNION ALL SELECT 1 FROM pg_namespace WHERE nspowner=r.oid UNION ALL SELECT 1 FROM pg_proc WHERE proowner=r.oid UNION ALL SELECT 1 FROM pg_type WHERE typowner=r.oid) owned),'database_acl',(SELECT count(*) FROM pg_database d CROSS JOIN LATERAL aclexplode(d.datacl) a WHERE a.grantee=r.oid),'schema_acl',COALESCE((SELECT json_agg(n.nspname||':'||a.privilege_type ORDER BY n.nspname||':'||a.privilege_type) FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) a WHERE a.grantee=r.oid),'[]'::json),'table_acl',(SELECT count(*) FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) a WHERE a.grantee=r.oid),'sequence_acl',(SELECT count(*) FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) a WHERE a.grantee=r.oid AND c.relkind='S'),'default_acl',(SELECT count(*) FROM pg_default_acl d CROSS JOIN LATERAL aclexplode(d.defaclacl) a WHERE a.grantee=r.oid),'function_acl',${functionAcl},'public_function_acl',${publicAcl})::text FROM pg_roles r WHERE r.rolname=${name}`;
+}
+
+function prequalificationReceiptFromFile(path) {
+  if (!lstatExists(path)) return null;
+  protectedFile(path, "PREQUALIFICATION_RECEIPT_FILE");
+  let value;
+  try { value = JSON.parse(readFileSync(path, "utf8")); } catch { fail("PREQUALIFICATION_RECEIPT_JSON"); }
+  const keys = [...PREQUALIFICATION_RECEIPT_FIELDS, "prequalification_database_bootstrap_sha256"].sort();
+  if (JSON.stringify(Object.keys(value ?? {}).sort()) !== JSON.stringify(keys)) fail("PREQUALIFICATION_RECEIPT_FIELDS");
+  const body = { ...value };
+  delete body.prequalification_database_bootstrap_sha256;
+  if (value.schema_version !== PREQUALIFICATION_SCHEMA || !PREQUALIFICATION_LEDGER_PREFIX_COUNTS.includes(value.ledger_before_count) || !HASH.test(value.ledger_before_sha256 ?? "") || !HASH.test(value.ledger_after_sha256 ?? "") || !HASH.test(value.operator_acl_sha256 ?? "") || !HASH.test(value.pgcrypto_sha256 ?? "") || !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) || value.runpod_calls !== 0 || value.cloudflare_calls !== 0 || value.application_secret_reads !== 0 || value.prequalification_database_bootstrap_sha256 !== sha256(Buffer.from(`${canonicalJson(body)}\n`))) fail("PREQUALIFICATION_RECEIPT_CONTRACT");
+  return value;
+}
+
+function prequalificationResult(receipt) {
+  return {
+    actualUsd: 0,
+    ...receipt,
+    gpu_use: false,
+    external_spend_usd: 0,
+  };
+}
+
+function createPrequalificationDatabaseBootstrapAdapter({ environment = process.env, run = productionCommand } = {}) {
+  return async () => {
+    const directory = protectedDirectory(environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR, "PREQUALIFICATION_POSTGRES_DIRECTORY");
+    const servicePath = join(directory, "owner.pg_service.conf");
+    const passPath = join(directory, "owner.pgpass");
+    const operatorPath = join(directory, "operator.database-url");
+    const service = await parseService(servicePath, "videoforge_v2_13_owner");
+    protectedFile(passPath, "PREQUALIFICATION_OWNER_PASS");
+    protectedFile(operatorPath, "PREQUALIFICATION_OPERATOR_DSN");
+    const operatorRaw = readFileSync(operatorPath, "utf8");
+    if (operatorRaw !== operatorRaw.trim() || operatorRaw.includes("\0")) fail("PREQUALIFICATION_OPERATOR_DSN");
+    let operator;
+    try { operator = new URL(operatorRaw); } catch { fail("PREQUALIFICATION_OPERATOR_DSN"); }
+    if (!["postgres:", "postgresql:"].includes(operator.protocol) || decodeURIComponent(operator.username) !== PREQUALIFICATION_OPERATOR_ROLE || !operator.password || operator.hash || operator.searchParams.size !== 2 || operator.searchParams.get("sslmode") !== "require" || operator.searchParams.get("channel_binding") !== "require" || operator.hostname !== service.get("host") || operator.pathname.slice(1) !== service.get("dbname")) fail("PREQUALIFICATION_OPERATOR_BINDING");
+    await validateServiceFile(servicePath, "videoforge_v2_13_owner", service.get("host"), service.get("dbname"), service.get("user"));
+    if (service.get("user") === PREQUALIFICATION_OPERATOR_ROLE) fail("PREQUALIFICATION_OWNER_OPERATOR_COLLISION");
+    const dbEnv = { PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin", HOME: environment.HOME ?? process.env.HOME ?? "/tmp", PGSERVICEFILE: servicePath, PGSERVICE: "videoforge_v2_13_owner", PGPASSFILE: passPath };
+    const query = (sql, code) => prequalificationCommand(run, "psql", prequalificationQueryArgs(sql), dbEnv, code);
+    const manifest = prequalificationManifest();
+    const before = prequalificationLedger(query("SELECT version::text,name,filename,sha256 FROM public.videoforge_schema_migrations ORDER BY version", "PREQUALIFICATION_LEDGER_READ"), manifest);
+    const receiptPath = prequalificationPath(environment);
+    const existing = prequalificationReceiptFromFile(receiptPath);
+    const runtimeAbsent = query(`SELECT count(*)::text FROM pg_roles WHERE rolname IN (${prequalificationLiteral(PREQUALIFICATION_RUNTIME_ROLE)},${prequalificationLiteral(PREQUALIFICATION_RECONCILER_ROLE)})`, "PREQUALIFICATION_ROLE_READ") === "0";
+    if (!runtimeAbsent) fail("PREQUALIFICATION_RUNTIME_RECONCILER_PRESENT");
+    const operatorCount = Number(query(`SELECT count(*)::text FROM pg_roles WHERE rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}`, "PREQUALIFICATION_OPERATOR_ROLE_READ"));
+    if (!Number.isInteger(operatorCount) || (before.length === 36 && operatorCount !== 0) || operatorCount > 1) fail("PREQUALIFICATION_OPERATOR_ROLE_DRIFT");
+    if (operatorCount === 1) {
+      const safeExisting = query(`SELECT (bool_and(rolcanlogin AND NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls AND rolconfig IS NULL) AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member OR r.oid=m.roleid WHERE r.rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}) AND NOT EXISTS (SELECT 1 FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) a JOIN pg_roles r ON r.oid=a.grantee WHERE r.rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}))::text FROM pg_roles WHERE rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}`, "PREQUALIFICATION_OPERATOR_ROLE_DRIFT");
+      if (safeExisting !== "true") fail("PREQUALIFICATION_OPERATOR_ROLE_DRIFT");
+    }
+    if (existing && before.length !== 45) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
+    const recoveryMode = before.length === 36 ? "FRESH_36_TO_45" : before.length === 45 ? "VERIFIED_EXISTING_45" : "RESUME_EXACT_PREFIX";
+    if (!existing) {
+      prequalificationCommand(run, "psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--command", "CREATE EXTENSION IF NOT EXISTS pgcrypto"], dbEnv, "PREQUALIFICATION_PGCRYPTO");
+      for (const migration of manifest.migrations.slice(before.length)) {
+        const dir = mkdtempSync(resolve(tmpdir(), "videoforge-v213-prequalification-"));
+        const file = join(dir, migration.filename);
+        const sql = `BEGIN;\nSELECT pg_advisory_xact_lock(1448494662,1);\nDO $$ BEGIN IF EXISTS (SELECT 1 FROM public.videoforge_schema_migrations WHERE version=${migration.version}) THEN RAISE EXCEPTION 'migration ledger changed during activation'; END IF; END $$;\n${migration.sql}\nINSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256) VALUES (${migration.version},${prequalificationLiteral(migration.name)},${prequalificationLiteral(migration.filename)},${prequalificationLiteral(migration.sha256)});\nCOMMIT;\n`;
+        try { writeFileSync(file, sql, { mode: 0o600, flag: "wx" }); prequalificationCommand(run, "psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--file", file], dbEnv, "PREQUALIFICATION_MIGRATION"); } finally { rmSync(dir, { recursive: true, force: true }); }
+      }
+      const operatorEnv = { ...dbEnv, V2_13_OPERATOR_PASSWORD: decodeURIComponent(operator.password) };
+      const createRoleSql = String.raw`\getenv operator_password V2_13_OPERATOR_PASSWORD
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}, :'operator_password') WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}) \gexec`;
+      prequalificationCommand(run, "psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--command", createRoleSql], operatorEnv, "PREQUALIFICATION_OPERATOR_CREATE");
+      prequalificationCommand(run, "psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--variable", `operator_role=${PREQUALIFICATION_OPERATOR_ROLE}`, "--file", resolve(ROOT, "deploy/v2-13/neon-full-live-operator-grants.sql")], dbEnv, "PREQUALIFICATION_OPERATOR_GRANTS");
+    }
+    const ledger = prequalificationLedger(query("SELECT version::text,name,filename,sha256 FROM public.videoforge_schema_migrations ORDER BY version", "PREQUALIFICATION_LEDGER_READBACK"), manifest);
+    if (ledger.length !== 45) fail("PREQUALIFICATION_LEDGER_FINAL");
+    const pgcrypto = JSON.parse(query("SELECT json_build_object('name',extname,'version',extversion,'schema',extnamespace::regnamespace::text)::text FROM pg_extension WHERE extname='pgcrypto'", "PREQUALIFICATION_PGCRYPTO_READBACK"));
+    const roleText = query(prequalificationRoleReadbackSql(PREQUALIFICATION_OPERATOR_ROLE), "PREQUALIFICATION_OPERATOR_READBACK");
+    const role = JSON.parse(roleText);
+    const expectedFunctions = [...PREQUALIFICATION_OPERATOR_FUNCTIONS].sort();
+    if (!role.flags?.rolcanlogin || role.flags.rolsuper || role.flags.rolcreaterole || role.flags.rolcreatedb || role.flags.rolinherit || role.flags.rolreplication || role.flags.rolbypassrls || role.flags.rolconfig !== null || role.memberships !== 0 || role.ownership !== 0 || role.database_acl !== 0 || role.table_acl !== 0 || role.sequence_acl !== 0 || role.default_acl !== 0 || JSON.stringify(role.schema_acl) !== JSON.stringify(["public:USAGE"]) || JSON.stringify(role.function_acl) !== JSON.stringify(expectedFunctions) || (role.public_function_acl?.length ?? 0) !== 0) fail("PREQUALIFICATION_OPERATOR_ACL");
+    const beforeSha256 = sha256(Buffer.from(`${canonicalJson(before)}\n`));
+    const after = { ledger_after_sha256: sha256(Buffer.from(`${canonicalJson(ledger)}\n`)), operator_acl_sha256: sha256(Buffer.from(`${canonicalJson(role)}\n`)), pgcrypto_sha256: sha256(Buffer.from(`${canonicalJson(pgcrypto)}\n`)) };
+    if (existing && (existing.ledger_after_sha256 !== after.ledger_after_sha256 || existing.operator_acl_sha256 !== after.operator_acl_sha256 || existing.pgcrypto_sha256 !== after.pgcrypto_sha256)) fail("PREQUALIFICATION_RECEIPT_REPLAY_DRIFT");
+    const body = { schema_version: PREQUALIFICATION_SCHEMA, ledger_before_count: before.length, ledger_before_sha256: beforeSha256, ...after, recovery_mode: recoveryMode, runpod_calls: 0, cloudflare_calls: 0, application_secret_reads: 0 };
+    const receipt = { ...body, prequalification_database_bootstrap_sha256: sha256(Buffer.from(`${canonicalJson(body)}\n`)) };
+    if (!existing) exclusiveAtomicBytes(receiptPath, Buffer.from(`${canonicalJson(receipt)}\n`));
+    return prequalificationResult(existing ?? receipt);
+  };
+}
+
+const createPrequalificationDatabaseAdapter = createPrequalificationDatabaseBootstrapAdapter;
+
 function createProtectedInputMaterializer({
   environment = process.env,
   run = productionCommand,
@@ -1859,7 +2072,11 @@ function productionBridgeSpawn({ environment, request }) {
   const opened = [];
   try {
     writeFileSync(requestPath, `${JSON.stringify(request)}\n`, { encoding: "utf8", mode: 0o600 });
-    const protectedFiles = CLEANUP_BRIDGE_COMMANDS.has(request.command)
+    const protectedFiles = request.command === "fresh-live-preflight"
+      ? BRIDGE_PROTECTED_FILES.filter(([fdName]) =>
+          ["RUNPOD_API_KEY_FD", "OPERATOR_DATABASE_URL_FD"].includes(fdName),
+        )
+      : CLEANUP_BRIDGE_COMMANDS.has(request.command)
       ? BRIDGE_PROTECTED_FILES.filter(([fdName]) =>
           ["RUNPOD_API_KEY_FD", "OPERATOR_DATABASE_URL_FD"].includes(fdName),
         )
@@ -2044,9 +2261,24 @@ function preflightConcreteFullLiveInputs({
   environment = process.env,
   state,
   cleanupOnly = false,
+  bootstrapOnly = false,
+  operatorOnly = false,
   allowUnmaterializedProductionInput = false,
   requireEndpointSecrets = false,
 }) {
+  if (bootstrapOnly) {
+    const directory = protectedDirectory(
+      environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
+      "PREQUALIFICATION_POSTGRES_DIRECTORY",
+    );
+    const service = join(directory, "owner.pg_service.conf");
+    const pass = join(directory, "owner.pgpass");
+    const operator = join(directory, "operator.database-url");
+    protectedFile(pass, "PREQUALIFICATION_OWNER_PASS");
+    protectedFile(operator, "PREQUALIFICATION_OPERATOR_DSN");
+    protectedFile(service, "PREQUALIFICATION_OWNER_SERVICE");
+    return Object.freeze({ bootstrapOnly: true, postgresInputDirectory: directory });
+  }
   const productionPath = environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE;
   if (typeof productionPath !== "string" || productionPath === "" || productionPath.includes("\0"))
     fail("BRIDGE_PRODUCTION_INPUT_FILE");
@@ -2069,6 +2301,46 @@ function preflightConcreteFullLiveInputs({
       authority.singleUse !== true)
   )
     fail("BRIDGE_OUTER_AUTHORITY_LINEAGE");
+  if (operatorOnly) {
+    for (const [, variable] of BRIDGE_PROTECTED_FILES.filter(([fdName]) =>
+      ["RUNPOD_API_KEY_FD", "OPERATOR_DATABASE_URL_FD"].includes(fdName),
+    )) {
+      const value = readFileSync(
+        protectedFile(environment[variable], `BRIDGE_PROTECTED_FILE:${variable}`),
+        "utf8",
+      );
+      if (value.length === 0 || value.length > 65_536 || value.includes("\0"))
+        fail("BRIDGE_PROTECTED_CONTENT", variable);
+      if (variable.endsWith("OPERATOR_DATABASE_URL_FILE")) {
+        let parsed;
+        try {
+          parsed = new URL(value);
+        } catch {
+          fail("BRIDGE_PROTECTED_URL", variable);
+        }
+        if (
+          value.trim() !== value ||
+          !["postgres:", "postgresql:"].includes(parsed.protocol) ||
+          parsed.username !== "videoforge_hosted_operator"
+        )
+          fail("BRIDGE_PROTECTED_URL", variable);
+        const directory = protectedDirectory(
+          environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
+          "PREQUALIFICATION_POSTGRES_DIRECTORY",
+        );
+        const serviceText = readFileSync(join(directory, "owner.pg_service.conf"), "utf8");
+        const serviceValues = Object.fromEntries(
+          [...serviceText.matchAll(/^\s*(host|dbname)\s*=\s*(\S+)\s*$/gmu)].map((m) => [m[1], m[2]]),
+        );
+        if (
+          parsed.hostname !== serviceValues.host ||
+          decodeURIComponent(parsed.pathname.slice(1)) !== serviceValues.dbname
+        )
+          fail("BRIDGE_PROTECTED_URL", variable);
+      }
+    }
+    return Object.freeze({ production, operatorOnly: true });
+  }
   const bridgeValues = Object.fromEntries(
     BRIDGE_PROTECTED_FILES.map(([, variable]) => {
       const path = protectedFile(environment[variable], `BRIDGE_PROTECTED_FILE:${variable}`);
@@ -2199,7 +2471,8 @@ function preflightGuardedActivationInputs({ environment = process.env, state }) 
 function createTypeScriptBridgeAdapters({
   environment = process.env,
   spawnBridge = productionBridgeSpawn,
-  expectedCliSha256 = "sha256:efdc16084ba42a512604bfa207708aeed83af9b5c6a17079f73291a3218fbb7e",
+  requirePrequalificationReceipt = false,
+  expectedCliSha256 = "sha256:2b1a5b2fd5a257b2156ca4f66af6f30b2179ee06056e03907c9f71b73c334003",
   expectedTransportSha256 = "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
 } = {}) {
   const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
@@ -2212,6 +2485,13 @@ function createTypeScriptBridgeAdapters({
       ? loadBridgeCleanupInput(environment)
       : null;
     const production = cleanup === null ? loadBridgeProductionInput(environment) : null;
+    if (requirePrequalificationReceipt && command === "mage-live-qualification") {
+      preflightConcreteFullLiveInputs({
+        environment,
+        state,
+        requireEndpointSecrets: false,
+      });
+    }
     if (
       production !== null &&
       (production.dualLaneInput?.mage?.sourceCommit !== state.release_source_commit ||
@@ -2219,8 +2499,23 @@ function createTypeScriptBridgeAdapters({
     )
       fail("BRIDGE_SOURCE_LINEAGE");
     let commandPayload = production?.commandPayloads[command] ?? {};
-    if (command === "fresh-live-preflight")
+    if (command === "fresh-live-preflight") {
+      if (requirePrequalificationReceipt) {
+        preflightConcreteFullLiveInputs({
+          environment,
+          state,
+          operatorOnly: true,
+        });
+        const bootstrap = priorResults.get("bootstrap-prequalification-database");
+        const receipt = prequalificationReceiptFromFile(prequalificationPath(environment));
+        if (
+          bootstrap?.prequalification_database_bootstrap_sha256 !==
+            receipt?.prequalification_database_bootstrap_sha256
+        )
+          fail("BRIDGE_PREQUALIFICATION_RECEIPT");
+      }
       commandPayload = { authorityDocument: production.authorityDocument };
+    }
     if (command === "mage-live-qualification")
       commandPayload = { admission: priorResults.get("fresh-live-preflight")?.bridgeSummary };
     if (command === "soulx-live-qualification")
@@ -2356,13 +2651,22 @@ function createConcreteFullLiveAdapters(options = {}) {
     ...createGitReleaseAdapters(options.git),
     ...createGithubDispatchAdapters(options.github),
     ...createGithubVerificationAdapters(options.githubVerification),
-    "guarded-activation-once": createGuardedActivationAdapter(options.guarded),
+    "bootstrap-prequalification-database": createPrequalificationDatabaseBootstrapAdapter(
+      options.prequalificationDatabase,
+    ),
+    "guarded-activation-once": createGuardedActivationAdapter({
+      ...(options.guarded ?? {}),
+      requirePrequalificationReceipt: true,
+    }),
     ...(options.qualification ? createStagedQualificationAdapters(options.qualification) : {}),
     "promote-qualified-production": options.promotion
       ? createQualifiedPromotionAdapter(options.promotion)
       : createProtectedPromotionAdapter(options.protectedPromotion),
     ...(options.acceptance ? createV213AcceptanceAdapters(options.acceptance) : {}),
-    ...createTypeScriptBridgeAdapters(options.bridge),
+    ...createTypeScriptBridgeAdapters({
+      ...(options.bridge ?? {}),
+      requirePrequalificationReceipt: true,
+    }),
     ...(options.cleanup?.adapters ?? {}),
   };
   const materialize =
@@ -2386,6 +2690,10 @@ function createConcreteFullLiveAdapters(options = {}) {
 
 export {
   createConcreteFullLiveAdapters,
+  createPrequalificationDatabaseBootstrapAdapter,
+  createPrequalificationDatabaseAdapter,
+  PREQUALIFICATION_OPERATOR_FUNCTIONS,
+  PREQUALIFICATION_RECEIPT_FIELDS,
   closedTrustedTimeCommand,
   createGitReleaseAdapters,
   createGuardedActivationAdapter,

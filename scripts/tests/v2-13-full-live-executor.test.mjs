@@ -51,6 +51,22 @@ function stateFixture() {
 
 function fakeResult(operation, state, priorResults) {
   const result = { actualUsd: operation.reserveUsd };
+  if (operation.id === "bootstrap-prequalification-database")
+    Object.assign(result, {
+      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v1",
+      ledger_before_count: 36,
+      ledger_before_sha256: proof("1"),
+      ledger_after_sha256: proof("2"),
+      operator_acl_sha256: proof("3"),
+      pgcrypto_sha256: proof("4"),
+      prequalification_database_bootstrap_sha256: proof("5"),
+      recovery_mode: "FRESH_36_TO_45",
+      runpod_calls: 0,
+      cloudflare_calls: 0,
+      application_secret_reads: 0,
+      gpu_use: false,
+      external_spend_usd: 0,
+    });
   if (operation.id === "release-tag-readback")
     Object.assign(result, {
       tagName: state.release_ref.exact_tag_name,

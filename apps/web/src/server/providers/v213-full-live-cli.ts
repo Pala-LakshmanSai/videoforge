@@ -244,6 +244,19 @@ export interface V213ProtectedInputs {
   readonly productionSecretsRaw: string;
 }
 
+/**
+ * The only protected inputs that may cross the prequalification boundary.  The database
+ * bootstrap creates the operator role before the runtime and reconciler roles exist, so the
+ * read-only admission bridge deliberately has no fields for those DSNs, Worker credentials, or
+ * production secret material.  Keeping this as a separate type also prevents a caller from
+ * accidentally constructing the full runtime for fresh-live-preflight.
+ */
+export interface V213PrequalificationProtectedInputs {
+  readonly request: V213FullLiveCommandRequest;
+  readonly runpodApiKey: string;
+  readonly operatorDatabaseUrl: string;
+}
+
 export interface V213CleanupProtectedInputs {
   readonly request: V213FullLiveCommandRequest;
   readonly runpodApiKey: string;
@@ -296,6 +309,12 @@ export const V213_BRIDGE_ENVIRONMENT = Object.freeze({
 
 const ALLOWED_ENVIRONMENT = new Set<string>(Object.values(V213_BRIDGE_ENVIRONMENT));
 const CLEANUP_ALLOWED_ENVIRONMENT = new Set<string>([
+  V213_BRIDGE_ENVIRONMENT.command,
+  V213_BRIDGE_ENVIRONMENT.requestFd,
+  V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd,
+  V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd,
+]);
+const PREQUALIFICATION_ALLOWED_ENVIRONMENT = new Set<string>([
   V213_BRIDGE_ENVIRONMENT.command,
   V213_BRIDGE_ENVIRONMENT.requestFd,
   V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd,
@@ -456,6 +475,7 @@ export function readV213ProtectedInputs(
   if (extras.length > 0) fail("AMBIENT_BINDING_REJECTED");
   const command = environment[V213_BRIDGE_ENVIRONMENT.command];
   if (!COMMANDS.has(command ?? "")) fail("COMMAND_INVALID");
+  if (command === "fresh-live-preflight") fail("PREQUALIFICATION_INPUTS_REQUIRED");
   let request: V213FullLiveCommandRequest;
   try {
     request = exactRequest(
@@ -534,6 +554,59 @@ export function readV213ProtectedInputs(
     productionSecrets: secrets,
     productionSecretsRaw,
   });
+}
+
+/**
+ * Read the deliberately smaller protected-input surface used by fresh-live-preflight.  This
+ * command runs after the owner-only database bootstrap and before guarded activation has created
+ * the runtime/reconciler roles or materialized production secrets.  Rejecting those bindings at
+ * the process boundary makes accidental FD inheritance observable instead of silently widening
+ * the prequalification authority.
+ */
+export function readV213PrequalificationProtectedInputs(
+  environment: NodeJS.ProcessEnv,
+  readFd: (value: string | undefined, code: string) => string = readProtectedFd,
+): V213PrequalificationProtectedInputs {
+  const extras = Object.keys(environment).filter(
+    (name) => name.startsWith(PREFIX) && !PREQUALIFICATION_ALLOWED_ENVIRONMENT.has(name),
+  );
+  if (extras.length > 0) fail("PREQUALIFICATION_AMBIENT_BINDING_REJECTED");
+  const command = environment[V213_BRIDGE_ENVIRONMENT.command];
+  if (command !== "fresh-live-preflight") fail("PREQUALIFICATION_COMMAND_INVALID");
+  let request: V213FullLiveCommandRequest;
+  try {
+    request = exactRequest(
+      JSON.parse(readFd(environment[V213_BRIDGE_ENVIRONMENT.requestFd], "REQUEST_FD_INVALID")),
+    );
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) throw error;
+    fail("REQUEST_JSON_INVALID");
+  }
+  if (request.command !== command) fail("COMMAND_MISMATCH");
+  const runpodApiKey = readFd(
+    environment[V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd],
+    "RUNPOD_KEY_FD_INVALID",
+  );
+  const operatorDatabaseUrl = readFd(
+    environment[V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd],
+    "OPERATOR_DATABASE_FD_INVALID",
+  );
+  let parsedOperator: URL;
+  try {
+    parsedOperator = new URL(operatorDatabaseUrl);
+  } catch {
+    fail("PREQUALIFICATION_OPERATOR_DATABASE_INVALID");
+  }
+  if (
+    runpodApiKey.trim() !== runpodApiKey ||
+    runpodApiKey.length < 20 ||
+    operatorDatabaseUrl.trim() !== operatorDatabaseUrl ||
+    !["postgres:", "postgresql:"].includes(parsedOperator.protocol) ||
+    parsedOperator.hostname === "" ||
+    parsedOperator.pathname === "/"
+  )
+    fail("PREQUALIFICATION_PROTECTED_INPUT_INVALID");
+  return Object.freeze({ request, runpodApiKey, operatorDatabaseUrl });
 }
 
 function exactCleanupInput(value: unknown): V213CleanupInput {
@@ -1171,6 +1244,22 @@ const defaultProductionPorts: V213ProductionFactoryPorts = Object.freeze({
   }),
 });
 
+type V213PrequalificationFactoryPorts = Readonly<{
+  fetch: WorkflowFetch;
+  now: () => Date;
+  sleep: (milliseconds: number) => Promise<void>;
+  createOperatorDatabase: (inputs: V213PrequalificationProtectedInputs) => TransactionalSqlExecutor;
+}>;
+
+const defaultPrequalificationPorts: V213PrequalificationFactoryPorts = Object.freeze({
+  fetch: globalThis.fetch,
+  now: () => new Date(),
+  sleep: (milliseconds) =>
+    new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds)),
+  createOperatorDatabase: (inputs) =>
+    createNeonExecutor(createNeonPool(inputs.operatorDatabaseUrl)),
+});
+
 async function readEndpointBilling(apiKey: string, fetchPort: WorkflowFetch): Promise<number> {
   const query = new URLSearchParams({
     bucketSize: "hour",
@@ -1409,6 +1498,106 @@ export async function createV213CleanupRuntime(
   return Object.freeze({
     journal: createV213SqlCommandJournal(operator),
     handlers: cleanup as unknown as V213FullLiveCommandHandlers,
+    protectedValues: Object.freeze([inputs.runpodApiKey, inputs.operatorDatabaseUrl]),
+  });
+}
+
+/**
+ * Build the prequalification bridge with only the operator database and RunPod read seams.  The
+ * operator role is the sole database principal available at this point in the execution graph;
+ * runtime/reconciler roles and production secret material are intentionally not represented in
+ * this factory's inputs or ports.  The temporary receipt signer exists only to satisfy the
+ * read-only admission input contract; it is never registered in the database and is not exposed
+ * in the returned protected values.
+ */
+export async function createV213PrequalificationRuntime(
+  inputs: V213PrequalificationProtectedInputs,
+  ports: V213PrequalificationFactoryPorts = defaultPrequalificationPorts,
+): Promise<V213FullLiveBridgeRuntime> {
+  if (inputs.request.command !== "fresh-live-preflight") fail("PREQUALIFICATION_COMMAND_INVALID");
+  const production = exactProductionInput(inputs.request.input);
+  const receiptKeyId = production.dualLaneInput.mage.receiptKeyId;
+  if (receiptKeyId !== production.dualLaneInput.soulx.receiptKeyId) fail("RECEIPT_KEY_ID_DRIFT");
+  const dualLaneInput = Object.freeze({
+    ...production.dualLaneInput,
+    // Admission validates the key id but does not sign a receipt.  Do not read or register the
+    // production HMAC key before guarded activation has provisioned the full secret set.
+    receiptSigner: new ProvenanceReceiptSigner(receiptKeyId, Buffer.alloc(32)),
+  }) as V213DualLaneInput;
+  const operatorDatabase = ports.createOperatorDatabase(inputs);
+  const control = new RunPodControlClient({ apiKey: inputs.runpodApiKey });
+  const transport = createV213RunPodDualLaneTransport({
+    // The admission operation is read-only and cannot reach durable stage mutation methods.
+    durable: {} as never,
+    input: dualLaneInput,
+    control,
+    accountPreflight: () => assertSujalRunPodAccount(inputs.runpodApiKey),
+    readAdmissionFacts: async () => {
+      const candidates = await fetchCp07Catalog(inputs.runpodApiKey, ports.fetch);
+      const exact = candidates.find(
+        (candidate) =>
+          candidate.displayName === "NVIDIA GeForce RTX 4090" && candidate.region === "EU-RO-1",
+      );
+      if (!exact) fail("RUNPOD_EXACT_OFFERING_UNAVAILABLE");
+      return {
+        checkedAt: ports.now().toISOString(),
+        availability: exact.availability,
+        flexRateUsdPerGpuHour: exact.rateUsdPerHour,
+        cumulativeBillingUsd: await readEndpointBilling(inputs.runpodApiKey, ports.fetch),
+      };
+    },
+    // This port is unreachable from readV213DualLaneAdmission. Keep it fail-closed if the
+    // prequalification handler is ever widened accidentally.
+    verifyOutputReadback: async () => fail("PREQUALIFICATION_OUTPUT_READBACK_FORBIDDEN"),
+    createJobClient: () => {
+      fail("PREQUALIFICATION_JOB_CLIENT_FORBIDDEN");
+    },
+    sleep: ports.sleep,
+    now: ports.now,
+  });
+  const payload = production.commandPayload;
+  const preflight: V213FullLiveCommandHandler = async () => {
+    const { authorityDocument } = exactPayload<{ authorityDocument: Record<string, unknown> }>(
+      payload,
+      ["authorityDocument"],
+    );
+    if (
+      authorityDocument.sourceCommit !== dualLaneInput.mage.sourceCommit ||
+      authorityDocument.sourceCommit !== dualLaneInput.soulx.sourceCommit ||
+      authorityDocument.maximumCumulativeSpendUsd !== 17.5 ||
+      authorityDocument.singleUse !== true
+    )
+      fail("FULL_LIVE_AUTHORITY_INPUT_DRIFT");
+    const registered = object(
+      await oneDatabaseValue(
+        operatorDatabase,
+        "SELECT to_jsonb(recorded) value FROM public.videoforge_record_hosted_full_live_authority($1::uuid,$2::jsonb) recorded",
+        [production.fullLiveAuthorityId, JSON.stringify(authorityDocument)],
+        "FULL_LIVE_AUTHORITY_REGISTRATION_FAILED",
+      ),
+    );
+    if (
+      registered?.authority_id !== production.fullLiveAuthorityId ||
+      typeof registered.authority_document_sha256 !== "string" ||
+      !SHA256.test(registered.authority_document_sha256)
+    )
+      fail("FULL_LIVE_AUTHORITY_REGISTRATION_FAILED");
+    return evidence((await readV213DualLaneAdmission(transport, dualLaneInput)) as never);
+  };
+  const forbidden: V213FullLiveCommandHandler = async () => {
+    fail("PREQUALIFICATION_COMMAND_NOT_ALLOWED");
+  };
+  const handlers = Object.freeze(
+    Object.fromEntries(
+      V213_FULL_LIVE_COMMANDS.map((command) => [
+        command,
+        command === "fresh-live-preflight" ? preflight : forbidden,
+      ]),
+    ),
+  ) as unknown as V213FullLiveCommandHandlers;
+  return Object.freeze({
+    journal: createV213SqlCommandJournal(operatorDatabase),
+    handlers,
     protectedValues: Object.freeze([inputs.runpodApiKey, inputs.operatorDatabaseUrl]),
   });
 }
@@ -1844,6 +2033,9 @@ export async function runV213FullLiveCli(
   options: {
     readonly environment?: NodeJS.ProcessEnv;
     readonly createRuntime?: (inputs: V213ProtectedInputs) => Promise<V213FullLiveBridgeRuntime>;
+    readonly createPrequalificationRuntime?: (
+      inputs: V213PrequalificationProtectedInputs,
+    ) => Promise<V213FullLiveBridgeRuntime>;
     readonly createCleanupRuntime?: (
       inputs: V213CleanupProtectedInputs,
     ) => Promise<V213FullLiveBridgeRuntime>;
@@ -1863,7 +2055,13 @@ export async function runV213FullLiveCli(
   const readFd = options.readFd ?? readProtectedFd;
   let result: V213FullLiveCommandResult;
   try {
-    if (CLEANUP_COMMANDS.has(command as V213FullLiveCommand)) {
+    if (command === "fresh-live-preflight") {
+      const inputs = readV213PrequalificationProtectedInputs(environment, readFd);
+      const runtime = await (
+        options.createPrequalificationRuntime ?? createV213PrequalificationRuntime
+      )(inputs);
+      result = await executeV213FullLiveCommand(inputs.request, runtime);
+    } else if (CLEANUP_COMMANDS.has(command as V213FullLiveCommand)) {
       const inputs = readV213CleanupProtectedInputs(environment, readFd);
       const runtime = await (options.createCleanupRuntime ?? createV213CleanupRuntime)(inputs);
       result = await executeV213FullLiveCommand(inputs.request, runtime);

@@ -88,10 +88,10 @@ function authority() {
       host: "example.neon.tech",
       database: "videoforge",
       owner_role: "videoforge_owner",
-      operator_role: "videoforge_full_live_operator",
+      operator_role: "videoforge_hosted_operator",
       operator_database_url_sha256: fingerprint,
-      runtime_role: "videoforge_runtime",
-      reconciler_role: "videoforge_reconciler",
+      runtime_role: "videoforge_hosted_runtime",
+      reconciler_role: "videoforge_hosted_reconciler",
       pgcrypto_required: true,
       first_migration: 37,
       last_migration: 45,
@@ -368,13 +368,13 @@ test("protected secret seam checks exact names, mode, hashes, and separate datab
       let secret = `${name}-value`;
       if (name === "DATABASE_URL")
         secret =
-          "postgresql://videoforge_runtime:runtime-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
+          "postgresql://videoforge_hosted_runtime:runtime-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
       if (name === "VIDEOFORGE_RECONCILER_DATABASE_URL")
         secret =
-          "postgresql://videoforge_reconciler:reconciler-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
+          "postgresql://videoforge_hosted_reconciler:reconciler-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
       if (name === "VIDEOFORGE_OPERATOR_DATABASE_URL")
         secret =
-          "postgresql://videoforge_full_live_operator:operator-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
+          "postgresql://videoforge_hosted_operator:operator-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
       if (name === "RUNPOD_API_BASE_URL") secret = "https://api.runpod.ai/v2";
       if (name === "VIDEOFORGE_MAGE_ENDPOINT_ID") secret = "mage-endpoint-1";
       if (name === "VIDEOFORGE_SOULX_ENDPOINT_ID") secret = "soulx-endpoint-1";

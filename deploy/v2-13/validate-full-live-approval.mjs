@@ -10,12 +10,12 @@ const APPROVAL_SCHEMA_V2 = "videoforge.v2-13-full-live-user-approval/v2";
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:2b782863fef0222527a10fcd1d4bb1c8bacfc58d601ebd764e1919968d781830",
+    sha256: "sha256:a00df6bc22b24042ec4ac93357bf1b6c5ada9579203d3968c2d37de1ea92f9f3",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:2d59c91bfcfd57e9b2f2ecfcdce2e85e4f288fe2dc63aedf7adcd86b14f10dea",
+    sha256: "sha256:706214cdb77574adb8ebd3b0166ef6f04b98492de9ef01e1cd092fd3ba0e635d",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -23,11 +23,11 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:8946676cae1ab8c414880e2d093fc8bbc957d97af6ee0f6a30ee052aea9bf8d0",
+    sha256: "sha256:acb5e297264ba905930bd9a7f8b372494726aa4f409ab03fb6da8a2acff4dd9",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:be1bbca1d933cd555baa768d13a9ebf33cd75be4c4214df79e09cbe7e505b241",
+    sha256: "sha256:b971a177f079246e99df93abd40b19d680a2d57c6086b2d0ab6201a2eece634f",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -313,6 +313,160 @@ const EXACT_TRUSTED_TIME_POLICY = Object.freeze({
   ]),
   normal_or_paid_operation_resume_after_expiry: false,
 });
+const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
+  operation_id: "bootstrap-prequalification-database",
+  phase: "bootstrap_prequalification_database",
+  phase_cap_usd: 0,
+  result_schema: "videoforge.v213-prequalification-database-bootstrap-result/v1",
+  ordered_before_operation: "fresh-live-preflight",
+  exact_operator_role: "videoforge_hosted_operator",
+  runtime_and_reconciler_roles_must_remain_absent: true,
+  exact_initial_ledger_prefix_count: 36,
+  exact_recoverable_prefix_counts: Object.freeze([37, 38, 39, 40, 41, 42, 43, 44, 45]),
+  reject_ledger_drift_or_count_above_45: true,
+  pgcrypto_then_exact_migrations: Object.freeze([37, 38, 39, 40, 41, 42, 43, 44, 45]),
+  each_migration_requires_advisory_lock_and_single_transaction: true,
+  owner_connection_uses_only_protected_pg_service_and_pgpass: true,
+  operator_role_created_or_recovered_from_protected_operator_dsn_only_after_migrations: true,
+  operator_role_contract: "LOGIN_NOINHERIT_HARDENED_NO_MEMBERSHIPS_OWNERSHIP_OR_TABLE_ACL",
+  grants: "EXACT_OPERATOR_FUNCTION_ONLY",
+  exact_readback: Object.freeze([
+    "45-row-ledger",
+    "pgcrypto",
+    "operator-role-flags",
+    "no-role-memberships",
+    "no-object-ownership",
+    "no-table-acl",
+    "exact-operator-function-acl",
+  ]),
+  receipt_exact_fields: Object.freeze([
+    "schema_version",
+    "ledger_before_count",
+    "ledger_before_sha256",
+    "ledger_after_sha256",
+    "operator_acl_sha256",
+    "pgcrypto_sha256",
+    "recovery_mode",
+    "runpod_calls",
+    "cloudflare_calls",
+    "application_secret_reads",
+  ]),
+  receipt_path: "prequalification-database-bootstrap.json",
+  receipt_hash_field: "prequalification_database_bootstrap_sha256",
+  receipt_replay_cas_required: true,
+  exact_operator_function_signatures: Object.freeze([
+    "videoforge_load_v213_bridge_acceptance_call(jsonb)",
+    "videoforge_record_v213_stage_authority(uuid,jsonb)",
+    "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+    "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+    "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+    "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+    "videoforge_claim_v213_stage_authority(jsonb)",
+    "videoforge_complete_v213_stage_authority(text,text,jsonb)",
+    "videoforge_load_v213_stage_handoff(uuid,text,text)",
+    "videoforge_load_v213_cleanup_scope(uuid)",
+    "videoforge_claim_v213_operation(jsonb)",
+    "videoforge_transition_v213_operation(jsonb)",
+    "videoforge_claim_v213_bridge_command(jsonb)",
+    "videoforge_transition_v213_bridge_command(jsonb)",
+    "videoforge_record_v213_receipt_verification_key(text,text)",
+    "videoforge_publish_v213_qualified_deployments(jsonb)",
+    "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+  ]),
+  recovery_modes: Object.freeze([
+    "FRESH_36_TO_45",
+    "RESUME_EXACT_PREFIX",
+    "VERIFIED_EXISTING_45",
+  ]),
+  recovery_mode_ledger_before_count: Object.freeze({
+    FRESH_36_TO_45: 36,
+    RESUME_EXACT_PREFIX: Object.freeze([37, 38, 39, 40, 41, 42, 43, 44]),
+    VERIFIED_EXISTING_45: 45,
+  }),
+  recovery_mode_final_ledger_count: 45,
+  output_name: "prequalification_database_bootstrap_sha256",
+  runpod_calls: 0,
+  cloudflare_calls: 0,
+  application_secret_reads: 0,
+  gpu_use: false,
+  external_spend_usd: 0,
+  failure_recovery:
+    "CURRENT_MIGRATION_TRANSACTION_ROLLBACK_THEN_IDEMPOTENT_EXACT_PREFIX_RESUME_BEFORE_RUNPOD_NO_DESTRUCTIVE_RESTORE_OR_GUESSING",
+  guarded_activation_consumes_verified_receipt: true,
+  guarded_activation_creates_only_runtime_and_reconciler_roles_and_grants: true,
+  guarded_activation_reapplies_migrations_or_operator_role: false,
+  guarded_activation_requires_prefix_36: false,
+});
+const EXACT_PREQUALIFICATION_BRIDGE_POLICY = Object.freeze({
+  fresh_live_preflight_command: "fresh-live-preflight",
+  prequalification_input_reader: "readV213PrequalificationProtectedInputs",
+  prequalification_runtime_factory: "createV213PrequalificationRuntime",
+  prequalification_protected_input_fields: Object.freeze([
+    "request",
+    "runpodApiKey",
+    "operatorDatabaseUrl",
+  ]),
+  prequalification_allowed_environment_names: Object.freeze([
+    "VIDEOFORGE_V213_BRIDGE_COMMAND",
+    "VIDEOFORGE_V213_BRIDGE_REQUEST_FD",
+    "VIDEOFORGE_V213_BRIDGE_RUNPOD_API_KEY_FD",
+    "VIDEOFORGE_V213_BRIDGE_OPERATOR_DATABASE_URL_FD",
+  ]),
+  prequalification_forbidden_environment_names: Object.freeze([
+    "VIDEOFORGE_V213_BRIDGE_RUNTIME_DATABASE_URL_FD",
+    "VIDEOFORGE_V213_BRIDGE_RECONCILER_DATABASE_URL_FD",
+    "VIDEOFORGE_V213_BRIDGE_WORKER_ORIGIN_FD",
+    "VIDEOFORGE_V213_BRIDGE_WORKER_OPERATOR_BEARER_FD",
+    "VIDEOFORGE_V213_BRIDGE_PRODUCTION_SECRETS_FD",
+  ]),
+  prequalification_rejects_other_prefixed_environment_names: true,
+  prequalification_runtime_has_no_runtime_reconciler_or_production_secret_inputs: true,
+  normal_input_reader: "readV213ProtectedInputs",
+  normal_runtime_factory: "createV213ProductionRuntime",
+  full_runtime_rejected_for_fresh_live_preflight: true,
+  operator_only_preflight: Object.freeze({
+    function: "preflightConcreteFullLiveInputs",
+    operator_only: true,
+    before_command: "fresh-live-preflight",
+    protected_environment_inputs: Object.freeze([
+      "VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE",
+      "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE",
+    ]),
+  }),
+  initial_executor_preflight: Object.freeze({
+    function: "preflightConcreteFullLiveInputs",
+    bootstrap_only: true,
+    allow_unmaterialized_production_input: true,
+    require_endpoint_secrets: false,
+    before_operation: "release-tag-create",
+  }),
+  staged_full_preflight: Object.freeze({
+    function: "preflightConcreteFullLiveInputs",
+    after_operation: "fresh-live-preflight",
+    before_command: "mage-live-qualification",
+    bootstrap_receipt_cas_must_have_passed: true,
+    require_endpoint_secrets: false,
+  }),
+  post_bootstrap_full_bridge_commands: Object.freeze([
+    "mage-live-qualification",
+    "soulx-live-qualification",
+    "create-exact-max-one-endpoints",
+    "v2-09-short-hosted-project",
+    "v2-10-operator-free-ranga-pilot",
+    "v2-11-two-concurrent-owned-projects",
+    "v2-12-long-output",
+    "v2-13-final-two-lane-smoke",
+  ]),
+  receipt_gate: Object.freeze({
+    adapter_option: "requirePrequalificationReceipt",
+    receipt_file: "prequalification-database-bootstrap.json",
+    prior_result_operation: "bootstrap-prequalification-database",
+    receipt_hash_field: "prequalification_database_bootstrap_sha256",
+    require_prior_result_and_file_hash_match: true,
+    fresh_live_failure_code: "BRIDGE_PREQUALIFICATION_RECEIPT",
+    guarded_activation_failure_code: "GUARDED_PREQUALIFICATION_RECEIPT",
+  }),
+});
 const EXACT_OPERATION_IDS = Object.freeze([
   "release-tag-create",
   "release-tag-push",
@@ -322,6 +476,7 @@ const EXACT_OPERATION_IDS = Object.freeze([
   "mage-image-workflow-verification",
   "soulx-image-workflow-dispatch",
   "soulx-image-workflow-verification",
+  "bootstrap-prequalification-database",
   "fresh-live-preflight",
   "mage-live-qualification",
   "soulx-live-qualification",
@@ -423,6 +578,10 @@ function validateFullLiveUserApproval({
         JSON.stringify(EXACT_INTERNAL_MATERIALIZATION_POLICY) ||
       JSON.stringify(proposal.exact_execution_graph?.trusted_time_policy) !==
         JSON.stringify(EXACT_TRUSTED_TIME_POLICY) ||
+      JSON.stringify(proposal.exact_execution_graph?.prequalification_database_bootstrap_policy) !==
+        JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY) ||
+      JSON.stringify(proposal.exact_execution_graph?.prequalification_bridge_policy) !==
+        JSON.stringify(EXACT_PREQUALIFICATION_BRIDGE_POLICY) ||
       proposal.requested_scope?.cloudflare_secret_allowlist_count !==
         EXACT_CLOUDFLARE_SECRET_NAMES.length ||
       JSON.stringify(proposal.requested_scope?.cloudflare_secret_allowlist) !==
@@ -587,6 +746,7 @@ function validateFullLiveUserApproval({
         "other_ref_creation_authorized",
       ]) ||
       !exactKeys(approvedDatabase, [
+        "exact_operator_role",
         "exact_runtime_role",
         "exact_reconciler_role",
         "roles_must_be_fresh_absent_distinct_login_noinherit_hardened",
@@ -612,11 +772,51 @@ function validateFullLiveUserApproval({
     )
       fail("IMMUTABLE_RELEASE_REF");
     if (
+      !exactKeys(requestedDatabase, [
+        "exact_operator_role",
+        "exact_runtime_role",
+        "exact_reconciler_role",
+        "roles_must_be_fresh_absent_distinct_login_noinherit_hardened",
+        "pgcrypto_required",
+        "prequalification_database_bootstrap_phase",
+        "prequalification_database_bootstrap_phase_cap_usd",
+        "prequalification_database_bootstrap_receipt_path",
+        "prequalification_database_bootstrap_receipt_hash_field",
+        "prequalification_database_bootstrap_receipt_replay_cas_required",
+        "prequalification_database_bootstrap_recovery_mode_ledger_before_count",
+        "prequalification_database_bootstrap_recovery_mode_final_ledger_count",
+        "exact_operator_function_signatures",
+        "exact_initial_ledger_prefix_count",
+        "exact_recoverable_prefix_counts",
+        "exact_migrations_to_apply",
+      ]) ||
+      requestedDatabase?.exact_operator_role !== "videoforge_hosted_operator" ||
       requestedDatabase?.exact_runtime_role !== "videoforge_hosted_runtime" ||
       requestedDatabase.exact_reconciler_role !== "videoforge_hosted_reconciler" ||
       requestedDatabase.roles_must_be_fresh_absent_distinct_login_noinherit_hardened !== true ||
+      requestedDatabase.pgcrypto_required !== true ||
+      requestedDatabase.prequalification_database_bootstrap_phase !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.phase ||
+      requestedDatabase.prequalification_database_bootstrap_phase_cap_usd !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.phase_cap_usd ||
+      requestedDatabase.prequalification_database_bootstrap_receipt_path !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.receipt_path ||
+      requestedDatabase.prequalification_database_bootstrap_receipt_hash_field !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.receipt_hash_field ||
+      requestedDatabase.prequalification_database_bootstrap_receipt_replay_cas_required !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.receipt_replay_cas_required ||
+      JSON.stringify(requestedDatabase.prequalification_database_bootstrap_recovery_mode_ledger_before_count) !==
+        JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.recovery_mode_ledger_before_count) ||
+      requestedDatabase.prequalification_database_bootstrap_recovery_mode_final_ledger_count !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.recovery_mode_final_ledger_count ||
+      JSON.stringify(requestedDatabase.exact_operator_function_signatures) !==
+        JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures) ||
+      requestedDatabase.exact_initial_ledger_prefix_count !== 36 ||
+      JSON.stringify(requestedDatabase.exact_recoverable_prefix_counts) !==
+        JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45]) ||
       JSON.stringify(requestedDatabase.exact_migrations_to_apply) !==
         JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45]) ||
+      approvedDatabase?.exact_operator_role !== requestedDatabase.exact_operator_role ||
       approvedDatabase?.exact_runtime_role !== requestedDatabase.exact_runtime_role ||
       approvedDatabase.exact_reconciler_role !== requestedDatabase.exact_reconciler_role ||
       approvedDatabase.roles_must_be_fresh_absent_distinct_login_noinherit_hardened !== true
@@ -634,6 +834,7 @@ function validateFullLiveUserApproval({
     !approval.statement.includes("no fallback") ||
     (isV3 &&
       (!approval.statement.includes("videoforge-v2-13-release-20260826-v3") ||
+        !approval.statement.includes("videoforge_hosted_operator") ||
         !approval.statement.includes("videoforge_hosted_runtime") ||
         !approval.statement.includes("videoforge_hosted_reconciler")))
   )
@@ -649,6 +850,7 @@ function validateFullLiveUserApproval({
     maximumCumulativeFiniteRunpodSpendUsd: 17.5,
     phaseCapsUsd: EXPECTED_PHASE_CAPS,
     proposalSchema: proposal.schema_version,
+    exactOperatorRole: isV3 ? approved.database_roles.exact_operator_role : null,
     exactRuntimeRole: isV3 ? approved.database_roles.exact_runtime_role : null,
     exactReconcilerRole: isV3 ? approved.database_roles.exact_reconciler_role : null,
   });
@@ -658,6 +860,8 @@ export {
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
+  EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
+  EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
   EXPECTED_PHASE_CAPS,
   validateFullLiveUserApproval,

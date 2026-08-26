@@ -28,7 +28,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_record_v213_stage_authority(uuid,jso
   public.videoforge_claim_v213_bridge_command(jsonb),
   public.videoforge_transition_v213_bridge_command(jsonb),
   public.videoforge_record_v213_receipt_verification_key(text,text),
-  public.videoforge_publish_v213_qualified_deployments(jsonb)
+  public.videoforge_publish_v213_qualified_deployments(jsonb),
+  public.videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)
 TO :"operator_role";
 SELECT has_function_privilege(:'operator_role',
   'public.videoforge_load_v213_bridge_acceptance_call(jsonb)','EXECUTE')
@@ -46,6 +47,8 @@ SELECT has_function_privilege(:'operator_role',
     'public.videoforge_record_v213_cloudflare_activation(uuid,jsonb)','EXECUTE')
   AND has_function_privilege(:'operator_role',
     'public.videoforge_record_v213_cloudflare_rollback(uuid,jsonb)','EXECUTE')
+  AND has_function_privilege(:'operator_role',
+    'public.videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)','EXECUTE')
   AND NOT has_table_privilege(:'operator_role','public.hosted_full_live_acceptance_authorities','SELECT')
   AND NOT has_table_privilege(:'operator_role','public.hosted_full_live_stage_handoff_escrow','SELECT')
   AS operator_acl_exact

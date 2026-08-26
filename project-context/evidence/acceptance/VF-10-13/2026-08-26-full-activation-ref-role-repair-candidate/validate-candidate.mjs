@@ -7,6 +7,8 @@ import {
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
+  EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
+  EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
 } from "../../../../../deploy/v2-13/validate-full-live-approval.mjs";
 
@@ -59,6 +61,69 @@ assert(
   JSON.stringify(proposal.exact_execution_graph.trusted_time_policy) ===
     JSON.stringify(EXACT_TRUSTED_TIME_POLICY),
   "EXACT_TRUSTED_TIME_POLICY",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.prequalification_database_bootstrap_policy) ===
+    JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY),
+  "EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.prequalification_bridge_policy) ===
+    JSON.stringify(EXACT_PREQUALIFICATION_BRIDGE_POLICY),
+  "EXACT_PREQUALIFICATION_BRIDGE_POLICY",
+);
+assert(
+  JSON.stringify(proposal.exact_execution_graph.ordered_operation_ids.slice(7, 10)) ===
+    JSON.stringify([
+      "soulx-image-workflow-verification",
+      "bootstrap-prequalification-database",
+      "fresh-live-preflight",
+    ]),
+  "PREQUALIFICATION_DATABASE_BOOTSTRAP_ORDER",
+);
+assert(
+  JSON.stringify(proposal.requested_scope.database) ===
+    JSON.stringify({
+      exact_operator_role: "videoforge_hosted_operator",
+      exact_runtime_role: "videoforge_hosted_runtime",
+      exact_reconciler_role: "videoforge_hosted_reconciler",
+      roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
+      pgcrypto_required: true,
+      prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
+      prequalification_database_bootstrap_phase_cap_usd: 0,
+      prequalification_database_bootstrap_receipt_path: "prequalification-database-bootstrap.json",
+      prequalification_database_bootstrap_receipt_hash_field: "prequalification_database_bootstrap_sha256",
+      prequalification_database_bootstrap_receipt_replay_cas_required: true,
+      prequalification_database_bootstrap_recovery_mode_ledger_before_count: {
+        FRESH_36_TO_45: 36,
+        RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44],
+        VERIFIED_EXISTING_45: 45,
+      },
+      prequalification_database_bootstrap_recovery_mode_final_ledger_count: 45,
+      exact_operator_function_signatures: [
+        "videoforge_load_v213_bridge_acceptance_call(jsonb)",
+        "videoforge_record_v213_stage_authority(uuid,jsonb)",
+        "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+        "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+        "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+        "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+        "videoforge_claim_v213_stage_authority(jsonb)",
+        "videoforge_complete_v213_stage_authority(text,text,jsonb)",
+        "videoforge_load_v213_stage_handoff(uuid,text,text)",
+        "videoforge_load_v213_cleanup_scope(uuid)",
+        "videoforge_claim_v213_operation(jsonb)",
+        "videoforge_transition_v213_operation(jsonb)",
+        "videoforge_claim_v213_bridge_command(jsonb)",
+        "videoforge_transition_v213_bridge_command(jsonb)",
+        "videoforge_record_v213_receipt_verification_key(text,text)",
+        "videoforge_publish_v213_qualified_deployments(jsonb)",
+        "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)"
+      ],
+      exact_initial_ledger_prefix_count: 36,
+      exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45],
+      exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45],
+    }),
+  "PREQUALIFICATION_DATABASE_SCOPE",
 );
 assert(
   proposal.ordered_operations

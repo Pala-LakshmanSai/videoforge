@@ -8,10 +8,12 @@ import {
   V213FullLiveBridgeError,
   createV213CleanupRuntime,
   createV213FullLiveProductionRuntime,
+  createV213PrequalificationRuntime,
   createV213ProductionRuntime,
   createV213WorkflowHttpBinding,
   executeV213FullLiveCommand,
   readV213CleanupProtectedInputs,
+  readV213PrequalificationProtectedInputs,
   readV213ProtectedInputs,
   redactV213Output,
   runV213FullLiveCli,
@@ -32,6 +34,54 @@ function request(command: V213FullLiveCommand): V213FullLiveCommandRequest {
     command,
     input: { exact: true },
   };
+}
+
+function prequalificationRequest(): V213FullLiveCommandRequest {
+  const lane = (name: "mage" | "soulx", sourceCommit: string, imageHash: string) => ({
+    lane: name,
+    publicImage: `ghcr.io/example/${name}@sha256:${imageHash}`,
+    sourceCommit,
+    deploymentSha256: HASH,
+    volumeId: `volume-${name}`,
+    volumeIdSha256: `sha256:${"b".repeat(64)}`,
+    volumeManifestSha256: `sha256:${"c".repeat(64)}`,
+    receiptKeyId: "receipt-key-1",
+  });
+  return {
+    ...request("fresh-live-preflight"),
+    input: {
+      schemaVersion: "videoforge.v213-full-live-production-input/v1",
+      outerStateSha256: HASH,
+      fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+      dualLaneInput: {
+        accountIdSha256: HASH,
+        mage: lane("mage", "1".repeat(40), "1".repeat(64)),
+        soulx: lane("soulx", "2".repeat(40), "2".repeat(64)),
+        billingBaselineUsd: 0,
+        totalCapUsd: 17.5,
+        mageQualificationCapUsd: 4.5,
+        soulxQualificationCapUsd: 1,
+        stageAuthorityPublicKeyPem: "-----BEGIN PUBLIC KEY-----\nfixture\n-----END PUBLIC KEY-----",
+        envelopes: {
+          mage: {},
+          soulx2s: {},
+          soulx4s: {},
+          soulx6s: {},
+          soulx10s: {},
+          soulxCancel: {},
+          soulxInvalidOutput: {},
+          soulxTimeout: {},
+        },
+      },
+      commandPayload: {
+        authorityDocument: {
+          sourceCommit: "1".repeat(40),
+          maximumCumulativeSpendUsd: 17.5,
+          singleUse: true,
+        },
+      },
+    },
+  } as never;
 }
 
 function runtime(
@@ -179,9 +229,77 @@ describe("V2-13 full-live TypeScript bridge", () => {
     });
   });
 
-  it("requires exact protected descriptor inputs and rejects ambient bridge extras", () => {
+  it("constructs prequalification with only operator/RunPod inputs and no key registration", async () => {
+    const database = {
+      query: vi.fn(),
+      transaction: vi.fn(),
+    };
+    const createOperatorDatabase = vi.fn(() => database as never);
+    const inputs = {
+      request: prequalificationRequest(),
+      runpodApiKey: "r".repeat(32),
+      operatorDatabaseUrl: "postgres://operator@example/db",
+    } as const;
+    const runtime = await createV213PrequalificationRuntime(inputs, {
+      fetch: vi.fn(),
+      now: () => new Date("2026-08-26T00:00:00.000Z"),
+      sleep: vi.fn(),
+      createOperatorDatabase,
+    });
+    expect(createOperatorDatabase).toHaveBeenCalledOnce();
+    expect(database.query).not.toHaveBeenCalled();
+    expect(runtime.protectedValues).toEqual([inputs.runpodApiKey, inputs.operatorDatabaseUrl]);
+    expect(Object.hasOwn(runtime, "runtimePool")).toBe(false);
+    expect(Object.hasOwn(runtime, "reconcilerPool")).toBe(false);
+    expect(Object.hasOwn(runtime, "productionSecrets")).toBe(false);
+    await expect(runtime.handlers["mage-live-qualification"](inputs.request)).rejects.toEqual(
+      expect.objectContaining({ code: "PREQUALIFICATION_COMMAND_NOT_ALLOWED" }),
+    );
+  });
+
+  it("uses an operator-only prequalification descriptor and rejects full-input widening", () => {
     const values = new Map([
       ["10", JSON.stringify(request("fresh-live-preflight"))],
+      ["11", "r".repeat(32)],
+      ["12", "postgres://operator@example/db"],
+    ]);
+    const environment = {
+      [V213_BRIDGE_ENVIRONMENT.command]: "fresh-live-preflight",
+      [V213_BRIDGE_ENVIRONMENT.requestFd]: "10",
+      [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "11",
+      [V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd]: "12",
+    };
+    const reads: string[] = [];
+    const readFd = (fd: string | undefined) => {
+      reads.push(fd ?? "");
+      return values.get(fd ?? "") ?? "";
+    };
+    expect(readV213PrequalificationProtectedInputs(environment, readFd)).toMatchObject({
+      request: { command: "fresh-live-preflight" },
+      runpodApiKey: "r".repeat(32),
+      operatorDatabaseUrl: "postgres://operator@example/db",
+    });
+    expect(reads).toEqual(["10", "11", "12"]);
+    expect(() => readV213ProtectedInputs(environment, readFd)).toThrowError(
+      expect.objectContaining({ code: "PREQUALIFICATION_INPUTS_REQUIRED" }),
+    );
+    expect(() =>
+      readV213PrequalificationProtectedInputs(
+        { ...environment, [V213_BRIDGE_ENVIRONMENT.runtimeDatabaseUrlFd]: "13" },
+        readFd,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "PREQUALIFICATION_AMBIENT_BINDING_REJECTED" }));
+    expect(() =>
+      readV213PrequalificationProtectedInputs(
+        { ...environment, VIDEOFORGE_V213_BRIDGE_EXTRA_SECRET: "bad" },
+        readFd,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "PREQUALIFICATION_AMBIENT_BINDING_REJECTED" }));
+  });
+
+  it("keeps the normal post-bootstrap descriptor strict", () => {
+    const values = new Map([
+      ["10", JSON.stringify(request("mage-live-qualification"))],
       ["11", "r".repeat(32)],
       ["12", "postgres://runtime@example/db"],
       ["13", "postgres://reconciler@example/db"],
@@ -206,7 +324,7 @@ describe("V2-13 full-live TypeScript bridge", () => {
       ],
     ]);
     const environment = {
-      [V213_BRIDGE_ENVIRONMENT.command]: "fresh-live-preflight",
+      [V213_BRIDGE_ENVIRONMENT.command]: "mage-live-qualification",
       [V213_BRIDGE_ENVIRONMENT.requestFd]: "10",
       [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "11",
       [V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd]: "14",
@@ -218,13 +336,12 @@ describe("V2-13 full-live TypeScript bridge", () => {
     };
     const readFd = (fd: string | undefined) => values.get(fd ?? "") ?? "";
     expect(readV213ProtectedInputs(environment, readFd).request.command).toBe(
-      "fresh-live-preflight",
+      "mage-live-qualification",
     );
-    const preEndpoint = JSON.parse(values.get("17") ?? "{}");
     values.set(
       "17",
       JSON.stringify({
-        ...preEndpoint,
+        ...JSON.parse(values.get("17") ?? "{}"),
         schemaVersion: "videoforge.v213-full-live-production-secrets/v1",
         mageEndpointId: "mage-endpoint-1",
         soulxEndpointId: "soulx-endpoint-1",
@@ -233,27 +350,6 @@ describe("V2-13 full-live TypeScript bridge", () => {
     expect(() => readV213ProtectedInputs(environment, readFd)).toThrowError(
       expect.objectContaining({ code: "PRODUCTION_SECRETS_INVALID" }),
     );
-    values.set("10", JSON.stringify(request("v2-09-short-hosted-project")));
-    values.set("17", JSON.stringify(preEndpoint));
-    expect(() =>
-      readV213ProtectedInputs(
-        { ...environment, [V213_BRIDGE_ENVIRONMENT.command]: "v2-09-short-hosted-project" },
-        readFd,
-      ),
-    ).toThrowError(expect.objectContaining({ code: "PRODUCTION_SECRETS_INVALID" }));
-    values.set("10", JSON.stringify(request("fresh-live-preflight")));
-    expect(() =>
-      readV213ProtectedInputs(
-        { ...environment, VIDEOFORGE_V213_BRIDGE_EXTRA_SECRET: "bad" },
-        readFd,
-      ),
-    ).toThrowError(expect.objectContaining({ code: "AMBIENT_BINDING_REJECTED" }));
-    expect(() =>
-      readV213ProtectedInputs(
-        { ...environment, [V213_BRIDGE_ENVIRONMENT.requestFd]: "99" },
-        readFd,
-      ),
-    ).toThrowError(expect.objectContaining({ code: "REQUEST_JSON_INVALID" }));
   });
 
   it("executes early cleanup through only the operator and RunPod seams", async () => {
