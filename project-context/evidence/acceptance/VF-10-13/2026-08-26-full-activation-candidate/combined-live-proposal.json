@@ -1,0 +1,367 @@
+{
+  "schema_version": "videoforge.v2-13-full-live-completion-proposal/v2",
+  "checkpoint_range": ["V2-07", "V2-08", "V2-09", "V2-10", "V2-11", "V2-12", "V2-13"],
+  "task_id": "VF-10-13",
+  "candidate_date": "2026-08-26",
+  "proposal_status": "PENDING_FRESH_EXACT_USER_APPROVAL",
+  "source": {
+    "release_source_commit": "407dc070f4b83bd78b1d4aa1cb546ec63c91f32f",
+    "proposal_record_commit": null,
+    "proposal_record_commit_must_be_recorded_by_future_approval": true,
+    "release_and_proposal_commits_are_distinct_lineage_fields": true,
+    "branch": "codex/serverless-v2-roadmap",
+    "push_target": "origin/codex/serverless-v2-roadmap",
+    "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate/combined-live-proposal.json",
+    "future_approval_record_basename": "user-approval.json"
+  },
+  "authority": {
+    "exact_proposal_approved": false,
+    "approval_sha256": null,
+    "authority_id": null,
+    "approved_at": null,
+    "expires_at": null,
+    "execute_authorized": false,
+    "credential_access_authorized": false,
+    "database_mutation_authorized": false,
+    "cloudflare_secret_mutation_authorized": false,
+    "deployment_authorized": false,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "external_spend_authorized": false,
+    "executable_finite_cap_usd": null,
+    "retained_volume_continuation_authorized": false,
+    "new_paid_retained_resources_authorized": false,
+    "recurring_plan_change_authorized": false,
+    "single_use": true,
+    "consumed": false,
+    "redispatch_authorized": false
+  },
+  "fresh_read_only_preflight": {
+    "observed_date": "2026-08-26",
+    "made_no_mutations_and_incurred_no_spend": true,
+    "runpod": {
+      "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+      "stable_read_count": 3,
+      "pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_workers": 0,
+      "running_workers": 0,
+      "selected_gpu": "NVIDIA GeForce RTX 4090",
+      "region": "EU-RO-1",
+      "availability": "HIGH",
+      "secure_reference_rate_usd_per_gpu_hour": 0.74,
+      "serverless_flex_rate_usd_per_gpu_hour": 1.1,
+      "cumulative_endpoint_billing_usd": 2.214659276913153,
+      "late_increment_since_attempt64_baseline_usd": 0.118769721360877,
+      "late_increment_attributed_to_this_preflight": false
+    },
+    "retained_volumes": [
+      {
+        "lane": "mage",
+        "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "recurring_usd_per_month": 3.5
+      },
+      {
+        "lane": "soulx",
+        "volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1",
+        "recurring_usd_per_month": 3.5
+      }
+    ],
+    "cloudflare": {
+      "account_id_sha256": "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8",
+      "active_version_id_sha256": "sha256:1e5d35b4c2709641024655c7df5832f360aeb665068804f07ecc600a68186e19",
+      "active_record_sha256": "sha256:54cd4dcb8a5b2afe8ca8cad9f7aad7dd6d47ef14b36ef0f7b03c7ba90a234c89",
+      "protected_config_sha256": "sha256:da8c9232c9f6fe0f745a16f56f0855d726092df205e08eda6725fc0a146db774",
+      "protected_config_mode": "0600",
+      "route_probe_count": 3,
+      "route_result": "POST_404_V207_ROUTE_DISABLED",
+      "signer_present": false,
+      "production_worker_present": false,
+      "exact_production_workflows_present": false,
+      "staging_private_r2_bucket_present": true,
+      "required_activation_secrets_present": ["DATABASE_URL"],
+      "remaining_required_activation_secrets_absent": true
+    },
+    "neon": {
+      "owner_connection_read_only_succeeded": true,
+      "remote_migration_ledger_first": 1,
+      "remote_migration_ledger_last": 36,
+      "local_migration_ledger_last": 44,
+      "migrations_to_apply": [37, 38, 39, 40, 41, 42, 43, 44],
+      "pgcrypto_present": false,
+      "runtime_role_present": false,
+      "reconciler_role_present": false
+    },
+    "local": {
+      "disk_free_gib_approx": 4.55,
+      "github_authenticated": true,
+      "repository_visibility": "public",
+      "external_calls_after_preflight": 0,
+      "mutations": 0,
+      "gpu_use": 0,
+      "spend_usd": 0
+    }
+  },
+  "requested_scope": {
+    "maximum_cumulative_finite_runpod_spend_usd": 17.5,
+    "phase_caps_usd": {
+      "mage_qualification": 4.5,
+      "soulx_qualification": 1,
+      "v2_09_short_hosted_project": 2,
+      "v2_10_operator_free_ranga_pilot": 2,
+      "v2_11_two_concurrent_owned_projects": 4,
+      "v2_12_long_output": 2,
+      "v2_13_final_two_lane_smoke": 2
+    },
+    "phase_caps_sum_to_cumulative_cap": true,
+    "billing_lag_requires_full_open_liability_reservation": true,
+    "provider_free_activation": {
+      "github_publication_expected_runpod_spend_usd": 0,
+      "database_activation_expected_runpod_spend_usd": 0,
+      "cloudflare_activation_expected_runpod_spend_usd": 0,
+      "stop_on_metered_plan_or_new_paid_resource": true
+    },
+    "gpu": {
+      "exact_offering": "NVIDIA GeForce RTX 4090",
+      "region": "EU-RO-1",
+      "minimum_availability_at_each_mutation_boundary": "LOW-or-better",
+      "maximum_serverless_flex_rate_usd_per_gpu_hour": 1.1,
+      "fallback_allowed": false
+    },
+    "retention": {
+      "retain_only_the_two_preexisting_volumes": true,
+      "combined_size_gb": 100,
+      "combined_recurring_usd_per_month": 7,
+      "recurring_charge_is_separate_from_finite_cap": true,
+      "new_volumes_authorized": 0,
+      "volume_resize_move_or_replacement_authorized": false,
+      "recurring_plan_change_authorized": false,
+      "separate_fresh_consent_required": true
+    },
+    "creation_allowlist": {
+      "cloudflare": [
+        "disabled Worker videoforge-production-runtime",
+        "disabled Workflow videoforge-production-runtime",
+        "disabled Workflow videoforge-production-runtime-pair"
+      ],
+      "runpod_after_both_lane_qualifications_only": [
+        "one exact qualified Mage production template",
+        "one exact qualified Mage production endpoint with workersMin=0 and workersMax=1",
+        "one exact qualified SoulX production template",
+        "one exact qualified SoulX production endpoint with workersMin=0 and workersMax=1"
+      ],
+      "database": [
+        "pgcrypto extension",
+        "migrations 0037 through 0044",
+        "one fresh hardened runtime role",
+        "one distinct fresh hardened reconciler role"
+      ],
+      "r2_buckets": [],
+      "volumes": [],
+      "other_resources": [],
+      "paid_retained_resources": []
+    }
+  },
+  "guarded_activation_child_contract": {
+    "executor": "deploy/v2-13/guarded-activation.mjs",
+    "maximum_cumulative_finite_external_spend_usd": 0,
+    "current_provider_calls_authorized": false,
+    "future_execute_provider_calls_authorized": true,
+    "gpu_use_authorized": false,
+    "exact_quarantine_creation_only": true,
+    "worker_name": "videoforge-production-runtime",
+    "workflow_names": ["videoforge-production-runtime", "videoforge-production-runtime-pair"],
+    "initial_state": "DISABLED_UNQUALIFIED",
+    "r2_bucket_creation_authorized": false,
+    "new_paid_retained_resources_authorized": false,
+    "other_resource_creation_authorized": false,
+    "plan_change_authorized": false,
+    "future_authority_must_bind": [
+      "unique authority_id",
+      "this exact proposal path and sha256",
+      "future exact user-approval path and sha256",
+      "release source commit 407dc070f4b83bd78b1d4aa1cb546ec63c91f32f",
+      "proposal record commit",
+      "approved_at and at-most-24-hour expires_at checked against trusted Cloudflare Date",
+      "single_use true and durable pre-credential consumption fence",
+      "exact account, absent Worker, absent two Workflow, exact existing R2 bucket name plus complete inventory/readback hash, route, secret, database, qualification, deployment, and paid-authority readback hashes"
+    ],
+    "partial_failure_policy": "KEEP_ONLY_EXACT_SECRET_FREE_DISABLED_QUARANTINE_ELSE_DELETE_ONLY_ABSENCE_PROVEN_ATTRIBUTABLE_WORKER_AND_WORKFLOWS"
+  },
+  "ordered_operations": [
+    {
+      "order": 1,
+      "phase": "publish_exact_candidate_record",
+      "operations": [
+        "commit and push the exact proposal-record commit while preserving release source commit 407dc070f4b83bd78b1d4aa1cb546ec63c91f32f as a separate immutable field",
+        "require remote origin/codex/serverless-v2-roadmap equality and rehash the exact proposal bytes",
+        "record no approval or execution authority unless the later user-approval record binds both the proposal sha256 and proposal-record commit"
+      ]
+    },
+    {
+      "order": 2,
+      "phase": "publish_public_lane_images",
+      "operations": [
+        "dispatch .github/workflows/mage-image.yml and .github/workflows/avatar-primary-serverless-image.yml from the exact release source commit with publish=true",
+        "require each Actions run head SHA to equal 407dc070f4b83bd78b1d4aa1cb546ec63c91f32f",
+        "for Mage accept only exact deterministic published-or-idempotently-reused manifest bytes; for SoulX require an empty expected_existing_digest on first publication and an exact post-run digest only for an idempotent rerun",
+        "bind only returned post-run immutable manifest, config, layer, source, and deployability hashes; never pre-claim an image digest",
+        "prove anonymous public manifest and every referenced blob before any provider mutation; stop on any source, run-head, registry, tag, digest, visibility, or evidence mismatch"
+      ]
+    },
+    {
+      "order": 3,
+      "phase": "fresh_provider_admission",
+      "operations": [
+        "repeat exact RunPod account, three-read zero-compute inventory, retained-volume identities, catalog, rate, cumulative billing, and local-disk checks",
+        "repeat exact Cloudflare account, disabled anchor, protected-config mode and hash, absent signer, production Worker and both exact Workflow absence, existing R2 inventory, route, and empty pre-quarantine secret checks",
+        "require NVIDIA GeForce RTX 4090 in EU-RO-1 at LOW-or-better and Serverless Flex at or below USD 1.10 per GPU-hour at every mutation boundary",
+        "stop before mutation on any drift; no GPU, region, volume, image, model, endpoint, rate, account, or resource fallback"
+      ]
+    },
+    {
+      "order": 4,
+      "phase": "mage_qualification",
+      "phase_cap_usd": 4.5,
+      "operations": [
+        "qualify the freshly published exact Mage image first against only the existing sealed Mage 50 GB EU-RO-1 volume",
+        "require immutable output, timing, VRAM, duplicate-delivery, cancellation, timeout, volume-integrity, cleanup, three stable zero-compute, and settled-billing evidence",
+        "on any failure or uncertainty stop without redispatch, delete only attributable disposable resources, prove zero compute, settle open liability, and do not begin SoulX"
+      ]
+    },
+    {
+      "order": 5,
+      "phase": "soulx_qualification",
+      "phase_cap_usd": 1,
+      "operations": [
+        "only after Mage PASS, qualify the freshly published exact SoulX image against only the existing sealed SoulX 50 GB EU-RO-1 volume",
+        "run exact 2-second, 4-second, 6-second, and 10-second fixtures using the approved full and split profile group soulx-pro-vf924u-full-split-v1",
+        "require immutable output, timing, VRAM, signed identity, crop-profile, volume-integrity, cleanup, three stable zero-compute, and settled-billing evidence",
+        "on any failure or uncertainty stop without redispatch, delete only attributable disposable resources, prove zero compute, settle open liability, and do not create production endpoints"
+      ]
+    },
+    {
+      "order": 6,
+      "phase": "create_exact_max_one_lane_control_plane",
+      "operations": [
+        "only after both lane qualifications PASS, create exactly one immutable template and one production Serverless endpoint for each lane",
+        "bind each endpoint to its exact existing retained volume and post-run qualified public image with workersMin=0 and workersMax=1",
+        "prohibit runtime model download, cross-mount, model-volume writes, unqualified GPU fallback, extra endpoints, extra templates, Pods, volumes, or paid retained resources",
+        "read back exact image, model, volume, GPU, region, rate, min/max worker, endpoint, template, and sealed deployment identities"
+      ]
+    },
+    {
+      "order": 7,
+      "phase": "guarded_cloudflare_database_and_secret_activation",
+      "operations": [
+        "invoke the child guarded activation with GPU=false, external-spend-cap USD 0, and provider calls limited to the exact approved database and Cloudflare activation operations under a future single-use authority bound to this proposal and its exact user approval",
+        "create only the exact disabled Worker videoforge-production-runtime and exact disabled Workflows videoforge-production-runtime and videoforge-production-runtime-pair; create no R2 bucket, plan, or other retained resource",
+        "use the two-stage secret-free bootstrap/full config and prove exact DISABLED_UNQUALIFIED bindings, existing R2 attachment, closed inventory pages, unconfigured route, and empty secret set before database mutation",
+        "inside that same single-use child execution, recheck the exact Neon owner target, trusted database time, absent fresh target roles, and exact remote migration ledger prefix 1 through 36 only after the disabled quarantine readback",
+        "create pgcrypto, apply only migrations 0037 through 0044 in exact manifest order, create distinct fresh LOGIN NOINHERIT runtime and reconciler roles, apply exact grants and revocations, and prove full ledger 1 through 44, role hardening, ownership and membership absence, exact function allowlists, runtime RLS, and zero reconciler table grants",
+        "only after the quarantine, database, qualification, endpoint, config, and authority gates PASS, upload the exact closed-world 21-name secret set without exposing bytes and deploy the exact disabled release",
+        "read back every secret-created version and final version as the exact source commit and exact disabled Worker, routes, R2, VIDEO_WORKFLOW, and HOSTED_PAIR_WORKFLOW bindings before an explicit qualified transition"
+      ]
+    },
+    {
+      "order": 8,
+      "phase": "v2_09_short_hosted_project",
+      "phase_cap_usd": 2,
+      "operations": [
+        "run exactly one tenant-private 30-to-60-second hosted project using canonical plan sha256:f975e2be15db227e96c6ea06f025c3f7ead025a5f80b80e9e2b0ac1f9fd6a4ea and real Chrome",
+        "atomically reserve the full USD 2 phase cap within the USD 17.50 cumulative cap, dispatch exact one-Mage/two-SoulX work once, cancel at 20 minutes, stop at 30 minutes, and never redispatch",
+        "settle only with terminal exact pair, durable artifacts, both signed zero-worker proofs, fresh billing, and total phase exposure at or below USD 2"
+      ]
+    },
+    {
+      "order": 9,
+      "phase": "v2_10_operator_free_ranga_pilot",
+      "phase_cap_usd": 2,
+      "operations": [
+        "run exactly one operator-free 3-to-5-minute Ranga-style MP4 with frozen voiceover, exact style/profile/work counts, every-cut review, real Chrome playback, hashes, probes, cost, terminal jobs, and zero workers",
+        "do not substitute recovery tests, fixtures, manual Pod lifecycle, or developer intervention for the accepted pilot"
+      ]
+    },
+    {
+      "order": 10,
+      "phase": "v2_11_two_concurrent_owned_projects",
+      "phase_cap_usd": 4,
+      "operations": [
+        "temporarily raise exact lane endpoints from workersMax=1 to workersMax=2 only for two concurrent owned projects across two accounts",
+        "prove one active provider workload per account, two globally, queue fairness, exact tenant isolation, one essential recovery or cancellation path, four distinct durable receipts, two readers per lane, terminal jobs, and zero workers",
+        "restore both endpoints to workersMax=1 before leaving this phase; stop on any foreign result, duplicate dispatch, or restore uncertainty"
+      ]
+    },
+    {
+      "order": 11,
+      "phase": "v2_12_long_output",
+      "phase_cap_usd": 2,
+      "operations": [
+        "run exactly one automatic 29-to-31-minute mixed output and prove durable output/readback, measured timing, every-cut quality review, real Chrome playback, terminal jobs, and zero workers",
+        "apply the USD 2 hard phase ceiling independently of the separate retained-volume charge"
+      ]
+    },
+    {
+      "order": 12,
+      "phase": "v2_13_final_two_lane_smoke_and_release",
+      "phase_cap_usd": 2,
+      "operations": [
+        "run exactly one fresh final two-lane smoke against the final immutable release",
+        "prove all security, economics, route, deployment, artifact-lineage, tenant-private, rollback, restart/reconcile, terminal-job, independent drain, and settled-billing gates",
+        "leave liveReleaseAuthorized false unless a separate explicit release-authority record is issued after every gate passes"
+      ]
+    },
+    {
+      "order": 13,
+      "phase": "final_cleanup_and_reconciliation",
+      "operations": [
+        "restore both production endpoints to workersMax=1 and workersMin=0 and require every owned queue empty",
+        "delete every attributable disposable Pod, qualification/test endpoint, qualification/test template, signer, temporary output, and partial secret set; retain only the two exact approved volumes and exact intended zero-idle production control resources",
+        "prove three stable zero-active-worker and zero-running-Pod reads, exact max-one endpoint configurations, protected config, final route, final billing after lag, phase and cumulative spend reconciliation, and no unauthorized resource",
+        "consume and close the authority permanently; any incomplete or failed phase requires a new proposal and fresh approval"
+      ]
+    }
+  ],
+  "global_fences": {
+    "mage_must_pass_before_soulx": true,
+    "both_qualifications_must_pass_before_production_endpoints": true,
+    "accepted_work_is_never_redispatched": true,
+    "failed_ambiguous_or_cancelled_work_is_never_redispatched_under_this_authority": true,
+    "workers_min_zero_outside_bounded_tests": true,
+    "ordinary_users_cannot_select_gpus_or_manage_endpoints": true,
+    "one_active_provider_workload_per_account": true,
+    "two_active_provider_workloads_globally": true,
+    "hard_cuts_only_no_motion_graphics_text_overlays_captions_lower_thirds_decorative_graphics_borders_watermarks_title_cards_or_decorative_transitions": true,
+    "slow_smooth_zoom_on_ai_images_required_and_allowed": true,
+    "credentials_and_secret_values_never_enter_evidence": true
+  },
+  "stop_conditions": [
+    "the exact proposal sha256, release source commit, proposal record commit, USD 17.50 cumulative cap, seven exact phase caps, and separate USD 7/month same-two-volume retention consent are not freshly approved in one exact approval record",
+    "authority ID is absent or reused, approval or expiry is invalid, trusted current time is unavailable, the at-most-24-hour expiry elapsed, the durable consumption fence exists or cannot be created, or any child authority fails to bind the exact proposal and approval bytes",
+    "source, branch, remote ref, workflow run head, repository, registry, image, public digest, manifest, config, layer, schema, model, crop approval, deployment snapshot, account, credential target, database ledger, role, ACL, RLS, volume, endpoint, template, Worker, Workflow, R2, route, signer, secret-set, protected config, or evidence hash drift or uncertainty",
+    "NVIDIA GeForce RTX 4090 in EU-RO-1 is below LOW availability at any mutation boundary or Serverless Flex exceeds USD 1.10 per GPU-hour; no fallback",
+    "fresh cumulative billing cannot be read, open billing-lag liability cannot be reserved, any phase cap or the USD 17.50 maximum cumulative RunPod finite cap is reached or at risk, or the ledger/reservations do not reconcile",
+    "any metered GitHub, database, Cloudflare, or other plan is required; any new paid retained resource, R2 bucket, volume, volume resize/move/replacement, region change, or recurring charge change is required beyond separate continued USD 7/month retention of the same two volumes",
+    "migration, pgcrypto, role separation, ACL, RLS, quarantine creation, secret provisioning, config render, firewall, Worker, Workflow, route, endpoint, deployment, qualified transition, or rollback readback fails or is ambiguous",
+    "any qualification, output, receipt, identity, timing, VRAM, crop profile, duplicate delivery, cancellation, timeout, recovery, concurrency, fairness, tenant isolation, long output, volume integrity, cleanup, zero worker, settlement, invoice, or real Chrome acceptance is missing, failed, stale, foreign, or uncertain",
+    "any provider response would require redispatch, fallback, relaxed acceptance, unbounded waiting, scope expansion, cap expansion, or a second repair cycle",
+    "zero-compute proof, max-one restoration, attributable-resource cleanup, protected-config restoration, final route, or billing settlement cannot be completed exactly",
+    "user cancellation"
+  ],
+  "approval_request": {
+    "requested_exact_action": "Approve this exact proposal sha256 for one single-use ordered live-completion execution only",
+    "requested_maximum_cumulative_finite_runpod_spend_usd": 17.5,
+    "requested_exact_phase_caps_usd": [4.5, 1, 2, 2, 4, 2, 2],
+    "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, Serverless Flex at or below USD 1.10/GPU-hour, no fallback",
+    "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
+    "requested_new_volumes": 0,
+    "requested_new_paid_retained_resources": 0,
+    "authority_becomes_executable_only_after_exact_hash_and_commits_approval_is_recorded": true
+  }
+}
