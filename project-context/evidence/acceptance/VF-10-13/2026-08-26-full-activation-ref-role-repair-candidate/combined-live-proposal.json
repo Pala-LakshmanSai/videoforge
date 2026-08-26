@@ -10,16 +10,20 @@
     "required_next_action": "obtain fresh exact user approval for this sealed proposal before any authority record, credential access, provider call, mutation, GPU use, or spend"
   },
   "supersession": {
-    "supersedes_proposal_sha256": "sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a",
-    "supersedes_proposal_record_commit": "12dfae95d14fedf6fde440d1e6367c2d0564e2d4",
-    "superseded_authority_id": "v2-13-full-live-20260826-101824z-12dfae9",
+    "supersedes_proposal_sha256": "sha256:2e6a605d3b1fd973a438207006d938bdedcc6456135f09cefaecc013295d2958",
+    "supersedes_proposal_record_commit": "9eaf276ebeda4d1fa63032d4c908a21415415678",
+    "superseded_authority_id": "v2-13-full-live-20260826-173620z-a4bc4fd",
+    "superseded_approval_sha256": "sha256:23b911037f79bf3628429822824406bbfc66930d138b022acf8aa9fc7f6c649f",
+    "superseded_approval_record_commit": "9eaf276ebeda4d1fa63032d4c908a21415415678",
+    "superseded_authority_record_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/approved-authority.json",
+    "supersession_reason": "SOURCE_LINEAGE_REPAIR_REQUIRED",
     "superseded_authority_state": "SUPERSEDED_UNCONSUMED_NO_MUTATION",
     "prior_approval_reusable": false,
     "fresh_exact_approval_required": true
   },
   "source": {
-    "release_source_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
-    "repaired_release_source_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
+    "release_source_commit": "7444ed08ed16b618637b8aa29a93be7c89d1642a",
+    "repaired_release_source_commit": "7444ed08ed16b618637b8aa29a93be7c89d1642a",
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
     "future_authority_record_commit": null,
@@ -48,7 +52,7 @@
       },
       "orchestration_authority": {
         "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-        "sha256": "sha256:e19d6f2bbce9e9634cc9d2dae21fc1e0451f4a06a1bd2bc076f813a236660be3"
+        "sha256": "sha256:6ae31d020f61518fc880b57f32f4d5fd2e35b780a188e2fd1b290d38cd2d5271"
       },
       "typescript_cli_bridge": {
         "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -796,7 +800,7 @@
     "creation_requested": true,
     "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-    "exact_target_commit": "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
+    "exact_target_commit": "7444ed08ed16b618637b8aa29a93be7c89d1642a",
     "tag_kind": "LIGHTWEIGHT",
     "maximum_new_refs": 1,
     "force_update_authorized": false,
@@ -807,10 +811,10 @@
       "fresh exact approval of this v3 proposal and a committed exact authority record",
       "outer single-use authority consumed locally before credential access or external action",
       "remote exact tag absence proved immediately before creation",
-      "local exact target resolves to a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
+      "local exact target resolves to 7444ed08ed16b618637b8aa29a93be7c89d1642a"
     ],
     "exact_mutation": "create one lightweight tag locally and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
-    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
+    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to 7444ed08ed16b618637b8aa29a93be7c89d1642a",
     "stop_on_presence_collision_or_drift": true
   },
   "requested_scope": {
@@ -986,8 +990,8 @@
       "phase": "create_and_verify_exact_release_tag",
       "operations": [
         "prove refs/tags/videoforge-v2-13-release-20260826-v3 is absent remotely and locally immediately before mutation",
-        "create exactly one lightweight tag videoforge-v2-13-release-20260826-v3 at a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1 and push it to origin without force",
-        "read back the exact remote tag and require it resolves to a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1; stop on collision, ambiguity, retarget, or drift",
+        "create exactly one lightweight tag videoforge-v2-13-release-20260826-v3 at 7444ed08ed16b618637b8aa29a93be7c89d1642a and push it to origin without force",
+        "read back the exact remote tag and require it resolves to 7444ed08ed16b618637b8aa29a93be7c89d1642a; stop on collision, ambiguity, retarget, or drift",
         "do not create, update, force, delete, or retarget any other Git ref"
       ]
     },
@@ -1008,7 +1012,7 @@
         "dispatch mage-image.yml and avatar-primary-serverless-image.yml with publish=true using only ref videoforge-v2-13-release-20260826-v3",
         "verify only each previously captured exact run ID with at most 180 reads at 10000 ms intervals inside a 1800000 ms wall bound; accept queued or in_progress only while polling, require completed plus success, and never dispatch or redispatch from verification",
         "stop immediately on completed non-success, run identity drift, authority expiry, or injected cancellation; verification timeout enters outer cleanup-only with no retry",
-        "require each Actions run head SHA equals a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
+        "require each Actions run head SHA equals 7444ed08ed16b618637b8aa29a93be7c89d1642a",
         "bind only returned post-run immutable manifest, config, layer, source, and deployability hashes; never pre-claim an image digest",
         "prove anonymous public manifest and every referenced blob before RunPod mutation"
       ]
@@ -1082,7 +1086,7 @@
   ],
   "stop_conditions": [
     "fresh exact v3 approval and authority are absent, stale, mismatched, expired, consumed, or not independently audited",
-    "the exact release tag exists before mutation, cannot be created once without force, does not read back to a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1, or any other Git ref mutation would be required",
+    "the exact release tag exists before mutation, cannot be created once without force, does not read back to 7444ed08ed16b618637b8aa29a93be7c89d1642a, or any other Git ref mutation would be required",
     "the exact approval branch commit cannot be pushed without force or remote equality cannot be proved",
     "source, proposal, approval, authority, tool, workflow-run, image, model, account, volume, endpoint, template, Worker, Workflow, R2, route, config, secret-set, database ledger, exact role, ACL, RLS, GPU, region, rate, billing, cap, or inventory drift or uncertainty",
     "RTX4090 EU-RO-1 is below LOW availability or Serverless Flex exceeds USD 1.10/GPU-hour at any mutation boundary; no fallback",
@@ -1098,8 +1102,12 @@
     "requested_exact_phase_caps_usd": [4.5, 1, 2, 2, 4, 2, 2],
     "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, at or below USD 1.10/GPU-hour, no fallback",
     "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
-    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to exact commit a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1 without force, then prove exact remote readback",
-    "requested_exact_database_roles": ["videoforge_hosted_runtime", "videoforge_hosted_reconciler"],
+    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to exact commit 7444ed08ed16b618637b8aa29a93be7c89d1642a without force, then prove exact remote readback",
+    "requested_exact_database_roles": [
+      "videoforge_hosted_operator",
+      "videoforge_hosted_runtime",
+      "videoforge_hosted_reconciler"
+    ],
     "authority_becomes_executable_only_after_exact_hash_and_commit_approval_is_recorded": true
   }
 }

@@ -14,8 +14,8 @@ Provider-free successor source is now independently audited through durable lane
 migration 0041 (`0f73d81`), authenticated worker envelopes (`9ef6efa`), atomic two-lane predispatch
 and migration 0042 (`120b6b8`), pair runtime transitions and migration 0043 (`941176f`), fail-closed
 production/recovery composition (`3d1b439`), and the guarded Workflow plus zero-worker evidence
-migration 0044 (`4239be9`). Source commit `e737eac` adds the independently audited default-no-op full-live
-executor and migration 0045: exact protected-input preflight, DB authority registration, staged
+migration 0044 (`4239be9`). Source commit `7444ed0` is the current provider-free release source; it
+includes the independently audited default-no-op full-live executor and migration 0045: exact protected-input preflight, DB authority registration, staged
 Mage/SoulX qualification, immutable max1 deployments, qualified Cloudflare promotion, V2-09 terminal
 output/Chrome/cost acceptance, V2-10 through V2-13 acceptance, encrypted handoff escrow, and exact
 crash-safe cleanup. Repair commit `a8521f8` adds the zero-cap
@@ -45,8 +45,10 @@ only the operator database and RunPod credential after operator verification; be
 the early no-database path uses only request and RunPod inputs and never claims database cleanup. Neither
 path loads the normal production input, guarded roles, endpoint identities, or signing/key-registration inputs. Seed validation recursively rejects endpoint
 identity case variants and future hashes; max-one materialization writes the four guarded endpoint
-secret files and rebinds all 22 secret hashes. Repaired source `a4bc4fd` is provider-free audited and
-the replacement proposal is sealed as `sha256:2e6a605d…d2958`; no fresh approval or authority exists. Both lanes require fresh immutable images, sealed
+secret files and rebinds all 22 secret hashes. Repaired source `7444ed0` is provider-free audited and
+the replacement proposal is resealed as `sha256:45894ac0…01aaca` against that source; the
+2e6a605d/9eaf276 approval and authority
+are superseded unconsumed with no mutation. No fresh approval or executable authority exists. Both lanes require fresh immutable images, sealed
 deployment snapshots, dual live qualification, and that new single-use approval.
 Provider/deployment/credential/GPU/spend authority remains false with a `$0` executable cap, and no
 provider call or spend is authorized.

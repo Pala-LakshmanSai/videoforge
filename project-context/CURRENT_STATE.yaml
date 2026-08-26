@@ -4,7 +4,7 @@ updated_at: "2026-08-26T00:00:00.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_execution_order_repair_blocked_unsealed
+current_milestone: v2_13_source_lineage_reseal_blocked_unsealed
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Independently audit the sealed proposal sha256:2e6a605d...d2958 at its proposal-record commit, then request one fresh exact approval. Do not reuse the superseded 9425de8e approval."
-  note: "The repaired source is exact commit a4bc4fd and the replacement proposal is sealed as sha256:2e6a605d...d2958 for fresh exact approval. The prior 9425de8e proposal and 67f6fb2 authority remain superseded, unconsumed, and mutation-free. Until fresh approval is recorded, provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
+  provider_free_product_action: "Independently audit the resealed proposal at its proposal-record commit, then request one fresh exact approval. Do not reuse the superseded 2e6a605d or earlier 9425de8e approval."
+  note: "The repaired source is exact commit 7444ed0 and the resealed proposal is awaiting fresh exact approval. The prior 2e6a605d/9eaf276 approval and authority are superseded, unconsumed, and mutation-free after source-lineage repair; the earlier 9425de8e/67f6fb2 authority remains superseded as well. Until fresh approval is recorded, provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -64,16 +64,16 @@ two_track_execution:
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 provider_free_product_progress:
-  full_live_execution_source_commit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
-  full_live_execution_source_status: PROVIDER_FREE_SOURCE_AUDITED_GO_PROPOSAL_SEALED_FRESH_APPROVAL_REQUIRED
-  full_live_execution_source_note: "Source commit a4bc4fd includes the audited V2-13 release graph plus aligned broad control-plane receipt and owner-only schema fixtures. Provider-free gates pass 175/175 scripts, web typecheck, format, lint, firewall, context, focused PGlite, and 13/13 formerly failing broad tests. The replacement proposal is sealed but has no authority; prior authority remains superseded and unconsumed. No provider call, mutation, GPU use, spend, or deploy occurred."
+  full_live_execution_source_commit: "7444ed08ed16b618637b8aa29a93be7c89d1642a"
+  full_live_execution_source_status: PROVIDER_FREE_SOURCE_AUDITED_PROPOSAL_RESEALED_FRESH_APPROVAL_REQUIRED
+  full_live_execution_source_note: "Source commit 7444ed0 includes the audited V2-13 release graph, aligned broad control-plane receipt and owner-only schema fixtures, and trusted proposal-lineage hardening. The prior 2e6a605d/9eaf276 approval and authority were superseded before external action after this source repair. No provider call, mutation, GPU use, spend, or deploy occurred."
   full_live_executor_sha256: "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230"
   full_live_source_component_hashes:
     full_live_executor: "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230"
     full_live_adapters: "sha256:1fefe3b25027120d5da6340c8361174bbf8bacbe03bab3de1864e23855c52ac0"
     promotion: "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0"
     guarded_activation: "sha256:5c3ab93ee301ec4f597b5e422dc62d35c27d6d075ff017b8e56b8396e92372ab"
-    orchestration_authority: "sha256:e19d6f2bbce9e9634cc9d2dae21fc1e0451f4a06a1bd2bc076f813a236660be3"
+    orchestration_authority: "sha256:6ae31d020f61518fc880b57f32f4d5fd2e35b780a188e2fd1b290d38cd2d5271"
     typescript_cli_bridge: "sha256:2a5a29c71bf5f0c2aa776e4ad8ba2a66b7144d9b12108d37819d8a3baa9efcd7"
     runpod_dual_lane_transport: "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6"
     migration_0045: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
@@ -90,13 +90,13 @@ provider_free_product_progress:
   full_live_migration_0045_sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
   prior_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_HASH_DRIFT
   prior_v2_13_proposal_sha256: "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32"
-  fresh_v2_13_proposal_status: SEALED_AWAITING_FRESH_EXACT_APPROVAL_OLD_AUTHORITY_SUPERSEDED_UNCONSUMED
+  fresh_v2_13_proposal_status: SEALED_AWAITING_FRESH_EXACT_APPROVAL_CURRENT_AUTHORITY_SUPERSEDED_UNCONSUMED
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json"
-  fresh_v2_13_proposal_sha256: "sha256:2e6a605d3b1fd973a438207006d938bdedcc6456135f09cefaecc013295d2958"
+  fresh_v2_13_proposal_sha256: "sha256:45894ac0b7648d3e9e48357a13c270d2cbbe7e65120fe425f4b449d00601aaca"
   fresh_v2_13_blocked_draft_sha256: null
-  fresh_v2_13_release_source_commit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1"
+  fresh_v2_13_release_source_commit: "7444ed08ed16b618637b8aa29a93be7c89d1642a"
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Commit and independently audit the sealed proposal record, then request fresh exact approval for sha256:2e6a605d...d2958."
+  next_v2_13_action: "Commit and independently audit the resealed proposal record, then request fresh exact approval for its final sha256; do not reuse the superseded 2e6a605d/9eaf276 authority."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -4297,8 +4297,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_execution_order_repair_blocked_unsealed
-  status: provider_free_repair_in_progress_old_authority_superseded_unconsumed
+  milestone: v2_13_source_lineage_reseal_blocked_unsealed
+  status: provider_free_source_reseal_in_progress_current_authority_superseded_unconsumed
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: none_attempt64_consumed
   task_stage: provider_free_product_execution
@@ -4307,7 +4307,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Finish and independently audit the provider-free execution-order/source-worktree repair, then seal a new exact proposal before any publication, deployment, provider call, GPU use, or spend."
+  goal: "Commit and independently audit the provider-free source-lineage reseal, then obtain fresh exact approval before any publication, deployment, provider call, GPU use, or spend."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4328,10 +4328,10 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Attempt64 remains consumed/non-reusable. V2-13 authority recorded at 67f6fb2 is superseded unconsumed before mutation because its approved proposal described 21 secrets while the executor owns 22 and the execution-order/source-worktree contracts require repair. No provider calls, mutations, GPU use, or spend are authorized."
+  authority_note: "Attempt64 remains consumed/non-reusable. The 2e6a605d/9eaf276 V2-13 approval and authority are superseded unconsumed before mutation because source-lineage hardening advanced the exact release source to 7444ed0. The earlier 9425de8e/67f6fb2 authority is also superseded. No provider calls, mutations, GPU use, or spend are authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: provider_free_execution_order_repair_in_progress_blocked_unsealed
-  execution_blocker: repaired_source_audit_reseal_and_fresh_exact_approval_required
+  execution_status: provider_free_source_lineage_reseal_in_progress_blocked_unsealed
+  execution_blocker: proposal_record_audit_and_fresh_exact_approval_required
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean

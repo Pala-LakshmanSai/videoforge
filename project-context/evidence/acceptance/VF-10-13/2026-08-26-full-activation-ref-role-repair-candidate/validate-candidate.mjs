@@ -28,7 +28,8 @@ const assert = (condition, code) => {
 
 const proposalBytes = await readFile(path.join(directory, "combined-live-proposal.json"));
 const proposal = JSON.parse(proposalBytes);
-const approval = await readJson("user-approval.json");
+const approvalBytes = await readFile(path.join(directory, "user-approval.json"));
+const approval = JSON.parse(approvalBytes);
 const authority = await readJson("approved-authority.json");
 const operatorGrantsSql = await readFile(
   path.resolve(directory, "../../../../../deploy/v2-13/neon-full-live-operator-grants.sql"),
@@ -44,7 +45,35 @@ const migration0045Sql = await readFile(
 const migrationManifest = await readFile(
   path.resolve(directory, "../../../../../packages/control-plane/migrations/manifest.json"),
 );
-const RELEASE_SOURCE_COMMIT = "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1";
+const RELEASE_SOURCE_COMMIT = "7444ed08ed16b618637b8aa29a93be7c89d1642a";
+const PROPOSAL_RECORD_PATH =
+  "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
+const SUPERSEDED_PROPOSAL_SHA256 =
+  "sha256:2e6a605d3b1fd973a438207006d938bdedcc6456135f09cefaecc013295d2958";
+const SUPERSEDED_PROPOSAL_RECORD_COMMIT = "9eaf276ebeda4d1fa63032d4c908a21415415678";
+const SUPERSEDED_RELEASE_SOURCE_COMMIT = "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1";
+const SUPERSEDED_AUTHORITY_ID = "v2-13-full-live-20260826-173620z-a4bc4fd";
+const SUPERSEDED_APPROVAL_SHA256 =
+  "sha256:23b911037f79bf3628429822824406bbfc66930d138b022acf8aa9fc7f6c649f";
+
+assert(proposal.source.proposal_path === PROPOSAL_RECORD_PATH, "PROPOSAL_PATH");
+assert(approval.proposal?.path === PROPOSAL_RECORD_PATH, "APPROVAL_PROPOSAL_PATH");
+assert(authority.lineage?.proposal_path === PROPOSAL_RECORD_PATH, "AUTHORITY_PROPOSAL_PATH");
+assert(
+  approval.authority_id === SUPERSEDED_AUTHORITY_ID &&
+    approval.proposal?.sha256 === SUPERSEDED_PROPOSAL_SHA256 &&
+    approval.proposal?.proposal_record_commit === SUPERSEDED_PROPOSAL_RECORD_COMMIT &&
+    approval.proposal?.release_source_commit === SUPERSEDED_RELEASE_SOURCE_COMMIT &&
+    sha256(approvalBytes) === SUPERSEDED_APPROVAL_SHA256 &&
+    authority.authority_id === SUPERSEDED_AUTHORITY_ID &&
+    authority.lineage?.proposal_sha256 === SUPERSEDED_PROPOSAL_SHA256 &&
+    authority.lineage?.proposal_record_commit === SUPERSEDED_PROPOSAL_RECORD_COMMIT &&
+    authority.lineage?.release_source_commit === SUPERSEDED_RELEASE_SOURCE_COMMIT &&
+    authority.lineage?.user_approval_sha256 === SUPERSEDED_APPROVAL_SHA256 &&
+    authority.lineage?.authority_record_path ===
+      "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/approved-authority.json",
+  "SUPERSEDED_APPROVAL_AUTHORITY_LINEAGE",
+);
 
 assert(proposal.schema_version === "videoforge.v2-13-full-live-completion-proposal/v3", "SCHEMA");
 assert(proposal.proposal_status === "PENDING_FRESH_EXACT_USER_APPROVAL", "STATUS");
@@ -93,14 +122,6 @@ assert(
     proposal.authority_record_commit_binding.remote_readback_required === true &&
     proposal.authority_record_commit_binding.embedded_self_commit_hash_forbidden === true,
   "AUTHORITY_COMMIT_BINDING",
-);
-assert(
-  proposal.supersession.supersedes_proposal_sha256 === approval.proposal.sha256 &&
-    proposal.supersession.supersedes_proposal_record_commit ===
-      approval.proposal.proposal_record_commit &&
-    proposal.supersession.superseded_authority_id === authority.authority_id &&
-    proposal.supersession.superseded_authority_state === "SUPERSEDED_UNCONSUMED_NO_MUTATION",
-  "LATEST_SUPERSEDED_LINEAGE",
 );
 assert(
   proposal.requested_scope.cloudflare_secret_allowlist_count ===
@@ -321,26 +342,59 @@ assert(
   "PROPOSAL_AUTHORITY_MUST_BE_ABSENT",
 );
 assert(
-  approval.proposal.sha256 ===
-    "sha256:9425de8ed5905088f6d6e95d77ffbc6dbf0a4e800ef5f01734676bd76938899a",
-  "HISTORICAL_APPROVAL_LINEAGE",
+  proposal.supersession.supersedes_proposal_sha256 === SUPERSEDED_PROPOSAL_SHA256 &&
+    proposal.supersession.supersedes_proposal_record_commit ===
+      SUPERSEDED_PROPOSAL_RECORD_COMMIT &&
+    proposal.supersession.superseded_authority_id === SUPERSEDED_AUTHORITY_ID &&
+    proposal.supersession.superseded_authority_state === "SUPERSEDED_UNCONSUMED_NO_MUTATION" &&
+    proposal.supersession.superseded_approval_sha256 === SUPERSEDED_APPROVAL_SHA256 &&
+    proposal.supersession.superseded_approval_record_commit === SUPERSEDED_PROPOSAL_RECORD_COMMIT &&
+    proposal.supersession.superseded_authority_record_path ===
+      "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/approved-authority.json" &&
+    proposal.supersession.supersession_reason === "SOURCE_LINEAGE_REPAIR_REQUIRED" &&
+    proposal.supersession.prior_approval_reusable === false &&
+    proposal.supersession.fresh_exact_approval_required === true,
+  "HISTORICAL_SUPERSESSION_LINEAGE",
 );
-assert(authority.consumed === false && authority.consumed_at === null, "AUTHORITY_UNCONSUMED");
 assert(
-  authority.status === "SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_AND_SCOPE_REPAIR_REQUIRED",
-  "AUTHORITY_SUPERSEDED",
+  authority.status === "SUPERSEDED_UNCONSUMED_NO_MUTATION" &&
+    authority.consumed === false &&
+    authority.consumed_at === null &&
+    authority.authority_record_commit === null,
+  "AUTHORITY_UNCONSUMED",
 );
 assert(
-  Object.entries(authority.combined_execution_authority).every(([key, value]) =>
-    key === "redispatch_authorized" || key.endsWith("_authorized")
-      ? value === false
-      : key === "maximum_cumulative_finite_runpod_spend_usd"
-        ? value === null
-        : true,
-  ),
-  "EXECUTABLE_AUTHORITY_MUST_BE_ZERO",
+  JSON.stringify(authority.combined_execution_authority) ===
+    JSON.stringify({
+      execute_authorized: false,
+      credential_access_authorized: false,
+      database_mutation_authorized: false,
+      cloudflare_secret_mutation_authorized: false,
+      deployment_authorized: false,
+      provider_calls_authorized: false,
+      provider_mutations_authorized: false,
+      gpu_use_authorized: false,
+      external_runpod_spend_authorized: false,
+      maximum_cumulative_finite_runpod_spend_usd: null,
+      redispatch_authorized: false,
+      new_volume_authorized: false,
+      new_paid_retained_resource_authorized: false,
+      recurring_plan_change_authorized: false,
+    }),
+  "EXECUTABLE_AUTHORITY_EXACT_SCOPE",
 );
-assert(authority.provider_free_recording.superseded_before_external_action === true, "NO_EXTERNAL_ACTION");
+assert(
+  authority.provider_free_recording.credentials_accessed === false &&
+    authority.provider_free_recording.external_calls === 0 &&
+    authority.provider_free_recording.provider_mutations === 0 &&
+    authority.provider_free_recording.gpu_use === 0 &&
+    authority.provider_free_recording.runpod_spend_usd === 0 &&
+    authority.provider_free_recording.guarded_child_authority_created === false &&
+    authority.provider_free_recording.authority_consumed === false &&
+    authority.provider_free_recording.superseded_before_external_action === true &&
+    authority.provider_free_recording.supersession_reason === "SOURCE_LINEAGE_REPAIR_REQUIRED",
+  "NO_EXTERNAL_ACTION",
+);
 
 console.log(
   JSON.stringify({
@@ -348,6 +402,8 @@ console.log(
     proposal_sha256: sha256(proposalBytes),
     release_source_commit: RELEASE_SOURCE_COMMIT,
     cloudflare_secret_count: EXACT_CLOUDFLARE_SECRET_NAMES.length,
+    authority_id: authority.authority_id,
+    superseded_authority_id: SUPERSEDED_AUTHORITY_ID,
     authority: "SUPERSEDED_UNCONSUMED_NO_MUTATION",
     external_calls: 0,
     mutations: 0,
