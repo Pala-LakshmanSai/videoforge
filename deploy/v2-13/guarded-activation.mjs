@@ -45,6 +45,10 @@ const SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
 ]);
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const EXACT_PRE_MUTATION_ROUTE_CONTENT_TYPE = "text/html; charset=UTF-8";
+const EXACT_PRE_MUTATION_ROUTE_BODY_LENGTH = 19984;
+const EXACT_PRE_MUTATION_ROUTE_BODY_SHA256 =
+  "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976";
 const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v1";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_ADVISORY_LOCK = "1448494662,1";
@@ -728,9 +732,9 @@ function validateAuthority(value) {
     !HASH.test(value.cloudflare.pre_mutation_workflow_inventory_sha256) ||
     !HASH.test(value.cloudflare.pre_mutation_r2_inventory_sha256) ||
     !HASH.test(value.cloudflare.pre_mutation_route_readback_sha256) ||
-    value.cloudflare.pre_mutation_route_content_type !== "text/plain; charset=UTF-8" ||
-    !Number.isInteger(value.cloudflare.pre_mutation_route_body_length) ||
-    value.cloudflare.pre_mutation_route_body_length < 1 ||
+    value.cloudflare.pre_mutation_route_content_type !== EXACT_PRE_MUTATION_ROUTE_CONTENT_TYPE ||
+    value.cloudflare.pre_mutation_route_body_length !== EXACT_PRE_MUTATION_ROUTE_BODY_LENGTH ||
+    value.cloudflare.pre_mutation_route_readback_sha256 !== EXACT_PRE_MUTATION_ROUTE_BODY_SHA256 ||
     value.cloudflare.worker_name !== "videoforge-production-runtime" ||
     value.cloudflare.preexisting_worker_required !== false ||
     value.cloudflare.exact_quarantine_creation_authorized !== true ||
@@ -2734,6 +2738,9 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await mai
 export {
   assertFullLiveActivationBinding,
   assertAbsentRouteReadback,
+  EXACT_PRE_MUTATION_ROUTE_BODY_LENGTH,
+  EXACT_PRE_MUTATION_ROUTE_BODY_SHA256,
+  EXACT_PRE_MUTATION_ROUTE_CONTENT_TYPE,
   assertDisabledVersionReadback,
   assertQualifiedRoute,
   assertWorkersDevOrigin,

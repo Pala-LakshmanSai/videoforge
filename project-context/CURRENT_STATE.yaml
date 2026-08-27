@@ -1,10 +1,10 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-27T10:30:00Z"
+updated_at: "2026-08-27T11:42:47Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_credential_rotation_normalization_completed_single_use_non_reusable
+current_milestone: v2_13_provider_free_release_source_repair_ready_for_independent_audit
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -27,10 +27,10 @@ current_goal_boundary:
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
   provider_free_product_action: "The exact rotation/normalization authority was consumed once and completed. It added one same-client Google secret, secured and hash-read it before disabling only the exposed old secret, and normalized only the two local R2 files. Preserve the exact resources/files and secret-free receipt; the authority is non-reusable. No further credential, provider, R2, RunPod, GPU, spend, retry, or redispatch action is authorized under this boundary."
-  note: "Source commit 3f7b588 remains independently audited provider-free (42/42 checks). The exact-new-project credential-bootstrap attempt remains BLOCKED_UNCONSUMED_NO_MUTATION because Google project quota was exhausted; its approval is non-reusable and the separate quota request remains historical. The reuse audit of adroit-archive-329710 recorded unexpected firestore.googleapis.com and firebaserules.googleapis.com enablement; no rollback, disablement, or further API enablement is authorized. The reuse authority was consumed/stopped and is non-reusable. The fresh rotation/normalization proposal sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73 at 1845be6 was approved and completed under authority v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2; result sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6 and receipt sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab are recorded. Google provider mutations were limited to the new secret and exact old-secret disable; Cloudflare R2 provider mutation, RunPod calls, GPU use, and spend were zero. No raw credential value is retained in repository evidence or the receipt. Full-live successor remains BLOCKED_UNSEALED pending its separate source-bound deployment/image/paid gates and exact authority."
+  note: "Source commit 3f7b588 remains the latest independently audited provider-free boundary. A fresh bounded read-only preflight at current HEAD proved zero Pods, endpoints, templates, active workers, GPU use, mutations, and spend; the same two exact retained 50 GB EU-RO-1 volumes remain. Provider-free repair now separates the USD 0.74/hour Secure Pod catalog rate from the official Serverless Flex rate of USD 0.00031/second (USD 1.116/GPU-hour), binds the stable account-derived production 404 HTML route, completed secret-free credential receipt, and active candidate path, and keeps the proposal BLOCKED_UNSEALED pending a new source commit and independent audit. The consumed credential authorities remain non-reusable. No deployment, publication, provider mutation, GPU use, or spend is authorized."
 
 new_chat_handoff:
-  status: READY_PROVIDER_FREE_RESEAL_FRESH_AUTHORITY_REQUIRED
+  status: PROVIDER_FREE_SOURCE_REPAIR_READY_FOR_COMMIT_AND_INDEPENDENT_AUDIT
   starting_point: CURRENT_CLEAN_GIT_HEAD
   independently_audited_full_live_source_commit: "3f7b588de4b96da7c1e56b6c1908df7381712710"
   credential_rotation_result_sha256: "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6"
@@ -45,7 +45,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Provider-free reseal and independent audit of a fresh source-bound V2-13 full-live proposal, then one exact user approval before any mutation, deployment, GPU use, or spend."
+  next_action: "Commit and independently audit the provider-free source repair, then reseal and independently audit the exact source-bound V2-13 proposal before requesting one exact user approval."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -85,21 +85,21 @@ two_track_execution:
 
 provider_free_product_progress:
   full_live_execution_source_commit: "3f7b588de4b96da7c1e56b6c1908df7381712710"
-  full_live_execution_source_status: PROVIDER_FREE_SOURCE_INDEPENDENTLY_AUDITED_CREDENTIAL_NORMALIZATION_COMPLETED_FRESH_FULL_LIVE_APPROVAL_REQUIRED
-  full_live_execution_source_note: "Source commit 3f7b588 is the current independently audited V2-13 provider-free release graph (42/42 checks), including receipt/restart/seed hardening and exact OAuth scope boundaries. Default entrypoints remain no-op; no provider call, mutation, GPU use, spend, or deploy occurred."
-  full_live_executor_sha256: "sha256:5dd84bf8594c4dd19b907eea11798d956b5693c244d0abc1c926f81883338186"
+  full_live_execution_source_status: PREVIOUS_SOURCE_INDEPENDENTLY_AUDITED_CURRENT_PROVIDER_FREE_REPAIR_PENDING_COMMIT_AND_AUDIT
+  full_live_execution_source_note: "Source commit 3f7b588 remains the previous independently audited V2-13 provider-free release graph. The current provider-free repair binds the corrected Serverless Flex rate semantic, exact absent production route, completed credential receipt, and active proposal path; default execution remains NO_ACTION with zero provider calls, mutations, GPU use, spend, or deployment."
+  full_live_executor_sha256: "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5"
   full_live_source_component_hashes:
-    full_live_executor: "sha256:5dd84bf8594c4dd19b907eea11798d956b5693c244d0abc1c926f81883338186"
-    full_live_adapters: "sha256:f12c92a60ac4f3458f74deacc1f6ed6852f854dd70f674a2c1ef73794b25fd65"
+    full_live_executor: "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5"
+    full_live_adapters: "sha256:0a2b929507609d0709cb0262b757e537576c3b9af192681548fd78a357ac5437"
     promotion: "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0"
-    guarded_activation: "sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44"
-    orchestration_authority: "sha256:586f5a28969d2b2ea406d490b781472e69b7c960d0437475fbe787bab39ed789"
-    typescript_cli_bridge: "sha256:2a5a29c71bf5f0c2aa776e4ad8ba2a66b7144d9b12108d37819d8a3baa9efcd7"
+    guarded_activation: "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7"
+    orchestration_authority: "sha256:fde2b699086d6a6c104a4fdc43a8e917b1cf94b1c830adc2868b6a12207742d6"
+    typescript_cli_bridge: "sha256:e9d369710ca75535b35b6c29123b595482fbddbd792b35e02ed40eb7ea6c28e6"
     runpod_dual_lane_transport: "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6"
     migration_0045: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
     operator_grants: "sha256:60922d36e5aeb05fe34705198967aa3adf20cdf9ec61283810a565b6690b2c39"
     migration_manifest: "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa"
-    approval_validator: "sha256:dc245da0167bb589224533ba38e255818dac9e880cd992fc58db10b2b892e664"
+    approval_validator: "sha256:40d251611456b3ddd9a1ff596f42d798539cf867b8bd5c6ed72aba095872a1b4"
   approval_validator_source_binding:
     mode: EXTERNAL_GIT_COMMIT_TREE_ENTRY
     commit_field: source.release_source_commit
@@ -113,8 +113,10 @@ provider_free_product_progress:
   fresh_v2_13_proposal_status: BLOCKED_UNSEALED_SOURCE_CONTRACT_PENDING_CURRENT_AUTHORITY_SUPERSEDED_UNCONSUMED
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json"
   fresh_v2_13_proposal_sha256: null
-  fresh_v2_13_blocked_draft_sha256: "sha256:8f2b55141d0150e1aa60a954bad1bde3f278ce0e428e961580b66fc8bb5b7248"
-  fresh_v2_13_candidate_validator_sha256: "sha256:1acf937a92894469b7ff4b23ba982f4bc91d05862973a77791d7281f6102a434"
+  fresh_v2_13_blocked_draft_sha256: "sha256:6b20b5079c3ea68e91aa2231798025bd3cef1608a61041ba9c9909774aed01d6"
+  fresh_v2_13_candidate_validator_sha256: "sha256:85e9598c1e1092769764a08c90494147a43c5311703d0da350438eaeda7feed5"
+  fresh_v2_13_read_only_preflight_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/read-only-preflight.json"
+  fresh_v2_13_read_only_preflight_sha256: "sha256:c9ecc3b2e417f4139a0347a08230ab0212ce1d9326f603e412a56143a2fe2916"
   credential_bootstrap_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/combined-credential-bootstrap-proposal.json"
   credential_bootstrap_proposal_commit: "9106f9d6da9811a193824bc5e0d8104712fca415"
   credential_bootstrap_proposal_sha256: "sha256:48bf5c7bb7304630eb3744b038fea7b7a11a53878bd1a18d94768c6f0e96e0ab"
@@ -4415,17 +4417,17 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_credential_rotation_normalization_completed_single_use_non_reusable
-  status: credential_bootstrap_rotation_normalization_completed_single_use_non_reusable
+  milestone: v2_13_provider_free_release_source_repair_ready_for_independent_audit
+  status: provider_free_source_repair_ready_for_commit_and_independent_audit
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: rotation_normalization_authority_consumed_completed_non_reusable
+  authorization_status: no_current_full_live_authority_consumed_credential_authorities_non_reusable
   task_stage: provider_free_product_execution
-  current_goal_authority: "evidence/acceptance/VF-10-13/2026-08-27-credential-rotation-normalization-candidate/approved-authority.json"
-  current_goal_authority_sha256: "sha256:afd35bce05284804fcf339f97d925dbbb3f4beea62501ca6a4ac917b1aae9d9b"
+  current_goal_authority: null
+  current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Preserve the completed exact Google secret rotation and local R2 normalization under the consumed non-reusable authority; continue only through a separate source-bound full-live proposal, fresh exact approval, independent Mage/SoulX qualification, deployment, and zero-worker/billing proof."
+  goal: "Commit and independently audit the provider-free rate/route/receipt/lineage repair; reseal and audit the exact source-bound full-live proposal, then request one fresh exact approval before serial qualification, deployment, acceptance, drain, and billing proof."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

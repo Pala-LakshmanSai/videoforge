@@ -75,7 +75,8 @@ exact bytes at those paths and rehashes them against `authority.proposal_sha256`
 `--execute` additionally requires the literal confirmation
 `EXECUTE_EXACT_GUARDED_V2_13_ACTIVATION`, an exact mode-0600 approved authority file, a private
 mode-0700 PostgreSQL input directory, a separate exact mode-0700 secret directory containing only
-the 22 allowlisted mode-0600 files, a separately fingerprinted mode-0600 Cloudflare API-token file,
+the 22 allowlisted mode-0600 files, the separately fingerprinted mode-0600 native Wrangler OAuth
+config selected by `--wrangler-oauth-config-file`,
 and a new evidence path under a mode-0700 directory. Secret values are read only from those files
 and are streamed to Wrangler stdin; they never enter argv, stdout, the plan, or evidence. Every
 child process receives a closed environment allowlist, so ambient provider or database credentials
@@ -99,9 +100,11 @@ ledger, role flags/memberships/ownership, exact runtime function allowlist, reco
 allowlist, and absence of reconciler table grants. It refuses migration unless the database already
 has the exact 36-row manifest prefix, so this activation can apply only migrations 0037-0045.
 
-Before database mutation, the executor twice rechecks authority-pinned Cloudflare API bytes proving
+Before database mutation, the executor twice rechecks authority-pinned authenticated Cloudflare
+readbacks proving
 the exact account, a 404 for `videoforge-production-runtime`, absence of both exact Workflow names,
-presence of the exact preexisting R2 bucket, and the unconfigured 503 route. Creation is two-stage:
+presence of the exact preexisting R2 bucket, and the exact absent Worker route fingerprint (404,
+`text/html; charset=UTF-8`, 19,984 bytes, with the sealed body hash). Creation is two-stage:
 a bootstrap config removes the R2 binding and enables auto-create only while creating the exact
 Worker and two exact Workflows; the full exact config then attaches the already-existing R2 bucket
 with auto-create disabled. Both stages must read back as `DISABLED_UNQUALIFIED`, with the exact

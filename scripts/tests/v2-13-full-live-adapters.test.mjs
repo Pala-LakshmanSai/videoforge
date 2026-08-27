@@ -466,7 +466,7 @@ test("staged qualification adapters preserve admission, Mage, SoulX, then max-on
           gpu: "NVIDIA GeForce RTX 4090",
           region: "EU-RO-1",
           availability: "LOW",
-          flexRateUsdPerGpuHour: 1.1,
+          flexRateUsdPerGpuHour: 1.116,
           cumulativeBillingUsd: 2,
         },
       };

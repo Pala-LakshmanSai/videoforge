@@ -20,6 +20,7 @@ import {
   redactV213Output,
   runV213FullLiveCli,
   summarizeV213EndpointRestoration,
+  V213_SERVERLESS_FLEX_RATE_SOURCE,
   verifyV213WorkflowOperatorRouteSource,
   type V213FullLiveBridgeRuntime,
   type V213FullLiveCommand,
@@ -112,6 +113,23 @@ function runtime(
 }
 
 describe("V2-13 full-live TypeScript bridge", () => {
+  it("binds the official Serverless Flex rate separately from the Secure Pod catalog", () => {
+    expect(V213_SERVERLESS_FLEX_RATE_SOURCE).toMatchObject({
+      provider: "RunPod",
+      product: "SERVERLESS_FLEX",
+      gpu: "NVIDIA GeForce RTX 4090",
+      region: "EU-RO-1",
+      billingUnit: "USD_PER_GPU_SECOND",
+      rateUsdPerSecond: 0.00031,
+      rateUsdPerGpuHour: 1.116,
+      source: "OFFICIAL_CURRENT_RUNPOD_SERVERLESS_FLEX_PRICING_SNAPSHOT",
+    });
+    expect(V213_SERVERLESS_FLEX_RATE_SOURCE.rateUsdPerSecond * 3600).toBeCloseTo(
+      V213_SERVERLESS_FLEX_RATE_SOURCE.rateUsdPerGpuHour,
+      12,
+    );
+  });
+
   it("never reports a max-one production pair when cleanup retained zero endpoints", () => {
     expect(
       summarizeV213EndpointRestoration({

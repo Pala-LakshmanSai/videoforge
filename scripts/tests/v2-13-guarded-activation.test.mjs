@@ -137,9 +137,10 @@ function authority() {
       pre_mutation_worker_absence_sha256: fingerprint,
       pre_mutation_workflow_inventory_sha256: fingerprint,
       pre_mutation_r2_inventory_sha256: fingerprint,
-      pre_mutation_route_readback_sha256: fingerprint,
-      pre_mutation_route_content_type: "text/plain; charset=UTF-8",
-      pre_mutation_route_body_length: 17,
+      pre_mutation_route_readback_sha256:
+        "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976",
+      pre_mutation_route_content_type: "text/html; charset=UTF-8",
+      pre_mutation_route_body_length: 19984,
     },
     gates: {
       mage_qualification_sha256: fingerprint,
@@ -275,7 +276,7 @@ test("trusted expiry and durable authority consumption are exact and non-replaya
   }
 });
 
-test("guarded activation rejects the exact but superseded V2 approval", () => {
+test("guarded activation rejects the superseded and now-stale V2 approval", () => {
   const proposal =
     "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate/combined-live-proposal.json";
   const approval =
@@ -290,7 +291,7 @@ test("guarded activation rejects the exact but superseded V2 approval", () => {
   value.authority.expires_at = "2026-08-27T03:33:20Z";
   assert.throws(
     () => validateAuthoritySourceFiles(value, proposal, approval),
-    /superseded full-live proposal approval/u,
+    /user approval does not satisfy the exact full-live schema/u,
   );
 });
 
@@ -870,13 +871,14 @@ test("Cloudflare OAuth subdomain readback derives an exact origin without export
 
 test("Cloudflare pre-state binds exact absent 404 bytes while post-state accepts only disabled or qualified JSON", async () => {
   const value = authority();
-  value.cloudflare.pre_mutation_route_readback_sha256 = fingerprint;
+  value.cloudflare.pre_mutation_route_readback_sha256 =
+    "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976";
   assert.equal(
     assertAbsentRouteReadback(
       {
         status: 404,
-        bodySha256: fingerprint,
-        bodyLength: 17,
+        bodySha256: "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976",
+        bodyLength: 19984,
         contentType: value.cloudflare.pre_mutation_route_content_type,
       },
       value,
@@ -886,7 +888,12 @@ test("Cloudflare pre-state binds exact absent 404 bytes while post-state accepts
   assert.throws(
     () =>
       assertAbsentRouteReadback(
-        { status: 503, bodySha256: fingerprint, bodyLength: 17, contentType: "application/json" },
+        {
+          status: 503,
+          bodySha256: fingerprint,
+          bodyLength: 19984,
+          contentType: "application/json",
+        },
         value,
       ),
     /exact absent 404 readback/u,
@@ -894,7 +901,7 @@ test("Cloudflare pre-state binds exact absent 404 bytes while post-state accepts
   assert.throws(
     () =>
       assertAbsentRouteReadback(
-        { status: 404, bodySha256: fingerprint, bodyLength: 17, contentType: "text/plain" },
+        { status: 404, bodySha256: fingerprint, bodyLength: 19984, contentType: "text/plain" },
         {
           ...value,
           cloudflare: { ...value.cloudflare, pre_mutation_route_readback_sha256: hash("other") },

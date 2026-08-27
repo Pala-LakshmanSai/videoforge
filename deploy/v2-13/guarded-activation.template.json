@@ -94,8 +94,8 @@
     "pre_mutation_workflow_inventory_sha256": "__V2_13_WORKFLOW_INVENTORY_SHA256__",
     "pre_mutation_r2_inventory_sha256": "__V2_13_R2_INVENTORY_SHA256__",
     "pre_mutation_route_readback_sha256": "__V2_13_ROUTE_READBACK_SHA256__",
-    "pre_mutation_route_content_type": "text/plain; charset=UTF-8",
-    "pre_mutation_route_body_length": 17
+    "pre_mutation_route_content_type": "text/html; charset=UTF-8",
+    "pre_mutation_route_body_length": 19984
   },
   "gates": {
     "mage_qualification_sha256": "__V2_13_MAGE_QUALIFICATION_SHA256__",

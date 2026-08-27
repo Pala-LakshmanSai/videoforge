@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const proposalPath = path.join(directory, "combined-live-proposal.json");
+const readOnlyPreflightPath = path.join(directory, "read-only-preflight.json");
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+const HASH = /^sha256:[0-9a-f]{64}$/u;
 const assert = (condition, code) => {
   if (!condition) throw new Error(code);
 };
@@ -20,6 +22,9 @@ const includes = (values, text, code) =>
 const bytes = await readFile(proposalPath);
 assert(bytes.at(-1) === 0x0a, "PROPOSAL_FINAL_NEWLINE");
 const proposal = JSON.parse(bytes);
+const readOnlyPreflightBytes = await readFile(readOnlyPreflightPath);
+assert(readOnlyPreflightBytes.at(-1) === 0x0a, "READ_ONLY_PREFLIGHT_FINAL_NEWLINE");
+const readOnlyPreflight = JSON.parse(readOnlyPreflightBytes);
 const expectedProposalPath =
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
 const previousProposalSha256 =
@@ -67,6 +72,163 @@ const APPROVED_WRANGLER_OAUTH_SCOPES = Object.freeze([
   "workers_tail:read",
   "zone:read",
 ]);
+const EXPECTED_ABSENT_ROUTE_CONTENT_TYPE = "text/html; charset=UTF-8";
+const EXPECTED_ABSENT_ROUTE_BODY_LENGTH = 19984;
+const EXPECTED_ABSENT_ROUTE_BODY_SHA256 =
+  "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976";
+const EXPECTED_ABSENT_ROUTE_BODY_SHA256_PREFIX = "2000e6b2";
+const EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_SECOND = 0.00031;
+const EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR = 1.116;
+const EXPECTED_CLOUDFLARE_ACCOUNT_ID = "f9254d773a3426fcb469451b1f965d8c";
+const EXPECTED_CLOUDFLARE_ACCOUNT_ID_SHA256 =
+  "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8";
+const EXPECTED_WORKERS_DEV_SUBDOMAIN = "lakshmansai121";
+const EXPECTED_WORKERS_DEV_SUBDOMAIN_SHA256 =
+  "sha256:960a7fe93a2494d513281414103000bcfa43d3c0945536054d5e5c6524d2c194";
+const EXPECTED_PUBLIC_ORIGIN =
+  "https://videoforge-production-runtime.lakshmansai121.workers.dev";
+const EXPECTED_WRANGLER_CONFIG_PATH =
+  "/Users/lakshmansai/Library/Preferences/.wrangler/config/default.toml";
+const EXPECTED_WRANGLER_CONFIG_PATH_SHA256 =
+  "sha256:1f4cc7dea1b7ea98aaf91bae95b329dfd607a26967ba15f6813e26340f96961c";
+const EXPECTED_CREDENTIAL_RECEIPT_SHA256 =
+  "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab";
+const EXPECTED_CREDENTIAL_ROTATION_RESULT_SHA256 =
+  "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6";
+const EXPECTED_GOOGLE_PROJECT_ID = "adroit-archive-329710";
+const EXPECTED_GOOGLE_PROJECT_ID_SHA256 =
+  "sha256:0a57c6c9fc4b102fa4eef3ecb490a786cc632bd45440765eed188970c6b097ae";
+const EXPECTED_GOOGLE_PROJECT_NUMBER_SHA256 =
+  "sha256:41ed11c7873b8727019969683f8063652a949a9a899a3b6b7d126135ea2c6347";
+const EXPECTED_GOOGLE_ACCOUNT_SHA256 =
+  "sha256:a7bca06b10386403d2757a5c78b397fb5722e0383bcd72cf9f29259e073bfcc7";
+const EXPECTED_GOOGLE_CLIENT_ID_SHA256 =
+  "sha256:0150569d559bc69055805f48be9d54e9748a1fa34e6dffa6c293701b9814d932";
+const EXPECTED_GOOGLE_CLIENT_SECRET_SHA256 =
+  "sha256:c4d12264294b3275aebe6b8a51eb5a9f4a5a599c7694f48bcf8ba4422c8c6cfb";
+const EXPECTED_GOOGLE_JS_ORIGINS_SHA256 =
+  "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945";
+const EXPECTED_GOOGLE_REDIRECTS_SHA256 =
+  "sha256:fb41ba23e86209bece0299efc81fec50febf2bd8774c1712fd77aa8d8b447c0d";
+const EXPECTED_R2_BUCKET_NAME = "videoforge-v2-06-staging-private";
+const EXPECTED_R2_BUCKET_NAME_SHA256 =
+  "sha256:410831a0659f71ee4959e9ad0778a565b97485442fdc7c4bd8bdd702089bfe1d";
+const EXPECTED_R2_ACCESS_KEY_ID_SHA256 =
+  "sha256:a322bcb37f84d28ddd0fd841f0eb3ad2feaf368f71c21deece4f9d1f8433e335";
+const EXPECTED_R2_SECRET_ACCESS_KEY_SHA256 =
+  "sha256:227e83b53468d6053b983a844473e04cbde8eff81c27b499127f106c394a900e";
+const EXPECTED_MAGE_VOLUME_ID_SHA256 =
+  "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
+const EXPECTED_SOULX_VOLUME_ID_SHA256 =
+  "sha256:2a8633e14bbec54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
+assert(
+  readOnlyPreflight.schema_version === "videoforge.v2-13-full-live-read-only-preflight/v1" &&
+    readOnlyPreflight.checkpoint === "V2-13" &&
+    readOnlyPreflight.task_id === "VF-10-13" &&
+    readOnlyPreflight.repository_head_before_reseal ===
+      "c7bfeecd5aa1b682c2ff7f8b6cb5a75367abb895" &&
+    readOnlyPreflight.previous_independently_audited_release_source_commit ===
+      "3f7b588de4b96da7c1e56b6c1908df7381712710" &&
+    readOnlyPreflight.authority?.mode ===
+      "BOUNDED_READ_ONLY_PREFLIGHT_FROM_CURRENT_USER_REQUEST" &&
+    readOnlyPreflight.authority.remote_mutation_authorized === false &&
+    readOnlyPreflight.authority.deployment_authorized === false &&
+    readOnlyPreflight.authority.gpu_use_authorized === false &&
+    readOnlyPreflight.authority.external_spend_authorized_usd === 0,
+  "READ_ONLY_PREFLIGHT_AUTHORITY",
+);
+const readOnlyRunpod = readOnlyPreflight.runpod;
+assert(
+  HASH.test(readOnlyRunpod.account_id_sha256 ?? "") &&
+    readOnlyRunpod.pods === 0 &&
+    readOnlyRunpod.endpoints === 0 &&
+    readOnlyRunpod.private_templates === 0 &&
+    readOnlyRunpod.active_serverless_workers === 0 &&
+    readOnlyRunpod.running_compute === 0 &&
+    JSON.stringify(readOnlyRunpod.retained_volumes) ===
+      JSON.stringify([
+        { id_sha256: EXPECTED_SOULX_VOLUME_ID_SHA256, size_gb: 50, region: "EU-RO-1" },
+        { id_sha256: EXPECTED_MAGE_VOLUME_ID_SHA256, size_gb: 50, region: "EU-RO-1" },
+      ]) &&
+    readOnlyRunpod.exact_gpu === "NVIDIA GeForce RTX 4090" &&
+    readOnlyRunpod.region === "EU-RO-1" &&
+    readOnlyRunpod.availability === "LOW" &&
+    readOnlyRunpod.secure_pod_catalog_rate_usd_per_gpu_hour === 0.74 &&
+    readOnlyRunpod.secure_pod_rate_is_serverless_flex_rate === false &&
+    readOnlyRunpod.serverless_flex_rate_usd_per_second ===
+      EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_SECOND &&
+    readOnlyRunpod.serverless_flex_rate_usd_per_gpu_hour ===
+      EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR &&
+    readOnlyRunpod.serverless_rate_source === "https://docs.runpod.io/serverless/pricing" &&
+    readOnlyRunpod.serverless_rate_source_kind === "OFFICIAL_PUBLIC_DOCUMENTATION" &&
+    readOnlyRunpod.prior_1_10_usd_per_gpu_hour_fence_passes_current_rate === false &&
+    readOnlyRunpod.fallback_authorized === false,
+  "READ_ONLY_PREFLIGHT_RUNPOD",
+);
+const readOnlyCloudflare = readOnlyPreflight.cloudflare;
+assert(
+  readOnlyCloudflare.authentication_mode === "EXISTING_PROTECTED_WRANGLER_OAUTH_ONLY" &&
+    readOnlyCloudflare.protected_config_path === EXPECTED_WRANGLER_CONFIG_PATH &&
+    readOnlyCloudflare.protected_config_path_sha256 === EXPECTED_WRANGLER_CONFIG_PATH_SHA256 &&
+    readOnlyCloudflare.protected_config_mode === "0600" &&
+    readOnlyCloudflare.volatile_oauth_token_or_config_bytes_used_as_execution_authority === false &&
+    readOnlyCloudflare.account_id === EXPECTED_CLOUDFLARE_ACCOUNT_ID &&
+    readOnlyCloudflare.account_id_sha256 === EXPECTED_CLOUDFLARE_ACCOUNT_ID_SHA256 &&
+    readOnlyCloudflare.workers_dev_subdomain === EXPECTED_WORKERS_DEV_SUBDOMAIN &&
+    readOnlyCloudflare.workers_dev_subdomain_readback_sha256 ===
+      EXPECTED_WORKERS_DEV_SUBDOMAIN_SHA256 &&
+    readOnlyCloudflare.public_origin === EXPECTED_PUBLIC_ORIGIN &&
+    readOnlyCloudflare.worker_inventory_status === 404 &&
+    readOnlyCloudflare.production_worker_or_workflow_collision_observed === false &&
+    readOnlyCloudflare.existing_bucket === EXPECTED_R2_BUCKET_NAME &&
+    readOnlyCloudflare.existing_bucket_readback_status === 200 &&
+    readOnlyCloudflare.absent_route_readback?.reads === 3 &&
+    readOnlyCloudflare.absent_route_readback.stable === true &&
+    readOnlyCloudflare.absent_route_readback.status === 404 &&
+    readOnlyCloudflare.absent_route_readback.content_type === EXPECTED_ABSENT_ROUTE_CONTENT_TYPE &&
+    readOnlyCloudflare.absent_route_readback.body_length === EXPECTED_ABSENT_ROUTE_BODY_LENGTH &&
+    readOnlyCloudflare.absent_route_readback.body_sha256 === EXPECTED_ABSENT_ROUTE_BODY_SHA256 &&
+    readOnlyCloudflare.absent_route_readback.prior_17_byte_text_plain_contract_matches === false,
+  "READ_ONLY_PREFLIGHT_CLOUDFLARE",
+);
+assert(
+  readOnlyPreflight.credential_receipt?.sha256 === EXPECTED_CREDENTIAL_RECEIPT_SHA256 &&
+    readOnlyPreflight.credential_receipt.rotation_result_sha256 ===
+      EXPECTED_CREDENTIAL_ROTATION_RESULT_SHA256 &&
+    readOnlyPreflight.credential_receipt.secret_free === true &&
+    readOnlyPreflight.credential_receipt.authority_consumed_and_non_reusable === true &&
+    readOnlyPreflight.credential_receipt.google_project_id === EXPECTED_GOOGLE_PROJECT_ID &&
+    readOnlyPreflight.credential_receipt.google_project_id_sha256 === EXPECTED_GOOGLE_PROJECT_ID_SHA256 &&
+    readOnlyPreflight.credential_receipt.google_project_number_sha256 ===
+      EXPECTED_GOOGLE_PROJECT_NUMBER_SHA256 &&
+    readOnlyPreflight.credential_receipt.google_oauth_client_id_sha256 ===
+      EXPECTED_GOOGLE_CLIENT_ID_SHA256 &&
+    readOnlyPreflight.credential_receipt.google_oauth_client_secret_sha256 ===
+      EXPECTED_GOOGLE_CLIENT_SECRET_SHA256 &&
+    readOnlyPreflight.credential_receipt.r2_bucket_name_sha256 === EXPECTED_R2_BUCKET_NAME_SHA256 &&
+    readOnlyPreflight.credential_receipt.r2_access_key_id_sha256 ===
+      EXPECTED_R2_ACCESS_KEY_ID_SHA256 &&
+    readOnlyPreflight.credential_receipt.r2_secret_access_key_sha256 ===
+      EXPECTED_R2_SECRET_ACCESS_KEY_SHA256 &&
+    readOnlyPreflight.credential_receipt.raw_values_in_evidence === false,
+  "READ_ONLY_PREFLIGHT_CREDENTIAL_RECEIPT",
+);
+assert(
+  readOnlyPreflight.result?.status ===
+      "BLOCKED_REQUIRES_PROVIDER_FREE_SOURCE_REPAIR_AND_RESEAL" &&
+    JSON.stringify(readOnlyPreflight.result.blocking_drift) ===
+      JSON.stringify([
+        "SERVERLESS_FLEX_RATE_1_116_EXCEEDS_PRIOR_1_10_FENCE",
+        "ABSENT_PRODUCTION_ROUTE_EXACT_READBACK_DRIFT",
+        "ACTIVE_PROPOSAL_PATH_NOT_TRUSTED_BY_CURRENT_ORCHESTRATION_SOURCE",
+      ]) &&
+    readOnlyPreflight.result.provider_mutations === 0 &&
+    readOnlyPreflight.result.temporary_compute_started === false &&
+    readOnlyPreflight.result.gpu_hours === 0 &&
+    readOnlyPreflight.result.external_spend_usd === 0 &&
+    readOnlyPreflight.result.zero_compute_confirmed === true,
+  "READ_ONLY_PREFLIGHT_RESULT",
+);
 const repositoryRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
   cwd: process.cwd(),
   encoding: "utf8",
@@ -385,10 +547,16 @@ assert(
   "PHASE_CAP_SUM",
 );
 assert(
-  scope.gpu.exact_offering === "NVIDIA GeForce RTX 4090" &&
+    scope.gpu.exact_offering === "NVIDIA GeForce RTX 4090" &&
     scope.gpu.region === "EU-RO-1" &&
     scope.gpu.minimum_availability_at_each_mutation_boundary === "LOW-or-better" &&
-    scope.gpu.maximum_serverless_flex_rate_usd_per_gpu_hour === 1.1 &&
+    scope.gpu.maximum_serverless_flex_rate_usd_per_gpu_hour === 1.116 &&
+    scope.gpu.serverless_flex_rate_usd_per_second === 0.00031 &&
+    scope.gpu.serverless_flex_rate_source === "https://docs.runpod.io/serverless/pricing" &&
+    scope.gpu.serverless_flex_rate_source_kind === "OFFICIAL_PUBLIC_DOCUMENTATION" &&
+    scope.gpu.serverless_flex_rate_reject_above_usd_per_gpu_hour === 1.116 &&
+    scope.gpu.secure_pod_catalog_rate_usd_per_gpu_hour === 0.74 &&
+    scope.gpu.secure_pod_rate_is_serverless_flex_rate === false &&
     scope.gpu.fallback_allowed === false,
   "GPU_SCOPE",
 );
@@ -413,17 +581,24 @@ assert(
     cloudflareCredentials.protected_config_mode === "0600" &&
     JSON.stringify(cloudflareCredentials.oauth_scopes) ===
       JSON.stringify(APPROVED_WRANGLER_OAUTH_SCOPES) &&
-    cloudflareCredentials.protected_config_path === null &&
+    cloudflareCredentials.protected_config_path === EXPECTED_WRANGLER_CONFIG_PATH &&
+    cloudflareCredentials.protected_config_path_sha256 ===
+      EXPECTED_WRANGLER_CONFIG_PATH_SHA256 &&
     cloudflareCredentials.protected_config_sha256 === null &&
-    cloudflareCredentials.authenticated_account_id === null &&
-    cloudflareCredentials.authenticated_account_id_sha256 === null &&
+    cloudflareCredentials.authenticated_account_id === EXPECTED_CLOUDFLARE_ACCOUNT_ID &&
+    cloudflareCredentials.authenticated_account_id_sha256 ===
+      EXPECTED_CLOUDFLARE_ACCOUNT_ID_SHA256 &&
+    cloudflareCredentials.volatile_oauth_token_or_config_bytes_used_as_execution_authority ===
+      false &&
     cloudflareCredentials.raw_api_token_file_authorized === false &&
     cloudflareCredentials.cloudflare_api_token_environment_export_authorized === false &&
     cloudflareCredentials.new_cloudflare_api_token_authorized === false &&
     cloudflareCredentials.new_oauth_credential_authorized === false &&
     cloudflareCredentials.credential_rotation_authorized === false &&
     cloudflareCredentials.oauth_account_readback_required === true &&
-    cloudflareCredentials.oauth_config_readback_required_before_any_cloudflare_mutation === true,
+    cloudflareCredentials.oauth_config_readback_required_before_any_cloudflare_mutation === true &&
+    cloudflareCredentials.wrangler_oauth_scope_must_be_exact_and_source_bound === true &&
+    cloudflareCredentials.no_token_values_or_hashes_in_proposal_or_seed === true,
   "CLOUDFLARE_OAUTH_SCOPE",
 );
 
@@ -432,24 +607,28 @@ assert(
   google.authorized_client_count === 1 &&
     google.operation === "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_GOOGLE_OAUTH_WEB_CLIENT" &&
     google.provisioning_mode === "PREEXISTING_PROTECTED_VALUE_ONLY" &&
-    google.separate_future_credential_bootstrap_approval_required === true &&
+    google.separate_future_credential_bootstrap_approval_required === false &&
     google.creation_or_rotation_authorized === false &&
     google.client_type === "WEB" &&
     google.project_access_mode === "USER_ACCESSIBLE_EXISTING_PROJECT_ONLY" &&
-    google.accessible_project_count_observed === 0 &&
-    google.project_id === null &&
-    google.project_number_sha256 === null &&
+    google.accessible_project_count_observed === 1 &&
+    google.project_id === EXPECTED_GOOGLE_PROJECT_ID &&
+    google.project_id_sha256 === EXPECTED_GOOGLE_PROJECT_ID_SHA256 &&
+    google.project_number_sha256 === EXPECTED_GOOGLE_PROJECT_NUMBER_SHA256 &&
+    google.authenticated_account_sha256 === EXPECTED_GOOGLE_ACCOUNT_SHA256 &&
     google.project_access_readback_required === true &&
     google.required_project_permission === "resourcemanager.projects.get" &&
     google.known_inaccessible_project_id === "videoforge-v2-06-staging-0817" &&
     google.inaccessible_project_reuse_authorized === false &&
     google.new_google_project_creation_authorized === false &&
-    google.new_google_project_authority_required_if_count_is_zero === true &&
+    google.new_google_project_authority_required_if_count_is_zero === false &&
     google.google_project_access_grant_authorized === false &&
     google.if_no_user_accessible_project ===
       "HARD_STOP_AND_RESEAL_WITH_EXPLICIT_NEW_PROJECT_AUTHORITY" &&
-    google.client_id_sha256 === null &&
-    google.client_secret_sha256 === null &&
+    google.client_id_sha256 === EXPECTED_GOOGLE_CLIENT_ID_SHA256 &&
+    google.client_secret_sha256 === EXPECTED_GOOGLE_CLIENT_SECRET_SHA256 &&
+    google.javascript_origins_canonical_sha256 === EXPECTED_GOOGLE_JS_ORIGINS_SHA256 &&
+    google.redirect_uris_canonical_sha256 === EXPECTED_GOOGLE_REDIRECTS_SHA256 &&
     google.authorized_redirect_uri_count === 1 &&
     google.authorized_redirect_uri_template === "{final_production_origin}/api/auth/callback/google" &&
     google.callback_must_bind_only_final_production_origin === true &&
@@ -457,7 +636,7 @@ assert(
     JSON.stringify(google.authorized_javascript_origins) === "[]" &&
     google.other_google_oauth_client_creation_or_rotation_authorized === false &&
     google.old_client_disable_or_delete_authorized_before_new_readback === false &&
-    google.identity_and_hashes_pending_credential_scope_audit === true &&
+    google.identity_and_hashes_pending_credential_scope_audit === false &&
     google.protected_value_must_exist_before_reseal === true,
   "GOOGLE_OAUTH_SCOPE",
 );
@@ -467,14 +646,16 @@ assert(
   r2.authorized_credential_count === 1 &&
     r2.operation === "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_LEAST_PRIVILEGE_R2_S3_CREDENTIAL" &&
     r2.provisioning_mode === "PREEXISTING_PROTECTED_VALUE_ONLY" &&
-    r2.separate_future_credential_bootstrap_approval_required === true &&
+    r2.separate_future_credential_bootstrap_approval_required === false &&
     r2.creation_or_rotation_authorized === false &&
-    r2.account_id === null &&
-    r2.account_id_sha256 === null &&
+    r2.account_id === EXPECTED_CLOUDFLARE_ACCOUNT_ID &&
+    r2.account_id_sha256 === EXPECTED_CLOUDFLARE_ACCOUNT_ID_SHA256 &&
     r2.authenticated_account_readback_required === true &&
     r2.existing_bucket_only === true &&
-    r2.bucket_name === null &&
-    r2.bucket_name_sha256 === null &&
+    r2.bucket_name === EXPECTED_R2_BUCKET_NAME &&
+    r2.bucket_name_sha256 === EXPECTED_R2_BUCKET_NAME_SHA256 &&
+    r2.access_key_id_sha256 === EXPECTED_R2_ACCESS_KEY_ID_SHA256 &&
+    r2.secret_access_key_sha256 === EXPECTED_R2_SECRET_ACCESS_KEY_SHA256 &&
     r2.bucket_existence_readback_required === true &&
     JSON.stringify(r2.allowed_actions_upper_bound) ===
       JSON.stringify(["ListBucket", "GetObject", "PutObject", "DeleteObject"]) &&
@@ -485,7 +666,7 @@ assert(
     r2.new_r2_bucket_authorized === false &&
     r2.other_r2_credential_creation_or_rotation_authorized === false &&
     r2.secret_values_or_hashes_in_proposal_or_seed === false &&
-    r2.action_set_and_prefix_pending_credential_scope_audit === true &&
+    r2.action_set_and_prefix_pending_credential_scope_audit === false &&
     r2.protected_value_must_exist_before_reseal === true,
   "R2_S3_SCOPE",
 );
@@ -498,6 +679,34 @@ assert(
     pending.source_hashes_must_be_bound_before_reseal === true,
   "PENDING_SOURCE_HASHES",
 );
+const credentialReceipt = pending.credential_receipt_binding;
+assert(
+  credentialReceipt.source_commit === "3f7b588de4b96da7c1e56b6c1908df7381712710" &&
+    credentialReceipt.receipt_path ===
+      "~/.videoforge/v2-13/bootstrap/receipt/credential-bootstrap.json" &&
+    credentialReceipt.receipt_sha256 === EXPECTED_CREDENTIAL_RECEIPT_SHA256 &&
+    credentialReceipt.rotation_result_sha256 === EXPECTED_CREDENTIAL_ROTATION_RESULT_SHA256 &&
+    credentialReceipt.schema_version === "videoforge.v2-13-credential-bootstrap-result/v1" &&
+    credentialReceipt.secret_free === true &&
+    credentialReceipt.authority_consumed_and_non_reusable === true &&
+    credentialReceipt.raw_values_in_evidence === false &&
+    credentialReceipt.google_project_id === EXPECTED_GOOGLE_PROJECT_ID &&
+    credentialReceipt.google_project_id_sha256 === EXPECTED_GOOGLE_PROJECT_ID_SHA256 &&
+    credentialReceipt.google_project_number_sha256 === EXPECTED_GOOGLE_PROJECT_NUMBER_SHA256 &&
+    credentialReceipt.google_authenticated_account_sha256 === EXPECTED_GOOGLE_ACCOUNT_SHA256 &&
+    credentialReceipt.google_oauth_client_id_sha256 === EXPECTED_GOOGLE_CLIENT_ID_SHA256 &&
+    credentialReceipt.google_oauth_client_secret_sha256 === EXPECTED_GOOGLE_CLIENT_SECRET_SHA256 &&
+    credentialReceipt.google_javascript_origins_canonical_sha256 ===
+      EXPECTED_GOOGLE_JS_ORIGINS_SHA256 &&
+    credentialReceipt.google_redirect_uris_canonical_sha256 === EXPECTED_GOOGLE_REDIRECTS_SHA256 &&
+    credentialReceipt.r2_account_id === EXPECTED_CLOUDFLARE_ACCOUNT_ID &&
+    credentialReceipt.r2_account_id_sha256 === EXPECTED_CLOUDFLARE_ACCOUNT_ID_SHA256 &&
+    credentialReceipt.r2_bucket_name === EXPECTED_R2_BUCKET_NAME &&
+    credentialReceipt.r2_bucket_name_sha256 === EXPECTED_R2_BUCKET_NAME_SHA256 &&
+    credentialReceipt.r2_access_key_id_sha256 === EXPECTED_R2_ACCESS_KEY_ID_SHA256 &&
+    credentialReceipt.r2_secret_access_key_sha256 === EXPECTED_R2_SECRET_ACCESS_KEY_SHA256,
+  "CREDENTIAL_RECEIPT_BINDING",
+);
 assert(
   pending.cloudflare_authentication.mode === "EXISTING_WRANGLER_OAUTH_CONFIG_ONLY" &&
     pending.cloudflare_authentication.protected_binding_environment_name ===
@@ -505,7 +714,17 @@ assert(
     pending.cloudflare_authentication.protected_file_mode === "0600" &&
     JSON.stringify(pending.cloudflare_authentication.oauth_scopes) ===
       JSON.stringify(APPROVED_WRANGLER_OAUTH_SCOPES) &&
-    pending.cloudflare_authentication.config_path_identity === null &&
+    pending.cloudflare_authentication.protected_config_path === EXPECTED_WRANGLER_CONFIG_PATH &&
+    pending.cloudflare_authentication.protected_config_path_sha256 ===
+      EXPECTED_WRANGLER_CONFIG_PATH_SHA256 &&
+    pending.cloudflare_authentication.volatile_oauth_token_or_config_bytes_used_as_execution_authority ===
+      false &&
+    pending.cloudflare_authentication.config_path_identity?.path === EXPECTED_WRANGLER_CONFIG_PATH &&
+    pending.cloudflare_authentication.config_path_identity?.path_sha256 ===
+      EXPECTED_WRANGLER_CONFIG_PATH_SHA256 &&
+    pending.cloudflare_authentication.config_path_identity?.mode === "0600" &&
+    pending.cloudflare_authentication.config_path_identity
+      ?.volatile_oauth_token_or_config_bytes_used_as_execution_authority === false &&
     pending.cloudflare_authentication.config_sha256 === null &&
     pending.cloudflare_authentication.raw_api_token_file_authorized === false &&
     pending.cloudflare_authentication.cloudflare_api_token_environment_export_authorized === false &&
@@ -515,16 +734,16 @@ assert(
 );
 const origin = pending.account_and_workers_dev_origin;
 assert(
-  origin.account_id === null &&
-    origin.account_id_sha256 === null &&
+  origin.account_id === EXPECTED_CLOUDFLARE_ACCOUNT_ID &&
+    origin.account_id_sha256 === EXPECTED_CLOUDFLARE_ACCOUNT_ID_SHA256 &&
     origin.authenticated_account_readback_required === true &&
     origin.workers_dev_subdomain_endpoint === "/workers/subdomain" &&
-    origin.workers_dev_subdomain === null &&
-    origin.workers_dev_subdomain_sha256 === null &&
+    origin.workers_dev_subdomain === EXPECTED_WORKERS_DEV_SUBDOMAIN &&
+    origin.workers_dev_subdomain_sha256 === EXPECTED_WORKERS_DEV_SUBDOMAIN_SHA256 &&
     origin.subdomain_readback_required === true &&
     origin.worker_name === "videoforge-production-runtime" &&
     origin.derived_origin_template === "https://{worker_name}.{workers_dev_subdomain}.workers.dev" &&
-    origin.public_origin === null &&
+    origin.public_origin === EXPECTED_PUBLIC_ORIGIN &&
     origin.public_origin_must_equal_derived_origin === true,
   "PENDING_ORIGIN_BINDING",
 );
@@ -534,11 +753,10 @@ assert(
     routes.method === "GET" &&
     routes.pre_mutation.worker_must_be_absent === true &&
     routes.pre_mutation.status === 404 &&
-    routes.pre_mutation.content_type === "text/plain; charset=UTF-8" &&
-    routes.pre_mutation.body_length === 17 &&
-    routes.pre_mutation.body_sha256 ===
-      "sha256:a4daf148dd64d1a3e8e8101040915e50d12df29153c5936d377cf2260ccc8ba0" &&
-    routes.pre_mutation.observed_body_sha256_prefix === "a4daf148" &&
+    routes.pre_mutation.content_type === EXPECTED_ABSENT_ROUTE_CONTENT_TYPE &&
+    routes.pre_mutation.body_length === EXPECTED_ABSENT_ROUTE_BODY_LENGTH &&
+    routes.pre_mutation.body_sha256 === EXPECTED_ABSENT_ROUTE_BODY_SHA256 &&
+    routes.pre_mutation.observed_body_sha256_prefix === EXPECTED_ABSENT_ROUTE_BODY_SHA256_PREFIX &&
     routes.pre_mutation.json_body_authorized === false &&
     routes.pre_mutation.status_503_authorized === false &&
     routes.pre_mutation.exact_body_and_content_type_required === true &&
@@ -660,28 +878,43 @@ assert(
       JSON.stringify(APPROVED_WRANGLER_OAUTH_SCOPES) &&
     cloudflareGraph.oauth_authentication.raw_api_token_file_authorized === false &&
     cloudflareGraph.oauth_authentication.cloudflare_api_token_environment_export_authorized === false &&
-    cloudflareGraph.oauth_authentication.new_cloudflare_credential_authorized === false,
+    cloudflareGraph.oauth_authentication.new_cloudflare_credential_authorized === false &&
+    cloudflareGraph.oauth_authentication.token_values_and_token_hashes_in_proposal_authorized ===
+      false &&
+    cloudflareGraph.oauth_authentication.oauth_scope_readback_required === true &&
+    cloudflareGraph.oauth_authentication.account_identity_readback_required === true,
   "CLOUDFLARE_GRAPH_OAUTH",
 );
 assert(
-  cloudflareGraph.account_and_origin.workers_dev_subdomain_endpoint === "/workers/subdomain" &&
+  cloudflareGraph.account_and_origin.account_readback_must_be_authenticated === true &&
+    cloudflareGraph.account_and_origin.account_id === EXPECTED_CLOUDFLARE_ACCOUNT_ID &&
+    cloudflareGraph.account_and_origin.account_id_sha256 === EXPECTED_CLOUDFLARE_ACCOUNT_ID_SHA256 &&
+    cloudflareGraph.account_and_origin.workers_dev_subdomain_endpoint === "/workers/subdomain" &&
     cloudflareGraph.account_and_origin.workers_dev_subdomain_field === "result.subdomain" &&
     cloudflareGraph.account_and_origin.workers_dev_subdomain_sha256_field ===
       "subdomainReadbackSha256" &&
+    cloudflareGraph.account_and_origin.workers_dev_subdomain === EXPECTED_WORKERS_DEV_SUBDOMAIN &&
+    cloudflareGraph.account_and_origin.workers_dev_subdomain_sha256 ===
+      EXPECTED_WORKERS_DEV_SUBDOMAIN_SHA256 &&
+    cloudflareGraph.account_and_origin.worker_name === "videoforge-production-runtime" &&
     cloudflareGraph.account_and_origin.origin_derivation ===
       "https://{worker_name}.{workers_dev_subdomain}.workers.dev" &&
-    cloudflareGraph.account_and_origin.origin_must_equal_derived_account_bound_origin === true,
+    cloudflareGraph.account_and_origin.public_origin === EXPECTED_PUBLIC_ORIGIN &&
+    cloudflareGraph.account_and_origin.origin_must_equal_derived_account_bound_origin === true &&
+    cloudflareGraph.account_and_origin.account_id_and_subdomain_identities_pending_source_binding ===
+      false,
   "CLOUDFLARE_GRAPH_ORIGIN",
 );
 assert(
   cloudflareGraph.route_readback_contract.before_creation.status === 404 &&
     cloudflareGraph.route_readback_contract.before_creation.content_type ===
-      "text/plain; charset=UTF-8" &&
-    cloudflareGraph.route_readback_contract.before_creation.body_length === 17 &&
+      EXPECTED_ABSENT_ROUTE_CONTENT_TYPE &&
+    cloudflareGraph.route_readback_contract.before_creation.body_length ===
+      EXPECTED_ABSENT_ROUTE_BODY_LENGTH &&
     cloudflareGraph.route_readback_contract.before_creation.body_sha256 ===
-      "sha256:a4daf148dd64d1a3e8e8101040915e50d12df29153c5936d377cf2260ccc8ba0" &&
+      EXPECTED_ABSENT_ROUTE_BODY_SHA256 &&
     cloudflareGraph.route_readback_contract.before_creation.observed_body_sha256_prefix ===
-      "a4daf148" &&
+      EXPECTED_ABSENT_ROUTE_BODY_SHA256_PREFIX &&
     cloudflareGraph.route_readback_contract.before_creation.json_body_forbidden === true &&
     cloudflareGraph.route_readback_contract.before_creation.status_503_forbidden === true &&
     cloudflareGraph.route_readback_contract.after_secret_free_quarantine.status === 200 &&
@@ -694,22 +927,30 @@ assert(
 assert(cloudflareGraph.source_contract_must_reject_old_503_json_prestate === true, "NO_503_JSON_PRESTATE");
 const credentialGraph = proposal.exact_execution_graph.credential_scope_policy;
 assert(
-  credentialGraph.status === "BOUND_PREEXISTING_CREDENTIAL_SCOPE_PENDING_IDENTITY_AUDIT" &&
+  credentialGraph.status === "BOUND_COMPLETED_CREDENTIAL_ROTATION_RECEIPT" &&
     credentialGraph.credential_creation_or_rotation_removed_from_full_live_graph === true &&
-    credentialGraph.separate_future_credential_bootstrap_approval_required === true &&
-    credentialGraph.no_credential_identity_or_hash_finalized === true,
-  "CREDENTIAL_GRAPH_PENDING",
+    credentialGraph.separate_future_credential_bootstrap_approval_required === false &&
+    credentialGraph.no_credential_identity_or_hash_finalized === false &&
+    JSON.stringify(credentialGraph.credential_receipt_binding) === JSON.stringify(credentialReceipt),
+  "CREDENTIAL_GRAPH_BOUND",
 );
 assert(
   credentialGraph.google_oauth.authorized_operation ===
       "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_GOOGLE_OAUTH_WEB_CLIENT" &&
     credentialGraph.google_oauth.provisioning_mode === "PREEXISTING_PROTECTED_VALUE_ONLY" &&
-    credentialGraph.google_oauth.separate_future_credential_bootstrap_approval_required === true &&
+    credentialGraph.google_oauth.separate_future_credential_bootstrap_approval_required === false &&
     credentialGraph.google_oauth.creation_or_rotation_authorized === false &&
     credentialGraph.google_oauth.project_access === "USER_ACCESSIBLE_EXISTING_PROJECT_ONLY" &&
-    credentialGraph.google_oauth.project_id === null &&
-    credentialGraph.google_oauth.client_id_sha256 === null &&
-    credentialGraph.google_oauth.client_secret_sha256 === null &&
+    credentialGraph.google_oauth.accessible_project_count_observed === 1 &&
+    credentialGraph.google_oauth.project_id === EXPECTED_GOOGLE_PROJECT_ID &&
+    credentialGraph.google_oauth.project_id_sha256 === EXPECTED_GOOGLE_PROJECT_ID_SHA256 &&
+    credentialGraph.google_oauth.project_number_sha256 === EXPECTED_GOOGLE_PROJECT_NUMBER_SHA256 &&
+    credentialGraph.google_oauth.authenticated_account_sha256 === EXPECTED_GOOGLE_ACCOUNT_SHA256 &&
+    credentialGraph.google_oauth.client_id_sha256 === EXPECTED_GOOGLE_CLIENT_ID_SHA256 &&
+    credentialGraph.google_oauth.client_secret_sha256 === EXPECTED_GOOGLE_CLIENT_SECRET_SHA256 &&
+    credentialGraph.google_oauth.javascript_origins_canonical_sha256 ===
+      EXPECTED_GOOGLE_JS_ORIGINS_SHA256 &&
+    credentialGraph.google_oauth.redirect_uris_canonical_sha256 === EXPECTED_GOOGLE_REDIRECTS_SHA256 &&
     credentialGraph.google_oauth.callback_uri ===
       "{final_production_origin}/api/auth/callback/google" &&
     credentialGraph.google_oauth.callback_uri_count === 1 &&
@@ -717,7 +958,7 @@ assert(
     credentialGraph.google_oauth.staging_local_preview_and_other_callbacks_forbidden === true &&
     credentialGraph.google_oauth.new_project_authorized === false &&
     credentialGraph.google_oauth.new_project_or_access_grant_requires_fresh_explicit_authority ===
-      true &&
+      false &&
     credentialGraph.google_oauth.historical_inaccessible_project ===
       "videoforge-v2-06-staging-0817" &&
     credentialGraph.google_oauth.old_client_disable_before_new_readback === false &&
@@ -728,10 +969,14 @@ assert(
   credentialGraph.r2_s3.authorized_operation ===
       "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_LEAST_PRIVILEGE_R2_S3_CREDENTIAL" &&
     credentialGraph.r2_s3.provisioning_mode === "PREEXISTING_PROTECTED_VALUE_ONLY" &&
-    credentialGraph.r2_s3.separate_future_credential_bootstrap_approval_required === true &&
+    credentialGraph.r2_s3.separate_future_credential_bootstrap_approval_required === false &&
     credentialGraph.r2_s3.creation_or_rotation_authorized === false &&
-    credentialGraph.r2_s3.account_id === null &&
-    credentialGraph.r2_s3.bucket_name === null &&
+    credentialGraph.r2_s3.account_id === EXPECTED_CLOUDFLARE_ACCOUNT_ID &&
+    credentialGraph.r2_s3.account_id_sha256 === EXPECTED_CLOUDFLARE_ACCOUNT_ID_SHA256 &&
+    credentialGraph.r2_s3.bucket_name === EXPECTED_R2_BUCKET_NAME &&
+    credentialGraph.r2_s3.bucket_name_sha256 === EXPECTED_R2_BUCKET_NAME_SHA256 &&
+    credentialGraph.r2_s3.access_key_id_sha256 === EXPECTED_R2_ACCESS_KEY_ID_SHA256 &&
+    credentialGraph.r2_s3.secret_access_key_sha256 === EXPECTED_R2_SECRET_ACCESS_KEY_SHA256 &&
     credentialGraph.r2_s3.account_and_existing_bucket_binding_required === true &&
     JSON.stringify(credentialGraph.r2_s3.allowed_actions_upper_bound) ===
       JSON.stringify(["ListBucket", "GetObject", "PutObject", "DeleteObject"]) &&
@@ -739,7 +984,7 @@ assert(
     credentialGraph.r2_s3.account_wide_or_wildcard_access_forbidden === true &&
     credentialGraph.r2_s3.new_bucket_authorized === false &&
     credentialGraph.r2_s3.other_credential_creation_or_rotation_authorized === false &&
-    credentialGraph.r2_s3.action_set_and_prefix_pending_credential_scope_audit === true &&
+    credentialGraph.r2_s3.action_set_and_prefix_pending_credential_scope_audit === false &&
     credentialGraph.r2_s3.protected_value_must_exist_before_reseal === true,
   "CREDENTIAL_GRAPH_R2",
 );
@@ -754,28 +999,25 @@ assert(
     JSON.stringify(proposal.approval_request.requested_exact_phase_caps_usd) ===
       JSON.stringify([4.5, 1, 2, 2, 4, 2, 2]) &&
     proposal.approval_request.requested_gpu.includes("LOW-or-better") &&
-    proposal.approval_request.requested_gpu.includes("USD 1.10/GPU-hour") &&
+    proposal.approval_request.requested_gpu.includes("USD 0.00031/second") &&
+    proposal.approval_request.requested_gpu.includes("USD 1.116/GPU-hour") &&
     proposal.approval_request.requested_gpu.includes("no fallback") &&
     proposal.approval_request.requested_separate_retention_consent.includes("USD 7/month") &&
-    proposal.approval_request.requested_google_project_id === null &&
-    proposal.approval_request.requested_google_client_id_sha256 === null &&
-    proposal.approval_request.requested_r2_account_id === null &&
-    proposal.approval_request.requested_r2_bucket_name === null &&
+    proposal.approval_request.requested_google_project_id === EXPECTED_GOOGLE_PROJECT_ID &&
+    proposal.approval_request.requested_google_client_id_sha256 ===
+      EXPECTED_GOOGLE_CLIENT_ID_SHA256 &&
+    proposal.approval_request.requested_r2_account_id === EXPECTED_CLOUDFLARE_ACCOUNT_ID &&
+    proposal.approval_request.requested_r2_bucket_name === EXPECTED_R2_BUCKET_NAME &&
     proposal.approval_request.requested_credential_identities_and_hashes_must_be_finalized_before_reseal ===
-      true &&
-    proposal.approval_request.requested_exact_action.includes("pre-existing protected") &&
-    proposal.approval_request.requested_exact_action.includes("separate future credential-bootstrap approval") &&
-    proposal.approval_request.requested_google_oauth_scope.includes("pre-existing protected") &&
+      false &&
+    proposal.approval_request.requested_exact_action.includes("completed receipt-bound") &&
+    proposal.approval_request.requested_google_oauth_scope.includes("completed-receipt-bound protected") &&
     proposal.approval_request.requested_google_oauth_scope.includes("no creation or rotation") &&
-    proposal.approval_request.requested_google_oauth_scope.includes(
-      "separate future credential-bootstrap approval",
-    ) &&
-    proposal.approval_request.requested_r2_s3_scope.includes("pre-existing protected") &&
+    proposal.approval_request.requested_google_oauth_scope.includes(EXPECTED_GOOGLE_PROJECT_ID) &&
+    proposal.approval_request.requested_r2_s3_scope.includes("completed-receipt-bound protected") &&
     proposal.approval_request.requested_r2_s3_scope.includes("no creation or rotation") &&
-    proposal.approval_request.requested_r2_s3_scope.includes(
-      "separate future credential-bootstrap approval",
-    ),
-  "APPROVAL_SCOPE_PENDING",
+    proposal.approval_request.requested_r2_s3_scope.includes(EXPECTED_R2_BUCKET_NAME),
+  "APPROVAL_SCOPE_BOUND",
 );
 const allOperations = proposal.ordered_operations.flatMap((phase) => phase.operations);
 assert(
@@ -785,7 +1027,7 @@ assert(
   "NO_CREDENTIAL_CREATE_OR_ROTATE_OPERATION",
 );
 includes(allOperations, "BLOCKED_UNSEALED", "BLOCKED_OPERATION");
-includes(allOperations, "404 text/plain", "ABSENT_404_TEXT_PLAIN_OPERATION");
+includes(allOperations, "404 text/html", "ABSENT_404_HTML_OPERATION");
 includes(allOperations, "not 503 JSON", "NO_503_OPERATION");
 includes(allOperations, "protected Wrangler OAuth config", "OAUTH_OPERATION");
 includes(allOperations, "Google OAuth WEB client", "GOOGLE_OPERATION");
@@ -793,7 +1035,7 @@ includes(allOperations, "least-privilege R2 S3 credential", "R2_OPERATION");
 includes(allOperations, "strict nested seed-hash", "SEED_OPERATION");
 includes(proposal.stop_conditions, "raw Cloudflare API token", "NO_RAW_TOKEN_STOP");
 includes(proposal.stop_conditions, "inaccessible Google project", "NO_INACCESSIBLE_PROJECT_STOP");
-includes(proposal.stop_conditions, "exact HTTP 404 text/plain", "EXACT_404_STOP");
+includes(proposal.stop_conditions, "exact HTTP 404 text/html", "EXACT_404_STOP");
 includes(proposal.stop_conditions, "CLOUDFLARE_API_TOKEN", "NO_TOKEN_EXPORT_STOP");
 
 for (const name of ["user-approval.json", "approved-authority.json"]) {
@@ -806,7 +1048,8 @@ for (const name of ["user-approval.json", "approved-authority.json"]) {
 }
 const files = await readdir(directory);
 assert(
-  JSON.stringify([...files].sort()) === JSON.stringify(["combined-live-proposal.json", "validate-candidate.mjs"]),
+  JSON.stringify([...files].sort()) ===
+    JSON.stringify(["combined-live-proposal.json", "read-only-preflight.json", "validate-candidate.mjs"]),
   "DRAFT_FILE_SET",
 );
 

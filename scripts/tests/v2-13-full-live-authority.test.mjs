@@ -47,6 +47,7 @@ import {
   EXACT_V3_RELEASE_COMPONENTS,
   EXACT_WORKFLOW_START_AUTHORITY_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
+  EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
   validateFullLiveUserApproval,
 } from "../../deploy/v2-13/validate-full-live-approval.mjs";
 
@@ -54,6 +55,10 @@ const directory =
   "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate";
 const proposalBytes = readFileSync(`${directory}/combined-live-proposal.json`);
 const approvalBytes = readFileSync(`${directory}/user-approval.json`);
+const currentApproval = JSON.parse(approvalBytes);
+currentApproval.approval.gpu.maximum_serverless_flex_rate_usd_per_gpu_hour =
+  EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR;
+const currentApprovalBytes = Buffer.from(`${JSON.stringify(currentApproval)}\n`);
 const authorityBytes = readFileSync(`${directory}/approved-authority.json`);
 const proposalSha256 = "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32";
 const proposalRecordCommit = "e3bdabc161c60e5334c4055b5636b7fd768a86df";
@@ -81,7 +86,7 @@ function v3Fixture() {
   const v3ProposalBytes = Buffer.from(`${JSON.stringify(v3Proposal, null, 2)}\n`);
   const v3ProposalSha256 = hash(v3ProposalBytes);
   const v3Commit = "f".repeat(40);
-  const approval = structuredClone(JSON.parse(approvalBytes));
+  const approval = structuredClone(JSON.parse(currentApprovalBytes));
   approval.schema_version = "videoforge.v2-13-full-live-user-approval/v2";
   approval.authority_id = "v2-13-v3-test-authority-0001";
   approval.proposal = {
@@ -178,7 +183,7 @@ function freshStateFixture() {
 test("exact full-live approval schema binds proposal, caps, GPU, retention, and expiry", () => {
   const result = validateFullLiveUserApproval({
     proposalBytes,
-    approvalBytes,
+    approvalBytes: currentApprovalBytes,
     expectedProposalSha256: proposalSha256,
     expectedProposalRecordCommit: proposalRecordCommit,
     expectedReleaseSourceCommit: releaseSourceCommit,
@@ -188,6 +193,23 @@ test("exact full-live approval schema binds proposal, caps, GPU, retention, and 
   assert.equal(
     Object.values(result.phaseCapsUsd).reduce((sum, value) => sum + value, 0),
     17.5,
+  );
+});
+
+test("approval rejects a Serverless Flex rate above the exact current snapshot", () => {
+  const overCap = structuredClone(JSON.parse(currentApprovalBytes));
+  overCap.approval.gpu.maximum_serverless_flex_rate_usd_per_gpu_hour =
+    EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR + 0.000001;
+  assert.throws(
+    () =>
+      validateFullLiveUserApproval({
+        proposalBytes,
+        approvalBytes: Buffer.from(`${JSON.stringify(overCap)}\n`),
+        expectedProposalSha256: proposalSha256,
+        expectedProposalRecordCommit: proposalRecordCommit,
+        expectedReleaseSourceCommit: releaseSourceCommit,
+      }),
+    /GPU_RATE_REGION/u,
   );
 });
 
@@ -800,38 +822,70 @@ test("V3 proposal separates proposal and authority-record commit lineage without
 
 test("trusted lineage accepts an ancestor source and exact proposal-record diff chain", () => {
   const proposalPath =
-    "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
-  const proposalBytes = execFileSync("git", [
-    "show",
-    `9eaf276ebeda4d1fa63032d4c908a21415415678:${proposalPath}`,
-  ]);
-  const exact = {
-    releaseSourceCommit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
-    proposalRecordCommit: "9eaf276ebeda4d1fa63032d4c908a21415415678",
-    proposalSha256: hash(proposalBytes),
-  };
-  assert.doesNotThrow(() => trustedCommitLineage(exact, { proposalPath, proposalBytes }));
-  assert.throws(
-    () =>
-      trustedCommitLineage(
-        { ...exact, proposalRecordCommit: "255e47156d369942167fc8069a26a66d984682cf" },
-        { proposalPath, proposalBytes },
-      ),
-    /COMMIT_LINEAGE/u,
-  );
-  assert.throws(
-    () =>
-      trustedCommitLineage(
-        { ...exact, releaseSourceCommit: "e737eac44458a04c7de47a0f3f42d82cb9506d47" },
-        { proposalPath, proposalBytes },
-      ),
-    /COMMIT_LINEAGE/u,
-  );
+    "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
+  const proposalBytes = readFileSync(proposalPath);
+  const repository = mkdtempSync(join(tmpdir(), "videoforge-lineage-accept-"));
+  const oldGitDirectory = process.env.GIT_DIR;
+  const oldGitWorkTree = process.env.GIT_WORK_TREE;
+  const environment = { ...process.env, GIT_CONFIG_NOSYSTEM: "1" };
+  delete environment.GIT_DIR;
+  delete environment.GIT_WORK_TREE;
+  const git = (...args) =>
+    execFileSync("git", args, {
+      cwd: repository,
+      encoding: "utf8",
+      env: environment,
+      maxBuffer: 4 * 1024 * 1024,
+    }).trim();
+  try {
+    git("init", "--quiet");
+    git("config", "user.email", "videoforge-tests@example.invalid");
+    git("config", "user.name", "VideoForge Tests");
+    mkdirSync(join(repository, dirname(proposalPath)), { recursive: true });
+    writeFileSync(join(repository, proposalPath), Buffer.from("blocked draft\n"));
+    git("add", "--all");
+    git("commit", "--quiet", "-m", "source");
+    const releaseSourceCommit = git("rev-parse", "HEAD");
+    writeFileSync(join(repository, proposalPath), proposalBytes);
+    git("add", "--all");
+    git("commit", "--quiet", "-m", "proposal record");
+    const proposalRecordCommit = git("rev-parse", "HEAD");
+    process.env.GIT_DIR = join(repository, ".git");
+    process.env.GIT_WORK_TREE = repository;
+    const exact = {
+      releaseSourceCommit,
+      proposalRecordCommit,
+      proposalSha256: hash(proposalBytes),
+    };
+    assert.doesNotThrow(() => trustedCommitLineage(exact, { proposalPath, proposalBytes }));
+    assert.throws(
+      () =>
+        trustedCommitLineage(
+          { ...exact, proposalRecordCommit: releaseSourceCommit },
+          { proposalPath, proposalBytes },
+        ),
+      /COMMIT_LINEAGE/u,
+    );
+    assert.throws(
+      () =>
+        trustedCommitLineage(
+          { ...exact, releaseSourceCommit: proposalRecordCommit },
+          { proposalPath, proposalBytes },
+        ),
+      /COMMIT_LINEAGE/u,
+    );
+  } finally {
+    if (oldGitDirectory === undefined) delete process.env.GIT_DIR;
+    else process.env.GIT_DIR = oldGitDirectory;
+    if (oldGitWorkTree === undefined) delete process.env.GIT_WORK_TREE;
+    else process.env.GIT_WORK_TREE = oldGitWorkTree;
+    rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test("trusted lineage rejects rename, merge, and extra-path proposal histories", () => {
   const proposalPath =
-    "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
+    "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
   const exactProposalBytes = readFileSync(proposalPath);
   const oldEnvironment = {
     GIT_DIR: process.env.GIT_DIR,
@@ -892,7 +946,7 @@ test("trusted lineage rejects rename, merge, and extra-path proposal histories",
         "-M",
         proposalRecordCommit,
       ),
-      /R\d+\tevil\.txt\tproject-context\/evidence\/acceptance\/VF-10-13\/2026-08-26-full-activation-ref-role-repair-candidate\/combined-live-proposal\.json/u,
+      /R\d+\tevil\.txt\tproject-context\/evidence\/acceptance\/VF-10-13\/2026-08-27-cloudflare-credential-origin-repair-candidate\/combined-live-proposal\.json/u,
     );
     assert.throws(
       () =>
@@ -1144,7 +1198,7 @@ test("state storage requires mode-0700 real directory, mode-0600 file, and exact
 });
 
 test("approval mutation fails exact schema validation", () => {
-  const mutated = structuredClone(JSON.parse(approvalBytes));
+  const mutated = structuredClone(JSON.parse(currentApprovalBytes));
   mutated.approval.phase_caps_usd.v2_13_final_two_lane_smoke = 2.01;
   assert.throws(
     () =>
@@ -1160,7 +1214,7 @@ test("approval mutation fails exact schema validation", () => {
 });
 
 test("approval nested extras and missing execution fences fail closed", () => {
-  const extra = structuredClone(JSON.parse(approvalBytes));
+  const extra = structuredClone(JSON.parse(currentApprovalBytes));
   extra.approval.gpu.unapproved = true;
   assert.throws(
     () =>
@@ -1173,7 +1227,7 @@ test("approval nested extras and missing execution fences fail closed", () => {
       }),
     /NESTED_SCHEMA/u,
   );
-  const missing = structuredClone(JSON.parse(approvalBytes));
+  const missing = structuredClone(JSON.parse(currentApprovalBytes));
   delete missing.execution_fences.no_redispatch;
   assert.throws(
     () =>

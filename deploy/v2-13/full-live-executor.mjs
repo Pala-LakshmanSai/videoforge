@@ -30,6 +30,7 @@ import {
   verifyPrequalificationDatabaseReceipt,
   verifyMaterializationChainFile,
 } from "./full-live-adapters.mjs";
+import { EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR } from "./validate-full-live-approval.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const EXECUTOR_PATH = "deploy/v2-13/full-live-executor.mjs";
@@ -47,13 +48,13 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:f12c92a60ac4f3458f74deacc1f6ed6852f854dd70f674a2c1ef73794b25fd65",
+    "sha256:0a2b929507609d0709cb0262b757e537576c3b9af192681548fd78a357ac5437",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44",
+    "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:2a5a29c71bf5f0c2aa776e4ad8ba2a66b7144d9b12108d37819d8a3baa9efcd7",
+    "sha256:e9d369710ca75535b35b6c29123b595482fbddbd792b35e02ed40eb7ea6c28e6",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
@@ -151,7 +152,7 @@ function missingConcreteTools(adapters = CONCRETE_LIVE_ADAPTERS) {
   );
 }
 
-function assertResult(operation, result, state, results) {
+export function assertResult(operation, result, state, results) {
   if (result === null || typeof result !== "object" || Array.isArray(result))
     fail("RESULT_CONTRACT", operation.id);
   if (
@@ -217,7 +218,9 @@ function assertResult(operation, result, state, results) {
       result.region !== "EU-RO-1" ||
       !["LOW", "MEDIUM", "HIGH"].includes(result.availability) ||
       typeof result.flexUsdPerGpuHour !== "number" ||
-      result.flexUsdPerGpuHour > 1.1 ||
+      !Number.isFinite(result.flexUsdPerGpuHour) ||
+      result.flexUsdPerGpuHour < 0 ||
+      result.flexUsdPerGpuHour > EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR ||
       result.noFallback !== true ||
       !HASH.test(result.inventorySha256 ?? "") ||
       !HASH.test(result.billingBaselineSha256 ?? "")

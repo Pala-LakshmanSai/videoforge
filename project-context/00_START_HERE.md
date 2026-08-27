@@ -4,8 +4,9 @@
 
 ### New-chat launch point — 2026-08-27
 
-- Start from the current clean Git `HEAD`; the independently audited provider-free full-live source
-  remains `3f7b588de4b96da7c1e56b6c1908df7381712710` and all production entrypoints remain fail-closed/no-op.
+- The independently audited provider-free full-live source remains
+  `3f7b588de4b96da7c1e56b6c1908df7381712710`. A provider-free successor repair is ready to commit
+  and independently audit; all production entrypoints remain fail-closed/no-op.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -15,10 +16,11 @@
 - Production is still `DISABLED_UNQUALIFIED`. Migrations 0037–0045, the three production database
   roles, Cloudflare Worker/Workflows, immutable Mage/SoulX images, max-one RunPod lanes, and live
   acceptance have not been activated under a current full-live authority.
-- The next task is provider-free first: reseal the full-live proposal against the current clean source,
-  completed credential receipt, exact provider identities/rates/inventory, and the existing two retained
-  50 GB EU-RO-1 volumes; obtain a fresh independent audit and exact user approval before the first
-  mutation or spend boundary.
+- Fresh read-only preflight proved zero temporary compute and bound the completed credential receipt,
+  exact account-derived 404 HTML route, same two retained 50 GB EU-RO-1 volumes, and the official
+  Serverless Flex rate of `$0.00031/second` (`$1.116/GPU-hour`) separately from the `$0.74/hour`
+  Secure Pod catalog rate. Commit and independently audit this source repair, then reseal and audit
+  the exact proposal before requesting user approval at the first mutation/spend boundary.
 - After approval, execute the closed graph serially: Mage qualification, SoulX qualification, guarded
   database/Cloudflare activation, exact max-one lanes, V2-09 through V2-13 acceptance, immediate
   temporary-compute drain, settled billing, and independent zero-job/zero-worker proof. Never keep a Pod
@@ -43,16 +45,17 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-Provider-free successor source is now independently audited at `3f7b588de4b96da7c1e56b6c1908df7381712710`
-(42/42 checks; default entrypoints remain no-op). It includes the zero-cap
+The previous provider-free source is independently audited at `3f7b588de4b96da7c1e56b6c1908df7381712710`
+(42/42 checks). The current provider-free repair is pending its new commit and independent audit;
+default entrypoints remain no-op. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
 credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. Current
-source component hashes are: executor `sha256:5dd84bf8594c4dd19b907eea11798d956b5693c244d0abc1c926f81883338186`,
-adapters `sha256:f12c92a60ac4f3458f74deacc1f6ed6852f854dd70f674a2c1ef73794b25fd65`, orchestration
-`sha256:586f5a28969d2b2ea406d490b781472e69b7c960d0437475fbe787bab39ed789`, approval validator
-`sha256:dc245da0167bb589224533ba38e255818dac9e880cd992fc58db10b2b892e664`, and guarded activation
-`sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44`. This is source/test
+repair component hashes are: executor `sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5`,
+adapters `sha256:0a2b929507609d0709cb0262b757e537576c3b9af192681548fd78a357ac5437`, orchestration
+`sha256:fde2b699086d6a6c104a4fdc43a8e917b1cf94b1c830adc2868b6a12207742d6`, approval validator
+`sha256:40d251611456b3ddd9a1ff596f42d798539cf867b8bd5c6ed72aba095872a1b4`, and guarded activation
+`sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7`. This is source/test
 proof only. Production remains `DISABLED_UNQUALIFIED`; migrations/grants/config and database roles
 are undeployed, and no full-live deployment bindings are activated.
 The credential rotation/normalization boundary is now completed once and non-reusable. Proposal

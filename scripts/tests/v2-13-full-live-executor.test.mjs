@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
+  assertResult,
   executeFullLive as executeFullLiveRaw,
   missingConcreteTools,
   OPERATIONS,
@@ -114,7 +115,7 @@ function fakeResult(operation, state, priorResults) {
       exactGpu: "NVIDIA GeForce RTX 4090",
       region: "EU-RO-1",
       availability: "LOW",
-      flexUsdPerGpuHour: 1.1,
+      flexUsdPerGpuHour: 1.116,
       noFallback: true,
       inventorySha256: proof("6"),
       billingBaselineSha256: proof("7"),
@@ -188,6 +189,29 @@ test("default command performs zero actions and reports every concrete tooling g
   );
   assert.deepEqual(output.missing_concrete_tools, missingConcreteTools());
   assert.equal(output.ordered_operations.length, OPERATIONS.length);
+});
+
+test("fresh preflight rejects a Serverless Flex rate above the exact current snapshot", () => {
+  const operation = OPERATIONS.find(({ id }) => id === "fresh-live-preflight");
+  assert.throws(
+    () =>
+      assertResult(
+        operation,
+        {
+          actualUsd: 0,
+          exactGpu: "NVIDIA GeForce RTX 4090",
+          region: "EU-RO-1",
+          availability: "LOW",
+          flexUsdPerGpuHour: 1.116001,
+          noFallback: true,
+          inventorySha256: proof("6"),
+          billingBaselineSha256: proof("7"),
+        },
+        {},
+        new Map(),
+      ),
+    /PREFLIGHT_READBACK/u,
+  );
 });
 
 test("execute mode has a closed concrete catalog and requires exact state binding", () => {

@@ -25,6 +25,10 @@ async function runMutation(mutate) {
       `${JSON.stringify(proposal, null, 2)}\n`,
     );
     await cp(path.join(sourceDirectory, validatorName), path.join(directory, validatorName));
+    await cp(
+      path.join(sourceDirectory, "read-only-preflight.json"),
+      path.join(directory, "read-only-preflight.json"),
+    );
     const result = spawnSync(process.execPath, [path.join(directory, validatorName)], {
       cwd: root,
       encoding: "utf8",
@@ -132,7 +136,7 @@ test("blocked successor removes Google and R2 credential creation from the appro
       "Create or rotate exactly one least-privilege R2 S3 credential";
   });
   assert.notEqual(r2Result.status, 0);
-  assert.match(r2Result.stderr, /APPROVAL_SCOPE_PENDING/u);
+  assert.match(r2Result.stderr, /APPROVAL_SCOPE_BOUND/u);
 });
 
 test("blocked successor binds the owner-only receipt verifier across staged and resumed paths", async () => {

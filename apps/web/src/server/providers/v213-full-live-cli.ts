@@ -59,6 +59,20 @@ const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,190}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
 const OPERATOR_DATABASE_ROLE = "videoforge_hosted_operator";
 
+// RunPod's CP-07 catalog lookup is still authoritative for exact 4090 EU-RO-1 availability,
+// but its `price.secure` field is a Secure Pod price rather than Serverless Flex billing. Keep the
+// current official Serverless Flex snapshot explicit and semantically separate from that lookup.
+export const V213_SERVERLESS_FLEX_RATE_SOURCE = Object.freeze({
+  provider: "RunPod",
+  product: "SERVERLESS_FLEX",
+  gpu: "NVIDIA GeForce RTX 4090",
+  region: "EU-RO-1",
+  billingUnit: "USD_PER_GPU_SECOND",
+  rateUsdPerSecond: 0.00031,
+  rateUsdPerGpuHour: 1.116,
+  source: "OFFICIAL_CURRENT_RUNPOD_SERVERLESS_FLEX_PRICING_SNAPSHOT",
+} as const);
+
 export function summarizeV213EndpointRestoration(result: V213AttributableCleanupResult): JsonValue {
   return {
     restored: true,
@@ -1819,7 +1833,8 @@ export async function createV213PrequalificationRuntime(
       return {
         checkedAt: ports.now().toISOString(),
         availability: exact.availability,
-        flexRateUsdPerGpuHour: exact.rateUsdPerHour,
+        // `exact.rateUsdPerHour` is the Secure Pod catalog rate. Do not label it Serverless Flex.
+        flexRateUsdPerGpuHour: V213_SERVERLESS_FLEX_RATE_SOURCE.rateUsdPerGpuHour,
         cumulativeBillingUsd: await readEndpointBilling(inputs.runpodApiKey, ports.fetch),
       };
     },
@@ -1934,7 +1949,8 @@ export async function createV213ProductionRuntime(
       return {
         checkedAt: ports.now().toISOString(),
         availability: exact.availability,
-        flexRateUsdPerGpuHour: exact.rateUsdPerHour,
+        // `exact.rateUsdPerHour` is the Secure Pod catalog rate. Do not label it Serverless Flex.
+        flexRateUsdPerGpuHour: V213_SERVERLESS_FLEX_RATE_SOURCE.rateUsdPerGpuHour,
         cumulativeBillingUsd: await readEndpointBilling(inputs.runpodApiKey, ports.fetch),
       };
     },

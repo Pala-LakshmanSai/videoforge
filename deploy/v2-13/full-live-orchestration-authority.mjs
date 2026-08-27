@@ -41,12 +41,12 @@ const PHASES = Object.freeze([
 const BOOTSTRAP_PHASE = "bootstrap_prequalification_database";
 const BOOTSTRAP_OPERATION = "bootstrap-prequalification-database";
 const PROPOSAL_RECORD_PATH =
-  "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
 const PROPOSAL_RECORD_ALLOWED_DIFF_PATHS = Object.freeze([
   "project-context/00_START_HERE.md",
   "project-context/CURRENT_STATE.yaml",
   PROPOSAL_RECORD_PATH,
-  "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/validate-candidate.mjs",
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
   "project-context/tasks/VF-10-13.md",
 ]);
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -494,7 +494,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:5dd84bf8594c4dd19b907eea11798d956b5693c244d0abc1c926f81883338186" ||
+      "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||

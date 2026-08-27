@@ -1,0 +1,108 @@
+{
+  "schema_version": "videoforge.v2-13-full-live-read-only-preflight/v1",
+  "checkpoint": "V2-13",
+  "task_id": "VF-10-13",
+  "checked_at": "2026-08-27T11:16:59Z",
+  "repository_head_before_reseal": "c7bfeecd5aa1b682c2ff7f8b6cb5a75367abb895",
+  "previous_independently_audited_release_source_commit": "3f7b588de4b96da7c1e56b6c1908df7381712710",
+  "authority": {
+    "mode": "BOUNDED_READ_ONLY_PREFLIGHT_FROM_CURRENT_USER_REQUEST",
+    "remote_mutation_authorized": false,
+    "deployment_authorized": false,
+    "gpu_use_authorized": false,
+    "external_spend_authorized_usd": 0
+  },
+  "runpod": {
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "inventory_checked_at": "2026-08-27T11:16:00.780Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_compute": 0,
+    "retained_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbec54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ],
+    "exact_gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "secure_pod_catalog_rate_usd_per_gpu_hour": 0.74,
+    "secure_pod_rate_is_serverless_flex_rate": false,
+    "serverless_flex_rate_usd_per_second": 0.00031,
+    "serverless_flex_rate_usd_per_gpu_hour": 1.116,
+    "serverless_rate_source": "https://docs.runpod.io/serverless/pricing",
+    "serverless_rate_source_kind": "OFFICIAL_PUBLIC_DOCUMENTATION",
+    "prior_1_10_usd_per_gpu_hour_fence_passes_current_rate": false,
+    "fallback_authorized": false
+  },
+  "cloudflare": {
+    "authentication_mode": "EXISTING_PROTECTED_WRANGLER_OAUTH_ONLY",
+    "protected_config_path": "/Users/lakshmansai/Library/Preferences/.wrangler/config/default.toml",
+    "protected_config_path_sha256": "sha256:1f4cc7dea1b7ea98aaf91bae95b329dfd607a26967ba15f6813e26340f96961c",
+    "protected_config_mode": "0600",
+    "volatile_oauth_token_or_config_bytes_used_as_execution_authority": false,
+    "account_id": "f9254d773a3426fcb469451b1f965d8c",
+    "account_id_sha256": "sha256:dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8",
+    "workers_dev_subdomain": "lakshmansai121",
+    "workers_dev_subdomain_readback_sha256": "sha256:960a7fe93a2494d513281414103000bcfa43d3c0945536054d5e5c6524d2c194",
+    "public_origin": "https://videoforge-production-runtime.lakshmansai121.workers.dev",
+    "worker_inventory_status": 404,
+    "worker_inventory_readback_sha256": "sha256:89f97ba62c946432a34aaf443ddb6558e261fc39eb00728e8229b075f8c50f75",
+    "existing_workflow_names": [
+      "videoforge-v2-06-staging-video"
+    ],
+    "production_worker_or_workflow_collision_observed": false,
+    "existing_bucket": "videoforge-v2-06-staging-private",
+    "existing_bucket_readback_status": 200,
+    "existing_bucket_readback_sha256": "sha256:340ca32a6cac72567f147bc676b4b9e8fe9e85ca4d9319b96029a2a256ec3b4d",
+    "absent_route_readback": {
+      "reads": 3,
+      "stable": true,
+      "path": "/api/v2/hosted/status",
+      "status": 404,
+      "content_type": "text/html; charset=UTF-8",
+      "body_length": 19984,
+      "body_sha256": "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976",
+      "cf_ray_header_present": true,
+      "prior_17_byte_text_plain_contract_matches": false
+    }
+  },
+  "credential_receipt": {
+    "path": "~/.videoforge/v2-13/bootstrap/receipt/credential-bootstrap.json",
+    "sha256": "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab",
+    "rotation_result_sha256": "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6",
+    "secret_free": true,
+    "authority_consumed_and_non_reusable": true,
+    "google_project_id": "adroit-archive-329710",
+    "google_project_id_sha256": "sha256:0a57c6c9fc4b102fa4eef3ecb490a786cc632bd45440765eed188970c6b097ae",
+    "google_project_number_sha256": "sha256:41ed11c7873b8727019969683f8063652a949a9a899a3b6b7d126135ea2c6347",
+    "google_oauth_client_id_sha256": "sha256:0150569d559bc69055805f48be9d54e9748a1fa34e6dffa6c293701b9814d932",
+    "google_oauth_client_secret_sha256": "sha256:c4d12264294b3275aebe6b8a51eb5a9f4a5a599c7694f48bcf8ba4422c8c6cfb",
+    "r2_bucket_name_sha256": "sha256:410831a0659f71ee4959e9ad0778a565b97485442fdc7c4bd8bdd702089bfe1d",
+    "r2_access_key_id_sha256": "sha256:a322bcb37f84d28ddd0fd841f0eb3ad2feaf368f71c21deece4f9d1f8433e335",
+    "r2_secret_access_key_sha256": "sha256:227e83b53468d6053b983a844473e04cbde8eff81c27b499127f106c394a900e",
+    "raw_values_in_evidence": false
+  },
+  "result": {
+    "status": "BLOCKED_REQUIRES_PROVIDER_FREE_SOURCE_REPAIR_AND_RESEAL",
+    "blocking_drift": [
+      "SERVERLESS_FLEX_RATE_1_116_EXCEEDS_PRIOR_1_10_FENCE",
+      "ABSENT_PRODUCTION_ROUTE_EXACT_READBACK_DRIFT",
+      "ACTIVE_PROPOSAL_PATH_NOT_TRUSTED_BY_CURRENT_ORCHESTRATION_SOURCE"
+    ],
+    "provider_mutations": 0,
+    "temporary_compute_started": false,
+    "gpu_hours": 0,
+    "external_spend_usd": 0,
+    "zero_compute_confirmed": true
+  }
+}

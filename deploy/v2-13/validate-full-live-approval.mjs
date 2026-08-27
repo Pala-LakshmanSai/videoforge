@@ -7,6 +7,18 @@ const PROPOSAL_SCHEMA_V2 = "videoforge.v2-13-full-live-completion-proposal/v2";
 const PROPOSAL_SCHEMA_V3 = "videoforge.v2-13-full-live-completion-proposal/v3";
 const APPROVAL_SCHEMA_V1 = "videoforge.v2-13-full-live-user-approval/v1";
 const APPROVAL_SCHEMA_V2 = "videoforge.v2-13-full-live-user-approval/v2";
+const EXPECTED_SERVERLESS_FLEX_RATE_SOURCE = Object.freeze({
+  provider: "RunPod",
+  product: "SERVERLESS_FLEX",
+  gpu: "NVIDIA GeForce RTX 4090",
+  region: "EU-RO-1",
+  billing_unit: "USD_PER_GPU_SECOND",
+  rate_usd_per_second: 0.00031,
+  rate_usd_per_gpu_hour: 1.116,
+  source: "OFFICIAL_CURRENT_RUNPOD_SERVERLESS_FLEX_PRICING_SNAPSHOT",
+});
+const EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR =
+  EXPECTED_SERVERLESS_FLEX_RATE_SOURCE.rate_usd_per_gpu_hour;
 // The validator is part of the proposal/authority verifier, so embedding the hash of this
 // source file inside itself would require an impossible fixed point.  Bind it to the exact
 // release commit's tree instead; the outer authority verifier reads that commit/path and hashes
@@ -22,12 +34,12 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:5dd84bf8594c4dd19b907eea11798d956b5693c244d0abc1c926f81883338186",
+    sha256: "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:f12c92a60ac4f3458f74deacc1f6ed6852f854dd70f674a2c1ef73794b25fd65",
+    sha256: "sha256:0a2b929507609d0709cb0262b757e537576c3b9af192681548fd78a357ac5437",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -35,15 +47,15 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44",
+    sha256: "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:586f5a28969d2b2ea406d490b781472e69b7c960d0437475fbe787bab39ed789",
+    sha256: "sha256:fde2b699086d6a6c104a4fdc43a8e917b1cf94b1c830adc2868b6a12207742d6",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
-    sha256: "sha256:2a5a29c71bf5f0c2aa776e4ad8ba2a66b7144d9b12108d37819d8a3baa9efcd7",
+    sha256: "sha256:e9d369710ca75535b35b6c29123b595482fbddbd792b35e02ed40eb7ea6c28e6",
   }),
   runpod_dual_lane_transport: Object.freeze({
     path: "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
@@ -988,7 +1000,8 @@ function validateFullLiveUserApproval({
     gpu?.exact_offering !== "NVIDIA GeForce RTX 4090" ||
     gpu.region !== "EU-RO-1" ||
     gpu.minimum_availability_at_each_mutation_boundary !== "LOW-or-better" ||
-    gpu.maximum_serverless_flex_rate_usd_per_gpu_hour !== 1.1 ||
+    gpu.maximum_serverless_flex_rate_usd_per_gpu_hour !==
+      EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR ||
     gpu.fallback_allowed !== false
   )
     fail("GPU_RATE_REGION");
@@ -1199,6 +1212,8 @@ export {
   EXACT_OPERATION_IDS,
   EXACT_V3_RELEASE_COMPONENTS,
   EXACT_TRUSTED_TIME_POLICY,
+  EXPECTED_SERVERLESS_FLEX_RATE_SOURCE,
+  EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
   EXPECTED_PHASE_CAPS,
   validateFullLiveUserApproval,
 };
