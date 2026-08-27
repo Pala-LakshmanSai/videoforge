@@ -1,0 +1,13 @@
+{
+  "schema_version": "videoforge.v2-13-credential-rotation-normalization-consumption/v1",
+  "authority_id": "v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2",
+  "proposal_sha256": "sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73",
+  "approval_sha256": "sha256:94c1f9fb1c6f3fb42f4b957a2e1de7c91c2404cc299cd73c59e5a4ac8d1d80e6",
+  "consumed_at": "2026-08-27T10:05:00Z",
+  "single_use": true,
+  "execution_started": true,
+  "cleanup_only_after_stop": true,
+  "runpod_calls": 0,
+  "gpu_hours": 0,
+  "external_spend_usd": 0
+}
