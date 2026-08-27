@@ -1,10 +1,10 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-27T07:05:02.000Z"
+updated_at: "2026-08-27T07:55:05.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_credential_bootstrap_reuse_audit_blocked_unexpected_google_api_enablement
+current_milestone: v2_13_credential_bootstrap_reuse_proposal_sealed_awaiting_fresh_exact_approval
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Hold the blocked exact-new-project attempt and the separate existing-project reuse path at the unexpected Google API-enablement safety boundary; require independent review, complete exact read-only evidence, and a fresh exact reuse proposal/approval before any credential or protected-file action."
-  note: "Source commit 3f7b588 is independently audited provider-free (42/42 checks). The approved zero-cost credential-bootstrap attempt stopped at the Google project-create preflight because the authenticated account reached its project quota. One separately authorized quota-increase request for one additional Free Services project was submitted on 2026-08-27 and is awaiting Google review. During a separate read-only reuse audit, opening the Firestore inventory for adroit-archive-329710 unexpectedly enabled firestore.googleapis.com and firebaserules.googleapis.com (13 to 15 services); no database, resource, billing, credential, R2, RunPod, GPU, or spend mutation occurred. The original blocked attempt was not altered; no rollback or further provider action is authorized. Incident evidence is recorded separately. The full-live successor remains BLOCKED_UNSEALED until exact credential identities/scope hashes and fresh full-live approval are bound."
+  provider_free_product_action: "Hold at the fresh exact approval boundary for the sealed existing-project credential-bootstrap reuse path; no credential or protected-file action is authorized until the proposal is committed, independently audited, and approved exactly."
+  note: "Source commit 3f7b588 is independently audited provider-free (42/42 checks). The exact-new-project credential-bootstrap attempt stopped at the Google project-create preflight because the authenticated account reached its project quota; its approval remains BLOCKED_UNCONSUMED_NO_MUTATION and non-reusable. One separately authorized quota-increase request for one additional Free Services project was submitted on 2026-08-27 and is awaiting Google review. A separate reuse audit of adroit-archive-329710 unexpectedly enabled firestore.googleapis.com and firebaserules.googleapis.com (13 to 15 services); the incident is preserved and independently contained, with no rollback or further API action authorized. The first independent reuse-proposal audit P1 was repaired. The existing-project reuse proposal is now sealed at sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4, based on ca5c4d2 and awaiting its successor proposal commit plus fresh exact approval; proposal work performed no credential/provider mutation, RunPod call, GPU use, or spend. The full-live successor remains BLOCKED_UNSEALED until credential identities/scope hashes and fresh full-live approval are bound."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -106,8 +106,22 @@ provider_free_product_progress:
   credential_bootstrap_quota_request_sha256: "sha256:3cc99d3edfe0ef9a41a1b4b6b6ee90250f682c3a9dce928c13b63f2b8b83d42b"
   credential_bootstrap_quota_request_status: SUBMITTED_AWAITING_GOOGLE_REVIEW
   credential_bootstrap_quota_request_submitted_at: "2026-08-27"
-  credential_bootstrap_next_action: "Hold both paths pending independent safety review of the unexpected Google API enablement; do not disable APIs, delete or reuse another project, create credentials, or write protected files under the blocked approval. After the boundary is resolved, obtain a wholly fresh exact proposal and approval."
-  credential_bootstrap_reuse_audit_status: BLOCKED_UNEXPECTED_PROVIDER_MUTATION_NO_CREDENTIAL_ACCESS
+  credential_bootstrap_next_action: "Obtain fresh exact approval for the sealed existing-project reuse proposal after its successor proposal commit is recorded; then recheck the exact project and R2 state immediately before any authorized credential or protected-file operation. Do not reuse the quota-blocked approval, disable APIs, delete or select another project, or create credentials before that approval."
+  credential_bootstrap_reuse_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/combined-credential-bootstrap-reuse-proposal.json"
+  credential_bootstrap_reuse_proposal_base_commit: "ca5c4d2"
+  credential_bootstrap_reuse_proposal_commit: null
+  credential_bootstrap_reuse_proposal_sha256: "sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4"
+  credential_bootstrap_reuse_proposal_status: PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL
+  credential_bootstrap_reuse_proposal_audit_status: PASS_INDEPENDENT_FIRST_AUDIT_P1_REPAIRED
+  credential_bootstrap_reuse_proposal_authority_status: ABSENT_UNCONSUMED_NO_MUTATION
+  credential_bootstrap_reuse_project_id: "adroit-archive-329710"
+  credential_bootstrap_reuse_project_number: "984657838923"
+  credential_bootstrap_reuse_proposal_provider_mutations: 0
+  credential_bootstrap_reuse_proposal_credential_access: 0
+  credential_bootstrap_reuse_proposal_runpod_calls: 0
+  credential_bootstrap_reuse_proposal_gpu_use: false
+  credential_bootstrap_reuse_proposal_external_spend_usd: 0
+  credential_bootstrap_reuse_audit_status: PASS_INDEPENDENT_FIRST_AUDIT_P1_REPAIRED_SEALED_FRESH_APPROVAL_REQUIRED
   credential_bootstrap_reuse_audit_project_id: "adroit-archive-329710"
   credential_bootstrap_reuse_audit_incident_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/unexpected-firestore-api-enablement-incident.json"
   credential_bootstrap_reuse_audit_incident_sha256: "sha256:936117ccc777b37d6e6ee595c8d8feccb4fbd026e11d7705084af03230db2229"
@@ -129,7 +143,7 @@ provider_free_product_progress:
   fresh_v2_13_audit_status: PASS_42_OF_42_INDEPENDENT_PROVIDER_FREE
   fresh_v2_13_release_source_commit: null
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Await the submitted Google project-limit review, then perform a fresh read-only inventory and obtain a fresh exact credential-bootstrap proposal/approval before binding exact credential identities/scope hashes into the blocked successor and obtaining a fresh proposal-record audit/approval. Do not reuse the blocked credential-bootstrap approval for an alternate project or reuse superseded 45894ac0/ec38849 or 59dfe8a authority."
+  next_v2_13_action: "Record the successor commit for sealed reuse proposal sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4, obtain fresh exact approval and executable authority, then recheck the exact existing Google project and R2 state before the one-use zero-spend credential bootstrap. Do not reuse the quota-blocked approval, disable APIs, select an alternate project, or perform credential/protected-file operations before that boundary."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -4343,8 +4357,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_credential_bootstrap_reuse_audit_blocked_unexpected_google_api_enablement
-  status: credential_bootstrap_reuse_audit_blocked_unexpected_google_api_enablement
+  milestone: v2_13_credential_bootstrap_reuse_proposal_sealed_awaiting_fresh_exact_approval
+  status: credential_bootstrap_reuse_proposal_sealed_awaiting_fresh_exact_approval
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: none_attempt64_consumed
   task_stage: provider_free_product_execution
@@ -4353,7 +4367,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Finish and independently audit the source-bound Cloudflare OAuth/origin and credential-scope repair, then reseal and obtain fresh exact approval before any publication, deployment, provider call, GPU use, or spend."
+  goal: "Obtain fresh exact approval for the sealed existing-project credential-bootstrap reuse proposal, execute its one-use zero-spend credential bootstrap, then continue the source-bound full-live gates only under a new exact authority."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4374,15 +4388,15 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Attempt64 remains consumed/non-reusable. The 2e6a605d/9eaf276 V2-13 approval and authority are superseded unconsumed before mutation, and the 45894ac0/ec38849 proposal plus 59dfe8a authority are superseded unconsumed before mutation. Current source 3f7b588 is independently audited 42/42 provider-free; the 2026-08-27 successor remains BLOCKED_UNSEALED pending Google/R2 credential identities and scope hashes, fresh proposal-record audit, and fresh exact approval. One quota-increase request was submitted for review. A separate read-only reuse audit of adroit-archive-329710 unexpectedly enabled firestore.googleapis.com and firebaserules.googleapis.com (13 to 15 services); the original blocked attempt was unchanged, and no database/resource/billing/credential/R2/RunPod/GPU/spend mutation occurred. No rollback or further provider action is authorized."
+  authority_note: "Attempt64 remains consumed/non-reusable. The 2e6a605d/9eaf276 and 45894ac0/ec38849 V2-13 approvals plus 59dfe8a authority are superseded unconsumed before mutation. Current source 3f7b588 is independently audited 42/42 provider-free. The existing-project reuse candidate is sealed at sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4, based on ca5c4d2 with its successor proposal commit pending; its first independent audit P1 was repaired. No fresh approval or executable authority exists, and proposal work made no credential/provider mutation, RunPod call, GPU use, or spend. The quota request and Firestore API side-effect incident remain preserved; no rollback or further API action is authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8f2b55141d0150e1aa60a954bad1bde3f278ce0e428e961580b66fc8bb5b7248"
   superseded_proposal_sha256: "sha256:45894ac0b7648d3e9e48357a13c270d2cbbe7e65120fe425f4b449d00601aaca"
   superseded_authority_id: v2-13-full-live-20260827-020135z-7444ed0
   superseded_authority_record_commit: 59dfe8a763abe947a53f66e734b967e5310fad61
-  execution_status: provider_free_reuse_audit_blocked_unexpected_google_api_enablement
-  execution_blocker: independent_safety_verdict_and_complete_fresh_read_only_reuse_evidence_then_new_credential_bootstrap_proposal_record_audit_and_fresh_exact_approval_required
+  execution_status: provider_free_reuse_proposal_sealed_awaiting_fresh_exact_approval
+  execution_blocker: successor_proposal_commit_then_fresh_exact_approval_and_executable_authority_required_before_credential_or_protected_file_action
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean

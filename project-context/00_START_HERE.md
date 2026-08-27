@@ -39,9 +39,13 @@ blocked credential attempt was not altered. No database, resource, billing assoc
 credential value, Cloudflare R2 action, RunPod action, GPU use, or spend occurred; no rollback/disable
 or further provider action is authorized. The exact before/after service arrays and canonical hashes
 are recorded in `evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/unexpected-firestore-api-enablement-incident.json`
-(`sha256:936117ccc777b37d6e6ee595c8d8feccb4fbd026e11d7705084af03230db2229`). The reuse path is
-blocked pending an independent safety verdict, complete read-only evidence, and a fresh exact
-proposal/approval; the quota-blocked approval remains non-reusable.
+(`sha256:936117ccc777b37d6e6ee595c8d8feccb4fbd026e11d7705084af03230db2229`). The first independent
+reuse-proposal audit P1 was repaired and the existing-project candidate is now sealed at
+`sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4`, based on `ca5c4d2`;
+its successor proposal commit is pending. The candidate has no executable authority: proposal work
+made no credential/provider mutation, RunPod call, GPU use, or spend. A fresh exact approval must
+name the sealed proposal and successor commit before any consent configuration, OAuth client, R2
+credential, or protected-file work. The quota-blocked approval remains non-reusable.
 The blocked replacement proposal now closes a 25-operation graph by placing zero-cap
 `record-workflow-start-authority` after promotion and before V2-09, and binds full receipt/ACL/public-
 revoke readback, guarded receipt verification before secret reads, durable billing, and a separate

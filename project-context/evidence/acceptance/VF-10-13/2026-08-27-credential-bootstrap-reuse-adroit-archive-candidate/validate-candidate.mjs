@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +24,8 @@ const exactKeys = (value, keys, code) => {
 const same = (actual, expected, code) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) fail(code);
 };
+const isStringArray = (value) =>
+  Array.isArray(value) && value.every((entry) => typeof entry === "string");
 const includes = (values, value, code) => {
   if (!Array.isArray(values) || !values.some((entry) => entry.includes(value))) fail(code);
 };
@@ -41,6 +44,7 @@ exactKeys(
     "source",
     "authority",
     "read_only_binding",
+    "receipt",
     "requested_scope",
     "exact_execution_graph",
     "ordered_operations",
@@ -131,18 +135,36 @@ same(
   ],
   "SOURCE_PATHS"
 );
-same(
-  proposal.source.source_contract_hashes,
-  {
-    "apps/web/src/server/hosted/auth.ts":
-      "sha256:ec4a23723f24139ea8d96a05a3932fd528188abab214e327a159b1297e848308",
-    "apps/web/src/server/hosted/r2.ts":
-      "sha256:473026cd897b6bd45df0a10d3ecff5b3705cafd6dd421924ea2114ad532baa71",
-    "packages/control-plane/src/auth/better-auth-google.ts":
-      "sha256:f674d92c96186ff7618e0ef6d58cd9b59c0d4a6462fd707c765f0eb18cf25d7f"
-  },
-  "SOURCE_HASHES"
-);
+exactKeys(proposal.source.source_contract_hashes, proposal.source.source_contract_paths, "SOURCE_HASH_KEYS");
+let repositoryRoot;
+for (const workingDirectory of [directory, process.cwd()]) {
+  if (repositoryRoot) break;
+  try {
+    repositoryRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: workingDirectory,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    // The mutation tests copy this validator outside the repository; try cwd next.
+  }
+}
+if (!repositoryRoot) fail("SOURCE_HASHES");
+for (const sourcePath of proposal.source.source_contract_paths) {
+  const expectedHash = proposal.source.source_contract_hashes[sourcePath];
+  if (!/^sha256:[0-9a-f]{64}$/u.test(expectedHash)) fail("SOURCE_HASHES");
+  let sourceBytes;
+  try {
+    sourceBytes = execFileSync(
+      "git",
+      ["show", `${proposal.source.release_source_commit}:${sourcePath}`],
+      { cwd: repositoryRoot, stdio: ["ignore", "pipe", "ignore"] }
+    );
+  } catch {
+    fail("SOURCE_HASHES");
+  }
+  if (sha256(sourceBytes) !== expectedHash) fail("SOURCE_HASHES");
+}
 
 const authorityKeys = [
   "single_use",
@@ -236,7 +258,13 @@ exactKeys(
     "cloud_sql_billing_required_for_creation",
     "firestore_database_count",
     "evidence_commit_or_receipt",
-    "evidence_sha256"
+    "evidence_sha256",
+    "oauth_configuration_form_path",
+    "oauth_configuration_form_accessible_without_api_enablement_prompt",
+    "required_api_mutation_authorized",
+    "hard_stop_if_api_enablement_required",
+    "oauth_client_creation_capability_proven",
+    "oauth_capability_evidence"
   ],
   "GOOGLE_EVIDENCE_KEYS"
 );
@@ -300,9 +328,58 @@ if (
   googleEvidence.bigquery_dataset_count !== 0 ||
   googleEvidence.bigquery_mode !== "SANDBOX_NO_BILLING" ||
   googleEvidence.cloud_sql_billing_required_for_creation !== true ||
-  googleEvidence.firestore_database_count !== 0
+  googleEvidence.firestore_database_count !== 0 ||
+  googleEvidence.oauth_configuration_form_path !== "/auth/overview/create" ||
+  googleEvidence.oauth_configuration_form_accessible_without_api_enablement_prompt !== true ||
+  googleEvidence.required_api_mutation_authorized !== false ||
+  googleEvidence.hard_stop_if_api_enablement_required !== true ||
+  googleEvidence.oauth_client_creation_capability_proven !== false
 )
   fail("GOOGLE_EVIDENCE_BOUND_FACTS");
+exactKeys(
+  googleEvidence.oauth_capability_evidence,
+  [
+    "evidence_source",
+    "auth_platform_state",
+    "configuration_form_path",
+    "configuration_form_accessible",
+    "configuration_form_steps",
+    "create_button_present",
+    "oauth_configuration_form_accessible_without_api_enablement_prompt",
+    "required_api_mutation_authorized",
+    "hard_stop_if_api_enablement_required",
+    "api_enablement_requirement",
+    "oauth_client_creation_capability_proven",
+    "provider_mutation_observed",
+    "evidence_sha256"
+  ],
+  "GOOGLE_CAPABILITY_KEYS"
+);
+if (
+  googleEvidence.oauth_capability_evidence.evidence_source !==
+    "CHROME_UI_READ_ONLY_OBSERVATION" ||
+  googleEvidence.oauth_capability_evidence.auth_platform_state !== "UNCONFIGURED" ||
+  googleEvidence.oauth_capability_evidence.configuration_form_path !== "/auth/overview/create" ||
+  googleEvidence.oauth_capability_evidence.configuration_form_accessible !== true ||
+  !isStringArray(googleEvidence.oauth_capability_evidence.configuration_form_steps) ||
+  JSON.stringify(googleEvidence.oauth_capability_evidence.configuration_form_steps) !==
+    JSON.stringify(["App Information", "Audience", "Contact Information", "Finish"]) ||
+  googleEvidence.oauth_capability_evidence.create_button_present !== true ||
+  googleEvidence.oauth_capability_evidence.oauth_configuration_form_accessible_without_api_enablement_prompt !==
+    true ||
+  googleEvidence.oauth_capability_evidence.required_api_mutation_authorized !== false ||
+  googleEvidence.oauth_capability_evidence.hard_stop_if_api_enablement_required !== true ||
+  googleEvidence.oauth_capability_evidence.api_enablement_requirement !==
+    "HARD_STOP_NO_API_ENABLEMENT_OR_CONTINUATION" ||
+  googleEvidence.oauth_capability_evidence.oauth_client_creation_capability_proven !== false ||
+  googleEvidence.oauth_capability_evidence.provider_mutation_observed !== false ||
+  googleEvidence.oauth_capability_evidence.evidence_sha256 !== null
+)
+  fail("GOOGLE_CAPABILITY_EVIDENCE");
+for (const key of ["oauth_existing_redirect_uris", "oauth_existing_javascript_origins"]) {
+  if (googleEvidence[key] !== null && !isStringArray(googleEvidence[key]))
+    fail("GOOGLE_EVIDENCE_UNBOUND");
+}
 if (
   Object.entries(googleEvidence).some(
     ([key, value]) =>
@@ -342,7 +419,13 @@ if (
         "bigquery_dataset_count",
         "bigquery_mode",
         "cloud_sql_billing_required_for_creation",
-        "firestore_database_count"
+        "firestore_database_count",
+        "oauth_configuration_form_path",
+        "oauth_configuration_form_accessible_without_api_enablement_prompt",
+        "required_api_mutation_authorized",
+        "hard_stop_if_api_enablement_required",
+        "oauth_client_creation_capability_proven",
+        "oauth_capability_evidence"
       ].includes(key)
         ? false
         : value !== null
@@ -373,6 +456,10 @@ exactKeys(
     "target_production_credential_name_sha256",
     "target_production_credential_count",
     "target_production_credential_status",
+    "target_production_credential_type",
+    "target_production_credential_lifetime",
+    "target_production_credential_expiration_policy",
+    "target_production_credential_expiration_at",
     "credential_scope_readback",
     "credential_secret_accessed",
     "post_creation_account_api_token_count",
@@ -403,6 +490,8 @@ exactKeys(
 );
 if (
   r2Evidence.account_id !== "f9254d773a3426fcb469451b1f965d8c" ||
+  r2Evidence.authenticated_account_sha256 !== sha256(r2Evidence.account_id) ||
+  r2Evidence.authenticated_account_sha256 !== r2Evidence.account_id_sha256 ||
   r2Evidence.bucket_name !== "videoforge-v2-06-staging-private" ||
   r2Evidence.credential_secret_accessed !== false ||
   r2Evidence.account_id_sha256 !==
@@ -425,6 +514,10 @@ if (
     "sha256:4ee1c2b2ca4586f0253b728996a8b326453baff12f4879c2c559a698ed13ce67" ||
   r2Evidence.target_production_credential_count !== 0 ||
   r2Evidence.target_production_credential_status !== "ABSENT" ||
+  r2Evidence.target_production_credential_type !== null ||
+  r2Evidence.target_production_credential_lifetime !== null ||
+  r2Evidence.target_production_credential_expiration_policy !== null ||
+  r2Evidence.target_production_credential_expiration_at !== null ||
   r2Evidence.credential_scope_readback?.credential_name !==
     "VideoForge V2-06 staging private objects rotated" ||
   r2Evidence.credential_scope_readback?.credential_name_sha256 !==
@@ -483,12 +576,20 @@ exactKeys(
     "directory_environment_name",
     "directory_mode",
     "file_mode",
+    "path_must_not_be_repository_or_evidence",
     "directory_creation",
     "file_creation",
     "target_file_names",
     "preexisting_target_file_state",
     "environment_paths_unset",
     "credential_values_accessed",
+    "receipt_environment_name",
+    "receipt_file_name",
+    "receipt_mode",
+    "receipt_parent_directory_mode",
+    "receipt_path_must_not_be_repository_or_evidence",
+    "receipt_secret_free",
+    "receipt_exact_fields",
     "evidence_sha256"
   ],
   "STORAGE_EVIDENCE_KEYS"
@@ -497,11 +598,20 @@ if (
   storageEvidence.directory_environment_name !== "VIDEOFORGE_V2_13_SECRET_INPUT_DIR" ||
   storageEvidence.directory_mode !== "0700" ||
   storageEvidence.file_mode !== "0600" ||
+  storageEvidence.path_must_not_be_repository_or_evidence !== true ||
   storageEvidence.directory_creation !== "CREATE_NEW_DIRECTLY_WITH_MODE_0700" ||
   storageEvidence.file_creation !== "CREATE_NEW_DIRECTLY_WITH_MODE_0600_NO_TEMP_OR_RENAME" ||
   storageEvidence.preexisting_target_file_state !== "ABSENT" ||
   storageEvidence.environment_paths_unset !== true ||
-  storageEvidence.credential_values_accessed !== false
+  storageEvidence.credential_values_accessed !== false ||
+  storageEvidence.receipt_environment_name !==
+    "VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE" ||
+  storageEvidence.receipt_file_name !== "credential-bootstrap.json" ||
+  storageEvidence.receipt_mode !== "0600" ||
+  storageEvidence.receipt_parent_directory_mode !== "0700" ||
+  storageEvidence.receipt_path_must_not_be_repository_or_evidence !== true ||
+  storageEvidence.receipt_secret_free !== true ||
+  !isStringArray(storageEvidence.receipt_exact_fields)
 )
   fail("STORAGE_EVIDENCE_UNBOUND");
 same(
@@ -568,10 +678,20 @@ exactKeys(
     "oauth_test_users",
     "additional_oauth_scopes_authorized",
     "other_clients_or_test_users_authorized",
-    "alternate_project_authorized"
+    "alternate_project_authorized",
+    "oauth_configuration_form_path",
+    "oauth_configuration_form_accessible_without_api_enablement_prompt",
+    "required_api_mutation_authorized",
+    "hard_stop_if_api_enablement_required",
+    "oauth_client_creation_capability_proven"
   ],
   "GOOGLE_SCOPE_KEYS"
 );
+if (
+  !isStringArray(google.authorized_redirect_uris) ||
+  !isStringArray(google.authorized_javascript_origins)
+)
+  fail("GOOGLE_SCOPE");
 if (
   google.reuse_exact_project_id !== "adroit-archive-329710" ||
   google.project_create_authorized !== false ||
@@ -592,7 +712,12 @@ if (
   google.oauth_application_name !== "VideoForge" ||
   google.oauth_publishing_status !== "TESTING" ||
   google.other_clients_or_test_users_authorized !== false ||
-  google.alternate_project_authorized !== false
+  google.alternate_project_authorized !== false ||
+  google.oauth_configuration_form_path !== "/auth/overview/create" ||
+  google.oauth_configuration_form_accessible_without_api_enablement_prompt !== true ||
+  google.required_api_mutation_authorized !== false ||
+  google.hard_stop_if_api_enablement_required !== true ||
+  google.oauth_client_creation_capability_proven !== false
 )
   fail("GOOGLE_SCOPE");
 same(
@@ -622,6 +747,13 @@ exactKeys(
     "target_production_credential_status_preflight",
     "target_production_credential_name",
     "target_production_credential_name_sha256",
+    "credential_type",
+    "credential_lifetime",
+    "credential_expiration_policy",
+    "credential_expiration_at",
+    "credential_type_readback_required",
+    "credential_lifetime_readback_required",
+    "credential_expiration_readback_required",
     "console_permission_label",
     "permission_group",
     "credential_scope_model",
@@ -658,6 +790,13 @@ if (
     "VideoForge V2-13 production private objects" ||
   r2.target_production_credential_name_sha256 !==
     "sha256:4ee1c2b2ca4586f0253b728996a8b326453baff12f4879c2c559a698ed13ce67" ||
+  r2.credential_type !== "R2_S3_LONG_LIVED_ACCESS_KEY" ||
+  r2.credential_lifetime !== "LONG_LIVED" ||
+  r2.credential_expiration_policy !== "NO_EXPIRATION" ||
+  r2.credential_expiration_at !== null ||
+  r2.credential_type_readback_required !== true ||
+  r2.credential_lifetime_readback_required !== true ||
+  r2.credential_expiration_readback_required !== true ||
   r2.console_permission_label !== "Object Read & Write" ||
   r2.permission_group !== "Workers R2 Storage Bucket Item Write" ||
   r2.credential_scope_model !== "BUCKET_ONLY" ||
@@ -679,9 +818,17 @@ exactKeys(
     "directory_environment_name",
     "directory_mode",
     "file_mode",
+    "path_must_not_be_repository_or_evidence",
     "directory_creation",
     "file_creation",
     "file_names",
+    "receipt_environment_name",
+    "receipt_file_name",
+    "receipt_mode",
+    "receipt_parent_directory_mode",
+    "receipt_path_must_not_be_repository_or_evidence",
+    "receipt_secret_free",
+    "receipt_exact_fields",
     "raw_values_in_logs_or_receipt_authorized",
     "overwrite_or_rotation_authorized"
   ],
@@ -691,6 +838,15 @@ if (
   storage.directory_environment_name !== "VIDEOFORGE_V2_13_SECRET_INPUT_DIR" ||
   storage.directory_mode !== "0700" ||
   storage.file_mode !== "0600" ||
+  storage.path_must_not_be_repository_or_evidence !== true ||
+  storage.directory_creation !== "CREATE_NEW_DIRECTLY_WITH_MODE_0700" ||
+  storage.file_creation !== "CREATE_NEW_DIRECTLY_WITH_MODE_0600_NO_TEMP_OR_RENAME" ||
+  storage.receipt_environment_name !== "VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE" ||
+  storage.receipt_file_name !== "credential-bootstrap.json" ||
+  storage.receipt_mode !== "0600" ||
+  storage.receipt_parent_directory_mode !== "0700" ||
+  storage.receipt_path_must_not_be_repository_or_evidence !== true ||
+  storage.receipt_secret_free !== true ||
   storage.raw_values_in_logs_or_receipt_authorized !== false ||
   storage.overwrite_or_rotation_authorized !== false
 )
@@ -700,6 +856,74 @@ same(
   ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"],
   "STORAGE_FILES"
 );
+same(
+  storage.receipt_exact_fields,
+  [
+    "schema_version",
+    "source_commit",
+    "google_authenticated_account_sha256",
+    "google_project_id",
+    "google_project_id_sha256",
+    "google_project_number_sha256",
+    "google_oauth_client_id_sha256",
+    "google_oauth_client_secret_sha256",
+    "google_redirect_uris_canonical_sha256",
+    "google_javascript_origins_canonical_sha256",
+    "cloudflare_account_id_sha256",
+    "r2_bucket_name_sha256",
+    "r2_permission_group",
+    "r2_credential_type",
+    "r2_credential_lifetime",
+    "r2_credential_expiration_policy",
+    "r2_credential_expiration_at",
+    "r2_access_key_id_sha256",
+    "r2_secret_access_key_sha256",
+    "application_key_grammar",
+    "runpod_calls",
+    "gpu_hours",
+    "external_spend_usd"
+  ],
+  "STORAGE_RECEIPT_FIELDS"
+);
+
+const receipt = proposal.receipt;
+exactKeys(
+  receipt,
+  [
+    "schema_version",
+    "receipt_environment_name",
+    "receipt_file_name",
+    "receipt_mode",
+    "receipt_parent_directory_mode",
+    "receipt_path_must_not_be_repository_or_evidence",
+    "exact_fields",
+    "hash_field_values_only",
+    "raw_secret_values_authorized",
+    "receipt_secret_free",
+    "receipt_replay_requires_exact_all_fields",
+    "runpod_calls",
+    "gpu_hours",
+    "external_spend_usd"
+  ],
+  "RECEIPT_KEYS"
+);
+if (
+  receipt.schema_version !== "videoforge.v2-13-credential-bootstrap-result/v1" ||
+  receipt.receipt_environment_name !== "VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE" ||
+  receipt.receipt_file_name !== "credential-bootstrap.json" ||
+  receipt.receipt_mode !== "0600" ||
+  receipt.receipt_parent_directory_mode !== "0700" ||
+  receipt.receipt_path_must_not_be_repository_or_evidence !== true ||
+  receipt.hash_field_values_only !== true ||
+  receipt.raw_secret_values_authorized !== false ||
+  receipt.receipt_secret_free !== true ||
+  receipt.receipt_replay_requires_exact_all_fields !== true ||
+  receipt.runpod_calls !== 0 ||
+  receipt.gpu_hours !== 0 ||
+  receipt.external_spend_usd !== 0
+)
+  fail("RECEIPT_CONTRACT");
+same(receipt.exact_fields, storage.receipt_exact_fields, "RECEIPT_FIELDS");
 
 exactKeys(
   proposal.exact_execution_graph,
@@ -763,6 +987,274 @@ if (
   )
 )
   fail("OPERATIONS_SCOPE");
+
+const oauthClientOperation = proposal.ordered_operations[3];
+exactKeys(
+  oauthClientOperation,
+  [
+    "order",
+    "id",
+    "provider",
+    "kind",
+    "mutation",
+    "requires_user_approval",
+    "target_project_id",
+    "client_type",
+    "authorized_redirect_uris",
+    "authorized_javascript_origins",
+    "no_other_clients_or_callbacks",
+    "max_attempts",
+    "ambiguous_result",
+    "runpod_calls",
+    "gpu_hours",
+    "spend_usd"
+  ],
+  "OAUTH_OPERATION_KEYS"
+);
+if (
+  oauthClientOperation.provider !== "google" ||
+  oauthClientOperation.kind !== "CREATE_EXACTLY_ONE_OAUTH_WEB_CLIENT" ||
+  oauthClientOperation.mutation !== true ||
+  oauthClientOperation.requires_user_approval !== true ||
+  oauthClientOperation.target_project_id !== "adroit-archive-329710" ||
+  oauthClientOperation.client_type !== "WEB" ||
+  !isStringArray(oauthClientOperation.authorized_redirect_uris) ||
+  !isStringArray(oauthClientOperation.authorized_javascript_origins) ||
+  JSON.stringify(oauthClientOperation.authorized_redirect_uris) !==
+    JSON.stringify([
+      "https://videoforge-production-runtime.lakshmansai121.workers.dev/api/auth/callback/google"
+    ]) ||
+  oauthClientOperation.authorized_javascript_origins.length !== 0 ||
+  oauthClientOperation.no_other_clients_or_callbacks !== true ||
+  oauthClientOperation.max_attempts !== 1 ||
+  oauthClientOperation.ambiguous_result !==
+    "hard stop and manual readback; no retry or second client"
+)
+  fail("OAUTH_OPERATION_SCOPE");
+
+const consentOperation = proposal.ordered_operations[2];
+exactKeys(
+  consentOperation,
+  [
+    "order",
+    "id",
+    "provider",
+    "kind",
+    "mutation",
+    "requires_user_approval",
+    "target_project_id",
+    "precondition",
+    "configuration",
+    "configuration_form_path",
+    "configuration_form_accessible_without_api_enablement_prompt",
+    "required_api_mutation_authorized",
+    "on_api_enablement_prompt_or_requirement",
+    "forbidden",
+    "max_attempts",
+    "ambiguous_result",
+    "runpod_calls",
+    "gpu_hours",
+    "spend_usd"
+  ],
+  "CONSENT_OPERATION_KEYS"
+);
+if (
+  consentOperation.provider !== "google" ||
+  consentOperation.kind !== "CONFIGURE_EXISTING_CONSENT_SCREEN" ||
+  consentOperation.mutation !== true ||
+  consentOperation.requires_user_approval !== true ||
+  consentOperation.target_project_id !== "adroit-archive-329710" ||
+  !consentOperation.precondition.includes("Auth Platform is unconfigured") ||
+  !consentOperation.configuration.includes("VideoForge") ||
+  !consentOperation.configuration.includes("EXTERNAL_TESTING") ||
+  !consentOperation.configuration.includes("TESTING") ||
+  !consentOperation.configuration.includes("lakshmansai121@gmail.com") ||
+  !consentOperation.configuration.includes("demo9gss@gmail.com") ||
+  consentOperation.configuration_form_path !== "/auth/overview/create" ||
+  consentOperation.configuration_form_accessible_without_api_enablement_prompt !== true ||
+  consentOperation.required_api_mutation_authorized !== false ||
+  consentOperation.on_api_enablement_prompt_or_requirement !==
+    "HARD_STOP_NO_API_ENABLEMENT_OR_CONTINUATION" ||
+  consentOperation.max_attempts !== 1 ||
+  consentOperation.ambiguous_result !== "hard stop; no retry or alternate configuration"
+)
+  fail("CONSENT_OPERATION_SCOPE");
+
+const r2CreateOperation = proposal.ordered_operations[4];
+exactKeys(
+  r2CreateOperation,
+  [
+    "order",
+    "id",
+    "provider",
+    "kind",
+    "mutation",
+    "requires_user_approval",
+    "credential_name",
+    "account_id",
+    "bucket_name",
+    "credential_type",
+    "credential_lifetime",
+    "credential_expiration_policy",
+    "credential_expiration_at",
+    "credential_type_readback_required",
+    "credential_lifetime_readback_required",
+    "credential_expiration_readback_required",
+    "permission_label",
+    "permission_group",
+    "credential_scope_model",
+    "preserve_existing_credential",
+    "post_state_account_api_token_count",
+    "post_state_user_token_count",
+    "no_account_wide_or_wildcard_or_other_bucket_or_prefix_claim",
+    "max_attempts",
+    "ambiguous_result",
+    "runpod_calls",
+    "gpu_hours",
+    "spend_usd"
+  ],
+  "R2_OPERATION_KEYS"
+);
+if (
+  r2CreateOperation.provider !== "cloudflare_r2" ||
+  r2CreateOperation.kind !== "CREATE_EXACTLY_ONE_LONG_LIVED_R2_S3_CREDENTIAL" ||
+  r2CreateOperation.mutation !== true ||
+  r2CreateOperation.requires_user_approval !== true ||
+  r2CreateOperation.credential_name !== "VideoForge V2-13 production private objects" ||
+  r2CreateOperation.account_id !== "f9254d773a3426fcb469451b1f965d8c" ||
+  r2CreateOperation.bucket_name !== "videoforge-v2-06-staging-private" ||
+  r2CreateOperation.credential_type !== "R2_S3_LONG_LIVED_ACCESS_KEY" ||
+  r2CreateOperation.credential_lifetime !== "LONG_LIVED" ||
+  r2CreateOperation.credential_expiration_policy !== "NO_EXPIRATION" ||
+  r2CreateOperation.credential_expiration_at !== null ||
+  r2CreateOperation.credential_type_readback_required !== true ||
+  r2CreateOperation.credential_lifetime_readback_required !== true ||
+  r2CreateOperation.credential_expiration_readback_required !== true ||
+  r2CreateOperation.permission_label !== "Object Read & Write" ||
+  r2CreateOperation.permission_group !== "Workers R2 Storage Bucket Item Write" ||
+  r2CreateOperation.credential_scope_model !== "BUCKET_ONLY" ||
+  r2CreateOperation.preserve_existing_credential !==
+    "VideoForge V2-06 staging private objects rotated" ||
+  r2CreateOperation.post_state_account_api_token_count !== 2 ||
+  r2CreateOperation.post_state_user_token_count !== 0 ||
+  r2CreateOperation.no_account_wide_or_wildcard_or_other_bucket_or_prefix_claim !== true ||
+  r2CreateOperation.max_attempts !== 1 ||
+  r2CreateOperation.ambiguous_result !==
+    "hard stop and manual readback; no retry, rotation, deletion, or second new token"
+)
+  fail("R2_OPERATION_SCOPE");
+
+const protectedStorageOperation = proposal.ordered_operations[5];
+exactKeys(
+  protectedStorageOperation,
+  [
+    "order",
+    "id",
+    "provider",
+    "kind",
+    "mutation",
+    "requires_user_approval",
+    "directory_environment_name",
+    "directory_mode",
+    "file_mode",
+    "path_must_not_be_repository_or_evidence",
+    "directory_creation",
+    "file_creation",
+    "file_names",
+    "precondition",
+    "receipt_environment_name",
+    "receipt_file_name",
+    "receipt_mode",
+    "receipt_parent_directory_mode",
+    "receipt_path_must_not_be_repository_or_evidence",
+    "receipt_secret_free",
+    "no_raw_values_in_logs_or_receipt",
+    "no_overwrite_or_rotation",
+    "runpod_calls",
+    "gpu_hours",
+    "spend_usd"
+  ],
+  "PROTECTED_STORAGE_OPERATION_KEYS"
+);
+if (
+  protectedStorageOperation.provider !== "local_protected_storage" ||
+  protectedStorageOperation.kind !== "WRITE_EXACTLY_FOUR_HASH_BOUND_MODE_0600_FILES" ||
+  protectedStorageOperation.mutation !== true ||
+  protectedStorageOperation.requires_user_approval !== true ||
+  protectedStorageOperation.directory_environment_name !==
+    "VIDEOFORGE_V2_13_SECRET_INPUT_DIR" ||
+  protectedStorageOperation.directory_mode !== "0700" ||
+  protectedStorageOperation.file_mode !== "0600" ||
+  protectedStorageOperation.path_must_not_be_repository_or_evidence !== true ||
+  protectedStorageOperation.directory_creation !== "CREATE_NEW_DIRECTLY_WITH_MODE_0700" ||
+  protectedStorageOperation.file_creation !==
+    "CREATE_NEW_DIRECTLY_WITH_MODE_0600_NO_TEMP_OR_RENAME" ||
+  !isStringArray(protectedStorageOperation.file_names) ||
+  JSON.stringify(protectedStorageOperation.file_names) !==
+    JSON.stringify(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"]) ||
+  !protectedStorageOperation.precondition.includes("target files absent") ||
+  protectedStorageOperation.receipt_environment_name !==
+    "VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE" ||
+  protectedStorageOperation.receipt_file_name !== "credential-bootstrap.json" ||
+  protectedStorageOperation.receipt_mode !== "0600" ||
+  protectedStorageOperation.receipt_parent_directory_mode !== "0700" ||
+  protectedStorageOperation.receipt_path_must_not_be_repository_or_evidence !== true ||
+  protectedStorageOperation.receipt_secret_free !== true ||
+  protectedStorageOperation.no_raw_values_in_logs_or_receipt !== true ||
+  protectedStorageOperation.no_overwrite_or_rotation !== true
+)
+  fail("PROTECTED_STORAGE_OPERATION");
+
+const receiptOperation = proposal.ordered_operations[6];
+exactKeys(
+  receiptOperation,
+  [
+    "order",
+    "id",
+    "provider",
+    "kind",
+    "mutation",
+    "requires_user_approval",
+    "readback",
+    "receipt_schema",
+    "receipt_environment_name",
+    "receipt_file_name",
+    "receipt_file_mode",
+    "receipt_parent_directory_mode",
+    "receipt_path_must_not_be_repository_or_evidence",
+    "receipt_secret_free",
+    "receipt_exact_fields",
+    "post_state_account_api_token_count",
+    "post_state_user_token_count",
+    "scope_mismatch",
+    "runpod_calls",
+    "gpu_hours",
+    "spend_usd"
+  ],
+  "RECEIPT_OPERATION_KEYS"
+);
+if (
+  receiptOperation.provider !== "google_and_cloudflare_r2" ||
+  receiptOperation.kind !== "READBACK_AND_SECRET_FREE_RECEIPT" ||
+  receiptOperation.mutation !== true ||
+  receiptOperation.requires_user_approval !== true ||
+  !receiptOperation.readback.includes("protected file hashes") ||
+  receiptOperation.receipt_schema !== "videoforge.v2-13-credential-bootstrap-result/v1" ||
+  receiptOperation.receipt_environment_name !==
+    "VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE" ||
+  receiptOperation.receipt_file_name !== "credential-bootstrap.json" ||
+  receiptOperation.receipt_file_mode !== "0600" ||
+  receiptOperation.receipt_parent_directory_mode !== "0700" ||
+  receiptOperation.receipt_path_must_not_be_repository_or_evidence !== true ||
+  receiptOperation.receipt_secret_free !== true ||
+  receiptOperation.post_state_account_api_token_count !== 2 ||
+  receiptOperation.post_state_user_token_count !== 0 ||
+  receiptOperation.scope_mismatch !==
+    "hard stop; no rotation, deletion, retry, or second resource"
+)
+  fail("RECEIPT_OPERATION");
+same(receiptOperation.receipt_exact_fields, receipt.exact_fields, "RECEIPT_OPERATION_FIELDS");
+
 if (!Array.isArray(proposal.stop_conditions) || proposal.stop_conditions.length < 10)
   fail("STOP_CONDITIONS");
 for (const marker of [
