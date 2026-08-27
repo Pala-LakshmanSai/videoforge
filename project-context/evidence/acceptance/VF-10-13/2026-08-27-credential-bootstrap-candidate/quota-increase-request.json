@@ -1,0 +1,43 @@
+{
+  "schema_version": "videoforge.v2-13-credential-bootstrap-quota-request/v1",
+  "checkpoint": "V2-13",
+  "task_id": "VF-10-13-CREDENTIAL-BOOTSTRAP",
+  "attempt": 1,
+  "proposal_sha256": "sha256:48bf5c7bb7304630eb3744b038fea7b7a11a53878bd1a18d94768c6f0e96e0ab",
+  "proposal_commit": "9106f9d6da9811a193824bc5e0d8104712fca415",
+  "status": "SUBMITTED_AWAITING_GOOGLE_REVIEW",
+  "submitted_at": "2026-08-27",
+  "google_account_sha256": "sha256:a7bca06b10386403d2757a5c78b397fb5722e0383bcd72cf9f29259e073bfcc7",
+  "request": {
+    "quota_family": "Free Services projects",
+    "additional_project_count": 1,
+    "reason": "Creating more projects under my email",
+    "justification": "Isolated VideoForge production OAuth project with EXTERNAL_TESTING, exactly two test users, one callback, and no paid Google Cloud services."
+  },
+  "confirmation": {
+    "provider_confirmation_observed": true,
+    "expected_review_time": "ABOUT_2_BUSINESS_DAYS",
+    "follow_up_channel": "SUBMITTED_EMAIL"
+  },
+  "preflight_context": {
+    "accessible_project_count_observed": 6,
+    "requested_project_id": "videoforge-v2-13-prod-0827",
+    "requested_project_created": false,
+    "oauth_client_created": false,
+    "r2_credential_created": false
+  },
+  "scope_fence": {
+    "google_quota_request_submissions": 1,
+    "google_project_creations": 0,
+    "google_oauth_clients_created": 0,
+    "cloudflare_r2_calls": 0,
+    "cloudflare_r2_credentials_created": 0,
+    "credential_values_accessed": 0,
+    "protected_credential_file_writes": 0,
+    "runpod_calls": 0,
+    "gpu_hours": 0,
+    "external_spend_usd": 0,
+    "temporary_compute_started": false
+  },
+  "next_boundary": "After Google review, perform a fresh read-only project inventory and prepare a new exact credential-bootstrap proposal and approval. Do not reuse this blocked approval, create an OAuth client or R2 credential, or write protected credential files before that fresh approval."
+}

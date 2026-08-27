@@ -27,8 +27,11 @@ audited at commit `9106f9d` with SHA-256 `48bf5c7b…e96e0ab`. Its exact user-ap
 attempt stopped at the Google project-create preflight because the authenticated account reached
 its project quota; the attempt is recorded as `BLOCKED_UNCONSUMED_NO_MUTATION`, with no executable
 authority, project, OAuth client, R2 credential, protected credential-file write, GPU use, or spend.
-The limit-increase request was not submitted and no alternate project is authorized. Evidence:
-`evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/blocked-execution.json`.
+One separately authorized request for one additional Google Free Services project was submitted on
+2026-08-27; Google confirmation says review typically takes about 2 business days and follow-up goes
+to the submitted email. No alternate project is authorized. Evidence:
+`evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/blocked-execution.json` and
+`evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/quota-increase-request.json`.
 The blocked replacement proposal now closes a 25-operation graph by placing zero-cap
 `record-workflow-start-authority` after promotion and before V2-09, and binds full receipt/ACL/public-
 revoke readback, guarded receipt verification before secret reads, durable billing, and a separate
