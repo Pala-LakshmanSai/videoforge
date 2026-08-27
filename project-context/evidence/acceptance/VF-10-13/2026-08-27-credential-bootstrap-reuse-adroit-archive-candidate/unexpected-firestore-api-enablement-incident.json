@@ -1,0 +1,113 @@
+{
+  "schema_version": "videoforge.v2-13-google-reuse-audit-incident/v1",
+  "checkpoint": "V2-13",
+  "task_id": "VF-10-13-CREDENTIAL-BOOTSTRAP-REUSE-EXACT-PROJECT",
+  "incident_id": "GOOGLE_FIRESTORE_INVENTORY_UNEXPECTED_API_ENABLEMENT_2026-08-27",
+  "recorded_at": "2026-08-27T07:05:02Z",
+  "status": "BLOCKED_UNEXPECTED_PROVIDER_MUTATION_NO_CREDENTIAL_ACCESS",
+  "approval_boundary": {
+    "prior_proposal_sha256": "sha256:48bf5c7bb7304630eb3744b038fea7b7a11a53878bd1a18d94768c6f0e96e0ab",
+    "prior_proposal_commit": "9106f9d6da9811a193824bc5e0d8104712fca415",
+    "prior_attempt_status": "BLOCKED_UNCONSUMED_NO_MUTATION",
+    "prior_attempt_unchanged": true,
+    "reuse_path_was_not_approved": true,
+    "fresh_reuse_approval_required": true,
+    "credential_bootstrap_execution_authorized": false,
+    "rollback_or_disable_authorized": false,
+    "further_provider_action_authorized": false
+  },
+  "google_project": {
+    "project_id": "adroit-archive-329710",
+    "project_number": "984657838923",
+    "project_id_sha256": "sha256:0a57c6c9fc4b102fa4eef3ecb490a786cc632bd45440765eed188970c6b097ae",
+    "project_number_sha256": "sha256:41ed11c7873b8727019969683f8063652a949a9a899a3b6b7d126135ea2c6347",
+    "authenticated_account_sha256": "sha256:a7bca06b10386403d2757a5c78b397fb5722e0383bcd72cf9f29259e073bfcc7",
+    "lifecycle_state": "ACTIVE",
+    "accessible_to_authenticated_account": true
+  },
+  "trigger": {
+    "provider": "google",
+    "interaction": "Read-only navigation to the Firestore inventory page in Google Cloud Console",
+    "submitted_form": false,
+    "user_intended_mutation": false,
+    "observed_automatic_action": "Google automatically enabled firestore.googleapis.com and firebaserules.googleapis.com"
+  },
+  "service_inventory_transition": {
+    "canonicalization": "SHA-256 of UTF-8 RFC-8785/JCS-compatible compact JSON array bytes, preserving listed order and with no trailing newline",
+    "count_before": 13,
+    "count_after": 15,
+    "before_display_names": [
+      "BigQuery API",
+      "BigQuery Storage API",
+      "Cloud Datastore API",
+      "Cloud Logging API",
+      "Cloud Monitoring API",
+      "Cloud SQL",
+      "Cloud Storage",
+      "Cloud Storage API",
+      "Cloud Trace API",
+      "Google Cloud APIs",
+      "Google Cloud Storage JSON API",
+      "Service Management API",
+      "Service Usage API"
+    ],
+    "before_display_names_sha256": "sha256:868bd0892c1df56410e064e554df7cce396ae84fab5e2906a34b75cc564897d0",
+    "after_display_names": [
+      "BigQuery API",
+      "BigQuery Storage API",
+      "Cloud Datastore API",
+      "Cloud Firestore API",
+      "Cloud Logging API",
+      "Cloud Monitoring API",
+      "Cloud SQL",
+      "Cloud Storage",
+      "Cloud Storage API",
+      "Cloud Trace API",
+      "Firebase Rules API",
+      "Google Cloud APIs",
+      "Google Cloud Storage JSON API",
+      "Service Management API",
+      "Service Usage API"
+    ],
+    "after_display_names_sha256": "sha256:3b55246afeb2fe025bb8cdc9764207f15519ce027c06e82416e610a838b30581",
+    "newly_enabled_api_services": [
+      "firestore.googleapis.com",
+      "firebaserules.googleapis.com"
+    ],
+    "newly_enabled_display_names": [
+      "Cloud Firestore API",
+      "Firebase Rules API"
+    ],
+    "newly_enabled_display_names_sha256": "sha256:960be93b69f36dd7f9f3ed8c36c78182a64a6dad6f71b2f1d1825f7a43cd7993",
+    "transition_sha256": "sha256:3ee225606f55eaf2a16658d417aa0457a813cc4216b6313234c9a9cf8907d0c0"
+  },
+  "side_effect": {
+    "authorized": false,
+    "provider_mutations": 1,
+    "mutation_scope": "Google project service enablement only",
+    "resources_created": false,
+    "databases_created": 0,
+    "billing_account_associated": false,
+    "paid_spend_usd": 0,
+    "oauth_clients_created": 0,
+    "oauth_client_secrets_accessed": false,
+    "cloudflare_r2_calls_or_mutations": 0,
+    "runpod_calls": 0,
+    "gpu_use": false,
+    "protected_credential_file_writes": 0,
+    "credential_values_accessed": 0
+  },
+  "containment": {
+    "original_blocked_credential_attempt_altered": false,
+    "project_created": false,
+    "project_deleted": false,
+    "project_renamed": false,
+    "oauth_client_created": false,
+    "r2_credential_created": false,
+    "rollback_attempted": false,
+    "additional_provider_action_attempted": false,
+    "temporary_compute_active": false,
+    "external_spend_usd": 0,
+    "next_action": "Stop and require independent safety review plus fresh exact reuse proposal and approval; do not disable APIs, delete/rename projects, create credentials, or continue the blocked graph."
+  }
+}

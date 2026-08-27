@@ -32,6 +32,16 @@ One separately authorized request for one additional Google Free Services projec
 to the submitted email. No alternate project is authorized. Evidence:
 `evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/blocked-execution.json` and
 `evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/quota-increase-request.json`.
+A separate read-only reuse audit of existing project `adroit-archive-329710` hit an unexpected Google
+side effect: opening the Firestore inventory automatically enabled `firestore.googleapis.com` and
+`firebaserules.googleapis.com`, increasing the enabled-service inventory from 13 to 15. The original
+blocked credential attempt was not altered. No database, resource, billing association, OAuth client,
+credential value, Cloudflare R2 action, RunPod action, GPU use, or spend occurred; no rollback/disable
+or further provider action is authorized. The exact before/after service arrays and canonical hashes
+are recorded in `evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/unexpected-firestore-api-enablement-incident.json`
+(`sha256:936117ccc777b37d6e6ee595c8d8feccb4fbd026e11d7705084af03230db2229`). The reuse path is
+blocked pending an independent safety verdict, complete read-only evidence, and a fresh exact
+proposal/approval; the quota-blocked approval remains non-reusable.
 The blocked replacement proposal now closes a 25-operation graph by placing zero-cap
 `record-workflow-start-authority` after promotion and before V2-09, and binds full receipt/ACL/public-
 revoke readback, guarded receipt verification before secret reads, durable billing, and a separate
