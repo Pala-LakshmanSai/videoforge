@@ -50,6 +50,7 @@ import {
   EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
   validateFullLiveUserApproval,
 } from "../../deploy/v2-13/validate-full-live-approval.mjs";
+import { materializationSeedFixture } from "./fixtures/v2-13-materialization-seed.mjs";
 
 const directory =
   "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-candidate";
@@ -261,31 +262,7 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v213-seed-authority-"));
   chmodSync(directory, 0o700);
   const seedPath = join(directory, "seed.json");
-  const seed = {
-    schema_version: "videoforge.v213-full-live-materialization-seed/v1",
-    static_only: true,
-    future_output_hashes_present: false,
-    production_input_base: {
-      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
-      fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
-      authorityDocument: {},
-      dualLaneInput: {
-        mage: {
-          volumeIdSha256: proof("1"),
-          volumeManifestSha256: proof("2"),
-        },
-        soulx: {
-          volumeIdSha256: proof("3"),
-          volumeManifestSha256: proof("4"),
-        },
-      },
-      commandPayloads: {},
-    },
-    activation_record_base: {},
-    config_activation_base: {},
-    release_manifest: {},
-    promotion_record_base: {},
-  };
+  const seed = materializationSeedFixture();
   const canonical = (value) =>
     Array.isArray(value)
       ? `[${value.map((item) => canonical(item)).join(",")}]`
@@ -320,6 +297,60 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
       () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: nestedHash }),
       /MATERIALIZATION_SEED_CONTRACT/u,
     );
+    const contractMutations = [
+      (value) => {
+        value.production_input_base.fullLiveAuthorityId = "not-a-uuid";
+      },
+      (value) => {
+        value.production_input_base.dualLaneInput.accountIdSha256 = proof("0");
+      },
+      (value) => {
+        delete value.production_input_base.dualLaneInput.mage.volumeId;
+      },
+      (value) => {
+        value.production_input_base.dualLaneInput.soulx.volumeId = "wrong-volume";
+      },
+      (value) => {
+        value.production_input_base.dualLaneInput.soulx.receiptKeyId = "different-key";
+      },
+      (value) => {
+        value.production_input_base.dualLaneInput.billingBaselineUsd = -1;
+      },
+      (value) => {
+        value.production_input_base.dualLaneInput.totalCapUsd = 18;
+      },
+      (value) => {
+        value.production_input_base.dualLaneInput.stageAuthorityPublicKeyPem = "PUBLIC KEY";
+      },
+      (value) => {
+        delete value.production_input_base.dualLaneInput.envelopes.soulxTimeout;
+      },
+      (value) => {
+        value.production_input_base.dualLaneInput.envelopes.mage = {};
+      },
+      (value) => {
+        value.activation_record_base = {};
+      },
+      (value) => {
+        value.config_activation_base = {};
+      },
+      (value) => {
+        value.release_manifest = {};
+      },
+      (value) => {
+        value.promotion_record_base = {};
+      },
+    ];
+    for (const mutate of contractMutations) {
+      const invalid = structuredClone(seed);
+      mutate(invalid);
+      writeFileSync(seedPath, `${JSON.stringify(invalid)}\n`, { mode: 0o600 });
+      const invalidHash = hash(Buffer.from(`${canonical(invalid)}\n`));
+      assert.throws(
+        () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: invalidHash }),
+        /MATERIALIZATION_SEED_CONTRACT/u,
+      );
+    }
     for (const [section, key] of [
       ["approval", "googleClientSecret"],
       ["cloudflare", "r2Credential"],

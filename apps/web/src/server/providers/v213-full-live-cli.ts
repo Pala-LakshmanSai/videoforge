@@ -74,10 +74,28 @@ export const V213_SERVERLESS_FLEX_RATE_SOURCE = Object.freeze({
 } as const);
 
 export function summarizeV213EndpointRestoration(result: V213AttributableCleanupResult): JsonValue {
+  const production = result.production;
+  const endpointHashes = new Set(production.map((deployment) => deployment.endpointIdSha256));
+  const templateHashes = new Set(production.map((deployment) => deployment.templateIdSha256));
+  const bothEndpointsMaxWorkersOne =
+    production.length === 2 &&
+    endpointHashes.size === 2 &&
+    templateHashes.size === 2 &&
+    new Set(production.map((deployment) => deployment.lane)).size === 2 &&
+    production.every(
+      (deployment) =>
+        deployment.purpose === "production" &&
+        deployment.workersMin === 0 &&
+        deployment.workersMax === 1 &&
+        deployment.gpuCount === 1 &&
+        deployment.handlerConcurrency === 1 &&
+        deployment.scalerType === "REQUEST_COUNT" &&
+        deployment.scalerValue === 1,
+    );
   return {
     restored: true,
-    bothEndpointsMaxWorkersOne: result.production.length === 2,
-    retainedProductionEndpoints: result.production.length,
+    bothEndpointsMaxWorkersOne,
+    retainedProductionEndpoints: production.length,
     deletedEndpointIdSha256s: [...result.deletedEndpointIdSha256s],
     deletedTemplateIdSha256s: [...result.deletedTemplateIdSha256s],
   };
@@ -1283,6 +1301,11 @@ function exactProductionInput(value: JsonValue): V213ProductionInput {
   )
     fail("PRODUCTION_INPUT_INVALID");
   return value as unknown as V213ProductionInput;
+}
+
+/** Provider-free first-use shape check shared with the release materialization regression. */
+export function validateV213ProductionInputShape(value: JsonValue): void {
+  exactProductionInput(value);
 }
 
 async function oneDatabaseValue(

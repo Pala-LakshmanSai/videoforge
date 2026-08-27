@@ -48,15 +48,15 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:0a2b929507609d0709cb0262b757e537576c3b9af192681548fd78a357ac5437",
+    "sha256:0ebab27b0798171d342dbae0a5a71c59aef499295dd8f0ddd00ea85041d5bd69",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
   "deploy/v2-13/guarded-activation.mjs":
     "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:e9d369710ca75535b35b6c29123b595482fbddbd792b35e02ed40eb7ea6c28e6",
+    "sha256:a2b56248037b9712aec87513339d8e3fa3b6c172e0ee62e6a943e518d3af3459",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
-    "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
+    "sha256:a6c1fc9333ad64726522b6e9fa62354637eb3c7248803e06e8470974db8203a0",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
     "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
   "deploy/v2-13/neon-full-live-operator-grants.sql":

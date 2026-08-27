@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
+import { createHash, createPublicKey } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   closeSync,
@@ -18,13 +18,41 @@ import {
   EXPECTED_PHASE_CAPS,
   validateFullLiveUserApproval,
 } from "./validate-full-live-approval.mjs";
+import {
+  CONFIRMATION as GUARDED_ACTIVATION_CONFIRMATION,
+  SECRET_NAMES as GUARDED_SECRET_NAMES,
+  validateAuthority as validateGuardedActivationAuthority,
+} from "./guarded-activation.mjs";
+import {
+  validateMediaWorkerReleaseManifest,
+  validateProductionConfig,
+} from "./validate-production-config.mjs";
+import { validatePromotionRecord } from "./promote-qualified-production.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
+const RUNPOD_ACCOUNT_ID_SHA256 =
+  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
 const CONFIRMATION = "CONSUME_EXACT_V2_13_FULL_LIVE_AUTHORITY";
 const MATERIALIZATION_SEED_SCHEMA = "videoforge.v213-full-live-materialization-seed/v1";
 const MATERIALIZATION_SEED_ENV = "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE";
+const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_PATH =
+  "deploy/v2-13/validate-materialization-seed-production-input.mts";
+const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_SHA256 =
+  "sha256:0b40fda24bcb2983b8d8e2ceece1254064f0cb1c3fb0712795c2a9ed68677d88";
+const EXACT_RETAINED_LANES = Object.freeze({
+  mage: Object.freeze({
+    volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    volumeManifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+  }),
+  soulx: Object.freeze({
+    volumeIdSha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    volumeManifestSha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+  }),
+});
 const PHASES = Object.freeze([
   ["publication", 0],
   ["bootstrap_prequalification_database", 0],
@@ -89,19 +117,38 @@ const MATERIALIZATION_SEED_FORBIDDEN_FUTURE_KEYS = Object.freeze([
   "soulxEndpointId",
   "endpointId",
   "endpointIdSha256",
+  "mage_endpoint_id",
+  "soulx_endpoint_id",
+  "endpoint_id",
+  "endpoint_id_sha256",
   "deploymentSnapshotSha256",
   "deployment_snapshot_sha256",
   "mage_deployment_snapshot_sha256",
   "soulx_deployment_snapshot_sha256",
   "imageDigest",
+  "image_digest",
+  "publicImage",
+  "public_image",
+  "sourceCommit",
+  "source_commit",
+  "deploymentSha256",
+  "deployment_sha256",
   "publicManifestSha256",
+  "public_manifest_sha256",
   "versionId",
+  "version_id",
   "versionSha256",
+  "version_sha256",
   "disabledVersionId",
+  "disabled_version_id",
   "disabledVersionSha256",
+  "disabled_version_sha256",
   "futureOutputHash",
+  "future_output_hash",
   "futureOutputSha256",
+  "future_output_sha256",
   "futureOutputHashes",
+  "future_output_hashes",
   "VIDEOFORGE_MAGE_ENDPOINT_ID",
   "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
   "VIDEOFORGE_SOULX_ENDPOINT_ID",
@@ -112,9 +159,16 @@ const MATERIALIZATION_SEED_FORBIDDEN_COMMAND_KEYS = Object.freeze([
   "soulxendpointid",
   "endpointid",
   "endpointidsha256",
+  "mage_endpoint_id",
+  "soulx_endpoint_id",
+  "endpoint_id",
+  "endpoint_id_sha256",
   "publicimage",
+  "public_image",
   "sourcecommit",
+  "source_commit",
   "deploymentsha256",
+  "deployment_sha256",
   "deploymentsnapshotsha256",
   "deployment_snapshot_sha256",
 ]);
@@ -131,16 +185,350 @@ const hasForbiddenSeedKey = (value, forbidden) =>
     ([key, nested]) => forbidden.has(key.toLowerCase()) || hasForbiddenSeedKey(nested, forbidden),
   );
 
-const validatePromotionRecordBase = (value) =>
-  exactEmptyObject(value) ||
-  (exactObjectKeys(value, ["approval", "cloudflare", "database", "lanes", "release"]) &&
-    exactEmptyObject(value.approval) &&
-    exactEmptyObject(value.cloudflare) &&
-    exactEmptyObject(value.database) &&
-    exactObjectKeys(value.lanes, ["mage_image", "soulx_avatar"]) &&
-    exactEmptyObject(value.lanes.mage_image) &&
-    exactEmptyObject(value.lanes.soulx_avatar) &&
-    exactEmptyObject(value.release));
+const validStageAuthorityPublicKey = (value) => {
+  if (typeof value !== "string" || !value.startsWith("-----BEGIN PUBLIC KEY-----\n")) return false;
+  try {
+    return createPublicKey(value).asymmetricKeyType === "ed25519";
+  } catch {
+    return false;
+  }
+};
+
+const validStaticSeedLane = (value, lane, retained) =>
+  exactObjectKeys(value, [
+    "lane",
+    "receiptKeyId",
+    "volumeId",
+    "volumeIdSha256",
+    "volumeManifestSha256",
+  ]) &&
+  value.lane === lane &&
+  COMMAND_ID.test(value.volumeId ?? "") &&
+  sha256(Buffer.from(value.volumeId)) === retained.volumeIdSha256 &&
+  value.volumeIdSha256 === retained.volumeIdSha256 &&
+  value.volumeManifestSha256 === retained.volumeManifestSha256 &&
+  COMMAND_ID.test(value.receiptKeyId ?? "");
+
+function validateStaticDualLaneInput(value) {
+  const envelopeKeys = [
+    "mage",
+    "soulx10s",
+    "soulx2s",
+    "soulx4s",
+    "soulx6s",
+    "soulxCancel",
+    "soulxInvalidOutput",
+    "soulxTimeout",
+  ];
+  if (
+    !exactObjectKeys(value, [
+      "accountIdSha256",
+      "billingBaselineUsd",
+      "envelopes",
+      "mage",
+      "mageQualificationCapUsd",
+      "soulx",
+      "soulxQualificationCapUsd",
+      "stageAuthorityPublicKeyPem",
+      "totalCapUsd",
+    ]) ||
+    value.accountIdSha256 !== RUNPOD_ACCOUNT_ID_SHA256 ||
+    !Number.isFinite(value.billingBaselineUsd) ||
+    value.billingBaselineUsd < 0 ||
+    value.totalCapUsd !== 17.5 ||
+    value.mageQualificationCapUsd !== 4.5 ||
+    value.soulxQualificationCapUsd !== 1 ||
+    !validStageAuthorityPublicKey(value.stageAuthorityPublicKeyPem) ||
+    !validStaticSeedLane(value.mage, "mage", EXACT_RETAINED_LANES.mage) ||
+    !validStaticSeedLane(value.soulx, "soulx", EXACT_RETAINED_LANES.soulx) ||
+    value.mage.receiptKeyId !== value.soulx.receiptKeyId ||
+    !exactObjectKeys(value.envelopes, envelopeKeys) ||
+    Object.values(value.envelopes).some(
+      (envelope) =>
+        envelope === null ||
+        typeof envelope !== "object" ||
+        Array.isArray(envelope) ||
+        Object.keys(envelope).length === 0,
+    )
+  )
+    return false;
+  return true;
+}
+
+const proof = (letter) => `sha256:${letter.repeat(64)}`;
+const deterministicUuid = (value) => {
+  const hex = createHash("sha256").update(value, "utf8").digest("hex").slice(0, 32).split("");
+  hex[12] = "4";
+  hex[16] = ["8", "9", "a", "b"][Number.parseInt(hex[16], 16) % 4];
+  return `${hex.slice(0, 8).join("")}-${hex.slice(8, 12).join("")}-${hex.slice(12, 16).join("")}-${hex.slice(16, 20).join("")}-${hex.slice(20).join("")}`;
+};
+
+function validateActivationRecordBase(value) {
+  if (
+    !exactObjectKeys(value, [
+      "authority",
+      "checkpoint",
+      "cloudflare",
+      "database",
+      "gates",
+      "release",
+      "schema_version",
+      "secret_sha256",
+      "soulx_crop_approval",
+    ]) ||
+    value.schema_version !== "videoforge-v2-13-guarded-activation/v1" ||
+    value.checkpoint !== "V2-13" ||
+    !exactObjectKeys(value.authority, [
+      "confirmation_sha256",
+      "exact_quarantine_creation_authorized",
+      "gpu_use_authorized",
+      "maximum_cumulative_finite_external_spend_usd",
+      "new_paid_retained_resources_authorized",
+      "other_resource_creation_authorized",
+      "plan_change_authorized",
+      "proposal_path",
+      "single_use",
+    ]) ||
+    value.authority.proposal_path !== PROPOSAL_RECORD_PATH ||
+    value.authority.single_use !== true ||
+    value.authority.gpu_use_authorized !== false ||
+    value.authority.maximum_cumulative_finite_external_spend_usd !== 0 ||
+    value.authority.exact_quarantine_creation_authorized !== true ||
+    value.authority.new_paid_retained_resources_authorized !== false ||
+    value.authority.other_resource_creation_authorized !== false ||
+    value.authority.plan_change_authorized !== false ||
+    value.authority.confirmation_sha256 !== sha256(Buffer.from(GUARDED_ACTIVATION_CONFIRMATION)) ||
+    !exactEmptyObject(value.release) ||
+    !exactEmptyObject(value.gates) ||
+    value.secret_sha256 !== null
+  )
+    return false;
+  const filled = structuredClone(value);
+  Object.assign(filled.authority, {
+    mode: "APPROVED_EXECUTE",
+    authority_id: "v2-13-materialization-seed-validation",
+    proposal_sha256: proof("1"),
+    approval_sha256: proof("2"),
+    approval_path:
+      "project-context/evidence/acceptance/VF-10-13/materialization-seed/user-approval.json",
+    approved_at: "2026-08-27T00:00:00.000Z",
+    expires_at: "2026-08-28T00:00:00.000Z",
+    execute_authorized: true,
+    credential_access_authorized: true,
+    database_mutation_authorized: true,
+    cloudflare_secret_mutation_authorized: true,
+    deployment_authorized: true,
+    provider_calls_authorized: true,
+  });
+  Object.assign(filled.release, {
+    commit: "1".repeat(40),
+    migration_manifest_sha256: proof("3"),
+    operator_grants_sha256: proof("4"),
+    production_config_activation_sha256: proof("5"),
+    media_worker_release_manifest_sha256: proof("6"),
+  });
+  Object.assign(filled.gates, {
+    mage_qualification_sha256: proof("7"),
+    soulx_qualification_sha256: proof("8"),
+    mage_deployment_snapshot_sha256: proof("9"),
+    soulx_deployment_snapshot_sha256: proof("a"),
+    paid_dispatch_authority_sha256: proof("b"),
+  });
+  filled.secret_sha256 = Object.fromEntries(GUARDED_SECRET_NAMES.map((name) => [name, proof("c")]));
+  try {
+    validateGuardedActivationAuthority(filled);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validateConfigActivationBase(value) {
+  if (
+    !exactObjectKeys(value, [
+      "authority",
+      "checkpoint",
+      "cloudflare",
+      "release",
+      "runtime",
+      "schema_version",
+    ]) ||
+    value.schema_version !== "videoforge-v2-13-production-config-activation/v1" ||
+    value.checkpoint !== "V2-13" ||
+    !exactObjectKeys(value.authority, [
+      "config_render_only",
+      "credential_access_authorized",
+      "deployment_authorized",
+      "external_spend_usd",
+      "mode",
+      "provider_calls_authorized",
+    ]) ||
+    value.authority.mode !== "APPROVED_CONFIG_RENDER_ONLY" ||
+    value.authority.config_render_only !== true ||
+    value.authority.deployment_authorized !== false ||
+    value.authority.provider_calls_authorized !== false ||
+    value.authority.credential_access_authorized !== false ||
+    value.authority.external_spend_usd !== 0 ||
+    !exactEmptyObject(value.release) ||
+    !exactObjectKeys(value.cloudflare, [
+      "account_id",
+      "public_origin",
+      "r2_bucket_name",
+      "worker_name",
+      "workflow_name",
+    ]) ||
+    !/^[0-9a-f]{32}$/u.test(value.cloudflare.account_id ?? "") ||
+    value.cloudflare.worker_name !== "videoforge-production-runtime" ||
+    !/^[a-z][a-z0-9-]{2,62}$/u.test(value.cloudflare.workflow_name ?? "") ||
+    !/^[a-z][a-z0-9-]{2,62}$/u.test(value.cloudflare.r2_bucket_name ?? "") ||
+    !/^https:\/\/[a-z0-9.-]+$/u.test(value.cloudflare.public_origin ?? "") ||
+    !exactObjectKeys(value.runtime, [
+      "assets_binding",
+      "environment",
+      "gpu_transport",
+      "observability_enabled",
+      "provider_mode",
+      "r2_binding",
+      "version_metadata_binding",
+      "workflow_binding",
+    ]) ||
+    value.runtime.environment !== "production" ||
+    value.runtime.provider_mode !== "production" ||
+    value.runtime.gpu_transport !== "DISABLED_UNQUALIFIED" ||
+    value.runtime.assets_binding !== "ASSETS" ||
+    value.runtime.r2_binding !== "PRIVATE_ARTIFACTS" ||
+    value.runtime.workflow_binding !== "VIDEO_WORKFLOW" ||
+    value.runtime.version_metadata_binding !== "CF_VERSION_METADATA" ||
+    value.runtime.observability_enabled !== true
+  )
+    return false;
+  const config = JSON.parse(
+    readFileSync(resolve(ROOT, "apps/web/wrangler.production.jsonc"), "utf8")
+      .replace(/^\s*\/\/.*$/gmu, "")
+      .replace(/,\s*([}\]])/gu, "$1"),
+  );
+  config.main = resolve(ROOT, "apps/web/dist-cloudflare/videoforge_production_runtime/index.js");
+  config.assets.directory = resolve(ROOT, "apps/web/dist-cloudflare/client");
+  config.account_id = value.cloudflare.account_id;
+  config.r2_buckets[0].bucket_name = value.cloudflare.r2_bucket_name;
+  config.workflows[0].name = value.cloudflare.workflow_name;
+  config.workflows[1].name = `${value.cloudflare.workflow_name}-pair`;
+  Object.assign(config.vars, {
+    VIDEOFORGE_COMMIT: "1".repeat(40),
+    VIDEOFORGE_PUBLIC_ORIGIN: value.cloudflare.public_origin,
+    R2_ACCOUNT_ID: value.cloudflare.account_id,
+    VIDEOFORGE_R2_BUCKET_NAME: value.cloudflare.r2_bucket_name,
+    MEDIA_WORKER_RELEASE_MANIFEST_JSON: JSON.stringify({}),
+  });
+  try {
+    // Validate the static renderer identities without accepting the placeholder media manifest.
+    config.vars.MEDIA_WORKER_RELEASE_MANIFEST_JSON = JSON.stringify({
+      schema_version: "videoforge-media-worker-release/v1",
+      version: "1.0.0",
+      minimum_protocol_version: 1,
+      execution_bundle_sha256: proof("d"),
+      whisper_model_sha256: proof("e"),
+      windows: {
+        url: "https://downloads.videoforge.example/worker.exe",
+        sha256: proof("f"),
+        size_bytes: 1,
+        trust: "UNSIGNED_BETA",
+      },
+      macos: {
+        url: "https://downloads.videoforge.example/worker.dmg",
+        sha256: proof("0"),
+        size_bytes: 1,
+        trust: "AD_HOC_BETA",
+      },
+    });
+    validateProductionConfig(config, { mode: "activated" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validatePromotionRecordBase(value) {
+  if (
+    !exactObjectKeys(value, [
+      "approval",
+      "cloudflare",
+      "database",
+      "lanes",
+      "release",
+      "schema_version",
+    ]) ||
+    value.schema_version !== "videoforge.v2-13-qualified-promotion/v1" ||
+    !exactEmptyObject(value.approval) ||
+    !exactEmptyObject(value.release) ||
+    !exactObjectKeys(value.database, [
+      "activation_id",
+      "migration_ledger_sha256",
+      "promotion_id",
+      "rollback_id",
+    ]) ||
+    !UUID.test(value.database.activation_id ?? "") ||
+    !UUID.test(value.database.promotion_id ?? "") ||
+    !UUID.test(value.database.rollback_id ?? "") ||
+    !HASH.test(value.database.migration_ledger_sha256 ?? "") ||
+    !exactObjectKeys(value.lanes, ["mage_image", "soulx_avatar"]) ||
+    [value.lanes.mage_image, value.lanes.soulx_avatar].some(
+      (lane) =>
+        !exactObjectKeys(lane, ["deployment_id", "qualification_id"]) ||
+        !UUID.test(lane.deployment_id ?? "") ||
+        !UUID.test(lane.qualification_id ?? ""),
+    ) ||
+    !exactObjectKeys(value.cloudflare, [
+      "account_id_sha256",
+      "public_origin",
+      "worker_name",
+      "workflow_name",
+    ]) ||
+    !HASH.test(value.cloudflare.account_id_sha256 ?? "") ||
+    value.cloudflare.worker_name !== "videoforge-production-runtime" ||
+    !/^[a-z][a-z0-9-]{2,62}$/u.test(value.cloudflare.workflow_name ?? "") ||
+    !/^https:\/\/[a-z0-9.-]+$/u.test(value.cloudflare.public_origin ?? "")
+  )
+    return false;
+  const filled = structuredClone(value);
+  Object.assign(filled.approval, {
+    authority_id: "v2-13-materialization-seed-validation",
+    proposal_sha256: proof("1"),
+    approval_sha256: proof("2"),
+    approved_at: "2026-08-27T00:00:00.000Z",
+    expires_at: "2026-08-28T00:00:00.000Z",
+    single_use: true,
+  });
+  Object.assign(filled.release, {
+    commit: "1".repeat(40),
+    disabled_config_sha256: proof("3"),
+    enabled_config_sha256: proof("4"),
+  });
+  Object.assign(filled.database, {
+    full_live_authority_id: "11111111-1111-4111-8111-111111111111",
+    authority_document_sha256: proof("5"),
+    executor_sha256: proof("6"),
+    paid_approval_sha256: proof("7"),
+  });
+  Object.assign(filled.lanes.mage_image, {
+    qualification_record_sha256: proof("8"),
+    deployment_snapshot_sha256: proof("9"),
+  });
+  Object.assign(filled.lanes.soulx_avatar, {
+    qualification_record_sha256: proof("a"),
+    deployment_snapshot_sha256: proof("b"),
+  });
+  Object.assign(filled.cloudflare, {
+    disabled_version_id: "22222222-2222-4222-8222-222222222222",
+    disabled_version_sha256: sha256(Buffer.from("22222222-2222-4222-8222-222222222222")),
+  });
+  try {
+    validatePromotionRecord(filled);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Validate the complete nested static seed contract before the one-shot authority is consumed.
@@ -160,22 +548,6 @@ function validateMaterializationSeedShape(value) {
     );
   const production = value?.production_input_base;
   const lanes = production?.dualLaneInput;
-  const laneFields = ["publicImage", "deploymentSha256", "sourceCommit"];
-  const laneKeys = [
-    "deploymentSha256",
-    "publicImage",
-    "sourceCommit",
-    "volumeIdSha256",
-    "volumeManifestSha256",
-  ];
-  const validateBaseObject = (item, keys, nested = []) =>
-    item !== null &&
-    typeof item === "object" &&
-    !Array.isArray(item) &&
-    Object.keys(item).every((key) => keys.includes(key)) &&
-    nested.every(
-      ([key, nestedKeys]) => !Object.hasOwn(item, key) || exactObjectKeys(item[key], nestedKeys),
-    );
   const dynamicSeedValues = [
     lanes?.mage?.publicImage,
     lanes?.mage?.deploymentSha256,
@@ -200,6 +572,13 @@ function validateMaterializationSeedShape(value) {
     value?.promotion_record_base?.cloudflare?.disabled_version_id,
     value?.promotion_record_base?.cloudflare?.disabled_version_sha256,
   ];
+  let releaseManifestValid = false;
+  try {
+    validateMediaWorkerReleaseManifest(value?.release_manifest);
+    releaseManifestValid = true;
+  } catch {
+    releaseManifestValid = false;
+  }
   return (
     value !== null &&
     typeof value === "object" &&
@@ -218,42 +597,40 @@ function validateMaterializationSeedShape(value) {
       "schemaVersion",
     ]) &&
     production.schemaVersion === "videoforge.v213-full-live-outer-input/v1" &&
-    typeof production.fullLiveAuthorityId === "string" &&
-    production.fullLiveAuthorityId !== "" &&
+    UUID.test(production.fullLiveAuthorityId ?? "") &&
     exactEmptyObject(production.authorityDocument) &&
-    exactObjectKeys(lanes, ["mage", "soulx"]) &&
+    validateStaticDualLaneInput(lanes) &&
     exactEmptyObject(production.commandPayloads) &&
-    validateBaseObject(
-      value.activation_record_base,
-      ["authority", "database", "gates", "release"],
-      [
-        ["authority", []],
-        ["database", []],
-        ["gates", []],
-        ["release", []],
-      ],
-    ) &&
-    validateBaseObject(
-      value.config_activation_base,
-      ["authority", "release"],
-      [
-        ["authority", []],
-        ["release", []],
-      ],
-    ) &&
-    exactEmptyObject(value.release_manifest) &&
+    validateActivationRecordBase(value.activation_record_base) &&
+    validateConfigActivationBase(value.config_activation_base) &&
+    releaseManifestValid &&
     validatePromotionRecordBase(value.promotion_record_base) &&
-    [lanes.mage, lanes.soulx].every(
-      (lane) =>
-        lane !== null &&
-        typeof lane === "object" &&
-        !Array.isArray(lane) &&
-        Object.keys(lane).every((key) => laneKeys.includes(key)) &&
-        ["volumeIdSha256", "volumeManifestSha256"].every(
-          (key) => Object.hasOwn(lane, key) && HASH.test(lane[key] ?? ""),
-        ) &&
-        laneFields.every((key) => !Object.hasOwn(lane, key) || lane[key] === null),
-    ) &&
+    value.activation_record_base.cloudflare.account_id ===
+      value.config_activation_base.cloudflare.account_id &&
+    value.activation_record_base.cloudflare.public_origin ===
+      value.config_activation_base.cloudflare.public_origin &&
+    value.activation_record_base.cloudflare.r2_bucket_name ===
+      value.config_activation_base.cloudflare.r2_bucket_name &&
+    value.activation_record_base.cloudflare.worker_name ===
+      value.config_activation_base.cloudflare.worker_name &&
+    value.activation_record_base.cloudflare.workflow_name ===
+      value.config_activation_base.cloudflare.workflow_name &&
+    value.promotion_record_base.cloudflare.account_id_sha256 ===
+      sha256(Buffer.from(value.config_activation_base.cloudflare.account_id)) &&
+    value.promotion_record_base.cloudflare.public_origin ===
+      value.config_activation_base.cloudflare.public_origin &&
+    value.promotion_record_base.cloudflare.worker_name ===
+      value.config_activation_base.cloudflare.worker_name &&
+    value.promotion_record_base.cloudflare.workflow_name ===
+      value.config_activation_base.cloudflare.workflow_name &&
+    value.promotion_record_base.lanes.mage_image.deployment_id ===
+      deterministicUuid(`${production.fullLiveAuthorityId}:mage:deployment`) &&
+    value.promotion_record_base.lanes.mage_image.qualification_id ===
+      deterministicUuid(`${production.fullLiveAuthorityId}:mage:qualification`) &&
+    value.promotion_record_base.lanes.soulx_avatar.deployment_id ===
+      deterministicUuid(`${production.fullLiveAuthorityId}:soulx:deployment`) &&
+    value.promotion_record_base.lanes.soulx_avatar.qualification_id ===
+      deterministicUuid(`${production.fullLiveAuthorityId}:soulx:qualification`) &&
     dynamicSeedValues.every((item) => item === undefined || item === null)
   );
 }
@@ -301,6 +678,38 @@ function validateMaterializationSeedFile({ path, expectedSha256 }) {
   if (!validateMaterializationSeedShape(value)) fail("MATERIALIZATION_SEED_CONTRACT");
   const canonicalBytes = Buffer.from(`${canonicalJson(value)}\n`);
   if (sha256(canonicalBytes) !== expectedSha256) fail("MATERIALIZATION_SEED_HASH");
+  if (
+    sha256(readFileSync(resolve(ROOT, MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_PATH))) !==
+    MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_SHA256
+  )
+    fail("MATERIALIZATION_SEED_PRODUCTION_VALIDATOR_DRIFT");
+  const childEnvironment = Object.fromEntries(
+    ["HOME", "PATH", "PNPM_HOME", "TMPDIR"]
+      .filter((name) => process.env[name] !== undefined)
+      .map((name) => [name, process.env[name]]),
+  );
+  try {
+    execFileSync(
+      "pnpm",
+      [
+        "--filter",
+        "@videoforge/web",
+        "exec",
+        "tsx",
+        "../../deploy/v2-13/validate-materialization-seed-production-input.mts",
+        path,
+      ],
+      {
+        cwd: ROOT,
+        env: childEnvironment,
+        stdio: ["ignore", "ignore", "pipe"],
+        timeout: 30_000,
+        maxBuffer: 1_048_576,
+      },
+    );
+  } catch {
+    fail("MATERIALIZATION_SEED_PRODUCTION_INPUT");
+  }
   return Object.freeze({ value, sha256: expectedSha256 });
 }
 const finiteUsd = (value, code) => {
@@ -494,7 +903,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5" ||
+      "sha256:58df723c3e20930e36bb864e3a9176c0430939c162ef478fb6307da800ec658a" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||

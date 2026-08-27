@@ -32,6 +32,7 @@ import {
   TAG,
   verifyPrequalificationDatabaseReceipt,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
+import { materializationSeedFixture } from "./fixtures/v2-13-materialization-seed.mjs";
 
 const sourceCommit = "4".repeat(40);
 const state = {
@@ -919,37 +920,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
   ];
   for (const [index, name] of staticSecretNames.entries())
     writeFileSync(resolve(secretInputDirectory, name), `static-${index}`, { mode: 0o600 });
-  const seed = {
-    schema_version: "videoforge.v213-full-live-materialization-seed/v1",
-    static_only: true,
-    future_output_hashes_present: false,
-    production_input_base: {
-      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
-      fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
-      authorityDocument: {},
-      dualLaneInput: {
-        mage: {
-          volumeIdSha256: `sha256:${"6".repeat(64)}`,
-          volumeManifestSha256: `sha256:${"7".repeat(64)}`,
-        },
-        soulx: {
-          volumeIdSha256: `sha256:${"8".repeat(64)}`,
-          volumeManifestSha256: `sha256:${"9".repeat(64)}`,
-        },
-      },
-      commandPayloads: {},
-    },
-    activation_record_base: { authority: {}, release: {}, gates: {}, database: {} },
-    config_activation_base: { authority: {}, release: {} },
-    release_manifest: {},
-    promotion_record_base: {
-      release: {},
-      approval: {},
-      database: {},
-      lanes: { mage_image: {}, soulx_avatar: {} },
-      cloudflare: {},
-    },
-  };
+  const seed = materializationSeedFixture();
   writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
   const materializationSeedSha256 = hash(Buffer.from(`${canonicalJson(seed)}\n`));
   writeFileSync(productionSecretsPath, `${JSON.stringify(preEndpointSecrets())}\n`, {
@@ -1117,31 +1088,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
 });
 
 test("materializer rejects nested seed aliases, extra command payloads, and CAS replacement", async () => {
-  const baseSeed = {
-    schema_version: "videoforge.v213-full-live-materialization-seed/v1",
-    static_only: true,
-    future_output_hashes_present: false,
-    production_input_base: {
-      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
-      fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
-      authorityDocument: {},
-      dualLaneInput: {
-        mage: {
-          volumeIdSha256: `sha256:${"1".repeat(64)}`,
-          volumeManifestSha256: `sha256:${"2".repeat(64)}`,
-        },
-        soulx: {
-          volumeIdSha256: `sha256:${"3".repeat(64)}`,
-          volumeManifestSha256: `sha256:${"4".repeat(64)}`,
-        },
-      },
-      commandPayloads: {},
-    },
-    activation_record_base: {},
-    config_activation_base: {},
-    release_manifest: {},
-    promotion_record_base: {},
-  };
+  const baseSeed = materializationSeedFixture();
   const runWith = async (seed, expectedHash, pattern) => {
     const directory = mkdtempSync(resolve(tmpdir(), "v213-materializer-seed-contract-test-"));
     const seedPath = resolve(directory, "seed.json");
@@ -1205,7 +1152,7 @@ test("materializer rejects nested seed aliases, extra command payloads, and CAS 
   await runWith(
     replacement,
     hash(Buffer.from(`${canonicalJson(baseSeed)}\n`)),
-    /MATERIALIZATION_SEED_OUTER_BINDING/u,
+    /MATERIALIZATION_SEED_CONTRACT/u,
   );
 });
 
@@ -1215,31 +1162,7 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
   const seedPath = resolve(directory, "seed.json");
   const outputPath = resolve(directory, "production-input.json");
   const chainPath = resolve(directory, "chain.json");
-  const seed = {
-    schema_version: "videoforge.v213-full-live-materialization-seed/v1",
-    static_only: true,
-    future_output_hashes_present: false,
-    production_input_base: {
-      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
-      fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
-      authorityDocument: {},
-      dualLaneInput: {
-        mage: {
-          volumeIdSha256: `sha256:${"1".repeat(64)}`,
-          volumeManifestSha256: `sha256:${"2".repeat(64)}`,
-        },
-        soulx: {
-          volumeIdSha256: `sha256:${"3".repeat(64)}`,
-          volumeManifestSha256: `sha256:${"4".repeat(64)}`,
-        },
-      },
-      commandPayloads: {},
-    },
-    activation_record_base: {},
-    config_activation_base: {},
-    release_manifest: {},
-    promotion_record_base: {},
-  };
+  const seed = materializationSeedFixture();
   writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
   const materializationSeedSha256 = hash(Buffer.from(`${canonicalJson(seed)}\n`));
   const materialize = createProtectedInputMaterializer({

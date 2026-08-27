@@ -25,6 +25,7 @@ import type {
 import type { V213WorkerReceiptDelivery } from "./v213-provenance-receipt.js";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u;
+const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 
 export interface V213RunPodControlPort {
   createServerlessTemplate(
@@ -124,6 +125,121 @@ function resourceName(resourceKey: string, suffix: "endpoint" | "template"): str
   const digest = createHash("sha256").update(resourceKey).digest("hex").slice(0, 24);
   return `vf_v213_${digest}_${suffix}`;
 }
+
+/**
+ * Cleanup descriptors intentionally contain only volume hashes.  Provider endpoint readbacks
+ * may contain the raw network-volume id, but that id must never leave this transport boundary.
+ * A singular id and a plural id are accepted only when they describe the same one-volume
+ * binding; malformed, missing, or multi-volume values fail closed.
+ */
+function providerNetworkVolumeId(raw: Record<string, unknown>): string | null {
+  const singularValue = raw.networkVolumeId;
+  const pluralValue = raw.networkVolumeIds;
+  const singular =
+    singularValue === undefined
+      ? null
+      : typeof singularValue === "string" && ID.test(singularValue)
+        ? singularValue
+        : undefined;
+  const plural =
+    pluralValue === undefined
+      ? null
+      : Array.isArray(pluralValue) &&
+          pluralValue.length === 1 &&
+          typeof pluralValue[0] === "string" &&
+          ID.test(pluralValue[0])
+        ? pluralValue[0]
+        : undefined;
+  if (singular === undefined || plural === undefined) return null;
+  if (singular !== null && plural !== null && singular !== plural) return null;
+  return singular ?? plural;
+}
+
+function providerVolumeMatches(
+  raw: Record<string, unknown>,
+  sealedVolumeIdSha256: string,
+): boolean {
+  const providerId = providerNetworkVolumeId(raw);
+  return providerId !== null && hashId(providerId) === sealedVolumeIdSha256;
+}
+
+type V213CleanupLaneBinding = Readonly<{
+  readonly lane: "mage" | "soulx";
+  readonly publicImage: string;
+  readonly sourceCommit: string;
+  readonly deploymentSha256: string;
+  readonly volumeIdSha256: string;
+  readonly volumeManifestSha256: string;
+  readonly endpointIdSha256?: string;
+  readonly templateIdSha256?: string;
+}>;
+
+/**
+ * Parse exact image/config lineage from DB-owned operation evidence or an in-process deployment.
+ * The cleanup input itself remains hash-only; these fields are never added to the protected
+ * cleanup descriptor. Endpoint/template hashes are required for persisted operation evidence so
+ * a same-name provider resource cannot be mistaken for the resource journaled by this authority.
+ */
+function parseCleanupLaneBinding(
+  value: unknown,
+  lane: "mage" | "soulx",
+  requireResourceHashes = false,
+  requireProductionPurpose = false,
+): V213CleanupLaneBinding | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  const item = value as Record<string, unknown>;
+  const publicImage = item.publicImage ?? item.image;
+  const endpointIdSha256 = item.endpointIdSha256;
+  const templateIdSha256 = item.templateIdSha256;
+  if (
+    item.lane !== lane ||
+    (requireProductionPurpose && item.purpose !== "production") ||
+    typeof publicImage !== "string" ||
+    !/^ghcr\.io\/.+@sha256:[0-9a-f]{64}$/u.test(publicImage) ||
+    typeof item.sourceCommit !== "string" ||
+    !/^[0-9a-f]{40}$/u.test(item.sourceCommit) ||
+    typeof item.deploymentSha256 !== "string" ||
+    !SHA256.test(item.deploymentSha256) ||
+    typeof item.volumeIdSha256 !== "string" ||
+    !SHA256.test(item.volumeIdSha256) ||
+    typeof item.volumeManifestSha256 !== "string" ||
+    !SHA256.test(item.volumeManifestSha256) ||
+    (endpointIdSha256 !== undefined &&
+      (typeof endpointIdSha256 !== "string" || !SHA256.test(endpointIdSha256))) ||
+    (templateIdSha256 !== undefined &&
+      (typeof templateIdSha256 !== "string" || !SHA256.test(templateIdSha256))) ||
+    (requireResourceHashes &&
+      (typeof endpointIdSha256 !== "string" ||
+        !SHA256.test(endpointIdSha256) ||
+        typeof templateIdSha256 !== "string" ||
+        !SHA256.test(templateIdSha256)))
+  )
+    return null;
+  return Object.freeze({
+    lane,
+    publicImage,
+    sourceCommit: item.sourceCommit,
+    deploymentSha256: item.deploymentSha256,
+    volumeIdSha256: item.volumeIdSha256,
+    volumeManifestSha256: item.volumeManifestSha256,
+    ...(typeof endpointIdSha256 === "string" ? { endpointIdSha256 } : {}),
+    ...(typeof templateIdSha256 === "string" ? { templateIdSha256 } : {}),
+  });
+}
+
+const sameCleanupBinding = (left: V213CleanupLaneBinding, right: V213CleanupLaneBinding): boolean =>
+  left.lane === right.lane &&
+  left.publicImage === right.publicImage &&
+  left.sourceCommit === right.sourceCommit &&
+  left.deploymentSha256 === right.deploymentSha256 &&
+  left.volumeIdSha256 === right.volumeIdSha256 &&
+  left.volumeManifestSha256 === right.volumeManifestSha256 &&
+  (left.endpointIdSha256 === undefined ||
+    right.endpointIdSha256 === undefined ||
+    left.endpointIdSha256 === right.endpointIdSha256) &&
+  (left.templateIdSha256 === undefined ||
+    right.templateIdSha256 === undefined ||
+    left.templateIdSha256 === right.templateIdSha256);
 
 /** Concrete production RunPod transport for the staged V2-13 qualification API. Mutation methods
  * are called exactly once. Ambiguous creates/dispatches only use deterministic readback and never
@@ -274,9 +390,10 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     return { kind: "ACK" as const, deployment };
   }
 
-  async findLaneByResourceKey(resourceKey: string): Promise<V213LaneDeployment | null> {
-    const cached = this.deployments.get(resourceKey);
-    if (cached) return cached;
+  private async findNamedResources(resourceKey: string): Promise<{
+    readonly endpoints: readonly RunPodNamedResource[];
+    readonly templates: readonly RunPodNamedResource[];
+  }> {
     const inventory = await this.options.control.inventoryDisposableResources();
     const endpointName = resourceName(resourceKey, "endpoint");
     const templateName = resourceName(resourceKey, "template");
@@ -284,6 +401,86 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     const templates = inventory.templates.filter((item) => item.name === templateName);
     if (endpoints.length > 1 || templates.length > 1)
       throw new Error("V213_DETERMINISTIC_RESOURCE_AMBIGUOUS");
+    return Object.freeze({ endpoints, templates });
+  }
+
+  private bindingFromSealed(
+    sealed: unknown,
+    lane: "mage" | "soulx",
+  ): V213CleanupLaneBinding | null {
+    return parseCleanupLaneBinding(sealed, lane);
+  }
+
+  private bindingForResourceKey(
+    resourceKey: string,
+    operations: readonly V213CleanupOperationRead[] = [],
+  ): V213CleanupLaneBinding | null {
+    const identity = resourceKey.match(/-(mage|soulx)-(qualification|production)$/u);
+    if (!identity) throw new Error("V213_RESOURCE_KEY_LINEAGE_INVALID");
+    const lane = identity[1] as "mage" | "soulx";
+    const sealedValue = (
+      lane === "mage" ? this.options.input.mage : this.options.input.soulx
+    ) as unknown;
+    const sealedObject =
+      sealedValue !== null && typeof sealedValue === "object" && !Array.isArray(sealedValue)
+        ? (sealedValue as Record<string, unknown>)
+        : null;
+    if (
+      typeof sealedObject?.volumeIdSha256 !== "string" ||
+      !SHA256.test(sealedObject.volumeIdSha256) ||
+      typeof sealedObject.volumeManifestSha256 !== "string" ||
+      !SHA256.test(sealedObject.volumeManifestSha256)
+    )
+      throw new Error("V213_CLEANUP_VOLUME_BINDING_INVALID");
+    let binding = this.bindingFromSealed(sealedValue, lane);
+    const evidenceBindings = operations
+      .filter(
+        (operation) =>
+          operation.resourceKey === resourceKey &&
+          (operation.kind === "create" || operation.kind === "readback"),
+      )
+      .map((operation) => parseCleanupLaneBinding(operation.evidence, lane, true, true))
+      .filter((value): value is V213CleanupLaneBinding => value !== null);
+    for (const candidate of evidenceBindings) {
+      if (
+        candidate.volumeIdSha256 !== sealedObject.volumeIdSha256 ||
+        candidate.volumeManifestSha256 !== sealedObject.volumeManifestSha256
+      )
+        throw new Error("V213_CLEANUP_PRODUCTION_BINDING_DRIFT");
+      if (binding && !sameCleanupBinding(binding, candidate))
+        throw new Error("V213_CLEANUP_PRODUCTION_BINDING_DRIFT");
+      if (binding) {
+        binding = Object.freeze({
+          ...binding,
+          endpointIdSha256: candidate.endpointIdSha256,
+          templateIdSha256: candidate.templateIdSha256,
+        });
+      } else {
+        binding = candidate;
+      }
+    }
+    if (!binding) {
+      const cached = this.deployments.get(resourceKey);
+      if (cached) {
+        binding = parseCleanupLaneBinding(cached, lane, true, true);
+        if (
+          binding &&
+          (binding.volumeIdSha256 !== sealedObject.volumeIdSha256 ||
+            binding.volumeManifestSha256 !== sealedObject.volumeManifestSha256)
+        )
+          throw new Error("V213_CLEANUP_PRODUCTION_BINDING_DRIFT");
+      }
+    }
+    return binding;
+  }
+
+  async findLaneByResourceKey(
+    resourceKey: string,
+    expectedBinding?: V213CleanupLaneBinding,
+  ): Promise<V213LaneDeployment | null> {
+    const cached = this.deployments.get(resourceKey);
+    if (cached && expectedBinding === undefined) return cached;
+    const { endpoints, templates } = await this.findNamedResources(resourceKey);
     if (endpoints.length === 0 && templates.length === 0) return null;
     if (endpoints.length !== 1 || templates.length !== 1)
       throw new Error("V213_DETERMINISTIC_RESOURCE_PARTIAL");
@@ -291,7 +488,13 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     if (!identity) throw new Error("V213_RESOURCE_KEY_LINEAGE_INVALID");
     const lane = identity[1] as "mage" | "soulx";
     const purpose = identity[2] as "qualification" | "production";
-    const sealed = lane === "mage" ? this.options.input.mage : this.options.input.soulx;
+    const sealed =
+      expectedBinding ??
+      this.bindingFromSealed(
+        lane === "mage" ? this.options.input.mage : this.options.input.soulx,
+        lane,
+      );
+    if (!sealed) throw new Error("V213_CLEANUP_LANE_BINDING_UNAVAILABLE");
     const endpoint = endpoints[0]!;
     const template = templates[0]!;
     const endpointRaw = endpoint.raw as Record<string, unknown>;
@@ -302,8 +505,9 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       endpointRaw.workersMax !== 1 ||
       endpointRaw.gpuCount !== 1 ||
       JSON.stringify(endpointRaw.gpuTypeIds) !== JSON.stringify(["NVIDIA GeForce RTX 4090"]) ||
-      (endpointRaw.networkVolumeId !== sealed.volumeId &&
-        JSON.stringify(endpointRaw.networkVolumeIds) !== JSON.stringify([sealed.volumeId])) ||
+      !providerVolumeMatches(endpointRaw, sealed.volumeIdSha256) ||
+      (sealed.endpointIdSha256 !== undefined && hashId(endpoint.id) !== sealed.endpointIdSha256) ||
+      (sealed.templateIdSha256 !== undefined && hashId(template.id) !== sealed.templateIdSha256) ||
       templateRaw.imageName !== sealed.publicImage
     )
       throw new Error("V213_DETERMINISTIC_RESOURCE_READBACK_INVALID");
@@ -335,14 +539,35 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     return deployment;
   }
 
-  async readLane(deployment: V213LaneDeployment): Promise<V213LaneDeployment> {
+  async readLane(
+    deployment: V213LaneDeployment,
+    expectedBinding?: V213CleanupLaneBinding,
+  ): Promise<V213LaneDeployment> {
     const inventory = await this.options.control.inventoryDisposableResources();
     const endpoint = inventory.endpoints.filter((item) => item.id === deployment.endpointId);
     const template = inventory.templates.filter((item) => item.id === deployment.templateId);
-    const endpointRaw = endpoint[0]?.raw as Record<string, unknown> | undefined;
-    const templateRaw = template[0]?.raw as Record<string, unknown> | undefined;
-    const volumeIds = endpointRaw?.networkVolumeIds;
+    const endpointItem = endpoint[0];
+    const templateItem = template[0];
+    const endpointRaw = endpointItem?.raw as Record<string, unknown> | undefined;
+    const templateRaw = templateItem?.raw as Record<string, unknown> | undefined;
+    const binding =
+      expectedBinding ??
+      parseCleanupLaneBinding(
+        {
+          lane: deployment.lane,
+          publicImage: deployment.image,
+          sourceCommit: deployment.sourceCommit,
+          deploymentSha256: deployment.deploymentSha256,
+          volumeIdSha256: deployment.volumeIdSha256,
+          volumeManifestSha256: deployment.volumeManifestSha256,
+          endpointIdSha256: deployment.endpointIdSha256,
+          templateIdSha256: deployment.templateIdSha256,
+        },
+        deployment.lane,
+        true,
+      );
     if (
+      !binding ||
       endpoint.length !== 1 ||
       template.length !== 1 ||
       endpointRaw?.templateId !== deployment.templateId ||
@@ -350,16 +575,15 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       endpointRaw.workersMax !== 1 ||
       endpointRaw.gpuCount !== 1 ||
       JSON.stringify(endpointRaw.gpuTypeIds) !== JSON.stringify([deployment.gpu]) ||
-      (endpointRaw.networkVolumeId !== this.sealedFor(deployment).volumeId &&
-        JSON.stringify(volumeIds) !== JSON.stringify([this.sealedFor(deployment).volumeId])) ||
-      templateRaw?.imageName !== deployment.image
+      !providerVolumeMatches(endpointRaw, binding.volumeIdSha256) ||
+      (binding.endpointIdSha256 !== undefined &&
+        hashId(endpointItem!.id) !== binding.endpointIdSha256) ||
+      (binding.templateIdSha256 !== undefined &&
+        hashId(templateItem!.id) !== binding.templateIdSha256) ||
+      templateRaw?.imageName !== binding.publicImage
     )
       throw new Error("V213_DEPLOYMENT_READBACK_MISSING");
     return deployment;
-  }
-
-  private sealedFor(deployment: V213LaneDeployment): V213SealedLane {
-    return deployment.lane === "mage" ? this.options.input.mage : this.options.input.soulx;
   }
 
   async dispatch(input: {
@@ -440,6 +664,10 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     const inventory = await this.options.control.inventory(this.now());
     if (inventory.runningPodCount !== 0 || inventory.activeServerlessWorkerCount !== 0)
       throw new Error("V213_DELETE_WITH_ACTIVE_WORKERS");
+    // Worker counters alone do not prove that the endpoint queue is empty.  The queue proof must
+    // happen before the first destructive endpoint/template mutation, including direct lane
+    // deletion used by qualification cleanup.
+    await this.options.createJobClient(deployment.endpointId).confirmStartupQueueEmpty();
     const guard = new ConcreteDrainGuard();
     guard.confirmZero(0, 0);
     await this.options.control.deleteEndpoint(deployment.endpointId, guard);
@@ -503,17 +731,44 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     }
 
     const productionKeys = resourceKeys.filter((key) => key.endsWith("-production"));
+    const productionStageOperations = stageByName.get("production")?.operations ?? [];
     const production: V213LaneDeployment[] = [];
     let productionExact = productionKeys.length === 2;
     for (const key of productionKeys) {
-      try {
-        const deployment = await this.findLaneByResourceKey(key);
-        if (!deployment || (await this.readLane(deployment)) !== deployment)
+      const expectedBinding = this.bindingForResourceKey(key, productionStageOperations);
+      if (!expectedBinding) {
+        // A hash-only cleanup descriptor cannot establish the source/image/config identity by
+        // itself.  First prove that the deterministic resources are absent; if anything remains,
+        // stop before deletion rather than allowing an unbound same-name resource to be removed.
+        const resources = await this.findNamedResources(key);
+        if (resources.endpoints.length === 0 && resources.templates.length === 0) continue;
+        if (resources.endpoints.length === 1 && resources.templates.length === 0) {
           productionExact = false;
-        else production.push(deployment);
-      } catch {
-        productionExact = false;
+          continue;
+        }
+        if (resources.endpoints.length === 0 && resources.templates.length === 1) {
+          productionExact = false;
+          continue;
+        }
+        throw new Error("V213_CLEANUP_PRODUCTION_BINDING_UNAVAILABLE");
       }
+      let deployment: V213LaneDeployment | null;
+      try {
+        deployment = await this.findLaneByResourceKey(key, expectedBinding);
+      } catch (error) {
+        // A deterministic one-sided resource is attributable and may be removed below.  Any
+        // other error means the provider read was ambiguous, drifted, or unavailable; preserve
+        // the resource and stop rather than converting uncertainty into destructive cleanup.
+        if (error instanceof Error && error.message === "V213_DETERMINISTIC_RESOURCE_PARTIAL") {
+          productionExact = false;
+          continue;
+        }
+        throw error;
+      }
+      if (!deployment) continue;
+      const readback = await this.readLane(deployment, expectedBinding);
+      if (readback !== deployment) throw new Error("V213_CLEANUP_PRODUCTION_READBACK_DRIFT");
+      production.push(deployment);
     }
     productionExact = productionExact && production.length === 2;
 
@@ -534,6 +789,11 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     );
     const deletedEndpoints: string[] = [];
     const deletedTemplates: string[] = [];
+    const deleteCandidates: {
+      readonly key: string;
+      readonly endpoint?: RunPodNamedResource;
+      readonly template?: RunPodNamedResource;
+    }[] = [];
     for (const key of deleteKeys.reverse()) {
       const inventory = await this.options.control.inventoryDisposableResources();
       const endpoints = inventory.endpoints.filter(
@@ -544,15 +804,24 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       );
       if (endpoints.length > 1 || templates.length > 1)
         throw new Error("V213_DETERMINISTIC_RESOURCE_AMBIGUOUS");
-      if (endpoints[0]) {
+      deleteCandidates.push(Object.freeze({ key, endpoint: endpoints[0], template: templates[0] }));
+    }
+    // Prove every owned queue before deleting even a template.  This is deliberately a separate
+    // pass so a non-empty later queue cannot leave earlier endpoint/template deletions behind.
+    for (const candidate of deleteCandidates)
+      if (candidate.endpoint)
+        await this.options.createJobClient(candidate.endpoint.id).confirmStartupQueueEmpty();
+    for (const candidate of deleteCandidates) {
+      const { key, endpoint, template } = candidate;
+      if (endpoint) {
         const guard = new ConcreteDrainGuard();
         guard.confirmZero(0, 0);
-        await this.options.control.deleteEndpoint(endpoints[0].id, guard);
-        deletedEndpoints.push(hashId(endpoints[0].id));
+        await this.options.control.deleteEndpoint(endpoint.id, guard);
+        deletedEndpoints.push(hashId(endpoint.id));
       }
-      if (templates[0]) {
-        await this.options.control.deleteTemplate(templates[0].id);
-        deletedTemplates.push(hashId(templates[0].id));
+      if (template) {
+        await this.options.control.deleteTemplate(template.id);
+        deletedTemplates.push(hashId(template.id));
       }
       const readback = await this.options.control.inventoryDisposableResources();
       if (

@@ -143,6 +143,48 @@ describe("V2-13 full-live TypeScript bridge", () => {
     });
   });
 
+  it("reports the final max-one proof only for two distinct exact production lanes", () => {
+    const deployment = (
+      lane: "mage" | "soulx",
+      endpointIdSha256: string,
+      templateIdSha256: string,
+      workersMax = 1,
+    ) => ({
+      lane,
+      purpose: "production",
+      endpointIdSha256,
+      templateIdSha256,
+      workersMin: 0,
+      workersMax,
+      gpuCount: 1,
+      handlerConcurrency: 1,
+      scalerType: "REQUEST_COUNT",
+      scalerValue: 1,
+    });
+    const production = [
+      deployment("mage", `sha256:${"a".repeat(64)}`, `sha256:${"b".repeat(64)}`),
+      deployment("soulx", `sha256:${"c".repeat(64)}`, `sha256:${"d".repeat(64)}`),
+    ];
+    const exact = {
+      production,
+      deletedEndpointIdSha256s: [],
+      deletedTemplateIdSha256s: [],
+    };
+    expect(summarizeV213EndpointRestoration(exact as never)).toMatchObject({
+      bothEndpointsMaxWorkersOne: true,
+      retainedProductionEndpoints: 2,
+    });
+    expect(
+      summarizeV213EndpointRestoration({
+        ...exact,
+        production: [
+          deployment("mage", `sha256:${"a".repeat(64)}`, `sha256:${"b".repeat(64)}`, 2),
+          production[1],
+        ],
+      } as never),
+    ).toMatchObject({ bothEndpointsMaxWorkersOne: false });
+  });
+
   it("exposes and executes the closed full command catalog", async () => {
     expect(V213_FULL_LIVE_COMMANDS).toEqual([
       "fresh-live-preflight",

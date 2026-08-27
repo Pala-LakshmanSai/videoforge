@@ -15,7 +15,7 @@ function input(): V213DualLaneInput {
     sourceCommit: marker.repeat(40),
     deploymentSha256: sha(marker),
     volumeId,
-    volumeIdSha256: sha(volumeId === "volume_mage" ? "c" : "d"),
+    volumeIdSha256: idSha(volumeId),
     volumeManifestSha256: sha(marker === "a" ? "e" : "f"),
     receiptKeyId: "fixture-receipt-key",
   });
@@ -48,6 +48,8 @@ function fixture(
     endpointCreateAmbiguous?: boolean;
     withDelivery?: boolean;
     deletionRemains?: boolean;
+    queueNonEmpty?: boolean;
+    queueNonEmptyOnCheck?: number;
   } = {},
 ) {
   const model = input();
@@ -122,8 +124,13 @@ function fixture(
       );
     }),
   };
+  let queueChecks = 0;
   const client = {
-    confirmStartupQueueEmpty: vi.fn(async () => undefined),
+    confirmStartupQueueEmpty: vi.fn(async () => {
+      queueChecks += 1;
+      if (options.queueNonEmpty || options.queueNonEmptyOnCheck === queueChecks)
+        throw new Error("V213_STARTUP_QUEUE_NOT_CONFIRMED");
+    }),
     dispatch: vi.fn(async (requestKey: string) => {
       if (options.dispatchAmbiguous) throw new Error("lost");
       const job = {
@@ -155,10 +162,10 @@ function fixture(
   };
   const verifyOutputReadback = vi.fn(async () => true as const);
   const createJobClient = vi.fn((_endpointId: string) => client);
-  const makeTransport = () =>
+  const makeTransport = (transportInput: V213DualLaneInput = model) =>
     createV213RunPodDualLaneTransport({
       durable: {} as never,
-      input: model,
+      input: transportInput,
       control,
       accountPreflight: async () => ({ accountIdHash: model.accountIdSha256 }),
       readAdmissionFacts: async () => ({
@@ -448,5 +455,190 @@ describe("V213 concrete RunPod dual-lane transport", () => {
       ],
       deletedEndpointIdSha256s: [expect.any(String), expect.any(String)],
     });
+  });
+
+  it("preserves the exact production pair with hash-only cleanup descriptors", async () => {
+    const { transport, makeTransport, control, model } = fixture();
+    const mageKey = "v213-stage_production-mage-production";
+    const soulxKey = "v213-stage_production-soulx-production";
+    const mage = await transport.createLane({
+      sealed: model.mage,
+      purpose: "production",
+      resourceKey: mageKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    const soulx = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "production",
+      resourceKey: soulxKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (mage.kind !== "ACK" || soulx.kind !== "ACK") throw new Error("fixture");
+    const hashOnlyInput = {
+      ...model,
+      mage: {
+        lane: "mage",
+        volumeIdSha256: model.mage.volumeIdSha256,
+        volumeManifestSha256: model.mage.volumeManifestSha256,
+      },
+      soulx: {
+        lane: "soulx",
+        volumeIdSha256: model.soulx.volumeIdSha256,
+        volumeManifestSha256: model.soulx.volumeManifestSha256,
+      },
+    } as never as V213DualLaneInput;
+    const restarted = makeTransport(hashOnlyInput);
+    await expect(
+      restarted.cleanupAttributableResources([
+        {
+          stage: "production",
+          stageAuthorityId: "stage_production",
+          operations: [
+            {
+              kind: "create",
+              resourceKey: mageKey,
+              state: "ACKED",
+              providerId: mage.deployment.endpointId,
+              evidence: mage.deployment,
+            },
+            {
+              kind: "create",
+              resourceKey: soulxKey,
+              state: "ACKED",
+              providerId: soulx.deployment.endpointId,
+              evidence: soulx.deployment,
+            },
+          ],
+        },
+      ]),
+    ).resolves.toMatchObject({
+      production: [
+        { lane: "mage", purpose: "production", workersMin: 0, workersMax: 1 },
+        { lane: "soulx", purpose: "production", workersMin: 0, workersMax: 1 },
+      ],
+      deletedEndpointIdSha256s: [],
+      deletedTemplateIdSha256s: [],
+    });
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+  });
+
+  it("rejects production cleanup when journaled volume binding drifts from hash-only scope", async () => {
+    const { transport, makeTransport, control, model } = fixture();
+    const resourceKey = "v213-stage_production-mage-production";
+    const created = await transport.createLane({
+      sealed: model.mage,
+      purpose: "production",
+      resourceKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    const hashOnlyInput = {
+      ...model,
+      mage: {
+        lane: "mage",
+        volumeIdSha256: model.mage.volumeIdSha256,
+        volumeManifestSha256: model.mage.volumeManifestSha256,
+      },
+      soulx: {
+        lane: "soulx",
+        volumeIdSha256: model.soulx.volumeIdSha256,
+        volumeManifestSha256: model.soulx.volumeManifestSha256,
+      },
+    } as never as V213DualLaneInput;
+    await expect(
+      makeTransport(hashOnlyInput).cleanupAttributableResources([
+        {
+          stage: "production",
+          stageAuthorityId: "stage_production",
+          operations: [
+            {
+              kind: "create",
+              resourceKey,
+              state: "ACKED",
+              providerId: created.deployment.endpointId,
+              evidence: {
+                ...created.deployment,
+                volumeIdSha256: `sha256:${"e".repeat(64)}`,
+              },
+            },
+          ],
+        },
+      ]),
+    ).rejects.toThrow("V213_CLEANUP_PRODUCTION_BINDING_DRIFT");
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+  });
+
+  it("stops production cleanup on readback ambiguity without deleting resources", async () => {
+    const { transport, control, model } = fixture();
+    const resourceKey = "v213-stage_production-mage-production";
+    await transport.createLane({
+      sealed: model.mage,
+      purpose: "production",
+      resourceKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    const firstRead = await control.inventoryDisposableResources();
+    control.inventoryDisposableResources
+      .mockImplementationOnce(async () => firstRead)
+      .mockImplementationOnce(async () => {
+        throw new Error("V213_PROVIDER_READBACK_AMBIGUOUS");
+      });
+    await expect(
+      transport.cleanupAttributableResources([
+        { stage: "production", stageAuthorityId: "stage_production", operations: [] },
+      ]),
+    ).rejects.toThrow("V213_PROVIDER_READBACK_AMBIGUOUS");
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+  });
+
+  it("stops before endpoint or template deletion when an owned queue is nonempty", async () => {
+    const { transport, control, model, client } = fixture({ queueNonEmpty: true });
+    await transport.createLane({
+      sealed: model.mage,
+      purpose: "qualification",
+      resourceKey: "v213-stage_mage-mage-qualification",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    await expect(
+      transport.cleanupAttributableResources([
+        { stage: "mage", stageAuthorityId: "stage_mage", operations: [] },
+      ]),
+    ).rejects.toThrow("V213_STARTUP_QUEUE_NOT_CONFIRMED");
+    expect(client.confirmStartupQueueEmpty).toHaveBeenCalledOnce();
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+  });
+
+  it("proves all owned queues before deleting any endpoint or template", async () => {
+    const { transport, control, model, client } = fixture({ queueNonEmptyOnCheck: 2 });
+    for (const [stageAuthorityId, sealed] of [
+      ["stage_mage", model.mage],
+      ["stage_soulx", model.soulx],
+    ] as const) {
+      await transport.createLane({
+        sealed,
+        purpose: "qualification",
+        resourceKey: `v213-${stageAuthorityId}-${sealed.lane}-qualification`,
+        workersMin: 0,
+        workersMax: 1,
+      });
+    }
+    await expect(
+      transport.cleanupAttributableResources([
+        { stage: "mage", stageAuthorityId: "stage_mage", operations: [] },
+        { stage: "soulx", stageAuthorityId: "stage_soulx", operations: [] },
+      ]),
+    ).rejects.toThrow("V213_STARTUP_QUEUE_NOT_CONFIRMED");
+    expect(client.confirmStartupQueueEmpty).toHaveBeenCalledTimes(2);
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
   });
 });
