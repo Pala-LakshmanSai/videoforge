@@ -179,20 +179,46 @@ test("blocked successor binds the owner-only receipt verifier across staged and 
 });
 
 test("blocked successor cross-binds both exact retained volume hashes to read-only evidence", async () => {
-  const proposalResult = await runMutation((proposal) => {
+  const soulxProposalResult = await runMutation((proposal) => {
     proposal.requested_scope.retention.soulx_volume_id_sha256 =
       "sha256:2a8633e14bbec54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
   });
-  assert.notEqual(proposalResult.status, 0);
-  assert.match(proposalResult.stderr, /RETENTION_SCOPE/u);
+  assert.notEqual(soulxProposalResult.status, 0);
+  assert.match(soulxProposalResult.stderr, /RETENTION_SCOPE/u);
 
-  const preflightResult = await runMutation(
+  const mageProposalResult = await runMutation((proposal) => {
+    proposal.requested_scope.retention.mage_volume_id_sha256 =
+      "sha256:0ae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
+  });
+  assert.notEqual(mageProposalResult.status, 0);
+  assert.match(mageProposalResult.stderr, /RETENTION_SCOPE/u);
+
+  const soulxPreflightResult = await runMutation(
     () => {},
     (preflight) => {
       preflight.runpod.retained_volumes[0].id_sha256 =
         "sha256:2a8633e14bbec54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
     },
   );
-  assert.notEqual(preflightResult.status, 0);
-  assert.match(preflightResult.stderr, /READ_ONLY_PREFLIGHT_RUNPOD/u);
+  assert.notEqual(soulxPreflightResult.status, 0);
+  assert.match(soulxPreflightResult.stderr, /READ_ONLY_PREFLIGHT_RUNPOD/u);
+
+  const magePreflightResult = await runMutation(
+    () => {},
+    (preflight) => {
+      preflight.runpod.retained_volumes[1].id_sha256 =
+        "sha256:0ae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
+    },
+  );
+  assert.notEqual(magePreflightResult.status, 0);
+  assert.match(magePreflightResult.stderr, /READ_ONLY_PREFLIGHT_RUNPOD/u);
+
+  const swappedPreflightResult = await runMutation(
+    () => {},
+    (preflight) => {
+      preflight.runpod.retained_volumes.reverse();
+    },
+  );
+  assert.notEqual(swappedPreflightResult.status, 0);
+  assert.match(swappedPreflightResult.stderr, /READ_ONLY_PREFLIGHT_RUNPOD/u);
 });
