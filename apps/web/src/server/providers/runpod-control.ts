@@ -68,6 +68,32 @@ export interface RunPodV207Placement {
   readonly dataCenterIds: readonly [typeof V207_RUNPOD_REGION];
 }
 
+export interface RunPodV207EndpointPolicyReceipt extends JsonRecord {
+  readonly schemaVersion: "videoforge.runpod-v207-endpoint-policy-readback/v1";
+  readonly endpointIdSha256: string;
+  readonly templateIdSha256: string;
+  readonly volumeIdSha256: string;
+  readonly region: typeof V207_RUNPOD_REGION;
+  readonly gpu: typeof V207_RUNPOD_GPU;
+  readonly workersMin: 0;
+  readonly workersMax: 1 | 2;
+  readonly gpuCount: 1;
+  readonly idleTimeout: typeof V207_RUNPOD_IDLE_TIMEOUT_SECONDS;
+  readonly executionTimeoutMs: typeof V207_RUNPOD_EXECUTION_TIMEOUT_MS;
+  readonly scalerType: typeof V207_RUNPOD_SCALER;
+  readonly scalerValue: typeof V207_RUNPOD_SCALER_VALUE;
+}
+
+export interface RunPodV207EndpointPolicySnapshotExpectation {
+  readonly endpointId: string;
+  readonly endpointIdSha256: string;
+  readonly templateId: string;
+  readonly templateIdSha256: string;
+  readonly volumeIdSha256: string;
+  /** Restore is deliberately retryable after a one-lane partial update. */
+  readonly allowedWorkersMax: readonly (1 | 2)[];
+}
+
 export interface RunPodInventory {
   readonly checkedAt: string;
   readonly pods: readonly {
@@ -812,13 +838,85 @@ export class RunPodControlClient {
    * intentionally separate from enforceEndpointPolicy: max=2 must never be
    * accepted by the initial max=1 path.
    */
+  async resolveV207EndpointPlacement(
+    expected: RunPodV207EndpointPolicySnapshotExpectation,
+  ): Promise<RunPodV207Placement> {
+    if (
+      !ID.test(expected.endpointId) ||
+      !ID.test(expected.templateId) ||
+      expected.endpointIdSha256 !== hashId(expected.endpointId) ||
+      expected.templateIdSha256 !== hashId(expected.templateId) ||
+      !/^sha256:[0-9a-f]{64}$/u.test(expected.volumeIdSha256) ||
+      expected.allowedWorkersMax.length < 1 ||
+      expected.allowedWorkersMax.length > 2 ||
+      new Set(expected.allowedWorkersMax).size !== expected.allowedWorkersMax.length ||
+      expected.allowedWorkersMax.some((value) => value !== 1 && value !== 2)
+    ) {
+      throw new RunPodControlError("RUNPOD_V207_POLICY_SNAPSHOT_INPUT_INVALID");
+    }
+    const inventory = await this.readInventory(
+      "/endpoints?includeTemplate=true&includeWorkers=true",
+    );
+    if (!Array.isArray(inventory)) {
+      throw new RunPodControlError("RUNPOD_V207_POLICY_SNAPSHOT_INVALID");
+    }
+    const matches = inventory
+      .map(record)
+      .filter((candidate) => candidate?.id === expected.endpointId);
+    if (matches.length !== 1) {
+      throw new RunPodControlError("RUNPOD_V207_POLICY_SNAPSHOT_INVALID");
+    }
+    const endpoint = matches[0]!;
+    const networkVolumeIds = endpoint.networkVolumeIds;
+    const networkVolumeId =
+      typeof endpoint.networkVolumeId === "string" ? endpoint.networkVolumeId : null;
+    const exactVolumeIds =
+      Array.isArray(networkVolumeIds) &&
+      networkVolumeIds.length === 1 &&
+      typeof networkVolumeIds[0] === "string"
+        ? networkVolumeIds
+        : null;
+    const resolvedVolumeId = networkVolumeId ?? exactVolumeIds?.[0] ?? null;
+    if (
+      hashId(expected.endpointId) !== expected.endpointIdSha256 ||
+      endpoint.templateId !== expected.templateId ||
+      hashId(expected.templateId) !== expected.templateIdSha256 ||
+      endpoint.computeType !== "GPU" ||
+      endpoint.workersMin !== 0 ||
+      !expected.allowedWorkersMax.includes(endpoint.workersMax as 1 | 2) ||
+      endpoint.gpuCount !== 1 ||
+      !exactStringArray(endpoint.gpuTypeIds, [V207_RUNPOD_GPU]) ||
+      !exactStringArray(endpoint.allowedCudaVersions, [V207_RUNPOD_MIN_CUDA_VERSION]) ||
+      endpoint.minCudaVersion !== V207_RUNPOD_MIN_CUDA_VERSION ||
+      endpoint.flashboot !== V207_RUNPOD_FLASHBOOT ||
+      endpoint.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
+      endpoint.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS ||
+      endpoint.scalerType !== V207_RUNPOD_SCALER ||
+      endpoint.scalerValue !== V207_RUNPOD_SCALER_VALUE ||
+      !exactStringArray(endpoint.dataCenterIds, [V207_RUNPOD_REGION]) ||
+      !resolvedVolumeId ||
+      !ID.test(resolvedVolumeId) ||
+      hashId(resolvedVolumeId) !== expected.volumeIdSha256 ||
+      (networkVolumeId !== null && networkVolumeId !== resolvedVolumeId) ||
+      (exactVolumeIds !== null && exactVolumeIds[0] !== resolvedVolumeId) ||
+      (endpoint.networkVolumeId !== undefined && networkVolumeId === null) ||
+      (endpoint.networkVolumeIds !== undefined && exactVolumeIds === null)
+    ) {
+      throw new RunPodControlError("RUNPOD_V207_POLICY_SNAPSHOT_INVALID");
+    }
+    return Object.freeze({
+      networkVolumeId: resolvedVolumeId,
+      dataCenterIds: [V207_RUNPOD_REGION] as const,
+    });
+  }
+
   async enforceV207EndpointPolicy(
     endpointId: string,
     templateId: string,
     policy: RunPodEndpointPolicy | RunPodV207ConcurrentReaderPolicy,
     placement: RunPodV207Placement,
     guard: RunPodDrainGuard,
-  ): Promise<void> {
+  ): Promise<RunPodV207EndpointPolicyReceipt> {
     if (!ID.test(endpointId) || !ID.test(templateId)) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
     }
@@ -877,6 +975,21 @@ export class RunPodControlClient {
     ) {
       throw new RunPodControlError("RUNPOD_SCALE_ZERO_UNCONFIRMED");
     }
+    return Object.freeze({
+      schemaVersion: "videoforge.runpod-v207-endpoint-policy-readback/v1",
+      endpointIdSha256: hashId(endpointId),
+      templateIdSha256: hashId(templateId),
+      volumeIdSha256: hashId(placement.networkVolumeId),
+      region: V207_RUNPOD_REGION,
+      gpu: V207_RUNPOD_GPU,
+      workersMin: 0,
+      workersMax: request.workersMax,
+      gpuCount: 1,
+      idleTimeout: V207_RUNPOD_IDLE_TIMEOUT_SECONDS,
+      executionTimeoutMs: V207_RUNPOD_EXECUTION_TIMEOUT_MS,
+      scalerType: V207_RUNPOD_SCALER,
+      scalerValue: V207_RUNPOD_SCALER_VALUE,
+    });
   }
 
   async createScaleZeroEndpoint(

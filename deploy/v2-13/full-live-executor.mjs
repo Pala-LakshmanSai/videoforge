@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   authorizeCleanupWork,
+  authorizeReleaseCertification,
   authorizeWork,
   beginPhase,
   completeCleanupOnly,
@@ -18,9 +19,12 @@ import {
   recordVerifiedReleaseRef,
   settleWork,
   settleCleanupWork,
+  settleReleaseCertification,
   updateState,
   MATERIALIZATION_SEED_ENV,
+  STATIC_RELEASE_DESCRIPTOR_ENV,
   validateMaterializationSeedFile,
+  validateStaticReleaseDescriptorFile,
   validateState,
 } from "./full-live-orchestration-authority.mjs";
 import {
@@ -48,21 +52,23 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:0ebab27b0798171d342dbae0a5a71c59aef499295dd8f0ddd00ea85041d5bd69",
+    "sha256:0556bd306fd572d9d1816297bec09a9398a249af8301bdf3e7a867a57e44c38e",
   "deploy/v2-13/promote-qualified-production.mjs":
-    "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
+    "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7",
+    "sha256:bedc5b1a2af1380c83bc2a6223dcfba072b6c2deb38d54bf1f05b32801f0e758",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:a2b56248037b9712aec87513339d8e3fa3b6c172e0ee62e6a943e518d3af3459",
+    "sha256:a83d5ee164cb279b5381272eec66f70b10904883806e81caf75e774ac9f30102",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
-    "sha256:a6c1fc9333ad64726522b6e9fa62354637eb3c7248803e06e8470974db8203a0",
+    "sha256:7734369295715d57b92ae0ca399ad8514cee5babb2b5d1acd749a860fd4b22c0",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
-    "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
+    "sha256:352169e1e34e23bc36b2a3c1fb653747194fe0b560894bfdbfafb30d635561d7",
   "deploy/v2-13/neon-full-live-operator-grants.sql":
-    "sha256:60922d36e5aeb05fe34705198967aa3adf20cdf9ec61283810a565b6690b2c39",
+    "sha256:f97dcc4b85f48a16b994eaf7e50c91502a12a4600f0b17fd81ee6d31b8db74de",
   "packages/control-plane/migrations/manifest.json":
-    "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa",
+    "sha256:f0f8bd8d1aec2097b87efd12a58954861c127b2fef0240af4fe238108950f6bf",
+  "deploy/v2-13/full-live-source-closure.json":
+    "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -70,6 +76,41 @@ for (const [path, expected] of Object.entries(SOURCE_PINS)) {
     .digest("hex")}`;
   if (actual !== expected) throw new Error(`V2_13_FULL_LIVE_EXECUTOR_SOURCE_DRIFT:${path}`);
 }
+export function validateFullLiveSourceClosure({
+  root = ROOT,
+  manifestPath = "deploy/v2-13/full-live-source-closure.json",
+} = {}) {
+  const sourceClosure = JSON.parse(readFileSync(resolve(root, manifestPath), "utf8"));
+  if (
+    sourceClosure?.schema_version !== "videoforge.v2-13-full-live-source-closure/v1" ||
+    !Array.isArray(sourceClosure.entries) ||
+    Object.keys(sourceClosure).sort().join(",") !== "entries,schema_version"
+  )
+    throw new Error("V2_13_FULL_LIVE_SOURCE_CLOSURE_INVALID");
+  let priorClosurePath = "";
+  for (const entry of sourceClosure.entries) {
+    if (
+      entry === null ||
+      typeof entry !== "object" ||
+      Object.keys(entry).sort().join(",") !== "path,sha256" ||
+      typeof entry.path !== "string" ||
+      !/^[.A-Za-z0-9][A-Za-z0-9.$_/-]{1,319}$/u.test(entry.path) ||
+      entry.path.includes("..") ||
+      entry.path <= priorClosurePath ||
+      !HASH.test(entry.sha256)
+    )
+      throw new Error("V2_13_FULL_LIVE_SOURCE_CLOSURE_INVALID");
+    const actual = `sha256:${createHash("sha256")
+      .update(readFileSync(resolve(root, entry.path)))
+      .digest("hex")}`;
+    if (actual !== entry.sha256)
+      throw new Error(`V2_13_FULL_LIVE_SOURCE_CLOSURE_DRIFT:${entry.path}`);
+    priorClosurePath = entry.path;
+  }
+  return sourceClosure.entries.length;
+}
+
+validateFullLiveSourceClosure();
 
 // This is the only ordered live execution graph. A catalog entry is not executable until a
 // concrete, reviewed adapter exists below. Missing adapters fail before authority consumption or
@@ -132,7 +173,54 @@ const OPERATIONS = Object.freeze([
   { phase: "cleanup_and_reconciliation", id: "prove-zero-workers", reserveUsd: 0 },
   { phase: "cleanup_and_reconciliation", id: "read-settled-billing", reserveUsd: 0 },
   { phase: "cleanup_and_reconciliation", id: "reconcile-exact-resources", reserveUsd: 0 },
+  { phase: "cleanup_and_reconciliation", id: "certify-v2-13-release", reserveUsd: 0 },
 ]);
+
+const RELEASE_CERTIFICATION_OPERATION_ID = "certify-v2-13-release";
+const RELEASE_CERTIFICATION_PREDECESSORS = Object.freeze([
+  ["v2-13-final-two-lane-smoke", "signedSmokeEvidenceSha256"],
+  ["restore-endpoints-max-one", "proofSha256"],
+  ["prove-zero-workers", "proofSha256"],
+  ["read-settled-billing", "proofSha256"],
+  ["reconcile-exact-resources", "proofSha256"],
+]);
+const RELEASE_CERTIFICATION_RESULT_SCHEMA = "videoforge.v213-final-release-certification-result/v1";
+const V213_SMOKE_RESULT_SCHEMA = "videoforge.v213-fresh-two-lane-smoke-result/v1";
+const CLEANUP_SAFETY_OPERATION_IDS = new Set([
+  "restore-endpoints-max-one",
+  "prove-zero-workers",
+  "read-settled-billing",
+  "reconcile-exact-resources",
+]);
+
+// The early cleanup child is a no-op only while the graph has not crossed a RunPod mutation
+// boundary.  A durable authorization record is itself enough to make that boundary unknown: the
+// process may have reached the provider before it failed, so cleanup must use the normal
+// operator-backed path and prove the provider state instead of claiming an empty no-op proof.
+const RUNPOD_MUTATION_OPERATION_IDS = new Set([
+  "mage-live-qualification",
+  "soulx-live-qualification",
+  "create-exact-max-one-endpoints",
+  "v2-09-short-hosted-project",
+  "v2-10-operator-free-ranga-pilot",
+  "v2-11-two-concurrent-owned-projects",
+  "v2-12-long-output",
+  "v2-13-final-two-lane-smoke",
+]);
+
+function runPodMutationBoundaryReached(state) {
+  if (state === null || typeof state !== "object") return true;
+  for (const operation of OPERATIONS) {
+    if (!RUNPOD_MUTATION_OPERATION_IDS.has(operation.id)) continue;
+    const workId = `${state.authority_id}:${operation.id}`.toLowerCase();
+    if (state.phases?.[operation.phase]?.work?.[workId] !== undefined) return true;
+  }
+  return false;
+}
+
+function canUseEarlyCleanup(state) {
+  return state?.operator_role_verified !== true && !runPodMutationBoundaryReached(state);
+}
 
 // Guarded activation is real, but it cannot safely run before the preceding image, qualification,
 // endpoint, and evidence adapters exist. Keep the closed-world live surface empty until all of the
@@ -150,6 +238,74 @@ function missingConcreteTools(adapters = CONCRETE_LIVE_ADAPTERS) {
   return OPERATIONS.filter((operation) => typeof adapters[operation.id] !== "function").map(
     (operation) => operation.id,
   );
+}
+
+function exactKeys(value, expected) {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...expected].sort())
+  );
+}
+
+/** The final certification consumes only current-run, already-settled evidence. This check runs
+ * before its zero-spend adapter is invoked, so a missing or ambiguous receipt cannot cause even a
+ * read-only certification dispatch. */
+export function certificationPredecessorEvidence(results) {
+  const evidence = {};
+  for (const [operationId, field] of RELEASE_CERTIFICATION_PREDECESSORS) {
+    const result = results.get(operationId);
+    const sha256 = result?.[field];
+    if (!HASH.test(sha256 ?? "")) fail("CERTIFICATION_PREDECESSOR", operationId);
+    evidence[operationId] = sha256;
+  }
+  const smoke = results.get("v2-13-final-two-lane-smoke");
+  const restoration = results.get("restore-endpoints-max-one");
+  if (
+    smoke?.schemaVersion !== V213_SMOKE_RESULT_SCHEMA ||
+    smoke.smokeOnly !== true ||
+    smoke.releaseCertified !== false ||
+    smoke.twoLaneSmoke !== true ||
+    smoke.evidenceSha256 !== smoke.signedSmokeEvidenceSha256 ||
+    results.get("prove-zero-workers")?.zeroWorkers !== true ||
+    results.get("read-settled-billing")?.withinCumulativeCap !== true ||
+    results.get("reconcile-exact-resources")?.onlyApprovedRetainedVolumes !== true ||
+    restoration?.productionCleanupState !== "EXACT_MAX_ONE_PAIR_RETAINED" ||
+    restoration.bothEndpointsMaxWorkersOne !== true ||
+    restoration.retainedProductionEndpoints !== 2 ||
+    restoration.productionResourcesAbsent !== false
+  )
+    fail("CERTIFICATION_PREDECESSOR_STATE");
+  return Object.freeze(evidence);
+}
+
+export function cleanupProofEvidence(results) {
+  const zero = results.get("prove-zero-workers");
+  const billing = results.get("read-settled-billing");
+  const resources = results.get("reconcile-exact-resources");
+  const maxOne = results.get("restore-endpoints-max-one");
+  if (
+    !HASH.test(zero?.proofSha256 ?? "") ||
+    zero?.zeroWorkers !== true ||
+    !HASH.test(billing?.proofSha256 ?? "") ||
+    billing?.withinCumulativeCap !== true ||
+    !HASH.test(resources?.proofSha256 ?? "") ||
+    resources?.onlyApprovedRetainedVolumes !== true ||
+    !HASH.test(maxOne?.proofSha256 ?? "") ||
+    !(
+      (maxOne?.productionCleanupState === "EXACT_MAX_ONE_PAIR_RETAINED" &&
+        maxOne?.bothEndpointsMaxWorkersOne === true &&
+        maxOne?.retainedProductionEndpoints === 2 &&
+        maxOne?.productionResourcesAbsent === false) ||
+      (maxOne?.productionCleanupState === "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT" &&
+        maxOne?.bothEndpointsMaxWorkersOne === false &&
+        maxOne?.retainedProductionEndpoints === 0 &&
+        maxOne?.productionResourcesAbsent === true)
+    )
+  )
+    fail("CLEANUP_PROOF_READBACK");
+  return Object.freeze({ zero, billing, resources, maxOne });
 }
 
 export function assertResult(operation, result, state, results) {
@@ -279,7 +435,8 @@ export function assertResult(operation, result, state, results) {
     operation.id === "promote-qualified-production" &&
     (result.enabled !== true ||
       result.state !== "QUALIFIED_EXACT" ||
-      result.providerSendPerformed !== false ||
+      result.gpuDispatchPerformed !== false ||
+      result.cloudflareMutationPerformed !== true ||
       !HASH.test(result.evidenceSha256 ?? "") ||
       !HASH.test(result.versionSha256 ?? "") ||
       !HASH.test(result.databasePromotionSha256 ?? ""))
@@ -305,6 +462,19 @@ export function assertResult(operation, result, state, results) {
       !HASH.test(result.evidenceSha256 ?? "")
     )
       fail("MAX_ONE_ENDPOINT_READBACK", operation.id);
+  }
+  if (operation.id === "restore-endpoints-max-one") {
+    const exactPairRetained =
+      result.productionCleanupState === "EXACT_MAX_ONE_PAIR_RETAINED" &&
+      result.bothEndpointsMaxWorkersOne === true &&
+      result.retainedProductionEndpoints === 2 &&
+      result.productionResourcesAbsent === false;
+    const allProductionAbsent =
+      result.productionCleanupState === "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT" &&
+      result.bothEndpointsMaxWorkersOne === false &&
+      result.retainedProductionEndpoints === 0 &&
+      result.productionResourcesAbsent === true;
+    if (!exactPairRetained && !allProductionAbsent) fail("CLEANUP_PRODUCTION_STATE", operation.id);
   }
   if (operation.phase.includes("qualification") && operation.id.includes("live-qualification")) {
     if (
@@ -346,8 +516,43 @@ export function assertResult(operation, result, state, results) {
     (result.durationSeconds < 1740 || result.durationSeconds > 1860)
   )
     fail("V2_12_DURATION", operation.id);
-  if (operation.id === "v2-13-final-two-lane-smoke" && result.twoLaneSmoke !== true)
-    fail("V2_13_SCOPE", operation.id);
+  if (operation.id === "v2-13-final-two-lane-smoke") {
+    if (
+      result.schemaVersion !== V213_SMOKE_RESULT_SCHEMA ||
+      result.twoLaneSmoke !== true ||
+      result.smokeOnly !== true ||
+      result.releaseCertified !== false ||
+      !HASH.test(result.signedSmokeEvidenceSha256 ?? "") ||
+      result.signedSmokeEvidenceSha256 !== result.evidenceSha256
+    )
+      fail("V2_13_SCOPE", operation.id);
+  }
+  if (operation.id === RELEASE_CERTIFICATION_OPERATION_ID) {
+    const predecessors = certificationPredecessorEvidence(results);
+    if (
+      result.schemaVersion !== RELEASE_CERTIFICATION_RESULT_SCHEMA ||
+      result.actualUsd !== 0 ||
+      result.externalSpendUsd !== 0 ||
+      result.gpuUse !== false ||
+      result.providerMutationPerformed !== false ||
+      result.currentRunEvidence !== true ||
+      result.certified !== true ||
+      result.releaseStatus !== "release_certified" ||
+      result.gateCount !== 15 ||
+      result.missingGateCount !== 0 ||
+      result.invalidGateCount !== 0 ||
+      result.liveReleaseAuthorized !== false ||
+      result.requiresExplicitReleaseAuthority !== true ||
+      !HASH.test(result.releaseIdentitySha256 ?? "") ||
+      !HASH.test(result.ledgerSha256 ?? "") ||
+      result.evidenceSha256 !== result.ledgerSha256 ||
+      !exactKeys(result.predecessorEvidenceSha256s, Object.keys(predecessors)) ||
+      Object.entries(predecessors).some(
+        ([operationId, sha256]) => result.predecessorEvidenceSha256s[operationId] !== sha256,
+      )
+    )
+      fail("RELEASE_CERTIFICATION_READBACK", operation.id);
+  }
   return result;
 }
 
@@ -368,6 +573,7 @@ async function executeFullLive({
   verifyMaterializationChain,
   verifyChain,
   verifyMaterializationSeed,
+  verifyStaticReleaseDescriptor,
   verifyPrequalificationReceipt,
 }) {
   if (typeof runOperation !== "function") fail("RUNNER_REQUIRED");
@@ -384,6 +590,8 @@ async function executeFullLive({
     fail("CHAIN_VERIFIER_CONTRACT");
   if (typeof verifyMaterializationSeed !== "function")
     fail("MATERIALIZATION_SEED_VERIFIER_REQUIRED");
+  if (typeof verifyStaticReleaseDescriptor !== "function")
+    fail("STATIC_RELEASE_DESCRIPTOR_VERIFIER_REQUIRED");
   if (
     verifyPrequalificationReceipt !== undefined &&
     typeof verifyPrequalificationReceipt !== "function"
@@ -416,6 +624,13 @@ async function executeFullLive({
     fail("NOT_IN_PROGRESS");
 
   const verifySeed = async (context = {}) => {
+    const descriptor = await verifyStaticReleaseDescriptor(
+      structuredClone(current.state),
+      current.sha256,
+      structuredClone(context),
+    );
+    if (descriptor === false)
+      fail("STATIC_RELEASE_DESCRIPTOR_VERIFICATION", context.operationId ?? "");
     const result = await verifyMaterializationSeed(
       structuredClone(current.state),
       current.sha256,
@@ -480,7 +695,7 @@ async function executeFullLive({
         current.state.phases[operation.phase]?.work?.[workIdFor(operation)]?.settled_result_sha256,
       earlyFailure:
         current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
-        operatorRoleVerified !== true,
+        canUseEarlyCleanup(current.state),
     });
   };
 
@@ -573,8 +788,50 @@ async function executeFullLive({
       await verifyChainAtBoundary(operation, "settled");
       return result;
     }
-    if (existing?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE")
-      fail("REDISPATCH_FORBIDDEN", operation.id);
+    if (existing?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE") {
+      if (
+        current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" ||
+        !CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)
+      )
+        fail("REDISPATCH_FORBIDDEN", operation.id);
+      // A cleanup transport gap is not permission to repeat paid/live work. It is permission only
+      // to reconcile the already-authorized safety operation through idempotent cleanup/readback.
+      const earlyCleanup = canUseEarlyCleanup(current.state);
+      const runner =
+        earlyCleanup && runEarlyCleanupOperation !== undefined
+          ? runEarlyCleanupOperation
+          : (runCleanupOperation ?? runOperation);
+      const raw = await runner(
+        operation,
+        structuredClone(current.state),
+        new Map(results),
+        current.sha256,
+        {
+          operationId: operation.id,
+          cleanupOnly: true,
+          earlyFailure: earlyCleanup,
+          endpointFree: earlyCleanup,
+          operatorRoleVerified,
+          resumed: true,
+          authorizedUnsettled: true,
+          reconciliationOnly: true,
+          providerDispatchForbidden: true,
+        },
+      );
+      const result = assertResult(operation, durableResult(raw), current.state, results);
+      current = stateMutation(statePath, current.sha256, (state) =>
+        settleCleanupWork(state, {
+          workId,
+          eventId: eventId(state.authority_id, operation.id, "reconciled"),
+          result,
+        }),
+      );
+      results.set(operation.id, result);
+      await verifyChainAtBoundary(operation, "cleanup-reconciled");
+      return result;
+    }
+    if (operation.id === RELEASE_CERTIFICATION_OPERATION_ID)
+      certificationPredecessorEvidence(results);
     current = stateMutation(statePath, current.sha256, (state) => {
       const event = eventId(state.authority_id, operation.id, "reserved");
       if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
@@ -589,7 +846,7 @@ async function executeFullLive({
     // The reservation is durably written before this call. An ambiguous exit therefore leaves a
     // non-redispatchable work ID and can proceed only to cleanup.
     const cleanupOnly = current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY";
-    const earlyCleanup = cleanupOnly && !operatorRoleVerified;
+    const earlyCleanup = cleanupOnly && canUseEarlyCleanup(current.state);
     const runner =
       earlyCleanup && runEarlyCleanupOperation !== undefined
         ? runEarlyCleanupOperation
@@ -639,16 +896,50 @@ async function executeFullLive({
     return result;
   };
 
+  let cleanupPreflightDone = false;
+  const runCleanupPreflight = async () => {
+    if (cleanupPreflightDone) return;
+    earlyCleanupFailure = canUseEarlyCleanup(current.state);
+    if (preflight !== undefined && !earlyCleanupFailure) {
+      const mode = {
+        cleanupOnly: true,
+        earlyFailure: earlyCleanupFailure,
+        endpointFree: earlyCleanupFailure,
+        operatorRoleVerified,
+        bootstrapOnly: false,
+        operatorOnly: true,
+        initial: true,
+        staged: false,
+        requireEndpointSecrets: false,
+      };
+      if (verifyPrequalificationReceipt !== undefined)
+        await verifyPrequalificationReceipt(
+          structuredClone(current.state),
+          current.sha256,
+          mode,
+          new Map(results),
+        );
+      await preflight(structuredClone(current.state), current.sha256, mode, new Map(results));
+    }
+    cleanupPreflightDone = true;
+  };
+
   const resumedCleanupOnly = current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY";
   if (resumedCleanupOnly) {
     // Hydrate before selecting the cleanup seam.  A restart must not widen a cleanup-only child
     // merely because its in-memory predecessor map started empty.
     await hydrateSettledResults();
-    earlyCleanupFailure = !operatorRoleVerified;
+    earlyCleanupFailure = canUseEarlyCleanup(current.state);
   }
   if (!resumedCleanupOnly) {
     try {
       await hydrateSettledResults();
+      if (
+        OPERATIONS.filter((operation) => CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)).some(
+          (operation) => workFor(operation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE",
+        )
+      )
+        fail("AUTHORIZED_CLEANUP_WORK_AMBIGUOUS");
       if (preflight !== undefined)
         await preflight(
           structuredClone(current.state),
@@ -715,7 +1006,7 @@ async function executeFullLive({
       else if (cleanupPhase.state !== "ACTIVE") fail("PHASE_ORDER");
     } catch (error) {
       if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
-        earlyCleanupFailure = !operatorRoleVerified;
+        earlyCleanupFailure = canUseEarlyCleanup(current.state);
         current = stateMutation(statePath, current.sha256, (state) =>
           enterCleanupOnly(state, {
             failureCode: "FULL_LIVE_OPERATION_FAILED",
@@ -725,63 +1016,110 @@ async function executeFullLive({
         results.set("failure", { message: error instanceof Error ? error.message : String(error) });
       } else throw error;
     }
-  } else {
-    // An unverified bootstrap restart must enter the request+RunPod-only child directly.  The
-    // normal cleanup preflight reads the operator DSN (and may inspect materialized input); both
-    // are unavailable by contract until the bootstrap result has settled and been hydrated.
-    if (preflight !== undefined && !earlyCleanupFailure) {
-      const mode = {
-        cleanupOnly: true,
-        earlyFailure: earlyCleanupFailure,
-        endpointFree: earlyCleanupFailure,
-        operatorRoleVerified,
-        bootstrapOnly: false,
-        operatorOnly: true,
-        initial: true,
-        staged: false,
-        requireEndpointSecrets: false,
-      };
-      if (verifyPrequalificationReceipt !== undefined)
-        await verifyPrequalificationReceipt(
-          structuredClone(current.state),
-          current.sha256,
-          mode,
-          new Map(results),
-        );
-      await preflight(structuredClone(current.state), current.sha256, mode, new Map(results));
-    }
   }
 
-  try {
-    for (const operation of OPERATIONS.filter(
-      (item) => item.phase === "cleanup_and_reconciliation",
-    ))
-      await runOne(operation);
+  // A hard crash can leave an authorized cleanup safety work item while the outer state still says
+  // in-progress. Once that ambiguity is forced into cleanup-only above, run the same protected
+  // cleanup preflight as an ordinary cleanup-only restart before any reconciliation call.
+  if (current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") await runCleanupPreflight();
 
-    const zero = results.get("prove-zero-workers");
-    const billing = results.get("read-settled-billing");
-    const resources = results.get("reconcile-exact-resources");
-    const maxOne = results.get("restore-endpoints-max-one");
-    if (
-      !HASH.test(zero?.proofSha256 ?? "") ||
-      zero?.zeroWorkers !== true ||
-      !HASH.test(billing?.proofSha256 ?? "") ||
-      billing?.withinCumulativeCap !== true ||
-      !HASH.test(resources?.proofSha256 ?? "") ||
-      resources?.onlyApprovedRetainedVolumes !== true ||
-      !HASH.test(maxOne?.proofSha256 ?? "") ||
-      maxOne?.bothEndpointsMaxWorkersOne !== true
-    )
-      fail("CLEANUP_PROOF_READBACK");
-    current = stateMutation(statePath, current.sha256, (state) =>
-      recordCleanupProof(state, {
-        zeroWorkerProofSha256: zero.proofSha256,
-        billingProofSha256: billing.proofSha256,
-        resourceProofSha256: resources.proofSha256,
-        maxOneProofSha256: maxOne.proofSha256,
-        eventId: eventId(state.authority_id, "cleanup-proof", "verified"),
-      }),
+  try {
+    const cleanupOperations = OPERATIONS.filter(
+      (item) =>
+        item.phase === "cleanup_and_reconciliation" &&
+        item.id !== RELEASE_CERTIFICATION_OPERATION_ID,
     );
+    for (const operation of cleanupOperations) await runOne(operation);
+
+    const { zero, billing, resources, maxOne } = cleanupProofEvidence(results);
+    // The aggregate proof is permanently scoped to the four safety operations. Certification is a
+    // separate transport-free, zero-spend state transition, so a bad local certification result can
+    // never strand drain, billing, or retained-resource closure.
+    if (current.state.cleanup_proof === null) {
+      current = stateMutation(statePath, current.sha256, (state) =>
+        recordCleanupProof(state, {
+          zeroWorkerProofSha256: zero.proofSha256,
+          billingProofSha256: billing.proofSha256,
+          resourceProofSha256: resources.proofSha256,
+          maxOneProofSha256: maxOne.proofSha256,
+          eventId: eventId(state.authority_id, "cleanup-proof", "verified"),
+        }),
+      );
+    } else if (
+      current.state.cleanup_proof.zero_worker_proof_sha256 !== zero.proofSha256 ||
+      current.state.cleanup_proof.billing_proof_sha256 !== billing.proofSha256 ||
+      current.state.cleanup_proof.resource_reconciliation_sha256 !== resources.proofSha256 ||
+      current.state.cleanup_proof.max_one_restoration_sha256 !== maxOne.proofSha256
+    ) {
+      fail("CLEANUP_PROOF_RESULT_DRIFT");
+    }
+
+    if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") {
+      const certification = OPERATIONS.find(({ id }) => id === RELEASE_CERTIFICATION_OPERATION_ID);
+      if (!certification) fail("RELEASE_CERTIFICATION_OPERATION_MISSING");
+      const certificationWorkId = `${current.state.authority_id}:${certification.id}`.toLowerCase();
+      if (current.state.release_certification?.state !== "SETTLED_TERMINAL") {
+        const reconciling =
+          current.state.release_certification?.state === "AUTHORIZED_ONCE_RECONCILIATION_ONLY";
+        await verifySeed({
+          operationId: certification.id,
+          resumed: reconciling,
+          recovery: false,
+          localCertification: true,
+          reconciliationOnly: reconciling,
+        });
+        certificationPredecessorEvidence(results);
+        if (!reconciling) {
+          // No seed, provider, database, or other work may occur between this authenticated time
+          // read and the durable one-use authorization for the certification call.
+          await checkTrustedTime();
+          current = stateMutation(statePath, current.sha256, (state) =>
+            authorizeReleaseCertification(state, {
+              workId: certificationWorkId,
+              eventId: `${certificationWorkId}:authorized`,
+            }),
+          );
+        }
+        const raw = await runOperation(
+          certification,
+          structuredClone(current.state),
+          new Map(results),
+          current.sha256,
+          {
+            operationId: certification.id,
+            cleanupOnly: false,
+            earlyFailure: false,
+            endpointFree: false,
+            operatorRoleVerified,
+            resumed: reconciling,
+            localCertification: true,
+            providerDispatchForbidden: true,
+            authorizedUnsettled: reconciling,
+            reconciliationOnly: reconciling,
+            persistenceForbidden: reconciling,
+            dispatchForbidden: reconciling,
+          },
+        );
+        const result = assertResult(certification, durableResult(raw), current.state, results);
+        current = stateMutation(statePath, current.sha256, (state) =>
+          settleReleaseCertification(state, {
+            workId: certificationWorkId,
+            result,
+            eventId: `${certificationWorkId}:settled`,
+          }),
+        );
+        results.set(certification.id, result);
+        await verifyChainAtBoundary(certification, "certified");
+      } else {
+        const result = assertResult(
+          certification,
+          durableResult(current.state.release_certification.settled_result),
+          current.state,
+          results,
+        );
+        results.set(certification.id, result);
+      }
+    }
     current = stateMutation(statePath, current.sha256, (state) => {
       if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
         return completeCleanupOnly(state);
@@ -878,6 +1216,12 @@ async function main() {
         path: process.env[MATERIALIZATION_SEED_ENV],
         expectedSha256: state.materialization_seed_sha256,
       }),
+    verifyStaticReleaseDescriptor: (state) =>
+      validateStaticReleaseDescriptorFile({
+        path: process.env[STATIC_RELEASE_DESCRIPTOR_ENV],
+        expectedSha256: state.static_release_descriptor_sha256,
+        expectedSourceCommit: state.release_source_commit,
+      }),
     verifyPrequalificationReceipt: async (_state, _outerStateSha256, _mode, priorResults) =>
       verifyPrequalificationDatabaseReceipt({
         environment: process.env,
@@ -899,4 +1243,11 @@ async function main() {
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await main();
 
-export { CONFIRMATION, CONCRETE_LIVE_ADAPTERS, executeFullLive, missingConcreteTools, OPERATIONS };
+export {
+  CONFIRMATION,
+  CONCRETE_LIVE_ADAPTERS,
+  executeFullLive,
+  missingConcreteTools,
+  OPERATIONS,
+  runPodMutationBoundaryReached,
+};

@@ -195,9 +195,12 @@ const REQUIRED_HARDENING_FOREIGN_KEYS = [
   "transcripts_supersedes_fk",
 ].sort();
 
-// These evidence tables carry tenant identity for lineage, but are written only by
+// These authority/evidence tables carry tenant identity for lineage, but are written only by
 // owner-controlled SECURITY DEFINER functions and intentionally have no tenant write guard.
 const OPERATOR_ONLY_TABLES = [
+  "hosted_full_live_manifest_read_claims",
+  "hosted_full_live_materialization_challenge_assignments",
+  "hosted_full_live_materialization_selections",
   "hosted_v209_settlement_cost_evidence",
   "hosted_v209_terminal_acceptances",
 ].sort();
@@ -364,7 +367,7 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
     for (const row of operatorOnly.rows) {
       assert.equal(row.rls_enabled, true, `${row.table_name} must enable row level security`);
       assert.equal(row.rls_forced, true, `${row.table_name} must force row level security`);
-      assert.equal(row.policy_name, `${row.table_name}_owner_only`);
+      assert.equal(row.policy_name, `${row.table_name}_owner_only`.slice(0, 63));
       assert.equal(row.policy_qual, "false");
       assert.equal(row.policy_with_check, "false");
       assert.equal(row.has_write_guard, false, `${row.table_name} must remain operator-only`);

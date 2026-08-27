@@ -1,19 +1,42 @@
 import { createHash, createHmac, createPrivateKey, randomBytes, sign } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { chmodSync, existsSync, lstatSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { ProvenanceReceiptSigner, type TransactionalSqlExecutor } from "@videoforge/control-plane";
+import {
+  canonicalSha256,
+  ProvenanceReceiptSigner,
+  type TransactionalSqlExecutor,
+} from "@videoforge/control-plane";
 import { canonicalizeJson, type JsonValue } from "@videoforge/contracts";
 
 import type { HostedWorkflowBinding } from "../hosted/configuration.js";
 import { createNeonExecutor, createNeonPool } from "../hosted/neon.js";
 import {
   createV213AcceptanceBridgeHandlers,
+  createV213SqlCleanupReceiptFinalizer,
+  createV213SqlJitDependencies,
+  createV213SqlJitMaterializer,
+  createV213SqlReleaseFactMaterializer,
+  createV213SqlReleaseCertifier,
+  createV213SqlReleaseChromeProducer,
   createV213SqlBridgeCallLoader,
   v213EvidenceKeyId,
+  type V213FinalReleaseCertificationResult,
   type V213DatabaseOwnedAcceptanceCall,
+  type V213SqlCleanupReceiptFinalizationRequest,
+  type V213SqlCleanupReceiptFinalizationResult,
+  type V213ScopedRenderPlanReference,
+  type V213SqlReleaseCertificationRequest,
 } from "../hosted/v213-live-production-adapters.js";
+import {
+  parseV213AcceptanceOperatorEvidenceRequest,
+  parseV213AcceptanceOperatorEvidenceResult,
+  V213_ACCEPTANCE_OPERATOR_EVIDENCE_PATH,
+  type V213AcceptanceOperatorEvidenceRequest,
+  type V213AcceptanceOperatorEvidenceResult,
+} from "../runtime/v213-acceptance-operator-evidence.js";
+import { RunPodServerlessTransport } from "./runpod-serverless-transport.js";
 import { assertSujalRunPodAccount } from "./runpod-account.js";
 import {
   RunPodControlClient,
@@ -30,7 +53,6 @@ import {
 import type {
   V213AdmissionHandoff,
   V213DualLaneInput,
-  V213LaneDeployment,
   V213MageQualificationHandoff,
   V213SoulXQualificationHandoff,
 } from "./v213-dual-lane-live.js";
@@ -50,14 +72,41 @@ import {
   executeV212LiveProductionLength,
   executeV213FinalLiveAcceptance,
 } from "../runtime/v213-live-acceptance.js";
+import { readV209ShortProviderObservation } from "../runtime/v209-short-live-cost.js";
+import {
+  createV213ReleaseChromeJourneySpawner,
+  spawnV213V209ChromeOperator,
+} from "./v213-real-chrome-operator.js";
+import type { SpawnV213ReleaseChromeJourney } from "./v213-release-real-chrome.js";
+import {
+  createV213V212ProductionTerminalOutputResolver,
+  runV213V212LiveAcceptanceWithChrome,
+  type V213V212TerminalOutputResolver,
+} from "./v213-v212-live-chrome-integration.js";
+import {
+  createV213V212RealChromeJourneySpawner,
+  produceV213V212RealChromeEvidence,
+  type V213V212RealChromeRequest,
+} from "./v213-v212-real-chrome.js";
 
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_TYPESCRIPT_BRIDGE_COMMAND";
+const RELEASE_CERTIFICATION_CONFIRMATION = "EXECUTE_EXACT_V2_13_LOCAL_RELEASE_CERTIFICATION";
+const CLEANUP_RECEIPT_CONFIRMATION = "FINALIZE_EXACT_V2_13_CLEANUP_RECEIPT";
 const PREFIX = "VIDEOFORGE_V213_BRIDGE_";
+const RELEASE_CERTIFICATION_PREFIX = "VIDEOFORGE_V213_CERTIFICATION_";
+const CLEANUP_RECEIPT_PREFIX = "VIDEOFORGE_V213_CLEANUP_RECEIPT_";
+const OPERATOR_EVIDENCE_PREFIX = "VIDEOFORGE_V213_OPERATOR_EVIDENCE_";
 const MAX_PROTECTED_BYTES = 2 * 1024 * 1024;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,190}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
 const OPERATOR_DATABASE_ROLE = "videoforge_hosted_operator";
+const V213_RELEASE_CERTIFICATION_REQUEST_SCHEMA =
+  "videoforge.v213-local-release-certification-request/v1" as const;
+const V213_CLEANUP_RECEIPT_REQUEST_SCHEMA =
+  "videoforge.v213-local-cleanup-receipt-finalization-request/v1" as const;
+const OPERATOR_EVIDENCE_CONFIRMATION = "INGEST_EXACT_V2_13_OPERATOR_EVIDENCE";
 
 // RunPod's CP-07 catalog lookup is still authoritative for exact 4090 EU-RO-1 availability,
 // but its `price.secure` field is a Secure Pod price rather than Serverless Flex billing. Keep the
@@ -92,10 +141,30 @@ export function summarizeV213EndpointRestoration(result: V213AttributableCleanup
         deployment.scalerType === "REQUEST_COUNT" &&
         deployment.scalerValue === 1,
     );
+  const productionCleanupState = result.productionCleanupState;
+  if (
+    productionCleanupState !== "EXACT_MAX_ONE_PAIR_RETAINED" &&
+    productionCleanupState !== "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT"
+  )
+    fail("CLEANUP_PRODUCTION_STATE_INVALID");
+  if (
+    (productionCleanupState === "EXACT_MAX_ONE_PAIR_RETAINED" &&
+      (!bothEndpointsMaxWorkersOne || result.productionResourcesAbsent !== false)) ||
+    (productionCleanupState === "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT" &&
+      (production.length !== 0 || result.productionResourcesAbsent !== true))
+  )
+    fail("CLEANUP_PRODUCTION_STATE_MISMATCH");
+  const releaseCurrentRestored =
+    productionCleanupState === "EXACT_MAX_ONE_PAIR_RETAINED" && bothEndpointsMaxWorkersOne;
   return {
     restored: true,
+    productionCleanupState,
+    productionResourcesAbsent: productionCleanupState === "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
     bothEndpointsMaxWorkersOne,
     retainedProductionEndpoints: production.length,
+    rollbackIdentityPinned: releaseCurrentRestored,
+    rollbackReadbackPassed: releaseCurrentRestored,
+    releaseCurrentRestored,
     deletedEndpointIdSha256s: [...result.deletedEndpointIdSha256s],
     deletedTemplateIdSha256s: [...result.deletedTemplateIdSha256s],
   };
@@ -275,6 +344,8 @@ export interface V213ProtectedInputs {
   readonly workerOperatorBearer: string;
   readonly productionSecrets: V213ProductionSecrets;
   readonly productionSecretsRaw: string;
+  /** Exact protected mode-0600 Playwright auth state; absent only in provider-free construction tests. */
+  readonly chromeAuthStatePath?: string;
 }
 
 /**
@@ -345,6 +416,97 @@ export interface V213ProductionSecrets {
   readonly soulxEndpointId?: string;
 }
 
+export interface V213ReleaseCertificationChildRequest extends V213SqlReleaseCertificationRequest {
+  readonly schemaVersion: typeof V213_RELEASE_CERTIFICATION_REQUEST_SCHEMA;
+  readonly requestSha256: `sha256:${string}`;
+}
+
+export interface V213ReleaseCertificationProtectedInputs {
+  readonly request: V213ReleaseCertificationChildRequest;
+  readonly operatorDatabaseUrl: string;
+  readonly evidenceSigningKey: Uint8Array;
+  readonly protectedValues: readonly string[];
+}
+
+export interface V213CleanupReceiptChildRequest extends V213SqlCleanupReceiptFinalizationRequest {
+  readonly schemaVersion: typeof V213_CLEANUP_RECEIPT_REQUEST_SCHEMA;
+  readonly requestSha256: `sha256:${string}`;
+}
+
+export interface V213CleanupReceiptProtectedInputs {
+  readonly request: V213CleanupReceiptChildRequest;
+  readonly operatorDatabaseUrl: string;
+  readonly evidenceSigningKey: Uint8Array;
+  readonly protectedValues: readonly string[];
+}
+
+export interface V213OperatorEvidenceProtectedInputs {
+  readonly request: V213AcceptanceOperatorEvidenceRequest;
+  readonly workerOrigin: string;
+  readonly workerOperatorBearer: string;
+  readonly protectedValues: readonly string[];
+}
+
+export const V213_V209_CHROME_EVIDENCE_DIR_ENV = "VIDEOFORGE_V209_CHROME_EVIDENCE_DIR" as const;
+export const V213_V209_CHROME_AUTH_STATE_PATH_ENV =
+  "VIDEOFORGE_V209_CHROME_AUTH_STATE_FILE" as const;
+/** External source pins are refreshed only when the sealed release proposal is resealed. */
+export const V213_V209_CHROME_OPERATOR_SOURCE_PINS = Object.freeze({
+  moduleSha256: "sha256:b136792fd5b182a0feaa48333750e468075525a7c6d131c0f06a99a069ce8706",
+  entrySha256: "sha256:ba30ed06638120cf7825aee9597a754a2db9bbacf8ced03f876ba3744a47f4ee",
+} as const);
+export const V213_V212_CHROME_OPERATOR_SOURCE_PINS = Object.freeze({
+  moduleSha256: "sha256:9dacdaa2cbacb610fde13b14005a171b4758c422ba0642afa2f6daedf5528cf1",
+  entrySha256: "sha256:e14ec781c7df011b45ea012d439044b1b59d4888f039c51aa08e29277c50b411",
+} as const);
+const V209_TERMINAL_OUTPUT_SCHEMA = "videoforge.v2-09-terminal-output-proof/v1" as const;
+const V209_CHROME_REQUEST_SCHEMA = "videoforge.v2-09-real-chrome-request/v1" as const;
+const V209_CHROME_RECEIPT_SCHEMA = "videoforge.v2-09-real-chrome-receipt/v1" as const;
+const V209_CHROME_EVIDENCE_SCHEMA = "videoforge.v2-09-real-chrome-acceptance/v1" as const;
+const V209_CHROME_POLL_INTERVAL_MS = 500;
+const V209_CHROME_MAX_RECEIPT_BYTES = 128 * 1024;
+
+/** The only terminal fact allowed to cross into the operator Chrome handshake. */
+export interface V213V209TerminalOutputProof {
+  readonly schemaVersion: typeof V209_TERMINAL_OUTPUT_SCHEMA;
+  readonly workflowId: string;
+  readonly accountId: string;
+  readonly workspaceId: string;
+  readonly generationRequestId: string;
+  readonly terminal: true;
+  readonly readbackVerified: true;
+  readonly finalOutputSha256: string;
+  readonly finalOutputReceiptSha256: string;
+  readonly terminalAt: string;
+}
+
+/**
+ * The post-schedule production seam. Its implementation must read durable terminal/output truth;
+ * it must not dispatch or redispatch. The CLI then writes a nonsecret request and waits for the
+ * protected operator receipt below.
+ */
+export interface V213V209PostTerminalEvidenceRequest {
+  readonly workflowId: string;
+  readonly accountId: string;
+  readonly workspaceId: string;
+  readonly generationRequestId: string;
+  readonly deadlineAt: string;
+}
+
+export type V213V209PostTerminalEvidenceResolver = (
+  input: V213V209PostTerminalEvidenceRequest,
+) => Promise<V213V209TerminalOutputProof>;
+
+export interface V213V209PostTerminalEvidence {
+  readonly chromeEvidenceSha256: string;
+  readonly finalOutputSha256: string;
+  readonly finalOutputReceiptSha256: string;
+  readonly terminalAt: string;
+  readonly requestSha256: string;
+  readonly requestPath: string;
+  readonly receiptPath: string;
+}
+
 export const V213_BRIDGE_ENVIRONMENT = Object.freeze({
   command: `${PREFIX}COMMAND`,
   requestFd: `${PREFIX}REQUEST_FD`,
@@ -355,6 +517,25 @@ export const V213_BRIDGE_ENVIRONMENT = Object.freeze({
   workerOriginFd: `${PREFIX}WORKER_ORIGIN_FD`,
   workerOperatorBearerFd: `${PREFIX}WORKER_OPERATOR_BEARER_FD`,
   productionSecretsFd: `${PREFIX}PRODUCTION_SECRETS_FD`,
+  chromeAuthStatePathFd: `${PREFIX}CHROME_AUTH_STATE_PATH_FD`,
+} as const);
+
+export const V213_RELEASE_CERTIFICATION_ENVIRONMENT = Object.freeze({
+  requestFd: `${RELEASE_CERTIFICATION_PREFIX}REQUEST_FD`,
+  operatorDatabaseUrlFd: `${RELEASE_CERTIFICATION_PREFIX}OPERATOR_DATABASE_URL_FD`,
+  productionSecretsFd: `${RELEASE_CERTIFICATION_PREFIX}PRODUCTION_SECRETS_FD`,
+} as const);
+
+export const V213_CLEANUP_RECEIPT_ENVIRONMENT = Object.freeze({
+  requestFd: `${CLEANUP_RECEIPT_PREFIX}REQUEST_FD`,
+  operatorDatabaseUrlFd: `${CLEANUP_RECEIPT_PREFIX}OPERATOR_DATABASE_URL_FD`,
+  evidenceSigningKeyFd: `${CLEANUP_RECEIPT_PREFIX}EVIDENCE_SIGNING_KEY_FD`,
+} as const);
+
+export const V213_OPERATOR_EVIDENCE_ENVIRONMENT = Object.freeze({
+  requestFd: `${OPERATOR_EVIDENCE_PREFIX}REQUEST_FD`,
+  workerOriginFd: `${OPERATOR_EVIDENCE_PREFIX}WORKER_ORIGIN_FD`,
+  workerOperatorBearerFd: `${OPERATOR_EVIDENCE_PREFIX}WORKER_OPERATOR_BEARER_FD`,
 } as const);
 
 const ALLOWED_ENVIRONMENT = new Set<string>(Object.values(V213_BRIDGE_ENVIRONMENT));
@@ -375,6 +556,22 @@ const EARLY_CLEANUP_ALLOWED_ENVIRONMENT = new Set<string>([
   V213_BRIDGE_ENVIRONMENT.requestFd,
   V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd,
 ]);
+const RELEASE_CERTIFICATION_ALLOWED_ENVIRONMENT = new Set<string>(
+  Object.values(V213_RELEASE_CERTIFICATION_ENVIRONMENT),
+);
+const CLEANUP_RECEIPT_ALLOWED_ENVIRONMENT = new Set<string>(
+  Object.values(V213_CLEANUP_RECEIPT_ENVIRONMENT),
+);
+const OPERATOR_EVIDENCE_ALLOWED_ENVIRONMENT = new Set<string>(
+  Object.values(V213_OPERATOR_EVIDENCE_ENVIRONMENT),
+);
+const RELEASE_CERTIFICATION_PREDECESSORS = Object.freeze([
+  "v2-13-final-two-lane-smoke",
+  "restore-endpoints-max-one",
+  "prove-zero-workers",
+  "read-settled-billing",
+  "reconcile-exact-resources",
+] as const);
 
 function fail(code: string): never {
   throw new V213FullLiveBridgeError(code);
@@ -412,6 +609,110 @@ function exactRequest(value: unknown): V213FullLiveCommandRequest {
   )
     fail("REQUEST_INVALID");
   return value as V213FullLiveCommandRequest;
+}
+
+function exactReleaseCertificationRequest(value: unknown): V213ReleaseCertificationChildRequest {
+  const item = object(value);
+  const predecessors = object(item?.predecessorEvidenceSha256s);
+  const requestSha256 = item?.requestSha256;
+  if (
+    item?.schemaVersion !== V213_RELEASE_CERTIFICATION_REQUEST_SCHEMA ||
+    typeof item.fullLiveAuthorityId !== "string" ||
+    !UUID.test(item.fullLiveAuthorityId) ||
+    typeof item.workId !== "string" ||
+    !/^[a-z0-9][a-z0-9._:-]{7,191}$/u.test(item.workId) ||
+    !item.workId.endsWith(":certify-v2-13-release") ||
+    !predecessors ||
+    Object.keys(predecessors).sort().join(",") !==
+      [...RELEASE_CERTIFICATION_PREDECESSORS].sort().join(",") ||
+    Object.values(predecessors).some(
+      (predecessor) => typeof predecessor !== "string" || !SHA256.test(predecessor),
+    ) ||
+    typeof item.resumed !== "boolean" ||
+    typeof item.authorizedUnsettled !== "boolean" ||
+    typeof item.reconciliationOnly !== "boolean" ||
+    typeof item.persistenceForbidden !== "boolean" ||
+    typeof item.dispatchForbidden !== "boolean" ||
+    item.providerDispatchForbidden !== true ||
+    typeof requestSha256 !== "string" ||
+    !SHA256.test(requestSha256) ||
+    Object.keys(item).sort().join(",") !==
+      [
+        "authorizedUnsettled",
+        "dispatchForbidden",
+        "fullLiveAuthorityId",
+        "outerStateSha256",
+        "persistenceForbidden",
+        "predecessorEvidenceSha256s",
+        "providerDispatchForbidden",
+        "reconciliationOnly",
+        "requestSha256",
+        "resumed",
+        "schemaVersion",
+        "workId",
+      ]
+        .sort()
+        .join(",")
+  )
+    fail("RELEASE_CERTIFICATION_REQUEST_INVALID");
+  const unsigned = { ...item };
+  delete unsigned.requestSha256;
+  if (canonicalSha256(unsigned) !== requestSha256)
+    fail("RELEASE_CERTIFICATION_REQUEST_SHA256_INVALID");
+  const initial =
+    item.resumed === false &&
+    item.authorizedUnsettled === false &&
+    item.reconciliationOnly === false &&
+    item.persistenceForbidden === false &&
+    item.dispatchForbidden === false;
+  const recovery =
+    item.resumed === true &&
+    item.authorizedUnsettled === true &&
+    item.reconciliationOnly === true &&
+    item.persistenceForbidden === true &&
+    item.dispatchForbidden === true;
+  if (!initial && !recovery) fail("RELEASE_CERTIFICATION_MODE_INVALID");
+  return value as V213ReleaseCertificationChildRequest;
+}
+
+function exactCleanupReceiptRequest(value: unknown): V213CleanupReceiptChildRequest {
+  const item = object(value);
+  const summary = object(item?.summary);
+  if (
+    item?.schemaVersion !== V213_CLEANUP_RECEIPT_REQUEST_SCHEMA ||
+    typeof item.fullLiveAuthorityId !== "string" ||
+    !UUID.test(item.fullLiveAuthorityId) ||
+    typeof item.operationId !== "string" ||
+    !CLEANUP_COMMANDS.has(item.operationId as V213FullLiveCommand) ||
+    typeof item.outerStateSha256 !== "string" ||
+    !SHA256.test(item.outerStateSha256) ||
+    typeof item.providerCleanupEvidenceSha256 !== "string" ||
+    !SHA256.test(item.providerCleanupEvidenceSha256) ||
+    summary === null ||
+    canonicalSha256(summary) !== item.providerCleanupEvidenceSha256 ||
+    typeof item.readbackOnly !== "boolean" ||
+    typeof item.requestSha256 !== "string" ||
+    !SHA256.test(item.requestSha256) ||
+    Object.keys(item).sort().join(",") !==
+      [
+        "fullLiveAuthorityId",
+        "operationId",
+        "outerStateSha256",
+        "providerCleanupEvidenceSha256",
+        "readbackOnly",
+        "requestSha256",
+        "schemaVersion",
+        "summary",
+      ]
+        .sort()
+        .join(",")
+  )
+    fail("CLEANUP_RECEIPT_REQUEST_INVALID");
+  const unsigned = { ...item };
+  delete unsigned.requestSha256;
+  if (canonicalSha256(unsigned) !== item.requestSha256)
+    fail("CLEANUP_RECEIPT_REQUEST_SHA256_INVALID");
+  return value as V213CleanupReceiptChildRequest;
 }
 
 function readProtectedFd(value: string | undefined, code: string): string {
@@ -581,6 +882,160 @@ function productionSecrets(
   return Object.freeze(value as unknown as V213ProductionSecrets);
 }
 
+export function readV213ReleaseCertificationProtectedInputs(
+  environment: NodeJS.ProcessEnv,
+  readFd: (value: string | undefined, code: string) => string = readProtectedFd,
+): V213ReleaseCertificationProtectedInputs {
+  const extras = Object.keys(environment).filter(
+    (name) =>
+      name.startsWith("VIDEOFORGE_V213_") && !RELEASE_CERTIFICATION_ALLOWED_ENVIRONMENT.has(name),
+  );
+  if (extras.length > 0) fail("RELEASE_CERTIFICATION_AMBIENT_BINDING_REJECTED");
+  let request: V213ReleaseCertificationChildRequest;
+  try {
+    request = exactReleaseCertificationRequest(
+      JSON.parse(
+        readFd(
+          environment[V213_RELEASE_CERTIFICATION_ENVIRONMENT.requestFd],
+          "RELEASE_CERTIFICATION_REQUEST_FD_INVALID",
+        ),
+      ),
+    );
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) throw error;
+    fail("RELEASE_CERTIFICATION_REQUEST_JSON_INVALID");
+  }
+  const operatorDatabaseUrl = readFd(
+    environment[V213_RELEASE_CERTIFICATION_ENVIRONMENT.operatorDatabaseUrlFd],
+    "RELEASE_CERTIFICATION_OPERATOR_DATABASE_FD_INVALID",
+  );
+  exactOperatorDatabaseUrl(operatorDatabaseUrl);
+  const productionSecretsRaw = readFd(
+    environment[V213_RELEASE_CERTIFICATION_ENVIRONMENT.productionSecretsFd],
+    "RELEASE_CERTIFICATION_SECRETS_FD_INVALID",
+  );
+  const secrets = productionSecrets(productionSecretsRaw, "final");
+  const evidenceSigningKey = Buffer.from(secrets.acceptanceEvidenceSigningKeyBase64, "base64");
+  return Object.freeze({
+    request,
+    operatorDatabaseUrl,
+    evidenceSigningKey,
+    protectedValues: Object.freeze([
+      operatorDatabaseUrl,
+      productionSecretsRaw,
+      secrets.acceptanceEvidenceSigningKeyBase64,
+      evidenceSigningKey.toString("utf8"),
+    ]),
+  });
+}
+
+export function readV213CleanupReceiptProtectedInputs(
+  environment: NodeJS.ProcessEnv,
+  readFd: (value: string | undefined, code: string) => string = readProtectedFd,
+): V213CleanupReceiptProtectedInputs {
+  const extras = Object.keys(environment).filter(
+    (name) => name.startsWith("VIDEOFORGE_V213_") && !CLEANUP_RECEIPT_ALLOWED_ENVIRONMENT.has(name),
+  );
+  if (extras.length > 0) fail("CLEANUP_RECEIPT_AMBIENT_BINDING_REJECTED");
+  let request: V213CleanupReceiptChildRequest;
+  try {
+    request = exactCleanupReceiptRequest(
+      JSON.parse(
+        readFd(
+          environment[V213_CLEANUP_RECEIPT_ENVIRONMENT.requestFd],
+          "CLEANUP_RECEIPT_REQUEST_FD_INVALID",
+        ),
+      ),
+    );
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) throw error;
+    fail("CLEANUP_RECEIPT_REQUEST_JSON_INVALID");
+  }
+  const operatorDatabaseUrl = readFd(
+    environment[V213_CLEANUP_RECEIPT_ENVIRONMENT.operatorDatabaseUrlFd],
+    "CLEANUP_RECEIPT_OPERATOR_DATABASE_FD_INVALID",
+  );
+  exactOperatorDatabaseUrl(operatorDatabaseUrl);
+  const evidenceSigningKeyBase64 = readFd(
+    environment[V213_CLEANUP_RECEIPT_ENVIRONMENT.evidenceSigningKeyFd],
+    "CLEANUP_RECEIPT_EVIDENCE_KEY_FD_INVALID",
+  );
+  if (!BASE64.test(evidenceSigningKeyBase64)) fail("CLEANUP_RECEIPT_EVIDENCE_KEY_INVALID");
+  const evidenceSigningKey = Buffer.from(evidenceSigningKeyBase64, "base64");
+  if (
+    evidenceSigningKey.length < 32 ||
+    evidenceSigningKey.toString("base64") !== evidenceSigningKeyBase64
+  )
+    fail("CLEANUP_RECEIPT_EVIDENCE_KEY_INVALID");
+  return Object.freeze({
+    request,
+    operatorDatabaseUrl,
+    evidenceSigningKey,
+    protectedValues: Object.freeze([
+      operatorDatabaseUrl,
+      evidenceSigningKeyBase64,
+      evidenceSigningKey.toString("utf8"),
+    ]),
+  });
+}
+
+export function readV213OperatorEvidenceProtectedInputs(
+  environment: NodeJS.ProcessEnv,
+  readFd: (value: string | undefined, code: string) => string = readProtectedFd,
+  now: () => Date = () => new Date(),
+): V213OperatorEvidenceProtectedInputs {
+  const extras = Object.keys(environment).filter(
+    (name) =>
+      name.startsWith("VIDEOFORGE_V213_") && !OPERATOR_EVIDENCE_ALLOWED_ENVIRONMENT.has(name),
+  );
+  if (extras.length > 0) fail("OPERATOR_EVIDENCE_AMBIENT_BINDING_REJECTED");
+  let request: V213AcceptanceOperatorEvidenceRequest | null = null;
+  try {
+    request = parseV213AcceptanceOperatorEvidenceRequest(
+      JSON.parse(
+        readFd(
+          environment[V213_OPERATOR_EVIDENCE_ENVIRONMENT.requestFd],
+          "OPERATOR_EVIDENCE_REQUEST_FD_INVALID",
+        ),
+      ),
+      now(),
+    );
+  } catch {
+    request = null;
+  }
+  if (!request) fail("OPERATOR_EVIDENCE_REQUEST_INVALID");
+  const workerOrigin = readFd(
+    environment[V213_OPERATOR_EVIDENCE_ENVIRONMENT.workerOriginFd],
+    "OPERATOR_EVIDENCE_WORKER_ORIGIN_FD_INVALID",
+  );
+  const workerOperatorBearer = readFd(
+    environment[V213_OPERATOR_EVIDENCE_ENVIRONMENT.workerOperatorBearerFd],
+    "OPERATOR_EVIDENCE_WORKER_BEARER_FD_INVALID",
+  );
+  let parsedOrigin: URL;
+  try {
+    parsedOrigin = new URL(workerOrigin);
+  } catch {
+    fail("OPERATOR_EVIDENCE_WORKER_ORIGIN_INVALID");
+  }
+  if (
+    workerOrigin.trim() !== workerOrigin ||
+    parsedOrigin.protocol !== "https:" ||
+    parsedOrigin.origin !== workerOrigin ||
+    parsedOrigin.username !== "" ||
+    parsedOrigin.password !== "" ||
+    workerOperatorBearer.trim() !== workerOperatorBearer ||
+    workerOperatorBearer.length < 32
+  )
+    fail("OPERATOR_EVIDENCE_PROTECTED_INPUT_INVALID");
+  return Object.freeze({
+    request,
+    workerOrigin,
+    workerOperatorBearer,
+    protectedValues: Object.freeze([workerOrigin, workerOperatorBearer]),
+  });
+}
+
 export function readV213ProtectedInputs(
   environment: NodeJS.ProcessEnv,
   readFd: (value: string | undefined, code: string) => string = readProtectedFd,
@@ -630,6 +1085,13 @@ export function readV213ProtectedInputs(
     environment[V213_BRIDGE_ENVIRONMENT.productionSecretsFd],
     "PRODUCTION_SECRETS_FD_INVALID",
   );
+  const chromeAuthStatePath =
+    environment[V213_BRIDGE_ENVIRONMENT.chromeAuthStatePathFd] === undefined
+      ? undefined
+      : readFd(
+          environment[V213_BRIDGE_ENVIRONMENT.chromeAuthStatePathFd],
+          "CHROME_AUTH_STATE_PATH_FD_INVALID",
+        );
   const secrets = productionSecrets(
     productionSecretsRaw,
     CLEANUP_COMMANDS.has(command) ? "either" : command.startsWith("v2-") ? "final" : "pre-endpoint",
@@ -669,6 +1131,7 @@ export function readV213ProtectedInputs(
     workerOperatorBearer,
     productionSecrets: secrets,
     productionSecretsRaw,
+    chromeAuthStatePath,
   });
 }
 
@@ -1405,6 +1868,30 @@ type V213ProductionFactoryPorts = Readonly<{
   fetch: WorkflowFetch;
   now: () => Date;
   sleep: (milliseconds: number) => Promise<void>;
+  /** Provider-free tests may supply the post-terminal real-Chrome evidence adapter. */
+  resolveV209PostTerminalEvidence?: V213V209PostTerminalEvidenceResolver;
+  /** Provider-free tests may replace the read-only V2-12 terminal/output projection. */
+  resolveV212PostTerminalOutput?: V213V212TerminalOutputResolver;
+  /** Provider-free tests replace the child launcher; production uses the pinned real-Chrome helper. */
+  launchV209ChromeOperator?: (input: {
+    readonly requestPath: string;
+    readonly exchangeDirectory: string;
+    readonly productionOrigin: string;
+    readonly authStatePath: string;
+    readonly evidenceSigningKey: Uint8Array;
+    readonly signal?: AbortSignal;
+  }) => Promise<void>;
+  /** Provider-free tests replace the killable installed-Chrome release journey. */
+  spawnReleaseChromeJourney?: SpawnV213ReleaseChromeJourney;
+  /** Provider-free tests replace the V2-12 installed-Chrome producer. */
+  produceV212RealChrome?: (input: {
+    readonly request: V213V212RealChromeRequest;
+    readonly signal: AbortSignal;
+  }) => Promise<Awaited<ReturnType<typeof produceV213V212RealChromeEvidence>>>;
+  /** Trusted tenant-private object GET+rehash seam for DB-projected render-plan references. */
+  loadResolvedRenderManifest?: Parameters<
+    typeof createV213SqlJitMaterializer
+  >[0]["loadResolvedRenderManifest"];
   createDatabases: (inputs: V213ProtectedInputs) => Readonly<{
     operator: TransactionalSqlExecutor;
     runtime: TransactionalSqlExecutor;
@@ -1423,6 +1910,101 @@ const defaultProductionPorts: V213ProductionFactoryPorts = Object.freeze({
     reconciler: createNeonExecutor(createNeonPool(inputs.reconcilerDatabaseUrl)),
   }),
 });
+
+const V213_RESOLVED_RENDER_MANIFEST_PATH = "/api/operator/v2-13/resolved-render-manifest";
+const V213_RESOLVED_RENDER_MANIFEST_OPERATIONS = new Set([
+  "v2-09-short-hosted-project",
+  "v2-10-operator-free-ranga-pilot",
+  "v2-12-long-output",
+]);
+
+/** Reads one DB-projected owner-bound render manifest through the production Worker. The CLI never
+ * receives an R2 key or credential and revalidates every returned binding plus the canonical body. */
+export async function loadV213ResolvedRenderManifest(input: {
+  readonly workerOrigin: string;
+  readonly workerOperatorBearer: string;
+  readonly reference: V213ScopedRenderPlanReference;
+  readonly fetch: WorkflowFetch;
+  readonly signal?: AbortSignal;
+}): Promise<Readonly<Record<string, unknown>>> {
+  const reference = input.reference;
+  if (
+    !V213_RESOLVED_RENDER_MANIFEST_OPERATIONS.has(reference.operationId) ||
+    !SHA256.test(reference.outerStateSha256) ||
+    !SHA256.test(reference.materializationRequestSha256) ||
+    !SHA256.test(reference.sha256)
+  )
+    fail("JIT_RENDER_PLAN_REFERENCE_INVALID");
+  const unsigned = Object.freeze({
+    schemaVersion: "videoforge.v213-resolved-render-manifest-read/v1",
+    fullLiveAuthorityId: reference.fullLiveAuthorityId,
+    operationId: reference.operationId,
+    outerStateSha256: reference.outerStateSha256,
+    materializationRequestSha256: reference.materializationRequestSha256,
+    accountId: reference.accountId,
+    workspaceId: reference.workspaceId,
+    projectId: reference.projectId,
+    projectRevisionId: reference.projectRevisionId,
+    artifactUri: reference.artifactUri,
+    sha256: reference.sha256,
+    issuedAt: reference.issuedAt,
+    nonce: reference.nonce,
+  });
+  const requestSha256 = canonicalSha256(unsigned);
+  const request = Object.freeze({ ...unsigned, requestSha256 });
+  const raw = canonicalizeJson(request as JsonValue);
+  const response = await input.fetch(`${input.workerOrigin}${V213_RESOLVED_RENDER_MANIFEST_PATH}`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${input.workerOperatorBearer}`,
+      "content-type": "application/json",
+      "content-length": String(Buffer.byteLength(raw)),
+      "x-videoforge-signature": createHmac("sha256", input.workerOperatorBearer)
+        .update(raw)
+        .digest("hex"),
+    },
+    body: raw,
+    signal: input.signal ?? AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) fail("JIT_RENDER_PLAN_PRIVATE_READER_REJECTED");
+  const value = object(await response.json());
+  const document = object(value?.document);
+  if (
+    !value ||
+    !document ||
+    Object.keys(value).sort().join(",") !==
+      [
+        "accountId",
+        "document",
+        "fullLiveAuthorityId",
+        "materializationRequestSha256",
+        "operationId",
+        "outerStateSha256",
+        "projectId",
+        "projectRevisionId",
+        "requestSha256",
+        "schemaVersion",
+        "sha256",
+        "workspaceId",
+      ]
+        .sort()
+        .join(",") ||
+    value.schemaVersion !== "videoforge.v213-resolved-render-manifest-read-result/v1" ||
+    value.fullLiveAuthorityId !== reference.fullLiveAuthorityId ||
+    value.operationId !== reference.operationId ||
+    value.outerStateSha256 !== reference.outerStateSha256 ||
+    value.materializationRequestSha256 !== reference.materializationRequestSha256 ||
+    value.accountId !== reference.accountId ||
+    value.workspaceId !== reference.workspaceId ||
+    value.projectId !== reference.projectId ||
+    value.projectRevisionId !== reference.projectRevisionId ||
+    value.sha256 !== reference.sha256 ||
+    value.requestSha256 !== requestSha256 ||
+    canonicalSha256(document) !== reference.sha256
+  )
+    fail("JIT_RENDER_PLAN_PRIVATE_READER_DRIFT");
+  return Object.freeze(document);
+}
 
 type V213PrequalificationFactoryPorts = Readonly<{
   fetch: WorkflowFetch;
@@ -1519,79 +2101,618 @@ function exactPayload<T extends object>(
   return value as T;
 }
 
+function assertV209ExchangeDirectory(directory: string): void {
+  if (directory === "" || !directory.startsWith("/") || directory.includes("\0"))
+    fail("V209_CHROME_EVIDENCE_DIRECTORY_INVALID");
+  let stat: ReturnType<typeof lstatSync>;
+  try {
+    stat = lstatSync(directory);
+  } catch {
+    fail("V209_CHROME_EVIDENCE_DIRECTORY_UNAVAILABLE");
+  }
+  if (!stat.isDirectory() || (stat.mode & 0o7777) !== 0o700)
+    fail("V209_CHROME_EVIDENCE_DIRECTORY_MODE_INVALID");
+}
+
+function assertV209PrivateFile(path: string, code: string): void {
+  let stat: ReturnType<typeof lstatSync>;
+  try {
+    stat = lstatSync(path);
+  } catch {
+    fail(code);
+  }
+  if (!stat.isFile() || (stat.mode & 0o7777) !== 0o600) fail(code);
+}
+
+function readV209JsonFile(path: string): Record<string, unknown> {
+  let bytes: Buffer;
+  try {
+    bytes = readFileSync(path);
+  } catch {
+    fail("V209_CHROME_RECEIPT_READ_FAILED");
+  }
+  if (bytes.length === 0 || bytes.length > V209_CHROME_MAX_RECEIPT_BYTES)
+    fail("V209_CHROME_RECEIPT_SIZE_INVALID");
+  let value: unknown;
+  try {
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail("V209_CHROME_RECEIPT_JSON_INVALID");
+  }
+  const parsed = object(value);
+  if (parsed === null) fail("V209_CHROME_RECEIPT_JSON_INVALID");
+  return parsed;
+}
+
+function validateV209TerminalOutputProof(
+  value: unknown,
+  expected: V213V209PostTerminalEvidenceRequest,
+  now: Date,
+): V213V209TerminalOutputProof {
+  const proof = object(value);
+  const expectedKeys =
+    "accountId,finalOutputReceiptSha256,finalOutputSha256,generationRequestId,readbackVerified,schemaVersion,terminal,terminalAt,workflowId,workspaceId";
+  const terminalAt = typeof proof?.terminalAt === "string" ? Date.parse(proof.terminalAt) : NaN;
+  const deadlineAt = Date.parse(expected.deadlineAt);
+  if (
+    proof === null ||
+    Object.keys(proof).sort().join(",") !== expectedKeys ||
+    proof.schemaVersion !== V209_TERMINAL_OUTPUT_SCHEMA ||
+    proof.workflowId !== expected.workflowId ||
+    proof.accountId !== expected.accountId ||
+    proof.workspaceId !== expected.workspaceId ||
+    proof.generationRequestId !== expected.generationRequestId ||
+    proof.terminal !== true ||
+    proof.readbackVerified !== true ||
+    !SHA256.test(String(proof.finalOutputSha256)) ||
+    !SHA256.test(String(proof.finalOutputReceiptSha256)) ||
+    !Number.isFinite(terminalAt) ||
+    !Number.isFinite(deadlineAt) ||
+    terminalAt > now.getTime() ||
+    terminalAt > deadlineAt
+  )
+    fail("V209_TERMINAL_OUTPUT_PROOF_INVALID");
+  return proof as unknown as V213V209TerminalOutputProof;
+}
+
+/**
+ * Read-only production proof adapter. It follows the already-created deterministic Workflow and
+ * asks the reconciler role for the exact terminal/output projection. No dispatch-capable method
+ * is reachable from this closure. The projection is intentionally strict: COMPLETE/SUCCEEDED,
+ * FINAL_OUTPUT_DURABLE with both final hashes, SETTLED pair state, exactly two barriers and no
+ * active provider lease are all required before the Chrome request is emitted.
+ */
+export function createV213V209ProductionTerminalOutputResolver(input: {
+  readonly workflow: HostedWorkflowBinding;
+  readonly database: TransactionalSqlExecutor;
+  readonly now: () => Date;
+  readonly sleep: (milliseconds: number) => Promise<void>;
+  readonly pollIntervalMs?: number;
+}): V213V209PostTerminalEvidenceResolver {
+  type AbortOptions = { readonly signal?: AbortSignal };
+  type WorkflowHandle = Awaited<ReturnType<HostedWorkflowBinding["get"]>>;
+  type SqlTransaction = {
+    query<Row extends Record<string, unknown>>(
+      sql: string,
+      parameters?: readonly unknown[],
+      options?: AbortOptions,
+    ): Promise<{ readonly rows: readonly Row[] }>;
+  };
+
+  /**
+   * Every read/wait in this resolver shares the same absolute deadline.  The optional signal is
+   * passed through to bindings which support it; the race remains necessary because the narrow
+   * hosted/SQL interfaces cannot require cancellation from every adapter.  Once the race expires,
+   * the caller never observes a late result and the controller aborts any signal-aware operation.
+   */
+  const awaitWithinDeadline = async <Value>(options: {
+    readonly deadline: number;
+    readonly parentSignal?: AbortSignal;
+    readonly operation: (signal: AbortSignal) => Promise<Value>;
+  }): Promise<Value> => {
+    const remaining = options.deadline - input.now().getTime();
+    if (remaining <= 0) fail("V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED");
+    const controller = new AbortController();
+    const abortFromParent = () => controller.abort();
+    if (options.parentSignal) {
+      if (options.parentSignal.aborted) controller.abort();
+      else options.parentSignal.addEventListener("abort", abortFromParent, { once: true });
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => {
+          controller.abort();
+          reject(new V213FullLiveBridgeError("V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED"));
+        },
+        Math.min(remaining, 2_147_483_647),
+      );
+    });
+    try {
+      const result = await Promise.race([options.operation(controller.signal), timeout]);
+      if (input.now().getTime() >= options.deadline) fail("V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED");
+      return result;
+    } catch (error) {
+      if (input.now().getTime() >= options.deadline) fail("V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED");
+      throw error;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      controller.abort();
+      options.parentSignal?.removeEventListener("abort", abortFromParent);
+    }
+  };
+
+  return async (request) => {
+    if (
+      request.workflowId !== `hosted-pair-${request.generationRequestId}` ||
+      !Number.isFinite(Date.parse(request.deadlineAt))
+    )
+      fail("V209_TERMINAL_OUTPUT_PROOF_INVALID");
+    const interval = input.pollIntervalMs ?? V209_CHROME_POLL_INTERVAL_MS;
+    if (!Number.isInteger(interval) || interval < 100 || interval > 10_000)
+      fail("V209_CHROME_RECEIPT_POLL_INVALID");
+    const deadline = Date.parse(request.deadlineAt);
+    type SignalWorkflow = (id: string, options?: AbortOptions) => Promise<WorkflowHandle>;
+    const getWorkflow = input.workflow.get as unknown as SignalWorkflow;
+    const existing = await awaitWithinDeadline({
+      deadline,
+      operation: (signal) => getWorkflow.call(input.workflow, request.workflowId, { signal }),
+    });
+    const status = existing.status as unknown as (options?: AbortOptions) => Promise<unknown>;
+    const transaction = input.database.transaction as unknown as (
+      work: (transaction: SqlTransaction) => Promise<unknown>,
+      options?: AbortOptions,
+    ) => Promise<unknown>;
+    const sleep = input.sleep as unknown as (
+      milliseconds: number,
+      options?: AbortOptions,
+    ) => Promise<void>;
+    while (input.now().getTime() < deadline) {
+      await awaitWithinDeadline({
+        deadline,
+        operation: (signal) => status.call(existing, { signal }),
+      });
+      const proof = await awaitWithinDeadline({
+        deadline,
+        operation: (signal) =>
+          transaction.call(
+            input.database,
+            async (transactionConnection) => {
+              const query = transactionConnection.query;
+              await awaitWithinDeadline({
+                deadline,
+                parentSignal: signal,
+                operation: (querySignal) =>
+                  query.call(
+                    transactionConnection,
+                    "SELECT set_config($1,$2,true)",
+                    ["videoforge.account_id", request.accountId],
+                    { signal: querySignal },
+                  ),
+              });
+              const result = await awaitWithinDeadline({
+                deadline,
+                parentSignal: signal,
+                operation: (querySignal) =>
+                  query.call(
+                    transactionConnection,
+                    `SELECT public.videoforge_load_v209_terminal_output_projection(
+                       $1::uuid,$2::uuid,$3::uuid,$4::text
+                     ) AS value`,
+                    [
+                      request.accountId,
+                      request.workspaceId,
+                      request.generationRequestId,
+                      request.workflowId,
+                    ],
+                    { signal: querySignal },
+                  ),
+              });
+              const rows = (result as { readonly rows: readonly { value: unknown }[] }).rows;
+              return rows.length === 1 ? rows[0]?.value : null;
+            },
+            { signal },
+          ),
+      });
+      if (proof !== null && proof !== undefined)
+        return validateV209TerminalOutputProof(proof, request, input.now());
+      const remaining = deadline - input.now().getTime();
+      if (remaining <= 0) break;
+      await awaitWithinDeadline({
+        deadline,
+        operation: (signal) => sleep.call(input, Math.min(interval, remaining), { signal }),
+      });
+    }
+    fail("V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED");
+  };
+}
+
+function validateV209ChromeReceipt(
+  receipt: Readonly<Record<string, unknown>>,
+  request: Readonly<Record<string, unknown>>,
+  signingKey: Uint8Array,
+  now: Date,
+): V213V209PostTerminalEvidence {
+  const document = object(receipt.document);
+  const expectedReceiptKeys =
+    "artifactSha256,document,keyId,kind,requestSha256,schemaVersion,signatureHex";
+  const expectedDocumentKeys =
+    "accountId,browser,downloadAccepted,durationSeconds,finalOutputReceiptSha256,finalOutputSha256,generationRequestId,observedAt,playbackAccepted,schemaVersion,terminalAt,workflowId,workspaceId";
+  const terminalAt = typeof request.terminalAt === "string" ? Date.parse(request.terminalAt) : NaN;
+  const observedAt =
+    typeof document?.observedAt === "string" ? Date.parse(document.observedAt) : NaN;
+  const artifactSha256 = String(receipt.artifactSha256);
+  const documentHash = document === null ? "" : sha256(document as JsonValue);
+  const expectedSignature = createHmac("sha256", Buffer.from(signingKey))
+    .update(`CHROME\n${artifactSha256}\n${documentHash}`, "utf8")
+    .digest("hex");
+  if (
+    Object.keys(receipt).sort().join(",") !== expectedReceiptKeys ||
+    receipt.schemaVersion !== V209_CHROME_RECEIPT_SCHEMA ||
+    receipt.kind !== "CHROME" ||
+    receipt.requestSha256 !== request.requestSha256 ||
+    !SHA256.test(artifactSha256) ||
+    document === null ||
+    Object.keys(document).sort().join(",") !== expectedDocumentKeys ||
+    document.schemaVersion !== V209_CHROME_EVIDENCE_SCHEMA ||
+    document.accountId !== request.accountId ||
+    document.workspaceId !== request.workspaceId ||
+    document.generationRequestId !== request.generationRequestId ||
+    document.workflowId !== request.workflowId ||
+    document.finalOutputSha256 !== request.finalOutputSha256 ||
+    document.finalOutputReceiptSha256 !== request.finalOutputReceiptSha256 ||
+    document.terminalAt !== request.terminalAt ||
+    document.browser !== "REAL_CHROME" ||
+    document.playbackAccepted !== true ||
+    document.downloadAccepted !== true ||
+    typeof document.durationSeconds !== "number" ||
+    !Number.isFinite(document.durationSeconds) ||
+    document.durationSeconds < 30 ||
+    document.durationSeconds > 60 ||
+    !Number.isFinite(terminalAt) ||
+    !Number.isFinite(observedAt) ||
+    observedAt < terminalAt ||
+    observedAt > now.getTime() ||
+    receipt.keyId !== v213EvidenceKeyId(signingKey) ||
+    !/^[0-9a-f]{64}$/u.test(String(receipt.signatureHex)) ||
+    receipt.signatureHex !== expectedSignature ||
+    artifactSha256 !== documentHash
+  )
+    fail("V209_CHROME_RECEIPT_INVALID");
+  return Object.freeze({
+    chromeEvidenceSha256: artifactSha256,
+    finalOutputSha256: String(request.finalOutputSha256),
+    finalOutputReceiptSha256: String(request.finalOutputReceiptSha256),
+    terminalAt: String(request.terminalAt),
+    requestSha256: String(request.requestSha256),
+    requestPath: String(request.requestPath),
+    receiptPath: String(request.receiptPath),
+  });
+}
+
+/**
+ * V2-09's protected temporal handshake. The one-shot pair schedule completes first; only its
+ * terminal/output proof can create the nonsecret request. An operator helper then writes a signed
+ * receipt into the exact mode-0700 exchange directory. Missing, stale, malformed, unsigned, or
+ * scope/output-mismatched receipts fail closed and never invoke scheduling again.
+ */
+export async function resolveV213V209EvidenceAfterScheduling(input: {
+  readonly schedule: (options?: {
+    readonly signal?: AbortSignal;
+  }) => Promise<{ readonly id: string }>;
+  readonly resolver?: V213V209PostTerminalEvidenceResolver;
+  readonly request: Omit<V213V209PostTerminalEvidenceRequest, "workflowId">;
+  readonly evidenceSigningKey?: Uint8Array;
+  /** Provider-free test seam; production resolves this from VIDEOFORGE_V209_CHROME_EVIDENCE_DIR. */
+  readonly exchangeDirectory?: string;
+  readonly now?: () => Date;
+  readonly sleep?: (milliseconds: number) => Promise<void>;
+  readonly pollIntervalMs?: number;
+  /** Test seam for an operator helper. Production may leave this unset and use the shared dir. */
+  readonly onRequestWritten?: (input: {
+    readonly requestPath: string;
+    readonly receiptPath: string;
+    readonly request: Readonly<Record<string, unknown>>;
+    readonly signal?: AbortSignal;
+  }) => void | Promise<void>;
+}): Promise<{
+  readonly scheduled: { readonly id: string };
+  readonly evidence: V213V209PostTerminalEvidence;
+}> {
+  const now = input.now ?? (() => new Date());
+  const deadline = Date.parse(input.request.deadlineAt);
+  if (!Number.isFinite(deadline)) fail("V209_TERMINAL_OUTPUT_PROOF_INVALID");
+  type AbortOptions = { readonly signal?: AbortSignal };
+  const awaitWithinDeadline = async <Value>(options: {
+    readonly operation: (signal: AbortSignal) => Promise<Value>;
+  }): Promise<Value> => {
+    const remaining = deadline - now().getTime();
+    if (remaining <= 0) fail("V209_CHROME_RECEIPT_DEADLINE_EXCEEDED");
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => {
+          controller.abort();
+          reject(new V213FullLiveBridgeError("V209_CHROME_RECEIPT_DEADLINE_EXCEEDED"));
+        },
+        Math.min(remaining, 2_147_483_647),
+      );
+    });
+    try {
+      const result = await Promise.race([options.operation(controller.signal), timeout]);
+      if (now().getTime() >= deadline) fail("V209_CHROME_RECEIPT_DEADLINE_EXCEEDED");
+      return result;
+    } catch (error) {
+      if (now().getTime() >= deadline) fail("V209_CHROME_RECEIPT_DEADLINE_EXCEEDED");
+      throw error;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      controller.abort();
+    }
+  };
+  const schedule = input.schedule as unknown as (
+    options?: AbortOptions,
+  ) => Promise<{ readonly id: string }>;
+  const scheduled = await awaitWithinDeadline({
+    operation: (signal) => schedule.call(input, { signal }),
+  });
+  if (typeof scheduled?.id !== "string" || scheduled.id === "")
+    fail("V209_SCHEDULE_RESULT_INVALID");
+  if (!input.resolver) fail("V209_POST_TERMINAL_EVIDENCE_RESOLVER_UNAVAILABLE");
+  const evidenceSigningKey = input.evidenceSigningKey;
+  if (!evidenceSigningKey || evidenceSigningKey.byteLength < 32)
+    fail("V209_CHROME_EVIDENCE_SIGNING_KEY_UNAVAILABLE");
+  const requestInput = Object.freeze({ ...input.request, workflowId: scheduled.id });
+  const resolver = input.resolver as unknown as (
+    request: V213V209PostTerminalEvidenceRequest,
+    options?: AbortOptions,
+  ) => Promise<V213V209TerminalOutputProof>;
+  const proof = validateV209TerminalOutputProof(
+    await awaitWithinDeadline({
+      operation: (signal) => resolver.call(input, requestInput, { signal }),
+    }),
+    requestInput,
+    now(),
+  );
+  const directory = input.exchangeDirectory ?? process.env[V213_V209_CHROME_EVIDENCE_DIR_ENV];
+  if (!directory) fail("V209_CHROME_EVIDENCE_DIRECTORY_UNAVAILABLE");
+  assertV209ExchangeDirectory(directory);
+  const stem = scheduled.id.replace(/[^A-Za-z0-9._-]/gu, "_");
+  const requestPath = join(directory, `${stem}.request.json`);
+  const receiptPath = join(directory, `${stem}.receipt.json`);
+  if (existsSync(requestPath) || existsSync(receiptPath)) fail("V209_CHROME_EXCHANGE_REPLAY");
+  const unsignedRequest = Object.freeze({
+    schemaVersion: V209_CHROME_REQUEST_SCHEMA,
+    workflowId: scheduled.id,
+    accountId: requestInput.accountId,
+    workspaceId: requestInput.workspaceId,
+    generationRequestId: requestInput.generationRequestId,
+    finalOutputSha256: proof.finalOutputSha256,
+    finalOutputReceiptSha256: proof.finalOutputReceiptSha256,
+    terminalAt: proof.terminalAt,
+    deadlineAt: requestInput.deadlineAt,
+  });
+  const requestDocument = Object.freeze({
+    ...unsignedRequest,
+    requestSha256: sha256(unsignedRequest as JsonValue),
+  });
+  try {
+    writeFileSync(requestPath, canonicalizeJson(requestDocument as JsonValue), {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    chmodSync(requestPath, 0o600);
+  } catch {
+    fail("V209_CHROME_REQUEST_WRITE_FAILED");
+  }
+  assertV209PrivateFile(requestPath, "V209_CHROME_REQUEST_MODE_INVALID");
+  const request = Object.freeze({
+    ...requestDocument,
+    requestPath,
+    receiptPath,
+  });
+  if (now().getTime() >= deadline) fail("V209_CHROME_RECEIPT_DEADLINE_EXCEEDED");
+  if (input.onRequestWritten) {
+    const onRequestWritten = input.onRequestWritten as unknown as (value: {
+      readonly requestPath: string;
+      readonly receiptPath: string;
+      readonly request: Readonly<Record<string, unknown>>;
+      readonly signal?: AbortSignal;
+    }) => void | Promise<void>;
+    await awaitWithinDeadline({
+      operation: async (signal) => {
+        await onRequestWritten.call(input, { requestPath, receiptPath, request, signal });
+      },
+    });
+  }
+  const interval = input.pollIntervalMs ?? V209_CHROME_POLL_INTERVAL_MS;
+  if (!Number.isInteger(interval) || interval < 100 || interval > 10_000)
+    fail("V209_CHROME_RECEIPT_POLL_INVALID");
+  const sleep = (input.sleep ??
+    ((milliseconds: number) =>
+      new Promise<void>((resolvePromise) =>
+        setTimeout(resolvePromise, milliseconds),
+      ))) as unknown as (milliseconds: number, options?: AbortOptions) => Promise<void>;
+  while (now().getTime() < deadline) {
+    if (existsSync(receiptPath)) {
+      assertV209PrivateFile(receiptPath, "V209_CHROME_RECEIPT_MODE_INVALID");
+      const readAt = now();
+      if (readAt.getTime() >= deadline) fail("V209_CHROME_RECEIPT_DEADLINE_EXCEEDED");
+      const evidence = validateV209ChromeReceipt(
+        readV209JsonFile(receiptPath),
+        request,
+        evidenceSigningKey,
+        readAt,
+      );
+      if (now().getTime() >= deadline) fail("V209_CHROME_RECEIPT_DEADLINE_EXCEEDED");
+      return Object.freeze({
+        scheduled,
+        evidence,
+      });
+    }
+    const remaining = deadline - now().getTime();
+    if (remaining <= 0) break;
+    await awaitWithinDeadline({
+      operation: (signal) => sleep.call(input, Math.min(interval, remaining), { signal }),
+    });
+  }
+  fail("V209_CHROME_RECEIPT_DEADLINE_EXCEEDED");
+}
+
 async function postAcceptance(
   inputs: V213ProtectedInputs,
   production: V213ProductionInput,
   request: V213FullLiveCommandRequest,
   fetchPort: WorkflowFetch,
+  now: () => Date,
   loadDatabaseCall: ReturnType<typeof createV213SqlBridgeCallLoader>,
+  materialize: ReturnType<typeof createV213SqlJitMaterializer>,
+  produceReleaseChrome?: (input: {
+    readonly fullLiveAuthorityId: string;
+    readonly smokeEvidenceSha256: `sha256:${string}`;
+    readonly outerStateSha256: `sha256:${string}`;
+  }) => Promise<{
+    readonly chromeArtifactSha256: `sha256:${string}`;
+  }>,
+  resolveV212Terminal?: V213V212TerminalOutputResolver,
+  produceV212Chrome?: (input: {
+    readonly request: V213V212RealChromeRequest;
+    readonly signal: AbortSignal;
+  }) => Promise<Awaited<ReturnType<typeof produceV213V212RealChromeEvidence>>>,
 ) {
-  const checkpoint =
-    request.command === "v2-10-operator-free-ranga-pilot"
-      ? "V2-10"
-      : request.command === "v2-11-two-concurrent-owned-projects"
-        ? "V2-11"
-        : request.command === "v2-12-long-output"
-          ? "V2-12"
-          : "V2-13";
-  const identity = exactPayload<{
-    accountId: string;
-    workspaceId: string;
-    projectId: string;
-    projectRevisionId: string;
-  }>(production.commandPayload, ["accountId", "workspaceId", "projectId", "projectRevisionId"]);
-  const workflowId = `v213-${checkpoint.toLowerCase()}-${request.commandId}`;
-  const attemptId = `${workflowId}-attempt`;
-  const requestSha256 = sha256({
-    command: request.command,
-    checkpoint,
-    workflowId,
-    attemptId,
-    ...identity,
-    outerStateSha256: production.outerStateSha256,
-  });
-  const document = {
-    schemaVersion: "videoforge.v213-hosted-acceptance-command/v1",
+  if (
+    ![
+      "v2-10-operator-free-ranga-pilot",
+      "v2-11-two-concurrent-owned-projects",
+      "v2-12-long-output",
+      "v2-13-final-two-lane-smoke",
+    ].includes(request.command)
+  )
+    fail("ACCEPTANCE_JIT_OPERATION_INVALID");
+  const materialized = await materialize({
+    fullLiveAuthorityId: production.fullLiveAuthorityId,
+    operationId: request.command as Parameters<typeof materialize>[0]["operationId"],
     commandId: request.commandId,
     stageAuthorityId: request.stageAuthorityId,
-    command: request.command,
-    checkpoint,
-    workflowId,
-    attemptId,
-    ...identity,
-    requestSha256,
     outerStateSha256: production.outerStateSha256,
-  };
+  });
   await loadDatabaseCall({
     ...request,
-    input: { requestSha256, outerStateSha256: production.outerStateSha256 },
-  });
-  const raw = canonicalizeJson(document as JsonValue);
-  const response = await fetchPort(`${inputs.workerOrigin}/api/operator/v2-13/live-acceptance`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${inputs.workerOperatorBearer}`,
-      "content-type": "application/json",
-      "content-length": String(Buffer.byteLength(raw)),
-      "x-videoforge-signature": createHmac("sha256", inputs.workerOperatorBearer)
-        .update(raw)
-        .digest("hex"),
+    input: {
+      requestSha256: materialized.requestSha256,
+      outerStateSha256: production.outerStateSha256,
     },
-    body: raw,
-    signal: AbortSignal.timeout(60_000),
   });
-  if (!response.ok) fail("ACCEPTANCE_OPERATOR_REJECTED");
-  const value = object(await response.json());
+  const execution = object(materialized.executionDocument);
+  if (!execution || typeof execution.workloadDeadlineAt !== "string")
+    fail("ACCEPTANCE_WORKLOAD_DEADLINE_INVALID");
+  const workloadDeadlineAt = execution.workloadDeadlineAt;
+  const remainingWorkloadMs =
+    typeof workloadDeadlineAt === "string" ? Date.parse(workloadDeadlineAt) - now().getTime() : 0;
   if (
-    typeof value?.evidenceSha256 !== "string" ||
-    !SHA256.test(value.evidenceSha256) ||
-    !object(value.summary) ||
-    Object.keys(value).sort().join(",") !== "evidenceSha256,summary"
+    !Number.isFinite(remainingWorkloadMs) ||
+    remainingWorkloadMs <= 0 ||
+    remainingWorkloadMs > 24 * 60 * 60 * 1_000
   )
-    fail("ACCEPTANCE_OPERATOR_RESULT_INVALID");
+    fail("ACCEPTANCE_WORKLOAD_DEADLINE_INVALID");
+  const workflowId = execution.workflowId;
+  if (typeof workflowId !== "string" || !COMMAND_ID.test(workflowId))
+    fail("ACCEPTANCE_WORKFLOW_ID_INVALID");
+  const raw = canonicalizeJson(materialized.requestDocument as JsonValue);
+  const startLiveAcceptance = async (signal: AbortSignal) => {
+    let response: Response;
+    try {
+      response = await fetchPort(`${inputs.workerOrigin}/api/operator/v2-13/live-acceptance`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${inputs.workerOperatorBearer}`,
+          "content-type": "application/json",
+          "content-length": String(Buffer.byteLength(raw)),
+          "x-videoforge-signature": createHmac("sha256", inputs.workerOperatorBearer)
+            .update(raw)
+            .digest("hex"),
+        },
+        body: raw,
+        signal,
+      });
+    } catch {
+      fail("ACCEPTANCE_OPERATOR_UNAVAILABLE");
+    }
+    if (!response.ok) fail("ACCEPTANCE_OPERATOR_REJECTED");
+    const value = object(await response.json());
+    const summary = object(value?.summary);
+    if (
+      typeof value?.evidenceSha256 !== "string" ||
+      !SHA256.test(value.evidenceSha256) ||
+      !summary ||
+      Object.keys(value).sort().join(",") !== "evidenceSha256,summary"
+    )
+      fail("ACCEPTANCE_OPERATOR_RESULT_INVALID");
+    return {
+      evidenceSha256: value.evidenceSha256 as `sha256:${string}`,
+      summary,
+    };
+  };
+  if (request.command === "v2-12-long-output") {
+    if (!resolveV212Terminal || !produceV212Chrome) fail("V212_REAL_CHROME_PRODUCER_UNAVAILABLE");
+    const resolveTerminal = resolveV212Terminal;
+    const produceChrome = produceV212Chrome;
+    const coordinated = await runV213V212LiveAcceptanceWithChrome({
+      materialized,
+      fullLiveAuthorityId: production.fullLiveAuthorityId,
+      workflowId,
+      workloadDeadlineAt,
+      productionOrigin: inputs.workerOrigin,
+      now,
+      resolveTerminal,
+      startLiveAcceptance,
+      produceChrome: ({ request: chromeRequest, signal }) =>
+        produceChrome({ request: chromeRequest, signal }),
+    });
+    return {
+      evidenceSha256: coordinated.acceptance.evidenceSha256,
+      summary: {
+        ...coordinated.acceptance.summary,
+        v212RealChrome: {
+          terminalAt: coordinated.terminal.terminalAt,
+          outputSha256: coordinated.terminal.outputSha256,
+          outputBytes: coordinated.terminal.outputBytes,
+          evidenceSha256: coordinated.chrome.ingestion.evidenceSha256,
+        },
+      } as JsonValue,
+    };
+  }
+  const { evidenceSha256, summary } = await startLiveAcceptance(
+    AbortSignal.timeout(remainingWorkloadMs),
+  );
+  if (request.command === "v2-13-final-two-lane-smoke") {
+    if (
+      !produceReleaseChrome ||
+      summary.schemaVersion !== "videoforge.v213-fresh-two-lane-smoke-result/v1" ||
+      summary.smokeOnly !== true ||
+      summary.releaseCertified !== false ||
+      summary.twoLaneSmoke !== true ||
+      summary.signedSmokeEvidenceSha256 !== evidenceSha256
+    )
+      fail("V213_SMOKE_RESULT_INVALID");
+    const chrome = await produceReleaseChrome({
+      fullLiveAuthorityId: production.fullLiveAuthorityId,
+      smokeEvidenceSha256: evidenceSha256,
+      outerStateSha256: production.outerStateSha256,
+    });
+    return {
+      evidenceSha256,
+      summary: {
+        ...summary,
+        releaseChromeArtifactSha256: chrome.chromeArtifactSha256,
+      } as JsonValue,
+    };
+  }
   return {
-    evidenceSha256: value.evidenceSha256 as `sha256:${string}`,
-    summary: value.summary as JsonValue,
+    evidenceSha256,
+    summary: summary as JsonValue,
   };
 }
 
@@ -1707,9 +2828,26 @@ export async function createV213CleanupRuntime(
       const inventory = await transport.inventory();
       const expected = descriptor.retainedLanes.map((lane) => lane.volumeIdSha256).sort();
       const actual = inventory.volumes.map((volume) => volume.idSha256).sort();
-      if (canonicalizeJson(actual as never) !== canonicalizeJson(expected as never))
+      const exactVolumes = descriptor.retainedLanes.every((lane) => {
+        const volume = inventory.volumes.find(
+          (candidate) => candidate.idSha256 === lane.volumeIdSha256,
+        );
+        return (
+          volume?.sizeGb === 50 &&
+          volume.region === "EU-RO-1" &&
+          volume.manifestSha256 === lane.volumeManifestSha256
+        );
+      });
+      if (
+        inventory.volumes.length !== 2 ||
+        !exactVolumes ||
+        canonicalizeJson(actual as never) !== canonicalizeJson(expected as never)
+      )
         fail("CLEANUP_RETAINED_VOLUME_DRIFT");
-      return evidence({ ...inventory, onlyApprovedRetainedVolumes: true } as never);
+      return evidence({
+        ...inventory,
+        onlyApprovedRetainedVolumes: true,
+      } as never);
     },
   });
   return Object.freeze({
@@ -1768,7 +2906,10 @@ export async function createV213EarlyCleanupRuntime(
             evidence({
               ...common,
               restorationPerformed: false,
-              bothEndpointsMaxWorkersOne: true,
+              productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+              productionResourcesAbsent: true,
+              bothEndpointsMaxWorkersOne: false,
+              retainedProductionEndpoints: 0,
             }),
         ];
       if (command === "prove-zero-workers")
@@ -2149,55 +3290,208 @@ export async function createV213ProductionRuntime(
       return evidence({ result, publication } as never);
     },
   };
-  const v209: V213FullLiveCommandHandler = async () => {
+  const mageEndpointId = secrets.mageEndpointId;
+  const soulxEndpointId = secrets.soulxEndpointId;
+  if (!mageEndpointId || !soulxEndpointId) fail("PRODUCTION_ENDPOINT_BINDINGS_REQUIRED");
+  const mageEndpointIdSha256 = `sha256:${createHash("sha256")
+    .update(mageEndpointId, "utf8")
+    .digest("hex")}` as const;
+  const soulxEndpointIdSha256 = `sha256:${createHash("sha256")
+    .update(soulxEndpointId, "utf8")
+    .digest("hex")}` as const;
+  const jitDependencies = createV213SqlJitDependencies({
+    database: databases.operator,
+    evidenceSigningKey: acceptanceEvidenceKey,
+  });
+  const materializeJit = createV213SqlJitMaterializer({
+    database: databases.operator,
+    factory: jitDependencies,
+    laneTransports: {
+      mage_image: new RunPodServerlessTransport(
+        new RunPodServerlessJobClient({
+          apiKey: inputs.runpodApiKey,
+          endpointId: mageEndpointId,
+          guard: new RunPodDrainGuard(),
+        }),
+        mageEndpointIdSha256,
+      ),
+      soulx_avatar: new RunPodServerlessTransport(
+        new RunPodServerlessJobClient({
+          apiKey: inputs.runpodApiKey,
+          endpointId: soulxEndpointId,
+          guard: new RunPodDrainGuard(),
+        }),
+        soulxEndpointIdSha256,
+      ),
+    },
+    loadResolvedRenderManifest:
+      ports.loadResolvedRenderManifest ??
+      ((reference) =>
+        loadV213ResolvedRenderManifest({
+          workerOrigin: inputs.workerOrigin,
+          workerOperatorBearer: inputs.workerOperatorBearer,
+          reference,
+          fetch: ports.fetch,
+        })),
+    readV209Observation: () =>
+      readV209ShortProviderObservation(
+        inputs.runpodApiKey,
+        async () => {
+          const value = await oneDatabaseValue(
+            databases.operator,
+            "SELECT to_char(transaction_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') value",
+            [],
+            "JIT_V209_DATABASE_TIME_UNAVAILABLE",
+          );
+          return new Date(String(value)).toISOString();
+        },
+        ports.fetch,
+      ),
+    now: ports.now,
+  });
+  const materializeReleaseFacts = createV213SqlReleaseFactMaterializer(databases.operator);
+  const resolveV212TerminalOutput =
+    ports.resolveV212PostTerminalOutput ??
+    createV213V212ProductionTerminalOutputResolver({
+      database: databases.reconciler,
+      now: ports.now,
+      sleep: ports.sleep,
+    });
+  let v212ChromeProducer: NonNullable<V213ProductionFactoryPorts["produceV212RealChrome"]>;
+  if (ports.produceV212RealChrome) {
+    v212ChromeProducer = ports.produceV212RealChrome;
+  } else {
+    let journeySpawner: ReturnType<typeof createV213V212RealChromeJourneySpawner> | undefined;
+    v212ChromeProducer = async ({ request: chromeRequest, signal }) => {
+      if (!inputs.chromeAuthStatePath) fail("V213_V212_CHROME_AUTH_STATE_PATH_UNAVAILABLE");
+      journeySpawner ??= createV213V212RealChromeJourneySpawner({
+        productionOrigin: inputs.workerOrigin,
+        authStatePath: inputs.chromeAuthStatePath,
+        evidenceSigningKey: acceptanceEvidenceKey,
+        sourcePins: V213_V212_CHROME_OPERATOR_SOURCE_PINS,
+      });
+      return produceV213V212RealChromeEvidence({
+        request: chromeRequest,
+        productionOrigin: inputs.workerOrigin,
+        workerOrigin: inputs.workerOrigin,
+        authStatePath: inputs.chromeAuthStatePath,
+        workerOperatorBearer: inputs.workerOperatorBearer,
+        childSigningKeyFd: 3,
+        evidenceSigningKey: acceptanceEvidenceKey,
+        spawnJourney: journeySpawner,
+        now: ports.now,
+        signal,
+      });
+    };
+  }
+  let releaseChromeProducer: ReturnType<typeof createV213SqlReleaseChromeProducer> | undefined;
+  const produceReleaseChrome: NonNullable<Parameters<typeof postAcceptance>[7]> = async (
+    request,
+  ) => {
+    if (!releaseChromeProducer) {
+      const releaseChromeJourney =
+        ports.spawnReleaseChromeJourney ??
+        (() => {
+          if (!inputs.chromeAuthStatePath) fail("V213_RELEASE_CHROME_AUTH_STATE_PATH_UNAVAILABLE");
+          return createV213ReleaseChromeJourneySpawner({
+            productionOrigin: inputs.workerOrigin,
+            authStatePath: inputs.chromeAuthStatePath,
+            evidenceSigningKey: acceptanceEvidenceKey,
+            sourcePins: V213_V209_CHROME_OPERATOR_SOURCE_PINS,
+          });
+        })();
+      releaseChromeProducer = createV213SqlReleaseChromeProducer({
+        database: databases.operator,
+        evidenceSigningKey: acceptanceEvidenceKey,
+        childSigningKeyFd: 3,
+        spawnJourney: releaseChromeJourney,
+        now: ports.now,
+      });
+    }
+    return releaseChromeProducer(request);
+  };
+  const v209: V213FullLiveCommandHandler = async (request) => {
+    const materialized = await materializeJit({
+      fullLiveAuthorityId: production.fullLiveAuthorityId,
+      operationId: "v2-09-short-hosted-project",
+      commandId: request.commandId,
+      stageAuthorityId: request.stageAuthorityId,
+      outerStateSha256: production.outerStateSha256,
+    });
     const call = exactPayload<{
       pairInput: Parameters<typeof commitAndScheduleV209ShortPair>[3];
       admission: Parameters<typeof commitAndScheduleV209ShortPair>[4];
       laneItemIds: Parameters<typeof commitAndScheduleV209ShortPair>[5];
-      chromeEvidenceSha256: string;
-    }>(payload, ["admission", "chromeEvidenceSha256", "laneItemIds", "pairInput"]);
-    if (!SHA256.test(call.chromeEvidenceSha256)) fail("V209_CHROME_EVIDENCE_REFERENCE_INVALID");
+    }>(materialized.callDocument, ["admission", "laneItemIds", "pairInput"]);
     const workflow = createV213WorkflowHttpBinding({
       origin: inputs.workerOrigin,
       token: inputs.workerOperatorBearer,
       outerStateSha256: production.outerStateSha256,
       fetch: ports.fetch,
     });
-    const mageEndpointId = secrets.mageEndpointId;
-    const soulxEndpointId = secrets.soulxEndpointId;
-    if (!mageEndpointId || !soulxEndpointId) fail("PRODUCTION_ENDPOINT_BINDINGS_REQUIRED");
-    const mageEndpointIdSha256 = `sha256:${createHash("sha256")
-      .update(mageEndpointId, "utf8")
-      .digest("hex")}`;
-    const soulxEndpointIdSha256 = `sha256:${createHash("sha256")
-      .update(soulxEndpointId, "utf8")
-      .digest("hex")}`;
-    const scheduled = await commitAndScheduleV209ShortPair(
-      {
-        VIDEOFORGE_GPU_TRANSPORT: "QUALIFIED_EXACT",
-        DATABASE_URL: inputs.runtimeDatabaseUrl,
-        VIDEOFORGE_RECONCILER_DATABASE_URL: inputs.reconcilerDatabaseUrl,
-        RUNPOD_API_KEY: inputs.runpodApiKey,
-        RUNPOD_API_BASE_URL: "https://api.runpod.ai/v2",
-        VIDEOFORGE_DISPATCH_TOKEN_KEY: secrets.pairDispatchTokenKeyBase64,
-        VIDEOFORGE_DISPATCH_TOKEN_KEY_ID: secrets.pairDispatchTokenKeyId,
-        VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: secrets.pairEnvelopeSigningKeyHex,
-        VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: secrets.pairEnvelopeSigningKeyId,
-        VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: secrets.pairProviderProofKeyHex,
-        VIDEOFORGE_PROVIDER_PROOF_KEY_ID: secrets.pairProviderProofKeyId,
-        VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: inputs.workerOperatorBearer,
-        VIDEOFORGE_MAGE_ENDPOINT_ID: mageEndpointId,
-        VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256: mageEndpointIdSha256,
-        VIDEOFORGE_SOULX_ENDPOINT_ID: soulxEndpointId,
-        VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256: soulxEndpointIdSha256,
-        HOSTED_PAIR_WORKFLOW: workflow,
-      } as never,
-      databases.runtime,
-      databases.reconciler,
-      call.pairInput,
-      call.admission,
-      call.laneItemIds,
-    );
+    const postTerminalResolver =
+      ports.resolveV209PostTerminalEvidence ??
+      createV213V209ProductionTerminalOutputResolver({
+        workflow,
+        database: databases.reconciler,
+        now: ports.now,
+        sleep: ports.sleep,
+      });
+    const scheduledWithEvidence = await resolveV213V209EvidenceAfterScheduling({
+      schedule: () =>
+        commitAndScheduleV209ShortPair(
+          {
+            VIDEOFORGE_GPU_TRANSPORT: "QUALIFIED_EXACT",
+            DATABASE_URL: inputs.runtimeDatabaseUrl,
+            VIDEOFORGE_RECONCILER_DATABASE_URL: inputs.reconcilerDatabaseUrl,
+            RUNPOD_API_KEY: inputs.runpodApiKey,
+            RUNPOD_API_BASE_URL: "https://api.runpod.ai/v2",
+            VIDEOFORGE_DISPATCH_TOKEN_KEY: secrets.pairDispatchTokenKeyBase64,
+            VIDEOFORGE_DISPATCH_TOKEN_KEY_ID: secrets.pairDispatchTokenKeyId,
+            VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: secrets.pairEnvelopeSigningKeyHex,
+            VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: secrets.pairEnvelopeSigningKeyId,
+            VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: secrets.pairProviderProofKeyHex,
+            VIDEOFORGE_PROVIDER_PROOF_KEY_ID: secrets.pairProviderProofKeyId,
+            VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: inputs.workerOperatorBearer,
+            VIDEOFORGE_MAGE_ENDPOINT_ID: mageEndpointId,
+            VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256: mageEndpointIdSha256,
+            VIDEOFORGE_SOULX_ENDPOINT_ID: soulxEndpointId,
+            VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256: soulxEndpointIdSha256,
+            HOSTED_PAIR_WORKFLOW: workflow,
+          } as never,
+          databases.runtime,
+          databases.reconciler,
+          call.pairInput,
+          call.admission,
+          call.laneItemIds,
+        ),
+      resolver: postTerminalResolver,
+      evidenceSigningKey: acceptanceEvidenceKey,
+      now: ports.now,
+      sleep: ports.sleep,
+      request: {
+        accountId: call.pairInput.accountId,
+        workspaceId: call.pairInput.workspaceId,
+        generationRequestId: call.pairInput.generationRequestId,
+        deadlineAt: call.admission.stopAt,
+      },
+      onRequestWritten: async ({ requestPath, signal }) => {
+        const authStatePath = inputs.chromeAuthStatePath;
+        const exchangeDirectory = process.env[V213_V209_CHROME_EVIDENCE_DIR_ENV];
+        if (!authStatePath) fail("V209_CHROME_AUTH_STATE_PATH_UNAVAILABLE");
+        if (!exchangeDirectory) fail("V209_CHROME_EVIDENCE_DIRECTORY_UNAVAILABLE");
+        await (ports.launchV209ChromeOperator ?? spawnV213V209ChromeOperator)({
+          requestPath,
+          exchangeDirectory,
+          productionOrigin: inputs.workerOrigin,
+          authStatePath,
+          evidenceSigningKey: acceptanceEvidenceKey,
+          signal,
+          sourcePins: V213_V209_CHROME_OPERATOR_SOURCE_PINS,
+        });
+      },
+    });
+    const scheduled = scheduledWithEvidence.scheduled;
     const terminal = await awaitV209TerminalAcceptance({
       workflow,
       database: databases.reconciler,
@@ -2207,7 +3501,7 @@ export async function createV213ProductionRuntime(
         generationRequestId: call.pairInput.generationRequestId,
       },
       workflowId: scheduled.id,
-      chromeEvidenceSha256: call.chromeEvidenceSha256,
+      chromeEvidenceSha256: scheduledWithEvidence.evidence.chromeEvidenceSha256,
       deadlineAt: call.admission.stopAt,
       now: () => ports.now().getTime(),
       sleep: ports.sleep,
@@ -2226,7 +3520,12 @@ export async function createV213ProductionRuntime(
           production,
           request,
           ports.fetch,
+          ports.now,
           createV213SqlBridgeCallLoader(databases.operator),
+          materializeJit,
+          produceReleaseChrome,
+          resolveV212TerminalOutput,
+          v212ChromeProducer,
         ),
     ]),
   ) as unknown as Pick<
@@ -2251,10 +3550,58 @@ export async function createV213ProductionRuntime(
       fail("CLEANUP_SCOPE_INVALID");
     return value.stages as Parameters<typeof transport.cleanupAttributableResources>[0];
   };
+  const persistCleanupReceipt = async (operationId: CleanupCommand, summary: JsonValue) => {
+    const document = Object.freeze({
+      schemaVersion: "videoforge.v213-current-run-cleanup-receipt/v1",
+      fullLiveAuthorityId: production.fullLiveAuthorityId,
+      operationId,
+      outerStateSha256: production.outerStateSha256,
+      summary,
+    });
+    const reference = await jitDependencies.evidence.signAndStore("RELEASE", document);
+    const recorded = await oneDatabaseValue(
+      databases.operator,
+      "SELECT public.videoforge_record_v213_operation_receipt($1::jsonb) value",
+      [
+        JSON.stringify({
+          fullLiveAuthorityId: production.fullLiveAuthorityId,
+          operationId,
+          artifactSha256: reference.artifactSha256,
+          document,
+        }),
+      ],
+      "CLEANUP_RECEIPT_PERSIST_FAILED",
+    );
+    if (recorded !== reference.artifactSha256) fail("CLEANUP_RECEIPT_PERSIST_FAILED");
+    const readback = object(
+      await oneDatabaseValue(
+        databases.operator,
+        "SELECT public.videoforge_read_v213_operation_receipt($1::jsonb) value",
+        [
+          JSON.stringify({
+            fullLiveAuthorityId: production.fullLiveAuthorityId,
+            operationId,
+            artifactSha256: reference.artifactSha256,
+          }),
+        ],
+        "CLEANUP_RECEIPT_READBACK_FAILED",
+      ),
+    );
+    if (
+      readback?.artifactSha256 !== reference.artifactSha256 ||
+      readback.operationId !== operationId ||
+      canonicalizeJson(readback.document as JsonValue) !== canonicalizeJson(document as JsonValue)
+    )
+      fail("CLEANUP_RECEIPT_READBACK_FAILED");
+    return Object.freeze({ evidenceSha256: reference.artifactSha256, summary });
+  };
   const cleanup: Record<CleanupCommand, V213FullLiveCommandHandler> = {
     "restore-endpoints-max-one": async () => {
       const result = await transport.cleanupAttributableResources(await loadCleanupScope());
-      return evidence(summarizeV213EndpointRestoration(result));
+      return persistCleanupReceipt(
+        "restore-endpoints-max-one",
+        summarizeV213EndpointRestoration(result),
+      );
     },
     "prove-zero-workers": async () => {
       const reads = [];
@@ -2269,11 +3616,12 @@ export async function createV213ProductionRuntime(
         reads.push(inventory);
         if (index < 2) await ports.sleep(2_000);
       }
-      return evidence({ zeroWorkers: true, reads } as never);
+      return persistCleanupReceipt("prove-zero-workers", { zeroWorkers: true, reads } as never);
     },
     "read-settled-billing": async () => {
       exactPayload<Record<string, never>>(payload, []);
-      return evidence(
+      return persistCleanupReceipt(
+        "read-settled-billing",
         await readStableBillingEvidence({
           read: () => transport.billingAmount(),
           sleep: ports.sleep,
@@ -2290,17 +3638,65 @@ export async function createV213ProductionRuntime(
         .map((lane) => lane.volumeIdSha256)
         .sort();
       const actual = inventory.volumes.map((volume) => volume.idSha256).sort();
-      if (canonicalizeJson(actual as never) !== canonicalizeJson(expected as never))
+      const exactVolumes = [dualLaneInput.mage, dualLaneInput.soulx].every((lane) => {
+        const volume = inventory.volumes.find(
+          (candidate) => candidate.idSha256 === lane.volumeIdSha256,
+        );
+        return (
+          volume?.sizeGb === 50 &&
+          volume.region === "EU-RO-1" &&
+          volume.manifestSha256 === lane.volumeManifestSha256
+        );
+      });
+      if (
+        inventory.volumes.length !== 2 ||
+        !exactVolumes ||
+        canonicalizeJson(actual as never) !== canonicalizeJson(expected as never)
+      )
         fail("CLEANUP_RETAINED_VOLUME_DRIFT");
-      return evidence({ ...inventory, onlyApprovedRetainedVolumes: true } as never);
+      return persistCleanupReceipt("reconcile-exact-resources", {
+        ...inventory,
+        onlyApprovedRetainedVolumes: true,
+      } as never);
     },
   };
-  const handlers = Object.freeze({
+  const sourceHandlers = Object.freeze({
     ...qualification,
     "v2-09-short-hosted-project": v209,
     ...acceptance,
     ...cleanup,
   }) as V213FullLiveCommandHandlers;
+  const releaseFactSourceCommands = new Set<V213FullLiveCommand>([
+    "v2-09-short-hosted-project",
+    "v2-10-operator-free-ranga-pilot",
+    "v2-11-two-concurrent-owned-projects",
+    "v2-12-long-output",
+    "v2-13-final-two-lane-smoke",
+    "restore-endpoints-max-one",
+    "prove-zero-workers",
+    "read-settled-billing",
+    "reconcile-exact-resources",
+  ]);
+  const handlers = Object.freeze(
+    Object.fromEntries(
+      V213_FULL_LIVE_COMMANDS.map((command) => {
+        const source = sourceHandlers[command];
+        return [
+          command,
+          async (request: V213FullLiveCommandRequest) => {
+            const result = await source(request);
+            if (releaseFactSourceCommands.has(command))
+              await materializeReleaseFacts({
+                fullLiveAuthorityId: production.fullLiveAuthorityId,
+                completedOperationId: command,
+                completedEvidenceSha256: result.evidenceSha256,
+              });
+            return result;
+          },
+        ];
+      }),
+    ),
+  ) as V213FullLiveCommandHandlers;
   for (const command of V213_FULL_LIVE_COMMANDS)
     if (typeof handlers[command] !== "function") fail("PRODUCTION_HANDLER_CATALOG_INCOMPLETE");
   const encodedSecrets = [
@@ -2343,6 +3739,175 @@ function noAction() {
     commands: V213_FULL_LIVE_COMMANDS,
     production_gaps: productionGaps,
   });
+}
+
+export async function ingestV213AcceptanceOperatorEvidence(input: {
+  readonly workerOrigin: string;
+  readonly workerOperatorBearer: string;
+  readonly request: V213AcceptanceOperatorEvidenceRequest;
+  readonly fetch?: WorkflowFetch;
+  readonly signal?: AbortSignal;
+}): Promise<V213AcceptanceOperatorEvidenceResult> {
+  const raw = canonicalizeJson(input.request as unknown as JsonValue);
+  let response: Response;
+  try {
+    response = await (input.fetch ?? fetch)(
+      `${input.workerOrigin}${V213_ACCEPTANCE_OPERATOR_EVIDENCE_PATH}`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${input.workerOperatorBearer}`,
+          "content-type": "application/json",
+          "content-length": String(Buffer.byteLength(raw)),
+          "x-videoforge-signature": createHmac("sha256", input.workerOperatorBearer)
+            .update(raw)
+            .digest("hex"),
+        },
+        body: raw,
+        signal: input.signal ?? AbortSignal.timeout(30_000),
+      },
+    );
+  } catch {
+    fail("OPERATOR_EVIDENCE_INGESTION_AMBIGUOUS");
+  }
+  if (response.status !== 201 || response.headers.get("cache-control") !== "no-store")
+    fail("OPERATOR_EVIDENCE_INGESTION_REJECTED");
+  let value: unknown;
+  try {
+    value = await response.json();
+  } catch {
+    fail("OPERATOR_EVIDENCE_RESULT_INVALID");
+  }
+  const result = parseV213AcceptanceOperatorEvidenceResult(value, input.request);
+  if (!result) fail("OPERATOR_EVIDENCE_RESULT_INVALID");
+  return result;
+}
+
+/** Dedicated transport-free child entrypoint. It intentionally constructs only the operator DB
+ * executor and the pure/DB-backed release certifier; no bridge runtime or provider client exists
+ * on this path. */
+export async function runV213ReleaseCertificationCli(
+  argv: readonly string[],
+  options: {
+    readonly environment?: NodeJS.ProcessEnv;
+    readonly readFd?: (value: string | undefined, code: string) => string;
+    readonly write?: (value: string) => void;
+    readonly now?: () => Date;
+    readonly createOperatorDatabase?: (url: string) => TransactionalSqlExecutor;
+    readonly createCertifier?: typeof createV213SqlReleaseCertifier;
+  } = {},
+): Promise<void> {
+  if (
+    argv.length !== 2 ||
+    argv[0] !== "--certify-release" ||
+    argv[1] !== RELEASE_CERTIFICATION_CONFIRMATION
+  )
+    fail("RELEASE_CERTIFICATION_ARGUMENTS_INVALID");
+  const inputs = readV213ReleaseCertificationProtectedInputs(
+    options.environment ?? process.env,
+    options.readFd ?? readProtectedFd,
+  );
+  try {
+    const database = (
+      options.createOperatorDatabase ?? ((url) => createNeonExecutor(createNeonPool(url)))
+    )(inputs.operatorDatabaseUrl);
+    const certify = (options.createCertifier ?? createV213SqlReleaseCertifier)({
+      database,
+      evidenceSigningKey: inputs.evidenceSigningKey,
+      now: options.now ?? (() => new Date()),
+    });
+    const { schemaVersion, requestSha256, ...certificationRequest } = inputs.request;
+    void schemaVersion;
+    void requestSha256;
+    const result: V213FinalReleaseCertificationResult = await certify(certificationRequest);
+    const serialized = JSON.stringify(result);
+    if (inputs.protectedValues.some((secret) => secret.length > 0 && serialized.includes(secret)))
+      fail("RELEASE_CERTIFICATION_PROTECTED_OUTPUT");
+    (options.write ?? ((value) => process.stdout.write(value)))(`${serialized}\n`);
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) throw error;
+    fail("RELEASE_CERTIFICATION_EXECUTION_FAILED");
+  }
+}
+
+/** Separate post-provider cleanup boundary. It constructs only the operator database and the
+ * signed-evidence finalizer. In readback mode the finalizer is forbidden from inserting evidence,
+ * operation receipts, or release facts. */
+export async function runV213CleanupReceiptCli(
+  argv: readonly string[],
+  options: {
+    readonly environment?: NodeJS.ProcessEnv;
+    readonly readFd?: (value: string | undefined, code: string) => string;
+    readonly write?: (value: string) => void;
+    readonly createOperatorDatabase?: (url: string) => TransactionalSqlExecutor;
+    readonly createFinalizer?: typeof createV213SqlCleanupReceiptFinalizer;
+  } = {},
+): Promise<void> {
+  if (
+    argv.length !== 2 ||
+    argv[0] !== "--finalize-cleanup-receipt" ||
+    argv[1] !== CLEANUP_RECEIPT_CONFIRMATION
+  )
+    fail("CLEANUP_RECEIPT_ARGUMENTS_INVALID");
+  const inputs = readV213CleanupReceiptProtectedInputs(
+    options.environment ?? process.env,
+    options.readFd ?? readProtectedFd,
+  );
+  try {
+    const database = (
+      options.createOperatorDatabase ?? ((url) => createNeonExecutor(createNeonPool(url)))
+    )(inputs.operatorDatabaseUrl);
+    const finalize = (options.createFinalizer ?? createV213SqlCleanupReceiptFinalizer)({
+      database,
+      evidenceSigningKey: inputs.evidenceSigningKey,
+    });
+    const { schemaVersion, requestSha256, ...finalizationRequest } = inputs.request;
+    void schemaVersion;
+    void requestSha256;
+    const result: V213SqlCleanupReceiptFinalizationResult = await finalize(finalizationRequest);
+    const serialized = JSON.stringify(result);
+    if (inputs.protectedValues.some((secret) => secret.length > 0 && serialized.includes(secret)))
+      fail("CLEANUP_RECEIPT_PROTECTED_OUTPUT");
+    (options.write ?? ((value) => process.stdout.write(value)))(`${serialized}\n`);
+  } catch (error) {
+    if (error instanceof V213FullLiveBridgeError) throw error;
+    fail("CLEANUP_RECEIPT_EXECUTION_FAILED");
+  }
+}
+
+/** Protected evidence-only entrypoint. It can append an exact signed operator observation through
+ * the production Worker, but it cannot construct the full-live runtime or any provider client. */
+export async function runV213OperatorEvidenceIngestionCli(
+  argv: readonly string[],
+  options: {
+    readonly environment?: NodeJS.ProcessEnv;
+    readonly readFd?: (value: string | undefined, code: string) => string;
+    readonly write?: (value: string) => void;
+    readonly fetch?: WorkflowFetch;
+    readonly now?: () => Date;
+  } = {},
+): Promise<void> {
+  if (
+    argv.length !== 2 ||
+    argv[0] !== "--ingest-operator-evidence" ||
+    argv[1] !== OPERATOR_EVIDENCE_CONFIRMATION
+  )
+    fail("OPERATOR_EVIDENCE_ARGUMENTS_INVALID");
+  const inputs = readV213OperatorEvidenceProtectedInputs(
+    options.environment ?? process.env,
+    options.readFd ?? readProtectedFd,
+    options.now,
+  );
+  const result = await ingestV213AcceptanceOperatorEvidence({
+    workerOrigin: inputs.workerOrigin,
+    workerOperatorBearer: inputs.workerOperatorBearer,
+    request: inputs.request,
+    fetch: options.fetch,
+  });
+  const serialized = JSON.stringify(result);
+  if (inputs.protectedValues.some((secret) => secret.length > 0 && serialized.includes(secret)))
+    fail("OPERATOR_EVIDENCE_PROTECTED_OUTPUT");
+  (options.write ?? ((value) => process.stdout.write(value)))(`${serialized}\n`);
 }
 
 export async function runV213FullLiveCli(
@@ -2417,7 +3982,16 @@ export async function runV213FullLiveCli(
   write(`${JSON.stringify(result)}\n`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await runV213FullLiveCli(process.argv.slice(2));
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const argv = process.argv.slice(2);
+  if (argv[0] === "--certify-release") await runV213ReleaseCertificationCli(argv);
+  else if (argv[0] === "--finalize-cleanup-receipt") await runV213CleanupReceiptCli(argv);
+  else if (argv[0] === "--ingest-operator-evidence")
+    await runV213OperatorEvidenceIngestionCli(argv);
+  else await runV213FullLiveCli(argv);
+}
 
 export const V213_FULL_LIVE_CLI_CONFIRMATION = CONFIRMATION;
+export const V213_RELEASE_CERTIFICATION_CLI_CONFIRMATION = RELEASE_CERTIFICATION_CONFIRMATION;
+export const V213_CLEANUP_RECEIPT_CLI_CONFIRMATION = CLEANUP_RECEIPT_CONFIRMATION;
+export const V213_OPERATOR_EVIDENCE_CLI_CONFIRMATION = OPERATOR_EVIDENCE_CONFIRMATION;

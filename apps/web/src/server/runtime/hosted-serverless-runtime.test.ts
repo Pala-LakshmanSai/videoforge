@@ -41,6 +41,11 @@ function deployment(lane: ServerlessLane): EndpointDeploymentInput {
   const volumeIdSha256 = sha256("f");
   const volumeManifestSha256 = sha256("0");
   const sealedLineage = {
+    schemaVersion: "videoforge.v213-qualified-deployment-lineage/v1" as const,
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+    stageAuthorityId: `v2-13-${lane}-stage-authority`,
+    productionStageAuthorityId: "v2-13-production-stage-authority",
+    qualificationHandoffSha256: sha256("3"),
     endpointIdSha256,
     endpointTemplateIdSha256: templateSha256,
     endpointConfigSha256,
@@ -50,14 +55,11 @@ function deployment(lane: ServerlessLane): EndpointDeploymentInput {
     volumeManifestSha256,
     imageSourceCommit: "a".repeat(40),
     qualificationSourceSha256: sha256("3"),
-    dependencyLockSha256: sha256("4"),
-    acceptanceContractSha256: sha256("5"),
+    acceptanceContractSha256: sha256("3"),
+    receiptSha256s:
+      lane === "mage_image" ? [sha256("4")] : [sha256("4"), sha256("5"), sha256("6"), sha256("7")],
     region: "EU-RO-1" as const,
     gpu: "NVIDIA GeForce RTX 4090" as const,
-    max1GateConfigSha256: sha256("6"),
-    max1EndpointProfileSha256: sha256("7"),
-    max2GateConfigSha256: sha256("8"),
-    max2EndpointProfileSha256: sha256("9"),
   };
   return {
     deploymentId: `deployment-${lane}`,
@@ -222,15 +224,15 @@ describe("hosted provider-free Serverless composition", () => {
           ["volumeIdSha256", sha256("a")],
           ["volumeManifestSha256", sha256("a")],
           ["imageSourceCommit", "b".repeat(40)],
+          ["fullLiveAuthorityId", "not-a-uuid"],
+          ["stageAuthorityId", "short"],
+          ["productionStageAuthorityId", "short"],
+          ["qualificationHandoffSha256", sha256("a")],
           ["qualificationSourceSha256", sha256("a")],
-          ["dependencyLockSha256", sha256("a")],
           ["acceptanceContractSha256", sha256("a")],
+          ["receiptSha256s", [sha256("a")]],
           ["region", "EU-CZ-1"],
           ["gpu", "NVIDIA L40S"],
-          ["max1GateConfigSha256", sha256("a")],
-          ["max1EndpointProfileSha256", sha256("a")],
-          ["max2GateConfigSha256", sha256("a")],
-          ["max2EndpointProfileSha256", sha256("a")],
         ] as const
       ).map(
         ([key, value]) =>
@@ -259,6 +261,56 @@ describe("hosted provider-free Serverless composition", () => {
       expect(executor.query).not.toHaveBeenCalled();
       expect(executor.transaction).not.toHaveBeenCalled();
       expect(run).not.toHaveBeenCalled();
+    }
+  });
+
+  it("rejects malformed hashes even when the persisted deployment and verified lineage agree", async () => {
+    const lineageKeys = [
+      "endpointIdSha256",
+      "endpointTemplateIdSha256",
+      "endpointConfigSha256",
+      "workerImageDigest",
+      "modelManifestSha256",
+      "volumeIdSha256",
+      "volumeManifestSha256",
+    ] as const;
+    for (const key of lineageKeys) {
+      const trusted = binding("mage_image");
+      const malformed = "not-a-sha256" as Sha256;
+      const lineage = {
+        ...(trusted.deployment.timeoutEvidence
+          .sealed_lineage as HostedQualificationVerification["lineage"]),
+        [key]: malformed,
+      };
+      const deploymentOverrides: Partial<EndpointDeploymentInput> =
+        key === "endpointTemplateIdSha256"
+          ? { endpointProfileId: `template:${malformed}` }
+          : { [key]: malformed };
+      const deployment = {
+        ...trusted.deployment,
+        ...deploymentOverrides,
+        timeoutEvidence: { ...trusted.deployment.timeoutEvidence, sealed_lineage: lineage },
+      } as EndpointDeploymentInput;
+      const candidate: HostedServerlessLaneBinding = {
+        ...trusted,
+        deployment,
+        transportEndpointIdSha256:
+          key === "endpointIdSha256" ? malformed : trusted.transportEndpointIdSha256,
+      };
+      const executor = database();
+      const composition = createHostedServerlessRuntimeComposition({
+        database: executor,
+        signer: signer(),
+        qualificationVerifier: verifier(acceptedVerification(candidate)),
+        now: () => new Date(NOW),
+        lanes: { mage_image: candidate },
+      });
+      await expect(composition.requireLane("mage_image")).rejects.toMatchObject({
+        code: expect.stringMatching(
+          /^HOSTED_SERVERLESS_(?:BINDING_INVALID|VERIFICATION_REJECTED)$/u,
+        ),
+      });
+      expect(executor.transaction).not.toHaveBeenCalled();
     }
   });
 

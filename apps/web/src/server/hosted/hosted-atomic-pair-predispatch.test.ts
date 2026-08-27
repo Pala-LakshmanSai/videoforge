@@ -80,6 +80,8 @@ describe("hosted atomic pair predispatch", () => {
 
   it("signs and verifies the exact pair before transport", async () => {
     const { authority_sha256: _authority, signature: _signature, ...unsigned } = validEnvelope;
+    void _authority;
+    void _signature;
     const bodies = [
       { lane: "mage_image", body: structuredClone(unsigned) },
       {

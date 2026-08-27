@@ -147,7 +147,8 @@ test("promotion validates one atomic DB snapshot then deploys and reads exact en
           configSha256: hash(bytes),
           bundleSha256: proof("1"),
           productionFirewallPassed: true,
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
         };
       },
       deploy: async (bytes) => {
@@ -155,7 +156,8 @@ test("promotion validates one atomic DB snapshot then deploys and reads exact en
         return {
           configSha256: hash(bytes),
           versionSha256: proof("2"),
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: true,
         };
       },
       readback: async () => {
@@ -172,7 +174,8 @@ test("promotion validates one atomic DB snapshot then deploys and reads exact en
           routeReady: true,
           routeStatus: 200,
           routeVersionSha256: proof("2"),
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
           evidenceSha256: proof("3"),
         };
       },
@@ -180,7 +183,13 @@ test("promotion validates one atomic DB snapshot then deploys and reads exact en
         calls.push("record-activation");
         return {
           versionIdSha256: readback.versionIdSha256,
+          deployedExecutableSha256: readback.deployedExecutableSha256,
           deployedConfigSha256: readback.deployedConfigSha256,
+          productionUrlSha256: readback.productionUrlSha256,
+          routeStatus: readback.routeStatus,
+          routeBodySha256: readback.routeBodySha256,
+          routeVersionSha256: readback.routeVersionSha256,
+          routeReadbackSha256: readback.routeReadbackSha256,
           readbackSha256: proof("4"),
         };
       },
@@ -190,7 +199,11 @@ test("promotion validates one atomic DB snapshot then deploys and reads exact en
           routeReady: true,
           routeStatus: 200,
           routeVersionSha256: proof("2"),
+          productionUrlSha256: proof("5"),
+          routeBodySha256: proof("6"),
           gpuTransport: "QUALIFIED_EXACT",
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
         };
       },
       rollback: async () => assert.fail("rollback must not run"),
@@ -202,15 +215,16 @@ test("promotion validates one atomic DB snapshot then deploys and reads exact en
     "dry-run",
     "deploy",
     "readback",
-    "record-activation",
     "route-readback",
+    "record-activation",
   ]);
   assert.equal(result.enabled, true);
-  assert.equal(result.providerSendPerformed, false);
+  assert.equal(result.gpuDispatchPerformed, false);
+  assert.equal(result.cloudflareMutationPerformed, true);
   assert.match(result.databasePromotionSha256, /^sha256:[0-9a-f]{64}$/u);
 });
 
-test("route drift rolls back, reads disabled route, and tombstones the recorded activation", async () => {
+test("route drift rolls back before any activation record exists", async () => {
   const { disabledBytes, record } = fixture();
   const calls = [];
   await assert.rejects(
@@ -223,12 +237,14 @@ test("route drift rolls back, reads disabled route, and tombstones the recorded 
           configSha256: record.release.enabled_config_sha256,
           bundleSha256: proof("1"),
           productionFirewallPassed: true,
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
         }),
         deploy: async () => ({
           configSha256: record.release.enabled_config_sha256,
           versionSha256: proof("2"),
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: true,
         }),
         readback: async () => ({
           versionSha256: proof("2"),
@@ -239,20 +255,18 @@ test("route drift rolls back, reads disabled route, and tombstones the recorded 
           publicOrigin: record.cloudflare.public_origin,
           gpuTransport: "QUALIFIED_EXACT",
           exactBindings: true,
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
           evidenceSha256: proof("3"),
         }),
-        recordActivation: async (readback) => ({
-          versionIdSha256: readback.versionIdSha256,
-          deployedConfigSha256: readback.deployedConfigSha256,
-          readbackSha256: proof("4"),
-        }),
+        recordActivation: async () => assert.fail("invalid route must not be recorded"),
         routeReadback: async () => ({ routeReady: false, routeStatus: 503 }),
         rollback: async () => ({
           gpuTransport: "DISABLED_UNQUALIFIED",
           configSha256: record.release.disabled_config_sha256,
           versionSha256: record.cloudflare.disabled_version_sha256,
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: true,
           routeDisabled: true,
           routeStatus: 503,
           routeVersionSha256: record.cloudflare.disabled_version_sha256,
@@ -270,8 +284,49 @@ test("route drift rolls back, reads disabled route, and tombstones the recorded 
     }),
     /ACTIVATION_ROUTE_READBACK/u,
   );
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].rollbackId, record.database.rollback_id);
+  assert.equal(calls.length, 0);
+});
+
+test("promotion rejects a Cloudflare deploy that claims no external mutation", async () => {
+  const { disabledBytes, record } = fixture();
+  await assert.rejects(
+    promoteQualifiedProduction({
+      record,
+      disabledConfigBytes: disabledBytes,
+      transport: {
+        promoteDatabase: async () => databaseSnapshot(record),
+        dryRun: async () => ({
+          configSha256: record.release.enabled_config_sha256,
+          bundleSha256: proof("1"),
+          productionFirewallPassed: true,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
+        }),
+        deploy: async () => ({
+          configSha256: record.release.enabled_config_sha256,
+          versionSha256: proof("2"),
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
+        }),
+        readback: async () => assert.fail("invalid deploy must not be read back"),
+        recordActivation: async () => assert.fail("invalid deploy must not be recorded"),
+        routeReadback: async () => assert.fail("invalid deploy must not reach the route"),
+        rollback: async () => ({
+          gpuTransport: "DISABLED_UNQUALIFIED",
+          configSha256: record.release.disabled_config_sha256,
+          versionSha256: record.cloudflare.disabled_version_sha256,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: true,
+          routeDisabled: true,
+          routeStatus: 503,
+          routeVersionSha256: record.cloudflare.disabled_version_sha256,
+          observedAt: "2026-08-26T00:00:00.000Z",
+        }),
+        recordRollback: async () => assert.fail("rollback record requires an activation"),
+      },
+    }),
+    /DEPLOY_RESULT/u,
+  );
 });
 
 test("readback mismatch rolls back only to the exact disabled quarantine", async () => {
@@ -287,12 +342,14 @@ test("readback mismatch rolls back only to the exact disabled quarantine", async
           configSha256: record.release.enabled_config_sha256,
           bundleSha256: proof("1"),
           productionFirewallPassed: true,
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
         }),
         deploy: async () => ({
           configSha256: record.release.enabled_config_sha256,
           versionSha256: proof("2"),
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: true,
         }),
         readback: async () => ({ gpuTransport: "DISABLED_UNQUALIFIED" }),
         recordActivation: async () => assert.fail("activation must not be recorded"),
@@ -304,7 +361,8 @@ test("readback mismatch rolls back only to the exact disabled quarantine", async
             gpuTransport: "DISABLED_UNQUALIFIED",
             configSha256: record.release.disabled_config_sha256,
             versionSha256: record.cloudflare.disabled_version_sha256,
-            providerSendPerformed: false,
+            gpuDispatchPerformed: false,
+            cloudflareMutationPerformed: true,
             routeDisabled: true,
             routeStatus: 503,
             routeVersionSha256: record.cloudflare.disabled_version_sha256,

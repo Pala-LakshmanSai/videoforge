@@ -10,7 +10,7 @@ const root = path.resolve(new URL("../..", import.meta.url).pathname);
 const validator = path.resolve(root, "deploy/v2-13/validate-production-pair-boundary.mjs");
 
 async function fixture() {
-  const [bindings, reconcilerSql, runtimeSql, wrangler] = await Promise.all([
+  const [bindings, reconcilerSql, runtimeSql, wrangler, activationMigration] = await Promise.all([
     readFile(
       path.resolve(root, "deploy/v2-13/production-pair-bindings.template.json"),
       "utf8",
@@ -18,8 +18,12 @@ async function fixture() {
     readFile(path.resolve(root, "deploy/v2-13/neon-pair-reconciler-grants.sql"), "utf8"),
     readFile(path.resolve(root, "deploy/v2-06/neon-runtime-grants.sql"), "utf8"),
     readFile(path.resolve(root, "apps/web/wrangler.production.jsonc"), "utf8"),
+    readFile(
+      path.resolve(root, "packages/control-plane/migrations/0045_hosted_full_live_activation.sql"),
+      "utf8",
+    ),
   ]);
-  return { bindings, reconcilerSql, runtimeSql, wrangler };
+  return { bindings, reconcilerSql, runtimeSql, wrangler, activationMigration };
 }
 
 test("production pair boundary is disabled, role-separated, secret-free, and provider-free", async () => {
@@ -101,5 +105,51 @@ test("boundary requires the exact protected secret-name allowlist", async () => 
         },
       }),
     /secret binding names drifted/u,
+  );
+});
+
+test("reconciler terminal projection is read-only, tenant-bound, and function-only", async () => {
+  const { activationMigration, reconcilerSql } = await fixture();
+  const functionStart = activationMigration.indexOf(
+    "CREATE FUNCTION public.videoforge_load_v209_terminal_output_projection(",
+  );
+  const functionEnd = activationMigration.indexOf(
+    "REVOKE ALL ON FUNCTION public.videoforge_load_v209_terminal_output_projection",
+    functionStart,
+  );
+  assert.ok(functionStart >= 0, "terminal projection function must be present");
+  assert.ok(functionEnd > functionStart, "terminal projection must have an explicit ACL boundary");
+  const projection = activationMigration.slice(functionStart, functionEnd);
+
+  assert.match(
+    projection,
+    /RETURNS jsonb\s+LANGUAGE plpgsql STABLE SECURITY DEFINER\s+SET search_path=public,pg_catalog/u,
+  );
+  assert.match(projection, /videoforge_current_account_id\(\)/u);
+  assert.match(projection, /runtime\.stage='COMPLETE'/u);
+  assert.match(projection, /pair\.phase='SETTLED'/u);
+  assert.match(projection, /FINAL_OUTPUT_DURABLE/u);
+  assert.match(projection, /RETURN projection/u);
+  assert.doesNotMatch(projection, /\b(?:INSERT|UPDATE|DELETE)\b/iu);
+
+  assert.match(
+    reconcilerSql,
+    /REVOKE EXECUTE ON FUNCTION public\.videoforge_load_v209_terminal_output_projection\(uuid,uuid,uuid,text\) FROM PUBLIC;/u,
+  );
+  assert.match(
+    reconcilerSql,
+    /REVOKE EXECUTE ON FUNCTION public\.videoforge_load_v209_terminal_output_projection\(uuid,uuid,uuid,text\)\s+FROM :"runtime_role";/u,
+  );
+  assert.match(
+    reconcilerSql,
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_load_v209_terminal_output_projection\(uuid,uuid,uuid,text\)\s+TO :"reconciler_role";/u,
+  );
+  assert.match(
+    reconcilerSql,
+    /REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"reconciler_role";/u,
+  );
+  assert.doesNotMatch(
+    reconcilerSql,
+    /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER)\s+ON\s+(?:TABLE\s+)?(?:public\.)?(?:video_runtime_states|hosted_pair_runtime_states|video_runtime_events)/iu,
   );
 });

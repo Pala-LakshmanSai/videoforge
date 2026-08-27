@@ -354,35 +354,118 @@ export async function awaitV209TerminalAcceptance(input: {
   )
     throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_IDENTITY_INVALID");
   const now = input.now ?? Date.now;
-  const sleep =
-    input.sleep ??
-    ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   const interval = input.pollIntervalMs ?? 2_000;
   if (!Number.isInteger(interval) || interval < 100 || interval > 10_000)
     throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_POLL_INVALID");
   const deadline = Date.parse(input.deadlineAt);
-  const existing = await input.workflow.get(input.workflowId);
-  while (now() <= deadline) {
-    await existing.status();
+  type AbortOptions = { readonly signal?: AbortSignal };
+  type WorkflowHandle = Awaited<ReturnType<HostedWorkflowBinding["get"]>>;
+  type SqlTransaction = {
+    query<Row extends Record<string, unknown>>(
+      sql: string,
+      parameters?: readonly unknown[],
+      options?: AbortOptions,
+    ): Promise<{ readonly rows: readonly Row[] }>;
+  };
+  const awaitWithinDeadline = async <Value>(options: {
+    readonly parentSignal?: AbortSignal;
+    readonly operation: (signal: AbortSignal) => Promise<Value>;
+  }): Promise<Value> => {
+    const remaining = deadline - now();
+    if (remaining <= 0)
+      throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED");
+    const controller = new AbortController();
+    const abortFromParent = () => controller.abort();
+    if (options.parentSignal) {
+      if (options.parentSignal.aborted) controller.abort();
+      else options.parentSignal.addEventListener("abort", abortFromParent, { once: true });
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => {
+          controller.abort();
+          reject(new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED"));
+        },
+        Math.min(remaining, 2_147_483_647),
+      );
+    });
     try {
-      const accepted = await input.database.transaction(async (transaction) => {
-        await transaction.query("SELECT set_config($1,$2,true)", [
-          "videoforge.account_id",
-          input.scope.accountId,
-        ]);
-        const result = await transaction.query<{ value: unknown }>(
-          "SELECT public.videoforge_complete_v209_terminal_acceptance($1::jsonb) AS value",
-          [
-            JSON.stringify({
-              accountId: input.scope.accountId,
-              workspaceId: input.scope.workspaceId,
-              generationRequestId: input.scope.generationRequestId,
-              workflowId: input.workflowId,
-              chromeEvidenceSha256: input.chromeEvidenceSha256,
-            }),
-          ],
-        );
-        return result.rows[0]?.value;
+      const result = await Promise.race([options.operation(controller.signal), timeout]);
+      if (now() >= deadline)
+        throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED");
+      return result;
+    } catch (error) {
+      if (now() >= deadline)
+        throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED");
+      throw error;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      controller.abort();
+      options.parentSignal?.removeEventListener("abort", abortFromParent);
+    }
+  };
+  if (deadline <= now())
+    throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED");
+  type SignalWorkflow = (id: string, options?: AbortOptions) => Promise<WorkflowHandle>;
+  const getWorkflow = input.workflow.get as unknown as SignalWorkflow;
+  const existing = await awaitWithinDeadline({
+    operation: (signal) => getWorkflow.call(input.workflow, input.workflowId, { signal }),
+  });
+  const status = existing.status as unknown as (options?: AbortOptions) => Promise<unknown>;
+  const transaction = input.database.transaction as unknown as (
+    work: (transaction: SqlTransaction) => Promise<unknown>,
+    options?: AbortOptions,
+  ) => Promise<unknown>;
+  const sleep = (input.sleep ??
+    ((milliseconds: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, milliseconds)))) as unknown as (
+    milliseconds: number,
+    options?: AbortOptions,
+  ) => Promise<void>;
+  while (now() < deadline) {
+    await awaitWithinDeadline({
+      operation: (signal) => status.call(existing, { signal }),
+    });
+    try {
+      const accepted = await awaitWithinDeadline({
+        operation: (signal) =>
+          transaction.call(
+            input.database,
+            async (transactionConnection) => {
+              const query = transactionConnection.query;
+              await awaitWithinDeadline({
+                parentSignal: signal,
+                operation: (querySignal) =>
+                  query.call(
+                    transactionConnection,
+                    "SELECT set_config($1,$2,true)",
+                    ["videoforge.account_id", input.scope.accountId],
+                    { signal: querySignal },
+                  ),
+              });
+              const result = await awaitWithinDeadline({
+                parentSignal: signal,
+                operation: (querySignal) =>
+                  query.call(
+                    transactionConnection,
+                    "SELECT public.videoforge_complete_v209_terminal_acceptance($1::jsonb) AS value",
+                    [
+                      JSON.stringify({
+                        accountId: input.scope.accountId,
+                        workspaceId: input.scope.workspaceId,
+                        generationRequestId: input.scope.generationRequestId,
+                        workflowId: input.workflowId,
+                        chromeEvidenceSha256: input.chromeEvidenceSha256,
+                      }),
+                    ],
+                    { signal: querySignal },
+                  ),
+              });
+              return result.rows[0]?.value;
+            },
+            { signal },
+          ),
       });
       if (
         accepted &&
@@ -414,7 +497,9 @@ export async function awaitV209TerminalAcceptance(input: {
       if (code !== "23514" && code !== "55000") throw error;
     }
     if (now() >= deadline) break;
-    await sleep(Math.min(interval, Math.max(0, deadline - now())));
+    await awaitWithinDeadline({
+      operation: (signal) => sleep.call(input, Math.min(interval, deadline - now()), { signal }),
+    });
   }
   throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED");
 }

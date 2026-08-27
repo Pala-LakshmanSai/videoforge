@@ -71,9 +71,7 @@ def sign_envelope(document: dict[str, object]) -> None:
         if key not in {"authority_sha256", "signature"}
     }
     authority_sha256 = digest(canonical(body).encode())
-    preimage = canonical(
-        {"authority_sha256": authority_sha256, "key_id": ENVELOPE_KEY_ID}
-    ).encode()
+    preimage = canonical({"authority_sha256": authority_sha256, "key_id": ENVELOPE_KEY_ID}).encode()
     document["authority_sha256"] = authority_sha256
     document["signature"] = {
         "algorithm": "HMAC-SHA256",
@@ -284,9 +282,11 @@ class Fixture:
         }
 
     def fetch(self, port: dict[str, object], _url: str, worker_io: object) -> Path:
-        body = self.source if port["reservation_id"] == "port-source" else self.audio[
-            str(port["reservation_id"]).replace("port-audio-", "span-")
-        ]
+        body = (
+            self.source
+            if port["reservation_id"] == "port-source"
+            else self.audio[str(port["reservation_id"]).replace("port-audio-", "span-")]
+        )
         path = worker_io.scratch.safe_path(f"inputs/{port['reservation_id']}.bin")
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         path.write_bytes(body)
@@ -341,22 +341,28 @@ class SoulXServerlessTest(unittest.TestCase):
         }
         with patch.object(soulx_serverless, "urlopen", return_value=FakeHttpResponse(body)):
             soulx_serverless._verify_resume_readbacks((unit,))
-        with patch.object(
-            soulx_serverless, "urlopen", return_value=FakeHttpResponse(b"wrong-native")
-        ), self.assertRaisesRegex(
-            soulx_serverless.ServerlessSoulXError,
-            "SOULX_SERVERLESS_RESUME_READBACK_MISMATCH",
+        with (
+            patch.object(
+                soulx_serverless, "urlopen", return_value=FakeHttpResponse(b"wrong-native")
+            ),
+            self.assertRaisesRegex(
+                soulx_serverless.ServerlessSoulXError,
+                "SOULX_SERVERLESS_RESUME_READBACK_MISMATCH",
+            ),
         ):
             soulx_serverless._verify_resume_readbacks((unit,))
 
     def test_rejects_envelope_receipt_key_reuse_before_runtime_startup(self) -> None:
         fixture = Fixture((2,))
         ready = AsyncMock(side_effect=AssertionError("runtime must remain untouched"))
-        with patch.dict(
-            os.environ,
-            {"VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": ENVELOPE_SECRET.hex()},
-            clear=False,
-        ), patch.object(soulx_serverless, "_ready_runtime", ready):
+        with (
+            patch.dict(
+                os.environ,
+                {"VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": ENVELOPE_SECRET.hex()},
+                clear=False,
+            ),
+            patch.object(soulx_serverless, "_ready_runtime", ready),
+        ):
             result = asyncio.run(
                 soulx_serverless.handler({"id": "job-key-reuse", "input": fixture.payload})
             )
@@ -443,22 +449,25 @@ class SoulXServerlessTest(unittest.TestCase):
                 "audio_channels": 1,
             }
 
-        with tempfile.TemporaryDirectory() as root, patch.dict(
-            os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}
-        ), patch.object(soulx_serverless, "verify_volume", return_value={
-            "manifest_sha256": "sha256:" + "4" * 64
-        }), patch.object(
-            soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)
-        ), patch.object(
-            soulx_serverless, "_fetch_exact", side_effect=fixture.fetch
-        ), patch.object(
-            soulx_serverless,
-            "_trim_native_mp4",
-            side_effect=trim,
-        ), patch.object(
-            soulx_serverless, "_probe_native_mp4", side_effect=probe
-        ), patch.object(
-            soulx_serverless, "_put_generated", side_effect=lambda _a, _u, body: digest(body)
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.dict(os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}),
+            patch.object(
+                soulx_serverless,
+                "verify_volume",
+                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+            ),
+            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
+            patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
+            patch.object(
+                soulx_serverless,
+                "_trim_native_mp4",
+                side_effect=trim,
+            ),
+            patch.object(soulx_serverless, "_probe_native_mp4", side_effect=probe),
+            patch.object(
+                soulx_serverless, "_put_generated", side_effect=lambda _a, _u, body: digest(body)
+            ),
         ):
             result = asyncio.run(
                 soulx_serverless.handler({"id": "job-a", "input": fixture.payload})
@@ -546,39 +555,39 @@ class SoulXServerlessTest(unittest.TestCase):
             path.write_bytes(b"native-4")
             return b"native-4"
 
-        with tempfile.TemporaryDirectory() as root, patch.dict(
-            os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}
-        ), patch.object(soulx_serverless, "verify_volume", return_value={
-            "manifest_sha256": "sha256:" + "4" * 64
-        }), patch.object(
-            soulx_serverless, "_verify_resume_readbacks"
-        ) as verify_readback, patch.object(
-            soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)
-        ), patch.object(
-            soulx_serverless, "_fetch_exact", side_effect=fixture.fetch
-        ), patch.object(
-            soulx_serverless, "_trim_native_mp4", side_effect=trim
-        ), patch.object(
-            soulx_serverless,
-            "_probe_native_mp4",
-            return_value={
-                "format": "mp4",
-                "video_codec": "h264",
-                "audio_codec": "aac",
-                "width": 512,
-                "height": 512,
-                "fps_num": 25,
-                "fps_den": 1,
-                "frame_count": 100,
-                "duration_ms": 4_000,
-                "video_duration_ms": 4_000,
-                "audio_duration_ms": 4_000,
-                "av_delta_ms": 0,
-                "audio_sample_rate_hz": 16_000,
-                "audio_channels": 1,
-            },
-        ), patch.object(
-            soulx_serverless, "_put_generated", return_value=digest(b"native-4")
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.dict(os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}),
+            patch.object(
+                soulx_serverless,
+                "verify_volume",
+                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+            ),
+            patch.object(soulx_serverless, "_verify_resume_readbacks") as verify_readback,
+            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
+            patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
+            patch.object(soulx_serverless, "_trim_native_mp4", side_effect=trim),
+            patch.object(
+                soulx_serverless,
+                "_probe_native_mp4",
+                return_value={
+                    "format": "mp4",
+                    "video_codec": "h264",
+                    "audio_codec": "aac",
+                    "width": 512,
+                    "height": 512,
+                    "fps_num": 25,
+                    "fps_den": 1,
+                    "frame_count": 100,
+                    "duration_ms": 4_000,
+                    "video_duration_ms": 4_000,
+                    "audio_duration_ms": 4_000,
+                    "av_delta_ms": 0,
+                    "audio_sample_rate_hz": 16_000,
+                    "audio_channels": 1,
+                },
+            ),
+            patch.object(soulx_serverless, "_put_generated", return_value=digest(b"native-4")),
         ):
             result = asyncio.run(
                 soulx_serverless.handler({"id": "job-b", "input": fixture.payload})
@@ -600,13 +609,15 @@ class SoulXServerlessTest(unittest.TestCase):
             health = runtime.health()
             health["gpu"] = observed_gpu
             runtime.health = lambda value=health: value  # type: ignore[method-assign]
-            with patch.object(
-                soulx_serverless,
-                "verify_volume",
-                return_value={"manifest_sha256": "sha256:" + "4" * 64},
-            ), patch.object(
-                soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)
-            ), patch.object(soulx_serverless, "_generate", AsyncMock()) as generate:
+            with (
+                patch.object(
+                    soulx_serverless,
+                    "verify_volume",
+                    return_value={"manifest_sha256": "sha256:" + "4" * 64},
+                ),
+                patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
+                patch.object(soulx_serverless, "_generate", AsyncMock()) as generate,
+            ):
                 result = asyncio.run(
                     soulx_serverless.handler({"id": "job-gpu", "input": fixture.payload})
                 )
@@ -628,16 +639,19 @@ class SoulXServerlessTest(unittest.TestCase):
 
     def test_runtime_failure_scrubs_attempt_scratch(self) -> None:
         fixture = Fixture((2,))
-        with tempfile.TemporaryDirectory() as root, patch.dict(
-            os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}
-        ), patch.object(soulx_serverless, "verify_volume", return_value={
-            "manifest_sha256": "sha256:" + "4" * 64
-        }), patch.object(
-            soulx_serverless, "_ready_runtime", AsyncMock(return_value=FakeRuntime())
-        ), patch.object(
-            soulx_serverless, "_fetch_exact", side_effect=fixture.fetch
-        ), patch.object(
-            soulx_serverless, "_generate", AsyncMock(side_effect=RuntimeError("secret detail"))
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.dict(os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}),
+            patch.object(
+                soulx_serverless,
+                "verify_volume",
+                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+            ),
+            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=FakeRuntime())),
+            patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
+            patch.object(
+                soulx_serverless, "_generate", AsyncMock(side_effect=RuntimeError("secret detail"))
+            ),
         ):
             result = asyncio.run(
                 soulx_serverless.handler({"id": "job-d", "input": fixture.payload})
@@ -648,16 +662,16 @@ class SoulXServerlessTest(unittest.TestCase):
 
     def test_cancellation_propagates_after_scrubbing_attempt_scratch(self) -> None:
         fixture = Fixture((2,))
-        with tempfile.TemporaryDirectory() as root, patch.dict(
-            os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}
-        ), patch.object(
-            soulx_serverless,
-            "verify_volume",
-            return_value={"manifest_sha256": "sha256:" + "4" * 64},
-        ), patch.object(
-            soulx_serverless, "_ready_runtime", AsyncMock(return_value=FakeRuntime())
-        ), patch.object(
-            soulx_serverless, "_fetch_exact", side_effect=fixture.fetch
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.dict(os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}),
+            patch.object(
+                soulx_serverless,
+                "verify_volume",
+                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+            ),
+            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=FakeRuntime())),
+            patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
         ):
             entered = asyncio.Event()
             release = asyncio.Event()

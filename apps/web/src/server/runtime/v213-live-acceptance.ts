@@ -155,6 +155,9 @@ export interface V213LiveVerifiedReceipt {
     V213StableZeroWorkerRead,
   ];
   readonly operatorIntervention: false;
+  /** Exact current-run output identity used only by the post-smoke release-Chrome producer. */
+  readonly finalOutputSha256?: Sha256;
+  readonly finalOutputReceiptSha256?: Sha256;
   readonly outputCommittedAt: string;
   readonly realChromePlaybackPassed: boolean;
   readonly chromePlaybackReceiptSha256: Sha256 | null;
@@ -528,6 +531,11 @@ async function cleanFailedAttempt(input: {
       verified.soulxWorkers !== 0 ||
       verified.maxWorkersRestored !== 1 ||
       verified.unknownLiabilities !== 0 ||
+      verified.retainedVolumes.mage.volumeIdSha256 !== input.request.retainedVolumeIdSha256s.mage ||
+      verified.retainedVolumes.soulx.volumeIdSha256 !==
+        input.request.retainedVolumeIdSha256s.soulx ||
+      verified.retainedVolumes.mage.volumeIdSha256 ===
+        verified.retainedVolumes.soulx.volumeIdSha256 ||
       [verified.retainedVolumes.mage, verified.retainedVolumes.soulx].some(
         (volume) =>
           !validSha(volume.volumeIdSha256) ||
@@ -843,15 +851,10 @@ export async function executeV212LiveProductionLength(input: {
   }
 }
 
-export async function executeV213FinalLiveAcceptance(input: {
+/** V2-13's paid operation proves only a fresh two-lane smoke. Release certification is a later,
+ * transport-free operation after the exact cleanup and billing receipts are durable. */
+export async function executeV213FreshTwoLaneSmoke(input: {
   readonly request: V213LiveExecutionRequest & { readonly checkpoint: "V2-13" };
-  readonly releaseIdentity: V213ReleaseIdentity;
-  readonly evidenceArtifacts: Readonly<
-    Partial<Record<V213ReleaseGate, V213ReleaseEvidenceArtifact>>
-  >;
-  readonly releaseEvidenceVerifier: V213ReleaseEvidenceVerifier;
-  readonly chromeArtifact: V213ChromeAcceptanceArtifact;
-  readonly chromeVerifier: V213ChromeAcceptanceVerifier;
   readonly receiptVerifier: V213LiveReceiptVerifier;
   readonly cleanupVerifier: V213CleanupVerifier;
   readonly store: V213LiveAttemptStore;
@@ -859,9 +862,22 @@ export async function executeV213FinalLiveAcceptance(input: {
   readonly now: () => Date;
 }): Promise<{
   readonly liveAcceptanceClaimed: true;
-  readonly ledger: V213ReleaseCertificationLedger;
+  readonly smokeOnly: true;
+  readonly releaseCertified: false;
   readonly summary: V213RedactedLiveSummary;
   readonly completionSha256: Sha256;
+  readonly releaseChromeOutput: Readonly<{
+    readonly scope: Readonly<{
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly projectId: string;
+      readonly projectRevisionId: string;
+      readonly attemptId: string;
+    }>;
+    readonly outputSha256: Sha256;
+    readonly finalOutputReceiptSha256: Sha256;
+    readonly smokeTerminalAt: string;
+  }>;
 }> {
   let requestSha256: Sha256 | undefined;
   let externalStarted = false;
@@ -879,69 +895,144 @@ export async function executeV213FinalLiveAcceptance(input: {
       now: input.now,
     });
     const scope = input.request.scopes[0]!;
-    if (input.request.sourceCommit !== input.releaseIdentity.sourceCommit)
-      fail("LIVE_ACCEPTANCE_IDENTITY_DRIFT");
-    const releaseIdentitySha256 = hashV213ReleaseIdentity(input.releaseIdentity);
-    const expectedCapturedEvidenceSha256 = canonicalSha256({
-      schema_version: "videoforge-v213-final-live-capture/v1",
-      release_identity_sha256: releaseIdentitySha256,
-      evidence_artifacts: input.evidenceArtifacts,
-      chrome_evidence_sha256: canonicalSha256(input.chromeArtifact.rawEvidence),
-    });
-    if (canonicalSha256(capture.rawEvidence) !== expectedCapturedEvidenceSha256)
-      fail("LIVE_ACCEPTANCE_IDENTITY_DRIFT");
-    const chrome = await input.chromeVerifier.verify(
-      structuredClone(input.chromeArtifact.rawEvidence),
-    );
-    const now = input.now();
-    const chromeObservedAt = Date.parse(chrome.observedAt);
-    if (
-      chrome.verifierId !== "videoforge-v213-real-chrome-acceptance-verifier-v1" ||
-      chrome.accepted !== true ||
-      chrome.canonicalEvidenceSha256 !== canonicalSha256(input.chromeArtifact.rawEvidence) ||
-      !validSha(chrome.verifierSignatureSha256) ||
-      chrome.signatureVerified !== true ||
-      chrome.releaseIdentitySha256 !== releaseIdentitySha256 ||
-      chrome.productionUrlSha256 !== input.releaseIdentity.productionUrlSha256 ||
-      chrome.accountId !== scope.accountId ||
-      chrome.workspaceId !== scope.workspaceId ||
-      chrome.projectId !== scope.projectId ||
-      chrome.projectRevisionId !== scope.projectRevisionId ||
-      !validSha(chrome.outputSha256) ||
-      chrome.browser !== "GOOGLE_CHROME" ||
-      chrome.fixtureOrFakeTransportUsed !== false ||
-      chrome.playbackPassed !== true ||
-      chrome.privateReadbackPassed !== true ||
-      Number.isNaN(chromeObservedAt) ||
-      chromeObservedAt > now.getTime() ||
-      now.getTime() - chromeObservedAt > 24 * 60 * 60 * 1_000
-    )
-      fail("LIVE_ACCEPTANCE_CHROME_INVALID");
-    const ledger = await buildV213ReleaseCertificationLedger({
-      releaseIdentity: input.releaseIdentity,
-      evidenceArtifacts: input.evidenceArtifacts,
-      verifier: input.releaseEvidenceVerifier,
-      evaluatedAt: now.toISOString(),
-    });
-    if (
-      ledger.releaseStatus !== "release_certified" ||
-      ledger.missingGates.length ||
-      ledger.invalidGates.length
-    )
-      fail("LIVE_ACCEPTANCE_RELEASE_BLOCKED");
-    const result = { liveAcceptanceClaimed: true as const, ledger, receipt, chrome };
+    if (!validSha(receipt.finalOutputSha256) || !validSha(receipt.finalOutputReceiptSha256))
+      fail("LIVE_ACCEPTANCE_RECEIPT_INVALID");
+    const result = {
+      liveAcceptanceClaimed: true as const,
+      smokeOnly: true as const,
+      releaseCertified: false as const,
+      receipt,
+    };
     const summary = redactedSummary(receipt, { twoLaneSmoke: true });
     return {
       liveAcceptanceClaimed: true,
-      ledger,
+      smokeOnly: true,
+      releaseCertified: false,
       summary,
       completionSha256: await complete(input.store, requestSha256, result),
+      releaseChromeOutput: Object.freeze({
+        scope: Object.freeze({
+          accountId: scope.accountId,
+          workspaceId: scope.workspaceId,
+          projectId: scope.projectId,
+          projectRevisionId: scope.projectRevisionId,
+          attemptId: scope.attemptId,
+        }),
+        outputSha256: receipt.finalOutputSha256,
+        finalOutputReceiptSha256: receipt.finalOutputReceiptSha256,
+        smokeTerminalAt: receipt.observedAt,
+      }),
     };
   } catch (error) {
     if (!requestSha256 || !externalStarted) throw error;
     await cleanFailedAttempt({ ...input, verifier: input.cleanupVerifier, requestSha256 });
     throw error;
   }
+}
+
+/** Compatibility name for the production adapter. Legacy release fields are accepted only at the
+ * type boundary and deliberately ignored; this paid call can never certify a release. */
+export function executeV213FinalLiveAcceptance(
+  input: Parameters<typeof executeV213FreshTwoLaneSmoke>[0] & {
+    readonly releaseIdentity?: V213ReleaseIdentity;
+    readonly evidenceArtifacts?: Readonly<
+      Partial<Record<V213ReleaseGate, V213ReleaseEvidenceArtifact>>
+    >;
+    readonly releaseEvidenceVerifier?: V213ReleaseEvidenceVerifier;
+    readonly chromeArtifact?: V213ChromeAcceptanceArtifact;
+    readonly chromeVerifier?: V213ChromeAcceptanceVerifier;
+  },
+) {
+  return executeV213FreshTwoLaneSmoke(input);
+}
+
+const FINAL_CERTIFICATION_PREDECESSORS = Object.freeze([
+  "v2-13-final-two-lane-smoke",
+  "restore-endpoints-max-one",
+  "prove-zero-workers",
+  "read-settled-billing",
+  "reconcile-exact-resources",
+] as const);
+
+export interface V213CurrentRunReleaseCertificationInput {
+  readonly releaseIdentity: V213ReleaseIdentity;
+  readonly scope: V213LiveProjectScope;
+  readonly sourceCommit: string;
+  readonly predecessorEvidenceSha256s: Readonly<Record<string, Sha256>>;
+  readonly evidenceArtifacts: Readonly<
+    Partial<Record<V213ReleaseGate, V213ReleaseEvidenceArtifact>>
+  >;
+  /** A separately captured release-bound Chrome artifact; never the V2-09 playback artifact. */
+  readonly chromeArtifact: V213ChromeAcceptanceArtifact;
+  readonly releaseEvidenceVerifier: V213ReleaseEvidenceVerifier;
+  readonly chromeVerifier: V213ChromeAcceptanceVerifier;
+  readonly now: () => Date;
+}
+
+/** Pure/read-only final certification. It has no transport, attempt store, dispatch, or cleanup
+ * dependency and therefore cannot spend or make the already-recorded cleanup proof unavailable. */
+export async function certifyV213ReleaseFromCurrentRun(
+  input: V213CurrentRunReleaseCertificationInput,
+): Promise<{
+  readonly ledger: V213ReleaseCertificationLedger;
+  readonly chrome: V213VerifiedChromeAcceptance;
+  readonly predecessorEvidenceSha256s: Readonly<Record<string, Sha256>>;
+  readonly certificationSha256: Sha256;
+}> {
+  if (
+    input.sourceCommit !== input.releaseIdentity.sourceCommit ||
+    Object.keys(input.predecessorEvidenceSha256s).sort().join(",") !==
+      [...FINAL_CERTIFICATION_PREDECESSORS].sort().join(",") ||
+    Object.values(input.predecessorEvidenceSha256s).some((value) => !validSha(value))
+  )
+    fail("LIVE_ACCEPTANCE_IDENTITY_DRIFT");
+  const releaseIdentitySha256 = hashV213ReleaseIdentity(input.releaseIdentity);
+  const chrome = await input.chromeVerifier.verify(
+    structuredClone(input.chromeArtifact.rawEvidence),
+  );
+  const now = input.now();
+  const chromeObservedAt = Date.parse(chrome.observedAt);
+  if (
+    chrome.verifierId !== "videoforge-v213-real-chrome-acceptance-verifier-v1" ||
+    chrome.accepted !== true ||
+    chrome.canonicalEvidenceSha256 !== canonicalSha256(input.chromeArtifact.rawEvidence) ||
+    !validSha(chrome.verifierSignatureSha256) ||
+    chrome.signatureVerified !== true ||
+    chrome.releaseIdentitySha256 !== releaseIdentitySha256 ||
+    chrome.productionUrlSha256 !== input.releaseIdentity.productionUrlSha256 ||
+    chrome.accountId !== input.scope.accountId ||
+    chrome.workspaceId !== input.scope.workspaceId ||
+    chrome.projectId !== input.scope.projectId ||
+    chrome.projectRevisionId !== input.scope.projectRevisionId ||
+    !validSha(chrome.outputSha256) ||
+    chrome.browser !== "GOOGLE_CHROME" ||
+    chrome.fixtureOrFakeTransportUsed !== false ||
+    chrome.playbackPassed !== true ||
+    chrome.privateReadbackPassed !== true ||
+    Number.isNaN(chromeObservedAt) ||
+    chromeObservedAt > now.getTime() ||
+    now.getTime() - chromeObservedAt > 24 * 60 * 60 * 1_000
+  )
+    fail("LIVE_ACCEPTANCE_CHROME_INVALID");
+  const ledger = await buildV213ReleaseCertificationLedger({
+    releaseIdentity: input.releaseIdentity,
+    evidenceArtifacts: input.evidenceArtifacts,
+    verifier: input.releaseEvidenceVerifier,
+    evaluatedAt: now.toISOString(),
+  });
+  if (
+    ledger.releaseStatus !== "release_certified" ||
+    ledger.missingGates.length !== 0 ||
+    ledger.invalidGates.length !== 0 ||
+    ledger.reusableGates.length !== 15
+  )
+    fail("LIVE_ACCEPTANCE_RELEASE_BLOCKED");
+  const result = Object.freeze({
+    ledger,
+    chrome,
+    predecessorEvidenceSha256s: Object.freeze({ ...input.predecessorEvidenceSha256s }),
+  });
+  return Object.freeze({ ...result, certificationSha256: canonicalSha256(result) });
 }
 
 export interface V213LiveAcceptanceAdapterDependencies {

@@ -2,6 +2,13 @@ import { canonicalSha256, type Sha256 } from "@videoforge/control-plane";
 
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration.js";
 import { createNeonExecutor, createNeonPool } from "./neon.js";
+import {
+  parseV213AcceptanceOperatorEvidenceRequest,
+  parseV213AcceptanceOperatorEvidenceResult,
+  V213_ACCEPTANCE_OPERATOR_EVIDENCE_PATH,
+  type V213AcceptanceOperatorEvidenceRequest,
+  type V213AcceptanceOperatorEvidenceResult,
+} from "../runtime/v213-acceptance-operator-evidence.js";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
@@ -62,6 +69,15 @@ export interface V213OperatorRouteDependencies {
   readonly close: () => Promise<void>;
 }
 
+export interface V213OperatorEvidenceRouteDependencies {
+  ingest(input: {
+    readonly tokenSha256: Sha256;
+    readonly nonceSha256: Sha256;
+    readonly request: V213AcceptanceOperatorEvidenceRequest;
+  }): Promise<V213AcceptanceOperatorEvidenceResult | null>;
+  readonly close: () => Promise<void>;
+}
+
 function response(value: unknown, status: number): Response {
   return Response.json(value, {
     status,
@@ -100,6 +116,8 @@ function parse(value: unknown): V213OperatorExecutionDocument | null {
     ![
       item.commandId,
       item.stageAuthorityId,
+      item.workflowId,
+      item.attemptId,
       item.accountId,
       item.workspaceId,
       item.projectId,
@@ -109,8 +127,7 @@ function parse(value: unknown): V213OperatorExecutionDocument | null {
     !SHA256.test(item.requestSha256) ||
     typeof item.outerStateSha256 !== "string" ||
     !SHA256.test(item.outerStateSha256) ||
-    item.workflowId !== `v213-${String(item.checkpoint).toLowerCase()}-${item.commandId}` ||
-    item.attemptId !== `${item.workflowId}-attempt`
+    !String(item.workflowId).startsWith(`v213-${String(item.checkpoint).toLowerCase()}-`)
   )
     return null;
   return item as unknown as V213OperatorExecutionDocument;
@@ -121,6 +138,24 @@ async function digest(value: string): Promise<Sha256> {
   return `sha256:${[...new Uint8Array(bytes)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("")}` as Sha256;
+}
+
+function productionEvidenceDependencies(
+  config: HostedRuntimeConfiguration,
+): V213OperatorEvidenceRouteDependencies {
+  const pool = createNeonPool(config.neon.databaseUrl);
+  const database = createNeonExecutor(pool);
+  return {
+    ingest: async (input) =>
+      database.transaction(async (transaction) => {
+        const result = await transaction.query<{ value: unknown }>(
+          "SELECT public.videoforge_ingest_v213_acceptance_operator_evidence($1::jsonb) AS value",
+          [JSON.stringify(input)],
+        );
+        return (result.rows[0]?.value ?? null) as V213AcceptanceOperatorEvidenceResult | null;
+      }),
+    close: () => pool.end(),
+  };
 }
 
 async function verifyHmac(token: string, body: string, signature: string | null): Promise<boolean> {
@@ -168,6 +203,63 @@ function productionDependencies(
     execute,
     close: () => pool.end(),
   };
+}
+
+export async function handleV213AcceptanceOperatorEvidenceRequest(
+  request: Request,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  injected?: V213OperatorEvidenceRouteDependencies,
+  now: () => Date = () => new Date(),
+): Promise<Response | null> {
+  if (new URL(request.url).pathname !== V213_ACCEPTANCE_OPERATOR_EVIDENCE_PATH) return null;
+  if (request.method !== "POST") return response({ error: { code: "NOT_FOUND" } }, 404);
+  if (config.environment !== "production" || config.gpuTransport !== "QUALIFIED_EXACT")
+    return response({ error: { code: "V213_OPERATOR_EVIDENCE_DISABLED" } }, 503);
+  const token = request.headers.get("authorization")?.match(/^Bearer (.+)$/u)?.[1];
+  const declaredLength = Number(request.headers.get("content-length") ?? "0");
+  if (
+    !token ||
+    token !== environment.VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN ||
+    !Number.isSafeInteger(declaredLength) ||
+    declaredLength < 1 ||
+    declaredLength > MAX_BODY_BYTES ||
+    request.headers.get("content-type")?.split(";", 1)[0] !== "application/json"
+  )
+    return response({ error: { code: "NOT_FOUND" } }, 404);
+  const raw = await request.text();
+  if (
+    new TextEncoder().encode(raw).byteLength !== declaredLength ||
+    !(await verifyHmac(token, raw, request.headers.get("x-videoforge-signature")))
+  )
+    return response({ error: { code: "NOT_FOUND" } }, 404);
+  let document: V213AcceptanceOperatorEvidenceRequest | null = null;
+  try {
+    document = parseV213AcceptanceOperatorEvidenceRequest(JSON.parse(raw), now());
+  } catch {
+    document = null;
+  }
+  if (!document) return response({ error: { code: "NOT_FOUND" } }, 404);
+  const dependencies = injected ?? productionEvidenceDependencies(config);
+  try {
+    const ingested = await dependencies.ingest({
+      tokenSha256: await digest(token),
+      nonceSha256: await digest(document.nonce),
+      request: document,
+    });
+    const result = parseV213AcceptanceOperatorEvidenceResult(ingested, document);
+    return result
+      ? response(result, 201)
+      : response({ error: { code: "V213_OPERATOR_EVIDENCE_REJECTED" } }, 409);
+  } catch {
+    return response({ error: { code: "V213_OPERATOR_EVIDENCE_REJECTED" } }, 409);
+  } finally {
+    try {
+      await dependencies.close();
+    } catch {
+      // The exact ingest result was already obtained. Closing the pool cannot change the durable row.
+    }
+  }
 }
 
 export async function handleV213LiveOperatorRequest(

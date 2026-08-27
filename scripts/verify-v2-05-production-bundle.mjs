@@ -29,7 +29,6 @@ const workerForbidden = [
   "terminatePod",
   "updatePod",
   "RunPodPodClient",
-  "gpuTypeIds",
   "purge-queue",
   "/workspace/models",
   "NVIDIA RTX A6000",
@@ -81,8 +80,10 @@ if (!/^[a-z][a-z0-9-]{2,62}$/u.test(productionConfig.name)) {
 const emittedWorkerDirectory = productionConfig.name.replaceAll("-", "_");
 
 // The deployable entry and route owner must remain a hosted-only graph. Canonical hosted schemas
-// and exact server-side qualification lineage may appear in the Worker, so source reachability is
-// a stronger boundary than banning their factual vocabulary from all emitted server code.
+// and exact server-side qualification or authority-bound endpoint-policy readback may appear in
+// the Worker, so source reachability is a stronger boundary than banning provider field names from
+// all emitted server code. The client bundle still forbids GPU vocabulary and the Worker still
+// forbids Pod lifecycle, queue purge, and any user-facing GPU/pod route.
 const productionEntrySource = await readFile(productionEntryPath, "utf8");
 const productionImports = [
   ...productionEntrySource.matchAll(

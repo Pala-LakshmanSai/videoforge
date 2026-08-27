@@ -8,35 +8,69 @@ import {
   type HostedPairWorkflowParameters,
 } from "../src/server/hosted/hosted-pair-live-wiring";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
+import { V213SqlAcceptanceWorkflowPort } from "../src/server/hosted/v213-acceptance-workflow-production";
+import {
+  parseV213AcceptanceWorkflowParameters,
+  runV213DatabaseAcceptanceWorkflow,
+  type V213AcceptanceWorkflowParameters,
+} from "../src/server/hosted/v213-acceptance-workflow-runner";
 
 type Environment = HostedRuntimeEnvironment & HostedPairLiveEnvironment;
+type WorkflowParameters = HostedPairWorkflowParameters | V213AcceptanceWorkflowParameters;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const MAX_OBSERVATIONS = 120;
 
-function scope(value: HostedPairWorkflowParameters): HostedPairWorkflowParameters {
+function scope(value: WorkflowParameters): HostedPairWorkflowParameters {
+  const ordinary = value as HostedPairWorkflowParameters;
   if (
-    ![value.accountId, value.workspaceId, value.generationRequestId].every((item) =>
+    Object.keys(value).sort().join(",") !==
+      "accountId,cancelAt,generationRequestId,stopAt,workspaceId" ||
+    ![ordinary.accountId, ordinary.workspaceId, ordinary.generationRequestId].every((item) =>
       UUID.test(item),
     ) ||
-    !Number.isFinite(Date.parse(value.cancelAt)) ||
-    !Number.isFinite(Date.parse(value.stopAt)) ||
-    Date.parse(value.stopAt) - Date.parse(value.cancelAt) !== 10 * 60 * 1_000
+    !Number.isFinite(Date.parse(ordinary.cancelAt)) ||
+    !Number.isFinite(Date.parse(ordinary.stopAt)) ||
+    Date.parse(ordinary.stopAt) - Date.parse(ordinary.cancelAt) !== 10 * 60 * 1_000
   )
     throw new TypeError("Hosted pair Workflow requires exact UUID lineage.");
-  return Object.freeze({ ...value });
+  return Object.freeze({ ...ordinary });
 }
 
 /** Durable paid-pair coordinator. The checked-in binding is disabled, so its first branch makes
  * no database or provider call. Once separately activated, the first idempotent step resumes the
  * 0043 Mage-then-SoulX boundary; later steps only observe, cancel exact known jobs, and settle. */
-export class HostedPairWorkflow extends WorkflowEntrypoint<
-  Environment,
-  HostedPairWorkflowParameters
-> {
-  async run(event: Readonly<WorkflowEvent<HostedPairWorkflowParameters>>, step: WorkflowStep) {
-    const params = scope(event.payload);
+export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, WorkflowParameters> {
+  async run(event: Readonly<WorkflowEvent<WorkflowParameters>>, step: WorkflowStep) {
+    const acceptance =
+      event.payload &&
+      typeof event.payload === "object" &&
+      "kind" in event.payload &&
+      event.payload.kind === "V213_DATABASE_ACCEPTANCE"
+        ? parseV213AcceptanceWorkflowParameters(event.payload)
+        : null;
+    const pair = acceptance ? null : scope(event.payload);
     if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
       return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
+
+    if (acceptance) {
+      const runtimePool = createNeonPool(this.env.DATABASE_URL!);
+      const reconcilerPool = createNeonPool(this.env.VIDEOFORGE_RECONCILER_DATABASE_URL!);
+      try {
+        return await runV213DatabaseAcceptanceWorkflow(
+          acceptance,
+          step,
+          new V213SqlAcceptanceWorkflowPort(
+            this.env,
+            createNeonExecutor(runtimePool),
+            createNeonExecutor(reconcilerPool),
+          ),
+        );
+      } finally {
+        await Promise.allSettled([runtimePool.end(), reconcilerPool.end()]);
+      }
+    }
+
+    const params = pair!;
 
     for (let observation = 0; observation < MAX_OBSERVATIONS; observation += 1) {
       const result = await step.do(`hosted pair observation ${observation}`, async () => {

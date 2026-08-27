@@ -132,11 +132,7 @@ def _signed_dispatch_timings(
         raise ServerlessSoulXError("SOULX_SERVERLESS_TIMING_ISSUED_AT_INVALID") from error
     allocation_ms = round((handler_started_epoch - issued_epoch) * 1000)
     container_ready_ms = round((runtime_ready_epoch - issued_epoch) * 1000)
-    if (
-        allocation_ms < 0
-        or container_ready_ms < allocation_ms
-        or container_ready_ms > 86_400_000
-    ):
+    if allocation_ms < 0 or container_ready_ms < allocation_ms or container_ready_ms > 86_400_000:
         raise ServerlessSoulXError("SOULX_SERVERLESS_TIMING_ORDER_INVALID")
     return allocation_ms, container_ready_ms
 
@@ -485,19 +481,16 @@ def _parse_native_probe(
     except (TypeError, ValueError) as error:
         raise ServerlessSoulXError("SOULX_SERVERLESS_MEDIA_PROBE_INVALID") from error
     video_duration_ms = round(
-        _finite_number(video_stream.get("duration"), "SOULX_SERVERLESS_MEDIA_PROBE_INVALID")
-        * 1000
+        _finite_number(video_stream.get("duration"), "SOULX_SERVERLESS_MEDIA_PROBE_INVALID") * 1000
     )
     audio_duration_ms = round(
-        _finite_number(audio_stream.get("duration"), "SOULX_SERVERLESS_MEDIA_PROBE_INVALID")
-        * 1000
+        _finite_number(audio_stream.get("duration"), "SOULX_SERVERLESS_MEDIA_PROBE_INVALID") * 1000
     )
     format_value = value.get("format")
     if not isinstance(format_value, dict):
         raise ServerlessSoulXError("SOULX_SERVERLESS_MEDIA_PROBE_INVALID")
     format_duration_ms = round(
-        _finite_number(format_value.get("duration"), "SOULX_SERVERLESS_MEDIA_PROBE_INVALID")
-        * 1000
+        _finite_number(format_value.get("duration"), "SOULX_SERVERLESS_MEDIA_PROBE_INVALID") * 1000
     )
     av_delta_ms = abs(video_duration_ms - audio_duration_ms)
     if (
@@ -1027,9 +1020,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
     ) as error:
         candidate = str(error)[:120]
         code = (
-            candidate
-            if _FAILURE_CODE.fullmatch(candidate)
-            else "SOULX_SERVERLESS_HANDLER_FAILED"
+            candidate if _FAILURE_CODE.fullmatch(candidate) else "SOULX_SERVERLESS_HANDLER_FAILED"
         )
     except Exception:
         code = "SOULX_SERVERLESS_HANDLER_UNEXPECTED"

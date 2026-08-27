@@ -163,6 +163,8 @@ export interface HostedProductionOutputVerification {
   readonly durableInventorySha256: Sha256;
   readonly output: {
     readonly state: "COMMITTED";
+    /** Actual hosted_cpu_job_attempts identity; distinct from the admission's one-use authority. */
+    readonly renderAttemptId: string;
     readonly assetId: string;
     readonly objectKey: string;
     readonly sha256: Sha256;
@@ -229,9 +231,10 @@ export interface HostedProductionLaneMeasurement {
 }
 
 export interface HostedProductionRuntimeMeasurement {
+  /** DB/R2-bound render timing only. Peak RSS is intentionally excluded until the personal
+   * worker emits a durable, lease-bound process measurement instead of an inferred value. */
   readonly executionMs: number;
   readonly totalMs: number;
-  readonly peakRssBytes: number;
   readonly measurementSha256: Sha256;
 }
 
@@ -575,9 +578,10 @@ export async function acceptHostedProductionLength(input: {
   const expectedObjectKey =
     `tenant/${durable.document.key.accountId}/workspace/${durable.document.key.workspaceId}` +
     `/project/${durable.document.key.projectId}/revision/${durable.document.key.projectRevisionId}` +
-    `/lane/render/job/${durable.attemptId}/artifact/${verified.output.assetId}.mp4`;
+    `/lane/render/job/${verified.output.renderAttemptId}/artifact/${verified.output.assetId}.mp4`;
   if (
     verified.output.state !== "COMMITTED" ||
+    !ID.test(verified.output.renderAttemptId) ||
     verified.output.objectKey !== expectedObjectKey ||
     verified.output.contentType !== "video/mp4" ||
     !validSha(verified.output.sha256) ||
@@ -618,7 +622,6 @@ export async function acceptHostedProductionLength(input: {
   if (
     !positiveInt(verified.measurements.render.executionMs) ||
     verified.measurements.render.totalMs < verified.measurements.render.executionMs ||
-    !positiveInt(verified.measurements.render.peakRssBytes) ||
     !validSha(verified.measurements.render.measurementSha256) ||
     !validSha(verified.measurements.receiptSha256) ||
     verified.measurements.mage.totalMs +
@@ -664,7 +667,7 @@ export async function acceptHostedProductionLength(input: {
   )
     throw new HostedProductionLengthError("PRODUCTION_LENGTH_REVIEW_INVALID");
   if (
-    verified.terminal.attemptId !== durable.attemptId ||
+    verified.terminal.attemptId !== verified.output.renderAttemptId ||
     verified.terminal.submissionTokenSha256 !== durable.submissionTokenSha256 ||
     verified.terminal.jobsTerminal !== true ||
     verified.terminal.activeWorkers !== 0 ||

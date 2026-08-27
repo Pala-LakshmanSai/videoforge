@@ -45,6 +45,11 @@ function input(): V213DualLaneInput {
 function fixture(
   options: {
     dispatchAmbiguous?: boolean;
+    templateCreateAmbiguous?: boolean;
+    templateImageOverride?: string;
+    templateLaneOverride?: string;
+    templatePurposeOverride?: string;
+    templateResourceKeyHashOverride?: string;
     endpointCreateAmbiguous?: boolean;
     withDelivery?: boolean;
     deletionRemains?: boolean;
@@ -59,13 +64,39 @@ function fixture(
   const templateRaw = new Map<string, Record<string, unknown>>();
   const jobs = new Map<string, { id: string; status: string; output?: unknown }>();
   const control = {
-    createServerlessTemplate: vi.fn(async (name: string, imageName: string) => {
-      const id = `template_${templates.length + 1}`;
-      const item = { id, idHash: idSha(id), name };
-      templates.push(item);
-      templateRaw.set(item.id, { imageName });
-      return item;
-    }),
+    createServerlessTemplate: vi.fn(
+      async (
+        name: string,
+        imageName: string,
+        _diskGb: number,
+        environment: Readonly<Record<string, string>> = {},
+      ) => {
+        const id = `template_${templates.length + 1}`;
+        const item = { id, idHash: idSha(id), name };
+        templates.push(item);
+        templateRaw.set(item.id, {
+          imageName: options.templateImageOverride ?? imageName,
+          isServerless: true,
+          containerDiskInGb: 120,
+          env: {
+            ...environment,
+            ...(options.templateLaneOverride === undefined
+              ? {}
+              : { VIDEOFORGE_V213_LANE: options.templateLaneOverride }),
+            ...(options.templatePurposeOverride === undefined
+              ? {}
+              : { VIDEOFORGE_V213_PURPOSE: options.templatePurposeOverride }),
+            ...(options.templateResourceKeyHashOverride === undefined
+              ? {}
+              : {
+                  VIDEOFORGE_V213_RESOURCE_KEY_SHA256: options.templateResourceKeyHashOverride,
+                }),
+          },
+        });
+        if (options.templateCreateAmbiguous) throw new Error("template create timed out");
+        return item;
+      },
+    ),
     createScaleZeroEndpoint: vi.fn(
       async (
         name: string,
@@ -161,7 +192,10 @@ function fixture(
     })),
   };
   const verifyOutputReadback = vi.fn(async () => true as const);
-  const createJobClient = vi.fn((_endpointId: string) => client);
+  const createJobClient = vi.fn((endpointId: string) => {
+    void endpointId;
+    return client;
+  });
   const makeTransport = (transportInput: V213DualLaneInput = model) =>
     createV213RunPodDualLaneTransport({
       durable: {} as never,
@@ -223,6 +257,91 @@ describe("V213 concrete RunPod dual-lane transport", () => {
     expect(client.dispatch).toHaveBeenCalledOnce();
   });
 
+  it("recovers an exact template after a create timeout before creating its endpoint", async () => {
+    const { transport, control, model } = fixture({ templateCreateAmbiguous: true });
+    const resourceKey = "v213-stage_mage-mage-qualification";
+    const created = await transport.createLane({
+      sealed: model.mage,
+      purpose: "qualification",
+      resourceKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    expect(created).toMatchObject({ kind: "ACK", deployment: { templateId: "template_1" } });
+    expect(control.createServerlessTemplate).toHaveBeenCalledOnce();
+    expect(control.createScaleZeroEndpoint).toHaveBeenCalledOnce();
+    expect(control.createScaleZeroEndpoint).toHaveBeenCalledWith(
+      expect.any(String),
+      "template_1",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      true,
+    );
+  });
+
+  it("stops on an ambiguous conflicting template without endpoint mutation or cleanup", async () => {
+    const { transport, control, model } = fixture({
+      templateCreateAmbiguous: true,
+      templateImageOverride: "ghcr.io/example/other@sha256:" + "c".repeat(64),
+    });
+    const resourceKey = "v213-stage_mage-mage-qualification";
+    await expect(
+      transport.createLane({
+        sealed: model.mage,
+        purpose: "qualification",
+        resourceKey,
+        workersMin: 0,
+        workersMax: 1,
+      }),
+    ).rejects.toThrow("V213_TEMPLATE_CREATE_RECONCILIATION_IDENTITY_MISMATCH");
+    expect(control.createScaleZeroEndpoint).not.toHaveBeenCalled();
+    expect(control.bindV207EndpointIdentity).not.toHaveBeenCalled();
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+    await expect(control.inventoryDisposableResources()).resolves.toMatchObject({
+      endpoints: [],
+      templates: [{ id: "template_1" }],
+    });
+  });
+
+  it("requires the journal resource-key marker during ambiguous template recovery", async () => {
+    const { transport, control, model } = fixture({
+      templateCreateAmbiguous: true,
+      templateResourceKeyHashOverride: idSha("different-resource-key"),
+    });
+    await expect(
+      transport.createLane({
+        sealed: model.mage,
+        purpose: "qualification",
+        resourceKey: "v213-stage_mage-mage-qualification",
+        workersMin: 0,
+        workersMax: 1,
+      }),
+    ).rejects.toThrow("V213_TEMPLATE_CREATE_RECONCILIATION_IDENTITY_MISMATCH");
+    expect(control.createScaleZeroEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+  });
+
+  it("stops on an ambiguous unknown template without endpoint mutation or cleanup", async () => {
+    const { transport, control, model } = fixture({ templateCreateAmbiguous: true });
+    control.inventoryDisposableResources.mockResolvedValueOnce({ endpoints: [], templates: [] });
+    await expect(
+      transport.createLane({
+        sealed: model.soulx,
+        purpose: "qualification",
+        resourceKey: "v213-stage_soulx-soulx-qualification",
+        workersMin: 0,
+        workersMax: 1,
+      }),
+    ).rejects.toThrow("V213_TEMPLATE_CREATE_RECONCILIATION_UNCERTAIN");
+    expect(control.createScaleZeroEndpoint).not.toHaveBeenCalled();
+    expect(control.bindV207EndpointIdentity).not.toHaveBeenCalled();
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+  });
+
   it("returns ACK_UNKNOWN and never redispatches or guesses a provider job", async () => {
     const { transport, client, model } = fixture({ dispatchAmbiguous: true });
     const created = await transport.createLane({
@@ -240,12 +359,7 @@ describe("V213 concrete RunPod dual-lane transport", () => {
         envelope: {},
       }),
     ).resolves.toEqual({ kind: "ACK_UNKNOWN" });
-    await expect(
-      transport.findJobByRequestKey({
-        endpointId: created.deployment.endpointId,
-        requestKey: "v213-soulx-2s",
-      }),
-    ).resolves.toBeNull();
+    await expect(transport.findJobByRequestKey()).resolves.toBeNull();
     expect(client.dispatch).toHaveBeenCalledOnce();
   });
 
@@ -380,24 +494,145 @@ describe("V213 concrete RunPod dual-lane transport", () => {
 
   it("cleans a template-only lost endpoint create by deterministic authority name", async () => {
     const { transport, control, model } = fixture({ endpointCreateAmbiguous: true });
-    await expect(
-      transport.createLane({
-        sealed: model.mage,
-        purpose: "qualification",
-        resourceKey: "v213-stage_mage-mage-qualification",
-        workersMin: 0,
-        workersMax: 1,
-      }),
-    ).resolves.toMatchObject({
-      kind: "ACK_UNKNOWN",
-      partial: { templateId: "template_1", resourceKey: "v213-stage_mage-mage-qualification" },
+    const resourceKey = "v213-stage_mage-mage-qualification";
+    const created = await transport.createLane({
+      sealed: model.mage,
+      purpose: "qualification",
+      resourceKey,
+      workersMin: 0,
+      workersMax: 1,
     });
+    expect(created).toMatchObject({
+      kind: "ACK_UNKNOWN",
+      partial: { templateId: "template_1", resourceKey },
+    });
+    if (created.kind !== "ACK_UNKNOWN" || !created.partial) throw new Error("fixture");
     await expect(
       transport.cleanupAttributableResources([
-        { stage: "mage", stageAuthorityId: "stage_mage", operations: [] },
+        {
+          stage: "mage",
+          stageAuthorityId: "stage_mage",
+          operations: [
+            {
+              kind: "create",
+              resourceKey,
+              state: "ACK_UNKNOWN",
+              providerId: created.partial.templateId,
+              evidence: created.partial,
+            },
+          ],
+        },
       ]),
     ).resolves.toMatchObject({ production: [], deletedTemplateIdSha256s: [expect.any(String)] });
     expect(control.deleteTemplate).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a template-only deterministic candidate when its journaled hash mismatches", async () => {
+    const { transport, control, model } = fixture({ endpointCreateAmbiguous: true });
+    const resourceKey = "v213-stage_mage-mage-qualification";
+    const created = await transport.createLane({
+      sealed: model.mage,
+      purpose: "qualification",
+      resourceKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK_UNKNOWN" || !created.partial) throw new Error("fixture");
+    await expect(
+      transport.cleanupAttributableResources([
+        {
+          stage: "mage",
+          stageAuthorityId: "stage_mage",
+          operations: [
+            {
+              kind: "create",
+              resourceKey,
+              state: "ACK_UNKNOWN",
+              providerId: null,
+              evidence: { templateIdSha256: sha("d") },
+            },
+          ],
+        },
+      ]),
+    ).rejects.toThrow("V213_CLEANUP_PARTIAL_IDENTITY_DRIFT");
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+  });
+
+  it("rejects an endpoint-only deterministic candidate when its journaled hash mismatches", async () => {
+    const { transport, control, model } = fixture();
+    const resourceKey = "v213-stage_mage-mage-qualification";
+    const created = await transport.createLane({
+      sealed: model.mage,
+      purpose: "qualification",
+      resourceKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await control.deleteTemplate(created.deployment.templateId);
+    control.deleteTemplate.mockClear();
+    await expect(
+      transport.cleanupAttributableResources([
+        {
+          stage: "mage",
+          stageAuthorityId: "stage_mage",
+          operations: [
+            {
+              kind: "create",
+              resourceKey,
+              state: "ACKED",
+              providerId: null,
+              evidence: { endpointIdSha256: sha("d") },
+            },
+          ],
+        },
+      ]),
+    ).rejects.toThrow("V213_CLEANUP_PARTIAL_IDENTITY_DRIFT");
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+  });
+
+  it("proves every attributable production resource absent after a partial pair", async () => {
+    const { transport, control, model } = fixture();
+    const mageKey = "v213-stage_production-mage-production";
+    const created = await transport.createLane({
+      sealed: model.mage,
+      purpose: "production",
+      resourceKey: mageKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await control.deleteTemplate(created.deployment.templateId);
+    control.deleteTemplate.mockClear();
+
+    await expect(
+      transport.cleanupAttributableResources([
+        {
+          stage: "production",
+          stageAuthorityId: "stage_production",
+          operations: [
+            {
+              kind: "create",
+              resourceKey: mageKey,
+              state: "ACKED",
+              providerId: created.deployment.endpointId,
+              evidence: created.deployment,
+            },
+          ],
+        },
+      ]),
+    ).resolves.toMatchObject({
+      production: [],
+      productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+      productionResourcesAbsent: true,
+      deletedEndpointIdSha256s: [expect.any(String)],
+      deletedTemplateIdSha256s: [],
+    });
+    const remaining = await control.inventoryDisposableResources();
+    expect(remaining.endpoints).toEqual([]);
+    expect(remaining.templates).toEqual([]);
   });
 
   it("cleans partial Mage and SoulX qualification resources before max-one", async () => {
@@ -453,6 +688,8 @@ describe("V213 concrete RunPod dual-lane transport", () => {
         { lane: "mage", workersMax: 1 },
         { lane: "soulx", workersMax: 1 },
       ],
+      productionCleanupState: "EXACT_MAX_ONE_PAIR_RETAINED",
+      productionResourcesAbsent: false,
       deletedEndpointIdSha256s: [expect.any(String), expect.any(String)],
     });
   });

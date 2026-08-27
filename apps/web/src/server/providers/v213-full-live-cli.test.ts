@@ -1,9 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { createHash, createHmac } from "node:crypto";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { canonicalizeJson } from "@videoforge/contracts";
+import { canonicalSha256 } from "@videoforge/control-plane";
 
 import {
   V213_BRIDGE_ENVIRONMENT,
+  V213_CLEANUP_RECEIPT_ENVIRONMENT,
+  V213_OPERATOR_EVIDENCE_ENVIRONMENT,
+  V213_RELEASE_CERTIFICATION_ENVIRONMENT,
   V213_FULL_LIVE_COMMANDS,
   V213FullLiveBridgeError,
   createV213CleanupRuntime,
@@ -13,21 +21,122 @@ import {
   createV213ProductionRuntime,
   createV213WorkflowHttpBinding,
   executeV213FullLiveCommand,
+  loadV213ResolvedRenderManifest,
   readV213CleanupProtectedInputs,
+  readV213CleanupReceiptProtectedInputs,
   readV213EarlyCleanupProtectedInputs,
   readV213PrequalificationProtectedInputs,
   readV213ProtectedInputs,
+  readV213ReleaseCertificationProtectedInputs,
+  readV213OperatorEvidenceProtectedInputs,
   redactV213Output,
+  resolveV213V209EvidenceAfterScheduling,
   runV213FullLiveCli,
+  runV213CleanupReceiptCli,
+  runV213OperatorEvidenceIngestionCli,
+  runV213ReleaseCertificationCli,
   summarizeV213EndpointRestoration,
   V213_SERVERLESS_FLEX_RATE_SOURCE,
+  createV213V209ProductionTerminalOutputResolver,
   verifyV213WorkflowOperatorRouteSource,
   type V213FullLiveBridgeRuntime,
   type V213FullLiveCommand,
   type V213FullLiveCommandRequest,
 } from "./v213-full-live-cli.js";
+import { v213EvidenceKeyId } from "../hosted/v213-live-production-adapters.js";
 
 const HASH = `sha256:${"a".repeat(64)}` as const;
+
+describe("V2-13 resolved render manifest reader", () => {
+  const document = Object.freeze({
+    schema_version: "resolved-render-manifest/v1",
+    project_id: "33333333-3333-4333-8333-333333333333",
+  });
+  const documentSha256 = canonicalSha256(document);
+  const reference = Object.freeze({
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+    operationId: "v2-09-short-hosted-project" as const,
+    outerStateSha256: canonicalSha256({ outer: true }),
+    materializationRequestSha256: canonicalSha256({ materialization: true }),
+    accountId: "22222222-2222-4222-8222-222222222222",
+    workspaceId: "44444444-4444-4444-8444-444444444444",
+    projectId: "33333333-3333-4333-8333-333333333333",
+    projectRevisionId: "55555555-5555-4555-8555-555555555555",
+    artifactUri: `vf-local://objects/sha256/${documentSha256.slice(7, 9)}/${documentSha256.slice(7)}.json`,
+    sha256: documentSha256,
+    issuedAt: "2026-08-28T00:00:00.000Z",
+    nonce: "manifest-read-nonce-000000000001",
+  });
+
+  it("sends exact bearer/HMAC bindings and revalidates the returned document", async () => {
+    const bearer = "worker-operator-bearer-at-least-32-bytes";
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(String(input)).toBe(
+        "https://production.example/api/operator/v2-13/resolved-render-manifest",
+      );
+      const raw = String(init?.body);
+      expect(init?.headers).toMatchObject({
+        authorization: `Bearer ${bearer}`,
+        "content-type": "application/json",
+        "content-length": String(Buffer.byteLength(raw)),
+        "x-videoforge-signature": createHmac("sha256", bearer).update(raw).digest("hex"),
+      });
+      const request = JSON.parse(raw) as Record<string, unknown>;
+      const { requestSha256, ...unsigned } = request;
+      expect(requestSha256).toBe(canonicalSha256(unsigned));
+      return Response.json({
+        schemaVersion: "videoforge.v213-resolved-render-manifest-read-result/v1",
+        fullLiveAuthorityId: reference.fullLiveAuthorityId,
+        operationId: reference.operationId,
+        outerStateSha256: reference.outerStateSha256,
+        materializationRequestSha256: reference.materializationRequestSha256,
+        accountId: reference.accountId,
+        workspaceId: reference.workspaceId,
+        projectId: reference.projectId,
+        projectRevisionId: reference.projectRevisionId,
+        sha256: reference.sha256,
+        requestSha256,
+        document,
+      });
+    });
+    await expect(
+      loadV213ResolvedRenderManifest({
+        workerOrigin: "https://production.example",
+        workerOperatorBearer: bearer,
+        reference,
+        fetch,
+      }),
+    ).resolves.toEqual(document);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a response identity drift without returning the document", async () => {
+    await expect(
+      loadV213ResolvedRenderManifest({
+        workerOrigin: "https://production.example",
+        workerOperatorBearer: "worker-operator-bearer-at-least-32-bytes",
+        reference,
+        fetch: vi.fn(async (_input, init) => {
+          const request = JSON.parse(String(init?.body)) as Record<string, unknown>;
+          return Response.json({
+            schemaVersion: "videoforge.v213-resolved-render-manifest-read-result/v1",
+            fullLiveAuthorityId: reference.fullLiveAuthorityId,
+            operationId: "v2-12-long-output",
+            outerStateSha256: reference.outerStateSha256,
+            materializationRequestSha256: reference.materializationRequestSha256,
+            accountId: reference.accountId,
+            workspaceId: reference.workspaceId,
+            projectId: reference.projectId,
+            projectRevisionId: reference.projectRevisionId,
+            sha256: reference.sha256,
+            requestSha256: request.requestSha256,
+            document,
+          });
+        }),
+      }),
+    ).rejects.toThrow("JIT_RENDER_PLAN_PRIVATE_READER_DRIFT");
+  });
+});
 
 function request(command: V213FullLiveCommand): V213FullLiveCommandRequest {
   return {
@@ -112,6 +221,582 @@ function runtime(
   } satisfies V213FullLiveBridgeRuntime;
 }
 
+describe("V2-09 temporal evidence boundary", () => {
+  const signingKey = new Uint8Array(32).fill(7);
+  const request = {
+    accountId: "account-1",
+    workspaceId: "workspace-1",
+    generationRequestId: "generation-1",
+    deadlineAt: "2026-08-26T00:10:00.000Z",
+  } as const;
+  const terminalProof = {
+    schemaVersion: "videoforge.v2-09-terminal-output-proof/v1",
+    workflowId: "hosted-pair-generation-1",
+    accountId: request.accountId,
+    workspaceId: request.workspaceId,
+    generationRequestId: request.generationRequestId,
+    terminal: true,
+    readbackVerified: true,
+    finalOutputSha256: HASH,
+    finalOutputReceiptSha256: HASH,
+    terminalAt: "2026-08-26T00:05:00.000Z",
+  } as const;
+
+  const writeReceipt = (
+    paths: { readonly receiptPath: string; readonly request: Readonly<Record<string, unknown>> },
+    overrides: Readonly<Record<string, unknown>> = {},
+  ) => {
+    const document = {
+      schemaVersion: "videoforge.v2-09-real-chrome-acceptance/v1",
+      accountId: paths.request.accountId,
+      workspaceId: paths.request.workspaceId,
+      generationRequestId: paths.request.generationRequestId,
+      workflowId: paths.request.workflowId,
+      finalOutputSha256: paths.request.finalOutputSha256,
+      finalOutputReceiptSha256: paths.request.finalOutputReceiptSha256,
+      terminalAt: paths.request.terminalAt,
+      browser: "REAL_CHROME",
+      playbackAccepted: true,
+      downloadAccepted: true,
+      durationSeconds: 30,
+      observedAt: paths.request.terminalAt,
+      ...overrides,
+    };
+    const artifactSha256 = `sha256:${createHash("sha256")
+      .update(canonicalizeJson(document as never), "utf8")
+      .digest("hex")}`;
+    writeFileSync(
+      paths.receiptPath,
+      canonicalizeJson({
+        schemaVersion: "videoforge.v2-09-real-chrome-receipt/v1",
+        kind: "CHROME",
+        requestSha256: paths.request.requestSha256,
+        artifactSha256,
+        keyId: v213EvidenceKeyId(signingKey),
+        signatureHex: createHmac("sha256", signingKey)
+          .update(`CHROME\n${artifactSha256}\n${artifactSha256}`, "utf8")
+          .digest("hex"),
+        document,
+      } as never),
+      { encoding: "utf8", mode: 0o600, flag: "wx" },
+    );
+    chmodSync(paths.receiptPath, 0o600);
+  };
+
+  it("schedules exactly once before asking for post-terminal Chrome evidence", async () => {
+    let scheduled = false;
+    const schedule = vi.fn(async () => {
+      scheduled = true;
+      return { id: "hosted-pair-generation-1" };
+    });
+    const resolver = vi.fn(async (value) => {
+      expect(scheduled).toBe(true);
+      expect(value.workflowId).toBe("hosted-pair-generation-1");
+      return terminalProof;
+    });
+    const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-test-"));
+    chmodSync(directory, 0o700);
+
+    try {
+      await expect(
+        resolveV213V209EvidenceAfterScheduling({
+          schedule,
+          resolver,
+          request,
+          evidenceSigningKey: signingKey,
+          exchangeDirectory: directory,
+          now: () => new Date("2026-08-26T00:06:00.000Z"),
+          onRequestWritten: writeReceipt,
+        }),
+      ).resolves.toMatchObject({
+        scheduled: { id: "hosted-pair-generation-1" },
+        evidence: {
+          chromeEvidenceSha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
+          finalOutputSha256: HASH,
+          finalOutputReceiptSha256: HASH,
+        },
+      });
+      expect(schedule).toHaveBeenCalledOnce();
+      expect(resolver).toHaveBeenCalledOnce();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an expired deadline before scheduling when the production evidence adapter is absent", async () => {
+    const schedule = vi.fn(async () => ({ id: "hosted-pair-generation-1" }));
+
+    await expect(
+      resolveV213V209EvidenceAfterScheduling({ schedule, request }),
+    ).rejects.toMatchObject({
+      code: "V209_CHROME_RECEIPT_DEADLINE_EXCEEDED",
+    });
+    expect(schedule).not.toHaveBeenCalled();
+  });
+
+  it("aborts a hung schedule before resolving terminal evidence", async () => {
+    const deadlineAt = new Date(Date.now() + 30).toISOString();
+    let scheduleSignal: AbortSignal | undefined;
+    const schedule = vi.fn((options?: { readonly signal?: AbortSignal }) => {
+      scheduleSignal = options?.signal;
+      return new Promise<never>(() => undefined);
+    });
+    const resolver = vi.fn(async () => terminalProof);
+
+    await expect(
+      resolveV213V209EvidenceAfterScheduling({
+        schedule,
+        resolver,
+        request: { ...request, deadlineAt },
+        evidenceSigningKey: signingKey,
+      }),
+    ).rejects.toMatchObject({ code: "V209_CHROME_RECEIPT_DEADLINE_EXCEEDED" });
+    expect(schedule).toHaveBeenCalledOnce();
+    expect(scheduleSignal?.aborted).toBe(true);
+    expect(resolver).not.toHaveBeenCalled();
+  });
+
+  it("aborts a hung terminal resolver at the same absolute deadline", async () => {
+    const deadlineAt = new Date(Date.now() + 30).toISOString();
+    let resolverSignal: AbortSignal | undefined;
+    const schedule = vi.fn(async () => ({ id: terminalProof.workflowId }));
+    const resolver = vi.fn(
+      async (_request: unknown, options?: { readonly signal?: AbortSignal }) => {
+        resolverSignal = options?.signal;
+        return new Promise<never>(() => undefined);
+      },
+    );
+
+    await expect(
+      resolveV213V209EvidenceAfterScheduling({
+        schedule,
+        resolver,
+        request: { ...request, deadlineAt },
+        evidenceSigningKey: signingKey,
+      }),
+    ).rejects.toMatchObject({ code: "V209_CHROME_RECEIPT_DEADLINE_EXCEEDED" });
+    expect(schedule).toHaveBeenCalledOnce();
+    expect(resolver).toHaveBeenCalledOnce();
+    expect(resolverSignal?.aborted).toBe(true);
+  });
+
+  it("aborts a hung post-terminal operator handoff before receipt polling", async () => {
+    const deadlineAt = new Date(Date.now() + 30).toISOString();
+    let handoffSignal: AbortSignal | undefined;
+    const schedule = vi.fn(async () => ({ id: terminalProof.workflowId }));
+    const resolver = vi.fn(async () => terminalProof);
+    const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-handoff-deadline-"));
+    chmodSync(directory, 0o700);
+    try {
+      await expect(
+        resolveV213V209EvidenceAfterScheduling({
+          schedule,
+          resolver,
+          request: { ...request, deadlineAt },
+          evidenceSigningKey: signingKey,
+          exchangeDirectory: directory,
+          onRequestWritten: (paths) => {
+            handoffSignal = paths.signal;
+            return new Promise<void>(() => undefined);
+          },
+        }),
+      ).rejects.toMatchObject({ code: "V209_CHROME_RECEIPT_DEADLINE_EXCEEDED" });
+      expect(handoffSignal?.aborted).toBe(true);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a receipt that becomes available exactly at the deadline", async () => {
+    const deadlineAt = "2026-08-26T00:07:00.000Z";
+    let currentMs = Date.parse("2026-08-26T00:06:00.000Z");
+    const schedule = vi.fn(async () => ({ id: terminalProof.workflowId }));
+    const resolver = vi.fn(async () => terminalProof);
+    const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-boundary-"));
+    chmodSync(directory, 0o700);
+    try {
+      await expect(
+        resolveV213V209EvidenceAfterScheduling({
+          schedule,
+          resolver,
+          request: { ...request, deadlineAt },
+          evidenceSigningKey: signingKey,
+          exchangeDirectory: directory,
+          now: () => new Date(currentMs),
+          onRequestWritten: (paths) => {
+            writeReceipt(paths);
+            currentMs = Date.parse(deadlineAt);
+          },
+        }),
+      ).rejects.toMatchObject({ code: "V209_CHROME_RECEIPT_DEADLINE_EXCEEDED" });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("default terminal resolver waits for settled COMPLETE output and never dispatches", async () => {
+    let nowMs = Date.parse("2026-08-26T00:06:00.000Z");
+    let reads = 0;
+    let terminalQuery = "";
+    let terminalParameters: readonly unknown[] = [];
+    const workflow = {
+      create: vi.fn(),
+      get: vi.fn(async () => ({
+        id: "hosted-pair-generation-1",
+        status: vi.fn(async () => "EXISTING" as const),
+        sendEvent: vi.fn(async () => undefined),
+      })),
+    };
+    const database = {
+      transaction: vi.fn(async (callback) =>
+        callback({
+          query: vi.fn(async (sql: string, parameters?: readonly unknown[]) => {
+            if (sql.includes("videoforge.account_id")) return { rows: [] };
+            terminalQuery = sql;
+            terminalParameters = parameters ?? [];
+            reads += 1;
+            return { rows: [{ value: reads === 2 ? terminalProof : null }] };
+          }),
+        }),
+      ),
+    };
+    const resolver = createV213V209ProductionTerminalOutputResolver({
+      workflow,
+      database: database as never,
+      now: () => new Date(nowMs),
+      sleep: async () => {
+        nowMs += 1_000;
+      },
+      pollIntervalMs: 100,
+    });
+
+    await expect(resolver({ ...request, workflowId: terminalProof.workflowId })).resolves.toEqual(
+      terminalProof,
+    );
+    expect(workflow.get).toHaveBeenCalledOnce();
+    expect(reads).toBe(2);
+    expect(terminalQuery).toContain("videoforge_load_v209_terminal_output_projection");
+    expect(terminalQuery).toContain("$1::uuid");
+    expect(terminalQuery).toContain("$2::uuid");
+    expect(terminalQuery).toContain("$3::uuid");
+    expect(terminalQuery).toContain("$4::text");
+    expect(terminalQuery).not.toContain("video_runtime_states");
+    expect(terminalQuery).not.toContain("provider_workload_leases");
+    expect(terminalParameters).toEqual([
+      request.accountId,
+      request.workspaceId,
+      request.generationRequestId,
+      terminalProof.workflowId,
+    ]);
+  });
+
+  it("rejects a malformed database projection before Chrome exchange", async () => {
+    const sendEvent = vi.fn(async () => undefined);
+    const workflow = {
+      create: vi.fn(),
+      get: vi.fn(async () => ({
+        id: terminalProof.workflowId,
+        status: vi.fn(async () => "EXISTING" as const),
+        sendEvent,
+      })),
+    };
+    const database = {
+      transaction: vi.fn(async (callback) =>
+        callback({
+          query: vi.fn(async (sql: string) =>
+            sql.includes("videoforge.account_id")
+              ? { rows: [] }
+              : { rows: [{ value: { ...terminalProof, finalOutputSha256: "not-a-sha" } }] },
+          ),
+        }),
+      ),
+    };
+    const resolver = createV213V209ProductionTerminalOutputResolver({
+      workflow,
+      database: database as never,
+      now: () => new Date("2026-08-26T00:06:00.000Z"),
+      sleep: async () => undefined,
+      pollIntervalMs: 100,
+    });
+
+    await expect(
+      resolver({ ...request, workflowId: terminalProof.workflowId }),
+    ).rejects.toMatchObject({
+      code: "V209_TERMINAL_OUTPUT_PROOF_INVALID",
+    });
+    expect(workflow.get).toHaveBeenCalledOnce();
+    expect(sendEvent).not.toHaveBeenCalled();
+  });
+
+  it("default terminal resolver times out without a terminal/output proof", async () => {
+    let nowMs = Date.parse("2026-08-26T00:00:00.000Z");
+    const workflow = {
+      create: vi.fn(),
+      get: vi.fn(async () => ({
+        id: "hosted-pair-generation-1",
+        status: vi.fn(async () => "EXISTING" as const),
+        sendEvent: vi.fn(async () => undefined),
+      })),
+    };
+    const database = {
+      transaction: vi.fn(async (callback) =>
+        callback({
+          query: vi.fn(async (sql: string) =>
+            sql.includes("videoforge.account_id") ? { rows: [] } : { rows: [{ value: null }] },
+          ),
+        }),
+      ),
+    };
+    const resolver = createV213V209ProductionTerminalOutputResolver({
+      workflow,
+      database: database as never,
+      now: () => new Date(nowMs),
+      sleep: async () => {
+        nowMs += 1_000;
+      },
+      pollIntervalMs: 100,
+    });
+    const shortDeadline = {
+      ...request,
+      workflowId: terminalProof.workflowId,
+      deadlineAt: "2026-08-26T00:00:02.000Z",
+    };
+
+    await expect(resolver(shortDeadline)).rejects.toMatchObject({
+      code: "V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED",
+    });
+    expect(workflow.get).toHaveBeenCalledOnce();
+  });
+
+  it("aborts a hung workflow lookup at the absolute deadline", async () => {
+    const deadlineAt = new Date(Date.now() + 30).toISOString();
+    let lookupSignal: AbortSignal | undefined;
+    const workflow = {
+      create: vi.fn(),
+      get: vi.fn((_workflowId: string, options?: { readonly signal?: AbortSignal }) => {
+        lookupSignal = options?.signal;
+        return new Promise<never>(() => undefined);
+      }),
+    };
+    const database = { transaction: vi.fn() };
+    const resolver = createV213V209ProductionTerminalOutputResolver({
+      workflow,
+      database: database as never,
+      now: () => new Date(),
+      sleep: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      resolver({ ...request, workflowId: terminalProof.workflowId, deadlineAt }),
+    ).rejects.toMatchObject({ code: "V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED" });
+    expect(workflow.get).toHaveBeenCalledOnce();
+    expect(lookupSignal?.aborted).toBe(true);
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
+
+  it("aborts a hung workflow status read before opening the database", async () => {
+    const deadlineAt = new Date(Date.now() + 30).toISOString();
+    let statusSignal: AbortSignal | undefined;
+    const status = vi.fn((options?: { readonly signal?: AbortSignal }) => {
+      statusSignal = options?.signal;
+      return new Promise<never>(() => undefined);
+    });
+    const workflow = {
+      create: vi.fn(),
+      get: vi.fn(async () => ({
+        id: terminalProof.workflowId,
+        status,
+        sendEvent: vi.fn(async () => undefined),
+      })),
+    };
+    const database = { transaction: vi.fn() };
+    const resolver = createV213V209ProductionTerminalOutputResolver({
+      workflow,
+      database: database as never,
+      now: () => new Date(),
+      sleep: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      resolver({ ...request, workflowId: terminalProof.workflowId, deadlineAt }),
+    ).rejects.toMatchObject({ code: "V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED" });
+    expect(status).toHaveBeenCalledOnce();
+    expect(statusSignal?.aborted).toBe(true);
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
+
+  it("aborts a hung database transaction and never polls after expiry", async () => {
+    const deadlineAt = new Date(Date.now() + 30).toISOString();
+    let transactionSignal: AbortSignal | undefined;
+    const workflow = {
+      create: vi.fn(),
+      get: vi.fn(async () => ({
+        id: terminalProof.workflowId,
+        status: vi.fn(async () => "EXISTING" as const),
+        sendEvent: vi.fn(async () => undefined),
+      })),
+    };
+    const database = {
+      transaction: vi.fn(
+        (
+          _callback: (transaction: never) => Promise<unknown>,
+          options?: { readonly signal?: AbortSignal },
+        ) => {
+          transactionSignal = options?.signal;
+          return new Promise<never>(() => undefined);
+        },
+      ),
+    };
+    const resolver = createV213V209ProductionTerminalOutputResolver({
+      workflow,
+      database: database as never,
+      now: () => new Date(),
+      sleep: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      resolver({ ...request, workflowId: terminalProof.workflowId, deadlineAt }),
+    ).rejects.toMatchObject({ code: "V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED" });
+    expect(database.transaction).toHaveBeenCalledOnce();
+    expect(transactionSignal?.aborted).toBe(true);
+  });
+
+  it("rejects a short deadline after status and does not start a database read", async () => {
+    const nowMs = Date.now();
+    const deadlineMs = nowMs + 20;
+    let currentMs = nowMs;
+    const status = vi.fn(async () => {
+      currentMs = deadlineMs;
+      return undefined;
+    });
+    const workflow = {
+      create: vi.fn(),
+      get: vi.fn(async () => ({
+        id: terminalProof.workflowId,
+        status,
+        sendEvent: vi.fn(async () => undefined),
+      })),
+    };
+    const database = { transaction: vi.fn() };
+    const resolver = createV213V209ProductionTerminalOutputResolver({
+      workflow,
+      database: database as never,
+      now: () => new Date(currentMs),
+      sleep: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      resolver({
+        ...request,
+        workflowId: terminalProof.workflowId,
+        deadlineAt: new Date(deadlineMs).toISOString(),
+      }),
+    ).rejects.toMatchObject({ code: "V209_TERMINAL_OUTPUT_DEADLINE_EXCEEDED" });
+    expect(workflow.get).toHaveBeenCalledOnce();
+    expect(status).toHaveBeenCalledOnce();
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed or pre-terminal evidence without redispatch", async () => {
+    const schedule = vi.fn(async () => ({ id: "hosted-pair-generation-1" }));
+    const resolver = vi.fn(async () => terminalProof);
+    const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-test-"));
+    chmodSync(directory, 0o700);
+
+    try {
+      await expect(
+        resolveV213V209EvidenceAfterScheduling({
+          schedule,
+          resolver,
+          request,
+          evidenceSigningKey: signingKey,
+          exchangeDirectory: directory,
+          now: () => new Date("2026-08-26T00:06:00.000Z"),
+          onRequestWritten: (paths) =>
+            writeReceipt(paths, { finalOutputSha256: HASH.replace(/a/gu, "b") }),
+        }),
+      ).rejects.toMatchObject({ code: "V209_CHROME_RECEIPT_INVALID" });
+      expect(schedule).toHaveBeenCalledOnce();
+      expect(resolver).toHaveBeenCalledOnce();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a receipt that claims a non-Chrome browser", async () => {
+    const schedule = vi.fn(async () => ({ id: "hosted-pair-generation-1" }));
+    const resolver = vi.fn(async () => terminalProof);
+    const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-test-"));
+    chmodSync(directory, 0o700);
+
+    try {
+      await expect(
+        resolveV213V209EvidenceAfterScheduling({
+          schedule,
+          resolver,
+          request,
+          evidenceSigningKey: signingKey,
+          exchangeDirectory: directory,
+          now: () => new Date("2026-08-26T00:06:00.000Z"),
+          onRequestWritten: (paths) => writeReceipt(paths, { browser: "CHROMIUM" }),
+        }),
+      ).rejects.toMatchObject({ code: "V209_CHROME_RECEIPT_INVALID" });
+      expect(schedule).toHaveBeenCalledOnce();
+      expect(resolver).toHaveBeenCalledOnce();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("does not retry scheduling when the post-terminal resolver fails", async () => {
+    const schedule = vi.fn(async () => ({ id: "hosted-pair-generation-1" }));
+    const resolver = vi.fn(async () => {
+      throw new Error("chrome capture unavailable");
+    });
+    const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-test-"));
+    chmodSync(directory, 0o700);
+
+    try {
+      await expect(
+        resolveV213V209EvidenceAfterScheduling({
+          schedule,
+          resolver,
+          request,
+          evidenceSigningKey: signingKey,
+          exchangeDirectory: directory,
+          now: () => new Date("2026-08-26T00:06:00.000Z"),
+        }),
+      ).rejects.toThrow("chrome capture unavailable");
+      expect(schedule).toHaveBeenCalledOnce();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed on a non-private exchange directory before receipt polling", async () => {
+    const schedule = vi.fn(async () => ({ id: "hosted-pair-generation-1" }));
+    const resolver = vi.fn(async () => terminalProof);
+    const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-test-"));
+    chmodSync(directory, 0o755);
+
+    try {
+      await expect(
+        resolveV213V209EvidenceAfterScheduling({
+          schedule,
+          resolver,
+          request,
+          evidenceSigningKey: signingKey,
+          exchangeDirectory: directory,
+          now: () => new Date("2026-08-26T00:06:00.000Z"),
+        }),
+      ).rejects.toMatchObject({ code: "V209_CHROME_EVIDENCE_DIRECTORY_MODE_INVALID" });
+      expect(schedule).toHaveBeenCalledOnce();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("V2-13 full-live TypeScript bridge", () => {
   it("binds the official Serverless Flex rate separately from the Secure Pod catalog", () => {
     expect(V213_SERVERLESS_FLEX_RATE_SOURCE).toMatchObject({
@@ -134,12 +819,19 @@ describe("V2-13 full-live TypeScript bridge", () => {
     expect(
       summarizeV213EndpointRestoration({
         production: [],
+        productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+        productionResourcesAbsent: true,
         deletedEndpointIdSha256s: [],
         deletedTemplateIdSha256s: [],
       }),
     ).toMatchObject({
       bothEndpointsMaxWorkersOne: false,
       retainedProductionEndpoints: 0,
+      productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+      productionResourcesAbsent: true,
+      rollbackIdentityPinned: false,
+      rollbackReadbackPassed: false,
+      releaseCurrentRestored: false,
     });
   });
 
@@ -167,14 +859,21 @@ describe("V2-13 full-live TypeScript bridge", () => {
     ];
     const exact = {
       production,
+      productionCleanupState: "EXACT_MAX_ONE_PAIR_RETAINED",
+      productionResourcesAbsent: false,
       deletedEndpointIdSha256s: [],
       deletedTemplateIdSha256s: [],
     };
     expect(summarizeV213EndpointRestoration(exact as never)).toMatchObject({
       bothEndpointsMaxWorkersOne: true,
       retainedProductionEndpoints: 2,
+      productionCleanupState: "EXACT_MAX_ONE_PAIR_RETAINED",
+      productionResourcesAbsent: false,
+      rollbackIdentityPinned: true,
+      rollbackReadbackPassed: true,
+      releaseCurrentRestored: true,
     });
-    expect(
+    expect(() =>
       summarizeV213EndpointRestoration({
         ...exact,
         production: [
@@ -182,7 +881,19 @@ describe("V2-13 full-live TypeScript bridge", () => {
           production[1],
         ],
       } as never),
-    ).toMatchObject({ bothEndpointsMaxWorkersOne: false });
+    ).toThrowError(expect.objectContaining({ code: "CLEANUP_PRODUCTION_STATE_MISMATCH" }));
+    expect(() =>
+      summarizeV213EndpointRestoration({
+        ...exact,
+        productionCleanupState: "UNKNOWN",
+      } as never),
+    ).toThrowError(expect.objectContaining({ code: "CLEANUP_PRODUCTION_STATE_INVALID" }));
+    expect(() =>
+      summarizeV213EndpointRestoration({
+        ...exact,
+        productionResourcesAbsent: undefined,
+      } as never),
+    ).toThrowError(expect.objectContaining({ code: "CLEANUP_PRODUCTION_STATE_MISMATCH" }));
   });
 
   it("exposes and executes the closed full command catalog", async () => {
@@ -224,8 +935,24 @@ describe("V2-13 full-live TypeScript bridge", () => {
           executeV210: async () => ({ summary: { evidenceSha256: HASH } }),
           executeV211: async () => ({ summary: { evidenceSha256: HASH } }),
           executeV212: async () => ({ summary: { evidenceSha256: HASH } }),
-          executeV213: async () => ({ summary: { evidenceSha256: HASH } }),
+          executeV213: async () => ({
+            summary: { evidenceSha256: HASH },
+            completionSha256: HASH,
+            releaseChromeOutput: {
+              scope: {
+                accountId: "account-id",
+                workspaceId: "workspace-id",
+                projectId: "project-id",
+                projectRevisionId: "project-revision-id",
+                attemptId: "attempt-id",
+              },
+              outputSha256: HASH,
+              finalOutputReceiptSha256: HASH,
+              smokeTerminalAt: "2026-08-28T00:00:00.000Z",
+            },
+          }),
         },
+        evidence: { signAndStore: async () => ({ artifactSha256: HASH }) },
       } as never,
       loadDatabaseAcceptanceCall: async (value) =>
         ({
@@ -450,6 +1177,278 @@ describe("V2-13 full-live TypeScript bridge", () => {
     expect(() => readV213ProtectedInputs(environment, readFd)).toThrowError(
       expect.objectContaining({ code: "PRODUCTION_SECRETS_INVALID" }),
     );
+  });
+
+  it("runs release certification through only the DB-only child descriptor", async () => {
+    const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
+    const predecessorEvidenceSha256s = {
+      "v2-13-final-two-lane-smoke": canonicalSha256({ smoke: true }),
+      "restore-endpoints-max-one": canonicalSha256({ restore: true }),
+      "prove-zero-workers": canonicalSha256({ zero: true }),
+      "read-settled-billing": canonicalSha256({ billing: true }),
+      "reconcile-exact-resources": canonicalSha256({ resources: true }),
+    };
+    const unsigned = {
+      schemaVersion: "videoforge.v213-local-release-certification-request/v1",
+      fullLiveAuthorityId,
+      workId: "outer-authority:certify-v2-13-release",
+      outerStateSha256: canonicalSha256({ outer: true }),
+      predecessorEvidenceSha256s,
+      resumed: true,
+      authorizedUnsettled: true,
+      reconciliationOnly: true,
+      persistenceForbidden: true,
+      dispatchForbidden: true,
+      providerDispatchForbidden: true,
+    } as const;
+    const request = { ...unsigned, requestSha256: canonicalSha256(unsigned) };
+    const operatorDatabaseUrl =
+      "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require";
+    const secrets = {
+      schemaVersion: "videoforge.v213-full-live-production-secrets/v1",
+      stageAuthoritySigningKeyBase64: Buffer.alloc(32, 1).toString("base64"),
+      provenanceReceiptHmacKeyBase64: Buffer.alloc(32, 2).toString("base64"),
+      provenanceReceiptKeyId: "receipt-key-1",
+      acceptanceEvidenceSigningKeyBase64: Buffer.alloc(32, 3).toString("base64"),
+      pairDispatchTokenKeyBase64: Buffer.alloc(32, 4).toString("base64"),
+      pairDispatchTokenKeyId: "pair-dispatch-key-1",
+      pairEnvelopeSigningKeyHex: Buffer.alloc(32, 5).toString("hex"),
+      pairEnvelopeSigningKeyId: "pair-envelope-key-1",
+      pairProviderProofKeyHex: Buffer.alloc(32, 6).toString("hex"),
+      pairProviderProofKeyId: "pair-proof-key-1",
+      mageEndpointId: "mage-endpoint-1",
+      soulxEndpointId: "soulx-endpoint-1",
+    } as const;
+    const values = new Map([
+      ["20", JSON.stringify(request)],
+      ["21", operatorDatabaseUrl],
+      ["22", JSON.stringify(secrets)],
+    ]);
+    const environment = {
+      [V213_RELEASE_CERTIFICATION_ENVIRONMENT.requestFd]: "20",
+      [V213_RELEASE_CERTIFICATION_ENVIRONMENT.operatorDatabaseUrlFd]: "21",
+      [V213_RELEASE_CERTIFICATION_ENVIRONMENT.productionSecretsFd]: "22",
+    };
+    const readFd = (fd: string | undefined) => values.get(fd ?? "") ?? "";
+    expect(readV213ReleaseCertificationProtectedInputs(environment, readFd)).toMatchObject({
+      request,
+      operatorDatabaseUrl,
+    });
+    const result = {
+      schemaVersion: "videoforge.v213-final-release-certification-result/v1",
+      actualUsd: 0,
+      externalSpendUsd: 0,
+      gpuUse: false,
+      providerMutationPerformed: false,
+      currentRunEvidence: true,
+      certified: true,
+      releaseStatus: "release_certified",
+      gateCount: 15,
+      missingGateCount: 0,
+      invalidGateCount: 0,
+      liveReleaseAuthorized: false,
+      requiresExplicitReleaseAuthority: true,
+      releaseIdentitySha256: canonicalSha256({ release: true }),
+      ledgerSha256: canonicalSha256({ ledger: true }),
+      evidenceSha256: canonicalSha256({ ledger: true }),
+      predecessorEvidenceSha256s,
+    } as const;
+    const certify = vi.fn(async () => result);
+    const createCertifier = vi.fn(() => certify);
+    const createOperatorDatabase = vi.fn(() => ({}) as never);
+    let output = "";
+    await runV213ReleaseCertificationCli(
+      ["--certify-release", "EXECUTE_EXACT_V2_13_LOCAL_RELEASE_CERTIFICATION"],
+      {
+        environment,
+        readFd,
+        createOperatorDatabase,
+        createCertifier,
+        write: (value) => (output += value),
+      },
+    );
+    expect(JSON.parse(output)).toEqual(result);
+    expect(createOperatorDatabase).toHaveBeenCalledOnce();
+    expect(createCertifier).toHaveBeenCalledOnce();
+    const { schemaVersion, ...certificationRequest } = unsigned;
+    expect(schemaVersion).toBe("videoforge.v213-local-release-certification-request/v1");
+    expect(certify).toHaveBeenCalledWith(certificationRequest);
+    expect(() =>
+      readV213ReleaseCertificationProtectedInputs(
+        { ...environment, [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "23" },
+        readFd,
+      ),
+    ).toThrowError(
+      expect.objectContaining({ code: "RELEASE_CERTIFICATION_AMBIENT_BINDING_REJECTED" }),
+    );
+  });
+
+  it("finalizes cleanup evidence through an exact DB-only child and rejects ambient provider FDs", async () => {
+    const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
+    const summary = { zeroWorkers: true, reads: [{}, {}, {}] };
+    const unsigned = {
+      schemaVersion: "videoforge.v213-local-cleanup-receipt-finalization-request/v1" as const,
+      fullLiveAuthorityId,
+      operationId: "prove-zero-workers" as const,
+      outerStateSha256: canonicalSha256({ outer: "cleanup" }),
+      providerCleanupEvidenceSha256: canonicalSha256(summary),
+      summary,
+      readbackOnly: true,
+    };
+    const request = { ...unsigned, requestSha256: canonicalSha256(unsigned) };
+    const operatorDatabaseUrl =
+      "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require";
+    const evidenceSigningKeyBase64 = Buffer.alloc(32, 9).toString("base64");
+    const values = new Map([
+      ["30", JSON.stringify(request)],
+      ["31", operatorDatabaseUrl],
+      ["32", evidenceSigningKeyBase64],
+    ]);
+    const environment = {
+      [V213_CLEANUP_RECEIPT_ENVIRONMENT.requestFd]: "30",
+      [V213_CLEANUP_RECEIPT_ENVIRONMENT.operatorDatabaseUrlFd]: "31",
+      [V213_CLEANUP_RECEIPT_ENVIRONMENT.evidenceSigningKeyFd]: "32",
+    };
+    const readFd = (fd: string | undefined) => values.get(fd ?? "") ?? "";
+    expect(readV213CleanupReceiptProtectedInputs(environment, readFd)).toMatchObject({
+      request,
+      operatorDatabaseUrl,
+    });
+    const result = {
+      schemaVersion: "videoforge.v213-cleanup-receipt-finalization-result/v1" as const,
+      fullLiveAuthorityId,
+      operationId: "prove-zero-workers" as const,
+      providerCleanupEvidenceSha256: unsigned.providerCleanupEvidenceSha256,
+      receiptArtifactSha256: canonicalSha256({ receipt: "cleanup" }),
+      releaseFactMaterializationSha256: canonicalSha256({ materialization: "cleanup" }),
+      readbackOnly: true,
+    };
+    const finalize = vi.fn(async () => result);
+    const createFinalizer = vi.fn(() => finalize);
+    const createOperatorDatabase = vi.fn(() => ({}) as never);
+    let output = "";
+    await runV213CleanupReceiptCli(
+      ["--finalize-cleanup-receipt", "FINALIZE_EXACT_V2_13_CLEANUP_RECEIPT"],
+      {
+        environment,
+        readFd,
+        createOperatorDatabase,
+        createFinalizer,
+        write: (value) => (output += value),
+      },
+    );
+    expect(JSON.parse(output)).toEqual(result);
+    const { schemaVersion, requestSha256, ...finalizeRequest } = request;
+    expect(schemaVersion).toBe("videoforge.v213-local-cleanup-receipt-finalization-request/v1");
+    expect(requestSha256).toBe(canonicalSha256(unsigned));
+    expect(finalize).toHaveBeenCalledWith(finalizeRequest);
+    expect(createOperatorDatabase).toHaveBeenCalledOnce();
+    expect(() =>
+      readV213CleanupReceiptProtectedInputs(
+        { ...environment, [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "33" },
+        readFd,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "CLEANUP_RECEIPT_AMBIENT_BINDING_REJECTED" }));
+  });
+
+  it("submits an exact protected visual decision without constructing provider clients", async () => {
+    const unsigned = {
+      schemaVersion: "videoforge.v213-operator-evidence-ingestion-request/v1" as const,
+      binding: {
+        fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+        operationId: "v2-12-long-output" as const,
+        checkpoint: "V2-12" as const,
+        stageAuthorityId: "22222222-2222-4222-8222-222222222222",
+        outerStateSha256: canonicalSha256({ outer: true }),
+        workflowId: "v213-v2-12-execution-1",
+        executionId: "execution-1",
+        executionRequestSha256: canonicalSha256({ execution: true }),
+        authoritySha256: canonicalSha256({ authority: true }),
+      },
+      evidence: {
+        schemaVersion: "videoforge.v213-v212-visual-decision-evidence/v1" as const,
+        kind: "V212_VISUAL_DECISION" as const,
+        scope: {
+          accountId: "30000000-0000-4000-8000-000000000001",
+          workspaceId: "30000000-0000-4000-8000-000000000002",
+          projectId: "30000000-0000-4000-8000-000000000003",
+          projectRevisionId: "30000000-0000-4000-8000-000000000004",
+          requestSha256: canonicalSha256({ scope: true }),
+          attemptId: "attempt-1",
+        },
+        outputSha256: canonicalSha256({ output: true }),
+        outputReceiptSha256: canonicalSha256({ outputReceipt: true }),
+        decision: "ACCEPTED" as const,
+        review: {
+          reviewedCutCount: 90,
+          everyCutReviewed: true as const,
+          noManualMediaEditOrSubstitution: true as const,
+          hardCutsOnly: true as const,
+          overlaysAbsent: true as const,
+          requiredSlowImageZoom: true as const,
+          visualQualityPassed: true as const,
+          audioVideoQualityPassed: true as const,
+        },
+        observedAt: "2026-08-28T10:00:00.000Z",
+      },
+      issuedAt: "2026-08-28T10:00:01.000Z",
+      nonce: "operator-evidence-nonce-0001",
+    };
+    const request = { ...unsigned, requestSha256: canonicalSha256(unsigned) };
+    const workerOrigin = "https://videoforge.example";
+    const workerOperatorBearer = "operator-secret-that-is-at-least-thirty-two-bytes";
+    const values = new Map([
+      ["30", JSON.stringify(request)],
+      ["31", workerOrigin],
+      ["32", workerOperatorBearer],
+    ]);
+    const environment = {
+      [V213_OPERATOR_EVIDENCE_ENVIRONMENT.requestFd]: "30",
+      [V213_OPERATOR_EVIDENCE_ENVIRONMENT.workerOriginFd]: "31",
+      [V213_OPERATOR_EVIDENCE_ENVIRONMENT.workerOperatorBearerFd]: "32",
+    };
+    const readFd = (fd: string | undefined) => values.get(fd ?? "") ?? "";
+    expect(
+      readV213OperatorEvidenceProtectedInputs(
+        environment,
+        readFd,
+        () => new Date("2026-08-28T10:00:02.000Z"),
+      ),
+    ).toMatchObject({ request, workerOrigin });
+    const result = {
+      schemaVersion: "videoforge.v213-operator-evidence-ingestion-result/v1",
+      fullLiveAuthorityId: request.binding.fullLiveAuthorityId,
+      operationId: request.binding.operationId,
+      checkpoint: request.binding.checkpoint,
+      workflowId: request.binding.workflowId,
+      executionRequestSha256: request.binding.executionRequestSha256,
+      kind: request.evidence.kind,
+      evidenceSha256: canonicalSha256(request.evidence),
+      state: "RECORDED",
+      recordedAt: "2026-08-28T10:00:02.000Z",
+    } as const;
+    const fetchPort = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.headers).toEqual(
+        expect.objectContaining({ authorization: `Bearer ${workerOperatorBearer}` }),
+      );
+      return Response.json(result, {
+        status: 201,
+        headers: { "cache-control": "no-store" },
+      });
+    });
+    let output = "";
+    await runV213OperatorEvidenceIngestionCli(
+      ["--ingest-operator-evidence", "INGEST_EXACT_V2_13_OPERATOR_EVIDENCE"],
+      {
+        environment,
+        readFd,
+        fetch: fetchPort,
+        now: () => new Date("2026-08-28T10:00:02.000Z"),
+        write: (value) => (output += value),
+      },
+    );
+    expect(JSON.parse(output)).toEqual(result);
+    expect(fetchPort).toHaveBeenCalledOnce();
   });
 
   it("executes early cleanup through only the operator and RunPod seams", async () => {

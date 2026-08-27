@@ -34,44 +34,68 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:58df723c3e20930e36bb864e3a9176c0430939c162ef478fb6307da800ec658a",
+    sha256: "sha256:8bdf4079222117e1ac38bca3a7170e5bd9cf6aea5ffbcbc70cf587af73fdbf49",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:0ebab27b0798171d342dbae0a5a71c59aef499295dd8f0ddd00ea85041d5bd69",
+    sha256: "sha256:0556bd306fd572d9d1816297bec09a9398a249af8301bdf3e7a867a57e44c38e",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
-    sha256: "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
+    sha256: "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7",
+    sha256: "sha256:bedc5b1a2af1380c83bc2a6223dcfba072b6c2deb38d54bf1f05b32801f0e758",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:189cd0a52cbe589fbfe4e425d71a81104d63f672e8ea4302381bd73911ecd1d0",
+    sha256: "sha256:1704083f4e2c323de461976101fdd355ac3139eae68a81e8decc1c1dde5ee135",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
-    sha256: "sha256:a2b56248037b9712aec87513339d8e3fa3b6c172e0ee62e6a943e518d3af3459",
+    sha256: "sha256:a83d5ee164cb279b5381272eec66f70b10904883806e81caf75e774ac9f30102",
   }),
   runpod_dual_lane_transport: Object.freeze({
     path: "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
-    sha256: "sha256:a6c1fc9333ad64726522b6e9fa62354637eb3c7248803e06e8470974db8203a0",
+    sha256: "sha256:7734369295715d57b92ae0ca399ad8514cee5babb2b5d1acd749a860fd4b22c0",
   }),
   migration_0045: Object.freeze({
     path: "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
-    sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
+    sha256: "sha256:352169e1e34e23bc36b2a3c1fb653747194fe0b560894bfdbfafb30d635561d7",
   }),
   operator_grants: Object.freeze({
     path: "deploy/v2-13/neon-full-live-operator-grants.sql",
-    sha256: "sha256:60922d36e5aeb05fe34705198967aa3adf20cdf9ec61283810a565b6690b2c39",
+    sha256: "sha256:f97dcc4b85f48a16b994eaf7e50c91502a12a4600f0b17fd81ee6d31b8db74de",
+  }),
+  reconciler_grants: Object.freeze({
+    path: "deploy/v2-13/neon-pair-reconciler-grants.sql",
+    sha256: "sha256:7d6fc701c5f71c1a3dc09ee08268e4f8caa58e69a85594258ce864aa673b49a7",
+  }),
+  runtime_grants: Object.freeze({
+    path: "deploy/v2-06/neon-runtime-grants.sql",
+    sha256: "sha256:df43df13634319fa97e8f19f4459af5e01c42b8f144f00c8527f5f873ec7085f",
+  }),
+  materialization_seed_production_input_validator: Object.freeze({
+    path: "deploy/v2-13/validate-materialization-seed-production-input.mts",
+    sha256: "sha256:0b40fda24bcb2983b8d8e2ceece1254064f0cb1c3fb0712795c2a9ed68677d88",
+  }),
+  production_config_validator: Object.freeze({
+    path: "deploy/v2-13/validate-production-config.mjs",
+    sha256: "sha256:9860d815d101dd25b8a98ef5231df6054a42c9820edabaf6bb871dcaf5fc83f6",
+  }),
+  pg_service_validator: Object.freeze({
+    path: "deploy/v2-06/validate-pg-service.mjs",
+    sha256: "sha256:08fce81dcb856d365b9aaa728e16f827fcb07ac4ce027d20feeab3972d246e7e",
   }),
   migration_manifest: Object.freeze({
     path: "packages/control-plane/migrations/manifest.json",
-    sha256: "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa",
+    sha256: "sha256:f0f8bd8d1aec2097b87efd12a58954861c127b2fef0240af4fe238108950f6bf",
+  }),
+  source_closure_manifest: Object.freeze({
+    path: "deploy/v2-13/full-live-source-closure.json",
+    sha256: "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
@@ -146,8 +170,25 @@ const EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY = Object.freeze({
   timeout_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
 });
 const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
-  writer: "FULL_LIVE_EXECUTOR_INTERNAL_ONLY",
-  external_mid_run_writer_authorized: false,
+  writer: "FULL_LIVE_EXECUTOR_PLUS_AUTHORITY_BOUND_POST_CONSUMPTION_OPERATOR",
+  external_mid_run_writer_authorized: true,
+  external_mid_run_writer_exact_operation: "record-workflow-start-authority",
+  external_mid_run_writer_requires_consumed_outer_authority: true,
+  external_mid_run_writer_schema: "videoforge.v213-post-consumption-materialization/v1",
+  external_mid_run_writer_file_env: "VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE",
+  external_mid_run_writer_exact_bindings: Object.freeze([
+    "fullLiveAuthorityId",
+    "outerStateSha256",
+    "sourceCommit",
+    "proposalSha256",
+    "approvalSha256",
+    "workerOperatorBearerSha256",
+    "appOwnedIdentities",
+    "workflowStartAuthority",
+    "commandPayloads",
+    "acceptanceAuthorities",
+    "materializationSha256",
+  ]),
   future_result_files_required_at_initial_preflight: false,
   protected_seed_schema: "videoforge.v213-full-live-materialization-seed/v1",
   protected_seed_contains_only: Object.freeze([
@@ -221,6 +262,27 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
     ]),
     accepted_for_normal_guarded_or_acceptance_work: false,
   }),
+  cleanup_receipt_finalizer: Object.freeze({
+    schema: "videoforge.v213-local-cleanup-receipt-finalization-request/v1",
+    result_schema: "videoforge.v213-cleanup-receipt-finalization-result/v1",
+    inside_existing_cleanup_operation: true,
+    adds_graph_operation: false,
+    runs_only_after_exact_provider_cleanup_journal_result: true,
+    provider_cleanup_runtime_fd_policy_unchanged: true,
+    exact_child_fd_environment: Object.freeze([
+      "REQUEST_FD",
+      "OPERATOR_DATABASE_URL_FD",
+      "EVIDENCE_SIGNING_KEY_FD",
+    ]),
+    provider_clients_constructed: false,
+    runpod_calls: 0,
+    cloudflare_calls: 0,
+    gpu_use: false,
+    provider_dispatch: false,
+    initial_idempotent_persist_then_exact_readback: true,
+    recovery_readback_only: true,
+    missing_recovery_receipt_or_fact_materialization_is_hard_stop: true,
+  }),
   storage_parent: "OUTER_STATE_MODE_0700_DIRECTORY",
   record_file_mode: "0600",
   exclusive_create_or_exact_hash_cas_required: true,
@@ -247,6 +309,7 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
     "max-one-endpoint-bindings",
     "activation-record",
     "promotion-record",
+    "post-consumption-command-payloads",
     "cleanup-pre-endpoint-descriptor",
   ]),
   early_cleanup_missing_chain_file_allowed_only_before_operator_verification: true,
@@ -312,6 +375,17 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
       ]),
       consume_before_operation: "promote-qualified-production",
       writes: Object.freeze(["promotion-record"]),
+    }),
+    Object.freeze({
+      kind: "post-consumption-command-payloads",
+      materialize_after_operations: Object.freeze(["promote-qualified-production"]),
+      consume_before_operation: "v2-09-short-hosted-project",
+      source_schema: "videoforge.v213-post-consumption-materialization/v1",
+      command_payload_seed_must_be_empty: true,
+      app_and_database_owned_identities_required: true,
+      worker_bearer_sha256_binding_required: true,
+      v2_11_two_distinct_account_scopes_required: true,
+      writes: Object.freeze(["production-input.commandPayloads", "four-acceptance-authorities"]),
     }),
     Object.freeze({
       kind: "cleanup-pre-endpoint-descriptor",
@@ -389,7 +463,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "no-table-acl",
     "exact-operator-function-acl",
   ]),
-  exact_operator_function_signature_count: 17,
+  exact_operator_function_signature_count: 39,
   exact_operator_function_signature_namespace: "public",
   exact_operator_function_signature_canonicalization:
     "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
@@ -515,23 +589,45 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     required_before_normal_operator_dsn_cleanup: true,
   }),
   exact_operator_function_signatures: Object.freeze([
-    "videoforge_load_v213_bridge_acceptance_call(jsonb)",
-    "videoforge_record_v213_stage_authority(uuid,jsonb)",
-    "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
-    "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
-    "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
-    "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+    "videoforge_claim_v213_bridge_command(jsonb)",
+    "videoforge_claim_v213_operation(jsonb)",
     "videoforge_claim_v213_stage_authority(jsonb)",
     "videoforge_complete_v213_stage_authority(text,text,jsonb)",
-    "videoforge_load_v213_stage_handoff(uuid,text,text)",
+    "videoforge_load_v213_bridge_acceptance_call(jsonb)",
     "videoforge_load_v213_cleanup_scope(uuid)",
-    "videoforge_claim_v213_operation(jsonb)",
-    "videoforge_transition_v213_operation(jsonb)",
-    "videoforge_claim_v213_bridge_command(jsonb)",
-    "videoforge_transition_v213_bridge_command(jsonb)",
-    "videoforge_record_v213_receipt_verification_key(text,text)",
+    "videoforge_load_v213_signed_evidence(jsonb)",
+    "videoforge_load_v213_stage_handoff(uuid,text,text)",
+    "videoforge_materialize_v213_release_facts(jsonb)",
+    "videoforge_persist_v213_jit_materialization(jsonb)",
+    "videoforge_persist_v213_release_certification(jsonb)",
+    "videoforge_persist_v213_release_chrome(jsonb)",
+    "videoforge_prepare_v213_jit_operation(jsonb)",
+    "videoforge_project_v213_jit_operation(jsonb)",
+    "videoforge_project_v213_release_certification(jsonb)",
+    "videoforge_project_v213_release_chrome(jsonb)",
+    "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
     "videoforge_publish_v213_qualified_deployments(jsonb)",
+    "videoforge_read_v213_jit_materialization(jsonb)",
+    "videoforge_read_v213_operation_receipt(jsonb)",
+    "videoforge_read_v213_operator_evidence(jsonb)",
+    "videoforge_read_v213_release_certification(jsonb)",
+    "videoforge_read_v213_release_chrome(jsonb)",
+    "videoforge_read_v213_release_fact_materialization(jsonb)",
+    "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+    "videoforge_record_v213_acceptance_authority(jsonb)",
+    "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+    "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+    "videoforge_record_v213_operation_receipt(jsonb)",
+    "videoforge_record_v213_receipt_verification_key(text,text)",
+    "videoforge_record_v213_signed_evidence(jsonb)",
+    "videoforge_record_v213_stage_authority(uuid,jsonb)",
+    "videoforge_record_v213_static_release_descriptor(jsonb)",
     "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+    "videoforge_transition_v213_bridge_command(jsonb)",
+    "videoforge_transition_v213_operation(jsonb)",
+    "videoforge_v213_production_length_repository(jsonb)",
+    "videoforge_v213_short_pilot_repository(jsonb)",
+    "videoforge_verify_v213_jit_artifact(jsonb)",
   ]),
   recovery_modes: Object.freeze(["FRESH_36_TO_45", "RESUME_EXACT_PREFIX", "VERIFIED_EXISTING_45"]),
   recovery_mode_ledger_before_count: Object.freeze({
@@ -602,6 +698,18 @@ const EXACT_WORKFLOW_START_AUTHORITY_POLICY = Object.freeze({
   ordered_after_operation: "promote-qualified-production",
   ordered_before_operation: "v2-09-short-hosted-project",
   database_function: "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+  acceptance_authority_database_function: "videoforge_record_v213_acceptance_authority(jsonb)",
+  exact_acceptance_authority_count: 4,
+  acceptance_checkpoints: Object.freeze(["V2-10", "V2-11", "V2-12", "V2-13"]),
+  protected_materialization_schema: "videoforge.v213-post-consumption-materialization/v1",
+  protected_materialization_file_env: "VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE",
+  protected_materialization_parent_mode: "0700",
+  protected_materialization_file_mode: "0600",
+  protected_materialization_canonical_json_and_self_hash_required: true,
+  protected_materialization_must_postdate_outer_consumption: true,
+  worker_operator_bearer_hash_must_match_protected_file: true,
+  command_payloads_cas_injected_before_v2_09: true,
+  v2_11_two_distinct_account_and_workspace_scopes_required: true,
   result_exact_fields: Object.freeze(["authorityId", "tokenSha256", "expiresAt"]),
   result_authority_id_is_uuid: true,
   result_token_sha256_is_canonical_hash: true,
@@ -650,6 +758,8 @@ const EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY = Object.freeze({
   gpu_use: false,
   external_spend_usd: 0,
   accepted_only_before_operator_verification: true,
+  accepted_only_before_persisted_runpod_mutation_capable_operation: true,
+  eligibility_function: "canUseEarlyCleanupWithoutProviderReads",
   database_cleanup_claimed: false,
   never_claims_database_cleanup: true,
   after_operator_verified_cleanup: "NORMAL_OPERATOR_DSN_CLEANUP_RUNTIME",
@@ -674,6 +784,11 @@ const EXACT_CRASH_SAFE_CLEANUP_POLICY = Object.freeze({
     "resource_reconciliation_sha256",
     "max_one_restoration_sha256",
   ]),
+  partial_pair_terminal_states: Object.freeze([
+    "EXACT_MAX_ONE_PAIR_RETAINED",
+    "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+  ]),
+  partial_pair_requires_final_deterministic_name_absence_proof: true,
 });
 const EXACT_DURABLE_BILLING_POLICY = Object.freeze({
   baseline_source: "AUTHENTICATED_RUNPOD_ACCOUNT_BILLING_READBACK",
@@ -818,6 +933,25 @@ const EXACT_PREQUALIFICATION_BRIDGE_POLICY = Object.freeze({
     "v2-12-long-output",
     "v2-13-final-two-lane-smoke",
   ]),
+  v2_09_post_terminal_chrome_policy: Object.freeze({
+    schedule_exactly_once_before_chrome_request: true,
+    default_terminal_resolver: "createV213V209ProductionTerminalOutputResolver",
+    terminal_resolver_is_read_only_and_never_dispatches: true,
+    required_terminal_state: "COMPLETE_SUCCEEDED",
+    final_output_durable_receipt_required: true,
+    settled_pair_two_output_barriers_and_zero_active_leases_required: true,
+    exchange_directory_env: "VIDEOFORGE_V209_CHROME_EVIDENCE_DIR",
+    exchange_directory_mode: "0700",
+    request_and_receipt_file_mode: "0600",
+    receipt_schema: "videoforge.v2-09-real-chrome-receipt/v1",
+    evidence_schema: "videoforge.v2-09-real-chrome-acceptance/v1",
+    real_chrome_playback_and_download_required: true,
+    observed_at_must_be_at_or_after_terminal_at: true,
+    final_output_and_receipt_hashes_must_match_terminal_proof: true,
+    signed_evidence_key_must_match_production_acceptance_key: true,
+    bounded_wait_by_v2_09_deadline: true,
+    missing_stale_malformed_or_mismatched_receipt_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
+  }),
   receipt_gate: Object.freeze({
     adapter_option: "requirePrequalificationReceipt",
     verifier_function: "verifyPrequalificationDatabaseReceipt",
@@ -869,6 +1003,7 @@ const EXACT_OPERATION_IDS = Object.freeze([
   "prove-zero-workers",
   "read-settled-billing",
   "reconcile-exact-resources",
+  "certify-v2-13-release",
 ]);
 const EXECUTION_FENCE_KEYS = Object.freeze([
   "proposal_bytes_must_rehash_exactly",
@@ -893,6 +1028,14 @@ const exactKeys = (value, keys) =>
   typeof value === "object" &&
   !Array.isArray(value) &&
   JSON.stringify(Object.keys(value)) === JSON.stringify(keys);
+const exactStaticReleaseDescriptor = (value) =>
+  exactKeys(value, ["path", "sha256"]) &&
+  typeof value.path === "string" &&
+  value.path.length > 0 &&
+  !value.path.startsWith("/") &&
+  !value.path.split("/").includes("..") &&
+  value.path.endsWith(".json") &&
+  HASH.test(value.sha256 ?? "");
 const fail = (code) => {
   throw new Error(`V2_13_FULL_LIVE_APPROVAL_${code}`);
 };
@@ -919,6 +1062,8 @@ function validateFullLiveUserApproval({
   const proposal = parse(proposalBytes, "PROPOSAL");
   const approval = parse(approvalBytes, "APPROVAL");
   const isV3 = proposal.schema_version === PROPOSAL_SCHEMA_V3;
+  const requestedStaticReleaseDescriptor = proposal.requested_scope?.static_release_descriptor;
+  const sealedStaticReleaseDescriptor = proposal.sealing?.static_release_descriptor;
   if (
     ![PROPOSAL_SCHEMA_V2, PROPOSAL_SCHEMA_V3].includes(proposal.schema_version) ||
     proposal.task_id !== "VF-10-13" ||
@@ -949,6 +1094,10 @@ function validateFullLiveUserApproval({
       proposal.authority?.exact_proposal_approved !== false ||
       proposal.authority?.execute_authorized !== false ||
       proposal.authority?.immutable_release_ref_creation_authorized !== false ||
+      !exactStaticReleaseDescriptor(requestedStaticReleaseDescriptor) ||
+      !exactStaticReleaseDescriptor(sealedStaticReleaseDescriptor) ||
+      JSON.stringify(requestedStaticReleaseDescriptor) !==
+        JSON.stringify(sealedStaticReleaseDescriptor) ||
       JSON.stringify(proposal.exact_execution_graph?.ordered_operation_ids) !==
         JSON.stringify(EXACT_OPERATION_IDS) ||
       proposal.exact_execution_graph?.operation_order_is_closed_and_non_reorderable !== true ||
@@ -991,6 +1140,7 @@ function validateFullLiveUserApproval({
       "proposal",
       "approval",
       "execution_fences",
+      ...(isV3 ? ["static_release_descriptor"] : []),
       "statement",
     ]) ||
     approval.schema_version !== (isV3 ? APPROVAL_SCHEMA_V2 : APPROVAL_SCHEMA_V1) ||
@@ -1007,6 +1157,7 @@ function validateFullLiveUserApproval({
       "proposal_record_commit",
       "release_source_commit",
     ]) ||
+    (isV3 && !exactStaticReleaseDescriptor(approval.static_release_descriptor)) ||
     !exactKeys(approval.approval, [
       "exact_proposal_approved",
       "all_and_only_ordered_operations_approved",
@@ -1070,6 +1221,14 @@ function validateFullLiveUserApproval({
     approval.proposal?.path !== proposal.source.proposal_path
   )
     fail("LINEAGE");
+  if (
+    isV3 &&
+    (JSON.stringify(approval.static_release_descriptor) !==
+      JSON.stringify(requestedStaticReleaseDescriptor) ||
+      JSON.stringify(approval.static_release_descriptor) !==
+        JSON.stringify(sealedStaticReleaseDescriptor))
+  )
+    fail("STATIC_RELEASE_DESCRIPTOR_BINDING");
   const approved = approval.approval;
   if (
     approved?.exact_proposal_approved !== true ||
@@ -1273,6 +1432,8 @@ function validateFullLiveUserApproval({
     expiresAt: approval.expires_at,
     proposalSha256: expectedProposalSha256,
     approvalSha256: sha256(approvalBytes),
+    staticReleaseDescriptorPath: isV3 ? requestedStaticReleaseDescriptor.path : null,
+    staticReleaseDescriptorSha256: isV3 ? requestedStaticReleaseDescriptor.sha256 : null,
     proposalRecordCommit: expectedProposalRecordCommit,
     releaseSourceCommit: expectedReleaseSourceCommit,
     maximumCumulativeFiniteRunpodSpendUsd: 17.5,

@@ -239,9 +239,6 @@ export interface HostedShortPilotBarrierVerifier {
 export interface HostedShortPilotTerminalVerification {
   readonly verifierId: "videoforge-hosted-terminal-inventory-verifier-v1";
   readonly accepted: true;
-  readonly canonicalEvidenceSha256: Sha256;
-  readonly verifierSignatureSha256: Sha256;
-  readonly durableInventorySha256: Sha256;
   readonly accountId: string;
   readonly workspaceId: string;
   readonly projectId: string;
@@ -308,6 +305,7 @@ export interface HostedShortPilotOutputVerification {
   readonly output: {
     readonly state: "COMMITTED";
     readonly assetId: string;
+    readonly renderAttemptId: string;
     readonly objectKey: string;
     readonly sha256: Sha256;
     readonly bytes: number;
@@ -437,7 +435,29 @@ function exactDurableRecord(
 function sameLineage(binding: HostedServerlessLaneBinding, lineage: HostedQualificationLineage) {
   const deployment = binding.deployment;
   const sealed = deployment.timeoutEvidence.sealed_lineage;
+  const receiptCount = deployment.lane === "mage_image" ? 1 : 4;
+  const exactKeys = [
+    "acceptanceContractSha256",
+    "endpointConfigSha256",
+    "endpointIdSha256",
+    "endpointTemplateIdSha256",
+    "fullLiveAuthorityId",
+    "gpu",
+    "imageSourceCommit",
+    "modelManifestSha256",
+    "productionStageAuthorityId",
+    "qualificationHandoffSha256",
+    "qualificationSourceSha256",
+    "receiptSha256s",
+    "region",
+    "schemaVersion",
+    "stageAuthorityId",
+    "volumeIdSha256",
+    "volumeManifestSha256",
+    "workerImageDigest",
+  ];
   return (
+    Object.keys(lineage).sort().join(",") === exactKeys.sort().join(",") &&
     binding.transportEndpointIdSha256 === deployment.endpointIdSha256 &&
     lineage.endpointIdSha256 === deployment.endpointIdSha256 &&
     deployment.endpointProfileId === `template:${lineage.endpointTemplateIdSha256}` &&
@@ -460,14 +480,22 @@ function sameLineage(binding: HostedServerlessLaneBinding, lineage: HostedQualif
       lineage.modelManifestSha256,
       lineage.volumeIdSha256,
       lineage.volumeManifestSha256,
+      lineage.qualificationHandoffSha256,
       lineage.qualificationSourceSha256,
-      lineage.dependencyLockSha256,
       lineage.acceptanceContractSha256,
-      lineage.max1GateConfigSha256,
-      lineage.max1EndpointProfileSha256,
-      lineage.max2GateConfigSha256,
-      lineage.max2EndpointProfileSha256,
     ].every(validSha) &&
+    lineage.schemaVersion === "videoforge.v213-qualified-deployment-lineage/v1" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+      lineage.fullLiveAuthorityId,
+    ) &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{7,319}$/u.test(lineage.stageAuthorityId) &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{7,319}$/u.test(lineage.productionStageAuthorityId) &&
+    lineage.qualificationSourceSha256 === lineage.qualificationHandoffSha256 &&
+    lineage.acceptanceContractSha256 === lineage.qualificationHandoffSha256 &&
+    Array.isArray(lineage.receiptSha256s) &&
+    lineage.receiptSha256s.length === receiptCount &&
+    new Set(lineage.receiptSha256s).size === receiptCount &&
+    lineage.receiptSha256s.every(validSha) &&
     lineage.region === "EU-RO-1" &&
     lineage.gpu === "NVIDIA GeForce RTX 4090"
   );
@@ -948,10 +976,11 @@ export async function acceptHostedShortPilot(
   const expectedKey =
     `tenant/${admission.key.accountId}/workspace/${admission.key.workspaceId}` +
     `/project/${admission.key.projectId}/revision/${admission.key.projectRevisionId}` +
-    `/lane/render/job/${admission.automaticAttemptId}/artifact/${output.assetId}.mp4`;
+    `/lane/render/job/${output.renderAttemptId}/artifact/${output.assetId}.mp4`;
   if (
     output.state !== "COMMITTED" ||
     !validId(output.assetId) ||
+    !validId(output.renderAttemptId) ||
     output.objectKey !== expectedKey ||
     !validSha(output.sha256) ||
     !positiveInt(output.bytes) ||
@@ -997,14 +1026,11 @@ export async function acceptHostedShortPilot(
   if (
     terminal.verifierId !== "videoforge-hosted-terminal-inventory-verifier-v1" ||
     terminal.accepted !== true ||
-    terminal.canonicalEvidenceSha256 !== verified.canonicalEvidenceSha256 ||
-    terminal.verifierSignatureSha256 !== verified.verifierSignatureSha256 ||
-    terminal.durableInventorySha256 !== verified.durableInventorySha256 ||
     terminal.accountId !== admission.key.accountId ||
     terminal.workspaceId !== admission.key.workspaceId ||
     terminal.projectId !== admission.key.projectId ||
     terminal.projectRevisionId !== admission.key.projectRevisionId ||
-    terminal.attemptId !== admission.automaticAttemptId ||
+    terminal.attemptId !== output.renderAttemptId ||
     terminal.submissionTokenSha256 !== admission.submissionTokenSha256 ||
     terminal.state !== "SUCCEEDED" ||
     !UTC.test(terminal.terminalAt) ||

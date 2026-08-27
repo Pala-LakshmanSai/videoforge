@@ -45,6 +45,11 @@ function deploymentBinding(lane: ServerlessLane): HostedPublishedDeploymentBindi
   const modelManifestSha256 = sha256(lane === "mage_image" ? "5" : "6");
   const volumeIdSha256 = sha256(lane === "mage_image" ? "7" : "8");
   const sealedLineage = {
+    schemaVersion: "videoforge.v213-qualified-deployment-lineage/v1" as const,
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+    stageAuthorityId: `v2-13-${lane}-stage-authority`,
+    productionStageAuthorityId: "v2-13-production-stage-authority",
+    qualificationHandoffSha256: sha256("e"),
     endpointIdSha256,
     endpointTemplateIdSha256,
     endpointConfigSha256: sha256("c"),
@@ -54,14 +59,11 @@ function deploymentBinding(lane: ServerlessLane): HostedPublishedDeploymentBindi
     volumeManifestSha256: sha256("d"),
     imageSourceCommit: "a".repeat(40),
     qualificationSourceSha256: sha256("e"),
-    dependencyLockSha256: sha256("f"),
-    acceptanceContractSha256: sha256("0"),
+    acceptanceContractSha256: sha256("e"),
+    receiptSha256s:
+      lane === "mage_image" ? [sha256("f")] : [sha256("f"), sha256("0"), sha256("1"), sha256("2")],
     region: "EU-RO-1" as const,
     gpu: "NVIDIA GeForce RTX 4090" as const,
-    max1GateConfigSha256: sha256("1"),
-    max1EndpointProfileSha256: sha256("2"),
-    max2GateConfigSha256: sha256("3"),
-    max2EndpointProfileSha256: sha256("4"),
   };
   return {
     deployment: {

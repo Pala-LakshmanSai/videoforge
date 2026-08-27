@@ -220,6 +220,7 @@ function outputVerifier(
   return {
     verify: vi.fn(async (raw) => {
       const outputSha256 = sha("production-output");
+      const renderAttemptId = "cpu-render-attempt-1";
       const value: HostedProductionOutputVerification = {
         verifierId: "videoforge-production-length-output-verifier-v1",
         accepted: true,
@@ -230,8 +231,9 @@ function outputVerifier(
         durableInventorySha256: sha("durable-inventory"),
         output: {
           state: "COMMITTED",
+          renderAttemptId,
           assetId: "production-output",
-          objectKey: `tenant/${admission.document.key.accountId}/workspace/${admission.document.key.workspaceId}/project/${admission.document.key.projectId}/revision/${admission.document.key.projectRevisionId}/lane/render/job/${admission.attemptId}/artifact/production-output.mp4`,
+          objectKey: `tenant/${admission.document.key.accountId}/workspace/${admission.document.key.workspaceId}/project/${admission.document.key.projectId}/revision/${admission.document.key.projectRevisionId}/lane/render/job/${renderAttemptId}/artifact/production-output.mp4`,
           sha256: outputSha256,
           bytes: 50_000_000,
           contentType: "video/mp4",
@@ -268,7 +270,6 @@ function outputVerifier(
           render: {
             executionMs: 300_000,
             totalMs: 300_000,
-            peakRssBytes: 4_000_000_000,
             measurementSha256: sha("render-measurement"),
           },
         },
@@ -297,7 +298,7 @@ function outputVerifier(
           audioVideoQualityPassed: true,
         },
         terminal: {
-          attemptId: admission.attemptId,
+          attemptId: renderAttemptId,
           submissionTokenSha256: admission.submissionTokenSha256,
           jobsTerminal: true,
           activeWorkers: 0,
@@ -339,6 +340,7 @@ describe("hosted production-length acceptance groundwork", () => {
             qualificationEvidence: { state: "current-unqualified" },
             maximumWallTimeMs: 7_200_000,
           },
+          now: () => new Date(NOW),
         }),
       ),
     ).toBe("PRODUCTION_LENGTH_SOULX_UNQUALIFIED");
@@ -454,6 +456,7 @@ describe("hosted production-length acceptance groundwork", () => {
       verifier: outputVerifier(admission),
       admission,
       rawEvidence: { receipt: "production" },
+      now: () => new Date(NOW),
     });
     expect(accepted).toMatchObject({
       outcome: "GROUNDWORK_ACCEPTED_EVIDENCE_ONLY",
@@ -475,9 +478,47 @@ describe("hosted production-length acceptance groundwork", () => {
           })),
           admission,
           rawEvidence: { receipt: "production" },
+          now: () => new Date(NOW),
         }),
       ),
     ).toBe("PRODUCTION_LENGTH_OUTPUT_INVALID");
+  });
+
+  it("binds the output path and terminal state to the DB render attempt, not admission authority", async () => {
+    const cases: readonly Readonly<{
+      transform: (value: HostedProductionOutputVerification) => HostedProductionOutputVerification;
+      expected: "PRODUCTION_LENGTH_OUTPUT_INVALID" | "PRODUCTION_LENGTH_NOT_TERMINAL";
+    }>[] = [
+      {
+        transform: (value) => ({
+          ...value,
+          output: { ...value.output, renderAttemptId: "foreign-render-attempt" },
+        }),
+        expected: "PRODUCTION_LENGTH_OUTPUT_INVALID",
+      },
+      {
+        transform: (value) => ({
+          ...value,
+          terminal: { ...value.terminal, attemptId: "foreign-render-attempt" },
+        }),
+        expected: "PRODUCTION_LENGTH_NOT_TERMINAL",
+      },
+    ];
+    for (const { transform, expected } of cases) {
+      const repository = new Repository();
+      const admission = await groundwork(repository);
+      expect(
+        await code(() =>
+          acceptHostedProductionLength({
+            repository,
+            verifier: outputVerifier(admission, transform),
+            admission,
+            rawEvidence: { receipt: "production" },
+            now: () => new Date(NOW),
+          }),
+        ),
+      ).toBe(expected);
+    }
   });
 
   it("rejects rejected, unsigned, or expired output verifier envelopes", async () => {
@@ -531,6 +572,7 @@ describe("hosted production-length acceptance groundwork", () => {
             })),
             admission,
             rawEvidence: { receipt: "production" },
+            now: () => new Date(NOW),
           }),
         ),
       ).toBe("PRODUCTION_LENGTH_COST_INVALID");
@@ -550,6 +592,7 @@ describe("hosted production-length acceptance groundwork", () => {
           })),
           admission,
           rawEvidence: { receipt: "production" },
+          now: () => new Date(NOW),
         }),
       ),
     ).toBe("PRODUCTION_LENGTH_COST_INVALID");
@@ -571,6 +614,7 @@ describe("hosted production-length acceptance groundwork", () => {
           })),
           admission,
           rawEvidence: { receipt: "production" },
+          now: () => new Date(NOW),
         }),
       ),
     ).toBe("PRODUCTION_LENGTH_MEASUREMENT_INVALID");
@@ -589,6 +633,7 @@ describe("hosted production-length acceptance groundwork", () => {
           })),
           admission,
           rawEvidence: { receipt: "production" },
+          now: () => new Date(NOW),
         }),
       ),
     ).toBe("PRODUCTION_LENGTH_REVIEW_INVALID");
@@ -607,6 +652,7 @@ describe("hosted production-length acceptance groundwork", () => {
           })),
           admission,
           rawEvidence: { receipt: "production" },
+          now: () => new Date(NOW),
         }),
       ),
     ).toBe("PRODUCTION_LENGTH_NOT_TERMINAL");

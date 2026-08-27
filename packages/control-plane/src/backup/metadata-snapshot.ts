@@ -96,6 +96,33 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "hosted_full_live_acceptance_operator_results",
   "hosted_full_live_signed_evidence",
   "hosted_full_live_acceptance_repository_records",
+  "hosted_full_live_materialization_challenges",
+  "hosted_full_live_materialization_challenge_assignments",
+  "hosted_full_live_materialization_selections",
+  "hosted_full_live_materialization_facts",
+  "hosted_full_live_materialization_readbacks",
+  "hosted_full_live_jit_materialization_intents",
+  "hosted_full_live_jit_materializations",
+  "hosted_full_live_jit_materialization_readbacks",
+  "hosted_full_live_static_release_descriptors",
+  "hosted_full_live_jit_operation_authorities",
+  "hosted_full_live_acceptance_workflow_events",
+  "hosted_full_live_acceptance_operator_evidence_requests",
+  "hosted_full_live_acceptance_operator_evidence",
+  "hosted_full_live_acceptance_zero_worker_reads",
+  "hosted_full_live_acceptance_technical_captures",
+  "hosted_full_live_acceptance_workflow_outputs",
+  "hosted_full_live_v211_policy_actions",
+  "hosted_full_live_v211_scenario_events",
+  "hosted_full_live_v211_restore_authorizations",
+  "hosted_full_live_v211_probe_cancellations",
+  "hosted_full_live_v211_probe_reconciliations",
+  "hosted_full_live_operation_receipts",
+  "hosted_full_live_release_identity_facts",
+  "hosted_full_live_release_gate_facts",
+  "hosted_full_live_release_fact_materializations",
+  "hosted_full_live_release_chrome_associations",
+  "hosted_full_live_release_certifications",
   "hosted_v209_settlement_cost_evidence",
   "hosted_v209_terminal_acceptances",
   "hosted_paid_dispatch_approvals",
@@ -339,7 +366,12 @@ function isSecretBearingKey(key: string): boolean {
 }
 
 function isPortableReferenceKey(tableName: RelationalTableName, key: string): boolean {
-  return tableName === "media_worker_input_objects" && normalizeKey(key) === "uri";
+  const normalized = normalizeKey(key);
+  return (
+    (tableName === "media_worker_input_objects" && normalized === "uri") ||
+    (tableName === "hosted_full_live_v211_restore_authorizations" &&
+      normalized === "authorization_document")
+  );
 }
 
 function rejectSecretBearingJson(tableName: RelationalTableName, rowJson: string): void {

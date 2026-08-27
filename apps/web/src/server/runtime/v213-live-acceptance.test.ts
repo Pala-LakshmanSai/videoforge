@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { HostedQualificationLineage } from "./hosted-serverless-runtime.js";
 import type { HostedV211VerifiedEvidence } from "./hosted-v211-acceptance-coordinator.js";
 import {
+  certifyV213ReleaseFromCurrentRun,
   createV213LiveAcceptanceAdapter,
+  executeV213FreshTwoLaneSmoke,
   executeV211LiveConcurrency,
   verifyV213LiveReceipt,
   type V213CleanupVerification,
@@ -20,7 +22,13 @@ const receiptArtifact = Object.freeze({ schema_version: "v213-live-receipt/v1", 
 const cleanupArtifact = Object.freeze({ schema_version: "v213-cleanup/v1", id: "cleanup-1" });
 
 function lineage(lane: ServerlessLane): HostedQualificationLineage {
+  const qualificationHandoffSha256 = sha(`qualification-source-${lane}`);
   return {
+    schemaVersion: "videoforge.v213-qualified-deployment-lineage/v1",
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+    stageAuthorityId: `v2-13-${lane}-stage-authority`,
+    productionStageAuthorityId: "v2-13-production-stage-authority",
+    qualificationHandoffSha256,
     endpointIdSha256: sha(`endpoint-${lane}`),
     endpointTemplateIdSha256: sha(`template-${lane}`),
     endpointConfigSha256: sha(`config-${lane}`),
@@ -29,15 +37,14 @@ function lineage(lane: ServerlessLane): HostedQualificationLineage {
     volumeIdSha256: sha(`volume-${lane}`),
     volumeManifestSha256: sha(`volume-manifest-${lane}`),
     imageSourceCommit: "a".repeat(40),
-    qualificationSourceSha256: sha(`qualification-source-${lane}`),
-    dependencyLockSha256: sha(`lock-${lane}`),
-    acceptanceContractSha256: sha(`acceptance-${lane}`),
+    qualificationSourceSha256: qualificationHandoffSha256,
+    acceptanceContractSha256: qualificationHandoffSha256,
+    receiptSha256s:
+      lane === "mage_image"
+        ? [sha(`${lane}-receipt-1`)]
+        : [1, 2, 3, 4].map((ordinal) => sha(`${lane}-receipt-${ordinal}`)),
     region: "EU-RO-1",
     gpu: "NVIDIA GeForce RTX 4090",
-    max1GateConfigSha256: sha(`max1-config-${lane}`),
-    max1EndpointProfileSha256: sha(`max1-profile-${lane}`),
-    max2GateConfigSha256: sha(`max2-config-${lane}`),
-    max2EndpointProfileSha256: sha(`max2-profile-${lane}`),
   };
 }
 
@@ -56,16 +63,17 @@ function laneEvidence(lane: ServerlessLane) {
       configuredMaxWorkers: 2 as const,
       activeWorkers: 2 as const,
       qualification: "MAX2_VERIFIED" as const,
+      policyReceiptSha256: sha(`max2-policy-${lane}`),
     },
     restored: {
       configuredMaxWorkers: 1 as const,
       activeWorkers: 0 as const,
       qualification: "MAX1_VERIFIED" as const,
+      policyReceiptSha256: sha(`max1-policy-${lane}`),
     },
     volumeReadback: {
-      mountPath: "/runpod-volume" as const,
-      readOnly: true as const,
       crossMountDetected: false as const,
+      mutationDetected: false as const,
       manifestSha256Before: sealed.volumeManifestSha256,
       manifestSha256After: sealed.volumeManifestSha256,
     },
@@ -78,6 +86,7 @@ function attempt(account: "a" | "b", lane: ServerlessLane, second: number) {
   return {
     accountId: `account-${account}`,
     workspaceId: `workspace-${account}`,
+    generationRequestId: `generation-${account}`,
     lane,
     attemptId: `attempt-${suffix}`,
     providerJobId: `job-${suffix}`,
@@ -93,17 +102,18 @@ function attempt(account: "a" | "b", lane: ServerlessLane, second: number) {
     barrierOutcome: "LANE_COMPLETED" as const,
     barrierAcceptanceSha256: sha(`barrier-${suffix}`),
     durableOutputReceiptSha256: sha(`output-${suffix}`),
-    readerId: `reader-${suffix}`,
-    readerReceiptSha256: sha(`reader-${suffix}`),
-    readerState: "SUCCEEDED" as const,
-    readerDeploymentId: `deployment-${lane}`,
-    readerVolumeIdSha256: sealed.volumeIdSha256,
-    readerVolumeManifestSha256: sealed.volumeManifestSha256,
-    readerMountPath: "/runpod-volume" as const,
-    readerReadOnlyMount: true as const,
-    readerCrossMountDetected: false as const,
-    readerStartedAt: `2026-08-26T00:00:0${second}.000Z`,
-    readerCompletedAt: "2026-08-26T00:00:05.000Z",
+    workerId: `worker-${suffix}`,
+    provenanceReceiptSha256: sha(`provenance-${suffix}`),
+    provenanceReceiptHmacVerified: true as const,
+    volumeManifestSha256Before: sealed.volumeManifestSha256,
+    volumeManifestSha256After: sealed.volumeManifestSha256,
+    volumeMutationDetected: false as const,
+    crossMountDetected: false as const,
+    scratchRemoved: true as const,
+    scratchOnModelVolume: false as const,
+    providerProgressState: "IN_PROGRESS" as const,
+    providerProgressObservedAt: `2026-08-26T00:00:0${second}.000Z`,
+    attemptTerminalAt: "2026-08-26T00:00:05.000Z",
   };
 }
 
@@ -129,17 +139,13 @@ function verifiedEvidence(): HostedV211VerifiedEvidence {
           accountId: "account-a",
           workspaceId: "workspace-a",
           waitingVideoCountBefore: 1,
-          waitingPreviewCountBefore: 1,
           activeVideoCountAfter: 1,
-          waitingPreviewCountAfter: 1,
         },
         {
           accountId: "account-b",
           workspaceId: "workspace-b",
           waitingVideoCountBefore: 1,
-          waitingPreviewCountBefore: 1,
           activeVideoCountAfter: 1,
-          waitingPreviewCountAfter: 1,
         },
       ],
       promotions: [
@@ -150,6 +156,52 @@ function verifiedEvidence(): HostedV211VerifiedEvidence {
       activeAccountIds: ["account-a", "account-b"],
       settlementPromotedRequestIds: [],
       finalActiveLeaseCount: 0,
+      scenario: {
+        primaryGenerationRequestId: "generation-a",
+        primaryProjectId: "project-a",
+        primaryProjectRevisionId: "revision-a",
+        secondaryGenerationRequestId: "generation-b",
+        secondaryProjectId: "project-b",
+        secondaryProjectRevisionId: "revision-b",
+        sameAccountWaiter: {
+          accountId: "account-a",
+          workspaceId: "workspace-a",
+          projectId: "project-a",
+          projectRevisionId: "revision-a",
+          generationRequestId: "generation-a-waiter",
+          waitingObserved: true,
+          queueAuditReceiptSha256: sha("same-account-wait"),
+        },
+        fairnessProbe: {
+          accountId: "account-c",
+          workspaceId: "workspace-c",
+          projectId: "project-c",
+          projectRevisionId: "revision-c",
+          generationRequestId: "generation-c-probe",
+          waitingObserved: true,
+          queueAuditReceiptSha256: sha("third-account-wait"),
+        },
+        fairPromotion: {
+          generationRequestId: "generation-c-probe",
+          promotionReceiptSha256: sha("fair-promotion"),
+          sameAccountWaiterRemainedWaiting: true,
+        },
+        cancellationRecovery: {
+          cancelAuthorizationReceiptSha256: sha("cancel-authorized"),
+          cancelReconciliationReceiptSha256: sha("cancel-reconciled"),
+          providerDispatchFenced: true,
+          providerRaceReconciled: false,
+          providerRaceActualUsd: 0,
+          providerRaceJobId: null,
+          providerRaceReceiptSha256: null,
+          terminalState: "CANCELLED",
+          activeLeaseAbsent: true,
+        },
+        tenantIsolation: {
+          denied: true,
+          denialReceiptSha256: sha("tenant-denial"),
+        },
+      },
     },
     lanes: { mage_image: laneEvidence("mage_image"), soulx_avatar: laneEvidence("soulx_avatar") },
     attempts,
@@ -389,6 +441,104 @@ function harness(
 }
 
 describe("V2-10 through V2-13 concrete live acceptance coordinator", () => {
+  it("keeps the paid V2-13 operation smoke-only and never builds a release ledger", async () => {
+    const smokeRequest: V213LiveExecutionRequest & { checkpoint: "V2-13" } = {
+      ...request,
+      checkpoint: "V2-13",
+      maximumVariableCostMicroUsd: 2_000_000,
+      scopes: [request.scopes[0]!],
+    };
+    const smokeReceipt: V213LiveVerifiedReceipt = {
+      ...verifiedReceipt(),
+      checkpoint: "V2-13",
+      scopes: smokeRequest.scopes,
+      phaseCapMicroUsd: 2_000_000,
+      projectDispatchCount: 1,
+      mageDispatchCount: 1,
+      soulxDispatchCount: 1,
+      terminalProviderJobIds: ["job-mage", "job-soulx"],
+      sameAccountSecondJobWaited: false,
+      sameAccountWaitingRequestSha256: null,
+      thirdAccountWaited: false,
+      thirdAccountId: null,
+      thirdAccountWaitingRequestSha256: null,
+      fairPromotionPassed: false,
+      failureRecoveryExercised: false,
+      failureRecoveryReceiptSha256: null,
+      ownershipIsolated: false,
+      ownershipIsolationReceiptSha256: null,
+      finalOutputSha256: sha("v213-final-output"),
+      finalOutputReceiptSha256: sha("v213-final-output-receipt"),
+    };
+    const store: V213LiveAttemptStore = {
+      claimOnce: vi.fn(async (requestSha256, claimed) => ({
+        requestSha256,
+        proposalSha256: claimed.proposalSha256,
+        authoritySha256: claimed.authoritySha256,
+        approvalRecordSha256: claimed.approvalRecordSha256,
+        approvalConsumed: true as const,
+        cumulativeLedgerSha256: claimed.cumulativeLedgerSha256,
+        executorSha256: claimed.executorSha256,
+        promotionDecisionSha256: claimed.promotionDecisionSha256,
+        promotionVersion: "V3" as const,
+        promotionState: "CONSUMED_CURRENT" as const,
+        sourceCommit: claimed.sourceCommit,
+        cumulativeLedgerSpentBeforeMicroUsd: claimed.cumulativeLedgerSpentBeforeMicroUsd,
+        billingBaselineMicroUsd: claimed.billingBaselineMicroUsd,
+        claimedAt: "2026-08-26T00:01:55.000Z",
+        expiresAt: "2026-08-26T00:07:00.000Z",
+      })),
+      complete: vi.fn(async () => true),
+      recordTerminalFailure: vi.fn(async () => true),
+    };
+    await expect(
+      executeV213FreshTwoLaneSmoke({
+        request: smokeRequest,
+        store,
+        transport: {
+          kind: "CLOUDFLARE_HOSTED_RUNPOD_SERVERLESS",
+          execute: vi.fn(async () => ({ rawEvidence, receiptArtifact })),
+          cancelAndReconcile: vi.fn(),
+        },
+        receiptVerifier: { verify: vi.fn(async () => smokeReceipt) },
+        cleanupVerifier: { verify: vi.fn() },
+        now: () => new Date("2026-08-26T00:02:00.000Z"),
+      }),
+    ).resolves.toMatchObject({
+      liveAcceptanceClaimed: true,
+      smokeOnly: true,
+      releaseCertified: false,
+      summary: { twoLaneSmoke: true },
+      releaseChromeOutput: {
+        outputSha256: sha("v213-final-output"),
+        finalOutputReceiptSha256: sha("v213-final-output-receipt"),
+      },
+    });
+  });
+
+  it("rejects ambiguous final predecessor references before Chrome or gate verification", async () => {
+    const chromeVerifier = { verify: vi.fn() };
+    const releaseEvidenceVerifier = { verify: vi.fn() };
+    await expect(
+      certifyV213ReleaseFromCurrentRun({
+        releaseIdentity: { sourceCommit: "a".repeat(40) } as never,
+        scope: request.scopes[0]!,
+        sourceCommit: "a".repeat(40),
+        predecessorEvidenceSha256s: {
+          "v2-13-final-two-lane-smoke": sha("smoke"),
+          future: sha("future"),
+        },
+        evidenceArtifacts: {},
+        chromeArtifact: { rawEvidence: {} },
+        releaseEvidenceVerifier,
+        chromeVerifier,
+        now: () => new Date("2026-08-26T00:02:00.000Z"),
+      }),
+    ).rejects.toMatchObject({ code: "LIVE_ACCEPTANCE_IDENTITY_DRIFT" });
+    expect(chromeVerifier.verify).not.toHaveBeenCalled();
+    expect(releaseEvidenceVerifier.verify).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["V2-10", 2_000_000],
     ["V2-12", 2_000_000],
@@ -543,6 +693,27 @@ describe("V2-10 through V2-13 concrete live acceptance coordinator", () => {
     await expect(value.execute()).rejects.toMatchObject({
       code: "LIVE_ACCEPTANCE_CLEANUP_UNPROVEN",
     });
+  });
+
+  it.each([
+    ["foreign volume", sha("foreign-volume"), sha("soulx-volume")],
+    ["duplicate volumes", sha("soulx-volume"), sha("soulx-volume")],
+  ] as const)("rejects cleanup evidence bound to %s", async (_label, mage, soulx) => {
+    const trusted = cleanup();
+    const value = harness({
+      receipt: verifiedReceipt({ rawEvidenceSha256: sha("drift") }),
+      cleanup: {
+        ...trusted,
+        retainedVolumes: {
+          mage: { ...trusted.retainedVolumes.mage, volumeIdSha256: mage },
+          soulx: { ...trusted.retainedVolumes.soulx, volumeIdSha256: soulx },
+        },
+      },
+    });
+    await expect(value.execute()).rejects.toMatchObject({
+      code: "LIVE_ACCEPTANCE_CLEANUP_UNPROVEN",
+    });
+    expect(value.store.recordTerminalFailure).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -18,7 +18,12 @@ const soulxDeploymentId = uuid(45003);
 const mageQualificationId = uuid(45004);
 const soulxQualificationId = uuid(45005);
 
-async function authorityDocument(executor, suffix = "main", ttlMs = 3_600_000) {
+async function authorityDocument(
+  executor,
+  suffix = "main",
+  ttlMs = 3_600_000,
+  staticReleaseDescriptorSha256 = sha256(`static-release-descriptor-${suffix}`),
+) {
   const [{ now }] = (await executor.query("SELECT transaction_timestamp()::text now")).rows;
   const approvedAt = new Date(Date.parse(now) - 60_000).toISOString();
   const expiresAt = new Date(Date.parse(now) + ttlMs).toISOString();
@@ -30,6 +35,7 @@ async function authorityDocument(executor, suffix = "main", ttlMs = 3_600_000) {
     proposalCommit: "a".repeat(40),
     sourceCommit: "b".repeat(40),
     executorSha256: sha256(`executor-${suffix}`),
+    staticReleaseDescriptorSha256,
     phaseCapsUsd: {
       mage_qualification: 4.5,
       soulx_qualification: 1,
@@ -51,6 +57,95 @@ async function authorityDocument(executor, suffix = "main", ttlMs = 3_600_000) {
     approvedAt,
     expiresAt,
   };
+}
+
+function staticReleaseDescriptor() {
+  const common = (gate) => ({
+    gate,
+    sourceEvidenceSha256: sha256(`static-source-${gate}`),
+    observerId: `independent-auditor-${gate}`,
+    evidencePath: `project-context/evidence/acceptance/VF-10-13/${gate}.json`,
+    evidenceClass: "INDEPENDENT_RELEASE_AUDIT",
+    observedAt: "2026-08-28T09:55:00.000Z",
+    fixtureOrFakeTransportUsed: false,
+  });
+  const unsigned = {
+    schemaVersion: "videoforge.v213-static-release-descriptor/v1",
+    sourceCommit: "b".repeat(40),
+    productionUrlSha256: sha256("cloudflare-production-url"),
+    contractBundleSha256: sha256("static-contract-bundle"),
+    auditFacts: {
+      operations_runbooks_ready: {
+        ...common("operations_runbooks_ready"),
+        claims: [
+          "stuck_job_runbook",
+          "provider_outage_runbook",
+          "billing_runbook",
+          "rollback_runbook",
+        ],
+        metrics: {
+          stuckJobRunbookSha256: sha256("stuck-runbook"),
+          providerOutageRunbookSha256: sha256("provider-runbook"),
+          billingRunbookSha256: sha256("billing-runbook"),
+          rollbackRunbookSha256: sha256("rollback-runbook"),
+        },
+      },
+      backup_restore_ready: {
+        ...common("backup_restore_ready"),
+        claims: [
+          "backup_readback_passed",
+          "restore_evidence_accepted",
+          "schema_migration_disposition_recorded",
+        ],
+        metrics: {
+          backupReadbackPassed: true,
+          restoreEvidenceAccepted: true,
+          schemaMigrationDisposition: "DISPOSABLE_RESTORE_COMPLETED",
+        },
+      },
+      security_clear: {
+        ...common("security_clear"),
+        claims: [
+          "p0_zero",
+          "p1_zero",
+          "auth_tenant_boundary_passed",
+          "ssrf_path_upload_boundary_passed",
+          "secret_log_scan_passed",
+          "cost_amplification_guards_passed",
+          "legacy_runtime_bundle_scan_passed",
+        ],
+        metrics: {
+          p0Count: 0,
+          p1Count: 0,
+          authTenantPassed: true,
+          ssrfPathUploadPassed: true,
+          secretLogScanPassed: true,
+          costAmplificationGuardsPassed: true,
+          legacyRuntimeBundleScanPassed: true,
+        },
+      },
+      production_transport_real: {
+        ...common("production_transport_real"),
+        claims: [
+          "hosted_client_api_truth",
+          "fixture_controls_absent",
+          "fake_gpu_absent",
+          "fake_transport_absent",
+          "manual_pod_controls_absent",
+          "legacy_dispatch_exports_absent",
+        ],
+        metrics: {
+          hostedClientApiTruth: true,
+          fixtureControlsInBundle: false,
+          fakeGpuProfileInBundle: false,
+          fakeTransportInBundle: false,
+          manualPodControlsInBundle: false,
+          legacyDispatchExportsInBundle: false,
+        },
+      },
+    },
+  };
+  return { ...unsigned, descriptorSha256: sha256(canonicalizeJson(unsigned)) };
 }
 
 test("0045 permits only exact cleanup bridge claims after authority expiry", async () => {
@@ -275,7 +370,13 @@ function productionDeployment(lane, serial, volumeIdSha256, volumeManifestSha256
 
 test("0045 atomically records exact authority and promotes both fresh max-one lanes once", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const authority = await authorityDocument(executor);
+    const descriptor = staticReleaseDescriptor();
+    const authority = await authorityDocument(
+      executor,
+      "main",
+      3_600_000,
+      descriptor.descriptorSha256,
+    );
     const [recorded] = (
       await executor.query(
         "SELECT * FROM videoforge_record_hosted_full_live_authority($1::uuid,$2::jsonb)",
@@ -446,6 +547,32 @@ test("0045 atomically records exact authority and promotes both fresh max-one la
       ])
     ).rows;
     assert.match(result.decision_sha256, /^sha256:[0-9a-f]{64}$/u);
+    const outerStateSha256 = sha256("main-outer-state");
+    const descriptorInput = {
+      fullLiveAuthorityId: authorityId,
+      outerStateSha256,
+      descriptorSha256: descriptor.descriptorSha256,
+      descriptor,
+    };
+    const [{ staticDescriptor }] = (
+      await executor.query(
+        'SELECT videoforge_record_v213_static_release_descriptor($1::jsonb) "staticDescriptor"',
+        [JSON.stringify(descriptorInput)],
+      )
+    ).rows;
+    assert.deepEqual(staticDescriptor, { descriptorSha256: descriptor.descriptorSha256 });
+    const [{ staticDescriptorReplay }] = (
+      await executor.query(
+        'SELECT videoforge_record_v213_static_release_descriptor($1::jsonb) "staticDescriptorReplay"',
+        [JSON.stringify(descriptorInput)],
+      )
+    ).rows;
+    assert.deepEqual(staticDescriptorReplay, staticDescriptor);
+    await expectDatabaseError(
+      executor.query("SELECT videoforge_record_v213_static_release_descriptor($1::jsonb)", [
+        JSON.stringify({ ...descriptorInput, outerStateSha256: sha256("outer-drift") }),
+      ]),
+    );
     const [promotionReplay] = (
       await executor.query("SELECT * FROM videoforge_promote_hosted_full_live($1,$2,$3::jsonb)", [
         uuid(45006),
@@ -466,9 +593,24 @@ test("0045 atomically records exact authority and promotes both fresh max-one la
       promotionId: uuid(45006),
       sourceCommit: authority.sourceCommit,
       versionIdSha256: sha256("cloudflare-version"),
+      deployedExecutableSha256: sha256("cloudflare-executable"),
       deployedConfigSha256: promotion.enabledConfigSha256,
+      productionUrlSha256: descriptor.productionUrlSha256,
+      routeStatus: 200,
+      routeBodySha256: sha256("cloudflare-route-body"),
+      routeVersionSha256: sha256("cloudflare-version"),
+      routeReadbackSha256: "",
       observedAt: dbNow,
     };
+    cloudflareReadback.routeReadbackSha256 = sha256(
+      JSON.stringify({
+        productionUrlSha256: cloudflareReadback.productionUrlSha256,
+        routeStatus: cloudflareReadback.routeStatus,
+        routeBodySha256: cloudflareReadback.routeBodySha256,
+        routeVersionSha256: cloudflareReadback.routeVersionSha256,
+        gpuTransport: "QUALIFIED_EXACT",
+      }),
+    );
     const [{ cloudflareActivation }] = (
       await executor.query(
         'SELECT videoforge_record_v213_cloudflare_activation($1::uuid,$2::jsonb) "cloudflareActivation"',
@@ -476,6 +618,12 @@ test("0045 atomically records exact authority and promotes both fresh max-one la
       )
     ).rows;
     assert.equal(cloudflareActivation.versionIdSha256, cloudflareReadback.versionIdSha256);
+    assert.equal(
+      cloudflareActivation.deployedExecutableSha256,
+      cloudflareReadback.deployedExecutableSha256,
+    );
+    assert.equal(cloudflareActivation.productionUrlSha256, cloudflareReadback.productionUrlSha256);
+    assert.equal(cloudflareActivation.routeStatus, 200);
     const [{ cloudflareReplay }] = (
       await executor.query(
         'SELECT videoforge_record_v213_cloudflare_activation($1::uuid,$2::jsonb) "cloudflareReplay"',
@@ -498,7 +646,7 @@ test("0045 atomically records exact authority and promotes both fresh max-one la
     assert.equal(snapshot.verification.sourceCommit, authority.sourceCommit);
     assert.deepEqual(snapshot.verification.gate.migrationLedger.at(-1), {
       version: 45,
-      sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
+      sha256: "sha256:352169e1e34e23bc36b2a3c1fb653747194fe0b560894bfdbfafb30d635561d7",
     });
     assert.equal(snapshot.verification.gate.gpuTransport, "QUALIFIED_EXACT");
     assert.deepEqual(snapshot.verification.gate.cloudflare, {
@@ -967,8 +1115,9 @@ test("0045 grants runtime only activation and token-fenced Workflow functions; r
 });
 
 test("0045 durable authority tables are required by metadata and encrypted backup checks", async () => {
-  const [metadata, backup, restore] = await Promise.all([
+  const [metadata, vocabulary, backup, restore] = await Promise.all([
     readFile(new URL("../src/backup/metadata-snapshot.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/database/vocabulary.ts", import.meta.url), "utf8"),
     readFile(new URL("../../../deploy/v2-06/backup.sh", import.meta.url), "utf8"),
     readFile(new URL("../../../deploy/v2-06/restore-drill.sh", import.meta.url), "utf8"),
   ]);
@@ -986,6 +1135,33 @@ test("0045 durable authority tables are required by metadata and encrypted backu
     "hosted_full_live_acceptance_operator_results",
     "hosted_full_live_signed_evidence",
     "hosted_full_live_acceptance_repository_records",
+    "hosted_full_live_materialization_challenges",
+    "hosted_full_live_materialization_challenge_assignments",
+    "hosted_full_live_materialization_selections",
+    "hosted_full_live_materialization_facts",
+    "hosted_full_live_materialization_readbacks",
+    "hosted_full_live_jit_materialization_intents",
+    "hosted_full_live_jit_materializations",
+    "hosted_full_live_jit_materialization_readbacks",
+    "hosted_full_live_static_release_descriptors",
+    "hosted_full_live_jit_operation_authorities",
+    "hosted_full_live_acceptance_workflow_events",
+    "hosted_full_live_acceptance_operator_evidence_requests",
+    "hosted_full_live_acceptance_operator_evidence",
+    "hosted_full_live_acceptance_zero_worker_reads",
+    "hosted_full_live_acceptance_technical_captures",
+    "hosted_full_live_acceptance_workflow_outputs",
+    "hosted_full_live_v211_policy_actions",
+    "hosted_full_live_v211_scenario_events",
+    "hosted_full_live_v211_restore_authorizations",
+    "hosted_full_live_v211_probe_cancellations",
+    "hosted_full_live_v211_probe_reconciliations",
+    "hosted_full_live_operation_receipts",
+    "hosted_full_live_release_identity_facts",
+    "hosted_full_live_release_gate_facts",
+    "hosted_full_live_release_fact_materializations",
+    "hosted_full_live_release_chrome_associations",
+    "hosted_full_live_release_certifications",
     "hosted_v209_settlement_cost_evidence",
     "hosted_v209_terminal_acceptances",
   ]) {
@@ -993,6 +1169,9 @@ test("0045 durable authority tables are required by metadata and encrypted backu
     assert.match(backup, new RegExp(name, "u"));
     assert.match(restore, new RegExp(name, "u"));
   }
+  assert.match(vocabulary, /"hosted_full_live_manifest_read_claims"/u);
+  assert.match(backup, /hosted_full_live_manifest_read_claims/u);
+  assert.match(restore, /hosted_full_live_manifest_read_claims/u);
 });
 
 test("0045 V2-09 terminal result derives signed duration and phase spend from durable evidence", async () => {
@@ -1014,4 +1193,626 @@ test("0045 V2-09 terminal result derives signed duration and phase spend from du
     "'settledCostUsd',phase_spend_micro_usd::numeric/1000000",
   ])
     assert.ok(migration.includes(field), `missing trusted V2-09 result field ${field}`);
+});
+
+test("0045 acceptance Workflow advances from operator pause through three distinct zero reads", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const fullLiveAuthorityId = uuid(45200);
+    const authority = await authorityDocument(executor, "workflow-phases");
+    await executor.query(
+      "SELECT * FROM videoforge_record_hosted_full_live_authority($1::uuid,$2::jsonb)",
+      [fullLiveAuthorityId, JSON.stringify(authority)],
+    );
+    const [{ now }] = (await executor.query("SELECT transaction_timestamp() now")).rows;
+    const issuedAt = new Date(Date.parse(now) - 60_000).toISOString();
+    const childExpiresAt = new Date(Date.parse(now) + 600_000).toISOString();
+    const workloadDeadlineAt = new Date(Date.parse(now) + 1_800_000).toISOString();
+    const stageAuthorityId = "v213-production-workflow-phases";
+    const operationId = "v2-10-operator-free-ranga-pilot";
+    const requestSha256 = sha256("workflow-phases-request");
+    const outputBindingSha256 = sha256("workflow-phases-output");
+    const workflowId = "v213-v2-10-workflow-phases";
+    await executor.query(
+      `INSERT INTO hosted_full_live_stage_authorities(authority_id,full_live_authority_id,stage,
+         input_sha256,predecessor_handoff_sha256,nonce_sha256,signed_authority,issued_at,expires_at)
+       VALUES($1,$2,'production',$3,$4,$5,'{}'::jsonb,$6,$7)`,
+      [
+        stageAuthorityId,
+        fullLiveAuthorityId,
+        sha256("workflow-phases-input"),
+        sha256("workflow-phases-predecessor"),
+        sha256("workflow-phases-nonce"),
+        issuedAt,
+        childExpiresAt,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO hosted_full_live_jit_operation_authorities(full_live_authority_id,operation_id,
+         checkpoint,command_id,production_stage_authority_id,outer_state_sha256,command_payload,
+         predecessor_evidence_sha256s,materialization_request_sha256,intent_sha256,candidate_sha256,
+         candidate_document,token_sha256,issued_at,expires_at,workload_deadline_at,poll_interval_ms)
+       VALUES($1,$2,'V2-10','workflow-phases-command',$3,$4,'{}'::jsonb,'{}'::jsonb,$5,$6,$7,
+         '{}'::jsonb,$8,$9,$10,$11,250)`,
+      [
+        fullLiveAuthorityId,
+        operationId,
+        stageAuthorityId,
+        sha256("workflow-phases-outer"),
+        sha256("workflow-phases-materialization"),
+        sha256("workflow-phases-intent"),
+        sha256("workflow-phases-candidate"),
+        sha256("workflow-phases-token"),
+        issuedAt,
+        childExpiresAt,
+        workloadDeadlineAt,
+      ],
+    );
+    await executor.query(
+      `INSERT INTO hosted_full_live_acceptance_workflow_events(full_live_authority_id,operation_id,
+         sequence,kind,workflow_id,request_sha256)
+       VALUES($1,$2,1,'CLAIMED',$3,$4)`,
+      [fullLiveAuthorityId, operationId, workflowId, requestSha256],
+    );
+    await executor.execute(`CREATE OR REPLACE FUNCTION videoforge_v213_acceptance_output_binding(
+      supplied_full_live_authority_id uuid,supplied_operation_id text)
+      RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+        SELECT '${outputBindingSha256}'::text
+      $$`);
+    const workflowParams = {
+      schemaVersion: "videoforge.v213-acceptance-workflow-params/v1",
+      kind: "V213_DATABASE_ACCEPTANCE",
+      fullLiveAuthorityId,
+      operationId,
+      checkpoint: "V2-10",
+      workflowId,
+      requestSha256,
+    };
+    const [{ technical }] = (
+      await executor.query("SELECT videoforge_read_v213_acceptance_workflow($1::jsonb) technical", [
+        JSON.stringify(workflowParams),
+      ])
+    ).rows;
+    assert.equal(technical.phase, "TECHNICAL_CAPTURE");
+    await executor.query(
+      `INSERT INTO hosted_full_live_acceptance_technical_captures(full_live_authority_id,
+         operation_id,output_binding_sha256,plan_sha256,capture_sha256,capture_document)
+       VALUES($1,$2,$3,$4,$5,'{}'::jsonb)`,
+      [
+        fullLiveAuthorityId,
+        operationId,
+        outputBindingSha256,
+        sha256("workflow-phases-technical-plan"),
+        sha256("workflow-phases-technical-capture"),
+      ],
+    );
+    const [{ paused }] = (
+      await executor.query("SELECT videoforge_read_v213_acceptance_workflow($1::jsonb) paused", [
+        JSON.stringify(workflowParams),
+      ])
+    ).rows;
+    assert.equal(paused.phase, "PAUSED_AWAITING_OPERATOR_EVIDENCE");
+    assert.equal(paused.zeroWorkerReadCount, 0);
+    for (const [ordinal, kind] of ["V210_REAL_CHROME", "V210_VISUAL_DECISION"].entries()) {
+      await executor.query(
+        `INSERT INTO hosted_full_live_acceptance_operator_evidence(full_live_authority_id,
+           operation_id,execution_request_sha256,kind,request_sha256,nonce_sha256,
+           binding_document,evidence_document,evidence_sha256,issued_at)
+         VALUES($1,$2,$3,$4,$5,$6,'{}'::jsonb,'{}'::jsonb,$7,transaction_timestamp())`,
+        [
+          fullLiveAuthorityId,
+          operationId,
+          requestSha256,
+          kind,
+          sha256(`workflow-phases-evidence-request-${ordinal}`),
+          sha256(`workflow-phases-evidence-nonce-${ordinal}`),
+          sha256(`workflow-phases-evidence-${ordinal}`),
+        ],
+      );
+    }
+    const [{ zero }] = (
+      await executor.query("SELECT videoforge_read_v213_acceptance_workflow($1::jsonb) zero", [
+        JSON.stringify(workflowParams),
+      ])
+    ).rows;
+    assert.equal(zero.phase, "ZERO_WORKER_READS");
+    const base = Date.parse(now) - 7_000;
+    for (const ordinal of [0, 1, 2]) {
+      const mageObservedAt = new Date(base + ordinal * 2_000).toISOString();
+      const soulxObservedAt = new Date(base + ordinal * 2_000 + 250).toISOString();
+      const [{ state }] = (
+        await executor.query(
+          "SELECT videoforge_record_v213_acceptance_zero_worker_read($1::jsonb) state",
+          [
+            JSON.stringify({
+              workflowParams,
+              ordinal,
+              observations: {
+                mage: { workersTotal: 0, queuedJobs: 0, observedAt: mageObservedAt },
+                soulx: { workersTotal: 0, queuedJobs: 0, observedAt: soulxObservedAt },
+              },
+            }),
+          ],
+        )
+      ).rows;
+      assert.equal(state.zeroWorkerReadCount, ordinal + 1);
+      assert.equal(state.phase, ordinal === 2 ? "BILLING_SETTLEMENT" : "ZERO_WORKER_READS");
+    }
+    const [{ aggregate }] = (
+      await executor.query(
+        `SELECT to_char(observed_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') aggregate
+           FROM hosted_full_live_acceptance_zero_worker_reads
+          WHERE full_live_authority_id=$1 AND operation_id=$2 AND ordinal=2`,
+        [fullLiveAuthorityId, operationId],
+      )
+    ).rows;
+    assert.equal(aggregate, new Date(base + 4_250).toISOString());
+  });
+});
+
+test("0045 finalizes a durable V2-13 Workflow exactly once", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const fullLiveAuthorityId = uuid(45250);
+    const promotionId = uuid(45251);
+    const operationId = "v2-13-final-two-lane-smoke";
+    const stageAuthorityId = "v213-production-finalizer-lifecycle";
+    const workflowId = "v213-v2-13-finalizer-lifecycle";
+    const requestSha256 = sha256("finalizer-lifecycle-request");
+    const outerStateSha256 = sha256("finalizer-lifecycle-outer");
+    const outputBindingSha256 = sha256("finalizer-lifecycle-output-binding");
+    const accountId = uuid(45252);
+    const workspaceId = uuid(45253);
+    const projectId = uuid(45254);
+    const projectRevisionId = uuid(45255);
+    const generationRequestId = uuid(45256);
+    const runtimeId = uuid(45257);
+    const finalOutputSha256 = sha256("finalizer-lifecycle-output");
+    const finalOutputReceiptSha256 = sha256("finalizer-lifecycle-output-receipt");
+    const authority = await authorityDocument(executor, "finalizer-lifecycle");
+    const [{ authority_document_sha256: authoritySha256 }] = (
+      await executor.query(
+        "SELECT * FROM videoforge_record_hosted_full_live_authority($1::uuid,$2::jsonb)",
+        [fullLiveAuthorityId, JSON.stringify(authority)],
+      )
+    ).rows;
+    const mage = await seedLane(executor, "mage_image", uuid(45258), uuid(45259), 250);
+    const soulx = await seedLane(executor, "soulx_avatar", uuid(45260), uuid(45261), 251);
+    const promotion = await promotionDocument(
+      executor,
+      authoritySha256,
+      mage,
+      soulx,
+      "finalizer-lifecycle",
+    );
+    const [{ decision_sha256: promotionDecisionSha256 }] = (
+      await executor.query("SELECT * FROM videoforge_promote_hosted_full_live($1,$2,$3::jsonb)", [
+        promotionId,
+        fullLiveAuthorityId,
+        JSON.stringify(promotion),
+      ])
+    ).rows;
+    const [{ now }] = (await executor.query("SELECT transaction_timestamp() now")).rows;
+    const issuedAt = new Date(Date.parse(now) - 60_000).toISOString();
+    const childExpiresAt = new Date(Date.parse(now) + 600_000).toISOString();
+    const workloadDeadlineAt = new Date(Date.parse(now) + 1_800_000).toISOString();
+    const outputCommittedAt = new Date(Date.parse(now) - 8_000).toISOString();
+    const request = {
+      executionId: "finalizer-lifecycle-execution",
+      proposalSha256: authority.proposalSha256,
+      authoritySha256,
+      approvalRecordSha256: authority.approvalSha256,
+      cumulativeLedgerSha256: sha256("finalizer-lifecycle-ledger"),
+      executorSha256: authority.executorSha256,
+      promotionDecisionSha256,
+      sourceCommit: authority.sourceCommit,
+      scopes: [{ accountId, workspaceId, projectId, projectRevisionId }],
+      maximumVariableCostMicroUsd: 2_000_000,
+      maximumCumulativeVariableCostMicroUsd: 17_500_000,
+      billingBaselineMicroUsd: 1_000_000,
+      cumulativeLedgerSpentBeforeMicroUsd: 1_000_000,
+    };
+    const workflowParams = {
+      schemaVersion: "videoforge.v213-acceptance-workflow-params/v1",
+      kind: "V213_DATABASE_ACCEPTANCE",
+      fullLiveAuthorityId,
+      operationId,
+      checkpoint: "V2-13",
+      workflowId,
+      requestSha256,
+    };
+    const primaryIdentity = {
+      accountId,
+      workspaceId,
+      projectId,
+      projectRevisionId,
+      generationRequestId,
+    };
+    const challengeId = uuid(45262);
+    await executor.execute("SET session_replication_role=replica");
+    try {
+      await executor.query(
+        `INSERT INTO hosted_full_live_stage_authorities(authority_id,full_live_authority_id,stage,
+           input_sha256,predecessor_handoff_sha256,nonce_sha256,signed_authority,issued_at,expires_at)
+         VALUES($1,$2,'production',$3,$4,$5,'{}'::jsonb,$6,$7)`,
+        [
+          stageAuthorityId,
+          fullLiveAuthorityId,
+          sha256("finalizer-lifecycle-stage-input"),
+          sha256("finalizer-lifecycle-stage-predecessor"),
+          sha256("finalizer-lifecycle-stage-nonce"),
+          issuedAt,
+          childExpiresAt,
+        ],
+      );
+      await executor.query(
+        `INSERT INTO hosted_full_live_jit_operation_authorities(full_live_authority_id,operation_id,
+           checkpoint,command_id,production_stage_authority_id,outer_state_sha256,command_payload,
+           predecessor_evidence_sha256s,materialization_request_sha256,intent_sha256,candidate_sha256,
+           candidate_document,token_sha256,issued_at,expires_at,workload_deadline_at,poll_interval_ms)
+         VALUES($1,$2,'V2-13','finalizer-lifecycle-command',$3,$4,'{}'::jsonb,'{}'::jsonb,$5,$6,$7,
+           '{}'::jsonb,$8,$9,$10,$11,250)`,
+        [
+          fullLiveAuthorityId,
+          operationId,
+          stageAuthorityId,
+          outerStateSha256,
+          sha256("finalizer-lifecycle-materialization-request"),
+          sha256("finalizer-lifecycle-intent"),
+          sha256("finalizer-lifecycle-candidate"),
+          sha256("finalizer-lifecycle-token"),
+          issuedAt,
+          childExpiresAt,
+          workloadDeadlineAt,
+        ],
+      );
+      await executor.query(
+        `INSERT INTO hosted_full_live_materialization_challenges(id,full_live_authority_id,
+           challenge_sha256,challenge_document,issued_at,expires_at)
+         VALUES($1,$2,$3,$4::jsonb,$5,$6)`,
+        [
+          challengeId,
+          fullLiveAuthorityId,
+          sha256("finalizer-lifecycle-challenge"),
+          JSON.stringify({ outerStateSha256 }),
+          issuedAt,
+          childExpiresAt,
+        ],
+      );
+      await executor.query(
+        `INSERT INTO hosted_full_live_materialization_facts(challenge_id,selection_sha256,
+           facts_sha256,facts_document)
+         VALUES($1,$2,$3,$4::jsonb)`,
+        [
+          challengeId,
+          sha256("finalizer-lifecycle-selection"),
+          sha256("finalizer-lifecycle-facts"),
+          JSON.stringify({ roleScopedIdentities: { primary: primaryIdentity } }),
+        ],
+      );
+      await executor.query(
+        `INSERT INTO hosted_full_live_jit_materializations(full_live_authority_id,operation_id,
+           checkpoint,candidate_sha256,call_sha256,request_sha256,execution_sha256,request_document,
+           execution_document,call_document,expires_at,token_sha256)
+         VALUES($1,$2,'V2-13',$3,$4,$5,$6,'{}'::jsonb,$7::jsonb,$8::jsonb,$9,$10)`,
+        [
+          fullLiveAuthorityId,
+          operationId,
+          sha256("finalizer-lifecycle-candidate"),
+          sha256("finalizer-lifecycle-call"),
+          requestSha256,
+          sha256("finalizer-lifecycle-execution-document"),
+          JSON.stringify({ call: { request } }),
+          JSON.stringify({ request }),
+          childExpiresAt,
+          sha256("finalizer-lifecycle-token"),
+        ],
+      );
+      await executor.query(
+        `INSERT INTO hosted_full_live_acceptance_workflow_events(full_live_authority_id,operation_id,
+           sequence,kind,workflow_id,request_sha256) VALUES($1,$2,1,'CLAIMED',$3,$4)`,
+        [fullLiveAuthorityId, operationId, workflowId, requestSha256],
+      );
+      await executor.query(
+        `INSERT INTO hosted_full_live_acceptance_technical_captures(full_live_authority_id,
+           operation_id,output_binding_sha256,plan_sha256,capture_sha256,capture_document)
+         VALUES($1,$2,$3,$4,$5,'{}'::jsonb)`,
+        [
+          fullLiveAuthorityId,
+          operationId,
+          outputBindingSha256,
+          sha256("finalizer-lifecycle-capture-plan"),
+          sha256("finalizer-lifecycle-capture"),
+        ],
+      );
+      await executor.query(
+        `INSERT INTO video_runtime_states(id,account_id,workspace_id,project_id,project_revision_id,
+           generation_request_id,stage,preparation_manifest_sha256,render_manifest_sha256,
+           final_output_sha256,terminal_reason,admitted_at,prepared_at,terminal_at,created_at,updated_at)
+         VALUES($1,$2,$3,$4,$5,$6,'COMPLETE',$7,$8,$9,'SUCCEEDED',$10,$10,$11,$10,$11)`,
+        [
+          runtimeId,
+          accountId,
+          workspaceId,
+          projectId,
+          projectRevisionId,
+          generationRequestId,
+          sha256("finalizer-lifecycle-preparation"),
+          sha256("finalizer-lifecycle-render"),
+          finalOutputSha256,
+          issuedAt,
+          outputCommittedAt,
+        ],
+      );
+      await executor.query(
+        `INSERT INTO video_runtime_events(id,account_id,workspace_id,runtime_id,project_revision_id,
+           from_state,to_state,reason,detail,occurred_at)
+         VALUES($1,$2,$3,$4,$5,'RENDERING','COMPLETE','FINAL_OUTPUT_DURABLE',$6::jsonb,$7)`,
+        [
+          uuid(45263),
+          accountId,
+          workspaceId,
+          runtimeId,
+          projectRevisionId,
+          JSON.stringify({
+            final_output_sha256: finalOutputSha256,
+            final_output_receipt_sha256: finalOutputReceiptSha256,
+          }),
+          outputCommittedAt,
+        ],
+      );
+      for (const [index, lane] of ["mage_image", "soulx_avatar"].entries()) {
+        const attemptId = uuid(45264 + index * 4);
+        const assignmentId = uuid(45265 + index * 4);
+        const ledgerId = uuid(45266 + index * 4);
+        const dispatchTokenSha256 = sha256(`finalizer-lifecycle-dispatch-${lane}`);
+        await executor.query(
+          `INSERT INTO serverless_attempts(id,account_id,workspace_id,project_id,project_revision_id,
+             generation_request_id,task_id,deployment_id,lane,attempt_ordinal,state,
+             dispatch_token_sha256,items_manifest_sha256,item_count,input_manifest_sha256,
+             output_prefix,deadline_at,reconciliation_deadline_at,submitted_at,ttl_expires_at,
+             terminal_at,created_at,updated_at)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,1,'SUCCEEDED',$10,$11,1,$12,$13,$14,$15,$16,$14,$17,$16,$17)`,
+          [
+            attemptId,
+            accountId,
+            workspaceId,
+            projectId,
+            projectRevisionId,
+            generationRequestId,
+            uuid(45272 + index),
+            lane === "mage_image" ? mage.deploymentId : soulx.deploymentId,
+            lane,
+            dispatchTokenSha256,
+            sha256(`finalizer-lifecycle-items-${lane}`),
+            sha256(`finalizer-lifecycle-input-${lane}`),
+            `tenant/${accountId}/workspace/${workspaceId}/lane/${lane}`,
+            workloadDeadlineAt,
+            childExpiresAt,
+            issuedAt,
+            outputCommittedAt,
+          ],
+        );
+        await executor.query(
+          `INSERT INTO serverless_provider_assignments(id,account_id,workspace_id,
+             project_revision_id,attempt_id,dispatch_token_sha256,provider_job_id,
+             provider_job_id_sha256,assignment_source,assigned_at,is_current)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,'RUN_RESPONSE',$9,true)`,
+          [
+            assignmentId,
+            accountId,
+            workspaceId,
+            projectRevisionId,
+            attemptId,
+            dispatchTokenSha256,
+            `finalizer-lifecycle-${lane}`,
+            sha256(`finalizer-lifecycle-job-${lane}`),
+            issuedAt,
+          ],
+        );
+        await executor.query(
+          `INSERT INTO serverless_cost_ledgers(id,account_id,workspace_id,project_revision_id,
+             attempt_id,owner_type,owner_id,ceiling_usd,settled_usd,
+             fixed_retained_volume_usd_excluded,updated_at)
+           VALUES($1,$2,$3,$4,$5,'PROJECT_REVISION',$6,2,0.05,true,$7)`,
+          [ledgerId, accountId, workspaceId, projectRevisionId, attemptId, projectRevisionId, now],
+        );
+        await executor.query(
+          `INSERT INTO serverless_cost_events(id,account_id,workspace_id,project_revision_id,
+             attempt_id,ledger_id,sequence,kind,amount_usd,rate_source,rate_checked_at,
+             confidence,recorded_at)
+           VALUES($1,$2,$3,$4,$5,$6,1,'SETTLED',0.05,'test-finalizer',$7,'MEASURED',$7)`,
+          [
+            uuid(45267 + index * 4),
+            accountId,
+            workspaceId,
+            projectRevisionId,
+            attemptId,
+            ledgerId,
+            now,
+          ],
+        );
+      }
+      for (const ordinal of [0, 1, 2]) {
+        const observedAt = new Date(Date.parse(now) - 3_000 + ordinal * 1_000).toISOString();
+        await executor.query(
+          `INSERT INTO hosted_full_live_acceptance_zero_worker_reads(full_live_authority_id,
+             operation_id,ordinal,observations,observed_at)
+           VALUES($1,$2,$3,$4::jsonb,$5)`,
+          [
+            fullLiveAuthorityId,
+            operationId,
+            ordinal,
+            JSON.stringify({
+              mage: { workersTotal: 0, queuedJobs: 0, observedAt },
+              soulx: { workersTotal: 0, queuedJobs: 0, observedAt },
+            }),
+            observedAt,
+          ],
+        );
+      }
+    } finally {
+      await executor.execute("SET session_replication_role=origin");
+    }
+    await executor.execute(`CREATE OR REPLACE FUNCTION videoforge_v213_acceptance_output_binding(
+      supplied_full_live_authority_id uuid,supplied_operation_id text)
+      RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+        SELECT '${outputBindingSha256}'::text
+      $$`);
+    const [{ before }] = (
+      await executor.query("SELECT videoforge_read_v213_acceptance_workflow($1::jsonb) before", [
+        JSON.stringify(workflowParams),
+      ])
+    ).rows;
+    assert.equal(before.phase, "BILLING_SETTLEMENT");
+    const [{ completed }] = (
+      await executor.query(
+        "SELECT videoforge_finalize_v213_acceptance_workflow($1::jsonb) completed",
+        [JSON.stringify(workflowParams)],
+      )
+    ).rows;
+    assert.equal(completed.phase, "COMPLETE");
+    assert.equal(completed.terminal, true);
+    assert.equal(completed.output.rawEvidence.finalOutputSha256, finalOutputSha256);
+    assert.equal(completed.output.rawEvidence.finalOutputReceiptSha256, finalOutputReceiptSha256);
+    assert.equal(completed.output.receipt.billingSettled, true);
+    assert.equal(completed.output.receipt.variableCostMicroUsd, 100_000);
+    assert.equal(completed.output.cleanup.accepted, true);
+    const [{ replay }] = (
+      await executor.query(
+        "SELECT videoforge_finalize_v213_acceptance_workflow($1::jsonb) replay",
+        [JSON.stringify(workflowParams)],
+      )
+    ).rows;
+    assert.deepEqual(replay.output, completed.output);
+    await expectDatabaseError(
+      executor.query("SELECT videoforge_finalize_v213_acceptance_workflow($1::jsonb)", [
+        JSON.stringify({ ...workflowParams, requestSha256: sha256("finalizer-lifecycle-drift") }),
+      ]),
+      "42501",
+    );
+  });
+});
+
+test("0045 keeps manifest and operator-evidence ingress off the operator role", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    await executor.execute(`CREATE ROLE vf_0045_jit_operator;
+      CREATE ROLE vf_0045_jit_runtime;
+      CREATE ROLE vf_0045_jit_reconciler;
+      GRANT USAGE ON SCHEMA public TO vf_0045_jit_operator,vf_0045_jit_runtime,vf_0045_jit_reconciler;
+      GRANT EXECUTE ON FUNCTION videoforge_prepare_v213_jit_operation(jsonb),
+        videoforge_project_v213_jit_operation(jsonb),
+        videoforge_persist_v213_jit_materialization(jsonb),
+        videoforge_read_v213_jit_materialization(jsonb),
+        videoforge_record_v213_static_release_descriptor(jsonb),
+        videoforge_materialize_v213_release_facts(jsonb),
+        videoforge_read_v213_release_fact_materialization(jsonb),
+        videoforge_project_v213_release_chrome(jsonb),
+        videoforge_persist_v213_release_chrome(jsonb),
+        videoforge_read_v213_release_chrome(jsonb),
+        videoforge_project_v213_release_certification(jsonb),
+        videoforge_persist_v213_release_certification(jsonb),
+        videoforge_read_v213_release_certification(jsonb) TO vf_0045_jit_operator;
+      GRANT EXECUTE ON FUNCTION videoforge_claim_v213_resolved_render_manifest_read(jsonb),
+        videoforge_ingest_v213_acceptance_operator_evidence(jsonb),
+        videoforge_prepare_v213_acceptance_technical_capture(jsonb),
+        videoforge_prepare_v213_v211_policy_action(jsonb),
+        videoforge_prepare_v213_v211_scenario_step(jsonb),
+        videoforge_cancel_v213_v211_promoted_probe(jsonb),
+        videoforge_authorize_v213_v211_restore(jsonb),
+        videoforge_claim_v213_acceptance_workflow(jsonb),
+        videoforge_read_v213_acceptance_workflow(jsonb) TO vf_0045_jit_runtime;
+      GRANT EXECUTE ON FUNCTION videoforge_record_v213_acceptance_technical_capture(jsonb),
+        videoforge_record_v213_v211_policy_action(jsonb),
+        videoforge_record_v213_v211_scenario_step(jsonb),
+        videoforge_record_v213_v211_promoted_probe_reconciliation(jsonb),
+        videoforge_record_v213_acceptance_zero_worker_read(jsonb),
+        videoforge_finalize_v213_acceptance_workflow(jsonb) TO vf_0045_jit_reconciler`);
+    const [privileges] = (
+      await executor.query(`SELECT
+        has_function_privilege('vf_0045_jit_operator','videoforge_prepare_v213_jit_operation(jsonb)','EXECUTE') operator_prepare,
+        has_function_privilege('vf_0045_jit_operator','videoforge_claim_v213_resolved_render_manifest_read(jsonb)','EXECUTE') operator_manifest,
+        has_function_privilege('vf_0045_jit_operator','videoforge_ingest_v213_acceptance_operator_evidence(jsonb)','EXECUTE') operator_evidence,
+        has_function_privilege('vf_0045_jit_operator','videoforge_record_v213_static_release_descriptor(jsonb)','EXECUTE') operator_static_descriptor,
+        has_function_privilege('vf_0045_jit_operator','videoforge_record_v213_release_identity_facts(jsonb)','EXECUTE') operator_release_identity,
+        has_function_privilege('vf_0045_jit_operator','videoforge_materialize_v213_release_facts(jsonb)','EXECUTE') operator_release_materialize,
+        has_function_privilege('vf_0045_jit_operator','videoforge_project_v213_release_chrome(jsonb)','EXECUTE') operator_release_chrome,
+        has_function_privilege('vf_0045_jit_operator','videoforge_project_v213_release_certification(jsonb)','EXECUTE') operator_release_certification,
+        has_function_privilege('vf_0045_jit_runtime','videoforge_claim_v213_resolved_render_manifest_read(jsonb)','EXECUTE') runtime_manifest,
+        has_function_privilege('vf_0045_jit_runtime','videoforge_ingest_v213_acceptance_operator_evidence(jsonb)','EXECUTE') runtime_evidence,
+        has_function_privilege('vf_0045_jit_runtime','videoforge_prepare_v213_acceptance_technical_capture(jsonb)','EXECUTE') runtime_technical_prepare,
+        has_function_privilege('vf_0045_jit_runtime','videoforge_prepare_v213_v211_policy_action(jsonb)','EXECUTE') runtime_v211_policy_prepare,
+        has_function_privilege('vf_0045_jit_runtime','videoforge_cancel_v213_v211_promoted_probe(jsonb)','EXECUTE') runtime_v211_cancel,
+        has_function_privilege('vf_0045_jit_runtime','videoforge_record_v213_v211_policy_action(jsonb)','EXECUTE') runtime_v211_policy_record,
+        has_function_privilege('vf_0045_jit_runtime','videoforge_prepare_v213_jit_operation(jsonb)','EXECUTE') runtime_prepare,
+        has_function_privilege('vf_0045_jit_runtime','videoforge_project_v213_release_chrome(jsonb)','EXECUTE') runtime_release_chrome,
+        has_function_privilege('vf_0045_jit_reconciler','videoforge_record_v213_acceptance_technical_capture(jsonb)','EXECUTE') reconciler_technical_record,
+        has_function_privilege('vf_0045_jit_reconciler','videoforge_record_v213_v211_policy_action(jsonb)','EXECUTE') reconciler_v211_policy_record,
+        has_function_privilege('vf_0045_jit_reconciler','videoforge_cancel_v213_v211_promoted_probe(jsonb)','EXECUTE') reconciler_v211_cancel,
+        has_function_privilege('vf_0045_jit_reconciler','videoforge_record_v213_acceptance_zero_worker_read(jsonb)','EXECUTE') reconciler_zero,
+        has_function_privilege('vf_0045_jit_reconciler','videoforge_ingest_v213_acceptance_operator_evidence(jsonb)','EXECUTE') reconciler_evidence`)
+    ).rows;
+    assert.deepEqual(privileges, {
+      operator_prepare: true,
+      operator_manifest: false,
+      operator_evidence: false,
+      operator_static_descriptor: true,
+      operator_release_identity: false,
+      operator_release_materialize: true,
+      operator_release_chrome: true,
+      operator_release_certification: true,
+      runtime_manifest: true,
+      runtime_evidence: true,
+      runtime_technical_prepare: true,
+      runtime_v211_policy_prepare: true,
+      runtime_v211_cancel: true,
+      runtime_v211_policy_record: false,
+      runtime_prepare: false,
+      runtime_release_chrome: false,
+      reconciler_technical_record: true,
+      reconciler_v211_policy_record: true,
+      reconciler_v211_cancel: false,
+      reconciler_zero: true,
+      reconciler_evidence: false,
+    });
+  });
+});
+
+test("0045 certification projection rejects noncanonical work identity before readback", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const fullLiveAuthorityId = uuid(45300);
+    const predecessors = {
+      "v2-13-final-two-lane-smoke": sha256("cert-smoke"),
+      "restore-endpoints-max-one": sha256("cert-restore"),
+      "prove-zero-workers": sha256("cert-zero"),
+      "read-settled-billing": sha256("cert-billing"),
+      "reconcile-exact-resources": sha256("cert-reconcile"),
+    };
+    const malformed = {
+      fullLiveAuthorityId,
+      workId: `${fullLiveAuthorityId}:wrong-certification`,
+      outerStateSha256: sha256("cert-outer"),
+      predecessorEvidenceSha256s: predecessors,
+    };
+    await expectDatabaseError(
+      executor.query("SELECT videoforge_project_v213_release_certification($1::jsonb)", [
+        JSON.stringify({
+          ...malformed,
+          certificationIdentitySha256: sha256(canonicalizeJson(malformed)),
+        }),
+      ]),
+      "23514",
+    );
+    const canonical = {
+      ...malformed,
+      workId: `${fullLiveAuthorityId}:certify-v2-13-release`,
+    };
+    await expectDatabaseError(
+      executor.query("SELECT videoforge_project_v213_release_certification($1::jsonb)", [
+        JSON.stringify({
+          ...canonical,
+          certificationIdentitySha256: sha256(canonicalizeJson(canonical)),
+        }),
+      ]),
+      "42501",
+    );
+  });
 });

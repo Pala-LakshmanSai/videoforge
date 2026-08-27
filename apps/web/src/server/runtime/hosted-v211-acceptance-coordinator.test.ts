@@ -14,7 +14,13 @@ const rawEvidence = Object.freeze({
 });
 
 function lineage(lane: ServerlessLane): HostedQualificationLineage {
+  const qualificationHandoffSha256 = sha(`qualification-source-${lane}`);
   return {
+    schemaVersion: "videoforge.v213-qualified-deployment-lineage/v1",
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+    stageAuthorityId: `v2-13-${lane}-stage-authority`,
+    productionStageAuthorityId: "v2-13-production-stage-authority",
+    qualificationHandoffSha256,
     endpointIdSha256: sha(`endpoint-${lane}`),
     endpointTemplateIdSha256: sha(`template-${lane}`),
     endpointConfigSha256: sha(`config-${lane}`),
@@ -23,15 +29,14 @@ function lineage(lane: ServerlessLane): HostedQualificationLineage {
     volumeIdSha256: sha(`volume-${lane}`),
     volumeManifestSha256: sha(`volume-manifest-${lane}`),
     imageSourceCommit: "a".repeat(40),
-    qualificationSourceSha256: sha(`qualification-source-${lane}`),
-    dependencyLockSha256: sha(`lock-${lane}`),
-    acceptanceContractSha256: sha(`acceptance-${lane}`),
+    qualificationSourceSha256: qualificationHandoffSha256,
+    acceptanceContractSha256: qualificationHandoffSha256,
+    receiptSha256s:
+      lane === "mage_image"
+        ? [sha(`${lane}-receipt-1`)]
+        : [1, 2, 3, 4].map((ordinal) => sha(`${lane}-receipt-${ordinal}`)),
     region: "EU-RO-1",
     gpu: "NVIDIA GeForce RTX 4090",
-    max1GateConfigSha256: sha(`max1-config-${lane}`),
-    max1EndpointProfileSha256: sha(`max1-profile-${lane}`),
-    max2GateConfigSha256: sha(`max2-config-${lane}`),
-    max2EndpointProfileSha256: sha(`max2-profile-${lane}`),
   };
 }
 
@@ -50,16 +55,17 @@ function laneEvidence(lane: ServerlessLane) {
       configuredMaxWorkers: 2 as const,
       activeWorkers: 2 as const,
       qualification: "MAX2_VERIFIED" as const,
+      policyReceiptSha256: sha(`max2-policy-${lane}`),
     },
     restored: {
       configuredMaxWorkers: 1 as const,
       activeWorkers: 0 as const,
       qualification: "MAX1_VERIFIED" as const,
+      policyReceiptSha256: sha(`max1-policy-${lane}`),
     },
     volumeReadback: {
-      mountPath: "/runpod-volume" as const,
-      readOnly: true as const,
       crossMountDetected: false as const,
+      mutationDetected: false as const,
       manifestSha256Before: sealed.volumeManifestSha256,
       manifestSha256After: sealed.volumeManifestSha256,
     },
@@ -73,6 +79,7 @@ function attempt(account: "a" | "b", lane: ServerlessLane, index: number) {
   return {
     accountId: `account-${account}`,
     workspaceId: `workspace-${account}`,
+    generationRequestId: `generation-${account}`,
     lane,
     attemptId: `attempt-${id}`,
     providerJobId: `provider-job-${id}`,
@@ -88,17 +95,18 @@ function attempt(account: "a" | "b", lane: ServerlessLane, index: number) {
     barrierOutcome: "LANE_COMPLETED" as const,
     barrierAcceptanceSha256: sha(`barrier-${id}`),
     durableOutputReceiptSha256: sha(`durable-output-${id}`),
-    readerId: `reader-${id}`,
-    readerReceiptSha256: sha(`reader-receipt-${id}`),
-    readerState: "SUCCEEDED" as const,
-    readerDeploymentId: `deployment-${lane}`,
-    readerVolumeIdSha256: sealed.volumeIdSha256,
-    readerVolumeManifestSha256: sealed.volumeManifestSha256,
-    readerMountPath: "/runpod-volume" as const,
-    readerReadOnlyMount: true as const,
-    readerCrossMountDetected: false as const,
-    readerStartedAt: `2026-08-25T10:00:0${index}.000Z`,
-    readerCompletedAt: "2026-08-25T10:00:05.000Z",
+    workerId: `worker-${id}`,
+    provenanceReceiptSha256: sha(`provenance-receipt-${id}`),
+    provenanceReceiptHmacVerified: true as const,
+    volumeManifestSha256Before: sealed.volumeManifestSha256,
+    volumeManifestSha256After: sealed.volumeManifestSha256,
+    volumeMutationDetected: false as const,
+    crossMountDetected: false as const,
+    scratchRemoved: true as const,
+    scratchOnModelVolume: false as const,
+    providerProgressState: "IN_PROGRESS" as const,
+    providerProgressObservedAt: `2026-08-25T10:00:0${index}.000Z`,
+    attemptTerminalAt: "2026-08-25T10:00:05.000Z",
   };
 }
 
@@ -128,17 +136,13 @@ function evidence(mutate?: (value: MutableEvidence) => void): HostedV211Verified
           accountId: "account-a",
           workspaceId: "workspace-a",
           waitingVideoCountBefore: 1,
-          waitingPreviewCountBefore: 1,
           activeVideoCountAfter: 1,
-          waitingPreviewCountAfter: 1,
         },
         {
           accountId: "account-b",
           workspaceId: "workspace-b",
           waitingVideoCountBefore: 1,
-          waitingPreviewCountBefore: 1,
           activeVideoCountAfter: 1,
-          waitingPreviewCountAfter: 1,
         },
       ],
       promotions: [
@@ -159,6 +163,52 @@ function evidence(mutate?: (value: MutableEvidence) => void): HostedV211Verified
       activeAccountIds: ["account-a", "account-b"],
       settlementPromotedRequestIds: [],
       finalActiveLeaseCount: 0,
+      scenario: {
+        primaryGenerationRequestId: "generation-a",
+        primaryProjectId: "project-a",
+        primaryProjectRevisionId: "revision-a",
+        secondaryGenerationRequestId: "generation-b",
+        secondaryProjectId: "project-b",
+        secondaryProjectRevisionId: "revision-b",
+        sameAccountWaiter: {
+          accountId: "account-a",
+          workspaceId: "workspace-a",
+          projectId: "project-a",
+          projectRevisionId: "revision-a",
+          generationRequestId: "generation-a-waiter",
+          waitingObserved: true as const,
+          queueAuditReceiptSha256: sha("same-account-wait"),
+        },
+        fairnessProbe: {
+          accountId: "account-c",
+          workspaceId: "workspace-c",
+          projectId: "project-c",
+          projectRevisionId: "revision-c",
+          generationRequestId: "generation-c-probe",
+          waitingObserved: true as const,
+          queueAuditReceiptSha256: sha("third-account-wait"),
+        },
+        fairPromotion: {
+          generationRequestId: "generation-c-probe",
+          promotionReceiptSha256: sha("fair-promotion"),
+          sameAccountWaiterRemainedWaiting: true as const,
+        },
+        cancellationRecovery: {
+          cancelAuthorizationReceiptSha256: sha("cancel-authorized"),
+          cancelReconciliationReceiptSha256: sha("cancel-reconciled"),
+          providerDispatchFenced: true,
+          providerRaceReconciled: false,
+          providerRaceActualUsd: 0,
+          providerRaceJobId: null,
+          providerRaceReceiptSha256: null,
+          terminalState: "CANCELLED" as const,
+          activeLeaseAbsent: true as const,
+        },
+        tenantIsolation: {
+          denied: true as const,
+          denialReceiptSha256: sha("tenant-isolation-denied"),
+        },
+      },
     },
     lanes: { mage_image: laneEvidence("mage_image"), soulx_avatar: laneEvidence("soulx_avatar") },
     attempts,
@@ -291,38 +341,95 @@ describe("hosted V2-11 pure groundwork evaluator", () => {
     );
   });
 
-  it("rejects reader volume drift from sealed lane lineage", async () => {
+  it("rejects workload provenance manifest drift from sealed lane lineage", async () => {
     await expectCode(
       evaluate(
         evidence((value) => {
-          (value.attempts[0] as { readerVolumeIdSha256: Sha256 }).readerVolumeIdSha256 =
-            sha("foreign-volume");
+          (value.attempts[0] as { volumeManifestSha256After: Sha256 }).volumeManifestSha256After =
+            sha("mutated-volume");
         }),
       ),
-      "V211_READER_INVALID",
+      "V211_PROVENANCE_INVALID",
     );
   });
 
-  it("rejects writable or cross-mounted reader evidence", async () => {
+  it.each([
+    [
+      "unverified HMAC",
+      (item: Record<string, unknown>) => (item.provenanceReceiptHmacVerified = false),
+    ],
+    ["volume mutation", (item: Record<string, unknown>) => (item.volumeMutationDetected = true)],
+    ["cross mount", (item: Record<string, unknown>) => (item.crossMountDetected = true)],
+    ["scratch retained", (item: Record<string, unknown>) => (item.scratchRemoved = false)],
+    [
+      "scratch on model volume",
+      (item: Record<string, unknown>) => (item.scratchOnModelVolume = true),
+    ],
+  ])("rejects %s in signed workload provenance", async (_label, mutate) => {
     await expectCode(
       evaluate(
         evidence((value) => {
-          (value.attempts[0] as { readerReadOnlyMount: boolean }).readerReadOnlyMount = false;
+          mutate(value.attempts[0] as unknown as Record<string, unknown>);
         }),
       ),
-      "V211_READER_INVALID",
+      "V211_PROVENANCE_INVALID",
     );
   });
 
-  it("requires two overlapping readers on each lane", async () => {
+  it("requires two overlapping real workload attempts on each lane", async () => {
     await expectCode(
       evaluate(
         evidence((value) => {
-          (value.attempts[1] as { readerStartedAt: string }).readerStartedAt =
+          (value.attempts[1] as { providerProgressObservedAt: string }).providerProgressObservedAt =
             "2026-08-25T10:00:06.000Z";
         }),
       ),
-      "V211_READER_INVALID",
+      "V211_PROVENANCE_INVALID",
+    );
+  });
+
+  it("uses only DB IN_PROGRESS observation through attempt terminal time for overlap", async () => {
+    await expectCode(
+      evaluate(
+        evidence((value) => {
+          (value.attempts[0] as { providerProgressState: string }).providerProgressState = "QUEUED";
+        }),
+      ),
+      "V211_PROVENANCE_INVALID",
+    );
+    await expectCode(
+      evaluate(
+        evidence((value) => {
+          (value.attempts[0] as { attemptTerminalAt: string }).attemptTerminalAt =
+            "2026-08-25T10:00:00.000Z";
+        }),
+      ),
+      "V211_PROVENANCE_INVALID",
+    );
+  });
+
+  it("requires DB-owned third-account promotion and real cancel reconciliation", async () => {
+    await expectCode(
+      evaluate(
+        evidence((value) => {
+          (
+            value.admission.scenario.fairPromotion as { generationRequestId: string }
+          ).generationRequestId = value.admission.scenario.sameAccountWaiter.generationRequestId;
+        }),
+      ),
+      "V211_FAIRNESS_INVALID",
+    );
+    await expectCode(
+      evaluate(
+        evidence((value) => {
+          (
+            value.admission.scenario.cancellationRecovery as {
+              cancelReconciliationReceiptSha256: Sha256;
+            }
+          ).cancelReconciliationReceiptSha256 = "not-a-hash" as Sha256;
+        }),
+      ),
+      "V211_FAIRNESS_INVALID",
     );
   });
 

@@ -439,11 +439,14 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         job = self._job()
         job["input"]["envelope"] = envelope
         ready = AsyncMock(side_effect=AssertionError("runtime must remain untouched"))
-        with patch.dict(
-            mage_serverless.os.environ,
-            {"VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": secret.hex()},
-            clear=False,
-        ), patch.object(mage_serverless, "_ready_runtime", ready):
+        with (
+            patch.dict(
+                mage_serverless.os.environ,
+                {"VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": secret.hex()},
+                clear=False,
+            ),
+            patch.object(mage_serverless, "_ready_runtime", ready),
+        ):
             result = asyncio.run(mage_serverless.handler(job))
         self.assertEqual(result["failure_code"], "ENVELOPE_RECEIPT_KEY_REUSE")
         ready.assert_not_awaited()

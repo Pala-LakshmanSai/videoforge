@@ -51,11 +51,11 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
           test "$(sha256sum workers/avatar-primary/Dockerfile.serverless | awk '{print $1}')" = \
-            "a55f1e1ad3fe03f4c229c6eb48d84e138085f8e91bf2e0eaffe377cef7446863"
+            "bb8249c300f55e334912e75048497eeafffe41ac74f670ef01c105710d4c65bd"
           test "$(sha256sum workers/avatar-primary/requirements.serverless.txt | awk '{print $1}')" = \
             "938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
           expected_sources=(
-            "workers/avatar-primary/soulx_serverless.py|a99c18e24cdc804cde09bf8f105ce8dd7d9f3c66e143adaf04f5c71e406878f5|/opt/videoforge/soulx_serverless.py"
+            "workers/avatar-primary/soulx_serverless.py|268be251e9a60200d7eb2b0899d3e1b962c9222b235d2c876d97460c6ca37ad9|/opt/videoforge/soulx_serverless.py"
             "workers/avatar-primary/soulx-serverless-entrypoint.py|bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9|/opt/videoforge/soulx-serverless-entrypoint.py"
             "workers/common/secure_scratch.py|7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775|/opt/videoforge/common/secure_scratch.py"
             "workers/common/serverless_envelope.py|34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0|/opt/videoforge/common/serverless_envelope.py"
@@ -224,7 +224,7 @@ jobs:
             test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.source-commit\"}}' "$remote_image")" = "$GITHUB_SHA"
             docker run --rm --entrypoint /bin/sh "$remote_image" -c \
               'printf "%s  %s\n" \
-                a99c18e24cdc804cde09bf8f105ce8dd7d9f3c66e143adaf04f5c71e406878f5 /opt/videoforge/soulx_serverless.py \
+                268be251e9a60200d7eb2b0899d3e1b962c9222b235d2c876d97460c6ca37ad9 /opt/videoforge/soulx_serverless.py \
                 bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9 /opt/videoforge/soulx-serverless-entrypoint.py \
                 7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775 /opt/videoforge/common/secure_scratch.py \
                 34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
@@ -281,7 +281,7 @@ jobs:
           test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.source-commit\"}}' "$immutable_image")" = "$GITHUB_SHA"
           docker run --rm --entrypoint /bin/sh "$immutable_image" -c \
             'printf "%s  %s\n" \
-              a99c18e24cdc804cde09bf8f105ce8dd7d9f3c66e143adaf04f5c71e406878f5 /opt/videoforge/soulx_serverless.py \
+              268be251e9a60200d7eb2b0899d3e1b962c9222b235d2c876d97460c6ca37ad9 /opt/videoforge/soulx_serverless.py \
               bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9 /opt/videoforge/soulx-serverless-entrypoint.py \
               7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775 /opt/videoforge/common/secure_scratch.py \
               34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
@@ -363,7 +363,7 @@ jobs:
               "immutable_image": os.environ["SOULX_IMMUTABLE_IMAGE"] or None,
               "image_digest": os.environ["SOULX_IMAGE_DIGEST"] or None,
               "dockerfile_sha256": (
-                  "sha256:a55f1e1ad3fe03f4c229c6eb48d84e138085f8e91bf2e0eaffe377cef7446863"
+                  "sha256:bb8249c300f55e334912e75048497eeafffe41ac74f670ef01c105710d4c65bd"
               ),
               "requirements_sha256": (
                   "sha256:938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
@@ -389,7 +389,7 @@ jobs:
                       "sha256:bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9"
                   ),
                   "workers/avatar-primary/soulx_serverless.py": (
-                      "sha256:a99c18e24cdc804cde09bf8f105ce8dd7d9f3c66e143adaf04f5c71e406878f5"
+                      "sha256:268be251e9a60200d7eb2b0899d3e1b962c9222b235d2c876d97460c6ca37ad9"
                   ),
                   "workers/common/secure_scratch.py": (
                       "sha256:7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775"

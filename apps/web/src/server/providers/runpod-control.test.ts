@@ -1247,7 +1247,106 @@ describe("RunPod scale-zero control", () => {
         { networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] },
         guard,
       ),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({
+      schemaVersion: "videoforge.runpod-v207-endpoint-policy-readback/v1",
+      endpointIdSha256: hashRunPodV207EndpointIdentity("endpoint_01"),
+      templateIdSha256: hashRunPodV207EndpointIdentity("template_01"),
+      volumeIdSha256: hashRunPodV207EndpointIdentity("volume_01"),
+      region: "EU-RO-1",
+      gpu: "NVIDIA GeForce RTX 4090",
+      workersMin: 0,
+      workersMax: 2,
+      gpuCount: 1,
+      idleTimeout: 5,
+      executionTimeoutMs: 2_400_000,
+      scalerType: "REQUEST_COUNT",
+      scalerValue: 1,
+    });
+  });
+
+  it("resolves a hash-bound V2-11 volume only from the exact endpoint policy snapshot", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(init?.method).toBeUndefined();
+      expect(new URL(String(input)).pathname).toBe("/endpoints");
+      return response([
+        {
+          id: "endpoint_01",
+          templateId: "template_01",
+          computeType: "GPU",
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+          allowedCudaVersions: ["13.0"],
+          minCudaVersion: "13.0",
+          flashboot: true,
+          networkVolumeId: "volume_01",
+          networkVolumeIds: ["volume_01"],
+          dataCenterIds: ["EU-RO-1"],
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+          scalerType: "REQUEST_COUNT",
+          scalerValue: 1,
+        },
+      ]);
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.resolveV207EndpointPlacement({
+        endpointId: "endpoint_01",
+        endpointIdSha256: hashRunPodV207EndpointIdentity("endpoint_01"),
+        templateId: "template_01",
+        templateIdSha256: hashRunPodV207EndpointIdentity("template_01"),
+        volumeIdSha256: hashRunPodV207EndpointIdentity("volume_01"),
+        allowedWorkersMax: [1],
+      }),
+    ).resolves.toEqual({ networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] });
+  });
+
+  it("rejects V2-11 endpoint inventory volume drift before any policy mutation", async () => {
+    const fetch = vi.fn(async () =>
+      response([
+        {
+          id: "endpoint_01",
+          templateId: "template_01",
+          computeType: "GPU",
+          workersMin: 0,
+          workersMax: 1,
+          gpuCount: 1,
+          gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+          allowedCudaVersions: ["13.0"],
+          minCudaVersion: "13.0",
+          flashboot: true,
+          networkVolumeId: "volume_drift",
+          networkVolumeIds: ["volume_drift"],
+          dataCenterIds: ["EU-RO-1"],
+          idleTimeout: 5,
+          executionTimeoutMs: 2_400_000,
+          scalerType: "REQUEST_COUNT",
+          scalerValue: 1,
+        },
+      ]),
+    );
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.resolveV207EndpointPlacement({
+        endpointId: "endpoint_01",
+        endpointIdSha256: hashRunPodV207EndpointIdentity("endpoint_01"),
+        templateId: "template_01",
+        templateIdSha256: hashRunPodV207EndpointIdentity("template_01"),
+        volumeIdSha256: hashRunPodV207EndpointIdentity("volume_01"),
+        allowedWorkersMax: [1],
+      }),
+    ).rejects.toThrow("RUNPOD_V207_POLICY_SNAPSHOT_INVALID");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("binds the allocated endpoint hash through a template update, endpoint PATCH, and readback", async () => {

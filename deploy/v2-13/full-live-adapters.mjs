@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   closeSync,
   linkSync,
@@ -13,7 +13,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
@@ -62,6 +62,8 @@ const GUARDED_SECRET_NAMES = Object.freeze([
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const BRIDGE_PATH = "apps/web/src/server/providers/v213-full-live-cli.ts";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
+const BRIDGE_CLI_SOURCE_SHA256 =
+  "sha256:a83d5ee164cb279b5381272eec66f70b10904883806e81caf75e774ac9f30102";
 const PREQUALIFICATION_MIGRATION_MANIFEST_PATH = "packages/control-plane/migrations/manifest.json";
 const PREQUALIFICATION_OPERATOR_GRANTS_PATH = "deploy/v2-13/neon-full-live-operator-grants.sql";
 const PREQUALIFICATION_MIGRATION_MANIFEST_SHA256 = sha256(
@@ -71,8 +73,16 @@ const PREQUALIFICATION_OPERATOR_GRANTS_SHA256 = sha256(
   readFileSync(resolve(ROOT, PREQUALIFICATION_OPERATOR_GRANTS_PATH)),
 );
 const BRIDGE_CONFIRMATION = "EXECUTE_EXACT_V2_13_TYPESCRIPT_BRIDGE_COMMAND";
+const RELEASE_CERTIFICATION_CONFIRMATION = "EXECUTE_EXACT_V2_13_LOCAL_RELEASE_CERTIFICATION";
+const RELEASE_CERTIFICATION_REQUEST_SCHEMA =
+  "videoforge.v213-local-release-certification-request/v1";
+const CLEANUP_RECEIPT_CONFIRMATION = "FINALIZE_EXACT_V2_13_CLEANUP_RECEIPT";
+const CLEANUP_RECEIPT_REQUEST_SCHEMA =
+  "videoforge.v213-local-cleanup-receipt-finalization-request/v1";
 const BRIDGE_CHILD_MAX_TIMEOUT_MS = 1_800_000;
 const BRIDGE_CLEANUP_CHILD_MAX_TIMEOUT_MS = 60_000;
+const RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS = 60_000;
+const CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS = 60_000;
 const EARLY_CLEANUP_INPUT_SCHEMA = "videoforge.v213-full-live-early-cleanup-input/v1";
 const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v1";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
@@ -88,23 +98,45 @@ const PREQUALIFICATION_LEDGER_PREFIX_COUNTS = Object.freeze([
   36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
 ]);
 const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
-  "videoforge_load_v213_bridge_acceptance_call(jsonb)",
-  "videoforge_record_v213_stage_authority(uuid,jsonb)",
-  "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
-  "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
-  "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
-  "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+  "videoforge_claim_v213_bridge_command(jsonb)",
+  "videoforge_claim_v213_operation(jsonb)",
   "videoforge_claim_v213_stage_authority(jsonb)",
   "videoforge_complete_v213_stage_authority(text,text,jsonb)",
-  "videoforge_load_v213_stage_handoff(uuid,text,text)",
+  "videoforge_load_v213_bridge_acceptance_call(jsonb)",
   "videoforge_load_v213_cleanup_scope(uuid)",
-  "videoforge_claim_v213_operation(jsonb)",
-  "videoforge_transition_v213_operation(jsonb)",
-  "videoforge_claim_v213_bridge_command(jsonb)",
-  "videoforge_transition_v213_bridge_command(jsonb)",
-  "videoforge_record_v213_receipt_verification_key(text,text)",
+  "videoforge_load_v213_signed_evidence(jsonb)",
+  "videoforge_load_v213_stage_handoff(uuid,text,text)",
+  "videoforge_materialize_v213_release_facts(jsonb)",
+  "videoforge_persist_v213_jit_materialization(jsonb)",
+  "videoforge_persist_v213_release_certification(jsonb)",
+  "videoforge_persist_v213_release_chrome(jsonb)",
+  "videoforge_prepare_v213_jit_operation(jsonb)",
+  "videoforge_project_v213_jit_operation(jsonb)",
+  "videoforge_project_v213_release_certification(jsonb)",
+  "videoforge_project_v213_release_chrome(jsonb)",
+  "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
   "videoforge_publish_v213_qualified_deployments(jsonb)",
+  "videoforge_read_v213_jit_materialization(jsonb)",
+  "videoforge_read_v213_operation_receipt(jsonb)",
+  "videoforge_read_v213_operator_evidence(jsonb)",
+  "videoforge_read_v213_release_certification(jsonb)",
+  "videoforge_read_v213_release_chrome(jsonb)",
+  "videoforge_read_v213_release_fact_materialization(jsonb)",
+  "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+  "videoforge_record_v213_acceptance_authority(jsonb)",
+  "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+  "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+  "videoforge_record_v213_operation_receipt(jsonb)",
+  "videoforge_record_v213_receipt_verification_key(text,text)",
+  "videoforge_record_v213_signed_evidence(jsonb)",
+  "videoforge_record_v213_stage_authority(uuid,jsonb)",
+  "videoforge_record_v213_static_release_descriptor(jsonb)",
   "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+  "videoforge_transition_v213_bridge_command(jsonb)",
+  "videoforge_transition_v213_operation(jsonb)",
+  "videoforge_v213_production_length_repository(jsonb)",
+  "videoforge_v213_short_pilot_repository(jsonb)",
+  "videoforge_verify_v213_jit_artifact(jsonb)",
 ]);
 const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "schema_version",
@@ -140,6 +172,13 @@ const CLEANUP_BRIDGE_COMMANDS = new Set([
   "read-settled-billing",
   "reconcile-exact-resources",
 ]);
+const RELEASE_CERTIFICATION_PREDECESSORS = Object.freeze([
+  ["v2-13-final-two-lane-smoke", "signedSmokeEvidenceSha256"],
+  ["restore-endpoints-max-one", "proofSha256"],
+  ["prove-zero-workers", "proofSha256"],
+  ["read-settled-billing", "proofSha256"],
+  ["reconcile-exact-resources", "proofSha256"],
+]);
 const BRIDGE_PROTECTED_FILES = Object.freeze([
   ["RUNPOD_API_KEY_FD", "VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE"],
   ["OPERATOR_DATABASE_URL_FD", "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE"],
@@ -153,6 +192,47 @@ const BRIDGE_PROTECTED_FILES = Object.freeze([
 const fail = (code, detail = "") => {
   throw new Error(`V2_13_FULL_LIVE_ADAPTER_${code}${detail ? `:${detail}` : ""}`);
 };
+
+/** Hash the closed Wrangler dry-output tree, never Wrangler's console text. */
+function hashV213DryOutputBundle(directory) {
+  const root = resolve(directory);
+  const files = [];
+  const walk = (current) => {
+    const names = readdirSync(current).sort((left, right) =>
+      Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8")),
+    );
+    for (const name of names) {
+      const path = resolve(current, name);
+      if (!path.startsWith(`${root}/`)) fail("PROMOTION_DRY_OUTPUT_PATH");
+      const stat = lstatSync(path);
+      if (stat.isSymbolicLink()) fail("PROMOTION_DRY_OUTPUT_SYMLINK");
+      if (stat.isDirectory()) {
+        walk(path);
+        continue;
+      }
+      if (!stat.isFile()) fail("PROMOTION_DRY_OUTPUT_ENTRY");
+      const bytes = readFileSync(path);
+      if (bytes.length !== stat.size) fail("PROMOTION_DRY_OUTPUT_RACE");
+      files.push({
+        path: relative(root, path).replaceAll("\\", "/"),
+        bytes: bytes.length,
+        sha256: sha256(bytes),
+      });
+    }
+  };
+  try {
+    if (!lstatSync(root).isDirectory()) fail("PROMOTION_DRY_OUTPUT_DIRECTORY");
+    walk(root);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail("PROMOTION_DRY_OUTPUT_DIRECTORY");
+  }
+  if (files.length === 0) fail("PROMOTION_DRY_OUTPUT_EMPTY");
+  return canonicalSha256({
+    schemaVersion: "videoforge.v213-wrangler-dry-output-manifest/v1",
+    files,
+  });
+}
 
 function productionCommand(command, args, { environment = process.env, env, input } = {}) {
   const result = spawnSync(command, args, {
@@ -895,7 +975,13 @@ function createQualifiedPromotionAdapter({
             schemaVersion: "videoforge.v213-cloudflare-activation-readback/v1",
             sourceCommit: readback.sourceCommit,
             versionIdSha256: readback.versionIdSha256,
+            deployedExecutableSha256: readback.deployedExecutableSha256,
             deployedConfigSha256: readback.deployedConfigSha256,
+            productionUrlSha256: readback.productionUrlSha256,
+            routeStatus: readback.routeStatus,
+            routeBodySha256: readback.routeBodySha256,
+            routeVersionSha256: readback.routeVersionSha256,
+            routeReadbackSha256: readback.routeReadbackSha256,
             observedAt: readback.observedAt,
           },
         }),
@@ -1047,19 +1133,13 @@ function createProtectedPromotionAdapter({
           stdio: ["ignore", "pipe", "pipe"],
         });
         if (build.status !== 0) fail("PROMOTION_PRODUCTION_FIREWALL");
-        const stdout = runWrangler([
-          "deploy",
-          "--dry-run",
-          "--outdir",
-          dryOutput,
-          "--config",
-          enabledPath,
-        ]);
+        runWrangler(["deploy", "--dry-run", "--outdir", dryOutput, "--config", enabledPath]);
         return {
           configSha256: sha256(bytes),
-          bundleSha256: sha256(Buffer.from(stdout)),
+          bundleSha256: hashV213DryOutputBundle(dryOutput),
           productionFirewallPassed: true,
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
         };
       },
       deploy: async (bytes) => {
@@ -1069,7 +1149,8 @@ function createProtectedPromotionAdapter({
           configSha256: sha256(bytes),
           versionSha256: sha256(Buffer.from(versionId)),
           versionId,
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: true,
         };
       },
       readback: async (deployed) => {
@@ -1105,7 +1186,8 @@ function createProtectedPromotionAdapter({
           publicOrigin: record.cloudflare.public_origin,
           gpuTransport: enabledConfig.vars.VIDEOFORGE_GPU_TRANSPORT,
           exactBindings,
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
           evidenceSha256: sha256(Buffer.from(JSON.stringify(proof))),
         };
       },
@@ -1122,8 +1204,12 @@ function createProtectedPromotionAdapter({
         }
         const versionId = route.headers.get("x-videoforge-worker-version");
         let body;
+        let bodyBytes;
         try {
-          body = await route.json();
+          bodyBytes = Buffer.from(await route.text(), "utf8");
+          if (bodyBytes.length === 0 || bodyBytes.length > 1_048_576)
+            fail("PROMOTION_ROUTE_READBACK");
+          body = JSON.parse(bodyBytes.toString("utf8"));
         } catch {
           fail("PROMOTION_ROUTE_READBACK");
         }
@@ -1131,7 +1217,11 @@ function createProtectedPromotionAdapter({
           routeReady: route.ok && sha256(Buffer.from(versionId ?? "")) === readback.versionSha256,
           routeStatus: route.status,
           routeVersionSha256: versionId ? sha256(Buffer.from(versionId)) : null,
+          productionUrlSha256: sha256(Buffer.from(record.cloudflare.public_origin)),
+          routeBodySha256: sha256(bodyBytes),
           gpuTransport: body?.gpu_transport,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: false,
         };
       },
       rollback: async (bytes) => {
@@ -1165,7 +1255,8 @@ function createProtectedPromotionAdapter({
           gpuTransport: body?.gpu_transport,
           configSha256: sha256(bytes),
           versionSha256: sha256(Buffer.from(versionId)),
-          providerSendPerformed: false,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: true,
           routeDisabled: versionId === record.cloudflare.disabled_version_id,
           routeStatus: route.status,
           routeVersionSha256: routeVersionId ? sha256(Buffer.from(routeVersionId)) : null,
@@ -1192,7 +1283,13 @@ function createProtectedPromotionAdapter({
                     schemaVersion: "videoforge.v213-cloudflare-activation-readback/v1",
                     sourceCommit: readback.sourceCommit,
                     versionIdSha256: readback.versionIdSha256,
+                    deployedExecutableSha256: readback.deployedExecutableSha256,
                     deployedConfigSha256: readback.deployedConfigSha256,
+                    productionUrlSha256: readback.productionUrlSha256,
+                    routeStatus: readback.routeStatus,
+                    routeBodySha256: readback.routeBodySha256,
+                    routeVersionSha256: readback.routeVersionSha256,
+                    routeReadbackSha256: readback.routeReadbackSha256,
                     observedAt: readback.observedAt,
                   },
                 }),
@@ -1425,6 +1522,7 @@ const MATERIALIZATION_STAGE_ORDER = Object.freeze([
   "max-one-endpoint-bindings",
   "activation-record",
   "promotion-record",
+  "post-consumption-command-payloads",
   "cleanup-pre-endpoint-descriptor",
 ]);
 
@@ -1524,6 +1622,17 @@ const materializationStageForOperation = (operationId) => {
   if (operationId === "create-exact-max-one-endpoints") return "max-one-endpoint-bindings";
   if (operationId === "guarded-activation-once") return "activation-record";
   if (operationId === "promote-qualified-production") return "promotion-record";
+  if (
+    [
+      "record-workflow-start-authority",
+      "v2-09-short-hosted-project",
+      "v2-10-operator-free-ranga-pilot",
+      "v2-11-two-concurrent-owned-projects",
+      "v2-12-long-output",
+      "v2-13-final-two-lane-smoke",
+    ].includes(operationId)
+  )
+    return "post-consumption-command-payloads";
   if (
     [
       "restore-endpoints-max-one",
@@ -2273,49 +2382,1619 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
 
 const createPrequalificationDatabaseAdapter = createPrequalificationDatabaseBootstrapAdapter;
 
-function createWorkflowStartAuthorityAdapter({ database, input } = {}) {
-  const db =
-    database !== null && typeof database === "object" && typeof database.query === "function"
-      ? createPromotionDatabaseAdapter(database)
-      : null;
-  return async (operation = {}, state = {}, priorResults = new Map()) => {
-    if (db === null) fail("WORKFLOW_AUTHORITY_DATABASE_REQUIRED");
-    const supplied =
-      typeof input === "function"
-        ? await input({ operation, state, priorResults })
-        : (input ?? operation.workflowStartAuthority ?? state.workflow_start_authority);
-    const expectedKeys = ["workflowAuthorityId", "authorityId", "tokenSha256", "expiresAt"];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const V213_ACCEPTANCE_CHECKPOINTS = Object.freeze(["V2-10", "V2-11", "V2-12", "V2-13"]);
+const V213_ACCEPTANCE_COMMANDS = Object.freeze({
+  "V2-10": "v2-10-operator-free-ranga-pilot",
+  "V2-11": "v2-11-two-concurrent-owned-projects",
+  "V2-12": "v2-12-long-output",
+  "V2-13": "v2-13-final-two-lane-smoke",
+});
+const V213_JIT_CHECKPOINTS = Object.freeze(["V2-09", ...V213_ACCEPTANCE_CHECKPOINTS]);
+const V213_JIT_COMMANDS = Object.freeze({
+  "V2-09": "v2-09-short-hosted-project",
+  ...V213_ACCEPTANCE_COMMANDS,
+});
+const V213_ACCEPTANCE_PHASE_CAP_MICRO_USD = Object.freeze({
+  "V2-10": 2_000_000,
+  "V2-11": 4_000_000,
+  "V2-12": 2_000_000,
+  "V2-13": 2_000_000,
+});
+const V213_POST_CONSUMPTION_MATERIALIZATION_SCHEMA =
+  "videoforge.v213-post-consumption-materialization/v4";
+const V213_MATERIALIZATION_IDENTITY_KEYS = Object.freeze([
+  "accountId",
+  "generationRequestId",
+  "projectId",
+  "projectRevisionId",
+  "workspaceId",
+]);
+const V213_PROJECT_IDENTITY_KEYS = Object.freeze([
+  "accountId",
+  "workspaceId",
+  "projectId",
+  "projectRevisionId",
+]);
+const V213_COMMAND_PAYLOAD_KEYS = Object.freeze([
+  "v2-09-short-hosted-project",
+  "v2-10-operator-free-ranga-pilot",
+  "v2-11-two-concurrent-owned-projects",
+  "v2-12-long-output",
+  "v2-13-final-two-lane-smoke",
+]);
+const exactObjectKeys = (value, keys) =>
+  value !== null &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
+
+const canonicalSha256 = (value) => sha256(Buffer.from(canonicalJson(value)));
+
+function validateV213Execution(execution, checkpoint, state, expectedProjectIdentities) {
+  const keys = [
+    "call",
+    "checkpoint",
+    "deadlineAt",
+    "pollIntervalMs",
+    "schemaVersion",
+    "workflowId",
+    "workflowParams",
+  ];
+  if (
+    !exactObjectKeys(execution, keys) ||
+    execution.schemaVersion !== "videoforge.v213-database-acceptance-execution/v1" ||
+    execution.checkpoint !== checkpoint ||
+    typeof execution.workflowId !== "string" ||
+    !exactObjectKeys(
+      execution.call,
+      checkpoint === "V2-10" || checkpoint === "V2-12"
+        ? ["admission", "request"]
+        : checkpoint === "V2-13"
+          ? ["chromeArtifact", "evidenceArtifacts", "releaseIdentity", "request"]
+          : ["request"],
+    ) ||
+    !Number.isInteger(execution.pollIntervalMs) ||
+    execution.pollIntervalMs < 250 ||
+    execution.pollIntervalMs > 10_000 ||
+    typeof execution.deadlineAt !== "string" ||
+    Number.isNaN(Date.parse(execution.deadlineAt)) ||
+    execution.workflowParams === null ||
+    typeof execution.workflowParams !== "object" ||
+    Array.isArray(execution.workflowParams)
+  )
+    fail("ACCEPTANCE_AUTHORITY_EXECUTION");
+  const request = execution.call.request;
+  const requestKeys = [
+    "approvalRecordSha256",
+    "authoritySha256",
+    "billingBaselineMicroUsd",
+    "checkpoint",
+    "cumulativeLedgerSha256",
+    "cumulativeLedgerSpentBeforeMicroUsd",
+    "executorSha256",
+    "executionId",
+    "maximumCumulativeVariableCostMicroUsd",
+    "maximumVariableCostMicroUsd",
+    "noRedispatch",
+    "promotionDecisionSha256",
+    "retainedVolumeIdSha256s",
+    "scopes",
+    "sourceCommit",
+    "proposalSha256",
+  ];
+  if (
+    !exactObjectKeys(request, requestKeys) ||
+    request.checkpoint !== checkpoint ||
+    typeof request.executionId !== "string" ||
+    request.executionId === "" ||
+    request.proposalSha256 !== state.proposal_sha256 ||
+    request.sourceCommit !== state.release_source_commit ||
+    !HASH.test(request.authoritySha256 ?? "") ||
+    !HASH.test(request.approvalRecordSha256 ?? "") ||
+    !HASH.test(request.cumulativeLedgerSha256 ?? "") ||
+    !HASH.test(request.executorSha256 ?? "") ||
+    !HASH.test(request.promotionDecisionSha256 ?? "") ||
+    request.maximumVariableCostMicroUsd !== V213_ACCEPTANCE_PHASE_CAP_MICRO_USD[checkpoint] ||
+    request.maximumCumulativeVariableCostMicroUsd !== 17_500_000 ||
+    request.noRedispatch !== true ||
+    !Number.isSafeInteger(request.billingBaselineMicroUsd) ||
+    request.billingBaselineMicroUsd < 0 ||
+    !Number.isSafeInteger(request.cumulativeLedgerSpentBeforeMicroUsd) ||
+    request.cumulativeLedgerSpentBeforeMicroUsd < 0 ||
+    !exactObjectKeys(request.retainedVolumeIdSha256s, ["mage", "soulx"]) ||
+    !HASH.test(request.retainedVolumeIdSha256s.mage ?? "") ||
+    !HASH.test(request.retainedVolumeIdSha256s.soulx ?? "") ||
+    !Array.isArray(request.scopes) ||
+    request.scopes.length !== (checkpoint === "V2-11" ? 2 : 1) ||
+    request.scopes.some((scope, index) => {
+      const expected =
+        expectedProjectIdentities[index] ??
+        (checkpoint === "V2-11" && index === 1 ? null : undefined);
+      return (
+        !exactObjectKeys(scope, [
+          "accountId",
+          "attemptId",
+          "projectId",
+          "projectRevisionId",
+          "requestSha256",
+          "workspaceId",
+        ]) ||
+        expected === undefined ||
+        (expected !== null &&
+          V213_PROJECT_IDENTITY_KEYS.some((key) => scope[key] !== expected[key])) ||
+        (expected === null &&
+          V213_PROJECT_IDENTITY_KEYS.some(
+            (key) => typeof scope[key] !== "string" || scope[key] === "",
+          )) ||
+        typeof scope.attemptId !== "string" ||
+        scope.attemptId === "" ||
+        !HASH.test(scope.requestSha256 ?? "")
+      );
+    }) ||
+    (checkpoint === "V2-11" &&
+      (new Set(request.scopes.map((scope) => `${scope.accountId}:${scope.workspaceId}`)).size !==
+        2 ||
+        new Set(request.scopes.map((scope) => scope.projectId)).size !== 2))
+  )
+    fail("ACCEPTANCE_AUTHORITY_EXECUTION");
+  if (execution.workflowId !== `v213-${checkpoint.toLowerCase()}-${request.executionId}`)
+    fail("ACCEPTANCE_AUTHORITY_EXECUTION");
+  return true;
+}
+
+function exactPostConsumptionWorkflowMaterialization(
+  value,
+  state,
+  outerStateSha256,
+  expectedWorkerBearerSha256,
+) {
+  const keys = [
+    "fullLiveAuthorityId",
+    "materializationSha256",
+    "materializedAfterOuterConsumption",
+    "outerStateSha256",
+    "proposalSha256",
+    "approvalSha256",
+    "roleScopedIdentities",
+    "staticReleaseDescriptorSha256",
+    "sourceCommit",
+    "workerOperatorBearerSha256",
+    "workflowStartAuthority",
+    "schemaVersion",
+  ];
+  if (
+    !exactObjectKeys(value, keys) ||
+    value.schemaVersion !== V213_POST_CONSUMPTION_MATERIALIZATION_SCHEMA ||
+    !HASH.test(value.materializationSha256 ?? "")
+  )
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_CONTRACT");
+  const unsigned = { ...value };
+  delete unsigned.materializationSha256;
+  if (canonicalSha256(unsigned) !== value.materializationSha256)
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_HASH");
+  if (
+    value.materializedAfterOuterConsumption !== true ||
+    !UUID.test(value.fullLiveAuthorityId ?? "") ||
+    value.outerStateSha256 !== outerStateSha256 ||
+    value.sourceCommit !== state.release_source_commit ||
+    value.proposalSha256 !== state.proposal_sha256 ||
+    value.approvalSha256 !== state.approval_sha256 ||
+    !HASH.test(value.staticReleaseDescriptorSha256 ?? "") ||
+    value.staticReleaseDescriptorSha256 !== state.static_release_descriptor_sha256 ||
+    !HASH.test(value.workerOperatorBearerSha256 ?? "") ||
+    (expectedWorkerBearerSha256 !== undefined &&
+      value.workerOperatorBearerSha256 !== expectedWorkerBearerSha256)
+  )
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_BINDING");
+  const identities = value.roleScopedIdentities;
+  if (
+    !exactObjectKeys(identities, ["fairnessProbe", "primary", "sameAccountWaiter", "secondary"]) ||
+    ![
+      identities.primary,
+      identities.sameAccountWaiter,
+      identities.secondary,
+      identities.fairnessProbe,
+    ].every(
+      (identity) =>
+        exactObjectKeys(identity, V213_MATERIALIZATION_IDENTITY_KEYS) &&
+        V213_MATERIALIZATION_IDENTITY_KEYS.every((key) => UUID.test(identity[key] ?? "")),
+    ) ||
+    ["accountId", "workspaceId", "projectId", "projectRevisionId"].some(
+      (key) => identities.sameAccountWaiter[key] !== identities.primary[key],
+    ) ||
+    ["accountId", "workspaceId", "projectId", "projectRevisionId", "generationRequestId"].some(
+      (key) =>
+        new Set([identities.primary[key], identities.secondary[key], identities.fairnessProbe[key]])
+          .size !== 3,
+    ) ||
+    new Set([
+      identities.primary.generationRequestId,
+      identities.sameAccountWaiter.generationRequestId,
+      identities.secondary.generationRequestId,
+      identities.fairnessProbe.generationRequestId,
+    ]).size !== 4
+  )
+    fail("WORKFLOW_AUTHORITY_IDENTITIES");
+  const supplied = value.workflowStartAuthority;
+  if (
+    !exactObjectKeys(supplied, [
+      "authorityId",
+      "expiresAt",
+      "tokenSha256",
+      "workflowAuthorityId",
+    ]) ||
+    !UUID.test(supplied.workflowAuthorityId ?? "") ||
+    !UUID.test(supplied.authorityId ?? "") ||
+    supplied.authorityId !== value.fullLiveAuthorityId ||
+    !HASH.test(supplied.tokenSha256 ?? "") ||
+    typeof supplied.expiresAt !== "string" ||
+    Number.isNaN(Date.parse(supplied.expiresAt)) ||
+    Date.parse(supplied.expiresAt) > Date.parse(state.expires_at)
+  )
+    fail("WORKFLOW_AUTHORITY_INPUT");
+  // Operation 16 is deliberately only an identity/plan boundary. Child authorities and their
+  // execution documents are created just-in-time by the corresponding acceptance operation,
+  // after the predecessor result is durable.
+  return Object.freeze(value);
+}
+
+/**
+ * Validate the one acceptance authority produced at an acceptance boundary. Operation 16 may
+ * legitimately have no child authorities yet; this validator keeps the later JIT seam just as
+ * strict as the four-authority legacy/replay path. In particular, it never accepts an empty
+ * admission or V2-13 evidence object as a stand-in for a DB-owned execution document.
+ */
+function exactJustInTimeAcceptanceAuthority({
+  value,
+  checkpoint,
+  state,
+  outerStateSha256,
+  fullLiveAuthorityId,
+  commandPayload,
+}) {
+  if (
+    !V213_ACCEPTANCE_CHECKPOINTS.includes(checkpoint) ||
+    !exactObjectKeys(value, ["document", "execution", "expiresAt", "tokenSha256"])
+  )
+    fail("ACCEPTANCE_AUTHORITY_INPUT");
+  const document = value.document;
+  const command = V213_ACCEPTANCE_COMMANDS[checkpoint];
+  const workflowId = `v213-${checkpoint.toLowerCase()}-${document?.commandId}`;
+  const attemptId = `${workflowId}-attempt`;
+  if (
+    !exactObjectKeys(commandPayload, V213_PROJECT_IDENTITY_KEYS) ||
+    V213_PROJECT_IDENTITY_KEYS.some((key) => !UUID.test(commandPayload[key] ?? "")) ||
+    !exactObjectKeys(document, [
+      "accountId",
+      "attemptId",
+      "checkpoint",
+      "command",
+      "commandId",
+      "outerStateSha256",
+      "projectId",
+      "projectRevisionId",
+      "requestSha256",
+      "schemaVersion",
+      "stageAuthorityId",
+      "workflowId",
+      "workspaceId",
+    ]) ||
+    document.schemaVersion !== "videoforge.v213-hosted-acceptance-command/v1" ||
+    document.command !== command ||
+    document.commandId !== `v213:${fullLiveAuthorityId}:${command}` ||
+    document.stageAuthorityId !== fullLiveAuthorityId ||
+    document.checkpoint !== checkpoint ||
+    document.workflowId !== workflowId ||
+    document.attemptId !== attemptId ||
+    document.outerStateSha256 !== outerStateSha256 ||
+    !HASH.test(document.requestSha256 ?? "") ||
+    canonicalSha256({
+      command,
+      checkpoint,
+      workflowId,
+      attemptId,
+      ...commandPayload,
+      outerStateSha256,
+    }) !== document.requestSha256 ||
+    V213_PROJECT_IDENTITY_KEYS.some((key) => document[key] !== commandPayload[key]) ||
+    !HASH.test(value.tokenSha256 ?? "") ||
+    typeof value.expiresAt !== "string" ||
+    Number.isNaN(Date.parse(value.expiresAt)) ||
+    Date.parse(value.expiresAt) > Date.parse(state.expires_at) ||
+    Date.parse(value.expiresAt) > Date.now() + 15 * 60 * 1000
+  )
+    fail("ACCEPTANCE_AUTHORITY_INPUT");
+  validateV213Execution(
+    value.execution,
+    checkpoint,
+    state,
+    checkpoint === "V2-11"
+      ? [
+          commandPayload,
+          ...(value.execution.call.request.scopes?.[1]
+            ? [
+                Object.fromEntries(
+                  V213_PROJECT_IDENTITY_KEYS.map((key) => [
+                    key,
+                    value.execution.call.request.scopes[1][key],
+                  ]),
+                ),
+              ]
+            : []),
+        ]
+      : [commandPayload],
+  );
+  if (
+    (checkpoint === "V2-10" || checkpoint === "V2-12") &&
+    (value.execution.call.admission === null ||
+      typeof value.execution.call.admission !== "object" ||
+      Array.isArray(value.execution.call.admission) ||
+      Object.keys(value.execution.call.admission).length === 0)
+  )
+    fail("ACCEPTANCE_AUTHORITY_EXECUTION");
+  if (
+    checkpoint === "V2-13" &&
+    (value.execution.call.chromeArtifact?.rawEvidence === undefined ||
+      value.execution.call.chromeArtifact.rawEvidence === null ||
+      typeof value.execution.call.chromeArtifact.rawEvidence !== "object" ||
+      Object.keys(value.execution.call.chromeArtifact.rawEvidence).length === 0 ||
+      value.execution.call.evidenceArtifacts === null ||
+      typeof value.execution.call.evidenceArtifacts !== "object" ||
+      Object.keys(value.execution.call.evidenceArtifacts).length === 0 ||
+      value.execution.call.releaseIdentity === null ||
+      typeof value.execution.call.releaseIdentity !== "object" ||
+      Object.keys(value.execution.call.releaseIdentity).length < 4)
+  )
+    fail("ACCEPTANCE_AUTHORITY_EXECUTION");
+  return Object.freeze(value);
+}
+
+function readProtectedPostConsumptionMaterialization({
+  environment = process.env,
+  state,
+  outerStateSha256,
+} = {}) {
+  const path = environment.VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE;
+  if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_FILE");
+  const seedPath = environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE;
+  if (typeof seedPath === "string" && resolve(path) === resolve(seedPath))
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_FILE");
+  let directory;
+  let materializationFile;
+  try {
+    directory = protectedDirectory(dirname(path), "WORKFLOW_AUTHORITY_MATERIALIZATION_DIRECTORY");
+    materializationFile = protectedFile(path, "WORKFLOW_AUTHORITY_MATERIALIZATION_FILE");
+  } catch {
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_FILE");
+  }
+  if ((lstatSync(directory).mode & 0o777) !== 0o700)
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_DIRECTORY");
+  if ((lstatSync(materializationFile).mode & 0o777) !== 0o600)
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_FILE");
+  const raw = readFileSync(materializationFile);
+  let value;
+  try {
+    value = JSON.parse(raw.toString("utf8"));
+  } catch {
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_JSON");
+  }
+  if (Buffer.compare(raw, Buffer.from(`${canonicalJson(value)}\n`)) !== 0)
+    fail("WORKFLOW_AUTHORITY_MATERIALIZATION_CANONICAL");
+  const bearerPath = environment.VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE;
+  if (
+    typeof bearerPath !== "string" ||
+    bearerPath === "" ||
+    !bearerPath.startsWith("/") ||
+    bearerPath.includes("\0")
+  )
+    fail("WORKFLOW_AUTHORITY_BEARER_FILE");
+  let bearerDirectory;
+  let bearerFile;
+  try {
+    bearerDirectory = protectedDirectory(
+      dirname(bearerPath),
+      "WORKFLOW_AUTHORITY_BEARER_DIRECTORY",
+    );
+    bearerFile = protectedFile(bearerPath, "WORKFLOW_AUTHORITY_BEARER_FILE");
+  } catch {
+    fail("WORKFLOW_AUTHORITY_BEARER_FILE");
+  }
+  if ((lstatSync(bearerDirectory).mode & 0o777) !== 0o700)
+    fail("WORKFLOW_AUTHORITY_BEARER_DIRECTORY");
+  if ((lstatSync(bearerFile).mode & 0o777) !== 0o600) fail("WORKFLOW_AUTHORITY_BEARER_FILE");
+  const bearer = readFileSync(bearerFile);
+  if (
+    bearer.length === 0 ||
+    bearer.includes(0) ||
+    bearer.toString("utf8").trim() !== bearer.toString("utf8")
+  )
+    fail("WORKFLOW_AUTHORITY_BEARER_FILE");
+  return exactPostConsumptionWorkflowMaterialization(
+    value,
+    state,
+    outerStateSha256,
+    sha256(bearer),
+  );
+}
+
+const V213_POST_CONSUMPTION_CHALLENGE_SCHEMA =
+  "videoforge.v213-post-consumption-materialization-challenge/v1";
+const V213_POST_CONSUMPTION_RESPONSE_SCHEMA =
+  "videoforge.v213-post-consumption-materialization-response/v1";
+const V213_POST_CONSUMPTION_CHALLENGE_KEYS = Object.freeze([
+  "approvalRecordSha256",
+  "authorityId",
+  "authoritySha256",
+  "cumulativeLedgerSha256",
+  "expiresAt",
+  "fullLiveAuthorityId",
+  "operationId",
+  "outerStateSha256",
+  "proposalSha256",
+  "requestSha256",
+  "schemaVersion",
+  "sourceCommit",
+  "tokenSha256",
+  "workflowAuthorityId",
+  "workerOperatorBearerSha256",
+]);
+const V213_POST_CONSUMPTION_RESPONSE_KEYS = Object.freeze([
+  "challengeId",
+  "challengeSha256",
+  "selection",
+  "selectionSha256",
+  "responseHmacSha256",
+  "schemaVersion",
+]);
+const V213_POST_CONSUMPTION_SELECTION_KEYS = Object.freeze([
+  "fairnessProbe",
+  "primary",
+  "sameAccountWaiter",
+  "secondary",
+]);
+const V213_POST_CONSUMPTION_SELECTION_IDENTITY_KEYS = Object.freeze([
+  "accountId",
+  "workspaceId",
+  "projectId",
+  "projectRevisionId",
+]);
+const V213_POST_CONSUMPTION_FACT_KEYS = Object.freeze([
+  "fullLiveAuthorityId",
+  "roleScopedIdentities",
+]);
+const V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA = "videoforge.v213-static-release-descriptor/v1";
+const V213_STATIC_RELEASE_GATE_POLICY = Object.freeze({
+  operations_runbooks_ready: Object.freeze({
+    claims: Object.freeze([
+      "stuck_job_runbook",
+      "provider_outage_runbook",
+      "billing_runbook",
+      "rollback_runbook",
+    ]),
+    metricKeys: Object.freeze([
+      "billingRunbookSha256",
+      "providerOutageRunbookSha256",
+      "rollbackRunbookSha256",
+      "stuckJobRunbookSha256",
+    ]),
+    metricsPass: (metrics) => Object.values(metrics).every((value) => HASH.test(value ?? "")),
+  }),
+  backup_restore_ready: Object.freeze({
+    claims: Object.freeze([
+      "backup_readback_passed",
+      "restore_evidence_accepted",
+      "schema_migration_disposition_recorded",
+    ]),
+    metricKeys: Object.freeze([
+      "backupReadbackPassed",
+      "restoreEvidenceAccepted",
+      "schemaMigrationDisposition",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.backupReadbackPassed === true &&
+      metrics.restoreEvidenceAccepted === true &&
+      ["DISPOSABLE_RESTORE_COMPLETED", "V206_RESTORE_REUSED_NO_SCHEMA_CHANGE"].includes(
+        metrics.schemaMigrationDisposition,
+      ),
+  }),
+  security_clear: Object.freeze({
+    claims: Object.freeze([
+      "p0_zero",
+      "p1_zero",
+      "auth_tenant_boundary_passed",
+      "ssrf_path_upload_boundary_passed",
+      "secret_log_scan_passed",
+      "cost_amplification_guards_passed",
+      "legacy_runtime_bundle_scan_passed",
+    ]),
+    metricKeys: Object.freeze([
+      "authTenantPassed",
+      "costAmplificationGuardsPassed",
+      "legacyRuntimeBundleScanPassed",
+      "p0Count",
+      "p1Count",
+      "secretLogScanPassed",
+      "ssrfPathUploadPassed",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.p0Count === 0 &&
+      metrics.p1Count === 0 &&
+      metrics.authTenantPassed === true &&
+      metrics.ssrfPathUploadPassed === true &&
+      metrics.secretLogScanPassed === true &&
+      metrics.costAmplificationGuardsPassed === true &&
+      metrics.legacyRuntimeBundleScanPassed === true,
+  }),
+  production_transport_real: Object.freeze({
+    claims: Object.freeze([
+      "hosted_client_api_truth",
+      "fixture_controls_absent",
+      "fake_gpu_absent",
+      "fake_transport_absent",
+      "manual_pod_controls_absent",
+      "legacy_dispatch_exports_absent",
+    ]),
+    metricKeys: Object.freeze([
+      "fakeGpuProfileInBundle",
+      "fakeTransportInBundle",
+      "fixtureControlsInBundle",
+      "hostedClientApiTruth",
+      "legacyDispatchExportsInBundle",
+      "manualPodControlsInBundle",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.hostedClientApiTruth === true &&
+      metrics.fixtureControlsInBundle === false &&
+      metrics.fakeGpuProfileInBundle === false &&
+      metrics.fakeTransportInBundle === false &&
+      metrics.manualPodControlsInBundle === false &&
+      metrics.legacyDispatchExportsInBundle === false,
+  }),
+});
+const V213_STATIC_RELEASE_GATES = Object.freeze(Object.keys(V213_STATIC_RELEASE_GATE_POLICY));
+
+function exactStaticReleaseDescriptor(value, expectedSourceCommit, expectedSha256) {
+  if (
+    !exactObjectKeys(value, [
+      "auditFacts",
+      "contractBundleSha256",
+      "descriptorSha256",
+      "productionUrlSha256",
+      "schemaVersion",
+      "sourceCommit",
+    ]) ||
+    value.schemaVersion !== V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA ||
+    value.sourceCommit !== expectedSourceCommit ||
+    !HASH.test(value.productionUrlSha256 ?? "") ||
+    !HASH.test(value.contractBundleSha256 ?? "") ||
+    !HASH.test(value.descriptorSha256 ?? "") ||
+    (expectedSha256 !== undefined && value.descriptorSha256 !== expectedSha256) ||
+    !exactObjectKeys(value.auditFacts, V213_STATIC_RELEASE_GATES)
+  )
+    fail("STATIC_RELEASE_DESCRIPTOR_CONTRACT");
+  for (const gate of V213_STATIC_RELEASE_GATES) {
+    const fact = value.auditFacts[gate];
+    const policy = V213_STATIC_RELEASE_GATE_POLICY[gate];
     if (
-      supplied === null ||
-      typeof supplied !== "object" ||
-      Array.isArray(supplied) ||
-      JSON.stringify(Object.keys(supplied).sort()) !== JSON.stringify([...expectedKeys].sort()) ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
-        supplied.workflowAuthorityId ?? "",
-      ) ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
-        supplied.authorityId ?? "",
-      ) ||
-      !HASH.test(supplied.tokenSha256 ?? "") ||
-      typeof supplied.expiresAt !== "string" ||
-      Number.isNaN(Date.parse(supplied.expiresAt))
+      !exactObjectKeys(fact, [
+        "claims",
+        "evidenceClass",
+        "evidencePath",
+        "fixtureOrFakeTransportUsed",
+        "gate",
+        "metrics",
+        "observedAt",
+        "observerId",
+        "sourceEvidenceSha256",
+      ]) ||
+      fact.gate !== gate ||
+      fact.evidenceClass !== "INDEPENDENT_RELEASE_AUDIT" ||
+      !HASH.test(fact.sourceEvidenceSha256 ?? "") ||
+      typeof fact.observerId !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(fact.observerId) ||
+      typeof fact.evidencePath !== "string" ||
+      !/^project-context\/evidence\/[A-Za-z0-9._/-]+\.json$/u.test(fact.evidencePath) ||
+      fact.evidencePath.includes("..") ||
+      typeof fact.observedAt !== "string" ||
+      Number.isNaN(Date.parse(fact.observedAt)) ||
+      new Date(fact.observedAt).toISOString() !== fact.observedAt ||
+      fact.fixtureOrFakeTransportUsed !== false ||
+      !Array.isArray(fact.claims) ||
+      JSON.stringify([...fact.claims].sort()) !== JSON.stringify([...policy.claims].sort()) ||
+      !exactObjectKeys(fact.metrics, policy.metricKeys) ||
+      !policy.metricsPass(fact.metrics)
     )
-      fail("WORKFLOW_AUTHORITY_INPUT");
-    const authority = await db.recordWorkflowStartAuthority(supplied);
-    if (
-      authority === null ||
-      typeof authority !== "object" ||
-      Array.isArray(authority) ||
-      JSON.stringify(Object.keys(authority).sort()) !==
-        JSON.stringify(["authorityId", "expiresAt", "tokenSha256"].sort()) ||
-      authority.authorityId !== supplied.workflowAuthorityId ||
-      authority.tokenSha256 !== supplied.tokenSha256 ||
-      typeof authority.expiresAt !== "string" ||
-      Number.isNaN(Date.parse(authority.expiresAt))
+      fail("STATIC_RELEASE_DESCRIPTOR_FACTS");
+  }
+  const unsigned = { ...value };
+  delete unsigned.descriptorSha256;
+  if (canonicalSha256(unsigned) !== value.descriptorSha256) fail("STATIC_RELEASE_DESCRIPTOR_HASH");
+  return Object.freeze(value);
+}
+
+function producerStaticReleaseDescriptor(environment, state, production) {
+  const path = environment?.VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE;
+  if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
+    fail("STATIC_RELEASE_DESCRIPTOR_FILE");
+  let raw;
+  try {
+    protectedExactDirectory(dirname(path), "STATIC_RELEASE_DESCRIPTOR_DIRECTORY");
+    protectedExactFile(path, "STATIC_RELEASE_DESCRIPTOR_FILE");
+    raw = readFileSync(path);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail("STATIC_RELEASE_DESCRIPTOR_FILE");
+  }
+  let value;
+  try {
+    value = JSON.parse(raw.toString("utf8"));
+  } catch {
+    fail("STATIC_RELEASE_DESCRIPTOR_JSON");
+  }
+  if (Buffer.compare(raw, Buffer.from(`${canonicalJson(value)}\n`)) !== 0)
+    fail("STATIC_RELEASE_DESCRIPTOR_CANONICAL_BYTES");
+  const expected = state.static_release_descriptor_sha256;
+  if (
+    !HASH.test(expected ?? "") ||
+    production.value.authorityDocument?.staticReleaseDescriptorSha256 !== expected
+  )
+    fail("STATIC_RELEASE_DESCRIPTOR_AUTHORITY_BINDING");
+  return exactStaticReleaseDescriptor(value, state.release_source_commit, expected);
+}
+
+function protectedExactDirectory(path, code) {
+  const directory = protectedDirectory(path, code);
+  if ((lstatSync(directory).mode & 0o777) !== 0o700) fail(code);
+  return directory;
+}
+
+function protectedExactFile(path, code) {
+  const file = protectedFile(path, code);
+  if ((lstatSync(file).mode & 0o777) !== 0o600) fail(code);
+  return file;
+}
+
+function producerWorkerBearer(environment) {
+  const path = environment?.VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE;
+  if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
+    fail("POST_CONSUMPTION_BEARER_FILE");
+  try {
+    protectedExactDirectory(dirname(path), "POST_CONSUMPTION_BEARER_DIRECTORY");
+    protectedExactFile(path, "POST_CONSUMPTION_BEARER_FILE");
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail("POST_CONSUMPTION_BEARER_FILE");
+  }
+  const value = readFileSync(path);
+  if (
+    value.length === 0 ||
+    value.includes(0) ||
+    value.toString("utf8").trim() !== value.toString("utf8")
+  )
+    fail("POST_CONSUMPTION_BEARER_FILE");
+  return value;
+}
+
+function producerExistingProductionInput(environment) {
+  const path = environment?.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE;
+  if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
+    fail("POST_CONSUMPTION_PRODUCTION_INPUT_FILE");
+  let raw;
+  try {
+    protectedExactDirectory(dirname(path), "POST_CONSUMPTION_PRODUCTION_INPUT_DIRECTORY");
+    protectedExactFile(path, "POST_CONSUMPTION_PRODUCTION_INPUT_FILE");
+    raw = readFileSync(path);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail("POST_CONSUMPTION_PRODUCTION_INPUT_FILE");
+  }
+  let value;
+  try {
+    value = JSON.parse(raw.toString("utf8"));
+  } catch {
+    fail("POST_CONSUMPTION_PRODUCTION_INPUT_JSON");
+  }
+  if (
+    Buffer.compare(raw, Buffer.from(`${canonicalJson(value)}\n`)) !== 0 ||
+    !exactObjectKeys(value, [
+      "authorityDocument",
+      "commandPayloads",
+      "dualLaneInput",
+      "fullLiveAuthorityId",
+      "schemaVersion",
+    ]) ||
+    value.schemaVersion !== "videoforge.v213-full-live-outer-input/v1" ||
+    !UUID.test(value.fullLiveAuthorityId ?? "") ||
+    value.authorityDocument === null ||
+    typeof value.authorityDocument !== "object" ||
+    value.dualLaneInput === null ||
+    typeof value.dualLaneInput !== "object" ||
+    value.commandPayloads === null ||
+    typeof value.commandPayloads !== "object" ||
+    Array.isArray(value.commandPayloads)
+  )
+    fail("POST_CONSUMPTION_PRODUCTION_INPUT_CONTRACT");
+  return Object.freeze({ value, raw });
+}
+
+function postConsumptionLedgerSha256(state) {
+  if (HASH.test(state?.cumulative_ledger_sha256 ?? "")) return state.cumulative_ledger_sha256;
+  const phases = Object.fromEntries(
+    Object.entries(state?.phases ?? {}).map(([name, phase]) => [
+      name,
+      {
+        reservedUsd: phase?.reserved_usd ?? 0,
+        settledUsd: phase?.settled_usd ?? 0,
+        state: phase?.state ?? "PENDING",
+      },
+    ]),
+  );
+  return canonicalSha256({
+    maximumCumulativeFiniteRunpodSpendUsd:
+      state?.maximum_cumulative_finite_runpod_spend_usd ?? 17.5,
+    phases,
+    totalReservedUsd: state?.total_reserved_usd ?? 0,
+    totalSettledUsd: state?.total_settled_usd ?? 0,
+  });
+}
+
+function exactPostConsumptionChallenge(value) {
+  if (
+    !exactObjectKeys(value, V213_POST_CONSUMPTION_CHALLENGE_KEYS) ||
+    value.schemaVersion !== V213_POST_CONSUMPTION_CHALLENGE_SCHEMA ||
+    !UUID.test(value.fullLiveAuthorityId ?? "") ||
+    !UUID.test(value.workflowAuthorityId ?? "") ||
+    !HASH.test(value.authoritySha256 ?? "") ||
+    !HASH.test(value.approvalRecordSha256 ?? "") ||
+    !HASH.test(value.cumulativeLedgerSha256 ?? "") ||
+    !HASH.test(value.tokenSha256 ?? "") ||
+    !HASH.test(value.workerOperatorBearerSha256 ?? "") ||
+    !HASH.test(value.outerStateSha256 ?? "") ||
+    !HASH.test(value.proposalSha256 ?? "") ||
+    !COMMIT.test(value.sourceCommit ?? "") ||
+    typeof value.authorityId !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u.test(value.authorityId) ||
+    value.operationId !== "record-workflow-start-authority" ||
+    typeof value.expiresAt !== "string" ||
+    Number.isNaN(Date.parse(value.expiresAt)) ||
+    !HASH.test(value.requestSha256 ?? "")
+  )
+    fail("POST_CONSUMPTION_CHALLENGE_CONTRACT");
+  const unsigned = { ...value };
+  delete unsigned.requestSha256;
+  if (canonicalSha256(unsigned) !== value.requestSha256) fail("POST_CONSUMPTION_CHALLENGE_HASH");
+  return Object.freeze(value);
+}
+
+function postConsumptionResponseHmac(response, bearer) {
+  return `sha256:${createHmac("sha256", bearer)
+    .update(
+      canonicalJson({
+        challengeId: response.challengeId,
+        challengeSha256: response.challengeSha256,
+        selection: response.selection,
+        selectionSha256: response.selectionSha256,
+      }),
     )
-      fail("WORKFLOW_AUTHORITY_RESULT");
-    return Object.freeze({ actualUsd: 0, ...authority });
+    .digest("hex")}`;
+}
+
+/**
+ * The production app journey writes one authenticated identity at a time. The operator side
+ * never trusts that response directly: it polls the SECURITY DEFINER readback until all three
+ * distinct account selections are durable, verifies the DB hash, and signs the resulting selection with the
+ * protected worker bearer before it enters the normal response validator.
+ */
+function createDatabasePostConsumptionHandshake({
+  database,
+  environment = process.env,
+  timeoutMs = 60_000,
+  pollIntervalMs = 500,
+} = {}) {
+  if (database === null || typeof database?.query !== "function")
+    fail("POST_CONSUMPTION_DATABASE_REQUIRED");
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 300_000)
+    fail("POST_CONSUMPTION_TIMEOUT_BOUND");
+  if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 100 || pollIntervalMs > 10_000)
+    fail("POST_CONSUMPTION_POLL_INTERVAL_BOUND");
+  const bearer = producerWorkerBearer(environment);
+  return async (challenge) => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() <= deadline) {
+      let result;
+      try {
+        result = await database.query(
+          "SELECT public.videoforge_load_v213_materialization_selection($1::jsonb) AS selection",
+          [
+            JSON.stringify({
+              challengeId: challenge.challengeId,
+              challengeSha256: challenge.requestSha256,
+            }),
+          ],
+        );
+      } catch {
+        throw new Error("POST_CONSUMPTION_HANDSHAKE_DATABASE");
+      }
+      if (result?.rows?.length !== 1) throw new Error("POST_CONSUMPTION_HANDSHAKE_AMBIGUOUS");
+      const loaded = result.rows[0]?.selection;
+      if (loaded !== null && loaded !== undefined) {
+        if (
+          typeof loaded !== "object" ||
+          Array.isArray(loaded) ||
+          !exactObjectKeys(loaded, ["selection", "selectionSha256"])
+        )
+          throw new Error("POST_CONSUMPTION_HANDSHAKE_CONTRACT");
+        const selected = exactPostConsumptionSelection(loaded.selection);
+        if (canonicalSha256(selected) !== loaded.selectionSha256)
+          throw new Error("POST_CONSUMPTION_HANDSHAKE_HASH");
+        const response = {
+          schemaVersion: V213_POST_CONSUMPTION_RESPONSE_SCHEMA,
+          challengeId: challenge.challengeId,
+          challengeSha256: challenge.requestSha256,
+          selection: selected,
+          selectionSha256: loaded.selectionSha256,
+        };
+        return Object.freeze({
+          ...response,
+          responseHmacSha256: postConsumptionResponseHmac(response, bearer),
+        });
+      }
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) break;
+      await new Promise((resolvePromise) =>
+        setTimeout(resolvePromise, Math.min(pollIntervalMs, remaining)),
+      );
+    }
+    throw new Error("POST_CONSUMPTION_HANDSHAKE_TIMEOUT");
   };
+}
+
+function exactPostConsumptionFacts(value) {
+  if (!exactObjectKeys(value, V213_POST_CONSUMPTION_FACT_KEYS))
+    fail("POST_CONSUMPTION_FACTS_CONTRACT");
+  if (
+    !UUID.test(value.fullLiveAuthorityId ?? "") ||
+    !exactObjectKeys(value.roleScopedIdentities, [
+      "fairnessProbe",
+      "primary",
+      "sameAccountWaiter",
+      "secondary",
+    ]) ||
+    ![
+      value.roleScopedIdentities.primary,
+      value.roleScopedIdentities.sameAccountWaiter,
+      value.roleScopedIdentities.secondary,
+      value.roleScopedIdentities.fairnessProbe,
+    ].every(
+      (identity) =>
+        exactObjectKeys(identity, V213_MATERIALIZATION_IDENTITY_KEYS) &&
+        V213_MATERIALIZATION_IDENTITY_KEYS.every((key) => UUID.test(identity[key] ?? "")),
+    ) ||
+    ["accountId", "workspaceId", "projectId", "projectRevisionId"].some(
+      (key) =>
+        value.roleScopedIdentities.sameAccountWaiter[key] !==
+        value.roleScopedIdentities.primary[key],
+    ) ||
+    ["accountId", "workspaceId", "projectId", "projectRevisionId", "generationRequestId"].some(
+      (key) =>
+        new Set([
+          value.roleScopedIdentities.primary[key],
+          value.roleScopedIdentities.secondary[key],
+          value.roleScopedIdentities.fairnessProbe[key],
+        ]).size !== 3,
+    ) ||
+    new Set([
+      value.roleScopedIdentities.primary.generationRequestId,
+      value.roleScopedIdentities.sameAccountWaiter.generationRequestId,
+      value.roleScopedIdentities.secondary.generationRequestId,
+      value.roleScopedIdentities.fairnessProbe.generationRequestId,
+    ]).size !== 4
+  )
+    fail("POST_CONSUMPTION_FACTS_CONTRACT");
+  return Object.freeze(value);
+}
+
+function exactPostConsumptionSelection(value) {
+  if (
+    !exactObjectKeys(value, V213_POST_CONSUMPTION_SELECTION_KEYS) ||
+    !exactObjectKeys(value.primary, V213_POST_CONSUMPTION_SELECTION_IDENTITY_KEYS) ||
+    !exactObjectKeys(value.sameAccountWaiter, V213_POST_CONSUMPTION_SELECTION_IDENTITY_KEYS) ||
+    !exactObjectKeys(value.secondary, V213_POST_CONSUMPTION_SELECTION_IDENTITY_KEYS) ||
+    !exactObjectKeys(value.fairnessProbe, V213_POST_CONSUMPTION_SELECTION_IDENTITY_KEYS) ||
+    V213_POST_CONSUMPTION_SELECTION_IDENTITY_KEYS.some(
+      (key) =>
+        !UUID.test(value.primary[key] ?? "") ||
+        !UUID.test(value.sameAccountWaiter[key] ?? "") ||
+        !UUID.test(value.secondary[key] ?? "") ||
+        !UUID.test(value.fairnessProbe[key] ?? ""),
+    ) ||
+    V213_POST_CONSUMPTION_SELECTION_IDENTITY_KEYS.some(
+      (key) => value.sameAccountWaiter[key] !== value.primary[key],
+    ) ||
+    ["accountId", "workspaceId", "projectId", "projectRevisionId"].some(
+      (key) =>
+        new Set([value.primary[key], value.secondary[key], value.fairnessProbe[key]]).size !== 3,
+    )
+  )
+    fail("POST_CONSUMPTION_SELECTION_CONTRACT");
+  return Object.freeze(value);
+}
+
+function exactPostConsumptionResponse(value, challenge, bearer) {
+  if (
+    !exactObjectKeys(value, V213_POST_CONSUMPTION_RESPONSE_KEYS) ||
+    value.schemaVersion !== V213_POST_CONSUMPTION_RESPONSE_SCHEMA ||
+    value.challengeId !== challenge.challengeId ||
+    value.challengeSha256 !== challenge.requestSha256 ||
+    !HASH.test(value.selectionSha256 ?? "") ||
+    !HASH.test(value.responseHmacSha256 ?? "")
+  )
+    fail("POST_CONSUMPTION_RESPONSE_CONTRACT");
+  const selection = exactPostConsumptionSelection(value.selection);
+  if (canonicalSha256(selection) !== value.selectionSha256) fail("POST_CONSUMPTION_RESPONSE_HASH");
+  const expected = postConsumptionResponseHmac({ ...value, selection }, bearer);
+  const expectedBytes = Buffer.from(expected);
+  const actualBytes = Buffer.from(value.responseHmacSha256);
+  if (expectedBytes.length !== actualBytes.length || !timingSafeEqual(expectedBytes, actualBytes))
+    fail("POST_CONSUMPTION_RESPONSE_SIGNATURE");
+  return Object.freeze({ ...value, selection });
+}
+
+function buildPostConsumptionMaterialization({
+  challenge,
+  facts,
+  staticReleaseDescriptorSha256,
+  workflowStartAuthority,
+  outerStateSha256,
+  state,
+}) {
+  const materialization = {
+    schemaVersion: V213_POST_CONSUMPTION_MATERIALIZATION_SCHEMA,
+    fullLiveAuthorityId: facts.fullLiveAuthorityId,
+    materializedAfterOuterConsumption: true,
+    outerStateSha256,
+    sourceCommit: state.release_source_commit,
+    proposalSha256: state.proposal_sha256,
+    approvalSha256: state.approval_sha256,
+    workerOperatorBearerSha256: challenge.workerOperatorBearerSha256,
+    roleScopedIdentities: facts.roleScopedIdentities,
+    staticReleaseDescriptorSha256,
+    workflowStartAuthority,
+  };
+  materialization.materializationSha256 = canonicalSha256(materialization);
+  return exactPostConsumptionWorkflowMaterialization(
+    materialization,
+    state,
+    outerStateSha256,
+    challenge.workerOperatorBearerSha256,
+  );
+}
+
+/**
+ * Post-consumption producer boundary. The app receives only a one-use challenge and returns
+ * selection facts; the operator database then supplies the three authoritative role-scoped
+ * identities and their current generation request IDs.
+ * Admissions and acceptance executions are
+ * intentionally deferred to each JIT operation. A prewritten JSON file is never an input to this
+ * path. The response is HMAC-bound to the protected worker bearer and the challenge, and the DB
+ * readback is required before any authority is recorded.
+ */
+function createPostConsumptionMaterializationProducer({
+  environment = process.env,
+  handshake,
+  selection,
+  issueChallenge,
+  loadFacts,
+  recordStaticReleaseDescriptor,
+  readback,
+  materializationFile,
+  fullLiveAuthorityId,
+  cumulativeLedgerSha256,
+  timeoutMs = 60_000,
+} = {}) {
+  const journey = handshake ?? selection;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 300_000)
+    fail("POST_CONSUMPTION_TIMEOUT_BOUND");
+  return async ({
+    operation = {},
+    state = {},
+    priorResults = new Map(),
+    outerStateSha256,
+    database,
+    databaseBinding,
+  } = {}) => {
+    const bounded = async (work, code) => {
+      try {
+        return await new Promise((resolvePromise, rejectPromise) => {
+          const timer = setTimeout(() => rejectPromise(new Error("timeout")), timeoutMs);
+          Promise.resolve()
+            .then(work)
+            .then(
+              (value) => {
+                clearTimeout(timer);
+                resolvePromise(value);
+              },
+              (error) => {
+                clearTimeout(timer);
+                rejectPromise(error);
+              },
+            );
+        });
+      } catch {
+        fail(code);
+      }
+    };
+    if (
+      (operation.id !== undefined && operation.id !== "record-workflow-start-authority") ||
+      (operation.operationId !== undefined &&
+        operation.operationId !== "record-workflow-start-authority")
+    )
+      fail("POST_CONSUMPTION_OPERATION");
+    if (
+      !["CONSUMED_SINGLE_EXECUTION_IN_PROGRESS", "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY"].includes(
+        state.state,
+      ) ||
+      !HASH.test(outerStateSha256 ?? "") ||
+      !HASH.test(state.authority_sha256 ?? "") ||
+      !HASH.test(state.proposal_sha256 ?? "") ||
+      !HASH.test(state.approval_sha256 ?? "") ||
+      !HASH.test(state.full_live_executor_sha256 ?? "") ||
+      !COMMIT.test(state.release_source_commit ?? "")
+    )
+      fail("POST_CONSUMPTION_OUTER_BINDING");
+    const bearer = producerWorkerBearer(environment);
+    const bearerSha256 = sha256(bearer);
+    const production = producerExistingProductionInput(environment);
+    const staticReleaseDescriptor = producerStaticReleaseDescriptor(environment, state, production);
+    const fullAuthority = fullLiveAuthorityId ?? production.value.fullLiveAuthorityId;
+    if (!UUID.test(fullAuthority)) fail("POST_CONSUMPTION_FULL_LIVE_AUTHORITY");
+    const ledgerSha256 = cumulativeLedgerSha256 ?? postConsumptionLedgerSha256(state);
+    if (!HASH.test(ledgerSha256)) fail("POST_CONSUMPTION_LEDGER_BINDING");
+    const workflowAuthorityId = randomUUID();
+    const tokenSha256 = sha256(randomBytes(32));
+    const stateExpiryMs = Date.parse(state.expires_at);
+    const childExpiryMs = Math.min(stateExpiryMs, Date.now() + 15 * 60 * 1000);
+    if (!Number.isFinite(stateExpiryMs) || childExpiryMs <= Date.now())
+      fail("POST_CONSUMPTION_EXPIRY");
+    const childExpiresAt = new Date(childExpiryMs).toISOString();
+    const challengeWithoutHash = {
+      schemaVersion: V213_POST_CONSUMPTION_CHALLENGE_SCHEMA,
+      operationId: "record-workflow-start-authority",
+      authorityId: state.authority_id,
+      authoritySha256: state.authority_sha256,
+      fullLiveAuthorityId: fullAuthority,
+      outerStateSha256,
+      proposalSha256: state.proposal_sha256,
+      approvalRecordSha256: state.approval_sha256,
+      sourceCommit: state.release_source_commit,
+      workerOperatorBearerSha256: bearerSha256,
+      cumulativeLedgerSha256: ledgerSha256,
+      workflowAuthorityId,
+      tokenSha256,
+      // The outer approval may live for 24h, but every materialization/workflow authority is
+      // independently capped at fifteen minutes by the database contract.
+      expiresAt: childExpiresAt,
+    };
+    const challenge = exactPostConsumptionChallenge({
+      ...challengeWithoutHash,
+      requestSha256: canonicalSha256(challengeWithoutHash),
+    });
+    const queryOne = async (sql, parameters, key, code) => {
+      if (database === null || typeof database?.query !== "function") fail(code);
+      let result;
+      try {
+        result = await bounded(() => database.query(sql, parameters), code);
+      } catch {
+        fail(code);
+      }
+      if (result?.rows?.length !== 1 || result.rows[0]?.[key] === undefined) fail(code);
+      return result.rows[0][key];
+    };
+    const recordDescriptor =
+      recordStaticReleaseDescriptor ?? databaseBinding?.recordV213StaticReleaseDescriptor;
+    const descriptorReadback =
+      typeof recordDescriptor === "function"
+        ? await bounded(
+            () =>
+              recordDescriptor({
+                fullLiveAuthorityId: fullAuthority,
+                outerStateSha256,
+                descriptorSha256: staticReleaseDescriptor.descriptorSha256,
+                descriptor: staticReleaseDescriptor,
+              }),
+            "STATIC_RELEASE_DESCRIPTOR_PERSIST_AMBIGUOUS",
+          )
+        : await queryOne(
+            "SELECT public.videoforge_record_v213_static_release_descriptor($1::jsonb) AS descriptor",
+            [
+              JSON.stringify({
+                fullLiveAuthorityId: fullAuthority,
+                outerStateSha256,
+                descriptorSha256: staticReleaseDescriptor.descriptorSha256,
+                descriptor: staticReleaseDescriptor,
+              }),
+            ],
+            "descriptor",
+            "STATIC_RELEASE_DESCRIPTOR_PERSIST_REJECTED",
+          );
+    if (
+      !exactObjectKeys(descriptorReadback, ["descriptorSha256"]) ||
+      descriptorReadback.descriptorSha256 !== staticReleaseDescriptor.descriptorSha256
+    )
+      fail("STATIC_RELEASE_DESCRIPTOR_READBACK");
+    const issue = issueChallenge ?? databaseBinding?.issueV213MaterializationChallenge;
+    const issueResult =
+      typeof issue === "function"
+        ? await bounded(
+            () => issue(challenge, { database, databaseBinding, state, priorResults }),
+            "POST_CONSUMPTION_CHALLENGE_AMBIGUOUS",
+          )
+        : await queryOne(
+            "SELECT public.videoforge_issue_v213_materialization_challenge($1::jsonb) AS challenge",
+            [JSON.stringify(challenge)],
+            "challenge",
+            "POST_CONSUMPTION_CHALLENGE_REJECTED",
+          );
+    if (
+      issueResult === null ||
+      typeof issueResult !== "object" ||
+      !exactObjectKeys(issueResult, ["authoritySha256", "challengeId", "challengeSha256"]) ||
+      issueResult.challengeId === undefined ||
+      issueResult.challengeSha256 !== challenge.requestSha256 ||
+      issueResult.authoritySha256 !== challenge.authoritySha256
+    )
+      fail("POST_CONSUMPTION_CHALLENGE_REJECTED");
+    const challengeId = issueResult.challengeId;
+    if (!UUID.test(challengeId)) fail("POST_CONSUMPTION_CHALLENGE_ID");
+    const issuedChallenge = Object.freeze({ ...challenge, challengeId });
+    const respond = journey ?? databaseBinding?.postConsumptionHandshake;
+    if (typeof respond !== "function") fail("POST_CONSUMPTION_HANDSHAKE_REQUIRED");
+    const response = await bounded(
+      () =>
+        respond(issuedChallenge, {
+          database,
+          databaseBinding,
+          state,
+          priorResults,
+          outerStateSha256,
+        }),
+      "POST_CONSUMPTION_HANDSHAKE_AMBIGUOUS",
+    );
+    const verifiedResponse = exactPostConsumptionResponse(response, issuedChallenge, bearer);
+    const load = loadFacts ?? databaseBinding?.loadV213MaterializationFacts;
+    const factsResult =
+      typeof load === "function"
+        ? await bounded(
+            () =>
+              load({
+                challenge: issuedChallenge,
+                response: verifiedResponse,
+                selection: verifiedResponse.selection,
+                database,
+                databaseBinding,
+                state,
+                priorResults,
+              }),
+            "POST_CONSUMPTION_FACTS_AMBIGUOUS",
+          )
+        : await queryOne(
+            "SELECT public.videoforge_complete_v213_materialization_challenge($1::jsonb) AS facts",
+            [
+              JSON.stringify({
+                challengeId,
+                challengeSha256: issuedChallenge.requestSha256,
+                selection: verifiedResponse.selection,
+                selectionSha256: verifiedResponse.selectionSha256,
+              }),
+            ],
+            "facts",
+            "POST_CONSUMPTION_FACTS_REJECTED",
+          );
+    if (
+      factsResult === null ||
+      typeof factsResult !== "object" ||
+      !exactObjectKeys(factsResult, ["facts", "factsSha256"]) ||
+      !HASH.test(factsResult.factsSha256 ?? "")
+    )
+      fail("POST_CONSUMPTION_FACTS_READBACK");
+    const facts = exactPostConsumptionFacts(factsResult.facts);
+    if (
+      facts.fullLiveAuthorityId !== fullAuthority ||
+      canonicalSha256(facts) !== factsResult.factsSha256
+    )
+      fail("POST_CONSUMPTION_FACTS_READBACK");
+    const materialized = buildPostConsumptionMaterialization({
+      challenge: issuedChallenge,
+      facts,
+      staticReleaseDescriptorSha256: staticReleaseDescriptor.descriptorSha256,
+      workflowStartAuthority: {
+        authorityId: fullAuthority,
+        workflowAuthorityId,
+        tokenSha256,
+        expiresAt: childExpiresAt,
+      },
+      outerStateSha256,
+      state,
+    });
+    const verify = readback ?? databaseBinding?.readV213MaterializationReadback;
+    const observed =
+      typeof verify === "function"
+        ? await bounded(
+            () =>
+              verify({
+                challenge: issuedChallenge,
+                response: verifiedResponse,
+                facts,
+                materialization: materialized,
+                database,
+                databaseBinding,
+                state,
+                priorResults,
+              }),
+            "POST_CONSUMPTION_READBACK_AMBIGUOUS",
+          )
+        : await queryOne(
+            "SELECT public.videoforge_read_v213_materialization_readback($1::jsonb) AS readback",
+            [
+              JSON.stringify({
+                challengeId,
+                challengeSha256: issuedChallenge.requestSha256,
+                materializationSha256: materialized.materializationSha256,
+                selectionSha256: verifiedResponse.selectionSha256,
+                factsSha256: factsResult.factsSha256,
+              }),
+            ],
+            "readback",
+            "POST_CONSUMPTION_READBACK_REQUIRED",
+          );
+    if (
+      observed === null ||
+      typeof observed !== "object" ||
+      observed.readbackVerified !== true ||
+      observed.challengeId !== challengeId ||
+      observed.materializationSha256 !== materialized.materializationSha256 ||
+      observed.factsSha256 !== factsResult.factsSha256
+    )
+      fail("POST_CONSUMPTION_READBACK_INVALID");
+    const path =
+      materializationFile ?? environment.VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE;
+    if (
+      typeof path !== "string" ||
+      path === "" ||
+      !path.startsWith("/") ||
+      path.includes("\0") ||
+      (typeof environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE === "string" &&
+        resolve(path) === resolve(environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE))
+    )
+      fail("POST_CONSUMPTION_MATERIALIZATION_FILE");
+    protectedExactDirectory(dirname(path), "POST_CONSUMPTION_MATERIALIZATION_DIRECTORY");
+    exclusiveAtomicBytes(path, Buffer.from(`${canonicalJson(materialized)}\n`));
+    return Object.freeze(materialized);
+  };
+}
+
+function injectPostConsumptionCommandPayloads({
+  productionInputFile,
+  chainFile,
+  commandPayloads,
+  fullLiveAuthorityId,
+  materializationSha256,
+  state,
+  priorResults,
+  outerStateSha256,
+} = {}) {
+  if (
+    typeof productionInputFile !== "string" ||
+    productionInputFile === "" ||
+    !productionInputFile.startsWith("/") ||
+    productionInputFile.includes("\0") ||
+    typeof chainFile !== "string" ||
+    chainFile === "" ||
+    !chainFile.startsWith("/") ||
+    chainFile.includes("\0")
+  )
+    fail("WORKFLOW_AUTHORITY_PRODUCTION_INPUT_PATH");
+  let raw;
+  try {
+    const directory = protectedDirectory(
+      dirname(productionInputFile),
+      "WORKFLOW_AUTHORITY_PRODUCTION_INPUT_DIRECTORY",
+    );
+    const file = protectedFile(productionInputFile, "WORKFLOW_AUTHORITY_PRODUCTION_INPUT_FILE");
+    if ((lstatSync(directory).mode & 0o777) !== 0o700 || (lstatSync(file).mode & 0o777) !== 0o600)
+      fail("WORKFLOW_AUTHORITY_PRODUCTION_INPUT_MODE");
+    raw = readFileSync(file);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail("WORKFLOW_AUTHORITY_PRODUCTION_INPUT_FILE");
+  }
+  let current;
+  try {
+    current = JSON.parse(raw.toString("utf8"));
+  } catch {
+    fail("WORKFLOW_AUTHORITY_PRODUCTION_INPUT_JSON");
+  }
+  if (
+    current?.schemaVersion !== "videoforge.v213-full-live-outer-input/v1" ||
+    current.fullLiveAuthorityId !== fullLiveAuthorityId ||
+    !exactObjectKeys(current, [
+      "authorityDocument",
+      "commandPayloads",
+      "dualLaneInput",
+      "fullLiveAuthorityId",
+      "schemaVersion",
+    ]) ||
+    Buffer.compare(raw, Buffer.from(`${canonicalJson(current)}\n`)) !== 0 ||
+    commandPayloads === null ||
+    typeof commandPayloads !== "object" ||
+    Array.isArray(commandPayloads)
+  )
+    fail("WORKFLOW_AUTHORITY_PRODUCTION_INPUT_CONTRACT");
+  const desiredPayloadsSha256 = canonicalSha256(commandPayloads);
+  const existingPayloadsSha256 = canonicalSha256(current.commandPayloads);
+  if (
+    Object.keys(current.commandPayloads).length > 0 &&
+    existingPayloadsSha256 !== desiredPayloadsSha256
+  )
+    fail("WORKFLOW_AUTHORITY_PRODUCTION_INPUT_REPLAY_DRIFT");
+  const next = { ...current, commandPayloads };
+  const nextBytes = Buffer.from(`${canonicalJson(next)}\n`);
+  atomicExactTransition(productionInputFile, raw, nextBytes);
+  const prior = priorResults?.get("promote-qualified-production");
+  const priorEvidence = prior?.evidenceSha256 ?? prior?.databasePromotionSha256;
+  const orderedPrior = HASH.test(priorEvidence ?? "")
+    ? [["promote-qualified-production", priorEvidence]]
+    : [];
+  const chainEntrySha256 = atomicChainUpdate(chainFile, {
+    kind: "post-consumption-command-payloads",
+    authority_id: state.authority_id,
+    outer_state_sha256: outerStateSha256,
+    ordered_prior_operation_evidence_sha256s: orderedPrior,
+    ordered_output_sha256s: [
+      ["production_input_sha256", sha256(nextBytes)],
+      ["command_payloads_sha256", desiredPayloadsSha256],
+      ["post_consumption_materialization_sha256", materializationSha256],
+    ],
+  });
+  return Object.freeze({ productionInputSha256: sha256(nextBytes), chainEntrySha256 });
+}
+
+function createAcceptanceAuthorityDatabaseAdapter(database) {
+  if (database === null || typeof database !== "object" || typeof database.query !== "function")
+    fail("DATABASE_ADAPTER_CONTRACT");
+  return Object.freeze({
+    async recordAcceptanceAuthority(authority) {
+      let result;
+      try {
+        result = await database.query(
+          "SELECT public.videoforge_record_v213_acceptance_authority($1::jsonb) AS authority",
+          [JSON.stringify(authority)],
+        );
+      } catch {
+        fail("DATABASE_ACCEPTANCE_AUTHORITY_RECORD");
+      }
+      if (
+        result?.rows?.length !== 1 ||
+        result.rows[0]?.authority === null ||
+        typeof result.rows[0]?.authority !== "object"
+      )
+        fail("DATABASE_ACCEPTANCE_AUTHORITY_RESULT");
+      return Object.freeze(result.rows[0].authority);
+    },
+  });
+}
+
+function createWorkflowStartAuthorityAdapter({
+  database,
+  databaseFactory,
+  materialize,
+  producer,
+} = {}) {
+  const staticDatabase =
+    database !== null && typeof database === "object" && typeof database.query === "function"
+      ? database
+      : null;
+  if (staticDatabase === null && typeof databaseFactory !== "function")
+    return async () => fail("WORKFLOW_AUTHORITY_DATABASE_REQUIRED");
+  const prepareAcceptanceAuthority = async ({
+    command,
+    checkpoint,
+    commandId,
+    fullLiveAuthorityId,
+    predecessorEvidenceSha256s,
+    state = {},
+    outerStateSha256,
+  } = {}) => {
+    if (
+      !V213_JIT_CHECKPOINTS.includes(checkpoint) ||
+      V213_JIT_COMMANDS[checkpoint] !== command ||
+      !UUID.test(fullLiveAuthorityId ?? "") ||
+      typeof commandId !== "string" ||
+      !HASH.test(outerStateSha256 ?? "") ||
+      predecessorEvidenceSha256s === null ||
+      typeof predecessorEvidenceSha256s !== "object" ||
+      Array.isArray(predecessorEvidenceSha256s) ||
+      Object.values(predecessorEvidenceSha256s).some((value) => !HASH.test(value ?? ""))
+    )
+      fail("ACCEPTANCE_AUTHORITY_PREPARATION_INPUT");
+    const bound =
+      staticDatabase ??
+      (await databaseFactory({
+        operation: { id: command },
+        state,
+        priorResults: new Map(),
+        outerStateSha256,
+      }));
+    const rawDatabase = bound?.database ?? bound;
+    if (
+      rawDatabase === null ||
+      typeof rawDatabase !== "object" ||
+      typeof rawDatabase.query !== "function"
+    )
+      fail("WORKFLOW_AUTHORITY_DATABASE_REQUIRED");
+    const close = typeof bound?.close === "function" ? bound.close : async () => {};
+    try {
+      const result = await rawDatabase.query(
+        "SELECT public.videoforge_prepare_v213_jit_operation($1::jsonb) AS authority",
+        [
+          JSON.stringify({
+            checkpoint,
+            command,
+            commandId,
+            fullLiveAuthorityId,
+            outerStateSha256,
+            predecessorEvidenceSha256s,
+          }),
+        ],
+      );
+      if (result?.rows?.length !== 1 || result.rows[0]?.authority === null)
+        fail("ACCEPTANCE_AUTHORITY_PREPARATION_RESULT");
+      const prepared = result.rows[0].authority;
+      if (
+        !exactObjectKeys(prepared, [
+          "checkpoint",
+          "intentSha256",
+          "operationId",
+          "productionStageAuthorityId",
+        ]) ||
+        prepared.operationId !== command ||
+        prepared.checkpoint !== checkpoint ||
+        !HASH.test(prepared.intentSha256 ?? "") ||
+        typeof prepared.productionStageAuthorityId !== "string"
+      )
+        fail("ACCEPTANCE_AUTHORITY_PREPARATION_RESULT");
+      return Object.freeze(prepared);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_"))
+        throw error;
+      fail("ACCEPTANCE_AUTHORITY_PREPARATION_REJECTED");
+    } finally {
+      await close();
+    }
+  };
+  const adapter = async (
+    operation = {},
+    state = {},
+    priorResults = new Map(),
+    outerStateSha256,
+  ) => {
+    const bound =
+      staticDatabase ??
+      (await databaseFactory({ operation, state, priorResults, outerStateSha256 }));
+    const rawDatabase = bound?.database ?? bound;
+    if (
+      rawDatabase === null ||
+      typeof rawDatabase !== "object" ||
+      typeof rawDatabase.query !== "function"
+    )
+      fail("WORKFLOW_AUTHORITY_DATABASE_REQUIRED");
+    const close = typeof bound?.close === "function" ? bound.close : async () => {};
+    const db = createPromotionDatabaseAdapter(rawDatabase);
+    try {
+      if (typeof producer !== "function" && typeof materialize !== "function")
+        fail("WORKFLOW_AUTHORITY_MATERIALIZER_REQUIRED");
+      const materializeContext = {
+        operation,
+        state,
+        priorResults,
+        outerStateSha256,
+        database: rawDatabase,
+        databaseBinding: bound,
+      };
+      const materialized = exactPostConsumptionWorkflowMaterialization(
+        await (typeof producer === "function"
+          ? producer(materializeContext)
+          : materialize(materializeContext)),
+        state,
+        outerStateSha256,
+      );
+      const supplied = materialized.workflowStartAuthority;
+      const authority = await db.recordWorkflowStartAuthority(supplied);
+      if (
+        authority === null ||
+        typeof authority !== "object" ||
+        Array.isArray(authority) ||
+        JSON.stringify(Object.keys(authority).sort()) !==
+          JSON.stringify(["authorityId", "expiresAt", "tokenSha256"].sort()) ||
+        authority.authorityId !== supplied.workflowAuthorityId ||
+        authority.tokenSha256 !== supplied.tokenSha256 ||
+        typeof authority.expiresAt !== "string" ||
+        Number.isNaN(Date.parse(authority.expiresAt))
+      )
+        fail("WORKFLOW_AUTHORITY_RESULT");
+      return Object.freeze({ actualUsd: 0, ...authority });
+    } finally {
+      await close();
+    }
+  };
+  // The property is intentionally attached to the operation adapter rather than exported as a
+  // free-standing DB client. The concrete composition passes it to the acceptance bridge so a
+  // child authority can only be minted with the same protected database binding.
+  adapter.prepareAcceptanceAuthority = prepareAcceptanceAuthority;
+  return adapter;
+}
+
+function createProtectedWorkflowStartAuthorityAdapter({
+  environment = process.env,
+  databaseFactory,
+  materialize,
+  producer,
+  postConsumptionProducer,
+  handshake,
+  selection,
+  issueChallenge,
+  loadFacts,
+  readback,
+} = {}) {
+  const protectedProducer =
+    producer ??
+    postConsumptionProducer ??
+    (materialize === undefined
+      ? createPostConsumptionMaterializationProducer({
+          environment,
+          handshake,
+          selection,
+          issueChallenge,
+          loadFacts,
+          readback,
+        })
+      : undefined);
+  return createWorkflowStartAuthorityAdapter({
+    materialize,
+    producer: protectedProducer,
+    databaseFactory:
+      databaseFactory ??
+      (async () => {
+        const directory = environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR;
+        const service = ownerServiceEndpoint(directory, "WORKFLOW_AUTHORITY_OWNER_SERVICE");
+        const path =
+          environment.VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE ??
+          resolve(directory, "operator.database-url");
+        const databaseUrl = readFileSync(
+          protectedFile(path, "WORKFLOW_AUTHORITY_DATABASE_URL"),
+          "utf8",
+        );
+        parseExactOperatorDatabaseUrl(
+          databaseUrl,
+          { host: service.host, database: service.dbname },
+          "WORKFLOW_AUTHORITY_DATABASE_URL",
+        );
+        const { Pool } = requireWeb("@neondatabase/serverless");
+        const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+        const database = { query: (sql, parameters) => pool.query(sql, parameters) };
+        return {
+          database,
+          // The app writes authenticated selections through its route; the operator only polls
+          // this DB-owned projection and signs it with the protected bearer. Keeping this method
+          // on the concrete binding makes the default path usable without an injected callback.
+          postConsumptionHandshake: (challenge) =>
+            createDatabasePostConsumptionHandshake({ database, environment })(challenge),
+          close: () => pool.end(),
+        };
+      }),
+  });
 }
 
 function createProtectedInputMaterializer({
@@ -2797,6 +4476,156 @@ function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_
   }
 }
 
+/** Separate zero-provider child. The FD allowlist is intentionally limited to the exact request,
+ * operator database URL, and existing acceptance-evidence key container. */
+function productionReleaseCertificationSpawn({
+  environment,
+  request,
+  timeoutMs = RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS,
+}) {
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < 1 ||
+    timeoutMs > RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS
+  )
+    fail("RELEASE_CERTIFICATION_CHILD_TIMEOUT_INVALID");
+  const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v213-certification-"));
+  const requestPath = resolve(directory, "request.json");
+  const opened = [];
+  try {
+    writeFileSync(requestPath, `${canonicalJson(request)}\n`, { encoding: "utf8", mode: 0o600 });
+    const files = [
+      ["REQUEST_FD", requestPath],
+      [
+        "OPERATOR_DATABASE_URL_FD",
+        protectedFile(
+          environment.VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE,
+          "RELEASE_CERTIFICATION_OPERATOR_DATABASE_URL_FILE",
+        ),
+      ],
+      [
+        "PRODUCTION_SECRETS_FD",
+        protectedFile(
+          environment.VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE,
+          "RELEASE_CERTIFICATION_PRODUCTION_SECRETS_FILE",
+        ),
+      ],
+    ];
+    for (const [, path] of files) opened.push(openSync(path, "r"));
+    const childEnvironment = { PATH: environment.PATH ?? process.env.PATH };
+    files.forEach(([name], index) => {
+      childEnvironment[`VIDEOFORGE_V213_CERTIFICATION_${name}`] = String(index + 3);
+    });
+    const result = spawnSync(
+      "pnpm",
+      [
+        "--filter",
+        "@videoforge/web",
+        "exec",
+        "tsx",
+        BRIDGE_PATH,
+        "--certify-release",
+        RELEASE_CERTIFICATION_CONFIRMATION,
+      ],
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+        env: childEnvironment,
+        stdio: ["ignore", "pipe", "pipe", ...opened],
+        maxBuffer: 4 * 1024 * 1024,
+        timeout: timeoutMs,
+        killSignal: "SIGTERM",
+      },
+    );
+    if (
+      result.error?.code === "ETIMEDOUT" ||
+      (result.signal !== null && result.signal !== undefined)
+    )
+      fail("RELEASE_CERTIFICATION_CHILD_TIMEOUT");
+    if (result.status !== 0 || typeof result.stdout !== "string")
+      fail("RELEASE_CERTIFICATION_EXECUTION");
+    return JSON.parse(result.stdout);
+  } finally {
+    for (const fd of opened) closeSync(fd);
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+/** A second child boundary after provider cleanup has returned. It receives no RunPod key,
+ * provider endpoint, runtime database, Worker bearer, or production input. The only secret is the
+ * existing evidence HMAC key copied into a mode-0600 ephemeral file for this one local process. */
+function productionCleanupReceiptSpawn({
+  environment,
+  request,
+  timeoutMs = CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS,
+}) {
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < 1 ||
+    timeoutMs > CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS
+  )
+    fail("CLEANUP_RECEIPT_CHILD_TIMEOUT_INVALID");
+  const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v213-cleanup-receipt-"));
+  const requestPath = resolve(directory, "request.json");
+  const evidenceKeyPath = resolve(directory, "evidence-key.base64");
+  const opened = [];
+  try {
+    const secrets = loadBridgeProductionSecrets(environment, { allowEither: true });
+    writeFileSync(requestPath, `${canonicalJson(request)}\n`, { encoding: "utf8", mode: 0o600 });
+    writeFileSync(evidenceKeyPath, secrets.value.acceptanceEvidenceSigningKeyBase64, {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+    const files = [
+      ["REQUEST_FD", requestPath],
+      [
+        "OPERATOR_DATABASE_URL_FD",
+        protectedFile(
+          environment.VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE,
+          "CLEANUP_RECEIPT_OPERATOR_DATABASE_URL_FILE",
+        ),
+      ],
+      ["EVIDENCE_SIGNING_KEY_FD", evidenceKeyPath],
+    ];
+    for (const [, path] of files) opened.push(openSync(path, "r"));
+    const childEnvironment = { PATH: environment.PATH ?? process.env.PATH };
+    files.forEach(([name], index) => {
+      childEnvironment[`VIDEOFORGE_V213_CLEANUP_RECEIPT_${name}`] = String(index + 3);
+    });
+    const result = spawnSync(
+      "pnpm",
+      [
+        "--filter",
+        "@videoforge/web",
+        "exec",
+        "tsx",
+        BRIDGE_PATH,
+        "--finalize-cleanup-receipt",
+        CLEANUP_RECEIPT_CONFIRMATION,
+      ],
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+        env: childEnvironment,
+        stdio: ["ignore", "pipe", "pipe", ...opened],
+        maxBuffer: 4 * 1024 * 1024,
+        timeout: timeoutMs,
+        killSignal: "SIGTERM",
+      },
+    );
+    if (
+      result.error?.code === "ETIMEDOUT" ||
+      (result.signal !== null && result.signal !== undefined)
+    )
+      fail("CLEANUP_RECEIPT_CHILD_TIMEOUT");
+    if (result.status !== 0 || typeof result.stdout !== "string") fail("CLEANUP_RECEIPT_EXECUTION");
+    return JSON.parse(result.stdout);
+  } finally {
+    for (const fd of opened) closeSync(fd);
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 function loadBridgeProductionInput(environment) {
   const path = protectedFile(
     environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE,
@@ -3158,12 +4987,37 @@ function preflightGuardedActivationInputs({ environment = process.env, state }) 
   return Object.freeze({ guardedAuthority });
 }
 
+function exactCleanupReceiptFinalizationResult(value, request) {
+  if (
+    !exactObjectKeys(value, [
+      "fullLiveAuthorityId",
+      "operationId",
+      "providerCleanupEvidenceSha256",
+      "readbackOnly",
+      "receiptArtifactSha256",
+      "releaseFactMaterializationSha256",
+      "schemaVersion",
+    ]) ||
+    value.schemaVersion !== "videoforge.v213-cleanup-receipt-finalization-result/v1" ||
+    value.fullLiveAuthorityId !== request.fullLiveAuthorityId ||
+    value.operationId !== request.operationId ||
+    value.providerCleanupEvidenceSha256 !== request.providerCleanupEvidenceSha256 ||
+    value.readbackOnly !== request.readbackOnly ||
+    !HASH.test(value.receiptArtifactSha256 ?? "") ||
+    !HASH.test(value.releaseFactMaterializationSha256 ?? "")
+  )
+    fail("CLEANUP_RECEIPT_RESULT", request.operationId);
+  return Object.freeze(value);
+}
+
 function createTypeScriptBridgeAdapters({
   environment = process.env,
   spawnBridge = productionBridgeSpawn,
+  spawnCleanupReceipt = productionCleanupReceiptSpawn,
   requirePrequalificationReceipt = false,
-  expectedCliSha256 = "sha256:a2b56248037b9712aec87513339d8e3fa3b6c172e0ee62e6a943e518d3af3459",
-  expectedTransportSha256 = "sha256:a6c1fc9333ad64726522b6e9fa62354637eb3c7248803e06e8470974db8203a0",
+  prepareAcceptanceAuthority,
+  expectedCliSha256 = BRIDGE_CLI_SOURCE_SHA256,
+  expectedTransportSha256 = "sha256:7734369295715d57b92ae0ca399ad8514cee5babb2b5d1acd749a860fd4b22c0",
 } = {}) {
   const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
   const actualTransportSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_TRANSPORT_PATH)));
@@ -3239,10 +5093,42 @@ function createTypeScriptBridgeAdapters({
         ].includes(command)
       )
         commandPayload = {};
+      const acceptanceCheckpoint = Object.entries(V213_JIT_COMMANDS).find(
+        ([, acceptedCommand]) => acceptedCommand === command,
+      )?.[0];
+      let operationStageAuthorityId = (production ?? cleanup ?? earlyCleanupInput)
+        .fullLiveAuthorityId;
+      if (production !== null && acceptanceCheckpoint !== undefined) {
+        if (typeof prepareAcceptanceAuthority === "function") {
+          const predecessorEvidenceSha256s = {};
+          const orderedJitCommands = V213_JIT_CHECKPOINTS.map(
+            (checkpoint) => V213_JIT_COMMANDS[checkpoint],
+          );
+          const prerequisiteCommands = orderedJitCommands.slice(
+            0,
+            orderedJitCommands.indexOf(command),
+          );
+          for (const prerequisite of prerequisiteCommands) {
+            const prior = priorResults?.get(prerequisite);
+            const evidence = prior?.evidenceSha256 ?? prior?.proofSha256;
+            if (HASH.test(evidence ?? "")) predecessorEvidenceSha256s[prerequisite] = evidence;
+          }
+          const prepared = await prepareAcceptanceAuthority({
+            checkpoint: acceptanceCheckpoint,
+            command,
+            commandId: `v213:${production.fullLiveAuthorityId}:${command}`,
+            fullLiveAuthorityId: production.fullLiveAuthorityId,
+            outerStateSha256,
+            predecessorEvidenceSha256s,
+            state,
+          });
+          operationStageAuthorityId = prepared.productionStageAuthorityId;
+        }
+      }
       const request = {
         schemaVersion: "videoforge.v213-full-live-command/v1",
         commandId: `v213:${(production ?? cleanup ?? earlyCleanupInput).fullLiveAuthorityId}:${command}`,
-        stageAuthorityId: (production ?? cleanup ?? earlyCleanupInput).fullLiveAuthorityId,
+        stageAuthorityId: operationStageAuthorityId,
         command,
         input:
           earlyCleanupInput !== null
@@ -3273,7 +5159,44 @@ function createTypeScriptBridgeAdapters({
       )
         fail("BRIDGE_RESULT", command);
       const summary = result.summary;
-      const base = { actualUsd: 0, evidenceSha256: result.evidenceSha256, bridgeSummary: summary };
+      let durableEvidenceSha256 = result.evidenceSha256;
+      if (cleanup !== null) {
+        if (canonicalSha256(summary) !== result.evidenceSha256)
+          fail("CLEANUP_RECEIPT_PROVIDER_EVIDENCE_DRIFT", command);
+        const reconciliation =
+          context?.resumed === true &&
+          context?.authorizedUnsettled === true &&
+          context?.reconciliationOnly === true &&
+          context?.providerDispatchForbidden === true;
+        const initial =
+          (context?.resumed === false || context?.resumed === undefined) &&
+          context?.authorizedUnsettled !== true &&
+          context?.reconciliationOnly !== true;
+        if (!initial && !reconciliation) fail("CLEANUP_RECEIPT_CONTEXT", command);
+        const unsignedCleanupReceiptRequest = {
+          schemaVersion: CLEANUP_RECEIPT_REQUEST_SCHEMA,
+          fullLiveAuthorityId: cleanup.fullLiveAuthorityId,
+          operationId: command,
+          outerStateSha256,
+          providerCleanupEvidenceSha256: result.evidenceSha256,
+          summary,
+          readbackOnly: reconciliation,
+        };
+        const cleanupReceiptRequest = {
+          ...unsignedCleanupReceiptRequest,
+          requestSha256: canonicalSha256(unsignedCleanupReceiptRequest),
+        };
+        const finalized = exactCleanupReceiptFinalizationResult(
+          await spawnCleanupReceipt({
+            environment,
+            request: cleanupReceiptRequest,
+            timeoutMs: CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS,
+          }),
+          cleanupReceiptRequest,
+        );
+        durableEvidenceSha256 = finalized.receiptArtifactSha256;
+      }
+      const base = { actualUsd: 0, evidenceSha256: durableEvidenceSha256, bridgeSummary: summary };
       if (command === "fresh-live-preflight")
         return {
           ...base,
@@ -3328,32 +5251,161 @@ function createTypeScriptBridgeAdapters({
       if (command === "restore-endpoints-max-one")
         return {
           ...base,
-          proofSha256: result.evidenceSha256,
+          proofSha256: durableEvidenceSha256,
+          productionCleanupState: summary.productionCleanupState,
+          productionResourcesAbsent: summary.productionResourcesAbsent,
+          retainedProductionEndpoints: summary.retainedProductionEndpoints,
           bothEndpointsMaxWorkersOne: summary.bothEndpointsMaxWorkersOne === true,
         };
       if (command === "prove-zero-workers")
         return {
           ...base,
-          proofSha256: result.evidenceSha256,
+          proofSha256: durableEvidenceSha256,
           zeroWorkers: summary.zeroWorkers === true,
           stableReads: summary.reads?.length,
         };
       if (command === "read-settled-billing")
         return {
           ...base,
-          proofSha256: result.evidenceSha256,
+          proofSha256: durableEvidenceSha256,
           withinCumulativeCap: summary.withinCumulativeCap === true,
           cumulativeUsd: summary.cumulativeBillingUsd,
         };
       return {
         ...base,
-        proofSha256: result.evidenceSha256,
+        proofSha256: durableEvidenceSha256,
         onlyApprovedRetainedVolumes: summary.onlyApprovedRetainedVolumes === true,
       };
     };
   return Object.freeze(
     Object.fromEntries(BRIDGE_COMMANDS.map((command) => [command, run(command)])),
   );
+}
+
+function exactReleaseCertificationResult(value, predecessorEvidenceSha256s) {
+  const keys = [
+    "actualUsd",
+    "certified",
+    "currentRunEvidence",
+    "evidenceSha256",
+    "externalSpendUsd",
+    "gateCount",
+    "gpuUse",
+    "invalidGateCount",
+    "ledgerSha256",
+    "liveReleaseAuthorized",
+    "missingGateCount",
+    "predecessorEvidenceSha256s",
+    "providerMutationPerformed",
+    "releaseIdentitySha256",
+    "releaseStatus",
+    "requiresExplicitReleaseAuthority",
+    "schemaVersion",
+  ];
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(keys.sort()) ||
+    value.schemaVersion !== "videoforge.v213-final-release-certification-result/v1" ||
+    value.actualUsd !== 0 ||
+    value.externalSpendUsd !== 0 ||
+    value.gpuUse !== false ||
+    value.providerMutationPerformed !== false ||
+    value.currentRunEvidence !== true ||
+    value.certified !== true ||
+    value.releaseStatus !== "release_certified" ||
+    value.gateCount !== 15 ||
+    value.missingGateCount !== 0 ||
+    value.invalidGateCount !== 0 ||
+    value.liveReleaseAuthorized !== false ||
+    value.requiresExplicitReleaseAuthority !== true ||
+    !HASH.test(value.releaseIdentitySha256 ?? "") ||
+    !HASH.test(value.ledgerSha256 ?? "") ||
+    value.evidenceSha256 !== value.ledgerSha256 ||
+    canonicalJson(value.predecessorEvidenceSha256s) !== canonicalJson(predecessorEvidenceSha256s)
+  )
+    fail("RELEASE_CERTIFICATION_RESULT");
+  return Object.freeze(value);
+}
+
+/** Operation 26 is intentionally absent from BRIDGE_COMMANDS. This adapter can only spawn the
+ * dedicated DB-only child above; recovery carries the exact readback-only mode into that child. */
+function createReleaseCertificationAdapter({
+  environment = process.env,
+  spawnCertification = productionReleaseCertificationSpawn,
+  expectedCliSha256 = BRIDGE_CLI_SOURCE_SHA256,
+} = {}) {
+  const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
+  if (actualCliSha256 !== expectedCliSha256) fail("RELEASE_CERTIFICATION_SOURCE_DRIFT");
+  return async (context = {}, state, priorResults, outerStateSha256) => {
+    const reconciling =
+      context.resumed === true &&
+      context.authorizedUnsettled === true &&
+      context.reconciliationOnly === true &&
+      context.persistenceForbidden === true &&
+      context.dispatchForbidden === true;
+    const initial =
+      context.resumed === false &&
+      context.authorizedUnsettled === false &&
+      context.reconciliationOnly === false &&
+      (context.persistenceForbidden === false || context.persistenceForbidden === undefined) &&
+      (context.dispatchForbidden === false || context.dispatchForbidden === undefined);
+    if (
+      context.operationId !== "certify-v2-13-release" ||
+      context.cleanupOnly !== false ||
+      context.earlyFailure !== false ||
+      context.endpointFree !== false ||
+      context.operatorRoleVerified !== true ||
+      context.localCertification !== true ||
+      context.providerDispatchForbidden !== true ||
+      (!initial && !reconciling) ||
+      !HASH.test(outerStateSha256 ?? "") ||
+      !(priorResults instanceof Map)
+    )
+      fail("RELEASE_CERTIFICATION_CONTEXT");
+    const workId = `${state?.authority_id}:certify-v2-13-release`.toLowerCase();
+    if (
+      state?.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" ||
+      state.release_certification?.state !== "AUTHORIZED_ONCE_RECONCILIATION_ONLY" ||
+      state.release_certification.work_id !== workId ||
+      state.cleanup_proof === null ||
+      typeof state.cleanup_proof !== "object"
+    )
+      fail("RELEASE_CERTIFICATION_AUTHORITY");
+    const predecessorEvidenceSha256s = Object.fromEntries(
+      RELEASE_CERTIFICATION_PREDECESSORS.map(([operationId, field]) => {
+        const evidenceSha256 = priorResults.get(operationId)?.[field];
+        if (!HASH.test(evidenceSha256 ?? ""))
+          fail("RELEASE_CERTIFICATION_PREDECESSOR", operationId);
+        return [operationId, evidenceSha256];
+      }),
+    );
+    const production = loadBridgeProductionInput(environment);
+    const unsigned = {
+      schemaVersion: RELEASE_CERTIFICATION_REQUEST_SCHEMA,
+      fullLiveAuthorityId: production.fullLiveAuthorityId,
+      workId,
+      outerStateSha256,
+      predecessorEvidenceSha256s,
+      resumed: reconciling,
+      authorizedUnsettled: reconciling,
+      reconciliationOnly: reconciling,
+      persistenceForbidden: reconciling,
+      dispatchForbidden: reconciling,
+      providerDispatchForbidden: true,
+    };
+    const request = {
+      ...unsigned,
+      requestSha256: sha256(Buffer.from(canonicalJson(unsigned))),
+    };
+    const result = await spawnCertification({
+      environment,
+      request,
+      timeoutMs: RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS,
+    });
+    return exactReleaseCertificationResult(result, predecessorEvidenceSha256s);
+  };
 }
 
 function createConcreteFullLiveAdapters(options = {}) {
@@ -3366,6 +5418,16 @@ function createConcreteFullLiveAdapters(options = {}) {
     options.prequalificationVerifier === false
       ? null
       : (options.prequalificationVerifier?.verify ?? verifyPrequalificationDatabaseReceipt);
+  const postConsumptionOptions =
+    typeof options.postConsumptionProducer === "function"
+      ? { producer: options.postConsumptionProducer }
+      : (options.postConsumption ?? options.postConsumptionProducer ?? {});
+  const workflowStartAuthorityAdapter = options.workflowStartAuthority
+    ? createWorkflowStartAuthorityAdapter(options.workflowStartAuthority)
+    : createProtectedWorkflowStartAuthorityAdapter({
+        environment: concreteEnvironment,
+        ...postConsumptionOptions,
+      });
   const adapters = {
     ...createGitReleaseAdapters(options.git),
     ...createGithubDispatchAdapters(options.github),
@@ -3381,14 +5443,14 @@ function createConcreteFullLiveAdapters(options = {}) {
     "promote-qualified-production": options.promotion
       ? createQualifiedPromotionAdapter(options.promotion)
       : createProtectedPromotionAdapter(options.protectedPromotion),
-    "record-workflow-start-authority": createWorkflowStartAuthorityAdapter(
-      options.workflowStartAuthority,
-    ),
+    "record-workflow-start-authority": workflowStartAuthorityAdapter,
     ...(options.acceptance ? createV213AcceptanceAdapters(options.acceptance) : {}),
     ...createTypeScriptBridgeAdapters({
       ...(options.bridge ?? {}),
       requirePrequalificationReceipt: true,
+      prepareAcceptanceAuthority: workflowStartAuthorityAdapter.prepareAcceptanceAuthority,
     }),
+    "certify-v2-13-release": createReleaseCertificationAdapter(options.releaseCertification),
     ...(options.cleanup?.adapters ?? {}),
   };
   const materialize =
@@ -3422,7 +5484,7 @@ function createConcreteFullLiveAdapters(options = {}) {
               priorResults,
               run: options.prequalificationVerifier?.run ?? productionCommand,
             });
-          if (!earlyCleanup)
+          if (!earlyCleanup && operationId !== "certify-v2-13-release")
             await materialize({ operationId, state, priorResults, outerStateSha256 });
           return adapter(context, state, priorResults, outerStateSha256);
         },
@@ -3437,6 +5499,9 @@ export {
   createPrequalificationDatabaseAdapter,
   verifyPrequalificationDatabaseReceipt,
   createWorkflowStartAuthorityAdapter,
+  createProtectedWorkflowStartAuthorityAdapter,
+  createPostConsumptionMaterializationProducer,
+  postConsumptionResponseHmac,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
   PREQUALIFICATION_MIGRATION_MANIFEST_PATH,
   PREQUALIFICATION_MIGRATION_MANIFEST_SHA256,
@@ -3452,10 +5517,14 @@ export {
   createV213AcceptanceAdapters,
   createStagedQualificationAdapters,
   createTypeScriptBridgeAdapters,
+  createReleaseCertificationAdapter,
   verifyMaterializationChainFile,
   productionBridgeSpawn,
+  productionCleanupReceiptSpawn,
+  productionReleaseCertificationSpawn,
   createGithubDispatchAdapters,
   createGithubVerificationAdapters,
+  hashV213DryOutputBundle,
   preflightGuardedActivationInputs,
   preflightConcreteFullLiveInputs,
   preflightPromotionInputs,

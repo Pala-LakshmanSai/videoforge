@@ -67,12 +67,35 @@ interface CompletionRow extends Record<string, unknown> {
   readonly completed_at: string | Date;
 }
 
+interface PersistedProvenanceRow extends Record<string, unknown> {
+  readonly receipt_sha256: Sha256;
+  readonly peak_vram_bytes: string | number | bigint;
+  readonly scratch_removed: boolean;
+  readonly scratch_on_model_volume: boolean;
+}
+
 function exactSha256Array(value: unknown): readonly Sha256[] | null {
   if (!Array.isArray(value) || value.length < 1 || value.length > 4096) return null;
   if (value.some((item) => typeof item !== "string" || !SHA256.test(item))) return null;
   const hashes = value as Sha256[];
   if (new Set(hashes).size !== hashes.length) return null;
   return Object.freeze([...hashes].sort());
+}
+
+function samePositiveBigint(value: unknown, expected: number): boolean {
+  if (!Number.isSafeInteger(expected) || expected < 1) return false;
+  if (
+    typeof value !== "bigint" &&
+    typeof value !== "number" &&
+    (typeof value !== "string" || !/^[1-9][0-9]*$/u.test(value))
+  ) {
+    return false;
+  }
+  try {
+    return BigInt(value) === BigInt(expected);
+  } catch {
+    return false;
+  }
 }
 
 function completionRecord(row: CompletionRow): HostedLaneCompletionRecord {
@@ -328,13 +351,13 @@ export class HostedSqlOutputBarrierRepository implements HostedLaneCompletionRep
         `INSERT INTO serverless_provenance_receipts (
            id, account_id, workspace_id, project_revision_id, attempt_id, assignment_id,
            receipt_nonce, attestation_scope, worker_id, provider_job_id, gpu_name, gpu_uuid_sha256,
-           driver_version, cuda_version, intended_region, intended_volume_id_sha256,
+           driver_version, cuda_version, peak_vram_bytes, intended_region, intended_volume_id_sha256,
            manifest_sha256_before, manifest_sha256_after, mutation_detected, cross_mount_detected,
-           model_ready, timings, items, receipt_sha256, signature_key_id, signature_value,
-           issued_at, accepted_at
+           model_ready, scratch_removed, scratch_on_model_volume, timings, items, receipt_sha256,
+           signature_key_id, signature_value, issued_at, accepted_at
          ) VALUES (md5('hosted-output-provenance:' || $1)::uuid, $2, $3, $4, $5, $6, $7, $8,
-                   $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-                   $22::jsonb, $23::jsonb, $1, $24, $25, $26, $27)
+                   $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
+                   $23, $24, $25::jsonb, $26::jsonb, $1, $27, $28, $29, $30)
          ON CONFLICT (attempt_id, receipt_nonce) DO NOTHING`,
         [
           receipt.receipt_sha256,
@@ -351,6 +374,7 @@ export class HostedSqlOutputBarrierRepository implements HostedLaneCompletionRep
           receipt.runtime_probe.gpu_uuid_sha256,
           receipt.runtime_probe.driver_version,
           receipt.runtime_probe.cuda_version,
+          receipt.runtime_probe.peak_vram_bytes,
           receipt.deployment.intended_region,
           receipt.deployment.intended_volume_id_sha256,
           receipt.volume_verification.manifest_sha256_before,
@@ -358,6 +382,8 @@ export class HostedSqlOutputBarrierRepository implements HostedLaneCompletionRep
           receipt.volume_verification.mutation_detected,
           receipt.volume_verification.cross_mount_detected,
           receipt.model_ready_evidence.state === "MODEL_READY",
+          receipt.scratch_cleanup.removed,
+          receipt.scratch_cleanup.scratch_on_model_volume,
           JSON.stringify(receipt.timings),
           JSON.stringify(receipt.items),
           receipt.signature.key_id,
@@ -366,17 +392,23 @@ export class HostedSqlOutputBarrierRepository implements HostedLaneCompletionRep
           normalized.completedAt,
         ],
       );
-      const persistedProvenance = await transaction.query<
-        { receipt_sha256: Sha256 } & Record<string, unknown>
-      >(
-        `SELECT receipt_sha256 FROM serverless_provenance_receipts
+      const persistedProvenance = await transaction.query<PersistedProvenanceRow>(
+        `SELECT receipt_sha256, peak_vram_bytes, scratch_removed, scratch_on_model_volume
+           FROM serverless_provenance_receipts
           WHERE account_id = $1 AND workspace_id = $2 AND attempt_id = $3 AND receipt_nonce = $4
           FOR UPDATE`,
         [this.scope.accountId, this.scope.workspaceId, normalized.attemptId, receipt.receipt_nonce],
       );
       if (
         persistedProvenance.rows.length !== 1 ||
-        persistedProvenance.rows[0]!.receipt_sha256 !== receipt.receipt_sha256
+        persistedProvenance.rows[0]!.receipt_sha256 !== receipt.receipt_sha256 ||
+        !samePositiveBigint(
+          persistedProvenance.rows[0]!.peak_vram_bytes,
+          receipt.runtime_probe.peak_vram_bytes,
+        ) ||
+        persistedProvenance.rows[0]!.scratch_removed !== receipt.scratch_cleanup.removed ||
+        persistedProvenance.rows[0]!.scratch_on_model_volume !==
+          receipt.scratch_cleanup.scratch_on_model_volume
       ) {
         throw new HostedOutputAdapterError("HOSTED_OUTPUT_BARRIER_ROW_INVALID");
       }

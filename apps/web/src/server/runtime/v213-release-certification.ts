@@ -2,7 +2,6 @@ import { canonicalSha256, type Sha256 } from "@videoforge/control-plane";
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
-const IMAGE = /^ghcr\.io\/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$/u;
 const EVIDENCE_PATH = /^project-context\/evidence\/[A-Za-z0-9._/-]+\.json$/u;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const HOUR_MS = 60 * 60 * 1_000;
@@ -37,8 +36,9 @@ export interface V213ReleaseIdentity {
   readonly productionUrlSha256: Sha256;
   readonly deploymentConfigSha256: Sha256;
   readonly contractBundleSha256: Sha256;
-  readonly mageImageDigest: string;
-  readonly soulxImageDigest: string;
+  /** Exact digest persisted by serverless_endpoint_deployments; no registry path is inferred. */
+  readonly mageImageDigest: Sha256;
+  readonly soulxImageDigest: Sha256;
   readonly mageEndpointConfigSha256: Sha256;
   readonly soulxEndpointConfigSha256: Sha256;
   readonly mageCertificationLedgerSha256: Sha256;
@@ -48,6 +48,8 @@ export interface V213ReleaseIdentity {
   readonly v211AcceptanceSha256: Sha256;
   readonly v212AcceptanceSha256: Sha256;
 }
+
+export type V213ReleaseIdentityFacts = Omit<V213ReleaseIdentity, "schemaVersion" | "sourceCommit">;
 
 export interface V213ReleaseEvidenceArtifact {
   readonly schemaVersion: "videoforge-v213-release-evidence-artifact/v1";
@@ -71,6 +73,21 @@ export interface V213VerifiedReleaseEvidence {
   readonly deployedSourceCommit: string;
   readonly contractBundleSha256: Sha256;
   readonly upstreamEvidenceSha256: Sha256 | null;
+  readonly fixtureOrFakeTransportUsed: false;
+  readonly claims: readonly string[];
+  readonly metrics: Readonly<Record<string, V213Metric>>;
+}
+
+/** Raw, current-run fact projection used to build a signed release evidence document. The
+ * sourceEvidenceSha256 is the exact durable receipt/static-audit reference from which SQL derived
+ * the facts; it is used to derive the opaque non-circular RELEASE artifact id. */
+export interface V213ReleaseEvidenceFact {
+  readonly gate: V213ReleaseGate;
+  readonly sourceEvidenceSha256: Sha256;
+  readonly observerId: string;
+  readonly evidencePath: string;
+  readonly evidenceClass: V213EvidenceClass;
+  readonly observedAt: string;
   readonly fixtureOrFakeTransportUsed: false;
   readonly claims: readonly string[];
   readonly metrics: Readonly<Record<string, V213Metric>>;
@@ -383,7 +400,7 @@ const assertReleaseIdentity = (identity: V213ReleaseIdentity): void => {
   ]) {
     if (!SHA256.test(value)) throw new Error("V213_RELEASE_IDENTITY_HASH_INVALID");
   }
-  if (!IMAGE.test(identity.mageImageDigest) || !IMAGE.test(identity.soulxImageDigest)) {
+  if (!SHA256.test(identity.mageImageDigest) || !SHA256.test(identity.soulxImageDigest)) {
     throw new Error("V213_RELEASE_IMAGE_DIGEST_INVALID");
   }
   if (identity.mageImageDigest === identity.soulxImageDigest) {
@@ -394,6 +411,19 @@ const assertReleaseIdentity = (identity: V213ReleaseIdentity): void => {
 export const hashV213ReleaseIdentity = (identity: V213ReleaseIdentity): Sha256 => {
   assertReleaseIdentity(identity);
   return canonicalSha256(identity);
+};
+
+export const buildV213ReleaseIdentity = (input: {
+  readonly sourceCommit: string;
+  readonly facts: V213ReleaseIdentityFacts;
+}): V213ReleaseIdentity => {
+  const identity = Object.freeze({
+    schemaVersion: "videoforge-v213-release-identity/v1" as const,
+    sourceCommit: input.sourceCommit,
+    ...input.facts,
+  });
+  assertReleaseIdentity(identity);
+  return identity;
 };
 
 const metricKeysAreExact = (gate: V213ReleaseGate, metrics: Readonly<Record<string, V213Metric>>) =>
@@ -531,6 +561,69 @@ const metricsPass = (
   }
 };
 
+/** Strict raw-fact boundary shared by the source-bound static descriptor and the final DB
+ * projection. It accepts only the exact claims/metric set for one gate; callers cannot append a
+ * future or unreviewed claim that the release ledger would silently ignore. */
+export function validateV213ReleaseEvidenceFact(
+  value: unknown,
+  expectedGate?: V213ReleaseGate,
+): V213ReleaseEvidenceFact {
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    throw new Error("V213_RELEASE_EVIDENCE_FACT_INVALID");
+  const fact = value as Record<string, unknown>;
+  if (
+    JSON.stringify(Object.keys(fact).sort()) !==
+      JSON.stringify(
+        [
+          "claims",
+          "evidenceClass",
+          "evidencePath",
+          "fixtureOrFakeTransportUsed",
+          "gate",
+          "metrics",
+          "observedAt",
+          "observerId",
+          "sourceEvidenceSha256",
+        ].sort(),
+      ) ||
+    !V213_RELEASE_GATES.includes(fact.gate as V213ReleaseGate) ||
+    (expectedGate !== undefined && fact.gate !== expectedGate) ||
+    typeof fact.sourceEvidenceSha256 !== "string" ||
+    !SHA256.test(fact.sourceEvidenceSha256) ||
+    typeof fact.observerId !== "string" ||
+    !IDENTIFIER.test(fact.observerId) ||
+    typeof fact.evidencePath !== "string" ||
+    !EVIDENCE_PATH.test(fact.evidencePath) ||
+    fact.evidencePath.includes("..") ||
+    fact.evidenceClass !== REQUIRED_CLASS[fact.gate as V213ReleaseGate] ||
+    fact.fixtureOrFakeTransportUsed !== false ||
+    typeof fact.observedAt !== "string" ||
+    !Array.isArray(fact.claims) ||
+    fact.claims.some((claim) => typeof claim !== "string") ||
+    fact.metrics === null ||
+    typeof fact.metrics !== "object" ||
+    Array.isArray(fact.metrics)
+  )
+    throw new Error("V213_RELEASE_EVIDENCE_FACT_INVALID");
+  parseUtc(fact.observedAt, "V213_RELEASE_OBSERVED_AT_INVALID");
+  const gate = fact.gate as V213ReleaseGate;
+  const claims = fact.claims as string[];
+  const metrics = fact.metrics as Record<string, V213Metric>;
+  if (!hasExactClaims(gate, claims) || !metricsPass(gate, metrics))
+    throw new Error("V213_RELEASE_EVIDENCE_FACT_INVALID");
+  return Object.freeze({
+    gate,
+    sourceEvidenceSha256: fact.sourceEvidenceSha256 as Sha256,
+    observerId: fact.observerId as string,
+    evidencePath: fact.evidencePath as string,
+    evidenceClass: fact.evidenceClass as V213EvidenceClass,
+    observedAt: fact.observedAt as string,
+    fixtureOrFakeTransportUsed: false,
+    claims: Object.freeze([...claims]),
+    metrics: Object.freeze({ ...metrics }),
+  });
+}
+
 const freshnessHours = (gate: V213ReleaseGate): number | null => {
   if (
     gate === "fresh_bounded_two_lane_smoke" ||
@@ -618,6 +711,58 @@ const invalidEvidenceCode = (input: {
     return "V213_RELEASE_METRICS_NOT_ACCEPTED";
   }
   return undefined;
+};
+
+/** Builds the exact verifier document from DB-owned facts. It deliberately does not create the
+ * artifact id or signature: callers must derive the id from the durable source receipt and supply
+ * a real signature hash from their protected signer before storing the document. */
+export const buildV213VerifiedReleaseEvidence = (input: {
+  readonly releaseIdentity: V213ReleaseIdentity;
+  readonly artifact: V213ReleaseEvidenceArtifact;
+  readonly fact: V213ReleaseEvidenceFact;
+  readonly verifierSignatureSha256: Sha256;
+}): V213VerifiedReleaseEvidence => {
+  const fact = validateV213ReleaseEvidenceFact(input.fact, input.artifact.gate);
+  const identitySha256 = hashV213ReleaseIdentity(input.releaseIdentity);
+  if (
+    fact.gate !== input.artifact.gate ||
+    !SHA256.test(fact.sourceEvidenceSha256) ||
+    fact.fixtureOrFakeTransportUsed !== false
+  )
+    throw new Error("V213_RELEASE_EVIDENCE_FACT_INVALID");
+  const upstreamField = UPSTREAM_HASH_FIELD[fact.gate];
+  const upstreamEvidenceSha256 = upstreamField ? input.releaseIdentity[upstreamField] : null;
+  if (upstreamEvidenceSha256 !== null && !SHA256.test(upstreamEvidenceSha256))
+    throw new Error("V213_RELEASE_UPSTREAM_EVIDENCE_MISMATCH");
+  const document = Object.freeze({
+    verifierId: "videoforge-independent-v213-release-evidence-v1" as const,
+    accepted: true as const,
+    gate: fact.gate,
+    canonicalEvidenceSha256: canonicalSha256(input.artifact),
+    verifierSignatureSha256: input.verifierSignatureSha256,
+    observerId: fact.observerId,
+    evidencePath: fact.evidencePath,
+    evidenceSha256: canonicalSha256(input.artifact.evidence),
+    evidenceClass: fact.evidenceClass,
+    observedAt: fact.observedAt,
+    releaseIdentitySha256: identitySha256,
+    sourceCommit: input.releaseIdentity.sourceCommit,
+    deployedSourceCommit: input.releaseIdentity.deployedSourceCommit,
+    contractBundleSha256: input.releaseIdentity.contractBundleSha256,
+    upstreamEvidenceSha256: upstreamEvidenceSha256 as Sha256 | null,
+    fixtureOrFakeTransportUsed: fact.fixtureOrFakeTransportUsed,
+    claims: Object.freeze([...fact.claims]),
+    metrics: Object.freeze({ ...fact.metrics }),
+  });
+  const invalid = invalidEvidenceCode({
+    artifact: input.artifact,
+    verification: document,
+    identity: input.releaseIdentity,
+    identitySha256,
+    evaluatedAtMs: parseUtc(fact.observedAt, "V213_RELEASE_OBSERVED_AT_INVALID"),
+  });
+  if (invalid) throw new Error(invalid);
+  return document;
 };
 
 export const buildV213ReleaseCertificationLedger = async (input: {

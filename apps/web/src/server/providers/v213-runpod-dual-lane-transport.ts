@@ -112,8 +112,21 @@ export interface V213CleanupStageRead {
   readonly operations: readonly V213CleanupOperationRead[];
 }
 
+/**
+ * Cleanup leaves the exact production pair in place only when both lanes were fully read back.
+ * A partial or missing pair is deleted and must be represented explicitly; an empty `production`
+ * array alone cannot distinguish a proven absence from a failed/incomplete cleanup.
+ */
+export type V213ProductionCleanupState =
+  | "EXACT_MAX_ONE_PAIR_RETAINED"
+  | "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT";
+
 export interface V213AttributableCleanupResult {
   readonly production: readonly V213LaneDeployment[];
+  /** Present on concrete transport results; optional for compatibility with read-only test ports. */
+  readonly productionCleanupState?: V213ProductionCleanupState;
+  /** True only after deterministic-name readback proves no attributable production resources remain. */
+  readonly productionResourcesAbsent?: boolean;
   readonly deletedEndpointIdSha256s: readonly string[];
   readonly deletedTemplateIdSha256s: readonly string[];
 }
@@ -124,6 +137,61 @@ const hashId = (value: string) =>
 function resourceName(resourceKey: string, suffix: "endpoint" | "template"): string {
   const digest = createHash("sha256").update(resourceKey).digest("hex").slice(0, 24);
   return `vf_v213_${digest}_${suffix}`;
+}
+
+/**
+ * A template POST can fail after RunPod has accepted the mutation.  Only these provider errors
+ * permit a same-name readback; a definitive input/auth/HTTP failure must remain a normal failure.
+ * The structural `code` check keeps this transport usable with the small injected control port
+ * used by tests and guarded activation without leaking provider error text into evidence.
+ */
+function isAmbiguousTemplateCreateError(error: unknown): boolean {
+  const code =
+    error !== null && typeof error === "object" && "code" in error
+      ? (error as { readonly code?: unknown }).code
+      : undefined;
+  if (code === "RUNPOD_MUTATION_AMBIGUOUS" || code === "RUNPOD_RESPONSE_INVALID") return true;
+  const message = error instanceof Error ? error.message : "";
+  return /(?:ambiguous|tim(?:e|ed)[ -]?out|unknown response|network|connection|fetch|lost)/iu.test(
+    message,
+  );
+}
+
+/**
+ * The resource-key marker is journal identity, not a provider-generated name.  Require it during
+ * ambiguous template recovery so a pre-existing same-name template cannot be adopted merely
+ * because its image happens to match.  Lane and purpose markers make the sealed input explicit in
+ * the provider readback; endpoint binding later carries the same immutable environment forward.
+ */
+function templateIdentityMatches(
+  candidate: RunPodNamedResource,
+  expected: {
+    readonly name: string;
+    readonly image: string;
+    readonly resourceKey: string;
+    readonly lane: "mage" | "soulx";
+    readonly purpose: "qualification" | "production";
+  },
+): boolean {
+  if (candidate.name !== expected.name || !ID.test(candidate.id)) return false;
+  const raw = candidate.raw as Record<string, unknown>;
+  if (
+    raw.imageName !== expected.image ||
+    (raw.isServerless !== undefined && raw.isServerless !== true) ||
+    (raw.containerDiskInGb !== undefined && raw.containerDiskInGb !== 120)
+  )
+    return false;
+  const environment = raw.env;
+  if (environment === null || typeof environment !== "object" || Array.isArray(environment))
+    return false;
+  const env = environment as Record<string, unknown>;
+  return (
+    env.LOG_LEVEL === "INFO" &&
+    env.RUNPOD_INIT_TIMEOUT === "800" &&
+    env.VIDEOFORGE_V213_RESOURCE_KEY_SHA256 === hashId(expected.resourceKey) &&
+    env.VIDEOFORGE_V213_LANE === expected.lane &&
+    env.VIDEOFORGE_V213_PURPOSE === expected.purpose
+  );
 }
 
 /**
@@ -170,6 +238,11 @@ type V213CleanupLaneBinding = Readonly<{
   readonly deploymentSha256: string;
   readonly volumeIdSha256: string;
   readonly volumeManifestSha256: string;
+  readonly endpointIdSha256?: string;
+  readonly templateIdSha256?: string;
+}>;
+
+type V213JournaledResourceIdentity = Readonly<{
   readonly endpointIdSha256?: string;
   readonly templateIdSha256?: string;
 }>;
@@ -311,14 +384,40 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       LOG_LEVEL: "INFO",
       RUNPOD_INIT_TIMEOUT: "800",
       VIDEOFORGE_V213_RESOURCE_KEY_SHA256: hashId(input.resourceKey),
+      VIDEOFORGE_V213_LANE: input.sealed.lane,
+      VIDEOFORGE_V213_PURPOSE: input.purpose,
     });
-    const template = await this.options.control.createServerlessTemplate(
-      templateName,
-      input.sealed.publicImage,
-      120,
-      environment,
-      false,
-    );
+    let template: RunPodResourceIdentity;
+    try {
+      template = await this.options.control.createServerlessTemplate(
+        templateName,
+        input.sealed.publicImage,
+        120,
+        environment,
+        false,
+      );
+    } catch (error) {
+      if (!isAmbiguousTemplateCreateError(error)) throw error;
+      // A timeout or malformed response may mean that the provider accepted the POST.  Reconcile
+      // by the exact deterministic name before any endpoint POST.  This path never deletes: an
+      // unknown or conflicting template is left for the durable cleanup authority to inspect.
+      const resources = await this.findNamedResources(input.resourceKey);
+      if (resources.endpoints.length !== 0)
+        throw new Error("V213_TEMPLATE_CREATE_RECONCILIATION_UNEXPECTED_ENDPOINT");
+      const candidate = resources.templates[0];
+      if (!candidate) throw new Error("V213_TEMPLATE_CREATE_RECONCILIATION_UNCERTAIN");
+      if (
+        !templateIdentityMatches(candidate, {
+          name: templateName,
+          image: input.sealed.publicImage,
+          resourceKey: input.resourceKey,
+          lane: input.sealed.lane,
+          purpose: input.purpose,
+        })
+      )
+        throw new Error("V213_TEMPLATE_CREATE_RECONCILIATION_IDENTITY_MISMATCH");
+      template = Object.freeze({ id: candidate.id, idHash: hashId(candidate.id) });
+    }
     let endpoint: RunPodResourceIdentity;
     try {
       const policy = {
@@ -474,6 +573,116 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     return binding;
   }
 
+  private journaledResourceIdentity(
+    resourceKey: string,
+    operations: readonly V213CleanupOperationRead[],
+  ): V213JournaledResourceIdentity | null {
+    let endpointIdSha256: string | undefined;
+    let templateIdSha256: string | undefined;
+    for (const operation of operations.filter(
+      (item) =>
+        item.resourceKey === resourceKey && (item.kind === "create" || item.kind === "readback"),
+    )) {
+      if (
+        operation.evidence === null ||
+        typeof operation.evidence !== "object" ||
+        Array.isArray(operation.evidence)
+      )
+        continue;
+      const evidence = operation.evidence as Record<string, unknown>;
+      const candidateEndpointHash = evidence.endpointIdSha256;
+      const candidateTemplateHash = evidence.templateIdSha256;
+      if (
+        (candidateEndpointHash !== undefined &&
+          (typeof candidateEndpointHash !== "string" || !SHA256.test(candidateEndpointHash))) ||
+        (candidateTemplateHash !== undefined &&
+          (typeof candidateTemplateHash !== "string" || !SHA256.test(candidateTemplateHash)))
+      )
+        throw new Error("V213_CLEANUP_RESOURCE_IDENTITY_INVALID");
+      const rawEndpointId = evidence.endpointId;
+      const rawTemplateId = evidence.templateId;
+      if (
+        (rawEndpointId !== undefined &&
+          (typeof rawEndpointId !== "string" ||
+            !ID.test(rawEndpointId) ||
+            hashId(rawEndpointId) !== candidateEndpointHash)) ||
+        (rawTemplateId !== undefined &&
+          (typeof rawTemplateId !== "string" ||
+            !ID.test(rawTemplateId) ||
+            hashId(rawTemplateId) !== candidateTemplateHash))
+      )
+        throw new Error("V213_CLEANUP_RESOURCE_IDENTITY_DRIFT");
+      if (
+        operation.providerId !== null &&
+        ((rawEndpointId !== undefined && rawEndpointId === operation.providerId) ||
+          (rawTemplateId !== undefined && rawTemplateId === operation.providerId)) === false &&
+        ((typeof candidateEndpointHash === "string" &&
+          hashId(operation.providerId) === candidateEndpointHash) ||
+          (typeof candidateTemplateHash === "string" &&
+            hashId(operation.providerId) === candidateTemplateHash)) === false
+      )
+        throw new Error("V213_CLEANUP_RESOURCE_IDENTITY_DRIFT");
+      if (
+        (endpointIdSha256 !== undefined &&
+          candidateEndpointHash !== undefined &&
+          endpointIdSha256 !== candidateEndpointHash) ||
+        (templateIdSha256 !== undefined &&
+          candidateTemplateHash !== undefined &&
+          templateIdSha256 !== candidateTemplateHash)
+      )
+        throw new Error("V213_CLEANUP_RESOURCE_IDENTITY_AMBIGUOUS");
+      if (typeof candidateEndpointHash === "string") endpointIdSha256 = candidateEndpointHash;
+      if (typeof candidateTemplateHash === "string") templateIdSha256 = candidateTemplateHash;
+    }
+    if (endpointIdSha256 === undefined && templateIdSha256 === undefined) return null;
+    return Object.freeze({
+      ...(endpointIdSha256 === undefined ? {} : { endpointIdSha256 }),
+      ...(templateIdSha256 === undefined ? {} : { templateIdSha256 }),
+    });
+  }
+
+  private assertPartialCleanupIdentity(
+    resourceKey: string,
+    operations: readonly V213CleanupOperationRead[],
+    endpoint: RunPodNamedResource | undefined,
+    template: RunPodNamedResource | undefined,
+  ): void {
+    if ((endpoint === undefined) === (template === undefined)) return;
+    const identity = resourceKey.match(/-(mage|soulx)-(qualification|production)$/u);
+    if (!identity) throw new Error("V213_RESOURCE_KEY_LINEAGE_INVALID");
+    const lane = identity[1] as "mage" | "soulx";
+    const journaled = this.journaledResourceIdentity(resourceKey, operations);
+    const binding = this.bindingForResourceKey(resourceKey, operations);
+    if (!journaled || !binding) throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_UNAVAILABLE");
+    if (endpoint) {
+      const raw = endpoint.raw as Record<string, unknown>;
+      if (
+        journaled.endpointIdSha256 === undefined ||
+        hashId(endpoint.id) !== journaled.endpointIdSha256 ||
+        raw.workersMin !== 0 ||
+        raw.workersMax !== 1 ||
+        raw.gpuCount !== 1 ||
+        JSON.stringify(raw.gpuTypeIds) !== JSON.stringify(["NVIDIA GeForce RTX 4090"]) ||
+        !providerVolumeMatches(raw, binding.volumeIdSha256) ||
+        (journaled.templateIdSha256 !== undefined &&
+          (typeof raw.templateId !== "string" ||
+            !ID.test(raw.templateId) ||
+            hashId(raw.templateId) !== journaled.templateIdSha256))
+      )
+        throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_DRIFT");
+    }
+    if (template) {
+      const raw = template.raw as Record<string, unknown>;
+      if (
+        journaled.templateIdSha256 === undefined ||
+        hashId(template.id) !== journaled.templateIdSha256 ||
+        raw.imageName !== binding.publicImage ||
+        binding.lane !== lane
+      )
+        throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_DRIFT");
+    }
+  }
+
   async findLaneByResourceKey(
     resourceKey: string,
     expectedBinding?: V213CleanupLaneBinding,
@@ -603,10 +812,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     }
   }
 
-  async findJobByRequestKey(_input: {
-    readonly endpointId: string;
-    readonly requestKey: string;
-  }): Promise<null> {
+  async findJobByRequestKey(): Promise<null> {
     // RunPod has no provider-side request-key lookup. Returning null is the required fail-closed
     // outcome after an ambiguous POST; the durable coordinator forbids redispatch.
     return null;
@@ -794,6 +1000,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       readonly endpoint?: RunPodNamedResource;
       readonly template?: RunPodNamedResource;
     }[] = [];
+    const allOperations = stages.flatMap((stage) => stage.operations);
     for (const key of deleteKeys.reverse()) {
       const inventory = await this.options.control.inventoryDisposableResources();
       const endpoints = inventory.endpoints.filter(
@@ -804,6 +1011,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       );
       if (endpoints.length > 1 || templates.length > 1)
         throw new Error("V213_DETERMINISTIC_RESOURCE_AMBIGUOUS");
+      this.assertPartialCleanupIdentity(key, allOperations, endpoints[0], templates[0]);
       deleteCandidates.push(Object.freeze({ key, endpoint: endpoints[0], template: templates[0] }));
     }
     // Prove every owned queue before deleting even a template.  This is deliberately a separate
@@ -830,8 +1038,32 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       )
         throw new Error("V213_DELETE_ABSENCE_NOT_PROVEN");
     }
+
+    // A partial production pair is a cleanup success only after a final deterministic-name
+    // inventory proves that neither endpoint nor template remains for either attributable lane.
+    // The per-candidate readbacks above protect each deletion; this final pass also closes races
+    // where a provider read was stale or a second side appeared while the pair was being drained.
+    if (!productionExact) {
+      const remaining = await this.options.control.inventoryDisposableResources();
+      const productionNames = new Set(
+        productionKeys.flatMap((key) => [
+          resourceName(key, "endpoint"),
+          resourceName(key, "template"),
+        ]),
+      );
+      if (
+        remaining.endpoints.some((item) => productionNames.has(item.name)) ||
+        remaining.templates.some((item) => productionNames.has(item.name))
+      )
+        throw new Error("V213_CLEANUP_PRODUCTION_ABSENCE_NOT_PROVEN");
+    }
+
     return Object.freeze({
       production: Object.freeze(productionExact ? production : []),
+      productionCleanupState: productionExact
+        ? "EXACT_MAX_ONE_PAIR_RETAINED"
+        : "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+      productionResourcesAbsent: !productionExact,
       deletedEndpointIdSha256s: Object.freeze(deletedEndpoints.sort()),
       deletedTemplateIdSha256s: Object.freeze(deletedTemplates.sort()),
     });

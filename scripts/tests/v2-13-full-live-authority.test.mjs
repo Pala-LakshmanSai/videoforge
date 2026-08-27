@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -16,16 +17,19 @@ import test from "node:test";
 
 import {
   authorizeCleanupWork,
+  authorizeReleaseCertification,
   authorizeWork,
   beginPhase,
   completeCleanupOnly,
   completePhase,
   enterCleanupOnly,
   initialConsumptionRecord,
+  PHASES,
   recordCleanupProof,
   recordVerifiedReleaseRef,
   settleWork,
   settleCleanupWork,
+  settleReleaseCertification,
   trustedCommitLineage,
   updateState,
   validateMaterializationSeedFile,
@@ -67,29 +71,99 @@ const releaseSourceCommit = "407dc070f4b83bd78b1d4aa1cb546ec63c91f32f";
 const v3ReleaseSourceCommit = "e737eac44458a04c7de47a0f3f42d82cb9506d47";
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
+const approvalValidatorPath = "deploy/v2-13/validate-full-live-approval.mjs";
 
-function v3Fixture() {
+function withApprovalValidatorReleaseTree(bytes, callback) {
+  const repository = mkdtempSync(join(tmpdir(), "videoforge-approval-validator-tree-"));
+  const oldGitDirectory = process.env.GIT_DIR;
+  const oldGitWorkTree = process.env.GIT_WORK_TREE;
+  const environment = { ...process.env, GIT_CONFIG_NOSYSTEM: "1" };
+  delete environment.GIT_DIR;
+  delete environment.GIT_WORK_TREE;
+  const git = (...args) =>
+    execFileSync("git", args, {
+      cwd: repository,
+      encoding: "utf8",
+      env: environment,
+      maxBuffer: 4 * 1024 * 1024,
+    }).trim();
+  try {
+    git("init", "--quiet");
+    git("config", "user.email", "videoforge-tests@example.invalid");
+    git("config", "user.name", "VideoForge Tests");
+    mkdirSync(join(repository, dirname(approvalValidatorPath)), { recursive: true });
+    writeFileSync(join(repository, approvalValidatorPath), bytes);
+    git("add", "--all");
+    git("commit", "--quiet", "-m", "release source");
+    const releaseSourceCommit = git("rev-parse", "HEAD");
+    const releaseSourceTree = git("rev-parse", "HEAD^{tree}");
+    process.env.GIT_DIR = join(repository, ".git");
+    process.env.GIT_WORK_TREE = repository;
+    return callback(releaseSourceCommit, repository, releaseSourceTree);
+  } finally {
+    if (oldGitDirectory === undefined) delete process.env.GIT_DIR;
+    else process.env.GIT_DIR = oldGitDirectory;
+    if (oldGitWorkTree === undefined) delete process.env.GIT_WORK_TREE;
+    else process.env.GIT_WORK_TREE = oldGitWorkTree;
+    rmSync(repository, { recursive: true, force: true });
+  }
+}
+
+function repairExactPolicyFixture(proposal) {
+  proposal.exact_execution_graph.ordered_operation_ids = [...EXACT_OPERATION_IDS];
+  proposal.exact_execution_graph.internal_materialization_policy = structuredClone(
+    EXACT_INTERNAL_MATERIALIZATION_POLICY,
+  );
+  proposal.exact_execution_graph.prequalification_database_bootstrap_policy = structuredClone(
+    EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
+  );
+  proposal.exact_execution_graph.prequalification_bridge_policy = structuredClone(
+    EXACT_PREQUALIFICATION_BRIDGE_POLICY,
+  );
+  proposal.exact_execution_graph.image_workflow_verification_policy = structuredClone(
+    EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  );
+  proposal.exact_execution_graph.trusted_time_policy = structuredClone(EXACT_TRUSTED_TIME_POLICY);
+  proposal.exact_execution_graph.workflow_start_authority_policy = structuredClone(
+    EXACT_WORKFLOW_START_AUTHORITY_POLICY,
+  );
+  proposal.exact_execution_graph.early_no_database_cleanup_policy = structuredClone(
+    EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY,
+  );
+  proposal.exact_execution_graph.crash_safe_cleanup_policy = structuredClone(
+    EXACT_CRASH_SAFE_CLEANUP_POLICY,
+  );
+  proposal.exact_execution_graph.durable_billing_policy = structuredClone(
+    EXACT_DURABLE_BILLING_POLICY,
+  );
+  return proposal;
+}
+
+function v3Fixture({ releaseSourceCommit = v3ReleaseSourceCommit } = {}) {
   const v3Directory =
     "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate";
   const v3Proposal = JSON.parse(readFileSync(`${v3Directory}/combined-live-proposal.json`));
   v3Proposal.proposal_status = "PENDING_FRESH_EXACT_USER_APPROVAL";
   v3Proposal.sealing.sealed_for_exact_user_approval = true;
   v3Proposal.sealing.current_bytes_are_approval_ineligible = false;
-  v3Proposal.source.release_source_commit = v3ReleaseSourceCommit;
+  v3Proposal.source.release_source_commit = releaseSourceCommit;
   delete v3Proposal.source.base_source_commit_before_semantic_tag_repair;
-  v3Proposal.immutable_github_release_ref_request.exact_target_commit = v3ReleaseSourceCommit;
-  v3Proposal.exact_execution_graph.internal_materialization_policy = structuredClone(
-    EXACT_INTERNAL_MATERIALIZATION_POLICY,
-  );
-  v3Proposal.exact_execution_graph.prequalification_database_bootstrap_policy = structuredClone(
-    EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
-  );
-  v3Proposal.exact_execution_graph.prequalification_bridge_policy = structuredClone(
-    EXACT_PREQUALIFICATION_BRIDGE_POLICY,
-  );
+  v3Proposal.immutable_github_release_ref_request.exact_target_commit = releaseSourceCommit;
+  repairExactPolicyFixture(v3Proposal);
+  v3Proposal.requested_scope.database.prequalification_database_bootstrap_operator_function_signature_count =
+    EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signature_count;
+  v3Proposal.requested_scope.database.exact_operator_function_signatures = [
+    ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures,
+  ];
   v3Proposal.authority_record_commit_binding.materialization_seed_sha256_required_in_authority_and_consumption_state = true;
   v3Proposal.authority_record_commit_binding.materialization_seed_sha256_must_be_verified_before_execution = true;
   v3Proposal.source.exact_release_components = structuredClone(EXACT_V3_RELEASE_COMPONENTS);
+  const staticReleaseDescriptor = {
+    path: `${v3Directory}/static-release-descriptor.json`,
+    sha256: proof("d"),
+  };
+  v3Proposal.requested_scope.static_release_descriptor = structuredClone(staticReleaseDescriptor);
+  v3Proposal.sealing.static_release_descriptor = structuredClone(staticReleaseDescriptor);
   const v3ProposalBytes = Buffer.from(`${JSON.stringify(v3Proposal, null, 2)}\n`);
   const v3ProposalSha256 = hash(v3ProposalBytes);
   const v3Commit = "f".repeat(40);
@@ -100,12 +174,12 @@ function v3Fixture() {
     path: `${v3Directory}/combined-live-proposal.json`,
     sha256: v3ProposalSha256,
     proposal_record_commit: v3Commit,
-    release_source_commit: v3ReleaseSourceCommit,
+    release_source_commit: releaseSourceCommit,
   };
   approval.approval.immutable_github_release_ref = {
     creation_authorized: true,
     exact_tag_name: "videoforge-v2-13-release-20260826-v3",
-    exact_target_commit: v3ReleaseSourceCommit,
+    exact_target_commit: releaseSourceCommit,
     tag_kind: "LIGHTWEIGHT",
     maximum_new_refs: 1,
     force_update_authorized: false,
@@ -118,6 +192,8 @@ function v3Fixture() {
     exact_reconciler_role: "videoforge_hosted_reconciler",
     roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
   };
+  delete approval.statement;
+  approval.static_release_descriptor = structuredClone(staticReleaseDescriptor);
   approval.statement = `I approve ${v3ProposalSha256} at ${v3Commit} with USD 17.50, USD 7 per month, no fallback, tag videoforge-v2-13-release-20260826-v3, and roles videoforge_hosted_operator, videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
   const v3ApprovalBytes = Buffer.from(`${JSON.stringify(approval, null, 2)}\n`);
   const authority = structuredClone(JSON.parse(authorityBytes));
@@ -129,7 +205,7 @@ function v3Fixture() {
     proposal_path: approval.proposal.path,
     proposal_sha256: v3ProposalSha256,
     proposal_record_commit: v3Commit,
-    release_source_commit: v3ReleaseSourceCommit,
+    release_source_commit: releaseSourceCommit,
     user_approval_path: `${v3Directory}/user-approval.json`,
     user_approval_sha256: hash(v3ApprovalBytes),
   };
@@ -148,13 +224,14 @@ function v3Fixture() {
     authority.combined_execution_authority[key] = true;
   authority.github_release_ref = {
     required_for_workflow_dispatch: true,
-    exact_target_commit: v3ReleaseSourceCommit,
+    exact_target_commit: releaseSourceCommit,
     exact_tag_name: "videoforge-v2-13-release-20260826-v3",
     ref_creation_authorized_by_approved_proposal: true,
     status: "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
     external_action_taken: false,
   };
   authority.materialization_seed_sha256 = proof("a");
+  authority.static_release_descriptor = structuredClone(approval.static_release_descriptor);
   authority.outer_orchestration.approval_schema_validator_sha256 = hash(
     readFileSync("deploy/v2-13/validate-full-live-approval.mjs"),
   );
@@ -175,16 +252,55 @@ function v3Fixture() {
   };
 }
 
+function activeProposalFixture() {
+  const activeProposal = JSON.parse(
+    readFileSync(
+      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+    ),
+  );
+  return repairExactPolicyFixture(activeProposal);
+}
+
 function freshStateFixture() {
-  const fixture = v3Fixture();
-  const { validated } = validateOuterAuthority(fixture);
-  return initialConsumptionRecord(fixture.authority, fixture.authorityBytes, {
-    ...validated,
-    authorityRecordCommit: "e".repeat(40),
-    approvalRecordPath: "project-context/evidence/acceptance/VF-10-13/test/user-approval.json",
-    authorityRecordPath:
-      "project-context/evidence/acceptance/VF-10-13/test/approved-authority.json",
+  return withApprovalValidatorReleaseTree(readFileSync(approvalValidatorPath), (releaseCommit) => {
+    const fixture = v3Fixture({ releaseSourceCommit: releaseCommit });
+    const { validated } = validateOuterAuthority(fixture);
+    const state = initialConsumptionRecord(fixture.authority, fixture.authorityBytes, {
+      ...validated,
+      authorityRecordCommit: "e".repeat(40),
+      approvalRecordPath: "project-context/evidence/acceptance/VF-10-13/test/user-approval.json",
+      authorityRecordPath:
+        "project-context/evidence/acceptance/VF-10-13/test/approved-authority.json",
+    });
+    // State mutations validate against the source-sealed executor identity. The V3 authority fixture
+    // intentionally hashes current dirty bytes so validateOuterAuthority can exercise future source;
+    // normalize only the derived state fixture back to the proposal-bound executor component.
+    state.full_live_executor_sha256 = EXACT_V3_RELEASE_COMPONENTS.full_live_executor.sha256;
+    return state;
   });
+}
+
+const exactCleanupSafetyOperationIds = [
+  "restore-endpoints-max-one",
+  "prove-zero-workers",
+  "read-settled-billing",
+  "reconcile-exact-resources",
+];
+
+function authorizeExactCleanupSafetyWork(state, { settle = true } = {}) {
+  for (const [index, operationId] of exactCleanupSafetyOperationIds.entries()) {
+    const workId = `${state.authority_id}:${operationId}`.toLowerCase();
+    authorizeCleanupWork(state, {
+      workId,
+      eventId: `${state.authority_id}:${operationId}:authorized`.toLowerCase(),
+    });
+    if (settle)
+      settleCleanupWork(state, {
+        workId,
+        eventId: `${state.authority_id}:${operationId}:settled`.toLowerCase(),
+        result: { proofSha256: proof(String(index + 1)) },
+      });
+  }
 }
 
 test("exact full-live approval schema binds proposal, caps, GPU, retention, and expiry", () => {
@@ -227,27 +343,82 @@ test("outer authority rejects the superseded unconsumed authority", () => {
   );
 });
 
-test("outer authority accepts a future exact V3 ref-authorized record", () => {
-  const fixture = v3Fixture();
-  const result = validateOuterAuthority(fixture);
-  assert.equal(
-    result.validated.proposalSchema,
-    "videoforge.v2-13-full-live-completion-proposal/v3",
+test("outer authority accepts only the exact approval validator bytes in the release tree", () => {
+  withApprovalValidatorReleaseTree(readFileSync(approvalValidatorPath), (releaseCommit) => {
+    const fixture = v3Fixture({ releaseSourceCommit: releaseCommit });
+    const result = validateOuterAuthority(fixture);
+    assert.equal(
+      result.validated.proposalSchema,
+      "videoforge.v2-13-full-live-completion-proposal/v3",
+    );
+    assert.equal(result.validated.releaseSourceCommit, releaseCommit);
+    assert.equal(result.validated.exactRuntimeRole, "videoforge_hosted_runtime");
+    assert.equal(result.validated.exactOperatorRole, "videoforge_hosted_operator");
+    assert.equal(
+      result.authority.github_release_ref.status,
+      "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
+    );
+  });
+});
+
+test("outer authority rejects wrong approval validator bytes in the exact release tree", () => {
+  withApprovalValidatorReleaseTree(Buffer.from("wrong validator bytes\n"), (releaseCommit) => {
+    const fixture = v3Fixture({ releaseSourceCommit: releaseCommit });
+    assert.throws(() => validateOuterAuthority(fixture), /APPROVAL_VALIDATOR_TREE_BYTES/u);
+  });
+});
+
+test("outer authority rejects a tree object supplied as the release commit", () => {
+  withApprovalValidatorReleaseTree(
+    readFileSync(approvalValidatorPath),
+    (_commit, _repository, tree) => {
+      const fixture = v3Fixture({ releaseSourceCommit: tree });
+      assert.throws(() => validateOuterAuthority(fixture), /APPROVAL_VALIDATOR_RELEASE_COMMIT/u);
+    },
   );
-  assert.equal(result.validated.exactRuntimeRole, "videoforge_hosted_runtime");
-  assert.equal(result.validated.exactOperatorRole, "videoforge_hosted_operator");
-  assert.equal(
-    result.authority.github_release_ref.status,
-    "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
+});
+
+test("outer authority rejects validator path drift before invoking the git runner", () => {
+  withApprovalValidatorReleaseTree(
+    readFileSync(approvalValidatorPath),
+    (releaseCommit, repository) => {
+      const fixture = v3Fixture({ releaseSourceCommit: releaseCommit });
+      fixture.authority.outer_orchestration.approval_schema_validator_path =
+        "deploy/v2-13/full-live-executor.mjs";
+      fixture.authorityBytes = Buffer.from(`${JSON.stringify(fixture.authority, null, 2)}\n`);
+      const tracePath = join(repository, "git-trace.log");
+      const oldGitTrace = process.env.GIT_TRACE;
+      process.env.GIT_TRACE = tracePath;
+      try {
+        assert.throws(() => validateOuterAuthority(fixture), /APPROVAL_VALIDATOR_TREE_BINDING/u);
+        assert.equal(existsSync(tracePath), false);
+      } finally {
+        if (oldGitTrace === undefined) delete process.env.GIT_TRACE;
+        else process.env.GIT_TRACE = oldGitTrace;
+      }
+    },
+  );
+});
+
+test("V3 approval cannot drift from the proposal-sealed static release descriptor", () => {
+  const fixture = v3Fixture();
+  const approval = JSON.parse(fixture.approvalBytes);
+  approval.static_release_descriptor.sha256 = proof("e");
+  assert.throws(
+    () =>
+      validateFullLiveUserApproval({
+        proposalBytes: fixture.proposalBytes,
+        approvalBytes: Buffer.from(`${JSON.stringify(approval)}\n`),
+        expectedProposalSha256: hash(fixture.proposalBytes),
+        expectedProposalRecordCommit: "f".repeat(40),
+        expectedReleaseSourceCommit: v3ReleaseSourceCommit,
+      }),
+    /STATIC_RELEASE_DESCRIPTOR_BINDING/u,
   );
 });
 
 test("approval validator policies match the active sealed proposal exactly", () => {
-  const activeProposal = JSON.parse(
-    readFileSync(
-      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
-    ),
-  );
+  const activeProposal = activeProposalFixture();
   assert.equal(
     JSON.stringify(activeProposal.exact_execution_graph.prequalification_database_bootstrap_policy),
     JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY),
@@ -410,7 +581,7 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.image_workflow_verification_policy.deadline_covers_trusted_time_subprocess_poll_subprocess_wait_download_and_evidence_validation = false;
     },
     (proposal) => {
-      proposal.exact_execution_graph.internal_materialization_policy.external_mid_run_writer_authorized = true;
+      proposal.exact_execution_graph.internal_materialization_policy.external_mid_run_writer_authorized = false;
     },
     (proposal) => {
       proposal.exact_execution_graph.internal_materialization_policy.records[1].materialize_after_operations.pop();
@@ -448,6 +619,11 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
         proposal.exact_execution_graph.internal_materialization_policy.cleanup_pre_endpoint_runtime.forbidden_inputs.filter(
           (field) => field !== "exactProductionInput",
         );
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.internal_materialization_policy.cleanup_receipt_finalizer.exact_child_fd_environment.push(
+        "RUNPOD_API_KEY_FD",
+      );
     },
     (proposal) => {
       proposal.exact_execution_graph.trusted_time_policy.caller_supplied_trusted_time_forbidden = false;
@@ -525,6 +701,9 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
     (proposal) => {
       proposal.exact_execution_graph.prequalification_bridge_policy.staged_full_preflight.bootstrap_receipt_cas_must_have_passed = false;
     },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_bridge_policy.v2_09_post_terminal_chrome_policy.schedule_exactly_once_before_chrome_request = false;
+    },
   ];
   for (const mutate of mutations) {
     const proposal = structuredClone(JSON.parse(fixture.proposalBytes));
@@ -586,6 +765,7 @@ test("V3 proposal binds durable prior-result materialization before each consume
       "max-one-endpoint-bindings",
       "activation-record",
       "promotion-record",
+      "post-consumption-command-payloads",
       "cleanup-pre-endpoint-descriptor",
     ],
   );
@@ -619,7 +799,7 @@ test("V3 proposal binds durable prior-result materialization before each consume
     "soulx_endpoint_hash_secret_sha256",
   ]);
   const cleanupDescriptor =
-    proposal.exact_execution_graph.internal_materialization_policy.records[4];
+    proposal.exact_execution_graph.internal_materialization_policy.records[5];
   assert.equal(cleanupDescriptor.cleanup_only, true);
   assert.equal(cleanupDescriptor.accepted_for_normal_or_acceptance_work, false);
   assert.deepEqual(cleanupDescriptor.ordered_output_names, [
@@ -637,6 +817,17 @@ test("V3 proposal binds durable prior-result materialization before each consume
   assert.equal(cleanupRuntime.forbidden_inputs.includes("exactProductionInput"), true);
   assert.equal(cleanupRuntime.forbidden_inputs.includes("runtime-database-url"), true);
   assert.equal(cleanupRuntime.forbidden_inputs.includes("reconciler-database-url"), true);
+  const cleanupReceiptFinalizer =
+    proposal.exact_execution_graph.internal_materialization_policy.cleanup_receipt_finalizer;
+  assert.equal(cleanupReceiptFinalizer.inside_existing_cleanup_operation, true);
+  assert.equal(cleanupReceiptFinalizer.adds_graph_operation, false);
+  assert.deepEqual(cleanupReceiptFinalizer.exact_child_fd_environment, [
+    "REQUEST_FD",
+    "OPERATOR_DATABASE_URL_FD",
+    "EVIDENCE_SIGNING_KEY_FD",
+  ]);
+  assert.equal(cleanupReceiptFinalizer.provider_clients_constructed, false);
+  assert.equal(cleanupReceiptFinalizer.recovery_readback_only, true);
   assert.deepEqual(
     proposal.exact_execution_graph.internal_materialization_policy.chain_record_exact_fields,
     [
@@ -699,7 +890,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     proposal.exact_execution_graph.crash_safe_cleanup_policy,
     EXACT_CRASH_SAFE_CLEANUP_POLICY,
   );
-  assert.equal(proposal.exact_execution_graph.ordered_operation_ids.length, 25);
+  assert.equal(proposal.exact_execution_graph.ordered_operation_ids.length, 26);
   assert.deepEqual(proposal.exact_execution_graph.ordered_operation_ids, EXACT_OPERATION_IDS);
   assert.deepEqual(proposal.exact_execution_graph.ordered_operation_ids.slice(7, 10), [
     "soulx-image-workflow-verification",
@@ -712,7 +903,8 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     exact_reconciler_role: "videoforge_hosted_reconciler",
     roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
     pgcrypto_required: true,
-    prequalification_database_bootstrap_operator_function_signature_count: 17,
+    prequalification_database_bootstrap_operator_function_signature_count:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signature_count,
     prequalification_database_bootstrap_operator_function_signature_namespace: "public",
     prequalification_database_bootstrap_operator_function_signature_canonicalization:
       "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
@@ -753,23 +945,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     },
     prequalification_database_bootstrap_recovery_mode_final_ledger_count: 45,
     exact_operator_function_signatures: [
-      "videoforge_load_v213_bridge_acceptance_call(jsonb)",
-      "videoforge_record_v213_stage_authority(uuid,jsonb)",
-      "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
-      "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
-      "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
-      "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
-      "videoforge_claim_v213_stage_authority(jsonb)",
-      "videoforge_complete_v213_stage_authority(text,text,jsonb)",
-      "videoforge_load_v213_stage_handoff(uuid,text,text)",
-      "videoforge_load_v213_cleanup_scope(uuid)",
-      "videoforge_claim_v213_operation(jsonb)",
-      "videoforge_transition_v213_operation(jsonb)",
-      "videoforge_claim_v213_bridge_command(jsonb)",
-      "videoforge_transition_v213_bridge_command(jsonb)",
-      "videoforge_record_v213_receipt_verification_key(text,text)",
-      "videoforge_publish_v213_qualified_deployments(jsonb)",
-      "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+      ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures,
     ],
     exact_initial_ledger_prefix_count: 36,
     exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45],
@@ -815,7 +991,10 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   const expectedSignatures = bootstrap.exact_operator_function_signatures
     .map(canonicalizeSignature)
     .sort();
-  assert.equal(grantedSignatures.length, 17);
+  assert.equal(
+    grantedSignatures.length,
+    EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signature_count,
+  );
   assert.equal(new Set(grantedSignatures).size, grantedSignatures.length);
   assert.deepEqual([...grantedSignatures].sort(), expectedSignatures);
   assert.match(grants, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"operator_role";/u);
@@ -1130,7 +1309,7 @@ test("single-use ledger enforces phase order, phase caps, cumulative cap, and no
   assert.throws(() => completePhase(state, "publication"), /RELEASE_REF_NOT_VERIFIED/u);
   recordVerifiedReleaseRef(state, {
     tagName: "videoforge-v2-13-release-20260826-v3",
-    targetCommit: v3ReleaseSourceCommit,
+    targetCommit: state.release_source_commit,
     eventId: "release-ref-readback-event-0001",
   });
   completePhase(state, "publication");
@@ -1206,10 +1385,7 @@ test("failure is terminal cleanup-only and cannot reopen a paid phase", () => {
   assert.equal(state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY");
   assert.throws(() => beginPhase(state, "publication"), /NOT_IN_PROGRESS/u);
   assert.throws(() => completeCleanupOnly(state), /CLEANUP_INCOMPLETE/u);
-  authorizeCleanupWork(state, {
-    workId: "cleanup-zero-worker-readback-0001",
-    eventId: "cleanup-authorize-event-0001",
-  });
+  authorizeExactCleanupSafetyWork(state, { settle: false });
   assert.throws(
     () =>
       recordCleanupProof(state, {
@@ -1221,14 +1397,17 @@ test("failure is terminal cleanup-only and cannot reopen a paid phase", () => {
       }),
     /CLEANUP_WORK_UNSETTLED/u,
   );
-  settleCleanupWork(state, {
-    workId: "cleanup-zero-worker-readback-0001",
-    eventId: "cleanup-settle-event-0001",
-  });
+  for (const operationId of exactCleanupSafetyOperationIds) {
+    settleCleanupWork(state, {
+      workId: `${state.authority_id}:${operationId}`.toLowerCase(),
+      eventId: `${state.authority_id}:${operationId}:settled`.toLowerCase(),
+      result: { proofSha256: proof("e") },
+    });
+  }
   assert.throws(
     () =>
       authorizeCleanupWork(state, {
-        workId: "cleanup-zero-worker-readback-0001",
+        workId: `${state.authority_id}:prove-zero-workers`.toLowerCase(),
         eventId: "cleanup-authorize-replay-0001",
       }),
     /REDISPATCH_OR_EVENT_REPLAY/u,
@@ -1242,7 +1421,79 @@ test("failure is terminal cleanup-only and cannot reopen a paid phase", () => {
   });
   completeCleanupOnly(state);
   assert.equal(state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
-  assert.deepEqual(state.cleanup_proof.cleanup_work_ids, ["cleanup-zero-worker-readback-0001"]);
+  assert.deepEqual(
+    state.cleanup_proof.cleanup_work_ids,
+    exactCleanupSafetyOperationIds
+      .map((operationId) => `${state.authority_id}:${operationId}`.toLowerCase())
+      .sort(),
+  );
+});
+
+test("release certification is a separate record after the exact four-work cleanup proof", () => {
+  const state = freshStateFixture();
+  assert.equal(state.schema_version, "videoforge.v2-13-full-live-orchestration-consumption/v2");
+  assert.equal(state.release_certification, null);
+  for (const [phaseName] of PHASES) state.phases[phaseName].state = "COMPLETE";
+  state.current_phase_index = PHASES.length - 1;
+  state.phases.cleanup_and_reconciliation.state = "ACTIVE";
+  for (const operationId of exactCleanupSafetyOperationIds) {
+    const workId = `${state.authority_id}:${operationId}`.toLowerCase();
+    authorizeWork(state, {
+      phaseName: "cleanup_and_reconciliation",
+      workId,
+      reservationUsd: 0,
+      eventId: `${state.authority_id}:${operationId}:authorized`.toLowerCase(),
+    });
+    settleWork(state, {
+      phaseName: "cleanup_and_reconciliation",
+      workId,
+      actualUsd: 0,
+      eventId: `${state.authority_id}:${operationId}:settled`.toLowerCase(),
+      result: { proofSha256: proof("a") },
+    });
+  }
+  recordCleanupProof(state, {
+    zeroWorkerProofSha256: proof("a"),
+    billingProofSha256: proof("b"),
+    resourceProofSha256: proof("c"),
+    maxOneProofSha256: proof("d"),
+    eventId: `${state.authority_id}:cleanup-proof:verified`.toLowerCase(),
+  });
+  const result = { schemaVersion: "videoforge.v213-final-release-certification-result/v1" };
+  const certificationWorkId = `${state.authority_id}:certify-v2-13-release`.toLowerCase();
+  authorizeReleaseCertification(state, {
+    workId: certificationWorkId,
+    eventId: `${certificationWorkId}:authorized`,
+  });
+  assert.equal(state.release_certification.state, "AUTHORIZED_ONCE_RECONCILIATION_ONLY");
+  assert.equal(state.work_ids.includes(certificationWorkId), true);
+  assert.throws(
+    () => completePhase(state, "cleanup_and_reconciliation"),
+    /RELEASE_CERTIFICATION_REQUIRED/u,
+  );
+  settleReleaseCertification(state, {
+    workId: certificationWorkId,
+    result,
+    eventId: `${certificationWorkId}:settled`,
+  });
+  assert.equal(state.cleanup_proof.cleanup_work_ids.length, 4);
+  assert.equal(
+    state.cleanup_proof.cleanup_work_ids.includes(
+      `${state.authority_id}:certify-v2-13-release`.toLowerCase(),
+    ),
+    false,
+  );
+  assert.equal(state.release_certification.settled_result, result);
+  assert.equal(state.release_certification.state, "SETTLED_TERMINAL");
+  assert.throws(
+    () =>
+      authorizeReleaseCertification(state, {
+        workId: certificationWorkId,
+        result,
+        eventId: `${certificationWorkId}:authorized`,
+      }),
+    /RELEASE_CERTIFICATION_REPLAY/u,
+  );
 });
 
 test("state storage requires mode-0700 real directory, mode-0600 file, and exact prior hash", () => {
@@ -1338,8 +1589,9 @@ test("forged terminal state is rejected and every normal mutation stays closed",
     fixture.authorityBytes,
     recordValidated,
   );
+  forged.full_live_executor_sha256 = EXACT_V3_RELEASE_COMPONENTS.full_live_executor.sha256;
   forged.state = "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY";
-  forged.terminal = "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_MAX_ONE";
+  forged.terminal = "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED";
   assert.throws(() => validateState(forged), /CLEANUP_COMPLETE_STATE_INVARIANT/u);
   assert.throws(() => beginPhase(forged, "publication"), /CLEANUP_COMPLETE_STATE_INVARIANT/u);
 
@@ -1348,11 +1600,13 @@ test("forged terminal state is rejected and every normal mutation stays closed",
     fixture.authorityBytes,
     recordValidated,
   );
+  terminal.full_live_executor_sha256 = EXACT_V3_RELEASE_COMPONENTS.full_live_executor.sha256;
   beginPhase(terminal, "publication");
   enterCleanupOnly(terminal, {
     failureCode: "RELEASE_REF_COLLISION",
     eventId: "cleanup-entry-event-terminal-0001",
   });
+  authorizeExactCleanupSafetyWork(terminal);
   recordCleanupProof(terminal, {
     zeroWorkerProofSha256: `sha256:${"a".repeat(64)}`,
     billingProofSha256: `sha256:${"b".repeat(64)}`,

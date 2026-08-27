@@ -335,4 +335,4 @@ class SignReceiptTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    envelope_body_bytes,
+    (envelope_body_bytes,)

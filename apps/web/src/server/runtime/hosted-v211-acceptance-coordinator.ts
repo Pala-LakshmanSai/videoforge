@@ -7,7 +7,7 @@ export type HostedV211AcceptanceErrorCode =
   | "V211_FAIRNESS_INVALID"
   | "V211_CAPACITY_INVALID"
   | "V211_FAKE_TRANSPORT_FORBIDDEN"
-  | "V211_READER_INVALID"
+  | "V211_PROVENANCE_INVALID"
   | "V211_OUTPUT_NOT_DURABLE"
   | "V211_MAX1_RESTORE_INVALID"
   | "V211_EVIDENCE_INVALID"
@@ -23,6 +23,7 @@ export class HostedV211AcceptanceError extends Error {
 export interface HostedV211VerifiedAttemptEvidence {
   readonly accountId: string;
   readonly workspaceId: string;
+  readonly generationRequestId: string;
   readonly lane: ServerlessLane;
   readonly attemptId: string;
   readonly providerJobId: string;
@@ -38,17 +39,20 @@ export interface HostedV211VerifiedAttemptEvidence {
   readonly barrierOutcome: "LANE_COMPLETED";
   readonly barrierAcceptanceSha256: Sha256;
   readonly durableOutputReceiptSha256: Sha256;
-  readonly readerId: string;
-  readonly readerReceiptSha256: Sha256;
-  readonly readerState: "SUCCEEDED";
-  readonly readerDeploymentId: string;
-  readonly readerVolumeIdSha256: Sha256;
-  readonly readerVolumeManifestSha256: Sha256;
-  readonly readerMountPath: "/runpod-volume";
-  readonly readerReadOnlyMount: true;
-  readonly readerCrossMountDetected: false;
-  readonly readerStartedAt: string;
-  readonly readerCompletedAt: string;
+  readonly workerId: string;
+  readonly provenanceReceiptSha256: Sha256;
+  readonly provenanceReceiptHmacVerified: true;
+  readonly volumeManifestSha256Before: Sha256;
+  readonly volumeManifestSha256After: Sha256;
+  readonly volumeMutationDetected: false;
+  readonly crossMountDetected: false;
+  readonly scratchRemoved: true;
+  readonly scratchOnModelVolume: false;
+  /** Exact `provider_progress.observed_at` for a persisted `IN_PROGRESS` row. */
+  readonly providerProgressState: "IN_PROGRESS";
+  readonly providerProgressObservedAt: string;
+  /** Exact terminal timestamp persisted on the bound attempt row. */
+  readonly attemptTerminalAt: string;
 }
 
 export interface HostedV211VerifiedEvidence {
@@ -65,9 +69,7 @@ export interface HostedV211VerifiedEvidence {
       readonly accountId: string;
       readonly workspaceId: string;
       readonly waitingVideoCountBefore: number;
-      readonly waitingPreviewCountBefore: number;
       readonly activeVideoCountAfter: number;
-      readonly waitingPreviewCountAfter: number;
     }[];
     readonly promotions: readonly {
       readonly accountId: string;
@@ -79,6 +81,52 @@ export interface HostedV211VerifiedEvidence {
     readonly activeAccountIds: readonly string[];
     readonly settlementPromotedRequestIds: readonly string[];
     readonly finalActiveLeaseCount: number;
+    readonly scenario: {
+      readonly primaryGenerationRequestId: string;
+      readonly primaryProjectId: string;
+      readonly primaryProjectRevisionId: string;
+      readonly secondaryGenerationRequestId: string;
+      readonly secondaryProjectId: string;
+      readonly secondaryProjectRevisionId: string;
+      readonly sameAccountWaiter: {
+        readonly accountId: string;
+        readonly workspaceId: string;
+        readonly projectId: string;
+        readonly projectRevisionId: string;
+        readonly generationRequestId: string;
+        readonly waitingObserved: true;
+        readonly queueAuditReceiptSha256: Sha256;
+      };
+      readonly fairnessProbe: {
+        readonly accountId: string;
+        readonly workspaceId: string;
+        readonly projectId: string;
+        readonly projectRevisionId: string;
+        readonly generationRequestId: string;
+        readonly waitingObserved: true;
+        readonly queueAuditReceiptSha256: Sha256;
+      };
+      readonly fairPromotion: {
+        readonly generationRequestId: string;
+        readonly promotionReceiptSha256: Sha256;
+        readonly sameAccountWaiterRemainedWaiting: true;
+      };
+      readonly cancellationRecovery: {
+        readonly cancelAuthorizationReceiptSha256: Sha256;
+        readonly cancelReconciliationReceiptSha256: Sha256;
+        readonly providerDispatchFenced: boolean;
+        readonly providerRaceReconciled: boolean;
+        readonly providerRaceActualUsd: number;
+        readonly providerRaceJobId: string | null;
+        readonly providerRaceReceiptSha256: Sha256 | null;
+        readonly terminalState: "CANCELLED";
+        readonly activeLeaseAbsent: true;
+      };
+      readonly tenantIsolation: {
+        readonly denied: true;
+        readonly denialReceiptSha256: Sha256;
+      };
+    };
   };
   readonly lanes: Readonly<
     Record<
@@ -96,16 +144,17 @@ export interface HostedV211VerifiedEvidence {
           readonly configuredMaxWorkers: 2;
           readonly activeWorkers: 2;
           readonly qualification: "MAX2_VERIFIED";
+          readonly policyReceiptSha256: Sha256;
         };
         readonly restored: {
           readonly configuredMaxWorkers: 1;
           readonly activeWorkers: 0;
           readonly qualification: "MAX1_VERIFIED";
+          readonly policyReceiptSha256: Sha256;
         };
         readonly volumeReadback: {
-          readonly mountPath: "/runpod-volume";
-          readonly readOnly: true;
           readonly crossMountDetected: false;
+          readonly mutationDetected: false;
           readonly manifestSha256Before: Sha256;
           readonly manifestSha256After: Sha256;
         };
@@ -126,7 +175,7 @@ export interface HostedV211AcceptanceResult {
   readonly liveAcceptanceClaimed: false;
   readonly accountIds: readonly [string, string];
   readonly activeSlots: readonly [1 | 2, 1 | 2];
-  readonly readerIds: readonly [string, string, string, string];
+  readonly provenanceReceiptSha256s: readonly [Sha256, Sha256, Sha256, Sha256];
   readonly durableOutputReceiptSha256s: readonly [Sha256, Sha256, Sha256, Sha256];
   readonly terminalProviderJobIds: readonly [string, string, string, string];
   readonly restoredMaxWorkers: 1;
@@ -157,8 +206,36 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-function exactLineage(lineage: HostedQualificationLineage): boolean {
+function exactLineage(lineage: HostedQualificationLineage, lane: ServerlessLane): boolean {
+  const expectedKeys = [
+    "acceptanceContractSha256",
+    "endpointConfigSha256",
+    "endpointIdSha256",
+    "endpointTemplateIdSha256",
+    "fullLiveAuthorityId",
+    "gpu",
+    "imageSourceCommit",
+    "modelManifestSha256",
+    "productionStageAuthorityId",
+    "qualificationHandoffSha256",
+    "qualificationSourceSha256",
+    "receiptSha256s",
+    "region",
+    "schemaVersion",
+    "stageAuthorityId",
+    "volumeIdSha256",
+    "volumeManifestSha256",
+    "workerImageDigest",
+  ];
+  const receiptCount = lane === "mage_image" ? 1 : 4;
   return (
+    Object.keys(lineage).sort().join(",") === expectedKeys.sort().join(",") &&
+    lineage.schemaVersion === "videoforge.v213-qualified-deployment-lineage/v1" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+      lineage.fullLiveAuthorityId,
+    ) &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{7,319}$/u.test(lineage.stageAuthorityId) &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{7,319}$/u.test(lineage.productionStageAuthorityId) &&
     lineage.region === "EU-RO-1" &&
     lineage.gpu === "NVIDIA GeForce RTX 4090" &&
     /^[0-9a-f]{40}$/u.test(lineage.imageSourceCommit) &&
@@ -170,14 +247,16 @@ function exactLineage(lineage: HostedQualificationLineage): boolean {
       lineage.modelManifestSha256,
       lineage.volumeIdSha256,
       lineage.volumeManifestSha256,
+      lineage.qualificationHandoffSha256,
       lineage.qualificationSourceSha256,
-      lineage.dependencyLockSha256,
       lineage.acceptanceContractSha256,
-      lineage.max1GateConfigSha256,
-      lineage.max1EndpointProfileSha256,
-      lineage.max2GateConfigSha256,
-      lineage.max2EndpointProfileSha256,
-    ].every(validSha)
+    ].every(validSha) &&
+    lineage.qualificationSourceSha256 === lineage.qualificationHandoffSha256 &&
+    lineage.acceptanceContractSha256 === lineage.qualificationHandoffSha256 &&
+    Array.isArray(lineage.receiptSha256s) &&
+    lineage.receiptSha256s.length === receiptCount &&
+    new Set(lineage.receiptSha256s).size === receiptCount &&
+    lineage.receiptSha256s.every(validSha)
   );
 }
 
@@ -187,21 +266,23 @@ function exactLaneEvidence(verified: HostedV211VerifiedEvidence): boolean {
     return (
       evidence.deploymentId.length > 0 &&
       validSha(evidence.qualificationArtifactSha256) &&
-      exactLineage(evidence.lineage) &&
+      exactLineage(evidence.lineage, lane) &&
       evidence.baseline.configuredMaxWorkers === 1 &&
       evidence.baseline.activeWorkers === 0 &&
       evidence.baseline.qualification === "MAX1_VERIFIED" &&
       evidence.active.configuredMaxWorkers === 2 &&
       evidence.active.activeWorkers === 2 &&
       evidence.active.qualification === "MAX2_VERIFIED" &&
+      validSha(evidence.active.policyReceiptSha256) &&
       evidence.restored.configuredMaxWorkers === 1 &&
       evidence.restored.activeWorkers === 0 &&
       evidence.restored.qualification === "MAX1_VERIFIED" &&
-      evidence.volumeReadback.mountPath === "/runpod-volume" &&
-      evidence.volumeReadback.readOnly === true &&
+      validSha(evidence.restored.policyReceiptSha256) &&
       evidence.volumeReadback.crossMountDetected === false &&
+      evidence.volumeReadback.mutationDetected === false &&
       evidence.volumeReadback.manifestSha256Before === evidence.lineage.volumeManifestSha256 &&
-      evidence.volumeReadback.manifestSha256After === evidence.lineage.volumeManifestSha256
+      evidence.volumeReadback.manifestSha256After === evidence.lineage.volumeManifestSha256 &&
+      evidence.volumeReadback.manifestSha256Before === evidence.volumeReadback.manifestSha256After
     );
   });
 }
@@ -211,11 +292,13 @@ function intervalsOverlap(
   right: HostedV211VerifiedAttemptEvidence,
   verifiedAt: number,
 ): boolean {
-  const leftStart = timestamp(left.readerStartedAt);
-  const leftEnd = timestamp(left.readerCompletedAt);
-  const rightStart = timestamp(right.readerStartedAt);
-  const rightEnd = timestamp(right.readerCompletedAt);
+  const leftStart = timestamp(left.providerProgressObservedAt);
+  const leftEnd = timestamp(left.attemptTerminalAt);
+  const rightStart = timestamp(right.providerProgressObservedAt);
+  const rightEnd = timestamp(right.attemptTerminalAt);
   return (
+    left.providerProgressState === "IN_PROGRESS" &&
+    right.providerProgressState === "IN_PROGRESS" &&
     leftStart !== null &&
     leftEnd !== null &&
     rightStart !== null &&
@@ -289,11 +372,7 @@ export async function evaluateHostedV211Groundwork(input: {
         !account.workspaceId ||
         !Number.isSafeInteger(account.waitingVideoCountBefore) ||
         account.waitingVideoCountBefore < 1 ||
-        !Number.isSafeInteger(account.waitingPreviewCountBefore) ||
-        account.waitingPreviewCountBefore < 1 ||
-        account.activeVideoCountAfter !== 1 ||
-        !Number.isSafeInteger(account.waitingPreviewCountAfter) ||
-        account.waitingPreviewCountAfter < 1,
+        account.activeVideoCountAfter !== 1,
     )
   ) {
     reject("V211_ACCOUNTS_NOT_EXACT");
@@ -318,6 +397,81 @@ export async function evaluateHostedV211Groundwork(input: {
     reject("V211_FAIRNESS_INVALID");
   }
 
+  const primaryPromotion = promotions.find((promotion) => promotion.slot === 1)!;
+  const secondaryPromotion = promotions.find((promotion) => promotion.slot === 2)!;
+  const scenario = verified.admission.scenario;
+  const waiter = scenario?.sameAccountWaiter;
+  const fairness = scenario?.fairnessProbe;
+  const cancellation = scenario?.cancellationRecovery;
+  if (
+    !scenario ||
+    !scenario.primaryGenerationRequestId ||
+    !scenario.primaryProjectId ||
+    !scenario.primaryProjectRevisionId ||
+    !scenario.secondaryGenerationRequestId ||
+    !scenario.secondaryProjectId ||
+    !scenario.secondaryProjectRevisionId ||
+    !waiter ||
+    waiter.accountId !== primaryPromotion.accountId ||
+    waiter.workspaceId !== primaryPromotion.workspaceId ||
+    waiter.projectId !== scenario.primaryProjectId ||
+    waiter.projectRevisionId !== scenario.primaryProjectRevisionId ||
+    !waiter.generationRequestId ||
+    waiter.waitingObserved !== true ||
+    !validSha(waiter.queueAuditReceiptSha256) ||
+    !fairness ||
+    !fairness.accountId ||
+    !fairness.workspaceId ||
+    !fairness.projectId ||
+    !fairness.projectRevisionId ||
+    !fairness.generationRequestId ||
+    fairness.waitingObserved !== true ||
+    !validSha(fairness.queueAuditReceiptSha256) ||
+    new Set([primaryPromotion.accountId, secondaryPromotion.accountId, fairness.accountId]).size !==
+      3 ||
+    new Set([primaryPromotion.workspaceId, secondaryPromotion.workspaceId, fairness.workspaceId])
+      .size !== 3 ||
+    new Set([scenario.primaryProjectId, scenario.secondaryProjectId, fairness.projectId]).size !==
+      3 ||
+    new Set([
+      scenario.primaryProjectRevisionId,
+      scenario.secondaryProjectRevisionId,
+      fairness.projectRevisionId,
+    ]).size !== 3 ||
+    new Set([
+      scenario.primaryGenerationRequestId,
+      scenario.secondaryGenerationRequestId,
+      waiter.generationRequestId,
+      fairness.generationRequestId,
+    ]).size !== 4 ||
+    scenario.fairPromotion?.generationRequestId !== fairness.generationRequestId ||
+    !validSha(scenario.fairPromotion?.promotionReceiptSha256 ?? "") ||
+    scenario.fairPromotion?.sameAccountWaiterRemainedWaiting !== true ||
+    !cancellation ||
+    !validSha(cancellation.cancelAuthorizationReceiptSha256) ||
+    !validSha(cancellation.cancelReconciliationReceiptSha256) ||
+    cancellation.terminalState !== "CANCELLED" ||
+    cancellation.activeLeaseAbsent !== true ||
+    !Number.isFinite(cancellation.providerRaceActualUsd) ||
+    cancellation.providerRaceActualUsd < 0 ||
+    cancellation.providerRaceActualUsd > 4 ||
+    (cancellation.providerDispatchFenced === true &&
+      (cancellation.providerRaceReconciled !== false ||
+        cancellation.providerRaceActualUsd !== 0 ||
+        cancellation.providerRaceJobId !== null ||
+        cancellation.providerRaceReceiptSha256 !== null)) ||
+    (cancellation.providerDispatchFenced === false &&
+      (cancellation.providerRaceReconciled !== true ||
+        !cancellation.providerRaceJobId ||
+        !validSha(cancellation.providerRaceReceiptSha256 ?? ""))) ||
+    (cancellation.providerDispatchFenced !== true &&
+      cancellation.providerDispatchFenced !== false) ||
+    scenario.tenantIsolation?.denied !== true ||
+    !validSha(scenario.tenantIsolation?.denialReceiptSha256 ?? "")
+  ) {
+    reject("V211_FAIRNESS_INVALID");
+  }
+
   if (verified.attempts.length !== 4) reject("V211_OUTPUT_NOT_DURABLE");
   const expectedPairs = accounts.flatMap((account) =>
     REQUIRED_LANES.map((lane) => `${account.accountId}:${account.workspaceId}:${lane}`),
@@ -332,8 +486,8 @@ export async function evaluateHostedV211Groundwork(input: {
     verified.attempts.map((attempt) => attempt.expectedObjectSetSha256),
     verified.attempts.map((attempt) => attempt.barrierAcceptanceSha256),
     verified.attempts.map((attempt) => attempt.durableOutputReceiptSha256),
-    verified.attempts.map((attempt) => attempt.readerId),
-    verified.attempts.map((attempt) => attempt.readerReceiptSha256),
+    verified.attempts.map((attempt) => attempt.workerId),
+    verified.attempts.map((attempt) => attempt.provenanceReceiptSha256),
   ];
   if (
     new Set(actualPairs).size !== 4 ||
@@ -342,6 +496,19 @@ export async function evaluateHostedV211Groundwork(input: {
   ) {
     reject("V211_OUTPUT_NOT_DURABLE");
   }
+
+  if (
+    verified.attempts.some((attempt) => {
+      const expectedGenerationRequestId =
+        attempt.accountId === primaryPromotion.accountId
+          ? scenario.primaryGenerationRequestId
+          : attempt.accountId === secondaryPromotion.accountId
+            ? scenario.secondaryGenerationRequestId
+            : null;
+      return attempt.generationRequestId !== expectedGenerationRequestId;
+    })
+  )
+    reject("V211_LINEAGE_DRIFT");
 
   for (const attempt of verified.attempts) {
     const lane = verified.lanes[attempt.lane];
@@ -363,28 +530,30 @@ export async function evaluateHostedV211Groundwork(input: {
         attempt.expectedObjectSetSha256,
         attempt.barrierAcceptanceSha256,
         attempt.durableOutputReceiptSha256,
-        attempt.readerReceiptSha256,
+        attempt.provenanceReceiptSha256,
       ].every(validSha)
     ) {
       reject("V211_OUTPUT_NOT_DURABLE");
     }
     if (
-      attempt.readerState !== "SUCCEEDED" ||
-      attempt.readerDeploymentId !== lane.deploymentId ||
-      attempt.readerVolumeIdSha256 !== lane.lineage.volumeIdSha256 ||
-      attempt.readerVolumeManifestSha256 !== lane.lineage.volumeManifestSha256 ||
-      attempt.readerMountPath !== "/runpod-volume" ||
-      attempt.readerReadOnlyMount !== true ||
-      attempt.readerCrossMountDetected !== false
+      !attempt.workerId ||
+      attempt.provenanceReceiptHmacVerified !== true ||
+      attempt.volumeManifestSha256Before !== lane.lineage.volumeManifestSha256 ||
+      attempt.volumeManifestSha256After !== lane.lineage.volumeManifestSha256 ||
+      attempt.volumeManifestSha256Before !== attempt.volumeManifestSha256After ||
+      attempt.volumeMutationDetected !== false ||
+      attempt.crossMountDetected !== false ||
+      attempt.scratchRemoved !== true ||
+      attempt.scratchOnModelVolume !== false
     ) {
-      reject("V211_READER_INVALID");
+      reject("V211_PROVENANCE_INVALID");
     }
   }
 
   for (const lane of REQUIRED_LANES) {
-    const readers = verified.attempts.filter((attempt) => attempt.lane === lane);
-    if (readers.length !== 2 || !intervalsOverlap(readers[0]!, readers[1]!, verifiedAt)) {
-      reject("V211_READER_INVALID");
+    const attempts = verified.attempts.filter((attempt) => attempt.lane === lane);
+    if (attempts.length !== 2 || !intervalsOverlap(attempts[0]!, attempts[1]!, verifiedAt)) {
+      reject("V211_PROVENANCE_INVALID");
     }
   }
 
@@ -410,12 +579,9 @@ export async function evaluateHostedV211Groundwork(input: {
       1 | 2,
       1 | 2,
     ],
-    readerIds: Object.freeze(verified.attempts.map((attempt) => attempt.readerId)) as readonly [
-      string,
-      string,
-      string,
-      string,
-    ],
+    provenanceReceiptSha256s: Object.freeze(
+      verified.attempts.map((attempt) => attempt.provenanceReceiptSha256),
+    ) as readonly [Sha256, Sha256, Sha256, Sha256],
     durableOutputReceiptSha256s: Object.freeze(
       verified.attempts.map((attempt) => attempt.durableOutputReceiptSha256),
     ) as readonly [Sha256, Sha256, Sha256, Sha256],

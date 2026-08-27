@@ -20,13 +20,18 @@ import {
   createGitReleaseAdapters,
   createGuardedActivationAdapter,
   createWorkflowStartAuthorityAdapter,
+  createProtectedWorkflowStartAuthorityAdapter,
+  createPostConsumptionMaterializationProducer,
+  postConsumptionResponseHmac,
   createProtectedInputMaterializer,
   createStagedQualificationAdapters,
   createTypeScriptBridgeAdapters,
+  createReleaseCertificationAdapter,
   createV213AcceptanceAdapters,
   createV213DurableStageStore,
   createGithubDispatchAdapters,
   createGithubVerificationAdapters,
+  hashV213DryOutputBundle,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
   readAuthenticatedGithubTime,
   TAG,
@@ -69,6 +74,370 @@ const preEndpointSecrets = () => ({
   pairProviderProofKeyHex: Buffer.alloc(32, 6).toString("hex"),
   pairProviderProofKeyId: "proof-key",
 });
+
+const staticReleaseDescriptorFixture = () => {
+  const fact = (gate, claims, metrics) => ({
+    gate,
+    sourceEvidenceSha256: hash(Buffer.from(`static-source-${gate}`)),
+    observerId: `independent-auditor-${gate}`,
+    evidencePath: `project-context/evidence/acceptance/VF-10-13/${gate}.json`,
+    evidenceClass: "INDEPENDENT_RELEASE_AUDIT",
+    observedAt: "2026-08-28T09:55:00.000Z",
+    fixtureOrFakeTransportUsed: false,
+    claims,
+    metrics,
+  });
+  const unsigned = {
+    schemaVersion: "videoforge.v213-static-release-descriptor/v1",
+    sourceCommit,
+    productionUrlSha256: hash(Buffer.from("production-url")),
+    contractBundleSha256: hash(Buffer.from("contract-bundle")),
+    auditFacts: {
+      operations_runbooks_ready: fact(
+        "operations_runbooks_ready",
+        ["stuck_job_runbook", "provider_outage_runbook", "billing_runbook", "rollback_runbook"],
+        {
+          stuckJobRunbookSha256: hash(Buffer.from("stuck-runbook")),
+          providerOutageRunbookSha256: hash(Buffer.from("provider-runbook")),
+          billingRunbookSha256: hash(Buffer.from("billing-runbook")),
+          rollbackRunbookSha256: hash(Buffer.from("rollback-runbook")),
+        },
+      ),
+      backup_restore_ready: fact(
+        "backup_restore_ready",
+        [
+          "backup_readback_passed",
+          "restore_evidence_accepted",
+          "schema_migration_disposition_recorded",
+        ],
+        {
+          backupReadbackPassed: true,
+          restoreEvidenceAccepted: true,
+          schemaMigrationDisposition: "DISPOSABLE_RESTORE_COMPLETED",
+        },
+      ),
+      security_clear: fact(
+        "security_clear",
+        [
+          "p0_zero",
+          "p1_zero",
+          "auth_tenant_boundary_passed",
+          "ssrf_path_upload_boundary_passed",
+          "secret_log_scan_passed",
+          "cost_amplification_guards_passed",
+          "legacy_runtime_bundle_scan_passed",
+        ],
+        {
+          p0Count: 0,
+          p1Count: 0,
+          authTenantPassed: true,
+          ssrfPathUploadPassed: true,
+          secretLogScanPassed: true,
+          costAmplificationGuardsPassed: true,
+          legacyRuntimeBundleScanPassed: true,
+        },
+      ),
+      production_transport_real: fact(
+        "production_transport_real",
+        [
+          "hosted_client_api_truth",
+          "fixture_controls_absent",
+          "fake_gpu_absent",
+          "fake_transport_absent",
+          "manual_pod_controls_absent",
+          "legacy_dispatch_exports_absent",
+        ],
+        {
+          hostedClientApiTruth: true,
+          fixtureControlsInBundle: false,
+          fakeGpuProfileInBundle: false,
+          fakeTransportInBundle: false,
+          manualPodControlsInBundle: false,
+          legacyDispatchExportsInBundle: false,
+        },
+      ),
+    },
+  };
+  return { ...unsigned, descriptorSha256: hash(Buffer.from(canonicalJson(unsigned))) };
+};
+
+const workflowMaterializationFixture = () => {
+  const staticReleaseDescriptor = staticReleaseDescriptorFixture();
+  const materializationState = {
+    ...state,
+    authority_id: "outer-authority",
+    state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
+    authority_sha256: hash(Buffer.from("outer-authority-record")),
+    proposal_sha256: hash(Buffer.from("proposal")),
+    approval_sha256: hash(Buffer.from("approval")),
+    full_live_executor_sha256: hash(Buffer.from("executor")),
+    static_release_descriptor_sha256: staticReleaseDescriptor.descriptorSha256,
+  };
+  const outerStateSha256 = hash(Buffer.from("outer-state"));
+  const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
+  const workflowAuthorityId = "22222222-2222-4222-8222-222222222222";
+  const tokenSha256 = hash(Buffer.from("workflow-token"));
+  const identity = {
+    accountId: "10000000-0000-4000-8000-000000000001",
+    workspaceId: "10000000-0000-4000-8000-000000000002",
+    projectId: "10000000-0000-4000-8000-000000000003",
+    projectRevisionId: "10000000-0000-4000-8000-000000000004",
+    generationRequestId: "10000000-0000-4000-8000-000000000005",
+  };
+  const secondaryIdentity = {
+    accountId: "20000000-0000-4000-8000-000000000001",
+    workspaceId: "20000000-0000-4000-8000-000000000002",
+    projectId: "20000000-0000-4000-8000-000000000003",
+    projectRevisionId: "20000000-0000-4000-8000-000000000004",
+    generationRequestId: "20000000-0000-4000-8000-000000000005",
+  };
+  const fairnessProbeIdentity = {
+    accountId: "30000000-0000-4000-8000-000000000001",
+    workspaceId: "30000000-0000-4000-8000-000000000002",
+    projectId: "30000000-0000-4000-8000-000000000003",
+    projectRevisionId: "30000000-0000-4000-8000-000000000004",
+    generationRequestId: "30000000-0000-4000-8000-000000000005",
+  };
+  const sameAccountWaiterIdentity = {
+    accountId: identity.accountId,
+    workspaceId: identity.workspaceId,
+    projectId: identity.projectId,
+    projectRevisionId: identity.projectRevisionId,
+    generationRequestId: "10000000-0000-4000-8000-000000000006",
+  };
+  const materialization = {
+    schemaVersion: "videoforge.v213-post-consumption-materialization/v4",
+    fullLiveAuthorityId,
+    materializedAfterOuterConsumption: true,
+    outerStateSha256,
+    sourceCommit,
+    proposalSha256: materializationState.proposal_sha256,
+    approvalSha256: materializationState.approval_sha256,
+    staticReleaseDescriptorSha256: staticReleaseDescriptor.descriptorSha256,
+    workerOperatorBearerSha256: hash(Buffer.from("worker-operator-bearer")),
+    roleScopedIdentities: {
+      primary: identity,
+      sameAccountWaiter: sameAccountWaiterIdentity,
+      secondary: secondaryIdentity,
+      fairnessProbe: fairnessProbeIdentity,
+    },
+    workflowStartAuthority: {
+      workflowAuthorityId,
+      authorityId: fullLiveAuthorityId,
+      tokenSha256,
+      expiresAt: materializationState.expires_at,
+    },
+  };
+  materialization.materializationSha256 = hash(Buffer.from(canonicalJson(materialization)));
+  return {
+    materialization,
+    materializationState,
+    outerStateSha256,
+    staticReleaseDescriptor,
+    workflowAuthorityId,
+  };
+};
+
+const workflowAuthorityDatabase = ({
+  fixture,
+  replayRow,
+  throwInsert = false,
+  dynamicAuthority = false,
+}) => {
+  const calls = [];
+  let startReads = 0;
+  let startInserts = 0;
+  let insertedAuthority;
+  const database = {
+    async query(sql, parameters = []) {
+      calls.push({ sql, parameters });
+      if (sql.startsWith('SELECT id::text AS "workflowAuthorityId"')) {
+        startReads += 1;
+        if (startReads === 1 && replayRow === undefined) return { rows: [] };
+        return {
+          rows: [
+            replayRow ??
+              insertedAuthority ?? {
+                workflowAuthorityId: fixture.workflowAuthorityId,
+                authorityId: fixture.materialization.fullLiveAuthorityId,
+                tokenSha256: fixture.materialization.workflowStartAuthority.tokenSha256,
+                expiresAt: fixture.materialization.workflowStartAuthority.expiresAt,
+              },
+          ],
+        };
+      }
+      if (sql.startsWith("SELECT public.videoforge_record_v213_workflow_start_authority")) {
+        startInserts += 1;
+        insertedAuthority = dynamicAuthority
+          ? {
+              workflowAuthorityId: parameters[0],
+              authorityId: parameters[1],
+              tokenSha256: parameters[2],
+              expiresAt: parameters[3],
+            }
+          : undefined;
+        if (throwInsert) throw new Error("transport lost after commit");
+        return {
+          rows: [
+            {
+              authority: {
+                authorityId: insertedAuthority?.workflowAuthorityId ?? fixture.workflowAuthorityId,
+                tokenSha256:
+                  insertedAuthority?.tokenSha256 ??
+                  fixture.materialization.workflowStartAuthority.tokenSha256,
+                expiresAt:
+                  insertedAuthority?.expiresAt ??
+                  fixture.materialization.workflowStartAuthority.expiresAt,
+              },
+            },
+          ],
+        };
+      }
+      if (sql.startsWith("SELECT public.videoforge_record_v213_static_release_descriptor")) {
+        const supplied = JSON.parse(parameters[0]);
+        return { rows: [{ descriptor: { descriptorSha256: supplied.descriptorSha256 } }] };
+      }
+      assert.equal(
+        sql,
+        "SELECT public.videoforge_record_v213_acceptance_authority($1::jsonb) AS authority",
+      );
+      const supplied = JSON.parse(parameters[0]);
+      return {
+        rows: [
+          {
+            authority: {
+              checkpoint: supplied.document.checkpoint,
+              requestSha256: supplied.document.requestSha256,
+              expiresAt: supplied.expiresAt,
+            },
+          },
+        ],
+      };
+    },
+  };
+  return {
+    database,
+    calls,
+    get startReads() {
+      return startReads;
+    },
+    get startInserts() {
+      return startInserts;
+    },
+  };
+};
+
+const producerFactsFixture = (fixture) => {
+  const cumulativeLedgerSha256 = hash(Buffer.from("cumulative-ledger"));
+  const facts = {
+    fullLiveAuthorityId: fixture.materialization.fullLiveAuthorityId,
+    roleScopedIdentities: structuredClone(fixture.materialization.roleScopedIdentities),
+  };
+  const { fairnessProbe, primary, sameAccountWaiter, secondary } = facts.roleScopedIdentities;
+  return {
+    facts,
+    factsSha256: hash(Buffer.from(canonicalJson(facts))),
+    selection: {
+      primary: {
+        accountId: primary.accountId,
+        workspaceId: primary.workspaceId,
+        projectId: primary.projectId,
+        projectRevisionId: primary.projectRevisionId,
+      },
+      sameAccountWaiter: {
+        accountId: sameAccountWaiter.accountId,
+        workspaceId: sameAccountWaiter.workspaceId,
+        projectId: sameAccountWaiter.projectId,
+        projectRevisionId: sameAccountWaiter.projectRevisionId,
+      },
+      secondary: {
+        accountId: secondary.accountId,
+        workspaceId: secondary.workspaceId,
+        projectId: secondary.projectId,
+        projectRevisionId: secondary.projectRevisionId,
+      },
+      fairnessProbe: {
+        accountId: fairnessProbe.accountId,
+        workspaceId: fairnessProbe.workspaceId,
+        projectId: fairnessProbe.projectId,
+        projectRevisionId: fairnessProbe.projectRevisionId,
+      },
+    },
+    cumulativeLedgerSha256,
+  };
+};
+
+const producerEnvironment = (fixture, directory) => {
+  const materializationPath = resolve(directory, "post-consumption.json");
+  const bearerPath = resolve(directory, "worker-bearer");
+  const productionInputPath = resolve(directory, "production-input.json");
+  const chainPath = resolve(directory, "materialization-chain.json");
+  const staticReleaseDescriptorPath = resolve(directory, "static-release-descriptor.json");
+  writeFileSync(bearerPath, "worker-operator-bearer", { mode: 0o600 });
+  writeFileSync(
+    productionInputPath,
+    `${canonicalJson({
+      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
+      fullLiveAuthorityId: fixture.materialization.fullLiveAuthorityId,
+      authorityDocument: {
+        staticReleaseDescriptorSha256: fixture.staticReleaseDescriptor.descriptorSha256,
+      },
+      dualLaneInput: {
+        mage: { volumeIdSha256: hash(Buffer.from("mage-volume")) },
+        soulx: { volumeIdSha256: hash(Buffer.from("soulx-volume")) },
+      },
+      commandPayloads: {},
+    })}\n`,
+    { mode: 0o600 },
+  );
+  writeFileSync(
+    staticReleaseDescriptorPath,
+    `${canonicalJson(fixture.staticReleaseDescriptor)}\n`,
+    { mode: 0o600 },
+  );
+  writeFileSync(
+    chainPath,
+    `${canonicalJson(
+      materializationChainFixture(
+        fixture.materializationState.authority_id,
+        fixture.outerStateSha256,
+      ),
+    )}\n`,
+    { mode: 0o600 },
+  );
+  return {
+    VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE: materializationPath,
+    VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE: bearerPath,
+    VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: productionInputPath,
+    VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE: chainPath,
+    VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE: staticReleaseDescriptorPath,
+  };
+};
+
+const materializationChainFixture = (authorityId, outerStateSha256) => {
+  let priorChainSha256 = hash(
+    Buffer.from("videoforge.v213-full-live-materialization-chain/v1:genesis"),
+  );
+  const entries = [
+    "production-input",
+    "max-one-endpoint-bindings",
+    "activation-record",
+    "promotion-record",
+  ].map((kind) => {
+    const unsigned = {
+      kind,
+      authority_id: authorityId,
+      prior_chain_sha256: priorChainSha256,
+      outer_state_sha256: outerStateSha256,
+      ordered_prior_operation_evidence_sha256s: [],
+      ordered_output_sha256s: [[`${kind}-sha256`, hash(Buffer.from(kind))]],
+    };
+    const entry_sha256 = hash(Buffer.from(`${canonicalJson(unsigned)}\n`));
+    priorChainSha256 = entry_sha256;
+    return { ...unsigned, entry_sha256 };
+  });
+  return { schema_version: "videoforge.v213-full-live-materialization-chain/v1", entries };
+};
 
 test("git release adapters require absence, create one lightweight tag, push non-force, and read it back", async () => {
   const calls = [];
@@ -434,6 +803,29 @@ test("guarded adapter calls the existing executor once and authenticates its dur
   assert.match(value.evidenceSha256, /^sha256:[0-9a-f]{64}$/u);
 });
 
+test("promotion hashes closed dry-output bytes, independent of Wrangler stdout", () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-dry-output-hash-test-"));
+  try {
+    mkdirSync(resolve(directory, "assets"), { mode: 0o700 });
+    writeFileSync(
+      resolve(directory, "index.js"),
+      "export default {fetch(){return new Response('a')}};\n",
+    );
+    writeFileSync(resolve(directory, "assets", "manifest.json"), '{"version":1}\n');
+    const first = hashV213DryOutputBundle(directory);
+    // Console output is deliberately not an input to the helper.
+    const withDifferentStdout = hashV213DryOutputBundle(directory);
+    assert.equal(first, withDifferentStdout);
+    writeFileSync(
+      resolve(directory, "index.js"),
+      "export default {fetch(){return new Response('b')}};\n",
+    );
+    assert.notEqual(first, hashV213DryOutputBundle(directory));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("staged qualification adapters preserve admission, Mage, SoulX, then max-one boundaries", async () => {
   const calls = [];
   const deployment = (lane, marker) => {
@@ -531,6 +923,7 @@ test("concrete catalog exposes publication, guarded activation, and the protecte
   assert.deepEqual(Object.keys(createConcreteFullLiveAdapters()).sort(), [
     "approval-commit-push",
     "bootstrap-prequalification-database",
+    "certify-v2-13-release",
     "create-exact-max-one-endpoints",
     "fresh-live-preflight",
     "guarded-activation-once",
@@ -557,120 +950,353 @@ test("concrete catalog exposes publication, guarded activation, and the protecte
   ]);
 });
 
-test("workflow-start authority adapter records one exact operator function call and returns no token", async () => {
-  const input = {
-    workflowAuthorityId: "11111111-1111-4111-8111-111111111111",
-    authorityId: "22222222-2222-4222-8222-222222222222",
-    tokenSha256: `sha256:${"a".repeat(64)}`,
-    expiresAt: "2026-08-26T12:00:00.000Z",
-  };
-  const calls = [];
-  const database = {
-    async query(sql, parameters) {
-      calls.push({ sql, parameters });
-      if (sql.startsWith('SELECT id::text AS "workflowAuthorityId"')) {
-        assert.deepEqual(parameters, [input.workflowAuthorityId]);
-        return { rows: [] };
-      }
-      assert.equal(
-        sql,
-        "SELECT public.videoforge_record_v213_workflow_start_authority($1::uuid,$2::uuid,$3,$4::timestamptz) AS authority",
-      );
-      assert.deepEqual(parameters, [
-        input.workflowAuthorityId,
-        input.authorityId,
-        input.tokenSha256,
-        input.expiresAt,
-      ]);
-      return {
-        rows: [
-          {
-            authority: {
-              authorityId: input.workflowAuthorityId,
-              tokenSha256: input.tokenSha256,
-              expiresAt: input.expiresAt,
-            },
-          },
-        ],
-      };
-    },
-  };
-  const adapter = createWorkflowStartAuthorityAdapter({ database, input });
-  const resultValue = await adapter({}, {}, new Map());
-  assert.equal(calls.length, 2);
-  assert.match(
-    calls[0].sql,
-    /FROM public\.hosted_full_live_workflow_start_authorities WHERE id=\$1::uuid/u,
+test("workflow-start materializes only the four post-consumption role identities", async () => {
+  const fixture = workflowMaterializationFixture();
+  const databaseState = workflowAuthorityDatabase({ fixture });
+  const adapter = createWorkflowStartAuthorityAdapter({
+    database: databaseState.database,
+    materialize: async () => fixture.materialization,
+  });
+  const resultValue = await adapter(
+    {},
+    fixture.materializationState,
+    new Map(),
+    fixture.outerStateSha256,
   );
+  assert.equal(databaseState.calls.length, 2);
+  assert.equal(databaseState.startReads, 1);
+  assert.equal(databaseState.startInserts, 1);
   assert.deepEqual(resultValue, {
     actualUsd: 0,
-    authorityId: input.workflowAuthorityId,
-    tokenSha256: input.tokenSha256,
-    expiresAt: input.expiresAt,
+    authorityId: fixture.workflowAuthorityId,
+    tokenSha256: fixture.materialization.workflowStartAuthority.tokenSha256,
+    expiresAt: fixture.materializationState.expires_at,
   });
+  assert.equal(
+    databaseState.calls.some(({ sql }) => sql.includes("record_v213_acceptance_authority")),
+    false,
+  );
+});
+
+test("workflow-start rejects role identities that reuse the primary account and project", async () => {
+  const fixture = workflowMaterializationFixture();
+  const invalid = structuredClone(fixture.materialization);
+  const primary = invalid.roleScopedIdentities.primary;
+  invalid.roleScopedIdentities.secondary = {
+    ...invalid.roleScopedIdentities.secondary,
+    accountId: primary.accountId,
+    workspaceId: primary.workspaceId,
+    projectId: primary.projectId,
+  };
+  const unsigned = { ...invalid };
+  delete unsigned.materializationSha256;
+  invalid.materializationSha256 = hash(Buffer.from(canonicalJson(unsigned)));
+  const databaseState = workflowAuthorityDatabase({ fixture });
+  const adapter = createWorkflowStartAuthorityAdapter({
+    database: databaseState.database,
+    materialize: async () => invalid,
+  });
+  await assert.rejects(
+    adapter({}, fixture.materializationState, new Map(), fixture.outerStateSha256),
+    /WORKFLOW_AUTHORITY_IDENTITIES/u,
+  );
+  assert.equal(databaseState.calls.length, 0);
+});
+
+test("workflow-start rejects a same-account waiter without a distinct request identity", async () => {
+  const fixture = workflowMaterializationFixture();
+  const invalid = structuredClone(fixture.materialization);
+  invalid.roleScopedIdentities.sameAccountWaiter.generationRequestId =
+    invalid.roleScopedIdentities.primary.generationRequestId;
+  const unsigned = { ...invalid };
+  delete unsigned.materializationSha256;
+  invalid.materializationSha256 = hash(Buffer.from(canonicalJson(unsigned)));
+  const databaseState = workflowAuthorityDatabase({ fixture });
+  const adapter = createWorkflowStartAuthorityAdapter({
+    database: databaseState.database,
+    materialize: async () => invalid,
+  });
+  await assert.rejects(
+    adapter({}, fixture.materializationState, new Map(), fixture.outerStateSha256),
+    /WORKFLOW_AUTHORITY_IDENTITIES/u,
+  );
+  assert.equal(databaseState.calls.length, 0);
 });
 
 test("workflow-start authority reconciles an ambiguous insert without redispatch", async () => {
-  const input = {
-    workflowAuthorityId: "11111111-1111-4111-8111-111111111111",
-    authorityId: "22222222-2222-4222-8222-222222222222",
-    tokenSha256: `sha256:${"a".repeat(64)}`,
-    expiresAt: "2026-08-26T12:00:00.000Z",
-  };
-  let reads = 0;
-  let inserts = 0;
-  const database = {
-    async query(sql) {
-      if (sql.startsWith('SELECT id::text AS "workflowAuthorityId"')) {
-        reads += 1;
-        return reads === 1
-          ? { rows: [] }
-          : {
-              rows: [
-                {
-                  workflowAuthorityId: input.workflowAuthorityId,
-                  authorityId: input.authorityId,
-                  tokenSha256: input.tokenSha256,
-                  expiresAt: input.expiresAt,
-                },
-              ],
-            };
-      }
-      inserts += 1;
-      throw new Error("transport lost after commit");
-    },
-  };
-  const adapter = createWorkflowStartAuthorityAdapter({ database, input });
-  await assert.doesNotReject(adapter({}, {}, new Map()));
-  assert.equal(reads, 2);
-  assert.equal(inserts, 1);
+  const fixture = workflowMaterializationFixture();
+  const databaseState = workflowAuthorityDatabase({ fixture, throwInsert: true });
+  const adapter = createWorkflowStartAuthorityAdapter({
+    database: databaseState.database,
+    materialize: async () => fixture.materialization,
+  });
+  await assert.doesNotReject(
+    adapter({}, fixture.materializationState, new Map(), fixture.outerStateSha256),
+  );
+  assert.equal(databaseState.startReads, 2);
+  assert.equal(databaseState.startInserts, 1);
 });
 
 test("workflow-start authority stops on an existing replay drift", async () => {
-  const input = {
-    workflowAuthorityId: "11111111-1111-4111-8111-111111111111",
-    authorityId: "22222222-2222-4222-8222-222222222222",
-    tokenSha256: `sha256:${"a".repeat(64)}`,
-    expiresAt: "2026-08-26T12:00:00.000Z",
-  };
-  const database = {
-    async query(sql) {
-      if (sql.startsWith('SELECT id::text AS "workflowAuthorityId"'))
-        return {
-          rows: [
-            {
-              workflowAuthorityId: input.workflowAuthorityId,
-              authorityId: "33333333-3333-4333-8333-333333333333",
-              tokenSha256: input.tokenSha256,
-              expiresAt: input.expiresAt,
-            },
-          ],
-        };
-      throw new Error("insert must not be attempted");
+  const fixture = workflowMaterializationFixture();
+  const databaseState = workflowAuthorityDatabase({
+    fixture,
+    replayRow: {
+      workflowAuthorityId: fixture.workflowAuthorityId,
+      authorityId: "33333333-3333-4333-8333-333333333333",
+      tokenSha256: fixture.materialization.workflowStartAuthority.tokenSha256,
+      expiresAt: fixture.materializationState.expires_at,
     },
-  };
-  const adapter = createWorkflowStartAuthorityAdapter({ database, input });
-  await assert.rejects(adapter({}, {}, new Map()), /DATABASE_WORKFLOW_AUTHORITY_REPLAY_DRIFT/u);
+  });
+  const adapter = createWorkflowStartAuthorityAdapter({
+    database: databaseState.database,
+    materialize: async () => fixture.materialization,
+  });
+  await assert.rejects(
+    adapter({}, fixture.materializationState, new Map(), fixture.outerStateSha256),
+    /DATABASE_WORKFLOW_AUTHORITY_REPLAY_DRIFT/u,
+  );
+  assert.equal(databaseState.startInserts, 0);
+});
+
+test("workflow-start authority requires a post-consumption materializer", async () => {
+  const fixture = workflowMaterializationFixture();
+  const databaseState = workflowAuthorityDatabase({ fixture });
+  const adapter = createWorkflowStartAuthorityAdapter({ database: databaseState.database });
+  await assert.rejects(
+    adapter({}, fixture.materializationState, new Map(), fixture.outerStateSha256),
+    /WORKFLOW_AUTHORITY_MATERIALIZER_REQUIRED/u,
+  );
+  assert.equal(databaseState.calls.length, 0);
+});
+
+test("post-consumption producer signs an app selection, reads DB facts, then writes exact materialization", async () => {
+  const fixture = workflowMaterializationFixture();
+  const factsBundle = producerFactsFixture(fixture);
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-post-consumption-producer-test-"));
+  chmodSync(directory, 0o700);
+  const environment = producerEnvironment(fixture, directory);
+  const challengeIds = [];
+  const selections = [];
+  const producer = createPostConsumptionMaterializationProducer({
+    environment,
+    cumulativeLedgerSha256: factsBundle.cumulativeLedgerSha256,
+    issueChallenge: async (challenge) => {
+      const challengeId = "33333333-3333-4333-8333-333333333333";
+      challengeIds.push(challenge);
+      return {
+        authoritySha256: challenge.authoritySha256,
+        challengeId,
+        challengeSha256: challenge.requestSha256,
+      };
+    },
+    handshake: async (challenge) => {
+      const response = {
+        schemaVersion: "videoforge.v213-post-consumption-materialization-response/v1",
+        challengeId: challenge.challengeId,
+        challengeSha256: challenge.requestSha256,
+        selection: factsBundle.selection,
+        selectionSha256: hash(Buffer.from(canonicalJson(factsBundle.selection))),
+      };
+      return {
+        ...response,
+        responseHmacSha256: postConsumptionResponseHmac(
+          response,
+          Buffer.from("worker-operator-bearer"),
+        ),
+      };
+    },
+    loadFacts: async ({ selection }) => {
+      selections.push(selection);
+      return { facts: factsBundle.facts, factsSha256: factsBundle.factsSha256 };
+    },
+    readback: async ({ challenge, materialization, facts }) => ({
+      readbackVerified: true,
+      challengeId: challenge.challengeId,
+      materializationSha256: materialization.materializationSha256,
+      factsSha256: hash(Buffer.from(canonicalJson(facts))),
+    }),
+  });
+  const databaseState = workflowAuthorityDatabase({ fixture, dynamicAuthority: true });
+  const priorResults = new Map();
+  try {
+    const adapter = createWorkflowStartAuthorityAdapter({
+      database: databaseState.database,
+      producer,
+    });
+    const resultValue = await adapter(
+      { id: "record-workflow-start-authority" },
+      fixture.materializationState,
+      priorResults,
+      fixture.outerStateSha256,
+    );
+    assert.equal(resultValue.actualUsd, 0);
+    assert.equal(challengeIds.length, 1);
+    assert.deepEqual(selections, [factsBundle.selection]);
+    assert.equal(databaseState.calls.length, 3);
+    assert.match(databaseState.calls[0].sql, /record_v213_static_release_descriptor/u);
+    const materializationPath = environment.VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE;
+    assert.equal(lstatSync(materializationPath).mode & 0o777, 0o600);
+    assert.deepEqual(
+      JSON.parse(readFileSync(materializationPath, "utf8")).roleScopedIdentities,
+      factsBundle.facts.roleScopedIdentities,
+    );
+    assert.deepEqual(
+      JSON.parse(readFileSync(environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE, "utf8"))
+        .commandPayloads,
+      {},
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("post-consumption producer rejects a mutated signed selection before any authority insert", async () => {
+  const fixture = workflowMaterializationFixture();
+  const factsBundle = producerFactsFixture(fixture);
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-post-consumption-mutation-test-"));
+  chmodSync(directory, 0o700);
+  const environment = producerEnvironment(fixture, directory);
+  const databaseState = workflowAuthorityDatabase({ fixture, dynamicAuthority: true });
+  const producer = createPostConsumptionMaterializationProducer({
+    environment,
+    cumulativeLedgerSha256: factsBundle.cumulativeLedgerSha256,
+    issueChallenge: async (challenge) => ({
+      authoritySha256: challenge.authoritySha256,
+      challengeId: "33333333-3333-4333-8333-333333333333",
+      challengeSha256: challenge.requestSha256,
+    }),
+    handshake: async (challenge) => {
+      const selection = structuredClone(factsBundle.selection);
+      selection.primary.projectId = "40000000-0000-4000-8000-000000000001";
+      selection.sameAccountWaiter.projectId = selection.primary.projectId;
+      const response = {
+        schemaVersion: "videoforge.v213-post-consumption-materialization-response/v1",
+        challengeId: challenge.challengeId,
+        challengeSha256: challenge.requestSha256,
+        selection,
+        selectionSha256: hash(Buffer.from(canonicalJson(factsBundle.selection))),
+      };
+      return {
+        ...response,
+        responseHmacSha256: postConsumptionResponseHmac(
+          response,
+          Buffer.from("worker-operator-bearer"),
+        ),
+      };
+    },
+    loadFacts: async () => ({ facts: factsBundle.facts, factsSha256: factsBundle.factsSha256 }),
+    readback: async () => ({ readbackVerified: true }),
+  });
+  try {
+    const adapter = createWorkflowStartAuthorityAdapter({
+      database: databaseState.database,
+      producer,
+    });
+    await assert.rejects(
+      adapter(
+        { id: "record-workflow-start-authority" },
+        fixture.materializationState,
+        new Map(),
+        fixture.outerStateSha256,
+      ),
+      /POST_CONSUMPTION_RESPONSE_HASH/u,
+    );
+    assert.equal(databaseState.startInserts, 0);
+    assert.equal(
+      databaseState.calls.some(({ sql }) => sql.includes("record_v213_workflow_start_authority")),
+      false,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("default protected workflow adapter never consumes a prewritten materialization without the producer handshake", async () => {
+  const fixture = workflowMaterializationFixture();
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-post-consumption-default-test-"));
+  chmodSync(directory, 0o700);
+  const environment = producerEnvironment(fixture, directory);
+  writeFileSync(
+    environment.VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE,
+    `${canonicalJson(fixture.materialization)}\n`,
+    { mode: 0o600 },
+  );
+  const databaseState = workflowAuthorityDatabase({ fixture });
+  try {
+    const adapter = createProtectedWorkflowStartAuthorityAdapter({
+      environment,
+      databaseFactory: async () => ({ database: databaseState.database }),
+    });
+    await assert.rejects(
+      adapter(
+        { id: "record-workflow-start-authority" },
+        fixture.materializationState,
+        new Map(),
+        fixture.outerStateSha256,
+      ),
+      /POST_CONSUMPTION_CHALLENGE_REJECTED/u,
+    );
+    assert.equal(databaseState.startInserts, 0);
+    assert.equal(
+      databaseState.calls.some(({ sql }) => sql.includes("record_v213_workflow_start_authority")),
+      false,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("identity-only workflow materialization never injects future command payloads", async () => {
+  const fixture = workflowMaterializationFixture();
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-workflow-materialization-test-"));
+  chmodSync(directory, 0o700);
+  const materializationPath = resolve(directory, "post-consumption.json");
+  const bearerPath = resolve(directory, "worker-bearer");
+  const productionInputPath = resolve(directory, "production-input.json");
+  const chainPath = resolve(directory, "materialization-chain.json");
+  writeFileSync(materializationPath, `${canonicalJson(fixture.materialization)}\n`, {
+    mode: 0o600,
+  });
+  writeFileSync(bearerPath, "worker-operator-bearer", { mode: 0o600 });
+  writeFileSync(
+    productionInputPath,
+    `${canonicalJson({
+      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
+      fullLiveAuthorityId: fixture.materialization.fullLiveAuthorityId,
+      authorityDocument: {},
+      dualLaneInput: {},
+      commandPayloads: {},
+    })}\n`,
+    { mode: 0o600 },
+  );
+  writeFileSync(
+    chainPath,
+    `${canonicalJson(
+      materializationChainFixture(
+        fixture.materializationState.authority_id,
+        fixture.outerStateSha256,
+      ),
+    )}\n`,
+    { mode: 0o600 },
+  );
+  const databaseState = workflowAuthorityDatabase({ fixture });
+  try {
+    const adapter = createWorkflowStartAuthorityAdapter({
+      database: databaseState.database,
+      materialize: async () => JSON.parse(readFileSync(materializationPath, "utf8")),
+    });
+    await assert.doesNotReject(
+      adapter({}, fixture.materializationState, new Map(), fixture.outerStateSha256),
+    );
+    assert.deepEqual(JSON.parse(readFileSync(productionInputPath, "utf8")).commandPayloads, {});
+    assert.equal(
+      JSON.parse(readFileSync(chainPath, "utf8")).entries.at(-1).kind,
+      "promotion-record",
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("prequalification bootstrap executes the exact manifest tail through a locked fake-psql seam", async () => {
@@ -824,8 +1450,8 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       ...receipt,
       ledger_before_sha256: `sha256:${"0".repeat(64)}`,
     };
-    const { prequalification_database_bootstrap_sha256: _ignored, ...mismatchedBody } =
-      mismatchedReceipt;
+    const mismatchedBody = structuredClone(mismatchedReceipt);
+    delete mismatchedBody.prequalification_database_bootstrap_sha256;
     mismatchedReceipt.prequalification_database_bootstrap_sha256 = hash(
       Buffer.from(`${canonicalJson(mismatchedBody)}\n`),
     );
@@ -1316,17 +1942,40 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
   };
   try {
     const requests = [];
+    const cleanupReceiptRequests = [];
     const adapters = createTypeScriptBridgeAdapters({
       environment: { VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE: inputPath },
+      // Exercise the cleanup request contract while the sealed release pin intentionally remains
+      // stale until final reseal.
+      expectedCliSha256: hash(
+        readFileSync(resolve(process.cwd(), "apps/web/src/server/providers/v213-full-live-cli.ts")),
+      ),
       spawnBridge: async ({ request }) => {
         requests.push(request);
+        const summary = summaries[request.command];
         return {
           schemaVersion: "videoforge.v213-full-live-command-result/v1",
           commandId: request.commandId,
           command: request.command,
           state: "TERMINAL",
-          evidenceSha256: `sha256:${"9".repeat(64)}`,
-          summary: summaries[request.command],
+          evidenceSha256: hash(Buffer.from(canonicalJson(summary))),
+          summary,
+        };
+      },
+      spawnCleanupReceipt: async ({ request }) => {
+        cleanupReceiptRequests.push(request);
+        return {
+          schemaVersion: "videoforge.v213-cleanup-receipt-finalization-result/v1",
+          fullLiveAuthorityId: request.fullLiveAuthorityId,
+          operationId: request.operationId,
+          providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
+          receiptArtifactSha256: hash(
+            Buffer.from(canonicalJson({ operationId: request.operationId, receipt: true })),
+          ),
+          releaseFactMaterializationSha256: hash(
+            Buffer.from(canonicalJson({ operationId: request.operationId, facts: true })),
+          ),
+          readbackOnly: request.readbackOnly,
         };
       },
     });
@@ -1335,8 +1984,45 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
     for (const command of Object.keys(summaries))
       outputs.push(await adapters[command]({}, state, prior, `sha256:${"a".repeat(64)}`));
     assert.equal(
-      outputs.every((output) => output.proofSha256 === `sha256:${"9".repeat(64)}`),
+      outputs.every(
+        (output, index) =>
+          output.proofSha256 ===
+          hash(
+            Buffer.from(
+              canonicalJson({ operationId: Object.keys(summaries)[index], receipt: true }),
+            ),
+          ),
+      ),
       true,
+    );
+    assert.equal(cleanupReceiptRequests.length, 4);
+    assert.equal(
+      cleanupReceiptRequests.every((request) => request.readbackOnly === false),
+      true,
+    );
+    for (const request of cleanupReceiptRequests) {
+      const { requestSha256, ...unsigned } = request;
+      assert.equal(requestSha256, hash(Buffer.from(canonicalJson(unsigned))));
+      assert.equal(
+        request.providerCleanupEvidenceSha256,
+        hash(Buffer.from(canonicalJson(request.summary))),
+      );
+    }
+    const recovered = await adapters["prove-zero-workers"](
+      {
+        resumed: true,
+        authorizedUnsettled: true,
+        reconciliationOnly: true,
+        providerDispatchForbidden: true,
+      },
+      state,
+      prior,
+      `sha256:${"b".repeat(64)}`,
+    );
+    assert.equal(cleanupReceiptRequests.at(-1).readbackOnly, true);
+    assert.equal(
+      recovered.proofSha256,
+      hash(Buffer.from(canonicalJson({ operationId: "prove-zero-workers", receipt: true }))),
     );
     assert.equal(outputs[0].bothEndpointsMaxWorkersOne, true);
     assert.equal(outputs[1].zeroWorkers, true);
@@ -1350,6 +2036,138 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
       ),
       true,
     );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("release certification uses a separate DB-only child and preserves recovery readback flags", async () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-release-certification-adapter-test-"));
+  chmodSync(directory, 0o700);
+  const productionInputPath = resolve(directory, "production-input.json");
+  const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
+  writeFileSync(
+    productionInputPath,
+    JSON.stringify({
+      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
+      fullLiveAuthorityId,
+      authorityDocument: { exact: true },
+      dualLaneInput: { exact: true },
+      commandPayloads: {},
+    }),
+    { mode: 0o600 },
+  );
+  const evidence = {
+    "v2-13-final-two-lane-smoke": `sha256:${"1".repeat(64)}`,
+    "restore-endpoints-max-one": `sha256:${"2".repeat(64)}`,
+    "prove-zero-workers": `sha256:${"3".repeat(64)}`,
+    "read-settled-billing": `sha256:${"4".repeat(64)}`,
+    "reconcile-exact-resources": `sha256:${"5".repeat(64)}`,
+  };
+  const priorResults = new Map([
+    [
+      "v2-13-final-two-lane-smoke",
+      { signedSmokeEvidenceSha256: evidence["v2-13-final-two-lane-smoke"] },
+    ],
+    ["restore-endpoints-max-one", { proofSha256: evidence["restore-endpoints-max-one"] }],
+    ["prove-zero-workers", { proofSha256: evidence["prove-zero-workers"] }],
+    ["read-settled-billing", { proofSha256: evidence["read-settled-billing"] }],
+    ["reconcile-exact-resources", { proofSha256: evidence["reconcile-exact-resources"] }],
+  ]);
+  const authorityId = "v2-13-test-authority-0001";
+  const workId = `${authorityId}:certify-v2-13-release`;
+  const certificationState = {
+    state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
+    authority_id: authorityId,
+    release_certification: {
+      state: "AUTHORIZED_ONCE_RECONCILIATION_ONLY",
+      work_id: workId,
+    },
+    cleanup_proof: { exact: true },
+  };
+  const ledgerSha256 = `sha256:${"8".repeat(64)}`;
+  const resultValue = {
+    schemaVersion: "videoforge.v213-final-release-certification-result/v1",
+    actualUsd: 0,
+    externalSpendUsd: 0,
+    gpuUse: false,
+    providerMutationPerformed: false,
+    currentRunEvidence: true,
+    certified: true,
+    releaseStatus: "release_certified",
+    gateCount: 15,
+    missingGateCount: 0,
+    invalidGateCount: 0,
+    liveReleaseAuthorized: false,
+    requiresExplicitReleaseAuthority: true,
+    releaseIdentitySha256: `sha256:${"9".repeat(64)}`,
+    ledgerSha256,
+    evidenceSha256: ledgerSha256,
+    predecessorEvidenceSha256s: evidence,
+  };
+  const requests = [];
+  const adapter = createReleaseCertificationAdapter({
+    environment: { VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: productionInputPath },
+    expectedCliSha256: hash(readFileSync("apps/web/src/server/providers/v213-full-live-cli.ts")),
+    spawnCertification: async ({ request }) => {
+      requests.push(request);
+      return resultValue;
+    },
+  });
+  const baseContext = {
+    operationId: "certify-v2-13-release",
+    cleanupOnly: false,
+    earlyFailure: false,
+    endpointFree: false,
+    operatorRoleVerified: true,
+    localCertification: true,
+    providerDispatchForbidden: true,
+  };
+  try {
+    assert.deepEqual(
+      await adapter(
+        {
+          ...baseContext,
+          resumed: false,
+          authorizedUnsettled: false,
+          reconciliationOnly: false,
+        },
+        certificationState,
+        priorResults,
+        `sha256:${"a".repeat(64)}`,
+      ),
+      resultValue,
+    );
+    assert.deepEqual(
+      await adapter(
+        {
+          ...baseContext,
+          resumed: true,
+          authorizedUnsettled: true,
+          reconciliationOnly: true,
+          persistenceForbidden: true,
+          dispatchForbidden: true,
+        },
+        certificationState,
+        priorResults,
+        `sha256:${"b".repeat(64)}`,
+      ),
+      resultValue,
+    );
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0].fullLiveAuthorityId, fullLiveAuthorityId);
+    assert.equal(requests[0].providerDispatchForbidden, true);
+    assert.equal(requests[0].reconciliationOnly, false);
+    assert.equal(requests[1].resumed, true);
+    assert.equal(requests[1].authorizedUnsettled, true);
+    assert.equal(requests[1].reconciliationOnly, true);
+    assert.equal(requests[1].persistenceForbidden, true);
+    assert.equal(requests[1].dispatchForbidden, true);
+    for (const request of requests) {
+      const { requestSha256, ...unsigned } = request;
+      assert.equal(requestSha256, hash(Buffer.from(canonicalJson(unsigned))));
+      assert.deepEqual(request.predecessorEvidenceSha256s, evidence);
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

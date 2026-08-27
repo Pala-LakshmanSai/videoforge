@@ -486,4 +486,82 @@ describe("hosted pair live provider wiring", () => {
       }),
     ).rejects.toMatchObject({ code: "HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED" });
   });
+
+  it("aborts a hung Workflow lookup at the absolute terminal deadline", async () => {
+    const deadlineAt = new Date(Date.now() + 30).toISOString();
+    let lookupSignal: AbortSignal | undefined;
+    const get = vi.fn((_workflowId: string, options?: { readonly signal?: AbortSignal }) => {
+      lookupSignal = options?.signal;
+      return new Promise<never>(() => undefined);
+    });
+    await expect(
+      awaitV209TerminalAcceptance({
+        workflow: { create: vi.fn(), get },
+        database: { transaction: vi.fn() } as never,
+        scope: ids,
+        workflowId: `hosted-pair-${ids.generationRequestId}`,
+        chromeEvidenceSha256: digest("8"),
+        deadlineAt,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED" });
+    expect(get).toHaveBeenCalledOnce();
+    expect(lookupSignal?.aborted).toBe(true);
+  });
+
+  it("aborts a hung DB transaction before any later poll", async () => {
+    const deadlineAt = new Date(Date.now() + 30).toISOString();
+    let transactionSignal: AbortSignal | undefined;
+    const transaction = vi.fn(
+      (
+        _work: (connection: never) => Promise<unknown>,
+        options?: { readonly signal?: AbortSignal },
+      ) => {
+        transactionSignal = options?.signal;
+        return new Promise<never>(() => undefined);
+      },
+    );
+    const status = vi.fn(async () => ({ state: "EXISTING" }));
+    await expect(
+      awaitV209TerminalAcceptance({
+        workflow: {
+          create: vi.fn(),
+          get: vi.fn(async () => ({ status, sendEvent: vi.fn() })),
+        },
+        database: { transaction } as never,
+        scope: ids,
+        workflowId: `hosted-pair-${ids.generationRequestId}`,
+        chromeEvidenceSha256: digest("8"),
+        deadlineAt,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED" });
+    expect(status).toHaveBeenCalledOnce();
+    expect(transaction).toHaveBeenCalledOnce();
+    expect(transactionSignal?.aborted).toBe(true);
+  });
+
+  it("rejects a terminal row that resolves exactly at the deadline", async () => {
+    const startMs = Date.now();
+    const deadlineMs = startMs + 20;
+    let currentMs = startMs;
+    const status = vi.fn(async () => {
+      currentMs = deadlineMs;
+    });
+    const transaction = vi.fn();
+    await expect(
+      awaitV209TerminalAcceptance({
+        workflow: {
+          create: vi.fn(),
+          get: vi.fn(async () => ({ status, sendEvent: vi.fn() })),
+        },
+        database: { transaction } as never,
+        scope: ids,
+        workflowId: `hosted-pair-${ids.generationRequestId}`,
+        chromeEvidenceSha256: digest("8"),
+        deadlineAt: new Date(deadlineMs).toISOString(),
+        now: () => currentMs,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_V209_TERMINAL_DEADLINE_EXCEEDED" });
+    expect(status).toHaveBeenCalledOnce();
+    expect(transaction).not.toHaveBeenCalled();
+  });
 });

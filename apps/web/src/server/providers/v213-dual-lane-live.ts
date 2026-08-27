@@ -655,6 +655,7 @@ async function dispatchOnce(
     fail("V213_QUALIFICATION_REQUEST_INVALID");
   }
   const { envelope: _envelope, ...requestBody } = request;
+  void _envelope;
   const envelopeSha256 = hashCanonical(signedEnvelope);
   const requestSha256 = hashCanonical(requestBody);
   const operation = operationIdentity(authorityId, "dispatch", requestKey, requestSha256);

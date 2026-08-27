@@ -1304,7 +1304,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
     );
     assert.equal(verified.ledger.length, 45);
     assert.equal(verified.pgcrypto.name, "pgcrypto");
-    assert.equal(verified.role.function_acl.length, 17);
+    assert.equal(verified.role.function_acl.length, 18);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
     assert.equal(
       calls.every((sql) => !sql.includes("CLOUDFLARE") && !sql.includes("production_secrets")),

@@ -48,6 +48,11 @@ const NOW = "2026-08-25T12:00:00.000Z";
 
 function binding(lane: ServerlessLane): HostedServerlessLaneBinding {
   const lineage: HostedQualificationLineage = {
+    schemaVersion: "videoforge.v213-qualified-deployment-lineage/v1",
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+    stageAuthorityId: `v2-13-${lane}-stage-authority`,
+    productionStageAuthorityId: "v2-13-production-stage-authority",
+    qualificationHandoffSha256: sha(`${lane}-source`),
     endpointIdSha256: sha(`${lane}-endpoint`),
     endpointTemplateIdSha256: sha(`${lane}-template`),
     endpointConfigSha256: sha(`${lane}-config`),
@@ -57,14 +62,13 @@ function binding(lane: ServerlessLane): HostedServerlessLaneBinding {
     volumeManifestSha256: sha(`${lane}-volume-manifest`),
     imageSourceCommit: "a".repeat(40),
     qualificationSourceSha256: sha(`${lane}-source`),
-    dependencyLockSha256: sha(`${lane}-lock`),
-    acceptanceContractSha256: sha(`${lane}-contract`),
+    acceptanceContractSha256: sha(`${lane}-source`),
+    receiptSha256s:
+      lane === "mage_image"
+        ? [sha(`${lane}-receipt-1`)]
+        : [1, 2, 3, 4].map((ordinal) => sha(`${lane}-receipt-${ordinal}`)),
     region: "EU-RO-1",
     gpu: "NVIDIA GeForce RTX 4090",
-    max1GateConfigSha256: sha(`${lane}-max1-gate`),
-    max1EndpointProfileSha256: sha(`${lane}-max1-profile`),
-    max2GateConfigSha256: sha(`${lane}-max2-gate`),
-    max2EndpointProfileSha256: sha(`${lane}-max2-profile`),
   };
   const deployment: EndpointDeploymentInput = {
     deploymentId: `deployment-${lane}`,
@@ -517,17 +521,15 @@ function outputVerifier(
       const canonicalEvidenceSha256 = canonicalSha256(raw);
       const verifierSignatureSha256 = sha("output-verifier-signature");
       const durableInventorySha256 = sha("terminal-durable-inventory");
+      const renderAttemptId = "render-attempt-1";
       const terminal: HostedShortPilotTerminalVerification = {
         verifierId: "videoforge-hosted-terminal-inventory-verifier-v1",
         accepted: true,
-        canonicalEvidenceSha256,
-        verifierSignatureSha256,
-        durableInventorySha256,
         accountId: admitted.key.accountId,
         workspaceId: admitted.key.workspaceId,
         projectId: admitted.key.projectId,
         projectRevisionId: admitted.key.projectRevisionId,
-        attemptId: admitted.automaticAttemptId,
+        attemptId: renderAttemptId,
         submissionTokenSha256: admitted.submissionTokenSha256,
         state: "SUCCEEDED",
         terminalAt: "2026-08-25T12:10:00.000Z",
@@ -544,7 +546,8 @@ function outputVerifier(
         output: {
           state: "COMMITTED",
           assetId: "pilot-output",
-          objectKey: `tenant/${admitted.key.accountId}/workspace/${admitted.key.workspaceId}/project/${admitted.key.projectId}/revision/${admitted.key.projectRevisionId}/lane/render/job/${admitted.automaticAttemptId}/artifact/pilot-output.mp4`,
+          renderAttemptId,
+          objectKey: `tenant/${admitted.key.accountId}/workspace/${admitted.key.workspaceId}/project/${admitted.key.projectId}/revision/${admitted.key.projectRevisionId}/lane/render/job/${renderAttemptId}/artifact/pilot-output.mp4`,
           sha256: outputSha256,
           bytes: 10_000,
           contentType: "video/mp4",
@@ -855,6 +858,38 @@ describe("hosted short pilot durable groundwork", () => {
         ),
       ),
     ).toBe("SHORT_PILOT_OUTPUT_NOT_DURABLE");
+  });
+
+  it("binds the terminal and artifact path to the DB-owned render attempt", async () => {
+    const repository = new AsyncTransactionalRepository();
+    const value = await groundworkBoundaryAdmission(repository);
+    await claimHostedShortPilotSubmission(repository, value);
+    expect(
+      await code(() =>
+        acceptHostedShortPilot(
+          repository,
+          outputVerifier(value, (trusted) => ({
+            ...trusted,
+            output: { ...trusted.output, renderAttemptId: "foreign-render-attempt" },
+          })),
+          value,
+          evidence(value),
+        ),
+      ),
+    ).toBe("SHORT_PILOT_OUTPUT_NOT_DURABLE");
+    expect(
+      await code(() =>
+        acceptHostedShortPilot(
+          repository,
+          outputVerifier(value, (trusted) => ({
+            ...trusted,
+            terminal: { ...trusted.terminal, attemptId: "foreign-render-attempt" },
+          })),
+          value,
+          evidence(value),
+        ),
+      ),
+    ).toBe("SHORT_PILOT_NOT_TERMINAL");
   });
 
   it("rejects missing terminal proof and nonzero workers", async () => {

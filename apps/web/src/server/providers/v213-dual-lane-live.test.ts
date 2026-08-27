@@ -199,6 +199,7 @@ const makeFake = (
     const payloadRecord = payload as Record<string, JsonValue>;
     const envelope = payloadRecord.envelope as Record<string, JsonValue>;
     const { envelope: _envelope, ...requestBody } = payloadRecord;
+    void _envelope;
     const work = envelope.work as Record<string, JsonValue>;
     const runtime = envelope.runtime as Record<string, JsonValue>;
     const body: ProvenanceReceiptBody = {

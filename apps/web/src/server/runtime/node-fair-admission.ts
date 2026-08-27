@@ -140,6 +140,8 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
     await executor.transaction(async (transaction) => {
       await transaction.execute(
         `TRUNCATE hosted_project_reviews, hosted_project_create_requests,
+                  hosted_v209_short_admissions,
+                  hosted_v209_terminal_acceptances, hosted_v209_settlement_cost_evidence,
                   hosted_pair_zero_worker_observations,
                   hosted_pair_cleanup_observations, hosted_pair_runtime_states,
                   hosted_dispatch_token_vault, hosted_lane_batch_items, hosted_lane_batches,

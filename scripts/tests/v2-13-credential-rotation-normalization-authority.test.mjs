@@ -36,8 +36,7 @@ async function runMutation(mutate) {
     for (const fileName of fileNames) {
       const value = values[fileName];
       const unchanged =
-        fileName.endsWith(".json") &&
-        JSON.stringify(value) === JSON.stringify(originals[fileName]);
+        fileName.endsWith(".json") && JSON.stringify(value) === JSON.stringify(originals[fileName]);
       await writeFile(
         path.join(directory, fileName),
         unchanged
@@ -65,10 +64,22 @@ test("rotation/normalization authority records exact completed single-use execut
   const result = await runMutation(() => {});
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.status, "CONSUMED_COMPLETED_EXACT_GOOGLE_SECRET_ROTATION_AND_LOCAL_R2_NORMALIZATION");
-  assert.equal(output.authority_id, "v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2");
-  assert.equal(output.proposal_sha256, "sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73");
-  assert.equal(output.approval_sha256, "sha256:94c1f9fb1c6f3fb42f4b957a2e1de7c91c2404cc299cd73c59e5a4ac8d1d80e6");
+  assert.equal(
+    output.status,
+    "CONSUMED_COMPLETED_EXACT_GOOGLE_SECRET_ROTATION_AND_LOCAL_R2_NORMALIZATION",
+  );
+  assert.equal(
+    output.authority_id,
+    "v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2",
+  );
+  assert.equal(
+    output.proposal_sha256,
+    "sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73",
+  );
+  assert.equal(
+    output.approval_sha256,
+    "sha256:94c1f9fb1c6f3fb42f4b957a2e1de7c91c2404cc299cd73c59e5a4ac8d1d80e6",
+  );
   assert.equal(output.consumed, true);
   assert.equal(output.provider_calls_made, null);
   assert.equal(output.provider_mutations_made, 2);
@@ -87,7 +98,8 @@ test("rotation/normalization authority rejects approval, proposal, and consumpti
   );
   assertRejected(
     await runMutation((values) => {
-      values["combined-credential-rotation-normalization-proposal.json"].receipt.exact_field_count = 22;
+      values["combined-credential-rotation-normalization-proposal.json"].receipt.exact_field_count =
+        22;
     }),
     "RAW_HASH",
   );

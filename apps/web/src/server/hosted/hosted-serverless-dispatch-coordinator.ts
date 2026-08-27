@@ -394,6 +394,8 @@ async function validateEnvelopeBindings(input: {
     reject("HOSTED_SERVERLESS_ENVELOPE_BINDING_INVALID");
   }
   const { authority_sha256: _authority, signature: _signature, ...body } = envelope;
+  void _authority;
+  void _signature;
   return Object.freeze(body);
 }
 

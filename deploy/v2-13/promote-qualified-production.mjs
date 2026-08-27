@@ -323,7 +323,8 @@ async function promoteQualifiedProduction({ record, disabledConfigBytes, transpo
     dryRun?.configSha256 !== record.release.enabled_config_sha256 ||
     !HASH.test(dryRun.bundleSha256 ?? "") ||
     dryRun.productionFirewallPassed !== true ||
-    dryRun.providerSendPerformed !== false
+    dryRun.gpuDispatchPerformed !== false ||
+    dryRun.cloudflareMutationPerformed !== false
   )
     fail("DRY_RUN");
   let recordedActivation = null;
@@ -332,7 +333,8 @@ async function promoteQualifiedProduction({ record, disabledConfigBytes, transpo
     if (
       !HASH.test(deployed?.versionSha256 ?? "") ||
       deployed.configSha256 !== record.release.enabled_config_sha256 ||
-      deployed.providerSendPerformed !== false
+      deployed.gpuDispatchPerformed !== false ||
+      deployed.cloudflareMutationPerformed !== true
     )
       fail("DEPLOY_RESULT");
     const readback = await transport.readback(deployed);
@@ -345,39 +347,71 @@ async function promoteQualifiedProduction({ record, disabledConfigBytes, transpo
       readback.publicOrigin !== record.cloudflare.public_origin ||
       readback.gpuTransport !== "QUALIFIED_EXACT" ||
       readback.exactBindings !== true ||
-      readback.providerSendPerformed !== false ||
+      readback.gpuDispatchPerformed !== false ||
+      readback.cloudflareMutationPerformed !== false ||
       !HASH.test(readback.evidenceSha256 ?? "")
     )
       fail("DEPLOY_READBACK");
-    const recorded = await transport.recordActivation({
-      activationId: record.database.activation_id,
-      promotionId: record.database.promotion_id,
-      sourceCommit: record.release.commit,
-      versionIdSha256: readback.versionSha256,
-      deployedConfigSha256: readback.configSha256,
-      observedAt: trustedNow,
-      evidenceSha256: readback.evidenceSha256,
-    });
-    if (
-      recorded?.versionIdSha256 !== readback.versionSha256 ||
-      recorded.deployedConfigSha256 !== record.release.enabled_config_sha256 ||
-      !HASH.test(recorded.readbackSha256 ?? "")
-    )
-      fail("ACTIVATION_RECORD");
-    recordedActivation = recorded;
     const route = await transport.routeReadback(readback);
     if (
       route?.routeReady !== true ||
       route.routeStatus !== 200 ||
       route.routeVersionSha256 !== deployed.versionSha256 ||
-      route.gpuTransport !== "QUALIFIED_EXACT"
+      !HASH.test(route.productionUrlSha256 ?? "") ||
+      !HASH.test(route.routeBodySha256 ?? "") ||
+      route.gpuTransport !== "QUALIFIED_EXACT" ||
+      route.gpuDispatchPerformed !== false ||
+      route.cloudflareMutationPerformed !== false
     )
       fail("ACTIVATION_ROUTE_READBACK");
+    const routeReadbackSha256 = sha256(
+      Buffer.from(
+        JSON.stringify({
+          productionUrlSha256: route.productionUrlSha256,
+          routeStatus: route.routeStatus,
+          routeBodySha256: route.routeBodySha256,
+          routeVersionSha256: route.routeVersionSha256,
+          gpuTransport: route.gpuTransport,
+        }),
+      ),
+    );
+    const recorded = await transport.recordActivation({
+      activationId: record.database.activation_id,
+      promotionId: record.database.promotion_id,
+      sourceCommit: record.release.commit,
+      versionIdSha256: readback.versionSha256,
+      deployedExecutableSha256: dryRun.bundleSha256,
+      deployedConfigSha256: readback.configSha256,
+      productionUrlSha256: route.productionUrlSha256,
+      routeStatus: route.routeStatus,
+      routeBodySha256: route.routeBodySha256,
+      routeVersionSha256: route.routeVersionSha256,
+      routeReadbackSha256,
+      observedAt: trustedNow,
+      evidenceSha256: readback.evidenceSha256,
+    });
+    if (
+      recorded?.versionIdSha256 !== readback.versionSha256 ||
+      recorded.deployedExecutableSha256 !== dryRun.bundleSha256 ||
+      recorded.deployedConfigSha256 !== record.release.enabled_config_sha256 ||
+      recorded.productionUrlSha256 !== route.productionUrlSha256 ||
+      recorded.routeStatus !== 200 ||
+      recorded.routeBodySha256 !== route.routeBodySha256 ||
+      recorded.routeVersionSha256 !== deployed.versionSha256 ||
+      recorded.routeReadbackSha256 !== routeReadbackSha256 ||
+      !HASH.test(recorded.readbackSha256 ?? "")
+    )
+      fail("ACTIVATION_RECORD");
+    recordedActivation = recorded;
     return Object.freeze({
       state: "QUALIFIED_EXACT",
       enabled: true,
-      providerSendPerformed: false,
+      gpuDispatchPerformed: false,
+      cloudflareMutationPerformed: true,
       versionSha256: deployed.versionSha256,
+      deployedExecutableSha256: dryRun.bundleSha256,
+      productionUrlSha256: route.productionUrlSha256,
+      routeReadbackSha256,
       evidenceSha256: readback.evidenceSha256,
       databasePromotionSha256: databasePromotion.decision_sha256,
     });
@@ -387,7 +421,8 @@ async function promoteQualifiedProduction({ record, disabledConfigBytes, transpo
       rollback?.gpuTransport !== "DISABLED_UNQUALIFIED" ||
       rollback.configSha256 !== record.release.disabled_config_sha256 ||
       rollback.versionSha256 !== record.cloudflare.disabled_version_sha256 ||
-      rollback.providerSendPerformed !== false ||
+      rollback.gpuDispatchPerformed !== false ||
+      rollback.cloudflareMutationPerformed !== true ||
       rollback.routeDisabled !== true ||
       rollback.routeStatus !== 503 ||
       rollback.routeVersionSha256 !== record.cloudflare.disabled_version_sha256

@@ -15,6 +15,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
   EXPECTED_PHASE_CAPS,
   validateFullLiveUserApproval,
 } from "./validate-full-live-approval.mjs";
@@ -39,6 +40,7 @@ const RUNPOD_ACCOUNT_ID_SHA256 =
 const CONFIRMATION = "CONSUME_EXACT_V2_13_FULL_LIVE_AUTHORITY";
 const MATERIALIZATION_SEED_SCHEMA = "videoforge.v213-full-live-materialization-seed/v1";
 const MATERIALIZATION_SEED_ENV = "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE";
+const STATIC_RELEASE_DESCRIPTOR_ENV = "VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE";
 const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_PATH =
   "deploy/v2-13/validate-materialization-seed-production-input.mts";
 const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_SHA256 =
@@ -68,6 +70,12 @@ const PHASES = Object.freeze([
 ]);
 const BOOTSTRAP_PHASE = "bootstrap_prequalification_database";
 const BOOTSTRAP_OPERATION = "bootstrap-prequalification-database";
+const CLEANUP_SAFETY_OPERATION_IDS = Object.freeze([
+  "restore-endpoints-max-one",
+  "prove-zero-workers",
+  "read-settled-billing",
+  "reconcile-exact-resources",
+]);
 const PROPOSAL_RECORD_PATH =
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
 const PROPOSAL_RECORD_ALLOWED_DIFF_PATHS = Object.freeze([
@@ -712,6 +720,71 @@ function validateMaterializationSeedFile({ path, expectedSha256 }) {
   }
   return Object.freeze({ value, sha256: expectedSha256 });
 }
+
+/** Verify canonical protected descriptor bytes before one-shot authority consumption or restart. */
+function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSourceCommit }) {
+  if (
+    !HASH.test(expectedSha256 ?? "") ||
+    !/^[0-9a-f]{40}$/u.test(expectedSourceCommit ?? "") ||
+    typeof path !== "string" ||
+    path === "" ||
+    !path.startsWith("/") ||
+    path.includes("\0")
+  )
+    fail("STATIC_RELEASE_DESCRIPTOR_BINDING");
+  let file;
+  let directory;
+  let bytes;
+  let value;
+  try {
+    file = lstatSync(path);
+    directory = lstatSync(dirname(path));
+    bytes = readFileSync(path);
+    value = JSON.parse(bytes);
+  } catch {
+    fail("STATIC_RELEASE_DESCRIPTOR_INPUT");
+  }
+  if (
+    !directory.isDirectory() ||
+    directory.isSymbolicLink() ||
+    (directory.mode & 0o777) !== 0o700 ||
+    !file.isFile() ||
+    file.isSymbolicLink() ||
+    (file.mode & 0o777) !== 0o600
+  )
+    fail("STATIC_RELEASE_DESCRIPTOR_MODE_OR_TYPE");
+  if (
+    !exactKeys(value, [
+      "auditFacts",
+      "contractBundleSha256",
+      "descriptorSha256",
+      "productionUrlSha256",
+      "schemaVersion",
+      "sourceCommit",
+    ]) ||
+    value.schemaVersion !== "videoforge.v213-static-release-descriptor/v1" ||
+    value.sourceCommit !== expectedSourceCommit ||
+    !HASH.test(value.productionUrlSha256 ?? "") ||
+    !HASH.test(value.contractBundleSha256 ?? "") ||
+    !HASH.test(value.descriptorSha256 ?? "") ||
+    value.descriptorSha256 !== expectedSha256 ||
+    !exactKeys(value.auditFacts, [
+      "backup_restore_ready",
+      "operations_runbooks_ready",
+      "production_transport_real",
+      "security_clear",
+    ])
+  )
+    fail("STATIC_RELEASE_DESCRIPTOR_CONTRACT");
+  const unsigned = { ...value };
+  delete unsigned.descriptorSha256;
+  if (
+    sha256(Buffer.from(`${canonicalJson(unsigned)}\n`)) !== value.descriptorSha256 ||
+    Buffer.compare(bytes, Buffer.from(`${canonicalJson(value)}\n`)) !== 0
+  )
+    fail("STATIC_RELEASE_DESCRIPTOR_HASH");
+  return Object.freeze(value);
+}
 const finiteUsd = (value, code) => {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) fail(code);
   return Math.round(value * 1_000_000) / 1_000_000;
@@ -750,6 +823,12 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     combined.new_paid_retained_resource_authorized !== false ||
     combined.recurring_plan_change_authorized !== false ||
     !HASH.test(authority.materialization_seed_sha256 ?? "") ||
+    !exactObjectKeys(authority.static_release_descriptor, ["path", "sha256"]) ||
+    typeof authority.static_release_descriptor.path !== "string" ||
+    authority.static_release_descriptor.path.startsWith("/") ||
+    authority.static_release_descriptor.path.split("/").includes("..") ||
+    !authority.static_release_descriptor.path.endsWith(".json") ||
+    !HASH.test(authority.static_release_descriptor.sha256 ?? "") ||
     JSON.stringify(authority.phase_caps_usd) !== JSON.stringify(EXPECTED_PHASE_CAPS)
   )
     fail("AUTHORITY_CONTRACT");
@@ -763,6 +842,8 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
   if (
     authority.authority_id !== validated.authorityId ||
     authority.lineage?.user_approval_sha256 !== validated.approvalSha256 ||
+    authority.static_release_descriptor.path !== validated.staticReleaseDescriptorPath ||
+    authority.static_release_descriptor.sha256 !== validated.staticReleaseDescriptorSha256 ||
     authority.approved_at !== validated.approvedAt ||
     authority.expires_at !== validated.expiresAt ||
     validated.proposalSchema !== "videoforge.v2-13-full-live-completion-proposal/v3" ||
@@ -773,8 +854,49 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     authority.github_release_ref?.external_action_taken !== false
   )
     fail("AUTHORITY_LINEAGE");
+  const approvalValidatorPath = authority.outer_orchestration?.approval_schema_validator_path;
+  const approvalValidatorSha256 = authority.outer_orchestration?.approval_schema_validator_sha256;
+  if (
+    approvalValidatorPath !== EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING.tree_entry_path ||
+    EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING.commit_field !== "source.release_source_commit" ||
+    EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING.verification !==
+      "GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256" ||
+    !HASH.test(approvalValidatorSha256 ?? "")
+  )
+    fail("APPROVAL_VALIDATOR_TREE_BINDING");
+  let resolvedReleaseCommit;
+  try {
+    resolvedReleaseCommit = execFileSync(
+      "git",
+      ["rev-parse", `${validated.releaseSourceCommit}^{commit}`],
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+        maxBuffer: 4 * 1024 * 1024,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    ).trim();
+  } catch {
+    fail("APPROVAL_VALIDATOR_RELEASE_COMMIT");
+  }
+  if (resolvedReleaseCommit !== validated.releaseSourceCommit)
+    fail("APPROVAL_VALIDATOR_RELEASE_COMMIT");
+  let committedApprovalValidatorBytes;
+  try {
+    committedApprovalValidatorBytes = execFileSync(
+      "git",
+      ["show", `${validated.releaseSourceCommit}:${approvalValidatorPath}`],
+      { cwd: ROOT, maxBuffer: 4 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] },
+    );
+  } catch {
+    fail("APPROVAL_VALIDATOR_TREE_ENTRY_UNAVAILABLE");
+  }
+  if (
+    sha256(committedApprovalValidatorBytes) !== approvalValidatorSha256 ||
+    sha256(readFileSync(resolve(ROOT, approvalValidatorPath))) !== approvalValidatorSha256
+  )
+    fail("APPROVAL_VALIDATOR_TREE_BYTES");
   for (const [pathKey, hashKey] of [
-    ["approval_schema_validator_path", "approval_schema_validator_sha256"],
     ["orchestration_tool_path", "orchestration_tool_sha256"],
     ["guarded_activation_path", "guarded_activation_sha256"],
     ["full_live_executor_path", "full_live_executor_sha256"],
@@ -848,7 +970,7 @@ function readAuthenticatedTrustedTime() {
 
 function initialConsumptionRecord(authority, authorityBytes, validated) {
   return {
-    schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v1",
+    schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v2",
     authority_id: authority.authority_id,
     authority_sha256: sha256(authorityBytes),
     proposal_sha256: validated.proposalSha256,
@@ -861,6 +983,8 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     full_live_executor_path: authority.outer_orchestration.full_live_executor_path,
     full_live_executor_sha256: authority.outer_orchestration.full_live_executor_sha256,
     materialization_seed_sha256: authority.materialization_seed_sha256,
+    static_release_descriptor_path: validated.staticReleaseDescriptorPath,
+    static_release_descriptor_sha256: validated.staticReleaseDescriptorSha256,
     approved_at: validated.approvedAt,
     expires_at: validated.expiresAt,
     state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
@@ -883,13 +1007,14 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
       verification_event_id: null,
     },
     cleanup_proof: null,
+    release_certification: null,
     terminal: null,
   };
 }
 
 function validateState(state) {
   if (
-    state?.schema_version !== "videoforge.v2-13-full-live-orchestration-consumption/v1" ||
+    state?.schema_version !== "videoforge.v2-13-full-live-orchestration-consumption/v2" ||
     !AUTHORITY_ID.test(state.authority_id ?? "") ||
     !HASH.test(state.authority_sha256 ?? "") ||
     !/^[0-9a-f]{40}$/u.test(state.authority_record_commit ?? "") ||
@@ -903,10 +1028,16 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:58df723c3e20930e36bb864e3a9176c0430939c162ef478fb6307da800ec658a" ||
+      "sha256:8bdf4079222117e1ac38bca3a7170e5bd9cf6aea5ffbcbc70cf587af73fdbf49" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
+    typeof state.static_release_descriptor_path !== "string" ||
+    state.static_release_descriptor_path.startsWith("/") ||
+    state.static_release_descriptor_path.split("/").includes("..") ||
+    !state.static_release_descriptor_path.endsWith(".json") ||
+    !HASH.test(state.static_release_descriptor_sha256 ?? "") ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||
+    !Object.hasOwn(state, "release_certification") ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
       "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
@@ -956,7 +1087,11 @@ function validateState(state) {
         fail("WORK_CONTRACT");
     }
   }
-  const actualWorkIds = Object.values(state.phases).flatMap((phase) => Object.keys(phase.work));
+  const certificationWorkId = `${state.authority_id}:certify-v2-13-release`.toLowerCase();
+  const actualWorkIds = [
+    ...Object.values(state.phases).flatMap((phase) => Object.keys(phase.work)),
+    ...(state.release_certification === null ? [] : [state.release_certification.work_id]),
+  ];
   const bootstrapWorkId = `${state.authority_id}:${BOOTSTRAP_OPERATION}`.toLowerCase();
   const bootstrapWork = state.phases[BOOTSTRAP_PHASE]?.work?.[bootstrapWorkId];
   if (
@@ -993,6 +1128,9 @@ function validateState(state) {
   )
     fail("RELEASE_REF_EVENT");
   if (state.cleanup_proof !== null) {
+    const exactCleanupWorkIds = CLEANUP_SAFETY_OPERATION_IDS.map((operationId) =>
+      `${state.authority_id}:${operationId}`.toLowerCase(),
+    ).sort();
     if (
       JSON.stringify(Object.keys(state.cleanup_proof)) !==
         JSON.stringify([
@@ -1012,9 +1150,39 @@ function validateState(state) {
       !Array.isArray(state.cleanup_proof.cleanup_work_ids) ||
       JSON.stringify(state.cleanup_proof.cleanup_work_ids) !==
         JSON.stringify(Object.keys(state.phases.cleanup_and_reconciliation.work).sort()) ||
+      JSON.stringify(state.cleanup_proof.cleanup_work_ids) !==
+        JSON.stringify(exactCleanupWorkIds) ||
       !state.event_ids.includes(state.cleanup_proof.event_id)
     )
       fail("CLEANUP_PROOF_CONTRACT");
+  }
+  if (state.release_certification !== null) {
+    const certification = state.release_certification;
+    const authorizedKeys = ["work_id", "state", "authorization_event_id"].sort();
+    const settledKeys = [
+      ...authorizedKeys,
+      "settled_result",
+      "settled_result_sha256",
+      "settlement_event_id",
+    ].sort();
+    if (
+      certification.work_id !== certificationWorkId ||
+      !["AUTHORIZED_ONCE_RECONCILIATION_ONLY", "SETTLED_TERMINAL"].includes(certification.state) ||
+      certification.authorization_event_id !== `${certificationWorkId}:authorized` ||
+      !state.event_ids.includes(certification.authorization_event_id) ||
+      JSON.stringify(Object.keys(certification).sort()) !==
+        JSON.stringify(certification.state === "SETTLED_TERMINAL" ? settledKeys : authorizedKeys) ||
+      (certification.state === "SETTLED_TERMINAL" &&
+        (certification.settled_result === null ||
+          typeof certification.settled_result !== "object" ||
+          Array.isArray(certification.settled_result) ||
+          !HASH.test(certification.settled_result_sha256 ?? "") ||
+          settledResultSha256(certification.settled_result) !==
+            certification.settled_result_sha256 ||
+          certification.settlement_event_id !== `${certificationWorkId}:settled` ||
+          !state.event_ids.includes(certification.settlement_event_id)))
+    )
+      fail("RELEASE_CERTIFICATION_CONTRACT");
   }
   const phaseStates = PHASES.map(([name]) => state.phases[name].state);
   if (state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
@@ -1033,6 +1201,7 @@ function validateState(state) {
       state.current_phase_index !== PHASES.length ||
       phaseStates.some((value) => value !== "COMPLETE") ||
       state.cleanup_proof === null ||
+      state.release_certification?.state !== "SETTLED_TERMINAL" ||
       state.terminal !== "CLEANUP_ZERO_WORKER_BILLING_RECONCILED"
     )
       fail("COMPLETE_STATE_INVARIANT");
@@ -1049,7 +1218,7 @@ function validateState(state) {
       state.current_phase_index !== PHASES.length ||
       state.phases.cleanup_and_reconciliation.state !== "COMPLETE" ||
       state.cleanup_proof === null ||
-      state.terminal !== "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_MAX_ONE" ||
+      state.terminal !== "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED" ||
       !/^[A-Z0-9][A-Z0-9_]{7,127}$/u.test(state.cleanup_failure_code ?? "")
     )
       fail("CLEANUP_COMPLETE_STATE_INVARIANT");
@@ -1198,6 +1367,11 @@ function completePhase(state, phaseName) {
     fail("RELEASE_REF_NOT_VERIFIED");
   if (phaseName === "cleanup_and_reconciliation" && state.cleanup_proof === null)
     fail("CLEANUP_PROOF_REQUIRED");
+  if (
+    phaseName === "cleanup_and_reconciliation" &&
+    state.release_certification?.state !== "SETTLED_TERMINAL"
+  )
+    fail("RELEASE_CERTIFICATION_REQUIRED");
   phase.state = "COMPLETE";
   state.current_phase_index += 1;
   if (state.current_phase_index === PHASES.length) {
@@ -1284,6 +1458,14 @@ function recordCleanupProof(
   )
     fail("CLEANUP_NOT_ACTIVE");
   if (state.cleanup_proof !== null) fail("CLEANUP_PROOF_REPLAY");
+  const exactCleanupWorkIds = CLEANUP_SAFETY_OPERATION_IDS.map((operationId) =>
+    `${state.authority_id}:${operationId}`.toLowerCase(),
+  ).sort();
+  if (
+    JSON.stringify(Object.keys(state.phases.cleanup_and_reconciliation.work).sort()) !==
+    JSON.stringify(exactCleanupWorkIds)
+  )
+    fail("CLEANUP_WORK_SET");
   if (
     Object.values(state.phases.cleanup_and_reconciliation.work).some(
       (work) => work.state !== "SETTLED_TERMINAL",
@@ -1310,6 +1492,55 @@ function recordCleanupProof(
   return validateState(state);
 }
 
+function authorizeReleaseCertification(state, { workId, eventId }) {
+  validateState(state);
+  if (
+    state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" ||
+    state.phases.cleanup_and_reconciliation.state !== "ACTIVE" ||
+    state.cleanup_proof === null
+  )
+    fail("RELEASE_CERTIFICATION_NOT_READY");
+  if (state.release_certification !== null) fail("RELEASE_CERTIFICATION_REPLAY");
+  const exactWorkId = `${state.authority_id}:certify-v2-13-release`.toLowerCase();
+  if (
+    workId !== exactWorkId ||
+    eventId !== `${exactWorkId}:authorized` ||
+    state.work_ids.includes(workId) ||
+    state.event_ids.includes(eventId)
+  )
+    fail("RELEASE_CERTIFICATION_AUTHORIZATION");
+  state.release_certification = {
+    work_id: workId,
+    state: "AUTHORIZED_ONCE_RECONCILIATION_ONLY",
+    authorization_event_id: eventId,
+  };
+  state.work_ids.push(workId);
+  state.event_ids.push(eventId);
+  return validateState(state);
+}
+
+function settleReleaseCertification(state, { workId, result, eventId }) {
+  validateState(state);
+  const certification = state.release_certification;
+  if (
+    state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" ||
+    state.phases.cleanup_and_reconciliation.state !== "ACTIVE" ||
+    certification?.state !== "AUTHORIZED_ONCE_RECONCILIATION_ONLY" ||
+    workId !== certification.work_id ||
+    eventId !== `${workId}:settled` ||
+    state.event_ids.includes(eventId)
+  )
+    fail("RELEASE_CERTIFICATION_NOT_SETTLEABLE");
+  if (result === null || typeof result !== "object" || Array.isArray(result))
+    fail("RELEASE_CERTIFICATION_RESULT");
+  certification.state = "SETTLED_TERMINAL";
+  certification.settled_result = result;
+  certification.settled_result_sha256 = settledResultSha256(result);
+  certification.settlement_event_id = eventId;
+  state.event_ids.push(eventId);
+  return validateState(state);
+}
+
 function completeCleanupOnly(state) {
   validateState(state);
   if (
@@ -1321,7 +1552,7 @@ function completeCleanupOnly(state) {
   state.phases.cleanup_and_reconciliation.state = "COMPLETE";
   state.current_phase_index = PHASES.length;
   state.state = "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY";
-  state.terminal = "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_MAX_ONE";
+  state.terminal = "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED";
   return validateState(state);
 }
 
@@ -1557,6 +1788,11 @@ async function main() {
       authorityBytes,
       authorityRecordCommit: args.get("authority-record-commit"),
     });
+    validateStaticReleaseDescriptorFile({
+      path: process.env[STATIC_RELEASE_DESCRIPTOR_ENV],
+      expectedSha256: authority.static_release_descriptor.sha256,
+      expectedSourceCommit: validated.releaseSourceCommit,
+    });
     validateMaterializationSeedFile({
       path: process.env[MATERIALIZATION_SEED_ENV],
       expectedSha256: authority.materialization_seed_sha256,
@@ -1646,6 +1882,7 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await mai
 
 export {
   authorizeCleanupWork,
+  authorizeReleaseCertification,
   authorizeWork,
   beginPhase,
   completeCleanupOnly,
@@ -1655,17 +1892,20 @@ export {
   initialConsumptionRecord,
   MATERIALIZATION_SEED_ENV,
   MATERIALIZATION_SEED_SCHEMA,
+  STATIC_RELEASE_DESCRIPTOR_ENV,
   PHASES,
   recordCleanupProof,
   recordSettledResult,
   recordVerifiedReleaseRef,
   settleWork,
   settleCleanupWork,
+  settleReleaseCertification,
   trustedCommitLineage,
   updateState,
   validateOuterAuthority,
   validateMaterializationSeedFile,
   validateMaterializationSeedShape,
+  validateStaticReleaseDescriptorFile,
   validateAuthorityRecordCommit,
   validateState,
   readAuthenticatedTrustedTime,

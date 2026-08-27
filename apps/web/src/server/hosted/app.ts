@@ -30,10 +30,17 @@ import {
   exactHostedRenderSubmission,
 } from "./submission";
 import { handleV213OperatorWorkflowStart } from "./v213-operator-workflow";
+import { handleV213PostConsumptionSelectionRequest } from "./v213-post-consumption-selection";
 import {
+  handleV213AcceptanceOperatorEvidenceRequest,
   handleV213LiveOperatorRequest,
+  type V213OperatorEvidenceRouteDependencies,
   type V213OperatorRouteDependencies,
 } from "./v213-live-operator-route";
+import {
+  handleV213ResolvedRenderManifestRequest,
+  type V213ResolvedRenderManifestReadDependencies,
+} from "./v213-resolved-render-manifest-route";
 import { createV213WorkerLiveAcceptanceExecute } from "./v213-worker-live-execution";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -1062,6 +1069,8 @@ export interface HostedConfigurationDependencies {
   readonly now?: () => Date;
   readonly liveAcceptanceExecute?: V213OperatorRouteDependencies["execute"];
   readonly liveAcceptanceRouteDependencies?: V213OperatorRouteDependencies;
+  readonly operatorEvidenceRouteDependencies?: V213OperatorEvidenceRouteDependencies;
+  readonly resolvedRenderManifestRouteDependencies?: V213ResolvedRenderManifestReadDependencies;
 }
 
 const hostedConfigurationDependencies: HostedConfigurationDependencies = Object.freeze({
@@ -1121,6 +1130,22 @@ export async function handleHostedRequest(
     return json({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }, 503);
   }
   const url = new URL(request.url);
+  const resolvedRenderManifest = await handleV213ResolvedRenderManifestRequest(
+    request,
+    environment,
+    config,
+    configurationDependencies.resolvedRenderManifestRouteDependencies,
+    configurationDependencies.now,
+  );
+  if (resolvedRenderManifest) return resolvedRenderManifest;
+  const operatorEvidence = await handleV213AcceptanceOperatorEvidenceRequest(
+    request,
+    environment,
+    config,
+    configurationDependencies.operatorEvidenceRouteDependencies,
+    configurationDependencies.now,
+  );
+  if (operatorEvidence) return operatorEvidence;
   const liveAcceptance = await handleV213LiveOperatorRequest(
     request,
     environment,
@@ -1132,6 +1157,13 @@ export async function handleHostedRequest(
   if (liveAcceptance) return liveAcceptance;
   const operatorWorkflow = await handleV213OperatorWorkflowStart(request, environment, config);
   if (operatorWorkflow) return operatorWorkflow;
+  const postConsumptionSelection = await handleV213PostConsumptionSelectionRequest(
+    request,
+    environment,
+    config,
+    executionContext,
+  );
+  if (postConsumptionSelection) return postConsumptionSelection;
   const personalWorkerResponse = await handlePersonalWorkerRequest(
     request,
     environment,

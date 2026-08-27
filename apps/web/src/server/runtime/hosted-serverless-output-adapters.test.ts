@@ -73,11 +73,15 @@ function completion(
   });
 }
 
-function sqlRepositoryFixture(columns: readonly string[] = HOSTED_OUTPUT_BARRIER_REQUIRED_COLUMNS) {
+function sqlRepositoryFixture(
+  columns: readonly string[] = HOSTED_OUTPUT_BARRIER_REQUIRED_COLUMNS,
+  provenanceReadbackOverrides: Readonly<Record<string, unknown>> = {},
+) {
   let stored: Record<string, unknown> | null = null;
   let persistedProvenance: Record<string, unknown> | null = null;
   const nonces = [1, "2"];
   const queries: string[] = [];
+  const provenanceInsertParameters: SqlPrimitive[][] = [];
   const db = database(async (sql, parameters) => {
     if (sql.includes("set_config")) return { rows: [], affectedRows: 1 };
     if (sql.includes("WITH target AS")) {
@@ -88,11 +92,23 @@ function sqlRepositoryFixture(columns: readonly string[] = HOSTED_OUTPUT_BARRIER
     }
     if (sql.includes("serverless_provenance_receipts")) {
       if (sql.includes("INSERT INTO")) {
-        persistedProvenance ??= { receipt_sha256: parameters[0], receipt_nonce: parameters[6] };
+        provenanceInsertParameters.push([...parameters]);
+        persistedProvenance ??= {
+          receipt_sha256: parameters[0],
+          receipt_nonce: parameters[6],
+          peak_vram_bytes: parameters[14],
+          scratch_removed: parameters[22],
+          scratch_on_model_volume: parameters[23],
+        };
         return { rows: [], affectedRows: 1 };
       }
       if (sql.includes("receipt_nonce =")) {
-        return { rows: persistedProvenance ? [persistedProvenance] : [], affectedRows: 1 };
+        return {
+          rows: persistedProvenance
+            ? [{ ...persistedProvenance, ...provenanceReadbackOverrides }]
+            : [],
+          affectedRows: 1,
+        };
       }
       return {
         rows: nonces.map((receipt_nonce) => ({ receipt_nonce })),
@@ -122,7 +138,11 @@ function sqlRepositoryFixture(columns: readonly string[] = HOSTED_OUTPUT_BARRIER
     }
     throw new Error(`unexpected SQL: ${sql}`);
   }, queries);
-  return { repository: new HostedSqlOutputBarrierRepository(db, scope), queries };
+  return {
+    repository: new HostedSqlOutputBarrierRepository(db, scope),
+    queries,
+    provenanceInsertParameters,
+  };
 }
 
 function binding(): HostedServerlessAttemptBinding {
@@ -369,6 +389,30 @@ describe("hosted ordinary-output SQL adapter", () => {
     expect(
       fixture.queries.filter((sql) => sql.includes("INSERT INTO serverless_provenance_receipts")),
     ).toHaveLength(1);
+    expect(fixture.provenanceInsertParameters).toHaveLength(1);
+    expect(fixture.provenanceInsertParameters[0]!.slice(14, 15)).toEqual([
+      receipt.runtime_probe.peak_vram_bytes,
+    ]);
+    expect(fixture.provenanceInsertParameters[0]!.slice(22, 24)).toEqual([
+      receipt.scratch_cleanup.removed,
+      receipt.scratch_cleanup.scratch_on_model_volume,
+    ]);
+    const provenanceInsert = fixture.queries.find((sql) =>
+      sql.includes("INSERT INTO serverless_provenance_receipts"),
+    );
+    expect(provenanceInsert).toContain(
+      "driver_version, cuda_version, peak_vram_bytes, intended_region",
+    );
+    expect(provenanceInsert).toContain(
+      "model_ready, scratch_removed, scratch_on_model_volume, timings",
+    );
+    expect(
+      fixture.queries.some((sql) =>
+        sql.includes(
+          "SELECT receipt_sha256, peak_vram_bytes, scratch_removed, scratch_on_model_volume",
+        ),
+      ),
+    ).toBe(true);
     expect(fixture.queries.some((sql) => sql.includes("ON CONFLICT (attempt_id) DO NOTHING"))).toBe(
       true,
     );
@@ -389,6 +433,30 @@ describe("hosted ordinary-output SQL adapter", () => {
     ).rejects.toMatchObject({ code: "HOSTED_OUTPUT_BARRIER_ROW_INVALID" });
     expect(
       fixture.queries.some((sql) => sql.includes("INSERT INTO serverless_provenance_receipts")),
+    ).toBe(false);
+  });
+
+  it.each([
+    ["peak VRAM", { peak_vram_bytes: String(1) }],
+    ["scratch removal", { scratch_removed: false }],
+    ["scratch placement", { scratch_on_model_volume: true }],
+  ])("rejects mutated %s provenance readback", async (_label, readbackMutation) => {
+    const fixture = sqlRepositoryFixture(HOSTED_OUTPUT_BARRIER_REQUIRED_COLUMNS, readbackMutation);
+    await fixture.repository.schemaReady();
+    const bound = binding();
+    const receipt = receiptFor(bound);
+    const record = completion({
+      bindingSha256: hostedOutputBindingSha256(bound),
+      provenanceReceiptSha256: receipt.receipt_sha256,
+    });
+
+    await expect(
+      fixture.repository.completeVerified({ record, binding: bound, receipt }),
+    ).rejects.toMatchObject({ code: "HOSTED_OUTPUT_BARRIER_ROW_INVALID" });
+    expect(
+      fixture.queries.some((sql) =>
+        sql.includes("INSERT INTO hosted_serverless_output_barrier_completions"),
+      ),
     ).toBe(false);
   });
 

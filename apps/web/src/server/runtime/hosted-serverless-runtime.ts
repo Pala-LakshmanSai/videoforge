@@ -34,6 +34,11 @@ export class HostedServerlessCompositionError extends Error {
 }
 
 export interface HostedQualificationLineage {
+  readonly schemaVersion: "videoforge.v213-qualified-deployment-lineage/v1";
+  readonly fullLiveAuthorityId: string;
+  readonly stageAuthorityId: string;
+  readonly productionStageAuthorityId: string;
+  readonly qualificationHandoffSha256: Sha256;
   readonly endpointIdSha256: Sha256;
   readonly endpointTemplateIdSha256: Sha256;
   readonly endpointConfigSha256: Sha256;
@@ -43,14 +48,10 @@ export interface HostedQualificationLineage {
   readonly volumeManifestSha256: Sha256;
   readonly imageSourceCommit: string;
   readonly qualificationSourceSha256: Sha256;
-  readonly dependencyLockSha256: Sha256;
   readonly acceptanceContractSha256: Sha256;
+  readonly receiptSha256s: readonly Sha256[];
   readonly region: "EU-RO-1";
   readonly gpu: "NVIDIA GeForce RTX 4090";
-  readonly max1GateConfigSha256: Sha256;
-  readonly max1EndpointProfileSha256: Sha256;
-  readonly max2GateConfigSha256: Sha256;
-  readonly max2EndpointProfileSha256: Sha256;
 }
 
 /** Trusted output of the separately injected independent-evidence verifier. */
@@ -144,6 +145,29 @@ function exactDate(value: string): number | null {
     : null;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const AUTHORITY_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,319}$/u;
+const LINEAGE_KEYS = Object.freeze([
+  "acceptanceContractSha256",
+  "endpointConfigSha256",
+  "endpointIdSha256",
+  "endpointTemplateIdSha256",
+  "fullLiveAuthorityId",
+  "gpu",
+  "imageSourceCommit",
+  "modelManifestSha256",
+  "productionStageAuthorityId",
+  "qualificationHandoffSha256",
+  "qualificationSourceSha256",
+  "receiptSha256s",
+  "region",
+  "schemaVersion",
+  "stageAuthorityId",
+  "volumeIdSha256",
+  "volumeManifestSha256",
+  "workerImageDigest",
+] as const);
+
 function deepFreeze<Value>(value: Value): Readonly<Value> {
   if (typeof value !== "object" || value === null || Object.isFrozen(value)) return value;
   for (const child of Array.isArray(value) ? value : Object.values(value)) deepFreeze(child);
@@ -173,8 +197,23 @@ function sameLineage(
 ): boolean {
   const deployment = binding.deployment;
   const sealedLineage = deployment.timeoutEvidence.sealed_lineage;
+  const receiptCount = deployment.lane === "mage_image" ? 1 : 4;
   return (
+    Object.keys(lineage).sort().join(",") === [...LINEAGE_KEYS].sort().join(",") &&
+    lineage.schemaVersion === "videoforge.v213-qualified-deployment-lineage/v1" &&
+    UUID.test(lineage.fullLiveAuthorityId) &&
+    AUTHORITY_ID.test(lineage.stageAuthorityId) &&
+    AUTHORITY_ID.test(lineage.productionStageAuthorityId) &&
     binding.transportEndpointIdSha256 === deployment.endpointIdSha256 &&
+    [
+      lineage.endpointIdSha256,
+      lineage.endpointTemplateIdSha256,
+      lineage.endpointConfigSha256,
+      lineage.workerImageDigest,
+      lineage.modelManifestSha256,
+      lineage.volumeIdSha256,
+      lineage.volumeManifestSha256,
+    ].every(exactSha256) &&
     lineage.endpointIdSha256 === deployment.endpointIdSha256 &&
     deployment.endpointProfileId === `template:${lineage.endpointTemplateIdSha256}` &&
     lineage.endpointConfigSha256 === deployment.endpointConfigSha256 &&
@@ -189,14 +228,16 @@ function sameLineage(
       canonicalSha256(lineage as unknown as Readonly<Record<string, unknown>>) &&
     /^[0-9a-f]{40}$/u.test(lineage.imageSourceCommit) &&
     [
+      lineage.qualificationHandoffSha256,
       lineage.qualificationSourceSha256,
-      lineage.dependencyLockSha256,
       lineage.acceptanceContractSha256,
-      lineage.max1GateConfigSha256,
-      lineage.max1EndpointProfileSha256,
-      lineage.max2GateConfigSha256,
-      lineage.max2EndpointProfileSha256,
     ].every(exactSha256) &&
+    lineage.qualificationSourceSha256 === lineage.qualificationHandoffSha256 &&
+    lineage.acceptanceContractSha256 === lineage.qualificationHandoffSha256 &&
+    Array.isArray(lineage.receiptSha256s) &&
+    lineage.receiptSha256s.length === receiptCount &&
+    new Set(lineage.receiptSha256s).size === receiptCount &&
+    lineage.receiptSha256s.every(exactSha256) &&
     lineage.region === "EU-RO-1" &&
     lineage.gpu === "NVIDIA GeForce RTX 4090"
   );
