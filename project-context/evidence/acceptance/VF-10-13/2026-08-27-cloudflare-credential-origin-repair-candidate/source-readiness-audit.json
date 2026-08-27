@@ -1,0 +1,111 @@
+{
+  "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
+  "task_id": "VF-10-13",
+  "audited_code_commit": "7c1f6c255cd8355295be93621e9347abe0442646",
+  "audit_result": "PASS_READY_TO_RESEAL",
+  "observed_at": "2026-08-27T23:52:08.000Z",
+  "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
+  "provider_state_observed": false,
+  "credential_accessed": false,
+  "external_calls": 0,
+  "provider_mutations": 0,
+  "gpu_use": 0,
+  "spend_usd": 0,
+  "source_closure": {
+    "path": "deploy/v2-13/full-live-source-closure.json",
+    "entry_count": 634,
+    "sha256": "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8",
+    "exact": true
+  },
+  "production_origin": {
+    "value": "https://videoforge-production-runtime.lakshmansai121.workers.dev",
+    "sha256": "sha256:10d2eaa988207019eb218961394db7889a9ea8eb9e5f9c74a478e0884e7f39c0"
+  },
+  "contract_bundle": {
+    "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
+    "path": "deploy/v2-13/full-live-source-closure.json",
+    "sha256": "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8"
+  },
+  "validation": {
+    "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
+    "full_verify_passed": true,
+    "installed_chrome_fixture_journeys_passed": 44,
+    "focused_web_tests_passed": 189,
+    "provider_free_script_tests_passed": 247,
+    "executor_tests_passed": 30,
+    "authority_adapter_activation_pair_tests_passed": 89,
+    "control_plane_tests_passed": 18,
+    "canonical_executor_state": "NO_ACTION"
+  },
+  "audit_facts": {
+    "operations_runbooks_ready": {
+      "claims": [
+        "stuck_job_runbook",
+        "provider_outage_runbook",
+        "billing_runbook",
+        "rollback_runbook"
+      ],
+      "metrics": {
+        "billingRunbookSha256": "sha256:99c98f263ac1ee8d59bf9ab21533232da094b2c01a7d595dc2ccdca87b2572ec",
+        "providerOutageRunbookSha256": "sha256:9786aa976e40445762b9650adb8c964fcc4164f63fa37e8c70378fed24bd2083",
+        "rollbackRunbookSha256": "sha256:1267ae0b3b813b4ceafcc937609e9f4dbf4f9fd215a0c311f6883440ccd8445c",
+        "stuckJobRunbookSha256": "sha256:9786aa976e40445762b9650adb8c964fcc4164f63fa37e8c70378fed24bd2083"
+      }
+    },
+    "backup_restore_ready": {
+      "claims": [
+        "backup_readback_passed",
+        "restore_evidence_accepted",
+        "schema_migration_disposition_recorded"
+      ],
+      "metrics": {
+        "backupReadbackPassed": true,
+        "restoreEvidenceAccepted": true,
+        "schemaMigrationDisposition": "DISPOSABLE_RESTORE_COMPLETED"
+      }
+    },
+    "security_clear": {
+      "claims": [
+        "p0_zero",
+        "p1_zero",
+        "auth_tenant_boundary_passed",
+        "ssrf_path_upload_boundary_passed",
+        "secret_log_scan_passed",
+        "cost_amplification_guards_passed",
+        "legacy_runtime_bundle_scan_passed"
+      ],
+      "metrics": {
+        "authTenantPassed": true,
+        "costAmplificationGuardsPassed": true,
+        "legacyRuntimeBundleScanPassed": true,
+        "p0Count": 0,
+        "p1Count": 0,
+        "secretLogScanPassed": true,
+        "ssrfPathUploadPassed": true
+      }
+    },
+    "production_transport_real": {
+      "claims": [
+        "hosted_client_api_truth",
+        "fixture_controls_absent",
+        "fake_gpu_absent",
+        "fake_transport_absent",
+        "manual_pod_controls_absent",
+        "legacy_dispatch_exports_absent"
+      ],
+      "metrics": {
+        "fakeGpuProfileInBundle": false,
+        "fakeTransportInBundle": false,
+        "fixtureControlsInBundle": false,
+        "hostedClientApiTruth": true,
+        "legacyDispatchExportsInBundle": false,
+        "manualPodControlsInBundle": false
+      }
+    }
+  },
+  "notes": [
+    "This record contains no credentials or raw protected values.",
+    "The release-source successor may add only this evidence record before resealing; application and deployment bytes remain those audited at audited_code_commit.",
+    "The previous 25-operation proposal and chat approval are non-reusable and no authority was materialized."
+  ]
+}
