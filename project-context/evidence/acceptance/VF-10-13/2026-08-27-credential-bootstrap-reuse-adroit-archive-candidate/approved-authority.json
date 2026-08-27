@@ -3,12 +3,12 @@
   "checkpoint_range": ["V2-13"],
   "task_id": "VF-10-13-CREDENTIAL-BOOTSTRAP-REUSE-EXACT-PROJECT",
   "authority_id": "v2-13-credential-bootstrap-reuse-20260827-082652z-90d6b19d",
-  "status": "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS",
+  "status": "CONSUMED_STOPPED_AFTER_RESOURCE_CREATION_REQUIRES_FRESH_ROTATION_AUTHORITY",
   "approved_at": "2026-08-27T08:26:52Z",
   "expires_at": "2026-08-28T08:26:52Z",
   "single_use": true,
-  "consumed": false,
-  "consumed_at": null,
+  "consumed": true,
+  "consumed_at": "2026-08-27T08:59:15Z",
   "authority_record_commit": null,
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/combined-credential-bootstrap-reuse-proposal.json",
@@ -205,18 +205,29 @@
     "preserve_existing_staging_r2_credential": true,
     "never_disable_or_rollback_recorded_firestore_side_effect": true
   },
+  "execution_recording": {
+    "path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/credential-bootstrap-execution-result.json",
+    "sha256": "sha256:b604579fcbf412468525c1fd3483235681fed6425cba7948c585356d3c009909",
+    "result": "STOPPED_AFTER_RESOURCE_CREATION_REQUIRES_FRESH_ROTATION_AUTHORITY",
+    "incident_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/credential-bootstrap-secret-exposure-incident.json",
+    "incident_sha256": "sha256:6afa7d32f4eaf1c625a1c788304694cfb6219a06a03d51bf9802535a0465e07f",
+    "receipt_path": "~/.videoforge/v2-13/bootstrap/receipt/credential-bootstrap.json",
+    "receipt_sha256": "sha256:9ac08caffa5758b14321c7a89ca9c76907a9f001f87adb803b7dabffb1723ea7",
+    "fresh_rotation_authority_required": true,
+    "authority_reusable": false
+  },
   "provider_free_recording": {
-    "credentials_accessed": false,
-    "authorized_execution_provider_calls": 0,
-    "authorized_execution_provider_mutations": 0,
+    "credentials_accessed": true,
+    "authorized_execution_provider_calls": null,
+    "authorized_execution_provider_mutations": 4,
     "observed_preapproval_provider_mutations": 1,
     "runpod_calls": 0,
     "gpu_hours": 0,
     "external_spend_usd": 0,
     "temporary_compute_started": false,
-    "authority_consumed": false,
-    "execution_started": false,
-    "consumption_record_created": false,
-    "consumption_record_sha256": null
+    "authority_consumed": true,
+    "execution_started": true,
+    "consumption_record_created": true,
+    "consumption_record_sha256": "sha256:b604579fcbf412468525c1fd3483235681fed6425cba7948c585356d3c009909"
   }
 }

@@ -1,10 +1,10 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-27T07:55:05.000Z"
+updated_at: "2026-08-27T09:05:07Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_credential_bootstrap_reuse_proposal_sealed_awaiting_fresh_exact_approval
+current_milestone: v2_13_credential_bootstrap_reuse_consumed_stopped_fresh_rotation_required
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: two_track_provider_free_product_active_live_certification_blocked
+  mode: two_track_provider_free_product_active_credential_bootstrap_stopped_live_certification_blocked
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Hold at the fresh exact approval boundary for the sealed existing-project credential-bootstrap reuse path; no credential or protected-file action is authorized until the proposal is committed, independently audited, and approved exactly."
-  note: "Source commit 3f7b588 is independently audited provider-free (42/42 checks). The exact-new-project credential-bootstrap attempt stopped at the Google project-create preflight because the authenticated account reached its project quota; its approval remains BLOCKED_UNCONSUMED_NO_MUTATION and non-reusable. One separately authorized quota-increase request for one additional Free Services project was submitted on 2026-08-27 and is awaiting Google review. A separate reuse audit of adroit-archive-329710 unexpectedly enabled firestore.googleapis.com and firebaserules.googleapis.com (13 to 15 services); the incident is preserved and independently contained, with no rollback or further API action authorized. The first independent reuse-proposal audit P1 was repaired. The existing-project reuse proposal is sealed at sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4 and committed at 68ea8a0, awaiting fresh exact approval; proposal work performed no credential/provider mutation, RunPod call, GPU use, or spend. The full-live successor remains BLOCKED_UNSEALED until credential identities/scope hashes and fresh full-live approval are bound."
+  provider_free_product_action: "The exact existing-project credential-bootstrap reuse authority was consumed once; the exact Google OAuth/R2 resources and four protected files were created, then the attempt stopped because one raw Google client secret appeared in internal tool output and the captured R2 files contain trailing newlines rejected by the guarded trimmed-value loader. Preserve resources/files; no deletion, rotation, retry, or redispatch is authorized. A fresh exact normalization/rotation proposal and approval is required before using or replacing these credentials."
+  note: "Source commit 3f7b588 remains independently audited provider-free (42/42 checks). The exact-new-project credential-bootstrap attempt remains BLOCKED_UNCONSUMED_NO_MUTATION because Google project quota was exhausted; its approval is non-reusable. A separate quota-increase request remains under Google review. The reuse audit of adroit-archive-329710 recorded the unexpected firestore.googleapis.com and firebaserules.googleapis.com enablement (13 to 15 services); no rollback, disablement, or further API enablement is authorized. Fresh approved reuse authority v2-13-credential-bootstrap-reuse-20260827-082652z-90d6b19d consumed once and is non-reusable. Result sha256:b604579fcbf412468525c1fd3483235681fed6425cba7948c585356d3c009909 records exact resource readback, zero RunPod/GPU/spend, the contained internal secret-output incident sha256:6afa7d32f4eaf1c625a1c788304694cfb6219a06a03d51bf9802535a0465e07f, and the loader-compatibility defect. Receipt sha256:9ac08caffa5758b14321c7a89ca9c76907a9f001f87adb803b7dabffb1723ea7 and four protected files remain outside the repository under 0700/0600 paths. Full-live successor remains BLOCKED_UNSEALED until credential identities are normalized or freshly rotated under a new exact authority, then fresh full-live approval is bound."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -65,7 +65,7 @@ two_track_execution:
 
 provider_free_product_progress:
   full_live_execution_source_commit: "3f7b588de4b96da7c1e56b6c1908df7381712710"
-  full_live_execution_source_status: PROVIDER_FREE_SOURCE_INDEPENDENTLY_AUDITED_FRESH_CREDENTIAL_BOOTSTRAP_AND_APPROVAL_REQUIRED
+  full_live_execution_source_status: PROVIDER_FREE_SOURCE_INDEPENDENTLY_AUDITED_CREDENTIAL_NORMALIZATION_AND_FRESH_APPROVAL_REQUIRED
   full_live_execution_source_note: "Source commit 3f7b588 is the current independently audited V2-13 provider-free release graph (42/42 checks), including receipt/restart/seed hardening and exact OAuth scope boundaries. Default entrypoints remain no-op; no provider call, mutation, GPU use, spend, or deploy occurred."
   full_live_executor_sha256: "sha256:5dd84bf8594c4dd19b907eea11798d956b5693c244d0abc1c926f81883338186"
   full_live_source_component_hashes:
@@ -106,14 +106,28 @@ provider_free_product_progress:
   credential_bootstrap_quota_request_sha256: "sha256:3cc99d3edfe0ef9a41a1b4b6b6ee90250f682c3a9dce928c13b63f2b8b83d42b"
   credential_bootstrap_quota_request_status: SUBMITTED_AWAITING_GOOGLE_REVIEW
   credential_bootstrap_quota_request_submitted_at: "2026-08-27"
-  credential_bootstrap_next_action: "Obtain fresh exact approval for the sealed existing-project reuse proposal at commit 68ea8a0; then recheck the exact project and R2 state immediately before any authorized credential or protected-file operation. Do not reuse the quota-blocked approval, disable APIs, delete or select another project, or create credentials before that approval."
+  credential_bootstrap_next_action: "The reuse authority is consumed and non-reusable. Preserve the exact created resources and protected files; obtain a wholly new exact normalization/rotation proposal and approval before any credential replacement or guarded use. Do not reuse the consumed authority, delete or rotate resources, disable APIs, or perform unrelated provider actions."
   credential_bootstrap_reuse_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/combined-credential-bootstrap-reuse-proposal.json"
   credential_bootstrap_reuse_proposal_base_commit: "ca5c4d2"
   credential_bootstrap_reuse_proposal_commit: "68ea8a0de78ded973c3a007ba2173a24161c8c36"
   credential_bootstrap_reuse_proposal_sha256: "sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4"
-  credential_bootstrap_reuse_proposal_status: PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL
+  credential_bootstrap_reuse_proposal_status: PASS_SEALED_APPROVED_SINGLE_USE_EXECUTED_STOPPED
   credential_bootstrap_reuse_proposal_audit_status: PASS_INDEPENDENT_FIRST_AUDIT_P1_REPAIRED
-  credential_bootstrap_reuse_proposal_authority_status: ABSENT_UNCONSUMED_NO_MUTATION
+  credential_bootstrap_reuse_proposal_authority_status: CONSUMED_STOPPED_AFTER_RESOURCE_CREATION_REQUIRES_FRESH_ROTATION_AUTHORITY
+  credential_bootstrap_reuse_execution_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/credential-bootstrap-execution-result.json"
+  credential_bootstrap_reuse_execution_sha256: "sha256:b604579fcbf412468525c1fd3483235681fed6425cba7948c585356d3c009909"
+  credential_bootstrap_reuse_execution_incident_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/credential-bootstrap-secret-exposure-incident.json"
+  credential_bootstrap_reuse_execution_incident_sha256: "sha256:6afa7d32f4eaf1c625a1c788304694cfb6219a06a03d51bf9802535a0465e07f"
+  credential_bootstrap_reuse_receipt_path: "~/.videoforge/v2-13/bootstrap/receipt/credential-bootstrap.json"
+  credential_bootstrap_reuse_receipt_sha256: "sha256:9ac08caffa5758b14321c7a89ca9c76907a9f001f87adb803b7dabffb1723ea7"
+  credential_bootstrap_reuse_authority_consumed: true
+  credential_bootstrap_reuse_authority_reusable: false
+  credential_bootstrap_reuse_provider_mutation_operations: 4
+  credential_bootstrap_reuse_credentials_captured: 4
+  credential_bootstrap_reuse_protected_files_written: 4
+  credential_bootstrap_reuse_loader_compatibility_status: BLOCKED_REQUIRES_TRIMMED_CREDENTIAL_BYTES
+  credential_bootstrap_reuse_loader_compatibility_affected_files: [R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY]
+  credential_bootstrap_reuse_secret_output_incident_status: CONTAINED_REQUIRES_FRESH_ROTATION_AUTHORITY
   credential_bootstrap_reuse_project_id: "adroit-archive-329710"
   credential_bootstrap_reuse_project_number: "984657838923"
   credential_bootstrap_reuse_proposal_provider_mutations: 0
@@ -121,7 +135,7 @@ provider_free_product_progress:
   credential_bootstrap_reuse_proposal_runpod_calls: 0
   credential_bootstrap_reuse_proposal_gpu_use: false
   credential_bootstrap_reuse_proposal_external_spend_usd: 0
-  credential_bootstrap_reuse_audit_status: PASS_INDEPENDENT_FIRST_AUDIT_P1_REPAIRED_SEALED_FRESH_APPROVAL_REQUIRED
+  credential_bootstrap_reuse_audit_status: PASS_INDEPENDENT_FIRST_AUDIT_P1_REPAIRED_EXECUTION_STOPPED_AFTER_CONTAINED_INCIDENT
   credential_bootstrap_reuse_audit_project_id: "adroit-archive-329710"
   credential_bootstrap_reuse_audit_incident_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/unexpected-firestore-api-enablement-incident.json"
   credential_bootstrap_reuse_audit_incident_sha256: "sha256:936117ccc777b37d6e6ee595c8d8feccb4fbd026e11d7705084af03230db2229"
@@ -143,7 +157,7 @@ provider_free_product_progress:
   fresh_v2_13_audit_status: PASS_42_OF_42_INDEPENDENT_PROVIDER_FREE
   fresh_v2_13_release_source_commit: null
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Obtain fresh exact approval for sealed reuse proposal sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4 at commit 68ea8a0, then create executable authority and recheck the exact existing Google project and R2 state before the one-use zero-spend credential bootstrap. Do not reuse the quota-blocked approval, disable APIs, select an alternate project, or perform credential/protected-file operations before that boundary."
+  next_v2_13_action: "The sealed reuse approval was consumed once and stopped after exact resource creation. Preserve the exact Google/R2 resources and four protected files; obtain a wholly new exact normalization/rotation proposal and approval before any credential replacement or guarded use. Do not reuse this consumed authority, delete or rotate under the current authority, disable APIs, select an alternate project, or perform unrelated provider actions."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -249,11 +263,8 @@ provider_free_product_progress:
   remaining_provider_free_activation_blockers:
     - cloudflare_oauth_config_and_account_bound_workers_dev_origin_contract
     - exact_pre_mutation_404_text_plain_route_body_hash_and_post_quarantine_200_readback
-    - accessible_google_project_or_explicit_new_project_authority_for_one_web_client
-    - least_privilege_r2_s3_credential_scope_bound_to_existing_bucket_only
+    - hash_bound_trimmed_google_oauth_and_r2_secret_file_bytes_or_fresh_rotation_authority
     - materialization_seed_sha256_outer_consumption_and_nested_hash_binding
-    - google_oauth_web_client_identity_and_access
-    - r2_s3_credential_identity_and_least_privilege_scope
     - fresh_v2_13_proposal_record_audit_and_exact_approval
   production_activation_requirements:
     - fresh_immutable_mage_and_soulx_images_after_envelope_verifier_change
@@ -265,13 +276,12 @@ provider_free_product_progress:
     - fresh_exact_paid_and_deployment_authority
     - authenticated_workers_dev_subdomain_origin_readback_and_exact_route_state_transitions
     - protected_wrangler_oauth_config_without_raw_api_token_export
-    - one_google_oauth_web_client_in_user_accessible_or_explicitly_authorized_project
-    - one_least_privilege_r2_s3_credential_for_existing_bucket_and_account_only
+    - normalized_hash_bound_google_oauth_web_client_secret_and_r2_s3_credential_files_under_fresh_rotation_authority
     - materialization_seed_sha256_bound_at_consumption_and_every_seed_read
   remaining_live_blockers:
     - mage_live_qualification
     - soulx_live_qualification
-  batch3_through_batch6_note: "Provider-free source commit 3f7b588 is independently audited (42/42) through migration 0045, including the receipt/restart/seed and OAuth-scope repairs. The exact hash-bound SoulX full/split renderer profile remains visually approved and provider-free active. Proposal sha256:9425de8e...899a and authority 67f6fb2 are superseded unconsumed before mutation; 45894ac0/ec38849 and authority 59dfe8a are also superseded unconsumed. Successor draft sha256:8f2b5514...5b7248 remains BLOCKED_UNSEALED pending Google/R2 credential identity and scope hashes plus fresh exact approval; credential creation requires a separate bootstrap authority. Production remains DISABLED_UNQUALIFIED and undeployed."
+  batch3_through_batch6_note: "Provider-free source commit 3f7b588 is independently audited (42/42) through migration 0045, including the receipt/restart/seed and OAuth-scope repairs. The exact hash-bound SoulX full/split renderer profile remains visually approved and provider-free active. Proposal sha256:9425de8e...899a and authority 67f6fb2 are superseded unconsumed before mutation; 45894ac0/ec38849 and authority 59dfe8a are also superseded unconsumed. Successor draft sha256:8f2b5514...5b7248 remains BLOCKED_UNSEALED pending normalized hash-bound credential files after the contained secret-output and loader-compatibility incidents, plus fresh exact full-live approval. Production remains DISABLED_UNQUALIFIED and undeployed."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
   focused_v2_12_tests: 14_pass
@@ -4357,17 +4367,17 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_credential_bootstrap_reuse_proposal_sealed_awaiting_fresh_exact_approval
-  status: credential_bootstrap_reuse_proposal_sealed_awaiting_fresh_exact_approval
+  milestone: v2_13_credential_bootstrap_reuse_consumed_stopped_fresh_rotation_required
+  status: credential_bootstrap_reuse_consumed_stopped_fresh_rotation_required
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: none_attempt64_consumed
+  authorization_status: credential_bootstrap_authority_consumed_stopped_non_reusable
   task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Obtain fresh exact approval for the sealed existing-project credential-bootstrap reuse proposal, execute its one-use zero-spend credential bootstrap, then continue the source-bound full-live gates only under a new exact authority."
+  goal: "Preserve the exact resources and protected files created by the consumed credential-bootstrap reuse authority; obtain fresh exact normalization/rotation authority before any credential replacement, then continue source-bound full-live gates only under new exact authority."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4388,7 +4398,7 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Attempt64 remains consumed/non-reusable. The 2e6a605d/9eaf276 and 45894ac0/ec38849 V2-13 approvals plus 59dfe8a authority are superseded unconsumed before mutation. Current source 3f7b588 is independently audited 42/42 provider-free. The existing-project reuse candidate is sealed at sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4 and committed at 68ea8a0; its first independent audit P1 was repaired. No fresh approval or executable authority exists, and proposal work made no credential/provider mutation, RunPod call, GPU use, or spend. The quota request and Firestore API side-effect incident remain preserved; no rollback or further API action is authorized."
+  authority_note: "Attempt64 remains consumed/non-reusable. The 2e6a605d/9eaf276 and 45894ac0/ec38849 V2-13 approvals plus 59dfe8a authority are superseded unconsumed before mutation. Current source 3f7b588 is independently audited 42/42 provider-free. Existing-project reuse authority v2-13-credential-bootstrap-reuse-20260827-082652z-90d6b19d was consumed once and stopped after exact resource creation; result and incident hashes are recorded above. Preserve resources/files; no deletion, normalization, rotation, retry, redispatch, rollback, disablement, or further API action is authorized under that authority. A wholly new exact normalization/rotation proposal and approval is required."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8f2b55141d0150e1aa60a954bad1bde3f278ce0e428e961580b66fc8bb5b7248"
