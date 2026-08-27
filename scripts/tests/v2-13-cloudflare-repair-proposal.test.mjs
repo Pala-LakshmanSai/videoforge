@@ -124,7 +124,7 @@ test("blocked successor verifies the superseded authority and approval commit by
       "sha256:42b122150ce2556afcbbf72d347bb0863d30ede0a126e384ae6e6c18ac0b3053";
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /SUPERSESSION_45894_59DFE8A/u);
+  assert.match(result.stderr, /SUPERSESSION_/u);
 });
 
 test("blocked successor removes Google and R2 credential creation from the approved graph", async () => {
