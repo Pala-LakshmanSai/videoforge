@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import {
   V213_GPU,
   V213_GPU_VRAM_BYTES,
+  V213_MAX_RATE_USD_PER_GPU_HOUR,
   V213_REGION,
   createV213Max1Deployments,
   issueV213StageAuthority,
@@ -110,6 +111,7 @@ type FakeOptions = {
   lostCreateAck?: boolean;
   crashBeforeStageCommit?: boolean;
   replayReceiptNonce?: boolean;
+  rateAboveCap?: boolean;
 };
 
 const makeFake = (
@@ -140,7 +142,9 @@ const makeFake = (
     gpu: V213_GPU,
     region: V213_REGION,
     availability: "LOW",
-    flexRateUsdPerGpuHour: 1.1,
+    flexRateUsdPerGpuHour: options.rateAboveCap
+      ? V213_MAX_RATE_USD_PER_GPU_HOUR + 0.000_001
+      : V213_MAX_RATE_USD_PER_GPU_HOUR,
     cumulativeBillingUsd: billing,
     runningPods: 0,
     activeWorkers: 0,
@@ -432,6 +436,22 @@ const makeFake = (
 };
 
 describe("V2-13 dual lane live adapter", () => {
+  it("accepts the exact approved rate and rejects any higher rate before mutation", async () => {
+    expect(V213_MAX_RATE_USD_PER_GPU_HOUR).toBe(1.116);
+    const input = await makeInput();
+    const exactRateTransport = makeFake(input);
+    await expect(readV213DualLaneAdmission(exactRateTransport, input)).resolves.toMatchObject({
+      admission: { flexRateUsdPerGpuHour: V213_MAX_RATE_USD_PER_GPU_HOUR },
+    });
+    expect(exactRateTransport.events).toEqual([]);
+
+    const aboveRateTransport = makeFake(input, { rateAboveCap: true });
+    await expect(readV213DualLaneAdmission(aboveRateTransport, input)).rejects.toMatchObject({
+      code: "V213_FRESH_ADMISSION_REJECTED",
+    });
+    expect(aboveRateTransport.events).toEqual([]);
+  });
+
   it("qualifies Mage first, exercises SoulX, creates production max1 last and proves drain", async () => {
     const input = await makeInput();
     const transport = makeFake(input);

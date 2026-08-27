@@ -4,12 +4,14 @@
 
 ### New-chat launch point — 2026-08-27
 
-- The independently audited provider-free full-live source is
-  `dd5549509dcbe89d31f56517ebc96f50ee6c2a70`. Its exact successor proposal is sealed as
-  `sha256:9357579a1adfa4cbb750599fc70c31d9234af6e74f1b00b3c4e7c3aa44de800a`; all production
-  entrypoints remain fail-closed/no-op while the proposal record awaits independent audit and approval.
-  The prior `sha256:3a0f1c61…c457403f` chat approval stopped at canonical validation before an
-  authority record, credential access, provider call, mutation, GPU use, or spend and is non-reusable.
+- The independently audited provider-free predecessor is
+  `dd5549509dcbe89d31f56517ebc96f50ee6c2a70`. Proposal
+  `sha256:9357579a1adfa4cbb750599fc70c31d9234af6e74f1b00b3c4e7c3aa44de800a` and authority-record
+  commit `21b770bc2fe86869443a4cead713101a2cb79776` are superseded unconsumed: a pre-execution audit
+  found the TypeScript live-admission ceiling was `$1.10/GPU-hour` while the sealed official rate
+  was `$1.116/GPU-hour`. No credentials, provider call, mutation, GPU use, or spend occurred. The
+  active provider-free repair aligns the exact ceiling and adds an accept-at-cap/reject-above test;
+  it requires a fresh source audit, reseal, proposal-record audit, and fresh exact approval.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -19,11 +21,11 @@
 - Production is still `DISABLED_UNQUALIFIED`. Migrations 0037–0045, the three production database
   roles, Cloudflare Worker/Workflows, immutable Mage/SoulX images, max-one RunPod lanes, and live
   acceptance have not been activated under a current full-live authority.
-- Fresh read-only preflight proved zero temporary compute and bound the completed credential receipt,
+- The last sealed read-only preflight proved zero temporary compute and bound the completed credential receipt,
   exact account-derived 404 HTML route, same two retained 50 GB EU-RO-1 volumes, and the official
   Serverless Flex rate of `$0.00031/second` (`$1.116/GPU-hour`) separately from the `$0.74/hour`
-  Secure Pod catalog rate. The source repair is committed and independently audited; commit and audit
-  the exact sealed proposal record before requesting user approval at the first mutation/spend boundary.
+  Secure Pod catalog rate. Refresh it only after the new proposal and authority are valid, immediately
+  before the first mutation boundary.
 - After approval, execute the closed graph serially: Mage qualification, SoulX qualification, guarded
   database/Cloudflare activation, exact max-one lanes, V2-09 through V2-13 acceptance, immediate
   temporary-compute drain, settled billing, and independent zero-job/zero-worker proof. Never keep a Pod

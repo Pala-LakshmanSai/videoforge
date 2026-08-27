@@ -1,10 +1,10 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-27T13:05:00Z"
+updated_at: "2026-08-27T13:38:43Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_sealed_proposal_record_ready_for_independent_audit
+current_milestone: v2_13_live_admission_rate_source_repair_pending_independent_audit
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -27,10 +27,10 @@ current_goal_boundary:
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
   provider_free_product_action: "The exact rotation/normalization authority was consumed once and completed. It added one same-client Google secret, secured and hash-read it before disabling only the exposed old secret, and normalized only the two local R2 files. Preserve the exact resources/files and secret-free receipt; the authority is non-reusable. No further credential, provider, R2, RunPod, GPU, spend, retry, or redispatch action is authorized under this boundary."
-  note: "Source commit dd5549509dcbe89d31f56517ebc96f50ee6c2a70 is the fresh independently audited provider-free boundary. The exact sealed proposal binds that source and lightweight-tag target with the official Serverless Flex rate, stable production 404 HTML route, completed secret-free credential receipt, active candidate path, and both exact retained-volume identities. It awaits its proposal-record commit/audit and fresh exact approval. The prior 3a0f1c61 chat approval failed closed before authority materialization or external action and is non-reusable. The consumed credential authorities remain non-reusable. No deployment, publication, provider mutation, GPU use, or spend is authorized."
+  note: "Proposal sha256:9357579a1adfa4cbb750599fc70c31d9234af6e74f1b00b3c4e7c3aa44de800a and authority-record commit 21b770bc2fe86869443a4cead713101a2cb79776 are superseded unconsumed. Pre-execution audit found the TypeScript live-admission ceiling was $1.10/GPU-hour while the sealed official rate was $1.116/GPU-hour. The active provider-free repair aligns the exact ceiling and adds accept-at-cap/reject-above coverage. The authority was not consumed; credential access, provider calls, mutations, GPU use, and spend remained zero. Fresh source audit, reseal, proposal-record audit, and fresh exact approval are required."
 
 new_chat_handoff:
-  status: SEALED_PROPOSAL_RECORD_READY_FOR_INDEPENDENT_AUDIT
+  status: SOURCE_REPAIR_PENDING_INDEPENDENT_AUDIT
   starting_point: CURRENT_CLEAN_GIT_HEAD
   independently_audited_full_live_source_commit: "dd5549509dcbe89d31f56517ebc96f50ee6c2a70"
   credential_rotation_result_sha256: "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6"
@@ -45,7 +45,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Commit and independently audit the exact sealed source-bound V2-13 proposal record, then request one fresh exact user approval."
+  next_action: "Commit and independently audit the provider-free admission-rate repair, reseal against the new exact source, independently audit the proposal record, then request one fresh exact user approval."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -110,7 +110,7 @@ provider_free_product_progress:
   full_live_migration_0045_sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
   prior_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_HASH_DRIFT
   prior_v2_13_proposal_sha256: "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32"
-  fresh_v2_13_proposal_status: SEALED_AWAITING_PROPOSAL_RECORD_AUDIT_AND_FRESH_EXACT_APPROVAL
+  fresh_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_LIVE_ADMISSION_RATE_SOURCE_DEFECT
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json"
   fresh_v2_13_proposal_sha256: "sha256:9357579a1adfa4cbb750599fc70c31d9234af6e74f1b00b3c4e7c3aa44de800a"
   fresh_v2_13_blocked_draft_sha256: "sha256:6b20b5079c3ea68e91aa2231798025bd3cef1608a61041ba9c9909774aed01d6"
@@ -208,7 +208,7 @@ provider_free_product_progress:
   fresh_v2_13_audit_status: PASS_READY_TO_RESEAL_INDEPENDENT_PROVIDER_FREE_130_NODE_22_AUTHORITY_71_RESTORED_GATE_MUTATIONS
   fresh_v2_13_release_source_commit: "dd5549509dcbe89d31f56517ebc96f50ee6c2a70"
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Commit and independently audit sealed full-live proposal sha256:9357579a1adfa4cbb750599fc70c31d9234af6e74f1b00b3c4e7c3aa44de800a, then obtain fresh exact approval before independent Mage/SoulX qualification, deployment, and final zero-worker/billing proof. Preserve the completed credential readback and receipt; no credential/provider/R2 mutation is authorized."
+  next_v2_13_action: "Commit and independently audit the provider-free $1.116 live-admission ceiling repair, reseal against the new exact source, independently audit the proposal record, then obtain fresh exact approval before any credential/provider action. Preserve the completed credential readback and receipt; no credential/provider/R2 mutation is currently authorized."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -4417,7 +4417,7 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_sealed_proposal_record_ready_for_independent_audit
+  milestone: v2_13_live_admission_rate_source_repair_pending_independent_audit
   status: provider_free_source_repair_ready_for_commit_and_independent_audit
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: no_current_full_live_authority_consumed_credential_authorities_non_reusable
@@ -4427,7 +4427,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Commit and independently audit the exact sealed source-bound full-live proposal, then request one fresh exact approval before serial qualification, deployment, acceptance, drain, and billing proof."
+  goal: "Commit and independently audit the provider-free live-admission rate repair, reseal the exact full-live proposal, audit its proposal record, then request one fresh exact approval before serial qualification, deployment, acceptance, drain, and billing proof."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

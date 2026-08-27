@@ -164,7 +164,7 @@ function fixture(
       readAdmissionFacts: async () => ({
         checkedAt: "2026-08-26T00:30:00.000Z",
         availability: "LOW",
-        flexRateUsdPerGpuHour: 1.1,
+        flexRateUsdPerGpuHour: 1.116,
         cumulativeBillingUsd: 1,
       }),
       createJobClient,
