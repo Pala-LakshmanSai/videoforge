@@ -80,6 +80,12 @@ function v3Fixture() {
   v3Proposal.exact_execution_graph.internal_materialization_policy = structuredClone(
     EXACT_INTERNAL_MATERIALIZATION_POLICY,
   );
+  v3Proposal.exact_execution_graph.prequalification_database_bootstrap_policy = structuredClone(
+    EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
+  );
+  v3Proposal.exact_execution_graph.prequalification_bridge_policy = structuredClone(
+    EXACT_PREQUALIFICATION_BRIDGE_POLICY,
+  );
   v3Proposal.authority_record_commit_binding.materialization_seed_sha256_required_in_authority_and_consumption_state = true;
   v3Proposal.authority_record_commit_binding.materialization_seed_sha256_must_be_verified_before_execution = true;
   v3Proposal.source.exact_release_components = structuredClone(EXACT_V3_RELEASE_COMPONENTS);
@@ -232,6 +238,22 @@ test("outer authority accepts a future exact V3 ref-authorized record", () => {
   assert.equal(
     result.authority.github_release_ref.status,
     "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
+  );
+});
+
+test("approval validator policies match the active sealed proposal exactly", () => {
+  const activeProposal = JSON.parse(
+    readFileSync(
+      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+    ),
+  );
+  assert.equal(
+    JSON.stringify(activeProposal.exact_execution_graph.prequalification_database_bootstrap_policy),
+    JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY),
+  );
+  assert.equal(
+    JSON.stringify(activeProposal.exact_execution_graph.prequalification_bridge_policy),
+    JSON.stringify(EXACT_PREQUALIFICATION_BRIDGE_POLICY),
   );
 });
 
@@ -436,6 +458,9 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.prequalification_database_bootstrap_policy.guarded_activation_receipt_verified_before_application_secret_reads = false;
     },
     (proposal) => {
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.post_bootstrap_receipt_verifier.cas_before_owner_database_read = false;
+    },
+    (proposal) => {
       proposal.exact_execution_graph.workflow_start_authority_policy.phase_cap_usd = 1;
     },
     (proposal) => {
@@ -451,6 +476,15 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
     },
     (proposal) => {
       proposal.exact_execution_graph.prequalification_bridge_policy.receipt_gate.require_prior_result_and_file_hash_match = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_bridge_policy.operator_only_preflight.fresh_child_receives_no_owner_runtime_or_reconciler_dsn = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_bridge_policy.executor_receipt_gate.restart_preflight.repeat_receipt_verifier = false;
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.prequalification_bridge_policy.receipt_gate.cas_precedes_all_production_operator_runpod_and_application_secret_reads = false;
     },
     (proposal) => {
       proposal.exact_execution_graph.prequalification_bridge_policy.prequalification_allowed_environment_names.push(
