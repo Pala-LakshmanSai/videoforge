@@ -21,6 +21,13 @@ import {
   createPromotionDatabaseAdapter,
   promoteQualifiedProduction,
 } from "./promote-qualified-production.mjs";
+import {
+  APPROVED_WRANGLER_OAUTH_SCOPES,
+  refreshWranglerOAuthReadback,
+  wranglerOAuthConfigPath,
+  WRANGLER_OAUTH_CONFIG_ENV,
+} from "./guarded-activation.mjs";
+import { validateMaterializationSeedShape } from "./full-live-orchestration-authority.mjs";
 import { parseService, validateServiceFile } from "../v2-06/validate-pg-service.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -625,7 +632,7 @@ const GUARDED_INPUTS = Object.freeze([
   ["proposal-file", "VIDEOFORGE_V2_13_PROPOSAL_FILE"],
   ["release-manifest-file", "VIDEOFORGE_V2_13_RELEASE_MANIFEST_FILE"],
   ["user-approval-file", "VIDEOFORGE_V2_13_USER_APPROVAL_FILE"],
-  ["cloudflare-api-token-file", "VIDEOFORGE_V2_13_CLOUDFLARE_TOKEN_FILE"],
+  ["wrangler-oauth-config-file", WRANGLER_OAUTH_CONFIG_ENV],
   ["evidence-output", "VIDEOFORGE_V2_13_ACTIVATION_EVIDENCE_OUTPUT"],
   ["postgres-input-dir", "VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR"],
   ["secret-input-dir", "VIDEOFORGE_V2_13_SECRET_INPUT_DIR"],
@@ -920,7 +927,7 @@ function createProtectedPromotionAdapter({
   fetchImpl = fetch,
 } = {}) {
   return async (_operation, state) => {
-    preflightPromotionInputs({ environment, state });
+    const promotionPreflight = preflightPromotionInputs({ environment, state, spawn });
     const recordPath = protectedFile(
       environment.VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE,
       "PROMOTION_RECORD_FILE",
@@ -936,13 +943,6 @@ function createProtectedPromotionAdapter({
       ),
       "utf8",
     );
-    const cloudflareToken = readFileSync(
-      protectedFile(
-        environment.VIDEOFORGE_V2_13_CLOUDFLARE_API_TOKEN_FILE,
-        "PROMOTION_CLOUDFLARE_TOKEN_FILE",
-      ),
-      "utf8",
-    ).trim();
     let record;
     try {
       record = JSON.parse(readFileSync(recordPath, "utf8"));
@@ -958,7 +958,8 @@ function createProtectedPromotionAdapter({
       { host: promotionService.host, database: promotionService.dbname },
       "PROMOTION_OPERATOR_DATABASE_URL",
     );
-    if (cloudflareToken.length < 32) fail("PROMOTION_PROTECTED_INPUT");
+    const oauthConfigPath = promotionPreflight.oauthConfigPath;
+    protectedFile(oauthConfigPath, "PROMOTION_WRANGLER_OAUTH_CONFIG_FILE");
     const disabledConfigBytes = readFileSync(disabledPath);
     const { Pool } = requireWeb("@neondatabase/serverless");
     const pool = new Pool({ connectionString: databaseUrl, max: 1 });
@@ -968,17 +969,35 @@ function createProtectedPromotionAdapter({
     const disabledRollbackPath = resolve(directory, "wrangler.disabled.json");
     const dryOutput = resolve(directory, "dry-run");
     let enabledConfig;
+    // The account was authenticated and scope-checked before this adapter can invoke any
+    // Wrangler command. Keep the checked identity for every later refresh/readback.
+    let cloudflareAccountId = promotionPreflight.accountId;
+    const expectedScopes = promotionPreflight.expectedScopes;
+    const oauthEnvironment = Object.fromEntries(
+      ["HOME", "XDG_CONFIG_HOME", "PATH", "TMPDIR", "LANG", "LC_ALL"].flatMap((name) =>
+        typeof environment[name] === "string" && environment[name] !== ""
+          ? [[name, environment[name]]]
+          : [],
+      ),
+    );
+    Object.assign(oauthEnvironment, {
+      CI: "1",
+      WRANGLER_SEND_METRICS: "false",
+    });
     const runWrangler = (args) => {
+      if (!/^[0-9a-f]{32}$/u.test(cloudflareAccountId ?? "")) fail("PROMOTION_ACCOUNT_ID_DRIFT");
+      refreshWranglerOAuthReadback({
+        configPath: oauthConfigPath,
+        environment,
+        accountId: cloudflareAccountId,
+        expectedScopes,
+        spawn,
+      });
       const result = spawn("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
         cwd: ROOT,
         encoding: "utf8",
         shell: false,
-        env: {
-          PATH: environment.PATH ?? process.env.PATH,
-          CI: "1",
-          WRANGLER_SEND_METRICS: "false",
-          CLOUDFLARE_API_TOKEN: cloudflareToken,
-        },
+        env: oauthEnvironment,
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 4 * 1024 * 1024,
       });
@@ -1012,10 +1031,12 @@ function createProtectedPromotionAdapter({
     const cloudflare = {
       dryRun: async (bytes) => {
         enabledConfig = JSON.parse(bytes.toString("utf8"));
-        if (
-          sha256(Buffer.from(String(enabledConfig.account_id))) !==
-          record.cloudflare.account_id_sha256
-        )
+        if (!/^[0-9a-f]{32}$/u.test(String(enabledConfig.account_id ?? "")))
+          fail("PROMOTION_ACCOUNT_ID_DRIFT");
+        cloudflareAccountId = String(enabledConfig.account_id);
+        if (cloudflareAccountId !== promotionPreflight.accountId)
+          fail("PROMOTION_ACCOUNT_ID_DRIFT");
+        if (sha256(Buffer.from(cloudflareAccountId)) !== record.cloudflare.account_id_sha256)
           fail("PROMOTION_ACCOUNT_ID_DRIFT");
         writeFileSync(enabledPath, bytes, { mode: 0o600 });
         const build = spawn("pnpm", ["--filter", "@videoforge/web", "build:cloudflare"], {
@@ -1942,6 +1963,78 @@ function prequalificationResult(receipt) {
   };
 }
 
+async function verifyPrequalificationDatabaseReceipt({
+  environment = process.env,
+  priorResults,
+  run = productionCommand,
+} = {}) {
+  // Receipt bytes and the outer prior-result CAS are checked before any database credential,
+  // RunPod key, or application secret is opened.
+  const receipt = prequalificationReceiptFromFile(prequalificationPath(environment));
+  const bootstrap = priorResults?.get?.("bootstrap-prequalification-database");
+  if (
+    bootstrap?.prequalification_database_bootstrap_sha256 !==
+    receipt?.prequalification_database_bootstrap_sha256
+  )
+    fail("PREQUALIFICATION_RECEIPT_OUTER_CAS");
+
+  const directory = protectedDirectory(
+    environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
+    "PREQUALIFICATION_VERIFY_POSTGRES_DIRECTORY",
+  );
+  const servicePath = join(directory, "owner.pg_service.conf");
+  const passPath = join(directory, "owner.pgpass");
+  const service = await parseService(servicePath, "videoforge_v2_13_owner");
+  protectedFile(passPath, "PREQUALIFICATION_VERIFY_OWNER_PASS");
+  await validateServiceFile(
+    servicePath,
+    "videoforge_v2_13_owner",
+    service.get("host"),
+    service.get("dbname"),
+    service.get("user"),
+  );
+  if (service.get("user") === PREQUALIFICATION_OPERATOR_ROLE)
+    fail("PREQUALIFICATION_VERIFY_OWNER_OPERATOR_COLLISION");
+  const dbEnv = {
+    PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin",
+    HOME: environment.HOME ?? process.env.HOME ?? "/tmp",
+    PGSERVICEFILE: servicePath,
+    PGSERVICE: "videoforge_v2_13_owner",
+    PGPASSFILE: passPath,
+  };
+  const query = (sql, code) =>
+    prequalificationCommand(run, "psql", prequalificationQueryArgs(sql), dbEnv, code);
+  const manifest = prequalificationManifest();
+  const ledger = prequalificationLockedLedger(query, manifest);
+  if (
+    ledger.length !== 45 ||
+    sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== receipt.ledger_after_sha256
+  )
+    fail("PREQUALIFICATION_VERIFY_LEDGER");
+  let pgcrypto;
+  try {
+    pgcrypto = JSON.parse(
+      query(
+        "SELECT json_build_object('name',extname,'version',extversion,'schema',extnamespace::regnamespace::text)::text FROM pg_extension WHERE extname='pgcrypto'",
+        "PREQUALIFICATION_VERIFY_PGCRYPTO",
+      ),
+    );
+  } catch {
+    fail("PREQUALIFICATION_VERIFY_PGCRYPTO");
+  }
+  if (sha256(Buffer.from(`${canonicalJson(pgcrypto)}\n`)) !== receipt.pgcrypto_sha256)
+    fail("PREQUALIFICATION_VERIFY_PGCRYPTO");
+  const role = parsePrequalificationRole(
+    query(
+      prequalificationRoleReadbackSql(PREQUALIFICATION_OPERATOR_ROLE),
+      "PREQUALIFICATION_VERIFY_OPERATOR_ACL",
+    ),
+  );
+  if (sha256(Buffer.from(`${canonicalJson(role)}\n`)) !== receipt.operator_acl_sha256)
+    fail("PREQUALIFICATION_VERIFY_OPERATOR_ACL");
+  return Object.freeze({ receipt, ledger, pgcrypto, role });
+}
+
 function createPrequalificationDatabaseBootstrapAdapter({
   environment = process.env,
   run = productionCommand,
@@ -2223,25 +2316,35 @@ function createProtectedInputMaterializer({
       environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE,
       "MATERIALIZATION_SEED_FILE",
     );
-  const seed = () => {
+  const seed = (state) => {
     let value;
     try {
       value = JSON.parse(readFileSync(seedPath(), "utf8"));
     } catch {
       fail("MATERIALIZATION_SEED_JSON");
     }
+    // Keep the first-use materializer on the exact same nested contract as outer authority
+    // consumption. The local checks below retain adapter-specific future-value diagnostics, while
+    // this shared predicate prevents the two boundaries from drifting apart.
+    if (!validateMaterializationSeedShape(value)) fail("MATERIALIZATION_SEED_CONTRACT");
     const forbiddenFutureKeys = new Set([
       "mageEndpointId",
       "soulxEndpointId",
       "endpointId",
       "endpointIdSha256",
-      "publicImage",
-      "sourceCommit",
-      "deploymentSha256",
       "deploymentSnapshotSha256",
       "deployment_snapshot_sha256",
       "mage_deployment_snapshot_sha256",
       "soulx_deployment_snapshot_sha256",
+      "imageDigest",
+      "publicManifestSha256",
+      "versionId",
+      "versionSha256",
+      "disabledVersionId",
+      "disabledVersionSha256",
+      "futureOutputHash",
+      "futureOutputSha256",
+      "futureOutputHashes",
     ]);
     const forbiddenFutureKeysLower = new Set(
       [...forbiddenFutureKeys, ...GUARDED_SECRET_NAMES.slice(17, 21)].map((key) =>
@@ -2255,6 +2358,28 @@ function createProtectedInputMaterializer({
         ([key, nested]) =>
           forbiddenFutureKeysLower.has(key.toLowerCase()) || hasForbiddenFutureKey(nested),
       );
+    const hasForbiddenCommandSelector = (item) =>
+      item !== null &&
+      typeof item === "object" &&
+      Object.entries(item).some(
+        ([key, nested]) =>
+          [
+            "mageendpointid",
+            "soulxendpointid",
+            "endpointid",
+            "endpointidsha256",
+            "publicimage",
+            "sourcecommit",
+            "deploymentsha256",
+            "deploymentsnapshotsha256",
+            "deployment_snapshot_sha256",
+          ].includes(key.toLowerCase()) || hasForbiddenCommandSelector(nested),
+      );
+    const laneFields = ["publicImage", "deploymentSha256", "sourceCommit"];
+    const laneHasFutureValue = (lane) =>
+      lane !== null &&
+      typeof lane === "object" &&
+      laneFields.some((field) => Object.hasOwn(lane, field) && lane[field] !== null);
     const dynamicSeedValues = [
       value?.production_input_base?.dualLaneInput?.mage?.publicImage,
       value?.production_input_base?.dualLaneInput?.mage?.deploymentSha256,
@@ -2279,6 +2404,88 @@ function createProtectedInputMaterializer({
       value?.promotion_record_base?.cloudflare?.disabled_version_id,
       value?.promotion_record_base?.cloudflare?.disabled_version_sha256,
     ];
+    const exactObjectKeys = (item, keys) =>
+      item !== null &&
+      typeof item === "object" &&
+      !Array.isArray(item) &&
+      JSON.stringify(Object.keys(item).sort()) === JSON.stringify([...keys].sort());
+    const exactEmptyObject = (item) => exactObjectKeys(item, []);
+    const validateBaseObject = (item, keys, nested = []) =>
+      item !== null &&
+      typeof item === "object" &&
+      !Array.isArray(item) &&
+      Object.keys(item).every((key) => keys.includes(key)) &&
+      nested.every(
+        ([key, nestedKeys]) => !Object.hasOwn(item, key) || exactObjectKeys(item[key], nestedKeys),
+      );
+    const validateNestedSeedShape = () => {
+      const production = value?.production_input_base;
+      const lanes = production?.dualLaneInput;
+      const laneKeys = [
+        "deploymentSha256",
+        "publicImage",
+        "sourceCommit",
+        "volumeIdSha256",
+        "volumeManifestSha256",
+      ];
+      if (
+        !exactObjectKeys(production, [
+          "authorityDocument",
+          "commandPayloads",
+          "dualLaneInput",
+          "fullLiveAuthorityId",
+          "schemaVersion",
+        ]) ||
+        production.schemaVersion !== "videoforge.v213-full-live-outer-input/v1" ||
+        typeof production.fullLiveAuthorityId !== "string" ||
+        production.fullLiveAuthorityId === "" ||
+        !exactEmptyObject(production.authorityDocument) ||
+        !exactObjectKeys(lanes, ["mage", "soulx"]) ||
+        !exactEmptyObject(production.commandPayloads) ||
+        !validateBaseObject(
+          value.activation_record_base,
+          ["authority", "database", "gates", "release"],
+          [
+            ["authority", []],
+            ["database", []],
+            ["gates", []],
+            ["release", []],
+          ],
+        ) ||
+        !validateBaseObject(
+          value.config_activation_base,
+          ["authority", "release"],
+          [
+            ["authority", []],
+            ["release", []],
+          ],
+        ) ||
+        !exactEmptyObject(value.release_manifest) ||
+        !validateBaseObject(value.promotion_record_base, [
+          "approval",
+          "cloudflare",
+          "database",
+          "lanes",
+          "release",
+        ]) ||
+        (Object.hasOwn(value.promotion_record_base, "lanes") &&
+          (!exactObjectKeys(value.promotion_record_base.lanes, ["mage_image", "soulx_avatar"]) ||
+            !exactEmptyObject(value.promotion_record_base.lanes.mage_image) ||
+            !exactEmptyObject(value.promotion_record_base.lanes.soulx_avatar)))
+      )
+        return false;
+      return [lanes.mage, lanes.soulx].every(
+        (lane) =>
+          lane !== null &&
+          typeof lane === "object" &&
+          !Array.isArray(lane) &&
+          Object.keys(lane).every((key) => laneKeys.includes(key)) &&
+          ["volumeIdSha256", "volumeManifestSha256"].every(
+            (key) => !Object.hasOwn(lane, key) || HASH.test(lane[key] ?? ""),
+          ) &&
+          laneFields.every((key) => !Object.hasOwn(lane, key) || lane[key] === null),
+      );
+    };
     if (
       value?.schema_version !== "videoforge.v213-full-live-materialization-seed/v1" ||
       value.static_only !== true ||
@@ -2297,9 +2504,19 @@ function createProtectedInputMaterializer({
           ].sort(),
         ) ||
       hasForbiddenFutureKey(value) ||
-      dynamicSeedValues.some((item) => item !== undefined && item !== null)
+      hasForbiddenCommandSelector(value?.production_input_base?.commandPayloads) ||
+      laneHasFutureValue(value?.production_input_base?.dualLaneInput?.mage) ||
+      laneHasFutureValue(value?.production_input_base?.dualLaneInput?.soulx) ||
+      dynamicSeedValues.some((item) => item !== undefined && item !== null) ||
+      !validateNestedSeedShape()
     )
       fail("MATERIALIZATION_SEED_CONTRACT");
+    const seedSha256 = sha256(Buffer.from(`${canonicalJson(value)}\n`));
+    if (
+      !HASH.test(state?.materialization_seed_sha256 ?? "") ||
+      state.materialization_seed_sha256 !== seedSha256
+    )
+      fail("MATERIALIZATION_SEED_OUTER_BINDING");
     return value;
   };
   const writeJson = (path, value) => {
@@ -2330,7 +2547,7 @@ function createProtectedInputMaterializer({
       ].includes(operationId) &&
       !lstatExists(environment.VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE)
     ) {
-      const source = seed();
+      const source = seed(state);
       const preflight = priorResults.get("fresh-live-preflight");
       const noRunPodMutationReceipts = [
         "mage-live-qualification",
@@ -2370,7 +2587,7 @@ function createProtectedInputMaterializer({
       });
     }
     if (operationId === "fresh-live-preflight") {
-      const source = seed();
+      const source = seed(state);
       const mage = exactReceipt(priorResults, "mage-image-workflow-verification");
       const soulx = exactReceipt(priorResults, "soulx-image-workflow-verification");
       const production = structuredClone(source.production_input_base);
@@ -2410,7 +2627,7 @@ function createProtectedInputMaterializer({
       return;
     }
     if (operationId === "guarded-activation-once") {
-      const source = seed();
+      const source = seed(state);
       const mage = exactReceipt(priorResults, "mage-live-qualification");
       const soulx = exactReceipt(priorResults, "soulx-live-qualification");
       const endpoints = exactReceipt(priorResults, "create-exact-max-one-endpoints");
@@ -2589,7 +2806,7 @@ function createProtectedInputMaterializer({
       return;
     }
     if (operationId === "promote-qualified-production") {
-      const source = seed();
+      const source = seed(state);
       const mage = exactReceipt(priorResults, "mage-live-qualification");
       const soulx = exactReceipt(priorResults, "soulx-live-qualification");
       const guarded = exactReceipt(priorResults, "guarded-activation-once");
@@ -3010,7 +3227,7 @@ function preflightConcreteFullLiveInputs({
   return Object.freeze({ production, cleanupOnly });
 }
 
-function preflightPromotionInputs({ environment = process.env, state }) {
+function preflightPromotionInputs({ environment = process.env, state, spawn = spawnSync }) {
   const { production } = preflightConcreteFullLiveInputs({
     environment,
     state,
@@ -3020,9 +3237,10 @@ function preflightPromotionInputs({ environment = process.env, state }) {
     "VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE",
     "VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE",
     "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE",
-    "VIDEOFORGE_V2_13_CLOUDFLARE_API_TOKEN_FILE",
   ])
     protectedFile(environment[variable], `PROMOTION_PROTECTED_FILE:${variable}`);
+  const oauthConfigPath = wranglerOAuthConfigPath(environment);
+  protectedFile(oauthConfigPath, "PROMOTION_WRANGLER_OAUTH_CONFIG_FILE");
   let promotion;
   try {
     promotion = JSON.parse(
@@ -3042,17 +3260,31 @@ function preflightPromotionInputs({ environment = process.env, state }) {
   )
     fail("PROMOTION_OUTER_AUTHORITY_LINEAGE");
   const disabledConfig = readFileSync(environment.VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE);
-  const cloudflareToken = readFileSync(
-    environment.VIDEOFORGE_V2_13_CLOUDFLARE_API_TOKEN_FILE,
-    "utf8",
-  );
+  let disabledConfigValue;
+  try {
+    disabledConfigValue = JSON.parse(disabledConfig);
+  } catch {
+    fail("PROMOTION_DISABLED_CONFIG_JSON");
+  }
+  const accountId = String(disabledConfigValue?.account_id ?? "");
   if (
-    sha256(disabledConfig) !== promotion?.release?.disabled_config_sha256 ||
-    cloudflareToken.trim() !== cloudflareToken ||
-    cloudflareToken.length < 32
+    !/^[0-9a-f]{32}$/u.test(accountId) ||
+    sha256(Buffer.from(accountId)) !== promotion?.cloudflare?.account_id_sha256 ||
+    sha256(disabledConfig) !== promotion?.release?.disabled_config_sha256
   )
     fail("PROMOTION_PROTECTED_CONTENT");
-  return Object.freeze({ production, promotion });
+  // Promotion is a later consumer of the same source-bound OAuth authority. Keep the exact
+  // scope set explicit at this seam; never fall back to whatever scopes happen to be in the
+  // local Wrangler store.
+  const expectedScopes = Object.freeze([...APPROVED_WRANGLER_OAUTH_SCOPES]);
+  refreshWranglerOAuthReadback({
+    configPath: oauthConfigPath,
+    environment,
+    accountId,
+    expectedScopes,
+    spawn,
+  });
+  return Object.freeze({ production, promotion, oauthConfigPath, accountId, expectedScopes });
 }
 
 function preflightGuardedActivationInputs({ environment = process.env, state }) {
@@ -3111,6 +3343,15 @@ function createTypeScriptBridgeAdapters({
     (command) =>
     async (context = {}, state, priorResults, outerStateSha256) => {
       if (!HASH.test(outerStateSha256 ?? "")) fail("BRIDGE_OUTER_STATE");
+      if (requirePrequalificationReceipt && command === "fresh-live-preflight") {
+        const bootstrap = priorResults.get("bootstrap-prequalification-database");
+        const receipt = prequalificationReceiptFromFile(prequalificationPath(environment));
+        if (
+          bootstrap?.prequalification_database_bootstrap_sha256 !==
+          receipt?.prequalification_database_bootstrap_sha256
+        )
+          fail("BRIDGE_PREQUALIFICATION_RECEIPT");
+      }
       const earlyCleanup = CLEANUP_BRIDGE_COMMANDS.has(command) && context?.earlyFailure === true;
       const cleanup =
         CLEANUP_BRIDGE_COMMANDS.has(command) && !earlyCleanup
@@ -3145,13 +3386,6 @@ function createTypeScriptBridgeAdapters({
             state,
             operatorOnly: true,
           });
-          const bootstrap = priorResults.get("bootstrap-prequalification-database");
-          const receipt = prequalificationReceiptFromFile(prequalificationPath(environment));
-          if (
-            bootstrap?.prequalification_database_bootstrap_sha256 !==
-            receipt?.prequalification_database_bootstrap_sha256
-          )
-            fail("BRIDGE_PREQUALIFICATION_RECEIPT");
         }
         commandPayload = { authorityDocument: production.authorityDocument };
       }
@@ -3293,6 +3527,15 @@ function createTypeScriptBridgeAdapters({
 }
 
 function createConcreteFullLiveAdapters(options = {}) {
+  const concreteEnvironment =
+    options.environment ??
+    options.bridge?.environment ??
+    options.materializer?.environment ??
+    process.env;
+  const verifyPrequalification =
+    options.prequalificationVerifier === false
+      ? null
+      : (options.prequalificationVerifier?.verify ?? verifyPrequalificationDatabaseReceipt);
   const adapters = {
     ...createGitReleaseAdapters(options.git),
     ...createGithubDispatchAdapters(options.github),
@@ -3337,6 +3580,18 @@ function createConcreteFullLiveAdapters(options = {}) {
               "read-settled-billing",
               "reconcile-exact-resources",
             ].includes(operationId);
+          const afterBootstrap = priorResults.has("bootstrap-prequalification-database");
+          if (
+            verifyPrequalification !== null &&
+            !earlyCleanup &&
+            afterBootstrap &&
+            operationId !== "bootstrap-prequalification-database"
+          )
+            await verifyPrequalification({
+              environment: concreteEnvironment,
+              priorResults,
+              run: options.prequalificationVerifier?.run ?? productionCommand,
+            });
           if (!earlyCleanup)
             await materialize({ operationId, state, priorResults, outerStateSha256 });
           return adapter(context, state, priorResults, outerStateSha256);
@@ -3350,6 +3605,7 @@ export {
   createConcreteFullLiveAdapters,
   createPrequalificationDatabaseBootstrapAdapter,
   createPrequalificationDatabaseAdapter,
+  verifyPrequalificationDatabaseReceipt,
   createWorkflowStartAuthorityAdapter,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
   PREQUALIFICATION_MIGRATION_MANIFEST_PATH,

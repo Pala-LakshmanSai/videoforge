@@ -4,7 +4,7 @@ updated_at: "2026-08-26T00:00:00.000Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_source_lineage_reseal_blocked_unsealed
+current_milestone: v2_13_cloudflare_credential_origin_repair_blocked_unsealed
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Independently audit the resealed proposal at its proposal-record commit, then request one fresh exact approval. Do not reuse the superseded 2e6a605d or earlier 9425de8e approval."
-  note: "The repaired source is exact commit 7444ed0 and the resealed proposal is awaiting fresh exact approval. The prior 2e6a605d/9eaf276 approval and authority are superseded, unconsumed, and mutation-free after source-lineage repair; the earlier 9425de8e/67f6fb2 authority remains superseded as well. Until fresh approval is recorded, provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
+  provider_free_product_action: "Finish the blocked Cloudflare OAuth/origin, Google project/client, R2 least-privilege, and nested seed-hash contracts; bind final source hashes, reseal, and independently audit the successor before requesting fresh exact approval. Do not reuse superseded 45894ac0/ec38849 or 59dfe8a authority."
+  note: "Source commit 7444ed0 remains the prior provider-free baseline, but the 45894ac0/ec38849 proposal and 59dfe8a authority are superseded unconsumed before mutation because the Cloudflare workers.dev origin/OAuth boundary, Google project access, R2 scope, and nested materialization seed binding were incomplete. The 2026-08-27 successor draft is BLOCKED_UNSEALED with no source hashes, approval, or authority. Until fresh source binding and approval are recorded, provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -90,13 +90,13 @@ provider_free_product_progress:
   full_live_migration_0045_sha256: "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
   prior_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_HASH_DRIFT
   prior_v2_13_proposal_sha256: "sha256:f2d183e7668152c25b54b3844cc340058ecb5f59dec58689d6eb229328bcae32"
-  fresh_v2_13_proposal_status: SEALED_AWAITING_FRESH_EXACT_APPROVAL_CURRENT_AUTHORITY_SUPERSEDED_UNCONSUMED
-  fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json"
-  fresh_v2_13_proposal_sha256: "sha256:45894ac0b7648d3e9e48357a13c270d2cbbe7e65120fe425f4b449d00601aaca"
-  fresh_v2_13_blocked_draft_sha256: null
-  fresh_v2_13_release_source_commit: "7444ed08ed16b618637b8aa29a93be7c89d1642a"
+  fresh_v2_13_proposal_status: BLOCKED_UNSEALED_SOURCE_CONTRACT_PENDING_CURRENT_AUTHORITY_SUPERSEDED_UNCONSUMED
+  fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json"
+  fresh_v2_13_proposal_sha256: null
+  fresh_v2_13_blocked_draft_sha256: "sha256:5fc4d96a7f37d0821a713bed2afb0014d0c780d111dfc1581e07e47730f039a6"
+  fresh_v2_13_release_source_commit: null
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Commit and independently audit the resealed proposal record, then request fresh exact approval for its final sha256; do not reuse the superseded 2e6a605d/9eaf276 authority."
+  next_v2_13_action: "Finish and independently audit the source-bound Cloudflare OAuth/origin, Google project/client, R2 least-privilege, and nested seed-hash contracts; bind final source/component hashes, reseal the blocked successor, then request fresh exact approval. Do not reuse superseded 45894ac0/ec38849 or 59dfe8a authority."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -199,7 +199,13 @@ provider_free_product_progress:
   guarded_pair_workflow_commit: "4239be9"
   guarded_pair_workflow_status: PROVIDER_FREE_PASS_independently_audited_migration_0044_not_deployed_disabled_unqualified
   guarded_pair_workflow_note: "The guarded Workflow wires atomic pair scheduling, exact RunPod lane adapters, bounded cancellation/recovery, callback settlement, and durable zero-worker evidence. Migration 0044 now verifies the persisted V2-09 admission, fresh nonfuture provider billing, exact terminal pair, phase cap, and cumulative baseline/ledger/reservation exposure atomically with settlement; direct unguarded settlement remains ungranted. Fresh independent audit is required. Production remains DISABLED_UNQUALIFIED and no bindings, secrets, roles, config, or migrations were deployed."
-  remaining_provider_free_activation_blockers: []
+  remaining_provider_free_activation_blockers:
+    - cloudflare_oauth_config_and_account_bound_workers_dev_origin_contract
+    - exact_pre_mutation_404_text_plain_route_body_hash_and_post_quarantine_200_readback
+    - accessible_google_project_or_explicit_new_project_authority_for_one_web_client
+    - least_privilege_r2_s3_credential_scope_bound_to_existing_bucket_only
+    - materialization_seed_sha256_outer_consumption_and_nested_hash_binding
+    - final_source_component_hash_cascade_and_independent_proposal_record_audit
   production_activation_requirements:
     - fresh_immutable_mage_and_soulx_images_after_envelope_verifier_change
     - fresh_sealed_deployment_snapshots
@@ -208,10 +214,15 @@ provider_free_product_progress:
     - render_validate_and_deploy_exact_production_config
     - provision_separate_runtime_and_reconciler_roles_and_secret_bindings
     - fresh_exact_paid_and_deployment_authority
+    - authenticated_workers_dev_subdomain_origin_readback_and_exact_route_state_transitions
+    - protected_wrangler_oauth_config_without_raw_api_token_export
+    - one_google_oauth_web_client_in_user_accessible_or_explicitly_authorized_project
+    - one_least_privilege_r2_s3_credential_for_existing_bucket_and_account_only
+    - materialization_seed_sha256_bound_at_consumption_and_every_seed_read
   remaining_live_blockers:
     - mage_live_qualification
     - soulx_live_qualification
-  batch3_through_batch6_note: "Provider-free source through migration 0045 is under a narrow execution-order/source-worktree repair. The exact hash-bound SoulX full/split renderer profile remains visually approved and provider-free active. Proposal sha256:9425de8e...899a and authority 67f6fb2 are superseded unconsumed before mutation; the replacement is BLOCKED_UNSEALED with no repaired source hash. Production remains DISABLED_UNQUALIFIED and undeployed."
+  batch3_through_batch6_note: "Provider-free source through migration 0045 is under a narrow Cloudflare credential/origin and source-contract repair. The exact hash-bound SoulX full/split renderer profile remains visually approved and provider-free active. Proposal sha256:9425de8e...899a and authority 67f6fb2 are superseded unconsumed before mutation; 45894ac0/ec38849 and authority 59dfe8a are also superseded unconsumed. Successor draft sha256:5fc4d96a...f039a6 is BLOCKED_UNSEALED with no source hashes and no approval/authority; Google/R2 credential creation requires a separate fresh bootstrap approval. Production remains DISABLED_UNQUALIFIED and undeployed."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
   focused_v2_12_tests: 14_pass
@@ -4297,8 +4308,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_source_lineage_reseal_blocked_unsealed
-  status: provider_free_source_reseal_in_progress_current_authority_superseded_unconsumed
+  milestone: v2_13_cloudflare_credential_origin_repair_blocked_unsealed
+  status: provider_free_cloudflare_repair_draft_blocked_unsealed_current_authority_superseded_unconsumed
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: none_attempt64_consumed
   task_stage: provider_free_product_execution
@@ -4307,7 +4318,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Commit and independently audit the provider-free source-lineage reseal, then obtain fresh exact approval before any publication, deployment, provider call, GPU use, or spend."
+  goal: "Finish and independently audit the source-bound Cloudflare OAuth/origin and credential-scope repair, then reseal and obtain fresh exact approval before any publication, deployment, provider call, GPU use, or spend."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4328,10 +4339,15 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Attempt64 remains consumed/non-reusable. The 2e6a605d/9eaf276 V2-13 approval and authority are superseded unconsumed before mutation because source-lineage hardening advanced the exact release source to 7444ed0. The earlier 9425de8e/67f6fb2 authority is also superseded. No provider calls, mutations, GPU use, or spend are authorized."
+  authority_note: "Attempt64 remains consumed/non-reusable. The 2e6a605d/9eaf276 V2-13 approval and authority are superseded unconsumed before mutation, and the 45894ac0/ec38849 proposal plus 59dfe8a authority are now superseded unconsumed before mutation because Cloudflare workers.dev origin, OAuth, Google project access, R2 scope, and nested seed-hash contracts were incomplete. The 2026-08-27 successor is BLOCKED_UNSEALED with no source hashes, no authority, and no provider calls, mutations, GPU use, or spend."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  execution_status: provider_free_source_lineage_reseal_in_progress_blocked_unsealed
-  execution_blocker: proposal_record_audit_and_fresh_exact_approval_required
+  successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
+  successor_proposal_sha256: "sha256:5fc4d96a7f37d0821a713bed2afb0014d0c780d111dfc1581e07e47730f039a6"
+  superseded_proposal_sha256: "sha256:45894ac0b7648d3e9e48357a13c270d2cbbe7e65120fe425f4b449d00601aaca"
+  superseded_authority_id: v2-13-full-live-20260827-020135z-7444ed0
+  superseded_authority_record_commit: 59dfe8a763abe947a53f66e734b967e5310fad61
+  execution_status: provider_free_cloudflare_repair_draft_blocked_unsealed
+  execution_blocker: source_hash_cascade_credential_scope_audit_proposal_record_audit_and_fresh_exact_approval_required
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean

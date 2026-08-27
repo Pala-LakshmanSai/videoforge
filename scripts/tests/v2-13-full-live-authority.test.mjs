@@ -28,6 +28,7 @@ import {
   settleCleanupWork,
   trustedCommitLineage,
   updateState,
+  validateMaterializationSeedFile,
   validateOuterAuthority,
   validateState,
   writeExclusive,
@@ -59,6 +60,7 @@ const proposalRecordCommit = "e3bdabc161c60e5334c4055b5636b7fd768a86df";
 const releaseSourceCommit = "407dc070f4b83bd78b1d4aa1cb546ec63c91f32f";
 const v3ReleaseSourceCommit = "e737eac44458a04c7de47a0f3f42d82cb9506d47";
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+const proof = (letter) => `sha256:${letter.repeat(64)}`;
 
 function v3Fixture() {
   const v3Directory =
@@ -70,9 +72,12 @@ function v3Fixture() {
   v3Proposal.source.release_source_commit = v3ReleaseSourceCommit;
   delete v3Proposal.source.base_source_commit_before_semantic_tag_repair;
   v3Proposal.immutable_github_release_ref_request.exact_target_commit = v3ReleaseSourceCommit;
-  v3Proposal.source.exact_release_components.orchestration_authority.sha256 = hash(
-    readFileSync("deploy/v2-13/full-live-orchestration-authority.mjs"),
+  v3Proposal.exact_execution_graph.internal_materialization_policy = structuredClone(
+    EXACT_INTERNAL_MATERIALIZATION_POLICY,
   );
+  v3Proposal.authority_record_commit_binding.materialization_seed_sha256_required_in_authority_and_consumption_state = true;
+  v3Proposal.authority_record_commit_binding.materialization_seed_sha256_must_be_verified_before_execution = true;
+  v3Proposal.source.exact_release_components = structuredClone(EXACT_V3_RELEASE_COMPONENTS);
   const v3ProposalBytes = Buffer.from(`${JSON.stringify(v3Proposal, null, 2)}\n`);
   const v3ProposalSha256 = hash(v3ProposalBytes);
   const v3Commit = "f".repeat(40);
@@ -137,6 +142,7 @@ function v3Fixture() {
     status: "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
     external_action_taken: false,
   };
+  authority.materialization_seed_sha256 = proof("a");
   authority.outer_orchestration.approval_schema_validator_sha256 = hash(
     readFileSync("deploy/v2-13/validate-full-live-approval.mjs"),
   );
@@ -205,6 +211,74 @@ test("outer authority accepts a future exact V3 ref-authorized record", () => {
     result.authority.github_release_ref.status,
     "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION",
   );
+});
+
+test("protected materialization seed binding requires mode-0600 bytes and exact canonical hash", () => {
+  const directory = mkdtempSync(join(tmpdir(), "videoforge-v213-seed-authority-"));
+  chmodSync(directory, 0o700);
+  const seedPath = join(directory, "seed.json");
+  const seed = {
+    schema_version: "videoforge.v213-full-live-materialization-seed/v1",
+    static_only: true,
+    future_output_hashes_present: false,
+    production_input_base: {
+      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
+      fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+      authorityDocument: {},
+      dualLaneInput: {
+        mage: {
+          volumeIdSha256: proof("1"),
+          volumeManifestSha256: proof("2"),
+        },
+        soulx: {
+          volumeIdSha256: proof("3"),
+          volumeManifestSha256: proof("4"),
+        },
+      },
+      commandPayloads: {},
+    },
+    activation_record_base: {},
+    config_activation_base: {},
+    release_manifest: {},
+    promotion_record_base: {},
+  };
+  const canonical = (value) =>
+    Array.isArray(value)
+      ? `[${value.map((item) => canonical(item)).join(",")}]`
+      : value !== null && typeof value === "object"
+        ? `{${Object.keys(value)
+            .sort()
+            .map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`)
+            .join(",")}}`
+        : JSON.stringify(value);
+  writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
+  const expected = hash(Buffer.from(`${canonical(seed)}\n`));
+  try {
+    assert.equal(
+      validateMaterializationSeedFile({ path: seedPath, expectedSha256: expected }).sha256,
+      expected,
+    );
+    assert.throws(
+      () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: proof("0") }),
+      /MATERIALIZATION_SEED_HASH/u,
+    );
+    chmodSync(seedPath, 0o644);
+    assert.throws(
+      () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: expected }),
+      /MATERIALIZATION_SEED_MODE_OR_TYPE/u,
+    );
+    chmodSync(seedPath, 0o600);
+    const nested = structuredClone(seed);
+    nested.production_input_base.commandPayloads.endpointID = null;
+    writeFileSync(seedPath, `${JSON.stringify(nested)}\n`, { mode: 0o600 });
+    const nestedHash = hash(Buffer.from(`${canonical(nested)}\n`));
+    assert.throws(
+      () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: nestedHash }),
+      /MATERIALIZATION_SEED_CONTRACT/u,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-order drift", () => {
@@ -694,6 +768,8 @@ test("V3 proposal separates proposal and authority-record commit lineage without
     authority_record_commit_must_contain_exact_approval_and_authority_bytes: true,
     remote_readback_required: true,
     embedded_self_commit_hash_forbidden: true,
+    materialization_seed_sha256_required_in_authority_and_consumption_state: true,
+    materialization_seed_sha256_must_be_verified_before_execution: true,
   });
   assert.deepEqual(proposal.source.exact_release_components.approval_validator, {
     path: "deploy/v2-13/validate-full-live-approval.mjs",
@@ -710,10 +786,10 @@ test("V3 proposal separates proposal and authority-record commit lineage without
 test("trusted lineage accepts an ancestor source and exact proposal-record diff chain", () => {
   const proposalPath =
     "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/combined-live-proposal.json";
-  const proposalBytes = execFileSync(
-    "git",
-    ["show", `9eaf276ebeda4d1fa63032d4c908a21415415678:${proposalPath}`],
-  );
+  const proposalBytes = execFileSync("git", [
+    "show",
+    `9eaf276ebeda4d1fa63032d4c908a21415415678:${proposalPath}`,
+  ]);
   const exact = {
     releaseSourceCommit: "a4bc4fd53fb04d9b61c7e2bac1bf8f7058000dc1",
     proposalRecordCommit: "9eaf276ebeda4d1fa63032d4c908a21415415678",
@@ -875,17 +951,18 @@ test("trusted lineage rejects rename, merge, and extra-path proposal histories",
   });
 });
 
-test("candidate validator accepts the resealed proposal with a superseded authority", () => {
+test("successor candidate remains blocked and supersedes the prior authority", () => {
   const output = execFileSync(
     "node",
     [
-      "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/validate-candidate.mjs",
+      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
     ],
     { encoding: "utf8" },
   );
   const result = JSON.parse(output);
-  assert.equal(result.status, "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL");
-  assert.equal(result.authority, "SUPERSEDED_UNCONSUMED_NO_MUTATION");
+  assert.equal(result.status, "PASS_BLOCKED_UNSEALED");
+  assert.equal(result.authority, "ABSENT");
+  assert.equal(result.superseded_authority_id, "v2-13-full-live-20260827-020135z-7444ed0");
 });
 
 test("V3 proposal binds the exact 22-name Cloudflare secret allowlist", () => {

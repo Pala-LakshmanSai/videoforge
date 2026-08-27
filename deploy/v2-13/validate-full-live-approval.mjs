@@ -22,12 +22,12 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230",
+    sha256: "sha256:d43df775eaae6bcd8b0cb72fd1d35b8e085f43da3aa39eaaa453f94d548fabc4",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:1fefe3b25027120d5da6340c8361174bbf8bacbe03bab3de1864e23855c52ac0",
+    sha256: "sha256:c57d63727ffbf2d642c33069fb915b9d055e5b6f57706efd06af60a0382af538",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -35,11 +35,11 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:5c3ab93ee301ec4f597b5e422dc62d35c27d6d075ff017b8e56b8396e92372ab",
+    sha256: "sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:6ae31d020f61518fc880b57f32f4d5fd2e35b780a188e2fd1b290d38cd2d5271",
+    sha256: "sha256:6878b2d633bab27eab82f794f5d6fe41ebbfb46feb65bf847fe602eceeac25e5",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -146,6 +146,12 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
     "media-manifest",
     "promotion-base",
   ]),
+  materialization_seed_sha256_field: "materialization_seed_sha256",
+  materialization_seed_sha256_must_be_bound_in_outer_authority: true,
+  materialization_seed_sha256_must_be_bound_in_consumption_record: true,
+  materialization_seed_sha256_verified_at_outer_consumption: true,
+  materialization_seed_sha256_verified_before_every_seed_read: true,
+  materialization_seed_sha256_verified_after_restart_or_recovery: true,
   protected_seed_future_output_hashes_authorized: false,
   initial_production_secrets_schema: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
   initial_seed_endpoint_identity_fields_present: false,
@@ -838,6 +844,10 @@ function validateFullLiveUserApproval({
         ?.authority_record_commit_must_contain_exact_approval_and_authority_bytes !== true ||
       proposal.authority_record_commit_binding?.remote_readback_required !== true ||
       proposal.authority_record_commit_binding?.embedded_self_commit_hash_forbidden !== true ||
+      proposal.authority_record_commit_binding
+        ?.materialization_seed_sha256_required_in_authority_and_consumption_state !== true ||
+      proposal.authority_record_commit_binding
+        ?.materialization_seed_sha256_must_be_verified_before_execution !== true ||
       proposal.authority?.exact_proposal_approved !== false ||
       proposal.authority?.execute_authorized !== false ||
       proposal.authority?.immutable_release_ref_creation_authorized !== false ||

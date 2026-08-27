@@ -23,6 +23,8 @@ const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const CONFIRMATION = "CONSUME_EXACT_V2_13_FULL_LIVE_AUTHORITY";
+const MATERIALIZATION_SEED_SCHEMA = "videoforge.v213-full-live-materialization-seed/v1";
+const MATERIALIZATION_SEED_ENV = "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE";
 const PHASES = Object.freeze([
   ["publication", 0],
   ["bootstrap_prequalification_database", 0],
@@ -71,6 +73,235 @@ const parse = (bytes, code) => {
     fail(`${code}_JSON_INVALID`);
   }
 };
+
+const MATERIALIZATION_SEED_TOP_LEVEL_KEYS = Object.freeze([
+  "activation_record_base",
+  "config_activation_base",
+  "future_output_hashes_present",
+  "production_input_base",
+  "promotion_record_base",
+  "release_manifest",
+  "schema_version",
+  "static_only",
+]);
+const MATERIALIZATION_SEED_FORBIDDEN_FUTURE_KEYS = Object.freeze([
+  "mageEndpointId",
+  "soulxEndpointId",
+  "endpointId",
+  "endpointIdSha256",
+  "deploymentSnapshotSha256",
+  "deployment_snapshot_sha256",
+  "mage_deployment_snapshot_sha256",
+  "soulx_deployment_snapshot_sha256",
+  "imageDigest",
+  "publicManifestSha256",
+  "versionId",
+  "versionSha256",
+  "disabledVersionId",
+  "disabledVersionSha256",
+  "futureOutputHash",
+  "futureOutputSha256",
+  "futureOutputHashes",
+  "VIDEOFORGE_MAGE_ENDPOINT_ID",
+  "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+  "VIDEOFORGE_SOULX_ENDPOINT_ID",
+  "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+]);
+const MATERIALIZATION_SEED_FORBIDDEN_COMMAND_KEYS = Object.freeze([
+  "mageendpointid",
+  "soulxendpointid",
+  "endpointid",
+  "endpointidsha256",
+  "publicimage",
+  "sourcecommit",
+  "deploymentsha256",
+  "deploymentsnapshotsha256",
+  "deployment_snapshot_sha256",
+]);
+const exactObjectKeys = (value, keys) =>
+  value !== null &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
+const exactEmptyObject = (value) => exactObjectKeys(value, []);
+const hasForbiddenSeedKey = (value, forbidden) =>
+  value !== null &&
+  typeof value === "object" &&
+  Object.entries(value).some(
+    ([key, nested]) => forbidden.has(key.toLowerCase()) || hasForbiddenSeedKey(nested, forbidden),
+  );
+
+/**
+ * Validate the complete nested static seed contract before the one-shot authority is consumed.
+ * This is also reused by the materializer, keeping the outer and first-use boundaries identical.
+ */
+function validateMaterializationSeedShape(value) {
+  const forbiddenFutureKeys = new Set(
+    MATERIALIZATION_SEED_FORBIDDEN_FUTURE_KEYS.map((key) => key.toLowerCase()),
+  );
+  const forbiddenCommandKeys = new Set(MATERIALIZATION_SEED_FORBIDDEN_COMMAND_KEYS);
+  const hasForbiddenCommandSelector = (item) =>
+    item !== null &&
+    typeof item === "object" &&
+    Object.entries(item).some(
+      ([key, nested]) =>
+        forbiddenCommandKeys.has(key.toLowerCase()) || hasForbiddenCommandSelector(nested),
+    );
+  const production = value?.production_input_base;
+  const lanes = production?.dualLaneInput;
+  const laneFields = ["publicImage", "deploymentSha256", "sourceCommit"];
+  const laneKeys = [
+    "deploymentSha256",
+    "publicImage",
+    "sourceCommit",
+    "volumeIdSha256",
+    "volumeManifestSha256",
+  ];
+  const validateBaseObject = (item, keys, nested = []) =>
+    item !== null &&
+    typeof item === "object" &&
+    !Array.isArray(item) &&
+    Object.keys(item).every((key) => keys.includes(key)) &&
+    nested.every(
+      ([key, nestedKeys]) => !Object.hasOwn(item, key) || exactObjectKeys(item[key], nestedKeys),
+    );
+  const dynamicSeedValues = [
+    lanes?.mage?.publicImage,
+    lanes?.mage?.deploymentSha256,
+    lanes?.mage?.sourceCommit,
+    lanes?.soulx?.publicImage,
+    lanes?.soulx?.deploymentSha256,
+    lanes?.soulx?.sourceCommit,
+    value?.activation_record_base?.release?.production_config_activation_sha256,
+    value?.activation_record_base?.release?.media_worker_release_manifest_sha256,
+    value?.activation_record_base?.gates?.mage_qualification_sha256,
+    value?.activation_record_base?.gates?.soulx_qualification_sha256,
+    value?.activation_record_base?.gates?.mage_deployment_snapshot_sha256,
+    value?.activation_record_base?.gates?.soulx_deployment_snapshot_sha256,
+    value?.activation_record_base?.gates?.paid_dispatch_authority_sha256,
+    value?.promotion_record_base?.release?.disabled_config_sha256,
+    value?.promotion_record_base?.release?.enabled_config_sha256,
+    value?.promotion_record_base?.database?.authority_document_sha256,
+    value?.promotion_record_base?.lanes?.mage_image?.qualification_record_sha256,
+    value?.promotion_record_base?.lanes?.mage_image?.deployment_snapshot_sha256,
+    value?.promotion_record_base?.lanes?.soulx_avatar?.qualification_record_sha256,
+    value?.promotion_record_base?.lanes?.soulx_avatar?.deployment_snapshot_sha256,
+    value?.promotion_record_base?.cloudflare?.disabled_version_id,
+    value?.promotion_record_base?.cloudflare?.disabled_version_sha256,
+  ];
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    value.schema_version === MATERIALIZATION_SEED_SCHEMA &&
+    value.static_only === true &&
+    value.future_output_hashes_present === false &&
+    exactObjectKeys(value, MATERIALIZATION_SEED_TOP_LEVEL_KEYS) &&
+    !hasForbiddenSeedKey(value, forbiddenFutureKeys) &&
+    !hasForbiddenCommandSelector(value.production_input_base?.commandPayloads) &&
+    exactObjectKeys(production, [
+      "authorityDocument",
+      "commandPayloads",
+      "dualLaneInput",
+      "fullLiveAuthorityId",
+      "schemaVersion",
+    ]) &&
+    production.schemaVersion === "videoforge.v213-full-live-outer-input/v1" &&
+    typeof production.fullLiveAuthorityId === "string" &&
+    production.fullLiveAuthorityId !== "" &&
+    exactEmptyObject(production.authorityDocument) &&
+    exactObjectKeys(lanes, ["mage", "soulx"]) &&
+    exactEmptyObject(production.commandPayloads) &&
+    validateBaseObject(
+      value.activation_record_base,
+      ["authority", "database", "gates", "release"],
+      [
+        ["authority", []],
+        ["database", []],
+        ["gates", []],
+        ["release", []],
+      ],
+    ) &&
+    validateBaseObject(
+      value.config_activation_base,
+      ["authority", "release"],
+      [
+        ["authority", []],
+        ["release", []],
+      ],
+    ) &&
+    exactEmptyObject(value.release_manifest) &&
+    validateBaseObject(value.promotion_record_base, [
+      "approval",
+      "cloudflare",
+      "database",
+      "lanes",
+      "release",
+    ]) &&
+    (!Object.hasOwn(value.promotion_record_base, "lanes") ||
+      (exactObjectKeys(value.promotion_record_base.lanes, ["mage_image", "soulx_avatar"]) &&
+        exactEmptyObject(value.promotion_record_base.lanes.mage_image) &&
+        exactEmptyObject(value.promotion_record_base.lanes.soulx_avatar))) &&
+    [lanes.mage, lanes.soulx].every(
+      (lane) =>
+        lane !== null &&
+        typeof lane === "object" &&
+        !Array.isArray(lane) &&
+        Object.keys(lane).every((key) => laneKeys.includes(key)) &&
+        ["volumeIdSha256", "volumeManifestSha256"].every(
+          (key) => Object.hasOwn(lane, key) && HASH.test(lane[key] ?? ""),
+        ) &&
+        laneFields.every((key) => !Object.hasOwn(lane, key) || lane[key] === null),
+    ) &&
+    dynamicSeedValues.every((item) => item === undefined || item === null)
+  );
+}
+
+/**
+ * Verify the protected static materialization seed before the one-shot authority can be
+ * consumed.  The adapter owns the complete nested seed contract; the outer boundary only binds
+ * the exact canonical JSON hash and protected file seam so a restart cannot silently read a
+ * different seed.  This function deliberately does not inspect credentials or call a provider.
+ */
+function validateMaterializationSeedFile({ path, expectedSha256 }) {
+  if (
+    !HASH.test(expectedSha256 ?? "") ||
+    typeof path !== "string" ||
+    path === "" ||
+    !path.startsWith("/") ||
+    path.includes("\0")
+  )
+    fail("MATERIALIZATION_SEED_BINDING");
+  let file;
+  let directory;
+  try {
+    file = lstatSync(path);
+    directory = lstatSync(dirname(path));
+  } catch {
+    fail("MATERIALIZATION_SEED_INPUT");
+  }
+  if (
+    !directory.isDirectory() ||
+    directory.isSymbolicLink() ||
+    (directory.mode & 0o777) !== 0o700 ||
+    !file.isFile() ||
+    file.isSymbolicLink() ||
+    (file.mode & 0o777) !== 0o600
+  )
+    fail("MATERIALIZATION_SEED_MODE_OR_TYPE");
+  let bytes;
+  let value;
+  try {
+    bytes = readFileSync(path);
+    value = JSON.parse(bytes);
+  } catch {
+    fail("MATERIALIZATION_SEED_JSON");
+  }
+  if (!validateMaterializationSeedShape(value)) fail("MATERIALIZATION_SEED_CONTRACT");
+  const canonicalBytes = Buffer.from(`${canonicalJson(value)}\n`);
+  if (sha256(canonicalBytes) !== expectedSha256) fail("MATERIALIZATION_SEED_HASH");
+  return Object.freeze({ value, sha256: expectedSha256 });
+}
 const finiteUsd = (value, code) => {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) fail(code);
   return Math.round(value * 1_000_000) / 1_000_000;
@@ -108,6 +339,7 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     combined.new_volume_authorized !== false ||
     combined.new_paid_retained_resource_authorized !== false ||
     combined.recurring_plan_change_authorized !== false ||
+    !HASH.test(authority.materialization_seed_sha256 ?? "") ||
     JSON.stringify(authority.phase_caps_usd) !== JSON.stringify(EXPECTED_PHASE_CAPS)
   )
     fail("AUTHORITY_CONTRACT");
@@ -218,6 +450,7 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     release_source_commit: validated.releaseSourceCommit,
     full_live_executor_path: authority.outer_orchestration.full_live_executor_path,
     full_live_executor_sha256: authority.outer_orchestration.full_live_executor_sha256,
+    materialization_seed_sha256: authority.materialization_seed_sha256,
     approved_at: validated.approvedAt,
     expires_at: validated.expiresAt,
     state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
@@ -260,7 +493,8 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:863fc7f0c83361b7fb8299a4269061a2b69afbc5d77d168a24ad171573be8230" ||
+      "sha256:d43df775eaae6bcd8b0cb72fd1d35b8e085f43da3aa39eaaa453f94d548fabc4" ||
+    !HASH.test(state.materialization_seed_sha256 ?? "") ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||
     ![
@@ -913,6 +1147,10 @@ async function main() {
       authorityBytes,
       authorityRecordCommit: args.get("authority-record-commit"),
     });
+    validateMaterializationSeedFile({
+      path: process.env[MATERIALIZATION_SEED_ENV],
+      expectedSha256: authority.materialization_seed_sha256,
+    });
     if (args.has("trusted-iso")) fail("CALLER_TRUSTED_TIME_FORBIDDEN");
     assertTrustedTime(validated.approvedAt, validated.expiresAt, readAuthenticatedTrustedTime());
     trustedCommitLineage(validated, {
@@ -1005,6 +1243,8 @@ export {
   CONFIRMATION,
   enterCleanupOnly,
   initialConsumptionRecord,
+  MATERIALIZATION_SEED_ENV,
+  MATERIALIZATION_SEED_SCHEMA,
   PHASES,
   recordCleanupProof,
   recordSettledResult,
@@ -1014,6 +1254,8 @@ export {
   trustedCommitLineage,
   updateState,
   validateOuterAuthority,
+  validateMaterializationSeedFile,
+  validateMaterializationSeedShape,
   validateAuthorityRecordCommit,
   validateState,
   readAuthenticatedTrustedTime,

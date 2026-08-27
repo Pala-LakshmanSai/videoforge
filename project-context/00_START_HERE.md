@@ -45,11 +45,23 @@ only the operator database and RunPod credential after operator verification; be
 the early no-database path uses only request and RunPod inputs and never claims database cleanup. Neither
 path loads the normal production input, guarded roles, endpoint identities, or signing/key-registration inputs. Seed validation recursively rejects endpoint
 identity case variants and future hashes; max-one materialization writes the four guarded endpoint
-secret files and rebinds all 22 secret hashes. Repaired source `7444ed0` is provider-free audited and
-the replacement proposal is resealed as `sha256:45894ac0…01aaca` against that source; the
-2e6a605d/9eaf276 approval and authority
-are superseded unconsumed with no mutation. No fresh approval or executable authority exists. Both lanes require fresh immutable images, sealed
-deployment snapshots, dual live qualification, and that new single-use approval.
+secret files and rebinds all 22 secret hashes. Repaired source `7444ed0` is the prior provider-free
+audited baseline and the replacement proposal `sha256:45894ac0…01aaca` was resealed against that
+source; its fresh authority `59dfe8a` is now superseded unconsumed with no mutation after the
+Cloudflare boundary audit. The successor draft `2026-08-27-cloudflare-credential-origin-repair-candidate`
+is `PASS_BLOCKED_UNSEALED` (`sha256:5fc4d96a…f039a6`) with source/component/identity hashes pending.
+It requires protected Wrangler OAuth only (no raw API-token file or `CLOUDFLARE_API_TOKEN` export),
+authenticated account and workers.dev subdomain derivation, exact absent HTTP 404
+`text/plain; charset=UTF-8`
+body/hash before creation (not 503 JSON), then HTTP 200 `DISABLED_UNQUALIFIED` and `QUALIFIED_EXACT`
+reads. It requires pre-existing protected Google OAuth WEB client and least-privilege R2 S3
+credential readbacks; creating or rotating them is outside the full-live graph and needs a separate
+fresh credential-bootstrap proposal. The current authenticated Google project picker has zero
+accessible projects, so new project/client access requires fresh explicit authority; the inaccessible
+`videoforge-v2-06-staging-0817` project cannot be reused. No fresh approval or executable authority
+exists. Both lanes require fresh
+immutable images, sealed deployment snapshots, dual live qualification, and that new single-use
+approval.
 Provider/deployment/credential/GPU/spend authority remains false with a `$0` executable cap, and no
 provider call or spend is authorized.
 

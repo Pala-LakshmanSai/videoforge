@@ -1,0 +1,1601 @@
+{
+  "schema_version": "videoforge.v2-13-full-live-completion-proposal/v3",
+  "checkpoint_range": ["V2-07", "V2-08", "V2-09", "V2-10", "V2-11", "V2-12", "V2-13"],
+  "task_id": "VF-10-13",
+  "candidate_date": "2026-08-27",
+  "proposal_status": "BLOCKED_UNSEALED",
+  "sealing": {
+    "sealed_for_exact_user_approval": false,
+    "current_bytes_are_approval_ineligible": true,
+    "required_next_action": "finish the source-bound Cloudflare OAuth/origin and credential-scope contract, independently audit the final source hashes, then reseal and obtain fresh exact user approval before any authority record, credential access, provider call, mutation, GPU use, or spend"
+  },
+  "supersession": {
+    "supersedes_proposal_sha256": "sha256:45894ac0b7648d3e9e48357a13c270d2cbbe7e65120fe425f4b449d00601aaca",
+    "supersedes_proposal_record_commit": "ec3884961318e46cbc8e09afc1289de279de5eae",
+    "superseded_authority_id": "v2-13-full-live-20260827-020135z-7444ed0",
+    "superseded_approval_sha256": "sha256:489796f855445176470766df3a62c8a80da5a110e317f512a1e4c24044c21c27",
+    "superseded_approval_record_commit": "59dfe8a763abe947a53f66e734b967e5310fad61",
+    "superseded_authority_record_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/approved-authority.json",
+    "superseded_approval_record_path": "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/user-approval.json",
+    "superseded_authority_record_sha256": "sha256:42b122150ce2556afcbbf72d347bb0863d30ede0a126e384ae6e6c18ac0b3052",
+    "superseded_approval_record_sha256": "sha256:489796f855445176470766df3a62c8a80da5a110e317f512a1e4c24044c21c27",
+    "superseded_authority_original_status": "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS",
+    "supersession_reason": "CLOUDFLARE_CREDENTIAL_ORIGIN_CONTRACT_REPAIR_REQUIRED",
+    "superseded_authority_state": "SUPERSEDED_UNCONSUMED_NO_MUTATION",
+    "prior_approval_reusable": false,
+    "fresh_exact_approval_required": true
+  },
+  "source": {
+    "release_source_commit": null,
+    "repaired_release_source_commit": null,
+    "proposal_record_commit": null,
+    "future_approval_record_commit": null,
+    "future_authority_record_commit": null,
+    "branch": "codex/serverless-v2-roadmap",
+    "branch_push_target": "origin/codex/serverless-v2-roadmap",
+    "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+    "future_approval_record_basename": "user-approval.json",
+    "future_authority_record_basename": "approved-authority.json",
+    "exact_release_components": {
+      "full_live_executor": {
+        "path": "deploy/v2-13/full-live-executor.mjs",
+        "sha256": null,
+        "sole_canonical_live_mutation_path": true
+      },
+      "full_live_adapters": {
+        "path": "deploy/v2-13/full-live-adapters.mjs",
+        "sha256": null
+      },
+      "promotion": {
+        "path": "deploy/v2-13/promote-qualified-production.mjs",
+        "sha256": null
+      },
+      "guarded_activation": {
+        "path": "deploy/v2-13/guarded-activation.mjs",
+        "sha256": null
+      },
+      "orchestration_authority": {
+        "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
+        "sha256": null
+      },
+      "typescript_cli_bridge": {
+        "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
+        "sha256": null
+      },
+      "runpod_dual_lane_transport": {
+        "path": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
+        "sha256": null
+      },
+      "migration_0045": {
+        "path": "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
+        "sha256": null
+      },
+      "operator_grants": {
+        "path": "deploy/v2-13/neon-full-live-operator-grants.sql",
+        "sha256": null
+      },
+      "migration_manifest": {
+        "path": "packages/control-plane/migrations/manifest.json",
+        "sha256": null
+      },
+      "approval_validator": {
+        "path": "deploy/v2-13/validate-full-live-approval.mjs",
+        "source_commit_tree_binding": {
+          "mode": "EXTERNAL_GIT_COMMIT_TREE_ENTRY",
+          "commit_field": "source.release_source_commit",
+          "tree_entry_path": "deploy/v2-13/validate-full-live-approval.mjs",
+          "verification": "GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256",
+          "embedded_current_file_sha256": false,
+          "self_hash_forbidden": true
+        }
+      }
+    },
+    "pending_source_contract": {
+      "status": "PENDING_SOURCE_WORKER_AND_CREDENTIAL_SCOPE_AUDIT",
+      "release_source_commit": null,
+      "release_component_sha256s": null,
+      "source_hashes_must_be_bound_before_reseal": true,
+      "cloudflare_authentication": {
+        "mode": "EXISTING_WRANGLER_OAUTH_CONFIG_ONLY",
+        "protected_binding_environment_name": "VIDEOFORGE_V2_13_WRANGLER_OAUTH_CONFIG_FILE",
+        "protected_file_mode": "0600",
+        "oauth_scopes": [
+          "account:read",
+          "agent-memory:write",
+          "ai-search:run",
+          "ai-search:write",
+          "ai:write",
+          "artifacts:write",
+          "browser:write",
+          "challenge-widgets.write",
+          "cloudchamber:write",
+          "connectivity:admin",
+          "containers:write",
+          "d1:write",
+          "email_routing:write",
+          "email_sending:write",
+          "flagship:write",
+          "offline_access",
+          "pages:write",
+          "pipelines:write",
+          "queues:write",
+          "secrets_store:write",
+          "ssl_certs:write",
+          "user:read",
+          "websearch.run",
+          "workers:write",
+          "workers_kv:write",
+          "workers_routes:write",
+          "workers_scripts:write",
+          "workers_tail:read",
+          "zone:read"
+        ],
+        "config_path_identity": null,
+        "config_sha256": null,
+        "raw_api_token_file_authorized": false,
+        "cloudflare_api_token_environment_export_authorized": false,
+        "new_cloudflare_credential_creation_authorized": false,
+        "new_cloudflare_credential_rotation_authorized": false,
+        "oauth_readback_required_before_any_cloudflare_mutation": true,
+        "oauth_scope_and_account_binding_must_be_source_bound": true
+      },
+      "account_and_workers_dev_origin": {
+        "account_id": null,
+        "account_id_sha256": null,
+        "authenticated_account_readback_required": true,
+        "workers_dev_subdomain_endpoint": "/workers/subdomain",
+        "workers_dev_subdomain": null,
+        "workers_dev_subdomain_sha256": null,
+        "subdomain_readback_required": true,
+        "worker_name": "videoforge-production-runtime",
+        "derived_origin_template": "https://{worker_name}.{workers_dev_subdomain}.workers.dev",
+        "public_origin": null,
+        "public_origin_must_equal_derived_origin": true
+      },
+      "route_readbacks": {
+        "path": "/api/v2/hosted/status",
+        "method": "GET",
+        "pre_mutation": {
+          "worker_must_be_absent": true,
+          "status": 404,
+          "content_type": "text/plain; charset=UTF-8",
+          "body_length": 17,
+          "body_sha256": "sha256:a4daf148dd64d1a3e8e8101040915e50d12df29153c5936d377cf2260ccc8ba0",
+          "observed_body_sha256_prefix": "a4daf148",
+          "json_body_authorized": false,
+          "status_503_authorized": false,
+          "exact_body_and_content_type_required": true
+        },
+        "post_secret_free_quarantine": {
+          "status": 200,
+          "content_type": "application/json",
+          "schema_version": "videoforge-hosted-status/v1",
+          "gpu_transport": "DISABLED_UNQUALIFIED",
+          "commit_binding": "final_source_commit",
+          "body_sha256": null,
+          "exact_body_and_content_type_required": true
+        },
+        "post_qualification": {
+          "status": 200,
+          "content_type": "application/json",
+          "schema_version": "videoforge-hosted-status/v1",
+          "gpu_transport": "QUALIFIED_EXACT",
+          "commit_binding": "final_source_commit",
+          "body_sha256": null,
+          "exact_body_and_content_type_required": true
+        }
+      },
+      "strict_nested_seed_hash_binding": {
+        "seed_schema": "videoforge.v213-full-live-materialization-seed/v1",
+        "seed_file_environment_name": "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE",
+        "materialization_seed_sha256_field": "materialization_seed_sha256",
+        "seed_file_sha256": null,
+        "outer_authority_must_bind_seed_hash": true,
+        "consumption_record_must_bind_seed_hash": true,
+        "verified_at_outer_consumption": true,
+        "verified_before_every_seed_read": true,
+        "verified_after_restart_or_recovery": true,
+        "hash_algorithm": "SHA256_CANONICAL_JSON_BYTES",
+        "hash_binding_mode": "EXACT_NESTED_PATH_AND_HASH_CAS",
+        "nested_hashes_must_bind_exact_values": true,
+        "missing_or_extra_nested_hashes_rejected": true,
+        "future_endpoint_or_deployment_identity_values_forbidden": true,
+        "credential_values_forbidden": true,
+        "exact_nested_hash_paths_pending_source_contract": true
+      }
+    }
+  },
+  "authority_record_commit_binding": {
+    "strategy": "EXTERNAL_GIT_COMMIT_INPUT_VERIFIED_BEFORE_CONSUMPTION_NO_SELF_HASH",
+    "proposal_record_commit_is_distinct": true,
+    "authority_record_commit_must_contain_exact_approval_and_authority_bytes": true,
+    "remote_readback_required": true,
+    "embedded_self_commit_hash_forbidden": true,
+    "materialization_seed_sha256_required_in_authority_and_consumption_state": true,
+    "materialization_seed_sha256_must_be_verified_before_execution": true
+  },
+  "authority": {
+    "exact_proposal_approved": false,
+    "authority_id": null,
+    "approval_sha256": null,
+    "approved_at": null,
+    "expires_at": null,
+    "single_use": true,
+    "consumed": false,
+    "execute_authorized": false,
+    "credential_access_authorized": false,
+    "database_mutation_authorized": false,
+    "cloudflare_secret_mutation_authorized": false,
+    "deployment_authorized": false,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "external_spend_authorized": false,
+    "executable_finite_cap_usd": null,
+    "immutable_release_ref_creation_authorized": false,
+    "materialization_seed_sha256": null,
+    "redispatch_authorized": false
+  },
+  "exact_execution_graph": {
+    "preflight_before_first_external_action": "after durable single-use outer consumption, validate the exact source pins, state hash, protected inputs, distinct database roles, authority lineage, expiry, caps, and closed adapter catalog; fail before the first external action",
+    "image_workflow_verification_policy": {
+      "bind_only_previously_captured_run_id": true,
+      "maximum_reads": 180,
+      "poll_interval_ms": 10000,
+      "wall_timeout_ms": 1800000,
+      "deadline_clock": "MONOTONIC",
+      "deadline_starts_before_first_cancellation_or_trusted_time_check": true,
+      "deadline_covers_trusted_time_subprocess_poll_subprocess_wait_download_and_evidence_validation": true,
+      "every_subprocess_timeout_is_positive_remaining_deadline_ms": true,
+      "trusted_time_subprocess_timeout_ms": 12000,
+      "gh_subprocess_timeout_ms_or_remaining_if_less": 60000,
+      "remaining_time_checked_before_and_after_every_await_or_spawn": true,
+      "every_wait_is_capped_to_positive_remaining_deadline_ms": true,
+      "no_positive_remaining_time_is_immediate_timeout": true,
+      "pollable_statuses": ["queued", "in_progress"],
+      "accepted_terminal_status": "completed",
+      "accepted_conclusion": "success",
+      "immediate_stop_on_completed_non_success": true,
+      "immediate_stop_on_identity_drift": true,
+      "immediate_stop_on_authority_expiry": true,
+      "immediate_stop_on_injected_cancellation": true,
+      "verifier_dispatch_authorized": false,
+      "redispatch_authorized": false,
+      "timeout_transition": "OUTER_CLEANUP_ONLY_NO_RETRY"
+    },
+    "internal_materialization_policy": {
+      "writer": "FULL_LIVE_EXECUTOR_INTERNAL_ONLY",
+      "external_mid_run_writer_authorized": false,
+      "future_result_files_required_at_initial_preflight": false,
+      "protected_seed_schema": "videoforge.v213-full-live-materialization-seed/v1",
+      "protected_seed_contains_only": [
+        "outer-production-base",
+        "pre-endpoint-secrets-base",
+        "guarded-authority-base",
+        "config-activation-base",
+        "media-manifest",
+        "promotion-base"
+      ],
+      "materialization_seed_sha256_field": "materialization_seed_sha256",
+      "materialization_seed_sha256_must_be_bound_in_outer_authority": true,
+      "materialization_seed_sha256_must_be_bound_in_consumption_record": true,
+      "materialization_seed_sha256_verified_at_outer_consumption": true,
+      "materialization_seed_sha256_verified_before_every_seed_read": true,
+      "materialization_seed_sha256_verified_after_restart_or_recovery": true,
+      "protected_seed_future_output_hashes_authorized": false,
+      "initial_production_secrets_schema": "videoforge.v213-full-live-pre-endpoint-secrets/v1",
+      "initial_seed_endpoint_identity_fields_present": false,
+      "initial_seed_forbidden_endpoint_identity_fields": [
+        "mageEndpointId",
+        "mageEndpointIdSha256",
+        "soulxEndpointId",
+        "soulxEndpointIdSha256"
+      ],
+      "guarded_endpoint_secret_file_names": [
+        "VIDEOFORGE_MAGE_ENDPOINT_ID",
+        "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+        "VIDEOFORGE_SOULX_ENDPOINT_ID",
+        "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256"
+      ],
+      "seed_recursively_rejects_endpoint_identity_key_case_variants": true,
+      "production_input_base_lane_fields_must_be_absent_or_null_before_receipt_derivation": [
+        "publicImage",
+        "deploymentSha256",
+        "sourceCommit"
+      ],
+      "command_payloads_recursively_forbid_endpoint_or_deployment_snapshot_selectors": true,
+      "future_output_hash_or_identity_anywhere_in_seed_is_hard_stop": true,
+      "final_production_secrets_schema": "videoforge.v213-full-live-production-secrets/v1",
+      "cleanup_pre_endpoint_runtime": {
+        "schema": "videoforge.v213-full-live-cleanup-input/v1",
+        "exact_fields": [
+          "schemaVersion",
+          "fullLiveAuthorityId",
+          "billingBaselineMode",
+          "billingBaselineUsd",
+          "totalCapUsd",
+          "retainedLanes"
+        ],
+        "retained_lane_exact_fields": [
+          "lane",
+          "volumeIdSha256",
+          "volumeManifestSha256"
+        ],
+        "billing_baseline_modes": [
+          "PRIOR_FRESH_PREFLIGHT",
+          "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION"
+        ],
+        "null_billing_baseline_allowed_only_for_establish_current_mode_with_no_prior_fresh_preflight_or_runpod_mutation_receipt": true,
+        "establish_current_mode_first_authenticated_current_read_is_baseline_then_bounded_final_read_with_no_intervening_provider_mutation": true,
+        "exact_child_fd_environment": [
+          "REQUEST_FD",
+          "RUNPOD_API_KEY_FD",
+          "OPERATOR_DATABASE_URL_FD"
+        ],
+        "forbidden_inputs": [
+          "exactProductionInput",
+          "runtime-database-url",
+          "reconciler-database-url",
+          "worker-origin",
+          "worker-token",
+          "production-secrets-fd",
+          "endpoint-ids-or-hashes",
+          "receipt-or-signing-keys",
+          "key-registration"
+        ],
+        "accepted_for_normal_guarded_or_acceptance_work": false
+      },
+      "storage_parent": "OUTER_STATE_MODE_0700_DIRECTORY",
+      "record_file_mode": "0600",
+      "exclusive_create_or_exact_hash_cas_required": true,
+      "canonical_json_required": true,
+      "hash_chain_required": true,
+      "chain_binds_previous_outer_state_sha256_and_ordered_prior_result_sha256s": true,
+      "materialization_chain_committed_before_consumer_operation": true,
+      "chain_record_exact_fields": [
+        "kind",
+        "authority_id",
+        "prior_chain_sha256",
+        "outer_state_sha256",
+        "ordered_prior_operation_evidence_sha256s",
+        "ordered_output_sha256s",
+        "entry_sha256"
+      ],
+      "entry_sha256_is_hash_of_preceding_six_fields": true,
+      "chain_verifier_required_in_production_entrypoint": true,
+      "chain_verifier_function": "verifyMaterializationChainFile",
+      "chain_verifier_boundaries": ["hydrated", "settled"],
+      "missing_chain_verifier_is_hard_stop_before_external_action": true,
+      "chain_stage_order": [
+        "production-input",
+        "max-one-endpoint-bindings",
+        "activation-record",
+        "promotion-record",
+        "cleanup-pre-endpoint-descriptor"
+      ],
+      "early_cleanup_missing_chain_file_allowed_only_before_operator_verification": true,
+      "validate_each_output_immediately_at_first_use": true,
+      "records": [
+        {
+          "kind": "production-input",
+          "materialize_after_operations": [
+            "mage-image-workflow-verification",
+            "soulx-image-workflow-verification"
+          ],
+          "consume_before_operation": "fresh-live-preflight",
+          "writes": ["production-input"]
+        },
+        {
+          "kind": "max-one-endpoint-bindings",
+          "materialize_after_operations": ["create-exact-max-one-endpoints"],
+          "derives_only_from": "receipt.materialization.production",
+          "consume_before_materialization": "activation-record",
+          "writes": [
+            "production-secrets",
+            "VIDEOFORGE_MAGE_ENDPOINT_ID",
+            "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+            "VIDEOFORGE_SOULX_ENDPOINT_ID",
+            "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+            "mage-deployment-snapshot",
+            "soulx-deployment-snapshot"
+          ],
+          "rebinds_all_guarded_secret_sha256_entries": 22,
+          "ordered_output_names": [
+            "production_secrets_sha256",
+            "mage_deployment_snapshot_sha256",
+            "soulx_deployment_snapshot_sha256",
+            "mage_endpoint_secret_sha256",
+            "mage_endpoint_hash_secret_sha256",
+            "soulx_endpoint_secret_sha256",
+            "soulx_endpoint_hash_secret_sha256"
+          ]
+        },
+        {
+          "kind": "activation-record",
+          "materialize_after_operations": [
+            "mage-live-qualification",
+            "soulx-live-qualification",
+            "create-exact-max-one-endpoints"
+          ],
+          "consume_before_operation": "guarded-activation-once",
+          "requires_prior_materialization_kinds": ["max-one-endpoint-bindings"],
+          "writes": [
+            "media-manifest",
+            "config-activation-record",
+            "disabled-config",
+            "activation-record"
+          ]
+        },
+        {
+          "kind": "promotion-record",
+          "materialize_after_operations": [
+            "mage-live-qualification",
+            "soulx-live-qualification",
+            "create-exact-max-one-endpoints",
+            "guarded-activation-once"
+          ],
+          "consume_before_operation": "promote-qualified-production",
+          "writes": ["promotion-record"]
+        },
+        {
+          "kind": "cleanup-pre-endpoint-descriptor",
+          "cleanup_only": true,
+          "materialize_after_operations": [],
+          "consume_before_operations": [
+            "restore-endpoints-max-one",
+            "prove-zero-workers",
+            "read-settled-billing",
+            "reconcile-exact-resources"
+          ],
+          "ordered_output_names": [
+            "cleanup_input_sha256",
+            "pre_endpoint_secrets_sha256"
+          ],
+          "accepted_for_normal_or_acceptance_work": false
+        }
+      ],
+      "missing_prior_result_receipt_path_mode_hash_chain_or_replay_is_hard_stop": true
+    },
+    "prequalification_database_bootstrap_policy": {
+      "operation_id": "bootstrap-prequalification-database",
+      "phase": "bootstrap_prequalification_database",
+      "phase_cap_usd": 0,
+      "result_schema": "videoforge.v213-prequalification-database-bootstrap-result/v1",
+      "ordered_before_operation": "fresh-live-preflight",
+      "exact_operator_role": "videoforge_hosted_operator",
+      "runtime_and_reconciler_roles_must_remain_absent": true,
+      "exact_initial_ledger_prefix_count": 36,
+      "exact_recoverable_prefix_counts": [37, 38, 39, 40, 41, 42, 43, 44, 45],
+      "reject_ledger_drift_or_count_above_45": true,
+      "pgcrypto_then_exact_migrations": [37, 38, 39, 40, 41, 42, 43, 44, 45],
+      "each_migration_requires_advisory_lock_and_single_transaction": true,
+      "owner_connection_uses_only_protected_pg_service_and_pgpass": true,
+      "operator_role_created_or_recovered_from_protected_operator_dsn_only_after_migrations": true,
+      "operator_role_contract": "LOGIN_NOINHERIT_HARDENED_NO_MEMBERSHIPS_OWNERSHIP_OR_TABLE_ACL",
+      "grants": "EXACT_OPERATOR_FUNCTION_ONLY",
+      "exact_readback": [
+        "45-row-ledger",
+        "pgcrypto",
+        "operator-role-flags",
+        "no-role-memberships",
+        "no-object-ownership",
+        "no-table-acl",
+        "exact-operator-function-acl"
+      ],
+      "exact_operator_function_signature_count": 17,
+      "exact_operator_function_signature_namespace": "public",
+      "exact_operator_function_signature_canonicalization": "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
+      "exact_operator_function_acl_comparison": "OID_SET_SORTED_EXACT_ALLOWLIST",
+      "exact_operator_function_acl_must_have_no_duplicates": true,
+      "public_function_execute_readback_count": 0,
+      "public_default_function_execute_readback_count": 0,
+      "ownership_catalogs": [
+        "pg_database.datdba",
+        "pg_extension.extowner",
+        "pg_class.relowner",
+        "pg_namespace.nspowner",
+        "pg_proc.proowner",
+        "pg_type.typowner",
+        "pg_foreign_data_wrapper.fdwowner",
+        "pg_foreign_server.srvowner",
+        "pg_event_trigger.evtowner",
+        "pg_tablespace.spcowner",
+        "pg_publication.pubowner",
+        "pg_subscription.subowner",
+        "pg_largeobject_metadata.lomowner",
+        "pg_collation.collowner",
+        "pg_ts_dict.dictowner",
+        "pg_ts_config.cfgowner"
+      ],
+      "ownership_readback_is_cluster_wide": true,
+      "receipt_exact_fields": [
+        "schema_version",
+        "ledger_before_count",
+        "ledger_before_sha256",
+        "ledger_after_sha256",
+        "operator_acl_sha256",
+        "pgcrypto_sha256",
+        "recovery_mode",
+        "runpod_calls",
+        "cloudflare_calls",
+        "application_secret_reads"
+      ],
+      "receipt_full_exact_fields": [
+        "schema_version",
+        "ledger_before_count",
+        "ledger_before_sha256",
+        "ledger_after_sha256",
+        "operator_acl_sha256",
+        "pgcrypto_sha256",
+        "recovery_mode",
+        "runpod_calls",
+        "cloudflare_calls",
+        "application_secret_reads",
+        "prequalification_database_bootstrap_sha256"
+      ],
+      "receipt_path": "prequalification-database-bootstrap.json",
+      "receipt_hash_field": "prequalification_database_bootstrap_sha256",
+      "receipt_hash_is_sha256_of_canonical_body": true,
+      "receipt_file_mode": "0600",
+      "receipt_parent_directory_mode": "0700",
+      "receipt_secret_free": true,
+      "receipt_replay_requires_exact_all_fields": true,
+      "receipt_final_ledger_count": 45,
+      "receipt_recovery_mode_count_binding": {
+        "FRESH_36_TO_45": 36,
+        "RESUME_EXACT_PREFIX": [37, 38, 39, 40, 41, 42, 43, 44],
+        "VERIFIED_EXISTING_45": 45
+      },
+      "receipt_replay_cas_required": true,
+      "operator_grants_sql_path": "deploy/v2-13/neon-full-live-operator-grants.sql",
+      "operator_grants_sql_revoke_all_functions_before_allowlist": true,
+      "operator_grants_sql_revoke_public_execute": true,
+      "public_execute_readback_must_be_empty": true,
+      "exact_operator_acl_order": "LEXICAL_CANONICAL_SIGNATURE",
+      "operator_role_flags": {
+        "rolcanlogin": true,
+        "rolsuper": false,
+        "rolcreaterole": false,
+        "rolcreatedb": false,
+        "rolinherit": false,
+        "rolreplication": false,
+        "rolbypassrls": false,
+        "rolconfig": null
+      },
+      "operator_acl_scope": {
+        "schema_usage_only": true,
+        "schema_create": false,
+        "database_acl": 0,
+        "table_acl": 0,
+        "sequence_acl": 0,
+        "default_acl": 0,
+        "ownership": 0,
+        "memberships": 0,
+        "public_function_acl": 0,
+        "public_default_function_acl": 0
+      },
+      "owner_dsn_policy": {
+        "protected_input_directory_env": "VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR",
+        "service_file": "owner.pg_service.conf",
+        "pass_file": "owner.pgpass",
+        "service_name": "videoforge_v2_13_owner",
+        "owner_only_for_migrations_and_readback": true,
+        "credentials_never_in_argv_or_logs": true
+      },
+      "operator_dsn_policy": {
+        "file": "operator.database-url",
+        "exact_role": "videoforge_hosted_operator",
+        "accepted_protocols": ["postgres:", "postgresql:"],
+        "sslmode": "require",
+        "channel_binding": "require",
+        "host_and_database_match_owner_service": true,
+        "only_after_migrations": true,
+        "metadata_read_before_migrations_allowed": true,
+        "value_read_after_migration_prefix_commit_count": 45,
+        "value_read_forbidden_before_migration_prefix_commit": true,
+        "used_for_role_creation_or_recovery_only_after_migrations": true,
+        "password_never_in_argv_or_logs": true
+      },
+      "operator_verification_transition": {
+        "state_field": "operator_role_verified",
+        "initial_value": false,
+        "set_true_only_after": "SETTLED_TERMINAL_BOOTSTRAP_RESULT_AND_EXACT_RECEIPT_LEDGER45_OPERATOR_ACL_READBACK",
+        "restart_source": "SETTLED_TERMINAL_BOOTSTRAP_RESULT_ONLY",
+        "role_presence_or_preflight_is_not_sufficient": true,
+        "monotonic": true,
+        "required_before_normal_operator_dsn_cleanup": true
+      },
+      "exact_operator_function_signatures": [
+        "videoforge_load_v213_bridge_acceptance_call(jsonb)",
+        "videoforge_record_v213_stage_authority(uuid,jsonb)",
+        "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+        "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+        "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+        "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+        "videoforge_claim_v213_stage_authority(jsonb)",
+        "videoforge_complete_v213_stage_authority(text,text,jsonb)",
+        "videoforge_load_v213_stage_handoff(uuid,text,text)",
+        "videoforge_load_v213_cleanup_scope(uuid)",
+        "videoforge_claim_v213_operation(jsonb)",
+        "videoforge_transition_v213_operation(jsonb)",
+        "videoforge_claim_v213_bridge_command(jsonb)",
+        "videoforge_transition_v213_bridge_command(jsonb)",
+        "videoforge_record_v213_receipt_verification_key(text,text)",
+        "videoforge_publish_v213_qualified_deployments(jsonb)",
+        "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)"
+      ],
+      "recovery_modes": [
+        "FRESH_36_TO_45",
+        "RESUME_EXACT_PREFIX",
+        "VERIFIED_EXISTING_45"
+      ],
+      "recovery_mode_ledger_before_count": {
+        "FRESH_36_TO_45": 36,
+        "RESUME_EXACT_PREFIX": [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
+        "VERIFIED_EXISTING_45": 45
+      },
+      "recovery_mode_final_ledger_count": 45,
+      "output_name": "prequalification_database_bootstrap_sha256",
+      "runpod_calls": 0,
+      "cloudflare_calls": 0,
+      "application_secret_reads": 0,
+      "gpu_use": false,
+      "external_spend_usd": 0,
+      "failure_recovery": "CURRENT_MIGRATION_TRANSACTION_ROLLBACK_THEN_IDEMPOTENT_EXACT_PREFIX_RESUME_BEFORE_RUNPOD_NO_DESTRUCTIVE_RESTORE_OR_GUESSING",
+      "guarded_activation_consumes_verified_receipt": true,
+      "guarded_activation_receipt_verified_before_application_secret_reads": true,
+      "guarded_activation_receipt_verified_before_cloudflare_or_runtime_secret_reads": true,
+      "guarded_activation_creates_only_runtime_and_reconciler_roles_and_grants": true,
+      "guarded_activation_reapplies_migrations_or_operator_role": false,
+      "guarded_activation_requires_prefix_36": false,
+      "post_bootstrap_receipt_verifier": {
+        "function": "verifyPrequalificationDatabaseReceipt",
+        "adapter_wrapper": "createConcreteFullLiveAdapters",
+        "default_verifier_binding": "options.prequalificationVerifier.verify ?? verifyPrequalificationDatabaseReceipt",
+        "owner_only": true,
+        "protected_input_directory_env": "VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR",
+        "owner_service_file": "owner.pg_service.conf",
+        "owner_pass_file": "owner.pgpass",
+        "owner_service_name": "videoforge_v2_13_owner",
+        "receipt_path_resolver": "prequalificationPath",
+        "prior_result_operation_id": "bootstrap-prequalification-database",
+        "prior_result_hash_field": "prequalification_database_bootstrap_sha256",
+        "receipt_hash_field": "prequalification_database_bootstrap_sha256",
+        "exact_prior_result_and_file_cas_required": true,
+        "verifier_disable_override_authorized": false,
+        "cas_before_owner_service_and_pass_read": true,
+        "cas_before_owner_database_read": true,
+        "cas_before_production_operator_runpod_application_secret_reads": true,
+        "readback_order": [
+          "receipt_file",
+          "prior_result_cas",
+          "owner_pg_service",
+          "owner_pgpass",
+          "ledger45",
+          "pgcrypto",
+          "exact_operator_acl"
+        ],
+        "verifies_final_ledger_count": 45,
+        "verifies_pgcrypto": true,
+        "verifies_exact_operator_acl": true,
+        "verify_before_every_post_bootstrap_non_early_cleanup_operation": true,
+        "bootstrap_operation_exempt": true,
+        "early_cleanup_operations_exempt": true,
+        "early_cleanup_condition": "context.earlyFailure === true",
+        "operator_runtime_reconciler_dsns_not_read": true,
+        "runpod_calls": 0,
+        "cloudflare_calls": 0,
+        "application_secret_reads": 0
+      }
+    },
+    "workflow_start_authority_policy": {
+      "operation_id": "record-workflow-start-authority",
+      "phase": "max_one_control_plane_and_guarded_activation",
+      "phase_cap_usd": 0,
+      "ordered_after_operation": "promote-qualified-production",
+      "ordered_before_operation": "v2-09-short-hosted-project",
+      "database_function": "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+      "result_exact_fields": ["authorityId", "tokenSha256", "expiresAt"],
+      "result_authority_id_is_uuid": true,
+      "result_token_sha256_is_canonical_hash": true,
+      "result_expires_at_is_rfc3339_timestamp": true,
+      "provider_calls": 0,
+      "application_secret_reads": 0,
+      "gpu_use": false,
+      "external_spend_usd": 0,
+      "exact_once_or_reconcile": true,
+      "ambiguous_result_transition": "OUTER_CLEANUP_ONLY_NO_RETRY"
+    },
+    "early_no_database_cleanup_policy": {
+      "schema": "videoforge.v213-full-live-early-cleanup-input/v1",
+      "trigger": "BEFORE_OPERATOR_ROLE_VERIFIED",
+      "runpod_only": true,
+      "runpod_key_required": true,
+      "exact_allowed_environment_names": [
+        "VIDEOFORGE_V213_BRIDGE_COMMAND",
+        "VIDEOFORGE_V213_BRIDGE_REQUEST_FD",
+        "VIDEOFORGE_V213_BRIDGE_RUNPOD_API_KEY_FD"
+      ],
+      "exact_child_fd_environment": ["REQUEST_FD", "RUNPOD_API_KEY_FD"],
+      "allowed_operation_ids": [
+        "restore-endpoints-max-one",
+        "prove-zero-workers",
+        "read-settled-billing",
+        "reconcile-exact-resources"
+      ],
+      "forbidden_inputs": [
+        "OPERATOR_DATABASE_URL_FD",
+        "RUNTIME_DATABASE_URL_FD",
+        "RECONCILER_DATABASE_URL_FD",
+        "exactProductionInput",
+        "production-secrets-fd",
+        "endpoint-ids-or-hashes",
+        "receipt-or-signing-keys",
+        "key-registration"
+      ],
+      "database_calls": 0,
+      "cloudflare_mutations": 0,
+      "cloudflare_calls": 0,
+      "provider_mutations": 0,
+      "runpod_calls": 0,
+      "runpod_mutations": 0,
+      "application_secret_reads": 0,
+      "gpu_use": false,
+      "external_spend_usd": 0,
+      "accepted_only_before_operator_verification": true,
+      "database_cleanup_claimed": false,
+      "never_claims_database_cleanup": true,
+      "after_operator_verified_cleanup": "NORMAL_OPERATOR_DSN_CLEANUP_RUNTIME"
+    },
+    "crash_safe_cleanup_policy": {
+      "state_storage": "OUTER_STATE_MODE_0700_DIRECTORY_FILE_MODE_0600",
+      "durable_before_cleanup_dispatch": true,
+      "resumes_only_unsettled_cleanup_work": true,
+      "settled_cleanup_result_replay_cas_required": true,
+      "ambiguous_work_is_not_redispatched": true,
+      "cleanup_operations": [
+        "restore-endpoints-max-one",
+        "prove-zero-workers",
+        "read-settled-billing",
+        "reconcile-exact-resources"
+      ],
+      "failure_state": "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+      "committed_role_or_grant_failure": "MANUAL_RECONCILIATION_STOP",
+      "cleanup_proof_required": [
+        "zero_worker_proof_sha256",
+        "billing_proof_sha256",
+        "resource_reconciliation_sha256",
+        "max_one_restoration_sha256"
+      ]
+    },
+    "durable_billing_policy": {
+      "baseline_source": "AUTHENTICATED_RUNPOD_ACCOUNT_BILLING_READBACK",
+      "baseline_is_durable": true,
+      "reserve_open_liability_before_paid_dispatch": true,
+      "reservation_includes_billing_lag": true,
+      "settle_only_after_terminal_jobs_and_zero_workers": true,
+      "final_billing_readback_required": true,
+      "final_billing_stable_read_count": 3,
+      "stable_read_contract": {
+        "consecutive_authenticated_reads": true,
+        "exact_read_count": 3,
+        "equal_cumulative_values_required": true,
+        "no_provider_mutation_between_reads": true,
+        "inter_read_spacing_ms": 2000,
+        "establish_current_mode_baseline_read_count": 1,
+        "establish_current_mode_total_provider_reads": 4,
+        "all_three_final_reads_are_included_in_proof": true,
+        "malformed_or_transport_read_is_hard_stop": true
+      },
+      "observed_billing_is_not_settlement": true,
+      "ambiguous_or_late_billing_transition": "OUTER_CLEANUP_ONLY_NO_RETRY",
+      "cumulative_cap_usd": 17.5,
+      "phase_cap_overflow_hard_stop": true
+    },
+    "prequalification_bridge_policy": {
+      "fresh_live_preflight_command": "fresh-live-preflight",
+      "prequalification_input_reader": "readV213PrequalificationProtectedInputs",
+      "prequalification_runtime_factory": "createV213PrequalificationRuntime",
+      "prequalification_protected_input_fields": [
+        "request",
+        "runpodApiKey",
+        "operatorDatabaseUrl"
+      ],
+      "prequalification_allowed_environment_names": [
+        "VIDEOFORGE_V213_BRIDGE_COMMAND",
+        "VIDEOFORGE_V213_BRIDGE_REQUEST_FD",
+        "VIDEOFORGE_V213_BRIDGE_RUNPOD_API_KEY_FD",
+        "VIDEOFORGE_V213_BRIDGE_OPERATOR_DATABASE_URL_FD"
+      ],
+      "prequalification_forbidden_environment_names": [
+        "VIDEOFORGE_V213_BRIDGE_RUNTIME_DATABASE_URL_FD",
+        "VIDEOFORGE_V213_BRIDGE_RECONCILER_DATABASE_URL_FD",
+        "VIDEOFORGE_V213_BRIDGE_WORKER_ORIGIN_FD",
+        "VIDEOFORGE_V213_BRIDGE_WORKER_OPERATOR_BEARER_FD",
+        "VIDEOFORGE_V213_BRIDGE_PRODUCTION_SECRETS_FD"
+      ],
+      "prequalification_rejects_other_prefixed_environment_names": true,
+      "prequalification_runtime_has_no_runtime_reconciler_or_production_secret_inputs": true,
+      "normal_input_reader": "readV213ProtectedInputs",
+      "normal_runtime_factory": "createV213ProductionRuntime",
+      "full_runtime_rejected_for_fresh_live_preflight": true,
+      "operator_only_preflight": {
+        "function": "preflightConcreteFullLiveInputs",
+        "operator_only": true,
+        "before_command": "fresh-live-preflight",
+        "protected_environment_inputs": [
+          "VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE",
+          "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE"
+        ],
+        "fresh_child_reader": "readV213PrequalificationProtectedInputs",
+        "fresh_child_runtime_factory": "createV213PrequalificationRuntime",
+        "fresh_child_operator_role": "videoforge_hosted_operator",
+        "fresh_child_allowed_database_input": "operatorDatabaseUrl",
+        "fresh_child_forbidden_database_inputs": [
+          "ownerDatabaseUrl",
+          "runtimeDatabaseUrl",
+          "reconcilerDatabaseUrl"
+        ],
+        "fresh_child_forbidden_database_fd_names": [
+          "OWNER_DATABASE_URL_FD",
+          "RUNTIME_DATABASE_URL_FD",
+          "RECONCILER_DATABASE_URL_FD"
+        ],
+        "fresh_child_receives_no_owner_runtime_or_reconciler_dsn": true
+      },
+      "initial_executor_preflight": {
+        "function": "preflightConcreteFullLiveInputs",
+        "bootstrap_only": true,
+        "allow_unmaterialized_production_input": true,
+        "require_endpoint_secrets": false,
+        "before_operation": "release-tag-create"
+      },
+      "staged_full_preflight": {
+        "function": "preflightConcreteFullLiveInputs",
+        "after_operation": "fresh-live-preflight",
+        "before_command": "mage-live-qualification",
+        "bootstrap_receipt_cas_must_have_passed": true,
+        "require_endpoint_secrets": false
+      },
+      "executor_receipt_gate": {
+        "verifier_function": "verifyPrequalificationDatabaseReceipt",
+        "settled_result_hydration_function": "hydrateSettledResults",
+        "prior_results_argument": "priorResults",
+        "initial_bootstrap_only_preflight_skips_full_receipt_verifier": true,
+        "staged_preflight": {
+          "mode_flag": "staged",
+          "verify_before_full_protected_preflight": true,
+          "full_protected_preflight_function": "preflightConcreteFullLiveInputs"
+        },
+        "restart_preflight": {
+          "hydrate_settled_results_before_preflight": true,
+          "use_hydrated_prior_results": true,
+          "repeat_receipt_verifier": true,
+          "verify_before_full_protected_preflight": true
+        },
+        "no_role_presence_or_initial_preflight_substitution": true
+      },
+      "child_process_timeout_policy": {
+        "production_child_max_timeout_ms": 1800000,
+        "cleanup_child_max_timeout_ms": 60000,
+        "timeout_must_be_positive": true,
+        "timeout_must_be_bounded_by_authority_deadline": true,
+        "cleanup_timeout_remains_bounded_after_authority_expiry": true,
+        "spawn_timeout_is_required": true,
+        "kill_signal": "SIGTERM",
+        "timeout_transition": "OUTER_CLEANUP_ONLY_NO_RETRY"
+      },
+      "promotion_database_dsn_policy": {
+        "protected_file": "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE",
+        "exact_path": "operator.database-url",
+        "exact_role": "videoforge_hosted_operator",
+        "accepted_protocols": ["postgres:", "postgresql:"],
+        "exact_query_parameters": {
+          "sslmode": "require",
+          "channel_binding": "require"
+        },
+        "host_and_database_source": "owner.pg_service.conf",
+        "fingerprint_field": "database.operator_database_url_sha256",
+        "fingerprint_algorithm": "SHA256_EXACT_PROTECTED_FILE_BYTES",
+        "fingerprint_must_match_guarded_authority_before_pool_creation": true,
+        "runtime_reconciler_and_owner_dsns_forbidden": true,
+        "password_never_in_argv_or_logs": true
+      },
+      "post_bootstrap_full_bridge_commands": [
+        "mage-live-qualification",
+        "soulx-live-qualification",
+        "create-exact-max-one-endpoints",
+        "v2-09-short-hosted-project",
+        "v2-10-operator-free-ranga-pilot",
+        "v2-11-two-concurrent-owned-projects",
+        "v2-12-long-output",
+        "v2-13-final-two-lane-smoke"
+      ],
+      "receipt_gate": {
+        "adapter_option": "requirePrequalificationReceipt",
+        "verifier_function": "verifyPrequalificationDatabaseReceipt",
+        "verifier_owner_only_protected_readback": true,
+        "verifier_owner_service_file": "owner.pg_service.conf",
+        "verifier_owner_pass_file": "owner.pgpass",
+        "verifier_owner_service_name": "videoforge_v2_13_owner",
+        "verifier_protected_input_directory_env": "VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR",
+        "receipt_file": "prequalification-database-bootstrap.json",
+        "prior_result_operation": "bootstrap-prequalification-database",
+        "receipt_hash_field": "prequalification_database_bootstrap_sha256",
+        "require_prior_result_and_file_hash_match": true,
+        "verifier_disable_override_authorized": false,
+        "cas_before_owner_service_and_pass_read": true,
+        "verify_ledger45_pgcrypto_and_exact_operator_acl": true,
+        "cas_precedes_all_production_operator_runpod_and_application_secret_reads": true,
+        "before_every_post_bootstrap_non_early_cleanup_operation": true,
+        "bootstrap_operation_exempt": true,
+        "early_cleanup_exempt": true,
+        "guarded_activation_receipt_verified_before_application_secret_reads": true,
+        "guarded_activation_receipt_verified_before_cloudflare_or_runtime_secret_reads": true,
+        "fresh_live_failure_code": "BRIDGE_PREQUALIFICATION_RECEIPT",
+        "guarded_activation_failure_code": "GUARDED_PREQUALIFICATION_RECEIPT"
+      }
+    },
+    "cloudflare_credential_origin_policy": {
+      "status": "PENDING_SOURCE_WORKER_AND_CREDENTIAL_SCOPE_AUDIT",
+      "oauth_authentication": {
+        "config_path_resolver": "wranglerOAuthConfigPath",
+        "protected_config_reader": "readWranglerOAuthToken",
+        "oauth_api_reader": "cloudflareOAuthApiResponse",
+        "account_subdomain_reader": "readCloudflareWorkersDevOrigin",
+        "read_only_preflight": "cloudflareOAuthReadOnlyPreflight",
+        "protected_binding_environment_name": "VIDEOFORGE_V2_13_WRANGLER_OAUTH_CONFIG_FILE",
+        "protected_file_mode": "0600",
+        "oauth_scopes": [
+          "account:read",
+          "agent-memory:write",
+          "ai-search:run",
+          "ai-search:write",
+          "ai:write",
+          "artifacts:write",
+          "browser:write",
+          "challenge-widgets.write",
+          "cloudchamber:write",
+          "connectivity:admin",
+          "containers:write",
+          "d1:write",
+          "email_routing:write",
+          "email_sending:write",
+          "flagship:write",
+          "offline_access",
+          "pages:write",
+          "pipelines:write",
+          "queues:write",
+          "secrets_store:write",
+          "ssl_certs:write",
+          "user:read",
+          "websearch.run",
+          "workers:write",
+          "workers_kv:write",
+          "workers_routes:write",
+          "workers_scripts:write",
+          "workers_tail:read",
+          "zone:read"
+        ],
+        "raw_api_token_file_authorized": false,
+        "cloudflare_api_token_environment_export_authorized": false,
+        "new_cloudflare_credential_authorized": false,
+        "token_values_and_token_hashes_in_proposal_authorized": false,
+        "oauth_scope_readback_required": true,
+        "account_identity_readback_required": true
+      },
+      "account_and_origin": {
+        "account_readback_must_be_authenticated": true,
+        "workers_dev_subdomain_endpoint": "/workers/subdomain",
+        "workers_dev_subdomain_field": "result.subdomain",
+        "workers_dev_subdomain_sha256_field": "subdomainReadbackSha256",
+        "worker_name": "videoforge-production-runtime",
+        "origin_derivation": "https://{worker_name}.{workers_dev_subdomain}.workers.dev",
+        "origin_must_equal_derived_account_bound_origin": true,
+        "account_id_and_subdomain_identities_pending_source_binding": true
+      },
+      "route_readback_contract": {
+        "route_reader": "absentRouteReadback",
+        "absent_assertion": "assertAbsentRouteReadback",
+        "quarantine_assertion": "assertQuarantineRoute",
+        "qualified_assertion": "assertQualifiedRoute",
+        "path": "/api/v2/hosted/status",
+        "method": "GET",
+        "before_creation": {
+          "worker_absent": true,
+          "status": 404,
+          "content_type": "text/plain; charset=UTF-8",
+          "body_length": 17,
+          "body_sha256": "sha256:a4daf148dd64d1a3e8e8101040915e50d12df29153c5936d377cf2260ccc8ba0",
+          "observed_body_sha256_prefix": "a4daf148",
+          "json_body_forbidden": true,
+          "status_503_forbidden": true,
+          "exact_body_content_type_and_hash_required": true
+        },
+        "after_secret_free_quarantine": {
+          "status": 200,
+          "content_type": "application/json",
+          "schema_version": "videoforge-hosted-status/v1",
+          "gpu_transport": "DISABLED_UNQUALIFIED",
+          "commit_binding": "final_source_commit",
+          "body_sha256": null,
+          "exact_body_content_type_and_hash_required": true
+        },
+        "after_qualification": {
+          "status": 200,
+          "content_type": "application/json",
+          "schema_version": "videoforge-hosted-status/v1",
+          "gpu_transport": "QUALIFIED_EXACT",
+          "commit_binding": "final_source_commit",
+          "body_sha256": null,
+          "exact_body_content_type_and_hash_required": true
+        }
+      },
+      "worker_and_workflow_absence": {
+        "production_worker_name": "videoforge-production-runtime",
+        "workflow_names": [
+          "videoforge-production-runtime",
+          "videoforge-production-runtime-pair"
+        ],
+        "worker_and_workflows_must_be_absent_before_creation": true,
+        "readback_must_bind_authenticated_account": true
+      },
+      "source_contract_must_reject_old_503_json_prestate": true
+    },
+    "credential_scope_policy": {
+      "status": "BOUND_PREEXISTING_CREDENTIAL_SCOPE_PENDING_IDENTITY_AUDIT",
+      "credential_creation_or_rotation_removed_from_full_live_graph": true,
+      "separate_future_credential_bootstrap_approval_required": true,
+      "no_credential_identity_or_hash_finalized": true,
+      "google_oauth": {
+        "authorized_operation": "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_GOOGLE_OAUTH_WEB_CLIENT",
+        "provisioning_mode": "PREEXISTING_PROTECTED_VALUE_ONLY",
+        "separate_future_credential_bootstrap_approval_required": true,
+        "creation_or_rotation_authorized": false,
+        "project_access": "USER_ACCESSIBLE_EXISTING_PROJECT_ONLY",
+        "accessible_project_count_observed": 0,
+        "project_id": null,
+        "client_id_sha256": null,
+        "client_secret_sha256": null,
+        "callback_uri": "{final_production_origin}/api/auth/callback/google",
+        "callback_uri_count": 1,
+        "final_production_origin_only": true,
+        "staging_local_preview_and_other_callbacks_forbidden": true,
+        "new_project_authorized": false,
+        "new_project_or_access_grant_requires_fresh_explicit_authority": true,
+        "historical_inaccessible_project": "videoforge-v2-06-staging-0817",
+        "if_existing_project_access_is_unavailable": "HARD_STOP_AND_RESEAL_WITH_EXPLICIT_NEW_PROJECT_AUTHORITY",
+        "old_client_disable_before_new_readback": false,
+        "protected_value_must_exist_before_reseal": true
+      },
+      "r2_s3": {
+        "authorized_operation": "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_LEAST_PRIVILEGE_R2_S3_CREDENTIAL",
+        "provisioning_mode": "PREEXISTING_PROTECTED_VALUE_ONLY",
+        "separate_future_credential_bootstrap_approval_required": true,
+        "creation_or_rotation_authorized": false,
+        "account_id": null,
+        "bucket_name": null,
+        "account_and_existing_bucket_binding_required": true,
+        "allowed_actions_upper_bound": [
+          "ListBucket",
+          "GetObject",
+          "PutObject",
+          "DeleteObject"
+        ],
+        "object_prefix": null,
+        "account_wide_or_wildcard_access_forbidden": true,
+        "new_bucket_authorized": false,
+        "other_credential_creation_or_rotation_authorized": false,
+        "action_set_and_prefix_pending_credential_scope_audit": true,
+        "protected_value_must_exist_before_reseal": true
+      }
+    },
+    "trusted_time_policy": {
+      "credential_free_command": "curl --disable --silent --show-error --head --proto =https --tlsv1.2 --connect-timeout 5 --max-time 10 https://api.github.com/rate_limit",
+      "curl_disable_is_first_argument": true,
+      "exact_url": "https://api.github.com/rate_limit",
+      "request_method": "HEAD",
+      "transport_authentication": "SYSTEM_CA_VERIFIED_HTTPS_TLS_MINIMUM_1_2",
+      "credential_environment_or_authorization_header_allowed": false,
+      "ambient_gh_configuration_used": false,
+      "subprocess_environment_exact": {
+        "PATH": "INHERITED_ONLY_PATH",
+        "NO_PROXY": "*",
+        "no_proxy": "*"
+      },
+      "proxy_environment_allowed": false,
+      "curl_default_config_allowed": false,
+      "subprocess_timeout_ms": 12000,
+      "required_date_header_count": 1,
+      "date_header_match": "CASE_INSENSITIVE_^date:",
+      "date_parse_valid_required": true,
+      "caller_supplied_trusted_time_forbidden": true,
+      "reread_before_every_non_cleanup_operation": true,
+      "check_before_local_reservation_or_phase_mutation": true,
+      "valid_interval": "approved_at<=trusted_time<=expires_at",
+      "invalid_or_expired_transition": "OUTER_CLEANUP_ONLY_NO_RETRY",
+      "cleanup_after_expiry_authorized_only_for": [
+        "drain",
+        "restore_max_one",
+        "prove_zero_workers",
+        "read_settled_billing",
+        "reconcile_exact_resources"
+      ],
+      "normal_or_paid_operation_resume_after_expiry": false
+    },
+    "ordered_operation_ids": [
+      "release-tag-create",
+      "release-tag-push",
+      "release-tag-readback",
+      "approval-commit-push",
+      "mage-image-workflow-dispatch",
+      "mage-image-workflow-verification",
+      "soulx-image-workflow-dispatch",
+      "soulx-image-workflow-verification",
+      "bootstrap-prequalification-database",
+      "fresh-live-preflight",
+      "mage-live-qualification",
+      "soulx-live-qualification",
+      "create-exact-max-one-endpoints",
+      "guarded-activation-once",
+      "promote-qualified-production",
+      "record-workflow-start-authority",
+      "v2-09-short-hosted-project",
+      "v2-10-operator-free-ranga-pilot",
+      "v2-11-two-concurrent-owned-projects",
+      "v2-12-long-output",
+      "v2-13-final-two-lane-smoke",
+      "restore-endpoints-max-one",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources"
+    ],
+    "operation_order_is_closed_and_non_reorderable": true,
+    "missing_extra_or_repeated_operation_is_a_hard_stop": true
+  },
+  "immutable_github_release_ref_request": {
+    "creation_requested": true,
+    "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
+    "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
+    "exact_target_commit": null,
+    "tag_kind": "LIGHTWEIGHT",
+    "maximum_new_refs": 1,
+    "force_update_authorized": false,
+    "delete_or_retarget_authorized": false,
+    "other_ref_creation_authorized": false,
+    "remote": "origin",
+    "required_preconditions": [
+      "fresh exact approval of this v3 proposal and a committed exact authority record",
+      "outer single-use authority consumed locally before credential access or external action",
+      "remote exact tag absence proved immediately before creation",
+      "final source worker commit and all component hashes are independently audited and bound before reseal"
+    ],
+    "exact_mutation": "after final source binding, create one lightweight tag locally and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
+    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to the final independently audited source commit",
+    "stop_on_presence_collision_or_drift": true
+  },
+  "requested_scope": {
+    "maximum_cumulative_finite_runpod_spend_usd": 17.5,
+    "phase_caps_usd": {
+      "mage_qualification": 4.5,
+      "soulx_qualification": 1,
+      "v2_09_short_hosted_project": 2,
+      "v2_10_operator_free_ranga_pilot": 2,
+      "v2_11_two_concurrent_owned_projects": 4,
+      "v2_12_long_output": 2,
+      "v2_13_final_two_lane_smoke": 2
+    },
+    "phase_caps_sum_to_cumulative_cap": true,
+    "gpu": {
+      "exact_offering": "NVIDIA GeForce RTX 4090",
+      "region": "EU-RO-1",
+      "minimum_availability_at_each_mutation_boundary": "LOW-or-better",
+      "maximum_serverless_flex_rate_usd_per_gpu_hour": 1.1,
+      "fallback_allowed": false
+    },
+    "retention": {
+      "retain_only_the_same_two_exact_volumes": true,
+      "volume_count": 2,
+      "size_gb_each": 50,
+      "region": "EU-RO-1",
+      "combined_recurring_usd_per_month": 7,
+      "recurring_charge_separate_from_finite_cap": true,
+      "new_volume_or_paid_retained_resource_authorized": false,
+      "resize_move_replace_or_add_authorized": false,
+      "recurring_plan_change_authorized": false
+    },
+    "cloudflare_credential_scope": {
+      "authentication_mode": "EXISTING_WRANGLER_OAUTH_CONFIG_ONLY",
+      "protected_binding_environment_name": "VIDEOFORGE_V2_13_WRANGLER_OAUTH_CONFIG_FILE",
+      "protected_config_mode": "0600",
+      "oauth_scopes": [
+        "account:read",
+        "agent-memory:write",
+        "ai-search:run",
+        "ai-search:write",
+        "ai:write",
+        "artifacts:write",
+        "browser:write",
+        "challenge-widgets.write",
+        "cloudchamber:write",
+        "connectivity:admin",
+        "containers:write",
+        "d1:write",
+        "email_routing:write",
+        "email_sending:write",
+        "flagship:write",
+        "offline_access",
+        "pages:write",
+        "pipelines:write",
+        "queues:write",
+        "secrets_store:write",
+        "ssl_certs:write",
+        "user:read",
+        "websearch.run",
+        "workers:write",
+        "workers_kv:write",
+        "workers_routes:write",
+        "workers_scripts:write",
+        "workers_tail:read",
+        "zone:read"
+      ],
+      "protected_config_path": null,
+      "protected_config_sha256": null,
+      "authenticated_account_id": null,
+      "authenticated_account_id_sha256": null,
+      "oauth_account_readback_required": true,
+      "oauth_config_readback_required_before_any_cloudflare_mutation": true,
+      "raw_api_token_file_authorized": false,
+      "cloudflare_api_token_environment_export_authorized": false,
+      "new_cloudflare_api_token_authorized": false,
+      "new_oauth_credential_authorized": false,
+      "credential_rotation_authorized": false,
+      "wrangler_oauth_scope_must_be_exact_and_source_bound": true,
+      "no_token_values_or_hashes_in_proposal_or_seed": true
+    },
+    "google_oauth_web_client_scope": {
+      "authorized_client_count": 1,
+      "operation": "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_GOOGLE_OAUTH_WEB_CLIENT",
+      "provisioning_mode": "PREEXISTING_PROTECTED_VALUE_ONLY",
+      "separate_future_credential_bootstrap_approval_required": true,
+      "creation_or_rotation_authorized": false,
+      "client_type": "WEB",
+      "project_access_mode": "USER_ACCESSIBLE_EXISTING_PROJECT_ONLY",
+      "accessible_project_count_observed": 0,
+      "project_id": null,
+      "project_number_sha256": null,
+      "project_access_readback_required": true,
+      "required_project_permission": "resourcemanager.projects.get",
+      "known_inaccessible_project_id": "videoforge-v2-06-staging-0817",
+      "inaccessible_project_reuse_authorized": false,
+      "new_google_project_creation_authorized": false,
+      "new_google_project_authority_required_if_count_is_zero": true,
+      "google_project_access_grant_authorized": false,
+      "if_no_user_accessible_project": "HARD_STOP_AND_RESEAL_WITH_EXPLICIT_NEW_PROJECT_AUTHORITY",
+      "client_id_sha256": null,
+      "client_secret_sha256": null,
+      "authorized_redirect_uri_count": 1,
+      "authorized_redirect_uri_template": "{final_production_origin}/api/auth/callback/google",
+      "callback_must_bind_only_final_production_origin": true,
+      "staging_local_preview_or_other_callback_uris_authorized": false,
+      "authorized_javascript_origins": [],
+      "other_google_oauth_client_creation_or_rotation_authorized": false,
+      "old_client_disable_or_delete_authorized_before_new_readback": false,
+      "identity_and_hashes_pending_credential_scope_audit": true,
+      "protected_value_must_exist_before_reseal": true
+    },
+    "r2_s3_credential_scope": {
+      "authorized_credential_count": 1,
+      "operation": "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_LEAST_PRIVILEGE_R2_S3_CREDENTIAL",
+      "provisioning_mode": "PREEXISTING_PROTECTED_VALUE_ONLY",
+      "separate_future_credential_bootstrap_approval_required": true,
+      "creation_or_rotation_authorized": false,
+      "account_id": null,
+      "account_id_sha256": null,
+      "authenticated_account_readback_required": true,
+      "existing_bucket_only": true,
+      "bucket_name": null,
+      "bucket_name_sha256": null,
+      "bucket_existence_readback_required": true,
+      "allowed_actions_upper_bound": [
+        "ListBucket",
+        "GetObject",
+        "PutObject",
+        "DeleteObject"
+      ],
+      "allowed_scope": "EXACT_AUTHENTICATED_ACCOUNT_AND_EXISTING_BUCKET_ONLY",
+      "object_prefix": null,
+      "account_wide_or_wildcard_permissions_authorized": false,
+      "bucket_create_delete_or_replace_authorized": false,
+      "new_r2_bucket_authorized": false,
+      "other_r2_credential_creation_or_rotation_authorized": false,
+      "secret_values_or_hashes_in_proposal_or_seed": false,
+      "action_set_and_prefix_pending_credential_scope_audit": true,
+      "protected_value_must_exist_before_reseal": true
+    },
+    "database": {
+      "exact_operator_role": "videoforge_hosted_operator",
+      "exact_runtime_role": "videoforge_hosted_runtime",
+      "exact_reconciler_role": "videoforge_hosted_reconciler",
+      "roles_must_be_fresh_absent_distinct_login_noinherit_hardened": true,
+      "pgcrypto_required": true,
+      "prequalification_database_bootstrap_operator_function_signature_count": 17,
+      "prequalification_database_bootstrap_operator_function_signature_namespace": "public",
+      "prequalification_database_bootstrap_operator_function_signature_canonicalization": "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
+      "prequalification_database_bootstrap_operator_acl_comparison": "OID_SET_SORTED_EXACT_ALLOWLIST",
+      "prequalification_database_bootstrap_public_execute_readback_count": 0,
+      "prequalification_database_bootstrap_public_default_execute_readback_count": 0,
+      "prequalification_database_bootstrap_ownership_catalogs": [
+        "pg_database.datdba",
+        "pg_extension.extowner",
+        "pg_class.relowner",
+        "pg_namespace.nspowner",
+        "pg_proc.proowner",
+        "pg_type.typowner",
+        "pg_foreign_data_wrapper.fdwowner",
+        "pg_foreign_server.srvowner",
+        "pg_event_trigger.evtowner",
+        "pg_tablespace.spcowner",
+        "pg_publication.pubowner",
+        "pg_subscription.subowner",
+        "pg_largeobject_metadata.lomowner",
+        "pg_collation.collowner",
+        "pg_ts_dict.dictowner",
+        "pg_ts_config.cfgowner"
+      ],
+      "prequalification_database_bootstrap_ownership_readback_is_cluster_wide": true,
+      "prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count": 45,
+      "prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit": true,
+      "prequalification_database_bootstrap_phase": "bootstrap_prequalification_database",
+      "prequalification_database_bootstrap_phase_cap_usd": 0,
+      "prequalification_database_bootstrap_receipt_path": "prequalification-database-bootstrap.json",
+      "prequalification_database_bootstrap_receipt_hash_field": "prequalification_database_bootstrap_sha256",
+      "prequalification_database_bootstrap_receipt_replay_cas_required": true,
+      "prequalification_database_bootstrap_recovery_mode_ledger_before_count": {
+        "FRESH_36_TO_45": 36,
+        "RESUME_EXACT_PREFIX": [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
+        "VERIFIED_EXISTING_45": 45
+      },
+      "prequalification_database_bootstrap_recovery_mode_final_ledger_count": 45,
+      "exact_operator_function_signatures": [
+        "videoforge_load_v213_bridge_acceptance_call(jsonb)",
+        "videoforge_record_v213_stage_authority(uuid,jsonb)",
+        "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+        "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+        "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+        "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+        "videoforge_claim_v213_stage_authority(jsonb)",
+        "videoforge_complete_v213_stage_authority(text,text,jsonb)",
+        "videoforge_load_v213_stage_handoff(uuid,text,text)",
+        "videoforge_load_v213_cleanup_scope(uuid)",
+        "videoforge_claim_v213_operation(jsonb)",
+        "videoforge_transition_v213_operation(jsonb)",
+        "videoforge_claim_v213_bridge_command(jsonb)",
+          "videoforge_transition_v213_bridge_command(jsonb)",
+          "videoforge_record_v213_receipt_verification_key(text,text)",
+          "videoforge_publish_v213_qualified_deployments(jsonb)",
+          "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)"
+      ],
+      "exact_initial_ledger_prefix_count": 36,
+      "exact_recoverable_prefix_counts": [37, 38, 39, 40, 41, 42, 43, 44, 45],
+      "exact_migrations_to_apply": [37, 38, 39, 40, 41, 42, 43, 44, 45]
+    },
+    "cloudflare_creation_allowlist": [
+      "disabled Worker videoforge-production-runtime",
+      "disabled Workflow videoforge-production-runtime",
+      "disabled Workflow videoforge-production-runtime-pair"
+    ],
+    "cloudflare_secret_allowlist_count": 22,
+    "cloudflare_secret_allowlist": [
+      "DATABASE_URL",
+      "BETTER_AUTH_SECRET",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "WORKFLOW_CALLBACK_SECRET",
+      "MEDIA_WORKER_TOKEN_SECRET",
+      "VIDEOFORGE_RECONCILER_DATABASE_URL",
+      "VIDEOFORGE_DISPATCH_TOKEN_KEY",
+      "VIDEOFORGE_DISPATCH_TOKEN_KEY_ID",
+      "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
+      "VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID",
+      "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+      "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+      "RUNPOD_API_KEY",
+      "RUNPOD_API_BASE_URL",
+      "VIDEOFORGE_MAGE_ENDPOINT_ID",
+      "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+      "VIDEOFORGE_SOULX_ENDPOINT_ID",
+      "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+      "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN"
+    ],
+    "runpod_creation_allowlist_after_both_fresh_qualifications": [
+      "one exact Mage immutable production template",
+      "one exact Mage production endpoint with workersMin=0 and workersMax=1",
+      "one exact SoulX immutable production template",
+      "one exact SoulX production endpoint with workersMin=0 and workersMax=1"
+    ],
+    "new_r2_buckets": 0,
+    "new_volumes": 0,
+    "new_paid_retained_resources": 0,
+    "other_new_git_refs": 0,
+    "other_resource_creation_authorized": false,
+    "plan_change_authorized": false
+  },
+  "ordered_operations": [
+    {
+      "order": 1,
+      "phase": "seal_revised_candidate",
+      "operations": [
+        "keep this successor BLOCKED_UNSEALED until the source worker publishes the protected Wrangler OAuth, account-bound workers.dev, exact 404-to-200 route, and strict nested seed-hash contracts, and the credential-scope audit publishes exact source-bound identities and hashes for pre-existing protected credentials",
+        "after those contracts are final, commit this exact v3 proposal and validator as a proposal-only candidate on codex/serverless-v2-roadmap",
+        "obtain fresh exact user approval of the final proposal sha256, proposal commit, USD 17.50 cap, seven phase caps, GPU/rate/region/no-fallback scope, separate USD 7/month retention, exact tag mutation, exact database role names, and readback of the pre-existing protected Google OAuth and R2 credentials; credential creation or rotation requires a separate future credential-bootstrap approval",
+        "commit the exact approval, unconsumed authority, schema validator, and outer single-use orchestration tooling locally; do not perform an external action before all receive independent GO"
+      ]
+    },
+    {
+      "order": 2,
+      "phase": "consume_outer_authority",
+      "operations": [
+        "validate exact proposal, approval, authority, source, proposal commit, approval commit, tool hashes, trusted unexpired time, phase caps, cumulative cap, and stop fences",
+        "create the exclusive durable outer consumption record before credential access or any external call",
+        "reserve every paid phase before dispatch and permanently reject work-id reuse, event replay, redispatch, phase reordering, and phase or cumulative cap overflow"
+      ]
+    },
+    {
+      "order": 3,
+      "phase": "create_and_verify_exact_release_tag",
+      "operations": [
+        "prove refs/tags/videoforge-v2-13-release-20260826-v3 is absent remotely and locally immediately before mutation",
+        "create exactly one lightweight tag videoforge-v2-13-release-20260826-v3 at the final independently audited source commit and push it to origin without force",
+        "read back the exact remote tag and require it resolves only to the final independently audited source commit; stop on collision, ambiguity, retarget, or drift",
+        "do not create, update, force, delete, or retarget any other Git ref"
+      ]
+    },
+    {
+      "order": 4,
+      "phase": "push_exact_approval_branch_commit",
+      "operations": [
+        "accept the authority-record commit as a distinct external Git commit input after the approval and authority bytes are committed; never embed that commit's self-hash inside those same bytes",
+        "push the exact independently audited local authority-record commit containing both exact approval and authority records to origin/codex/serverless-v2-roadmap without force",
+        "require exact remote branch equality to the authority-record commit and stop on divergence",
+        "rehash proposal, approval, authority, validators, orchestration tool, and guarded activation from that exact remote authority-record commit"
+      ]
+    },
+    {
+      "order": 5,
+      "phase": "publish_public_lane_images",
+      "operations": [
+        "dispatch mage-image.yml and avatar-primary-serverless-image.yml with publish=true using only ref videoforge-v2-13-release-20260826-v3",
+        "verify only each previously captured exact run ID with at most 180 reads at 10000 ms intervals inside a 1800000 ms wall bound; accept queued or in_progress only while polling, require completed plus success, and never dispatch or redispatch from verification",
+        "stop immediately on completed non-success, run identity drift, authority expiry, or injected cancellation; verification timeout enters outer cleanup-only with no retry",
+        "require each Actions run head SHA equals the final independently audited source commit",
+        "bind only returned post-run immutable manifest, config, layer, source, and deployability hashes; never pre-claim an image digest",
+        "prove anonymous public manifest and every referenced blob before RunPod mutation"
+      ]
+    },
+    {
+      "order": 6,
+      "phase": "bootstrap_prequalification_database",
+      "operations": [
+        "before any RunPod, Cloudflare, application-secret, GPU, or paid operation, accept only exact migration ledger prefix 36 or an exact recoverable prefix 37 through 45; reject drift or a longer ledger",
+        "using only the protected owner pg_service and pgpass, create pgcrypto and apply exact migrations 0037 through 0045 under an advisory lock with each migration in one transaction",
+        "after migrations, create or exactly recover only videoforge_hosted_operator from the protected operator DSN, apply only the exact operator function grants, and keep videoforge_hosted_runtime and videoforge_hosted_reconciler absent",
+        "read back the exact 45-row ledger, pgcrypto, hardened LOGIN NOINHERIT operator flags, no memberships, ownership, or table ACL, and exact function ACL; emit only videoforge.v213-prequalification-database-bootstrap-result/v1 and its prequalification_database_bootstrap_sha256",
+        "on failure roll back the current migration transaction and allow only idempotent exact-prefix resume before RunPod; never destructively restore or guess"
+      ]
+    },
+    {
+      "order": 7,
+      "phase": "fresh_provider_admission",
+      "operations": [
+        "repeat exact RunPod account, three-read zero-compute inventory, both retained-volume identities, catalog, RTX4090 EU-RO-1 LOW-or-better availability, rate at or below USD 1.10/GPU-hour, cumulative billing, and local-disk checks",
+        "using only the protected Wrangler OAuth config, repeat the authenticated exact Cloudflare account and workers.dev subdomain readback, derive the exact production origin, prove the production Worker and both Workflows absent, require the exact pre-mutation route to be HTTP 404 text/plain; charset=UTF-8 with body length 17 and SHA-256 sha256:a4daf148dd64d1a3e8e8101040915e50d12df29153c5936d377cf2260ccc8ba0 (not 503 JSON), and repeat explicit page=1&per_page=100 complete Workflow inventory, existing R2, signer, and secret-state checks",
+        "consume and reverify the exact prequalification database bootstrap receipt, exact ledger prefix 45, exact operator function-only ACL, and continued absence of videoforge_hosted_runtime and videoforge_hosted_reconciler",
+        "stop before mutation on any drift or unresolved exact input; no fallback"
+      ]
+    },
+    {
+      "order": 8,
+      "phase": "mage_then_soulx_qualification",
+      "operations": [
+        "reserve and run Mage qualification first within USD 4.50; on failure stop cleanup-only without redispatch and do not begin SoulX",
+        "only after Mage PASS reserve and run SoulX 2-second, 4-second, 6-second, and 10-second approved full/split qualification within USD 1.00",
+        "require immutable output, timing, VRAM, identity, volume integrity, cancellation, timeout, cleanup, three stable zero-compute, and settled-billing evidence for the applicable lane"
+      ]
+    },
+    {
+      "order": 9,
+      "phase": "max_one_endpoints_and_guarded_activation",
+      "operations": [
+        "only after both qualifications PASS create the exact two immutable templates and two max-one workersMin=0 production endpoints bound to the same exact volumes and qualified images",
+        "derive endpoint identities and deployment snapshots only from the exact max-one result; atomically materialize the final production-secrets record and exact four guarded endpoint secret files, hash-chain all seven outputs, and rebind all 22 guarded secret hashes before activation materialization",
+        "validate the protected materialization seed with strict nested seed-hash binding: every nested hash must bind its exact canonical value, missing or extra nested hashes are a hard stop, and no future endpoint, deployment, or credential value may appear",
+        "invoke the guarded child exactly once with GPU=false and external-spend-cap USD 0",
+        "consume and verify the prefix-45/operator bootstrap receipt and CAS before any application, Cloudflare, runtime, reconciler, or production-secret read; without reapplying pgcrypto, migrations, or operator grants, create/read back the exact secret-free disabled Cloudflare quarantine at the authenticated account-derived origin, provision only the exact fresh roles videoforge_hosted_runtime and videoforge_hosted_reconciler with exact grants/readbacks, then provision 22 exact allowlisted secrets and final disabled deployment",
+        "promote exactly once only from the current consumed database authority, both durable qualification PASS records, both exact max-one endpoint deployments, and exact disabled Cloudflare readback; require the post-quarantine route to be HTTP 200 application/json DISABLED_UNQUALIFIED, then require atomic enabled-config and qualified route readback to be HTTP 200 QUALIFIED_EXACT or roll back to the disabled quarantine",
+        "read back exactly one pre-existing protected Google OAuth WEB client with one callback only at the final production origin and exactly one pre-existing protected least-privilege R2 S3 credential bound only to the authenticated account and existing bucket; these values must have been produced by a separate future credential-bootstrap approval, and this graph authorizes no credential creation or rotation",
+        "record-workflow-start-authority exactly once after promotion by calling videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz) with phase cap USD 0; on an ambiguous result enter cleanup-only and reconcile before any retry",
+        "create no R2 bucket, volume, paid retained resource, other Cloudflare resource, or plan change"
+      ]
+    },
+    {
+      "order": 10,
+      "phase": "v2_09_through_v2_13",
+      "operations": [
+        "V2-09: one tenant-private 30-to-60-second canonical project within USD 2.00, exact one-Mage/two-SoulX work once, no redispatch, terminal pair and zero workers",
+        "V2-10: one operator-free 3-to-5-minute Ranga-style MP4 within USD 2.00; do not substitute recovery tests or developer intervention",
+        "V2-11: two concurrent owned projects across two accounts within USD 4.00, fairness and tenant isolation, then restore both lanes to workersMax=1",
+        "V2-12: one automatic 29-to-31-minute output within USD 2.00 with every-cut review and real Chrome playback",
+        "V2-13: one final two-lane smoke within USD 2.00 with security, economics, route, deployment, artifact-lineage, restart/reconcile, drain, billing, and handoff gates"
+      ]
+    },
+    {
+      "order": 11,
+      "phase": "cleanup_and_close",
+      "operations": [
+        "before videoforge_hosted_operator is verified, use only the separate videoforge.v213-full-live-early-cleanup-input/v1 runtime with REQUEST_FD and RUNPOD_API_KEY_FD; perform no database or Cloudflare mutation and never claim database cleanup",
+        "after videoforge_hosted_operator is verified, use the normal videoforge.v213-full-live-cleanup-input/v1 runtime with only its explicitly allowed operator DSN seam; never load exactProductionInput, runtime or reconciler database roles, production secrets, endpoint identities, signing keys, or key registration",
+        "restore workersMax=1 and workersMin=0, require every owned queue empty, and delete only attributable disposable resources",
+        "retain only the same two exact 50 GB EU-RO-1 volumes at the separately approved USD 7/month and intended zero-idle product control resources",
+        "prove three stable zero-worker/zero-running-Pod reads, the protected Wrangler OAuth config, authenticated account-derived origin, final HTTP 200 DISABLED_UNQUALIFIED or QUALIFIED_EXACT route readback as applicable, final billing after lag, every phase cap, and the USD 17.50 cumulative cap",
+        "close the single-use outer and child authorities permanently; any failed or incomplete execution requires a new proposal and fresh approval"
+      ]
+    }
+  ],
+  "stop_conditions": [
+    "fresh exact v3 approval and authority are absent, stale, mismatched, expired, consumed, or not independently audited",
+    "the exact release tag exists before mutation, cannot be created once without force, does not read back to the final source commit, or any other Git ref mutation would be required",
+    "the exact approval branch commit cannot be pushed without force or remote equality cannot be proved",
+    "source, proposal, approval, authority, tool, workflow-run, image, model, account, volume, endpoint, template, Worker, Workflow, R2, route, config, OAuth scope, Google project/client, R2 credential scope, secret-set, database ledger, exact role, ACL, RLS, GPU, region, rate, billing, cap, or inventory drift or uncertainty",
+    "RTX4090 EU-RO-1 is below LOW availability or Serverless Flex exceeds USD 1.10/GPU-hour at any mutation boundary; no fallback",
+    "any phase cap or USD 17.50 cumulative RunPod cap is reached or at risk after full open-liability reservation",
+    "a metered plan, new paid retained resource, new R2 bucket, new volume, volume resize/move/replacement, recurring-charge change, raw Cloudflare API token, inaccessible Google project, more than one OAuth client, broader R2 permission, other resource, or scope expansion is required",
+    "the pre-mutation production route is anything other than the authenticated account-derived exact HTTP 404 text/plain; charset=UTF-8 body length 17 and SHA-256 sha256:a4daf148dd64d1a3e8e8101040915e50d12df29153c5936d377cf2260ccc8ba0, or the post-quarantine/post-qualification route is not the exact HTTP 200 JSON state",
+    "the protected Wrangler OAuth config is absent, not mode 0600, outside the approved binding, or would require exporting CLOUDFLARE_API_TOKEN",
+    "any work would require redispatch, replay, fallback, relaxed acceptance, unbounded wait, or second repair cycle",
+    "cleanup, max-one restoration, zero-worker proof, route/config restoration, or settled billing is incomplete or uncertain",
+    "user cancellation"
+  ],
+  "approval_request": {
+    "requested_exact_action": "After source and pre-existing credential-scope reseal, approve this exact v3 proposal sha256 for one single-use ordered execution including exactly one new immutable release tag, exact database roles, readback of exactly one pre-existing protected Google OAuth WEB client callback bound only to the final production origin, and readback of exactly one pre-existing protected least-privilege R2 S3 credential bound only to the authenticated account and existing bucket; credential creation or rotation requires a separate future credential-bootstrap approval",
+    "requested_maximum_cumulative_finite_runpod_spend_usd": 17.5,
+    "requested_exact_phase_caps_usd": [4.5, 1, 2, 2, 4, 2, 2],
+    "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, at or below USD 1.10/GPU-hour, no fallback",
+    "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
+    "requested_exact_git_ref_mutation": "After final source binding, create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to the exact final source commit without force, then prove exact remote readback",
+    "requested_exact_database_roles": [
+      "videoforge_hosted_operator",
+      "videoforge_hosted_runtime",
+      "videoforge_hosted_reconciler"
+    ],
+    "requested_cloudflare_authentication": "Use only the existing protected Wrangler OAuth config; no raw API-token file, token export, or new Cloudflare credential",
+    "requested_google_oauth_scope": "Read back exactly one pre-existing protected WEB client in a user-accessible project with exactly one callback {final_production_origin}/api/auth/callback/google; no creation or rotation in this graph, no staging, local, preview, additional callback, client, or inaccessible-project reuse; credential provisioning requires a separate future credential-bootstrap approval",
+    "requested_r2_s3_scope": "Read back exactly one pre-existing protected least-privilege R2 S3 credential for the authenticated Cloudflare account and one existing bucket only; no creation or rotation in this graph, no new bucket, account-wide, wildcard, or second credential; credential provisioning requires a separate future credential-bootstrap approval",
+    "requested_google_project_id": null,
+    "requested_google_client_id_sha256": null,
+    "requested_r2_account_id": null,
+    "requested_r2_bucket_name": null,
+    "requested_credential_identities_and_hashes_must_be_finalized_before_reseal": true,
+    "authority_becomes_executable_only_after_exact_hash_and_commit_approval_is_recorded": true
+  }
+}

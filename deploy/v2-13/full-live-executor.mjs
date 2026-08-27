@@ -19,12 +19,15 @@ import {
   settleWork,
   settleCleanupWork,
   updateState,
+  MATERIALIZATION_SEED_ENV,
+  validateMaterializationSeedFile,
   validateState,
 } from "./full-live-orchestration-authority.mjs";
 import {
   createConcreteFullLiveAdapters,
   preflightConcreteFullLiveInputs,
   readAuthenticatedGithubTime,
+  verifyPrequalificationDatabaseReceipt,
   verifyMaterializationChainFile,
 } from "./full-live-adapters.mjs";
 
@@ -44,11 +47,11 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:1fefe3b25027120d5da6340c8361174bbf8bacbe03bab3de1864e23855c52ac0",
+    "sha256:c57d63727ffbf2d642c33069fb915b9d055e5b6f57706efd06af60a0382af538",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:5c3ab93ee301ec4f597b5e422dc62d35c27d6d075ff017b8e56b8396e92372ab",
+    "sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
     "sha256:2a5a29c71bf5f0c2aa776e4ad8ba2a66b7144d9b12108d37819d8a3baa9efcd7",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
@@ -361,6 +364,7 @@ async function executeFullLive({
   loadSettledResult,
   verifyMaterializationChain,
   verifyChain,
+  verifyMaterializationSeed,
 }) {
   if (typeof runOperation !== "function") fail("RUNNER_REQUIRED");
   if (typeof trustedTime !== "function") fail("TRUSTED_TIME_REQUIRED");
@@ -374,6 +378,8 @@ async function executeFullLive({
   const chainVerifier = verifyMaterializationChain ?? verifyChain;
   if (chainVerifier !== undefined && typeof chainVerifier !== "function")
     fail("CHAIN_VERIFIER_CONTRACT");
+  if (typeof verifyMaterializationSeed !== "function")
+    fail("MATERIALIZATION_SEED_VERIFIER_REQUIRED");
   let current = { state: null, sha256: expectedStateSha256 };
   const results = new Map();
   // A settled bootstrap receipt is the durable boundary proving the operator role/ACL.  Do not
@@ -399,6 +405,21 @@ async function executeFullLive({
     ].includes(current.state.state)
   )
     fail("NOT_IN_PROGRESS");
+
+  const verifySeed = async (context = {}) => {
+    const result = await verifyMaterializationSeed(
+      structuredClone(current.state),
+      current.sha256,
+      structuredClone(context),
+    );
+    if (result === false) fail("MATERIALIZATION_SEED_VERIFICATION", context.operationId ?? "");
+  };
+  await verifySeed({
+    restart:
+      current.state.current_phase_index > 0 ||
+      current.state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
+    recovery: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+  });
 
   const begin = (phase) => {
     current = stateMutation(statePath, current.sha256, (state) => beginPhase(state, phase));
@@ -506,6 +527,11 @@ async function executeFullLive({
   const runOne = async (operation) => {
     const workId = workIdFor(operation);
     const existing = workFor(operation);
+    await verifySeed({
+      operationId: operation.id,
+      resumed: existing !== undefined,
+      recovery: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+    });
     if (existing?.state === "SETTLED_TERMINAL") {
       let prior = results.get(operation.id) ?? existing.settled_result;
       if (prior === undefined && loadSettledResult !== undefined) {
@@ -615,17 +641,22 @@ async function executeFullLive({
     try {
       await hydrateSettledResults();
       if (preflight !== undefined)
-        await preflight(structuredClone(current.state), current.sha256, {
-          cleanupOnly: false,
-          earlyFailure: false,
-          endpointFree: false,
-          operatorRoleVerified,
-          bootstrapOnly: true,
-          operatorOnly: false,
-          initial: true,
-          staged: false,
-          requireEndpointSecrets: false,
-        });
+        await preflight(
+          structuredClone(current.state),
+          current.sha256,
+          {
+            cleanupOnly: false,
+            earlyFailure: false,
+            endpointFree: false,
+            operatorRoleVerified,
+            bootstrapOnly: true,
+            operatorOnly: false,
+            initial: true,
+            staged: false,
+            requireEndpointSecrets: false,
+          },
+          new Map(results),
+        );
       const normalPhases = [
         ...new Set(
           OPERATIONS.filter((operation) => operation.phase !== "cleanup_and_reconciliation").map(
@@ -650,17 +681,22 @@ async function executeFullLive({
           await runOne(operation);
           if (operation.id === "fresh-live-preflight" && preflight !== undefined) {
             await checkTrustedTime();
-            await preflight(structuredClone(current.state), current.sha256, {
-              cleanupOnly: false,
-              earlyFailure: false,
-              endpointFree: false,
-              operatorRoleVerified,
-              bootstrapOnly: false,
-              operatorOnly: false,
-              initial: false,
-              staged: true,
-              requireEndpointSecrets: false,
-            });
+            await preflight(
+              structuredClone(current.state),
+              current.sha256,
+              {
+                cleanupOnly: false,
+                earlyFailure: false,
+                endpointFree: false,
+                operatorRoleVerified,
+                bootstrapOnly: false,
+                operatorOnly: false,
+                initial: false,
+                staged: true,
+                requireEndpointSecrets: false,
+              },
+              new Map(results),
+            );
           }
         }
         if (current.state.phases[phaseName].state === "ACTIVE") complete(phaseName);
@@ -800,19 +836,30 @@ async function main() {
   const result = await executeFullLive({
     statePath,
     expectedStateSha256,
-    preflight: (state, _sha256, mode) =>
-      preflightConcreteFullLiveInputs({
+    preflight: async (state, _sha256, mode, priorResults) => {
+      if (mode.staged === true)
+        await verifyPrequalificationDatabaseReceipt({
+          environment: process.env,
+          priorResults,
+        });
+      return preflightConcreteFullLiveInputs({
         state,
         cleanupOnly: mode.cleanupOnly,
         bootstrapOnly: mode.bootstrapOnly === true,
         operatorOnly: mode.operatorOnly === true,
         requireEndpointSecrets: mode.requireEndpointSecrets === true,
         allowUnmaterializedProductionInput: true,
-      }),
+      });
+    },
     trustedTime: () => readAuthenticatedGithubTime(),
     runOperation: runConcreteOperation,
     runCleanupOperation: runConcreteOperation,
     runEarlyCleanupOperation: runConcreteOperation,
+    verifyMaterializationSeed: (state) =>
+      validateMaterializationSeedFile({
+        path: process.env[MATERIALIZATION_SEED_ENV],
+        expectedSha256: state.materialization_seed_sha256,
+      }),
     verifyMaterializationChain: (state, priorResults, context) =>
       verifyMaterializationChainFile({
         environment: process.env,

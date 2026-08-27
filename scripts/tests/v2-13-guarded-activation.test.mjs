@@ -8,12 +8,19 @@ import test from "node:test";
 
 import { EXPECTED_RUNTIME_FUNCTIONS } from "../../deploy/v2-06/apply-migrations-and-grants.mjs";
 import {
+  APPROVED_WRANGLER_OAUTH_SCOPES,
+  assertAbsentRouteReadback,
   assertDisabledVersionReadback,
   assertFullLiveActivationBinding,
+  assertQualifiedRoute,
   assertTrustedAuthorityTime,
+  assertWorkersDevOrigin,
   CONFIRMATION,
   consumeAuthorityOnce,
+  deriveWorkersDevOrigin,
   extractSingleActiveVersion,
+  readCloudflareWorkersDevOrigin,
+  refreshWranglerOAuthReadback,
   SECRET_NAMES,
   plan,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
@@ -122,12 +129,17 @@ function authority() {
       r2_bucket_name: "videoforge-production-private",
       workflow_name: "videoforge-production-video",
       public_origin: "https://videoforge.example",
-      api_token_sha256: fingerprint,
+      wrangler_oauth_config_path_sha256: fingerprint,
+      oauth_scopes: [...APPROVED_WRANGLER_OAUTH_SCOPES],
+      workers_dev_subdomain: "lakshmansai121",
+      workers_dev_subdomain_readback_sha256: fingerprint,
       pre_mutation_account_readback_sha256: fingerprint,
       pre_mutation_worker_absence_sha256: fingerprint,
       pre_mutation_workflow_inventory_sha256: fingerprint,
       pre_mutation_r2_inventory_sha256: fingerprint,
       pre_mutation_route_readback_sha256: fingerprint,
+      pre_mutation_route_content_type: "text/plain; charset=UTF-8",
+      pre_mutation_route_body_length: 17,
     },
     gates: {
       mage_qualification_sha256: fingerprint,
@@ -761,6 +773,280 @@ test("partial quarantine creation keeps only exact disabled state or deletes att
   assert.deepEqual(cleaned, ["worker", "workflow", "workflow-pair", "absence"]);
 });
 
+test("Cloudflare OAuth subdomain readback derives an exact origin without exporting the token", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "v213-cloudflare-oauth-test-"));
+  const configPath = join(directory, "default.toml");
+  writeFileSync(
+    configPath,
+    [
+      'oauth_token = "oauth-test-token"',
+      'expiration_time = "2099-01-01T00:00:00.000Z"',
+      'refresh_token = "refresh-test-token"',
+      'scopes = ["account:read", "workers_scripts:write"]',
+      "",
+    ].join("\n"),
+    { mode: 0o600 },
+  );
+  const calls = [];
+  const whoami = () => ({
+    status: 0,
+    stdout: JSON.stringify({
+      loggedIn: true,
+      authType: "OAuth Token",
+      email: null,
+      accounts: [{ id: "1".repeat(32) }],
+      tokenPermissions: ["account:read", "workers_scripts:write"],
+    }),
+    stderr: "",
+  });
+  try {
+    const origin = await readCloudflareWorkersDevOrigin({
+      configPath,
+      accountId: "1".repeat(32),
+      workerName: "videoforge-production-runtime",
+      expectedScopes: ["account:read", "workers_scripts:write"],
+      spawn: whoami,
+      fetchImpl: async (url, options) => {
+        calls.push({ url, options });
+        return {
+          status: 200,
+          headers: { get: (name) => (name === "date" ? "2026-08-26T00:00:00.000Z" : null) },
+          async json() {
+            return {
+              result: { subdomain: "account-subdomain" },
+              success: true,
+              errors: [],
+              messages: [],
+            };
+          },
+        };
+      },
+    });
+    assert.deepEqual(Object.keys(origin).sort(), [
+      "accountId",
+      "accountSubdomain",
+      "publicOrigin",
+      "subdomainReadbackSha256",
+      "trustedDate",
+    ]);
+    assert.equal(
+      origin.publicOrigin,
+      "https://videoforge-production-runtime.account-subdomain.workers.dev",
+    );
+    assert.equal(Object.hasOwn(origin, "token"), false);
+    assert.equal(calls.length, 1);
+    assert.match(
+      calls[0].url,
+      /\/accounts\/11111111111111111111111111111111\/workers\/subdomain$/u,
+    );
+    assert.equal(calls[0].options.method, "GET");
+    assert.match(calls[0].options.headers.Authorization, /^Bearer oauth-test-token$/u);
+    assert.equal(
+      deriveWorkersDevOrigin({
+        workerName: "videoforge-production-runtime",
+        accountSubdomain: "account-subdomain",
+      }),
+      origin.publicOrigin,
+    );
+    assert.equal(
+      assertWorkersDevOrigin(origin.publicOrigin, {
+        workerName: "videoforge-production-runtime",
+        accountSubdomain: "account-subdomain",
+      }),
+      true,
+    );
+    assert.throws(
+      () =>
+        assertWorkersDevOrigin(`${origin.publicOrigin}/api/v2/hosted/status`, {
+          workerName: "videoforge-production-runtime",
+          accountSubdomain: "account-subdomain",
+        }),
+      /exact account-bound origin/u,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Cloudflare pre-state binds exact absent 404 bytes while post-state accepts only disabled or qualified JSON", async () => {
+  const value = authority();
+  value.cloudflare.pre_mutation_route_readback_sha256 = fingerprint;
+  assert.equal(
+    assertAbsentRouteReadback(
+      {
+        status: 404,
+        bodySha256: fingerprint,
+        bodyLength: 17,
+        contentType: value.cloudflare.pre_mutation_route_content_type,
+      },
+      value,
+    ),
+    true,
+  );
+  assert.throws(
+    () =>
+      assertAbsentRouteReadback(
+        { status: 503, bodySha256: fingerprint, bodyLength: 17, contentType: "application/json" },
+        value,
+      ),
+    /exact absent 404 readback/u,
+  );
+  assert.throws(
+    () =>
+      assertAbsentRouteReadback(
+        { status: 404, bodySha256: fingerprint, bodyLength: 17, contentType: "text/plain" },
+        {
+          ...value,
+          cloudflare: { ...value.cloudflare, pre_mutation_route_readback_sha256: hash("other") },
+        },
+      ),
+    /exact absent 404 readback/u,
+  );
+  const fetchImpl = async () => ({
+    status: 200,
+    async json() {
+      return {
+        schema_version: "videoforge-hosted-status/v1",
+        commit: value.release.commit,
+        gpu_transport: "QUALIFIED_EXACT",
+      };
+    },
+  });
+  assert.equal(await assertQualifiedRoute(value, { fetchImpl }), true);
+  await assert.rejects(
+    assertQualifiedRoute(value, {
+      fetchImpl: async () => ({
+        status: 200,
+        async json() {
+          return {
+            schema_version: "videoforge-hosted-status/v1",
+            commit: value.release.commit,
+            gpu_transport: "DISABLED_UNQUALIFIED",
+          };
+        },
+      }),
+    }),
+    /exact enabled status/u,
+  );
+});
+
+test("Wrangler OAuth whoami refresh reopens the protected config and fails closed on failure or drift", () => {
+  const directory = mkdtempSync(join(tmpdir(), "v213-cloudflare-oauth-refresh-test-"));
+  const configPath = join(directory, "default.toml");
+  const accountId = "2".repeat(32);
+  const scopes = ["account:read", "workers_scripts:write"];
+  const toml = (expiration) =>
+    [
+      'oauth_token = "oauth-refresh-test-token"',
+      `expiration_time = "${expiration}"`,
+      'refresh_token = "refresh-test-token"',
+      `scopes = ${JSON.stringify(scopes)}`,
+      "",
+    ].join("\n");
+  const whoami = (id = accountId, tokenPermissions = scopes) => ({
+    status: 0,
+    stdout: JSON.stringify({
+      loggedIn: true,
+      authType: "OAuth Token",
+      email: null,
+      accounts: [{ id }],
+      tokenPermissions,
+    }),
+    stderr: "",
+  });
+  try {
+    writeFileSync(configPath, toml("2000-01-01T00:00:00.000Z"), { mode: 0o600 });
+    const refreshed = refreshWranglerOAuthReadback({
+      configPath,
+      environment: { HOME: directory, PATH: "/usr/bin:/bin" },
+      accountId,
+      expectedScopes: scopes,
+      spawn: (_command, _args, options) => {
+        assert.equal(options.env.CLOUDFLARE_API_TOKEN, undefined);
+        writeFileSync(configPath, toml("2099-01-01T00:00:00.000Z"));
+        return whoami();
+      },
+    });
+    assert.equal(refreshed.accountId, accountId);
+    assert.deepEqual(refreshed.scopes, scopes);
+    assert.ok(refreshed.remainingMs > 60_000);
+    writeFileSync(configPath, toml("2099-01-01T00:00:00.000Z"));
+    assert.throws(
+      () =>
+        refreshWranglerOAuthReadback({
+          configPath,
+          environment: { HOME: directory, PATH: "/usr/bin:/bin" },
+          accountId,
+          expectedScopes: scopes,
+          spawn: () => ({ status: 1, stdout: "", stderr: "redacted" }),
+        }),
+      /refresh\/readback failed/u,
+    );
+    assert.throws(
+      () =>
+        refreshWranglerOAuthReadback({
+          configPath,
+          environment: { HOME: directory, PATH: "/usr/bin:/bin" },
+          accountId,
+          expectedScopes: scopes,
+          spawn: () => whoami("3".repeat(32)),
+        }),
+      /account or authentication drifted/u,
+    );
+    assert.throws(
+      () =>
+        refreshWranglerOAuthReadback({
+          configPath,
+          environment: { HOME: directory, PATH: "/usr/bin:/bin" },
+          accountId,
+          expectedScopes: scopes,
+          spawn: () => whoami(accountId, ["account:read"]),
+        }),
+      /scopes drifted/u,
+    );
+    assert.throws(
+      () =>
+        refreshWranglerOAuthReadback({
+          configPath,
+          environment: { HOME: directory, PATH: "/usr/bin:/bin" },
+          accountId,
+          spawn: () => whoami(),
+        }),
+      /expected scopes are missing from the authority boundary/u,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Cloudflare post-preflight seams keep OAuth scope expectations authority-bound", () => {
+  const source = readFileSync("deploy/v2-13/guarded-activation.mjs", "utf8");
+  const activation = source.slice(source.indexOf("async function cloudflareActivation"));
+  assert.doesNotMatch(source, /export\s*\{[^}]*readWranglerOAuthToken/su);
+  assert.match(
+    source,
+    /function wrangler\([\s\S]*?authorityOAuthScopes\(authority, expectedScopes\)/u,
+  );
+  assert.match(
+    source,
+    /function wranglerResult\([\s\S]*?authorityOAuthScopes\(authority, expectedScopes\)/u,
+  );
+  assert.match(source, /function cloudflareSecretNames\(configPath, environment, authority/u);
+  assert.match(activation, /expectedScopes: authorityOAuthScopes\(authority\)/u);
+  assert.match(activation, /cloudflareSecretNames\([^,]+, environment, authority\)/u);
+  const adapters = readFileSync("deploy/v2-13/full-live-adapters.mjs", "utf8");
+  const promotion = adapters.slice(
+    adapters.indexOf("function createProtectedPromotionAdapter"),
+    adapters.indexOf("function createV213DurableStageStore"),
+  );
+  assert.match(promotion, /const expectedScopes = promotionPreflight\.expectedScopes/u);
+  assert.match(promotion, /expectedScopes,\s*spawn/u);
+  assert.match(
+    adapters,
+    /const expectedScopes = Object\.freeze\(\[\.\.\.APPROVED_WRANGLER_OAUTH_SCOPES\]\)/u,
+  );
+});
+
 test("auto-create bootstrap can create only the exact Worker and two Workflows", () => {
   const full = {
     name: "videoforge-production-runtime",
@@ -841,7 +1127,7 @@ test("Workflow inventory readbacks request one explicit closed 100-item page", (
   assert.equal(
     (source.match(/await cloudflareWorkflowInventoryReadback\(environment, authority\)/gu) ?? [])
       .length,
-    2,
+    1,
   );
   assert.equal(
     (source.match(/cloudflareApiReadback\(environment, authority, "\/workflows"\)/gu) ?? []).length,

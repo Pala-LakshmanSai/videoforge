@@ -20,7 +20,11 @@ import {
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
 const executeFullLive = (options) =>
-  executeFullLiveRaw({ trustedTime: async () => "2026-08-26T12:00:00.000Z", ...options });
+  executeFullLiveRaw({
+    trustedTime: async () => "2026-08-26T12:00:00.000Z",
+    verifyMaterializationSeed: async () => true,
+    ...options,
+  });
 
 function stateFixture() {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-full-live-executor-"));
@@ -28,6 +32,7 @@ function stateFixture() {
   const path = join(directory, "state.json");
   const authority = {
     authority_id: "v2-13-test-executor-0001",
+    materialization_seed_sha256: proof("a"),
     outer_orchestration: {
       full_live_executor_path: "deploy/v2-13/full-live-executor.mjs",
       full_live_executor_sha256: hash(readFileSync("deploy/v2-13/full-live-executor.mjs")),
@@ -234,6 +239,7 @@ test("expired authenticated time enters cleanup-only before any normal mutation 
       statePath: fixture.path,
       expectedStateSha256: fixture.sha256,
       trustedTime: async () => "2026-08-27T00:00:01.000Z",
+      verifyMaterializationSeed: async () => true,
       runOperation: async (operation, current, prior) => {
         called.push(operation.id);
         return fakeResult(operation, current, prior);
@@ -308,10 +314,14 @@ test("authority-bound executor source drift fails the state contract before the 
 test("fake command integration preserves the exact graph and terminal cleanup proof", async () => {
   const fixture = stateFixture();
   const called = [];
+  const preflights = [];
   try {
     const result = await executeFullLive({
       statePath: fixture.path,
       expectedStateSha256: fixture.sha256,
+      preflight: async (_state, _sha256, mode, priorResults) => {
+        preflights.push({ mode, priorOperationIds: [...priorResults.keys()] });
+      },
       runOperation: async (operation, state, priorResults) => {
         called.push(operation.id);
         return fakeResult(operation, state, priorResults);
@@ -326,6 +336,15 @@ test("fake command integration preserves the exact graph and terminal cleanup pr
     assert.equal(result.state.total_reserved_usd, 17.5);
     assert.equal(result.state.total_settled_usd, 17.5);
     assert.equal(result.state.cleanup_proof.zero_worker_proof_sha256, proof("c"));
+    assert.equal(preflights.length, 2);
+    assert.equal(preflights[0].mode.initial, true);
+    assert.deepEqual(preflights[0].priorOperationIds, []);
+    assert.equal(preflights[1].mode.staged, true);
+    assert.equal(
+      preflights[1].priorOperationIds.includes("bootstrap-prequalification-database"),
+      true,
+    );
+    assert.equal(preflights[1].priorOperationIds.includes("fresh-live-preflight"), true);
   } finally {
     rmSync(fixture.directory, { recursive: true, force: true });
   }

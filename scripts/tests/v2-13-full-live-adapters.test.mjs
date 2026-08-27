@@ -30,6 +30,7 @@ import {
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
   readAuthenticatedGithubTime,
   TAG,
+  verifyPrequalificationDatabaseReceipt,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
 
 const sourceCommit = "4".repeat(40);
@@ -45,6 +46,15 @@ const state = {
 };
 const result = (status = 0, stdout = "", stderr = "") => ({ status, stdout, stderr });
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+const canonicalJson = (value) =>
+  Array.isArray(value)
+    ? `[${value.map((item) => canonicalJson(item)).join(",")}]`
+    : value !== null && typeof value === "object"
+      ? `{${Object.keys(value)
+          .sort()
+          .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+          .join(",")}}`
+      : JSON.stringify(value);
 const preEndpointSecrets = () => ({
   schemaVersion: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
   stageAuthoritySigningKeyBase64: Buffer.alloc(32, 1).toString("base64"),
@@ -378,7 +388,7 @@ test("guarded adapter calls the existing executor once and authenticates its dur
       "PROPOSAL_FILE",
       "RELEASE_MANIFEST_FILE",
       "USER_APPROVAL_FILE",
-      "CLOUDFLARE_TOKEN_FILE",
+      "WRANGLER_OAUTH_CONFIG_FILE",
       "ACTIVATION_EVIDENCE_OUTPUT",
       "POSTGRES_INPUT_DIR",
       "SECRET_INPUT_DIR",
@@ -772,6 +782,49 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(receipt.recovery_mode, "FRESH_36_TO_45");
     assert.equal(receipt.ledger_before_count, 36);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
+    const callsBeforeRejectedCas = calls.length;
+    await assert.rejects(
+      verifyPrequalificationDatabaseReceipt({
+        environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+        priorResults: new Map([
+          [
+            "bootstrap-prequalification-database",
+            { prequalification_database_bootstrap_sha256: `sha256:${"0".repeat(64)}` },
+          ],
+        ]),
+        run,
+      }),
+      /PREQUALIFICATION_RECEIPT_OUTER_CAS/u,
+    );
+    assert.equal(calls.length, callsBeforeRejectedCas);
+    const bridge = createTypeScriptBridgeAdapters({
+      environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+      requirePrequalificationReceipt: true,
+      spawnBridge: async () => {
+        throw new Error("bridge must not start before receipt CAS");
+      },
+    });
+    await assert.rejects(
+      bridge["fresh-live-preflight"](
+        {},
+        state,
+        new Map([
+          [
+            "bootstrap-prequalification-database",
+            { prequalification_database_bootstrap_sha256: `sha256:${"0".repeat(64)}` },
+          ],
+        ]),
+        `sha256:${"f".repeat(64)}`,
+      ),
+      /BRIDGE_PREQUALIFICATION_RECEIPT/u,
+    );
+    const verified = await verifyPrequalificationDatabaseReceipt({
+      environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+      priorResults: new Map([["bootstrap-prequalification-database", output]]),
+      run,
+    });
+    assert.equal(verified.ledger.length, 45);
+    assert.equal(lockedLedgerReads, 3);
     assert.equal(
       calls.every(([command]) => command === "psql"),
       true,
@@ -797,7 +850,15 @@ test("global preflight excludes future artifacts and stage adapters validate the
     source.indexOf("function createProtectedPromotionAdapter"),
     source.indexOf("function createV213DurableStageStore"),
   );
-  assert.match(promotion, /preflightPromotionInputs\(\{ environment, state \}\)/u);
+  assert.match(promotion, /preflightPromotionInputs\(\{ environment, state, spawn \}\)/u);
+  assert.doesNotMatch(promotion, /CLOUDFLARE_API_TOKEN_FILE|CLOUDFLARE_API_TOKEN:/u);
+  assert.match(promotion, /wranglerOAuthConfigPath|refreshWranglerOAuthReadback/u);
+  assert.match(promotion, /oauthEnvironment/u);
+  assert.ok(promotion.indexOf("preflightPromotionInputs") < promotion.indexOf("const runWrangler"));
+  assert.ok(
+    promotion.indexOf("refreshWranglerOAuthReadback") <
+      promotion.indexOf('spawn("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler"'),
+  );
 });
 
 test("canonical materializer derives all first-use artifacts, survives restart, and hash-chains mode-0600 bytes", async () => {
@@ -868,6 +929,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     },
   };
   writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
+  const materializationSeedSha256 = hash(Buffer.from(`${canonicalJson(seed)}\n`));
   writeFileSync(productionSecretsPath, `${JSON.stringify(preEndpointSecrets())}\n`, {
     mode: 0o600,
   });
@@ -910,6 +972,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     approval_sha256: `sha256:${"2".repeat(64)}`,
     proposal_record_commit: "3".repeat(40),
     full_live_executor_sha256: `sha256:${"4".repeat(64)}`,
+    materialization_seed_sha256: materializationSeedSha256,
     approval_record_path: "evidence/user-approval.json",
   };
   const prior = new Map([
@@ -1031,6 +1094,90 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
   }
 });
 
+test("materializer rejects nested seed aliases, extra command payloads, and CAS replacement", async () => {
+  const baseSeed = {
+    schema_version: "videoforge.v213-full-live-materialization-seed/v1",
+    static_only: true,
+    future_output_hashes_present: false,
+    production_input_base: {
+      schemaVersion: "videoforge.v213-full-live-outer-input/v1",
+      fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+      authorityDocument: {},
+      dualLaneInput: {
+        mage: {
+          volumeIdSha256: `sha256:${"1".repeat(64)}`,
+          volumeManifestSha256: `sha256:${"2".repeat(64)}`,
+        },
+        soulx: {
+          volumeIdSha256: `sha256:${"3".repeat(64)}`,
+          volumeManifestSha256: `sha256:${"4".repeat(64)}`,
+        },
+      },
+      commandPayloads: {},
+    },
+    activation_record_base: {},
+    config_activation_base: {},
+    release_manifest: {},
+    promotion_record_base: {},
+  };
+  const runWith = async (seed, expectedHash, pattern) => {
+    const directory = mkdtempSync(resolve(tmpdir(), "v213-materializer-seed-contract-test-"));
+    const seedPath = resolve(directory, "seed.json");
+    const chainPath = resolve(directory, "chain.json");
+    const outputPath = resolve(directory, "production-input.json");
+    writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
+    const materialize = createProtectedInputMaterializer({
+      environment: {
+        VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: seedPath,
+        VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE: chainPath,
+        VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: outputPath,
+      },
+    });
+    try {
+      await assert.rejects(
+        materialize({
+          operationId: "fresh-live-preflight",
+          state: {
+            ...state,
+            authority_id: "v2-13-seed-contract-0001",
+            proposal_sha256: `sha256:${"1".repeat(64)}`,
+            approval_sha256: `sha256:${"2".repeat(64)}`,
+            proposal_record_commit: "3".repeat(40),
+            full_live_executor_sha256: `sha256:${"4".repeat(64)}`,
+            materialization_seed_sha256: expectedHash,
+          },
+          priorResults: new Map(),
+          outerStateSha256: `sha256:${"5".repeat(64)}`,
+        }),
+        pattern,
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  };
+  const alias = structuredClone(baseSeed);
+  alias.production_input_base.dualLaneInput.mage.DeploymentSnapshotSha256 = null;
+  await runWith(
+    alias,
+    hash(Buffer.from(`${canonicalJson(alias)}\n`)),
+    /MATERIALIZATION_SEED_CONTRACT/u,
+  );
+  const extraCommand = structuredClone(baseSeed);
+  extraCommand.production_input_base.commandPayloads.mage = {};
+  await runWith(
+    extraCommand,
+    hash(Buffer.from(`${canonicalJson(extraCommand)}\n`)),
+    /MATERIALIZATION_SEED_CONTRACT/u,
+  );
+  const replacement = structuredClone(baseSeed);
+  replacement.production_input_base.fullLiveAuthorityId = "22222222-2222-4222-8222-222222222222";
+  await runWith(
+    replacement,
+    hash(Buffer.from(`${canonicalJson(baseSeed)}\n`)),
+    /MATERIALIZATION_SEED_OUTER_BINDING/u,
+  );
+});
+
 test("cleanup-only materializes and chains an endpoint-free descriptor without future provider IDs", async () => {
   const directory = mkdtempSync(resolve(tmpdir(), "v213-cleanup-descriptor-test-"));
   chmodSync(directory, 0o700);
@@ -1045,7 +1192,16 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
       schemaVersion: "videoforge.v213-full-live-outer-input/v1",
       fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
       authorityDocument: {},
-      dualLaneInput: { mage: {}, soulx: {} },
+      dualLaneInput: {
+        mage: {
+          volumeIdSha256: `sha256:${"1".repeat(64)}`,
+          volumeManifestSha256: `sha256:${"2".repeat(64)}`,
+        },
+        soulx: {
+          volumeIdSha256: `sha256:${"3".repeat(64)}`,
+          volumeManifestSha256: `sha256:${"4".repeat(64)}`,
+        },
+      },
       commandPayloads: {},
     },
     activation_record_base: {},
@@ -1054,6 +1210,7 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
     promotion_record_base: {},
   };
   writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
+  const materializationSeedSha256 = hash(Buffer.from(`${canonicalJson(seed)}\n`));
   const materialize = createProtectedInputMaterializer({
     environment: {
       VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: seedPath,
@@ -1069,6 +1226,7 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
     approval_sha256: `sha256:${"2".repeat(64)}`,
     proposal_record_commit: "3".repeat(40),
     full_live_executor_sha256: `sha256:${"4".repeat(64)}`,
+    materialization_seed_sha256: materializationSeedSha256,
   };
   try {
     await materialize({

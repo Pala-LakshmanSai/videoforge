@@ -88,6 +88,65 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const ROLE = /^[a-z_][a-z0-9_]{0,62}$/u;
 const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const WORKFLOW_INVENTORY_PATH = "/workflows?page=1&per_page=100";
+const WORKERS_SUBDOMAIN_PATH = "/workers/subdomain";
+const WRANGLER_OAUTH_CONFIG_ENV = "VIDEOFORGE_V2_13_WRANGLER_OAUTH_CONFIG_FILE";
+const WORKERS_DEV_SUBDOMAIN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
+const WORKER_NAME = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
+const WRANGLER_OAUTH_MINIMUM_REMAINING_MS = 60_000;
+const APPROVED_WRANGLER_OAUTH_SCOPES = Object.freeze([
+  "account:read",
+  "agent-memory:write",
+  "ai-search:run",
+  "ai-search:write",
+  "ai:write",
+  "artifacts:write",
+  "browser:write",
+  "challenge-widgets.write",
+  "cloudchamber:write",
+  "connectivity:admin",
+  "containers:write",
+  "d1:write",
+  "email_routing:write",
+  "email_sending:write",
+  "flagship:write",
+  "offline_access",
+  "pages:write",
+  "pipelines:write",
+  "queues:write",
+  "secrets_store:write",
+  "ssl_certs:write",
+  "user:read",
+  "websearch.run",
+  "workers:write",
+  "workers_kv:write",
+  "workers_routes:write",
+  "workers_scripts:write",
+  "workers_tail:read",
+  "zone:read",
+]);
+const oauthScopesEqual = (left, right) =>
+  Array.isArray(left) &&
+  Array.isArray(right) &&
+  JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+function exactOAuthScopes(value, code = "Cloudflare OAuth expected scopes are not exact") {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.some((scope) => typeof scope !== "string" || scope === "") ||
+    new Set(value).size !== value.length
+  )
+    fail(code);
+  return Object.freeze([...value]);
+}
+function authorityOAuthScopes(authority, expectedScopes) {
+  const bound = exactOAuthScopes(
+    authority?.cloudflare?.oauth_scopes,
+    "Cloudflare OAuth scopes are absent from the approved authority",
+  );
+  if (expectedScopes !== undefined && !oauthScopesEqual(bound, expectedScopes))
+    fail("Cloudflare OAuth expected scopes changed from the approved authority");
+  return bound;
+}
 const SOULX_APPROVAL_SHA256 =
   "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
 const SOULX_CANDIDATE_SHA256 =
@@ -638,11 +697,13 @@ function validateAuthority(value) {
   if (
     !exactKeys(value.cloudflare, [
       "account_id",
-      "api_token_sha256",
       "exact_quarantine_creation_authorized",
       "failure_policy",
+      "oauth_scopes",
       "pre_mutation_account_readback_sha256",
       "pre_mutation_r2_inventory_sha256",
+      "pre_mutation_route_body_length",
+      "pre_mutation_route_content_type",
       "pre_mutation_route_readback_sha256",
       "pre_mutation_worker_absence_sha256",
       "pre_mutation_workflow_inventory_sha256",
@@ -651,15 +712,25 @@ function validateAuthority(value) {
       "public_origin",
       "r2_bucket_name",
       "worker_name",
+      "workers_dev_subdomain",
+      "workers_dev_subdomain_readback_sha256",
+      "wrangler_oauth_config_path_sha256",
       "workflow_name",
     ]) ||
     !/^[0-9a-f]{32}$/u.test(value.cloudflare.account_id) ||
-    !HASH.test(value.cloudflare.api_token_sha256) ||
+    !HASH.test(value.cloudflare.wrangler_oauth_config_path_sha256) ||
+    JSON.stringify(value.cloudflare.oauth_scopes) !==
+      JSON.stringify(APPROVED_WRANGLER_OAUTH_SCOPES) ||
+    !WORKERS_DEV_SUBDOMAIN.test(value.cloudflare.workers_dev_subdomain ?? "") ||
+    !HASH.test(value.cloudflare.workers_dev_subdomain_readback_sha256) ||
     !HASH.test(value.cloudflare.pre_mutation_account_readback_sha256) ||
     !HASH.test(value.cloudflare.pre_mutation_worker_absence_sha256) ||
     !HASH.test(value.cloudflare.pre_mutation_workflow_inventory_sha256) ||
     !HASH.test(value.cloudflare.pre_mutation_r2_inventory_sha256) ||
     !HASH.test(value.cloudflare.pre_mutation_route_readback_sha256) ||
+    value.cloudflare.pre_mutation_route_content_type !== "text/plain; charset=UTF-8" ||
+    !Number.isInteger(value.cloudflare.pre_mutation_route_body_length) ||
+    value.cloudflare.pre_mutation_route_body_length < 1 ||
     value.cloudflare.worker_name !== "videoforge-production-runtime" ||
     value.cloudflare.preexisting_worker_required !== false ||
     value.cloudflare.exact_quarantine_creation_authorized !== true ||
@@ -1399,26 +1470,359 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
   delete env.V2_13_RECONCILER_PASSWORD;
 }
 
-function cloudflareEnvironment(tokenPath, authority) {
-  mode(tokenPath, "file", 0o600, "Cloudflare API token file");
-  const token = readFileSync(tokenPath, "utf8");
-  if (!token || token !== token.trim() || sha256(token) !== authority.cloudflare.api_token_sha256)
-    fail("Cloudflare API token is malformed or does not match its approved fingerprint");
-  return safeEnvironment({ CLOUDFLARE_API_TOKEN: token });
+function cloudflareEnvironment(configPath, _authority) {
+  const oauthPath = configPath ?? wranglerOAuthConfigPath(process.env);
+  mode(oauthPath, "file", 0o600, "Cloudflare Wrangler OAuth config file");
+  return safeEnvironment({ [WRANGLER_OAUTH_CONFIG_ENV]: oauthPath });
 }
 
-function wrangler(environment, args, { input, capture = false } = {}) {
+function wranglerOAuthConfigPath(environment = process.env) {
+  const explicit = environment[WRANGLER_OAUTH_CONFIG_ENV];
+  if (explicit !== undefined) {
+    if (typeof explicit !== "string" || explicit === "" || !explicit.startsWith("/"))
+      fail("Cloudflare Wrangler OAuth config path is not absolute");
+    return explicit;
+  }
+  const home = environment.HOME;
+  if (typeof home !== "string" || home === "" || !home.startsWith("/"))
+    fail("Cloudflare Wrangler OAuth config path is not configured");
+  const configRoot =
+    environment.XDG_CONFIG_HOME !== undefined
+      ? environment.XDG_CONFIG_HOME
+      : process.platform === "darwin"
+        ? join(home, "Library", "Preferences")
+        : process.platform === "win32"
+          ? join(environment.APPDATA ?? join(home, "AppData", "Roaming"), "xdg.config")
+          : join(home, ".config");
+  if (typeof configRoot !== "string" || configRoot === "" || !configRoot.startsWith("/"))
+    fail("Cloudflare Wrangler OAuth config path is not configured");
+  const legacyDirectory = join(home, ".wrangler");
+  const preferredDirectory = join(configRoot, ".wrangler");
+  let useLegacy = false;
+  try {
+    const metadata = lstatSync(legacyDirectory);
+    useLegacy = metadata.isDirectory() && !metadata.isSymbolicLink();
+  } catch (error) {
+    if (error?.code !== "ENOENT") fail("Cloudflare Wrangler OAuth config path is unreadable");
+  }
+  return join(useLegacy ? legacyDirectory : preferredDirectory, "config", "default.toml");
+}
+
+function readWranglerOAuthCredential(configPath, { requireFresh = true } = {}) {
+  mode(configPath, "file", 0o600, "Cloudflare Wrangler OAuth config");
+  let raw;
+  try {
+    raw = readFileSync(configPath, "utf8");
+  } catch {
+    fail("Cloudflare Wrangler OAuth config is unreadable");
+  }
+  const tokenMatch = raw.match(/^\s*oauth_token\s*=\s*"((?:\\\\.|[^"\\\\])*)"\s*$/mu);
+  const expiryMatch = raw.match(/^\s*expiration_time\s*=\s*"((?:\\\\.|[^"\\\\])*)"\s*$/mu);
+  const scopesMatch = raw.match(/^\s*scopes\s*=\s*(\[[^\r\n]*\])\s*$/mu);
+  if (!tokenMatch || !expiryMatch || !scopesMatch)
+    fail("Cloudflare Wrangler OAuth token is unavailable");
+  let token;
+  let expiration;
+  let scopes;
+  try {
+    token = JSON.parse(`"${tokenMatch[1]}"`);
+    expiration = JSON.parse(`"${expiryMatch[1]}"`);
+    scopes = JSON.parse(scopesMatch[1]);
+  } catch {
+    fail("Cloudflare Wrangler OAuth token is malformed");
+  }
+  const expiresAt = Date.parse(expiration ?? "");
+  if (
+    typeof token !== "string" ||
+    token === "" ||
+    token !== token.trim() ||
+    token.includes("\0") ||
+    !Number.isFinite(expiresAt) ||
+    (requireFresh && expiresAt - Date.now() < WRANGLER_OAUTH_MINIMUM_REMAINING_MS) ||
+    !Array.isArray(scopes) ||
+    scopes.some((scope) => typeof scope !== "string" || scope === "") ||
+    new Set(scopes).size !== scopes.length ||
+    !scopes.includes("account:read") ||
+    !scopes.includes("workers_scripts:write")
+  )
+    fail("Cloudflare Wrangler OAuth token is malformed");
+  return Object.freeze({ token, expiresAt, scopes: Object.freeze([...scopes]) });
+}
+
+function wranglerOAuthChildEnvironment(configPath, environment, injectedSpawn) {
+  const resolved = resolve(configPath);
+  const nativeEnvironment = { ...environment };
+  delete nativeEnvironment[WRANGLER_OAUTH_CONFIG_ENV];
+  const nativePath = resolve(wranglerOAuthConfigPath(nativeEnvironment));
+  // A real Wrangler child must read the same protected store that was inspected. Tests may
+  // inject a spawn function with an isolated fixture; production never permits a path alias.
+  if (injectedSpawn === spawnSync && resolved !== nativePath)
+    fail("Cloudflare Wrangler OAuth config is not the native protected store");
+  const child = {};
+  for (const name of ["HOME", "XDG_CONFIG_HOME", "PATH", "TMPDIR", "LANG", "LC_ALL"]) {
+    if (typeof environment?.[name] === "string" && environment[name] !== "")
+      child[name] = environment[name];
+  }
+  child.CI = "1";
+  child.WRANGLER_SEND_METRICS = "false";
+  return child;
+}
+
+function parseWranglerWhoami(stdout, accountId, expectedScopes) {
+  let value;
+  try {
+    value = JSON.parse(stdout.trim());
+  } catch {
+    fail("Cloudflare Wrangler whoami readback was not exact JSON");
+  }
+  if (
+    !exactKeys(value, ["accounts", "authType", "email", "loggedIn", "tokenPermissions"]) ||
+    value.loggedIn !== true ||
+    value.authType !== "OAuth Token" ||
+    !Array.isArray(value.accounts) ||
+    value.accounts.length !== 1 ||
+    !value.accounts[0] ||
+    typeof value.accounts[0].id !== "string" ||
+    value.accounts[0].id !== accountId ||
+    !Array.isArray(value.tokenPermissions) ||
+    value.tokenPermissions.some((scope) => typeof scope !== "string" || scope === "") ||
+    new Set(value.tokenPermissions).size !== value.tokenPermissions.length
+  )
+    fail("Cloudflare Wrangler whoami account or authentication drifted");
+  const expected = exactOAuthScopes(
+    expectedScopes,
+    "Cloudflare Wrangler OAuth expected scopes are missing from the authority boundary",
+  );
+  const scopes = [...value.tokenPermissions].sort();
+  if (!oauthScopesEqual(scopes, expected))
+    fail("Cloudflare Wrangler OAuth scopes drifted from the protected config");
+  return Object.freeze({ accountId, scopes: Object.freeze(scopes) });
+}
+
+function refreshWranglerOAuthReadback({
+  configPath,
+  environment = process.env,
+  accountId,
+  expectedScopes,
+  spawn = spawnSync,
+} = {}) {
+  if (typeof accountId !== "string" || !/^[0-9a-f]{32}$/u.test(accountId))
+    fail("Cloudflare Wrangler OAuth account identity is malformed");
+  const boundScopes = exactOAuthScopes(
+    expectedScopes,
+    "Cloudflare Wrangler OAuth expected scopes are missing from the authority boundary",
+  );
+  const path = configPath ?? wranglerOAuthConfigPath(environment);
+  // Read before the command so expired credentials are still a supported refresh input; the
+  // command itself is the only operation allowed to refresh the protected OAuth store.
+  const before = readWranglerOAuthCredential(path, { requireFresh: false });
+  if (!oauthScopesEqual(before.scopes, boundScopes))
+    fail("Cloudflare Wrangler OAuth config scopes drifted from the approved authority");
+  const result = spawn(
+    "pnpm",
+    ["--filter", "@videoforge/web", "exec", "wrangler", "whoami", "--json"],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      shell: false,
+      env: wranglerOAuthChildEnvironment(path, environment, spawn),
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 20_000,
+      maxBuffer: 1 * 1024 * 1024,
+    },
+  );
+  if (result?.error || result?.status !== 0 || typeof result?.stdout !== "string")
+    fail("Cloudflare Wrangler OAuth refresh/readback failed with redacted output");
+  const whoami = parseWranglerWhoami(result.stdout, accountId, boundScopes);
+  // Reopen after whoami: Wrangler refresh writes the new access token and expiry atomically.
+  const after = readWranglerOAuthCredential(path, { requireFresh: true });
+  if (
+    !oauthScopesEqual(after.scopes, whoami.scopes) ||
+    !oauthScopesEqual(after.scopes, boundScopes)
+  )
+    fail("Cloudflare Wrangler OAuth refreshed scope readback drifted");
+  return Object.freeze({
+    accountId,
+    scopes: after.scopes,
+    expiresAt: after.expiresAt,
+    remainingMs: Math.max(0, after.expiresAt - Date.now()),
+  });
+}
+
+function deriveWorkersDevOrigin({ workerName, accountSubdomain }) {
+  if (
+    typeof workerName !== "string" ||
+    !WORKER_NAME.test(workerName) ||
+    typeof accountSubdomain !== "string" ||
+    !WORKERS_DEV_SUBDOMAIN.test(accountSubdomain)
+  )
+    fail("Cloudflare workers.dev origin identity is malformed");
+  return `https://${workerName}.${accountSubdomain}.workers.dev`;
+}
+
+function assertWorkersDevOrigin(publicOrigin, { workerName, accountSubdomain }) {
+  const expected = deriveWorkersDevOrigin({ workerName, accountSubdomain });
+  let parsed;
+  try {
+    parsed = new URL(publicOrigin);
+  } catch {
+    fail("Cloudflare workers.dev origin is malformed");
+  }
+  if (
+    parsed.origin !== publicOrigin ||
+    parsed.protocol !== "https:" ||
+    parsed.hostname !== new URL(expected).hostname ||
+    parsed.port !== "" ||
+    parsed.pathname !== "/" ||
+    parsed.search !== "" ||
+    parsed.hash !== ""
+  )
+    fail("Cloudflare workers.dev origin is not the exact account-bound origin");
+  return true;
+}
+
+async function cloudflareOAuthApiResponse({
+  configPath,
+  environment = process.env,
+  accountId,
+  path,
+  fetchImpl = fetch,
+  spawn = spawnSync,
+  expectedScopes,
+} = {}) {
+  if (
+    typeof accountId !== "string" ||
+    !/^[0-9a-f]{32}$/u.test(accountId) ||
+    typeof path !== "string" ||
+    !path.startsWith("/") ||
+    path.startsWith("//") ||
+    path.split("/").includes("..")
+  )
+    fail("Cloudflare OAuth readback path is not exact");
+  const boundScopes = exactOAuthScopes(
+    expectedScopes,
+    "Cloudflare OAuth API expected scopes are missing from the authority boundary",
+  );
+  const credentialPath = configPath ?? wranglerOAuthConfigPath(environment);
+  refreshWranglerOAuthReadback({
+    configPath: credentialPath,
+    environment,
+    accountId,
+    expectedScopes: boundScopes,
+    spawn,
+  });
+  const credential = readWranglerOAuthCredential(credentialPath);
+  let response;
+  try {
+    response = await fetchImpl(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}${path}`,
+      {
+        headers: { Authorization: `Bearer ${credential.token}` },
+        method: "GET",
+        redirect: "error",
+      },
+    );
+  } catch {
+    fail("Cloudflare OAuth readback transport failed with redacted output");
+  }
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    fail("Cloudflare OAuth readback was not exact JSON");
+  }
+  const bytes = JSON.stringify({ body, status: response.status });
+  const trustedDate = response.headers?.get?.("date") ?? null;
+  return Object.freeze({ bytes, trustedDate });
+}
+
+async function readCloudflareWorkersDevOrigin({
+  configPath,
+  environment = process.env,
+  accountId,
+  workerName,
+  fetchImpl = fetch,
+  spawn = spawnSync,
+  expectedScopes,
+} = {}) {
+  const response = await cloudflareOAuthApiResponse({
+    configPath: configPath ?? wranglerOAuthConfigPath(environment),
+    environment,
+    accountId,
+    path: WORKERS_SUBDOMAIN_PATH,
+    fetchImpl,
+    spawn,
+    expectedScopes: exactOAuthScopes(
+      expectedScopes,
+      "Cloudflare workers.dev expected scopes are missing from the authority boundary",
+    ),
+  });
+  let value;
+  try {
+    value = JSON.parse(response.bytes);
+  } catch {
+    fail("Cloudflare account subdomain readback was not exact JSON");
+  }
+  if (
+    !exactKeys(value, ["body", "status"]) ||
+    value.status !== 200 ||
+    !exactKeys(value.body, ["errors", "messages", "result", "success"]) ||
+    value.body.success !== true ||
+    !exactKeys(value.body.result, ["subdomain"]) ||
+    !WORKERS_DEV_SUBDOMAIN.test(value.body.result.subdomain)
+  )
+    fail("Cloudflare account subdomain readback is not exact");
+  const publicOrigin = deriveWorkersDevOrigin({
+    workerName,
+    accountSubdomain: value.body.result.subdomain,
+  });
+  return Object.freeze({
+    accountId,
+    accountSubdomain: value.body.result.subdomain,
+    publicOrigin,
+    subdomainReadbackSha256: sha256(Buffer.from(`${canonicalJson(value)}\n`)),
+    trustedDate: response.trustedDate,
+  });
+}
+
+function wrangler(
+  environment,
+  args,
+  { input, capture = false, authority, expectedScopes, spawn = spawnSync } = {},
+) {
+  const boundScopes = authorityOAuthScopes(authority, expectedScopes);
+  const accountId = authority.cloudflare.account_id;
+  const configPath =
+    environment?.[WRANGLER_OAUTH_CONFIG_ENV] ?? wranglerOAuthConfigPath(environment);
+  refreshWranglerOAuthReadback({
+    configPath,
+    environment,
+    accountId,
+    expectedScopes: boundScopes,
+    spawn,
+  });
   return run("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
-    env: environment,
+    env: wranglerOAuthChildEnvironment(configPath, environment, spawn),
     input,
     capture,
   });
 }
 
-function wranglerResult(environment, args) {
-  const result = spawnSync("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
+function wranglerResult(environment, args, { authority, expectedScopes, spawn = spawnSync } = {}) {
+  const boundScopes = authorityOAuthScopes(authority, expectedScopes);
+  const accountId = authority.cloudflare.account_id;
+  const configPath =
+    environment?.[WRANGLER_OAUTH_CONFIG_ENV] ?? wranglerOAuthConfigPath(environment);
+  refreshWranglerOAuthReadback({
+    configPath,
+    environment,
+    accountId,
+    expectedScopes: boundScopes,
+    spawn,
+  });
+  const result = spawn("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
     cwd: ROOT,
-    env: environment,
+    env: wranglerOAuthChildEnvironment(configPath, environment, spawn),
     encoding: "utf8",
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
@@ -1466,38 +1870,25 @@ function assertExactAccountReadback(bytes, authority) {
     fail("Cloudflare account readback was not an exact successful response");
 }
 
-async function cloudflareApiResponse(environment, authority, path) {
-  let response;
-  try {
-    response = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${authority.cloudflare.account_id}${path}`,
-      {
-        headers: { Authorization: `Bearer ${environment.CLOUDFLARE_API_TOKEN}` },
-        method: "GET",
-        redirect: "error",
-      },
-    );
-  } catch {
-    fail("Cloudflare API readback transport failed with redacted output");
-  }
-  let body;
-  try {
-    body = await response.json();
-  } catch {
-    fail("Cloudflare API readback was not exact JSON");
-  }
-  return {
-    bytes: JSON.stringify({ body, status: response.status }),
-    trustedDate: response.headers.get("date"),
-  };
-}
-
-async function cloudflareApiReadback(environment, authority, path) {
-  return (await cloudflareApiResponse(environment, authority, path)).bytes;
-}
-
-async function cloudflareWorkflowInventoryReadback(environment, authority) {
-  return cloudflareApiReadback(environment, authority, WORKFLOW_INVENTORY_PATH);
+async function cloudflareWorkflowInventoryReadback(
+  environment,
+  authority,
+  { fetchImpl = fetch, spawn = spawnSync, expectedScopes } = {},
+) {
+  const boundScopes = authorityOAuthScopes(authority, expectedScopes);
+  const configPath =
+    environment?.[WRANGLER_OAUTH_CONFIG_ENV] ?? wranglerOAuthConfigPath(environment);
+  return (
+    await cloudflareOAuthApiResponse({
+      configPath,
+      environment,
+      accountId: authority.cloudflare.account_id,
+      path: WORKFLOW_INVENTORY_PATH,
+      fetchImpl,
+      spawn,
+      expectedScopes: boundScopes,
+    })
+  ).bytes;
 }
 
 function assertCompleteSinglePage(body, count, label) {
@@ -1659,10 +2050,53 @@ function assertDisabledVersionReadback(
   return true;
 }
 
-async function routeReadback(authority) {
+async function absentRouteReadback(
+  authority,
+  { publicOrigin = authority.cloudflare.public_origin, fetchImpl = fetch } = {},
+) {
   let response;
   try {
-    response = await fetch(`${authority.cloudflare.public_origin}/api/v2/hosted/status`, {
+    response = await fetchImpl(`${publicOrigin}/api/v2/hosted/status`, {
+      method: "GET",
+      redirect: "error",
+    });
+  } catch {
+    fail("production absent-route readback transport failed with redacted output");
+  }
+  let bytes;
+  try {
+    bytes = Buffer.from(await response.arrayBuffer());
+  } catch {
+    fail("production absent-route readback body was unavailable");
+  }
+  return Object.freeze({
+    status: response.status,
+    bodySha256: sha256(bytes),
+    bodyLength: bytes.length,
+    contentType: response.headers?.get?.("content-type") ?? null,
+  });
+}
+
+function assertAbsentRouteReadback(readback, authority) {
+  if (
+    readback === null ||
+    typeof readback !== "object" ||
+    readback.status !== 404 ||
+    readback.bodyLength !== authority.cloudflare.pre_mutation_route_body_length ||
+    readback.contentType !== authority.cloudflare.pre_mutation_route_content_type ||
+    readback.bodySha256 !== authority.cloudflare.pre_mutation_route_readback_sha256
+  )
+    fail("unconfigured production route is not the exact absent 404 readback");
+  return true;
+}
+
+async function routeReadback(
+  authority,
+  { publicOrigin = authority.cloudflare.public_origin } = {},
+) {
+  let response;
+  try {
+    response = await fetch(`${publicOrigin}/api/v2/hosted/status`, {
       method: "GET",
       redirect: "error",
     });
@@ -1679,52 +2113,133 @@ async function routeReadback(authority) {
 }
 
 async function assertQuarantineRoute(authority, configured) {
+  if (!configured) {
+    assertAbsentRouteReadback(await absentRouteReadback(authority), authority);
+    return;
+  }
   const readback = JSON.parse(await routeReadback(authority));
-  if (configured) {
-    if (
-      readback.status !== 200 ||
-      readback.body?.schema_version !== "videoforge-hosted-status/v1" ||
-      readback.body?.commit !== authority.release.commit ||
-      readback.body?.gpu_transport !== "DISABLED_UNQUALIFIED"
-    )
-      fail("configured quarantine route is not exact disabled status");
-  } else if (
-    readback.status !== 503 ||
-    readback.body?.error?.code !== "HOSTED_CONFIGURATION_INVALID" ||
-    readback.body?.error?.retryable !== false
+  if (
+    readback.status !== 200 ||
+    readback.body?.schema_version !== "videoforge-hosted-status/v1" ||
+    readback.body?.commit !== authority.release.commit ||
+    readback.body?.gpu_transport !== "DISABLED_UNQUALIFIED"
   )
-    fail("unconfigured quarantine route is not exact fail-closed status");
+    fail("configured quarantine route is not exact disabled status");
 }
 
-async function cloudflareReadOnlyPreflight(authority, environment) {
-  const accountResponse = await cloudflareApiResponse(environment, authority, "");
+async function assertQualifiedRoute(
+  authority,
+  { publicOrigin = authority.cloudflare.public_origin, fetchImpl = fetch } = {},
+) {
+  let response;
+  try {
+    response = await fetchImpl(`${publicOrigin}/api/v2/hosted/status`, {
+      method: "GET",
+      redirect: "error",
+    });
+  } catch {
+    fail("qualified production route readback transport failed with redacted output");
+  }
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    fail("qualified production route readback was not exact JSON");
+  }
+  if (
+    response.status !== 200 ||
+    body?.schema_version !== "videoforge-hosted-status/v1" ||
+    body?.commit !== authority.release.commit ||
+    body?.gpu_transport !== "QUALIFIED_EXACT"
+  )
+    fail("qualified production route is not exact enabled status");
+  return true;
+}
+
+async function cloudflareOAuthReadOnlyPreflight(
+  authority,
+  {
+    configPath,
+    environment = process.env,
+    fetchImpl = fetch,
+    spawn = spawnSync,
+    expectedScopes,
+  } = {},
+) {
+  const protectedConfigPath = resolve(configPath ?? wranglerOAuthConfigPath(environment));
+  if (
+    sha256(Buffer.from(protectedConfigPath)) !==
+    authority.cloudflare.wrangler_oauth_config_path_sha256
+  )
+    fail("Cloudflare Wrangler OAuth config path changed from approved authority");
+  const boundScopes = authorityOAuthScopes(authority, expectedScopes);
+  const origin = await readCloudflareWorkersDevOrigin({
+    configPath: protectedConfigPath,
+    environment,
+    accountId: authority.cloudflare.account_id,
+    workerName: authority.cloudflare.worker_name,
+    fetchImpl,
+    spawn,
+    expectedScopes: boundScopes,
+  });
+  assertTrustedAuthorityTime(authority, origin.trustedDate);
+  if (origin.publicOrigin !== authority.cloudflare.public_origin)
+    fail("Cloudflare workers.dev origin changed from approved authority");
+  if (
+    origin.accountSubdomain !== authority.cloudflare.workers_dev_subdomain ||
+    origin.subdomainReadbackSha256 !== authority.cloudflare.workers_dev_subdomain_readback_sha256
+  )
+    fail("Cloudflare workers.dev subdomain changed from approved authority");
+  const api = (path) =>
+    cloudflareOAuthApiResponse({
+      configPath: protectedConfigPath,
+      environment,
+      accountId: authority.cloudflare.account_id,
+      path,
+      fetchImpl,
+      spawn,
+      expectedScopes: boundScopes,
+    });
+  const accountResponse = await api("");
   assertTrustedAuthorityTime(authority, accountResponse.trustedDate);
   const account = accountResponse.bytes;
-  const absence = await cloudflareApiReadback(
-    environment,
-    authority,
-    `/workers/scripts/${authority.cloudflare.worker_name}`,
-  );
-  const workflows = await cloudflareWorkflowInventoryReadback(environment, authority);
-  const buckets = await cloudflareApiReadback(environment, authority, "/r2/buckets");
+  const absence = (await api(`/workers/scripts/${authority.cloudflare.worker_name}`)).bytes;
+  const workflows = (await api(WORKFLOW_INVENTORY_PATH)).bytes;
+  const buckets = (await api("/r2/buckets")).bytes;
   const inventories = validateAbsentInventoryReadbacks(authority, {
     account,
     absence,
     workflows,
     buckets,
   });
-  if (
-    sha256(await routeReadback(authority)) !==
-    authority.cloudflare.pre_mutation_route_readback_sha256
-  )
-    fail("production route changed from approved read-only preflight");
-  await assertQuarantineRoute(authority, false);
-  return inventories;
+  assertAbsentRouteReadback(
+    await absentRouteReadback(authority, { publicOrigin: origin.publicOrigin, fetchImpl }),
+    authority,
+  );
+  return Object.freeze({ ...inventories, ...origin });
 }
 
-function cloudflareSecretNames(configPath, environment) {
+async function cloudflareReadOnlyPreflight(
+  authority,
+  environment,
+  { oauthConfigPath, fetchImpl = fetch, spawn = spawnSync, expectedScopes } = {},
+) {
+  const configuredOAuthPath = oauthConfigPath ?? environment?.[WRANGLER_OAUTH_CONFIG_ENV];
+  return cloudflareOAuthReadOnlyPreflight(authority, {
+    configPath: configuredOAuthPath,
+    environment,
+    fetchImpl,
+    spawn,
+    expectedScopes,
+  });
+}
+
+function cloudflareSecretNames(configPath, environment, authority, { spawn = spawnSync } = {}) {
   const stdout = wrangler(environment, ["secret", "list", "--config", configPath], {
     capture: true,
+    authority,
+    expectedScopes: authorityOAuthScopes(authority),
+    spawn,
   });
   let value;
   try {
@@ -1806,7 +2321,7 @@ async function secretMutationTransaction({
   }
 }
 
-function renderAndDryRunConfig(args, environment, temporaryDirectory) {
+function renderAndDryRunConfig(args, environment, temporaryDirectory, authority) {
   const config = join(temporaryDirectory, "wrangler.production.activated.json");
   run(
     process.execPath,
@@ -1828,16 +2343,20 @@ function renderAndDryRunConfig(args, environment, temporaryDirectory) {
   run("pnpm", ["--filter", "@videoforge/web", "build:cloudflare"], {
     env: safeEnvironment(),
   });
-  wrangler(environment, [
-    "deploy",
-    "--dry-run",
-    "--outdir",
-    join(temporaryDirectory, "dry-run"),
-    "--config",
-    config,
-    "--x-auto-create",
-    "false",
-  ]);
+  wrangler(
+    environment,
+    [
+      "deploy",
+      "--dry-run",
+      "--outdir",
+      join(temporaryDirectory, "dry-run"),
+      "--config",
+      config,
+      "--x-auto-create",
+      "false",
+    ],
+    { authority, expectedScopes: authorityOAuthScopes(authority) },
+  );
   return config;
 }
 
@@ -1870,7 +2389,7 @@ function renderWorkflowBootstrapConfig(config, temporaryDirectory) {
 async function cloudflarePreflight(args, authority, environment) {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-preflight-"));
   try {
-    renderAndDryRunConfig(args, environment, directory);
+    renderAndDryRunConfig(args, environment, directory, authority);
     await cloudflareReadOnlyPreflight(authority, environment);
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -1889,7 +2408,7 @@ function readBackDisabledQuarantine(config, authority, environment, options) {
       "--config",
       config,
     ],
-    { capture: true },
+    { capture: true, authority, expectedScopes: authorityOAuthScopes(authority) },
   );
   const versionId = extractSingleActiveVersion(status);
   const version = wrangler(
@@ -1904,7 +2423,7 @@ function readBackDisabledQuarantine(config, authority, environment, options) {
       "--config",
       config,
     ],
-    { capture: true },
+    { capture: true, authority, expectedScopes: authorityOAuthScopes(authority) },
   );
   assertDisabledVersionReadback(version, authority, authority.release.commit, options);
   return versionId;
@@ -1919,19 +2438,23 @@ async function cloudflareActivation(args, authority, values, environment, databa
   let preflight;
   let finalDisabledVersionId = null;
   try {
-    config = renderAndDryRunConfig(args, environment, directory);
+    config = renderAndDryRunConfig(args, environment, directory, authority);
     bootstrapConfig = renderWorkflowBootstrapConfig(config, directory);
     preflight = await cloudflareReadOnlyPreflight(authority, environment);
     creationAttempted = true;
-    wrangler(environment, [
-      "deploy",
-      "--config",
-      bootstrapConfig,
-      "--message",
-      `videoforge-v2-13-workflow-bootstrap:${authority.release.commit}`,
-      "--x-auto-create",
-      "true",
-    ]);
+    wrangler(
+      environment,
+      [
+        "deploy",
+        "--config",
+        bootstrapConfig,
+        "--message",
+        `videoforge-v2-13-workflow-bootstrap:${authority.release.commit}`,
+        "--x-auto-create",
+        "true",
+      ],
+      { authority, expectedScopes: authorityOAuthScopes(authority) },
+    );
     await assertExactCreatedWorkflows(
       environment,
       authority,
@@ -1939,18 +2462,22 @@ async function cloudflareActivation(args, authority, values, environment, databa
       preflight.intendedWorkflows,
     );
     readBackDisabledQuarantine(bootstrapConfig, authority, environment, { requireR2: false });
-    await assertQuarantineRoute(authority, false);
-    if (cloudflareSecretNames(bootstrapConfig, environment).length !== 0)
+    await assertQuarantineRoute(authority, true);
+    if (cloudflareSecretNames(bootstrapConfig, environment, authority).length !== 0)
       fail("workflow bootstrap unexpectedly inherited secret bindings");
-    wrangler(environment, [
-      "deploy",
-      "--config",
-      config,
-      "--message",
-      `videoforge-v2-13-disabled-quarantine:${authority.release.commit}`,
-      "--x-auto-create",
-      "false",
-    ]);
+    wrangler(
+      environment,
+      [
+        "deploy",
+        "--config",
+        config,
+        "--message",
+        `videoforge-v2-13-disabled-quarantine:${authority.release.commit}`,
+        "--x-auto-create",
+        "false",
+      ],
+      { authority, expectedScopes: authorityOAuthScopes(authority) },
+    );
     readBackDisabledQuarantine(config, authority, environment);
     quarantineDeployed = true;
     await assertExactCreatedWorkflows(
@@ -1959,8 +2486,8 @@ async function cloudflareActivation(args, authority, values, environment, databa
       preflight.workflowNames,
       preflight.intendedWorkflows,
     );
-    await assertQuarantineRoute(authority, false);
-    if (cloudflareSecretNames(config, environment).length !== 0)
+    await assertQuarantineRoute(authority, true);
+    if (cloudflareSecretNames(config, environment, authority).length !== 0)
       fail("new quarantine unexpectedly inherited secret bindings");
     await databaseStage();
     await secretMutationTransaction({
@@ -1968,6 +2495,8 @@ async function cloudflareActivation(args, authority, values, environment, databa
       put(name) {
         wrangler(environment, ["secret", "put", name, "--config", config], {
           input: values.get(name),
+          authority,
+          expectedScopes: authorityOAuthScopes(authority),
         });
       },
       async afterPut() {
@@ -1981,31 +2510,38 @@ async function cloudflareActivation(args, authority, values, environment, databa
       },
       verify() {
         if (
-          JSON.stringify(cloudflareSecretNames(config, environment)) !==
+          JSON.stringify(cloudflareSecretNames(config, environment, authority)) !==
           JSON.stringify([...SECRET_NAMES].sort())
         )
           fail("Cloudflare secret-name post-readback is not the exact closed-world allowlist");
       },
       async deploy() {
-        wrangler(environment, [
-          "deploy",
-          "--config",
-          config,
-          "--message",
-          `videoforge-v2-13-disabled-with-secrets:${authority.release.commit}`,
-          "--x-auto-create",
-          "false",
-        ]);
+        wrangler(
+          environment,
+          [
+            "deploy",
+            "--config",
+            config,
+            "--message",
+            `videoforge-v2-13-disabled-with-secrets:${authority.release.commit}`,
+            "--x-auto-create",
+            "false",
+          ],
+          { authority, expectedScopes: authorityOAuthScopes(authority) },
+        );
         readBackDisabledQuarantine(config, authority, environment);
         await assertQuarantineRoute(authority, true);
         if (
-          JSON.stringify(cloudflareSecretNames(config, environment)) !==
+          JSON.stringify(cloudflareSecretNames(config, environment, authority)) !==
           JSON.stringify([...SECRET_NAMES].sort())
         )
           fail("final disabled version lost the exact secret-name set");
       },
       remove(name) {
-        wrangler(environment, ["secret", "delete", name, "--config", config, "--force"]);
+        wrangler(environment, ["secret", "delete", name, "--config", config, "--force"], {
+          authority,
+          expectedScopes: authorityOAuthScopes(authority),
+        });
       },
     });
   } catch (error) {
@@ -2014,15 +2550,19 @@ async function cloudflareActivation(args, authority, values, environment, databa
         await recoverQuarantineCreation({
           async verifyExactDisabled() {
             if (!quarantineDeployed) fail("quarantine deploy did not complete");
-            wrangler(environment, [
-              "deploy",
-              "--config",
-              config,
-              "--message",
-              `videoforge-v2-13-disabled-rollback:${authority.release.commit}`,
-              "--x-auto-create",
-              "false",
-            ]);
+            wrangler(
+              environment,
+              [
+                "deploy",
+                "--config",
+                config,
+                "--message",
+                `videoforge-v2-13-disabled-rollback:${authority.release.commit}`,
+                "--x-auto-create",
+                "false",
+              ],
+              { authority, expectedScopes: authorityOAuthScopes(authority) },
+            );
             readBackDisabledQuarantine(config, authority, environment);
             await assertExactCreatedWorkflows(
               environment,
@@ -2030,21 +2570,22 @@ async function cloudflareActivation(args, authority, values, environment, databa
               preflight.workflowNames,
               preflight.intendedWorkflows,
             );
-            await assertQuarantineRoute(authority, false);
-            if (cloudflareSecretNames(config, environment).length !== 0)
+            await assertQuarantineRoute(authority, true);
+            if (cloudflareSecretNames(config, environment, authority).length !== 0)
               fail("rollback quarantine retained a secret binding");
           },
           deleteWorker() {
-            wranglerResult(environment, [
-              "delete",
-              authority.cloudflare.worker_name,
-              "--config",
-              config,
-              "--force",
-            ]);
+            wranglerResult(
+              environment,
+              ["delete", authority.cloudflare.worker_name, "--config", config, "--force"],
+              { authority, expectedScopes: authorityOAuthScopes(authority) },
+            );
           },
           deleteWorkflow(name) {
-            wranglerResult(environment, ["workflows", "delete", name, "--config", config]);
+            wranglerResult(environment, ["workflows", "delete", name, "--config", config], {
+              authority,
+              expectedScopes: authorityOAuthScopes(authority),
+            });
           },
           intendedWorkflows: preflight.intendedWorkflows,
           verifyAbsent() {
@@ -2090,7 +2631,7 @@ async function main() {
     "user-approval-file",
     ...(execute
       ? [
-          "cloudflare-api-token-file",
+          "wrangler-oauth-config-file",
           "confirm",
           "evidence-output",
           "postgres-input-dir",
@@ -2106,7 +2647,7 @@ async function main() {
   }
   if (args.get("confirm") !== CONFIRMATION) fail(`--confirm must equal ${CONFIRMATION}`);
   for (const name of [
-    "cloudflare-api-token-file",
+    "wrangler-oauth-config-file",
     "evidence-output",
     "postgres-input-dir",
     "secret-input-dir",
@@ -2121,7 +2662,7 @@ async function main() {
   );
   consumeAuthorityOnce(authority, authorityBytes);
   // The database receipt, exact 45-row manifest, pgcrypto fingerprint, and operator ACL are
-  // verified before reading any Cloudflare token or application/runtime secret.
+  // verified before reading any Cloudflare OAuth credential or application/runtime secret.
   await verifyPrequalificationDatabase(authority, resolve(args.get("postgres-input-dir")));
   const evidenceBase = {
     schema_version: "videoforge-v2-13-guarded-activation-evidence/v1",
@@ -2139,7 +2680,7 @@ async function main() {
   };
   try {
     const cloudflareEnv = cloudflareEnvironment(
-      resolve(args.get("cloudflare-api-token-file")),
+      resolve(args.get("wrangler-oauth-config-file")),
       authority,
     );
     // All Cloudflare state/config/version reads run before the first database or secret mutation.
@@ -2192,11 +2733,19 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await mai
 
 export {
   assertFullLiveActivationBinding,
+  assertAbsentRouteReadback,
   assertDisabledVersionReadback,
+  assertQualifiedRoute,
+  assertWorkersDevOrigin,
   assertTrustedAuthorityTime,
   CONFIRMATION,
   consumeAuthorityOnce,
+  deriveWorkersDevOrigin,
   extractSingleActiveVersion,
+  cloudflareOAuthApiResponse,
+  cloudflareOAuthReadOnlyPreflight,
+  readCloudflareWorkersDevOrigin,
+  refreshWranglerOAuthReadback,
   SECRET_NAMES,
   plan,
   protectedSecrets,
@@ -2210,6 +2759,10 @@ export {
   validateAbsentInventoryReadbacks,
   validateAuthority,
   WORKFLOW_INVENTORY_PATH,
+  WORKERS_SUBDOMAIN_PATH,
+  WRANGLER_OAUTH_CONFIG_ENV,
+  APPROVED_WRANGLER_OAUTH_SCOPES,
+  wranglerOAuthConfigPath,
   workflowBootstrapConfig,
   readPrequalificationReceipt,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
