@@ -22,7 +22,7 @@
     "running_compute": 0,
     "retained_volumes": [
       {
-        "id_sha256": "sha256:2a8633e14bbec54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
         "size_gb": 50,
         "region": "EU-RO-1"
       },

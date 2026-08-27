@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-27T11:42:47Z"
+updated_at: "2026-08-27T12:19:00Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -27,7 +27,7 @@ current_goal_boundary:
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
   provider_free_product_action: "The exact rotation/normalization authority was consumed once and completed. It added one same-client Google secret, secured and hash-read it before disabling only the exposed old secret, and normalized only the two local R2 files. Preserve the exact resources/files and secret-free receipt; the authority is non-reusable. No further credential, provider, R2, RunPod, GPU, spend, retry, or redispatch action is authorized under this boundary."
-  note: "Source commit 3f7b588 remains the latest independently audited provider-free boundary. A fresh bounded read-only preflight at current HEAD proved zero Pods, endpoints, templates, active workers, GPU use, mutations, and spend; the same two exact retained 50 GB EU-RO-1 volumes remain. Provider-free repair now separates the USD 0.74/hour Secure Pod catalog rate from the official Serverless Flex rate of USD 0.00031/second (USD 1.116/GPU-hour), binds the stable account-derived production 404 HTML route, completed secret-free credential receipt, and active candidate path, and keeps the proposal BLOCKED_UNSEALED pending a new source commit and independent audit. The consumed credential authorities remain non-reusable. No deployment, publication, provider mutation, GPU use, or spend is authorized."
+  note: "Source commit 3f7b588 remains the latest independently audited provider-free boundary. A fresh bounded read-only preflight proved zero Pods, endpoints, templates, active workers, GPU use, mutations, and spend; the same two exact retained 50 GB EU-RO-1 volumes remain. Provider-free repair separates the USD 0.74/hour Secure Pod catalog rate from the official Serverless Flex rate of USD 0.00031/second (USD 1.116/GPU-hour), binds the stable account-derived production 404 HTML route, completed secret-free credential receipt, active candidate path, and both exact retained-volume identities across the proposal and preflight. The proposal remains BLOCKED_UNSEALED pending the repaired source commit and fresh independent audit. The consumed credential authorities remain non-reusable. No deployment, publication, provider mutation, GPU use, or spend is authorized."
 
 new_chat_handoff:
   status: PROVIDER_FREE_SOURCE_REPAIR_READY_FOR_COMMIT_AND_INDEPENDENT_AUDIT
@@ -114,9 +114,9 @@ provider_free_product_progress:
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json"
   fresh_v2_13_proposal_sha256: null
   fresh_v2_13_blocked_draft_sha256: "sha256:6b20b5079c3ea68e91aa2231798025bd3cef1608a61041ba9c9909774aed01d6"
-  fresh_v2_13_candidate_validator_sha256: "sha256:85e9598c1e1092769764a08c90494147a43c5311703d0da350438eaeda7feed5"
+  fresh_v2_13_candidate_validator_sha256: "sha256:5e745e3c3358d7c6c6c57bff74c0a2c1c9b4fe8ea10a9d36688b1db183ebec1b"
   fresh_v2_13_read_only_preflight_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/read-only-preflight.json"
-  fresh_v2_13_read_only_preflight_sha256: "sha256:c9ecc3b2e417f4139a0347a08230ab0212ce1d9326f603e412a56143a2fe2916"
+  fresh_v2_13_read_only_preflight_sha256: "sha256:20ba840472c659b6614ee899760b0ef73416fe22971dfea314843464f0969c8f"
   credential_bootstrap_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/combined-credential-bootstrap-proposal.json"
   credential_bootstrap_proposal_commit: "9106f9d6da9811a193824bc5e0d8104712fca415"
   credential_bootstrap_proposal_sha256: "sha256:48bf5c7bb7304630eb3744b038fea7b7a11a53878bd1a18d94768c6f0e96e0ab"
@@ -331,7 +331,7 @@ provider_free_product_progress:
   remaining_live_blockers:
     - mage_live_qualification
     - soulx_live_qualification
-  batch3_through_batch6_note: "Provider-free source commit 3f7b588 is independently audited (42/42) through migration 0045, including the receipt/restart/seed and OAuth-scope repairs. The exact hash-bound SoulX full/split renderer profile remains visually approved and provider-free active. Proposal sha256:9425de8e...899a and authority 67f6fb2 are superseded unconsumed before mutation; 45894ac0/ec38849 and authority 59dfe8a are also superseded unconsumed. The exact rotation/normalization proposal sha256:76f14ae2...2c73 was completed once at 58ad5cd5; result and receipt hashes are recorded above, and its authority is non-reusable. Successor draft sha256:8f2b5514...5b7248 remains BLOCKED_UNSEALED pending fresh full-live proposal-record audit, exact approval, and separate deployment/origin gates. Production remains DISABLED_UNQUALIFIED and undeployed."
+  batch3_through_batch6_note: "Provider-free source commit 3f7b588 is independently audited (42/42) through migration 0045, including the receipt/restart/seed and OAuth-scope repairs. The exact hash-bound SoulX full/split renderer profile remains visually approved and provider-free active. Proposal sha256:9425de8e...899a and authority 67f6fb2 are superseded unconsumed before mutation; 45894ac0/ec38849 and authority 59dfe8a are also superseded unconsumed. The exact rotation/normalization proposal sha256:76f14ae2...2c73 was completed once at 58ad5cd5; result and receipt hashes are recorded above, and its authority is non-reusable. Active successor draft sha256:6b20b507...ed01d6 remains BLOCKED_UNSEALED pending fresh source audit, reseal, proposal-record audit, and exact approval. Production remains DISABLED_UNQUALIFIED and undeployed."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
   focused_v2_12_tests: 14_pass
@@ -4451,7 +4451,7 @@ recommended_next_task:
   authority_note: "Attempt64 remains consumed/non-reusable. The 2e6a605d/9eaf276 and 45894ac0/ec38849 V2-13 approvals plus 59dfe8a authority are superseded unconsumed before mutation. Current source 3f7b588 is independently audited 42/42 provider-free. Existing-project reuse authority v2-13-credential-bootstrap-reuse-20260827-082652z-90d6b19d was consumed once and stopped after exact resource creation; result and incident hashes are recorded above. Rotation/normalization proposal sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73 at 1845be6c852654c8396f2973981733ce64a3d2d0 was then approved and completed once under authority v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2; result sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6 and receipt sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab are recorded above. Preserve resources/files; no further credential/provider/R2 mutation, retry, redispatch, rollback, disablement, or further API action is authorized under the consumed authority."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:8f2b55141d0150e1aa60a954bad1bde3f278ce0e428e961580b66fc8bb5b7248"
+  successor_proposal_sha256: "sha256:6b20b5079c3ea68e91aa2231798025bd3cef1608a61041ba9c9909774aed01d6"
   superseded_proposal_sha256: "sha256:45894ac0b7648d3e9e48357a13c270d2cbbe7e65120fe425f4b449d00601aaca"
   superseded_authority_id: v2-13-full-live-20260827-020135z-7444ed0
   superseded_authority_record_commit: 59dfe8a763abe947a53f66e734b967e5310fad61

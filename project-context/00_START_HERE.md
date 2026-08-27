@@ -119,22 +119,19 @@ the early no-database path uses only request and RunPod inputs and never claims 
 path loads the normal production input, guarded roles, endpoint identities, or signing/key-registration inputs. Seed validation recursively rejects endpoint
 identity case variants and future hashes; max-one materialization writes the four guarded endpoint
 secret files and rebinds all 22 secret hashes. Repaired source `7444ed0` is the prior provider-free
-audited baseline; current source `3f7b588` is independently audited. The replacement proposal
+audited baseline; source `3f7b588` passed its independent audit before the later Cloudflare boundary
+finding. The replacement proposal
 `sha256:45894ac0…01aaca` was resealed against the prior source; its fresh authority `59dfe8a` is
-superseded unconsumed with no mutation after the Cloudflare boundary audit. The successor draft
+superseded unconsumed with no mutation after the Cloudflare boundary audit. The active successor draft
 `2026-08-27-cloudflare-credential-origin-repair-candidate` is `PASS_BLOCKED_UNSEALED`
-(`sha256:8f2b5514…5b7248`) pending Google OAuth and R2 credential identities/scope hashes and a
-fresh proposal-record audit and exact approval.
+(`sha256:6b20b507…ed01d6`). Its protected Google OAuth and R2 credential identities and scope hashes
+are receipt-bound and verified; the receipt is complete and non-reusable. The repaired source still
+requires a fresh independent source audit, reseal, proposal-record audit, and exact approval.
 It requires protected Wrangler OAuth only (no raw API-token file or `CLOUDFLARE_API_TOKEN` export),
 authenticated account and workers.dev subdomain derivation, exact absent HTTP 404
-`text/plain; charset=UTF-8`
-body/hash before creation (not 503 JSON), then HTTP 200 `DISABLED_UNQUALIFIED` and `QUALIFIED_EXACT`
-reads. It requires pre-existing protected Google OAuth WEB client and least-privilege R2 S3
-credential readbacks; creating or rotating them is outside the full-live graph and needs a separate
-fresh credential-bootstrap proposal. The current authenticated Google project picker has zero
-accessible projects, so new project/client access requires fresh explicit authority; the inaccessible
-`videoforge-v2-06-staging-0817` project cannot be reused. No fresh approval or executable authority
-exists. Both lanes require fresh
+`text/html; charset=UTF-8` body of 19,984 bytes with `sha256:2000e6b2…580976` before creation (not
+503 JSON), then HTTP 200 `DISABLED_UNQUALIFIED` and `QUALIFIED_EXACT` reads. No fresh approval or
+executable authority exists. Both lanes require fresh
 immutable images, sealed deployment snapshots, dual live qualification, and that new single-use
 approval.
 Provider/deployment/credential/GPU/spend authority remains false with a `$0` executable cap, and no

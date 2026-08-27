@@ -120,7 +120,7 @@ const EXPECTED_R2_SECRET_ACCESS_KEY_SHA256 =
 const EXPECTED_MAGE_VOLUME_ID_SHA256 =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const EXPECTED_SOULX_VOLUME_ID_SHA256 =
-  "sha256:2a8633e14bbec54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
+  "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
 assert(
   readOnlyPreflight.schema_version === "videoforge.v2-13-full-live-read-only-preflight/v1" &&
     readOnlyPreflight.checkpoint === "V2-13" &&
@@ -565,12 +565,44 @@ assert(
     scope.retention.volume_count === 2 &&
     scope.retention.size_gb_each === 50 &&
     scope.retention.region === "EU-RO-1" &&
+    scope.retention.mage_volume_id_sha256 === EXPECTED_MAGE_VOLUME_ID_SHA256 &&
+    scope.retention.soulx_volume_id_sha256 === EXPECTED_SOULX_VOLUME_ID_SHA256 &&
     scope.retention.combined_recurring_usd_per_month === 7 &&
     scope.retention.recurring_charge_separate_from_finite_cap === true &&
     scope.retention.new_volume_or_paid_retained_resource_authorized === false &&
     scope.retention.resize_move_replace_or_add_authorized === false &&
     scope.retention.recurring_plan_change_authorized === false,
   "RETENTION_SCOPE",
+);
+const proposalPreflight = scope.read_only_preflight_binding;
+assert(
+  proposalPreflight.authority_mode === "BOUNDED_READ_ONLY_PREFLIGHT" &&
+    proposalPreflight.remote_mutation_authorized === false &&
+    proposalPreflight.deployment_authorized === false &&
+    proposalPreflight.gpu_use_authorized === false &&
+    proposalPreflight.external_spend_authorized_usd === 0 &&
+    proposalPreflight.runpod_account_id_sha256 === readOnlyRunpod.account_id_sha256 &&
+    proposalPreflight.pods === 0 &&
+    proposalPreflight.endpoints === 0 &&
+    proposalPreflight.private_templates === 0 &&
+    proposalPreflight.active_serverless_workers === 0 &&
+    proposalPreflight.running_compute === 0 &&
+    JSON.stringify(proposalPreflight.retained_volumes) ===
+      JSON.stringify(readOnlyRunpod.retained_volumes) &&
+    proposalPreflight.exact_gpu === readOnlyRunpod.exact_gpu &&
+    proposalPreflight.region === readOnlyRunpod.region &&
+    proposalPreflight.availability === readOnlyRunpod.availability &&
+    proposalPreflight.secure_pod_catalog_rate_usd_per_gpu_hour ===
+      readOnlyRunpod.secure_pod_catalog_rate_usd_per_gpu_hour &&
+    proposalPreflight.secure_pod_rate_is_serverless_flex_rate === false &&
+    proposalPreflight.serverless_flex_rate_usd_per_second ===
+      EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_SECOND &&
+    proposalPreflight.serverless_flex_rate_usd_per_gpu_hour ===
+      EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR &&
+    proposalPreflight.serverless_rate_source === readOnlyRunpod.serverless_rate_source &&
+    proposalPreflight.fallback_authorized === false &&
+    proposalPreflight.zero_compute_confirmed === true,
+  "READ_ONLY_PREFLIGHT_PROPOSAL_BINDING",
 );
 
 const cloudflareCredentials = scope.cloudflare_credential_scope;

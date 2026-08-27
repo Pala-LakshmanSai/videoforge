@@ -13,21 +13,25 @@ const sourceDirectory = path.join(
 );
 const validatorName = "validate-candidate.mjs";
 
-async function runMutation(mutate) {
+async function runMutation(mutateProposal, mutatePreflight = () => {}) {
   const directory = await mkdtemp(path.join(tmpdir(), "videoforge-v213-cloudflare-proposal-"));
   try {
     const proposal = JSON.parse(
       await readFile(path.join(sourceDirectory, "combined-live-proposal.json"), "utf8"),
     );
-    mutate(proposal);
+    const preflight = JSON.parse(
+      await readFile(path.join(sourceDirectory, "read-only-preflight.json"), "utf8"),
+    );
+    mutateProposal(proposal);
+    mutatePreflight(preflight);
     await writeFile(
       path.join(directory, "combined-live-proposal.json"),
       `${JSON.stringify(proposal, null, 2)}\n`,
     );
     await cp(path.join(sourceDirectory, validatorName), path.join(directory, validatorName));
-    await cp(
-      path.join(sourceDirectory, "read-only-preflight.json"),
+    await writeFile(
       path.join(directory, "read-only-preflight.json"),
+      `${JSON.stringify(preflight, null, 2)}\n`,
     );
     const result = spawnSync(process.execPath, [path.join(directory, validatorName)], {
       cwd: root,
@@ -172,4 +176,23 @@ test("blocked successor binds the owner-only receipt verifier across staged and 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, expected);
   }
+});
+
+test("blocked successor cross-binds both exact retained volume hashes to read-only evidence", async () => {
+  const proposalResult = await runMutation((proposal) => {
+    proposal.requested_scope.retention.soulx_volume_id_sha256 =
+      "sha256:2a8633e14bbec54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
+  });
+  assert.notEqual(proposalResult.status, 0);
+  assert.match(proposalResult.stderr, /RETENTION_SCOPE/u);
+
+  const preflightResult = await runMutation(
+    () => {},
+    (preflight) => {
+      preflight.runpod.retained_volumes[0].id_sha256 =
+        "sha256:2a8633e14bbec54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
+    },
+  );
+  assert.notEqual(preflightResult.status, 0);
+  assert.match(preflightResult.stderr, /READ_ONLY_PREFLIGHT_RUNPOD/u);
 });
