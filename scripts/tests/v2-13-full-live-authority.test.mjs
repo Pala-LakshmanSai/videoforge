@@ -1067,7 +1067,16 @@ test("successor candidate validates its exact lifecycle gate and supersedes the 
     ["PASS_BLOCKED_UNSEALED", "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL"].includes(result.status),
   );
   assert.equal(result.authority, "ABSENT");
-  assert.equal(result.superseded_authority_id, "v2-13-full-live-20260827-020135z-7444ed0");
+  const activeProposal = JSON.parse(
+    readFileSync(
+      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+    ),
+  );
+  assert.equal(result.superseded_authority_id, activeProposal.supersession.superseded_authority_id);
+  assert.equal(
+    result.superseded_proposal_sha256,
+    activeProposal.supersession.supersedes_proposal_sha256,
+  );
 });
 
 test("V3 proposal binds the exact 22-name Cloudflare secret allowlist", () => {
