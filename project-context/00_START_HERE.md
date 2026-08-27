@@ -22,6 +22,9 @@ adapters `sha256:f12c92a60ac4f3458f74deacc1f6ed6852f854dd70f674a2c1ef73794b25fd6
 `sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44`. This is source/test
 proof only. Production remains `DISABLED_UNQUALIFIED`; migrations/grants/config are undeployed,
 and no production secrets or database roles are provisioned.
+The separate zero-cost Google OAuth/R2 credential-bootstrap proposal is sealed and independently
+audited at commit `9106f9d` with SHA-256 `48bf5c7b…e96e0ab`; authority is absent, so no project,
+OAuth client, R2 credential, provider mutation, GPU use, or spend occurred.
 The blocked replacement proposal now closes a 25-operation graph by placing zero-cap
 `record-workflow-start-authority` after promotion and before V2-09, and binds full receipt/ACL/public-
 revoke readback, guarded receipt verification before secret reads, durable billing, and a separate

@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Complete the separate Google OAuth and R2 least-privilege credential bootstrap, bind exact identities/scope hashes into the successor, then obtain a fresh proposal-record audit and exact approval. Do not reuse superseded 45894ac0/ec38849 or 59dfe8a authority."
-  note: "Source commit 3f7b588 is independently audited provider-free (42/42 checks), but the successor draft remains BLOCKED_UNSEALED because Google OAuth and R2 credential identities/scope hashes and fresh approval are absent. Until fresh source-bound proposal and approval are recorded, provider calls, remote mutation, GPU use, deployment, and spend remain unauthorized."
+  provider_free_product_action: "Obtain fresh exact approval of credential-bootstrap proposal sha256:48bf5c7b...e96e0ab at commit 9106f9d before creating the one Google project/client or one bucket-scoped R2 credential; then bind readback hashes into the full-live successor. Do not reuse superseded 45894ac0/ec38849 or 59dfe8a authority."
+  note: "Source commit 3f7b588 is independently audited provider-free (42/42 checks). The separate zero-cost credential-bootstrap proposal is sealed and independently audited at commit 9106f9d, but authority remains absent; the full-live successor remains BLOCKED_UNSEALED until credential identities/scope hashes and fresh full-live approval are bound."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -95,6 +95,10 @@ provider_free_product_progress:
   fresh_v2_13_proposal_sha256: null
   fresh_v2_13_blocked_draft_sha256: "sha256:8f2b55141d0150e1aa60a954bad1bde3f278ce0e428e961580b66fc8bb5b7248"
   fresh_v2_13_candidate_validator_sha256: "sha256:1acf937a92894469b7ff4b23ba982f4bc91d05862973a77791d7281f6102a434"
+  credential_bootstrap_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/combined-credential-bootstrap-proposal.json"
+  credential_bootstrap_proposal_commit: "9106f9d6da9811a193824bc5e0d8104712fca415"
+  credential_bootstrap_proposal_sha256: "sha256:48bf5c7bb7304630eb3744b038fea7b7a11a53878bd1a18d94768c6f0e96e0ab"
+  credential_bootstrap_status: PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL
   fresh_v2_13_audited_source_commit: "3f7b588de4b96da7c1e56b6c1908df7381712710"
   fresh_v2_13_audit_status: PASS_42_OF_42_INDEPENDENT_PROVIDER_FREE
   fresh_v2_13_release_source_commit: null
