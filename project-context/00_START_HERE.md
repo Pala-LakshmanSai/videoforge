@@ -10,22 +10,18 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-Provider-free successor source is now independently audited through durable lane batches and
-migration 0041 (`0f73d81`), authenticated worker envelopes (`9ef6efa`), atomic two-lane predispatch
-and migration 0042 (`120b6b8`), pair runtime transitions and migration 0043 (`941176f`), fail-closed
-production/recovery composition (`3d1b439`), and the guarded Workflow plus zero-worker evidence
-migration 0044 (`4239be9`). Source commit `7444ed0` is the current provider-free release source; it
-includes the independently audited default-no-op full-live executor and migration 0045: exact protected-input preflight, DB authority registration, staged
-Mage/SoulX qualification, immutable max1 deployments, qualified Cloudflare promotion, V2-09 terminal
-output/Chrome/cost acceptance, V2-10 through V2-13 acceptance, encrypted handoff escrow, and exact
-crash-safe cleanup. Repair commit `a8521f8` adds the zero-cap
+Provider-free successor source is now independently audited at `3f7b588de4b96da7c1e56b6c1908df7381712710`
+(42/42 checks; default entrypoints remain no-op). It includes the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
-`fresh-live-preflight`, with exact 36-to-45 recovery modes, pgcrypto/migrations 0045, a fresh
-operator-only role, protected receipt CAS, and no runtime/reconciler roles or provider calls during
-bootstrap. Its split bridge admits only request, RunPod key, and operator DB seams for fresh
-preflight; full runtime inputs are staged only after the verified bootstrap receipt. This is
-source/test proof only. Production remains `DISABLED_UNQUALIFIED`;
-migrations/grants/config are undeployed, and no production secrets or database roles are provisioned.
+`fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
+credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. Current
+source component hashes are: executor `sha256:5dd84bf8594c4dd19b907eea11798d956b5693c244d0abc1c926f81883338186`,
+adapters `sha256:f12c92a60ac4f3458f74deacc1f6ed6852f854dd70f674a2c1ef73794b25fd65`, orchestration
+`sha256:586f5a28969d2b2ea406d490b781472e69b7c960d0437475fbe787bab39ed789`, approval validator
+`sha256:dc245da0167bb589224533ba38e255818dac9e880cd992fc58db10b2b892e664`, and guarded activation
+`sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44`. This is source/test
+proof only. Production remains `DISABLED_UNQUALIFIED`; migrations/grants/config are undeployed,
+and no production secrets or database roles are provisioned.
 The blocked replacement proposal now closes a 25-operation graph by placing zero-cap
 `record-workflow-start-authority` after promotion and before V2-09, and binds full receipt/ACL/public-
 revoke readback, guarded receipt verification before secret reads, durable billing, and a separate
@@ -46,10 +42,12 @@ the early no-database path uses only request and RunPod inputs and never claims 
 path loads the normal production input, guarded roles, endpoint identities, or signing/key-registration inputs. Seed validation recursively rejects endpoint
 identity case variants and future hashes; max-one materialization writes the four guarded endpoint
 secret files and rebinds all 22 secret hashes. Repaired source `7444ed0` is the prior provider-free
-audited baseline and the replacement proposal `sha256:45894ac0…01aaca` was resealed against that
-source; its fresh authority `59dfe8a` is now superseded unconsumed with no mutation after the
-Cloudflare boundary audit. The successor draft `2026-08-27-cloudflare-credential-origin-repair-candidate`
-is `PASS_BLOCKED_UNSEALED` (`sha256:8f2b5514…5b7248`) with source/component/identity hashes pending.
+audited baseline; current source `3f7b588` is independently audited. The replacement proposal
+`sha256:45894ac0…01aaca` was resealed against the prior source; its fresh authority `59dfe8a` is
+superseded unconsumed with no mutation after the Cloudflare boundary audit. The successor draft
+`2026-08-27-cloudflare-credential-origin-repair-candidate` is `PASS_BLOCKED_UNSEALED`
+(`sha256:8f2b5514…5b7248`) pending Google OAuth and R2 credential identities/scope hashes and a
+fresh proposal-record audit and exact approval.
 It requires protected Wrangler OAuth only (no raw API-token file or `CLOUDFLARE_API_TOKEN` export),
 authenticated account and workers.dev subdomain derivation, exact absent HTTP 404
 `text/plain; charset=UTF-8`
