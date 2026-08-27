@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-13-credential-bootstrap-attempt/v1",
+  "checkpoint": "V2-13",
+  "task_id": "VF-10-13-CREDENTIAL-BOOTSTRAP",
+  "attempt": 1,
+  "result": "BLOCKED_UNCONSUMED_NO_MUTATION",
+  "proposal_sha256": "sha256:48bf5c7bb7304630eb3744b038fea7b7a11a53878bd1a18d94768c6f0e96e0ab",
+  "proposal_commit": "9106f9d6da9811a193824bc5e0d8104712fca415",
+  "exact_user_approval_received": true,
+  "executable_authority_created": false,
+  "authority_consumed": false,
+  "authority_reusable": false,
+  "recorded_at": "2026-08-27T04:54:13Z",
+  "failure_code": "GOOGLE_PROJECT_QUOTA_EXHAUSTED",
+  "failure_stage": "credential-bootstrap-google-project-create-one-preflight-before-mutation",
+  "failure_detail": "The authenticated Google Cloud console reported that the account had reached its project limit and offered a project-limit increase request. The request was not submitted.",
+  "provider_calls": 0,
+  "provider_mutations": 0,
+  "credential_access": 0,
+  "gpu_use": false,
+  "external_spend_usd": 0,
+  "google_preflight": {
+    "authenticated_account_sha256": "sha256:a7bca06b10386403d2757a5c78b397fb5722e0383bcd72cf9f29259e073bfcc7",
+    "accessible_project_count_observed": 6,
+    "requested_project_id": "videoforge-v2-13-prod-0827",
+    "requested_project_id_sha256": "sha256:dec1ba2d31aa2997cf103c25d6869a98c18d4523cf080aa911fab85a95415376",
+    "project_create_form_reached": true,
+    "project_create_submitted": false,
+    "quota_increase_requested": false,
+    "alternate_project_authorized": false
+  },
+  "ordered_graph": {
+    "first_blocked_operation": "credential-bootstrap-google-project-create-one",
+    "operations_not_started": [
+      "credential-bootstrap-google-oauth-web-client-create-one",
+      "credential-bootstrap-r2-s3-token-create-one",
+      "credential-bootstrap-protected-storage-write",
+      "credential-bootstrap-exact-readback-and-receipt"
+    ],
+    "r2_creation_out_of_order": false
+  },
+  "execution": {
+    "google_read_only_preflight_interactions": 1,
+    "google_project_mutations": 0,
+    "google_oauth_clients_created": 0,
+    "cloudflare_r2_read_or_mutation_calls": 0,
+    "cloudflare_r2_credentials_created": 0,
+    "protected_credential_file_writes": 0,
+    "credential_values_accessed": 0,
+    "runpod_calls": 0,
+    "gpu_hours": 0,
+    "external_spend_usd": 0
+  },
+  "cleanup": {
+    "required": false,
+    "reason": "No remote mutation, credential access, or local protected-file write began.",
+    "temporary_compute_started": false,
+    "temporary_compute_drain_required": false
+  },
+  "next_boundary": "Resolve Google project quota or provide a fresh exact replacement proposal and approval; do not submit a quota increase, delete a project, reuse another project, create an OAuth client, create an R2 credential, or write credential files under this blocked approval."
+}
