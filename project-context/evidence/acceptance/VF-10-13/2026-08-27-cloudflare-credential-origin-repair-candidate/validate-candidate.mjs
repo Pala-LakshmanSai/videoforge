@@ -121,7 +121,7 @@ const EXPECTED_MAGE_VOLUME_ID_SHA256 =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const EXPECTED_SOULX_VOLUME_ID_SHA256 =
   "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
-const EXPECTED_RELEASE_SOURCE_COMMIT = "5da33e88e0e2a5cf663987c2d4fff651188efe9d";
+const EXPECTED_RELEASE_SOURCE_COMMIT = "dd5549509dcbe89d31f56517ebc96f50ee6c2a70";
 const EXPECTED_RELEASE_COMPONENT_HASHES = Object.freeze({
   full_live_executor:
     "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5",
@@ -1064,7 +1064,11 @@ assert(
 assert(JSON.stringify(proposal.exact_execution_graph.ordered_operation_ids) === JSON.stringify(operations), "EXACT_25_OPS");
 assert(proposal.exact_execution_graph.operation_order_is_closed_and_non_reorderable === true, "CLOSED_OPS");
 assert(proposal.exact_execution_graph.missing_extra_or_repeated_operation_is_a_hard_stop === true, "OP_REPLAY_STOP");
-assert(proposal.immutable_github_release_ref_request.exact_target_commit === null, "TARGET_PENDING");
+assert(
+  proposal.immutable_github_release_ref_request.exact_target_commit ===
+    EXPECTED_RELEASE_SOURCE_COMMIT,
+  "TARGET_SOURCE_BOUND",
+);
 assert(proposal.immutable_github_release_ref_request.other_ref_creation_authorized === false, "REF_SCOPE");
 assert(
   proposal.approval_request.requested_maximum_cumulative_finite_runpod_spend_usd === 17.5 &&

@@ -26,8 +26,8 @@
     "fresh_exact_approval_required": true
   },
   "source": {
-    "release_source_commit": "5da33e88e0e2a5cf663987c2d4fff651188efe9d",
-    "repaired_release_source_commit": "5da33e88e0e2a5cf663987c2d4fff651188efe9d",
+    "release_source_commit": "dd5549509dcbe89d31f56517ebc96f50ee6c2a70",
+    "repaired_release_source_commit": "dd5549509dcbe89d31f56517ebc96f50ee6c2a70",
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
     "future_authority_record_commit": null,
@@ -92,7 +92,7 @@
     },
     "pending_source_contract": {
       "status": "SOURCE_BOUND_AUDITED",
-      "release_source_commit": "5da33e88e0e2a5cf663987c2d4fff651188efe9d",
+      "release_source_commit": "dd5549509dcbe89d31f56517ebc96f50ee6c2a70",
       "release_component_sha256s": {
         "full_live_executor": "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5",
         "full_live_adapters": "sha256:0a2b929507609d0709cb0262b757e537576c3b9af192681548fd78a357ac5437",
@@ -1247,7 +1247,7 @@
     "creation_requested": true,
     "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-    "exact_target_commit": null,
+    "exact_target_commit": "dd5549509dcbe89d31f56517ebc96f50ee6c2a70",
     "tag_kind": "LIGHTWEIGHT",
     "maximum_new_refs": 1,
     "force_update_authorized": false,
