@@ -2,6 +2,37 @@
 
 ## Active handoff — read this section first
 
+### New-chat launch point — 2026-08-27
+
+- Start from the current clean Git `HEAD`; the independently audited provider-free full-live source
+  remains `3f7b588de4b96da7c1e56b6c1908df7381712710` and all production entrypoints remain fail-closed/no-op.
+- Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
+  protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
+  Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
+  part of the next task.
+- Production is still `DISABLED_UNQUALIFIED`. Migrations 0037–0045, the three production database
+  roles, Cloudflare Worker/Workflows, immutable Mage/SoulX images, max-one RunPod lanes, and live
+  acceptance have not been activated under a current full-live authority.
+- The next task is provider-free first: reseal the full-live proposal against the current clean source,
+  completed credential receipt, exact provider identities/rates/inventory, and the existing two retained
+  50 GB EU-RO-1 volumes; obtain a fresh independent audit and exact user approval before the first
+  mutation or spend boundary.
+- After approval, execute the closed graph serially: Mage qualification, SoulX qualification, guarded
+  database/Cloudflare activation, exact max-one lanes, V2-09 through V2-13 acceptance, immediate
+  temporary-compute drain, settled billing, and independent zero-job/zero-worker proof. Never keep a Pod
+  or worker active when it is not strictly required; ambiguity, expiry, cancellation, or failure enters
+  cleanup-only with no redispatch.
+- Planning estimate only: approximately 75% of the entire project is complete, including about 92% of
+  product/source work and 100% of the credential setup. The remaining risk is concentrated in live
+  qualification, deployment, long-form acceptance, billing reconciliation, and release proof; these
+  percentages are not acceptance evidence.
+
+Suggested new-chat request: `Continue VideoForge from the current clean HEAD. Read AGENTS.md and the
+active handoff, orchestrate with multiple Luna workers plus an independent auditor, reseal and audit a
+fresh V2-13 full-live proposal, perform only provider-free work and bounded read-only preflight until the
+first mutation boundary, keep all Pods/workers at zero unless strictly required, then ask once for the
+exact source-bound approval.`
+
 `DEC_DELIVERY_002` now governs execution. V2-08 through V2-13 provider-free product implementation
 may proceed in parallel behind fail-closed unqualified adapters. Live certification remains serial:
 V2-07 Mage first, then V2-08 SoulX and successor live gates. Successful atomic live evidence is

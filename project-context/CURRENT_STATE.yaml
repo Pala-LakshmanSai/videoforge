@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-27T10:05:00Z"
+updated_at: "2026-08-27T10:30:00Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -28,6 +28,24 @@ current_goal_boundary:
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
   provider_free_product_action: "The exact rotation/normalization authority was consumed once and completed. It added one same-client Google secret, secured and hash-read it before disabling only the exposed old secret, and normalized only the two local R2 files. Preserve the exact resources/files and secret-free receipt; the authority is non-reusable. No further credential, provider, R2, RunPod, GPU, spend, retry, or redispatch action is authorized under this boundary."
   note: "Source commit 3f7b588 remains independently audited provider-free (42/42 checks). The exact-new-project credential-bootstrap attempt remains BLOCKED_UNCONSUMED_NO_MUTATION because Google project quota was exhausted; its approval is non-reusable and the separate quota request remains historical. The reuse audit of adroit-archive-329710 recorded unexpected firestore.googleapis.com and firebaserules.googleapis.com enablement; no rollback, disablement, or further API enablement is authorized. The reuse authority was consumed/stopped and is non-reusable. The fresh rotation/normalization proposal sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73 at 1845be6 was approved and completed under authority v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2; result sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6 and receipt sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab are recorded. Google provider mutations were limited to the new secret and exact old-secret disable; Cloudflare R2 provider mutation, RunPod calls, GPU use, and spend were zero. No raw credential value is retained in repository evidence or the receipt. Full-live successor remains BLOCKED_UNSEALED pending its separate source-bound deployment/image/paid gates and exact authority."
+
+new_chat_handoff:
+  status: READY_PROVIDER_FREE_RESEAL_FRESH_AUTHORITY_REQUIRED
+  starting_point: CURRENT_CLEAN_GIT_HEAD
+  independently_audited_full_live_source_commit: "3f7b588de4b96da7c1e56b6c1908df7381712710"
+  credential_rotation_result_sha256: "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6"
+  credential_receipt_sha256: "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab"
+  credential_authority_reusable: false
+  full_live_authority_present: false
+  production_transport: DISABLED_UNQUALIFIED
+  overall_completion_estimate_percent: 75
+  product_source_completion_estimate_percent: 92
+  credential_setup_completion_percent: 100
+  live_qualification_deployment_completion_estimate_percent: 48
+  estimate_is_acceptance_evidence: false
+  next_action: "Provider-free reseal and independent audit of a fresh source-bound V2-13 full-live proposal, then one exact user approval before any mutation, deployment, GPU use, or spend."
+  serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
+  temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
 two_track_execution:
   decision: DEC_DELIVERY_002
@@ -132,8 +150,8 @@ provider_free_product_progress:
   credential_bootstrap_rotation_normalization_proposal_sha256: "sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73"
   credential_bootstrap_rotation_normalization_proposal_validator_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-rotation-normalization-candidate/validate-candidate.mjs"
   credential_bootstrap_rotation_normalization_proposal_validator_sha256: "sha256:58259f406e45d8660d85a7a9bdafec2e30afa629e6f07fcad54696509bddcb8b"
-  credential_bootstrap_rotation_normalization_proposal_status: PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL
-  credential_bootstrap_rotation_normalization_proposal_audit_status: PASS_PROVIDER_FREE_FOCUSED_VALIDATOR_TESTS
+  credential_bootstrap_rotation_normalization_proposal_status: CONSUMED_COMPLETED_SINGLE_USE_NON_REUSABLE
+  credential_bootstrap_rotation_normalization_proposal_audit_status: PASS_FINAL_INDEPENDENT_POST_EXECUTION_AND_CONTEXT_AUDIT
   credential_bootstrap_rotation_normalization_approval_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-rotation-normalization-candidate/user-approval.json"
   credential_bootstrap_rotation_normalization_approval_sha256: "sha256:94c1f9fb1c6f3fb42f4b957a2e1de7c91c2404cc299cd73c59e5a4ac8d1d80e6"
   credential_bootstrap_rotation_normalization_approval_status: APPROVED_SINGLE_USE_ZERO_SPEND_EXECUTED
