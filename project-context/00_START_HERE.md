@@ -4,9 +4,10 @@
 
 ### New-chat launch point — 2026-08-27
 
-- The independently audited provider-free full-live source remains
-  `3f7b588de4b96da7c1e56b6c1908df7381712710`. A provider-free successor repair is ready to commit
-  and independently audit; all production entrypoints remain fail-closed/no-op.
+- The independently audited provider-free full-live source is
+  `5da33e88e0e2a5cf663987c2d4fff651188efe9d`. Its exact successor proposal is sealed as
+  `sha256:3a0f1c61a4cd1f2d3d952cf34b04444019890a59eb466ad875e7a370c457403f`; all production
+  entrypoints remain fail-closed/no-op while the proposal record awaits independent audit and approval.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -19,8 +20,8 @@
 - Fresh read-only preflight proved zero temporary compute and bound the completed credential receipt,
   exact account-derived 404 HTML route, same two retained 50 GB EU-RO-1 volumes, and the official
   Serverless Flex rate of `$0.00031/second` (`$1.116/GPU-hour`) separately from the `$0.74/hour`
-  Secure Pod catalog rate. Commit and independently audit this source repair, then reseal and audit
-  the exact proposal before requesting user approval at the first mutation/spend boundary.
+  Secure Pod catalog rate. The source repair is committed and independently audited; commit and audit
+  the exact sealed proposal record before requesting user approval at the first mutation/spend boundary.
 - After approval, execute the closed graph serially: Mage qualification, SoulX qualification, guarded
   database/Cloudflare activation, exact max-one lanes, V2-09 through V2-13 acceptance, immediate
   temporary-compute drain, settled billing, and independent zero-job/zero-worker proof. Never keep a Pod
@@ -32,10 +33,9 @@
   percentages are not acceptance evidence.
 
 Suggested new-chat request: `Continue VideoForge from the current clean HEAD. Read AGENTS.md and the
-active handoff, orchestrate with multiple Luna workers plus an independent auditor, reseal and audit a
-fresh V2-13 full-live proposal, perform only provider-free work and bounded read-only preflight until the
-first mutation boundary, keep all Pods/workers at zero unless strictly required, then ask once for the
-exact source-bound approval.`
+active handoff, orchestrate with multiple Luna workers plus an independent auditor, audit the exact sealed
+V2-13 full-live proposal record, perform only provider-free work until the first mutation boundary, keep
+all Pods/workers at zero unless strictly required, then ask once for the exact source-bound approval.`
 
 `DEC_DELIVERY_002` now governs execution. V2-08 through V2-13 provider-free product implementation
 may proceed in parallel behind fail-closed unqualified adapters. Live certification remains serial:
@@ -45,8 +45,7 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The previous provider-free source is independently audited at `3f7b588de4b96da7c1e56b6c1908df7381712710`
-(42/42 checks). The current provider-free repair is pending its new commit and independent audit;
+The current provider-free source is independently audited at `5da33e88e0e2a5cf663987c2d4fff651188efe9d`;
 default entrypoints remain no-op. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
@@ -122,11 +121,11 @@ secret files and rebinds all 22 secret hashes. Repaired source `7444ed0` is the 
 audited baseline; source `3f7b588` passed its independent audit before the later Cloudflare boundary
 finding. The replacement proposal
 `sha256:45894ac0…01aaca` was resealed against the prior source; its fresh authority `59dfe8a` is
-superseded unconsumed with no mutation after the Cloudflare boundary audit. The active successor draft
-`2026-08-27-cloudflare-credential-origin-repair-candidate` is `PASS_BLOCKED_UNSEALED`
-(`sha256:6b20b507…ed01d6`). Its protected Google OAuth and R2 credential identities and scope hashes
+superseded unconsumed with no mutation after the Cloudflare boundary audit. The active successor
+`2026-08-27-cloudflare-credential-origin-repair-candidate` is sealed and awaits fresh exact approval
+(`sha256:3a0f1c61…c457403f`). Its protected Google OAuth and R2 credential identities and scope hashes
 are receipt-bound and verified; the receipt is complete and non-reusable. The repaired source still
-requires a fresh independent source audit, reseal, proposal-record audit, and exact approval.
+requires an exact proposal-record commit/audit and exact approval.
 It requires protected Wrangler OAuth only (no raw API-token file or `CLOUDFLARE_API_TOKEN` export),
 authenticated account and workers.dev subdomain derivation, exact absent HTTP 404
 `text/html; charset=UTF-8` body of 19,984 bytes with `sha256:2000e6b2…580976` before creation (not

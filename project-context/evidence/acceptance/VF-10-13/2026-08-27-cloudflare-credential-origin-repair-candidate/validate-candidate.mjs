@@ -121,6 +121,29 @@ const EXPECTED_MAGE_VOLUME_ID_SHA256 =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const EXPECTED_SOULX_VOLUME_ID_SHA256 =
   "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
+const EXPECTED_RELEASE_SOURCE_COMMIT = "5da33e88e0e2a5cf663987c2d4fff651188efe9d";
+const EXPECTED_RELEASE_COMPONENT_HASHES = Object.freeze({
+  full_live_executor:
+    "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5",
+  full_live_adapters:
+    "sha256:0a2b929507609d0709cb0262b757e537576c3b9af192681548fd78a357ac5437",
+  promotion:
+    "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
+  guarded_activation:
+    "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7",
+  orchestration_authority:
+    "sha256:fde2b699086d6a6c104a4fdc43a8e917b1cf94b1c830adc2868b6a12207742d6",
+  typescript_cli_bridge:
+    "sha256:e9d369710ca75535b35b6c29123b595482fbddbd792b35e02ed40eb7ea6c28e6",
+  runpod_dual_lane_transport:
+    "sha256:7d2ac27d25f6906aae1147833618e4a471ef0ca72f7ea6159ea993444ae53fe6",
+  migration_0045:
+    "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
+  operator_grants:
+    "sha256:60922d36e5aeb05fe34705198967aa3adf20cdf9ec61283810a565b6690b2c39",
+  migration_manifest:
+    "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa",
+});
 assert(
   readOnlyPreflight.schema_version === "videoforge.v2-13-full-live-read-only-preflight/v1" &&
     readOnlyPreflight.checkpoint === "V2-13" &&
@@ -312,11 +335,14 @@ assert(
   "CHECKPOINT_RANGE",
 );
 assert(proposal.task_id === "VF-10-13" && proposal.candidate_date === "2026-08-27", "IDENTITY");
-assert(proposal.proposal_status === "BLOCKED_UNSEALED", "STATUS_BLOCKED_UNSEALED");
 assert(
-  proposal.sealing.sealed_for_exact_user_approval === false &&
-    proposal.sealing.current_bytes_are_approval_ineligible === true &&
-    proposal.sealing.required_next_action.includes("source-bound") &&
+  proposal.proposal_status === "PENDING_FRESH_EXACT_USER_APPROVAL",
+  "STATUS_PENDING_FRESH_EXACT_USER_APPROVAL",
+);
+assert(
+  proposal.sealing.sealed_for_exact_user_approval === true &&
+    proposal.sealing.current_bytes_are_approval_ineligible === false &&
+    proposal.sealing.required_next_action.includes("obtain fresh exact user approval") &&
     proposal.sealing.required_next_action.includes("fresh exact user approval"),
   "SEALING_GATE",
 );
@@ -380,8 +406,8 @@ assert(
 );
 
 assert(
-  proposal.source.release_source_commit === null &&
-    proposal.source.repaired_release_source_commit === null &&
+  proposal.source.release_source_commit === EXPECTED_RELEASE_SOURCE_COMMIT &&
+    proposal.source.repaired_release_source_commit === EXPECTED_RELEASE_SOURCE_COMMIT &&
     proposal.source.proposal_record_commit === null &&
     proposal.source.future_approval_record_commit === null &&
     proposal.source.future_authority_record_commit === null &&
@@ -405,7 +431,20 @@ assert(
 );
 for (const [name, expectedPath] of Object.entries(componentPaths)) {
   assert(proposal.source.exact_release_components[name]?.path === expectedPath, `COMPONENT_PATH:${name}`);
-  assert(proposal.source.exact_release_components[name]?.sha256 === null, `COMPONENT_HASH_PENDING:${name}`);
+  if (name === "approval_validator") continue;
+  assert(
+    proposal.source.exact_release_components[name]?.sha256 === EXPECTED_RELEASE_COMPONENT_HASHES[name],
+    `COMPONENT_HASH:${name}`,
+  );
+  const sourceBytes = readCommittedBytes(
+    EXPECTED_RELEASE_SOURCE_COMMIT,
+    expectedPath,
+    `COMPONENT_SOURCE_MISSING:${name}`,
+  );
+  assert(
+    sha256(sourceBytes) === EXPECTED_RELEASE_COMPONENT_HASHES[name],
+    `COMPONENT_SOURCE_HASH:${name}`,
+  );
 }
 
 assert(
@@ -704,12 +743,13 @@ assert(
 );
 
 const pending = proposal.source.pending_source_contract;
-assert(pending.status === "PENDING_SOURCE_WORKER_AND_CREDENTIAL_SCOPE_AUDIT", "PENDING_CONTRACT_STATUS");
+assert(pending.status === "SOURCE_BOUND_AUDITED", "SOURCE_BOUND_CONTRACT_STATUS");
 assert(
-  pending.release_source_commit === null &&
-    pending.release_component_sha256s === null &&
-    pending.source_hashes_must_be_bound_before_reseal === true,
-  "PENDING_SOURCE_HASHES",
+  pending.release_source_commit === EXPECTED_RELEASE_SOURCE_COMMIT &&
+    JSON.stringify(pending.release_component_sha256s) ===
+      JSON.stringify(EXPECTED_RELEASE_COMPONENT_HASHES) &&
+    pending.source_hashes_must_be_bound_before_reseal === false,
+  "SOURCE_BOUND_HASHES",
 );
 const credentialReceipt = pending.credential_receipt_binding;
 assert(
@@ -821,7 +861,7 @@ assert(
     seed.missing_or_extra_nested_hashes_rejected === true &&
     seed.future_endpoint_or_deployment_identity_values_forbidden === true &&
     seed.credential_values_forbidden === true &&
-    seed.exact_nested_hash_paths_pending_source_contract === true,
+    seed.exact_nested_hash_paths_pending_source_contract === false,
   "STRICT_NESTED_SEED_HASH_BINDING",
 );
 
@@ -895,7 +935,7 @@ assert(
 
 const cloudflareGraph = proposal.exact_execution_graph.cloudflare_credential_origin_policy;
 assert(
-  cloudflareGraph.status === "PENDING_SOURCE_WORKER_AND_CREDENTIAL_SCOPE_AUDIT" &&
+  cloudflareGraph.status === "SOURCE_BOUND_AUDITED" &&
     cloudflareGraph.oauth_authentication.config_path_resolver === "wranglerOAuthConfigPath" &&
     cloudflareGraph.oauth_authentication.protected_config_reader ===
       "readWranglerOAuthCredential" &&
@@ -1058,7 +1098,7 @@ assert(
   ),
   "NO_CREDENTIAL_CREATE_OR_ROTATE_OPERATION",
 );
-includes(allOperations, "BLOCKED_UNSEALED", "BLOCKED_OPERATION");
+includes(allOperations, "sealed source-bound/audited candidate", "SEALED_OPERATION");
 includes(allOperations, "404 text/html", "ABSENT_404_HTML_OPERATION");
 includes(allOperations, "not 503 JSON", "NO_503_OPERATION");
 includes(allOperations, "protected Wrangler OAuth config", "OAUTH_OPERATION");
@@ -1087,15 +1127,15 @@ assert(
 
 console.log(
   JSON.stringify({
-    status: "PASS_BLOCKED_UNSEALED",
+    status: "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
     proposal_sha256: sha256(bytes),
     proposal_record_commit: null,
-    release_source_commit: null,
+    release_source_commit: EXPECTED_RELEASE_SOURCE_COMMIT,
     superseded_proposal_sha256: previousProposalSha256,
     superseded_authority_id: previousAuthorityId,
     superseded_authority_commit: previousAuthorityCommit,
     authority: "ABSENT",
-    source_hashes: "PENDING_SOURCE_WORKER_AND_CREDENTIAL_SCOPE_AUDIT",
+    source_hashes: "BOUND_EXACT_RELEASE_COMPONENTS",
     external_calls: 0,
     mutations: 0,
     gpu_use: 0,
