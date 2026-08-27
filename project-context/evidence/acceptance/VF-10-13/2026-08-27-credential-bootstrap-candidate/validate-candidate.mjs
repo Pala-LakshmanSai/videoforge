@@ -30,9 +30,11 @@ const gitBytes = (commit, path) =>
 
 if (
   proposal.schema_version !== "videoforge.v2-13-credential-bootstrap-proposal/v1" ||
-  proposal.proposal_status !== "BLOCKED_UNSEALED" ||
-  proposal.sealing?.sealed_for_exact_user_approval !== false ||
-  proposal.sealing?.current_bytes_are_approval_ineligible !== true
+  proposal.proposal_status !== "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL" ||
+  proposal.sealing?.sealed_for_exact_user_approval !== true ||
+  proposal.sealing?.current_bytes_are_approval_ineligible !== false ||
+  proposal.sealing?.provider_free_audit_base_commit !==
+    "3dc8eacea9cb0dec0337df5220ff75493fbbcb8f"
 )
   fail("SEALING");
 
@@ -183,7 +185,7 @@ if (
 
 process.stdout.write(
   `${JSON.stringify({
-    status: "PASS_BLOCKED_UNSEALED",
+    status: "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
     proposal_sha256: sha256(bytes),
     authority: "ABSENT",
     provider_calls: 0,
