@@ -41,8 +41,8 @@ or further provider action is authorized. The exact before/after service arrays 
 are recorded in `evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/unexpected-firestore-api-enablement-incident.json`
 (`sha256:936117ccc777b37d6e6ee595c8d8feccb4fbd026e11d7705084af03230db2229`). The first independent
 reuse-proposal audit P1 was repaired and the existing-project candidate is now sealed at
-`sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4`, based on `ca5c4d2`;
-its successor proposal commit is pending. The candidate has no executable authority: proposal work
+`sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4`, committed at `68ea8a0`.
+The candidate has no executable authority: proposal work
 made no credential/provider mutation, RunPod call, GPU use, or spend. A fresh exact approval must
 name the sealed proposal and successor commit before any consent configuration, OAuth client, R2
 credential, or protected-file work. The quota-blocked approval remains non-reusable.
