@@ -7,12 +7,15 @@ const directory = dirname(fileURLToPath(import.meta.url));
 const proposalPath = resolve(directory, "combined-credential-rotation-normalization-proposal.json");
 const approvalPath = resolve(directory, "user-approval.json");
 const authorityPath = resolve(directory, "approved-authority.json");
+const resultPath = resolve(directory, "credential-rotation-normalization-execution-result.json");
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proposalBytes = readFileSync(proposalPath);
 const approvalBytes = readFileSync(approvalPath);
 const proposal = JSON.parse(proposalBytes);
 const approval = JSON.parse(approvalBytes);
 const authority = JSON.parse(readFileSync(authorityPath));
+const resultBytes = readFileSync(resultPath);
+const result = JSON.parse(resultBytes);
 const fail = (code) => {
   throw new Error(`V2_13_CREDENTIAL_ROTATION_AUTHORITY_${code}`);
 };
@@ -27,7 +30,13 @@ const proposalSha = "sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b808
 const proposalCommit = "1845be6c852654c8396f2973981733ce64a3d2d0";
 const approvalSha = "sha256:94c1f9fb1c6f3fb42f4b957a2e1de7c91c2404cc299cd73c59e5a4ac8d1d80e6";
 const authorityId = "v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2";
-if (sha256(proposalBytes) !== proposalSha || sha256(approvalBytes) !== approvalSha) fail("RAW_HASH");
+const resultSha = "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6";
+const completedStatus = "CONSUMED_COMPLETED_EXACT_GOOGLE_SECRET_ROTATION_AND_LOCAL_R2_NORMALIZATION";
+if (
+  sha256(proposalBytes) !== proposalSha ||
+  sha256(approvalBytes) !== approvalSha ||
+  sha256(resultBytes) !== resultSha
+) fail("RAW_HASH");
 if (proposal.proposal_status !== "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL") fail("PROPOSAL_STATUS");
 
 exactKeys(approval, [
@@ -61,8 +70,13 @@ const orderedOperations = [
 if (
   authority.schema_version !== "videoforge.v2-13-credential-rotation-normalization-approved-authority/v1" ||
   authority.authority_id !== authorityId ||
-  authority.status !== "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS" ||
-  authority.single_use !== true || authority.consumed !== false || authority.consumed_at !== null ||
+  ![
+    "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS",
+    completedStatus,
+  ].includes(authority.status) ||
+  authority.single_use !== true ||
+  authority.consumed !== (authority.status === completedStatus) ||
+  authority.consumed_at !== (authority.status === completedStatus ? "2026-08-27T10:05:00Z" : null) ||
   authority.lineage?.proposal_sha256 !== proposalSha ||
   authority.lineage?.proposal_record_commit !== proposalCommit ||
   authority.lineage?.user_approval_sha256 !== approvalSha ||
@@ -82,9 +96,6 @@ if (
   authority.google_scope?.raw_new_secret_logs_authorized !== false ||
   authority.protected_storage_scope?.normalize_exactly_one_trailing_lf_from_r2_access_key !== true ||
   authority.protected_storage_scope?.normalize_exactly_one_trailing_lf_from_r2_secret !== true ||
-  authority.provider_free_recording?.credentials_accessed !== false ||
-  authority.provider_free_recording?.authority_consumed !== false ||
-  authority.provider_free_recording?.execution_started !== false ||
   authority.provider_free_recording?.runpod_calls !== 0 ||
   authority.provider_free_recording?.gpu_hours !== 0 ||
   authority.provider_free_recording?.external_spend_usd !== 0
@@ -96,15 +107,64 @@ if (
   authority.stop_and_cleanup?.no_delete_or_rotate_any_other_credential !== true
 ) fail("AUTHORITY_STOP");
 
+if (authority.status === completedStatus) {
+  if (
+    result.schema_version !== "videoforge.v2-13-credential-rotation-normalization-execution-result/v1" ||
+    result.result !== "COMPLETED_EXACT_GOOGLE_SECRET_ROTATION_AND_LOCAL_R2_NORMALIZATION" ||
+    result.proposal_sha256 !== proposalSha ||
+    result.proposal_commit !== proposalCommit ||
+    result.authority_id !== authorityId ||
+    result.authority_consumed !== true ||
+    result.authority_reusable !== false ||
+    result.receipt?.sha256 !== "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab" ||
+    result.receipt?.exact_field_count !== 23 ||
+    result.receipt?.secret_free !== true ||
+    result.execution_counters?.provider_mutation_operations !== 2 ||
+    result.execution_counters?.runpod_calls !== 0 ||
+    result.execution_counters?.gpu_hours !== 0 ||
+    result.execution_counters?.external_spend_usd !== 0
+  ) fail("EXECUTION_RESULT");
+  exactKeys(authority.execution_recording, [
+    "path", "sha256", "result", "authority_initial_commit", "consumption_record_path",
+    "consumption_record_sha256", "consumption_record_commit", "receipt_path", "receipt_sha256",
+    "new_secret_sha256", "r2_normalization_completed", "provider_mutation_operations",
+    "runpod_calls", "gpu_hours", "external_spend_usd", "authority_reusable",
+  ], "EXECUTION_RECORDING_KEYS");
+  if (
+    authority.execution_recording.path !==
+      "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-rotation-normalization-candidate/credential-rotation-normalization-execution-result.json" ||
+    authority.execution_recording.sha256 !== resultSha ||
+    authority.execution_recording.result !== result.result ||
+    authority.execution_recording.receipt_sha256 !== result.receipt.sha256 ||
+    authority.execution_recording.r2_normalization_completed !== true ||
+    authority.execution_recording.provider_mutation_operations !== 2 ||
+    authority.execution_recording.authority_reusable !== false
+  ) fail("EXECUTION_RECORDING");
+  if (
+    authority.provider_free_recording.credentials_accessed !== true ||
+    authority.provider_free_recording.authorized_execution_provider_calls !== null ||
+    authority.provider_free_recording.authorized_execution_provider_mutations !== 2 ||
+    authority.provider_free_recording.observed_preapproval_provider_mutations !== 0 ||
+    authority.provider_free_recording.authority_consumed !== true ||
+    authority.provider_free_recording.execution_started !== true ||
+    authority.provider_free_recording.consumption_record_created !== true ||
+    authority.provider_free_recording.consumption_record_sha256 !== resultSha
+  ) fail("AUTHORITY_RECORDING_COMPLETED");
+} else if (
+  authority.provider_free_recording?.credentials_accessed !== false ||
+  authority.provider_free_recording?.authority_consumed !== false ||
+  authority.provider_free_recording?.execution_started !== false
+) fail("AUTHORITY_RECORDING_UNCONSUMED");
+
 console.log(JSON.stringify({
   status: authority.status,
   authority_id: authorityId,
   proposal_sha256: proposalSha,
   approval_sha256: approvalSha,
-  consumed: false,
-  provider_calls_made: 0,
-  provider_mutations_made: 0,
-  credentials_accessed: false,
+  consumed: authority.consumed,
+  provider_calls_made: authority.provider_free_recording.authorized_execution_provider_calls,
+  provider_mutations_made: authority.provider_free_recording.authorized_execution_provider_mutations,
+  credentials_accessed: authority.provider_free_recording.credentials_accessed,
   runpod_calls: 0,
   gpu_hours: 0,
   external_spend_usd: 0,

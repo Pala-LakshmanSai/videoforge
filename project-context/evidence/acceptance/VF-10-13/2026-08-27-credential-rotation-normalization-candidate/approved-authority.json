@@ -5,12 +5,12 @@
   ],
   "task_id": "VF-10-13-CREDENTIAL-ROTATION-NORMALIZATION",
   "authority_id": "v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2",
-  "status": "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS",
+  "status": "CONSUMED_COMPLETED_EXACT_GOOGLE_SECRET_ROTATION_AND_LOCAL_R2_NORMALIZATION",
   "approved_at": "2026-08-27T09:57:17Z",
   "expires_at": "2026-08-28T09:57:17Z",
   "single_use": true,
-  "consumed": false,
-  "consumed_at": null,
+  "consumed": true,
+  "consumed_at": "2026-08-27T10:05:00Z",
   "authority_record_commit": null,
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-rotation-normalization-candidate/combined-credential-rotation-normalization-proposal.json",
@@ -55,6 +55,24 @@
     ],
     "maximum_attempts_per_mutation": 1,
     "ambiguous_result_action": "HARD_STOP_MANUAL_READBACK_NO_RETRY_OR_REDISPATCH"
+  },
+  "execution_recording": {
+    "path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-rotation-normalization-candidate/credential-rotation-normalization-execution-result.json",
+    "sha256": "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6",
+    "result": "COMPLETED_EXACT_GOOGLE_SECRET_ROTATION_AND_LOCAL_R2_NORMALIZATION",
+    "authority_initial_commit": "430f4a7b4731cfe8a2a3b4423ed2e39c50099d17",
+    "consumption_record_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-rotation-normalization-candidate/rotation-consumption-record.json",
+    "consumption_record_sha256": "sha256:f101a8fa4d623fdab2aae45a5af5a5d29243a49d7b8a685aedb6fbae1fd90759",
+    "consumption_record_commit": "78f3d16eae78c2939987f74834b81bfaabd0080c",
+    "receipt_path": "~/.videoforge/v2-13/bootstrap/receipt/credential-bootstrap.json",
+    "receipt_sha256": "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab",
+    "new_secret_sha256": "sha256:c4d12264294b3275aebe6b8a51eb5a9f4a5a599c7694f48bcf8ba4422c8c6cfb",
+    "r2_normalization_completed": true,
+    "provider_mutation_operations": 2,
+    "runpod_calls": 0,
+    "gpu_hours": 0,
+    "external_spend_usd": 0,
+    "authority_reusable": false
   },
   "google_scope": {
     "reuse_only_existing_project_id": "adroit-archive-329710",
@@ -154,16 +172,17 @@
     "no_delete_or_rotate_any_other_credential": true
   },
   "provider_free_recording": {
-    "credentials_accessed": false,
-    "authorized_execution_provider_calls": 0,
-    "authorized_execution_provider_mutations": 0,
+    "credentials_accessed": true,
+    "authorized_execution_provider_calls": null,
+    "authorized_execution_provider_mutations": 2,
+    "observed_preapproval_provider_mutations": 0,
     "runpod_calls": 0,
     "gpu_hours": 0,
     "external_spend_usd": 0,
     "temporary_compute_started": false,
-    "authority_consumed": false,
-    "execution_started": false,
-    "consumption_record_created": false,
-    "consumption_record_sha256": null
+    "authority_consumed": true,
+    "execution_started": true,
+    "consumption_record_created": true,
+    "consumption_record_sha256": "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6"
   }
 }
