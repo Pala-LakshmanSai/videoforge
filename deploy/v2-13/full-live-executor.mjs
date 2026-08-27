@@ -47,7 +47,7 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:c57d63727ffbf2d642c33069fb915b9d055e5b6f57706efd06af60a0382af538",
+    "sha256:f12c92a60ac4f3458f74deacc1f6ed6852f854dd70f674a2c1ef73794b25fd65",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
   "deploy/v2-13/guarded-activation.mjs":
@@ -365,6 +365,7 @@ async function executeFullLive({
   verifyMaterializationChain,
   verifyChain,
   verifyMaterializationSeed,
+  verifyPrequalificationReceipt,
 }) {
   if (typeof runOperation !== "function") fail("RUNNER_REQUIRED");
   if (typeof trustedTime !== "function") fail("TRUSTED_TIME_REQUIRED");
@@ -380,6 +381,11 @@ async function executeFullLive({
     fail("CHAIN_VERIFIER_CONTRACT");
   if (typeof verifyMaterializationSeed !== "function")
     fail("MATERIALIZATION_SEED_VERIFIER_REQUIRED");
+  if (
+    verifyPrequalificationReceipt !== undefined &&
+    typeof verifyPrequalificationReceipt !== "function"
+  )
+    fail("PREQUALIFICATION_RECEIPT_VERIFIER_CONTRACT");
   let current = { state: null, sha256: expectedStateSha256 };
   const results = new Map();
   // A settled bootstrap receipt is the durable boundary proving the operator role/ACL.  Do not
@@ -720,8 +726,8 @@ async function executeFullLive({
     // An unverified bootstrap restart must enter the request+RunPod-only child directly.  The
     // normal cleanup preflight reads the operator DSN (and may inspect materialized input); both
     // are unavailable by contract until the bootstrap result has settled and been hydrated.
-    if (preflight !== undefined && !earlyCleanupFailure)
-      await preflight(structuredClone(current.state), current.sha256, {
+    if (preflight !== undefined && !earlyCleanupFailure) {
+      const mode = {
         cleanupOnly: true,
         earlyFailure: earlyCleanupFailure,
         endpointFree: earlyCleanupFailure,
@@ -731,7 +737,16 @@ async function executeFullLive({
         initial: true,
         staged: false,
         requireEndpointSecrets: false,
-      });
+      };
+      if (verifyPrequalificationReceipt !== undefined)
+        await verifyPrequalificationReceipt(
+          structuredClone(current.state),
+          current.sha256,
+          mode,
+          new Map(results),
+        );
+      await preflight(structuredClone(current.state), current.sha256, mode, new Map(results));
+    }
   }
 
   try {
@@ -859,6 +874,11 @@ async function main() {
       validateMaterializationSeedFile({
         path: process.env[MATERIALIZATION_SEED_ENV],
         expectedSha256: state.materialization_seed_sha256,
+      }),
+    verifyPrequalificationReceipt: async (_state, _outerStateSha256, _mode, priorResults) =>
+      verifyPrequalificationDatabaseReceipt({
+        environment: process.env,
+        priorResults,
       }),
     verifyMaterializationChain: (state, priorResults, context) =>
       verifyMaterializationChainFile({

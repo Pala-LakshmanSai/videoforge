@@ -49,7 +49,7 @@ secret files and rebinds all 22 secret hashes. Repaired source `7444ed0` is the 
 audited baseline and the replacement proposal `sha256:45894ac0…01aaca` was resealed against that
 source; its fresh authority `59dfe8a` is now superseded unconsumed with no mutation after the
 Cloudflare boundary audit. The successor draft `2026-08-27-cloudflare-credential-origin-repair-candidate`
-is `PASS_BLOCKED_UNSEALED` (`sha256:5fc4d96a…f039a6`) with source/component/identity hashes pending.
+is `PASS_BLOCKED_UNSEALED` (`sha256:8f2b5514…5b7248`) with source/component/identity hashes pending.
 It requires protected Wrangler OAuth only (no raw API-token file or `CLOUDFLARE_API_TOKEN` export),
 authenticated account and workers.dev subdomain derivation, exact absent HTTP 404
 `text/plain; charset=UTF-8`

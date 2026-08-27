@@ -2011,6 +2011,21 @@ async function verifyPrequalificationDatabaseReceipt({
     sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== receipt.ledger_after_sha256
   )
     fail("PREQUALIFICATION_VERIFY_LEDGER");
+  const observedBeforePrefix = ledger.slice(0, receipt.ledger_before_count);
+  const manifestBeforePrefix = manifest.migrations
+    .slice(0, receipt.ledger_before_count)
+    .map(({ version, name, filename, sha256: migrationSha256 }) => ({
+      version,
+      name,
+      filename,
+      sha256: migrationSha256,
+    }));
+  if (
+    sha256(Buffer.from(`${canonicalJson(observedBeforePrefix)}\n`)) !==
+      receipt.ledger_before_sha256 ||
+    sha256(Buffer.from(`${canonicalJson(manifestBeforePrefix)}\n`)) !== receipt.ledger_before_sha256
+  )
+    fail("PREQUALIFICATION_VERIFY_LEDGER_BEFORE");
   let pgcrypto;
   try {
     pgcrypto = JSON.parse(
@@ -2324,193 +2339,8 @@ function createProtectedInputMaterializer({
       fail("MATERIALIZATION_SEED_JSON");
     }
     // Keep the first-use materializer on the exact same nested contract as outer authority
-    // consumption. The local checks below retain adapter-specific future-value diagnostics, while
-    // this shared predicate prevents the two boundaries from drifting apart.
+    // consumption; this shared predicate is the single seed-shape boundary.
     if (!validateMaterializationSeedShape(value)) fail("MATERIALIZATION_SEED_CONTRACT");
-    const forbiddenFutureKeys = new Set([
-      "mageEndpointId",
-      "soulxEndpointId",
-      "endpointId",
-      "endpointIdSha256",
-      "deploymentSnapshotSha256",
-      "deployment_snapshot_sha256",
-      "mage_deployment_snapshot_sha256",
-      "soulx_deployment_snapshot_sha256",
-      "imageDigest",
-      "publicManifestSha256",
-      "versionId",
-      "versionSha256",
-      "disabledVersionId",
-      "disabledVersionSha256",
-      "futureOutputHash",
-      "futureOutputSha256",
-      "futureOutputHashes",
-    ]);
-    const forbiddenFutureKeysLower = new Set(
-      [...forbiddenFutureKeys, ...GUARDED_SECRET_NAMES.slice(17, 21)].map((key) =>
-        key.toLowerCase(),
-      ),
-    );
-    const hasForbiddenFutureKey = (item) =>
-      item !== null &&
-      typeof item === "object" &&
-      Object.entries(item).some(
-        ([key, nested]) =>
-          forbiddenFutureKeysLower.has(key.toLowerCase()) || hasForbiddenFutureKey(nested),
-      );
-    const hasForbiddenCommandSelector = (item) =>
-      item !== null &&
-      typeof item === "object" &&
-      Object.entries(item).some(
-        ([key, nested]) =>
-          [
-            "mageendpointid",
-            "soulxendpointid",
-            "endpointid",
-            "endpointidsha256",
-            "publicimage",
-            "sourcecommit",
-            "deploymentsha256",
-            "deploymentsnapshotsha256",
-            "deployment_snapshot_sha256",
-          ].includes(key.toLowerCase()) || hasForbiddenCommandSelector(nested),
-      );
-    const laneFields = ["publicImage", "deploymentSha256", "sourceCommit"];
-    const laneHasFutureValue = (lane) =>
-      lane !== null &&
-      typeof lane === "object" &&
-      laneFields.some((field) => Object.hasOwn(lane, field) && lane[field] !== null);
-    const dynamicSeedValues = [
-      value?.production_input_base?.dualLaneInput?.mage?.publicImage,
-      value?.production_input_base?.dualLaneInput?.mage?.deploymentSha256,
-      value?.production_input_base?.dualLaneInput?.mage?.sourceCommit,
-      value?.production_input_base?.dualLaneInput?.soulx?.publicImage,
-      value?.production_input_base?.dualLaneInput?.soulx?.deploymentSha256,
-      value?.production_input_base?.dualLaneInput?.soulx?.sourceCommit,
-      value?.activation_record_base?.release?.production_config_activation_sha256,
-      value?.activation_record_base?.release?.media_worker_release_manifest_sha256,
-      value?.activation_record_base?.gates?.mage_qualification_sha256,
-      value?.activation_record_base?.gates?.soulx_qualification_sha256,
-      value?.activation_record_base?.gates?.mage_deployment_snapshot_sha256,
-      value?.activation_record_base?.gates?.soulx_deployment_snapshot_sha256,
-      value?.activation_record_base?.gates?.paid_dispatch_authority_sha256,
-      value?.promotion_record_base?.release?.disabled_config_sha256,
-      value?.promotion_record_base?.release?.enabled_config_sha256,
-      value?.promotion_record_base?.database?.authority_document_sha256,
-      value?.promotion_record_base?.lanes?.mage_image?.qualification_record_sha256,
-      value?.promotion_record_base?.lanes?.mage_image?.deployment_snapshot_sha256,
-      value?.promotion_record_base?.lanes?.soulx_avatar?.qualification_record_sha256,
-      value?.promotion_record_base?.lanes?.soulx_avatar?.deployment_snapshot_sha256,
-      value?.promotion_record_base?.cloudflare?.disabled_version_id,
-      value?.promotion_record_base?.cloudflare?.disabled_version_sha256,
-    ];
-    const exactObjectKeys = (item, keys) =>
-      item !== null &&
-      typeof item === "object" &&
-      !Array.isArray(item) &&
-      JSON.stringify(Object.keys(item).sort()) === JSON.stringify([...keys].sort());
-    const exactEmptyObject = (item) => exactObjectKeys(item, []);
-    const validateBaseObject = (item, keys, nested = []) =>
-      item !== null &&
-      typeof item === "object" &&
-      !Array.isArray(item) &&
-      Object.keys(item).every((key) => keys.includes(key)) &&
-      nested.every(
-        ([key, nestedKeys]) => !Object.hasOwn(item, key) || exactObjectKeys(item[key], nestedKeys),
-      );
-    const validateNestedSeedShape = () => {
-      const production = value?.production_input_base;
-      const lanes = production?.dualLaneInput;
-      const laneKeys = [
-        "deploymentSha256",
-        "publicImage",
-        "sourceCommit",
-        "volumeIdSha256",
-        "volumeManifestSha256",
-      ];
-      if (
-        !exactObjectKeys(production, [
-          "authorityDocument",
-          "commandPayloads",
-          "dualLaneInput",
-          "fullLiveAuthorityId",
-          "schemaVersion",
-        ]) ||
-        production.schemaVersion !== "videoforge.v213-full-live-outer-input/v1" ||
-        typeof production.fullLiveAuthorityId !== "string" ||
-        production.fullLiveAuthorityId === "" ||
-        !exactEmptyObject(production.authorityDocument) ||
-        !exactObjectKeys(lanes, ["mage", "soulx"]) ||
-        !exactEmptyObject(production.commandPayloads) ||
-        !validateBaseObject(
-          value.activation_record_base,
-          ["authority", "database", "gates", "release"],
-          [
-            ["authority", []],
-            ["database", []],
-            ["gates", []],
-            ["release", []],
-          ],
-        ) ||
-        !validateBaseObject(
-          value.config_activation_base,
-          ["authority", "release"],
-          [
-            ["authority", []],
-            ["release", []],
-          ],
-        ) ||
-        !exactEmptyObject(value.release_manifest) ||
-        !validateBaseObject(value.promotion_record_base, [
-          "approval",
-          "cloudflare",
-          "database",
-          "lanes",
-          "release",
-        ]) ||
-        (Object.hasOwn(value.promotion_record_base, "lanes") &&
-          (!exactObjectKeys(value.promotion_record_base.lanes, ["mage_image", "soulx_avatar"]) ||
-            !exactEmptyObject(value.promotion_record_base.lanes.mage_image) ||
-            !exactEmptyObject(value.promotion_record_base.lanes.soulx_avatar)))
-      )
-        return false;
-      return [lanes.mage, lanes.soulx].every(
-        (lane) =>
-          lane !== null &&
-          typeof lane === "object" &&
-          !Array.isArray(lane) &&
-          Object.keys(lane).every((key) => laneKeys.includes(key)) &&
-          ["volumeIdSha256", "volumeManifestSha256"].every(
-            (key) => !Object.hasOwn(lane, key) || HASH.test(lane[key] ?? ""),
-          ) &&
-          laneFields.every((key) => !Object.hasOwn(lane, key) || lane[key] === null),
-      );
-    };
-    if (
-      value?.schema_version !== "videoforge.v213-full-live-materialization-seed/v1" ||
-      value.static_only !== true ||
-      value.future_output_hashes_present !== false ||
-      JSON.stringify(Object.keys(value).sort()) !==
-        JSON.stringify(
-          [
-            "activation_record_base",
-            "config_activation_base",
-            "future_output_hashes_present",
-            "production_input_base",
-            "promotion_record_base",
-            "release_manifest",
-            "schema_version",
-            "static_only",
-          ].sort(),
-        ) ||
-      hasForbiddenFutureKey(value) ||
-      hasForbiddenCommandSelector(value?.production_input_base?.commandPayloads) ||
-      laneHasFutureValue(value?.production_input_base?.dualLaneInput?.mage) ||
-      laneHasFutureValue(value?.production_input_base?.dualLaneInput?.soulx) ||
-      dynamicSeedValues.some((item) => item !== undefined && item !== null) ||
-      !validateNestedSeedShape()
-    )
-      fail("MATERIALIZATION_SEED_CONTRACT");
     const seedSha256 = sha256(Buffer.from(`${canonicalJson(value)}\n`));
     if (
       !HASH.test(state?.materialization_seed_sha256 ?? "") ||

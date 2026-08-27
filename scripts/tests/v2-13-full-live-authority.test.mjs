@@ -276,6 +276,21 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
       () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: nestedHash }),
       /MATERIALIZATION_SEED_CONTRACT/u,
     );
+    for (const [section, key] of [
+      ["approval", "googleClientSecret"],
+      ["cloudflare", "r2Credential"],
+      ["database", "ownerDatabaseUrl"],
+      ["release", "futureOutput"],
+    ]) {
+      const credential = structuredClone(seed);
+      credential.promotion_record_base = { [section]: { [key]: "forbidden" } };
+      writeFileSync(seedPath, `${JSON.stringify(credential)}\n`, { mode: 0o600 });
+      const credentialHash = hash(Buffer.from(`${canonical(credential)}\n`));
+      assert.throws(
+        () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: credentialHash }),
+        /MATERIALIZATION_SEED_CONTRACT/u,
+      );
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

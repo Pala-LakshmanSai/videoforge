@@ -49,6 +49,13 @@ test("blocked successor rejects raw Cloudflare token export or authorization", a
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /CLOUDFLARE_OAUTH_SCOPE/u);
+
+  const readerResult = await runMutation((proposal) => {
+    proposal.exact_execution_graph.cloudflare_credential_origin_policy.oauth_authentication.protected_config_reader =
+      "readWranglerOAuthToken";
+  });
+  assert.notEqual(readerResult.status, 0);
+  assert.match(readerResult.stderr, /CLOUDFLARE_GRAPH/u);
 });
 
 test("blocked successor rejects expanded Google OAuth and R2 credential scope", async () => {

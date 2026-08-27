@@ -466,6 +466,65 @@ test("restart hydrates settled cleanup evidence and runs only unsettled cleanup 
   }
 });
 
+test("non-early cleanup restart verifies the bootstrap receipt before operator preflight", async () => {
+  const fixture = stateFixture();
+  let failQualification = true;
+  let failCleanup = true;
+  try {
+    await assert.rejects(
+      executeFullLive({
+        statePath: fixture.path,
+        expectedStateSha256: fixture.sha256,
+        runOperation: async (operation, state, priorResults) => {
+          if (operation.id === "mage-live-qualification" && failQualification) {
+            failQualification = false;
+            throw new Error("stop before cleanup restart test");
+          }
+          if (operation.id === "restore-endpoints-max-one" && failCleanup) {
+            failCleanup = false;
+            throw new Error("stop with verified operator");
+          }
+          return fakeResult(operation, state, priorResults);
+        },
+      }),
+      /stop with verified operator/u,
+    );
+    const interrupted = JSON.parse(readFileSync(fixture.path, "utf8"));
+    assert.equal(interrupted.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY");
+    assert.equal(interrupted.operator_role_verified, true);
+    const bootstrapWork =
+      interrupted.phases.bootstrap_prequalification_database.work[
+        "v2-13-test-executor-0001:bootstrap-prequalification-database"
+      ];
+    assert.equal(bootstrapWork.state, "SETTLED_TERMINAL");
+
+    const events = [];
+    await assert.rejects(
+      executeFullLive({
+        statePath: fixture.path,
+        expectedStateSha256: hash(readFileSync(fixture.path)),
+        verifyPrequalificationReceipt: async (_state, _sha256, mode, priorResults) => {
+          events.push("receipt-db-reverify");
+          assert.equal(mode.cleanupOnly, true);
+          assert.equal(mode.earlyFailure, false);
+          assert.equal(priorResults.has("bootstrap-prequalification-database"), true);
+        },
+        preflight: async (_state, _sha256, mode, priorResults) => {
+          events.push("operator-runpod-protected-read");
+          assert.equal(mode.operatorOnly, true);
+          assert.equal(priorResults.has("bootstrap-prequalification-database"), true);
+        },
+        runOperation: async (operation, state, priorResults) =>
+          fakeResult(operation, state, priorResults),
+      }),
+      /REDISPATCH_FORBIDDEN/u,
+    );
+    assert.deepEqual(events, ["receipt-db-reverify", "operator-runpod-protected-read"]);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
 test("replay cannot reopen a consumed execution", async () => {
   const fixture = stateFixture();
   try {

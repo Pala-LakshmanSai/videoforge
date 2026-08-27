@@ -949,7 +949,7 @@
       "status": "PENDING_SOURCE_WORKER_AND_CREDENTIAL_SCOPE_AUDIT",
       "oauth_authentication": {
         "config_path_resolver": "wranglerOAuthConfigPath",
-        "protected_config_reader": "readWranglerOAuthToken",
+        "protected_config_reader": "readWranglerOAuthCredential",
         "oauth_api_reader": "cloudflareOAuthApiResponse",
         "account_subdomain_reader": "readCloudflareWorkersDevOrigin",
         "read_only_preflight": "cloudflareOAuthReadOnlyPreflight",

@@ -818,13 +818,35 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       ),
       /BRIDGE_PREQUALIFICATION_RECEIPT/u,
     );
+    const originalReceiptBytes = readFileSync(receiptPath);
+    const mismatchedReceipt = {
+      ...receipt,
+      ledger_before_sha256: `sha256:${"0".repeat(64)}`,
+    };
+    const { prequalification_database_bootstrap_sha256: _ignored, ...mismatchedBody } =
+      mismatchedReceipt;
+    mismatchedReceipt.prequalification_database_bootstrap_sha256 = hash(
+      Buffer.from(`${canonicalJson(mismatchedBody)}\n`),
+    );
+    writeFileSync(receiptPath, `${canonicalJson(mismatchedReceipt)}\n`, { mode: 0o600 });
+    await assert.rejects(
+      verifyPrequalificationDatabaseReceipt({
+        environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+        priorResults: new Map([
+          ["bootstrap-prequalification-database", { ...output, ...mismatchedReceipt }],
+        ]),
+        run,
+      }),
+      /PREQUALIFICATION_VERIFY_LEDGER_BEFORE/u,
+    );
+    writeFileSync(receiptPath, originalReceiptBytes, { mode: 0o600 });
     const verified = await verifyPrequalificationDatabaseReceipt({
       environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
       priorResults: new Map([["bootstrap-prequalification-database", output]]),
       run,
     });
     assert.equal(verified.ledger.length, 45);
-    assert.equal(lockedLedgerReads, 3);
+    assert.equal(lockedLedgerReads, 4);
     assert.equal(
       calls.every(([command]) => command === "psql"),
       true,
@@ -1167,6 +1189,15 @@ test("materializer rejects nested seed aliases, extra command payloads, and CAS 
   await runWith(
     extraCommand,
     hash(Buffer.from(`${canonicalJson(extraCommand)}\n`)),
+    /MATERIALIZATION_SEED_CONTRACT/u,
+  );
+  const nestedCredential = structuredClone(baseSeed);
+  nestedCredential.promotion_record_base = {
+    approval: { googleClientSecret: "forbidden" },
+  };
+  await runWith(
+    nestedCredential,
+    hash(Buffer.from(`${canonicalJson(nestedCredential)}\n`)),
     /MATERIALIZATION_SEED_CONTRACT/u,
   );
   const replacement = structuredClone(baseSeed);

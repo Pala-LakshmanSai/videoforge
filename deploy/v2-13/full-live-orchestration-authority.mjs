@@ -131,6 +131,17 @@ const hasForbiddenSeedKey = (value, forbidden) =>
     ([key, nested]) => forbidden.has(key.toLowerCase()) || hasForbiddenSeedKey(nested, forbidden),
   );
 
+const validatePromotionRecordBase = (value) =>
+  exactEmptyObject(value) ||
+  (exactObjectKeys(value, ["approval", "cloudflare", "database", "lanes", "release"]) &&
+    exactEmptyObject(value.approval) &&
+    exactEmptyObject(value.cloudflare) &&
+    exactEmptyObject(value.database) &&
+    exactObjectKeys(value.lanes, ["mage_image", "soulx_avatar"]) &&
+    exactEmptyObject(value.lanes.mage_image) &&
+    exactEmptyObject(value.lanes.soulx_avatar) &&
+    exactEmptyObject(value.release));
+
 /**
  * Validate the complete nested static seed contract before the one-shot authority is consumed.
  * This is also reused by the materializer, keeping the outer and first-use boundaries identical.
@@ -231,17 +242,7 @@ function validateMaterializationSeedShape(value) {
       ],
     ) &&
     exactEmptyObject(value.release_manifest) &&
-    validateBaseObject(value.promotion_record_base, [
-      "approval",
-      "cloudflare",
-      "database",
-      "lanes",
-      "release",
-    ]) &&
-    (!Object.hasOwn(value.promotion_record_base, "lanes") ||
-      (exactObjectKeys(value.promotion_record_base.lanes, ["mage_image", "soulx_avatar"]) &&
-        exactEmptyObject(value.promotion_record_base.lanes.mage_image) &&
-        exactEmptyObject(value.promotion_record_base.lanes.soulx_avatar))) &&
+    validatePromotionRecordBase(value.promotion_record_base) &&
     [lanes.mage, lanes.soulx].every(
       (lane) =>
         lane !== null &&
@@ -493,7 +494,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:d43df775eaae6bcd8b0cb72fd1d35b8e085f43da3aa39eaaa453f94d548fabc4" ||
+      "sha256:5dd84bf8594c4dd19b907eea11798d956b5693c244d0abc1c926f81883338186" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||

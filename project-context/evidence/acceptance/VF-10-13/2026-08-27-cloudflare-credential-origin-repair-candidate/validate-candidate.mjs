@@ -647,7 +647,8 @@ const cloudflareGraph = proposal.exact_execution_graph.cloudflare_credential_ori
 assert(
   cloudflareGraph.status === "PENDING_SOURCE_WORKER_AND_CREDENTIAL_SCOPE_AUDIT" &&
     cloudflareGraph.oauth_authentication.config_path_resolver === "wranglerOAuthConfigPath" &&
-    cloudflareGraph.oauth_authentication.protected_config_reader === "readWranglerOAuthToken" &&
+    cloudflareGraph.oauth_authentication.protected_config_reader ===
+      "readWranglerOAuthCredential" &&
     cloudflareGraph.oauth_authentication.oauth_api_reader === "cloudflareOAuthApiResponse" &&
     cloudflareGraph.oauth_authentication.account_subdomain_reader ===
       "readCloudflareWorkersDevOrigin" &&
