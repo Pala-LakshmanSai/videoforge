@@ -21,10 +21,26 @@ const RELEASE_SOURCE_COMMIT = "3f7b588de4b96da7c1e56b6c1908df7381712710";
 const AUTHORITY_ID = "v2-13-credential-bootstrap-reuse-20260827-082652z-90d6b19d";
 const APPROVED_AT = "2026-08-27T08:26:52Z";
 const EXPIRES_AT = "2026-08-28T08:26:52Z";
+const INITIAL_AUTHORITY_STATUS = "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS";
+const EXECUTION_RESULT_STATUS = "STOPPED_AFTER_RESOURCE_CREATION_REQUIRES_FRESH_ROTATION_AUTHORITY";
+const CONSUMED_AUTHORITY_STATUS =
+  "CONSUMED_STOPPED_AFTER_RESOURCE_CREATION_REQUIRES_FRESH_ROTATION_AUTHORITY";
+const CONSUMED_AT = "2026-08-27T08:59:15Z";
 const INCIDENT_PATH =
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/unexpected-firestore-api-enablement-incident.json";
 const INCIDENT_SHA256 =
   "sha256:936117ccc777b37d6e6ee595c8d8feccb4fbd026e11d7705084af03230db2229";
+const EXECUTION_RESULT_PATH =
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/credential-bootstrap-execution-result.json";
+const EXECUTION_RESULT_SHA256 =
+  "sha256:b604579fcbf412468525c1fd3483235681fed6425cba7948c585356d3c009909";
+const EXECUTION_INCIDENT_PATH =
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/credential-bootstrap-secret-exposure-incident.json";
+const EXECUTION_INCIDENT_SHA256 =
+  "sha256:6afa7d32f4eaf1c625a1c788304694cfb6219a06a03d51bf9802535a0465e07f";
+const EXECUTION_RECEIPT_PATH = "~/.videoforge/v2-13/bootstrap/receipt/credential-bootstrap.json";
+const EXECUTION_RECEIPT_SHA256 =
+  "sha256:9ac08caffa5758b14321c7a89ca9c76907a9f001f87adb803b7dabffb1723ea7";
 const OPERATION_IDS = [
   "credential-bootstrap-reuse-google-project-preflight",
   "credential-bootstrap-reuse-r2-bucket-and-token-preflight",
@@ -466,48 +482,87 @@ if (
 )
   fail("APPROVAL_STATEMENT");
 
-exactKeys(
-  authority,
-  [
-    "schema_version",
-    "checkpoint_range",
-    "task_id",
-    "authority_id",
-    "status",
-    "approved_at",
-    "expires_at",
-    "single_use",
-    "consumed",
-    "consumed_at",
-    "authority_record_commit",
-    "lineage",
-    "combined_execution_authority",
-    "operation_allowlist",
-    "google_scope",
-    "cloudflare_r2_scope",
-    "protected_storage_scope",
-    "preflight_and_consumption",
-    "incident_binding",
-    "stop_and_cleanup",
-    "provider_free_recording",
-  ],
-  "AUTHORITY_KEYS",
-);
+const postExecutionAuthority = authority.status === CONSUMED_AUTHORITY_STATUS;
+const authorityKeys = [
+  "schema_version",
+  "checkpoint_range",
+  "task_id",
+  "authority_id",
+  "status",
+  "approved_at",
+  "expires_at",
+  "single_use",
+  "consumed",
+  "consumed_at",
+  "authority_record_commit",
+  "lineage",
+  "combined_execution_authority",
+  "operation_allowlist",
+  "google_scope",
+  "cloudflare_r2_scope",
+  "protected_storage_scope",
+  "preflight_and_consumption",
+  "incident_binding",
+  "stop_and_cleanup",
+  "provider_free_recording",
+];
+if (postExecutionAuthority) authorityKeys.push("execution_recording");
+exactKeys(authority, authorityKeys, "AUTHORITY_KEYS");
 if (
   authority.schema_version !==
     "videoforge.v2-13-credential-bootstrap-reuse-approved-authority/v1" ||
   JSON.stringify(authority.checkpoint_range) !== JSON.stringify(["V2-13"]) ||
   authority.task_id !== approval.task_id ||
   authority.authority_id !== AUTHORITY_ID ||
-  authority.status !== "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS" ||
   authority.approved_at !== APPROVED_AT ||
   authority.expires_at !== EXPIRES_AT ||
   authority.single_use !== true ||
-  authority.consumed !== false ||
-  authority.consumed_at !== null ||
   authority.authority_record_commit !== null
 )
   fail("AUTHORITY_IDENTITY");
+if (!postExecutionAuthority) {
+  if (
+    authority.status !== INITIAL_AUTHORITY_STATUS ||
+    authority.consumed !== false ||
+    authority.consumed_at !== null
+  )
+    fail("AUTHORITY_IDENTITY");
+} else if (
+  authority.consumed !== true ||
+  authority.consumed_at !== CONSUMED_AT
+) {
+  fail("AUTHORITY_IDENTITY");
+}
+
+if (postExecutionAuthority) {
+  exactKeys(
+    authority.execution_recording,
+    [
+      "path",
+      "sha256",
+      "result",
+      "incident_path",
+      "incident_sha256",
+      "receipt_path",
+      "receipt_sha256",
+      "fresh_rotation_authority_required",
+      "authority_reusable",
+    ],
+    "AUTHORITY_EXECUTION_RECORDING_KEYS",
+  );
+  if (
+    authority.execution_recording.path !== EXECUTION_RESULT_PATH ||
+    authority.execution_recording.sha256 !== EXECUTION_RESULT_SHA256 ||
+    authority.execution_recording.result !== EXECUTION_RESULT_STATUS ||
+    authority.execution_recording.incident_path !== EXECUTION_INCIDENT_PATH ||
+    authority.execution_recording.incident_sha256 !== EXECUTION_INCIDENT_SHA256 ||
+    authority.execution_recording.receipt_path !== EXECUTION_RECEIPT_PATH ||
+    authority.execution_recording.receipt_sha256 !== EXECUTION_RECEIPT_SHA256 ||
+    authority.execution_recording.fresh_rotation_authority_required !== true ||
+    authority.execution_recording.authority_reusable !== false
+  )
+    fail("AUTHORITY_EXECUTION_RECORDING");
+}
 
 exactKeys(
   authority.lineage,
@@ -740,21 +795,38 @@ exactKeys(
   ],
   "AUTHORITY_RECORDING_KEYS",
 );
-if (
-  authority.provider_free_recording.credentials_accessed !== false ||
-  authority.provider_free_recording.authorized_execution_provider_calls !== 0 ||
-  authority.provider_free_recording.authorized_execution_provider_mutations !== 0 ||
+if (!postExecutionAuthority) {
+  if (
+    authority.provider_free_recording.credentials_accessed !== false ||
+    authority.provider_free_recording.authorized_execution_provider_calls !== 0 ||
+    authority.provider_free_recording.authorized_execution_provider_mutations !== 0 ||
+    authority.provider_free_recording.observed_preapproval_provider_mutations !== 1 ||
+    authority.provider_free_recording.runpod_calls !== 0 ||
+    authority.provider_free_recording.gpu_hours !== 0 ||
+    authority.provider_free_recording.external_spend_usd !== 0 ||
+    authority.provider_free_recording.temporary_compute_started !== false ||
+    authority.provider_free_recording.authority_consumed !== false ||
+    authority.provider_free_recording.execution_started !== false ||
+    authority.provider_free_recording.consumption_record_created !== false ||
+    authority.provider_free_recording.consumption_record_sha256 !== null
+  )
+    fail("AUTHORITY_RECORDING");
+} else if (
+  authority.provider_free_recording.credentials_accessed !== true ||
+  authority.provider_free_recording.authorized_execution_provider_calls !== null ||
+  authority.provider_free_recording.authorized_execution_provider_mutations !== 4 ||
   authority.provider_free_recording.observed_preapproval_provider_mutations !== 1 ||
   authority.provider_free_recording.runpod_calls !== 0 ||
   authority.provider_free_recording.gpu_hours !== 0 ||
   authority.provider_free_recording.external_spend_usd !== 0 ||
   authority.provider_free_recording.temporary_compute_started !== false ||
-  authority.provider_free_recording.authority_consumed !== false ||
-  authority.provider_free_recording.execution_started !== false ||
-  authority.provider_free_recording.consumption_record_created !== false ||
-  authority.provider_free_recording.consumption_record_sha256 !== null
-)
-  fail("AUTHORITY_RECORDING");
+  authority.provider_free_recording.authority_consumed !== true ||
+  authority.provider_free_recording.execution_started !== true ||
+  authority.provider_free_recording.consumption_record_created !== true ||
+  authority.provider_free_recording.consumption_record_sha256 !== EXECUTION_RESULT_SHA256
+) {
+  fail("AUTHORITY_RECORDING_POST");
+}
 
 process.stdout.write(
   `${JSON.stringify({

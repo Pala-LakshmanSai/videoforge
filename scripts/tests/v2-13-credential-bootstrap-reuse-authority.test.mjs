@@ -60,22 +60,48 @@ function assertRejected(result, code) {
   assert.match(`${result.stdout}\n${result.stderr}`, new RegExp(code, "u"));
 }
 
-test("reuse approval and authority are exact, unconsumed, and zero-spend", async () => {
+test("reuse authority post-execution stop record is exact and non-reusable", async () => {
   const result = await runMutation(() => {});
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.status, "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS");
+  assert.equal(output.status, "CONSUMED_STOPPED_AFTER_RESOURCE_CREATION_REQUIRES_FRESH_ROTATION_AUTHORITY");
   assert.equal(output.authority_id, "v2-13-credential-bootstrap-reuse-20260827-082652z-90d6b19d");
   assert.equal(output.proposal_sha256, "sha256:90d6b19d6935ded1bfebdb6df53c64ea33edeba4dce750fe3a81b93708228ed4");
-  assert.equal(output.consumed, false);
-  assert.equal(output.credentials_accessed, false);
+  assert.equal(output.consumed, true);
+  assert.equal(output.credentials_accessed, true);
+  assert.equal(output.provider_calls_made, null);
+  assert.equal(output.provider_mutations_made, 4);
   assert.equal(output.runpod_calls, 0);
   assert.equal(output.gpu_hours, 0);
   assert.equal(output.external_spend_usd, 0);
   assert.equal(output.observed_preapproval_provider_mutations, 1);
 });
 
-test("reuse authority rejects approval, lineage, and consumption drift", async () => {
+test("reuse authority preserves exact initial and rejects consumption drift", async () => {
+  const result = await runMutation((values) => {
+    const authority = values["approved-authority.json"];
+    authority.status = "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS";
+    authority.consumed = false;
+    authority.consumed_at = null;
+    delete authority.execution_recording;
+    Object.assign(authority.provider_free_recording, {
+      credentials_accessed: false,
+      authorized_execution_provider_calls: 0,
+      authorized_execution_provider_mutations: 0,
+      authority_consumed: false,
+      execution_started: false,
+      consumption_record_created: false,
+      consumption_record_sha256: null,
+    });
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.status, "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS");
+  assert.equal(output.consumed, false);
+  assert.equal(output.credentials_accessed, false);
+  assert.equal(output.provider_calls_made, 0);
+  assert.equal(output.provider_mutations_made, 0);
+
   assertRejected(
     await runMutation((values) => {
       values["user-approval.json"].approval.google.project_id = "another-project";
@@ -90,7 +116,7 @@ test("reuse authority rejects approval, lineage, and consumption drift", async (
   );
   assertRejected(
     await runMutation((values) => {
-      values["approved-authority.json"].consumed = true;
+      values["approved-authority.json"].consumed_at = null;
     }),
     "AUTHORITY_IDENTITY",
   );
@@ -99,6 +125,27 @@ test("reuse authority rejects approval, lineage, and consumption drift", async (
       values["approved-authority.json"].lineage.user_approval_sha256 = `sha256:${"0".repeat(64)}`;
     }),
     "AUTHORITY_LINEAGE",
+  );
+});
+
+test("reuse authority rejects post-execution recording drift", async () => {
+  assertRejected(
+    await runMutation((values) => {
+      delete values["approved-authority.json"].execution_recording;
+    }),
+    "AUTHORITY_KEYS",
+  );
+  assertRejected(
+    await runMutation((values) => {
+      values["approved-authority.json"].execution_recording.sha256 = `sha256:${"0".repeat(64)}`;
+    }),
+    "AUTHORITY_EXECUTION_RECORDING",
+  );
+  assertRejected(
+    await runMutation((values) => {
+      values["approved-authority.json"].provider_free_recording.authorized_execution_provider_mutations = 0;
+    }),
+    "AUTHORITY_RECORDING_POST",
   );
 });
 
