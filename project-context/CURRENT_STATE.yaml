@@ -35,6 +35,8 @@ new_chat_handoff:
   independently_audited_full_live_source_commit: "3f7b588de4b96da7c1e56b6c1908df7381712710"
   credential_rotation_result_sha256: "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6"
   credential_receipt_sha256: "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab"
+  historical_reuse_validation_repair_commit: "e31e275a767bd9a098f4b94c078b50136d5b998b"
+  historical_reuse_validation_status: PASS_EXACT_COMPLETED_ROTATION_SUCCESSOR_BOUND
   credential_authority_reusable: false
   full_live_authority_present: false
   production_transport: DISABLED_UNQUALIFIED
@@ -134,6 +136,8 @@ provider_free_product_progress:
   credential_bootstrap_reuse_proposal_authority_status: CONSUMED_STOPPED_AFTER_RESOURCE_CREATION_REQUIRES_FRESH_ROTATION_AUTHORITY
   credential_bootstrap_reuse_execution_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/credential-bootstrap-execution-result.json"
   credential_bootstrap_reuse_execution_sha256: "sha256:b604579fcbf412468525c1fd3483235681fed6425cba7948c585356d3c009909"
+  credential_bootstrap_reuse_historical_validation_repair_commit: "e31e275a767bd9a098f4b94c078b50136d5b998b"
+  credential_bootstrap_reuse_historical_validation_status: PASS_CURRENT_ROTATION_SUCCESSOR_AND_RECEIPT_BOUND
   credential_bootstrap_reuse_execution_incident_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-reuse-adroit-archive-candidate/credential-bootstrap-secret-exposure-incident.json"
   credential_bootstrap_reuse_execution_incident_sha256: "sha256:6afa7d32f4eaf1c625a1c788304694cfb6219a06a03d51bf9802535a0465e07f"
   credential_bootstrap_reuse_receipt_path: "~/.videoforge/v2-13/bootstrap/receipt/credential-bootstrap.json"

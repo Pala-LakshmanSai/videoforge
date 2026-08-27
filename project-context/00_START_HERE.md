@@ -9,7 +9,9 @@
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
-  part of the next task.
+  part of the next task. Commit `e31e275a767bd9a098f4b94c078b50136d5b998b` makes the historical
+  reuse-result validator distinguish its immutable old receipt hash from the exact completed rotation
+  successor/current receipt, closing the temporal-path alias without changing either historical record.
 - Production is still `DISABLED_UNQUALIFIED`. Migrations 0037–0045, the three production database
   roles, Cloudflare Worker/Workflows, immutable Mage/SoulX images, max-one RunPod lanes, and live
   acceptance have not been activated under a current full-live authority.
