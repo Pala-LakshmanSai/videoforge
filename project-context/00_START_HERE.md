@@ -20,8 +20,25 @@ adapters `sha256:f12c92a60ac4f3458f74deacc1f6ed6852f854dd70f674a2c1ef73794b25fd6
 `sha256:586f5a28969d2b2ea406d490b781472e69b7c960d0437475fbe787bab39ed789`, approval validator
 `sha256:dc245da0167bb589224533ba38e255818dac9e880cd992fc58db10b2b892e664`, and guarded activation
 `sha256:a3bc36f2a7aa655ed8326432084ec874e86680d513f852b364dc1883c540cc44`. This is source/test
-proof only. Production remains `DISABLED_UNQUALIFIED`; migrations/grants/config are undeployed,
-and no production secrets or database roles are provisioned.
+proof only. Production remains `DISABLED_UNQUALIFIED`; migrations/grants/config and database roles
+are undeployed, and no full-live deployment bindings are activated.
+The credential rotation/normalization boundary is now completed once and non-reusable. Proposal
+`sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73` at commit
+`1845be6c852654c8396f2973981733ce64a3d2d0`
+was approved and consumed under authority
+`v2-13-credential-rotation-normalization-20260827-095717z-76f14ae2`; completion is recorded at
+`58ad5cd5c5bf4dbe6fa7ad99b98288b3d4f1bd9a`, result
+`sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6`, and receipt
+`sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`. It rotated one
+same-client Google secret with secure hash-bound readback before disabling only the exposed old
+secret, and normalized only the two local R2 files. Cloudflare R2 provider mutation, RunPod calls,
+GPU use, and spend were zero; no raw credential values are retained in evidence or the receipt.
+Preserve the exact resources/files. No further credential/provider/R2/RunPod/GPU/spend mutation,
+retry, or redispatch is authorized under the consumed boundary. Full-live release remains blocked
+on its separate source-bound deployment/image/paid gates and fresh exact authority.
+
+### Historical credential-bootstrap and prior full-live proposal records
+
 The separate zero-cost Google OAuth/R2 credential-bootstrap proposal is sealed and independently
 audited at commit `9106f9d` with SHA-256 `48bf5c7b…e96e0ab`. Its exact user-approved single-use
 attempt stopped at the Google project-create preflight because the authenticated account reached
