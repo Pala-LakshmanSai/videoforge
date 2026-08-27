@@ -4,14 +4,13 @@
 
 ### New-chat launch point — 2026-08-27
 
-- The independently audited provider-free predecessor is
-  `dd5549509dcbe89d31f56517ebc96f50ee6c2a70`. Proposal
-  `sha256:9357579a1adfa4cbb750599fc70c31d9234af6e74f1b00b3c4e7c3aa44de800a` and authority-record
-  commit `21b770bc2fe86869443a4cead713101a2cb79776` are superseded unconsumed: a pre-execution audit
-  found the TypeScript live-admission ceiling was `$1.10/GPU-hour` while the sealed official rate
-  was `$1.116/GPU-hour`. No credentials, provider call, mutation, GPU use, or spend occurred. The
-  active provider-free repair aligns the exact ceiling and adds an accept-at-cap/reject-above test;
-  it requires a fresh source audit, reseal, proposal-record audit, and fresh exact approval.
+- The independently audited provider-free source is
+  `0d0ec21de1e237d3e1cbc583c30ab91760970b0a`. Its sealed successor proposal is
+  `sha256:e21108b71c31b3820335863b8f246613084161db8dbeb3be9ab18b618465494b`; it awaits exact
+  proposal-record commit/audit and fresh approval. It explicitly supersedes proposal
+  `sha256:9357579a…de800a` and authority-record commit `21b770b` as unconsumed after the repaired
+  `$1.10` versus `$1.116/GPU-hour` live-admission defect. No credentials, provider call, mutation,
+  GPU use, or spend occurred under the superseded authority.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -49,7 +48,7 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free source is independently audited at `dd5549509dcbe89d31f56517ebc96f50ee6c2a70`;
+The current provider-free source is independently audited at `0d0ec21de1e237d3e1cbc583c30ab91760970b0a`;
 default entrypoints remain no-op. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
@@ -127,7 +126,7 @@ finding. The replacement proposal
 `sha256:45894ac0…01aaca` was resealed against the prior source; its fresh authority `59dfe8a` is
 superseded unconsumed with no mutation after the Cloudflare boundary audit. The active successor
 `2026-08-27-cloudflare-credential-origin-repair-candidate` is resealed and awaits a proposal-record
-audit and fresh exact approval (`sha256:9357579a…de800a`). Its protected Google OAuth and R2 credential identities and scope hashes
+audit and fresh exact approval (`sha256:e21108b7…8465494b`). Its protected Google OAuth and R2 credential identities and scope hashes
 are receipt-bound and verified; the receipt is complete and non-reusable. The repaired source still
 requires an exact proposal-record commit/audit and exact approval.
 It requires protected Wrangler OAuth only (no raw API-token file or `CLOUDFLARE_API_TOKEN` export),

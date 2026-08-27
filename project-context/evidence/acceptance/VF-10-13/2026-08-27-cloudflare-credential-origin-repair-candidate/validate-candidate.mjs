@@ -28,18 +28,20 @@ const readOnlyPreflight = JSON.parse(readOnlyPreflightBytes);
 const expectedProposalPath =
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
 const previousProposalSha256 =
-  "sha256:45894ac0b7648d3e9e48357a13c270d2cbbe7e65120fe425f4b449d00601aaca";
-const previousProposalRecordCommit = "ec3884961318e46cbc8e09afc1289de279de5eae";
-const previousAuthorityId = "v2-13-full-live-20260827-020135z-7444ed0";
+  "sha256:9357579a1adfa4cbb750599fc70c31d9234af6e74f1b00b3c4e7c3aa44de800a";
+const previousProposalRecordCommit = "3c61457cc250766cadd3d062a311866a154992d4";
+const previousAuthorityId = "v2-13-full-live-20260827-132816z-dd55495";
 const previousApprovalSha256 =
-  "sha256:489796f855445176470766df3a62c8a80da5a110e317f512a1e4c24044c21c27";
-const previousAuthorityCommit = "59dfe8a763abe947a53f66e734b967e5310fad61";
+  "sha256:c9b84bbd78725043754eaaa73a5058a360bcba79b0c72214c63962c9ba277f6c";
+const previousAuthorityCommit = "21b770bc2fe86869443a4cead713101a2cb79776";
 const previousAuthorityRecordPath =
-  "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/approved-authority.json";
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/approved-authority.json";
 const previousApprovalRecordPath =
-  "project-context/evidence/acceptance/VF-10-13/2026-08-26-full-activation-ref-role-repair-candidate/user-approval.json";
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/user-approval.json";
+const previousAuthorityRecordRef = `git:${previousAuthorityCommit}:${previousAuthorityRecordPath}`;
+const previousApprovalRecordRef = `git:${previousAuthorityCommit}:${previousApprovalRecordPath}`;
 const previousAuthorityRecordSha256 =
-  "sha256:42b122150ce2556afcbbf72d347bb0863d30ede0a126e384ae6e6c18ac0b3052";
+  "sha256:0d304a795565adba6fb4508d2ffe7f0c5bc7ef25a4c5a77c2a39d80ef414e458";
 const previousApprovalRecordSha256 = previousApprovalSha256;
 const APPROVED_WRANGLER_OAUTH_SCOPES = Object.freeze([
   "account:read",
@@ -121,7 +123,7 @@ const EXPECTED_MAGE_VOLUME_ID_SHA256 =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const EXPECTED_SOULX_VOLUME_ID_SHA256 =
   "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
-const EXPECTED_RELEASE_SOURCE_COMMIT = "dd5549509dcbe89d31f56517ebc96f50ee6c2a70";
+const EXPECTED_RELEASE_SOURCE_COMMIT = "0d0ec21de1e237d3e1cbc583c30ab91760970b0a";
 const EXPECTED_RELEASE_COMPONENT_HASHES = Object.freeze({
   full_live_executor:
     "sha256:4a4e328630aa1e8e863b99ca4b56528b0068dacf1ae4f77df2974acc89f469f5",
@@ -353,8 +355,8 @@ assert(
     proposal.supersession.superseded_authority_id === previousAuthorityId &&
     proposal.supersession.superseded_approval_sha256 === previousApprovalSha256 &&
     proposal.supersession.superseded_approval_record_commit === previousAuthorityCommit &&
-    proposal.supersession.superseded_authority_record_path === previousAuthorityRecordPath &&
-    proposal.supersession.superseded_approval_record_path === previousApprovalRecordPath &&
+    proposal.supersession.superseded_authority_record_path === previousAuthorityRecordRef &&
+    proposal.supersession.superseded_approval_record_path === previousApprovalRecordRef &&
     proposal.supersession.superseded_authority_record_sha256 === previousAuthorityRecordSha256 &&
     proposal.supersession.superseded_approval_record_sha256 === previousApprovalRecordSha256 &&
     proposal.supersession.superseded_authority_original_status ===
@@ -362,7 +364,7 @@ assert(
     proposal.supersession.superseded_authority_state === "SUPERSEDED_UNCONSUMED_NO_MUTATION" &&
     proposal.supersession.prior_approval_reusable === false &&
     proposal.supersession.fresh_exact_approval_required === true,
-  "SUPERSESSION_45894_59DFE8A",
+  "SUPERSESSION_935757_21B770B",
 );
 
 const supersededAuthorityBytes = readCommittedBytes(
@@ -399,7 +401,7 @@ assert(
   supersededApproval.authority_id === previousAuthorityId &&
     supersededApproval.proposal?.sha256 === previousProposalSha256 &&
     supersededApproval.proposal?.proposal_record_commit === previousProposalRecordCommit &&
-    supersededApproval.proposal?.release_source_commit === "7444ed08ed16b618637b8aa29a93be7c89d1642a" &&
+    supersededApproval.proposal?.release_source_commit === "dd5549509dcbe89d31f56517ebc96f50ee6c2a70" &&
     supersededApproval.approval?.exact_proposal_approved === true &&
     supersededApproval.approval?.single_use === true,
   "SUPERSESSION_APPROVAL_RECORD_BINDING",
