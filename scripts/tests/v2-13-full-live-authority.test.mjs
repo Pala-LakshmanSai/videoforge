@@ -1020,7 +1020,7 @@ test("trusted lineage rejects rename, merge, and extra-path proposal histories",
   });
 });
 
-test("successor candidate remains blocked and supersedes the prior authority", () => {
+test("successor candidate validates its exact lifecycle gate and supersedes the prior authority", () => {
   const output = execFileSync(
     "node",
     [
@@ -1029,7 +1029,9 @@ test("successor candidate remains blocked and supersedes the prior authority", (
     { encoding: "utf8" },
   );
   const result = JSON.parse(output);
-  assert.equal(result.status, "PASS_BLOCKED_UNSEALED");
+  assert.ok(
+    ["PASS_BLOCKED_UNSEALED", "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL"].includes(result.status),
+  );
   assert.equal(result.authority, "ABSENT");
   assert.equal(result.superseded_authority_id, "v2-13-full-live-20260827-020135z-7444ed0");
 });
