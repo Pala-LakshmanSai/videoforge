@@ -44,7 +44,6 @@ import {
   readAuthenticatedGithubTime,
   resolveSourceBoundBridgeLaunch,
   TAG,
-  verifyMaterializationChainFile,
   verifyPrequalificationDatabaseReceipt,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
 import {
