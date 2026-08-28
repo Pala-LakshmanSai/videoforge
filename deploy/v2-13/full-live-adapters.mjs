@@ -1903,6 +1903,8 @@ function readStateBoundMaterializationSeed(environment, state, code) {
   if (
     Buffer.compare(bytes, canonical) !== 0 ||
     !validateMaterializationSeedShape(seed) ||
+    !UUID.test(state?.full_live_authority_id ?? "") ||
+    seed.production_input_base.fullLiveAuthorityId !== state.full_live_authority_id ||
     !HASH.test(state?.materialization_seed_sha256 ?? "") ||
     sha256(canonical) !== state.materialization_seed_sha256
   )
@@ -2062,10 +2064,10 @@ function materializeProductionSecretBootstrap({
   );
   const paths = productionSecretBootstrapPaths(environment, state.authority_id);
   const expectedIds = Object.freeze({
-    pairDispatchTokenKeyId: productionSecretKeyId(state.authority_id, "dispatch"),
-    pairEnvelopeSigningKeyId: productionSecretKeyId(state.authority_id, "envelope"),
-    pairProviderProofKeyId: productionSecretKeyId(state.authority_id, "provider-proof"),
-    provenanceReceiptKeyId: productionSecretKeyId(state.authority_id, "provenance"),
+    pairDispatchTokenKeyId: productionSecretKeyId(state.full_live_authority_id, "dispatch"),
+    pairEnvelopeSigningKeyId: productionSecretKeyId(state.full_live_authority_id, "envelope"),
+    pairProviderProofKeyId: productionSecretKeyId(state.full_live_authority_id, "provider-proof"),
+    provenanceReceiptKeyId: productionSecretKeyId(state.full_live_authority_id, "provenance"),
   });
   if (
     seed.production_input_base.dualLaneInput.envelopeSigningKeyId !==
@@ -2096,7 +2098,7 @@ function materializeProductionSecretBootstrap({
       fail("PRODUCTION_SECRET_BOOTSTRAP_RANDOM_REUSE");
     bundle = {
       schemaVersion: PRODUCTION_SECRET_BOOTSTRAP_SCHEMA,
-      fullLiveAuthorityId: state.authority_id,
+      fullLiveAuthorityId: state.full_live_authority_id,
       outerStateSha256,
       credentialBootstrapReceiptSha256: credentialBootstrapBinding.receiptSha256,
       keyIds: expectedIds,
@@ -2119,7 +2121,7 @@ function materializeProductionSecretBootstrap({
   }
   if (
     bundle?.schemaVersion !== PRODUCTION_SECRET_BOOTSTRAP_SCHEMA ||
-    bundle.fullLiveAuthorityId !== state.authority_id ||
+    bundle.fullLiveAuthorityId !== state.full_live_authority_id ||
     bundle.outerStateSha256 !== outerStateSha256 ||
     bundle.credentialBootstrapReceiptSha256 !== credentialBootstrapBinding.receiptSha256 ||
     canonicalJson(bundle.keyIds) !== canonicalJson(expectedIds) ||
@@ -2223,7 +2225,7 @@ function materializeProductionSecretBootstrap({
   );
   const body = {
     schemaVersion: PRODUCTION_SECRET_BOOTSTRAP_SCHEMA,
-    fullLiveAuthorityId: state.authority_id,
+    fullLiveAuthorityId: state.full_live_authority_id,
     outerStateSha256,
     credentialBootstrapReceiptSha256: credentialBootstrapBinding.receiptSha256,
     productionSecretsSha256: sha256(
@@ -2381,6 +2383,7 @@ function assertConsumedDatabaseBootstrapInvocation(context, state, outerStateSha
     state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" ||
     typeof state.authority_id !== "string" ||
     state.authority_id === "" ||
+    !UUID.test(state.full_live_authority_id ?? "") ||
     !HASH.test(outerStateSha256 ?? "")
   )
     fail("PREQUALIFICATION_CONSUMED_AUTHORITY_REQUIRED");
@@ -2570,7 +2573,7 @@ function validateDatabaseRoleCredentialBundle(bundle, { state, outerStateSha256,
       "schema_version",
     ]) ||
     bundle.schema_version !== DATABASE_ROLE_CREDENTIAL_BUNDLE_SCHEMA ||
-    bundle.full_live_authority_id !== state.authority_id ||
+    bundle.full_live_authority_id !== state.full_live_authority_id ||
     bundle.outer_state_sha256 !== outerStateSha256 ||
     !exactObjectKeys(bundle.database, ["database", "host"]) ||
     bundle.database.host !== service.get("host") ||
@@ -2648,7 +2651,7 @@ function materializeDatabaseRoleCredentials({
     );
     bundle = {
       schema_version: DATABASE_ROLE_CREDENTIAL_BUNDLE_SCHEMA,
-      full_live_authority_id: state.authority_id,
+      full_live_authority_id: state.full_live_authority_id,
       outer_state_sha256: outerStateSha256,
       database: { host: service.get("host"), database: service.get("dbname") },
       credentials,
@@ -2914,7 +2917,7 @@ async function cleanupPartialDatabaseRoleCredentials({
         if (
           Buffer.compare(bytes, Buffer.from(`${canonicalJson(value)}\n`)) !== 0 ||
           value?.schemaVersion !== PRODUCTION_SECRET_BOOTSTRAP_SCHEMA ||
-          value.fullLiveAuthorityId !== state.authority_id ||
+          value.fullLiveAuthorityId !== state.full_live_authority_id ||
           !HASH.test(value.outerStateSha256 ?? "")
         )
           fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE");
@@ -2946,7 +2949,7 @@ async function cleanupPartialDatabaseRoleCredentials({
   }
   const body = {
     schemaVersion: DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA,
-    fullLiveAuthorityId: state.authority_id,
+    fullLiveAuthorityId: state.full_live_authority_id,
     cleanupState:
       bundlePresent || bundleStagePresent
         ? incompleteBundleStageOnly
@@ -2974,7 +2977,7 @@ function exactPartialDatabaseCleanupResult(value, state) {
       "schemaVersion",
     ]) ||
     value.schemaVersion !== DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA ||
-    value.fullLiveAuthorityId !== state?.authority_id ||
+    value.fullLiveAuthorityId !== state?.full_live_authority_id ||
     ![
       "REMOVED_AUTHORITY_BOUND_FILES",
       "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING",
@@ -3208,8 +3211,7 @@ function prequalificationReceiptFromFile(
   delete body.prequalification_database_bootstrap_sha256;
   if (
     value.schema_version !== PREQUALIFICATION_SCHEMA ||
-    typeof value.full_live_authority_id !== "string" ||
-    value.full_live_authority_id === "" ||
+    !UUID.test(value.full_live_authority_id ?? "") ||
     !HASH.test(value.outer_state_sha256 ?? "") ||
     !HASH.test(value.materialization_seed_sha256 ?? "") ||
     value.database_identity_sha256 !== EXACT_DATABASE_IDENTITY_SHA256 ||
@@ -3279,6 +3281,7 @@ function prequalificationResult(receipt) {
 async function verifyPrequalificationDatabaseReceipt({
   environment = process.env,
   priorResults,
+  state,
   run = productionCommand,
   credentialBootstrapBinding = EXACT_CREDENTIAL_BOOTSTRAP_BINDING,
 } = {}) {
@@ -3289,15 +3292,14 @@ async function verifyPrequalificationDatabaseReceipt({
   const bootstrap = priorResults?.get?.("bootstrap-prequalification-database");
   if (
     bootstrap?.prequalification_database_bootstrap_sha256 !==
-    receipt?.prequalification_database_bootstrap_sha256
+      receipt?.prequalification_database_bootstrap_sha256 ||
+    receipt?.full_live_authority_id !== state?.full_live_authority_id
   )
     fail("PREQUALIFICATION_RECEIPT_OUTER_CAS");
 
   const { seed, databaseIdentitySha256 } = readStateBoundMaterializationSeed(
     environment,
-    {
-      materialization_seed_sha256: receipt.materialization_seed_sha256,
-    },
+    state,
     "PREQUALIFICATION_VERIFY_MATERIALIZATION_SEED",
   );
   if (receipt.database_identity_sha256 !== databaseIdentitySha256)
@@ -3330,12 +3332,12 @@ async function verifyPrequalificationDatabaseReceipt({
     directory,
     environment,
     receiptPath,
-    authorityId: receipt.full_live_authority_id,
+    authorityId: state.authority_id,
   });
   const databaseCredentials = materializeDatabaseRoleCredentials({
     credentialPaths,
     service,
-    state: { authority_id: receipt.full_live_authority_id },
+    state,
     outerStateSha256: receipt.outer_state_sha256,
     createMissing: false,
   });
@@ -3349,10 +3351,7 @@ async function verifyPrequalificationDatabaseReceipt({
       fail("PREQUALIFICATION_VERIFY_DATABASE_CREDENTIALS");
   const productionSecretBootstrap = materializeProductionSecretBootstrap({
     environment,
-    state: {
-      authority_id: receipt.full_live_authority_id,
-      materialization_seed_sha256: receipt.materialization_seed_sha256,
-    },
+    state,
     outerStateSha256: receipt.outer_state_sha256,
     databaseCredentials,
     credentialBootstrapBinding,
@@ -3759,14 +3758,14 @@ function createPrequalificationDatabaseBootstrapAdapter({
           canonicalJson(productionSecretBootstrap.productionSecretFileSha256s) ||
         canonicalJson(existing.internal_credential_key_ids) !==
           canonicalJson(productionSecretBootstrap.internalCredentialKeyIds) ||
-        existing.full_live_authority_id !== state.authority_id ||
+        existing.full_live_authority_id !== state.full_live_authority_id ||
         existing.outer_state_sha256 !== outerStateSha256
       )
         fail("PREQUALIFICATION_RECEIPT_REPLAY_DRIFT");
     }
     const body = {
       schema_version: PREQUALIFICATION_SCHEMA,
-      full_live_authority_id: state.authority_id,
+      full_live_authority_id: state.full_live_authority_id,
       outer_state_sha256: outerStateSha256,
       materialization_seed_sha256: state.materialization_seed_sha256,
       database_identity_sha256: databaseIdentitySha256,
@@ -5518,6 +5517,8 @@ function createProtectedInputMaterializer({
     if (!validateMaterializationSeedShape(value)) fail("MATERIALIZATION_SEED_CONTRACT");
     const seedSha256 = sha256(Buffer.from(`${canonicalJson(value)}\n`));
     if (
+      !UUID.test(state?.full_live_authority_id ?? "") ||
+      value.production_input_base.fullLiveAuthorityId !== state.full_live_authority_id ||
       !HASH.test(state?.materialization_seed_sha256 ?? "") ||
       state.materialization_seed_sha256 !== seedSha256
     )
@@ -5677,7 +5678,7 @@ function createProtectedInputMaterializer({
       const bootstrap = priorResults.get("bootstrap-prequalification-database");
       if (
         bootstrap?.schema_version !== PREQUALIFICATION_SCHEMA ||
-        bootstrap.full_live_authority_id !== state.authority_id ||
+        bootstrap.full_live_authority_id !== state.full_live_authority_id ||
         !HASH.test(bootstrap.operator_database_url_sha256 ?? "") ||
         !HASH.test(bootstrap.runtime_database_url_sha256 ?? "") ||
         !HASH.test(bootstrap.reconciler_database_url_sha256 ?? "") ||
@@ -5856,6 +5857,7 @@ function createProtectedInputMaterializer({
       if (!Buffer.isBuffer(renderedBytes)) fail("MATERIALIZATION_DISABLED_CONFIG_BYTES");
       exclusiveAtomicBytes(environment.VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE, renderedBytes);
       const activation = structuredClone(source.activation_record_base);
+      activation.full_live_authority_id = state.full_live_authority_id;
       activation.database.operator_database_url_sha256 = operatorDatabaseUrlSha256;
       activation.secret_sha256 = secretSha256;
       Object.assign(activation.authority, {
@@ -6299,6 +6301,7 @@ function loadBridgePrequalificationInput(environment, state, outerStateSha256) {
   if (
     Buffer.compare(bytes, canonical) !== 0 ||
     !validateMaterializationSeedShape(seed) ||
+    seed.production_input_base.fullLiveAuthorityId !== state.full_live_authority_id ||
     sha256(canonical) !== state.materialization_seed_sha256
   )
     fail("BRIDGE_PREQUALIFICATION_SEED_BINDING");
@@ -6549,7 +6552,8 @@ function preflightConcreteFullLiveInputs({
   const authority = production?.authorityDocument;
   if (
     production !== null &&
-    (authority.authorityId !== state.authority_id ||
+    (production.fullLiveAuthorityId !== state.full_live_authority_id ||
+      authority.authorityId !== state.authority_id ||
       authority.proposalSha256 !== state.proposal_sha256 ||
       authority.approvalSha256 !== state.approval_sha256 ||
       authority.proposalCommit !== state.proposal_record_commit ||
@@ -6744,6 +6748,7 @@ function preflightGuardedActivationInputs({ environment = process.env, state }) 
   if (
     guardedAuthority?.release?.commit !== state.release_source_commit ||
     guardedAuthority?.authority?.authority_id !== state.authority_id ||
+    guardedAuthority?.full_live_authority_id !== state.full_live_authority_id ||
     sha256(readFileSync(environment.VIDEOFORGE_V2_13_PROPOSAL_FILE)) !== state.proposal_sha256 ||
     sha256(readFileSync(environment.VIDEOFORGE_V2_13_USER_APPROVAL_FILE)) !== state.approval_sha256
   )
@@ -6838,7 +6843,7 @@ function createTypeScriptBridgeAdapters({
       const earlyCleanupInput = earlyCleanup
         ? {
             schemaVersion: EARLY_CLEANUP_INPUT_SCHEMA,
-            fullLiveAuthorityId: state.authority_id,
+            fullLiveAuthorityId: state.full_live_authority_id,
           }
         : null;
       if (requirePrequalificationReceipt && command === "mage-live-qualification") {

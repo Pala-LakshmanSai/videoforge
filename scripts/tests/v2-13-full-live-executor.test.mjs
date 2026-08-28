@@ -121,7 +121,7 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
   if (operation.id === "bootstrap-prequalification-database")
     Object.assign(result, {
       schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v3",
-      full_live_authority_id: state.authority_id,
+      full_live_authority_id: state.full_live_authority_id,
       outer_state_sha256:
         authorizedOuterStateSha256 ?? currentAuthorizedOuterStateSha256 ?? proof("0"),
       materialization_seed_sha256: state.materialization_seed_sha256,
@@ -324,7 +324,7 @@ function bootstrapPartialCleanupResult(operation, state, priorResults) {
   if (operation.id !== "reconcile-exact-resources") return result;
   const cleanupBody = {
     schemaVersion: "videoforge.v213-database-role-credential-cleanup/v1",
-    fullLiveAuthorityId: state.authority_id,
+    fullLiveAuthorityId: state.full_live_authority_id,
     cleanupState: "ALREADY_ABSENT",
     operatorRoleAbsent: true,
     runtimeAndReconcilerRolesAbsent: true,

@@ -229,8 +229,7 @@ function readPrequalificationReceipt(directory) {
       "prequalification_database_bootstrap_sha256",
     ]) ||
     value.schema_version !== PREQUALIFICATION_SCHEMA ||
-    typeof value.full_live_authority_id !== "string" ||
-    value.full_live_authority_id === "" ||
+    !UUID.test(value.full_live_authority_id ?? "") ||
     !HASH.test(value.outer_state_sha256 ?? "") ||
     !HASH.test(value.materialization_seed_sha256 ?? "") ||
     value.database_identity_sha256 !== EXACT_DATABASE_IDENTITY_SHA256 ||
@@ -458,7 +457,7 @@ async function verifyPrequalificationDatabase(
   );
   const receipt = readPrequalificationReceipt(postgresInputDirectory);
   if (
-    receipt.full_live_authority_id !== authority.authority.authority_id ||
+    receipt.full_live_authority_id !== authority.full_live_authority_id ||
     receipt.database_identity_sha256 !== EXACT_DATABASE_IDENTITY_SHA256 ||
     receipt.operator_database_url_sha256 !== authority.database.operator_database_url_sha256 ||
     receipt.runtime_database_url_sha256 !== authority.secret_sha256.DATABASE_URL ||
@@ -637,6 +636,7 @@ function validateAuthority(value) {
       "checkpoint",
       "cloudflare",
       "database",
+      "full_live_authority_id",
       "gates",
       "release",
       "schema_version",
@@ -644,7 +644,8 @@ function validateAuthority(value) {
       "soulx_crop_approval",
     ]) ||
     value.schema_version !== "videoforge-v2-13-guarded-activation/v1" ||
-    value.checkpoint !== "V2-13"
+    value.checkpoint !== "V2-13" ||
+    !UUID.test(value.full_live_authority_id ?? "")
   )
     fail("activation record is not the exact V2-13 contract");
   if (
@@ -1383,7 +1384,7 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
   mode(operatorPath, "file", 0o600, "operator database URL file");
   const operatorRaw = readFileSync(operatorPath, "utf8");
   if (
-    bootstrapReceipt.full_live_authority_id !== authority.authority.authority_id ||
+    bootstrapReceipt.full_live_authority_id !== authority.full_live_authority_id ||
     sha256(values.get("DATABASE_URL")) !== bootstrapReceipt.runtime_database_url_sha256 ||
     sha256(values.get("VIDEOFORGE_RECONCILER_DATABASE_URL")) !==
       bootstrapReceipt.reconciler_database_url_sha256 ||

@@ -1523,11 +1523,12 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     throw new Error(`unexpected fake psql SQL: ${sql.slice(0, 120)}`);
   };
   const outerStateSha256 = `sha256:${"f".repeat(64)}`;
-  const authorityId = "11111111-1111-4111-8111-111111111111";
+  const authorityId = "v2-13-bootstrap-execution-authority-0001";
+  const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
   const productionKeyId = (purpose) =>
-    `v213-${purpose}-${hash(Buffer.from(`${authorityId}\0${purpose}`)).slice(7, 31)}`;
+    `v213-${purpose}-${hash(Buffer.from(`${fullLiveAuthorityId}\0${purpose}`)).slice(7, 31)}`;
   const materializationSeed = materializationSeedFixture();
-  materializationSeed.production_input_base.fullLiveAuthorityId = authorityId;
+  materializationSeed.production_input_base.fullLiveAuthorityId = fullLiveAuthorityId;
   materializationSeed.production_input_base.dualLaneInput.envelopeSigningKeyId =
     productionKeyId("envelope");
   writeFileSync(materializationSeedPath, `${canonicalJson(materializationSeed)}\n`, {
@@ -1538,6 +1539,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     ...state,
     schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v2",
     authority_id: authorityId,
+    full_live_authority_id: fullLiveAuthorityId,
     state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
     operator_role_verified: false,
   };
@@ -1586,6 +1588,23 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       ),
       /PREQUALIFICATION_CONSUMED_AUTHORITY_REQUIRED/u,
     );
+    assert.throws(() => lstatSync(operatorPath), /ENOENT/u);
+    const callsBeforeFullLiveAuthorityDrift = calls.length;
+    const generationsBeforeFullLiveAuthorityDrift = credentialGenerationCount;
+    await assert.rejects(
+      adapter(
+        { operationId: "bootstrap-prequalification-database" },
+        {
+          ...consumedState,
+          full_live_authority_id: "22222222-2222-4222-8222-222222222222",
+        },
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_MATERIALIZATION_SEED_BINDING/u,
+    );
+    assert.equal(calls.length, callsBeforeFullLiveAuthorityDrift);
+    assert.equal(credentialGenerationCount, generationsBeforeFullLiveAuthorityDrift);
     assert.throws(() => lstatSync(operatorPath), /ENOENT/u);
     const exactOwnerServiceBytes = readFileSync(servicePath);
     writeFileSync(
@@ -1724,7 +1743,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       output.schema_version,
       "videoforge.v213-prequalification-database-bootstrap-result/v3",
     );
-    assert.equal(output.full_live_authority_id, consumedState.authority_id);
+    assert.equal(output.full_live_authority_id, consumedState.full_live_authority_id);
     assert.equal(output.outer_state_sha256, outerStateSha256);
     assert.equal(
       output.database_identity_sha256,
@@ -1914,6 +1933,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     await assert.rejects(
       verifyPrequalificationDatabaseReceipt({
         environment,
+        state: consumedState,
         priorResults: new Map([
           [
             "bootstrap-prequalification-database",
@@ -1961,6 +1981,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     await assert.rejects(
       verifyPrequalificationDatabaseReceipt({
         environment,
+        state: consumedState,
         priorResults: new Map([
           ["bootstrap-prequalification-database", { ...output, ...mismatchedReceipt }],
         ]),
@@ -1973,6 +1994,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     const lockedLedgerReadsBeforeVerifiedReceipt = lockedLedgerReads;
     const verified = await verifyPrequalificationDatabaseReceipt({
       environment,
+      state: consumedState,
       priorResults: new Map([["bootstrap-prequalification-database", recovered]]),
       run,
       credentialBootstrapBinding,
@@ -1988,6 +2010,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     await assert.rejects(
       verifyPrequalificationDatabaseReceipt({
         environment,
+        state: consumedState,
         priorResults: new Map([["bootstrap-prequalification-database", recovered]]),
         run,
         credentialBootstrapBinding,
@@ -2043,7 +2066,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       state: cleanupState,
     });
     assert.equal(cleaned.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
-    assert.equal(cleaned.fullLiveAuthorityId, cleanupState.authority_id);
+    assert.equal(cleaned.fullLiveAuthorityId, cleanupState.full_live_authority_id);
     assert.equal(cleaned.operatorRoleAbsent, true);
     assert.equal(cleaned.runtimeAndReconcilerRolesAbsent, true);
     // Five remaining database artifacts plus twenty-one authority-bound production-secret
@@ -2264,6 +2287,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     ...state,
     state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
     authority_id: "v2-13-materializer-test-0001",
+    full_live_authority_id: "11111111-1111-4111-8111-111111111111",
     proposal_sha256: `sha256:${"1".repeat(64)}`,
     approval_sha256: `sha256:${"2".repeat(64)}`,
     proposal_record_commit: "3".repeat(40),
@@ -2340,7 +2364,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     });
     later.set("bootstrap-prequalification-database", {
       schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v3",
-      full_live_authority_id: materialState.authority_id,
+      full_live_authority_id: materialState.full_live_authority_id,
       outer_state_sha256: `sha256:${"3".repeat(64)}`,
       materialization_seed_sha256: materialState.materialization_seed_sha256,
       database_identity_sha256:
@@ -2549,6 +2573,7 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
   const cleanupState = {
     ...state,
     authority_id: "v2-13-cleanup-descriptor-0001",
+    full_live_authority_id: "11111111-1111-4111-8111-111111111111",
     proposal_sha256: `sha256:${"1".repeat(64)}`,
     approval_sha256: `sha256:${"2".repeat(64)}`,
     proposal_record_commit: "3".repeat(40),
@@ -2632,6 +2657,7 @@ test("protected TypeScript bridge chains only opaque qualification hashes across
     const bridgeState = {
       ...state,
       authority_id: "v2-13-bridge-adapter-test",
+      full_live_authority_id: "11111111-1111-4111-8111-111111111111",
       proposal_sha256: `sha256:${"5".repeat(64)}`,
       approval_sha256: `sha256:${"6".repeat(64)}`,
       proposal_record_commit: "7".repeat(40),
@@ -2824,10 +2850,12 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
 });
 
 test("bootstrap-partial cleanup runs owner-local preamble before exact provider readbacks", async () => {
-  const fullLiveAuthorityId = "v2-13-bootstrap-partial-cleanup-test";
-  const workId = `${fullLiveAuthorityId}:bootstrap-prequalification-database`;
+  const authorityId = "v2-13-bootstrap-partial-cleanup-test";
+  const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
+  const workId = `${authorityId}:bootstrap-prequalification-database`;
   const state = {
-    authority_id: fullLiveAuthorityId,
+    authority_id: authorityId,
+    full_live_authority_id: fullLiveAuthorityId,
     state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
     operator_role_verified: false,
     phases: {
@@ -3292,12 +3320,13 @@ test("post-consumption production-secret bootstrap binds every protected copy an
   };
   const credentialReceiptBytes = Buffer.from(`${canonicalJson(credentialReceipt)}\n`);
   writeFileSync(receiptPath, credentialReceiptBytes, { mode: 0o600 });
-  const authorityId = "11111111-1111-4111-8111-111111111111";
+  const authorityId = "v2-13-production-secret-bootstrap-test";
+  const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
   const outerStateSha256 = hash(Buffer.from("fixture-outer-state"));
   const productionKeyId = (purpose) =>
-    `v213-${purpose}-${hash(Buffer.from(`${authorityId}\0${purpose}`)).slice(7, 31)}`;
+    `v213-${purpose}-${hash(Buffer.from(`${fullLiveAuthorityId}\0${purpose}`)).slice(7, 31)}`;
   const seed = materializationSeedFixture();
-  seed.production_input_base.fullLiveAuthorityId = authorityId;
+  seed.production_input_base.fullLiveAuthorityId = fullLiveAuthorityId;
   seed.production_input_base.dualLaneInput.envelopeSigningKeyId = productionKeyId("envelope");
   writeFileSync(seedPath, `${canonicalJson(seed)}\n`, { mode: 0o600 });
   const seedSha256 = hash(Buffer.from(`${canonicalJson(seed)}\n`));
@@ -3396,6 +3425,7 @@ test("post-consumption production-secret bootstrap binds every protected copy an
     ...state,
     schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v2",
     authority_id: authorityId,
+    full_live_authority_id: fullLiveAuthorityId,
     state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
     operator_role_verified: false,
     materialization_seed_sha256: seedSha256,

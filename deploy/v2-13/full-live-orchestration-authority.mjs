@@ -384,13 +384,14 @@ const deterministicUuid = (value) => {
   return `${hex.slice(0, 8).join("")}-${hex.slice(8, 12).join("")}-${hex.slice(12, 16).join("")}-${hex.slice(16, 20).join("")}-${hex.slice(20).join("")}`;
 };
 
-function validateActivationRecordBase(value) {
+function validateActivationRecordBase(value, fullLiveAuthorityId) {
   if (
     !exactObjectKeys(value, [
       "authority",
       "checkpoint",
       "cloudflare",
       "database",
+      "full_live_authority_id",
       "gates",
       "release",
       "schema_version",
@@ -399,6 +400,7 @@ function validateActivationRecordBase(value) {
     ]) ||
     value.schema_version !== "videoforge-v2-13-guarded-activation/v1" ||
     value.checkpoint !== "V2-13" ||
+    value.full_live_authority_id !== fullLiveAuthorityId ||
     !exactObjectKeys(value.authority, [
       "confirmation_sha256",
       "exact_quarantine_creation_authorized",
@@ -748,7 +750,7 @@ function validateMaterializationSeedShape(value) {
     exactEmptyObject(production.authorityDocument) &&
     validateStaticDualLaneInput(lanes, production.fullLiveAuthorityId) &&
     exactEmptyObject(production.commandPayloads) &&
-    validateActivationRecordBase(value.activation_record_base) &&
+    validateActivationRecordBase(value.activation_record_base, production.fullLiveAuthorityId) &&
     validateConfigActivationBase(value.config_activation_base) &&
     value.release_manifest === null &&
     validatePromotionRecordBase(value.promotion_record_base) &&
@@ -1180,7 +1182,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:42ce54f5347704d62233b3b9d4b065dfd4512ce87e3350dfa93107034f042090" ||
+      "sha256:d9efa4761be27c4f3f8cd5871128fa54bcc981e2c41c200c0e711447e1ef3f80" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||

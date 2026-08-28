@@ -131,6 +131,7 @@ const soulxCropApproval = {
 const activationRecordBase = {
   schema_version: "videoforge-v2-13-guarded-activation/v1",
   checkpoint: "V2-13",
+  full_live_authority_id: FULL_LIVE_AUTHORITY_ID,
   authority: {
     single_use: true,
     gpu_use_authorized: false,

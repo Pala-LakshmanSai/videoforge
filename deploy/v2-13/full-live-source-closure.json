@@ -1031,11 +1031,11 @@
     },
     {
       "path": "deploy/v2-13/build-materialization-seed.mjs",
-      "sha256": "sha256:2938e7985dd7413a435cd4b96ed0fb7096d0f930fc2bc50d0ef56c31d80c683f"
+      "sha256": "sha256:e30af714f6a12af6ddf0531852b9e7eef4690bdf9cb123a698f8f35f3eabcd7f"
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:56395c67d04b6777ca4b21abc2ff8dc4dc904066364f320e38d49a461f27929c"
+      "sha256": "sha256:62826a322012ee54033c15688a8b888daa53c6356116f85edce652efc552e7ac"
     },
     {
       "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",
@@ -1055,7 +1055,7 @@
     },
     {
       "path": "deploy/v2-13/guarded-activation.mjs",
-      "sha256": "sha256:e3b8b6c49179391dc341fd77880c9ad1368112ee3d83a8777755ea6e0c43b0b1"
+      "sha256": "sha256:b5be2bb99a151e82129f685b083ae78db2395f46e0dbf3ff62822fb20f1cc5e8"
     },
     {
       "path": "deploy/v2-13/media-worker-release-readback.mjs",

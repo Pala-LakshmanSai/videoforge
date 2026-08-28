@@ -75,6 +75,7 @@ function authority() {
   return {
     schema_version: "videoforge-v2-13-guarded-activation/v1",
     checkpoint: "V2-13",
+    full_live_authority_id: "11111111-1111-4111-8111-111111111111",
     authority: {
       mode: "APPROVED_EXECUTE",
       authority_id: "v2-13-test-authority-0001",
@@ -1255,7 +1256,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
   const pgcrypto = { name: "pgcrypto", version: "1.3", schema: "public" };
   const body = {
     schema_version: PREQUALIFICATION_SCHEMA_FOR_TEST,
-    full_live_authority_id: "v2-13-test-authority-0001",
+    full_live_authority_id: "11111111-1111-4111-8111-111111111111",
     outer_state_sha256: `sha256:${"e".repeat(64)}`,
     materialization_seed_sha256: `sha256:${"a".repeat(64)}`,
     database_identity_sha256:
@@ -1355,6 +1356,21 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
       calls.every((sql) => !sql.includes("CLOUDFLARE") && !sql.includes("production_secrets")),
       true,
     );
+    const callsBeforeAuthorityDrift = calls.length;
+    const wrongAuthority = structuredClone(receipt);
+    wrongAuthority.full_live_authority_id = "22222222-2222-4222-8222-222222222222";
+    const wrongAuthorityBody = { ...wrongAuthority };
+    delete wrongAuthorityBody.prequalification_database_bootstrap_sha256;
+    wrongAuthority.prequalification_database_bootstrap_sha256 = hash(
+      `${canonicalJson(wrongAuthorityBody)}\n`,
+    );
+    writeFileSync(receiptPath, `${canonicalJson(wrongAuthority)}\n`, { mode: 0o600 });
+    await assert.rejects(
+      verifyPrequalificationDatabase(currentAuthority, directory, { runCommand }),
+      /credential receipt does not match guarded authority/u,
+    );
+    assert.equal(calls.length, callsBeforeAuthorityDrift);
+    writeFileSync(receiptPath, `${canonicalJson(receipt)}\n`, { mode: 0o600 });
     const callsBeforeIdentityDrift = calls.length;
     const drifted = structuredClone(receipt);
     drifted.database_identity_sha256 = `sha256:${"0".repeat(64)}`;

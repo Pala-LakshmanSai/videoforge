@@ -842,6 +842,7 @@ function buildV213MaterializationSeed({
     activation_record_base: {
       schema_version: "videoforge-v2-13-guarded-activation/v1",
       checkpoint: "V2-13",
+      full_live_authority_id: fullLiveAuthorityId,
       authority: {
         single_use: true,
         gpu_use_authorized: false,

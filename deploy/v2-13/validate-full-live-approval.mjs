@@ -35,12 +35,12 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:42ce54f5347704d62233b3b9d4b065dfd4512ce87e3350dfa93107034f042090",
+    sha256: "sha256:d9efa4761be27c4f3f8cd5871128fa54bcc981e2c41c200c0e711447e1ef3f80",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:56395c67d04b6777ca4b21abc2ff8dc4dc904066364f320e38d49a461f27929c",
+    sha256: "sha256:62826a322012ee54033c15688a8b888daa53c6356116f85edce652efc552e7ac",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -48,11 +48,11 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:e3b8b6c49179391dc341fd77880c9ad1368112ee3d83a8777755ea6e0c43b0b1",
+    sha256: "sha256:b5be2bb99a151e82129f685b083ae78db2395f46e0dbf3ff62822fb20f1cc5e8",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:3df2dcbfc2b98ce9e0ba8c7c55a36c7efdc88b5919f9b0ee9c49271db8a5f05c",
+    sha256: "sha256:603118f89703cd30b132f2e1dd584f7e1d601143008f896ef6d6f949f10f8939",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -72,7 +72,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:2938e7985dd7413a435cd4b96ed0fb7096d0f930fc2bc50d0ef56c31d80c683f",
+    sha256: "sha256:e30af714f6a12af6ddf0531852b9e7eef4690bdf9cb123a698f8f35f3eabcd7f",
   }),
   materialization_seed_envelope_schema: Object.freeze({
     path: "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
@@ -136,7 +136,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:7c08aa37d54bca4731eb887248133e074ffa1492bf9bc69a389b6947a32e2cfa",
+    sha256: "sha256:67bd88146a436b57999e1f243532aa8505aa1fd34136335b98c3d833eb4e1ac9",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",

@@ -792,6 +792,10 @@ test("builds the exact static production seed from proposal-bound source and pro
   assert.equal(first.seed.production_input_base.authorityDocument.constructor, Object);
   assert.deepEqual(first.seed.production_input_base.authorityDocument, {});
   assert.deepEqual(first.seed.production_input_base.commandPayloads, {});
+  assert.equal(
+    first.seed.activation_record_base.full_live_authority_id,
+    first.seed.production_input_base.fullLiveAuthorityId,
+  );
   assert.equal(first.seed.activation_record_base.database.operator_database_url_sha256, null);
   assert.equal(
     first.seed.promotion_record_base.database.migration_ledger_sha256,
