@@ -44,6 +44,7 @@ const EXECUTOR_SHA256 = `sha256:${createHash("sha256")
   .update(readFileSync(resolve(ROOT, EXECUTOR_PATH)))
   .digest("hex")}`;
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
+const APPROVAL_BRANCH = "codex/serverless-v2-roadmap-v4";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const EXACT_DATABASE_IDENTITY_SHA256 =
   "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7";
@@ -432,7 +433,7 @@ export function assertResult(
     if (
       result.commit !== state.authority_record_commit ||
       result.exactRemoteReadback !== true ||
-      !/^[A-Za-z0-9._/-]{1,191}$/u.test(result.branch ?? "")
+      result.branch !== APPROVAL_BRANCH
     )
       fail("APPROVAL_COMMIT_READBACK", operation.id);
   }

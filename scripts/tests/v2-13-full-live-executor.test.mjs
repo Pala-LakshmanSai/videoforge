@@ -190,7 +190,7 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
     Object.assign(result, {
       commit: state.authority_record_commit,
       exactRemoteReadback: true,
-      branch: "codex/serverless-v2-roadmap",
+      branch: "codex/serverless-v2-roadmap-v4",
     });
   if (operation.id.endsWith("image-workflow-dispatch"))
     Object.assign(result, {
@@ -474,6 +474,29 @@ test("default command performs zero actions and reports every concrete tooling g
   assert.equal(output.ordered_operations.length, OPERATIONS.length);
   assert.equal(output.ordered_operations.length, 26);
   assert.equal(output.ordered_operations.at(-1).id, "certify-v2-13-release");
+});
+
+test("approval commit result requires the exact v4 branch and rejects the stale branch", () => {
+  const operation = OPERATIONS.find(({ id }) => id === "approval-commit-push");
+  const state = { authority_record_commit: "3".repeat(40) };
+  const accepted = {
+    actualUsd: 0,
+    commit: state.authority_record_commit,
+    exactRemoteReadback: true,
+    branch: "codex/serverless-v2-roadmap-v4",
+  };
+
+  assert.equal(assertResult(operation, accepted, state, new Map()), accepted);
+  assert.throws(
+    () =>
+      assertResult(
+        operation,
+        { ...accepted, branch: "codex/serverless-v2-roadmap" },
+        state,
+        new Map(),
+      ),
+    /APPROVAL_COMMIT_READBACK/u,
+  );
 });
 
 test("fresh preflight rejects a Serverless Flex rate above the exact current snapshot", () => {
