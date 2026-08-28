@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "c1e51ac5155d72383e3475e35c1e4868f0770473",
+  "audited_code_commit": "618eb031942829467c6c58541293b8515102965f",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.final-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-28T17:11:47.000Z",
+  "observed_at": "2026-08-28T17:55:09.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -111,7 +111,7 @@
   "notes": [
     "This record contains no credentials or raw protected values.",
     "The release-source successor may add only this readiness record and the canonical materialization-seed facts before resealing; application and deployment bytes remain those audited at audited_code_commit.",
-    "The immediately previous authority was recorded but never consumed because a pre-consumption audit found stale approval-branch binding; no credentials, provider calls, mutations, GPU use, or spend occurred, and that approval is non-reusable.",
+    "The immediately previous approval failed safely during provider-free seed construction because its protected input was noncanonical; no authority, credentials, provider calls, mutations, GPU use, or spend occurred, and that approval is non-reusable.",
     "The repaired publication path and executor evidence validator require the exact codex/serverless-v2-roadmap-v4 branch and reject the stale unsuffixed branch while preserving non-force fast-forward and tree-byte proof.",
     "The canonical full verify is intentionally blocked only by the stale active candidate descriptor and component bindings that this evidence successor permits resealing; focused source, package, SQL, SoulX, closure, and NO_ACTION gates passed."
   ]
