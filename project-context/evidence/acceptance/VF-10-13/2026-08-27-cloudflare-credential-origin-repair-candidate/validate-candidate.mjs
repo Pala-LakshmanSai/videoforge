@@ -47,7 +47,7 @@ const sourceReadinessAuditBytes = await readFile(sourceReadinessAuditPath);
 assert(sourceReadinessAuditBytes.at(-1) === 0x0a, "SOURCE_READINESS_AUDIT_FINAL_NEWLINE");
 assert(
   sha256(sourceReadinessAuditBytes) ===
-    "sha256:9858c67b49eb7209ac3a83e1fb30d38cef30618b785211317abc69626e32dded",
+    "sha256:77680856d795d996cd62a505b59445e42f4ddfdd256ceebcdc22fba231572dea",
   "SOURCE_READINESS_AUDIT_SHA256",
 );
 const sourceReadinessAudit = JSON.parse(sourceReadinessAuditBytes);
@@ -55,7 +55,7 @@ assert(
   sourceReadinessAudit.schema_version ===
     "videoforge.v2-13-full-live-source-readiness-audit/v1" &&
     sourceReadinessAudit.audited_code_commit ===
-      "618eb031942829467c6c58541293b8515102965f" &&
+      "e794b18231b1af6c6fbbd7cd8ba111b4a67f09a8" &&
     sourceReadinessAudit.audit_result === "PASS_READY_TO_RESEAL" &&
     sourceReadinessAudit.source_closure?.entry_count === 643 &&
     sourceReadinessAudit.source_closure?.sha256 ===
@@ -69,12 +69,14 @@ assert(
 const expectedProposalPath =
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
 const previousProposalSha256 =
-  "sha256:b579fb054114e82e4b26e3b3bad62d7c5e42b851df64a6fe7576591acd149ff9";
-const previousProposalRecordCommit = "618eb031942829467c6c58541293b8515102965f";
-const previousReleaseSourceCommit = "7374f0abade0706241cfc1288d0151fc83ee5d9a";
+  "sha256:776a66de473e48986285639bcbc5e2d87dc331ff9088041e71542e0405e0b5e6";
+const previousProposalRecordCommit = "e794b18231b1af6c6fbbd7cd8ba111b4a67f09a8";
+const previousReleaseSourceCommit = "9c27eaa56f9b10225fcc239d36c0c552e1c2b26b";
+const priorProposalRecordCommit = "618eb031942829467c6c58541293b8515102965f";
+const priorReleaseSourceCommit = "7374f0abade0706241cfc1288d0151fc83ee5d9a";
 const historicalProposalSha256 =
-  "sha256:b5bc0fe550f79230d92d1e47d5be639e094f6a73853243c15c6eaa0f92d24762";
-const historicalProposalRecordCommit = "127e63db6ad8739ffa6e18d0d3154561ddfe728d";
+  "sha256:b579fb054114e82e4b26e3b3bad62d7c5e42b851df64a6fe7576591acd149ff9";
+const historicalProposalRecordCommit = "618eb031942829467c6c58541293b8515102965f";
 const APPROVED_WRANGLER_OAUTH_SCOPES = Object.freeze([
   "account:read",
   "agent-memory:write",
@@ -155,18 +157,18 @@ const EXPECTED_MAGE_VOLUME_ID_SHA256 =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const EXPECTED_SOULX_VOLUME_ID_SHA256 =
   "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
-const EXPECTED_RELEASE_SOURCE_COMMIT = "9c27eaa56f9b10225fcc239d36c0c552e1c2b26b";
+const EXPECTED_RELEASE_SOURCE_COMMIT = "3c77fc97b6acb6907b9e9c7a4f4bd26495d02842";
 const EXPECTED_APPROVAL_VALIDATOR_SHA256 =
   "sha256:093a9ca77c329e7d6d6205e1927b9c6954f15999e595914c904abe3f94214d56";
 const EXPECTED_STATIC_RELEASE_DESCRIPTOR = Object.freeze({
   path: "protected-inputs/v2-13/static-release-descriptor.json",
-  sha256: "sha256:9491aab0d48772e1c577eb82b4ef20fccbba08425f210f9d185f1a3f8836f5e2",
+  sha256: "sha256:1cce7b79722098ce95de2cf79e0705858e948b2ce5c22837e3f37f18cda6a933",
 });
 const EXPECTED_MATERIALIZATION_SEED_FACTS = Object.freeze({
   commit_field: "source.release_source_commit",
   full_live_authority_id: "5df27ef4-b60b-4a4c-956d-01bd1624e5aa",
   path: "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-  sha256: "sha256:9986336d835f711d000bd7f9e331ac34b82f158444de177b596ef456b6ce8935",
+  sha256: "sha256:82e8167bbd976edaed966e5074dbbbf5b36bbefd99b87e75a03bb0544cd183c5",
 });
 const EXPECTED_RELEASE_COMPONENT_HASHES = Object.freeze(
   Object.fromEntries(
@@ -314,6 +316,10 @@ assert(
     readGitText(["rev-parse", `${previousProposalRecordCommit}^`], "PREVIOUS_RECORD_PARENT") ===
       previousReleaseSourceCommit &&
     readGitText(["rev-parse", `${previousReleaseSourceCommit}^`], "PREVIOUS_SOURCE_PARENT") ===
+      priorProposalRecordCommit &&
+    readGitText(["rev-parse", `${priorProposalRecordCommit}^`], "PRIOR_RECORD_PARENT") ===
+      priorReleaseSourceCommit &&
+    readGitText(["rev-parse", `${priorReleaseSourceCommit}^`], "PRIOR_SOURCE_PARENT") ===
       "c1e51ac5155d72383e3475e35c1e4868f0770473" &&
     readGitText(["rev-parse", "c1e51ac5155d72383e3475e35c1e4868f0770473^"], "READINESS_PARENT") ===
       "e44aae0667be7a64fa03b27a3c1b5ed2468c6ad1" &&
@@ -322,7 +328,11 @@ assert(
     readGitText(["rev-list", "--parents", "-n", "1", previousProposalRecordCommit], "PREVIOUS_RECORD_PARENT_RECORD") ===
       `${previousProposalRecordCommit} ${previousReleaseSourceCommit}` &&
     readGitText(["rev-list", "--parents", "-n", "1", previousReleaseSourceCommit], "PREVIOUS_SOURCE_PARENT_RECORD") ===
-      `${previousReleaseSourceCommit} c1e51ac5155d72383e3475e35c1e4868f0770473` &&
+      `${previousReleaseSourceCommit} ${priorProposalRecordCommit}` &&
+    readGitText(["rev-list", "--parents", "-n", "1", priorProposalRecordCommit], "PRIOR_RECORD_PARENT_RECORD") ===
+      `${priorProposalRecordCommit} ${priorReleaseSourceCommit}` &&
+    readGitText(["rev-list", "--parents", "-n", "1", priorReleaseSourceCommit], "PRIOR_SOURCE_PARENT_RECORD") ===
+      `${priorReleaseSourceCommit} c1e51ac5155d72383e3475e35c1e4868f0770473` &&
     readGitText(["rev-list", "--parents", "-n", "1", "c1e51ac5155d72383e3475e35c1e4868f0770473"], "READINESS_PARENT_RECORD") ===
       "c1e51ac5155d72383e3475e35c1e4868f0770473 e44aae0667be7a64fa03b27a3c1b5ed2468c6ad1",
   "EXACT_FIRST_PARENT_SUCCESSOR_CHAIN",
@@ -334,7 +344,7 @@ assert(
       "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/source-readiness-audit.json",
       "SOURCE_READINESS_AUDIT_SOURCE_MISSING",
     ),
-  ) === "sha256:9858c67b49eb7209ac3a83e1fb30d38cef30618b785211317abc69626e32dded",
+  ) === "sha256:77680856d795d996cd62a505b59445e42f4ddfdd256ceebcdc22fba231572dea",
   "SOURCE_READINESS_AUDIT_SOURCE_SHA256",
 );
 const materializationSeedFactsBytes = readCommittedBytes(
@@ -355,13 +365,13 @@ assert(
     materializationSeedFacts.source_evidence?.source_readiness?.path ===
       "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/source-readiness-audit.json" &&
     materializationSeedFacts.source_evidence.source_readiness.sha256 ===
-      "sha256:9858c67b49eb7209ac3a83e1fb30d38cef30618b785211317abc69626e32dded" &&
+      "sha256:77680856d795d996cd62a505b59445e42f4ddfdd256ceebcdc22fba231572dea" &&
     materializationSeedFacts.protected_input?.path ===
       "protected-inputs/v2-13/materialization-seed-input.json" &&
     materializationSeedFacts.protected_input.schema_version ===
       "videoforge.v213-materialization-seed-protected-input/v1" &&
     materializationSeedFacts.protected_input.sha256 ===
-      "sha256:19d2e0d347bf31b5917c94a542c3478ba479841d3332685e1830977a79a7e90e",
+      "sha256:1eb45cb3080e70b6c1d9626a6e0870a2cefc8b62e63bd9236502d7ddd54793da",
   "MATERIALIZATION_SEED_FACTS_CONTRACT",
 );
 validateStaticReleaseDescriptorFile({
@@ -611,7 +621,7 @@ assert(
     proposal.supersession.superseded_authority_record_path === null &&
     proposal.supersession.superseded_authority_record_sha256 === null &&
     proposal.supersession.supersession_reason ===
-      "MATERIALIZATION_SEED_INPUT_NONCANONICAL" &&
+      "MATERIALIZATION_SEED_ENVELOPE_KEY_ID_AUTHORITY_BINDING" &&
     proposal.supersession.superseded_authority_state ===
       "ABSENT_NOT_MATERIALIZED_NO_MUTATION" &&
     proposal.supersession.prior_approval_reusable === false &&

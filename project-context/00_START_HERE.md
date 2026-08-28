@@ -5,17 +5,18 @@
 ### New-chat launch point — 2026-08-28
 
 - The current provider-free release source is
-  `9c27eaa56f9b10225fcc239d36c0c552e1c2b26b`, an evidence-only child of independently audited
+  `3c77fc97b6acb6907b9e9c7a4f4bd26495d02842`, an evidence-only child of independently audited
   source `c1e51ac5155d72383e3475e35c1e4868f0770473`. Fresh sealed 26-operation proposal
-  `sha256:776a66de473e48986285639bcbc5e2d87dc331ff9088041e71542e0405e0b5e6` is bound to this
+  `sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19` is bound to this
   source; its proposal-record commit remains null/pending until the exact five-path commit exists,
   followed by independent record audit and fresh exact approval. It supersedes proposal
-  `sha256:b579fb054114e82e4b26e3b3bad62d7c5e42b851df64a6fe7576591acd149ff9` at proposal-record
-  commit `618eb031942829467c6c58541293b8515102965f`, bound to source
-  `7374f0abade0706241cfc1288d0151fc83ee5d9a`.
+  `sha256:776a66de473e48986285639bcbc5e2d87dc331ff9088041e71542e0405e0b5e6` at proposal-record
+  commit `e794b18231b1af6c6fbbd7cd8ba111b4a67f09a8`, bound to source
+  `9c27eaa56f9b10225fcc239d36c0c552e1c2b26b`.
 - The superseded proposal was explicitly approved, but materialization stopped before an approval
-  record or authority was created because the protected seed input was noncanonical. No credential,
-  provider, deployment, GPU, or spend action occurred. That approval is non-reusable.
+  record or authority was created because the envelope-signing key ID was not derived from the
+  full-live UUID. No credential, provider, deployment, GPU, or spend action occurred. That approval
+  is non-reusable.
 - The earlier exact approval was materialized once under authority
   `v2-13-full-live-20260828-133545z-14116dc6` (authority record commit
   `545bdff48913738072824ed04614944f5e1eb4c7`) and failed at initial preflight before normal operation authorization with PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH_DIRECTORY.
@@ -27,9 +28,9 @@
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:9986336d835f711d000bd7f9e331ac34b82f158444de177b596ef456b6ce8935` and UUID
+  `sha256:82e8167bbd976edaed966e5074dbbbf5b36bbefd99b87e75a03bb0544cd183c5` and UUID
   `5df27ef4-b60b-4a4c-956d-01bd1624e5aa`, plus protected static descriptor self-hash
-  `sha256:9491aab0d48772e1c577eb82b4ef20fccbba08425f210f9d185f1a3f8836f5e2`.
+  `sha256:1cce7b79722098ce95de2cf79e0705858e948b2ce5c22837e3f37f18cda6a933`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -67,7 +68,7 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free release source is `9c27eaa56f9b10225fcc239d36c0c552e1c2b26b`, built from
+The current provider-free release source is `3c77fc97b6acb6907b9e9c7a4f4bd26495d02842`, built from
 source-readiness-audited application source `c1e51ac5155d72383e3475e35c1e4868f0770473`;
 default entrypoints remain no-op. Its exact audited component pins include executor
 `sha256:7b58010e15790218608fcb9f0df7eecf6155e5fd10bf11ea8dc6b5a5cfb6b000`, adapters

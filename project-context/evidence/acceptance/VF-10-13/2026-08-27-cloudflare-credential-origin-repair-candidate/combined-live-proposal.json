@@ -18,18 +18,18 @@
     "required_next_action": "obtain fresh exact user approval of this sealed 26-operation proposal and static release descriptor before any authority record, credential access, provider call, mutation, GPU use, or spend",
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:9491aab0d48772e1c577eb82b4ef20fccbba08425f210f9d185f1a3f8836f5e2"
+      "sha256": "sha256:1cce7b79722098ce95de2cf79e0705858e948b2ce5c22837e3f37f18cda6a933"
     },
     "materialization_seed_facts": {
       "commit_field": "source.release_source_commit",
       "full_live_authority_id": "5df27ef4-b60b-4a4c-956d-01bd1624e5aa",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:9986336d835f711d000bd7f9e331ac34b82f158444de177b596ef456b6ce8935"
+      "sha256": "sha256:82e8167bbd976edaed966e5074dbbbf5b36bbefd99b87e75a03bb0544cd183c5"
     }
   },
   "supersession": {
-    "supersedes_proposal_sha256": "sha256:b579fb054114e82e4b26e3b3bad62d7c5e42b851df64a6fe7576591acd149ff9",
-    "supersedes_proposal_record_commit": "618eb031942829467c6c58541293b8515102965f",
+    "supersedes_proposal_sha256": "sha256:776a66de473e48986285639bcbc5e2d87dc331ff9088041e71542e0405e0b5e6",
+    "supersedes_proposal_record_commit": "e794b18231b1af6c6fbbd7cd8ba111b4a67f09a8",
     "superseded_exact_user_approval_received_in_current_task": true,
     "superseded_approval_record_materialized": false,
     "superseded_approval_record_path": null,
@@ -38,14 +38,14 @@
     "superseded_authority_id": null,
     "superseded_authority_record_path": null,
     "superseded_authority_record_sha256": null,
-    "supersession_reason": "MATERIALIZATION_SEED_INPUT_NONCANONICAL",
+    "supersession_reason": "MATERIALIZATION_SEED_ENVELOPE_KEY_ID_AUTHORITY_BINDING",
     "superseded_authority_state": "ABSENT_NOT_MATERIALIZED_NO_MUTATION",
     "prior_approval_reusable": false,
     "fresh_exact_approval_required": true
   },
   "source": {
-    "release_source_commit": "9c27eaa56f9b10225fcc239d36c0c552e1c2b26b",
-    "repaired_release_source_commit": "9c27eaa56f9b10225fcc239d36c0c552e1c2b26b",
+    "release_source_commit": "3c77fc97b6acb6907b9e9c7a4f4bd26495d02842",
+    "repaired_release_source_commit": "3c77fc97b6acb6907b9e9c7a4f4bd26495d02842",
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
     "future_authority_record_commit": null,
@@ -174,7 +174,7 @@
     },
     "pending_source_contract": {
       "status": "SOURCE_BOUND_AUDITED",
-      "release_source_commit": "9c27eaa56f9b10225fcc239d36c0c552e1c2b26b",
+      "release_source_commit": "3c77fc97b6acb6907b9e9c7a4f4bd26495d02842",
       "release_component_sha256s": {
         "full_live_executor": "sha256:7b58010e15790218608fcb9f0df7eecf6155e5fd10bf11ea8dc6b5a5cfb6b000",
         "full_live_adapters": "sha256:99cde95e368660b01bc90ea770a0f916e53cedae2532f5602f7019004aac6bab",
@@ -1688,7 +1688,7 @@
     "creation_requested": true,
     "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-      "exact_target_commit": "9c27eaa56f9b10225fcc239d36c0c552e1c2b26b",
+      "exact_target_commit": "3c77fc97b6acb6907b9e9c7a4f4bd26495d02842",
     "tag_kind": "LIGHTWEIGHT",
     "maximum_new_refs": 1,
     "force_update_authorized": false,
@@ -1701,8 +1701,8 @@
       "remote exact tag absence proved immediately before creation",
       "final source worker commit and all component hashes are independently audited and bound before reseal"
     ],
-      "exact_mutation": "create one lightweight tag locally at 9c27eaa56f9b10225fcc239d36c0c552e1c2b26b and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
-      "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to 9c27eaa56f9b10225fcc239d36c0c552e1c2b26b",
+      "exact_mutation": "create one lightweight tag locally at 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842 and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
+      "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842",
     "stop_on_presence_collision_or_drift": true
   },
   "requested_scope": {
@@ -2110,13 +2110,13 @@
     "plan_change_authorized": false,
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:9491aab0d48772e1c577eb82b4ef20fccbba08425f210f9d185f1a3f8836f5e2"
+      "sha256": "sha256:1cce7b79722098ce95de2cf79e0705858e948b2ce5c22837e3f37f18cda6a933"
     },
     "materialization_seed_facts": {
       "commit_field": "source.release_source_commit",
       "full_live_authority_id": "5df27ef4-b60b-4a4c-956d-01bd1624e5aa",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:9986336d835f711d000bd7f9e331ac34b82f158444de177b596ef456b6ce8935"
+      "sha256": "sha256:82e8167bbd976edaed966e5074dbbbf5b36bbefd99b87e75a03bb0544cd183c5"
     }
   },
   "ordered_operations": [
@@ -2269,7 +2269,7 @@
     ],
     "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, official Serverless Flex USD 0.00031/second (USD 1.116/GPU-hour) maximum, reject above, no fallback",
     "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
-    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to 9c27eaa56f9b10225fcc239d36c0c552e1c2b26b without force, then prove exact remote readback",
+    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842 without force, then prove exact remote readback",
     "requested_exact_database_roles": [
       "videoforge_hosted_operator",
       "videoforge_hosted_runtime",
