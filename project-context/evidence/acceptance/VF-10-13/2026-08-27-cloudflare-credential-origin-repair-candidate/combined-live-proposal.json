@@ -1,17 +1,29 @@
 {
   "schema_version": "videoforge.v2-13-full-live-completion-proposal/v3",
-  "checkpoint_range": ["V2-07", "V2-08", "V2-09", "V2-10", "V2-11", "V2-12", "V2-13"],
+  "checkpoint_range": [
+    "V2-07",
+    "V2-08",
+    "V2-09",
+    "V2-10",
+    "V2-11",
+    "V2-12",
+    "V2-13"
+  ],
   "task_id": "VF-10-13",
-  "candidate_date": "2026-08-27",
+  "candidate_date": "2026-08-28",
   "proposal_status": "PENDING_FRESH_EXACT_USER_APPROVAL",
   "sealing": {
     "sealed_for_exact_user_approval": true,
     "current_bytes_are_approval_ineligible": false,
-    "required_next_action": "obtain fresh exact user approval of this sealed proposal before any authority record, credential access, provider call, mutation, GPU use, or spend"
+    "required_next_action": "obtain fresh exact user approval of this sealed 26-operation proposal and static release descriptor before any authority record, credential access, provider call, mutation, GPU use, or spend",
+    "static_release_descriptor": {
+      "path": "protected-inputs/v2-13/static-release-descriptor.json",
+      "sha256": "sha256:815d29bccf912dd13d904a4b965ed42d13171ae421188bd8a0f649ea472b1dad"
+    }
   },
   "supersession": {
-    "supersedes_proposal_sha256": "sha256:e21108b71c31b3820335863b8f246613084161db8dbeb3be9ab18b618465494b",
-    "supersedes_proposal_record_commit": "24e7e04618a79b2ca21f3690c74c921bbb71dfd4",
+    "supersedes_proposal_sha256": "sha256:d328736bc06a0f35fa8e185d4269ada111614848c6183c7afec25d82c4a5ea43",
+    "supersedes_proposal_record_commit": "8fc0d913f891525b444a0bc1df2ac3e86bb64c7f",
     "superseded_exact_user_approval_received_in_current_task": true,
     "superseded_approval_record_materialized": false,
     "superseded_approval_record_path": null,
@@ -20,14 +32,14 @@
     "superseded_authority_id": null,
     "superseded_authority_record_path": null,
     "superseded_authority_record_sha256": null,
-    "supersession_reason": "POST_APPROVAL_PRE_AUTHORITY_SOURCE_REPAIR_REQUIRED",
+    "supersession_reason": "POST_APPROVAL_PRE_AUTHORITY_26_OPERATION_AND_STATIC_DESCRIPTOR_SOURCE_REPAIR_REQUIRED",
     "superseded_authority_state": "ABSENT_NOT_MATERIALIZED_NO_MUTATION",
     "prior_approval_reusable": false,
     "fresh_exact_approval_required": true
   },
   "source": {
-    "release_source_commit": "ec68da2d79c2d6b46965d477f6b1aabef61e7544",
-    "repaired_release_source_commit": "ec68da2d79c2d6b46965d477f6b1aabef61e7544",
+    "release_source_commit": "2f314531b4d65904bec99cb421db49aa579b5820",
+    "repaired_release_source_commit": "2f314531b4d65904bec99cb421db49aa579b5820",
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
     "future_authority_record_commit": null,
@@ -39,44 +51,68 @@
     "exact_release_components": {
       "full_live_executor": {
         "path": "deploy/v2-13/full-live-executor.mjs",
-        "sha256": "sha256:58df723c3e20930e36bb864e3a9176c0430939c162ef478fb6307da800ec658a",
+        "sha256": "sha256:8bdf4079222117e1ac38bca3a7170e5bd9cf6aea5ffbcbc70cf587af73fdbf49",
         "sole_canonical_live_mutation_path": true
       },
       "full_live_adapters": {
         "path": "deploy/v2-13/full-live-adapters.mjs",
-        "sha256": "sha256:0ebab27b0798171d342dbae0a5a71c59aef499295dd8f0ddd00ea85041d5bd69"
+        "sha256": "sha256:0556bd306fd572d9d1816297bec09a9398a249af8301bdf3e7a867a57e44c38e"
       },
       "promotion": {
         "path": "deploy/v2-13/promote-qualified-production.mjs",
-        "sha256": "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0"
+        "sha256": "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2"
       },
       "guarded_activation": {
         "path": "deploy/v2-13/guarded-activation.mjs",
-        "sha256": "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7"
+        "sha256": "sha256:bedc5b1a2af1380c83bc2a6223dcfba072b6c2deb38d54bf1f05b32801f0e758"
       },
       "orchestration_authority": {
         "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-        "sha256": "sha256:189cd0a52cbe589fbfe4e425d71a81104d63f672e8ea4302381bd73911ecd1d0"
+        "sha256": "sha256:f57ee0d30274eeadfbcac2a0666d808b7d71bdff33afeb7a4efb00cf7ed73929"
       },
       "typescript_cli_bridge": {
         "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-        "sha256": "sha256:a2b56248037b9712aec87513339d8e3fa3b6c172e0ee62e6a943e518d3af3459"
+        "sha256": "sha256:a83d5ee164cb279b5381272eec66f70b10904883806e81caf75e774ac9f30102"
       },
       "runpod_dual_lane_transport": {
         "path": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
-        "sha256": "sha256:a6c1fc9333ad64726522b6e9fa62354637eb3c7248803e06e8470974db8203a0"
+        "sha256": "sha256:7734369295715d57b92ae0ca399ad8514cee5babb2b5d1acd749a860fd4b22c0"
       },
       "migration_0045": {
         "path": "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
-        "sha256": "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d"
+        "sha256": "sha256:352169e1e34e23bc36b2a3c1fb653747194fe0b560894bfdbfafb30d635561d7"
       },
       "operator_grants": {
         "path": "deploy/v2-13/neon-full-live-operator-grants.sql",
-        "sha256": "sha256:60922d36e5aeb05fe34705198967aa3adf20cdf9ec61283810a565b6690b2c39"
+        "sha256": "sha256:f97dcc4b85f48a16b994eaf7e50c91502a12a4600f0b17fd81ee6d31b8db74de"
+      },
+      "reconciler_grants": {
+        "path": "deploy/v2-13/neon-pair-reconciler-grants.sql",
+        "sha256": "sha256:7d6fc701c5f71c1a3dc09ee08268e4f8caa58e69a85594258ce864aa673b49a7"
+      },
+      "runtime_grants": {
+        "path": "deploy/v2-06/neon-runtime-grants.sql",
+        "sha256": "sha256:df43df13634319fa97e8f19f4459af5e01c42b8f144f00c8527f5f873ec7085f"
+      },
+      "materialization_seed_production_input_validator": {
+        "path": "deploy/v2-13/validate-materialization-seed-production-input.mts",
+        "sha256": "sha256:0b40fda24bcb2983b8d8e2ceece1254064f0cb1c3fb0712795c2a9ed68677d88"
+      },
+      "production_config_validator": {
+        "path": "deploy/v2-13/validate-production-config.mjs",
+        "sha256": "sha256:9860d815d101dd25b8a98ef5231df6054a42c9820edabaf6bb871dcaf5fc83f6"
+      },
+      "pg_service_validator": {
+        "path": "deploy/v2-06/validate-pg-service.mjs",
+        "sha256": "sha256:08fce81dcb856d365b9aaa728e16f827fcb07ac4ce027d20feeab3972d246e7e"
       },
       "migration_manifest": {
         "path": "packages/control-plane/migrations/manifest.json",
-        "sha256": "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa"
+        "sha256": "sha256:f0f8bd8d1aec2097b87efd12a58954861c127b2fef0240af4fe238108950f6bf"
+      },
+      "source_closure_manifest": {
+        "path": "deploy/v2-13/full-live-source-closure.json",
+        "sha256": "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8"
       },
       "approval_validator": {
         "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -92,18 +128,24 @@
     },
     "pending_source_contract": {
       "status": "SOURCE_BOUND_AUDITED",
-      "release_source_commit": "ec68da2d79c2d6b46965d477f6b1aabef61e7544",
+      "release_source_commit": "2f314531b4d65904bec99cb421db49aa579b5820",
       "release_component_sha256s": {
-        "full_live_executor": "sha256:58df723c3e20930e36bb864e3a9176c0430939c162ef478fb6307da800ec658a",
-        "full_live_adapters": "sha256:0ebab27b0798171d342dbae0a5a71c59aef499295dd8f0ddd00ea85041d5bd69",
-        "promotion": "sha256:4151184dfa56dd687db22fbff378aed438f15d9fab2030b893b704ca7b67b6e0",
-        "guarded_activation": "sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7",
-        "orchestration_authority": "sha256:189cd0a52cbe589fbfe4e425d71a81104d63f672e8ea4302381bd73911ecd1d0",
-        "typescript_cli_bridge": "sha256:a2b56248037b9712aec87513339d8e3fa3b6c172e0ee62e6a943e518d3af3459",
-        "runpod_dual_lane_transport": "sha256:a6c1fc9333ad64726522b6e9fa62354637eb3c7248803e06e8470974db8203a0",
-        "migration_0045": "sha256:fdb9c122c87603ff5f204a055eab902d41f362fec3be58d83be4ec088208b34d",
-        "operator_grants": "sha256:60922d36e5aeb05fe34705198967aa3adf20cdf9ec61283810a565b6690b2c39",
-        "migration_manifest": "sha256:93e793e66f8307681d494e9834debbc0458fd9ba04b55497be2b868fa2011baa"
+        "full_live_executor": "sha256:8bdf4079222117e1ac38bca3a7170e5bd9cf6aea5ffbcbc70cf587af73fdbf49",
+        "full_live_adapters": "sha256:0556bd306fd572d9d1816297bec09a9398a249af8301bdf3e7a867a57e44c38e",
+        "promotion": "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
+        "guarded_activation": "sha256:bedc5b1a2af1380c83bc2a6223dcfba072b6c2deb38d54bf1f05b32801f0e758",
+        "orchestration_authority": "sha256:f57ee0d30274eeadfbcac2a0666d808b7d71bdff33afeb7a4efb00cf7ed73929",
+        "typescript_cli_bridge": "sha256:a83d5ee164cb279b5381272eec66f70b10904883806e81caf75e774ac9f30102",
+        "runpod_dual_lane_transport": "sha256:7734369295715d57b92ae0ca399ad8514cee5babb2b5d1acd749a860fd4b22c0",
+        "migration_0045": "sha256:352169e1e34e23bc36b2a3c1fb653747194fe0b560894bfdbfafb30d635561d7",
+        "operator_grants": "sha256:f97dcc4b85f48a16b994eaf7e50c91502a12a4600f0b17fd81ee6d31b8db74de",
+        "reconciler_grants": "sha256:7d6fc701c5f71c1a3dc09ee08268e4f8caa58e69a85594258ce864aa673b49a7",
+        "runtime_grants": "sha256:df43df13634319fa97e8f19f4459af5e01c42b8f144f00c8527f5f873ec7085f",
+        "materialization_seed_production_input_validator": "sha256:0b40fda24bcb2983b8d8e2ceece1254064f0cb1c3fb0712795c2a9ed68677d88",
+        "production_config_validator": "sha256:9860d815d101dd25b8a98ef5231df6054a42c9820edabaf6bb871dcaf5fc83f6",
+        "pg_service_validator": "sha256:08fce81dcb856d365b9aaa728e16f827fcb07ac4ce027d20feeab3972d246e7e",
+        "migration_manifest": "sha256:f0f8bd8d1aec2097b87efd12a58954861c127b2fef0240af4fe238108950f6bf",
+        "source_closure_manifest": "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8"
       },
       "source_hashes_must_be_bound_before_reseal": false,
       "credential_receipt_binding": {
@@ -295,7 +337,10 @@
       "remaining_time_checked_before_and_after_every_await_or_spawn": true,
       "every_wait_is_capped_to_positive_remaining_deadline_ms": true,
       "no_positive_remaining_time_is_immediate_timeout": true,
-      "pollable_statuses": ["queued", "in_progress"],
+      "pollable_statuses": [
+        "queued",
+        "in_progress"
+      ],
       "accepted_terminal_status": "completed",
       "accepted_conclusion": "success",
       "immediate_stop_on_completed_non_success": true,
@@ -307,8 +352,25 @@
       "timeout_transition": "OUTER_CLEANUP_ONLY_NO_RETRY"
     },
     "internal_materialization_policy": {
-      "writer": "FULL_LIVE_EXECUTOR_INTERNAL_ONLY",
-      "external_mid_run_writer_authorized": false,
+      "writer": "FULL_LIVE_EXECUTOR_PLUS_AUTHORITY_BOUND_POST_CONSUMPTION_OPERATOR",
+      "external_mid_run_writer_authorized": true,
+      "external_mid_run_writer_exact_operation": "record-workflow-start-authority",
+      "external_mid_run_writer_requires_consumed_outer_authority": true,
+      "external_mid_run_writer_schema": "videoforge.v213-post-consumption-materialization/v1",
+      "external_mid_run_writer_file_env": "VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE",
+      "external_mid_run_writer_exact_bindings": [
+        "fullLiveAuthorityId",
+        "outerStateSha256",
+        "sourceCommit",
+        "proposalSha256",
+        "approvalSha256",
+        "workerOperatorBearerSha256",
+        "appOwnedIdentities",
+        "workflowStartAuthority",
+        "commandPayloads",
+        "acceptanceAuthorities",
+        "materializationSha256"
+      ],
       "future_result_files_required_at_initial_preflight": false,
       "protected_seed_schema": "videoforge.v213-full-live-materialization-seed/v1",
       "protected_seed_contains_only": [
@@ -388,6 +450,27 @@
         ],
         "accepted_for_normal_guarded_or_acceptance_work": false
       },
+      "cleanup_receipt_finalizer": {
+        "schema": "videoforge.v213-local-cleanup-receipt-finalization-request/v1",
+        "result_schema": "videoforge.v213-cleanup-receipt-finalization-result/v1",
+        "inside_existing_cleanup_operation": true,
+        "adds_graph_operation": false,
+        "runs_only_after_exact_provider_cleanup_journal_result": true,
+        "provider_cleanup_runtime_fd_policy_unchanged": true,
+        "exact_child_fd_environment": [
+          "REQUEST_FD",
+          "OPERATOR_DATABASE_URL_FD",
+          "EVIDENCE_SIGNING_KEY_FD"
+        ],
+        "provider_clients_constructed": false,
+        "runpod_calls": 0,
+        "cloudflare_calls": 0,
+        "gpu_use": false,
+        "provider_dispatch": false,
+        "initial_idempotent_persist_then_exact_readback": true,
+        "recovery_readback_only": true,
+        "missing_recovery_receipt_or_fact_materialization_is_hard_stop": true
+      },
       "storage_parent": "OUTER_STATE_MODE_0700_DIRECTORY",
       "record_file_mode": "0600",
       "exclusive_create_or_exact_hash_cas_required": true,
@@ -407,13 +490,17 @@
       "entry_sha256_is_hash_of_preceding_six_fields": true,
       "chain_verifier_required_in_production_entrypoint": true,
       "chain_verifier_function": "verifyMaterializationChainFile",
-      "chain_verifier_boundaries": ["hydrated", "settled"],
+      "chain_verifier_boundaries": [
+        "hydrated",
+        "settled"
+      ],
       "missing_chain_verifier_is_hard_stop_before_external_action": true,
       "chain_stage_order": [
         "production-input",
         "max-one-endpoint-bindings",
         "activation-record",
         "promotion-record",
+        "post-consumption-command-payloads",
         "cleanup-pre-endpoint-descriptor"
       ],
       "early_cleanup_missing_chain_file_allowed_only_before_operator_verification": true,
@@ -426,11 +513,15 @@
             "soulx-image-workflow-verification"
           ],
           "consume_before_operation": "fresh-live-preflight",
-          "writes": ["production-input"]
+          "writes": [
+            "production-input"
+          ]
         },
         {
           "kind": "max-one-endpoint-bindings",
-          "materialize_after_operations": ["create-exact-max-one-endpoints"],
+          "materialize_after_operations": [
+            "create-exact-max-one-endpoints"
+          ],
           "derives_only_from": "receipt.materialization.production",
           "consume_before_materialization": "activation-record",
           "writes": [
@@ -461,7 +552,9 @@
             "create-exact-max-one-endpoints"
           ],
           "consume_before_operation": "guarded-activation-once",
-          "requires_prior_materialization_kinds": ["max-one-endpoint-bindings"],
+          "requires_prior_materialization_kinds": [
+            "max-one-endpoint-bindings"
+          ],
           "writes": [
             "media-manifest",
             "config-activation-record",
@@ -478,7 +571,25 @@
             "guarded-activation-once"
           ],
           "consume_before_operation": "promote-qualified-production",
-          "writes": ["promotion-record"]
+          "writes": [
+            "promotion-record"
+          ]
+        },
+        {
+          "kind": "post-consumption-command-payloads",
+          "materialize_after_operations": [
+            "promote-qualified-production"
+          ],
+          "consume_before_operation": "v2-09-short-hosted-project",
+          "source_schema": "videoforge.v213-post-consumption-materialization/v1",
+          "command_payload_seed_must_be_empty": true,
+          "app_and_database_owned_identities_required": true,
+          "worker_bearer_sha256_binding_required": true,
+          "v2_11_two_distinct_account_scopes_required": true,
+          "writes": [
+            "production-input.commandPayloads",
+            "four-acceptance-authorities"
+          ]
         },
         {
           "kind": "cleanup-pre-endpoint-descriptor",
@@ -508,9 +619,29 @@
       "exact_operator_role": "videoforge_hosted_operator",
       "runtime_and_reconciler_roles_must_remain_absent": true,
       "exact_initial_ledger_prefix_count": 36,
-      "exact_recoverable_prefix_counts": [37, 38, 39, 40, 41, 42, 43, 44, 45],
+      "exact_recoverable_prefix_counts": [
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45
+      ],
       "reject_ledger_drift_or_count_above_45": true,
-      "pgcrypto_then_exact_migrations": [37, 38, 39, 40, 41, 42, 43, 44, 45],
+      "pgcrypto_then_exact_migrations": [
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45
+      ],
       "each_migration_requires_advisory_lock_and_single_transaction": true,
       "owner_connection_uses_only_protected_pg_service_and_pgpass": true,
       "operator_role_created_or_recovered_from_protected_operator_dsn_only_after_migrations": true,
@@ -525,7 +656,7 @@
         "no-table-acl",
         "exact-operator-function-acl"
       ],
-      "exact_operator_function_signature_count": 17,
+      "exact_operator_function_signature_count": 39,
       "exact_operator_function_signature_namespace": "public",
       "exact_operator_function_signature_canonicalization": "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
       "exact_operator_function_acl_comparison": "OID_SET_SORTED_EXACT_ALLOWLIST",
@@ -586,7 +717,16 @@
       "receipt_final_ledger_count": 45,
       "receipt_recovery_mode_count_binding": {
         "FRESH_36_TO_45": 36,
-        "RESUME_EXACT_PREFIX": [37, 38, 39, 40, 41, 42, 43, 44],
+        "RESUME_EXACT_PREFIX": [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
         "VERIFIED_EXISTING_45": 45
       },
       "receipt_replay_cas_required": true,
@@ -628,7 +768,10 @@
       "operator_dsn_policy": {
         "file": "operator.database-url",
         "exact_role": "videoforge_hosted_operator",
-        "accepted_protocols": ["postgres:", "postgresql:"],
+        "accepted_protocols": [
+          "postgres:",
+          "postgresql:"
+        ],
         "sslmode": "require",
         "channel_binding": "require",
         "host_and_database_match_owner_service": true,
@@ -649,23 +792,45 @@
         "required_before_normal_operator_dsn_cleanup": true
       },
       "exact_operator_function_signatures": [
-        "videoforge_load_v213_bridge_acceptance_call(jsonb)",
-        "videoforge_record_v213_stage_authority(uuid,jsonb)",
-        "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
-        "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
-        "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
-        "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+        "videoforge_claim_v213_bridge_command(jsonb)",
+        "videoforge_claim_v213_operation(jsonb)",
         "videoforge_claim_v213_stage_authority(jsonb)",
         "videoforge_complete_v213_stage_authority(text,text,jsonb)",
-        "videoforge_load_v213_stage_handoff(uuid,text,text)",
+        "videoforge_load_v213_bridge_acceptance_call(jsonb)",
         "videoforge_load_v213_cleanup_scope(uuid)",
-        "videoforge_claim_v213_operation(jsonb)",
-        "videoforge_transition_v213_operation(jsonb)",
-        "videoforge_claim_v213_bridge_command(jsonb)",
-        "videoforge_transition_v213_bridge_command(jsonb)",
-        "videoforge_record_v213_receipt_verification_key(text,text)",
+        "videoforge_load_v213_signed_evidence(jsonb)",
+        "videoforge_load_v213_stage_handoff(uuid,text,text)",
+        "videoforge_materialize_v213_release_facts(jsonb)",
+        "videoforge_persist_v213_jit_materialization(jsonb)",
+        "videoforge_persist_v213_release_certification(jsonb)",
+        "videoforge_persist_v213_release_chrome(jsonb)",
+        "videoforge_prepare_v213_jit_operation(jsonb)",
+        "videoforge_project_v213_jit_operation(jsonb)",
+        "videoforge_project_v213_release_certification(jsonb)",
+        "videoforge_project_v213_release_chrome(jsonb)",
+        "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
         "videoforge_publish_v213_qualified_deployments(jsonb)",
-        "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)"
+        "videoforge_read_v213_jit_materialization(jsonb)",
+        "videoforge_read_v213_operation_receipt(jsonb)",
+        "videoforge_read_v213_operator_evidence(jsonb)",
+        "videoforge_read_v213_release_certification(jsonb)",
+        "videoforge_read_v213_release_chrome(jsonb)",
+        "videoforge_read_v213_release_fact_materialization(jsonb)",
+        "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+        "videoforge_record_v213_acceptance_authority(jsonb)",
+        "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+        "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+        "videoforge_record_v213_operation_receipt(jsonb)",
+        "videoforge_record_v213_receipt_verification_key(text,text)",
+        "videoforge_record_v213_signed_evidence(jsonb)",
+        "videoforge_record_v213_stage_authority(uuid,jsonb)",
+        "videoforge_record_v213_static_release_descriptor(jsonb)",
+        "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+        "videoforge_transition_v213_bridge_command(jsonb)",
+        "videoforge_transition_v213_operation(jsonb)",
+        "videoforge_v213_production_length_repository(jsonb)",
+        "videoforge_v213_short_pilot_repository(jsonb)",
+        "videoforge_verify_v213_jit_artifact(jsonb)"
       ],
       "recovery_modes": [
         "FRESH_36_TO_45",
@@ -747,7 +912,28 @@
       "ordered_after_operation": "promote-qualified-production",
       "ordered_before_operation": "v2-09-short-hosted-project",
       "database_function": "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
-      "result_exact_fields": ["authorityId", "tokenSha256", "expiresAt"],
+      "acceptance_authority_database_function": "videoforge_record_v213_acceptance_authority(jsonb)",
+      "exact_acceptance_authority_count": 4,
+      "acceptance_checkpoints": [
+        "V2-10",
+        "V2-11",
+        "V2-12",
+        "V2-13"
+      ],
+      "protected_materialization_schema": "videoforge.v213-post-consumption-materialization/v1",
+      "protected_materialization_file_env": "VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE",
+      "protected_materialization_parent_mode": "0700",
+      "protected_materialization_file_mode": "0600",
+      "protected_materialization_canonical_json_and_self_hash_required": true,
+      "protected_materialization_must_postdate_outer_consumption": true,
+      "worker_operator_bearer_hash_must_match_protected_file": true,
+      "command_payloads_cas_injected_before_v2_09": true,
+      "v2_11_two_distinct_account_and_workspace_scopes_required": true,
+      "result_exact_fields": [
+        "authorityId",
+        "tokenSha256",
+        "expiresAt"
+      ],
       "result_authority_id_is_uuid": true,
       "result_token_sha256_is_canonical_hash": true,
       "result_expires_at_is_rfc3339_timestamp": true,
@@ -768,7 +954,10 @@
         "VIDEOFORGE_V213_BRIDGE_REQUEST_FD",
         "VIDEOFORGE_V213_BRIDGE_RUNPOD_API_KEY_FD"
       ],
-      "exact_child_fd_environment": ["REQUEST_FD", "RUNPOD_API_KEY_FD"],
+      "exact_child_fd_environment": [
+        "REQUEST_FD",
+        "RUNPOD_API_KEY_FD"
+      ],
       "allowed_operation_ids": [
         "restore-endpoints-max-one",
         "prove-zero-workers",
@@ -795,6 +984,8 @@
       "gpu_use": false,
       "external_spend_usd": 0,
       "accepted_only_before_operator_verification": true,
+      "accepted_only_before_persisted_runpod_mutation_capable_operation": true,
+      "eligibility_function": "canUseEarlyCleanupWithoutProviderReads",
       "database_cleanup_claimed": false,
       "never_claims_database_cleanup": true,
       "after_operator_verified_cleanup": "NORMAL_OPERATOR_DSN_CLEANUP_RUNTIME"
@@ -818,7 +1009,12 @@
         "billing_proof_sha256",
         "resource_reconciliation_sha256",
         "max_one_restoration_sha256"
-      ]
+      ],
+      "partial_pair_terminal_states": [
+        "EXACT_MAX_ONE_PAIR_RETAINED",
+        "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT"
+      ],
+      "partial_pair_requires_final_deterministic_name_absence_proof": true
     },
     "durable_billing_policy": {
       "baseline_source": "AUTHENTICATED_RUNPOD_ACCOUNT_BILLING_READBACK",
@@ -941,7 +1137,10 @@
         "protected_file": "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE",
         "exact_path": "operator.database-url",
         "exact_role": "videoforge_hosted_operator",
-        "accepted_protocols": ["postgres:", "postgresql:"],
+        "accepted_protocols": [
+          "postgres:",
+          "postgresql:"
+        ],
         "exact_query_parameters": {
           "sslmode": "require",
           "channel_binding": "require"
@@ -963,6 +1162,25 @@
         "v2-12-long-output",
         "v2-13-final-two-lane-smoke"
       ],
+      "v2_09_post_terminal_chrome_policy": {
+        "schedule_exactly_once_before_chrome_request": true,
+        "default_terminal_resolver": "createV213V209ProductionTerminalOutputResolver",
+        "terminal_resolver_is_read_only_and_never_dispatches": true,
+        "required_terminal_state": "COMPLETE_SUCCEEDED",
+        "final_output_durable_receipt_required": true,
+        "settled_pair_two_output_barriers_and_zero_active_leases_required": true,
+        "exchange_directory_env": "VIDEOFORGE_V209_CHROME_EVIDENCE_DIR",
+        "exchange_directory_mode": "0700",
+        "request_and_receipt_file_mode": "0600",
+        "receipt_schema": "videoforge.v2-09-real-chrome-receipt/v1",
+        "evidence_schema": "videoforge.v2-09-real-chrome-acceptance/v1",
+        "real_chrome_playback_and_download_required": true,
+        "observed_at_must_be_at_or_after_terminal_at": true,
+        "final_output_and_receipt_hashes_must_match_terminal_proof": true,
+        "signed_evidence_key_must_match_production_acceptance_key": true,
+        "bounded_wait_by_v2_09_deadline": true,
+        "missing_stale_malformed_or_mismatched_receipt_transition": "OUTER_CLEANUP_ONLY_NO_RETRY"
+      },
       "receipt_gate": {
         "adapter_option": "requirePrequalificationReceipt",
         "verifier_function": "verifyPrequalificationDatabaseReceipt",
@@ -1238,7 +1456,8 @@
       "restore-endpoints-max-one",
       "prove-zero-workers",
       "read-settled-billing",
-      "reconcile-exact-resources"
+      "reconcile-exact-resources",
+      "certify-v2-13-release"
     ],
     "operation_order_is_closed_and_non_reorderable": true,
     "missing_extra_or_repeated_operation_is_a_hard_stop": true
@@ -1247,7 +1466,7 @@
     "creation_requested": true,
     "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-    "exact_target_commit": "ec68da2d79c2d6b46965d477f6b1aabef61e7544",
+    "exact_target_commit": "2f314531b4d65904bec99cb421db49aa579b5820",
     "tag_kind": "LIGHTWEIGHT",
     "maximum_new_refs": 1,
     "force_update_authorized": false,
@@ -1260,8 +1479,8 @@
       "remote exact tag absence proved immediately before creation",
       "final source worker commit and all component hashes are independently audited and bound before reseal"
     ],
-    "exact_mutation": "after final source binding, create one lightweight tag locally and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
-    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to the final independently audited source commit",
+    "exact_mutation": "create one lightweight tag locally at 2f314531b4d65904bec99cb421db49aa579b5820 and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
+    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to 2f314531b4d65904bec99cb421db49aa579b5820",
     "stop_on_presence_collision_or_drift": true
   },
   "requested_scope": {
@@ -1484,7 +1703,7 @@
       "exact_reconciler_role": "videoforge_hosted_reconciler",
       "roles_must_be_fresh_absent_distinct_login_noinherit_hardened": true,
       "pgcrypto_required": true,
-      "prequalification_database_bootstrap_operator_function_signature_count": 17,
+      "prequalification_database_bootstrap_operator_function_signature_count": 39,
       "prequalification_database_bootstrap_operator_function_signature_namespace": "public",
       "prequalification_database_bootstrap_operator_function_signature_canonicalization": "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
       "prequalification_database_bootstrap_operator_acl_comparison": "OID_SET_SORTED_EXACT_ALLOWLIST",
@@ -1532,27 +1751,69 @@
       },
       "prequalification_database_bootstrap_recovery_mode_final_ledger_count": 45,
       "exact_operator_function_signatures": [
-        "videoforge_load_v213_bridge_acceptance_call(jsonb)",
-        "videoforge_record_v213_stage_authority(uuid,jsonb)",
-        "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
-        "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
-        "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
-        "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+        "videoforge_claim_v213_bridge_command(jsonb)",
+        "videoforge_claim_v213_operation(jsonb)",
         "videoforge_claim_v213_stage_authority(jsonb)",
         "videoforge_complete_v213_stage_authority(text,text,jsonb)",
-        "videoforge_load_v213_stage_handoff(uuid,text,text)",
+        "videoforge_load_v213_bridge_acceptance_call(jsonb)",
         "videoforge_load_v213_cleanup_scope(uuid)",
-        "videoforge_claim_v213_operation(jsonb)",
+        "videoforge_load_v213_signed_evidence(jsonb)",
+        "videoforge_load_v213_stage_handoff(uuid,text,text)",
+        "videoforge_materialize_v213_release_facts(jsonb)",
+        "videoforge_persist_v213_jit_materialization(jsonb)",
+        "videoforge_persist_v213_release_certification(jsonb)",
+        "videoforge_persist_v213_release_chrome(jsonb)",
+        "videoforge_prepare_v213_jit_operation(jsonb)",
+        "videoforge_project_v213_jit_operation(jsonb)",
+        "videoforge_project_v213_release_certification(jsonb)",
+        "videoforge_project_v213_release_chrome(jsonb)",
+        "videoforge_promote_hosted_full_live(uuid,uuid,jsonb)",
+        "videoforge_publish_v213_qualified_deployments(jsonb)",
+        "videoforge_read_v213_jit_materialization(jsonb)",
+        "videoforge_read_v213_operation_receipt(jsonb)",
+        "videoforge_read_v213_operator_evidence(jsonb)",
+        "videoforge_read_v213_release_certification(jsonb)",
+        "videoforge_read_v213_release_chrome(jsonb)",
+        "videoforge_read_v213_release_fact_materialization(jsonb)",
+        "videoforge_record_hosted_full_live_authority(uuid,jsonb)",
+        "videoforge_record_v213_acceptance_authority(jsonb)",
+        "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
+        "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+        "videoforge_record_v213_operation_receipt(jsonb)",
+        "videoforge_record_v213_receipt_verification_key(text,text)",
+        "videoforge_record_v213_signed_evidence(jsonb)",
+        "videoforge_record_v213_stage_authority(uuid,jsonb)",
+        "videoforge_record_v213_static_release_descriptor(jsonb)",
+        "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)",
+        "videoforge_transition_v213_bridge_command(jsonb)",
         "videoforge_transition_v213_operation(jsonb)",
-        "videoforge_claim_v213_bridge_command(jsonb)",
-          "videoforge_transition_v213_bridge_command(jsonb)",
-          "videoforge_record_v213_receipt_verification_key(text,text)",
-          "videoforge_publish_v213_qualified_deployments(jsonb)",
-          "videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz)"
+        "videoforge_v213_production_length_repository(jsonb)",
+        "videoforge_v213_short_pilot_repository(jsonb)",
+        "videoforge_verify_v213_jit_artifact(jsonb)"
       ],
       "exact_initial_ledger_prefix_count": 36,
-      "exact_recoverable_prefix_counts": [37, 38, 39, 40, 41, 42, 43, 44, 45],
-      "exact_migrations_to_apply": [37, 38, 39, 40, 41, 42, 43, 44, 45]
+      "exact_recoverable_prefix_counts": [
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45
+      ],
+      "exact_migrations_to_apply": [
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45
+      ]
     },
     "cloudflare_creation_allowlist": [
       "disabled Worker videoforge-production-runtime",
@@ -1595,7 +1856,11 @@
     "new_paid_retained_resources": 0,
     "other_new_git_refs": 0,
     "other_resource_creation_authorized": false,
-    "plan_change_authorized": false
+    "plan_change_authorized": false,
+    "static_release_descriptor": {
+      "path": "protected-inputs/v2-13/static-release-descriptor.json",
+      "sha256": "sha256:815d29bccf912dd13d904a4b965ed42d13171ae421188bd8a0f649ea472b1dad"
+    }
   },
   "ordered_operations": [
     {
@@ -1702,7 +1967,7 @@
         "V2-10: one operator-free 3-to-5-minute Ranga-style MP4 within USD 2.00; do not substitute recovery tests or developer intervention",
         "V2-11: two concurrent owned projects across two accounts within USD 4.00, fairness and tenant isolation, then restore both lanes to workersMax=1",
         "V2-12: one automatic 29-to-31-minute output within USD 2.00 with every-cut review and real Chrome playback",
-        "V2-13: one final two-lane smoke within USD 2.00 with security, economics, route, deployment, artifact-lineage, restart/reconcile, drain, billing, and handoff gates"
+        "V2-13: one final paid two-lane smoke within USD 2.00 producing only exact signed current-run smoke evidence and a distinct release-bound real-Chrome artifact; it does not certify release"
       ]
     },
     {
@@ -1711,9 +1976,10 @@
       "operations": [
         "before videoforge_hosted_operator is verified, use only the separate videoforge.v213-full-live-early-cleanup-input/v1 runtime with REQUEST_FD and RUNPOD_API_KEY_FD; perform no database or Cloudflare mutation and never claim database cleanup",
         "after videoforge_hosted_operator is verified, use the normal videoforge.v213-full-live-cleanup-input/v1 runtime with only its explicitly allowed operator DSN seam; never load exactProductionInput, runtime or reconciler database roles, production secrets, endpoint identities, signing keys, or key registration",
-        "restore workersMax=1 and workersMin=0, require every owned queue empty, and delete only attributable disposable resources",
+        "execute exactly restore-endpoints-max-one, prove-zero-workers, read-settled-billing, and reconcile-exact-resources; persist and read back their exact current-authority receipts before certification",
         "retain only the same two exact 50 GB EU-RO-1 volumes at the separately approved USD 7/month and intended zero-idle product control resources",
-        "prove three stable zero-worker/zero-running-Pod reads, the protected Wrangler OAuth config, authenticated account-derived origin, final HTTP 200 DISABLED_UNQUALIFIED or QUALIFIED_EXACT route readback as applicable, final billing after lag, every phase cap, and the USD 17.50 cumulative cap",
+        "after the exact four-operation cleanup proof, run certify-v2-13-release as a separate local DB-only zero-spend operation; require exact smoke, restoration, zero-worker, settled-billing, reconciliation, release-bound Chrome, release identity, and all 15 current-run gates",
+        "certification performs no provider, RunPod, Cloudflare, GPU, transport, dispatch, or persistence on reconciliation-only restart; missing or ambiguous readback closes cleanup-only without certification",
         "close the single-use outer and child authorities permanently; any failed or incomplete execution requires a new proposal and fresh approval"
       ]
     }
@@ -1733,12 +1999,20 @@
     "user cancellation"
   ],
   "approval_request": {
-    "requested_exact_action": "After source and completed receipt-bound credential-scope reseal, approve this exact v3 proposal sha256 for one single-use ordered execution including exactly one new immutable release tag, exact database roles, readback of exactly one protected Google OAuth WEB client callback bound only to the final production origin, and readback of exactly one protected least-privilege R2 S3 credential bound only to the authenticated account and existing bucket; credential creation or rotation is not authorized",
+    "requested_exact_action": "Approve this exact source-bound 26-operation v3 proposal and static release descriptor for one single-use ordered execution: one immutable release tag, exact database roles, completed receipt-bound protected Google OAuth and R2 readback, paid V2-13 smoke, exact four-operation cleanup, then separate zero-spend DB-only 15-gate certification; credential creation, rotation, redispatch, fallback, or any extra provider mutation is not authorized",
     "requested_maximum_cumulative_finite_runpod_spend_usd": 17.5,
-    "requested_exact_phase_caps_usd": [4.5, 1, 2, 2, 4, 2, 2],
+    "requested_exact_phase_caps_usd": [
+      4.5,
+      1,
+      2,
+      2,
+      4,
+      2,
+      2
+    ],
     "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, official Serverless Flex USD 0.00031/second (USD 1.116/GPU-hour) maximum, reject above, no fallback",
     "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
-    "requested_exact_git_ref_mutation": "After final source binding, create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to the exact final source commit without force, then prove exact remote readback",
+    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to 2f314531b4d65904bec99cb421db49aa579b5820 without force, then prove exact remote readback",
     "requested_exact_database_roles": [
       "videoforge_hosted_operator",
       "videoforge_hosted_runtime",

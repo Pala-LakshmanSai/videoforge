@@ -2,14 +2,14 @@
 
 ## Active handoff — read this section first
 
-### New-chat launch point — 2026-08-27
+### New-chat launch point — 2026-08-28
 
 - The independently audited provider-free source is
-  `ec68da2d79c2d6b46965d477f6b1aabef61e7544`. Its sealed successor proposal is
-  `sha256:d328736bc06a0f35fa8e185d4269ada111614848c6183c7afec25d82c4a5ea43`; it awaits exact proposal-record commit/audit and fresh approval. It
-  explicitly supersedes proposal `sha256:e21108b7…8465494b` at proposal-record commit `24e7e04`:
+  `2f314531b4d65904bec99cb421db49aa579b5820`. Its sealed 26-operation successor proposal is
+  `sha256:2d64eefd1f5f139907fa02839d7abd90b6f0a81aca3190a48ab7420f8cfe07cc`; it awaits exact proposal-record commit/audit and fresh approval. It
+  explicitly supersedes proposal `sha256:d328736b…c4a5ea43` at proposal-record commit `8fc0d913`:
   that proposal received exact chat approval, but no approval record or authority was materialized
-  before cleanup and materialization-seed safety repairs invalidated it. No credential access,
+  before the 26-operation acceptance/static-descriptor repair invalidated it. No credential access,
   provider mutation, GPU use, or spend occurred under it.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
@@ -48,16 +48,16 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free source is independently audited at `ec68da2d79c2d6b46965d477f6b1aabef61e7544`;
+The current provider-free source is source-readiness-audited and repaired at `2f314531b4d65904bec99cb421db49aa579b5820`;
 default entrypoints remain no-op. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
 credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. Current
-repair component hashes are: executor `sha256:58df723c3e20930e36bb864e3a9176c0430939c162ef478fb6307da800ec658a`,
-adapters `sha256:0ebab27b0798171d342dbae0a5a71c59aef499295dd8f0ddd00ea85041d5bd69`, orchestration
-`sha256:189cd0a52cbe589fbfe4e425d71a81104d63f672e8ea4302381bd73911ecd1d0`, approval validator
-`sha256:2d63ad3a4eb8de6468b40e196ec6d85ac752a57cc10a655f4748a123dda261f6`, and guarded activation
-`sha256:1fc2d4b4b5246c6e0a6f407f7742f78acdca66723c60d2a0c1499e692a5162f7`. This is source/test
+repair component hashes are: executor `sha256:8bdf4079222117e1ac38bca3a7170e5bd9cf6aea5ffbcbc70cf587af73fdbf49`,
+adapters `sha256:0556bd306fd572d9d1816297bec09a9398a249af8301bdf3e7a867a57e44c38e`, orchestration
+`sha256:f57ee0d30274eeadfbcac2a0666d808b7d71bdff33afeb7a4efb00cf7ed73929`, approval validator tree entry
+`sha256:8d1ffc1af4d9bea876d4d019d5b677455893fef8398aabf56fdd0cdb61e4d0d3`, and guarded activation
+`sha256:bedc5b1a2af1380c83bc2a6223dcfba072b6c2deb38d54bf1f05b32801f0e758`. This is source/test
 proof only. Production remains `DISABLED_UNQUALIFIED`; migrations/grants/config and database roles
 are undeployed, and no full-live deployment bindings are activated.
 The credential rotation/normalization boundary is now completed once and non-reusable. Proposal
@@ -101,10 +101,11 @@ The candidate has no executable authority: proposal work
 made no credential/provider mutation, RunPod call, GPU use, or spend. A fresh exact approval must
 name the sealed proposal and successor commit before any consent configuration, OAuth client, R2
 credential, or protected-file work. The quota-blocked approval remains non-reusable.
-The blocked replacement proposal now closes a 25-operation graph by placing zero-cap
+The sealed replacement proposal now closes a 26-operation graph by placing zero-cap
 `record-workflow-start-authority` after promotion and before V2-09, and binds full receipt/ACL/public-
 revoke readback, guarded receipt verification before secret reads, durable billing, and a separate
-early no-database cleanup seam. The approval-validator component is externally bound to the exact
+early no-database cleanup seam. Final `certify-v2-13-release` follows the exact four cleanup operations
+as a DB-only, zero-spend 15-gate certification. The approval-validator component is externally bound to the exact
 release-commit tree entry rather than embedding a self hash.
 The worker receipt/envelope changes invalidate every earlier image-bound qualification. The user's
 earlier full-live approval is recorded as superseded and unconsumed because its source hashes no
@@ -125,8 +126,8 @@ audited baseline; source `3f7b588` passed its independent audit before the later
 finding. The replacement proposal
 `sha256:45894ac0…01aaca` was resealed against the prior source; its fresh authority `59dfe8a` is
 superseded unconsumed with no mutation after the Cloudflare boundary audit. The active successor
-`2026-08-27-cloudflare-credential-origin-repair-candidate` is resealed against `ec68da2` and awaits a
-proposal-record audit and fresh exact approval (`sha256:d328736b…c4a5ea43`). Its protected Google OAuth and R2 credential identities and scope hashes
+`2026-08-27-cloudflare-credential-origin-repair-candidate` is resealed against `2f31453` and awaits a
+proposal-record audit and fresh exact approval (`sha256:2d64eefd…cfe07cc`). Its protected Google OAuth and R2 credential identities and scope hashes
 are receipt-bound and verified; the receipt is complete and non-reusable. The repaired source still
 requires an exact proposal-record commit/audit and exact approval.
 It requires protected Wrangler OAuth only (no raw API-token file or `CLOUDFLARE_API_TOKEN` export),
