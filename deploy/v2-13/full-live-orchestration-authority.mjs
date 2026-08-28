@@ -754,7 +754,7 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
   )
     fail("STATIC_RELEASE_DESCRIPTOR_MODE_OR_TYPE");
   if (
-    !exactKeys(value, [
+    !exactObjectKeys(value, [
       "auditFacts",
       "contractBundleSha256",
       "descriptorSha256",
@@ -768,7 +768,7 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
     !HASH.test(value.contractBundleSha256 ?? "") ||
     !HASH.test(value.descriptorSha256 ?? "") ||
     value.descriptorSha256 !== expectedSha256 ||
-    !exactKeys(value.auditFacts, [
+    !exactObjectKeys(value.auditFacts, [
       "backup_restore_ready",
       "operations_runbooks_ready",
       "production_transport_real",
@@ -779,7 +779,7 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
   const unsigned = { ...value };
   delete unsigned.descriptorSha256;
   if (
-    sha256(Buffer.from(`${canonicalJson(unsigned)}\n`)) !== value.descriptorSha256 ||
+    sha256(Buffer.from(canonicalJson(unsigned))) !== value.descriptorSha256 ||
     Buffer.compare(bytes, Buffer.from(`${canonicalJson(value)}\n`)) !== 0
   )
     fail("STATIC_RELEASE_DESCRIPTOR_HASH");

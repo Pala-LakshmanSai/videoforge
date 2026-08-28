@@ -34,6 +34,7 @@ import {
   updateState,
   validateMaterializationSeedFile,
   validateOuterAuthority,
+  validateStaticReleaseDescriptorFile,
   validateState,
   writeExclusive,
 } from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
@@ -72,6 +73,109 @@ const v3ReleaseSourceCommit = "e737eac44458a04c7de47a0f3f42d82cb9506d47";
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
 const approvalValidatorPath = "deploy/v2-13/validate-full-live-approval.mjs";
+const canonicalJson = (value) =>
+  Array.isArray(value)
+    ? `[${value.map((item) => canonicalJson(item)).join(",")}]`
+    : value !== null && typeof value === "object"
+      ? `{${Object.keys(value)
+          .sort()
+          .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+          .join(",")}}`
+      : JSON.stringify(value);
+
+function staticReleaseDescriptorFixture(sourceCommit = "a".repeat(40)) {
+  const sourceEvidenceSha256 = proof("1");
+  const fact = (gate, claims, metrics) => ({
+    claims,
+    evidenceClass: "INDEPENDENT_RELEASE_AUDIT",
+    evidencePath: `project-context/evidence/acceptance/VF-10-13/${gate}.json`,
+    fixtureOrFakeTransportUsed: false,
+    gate,
+    metrics,
+    observedAt: "2026-08-27T23:52:08.000Z",
+    observerId: "codex.runtime-contract-audit",
+    sourceEvidenceSha256,
+  });
+  const unsigned = {
+    auditFacts: {
+      backup_restore_ready: fact(
+        "backup_restore_ready",
+        [
+          "backup_readback_passed",
+          "restore_evidence_accepted",
+          "schema_migration_disposition_recorded",
+        ],
+        {
+          backupReadbackPassed: true,
+          restoreEvidenceAccepted: true,
+          schemaMigrationDisposition: "DISPOSABLE_RESTORE_COMPLETED",
+        },
+      ),
+      operations_runbooks_ready: fact(
+        "operations_runbooks_ready",
+        ["stuck_job_runbook", "provider_outage_runbook", "billing_runbook", "rollback_runbook"],
+        {
+          billingRunbookSha256: proof("2"),
+          providerOutageRunbookSha256: proof("3"),
+          rollbackRunbookSha256: proof("4"),
+          stuckJobRunbookSha256: proof("5"),
+        },
+      ),
+      production_transport_real: fact(
+        "production_transport_real",
+        [
+          "hosted_client_api_truth",
+          "fixture_controls_absent",
+          "fake_gpu_absent",
+          "fake_transport_absent",
+          "manual_pod_controls_absent",
+          "legacy_dispatch_exports_absent",
+        ],
+        {
+          fakeGpuProfileInBundle: false,
+          fakeTransportInBundle: false,
+          fixtureControlsInBundle: false,
+          hostedClientApiTruth: true,
+          legacyDispatchExportsInBundle: false,
+          manualPodControlsInBundle: false,
+        },
+      ),
+      security_clear: fact(
+        "security_clear",
+        [
+          "p0_zero",
+          "p1_zero",
+          "auth_tenant_boundary_passed",
+          "ssrf_path_upload_boundary_passed",
+          "secret_log_scan_passed",
+          "cost_amplification_guards_passed",
+          "legacy_runtime_bundle_scan_passed",
+        ],
+        {
+          authTenantPassed: true,
+          costAmplificationGuardsPassed: true,
+          legacyRuntimeBundleScanPassed: true,
+          p0Count: 0,
+          p1Count: 0,
+          secretLogScanPassed: true,
+          ssrfPathUploadPassed: true,
+        },
+      ),
+    },
+    contractBundleSha256: proof("6"),
+    productionUrlSha256: proof("7"),
+    schemaVersion: "videoforge.v213-static-release-descriptor/v1",
+    sourceCommit,
+  };
+  return {
+    ...unsigned,
+    descriptorSha256: hash(Buffer.from(canonicalJson(unsigned))),
+  };
+}
+
+function writeStaticReleaseDescriptor(path, value) {
+  writeFileSync(path, `${canonicalJson(value)}\n`, { mode: 0o600 });
+}
 
 function withApprovalValidatorReleaseTree(bytes, callback) {
   const repository = mkdtempSync(join(tmpdir(), "videoforge-approval-validator-tree-"));
@@ -415,6 +519,96 @@ test("V3 approval cannot drift from the proposal-sealed static release descripto
       }),
     /STATIC_RELEASE_DESCRIPTOR_BINDING/u,
   );
+});
+
+test("protected static release descriptor accepts exact canonical mode-0600 bytes before consumption", () => {
+  const directory = mkdtempSync(join(tmpdir(), "videoforge-v213-static-release-authority-"));
+  chmodSync(directory, 0o700);
+  const descriptorPath = join(directory, "static-release-descriptor.json");
+  const descriptor = staticReleaseDescriptorFixture();
+  writeStaticReleaseDescriptor(descriptorPath, descriptor);
+  try {
+    assert.deepEqual(
+      validateStaticReleaseDescriptorFile({
+        path: descriptorPath,
+        expectedSha256: descriptor.descriptorSha256,
+        expectedSourceCommit: descriptor.sourceCommit,
+      }),
+      descriptor,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("protected static release descriptor rejects newline self-hash and exact-key or source drift", () => {
+  const directory = mkdtempSync(join(tmpdir(), "videoforge-v213-static-release-drift-"));
+  chmodSync(directory, 0o700);
+  const descriptorPath = join(directory, "static-release-descriptor.json");
+  const assertRejected = (descriptor, expectedSourceCommit, code) => {
+    writeStaticReleaseDescriptor(descriptorPath, descriptor);
+    assert.throws(
+      () =>
+        validateStaticReleaseDescriptorFile({
+          path: descriptorPath,
+          expectedSha256: descriptor.descriptorSha256,
+          expectedSourceCommit,
+        }),
+      code,
+    );
+  };
+  try {
+    const newlineHashed = staticReleaseDescriptorFixture();
+    const newlineUnsigned = { ...newlineHashed };
+    delete newlineUnsigned.descriptorSha256;
+    newlineHashed.descriptorSha256 = hash(Buffer.from(`${canonicalJson(newlineUnsigned)}\n`));
+    assertRejected(newlineHashed, newlineHashed.sourceCommit, /STATIC_RELEASE_DESCRIPTOR_HASH/u);
+
+    const extraKey = { ...staticReleaseDescriptorFixture(), unexpected: true };
+    const extraUnsigned = { ...extraKey };
+    delete extraUnsigned.descriptorSha256;
+    extraKey.descriptorSha256 = hash(Buffer.from(canonicalJson(extraUnsigned)));
+    assertRejected(extraKey, extraKey.sourceCommit, /STATIC_RELEASE_DESCRIPTOR_CONTRACT/u);
+
+    const missingKey = staticReleaseDescriptorFixture();
+    delete missingKey.productionUrlSha256;
+    const missingUnsigned = { ...missingKey };
+    delete missingUnsigned.descriptorSha256;
+    missingKey.descriptorSha256 = hash(Buffer.from(canonicalJson(missingUnsigned)));
+    assertRejected(missingKey, missingKey.sourceCommit, /STATIC_RELEASE_DESCRIPTOR_CONTRACT/u);
+
+    const sourceDrift = staticReleaseDescriptorFixture();
+    assertRejected(sourceDrift, "b".repeat(40), /STATIC_RELEASE_DESCRIPTOR_CONTRACT/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("protected static release descriptor rejects permissive modes and symlinks", () => {
+  const directory = mkdtempSync(join(tmpdir(), "videoforge-v213-static-release-mode-"));
+  chmodSync(directory, 0o700);
+  const descriptorPath = join(directory, "static-release-descriptor.json");
+  const descriptor = staticReleaseDescriptorFixture();
+  writeStaticReleaseDescriptor(descriptorPath, descriptor);
+  const validate = (path = descriptorPath) =>
+    validateStaticReleaseDescriptorFile({
+      path,
+      expectedSha256: descriptor.descriptorSha256,
+      expectedSourceCommit: descriptor.sourceCommit,
+    });
+  try {
+    chmodSync(descriptorPath, 0o644);
+    assert.throws(validate, /STATIC_RELEASE_DESCRIPTOR_MODE_OR_TYPE/u);
+    chmodSync(descriptorPath, 0o600);
+    chmodSync(directory, 0o755);
+    assert.throws(validate, /STATIC_RELEASE_DESCRIPTOR_MODE_OR_TYPE/u);
+    chmodSync(directory, 0o700);
+    const symlinkPath = join(directory, "descriptor-link.json");
+    symlinkSync(descriptorPath, symlinkPath);
+    assert.throws(() => validate(symlinkPath), /STATIC_RELEASE_DESCRIPTOR_MODE_OR_TYPE/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("approval validator policies match the active sealed proposal exactly", () => {

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const proposalPath = path.join(directory, "combined-live-proposal.json");
 const readOnlyPreflightPath = path.join(directory, "read-only-preflight.json");
+const sourceReadinessAuditPath = path.join(directory, "source-readiness-audit.json");
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const assert = (condition, code) => {
@@ -25,6 +26,29 @@ const proposal = JSON.parse(bytes);
 const readOnlyPreflightBytes = await readFile(readOnlyPreflightPath);
 assert(readOnlyPreflightBytes.at(-1) === 0x0a, "READ_ONLY_PREFLIGHT_FINAL_NEWLINE");
 const readOnlyPreflight = JSON.parse(readOnlyPreflightBytes);
+const sourceReadinessAuditBytes = await readFile(sourceReadinessAuditPath);
+assert(sourceReadinessAuditBytes.at(-1) === 0x0a, "SOURCE_READINESS_AUDIT_FINAL_NEWLINE");
+assert(
+  sha256(sourceReadinessAuditBytes) ===
+    "sha256:82135387028119920f14790626517023503aa401dd09290708f686771101b5af",
+  "SOURCE_READINESS_AUDIT_SHA256",
+);
+const sourceReadinessAudit = JSON.parse(sourceReadinessAuditBytes);
+assert(
+  sourceReadinessAudit.schema_version ===
+    "videoforge.v2-13-full-live-source-readiness-audit/v1" &&
+    sourceReadinessAudit.audited_code_commit ===
+      "7c1f6c255cd8355295be93621e9347abe0442646" &&
+    sourceReadinessAudit.audit_result === "PASS_READY_TO_RESEAL" &&
+    sourceReadinessAudit.source_closure?.entry_count === 634 &&
+    sourceReadinessAudit.source_closure?.sha256 ===
+      "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8" &&
+    sourceReadinessAudit.external_calls === 0 &&
+    sourceReadinessAudit.provider_mutations === 0 &&
+    sourceReadinessAudit.gpu_use === 0 &&
+    sourceReadinessAudit.spend_usd === 0,
+  "SOURCE_READINESS_AUDIT_CONTRACT",
+);
 const expectedProposalPath =
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
 const previousProposalSha256 =
@@ -1125,7 +1149,12 @@ for (const name of ["user-approval.json", "approved-authority.json"]) {
 const files = await readdir(directory);
 assert(
   JSON.stringify([...files].sort()) ===
-    JSON.stringify(["combined-live-proposal.json", "read-only-preflight.json", "validate-candidate.mjs"]),
+    JSON.stringify([
+      "combined-live-proposal.json",
+      "read-only-preflight.json",
+      "source-readiness-audit.json",
+      "validate-candidate.mjs",
+    ]),
   "DRAFT_FILE_SET",
 );
 
