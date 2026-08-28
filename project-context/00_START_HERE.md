@@ -5,29 +5,29 @@
 ### New-chat launch point — 2026-08-28
 
 - The current provider-free release source is
-  `e2f4d6296bd84bbf14b106a6eea55b3b75ed7087`, an evidence-only child of independently audited
-  application code `0124d8a5145f80e8b65ce564e27f61f665df5027`. Fresh sealed 26-operation proposal
-  `sha256:14116dc666a9699e4569537cd01b1af5c205ec29e0ebd5b69fa33bd1e8e23e46` is bound to this
+  `f99c2cbfa2ed3df73a050591e74eb97285bb82b0`, an evidence-only child of independently audited
+  application code `f260b660112ada1e862867549ad7245bd862e87d`. Fresh sealed 26-operation proposal
+  `sha256:b5bc0fe550f79230d92d1e47d5be639e094f6a73853243c15c6eaa0f92d24762` is bound to this
   source; its proposal-record commit remains null/pending until the exact five-path commit exists,
   followed by independent record audit and
   fresh exact approval. It supersedes the prior approved proposal
-  `sha256:6cf20ed6184ea1817871593eab2998983f0b4d2381fb35fa5486a416a4fd5d99` at proposal-record
-  commit `557bb861ec714a1aa984cac87289722d246481a6`, bound to source
+  `sha256:14116dc666a9699e4569537cd01b1af5c205ec29e0ebd5b69fa33bd1e8e23e46` at proposal-record
+  commit `634c48752b72b8ed9cbe3e5f71ffd4fb4feaf70f`, bound to source
   `aa3ca2470ccc33ae3e6736997f5908b7788fd023`.
 - That prior exact approval was materialized once under authority
-  `v2-13-full-live-20260828-114602z-6cf20ed6` (authority record commit
-  `909c9773845a4c07ce25eadca493b82ee68fb19c`) and failed before normal operation authorization.
+  `v2-13-full-live-20260828-133545z-14116dc6` (authority record commit
+  `545bdff48913738072824ed04614944f5e1eb4c7`) and failed at initial preflight before normal operation authorization with PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH_DIRECTORY.
   It entered cleanup-only and is permanently non-reusable: no database-role credentials, internal
   production secrets, database/Cloudflare activation, images, endpoints, GPU use, or normal
   provider operation was created; attempt reserved and settled spend were both `$0`.
   The archived protected state records cleanup completion and exact zero-worker, billing,
   resource-reconciliation, and max-one restoration proofs at
-  `protected-inputs/v2-13/history/v2-13-full-live-20260828-114602z-6cf20ed6/full-live-state.json`.
+  `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The pending reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:7baeb86c548e59de99131f13c9f647150927d21b756edfa97fafd875e95c6471` and UUID
-  `8b35ac30-7dbf-4eca-b069-046d4f9afd57`, plus protected static descriptor self-hash
-  `sha256:2b56d003dbece7589363a39ddf3a481d126fc97cdab9a40af496d0ec7d1842d8`.
+  `sha256:a06f55f430a46b861113b78741d701e7b2ee273dd14e2d4bdb1ac3578ec3588b` and UUID
+  `8c08f1f8-a15d-4197-a752-2f03b2404bce`, plus protected static descriptor self-hash
+  `sha256:86cb2a4452dae84cf7409c4caa90cfb09a2d044fc69e6a667f4ab39d16b66071`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -65,8 +65,8 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free release source is `e2f4d6296bd84bbf14b106a6eea55b3b75ed7087`, built from
-source-readiness-audited and repaired application code `0124d8a5145f80e8b65ce564e27f61f665df5027`;
+The current provider-free release source is `f99c2cbfa2ed3df73a050591e74eb97285bb82b0`, built from
+source-readiness-audited and repaired application code `f260b660112ada1e862867549ad7245bd862e87d`;
 default entrypoints remain no-op. Its exact audited component pins include executor
 `sha256:21f2a14e9698700758a2ec3c46268a04d303044002d91507c2da6a6fe69d3e39`, adapters
 `sha256:e7d4dd8eb7b13356a74142978a904017868129cf03cac02bf1a77d9fc7a2c0e8`, orchestration authority
