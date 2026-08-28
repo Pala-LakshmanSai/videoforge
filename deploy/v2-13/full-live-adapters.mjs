@@ -1637,6 +1637,7 @@ const MATERIALIZATION_ENTRY_KEYS = Object.freeze([
   "prior_chain_sha256",
 ]);
 const MATERIALIZATION_STAGE_ORDER = Object.freeze([
+  "prequalification-descriptor",
   "production-input",
   "media-worker-release-readback",
   "max-one-endpoint-bindings",
@@ -1730,15 +1731,21 @@ function validateMaterializationChainDocument(chain) {
   if (kinds[0] === "cleanup-pre-endpoint-descriptor") {
     if (kinds.length !== 1) fail("MATERIALIZATION_CHAIN_ORDER");
   } else {
-    for (let index = 0; index < kinds.length; index += 1) {
-      if (kinds[index] !== MATERIALIZATION_STAGE_ORDER[index]) fail("MATERIALIZATION_CHAIN_ORDER");
+    const cleanupIndex = kinds.indexOf("cleanup-pre-endpoint-descriptor");
+    if (cleanupIndex >= 0 && cleanupIndex !== kinds.length - 1) fail("MATERIALIZATION_CHAIN_ORDER");
+    const normalKinds = cleanupIndex >= 0 ? kinds.slice(0, cleanupIndex) : kinds;
+    for (let index = 0; index < normalKinds.length; index += 1) {
+      if (normalKinds[index] !== MATERIALIZATION_STAGE_ORDER[index])
+        fail("MATERIALIZATION_CHAIN_ORDER");
     }
   }
   return chain;
 }
 
 const materializationStageForOperation = (operationId) => {
-  if (operationId === "fresh-live-preflight") return "production-input";
+  if (operationId === "fresh-live-preflight") return "prequalification-descriptor";
+  if (["mage-live-qualification", "soulx-live-qualification"].includes(operationId))
+    return "production-input";
   if (operationId === "create-exact-max-one-endpoints") return "max-one-endpoint-bindings";
   if (operationId === "guarded-activation-once") return "activation-record";
   if (operationId === "promote-qualified-production") return "promotion-record";
@@ -1797,8 +1804,15 @@ function verifyMaterializationChainFile({
   if (!matched || matched.authority_id !== state?.authority_id) fail("MATERIALIZATION_CHAIN_STAGE");
   const expectedLength =
     expectedKind === "cleanup-pre-endpoint-descriptor"
-      ? 1
+      ? chain.entries[0]?.kind === expectedKind
+        ? 1
+        : chain.entries.length
       : MATERIALIZATION_STAGE_ORDER.indexOf(expectedKind) + 1;
+  if (
+    expectedKind === "cleanup-pre-endpoint-descriptor" &&
+    chain.entries.at(-1)?.kind !== expectedKind
+  )
+    fail("MATERIALIZATION_CHAIN_STAGE_ORDER");
   if (chain.entries.length !== expectedLength) fail("MATERIALIZATION_CHAIN_STAGE_ORDER");
   return true;
 }
@@ -2329,6 +2343,11 @@ function atomicChainUpdate(path, entry) {
         fail("MATERIALIZATION_CHAIN_STAGE_REPLAY", entry.kind);
       return stored.entry_sha256;
     }
+    const expectedKind =
+      entry.kind === "cleanup-pre-endpoint-descriptor"
+        ? entry.kind
+        : MATERIALIZATION_STAGE_ORDER[chain.entries.length];
+    if (entry.kind !== expectedKind) fail("MATERIALIZATION_CHAIN_ORDER", entry.kind);
     chain.entries.push({ ...unsigned, entry_sha256: entrySha256 });
     const bytes = Buffer.from(`${canonicalJson(chain)}\n`);
     const temporary = `${path}.${randomBytes(8).toString("hex")}.next`;
@@ -5636,9 +5655,18 @@ function createProtectedInputMaterializer({
       });
     }
     if (operationId === "fresh-live-preflight") {
-      // The read-only child consumes the descriptor-only seed directly. The full production
-      // input cannot exist until this operation has established the current billing baseline.
+      // The read-only child consumes a descriptor-only projection of the seed. The full
+      // production input cannot exist until Mage has fresh image and billing receipts.
       seed(state);
+      const descriptor = loadBridgePrequalificationInput(environment, state, outerStateSha256);
+      const descriptorSha256 = sha256(Buffer.from(`${canonicalJson(descriptor)}\n`));
+      record({
+        stage: "prequalification-descriptor",
+        state,
+        outerStateSha256,
+        inputs: { materialization_seed: state.materialization_seed_sha256 },
+        outputs: { prequalification_descriptor_sha256: descriptorSha256 },
+      });
       return;
     }
     if (operationId === "mage-live-qualification") {
@@ -5649,6 +5677,11 @@ function createProtectedInputMaterializer({
       const billingBaselineUsd = preflight?.bridgeSummary?.admission?.cumulativeBillingUsd;
       if (!Number.isFinite(billingBaselineUsd) || billingBaselineUsd < 0)
         fail("MATERIALIZATION_FRESH_BILLING_BASELINE");
+      verifyMaterializationChainFile({
+        environment,
+        operation: "fresh-live-preflight",
+        state,
+      });
       const production = structuredClone(source.production_input_base);
       production.authorityDocument = authorityDocument(source, state);
       production.dualLaneInput = dynamicDualLaneInput(source, billingBaselineUsd);

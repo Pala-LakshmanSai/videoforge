@@ -44,6 +44,7 @@ import {
   readAuthenticatedGithubTime,
   resolveSourceBoundBridgeLaunch,
   TAG,
+  verifyMaterializationChainFile,
   verifyPrequalificationDatabaseReceipt,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
 import {
@@ -478,7 +479,9 @@ const materializationChainFixture = (authorityId, outerStateSha256) => {
     Buffer.from("videoforge.v213-full-live-materialization-chain/v1:genesis"),
   );
   const entries = [
+    "prequalification-descriptor",
     "production-input",
+    "media-worker-release-readback",
     "max-one-endpoint-bindings",
     "activation-record",
     "promotion-record",
@@ -2308,7 +2311,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
   for (const [index, name] of staticSecretNames.entries())
     writeFileSync(resolve(secretInputDirectory, name), `static-${index}`, { mode: 0o600 });
   const seed = materializationSeedFixture();
-  writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
+  writeFileSync(seedPath, `${canonicalJson(seed)}\n`, { mode: 0o600 });
   const materializationSeedSha256 = hash(Buffer.from(`${canonicalJson(seed)}\n`));
   writeFileSync(productionSecretsPath, `${JSON.stringify(preEndpointSecrets())}\n`, {
     mode: 0o600,
@@ -2377,6 +2380,13 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       outerStateSha256: `sha256:${"9".repeat(64)}`,
     });
     assert.throws(() => readFileSync(outputPath), /ENOENT/u);
+    const prequalificationChain = JSON.parse(readFileSync(chainPath, "utf8"));
+    assert.equal(prequalificationChain.entries.length, 1);
+    assert.equal(prequalificationChain.entries[0].kind, "prequalification-descriptor");
+    assert.deepEqual(
+      prequalificationChain.entries[0].ordered_output_sha256s.map(([name]) => name),
+      ["prequalification_descriptor_sha256"],
+    );
     prior.set("fresh-live-preflight", {
       evidenceSha256: `sha256:${"9".repeat(64)}`,
       bridgeSummary: { admission: { cumulativeBillingUsd: 10 } },
@@ -2391,8 +2401,12 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     const chain = JSON.parse(readFileSync(chainPath, "utf8"));
     assert.match(output.dualLaneInput.mage.publicImage, /@sha256:6{64}$/u);
     assert.equal(output.dualLaneInput.soulx.deploymentSha256, `sha256:${"7".repeat(64)}`);
-    assert.equal(chain.entries.length, 1);
-    assert.equal(chain.entries[0].kind, "production-input");
+    assert.equal(chain.entries.length, 2);
+    assert.deepEqual(
+      chain.entries.map((entry) => entry.kind),
+      ["prequalification-descriptor", "production-input"],
+    );
+    assert.equal(chain.entries[1].prior_chain_sha256, chain.entries[0].entry_sha256);
     assert.equal(lstatSync(outputPath).mode & 0o777, 0o600);
     const later = new Map(prior);
     later.set("mage-live-qualification", {
@@ -2460,7 +2474,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       /MEDIA_WORKER_RELEASE_READBACK_CONTRACT/u,
     );
     assert.throws(() => readFileSync(manifestPath), /ENOENT/u);
-    assert.equal(JSON.parse(readFileSync(chainPath, "utf8")).entries.length, 1);
+    assert.equal(JSON.parse(readFileSync(chainPath, "utf8")).entries.length, 2);
     for (const name of [
       "VIDEOFORGE_MAGE_ENDPOINT_ID",
       "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
@@ -2491,6 +2505,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     assert.deepEqual(
       completeChain.entries.map((entry) => entry.kind),
       [
+        "prequalification-descriptor",
         "production-input",
         "media-worker-release-readback",
         "max-one-endpoint-bindings",
@@ -2541,7 +2556,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
         priorResults: prior,
         outerStateSha256: `sha256:${"a".repeat(64)}`,
       }),
-      /MATERIALIZATION_CHAIN_STAGE_REPLAY/u,
+      /MATERIALIZATION_CHAIN_STAGE_ORDER/u,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
