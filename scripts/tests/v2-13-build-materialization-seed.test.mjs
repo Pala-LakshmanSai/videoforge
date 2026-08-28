@@ -890,7 +890,7 @@ test("builds the exact static production seed from proposal-bound source and pro
   assert.equal(first.seed.activation_record_base.database.operator_database_url_sha256, null);
   assert.equal(
     first.seed.promotion_record_base.database.migration_ledger_sha256,
-    "sha256:592b3e188b9aaebe055cd38a56ad0d06f65fe988d2880a83a07556c1fc8baa8a",
+    "sha256:c35923de90961f9f7dce7aff5cd2c36ffdc66cfc96915c45c4c031cfb9288722",
   );
   assert.equal(
     Object.hasOwn(first.seed.production_input_base.dualLaneInput, "billingBaselineUsd"),
