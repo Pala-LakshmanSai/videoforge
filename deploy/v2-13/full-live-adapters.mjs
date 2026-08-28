@@ -53,6 +53,13 @@ const TAG = "videoforge-v2-13-release-20260826-v3";
 const APPROVAL_BRANCH = "codex/serverless-v2-roadmap";
 const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const EXACT_DATABASE_IDENTITY = Object.freeze({
+  database: "neondb",
+  host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+  owner_role: "neondb_owner",
+});
+const EXACT_DATABASE_IDENTITY_SHA256 =
+  "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7";
 const GUARDED_SECRET_NAMES = Object.freeze([
   "DATABASE_URL",
   "BETTER_AUTH_SECRET",
@@ -184,6 +191,7 @@ const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "full_live_authority_id",
   "outer_state_sha256",
   "materialization_seed_sha256",
+  "database_identity_sha256",
   "ledger_before_count",
   "ledger_before_sha256",
   "ledger_after_sha256",
@@ -1866,6 +1874,43 @@ function readExactProtectedBytes(path, code) {
   }
 }
 
+function exactDatabaseIdentityFromSeed(seed, code) {
+  const database = seed?.activation_record_base?.database;
+  const identity = {
+    database: database?.database,
+    host: database?.host,
+    owner_role: database?.owner_role,
+  };
+  if (
+    canonicalJson(identity) !== canonicalJson(EXACT_DATABASE_IDENTITY) ||
+    sha256(Buffer.from(canonicalJson(identity))) !== EXACT_DATABASE_IDENTITY_SHA256
+  )
+    fail(code);
+  return Object.freeze(identity);
+}
+
+function readStateBoundMaterializationSeed(environment, state, code) {
+  let seed;
+  let bytes;
+  try {
+    bytes = readExactProtectedBytes(environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE, code);
+    seed = JSON.parse(bytes.toString("utf8"));
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail(code);
+  }
+  const canonical = Buffer.from(`${canonicalJson(seed)}\n`);
+  if (
+    Buffer.compare(bytes, canonical) !== 0 ||
+    !validateMaterializationSeedShape(seed) ||
+    !HASH.test(state?.materialization_seed_sha256 ?? "") ||
+    sha256(canonical) !== state.materialization_seed_sha256
+  )
+    fail(`${code}_BINDING`);
+  exactDatabaseIdentityFromSeed(seed, `${code}_DATABASE_IDENTITY`);
+  return Object.freeze({ seed, databaseIdentitySha256: EXACT_DATABASE_IDENTITY_SHA256 });
+}
+
 function productionSecretKeyId(authorityId, purpose) {
   return `v213-${purpose}-${sha256(Buffer.from(`${authorityId}\0${purpose}`)).slice(7, 31)}`;
 }
@@ -2010,25 +2055,11 @@ function materializeProductionSecretBootstrap({
   credentialBootstrapBinding = EXACT_CREDENTIAL_BOOTSTRAP_BINDING,
   createMissing,
 }) {
-  let seed;
-  let seedBytes;
-  try {
-    seedBytes = readExactProtectedBytes(
-      environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE,
-      "PRODUCTION_SECRET_BOOTSTRAP_SEED",
-    );
-    seed = JSON.parse(seedBytes.toString("utf8"));
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
-    fail("PRODUCTION_SECRET_BOOTSTRAP_SEED");
-  }
-  const canonicalSeed = Buffer.from(`${canonicalJson(seed)}\n`);
-  if (
-    Buffer.compare(seedBytes, canonicalSeed) !== 0 ||
-    !validateMaterializationSeedShape(seed) ||
-    sha256(canonicalSeed) !== state.materialization_seed_sha256
-  )
-    fail("PRODUCTION_SECRET_BOOTSTRAP_SEED_BINDING");
+  const { seed } = readStateBoundMaterializationSeed(
+    environment,
+    state,
+    "PRODUCTION_SECRET_BOOTSTRAP_SEED",
+  );
   const paths = productionSecretBootstrapPaths(environment, state.authority_id);
   const expectedIds = Object.freeze({
     pairDispatchTokenKeyId: productionSecretKeyId(state.authority_id, "dispatch"),
@@ -3181,6 +3212,7 @@ function prequalificationReceiptFromFile(
     value.full_live_authority_id === "" ||
     !HASH.test(value.outer_state_sha256 ?? "") ||
     !HASH.test(value.materialization_seed_sha256 ?? "") ||
+    value.database_identity_sha256 !== EXACT_DATABASE_IDENTITY_SHA256 ||
     !PREQUALIFICATION_LEDGER_PREFIX_COUNTS.includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
     !HASH.test(value.ledger_after_sha256 ?? "") ||
@@ -3261,6 +3293,16 @@ async function verifyPrequalificationDatabaseReceipt({
   )
     fail("PREQUALIFICATION_RECEIPT_OUTER_CAS");
 
+  const { seed, databaseIdentitySha256 } = readStateBoundMaterializationSeed(
+    environment,
+    {
+      materialization_seed_sha256: receipt.materialization_seed_sha256,
+    },
+    "PREQUALIFICATION_VERIFY_MATERIALIZATION_SEED",
+  );
+  if (receipt.database_identity_sha256 !== databaseIdentitySha256)
+    fail("PREQUALIFICATION_VERIFY_DATABASE_IDENTITY_RECEIPT");
+
   const directory = protectedDirectory(
     environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
     "PREQUALIFICATION_VERIFY_POSTGRES_DIRECTORY",
@@ -3268,6 +3310,12 @@ async function verifyPrequalificationDatabaseReceipt({
   const servicePath = join(directory, "owner.pg_service.conf");
   const passPath = join(directory, "owner.pgpass");
   const service = await parseService(servicePath, "videoforge_v2_13_owner");
+  if (
+    service.get("host") !== seed.activation_record_base.database.host ||
+    service.get("dbname") !== seed.activation_record_base.database.database ||
+    service.get("user") !== seed.activation_record_base.database.owner_role
+  )
+    fail("PREQUALIFICATION_VERIFY_DATABASE_IDENTITY");
   protectedFile(passPath, "PREQUALIFICATION_VERIFY_OWNER_PASS");
   await validateServiceFile(
     servicePath,
@@ -3392,6 +3440,14 @@ function createPrequalificationDatabaseBootstrapAdapter({
     const initialExecution =
       context?.authorizedUnsettled !== true && context?.reconciliationOnly !== true;
     if (!initialExecution && !reconciliationOnly) fail("PREQUALIFICATION_RECONCILIATION_CONTEXT");
+    // The canonical, state-bound seed is the first protected input opened. Its immutable database
+    // tuple must match the owner service before any psql invocation, randomness, write, migration,
+    // or role mutation can occur.
+    const { seed, databaseIdentitySha256 } = readStateBoundMaterializationSeed(
+      environment,
+      state,
+      "PREQUALIFICATION_MATERIALIZATION_SEED",
+    );
     const directory = protectedDirectory(
       environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
       "PREQUALIFICATION_POSTGRES_DIRECTORY",
@@ -3400,6 +3456,12 @@ function createPrequalificationDatabaseBootstrapAdapter({
     const passPath = join(directory, "owner.pgpass");
     const operatorPath = join(directory, "operator.database-url");
     const service = await parseService(servicePath, "videoforge_v2_13_owner");
+    if (
+      service.get("host") !== seed.activation_record_base.database.host ||
+      service.get("dbname") !== seed.activation_record_base.database.database ||
+      service.get("user") !== seed.activation_record_base.database.owner_role
+    )
+      fail("PREQUALIFICATION_DATABASE_IDENTITY");
     protectedFile(passPath, "PREQUALIFICATION_OWNER_PASS");
     await validateServiceFile(
       servicePath,
@@ -3449,6 +3511,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
         secretBootstrapStages.some((path) => lstatExists(path)))
     )
       fail("PREQUALIFICATION_RECONCILIATION_STAGING_PRESENT");
+    const existing = prequalificationReceiptFromFile(receiptPath, credentialBootstrapBinding);
     const dbEnv = {
       PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin",
       HOME: environment.HOME ?? process.env.HOME ?? "/tmp",
@@ -3463,7 +3526,6 @@ function createPrequalificationDatabaseBootstrapAdapter({
     // migration.  The owner connection is the only connection used until the full operator
     // state has been committed and read back.
     const before = prequalificationLockedLedger(query, manifest);
-    const existing = prequalificationReceiptFromFile(receiptPath, credentialBootstrapBinding);
     const runtimeAbsent =
       query(
         `SELECT count(*)::text FROM pg_roles WHERE rolname IN (${prequalificationLiteral(PREQUALIFICATION_RUNTIME_ROLE)},${prequalificationLiteral(PREQUALIFICATION_RECONCILER_ROLE)})`,
@@ -3680,6 +3742,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
         existing.ledger_after_sha256 !== after.ledger_after_sha256 ||
         existing.operator_acl_sha256 !== after.operator_acl_sha256 ||
         existing.pgcrypto_sha256 !== after.pgcrypto_sha256 ||
+        existing.database_identity_sha256 !== databaseIdentitySha256 ||
         existing.operator_database_url_sha256 !==
           databaseCredentials.operator_database_url_sha256 ||
         existing.runtime_database_url_sha256 !== databaseCredentials.runtime_database_url_sha256 ||
@@ -3706,6 +3769,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
       full_live_authority_id: state.authority_id,
       outer_state_sha256: outerStateSha256,
       materialization_seed_sha256: state.materialization_seed_sha256,
+      database_identity_sha256: databaseIdentitySha256,
       ledger_before_count: before.length,
       ledger_before_sha256: beforeSha256,
       ...after,

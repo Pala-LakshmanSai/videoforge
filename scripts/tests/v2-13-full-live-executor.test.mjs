@@ -125,6 +125,8 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       outer_state_sha256:
         authorizedOuterStateSha256 ?? currentAuthorizedOuterStateSha256 ?? proof("0"),
       materialization_seed_sha256: state.materialization_seed_sha256,
+      database_identity_sha256:
+        "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7",
       ledger_before_count: 36,
       ledger_before_sha256: proof("1"),
       ledger_after_sha256: proof("2"),

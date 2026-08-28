@@ -43,6 +43,8 @@ const EXECUTOR_SHA256 = `sha256:${createHash("sha256")
   .digest("hex")}`;
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const EXACT_DATABASE_IDENTITY_SHA256 =
+  "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
 const PREQUALIFICATION_RECOVERY_MODES = new Set([
@@ -52,11 +54,11 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:3da96cbf5ada4d80b50eeeffebe54ae22ff5ffe93e976d61d100b527c28f3fb7",
+    "sha256:56395c67d04b6777ca4b21abc2ff8dc4dc904066364f320e38d49a461f27929c",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:57789d447adc4500566ebe4378b0c145a0d6fbe0a6782ce668084349f25d54d1",
+    "sha256:e3b8b6c49179391dc341fd77880c9ad1368112ee3d83a8777755ea6e0c43b0b1",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
     "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
@@ -68,7 +70,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:203bb3f7c6c83c99e87441f3c7d86248666dcd8f50e9cc17c119867adf30dc2b",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:c477ce4e79e3a013792e4aa05f941c5886d3de70e2b64be6f425b8ec40478845",
+    "sha256:7c08aa37d54bca4731eb887248133e074ffa1492bf9bc69a389b6947a32e2cfa",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -426,6 +428,7 @@ export function assertResult(
       "application_secret_reads",
       "cloudflare_calls",
       "database_role_credential_bundle_sha256",
+      "database_identity_sha256",
       "credential_bootstrap_receipt_sha256",
       "production_secret_bootstrap_sha256",
       "production_secrets_sha256",
@@ -465,6 +468,7 @@ export function assertResult(
       !HASH.test(result.runtime_database_url_sha256 ?? "") ||
       !HASH.test(result.reconciler_database_url_sha256 ?? "") ||
       !HASH.test(result.database_role_credential_bundle_sha256 ?? "") ||
+      result.database_identity_sha256 !== EXACT_DATABASE_IDENTITY_SHA256 ||
       !HASH.test(result.credential_bootstrap_receipt_sha256 ?? "") ||
       !HASH.test(result.production_secret_bootstrap_sha256 ?? "") ||
       !HASH.test(result.production_secrets_sha256 ?? "") ||

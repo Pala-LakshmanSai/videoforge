@@ -34,6 +34,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
 const RUNPOD_ACCOUNT_ID_SHA256 =
   "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
+const EXACT_DATABASE_IDENTITY = Object.freeze({
+  database: "neondb",
+  host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+  owner_role: "neondb_owner",
+});
 const CONFIRMATION = "CONSUME_EXACT_V2_13_FULL_LIVE_AUTHORITY";
 const MATERIALIZATION_SEED_SCHEMA = "videoforge.v213-full-live-materialization-seed/v1";
 const MATERIALIZATION_SEED_ENV = "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE";
@@ -430,6 +435,9 @@ function validateActivationRecordBase(value) {
       "reconciler_role",
       "runtime_role",
     ]) ||
+    value.database.host !== EXACT_DATABASE_IDENTITY.host ||
+    value.database.database !== EXACT_DATABASE_IDENTITY.database ||
+    value.database.owner_role !== EXACT_DATABASE_IDENTITY.owner_role ||
     value.database.operator_database_url_sha256 !== null
   )
     return false;
@@ -1172,7 +1180,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:9977ecfbf39dda509c5818cfdb6a26b75acb9ba54a335898e7480ecd70c763b8" ||
+      "sha256:42ce54f5347704d62233b3b9d4b065dfd4512ce87e3350dfa93107034f042090" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||

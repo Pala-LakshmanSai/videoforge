@@ -1368,6 +1368,16 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45],
   });
   assert.equal(bootstrap.receipt_exact_fields.includes("production_secret_bootstrap_sha256"), true);
+  assert.equal(bootstrap.receipt_exact_fields.includes("database_identity_sha256"), true);
+  assert.deepEqual(bootstrap.exact_owner_database_identity, {
+    database: "neondb",
+    host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+    owner_role: "neondb_owner",
+  });
+  assert.equal(
+    bootstrap.exact_owner_database_identity_sha256,
+    "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7",
+  );
   assert.equal(
     bootstrap.receipt_exact_fields.includes("credential_bootstrap_receipt_sha256"),
     true,

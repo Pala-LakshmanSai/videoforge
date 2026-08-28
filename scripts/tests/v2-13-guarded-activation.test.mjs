@@ -107,9 +107,9 @@ function authority() {
       media_worker_release_manifest_sha256: fingerprint,
     },
     database: {
-      host: "example.neon.tech",
-      database: "videoforge",
-      owner_role: "videoforge_owner",
+      host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+      database: "neondb",
+      owner_role: "neondb_owner",
       operator_role: "videoforge_hosted_operator",
       operator_database_url_sha256: fingerprint,
       runtime_role: "videoforge_hosted_runtime",
@@ -396,13 +396,13 @@ test("protected secret seam checks exact names, mode, hashes, and separate datab
       let secret = `${name}-value`;
       if (name === "DATABASE_URL")
         secret =
-          "postgresql://videoforge_hosted_runtime:runtime-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
+          "postgresql://videoforge_hosted_runtime:runtime-password@ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
       if (name === "VIDEOFORGE_RECONCILER_DATABASE_URL")
         secret =
-          "postgresql://videoforge_hosted_reconciler:reconciler-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
+          "postgresql://videoforge_hosted_reconciler:reconciler-password@ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
       if (name === "VIDEOFORGE_OPERATOR_DATABASE_URL")
         secret =
-          "postgresql://videoforge_hosted_operator:operator-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require";
+          "postgresql://videoforge_hosted_operator:operator-password@ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
       if (name === "RUNPOD_API_BASE_URL") secret = "https://api.runpod.ai/v2";
       if (name === "VIDEOFORGE_MAGE_ENDPOINT_ID") secret = "mage-endpoint-1";
       if (name === "VIDEOFORGE_SOULX_ENDPOINT_ID") secret = "soulx-endpoint-1";
@@ -1258,6 +1258,8 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
     full_live_authority_id: "v2-13-test-authority-0001",
     outer_state_sha256: `sha256:${"e".repeat(64)}`,
     materialization_seed_sha256: `sha256:${"a".repeat(64)}`,
+    database_identity_sha256:
+      "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7",
     ledger_before_count: 36,
     ledger_before_sha256: hash(`${canonicalJson(before)}\n`),
     ledger_after_sha256: hash(`${canonicalJson(ledger)}\n`),
@@ -1307,12 +1309,16 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
   };
   writeFileSync(
     servicePath,
-    "[videoforge_v2_13_owner]\nhost=example.neon.tech\ndbname=videoforge\nuser=videoforge_owner\nsslmode=require\nchannel_binding=require\n",
+    "[videoforge_v2_13_owner]\nhost=ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech\ndbname=neondb\nuser=neondb_owner\nsslmode=require\nchannel_binding=require\n",
     { mode: 0o600 },
   );
-  writeFileSync(passPath, "example.neon.tech:5432:videoforge:videoforge_owner:owner-password\n", {
-    mode: 0o600,
-  });
+  writeFileSync(
+    passPath,
+    "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech:5432:neondb:neondb_owner:owner-password\n",
+    {
+      mode: 0o600,
+    },
+  );
   const receiptPath = join(directory, "prequalification-database-bootstrap.json");
   writeFileSync(receiptPath, `${JSON.stringify(receipt)}\n`, { mode: 0o600 });
   const currentAuthority = structuredClone(authority());
@@ -1324,7 +1330,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
   const runCommand = (_command, args) => {
     const sql = args[args.indexOf("--command") + 1] ?? "";
     calls.push(sql);
-    if (sql.includes("current_user")) return "videoforge_owner";
+    if (sql.includes("current_user")) return "neondb_owner";
     if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock"))
       return ledger
         .map((row) => `${row.version}\t${row.name}\t${row.filename}\t${row.sha256}`)
@@ -1349,6 +1355,18 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
       calls.every((sql) => !sql.includes("CLOUDFLARE") && !sql.includes("production_secrets")),
       true,
     );
+    const callsBeforeIdentityDrift = calls.length;
+    const drifted = structuredClone(receipt);
+    drifted.database_identity_sha256 = `sha256:${"0".repeat(64)}`;
+    const driftedBody = { ...drifted };
+    delete driftedBody.prequalification_database_bootstrap_sha256;
+    drifted.prequalification_database_bootstrap_sha256 = hash(`${canonicalJson(driftedBody)}\n`);
+    writeFileSync(receiptPath, `${canonicalJson(drifted)}\n`, { mode: 0o600 });
+    await assert.rejects(
+      verifyPrequalificationDatabase(currentAuthority, directory, { runCommand }),
+      /receipt contract drifted/u,
+    );
+    assert.equal(calls.length, callsBeforeIdentityDrift);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

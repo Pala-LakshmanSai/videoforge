@@ -35,12 +35,12 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:9977ecfbf39dda509c5818cfdb6a26b75acb9ba54a335898e7480ecd70c763b8",
+    sha256: "sha256:42ce54f5347704d62233b3b9d4b065dfd4512ce87e3350dfa93107034f042090",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:3da96cbf5ada4d80b50eeeffebe54ae22ff5ffe93e976d61d100b527c28f3fb7",
+    sha256: "sha256:56395c67d04b6777ca4b21abc2ff8dc4dc904066364f320e38d49a461f27929c",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -48,11 +48,11 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:57789d447adc4500566ebe4378b0c145a0d6fbe0a6782ce668084349f25d54d1",
+    sha256: "sha256:e3b8b6c49179391dc341fd77880c9ad1368112ee3d83a8777755ea6e0c43b0b1",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:2124cd8a1fd3c083a214a37b17b17d663f7a3462e3ddc00c4c5efb400b244d37",
+    sha256: "sha256:3df2dcbfc2b98ce9e0ba8c7c55a36c7efdc88b5919f9b0ee9c49271db8a5f05c",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -72,7 +72,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:5779db73680dd82d67de48746fe266520cac994d1509f5d541a7b5d8e8617cbf",
+    sha256: "sha256:2938e7985dd7413a435cd4b96ed0fb7096d0f930fc2bc50d0ef56c31d80c683f",
   }),
   materialization_seed_envelope_schema: Object.freeze({
     path: "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
@@ -136,7 +136,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:c477ce4e79e3a013792e4aa05f941c5886d3de70e2b64be6f425b8ec40478845",
+    sha256: "sha256:7c08aa37d54bca4731eb887248133e074ffa1492bf9bc69a389b6947a32e2cfa",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
@@ -496,6 +496,15 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
   pgcrypto_then_exact_migrations: Object.freeze([37, 38, 39, 40, 41, 42, 43, 44, 45]),
   each_migration_requires_advisory_lock_and_single_transaction: true,
   owner_connection_uses_only_protected_pg_service_and_pgpass: true,
+  exact_owner_database_identity: Object.freeze({
+    database: "neondb",
+    host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+    owner_role: "neondb_owner",
+  }),
+  exact_owner_database_identity_sha256:
+    "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7",
+  state_bound_materialization_seed_loaded_before_database_command_randomness_or_write: true,
+  owner_service_identity_must_equal_seed_before_database_command_randomness_or_write: true,
   operator_role_created_or_recovered_from_protected_operator_dsn_only_after_migrations: true,
   database_role_credential_bundle_schema: "videoforge.v213-database-role-credential-bundle/v1",
   database_role_credential_bundle_path: "database-role-credentials.json",
@@ -606,6 +615,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "full_live_authority_id",
     "outer_state_sha256",
     "materialization_seed_sha256",
+    "database_identity_sha256",
     "ledger_before_count",
     "ledger_before_sha256",
     "ledger_after_sha256",
@@ -630,6 +640,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "full_live_authority_id",
     "outer_state_sha256",
     "materialization_seed_sha256",
+    "database_identity_sha256",
     "ledger_before_count",
     "ledger_before_sha256",
     "ledger_after_sha256",
@@ -828,6 +839,8 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     readback_order: Object.freeze([
       "receipt_file",
       "prior_result_cas",
+      "state_bound_materialization_seed",
+      "database_identity_hash",
       "owner_pg_service",
       "owner_pgpass",
       "database_role_credential_bundle",

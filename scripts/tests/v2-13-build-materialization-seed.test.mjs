@@ -460,9 +460,9 @@ function harness({
     schema_version: FACTS_SCHEMA,
     full_live_authority_id: fullLiveAuthorityId,
     database: {
-      host: "ep-production-builder.us-east-2.aws.neon.tech",
-      database: "videoforge",
-      owner_role: "videoforge_owner",
+      host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+      database: "neondb",
+      owner_role: "neondb_owner",
     },
     retained_volume_manifest_sha256s: {
       mage: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
@@ -882,6 +882,25 @@ test("rejects a missing authenticated database identity instead of inventing one
     () => buildV213MaterializationSeed(input.arguments),
     /V2_13_MATERIALIZATION_SEED_BUILDER_FACTS_CONTRACT/u,
   );
+});
+
+test("rejects every database identity tuple drift from the evidence-backed Neon owner", () => {
+  for (const [field, value] of [
+    ["host", "ep-other.c-3.ap-southeast-1.aws.neon.tech"],
+    ["database", "otherdb"],
+    ["owner_role", "other_owner"],
+  ]) {
+    const input = harness({
+      factsTransform(facts) {
+        facts.database[field] = value;
+        return facts;
+      },
+    });
+    assert.throws(
+      () => buildV213MaterializationSeed(input.arguments),
+      /V2_13_MATERIALIZATION_SEED_BUILDER_FACTS_CONTRACT/u,
+    );
+  }
 });
 
 test("rejects drift in exact committed evidence referenced by the facts record", () => {

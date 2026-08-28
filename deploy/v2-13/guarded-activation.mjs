@@ -45,6 +45,13 @@ const SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
 ]);
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const EXACT_DATABASE_IDENTITY = Object.freeze({
+  database: "neondb",
+  host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+  owner_role: "neondb_owner",
+});
+const EXACT_DATABASE_IDENTITY_SHA256 =
+  "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7";
 const EXACT_PRE_MUTATION_ROUTE_CONTENT_TYPE = "text/html; charset=UTF-8";
 const EXACT_PRE_MUTATION_ROUTE_BODY_LENGTH = 19984;
 const EXACT_PRE_MUTATION_ROUTE_BODY_SHA256 =
@@ -82,6 +89,7 @@ const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "full_live_authority_id",
   "outer_state_sha256",
   "materialization_seed_sha256",
+  "database_identity_sha256",
   "ledger_before_count",
   "ledger_before_sha256",
   "ledger_after_sha256",
@@ -225,6 +233,7 @@ function readPrequalificationReceipt(directory) {
     value.full_live_authority_id === "" ||
     !HASH.test(value.outer_state_sha256 ?? "") ||
     !HASH.test(value.materialization_seed_sha256 ?? "") ||
+    value.database_identity_sha256 !== EXACT_DATABASE_IDENTITY_SHA256 ||
     ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
     !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
@@ -447,6 +456,16 @@ async function verifyPrequalificationDatabase(
     authority.database.database,
     authority.database.owner_role,
   );
+  const receipt = readPrequalificationReceipt(postgresInputDirectory);
+  if (
+    receipt.full_live_authority_id !== authority.authority.authority_id ||
+    receipt.database_identity_sha256 !== EXACT_DATABASE_IDENTITY_SHA256 ||
+    receipt.operator_database_url_sha256 !== authority.database.operator_database_url_sha256 ||
+    receipt.runtime_database_url_sha256 !== authority.secret_sha256.DATABASE_URL ||
+    receipt.reconciler_database_url_sha256 !==
+      authority.secret_sha256.VIDEOFORGE_RECONCILER_DATABASE_URL
+  )
+    fail("prequalification database credential receipt does not match guarded authority");
   const env = ownerEnvironment(postgresInputDirectory, authority);
   const capture = (sql) =>
     runCommand(
@@ -466,15 +485,6 @@ async function verifyPrequalificationDatabase(
     );
   if (capture("SELECT current_user::text") !== authority.database.owner_role)
     fail("prequalification database connection is not the approved owner");
-  const receipt = readPrequalificationReceipt(postgresInputDirectory);
-  if (
-    receipt.full_live_authority_id !== authority.authority.authority_id ||
-    receipt.operator_database_url_sha256 !== authority.database.operator_database_url_sha256 ||
-    receipt.runtime_database_url_sha256 !== authority.secret_sha256.DATABASE_URL ||
-    receipt.reconciler_database_url_sha256 !==
-      authority.secret_sha256.VIDEOFORGE_RECONCILER_DATABASE_URL
-  )
-    fail("prequalification database credential receipt does not match guarded authority");
   const ledgerText = capture(
     `BEGIN; SELECT pg_advisory_xact_lock(${PREQUALIFICATION_ADVISORY_LOCK}); SELECT version::text,name,filename,sha256 FROM public.videoforge_schema_migrations ORDER BY version; COMMIT;`,
   );
@@ -724,6 +734,9 @@ function validateAuthority(value) {
     value.database.first_migration !== 37 ||
     value.database.last_migration !== 45 ||
     value.database.exact_manifest_ledger_required !== true ||
+    value.database.host !== EXACT_DATABASE_IDENTITY.host ||
+    value.database.database !== EXACT_DATABASE_IDENTITY.database ||
+    value.database.owner_role !== EXACT_DATABASE_IDENTITY.owner_role ||
     ![
       value.database.owner_role,
       value.database.operator_role,

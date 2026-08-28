@@ -1437,12 +1437,16 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
   writeFileSync(credentialReceiptPath, syntheticCredentialReceiptBytes, { mode: 0o600 });
   writeFileSync(
     servicePath,
-    "[videoforge_v2_13_owner]\nhost=example.neon.tech\ndbname=videoforge\nuser=videoforge_owner\nsslmode=require\nchannel_binding=require\n",
+    "[videoforge_v2_13_owner]\nhost=ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech\ndbname=neondb\nuser=neondb_owner\nsslmode=require\nchannel_binding=require\n",
     { mode: 0o600 },
   );
-  writeFileSync(passPath, "example.neon.tech:5432:videoforge:videoforge_owner:owner-password\n", {
-    mode: 0o600,
-  });
+  writeFileSync(
+    passPath,
+    "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech:5432:neondb:neondb_owner:owner-password\n",
+    {
+      mode: 0o600,
+    },
+  );
   const manifest = JSON.parse(
     readFileSync("packages/control-plane/migrations/manifest.json", "utf8"),
   );
@@ -1583,6 +1587,59 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       /PREQUALIFICATION_CONSUMED_AUTHORITY_REQUIRED/u,
     );
     assert.throws(() => lstatSync(operatorPath), /ENOENT/u);
+    const exactOwnerServiceBytes = readFileSync(servicePath);
+    writeFileSync(
+      servicePath,
+      Buffer.from(
+        "[videoforge_v2_13_owner]\nhost=ep-other.c-3.ap-southeast-1.aws.neon.tech\ndbname=neondb\nuser=neondb_owner\nsslmode=require\nchannel_binding=require\n",
+      ),
+      { mode: 0o600 },
+    );
+    const callsBeforeDatabaseIdentityDrift = calls.length;
+    const generationsBeforeDatabaseIdentityDrift = credentialGenerationCount;
+    await assert.rejects(
+      adapter(
+        { operationId: "bootstrap-prequalification-database" },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_DATABASE_IDENTITY/u,
+    );
+    assert.equal(calls.length, callsBeforeDatabaseIdentityDrift);
+    assert.equal(credentialGenerationCount, generationsBeforeDatabaseIdentityDrift);
+    for (const path of [
+      operatorPath,
+      runtimePath,
+      reconcilerPath,
+      productionSecretsPath,
+      productionSecretBootstrapPath,
+      workerOriginPath,
+      workerBearerPath,
+      resolve(directory, "database-role-credentials.json"),
+    ])
+      assert.throws(() => lstatSync(path), /ENOENT/u);
+    writeFileSync(servicePath, exactOwnerServiceBytes, { mode: 0o600 });
+    const driftedSeed = structuredClone(materializationSeed);
+    driftedSeed.activation_record_base.database.database = "otherdb";
+    const driftedSeedBytes = Buffer.from(`${canonicalJson(driftedSeed)}\n`);
+    writeFileSync(materializationSeedPath, driftedSeedBytes, { mode: 0o600 });
+    const callsBeforeSeedDatabaseIdentityDrift = calls.length;
+    const generationsBeforeSeedDatabaseIdentityDrift = credentialGenerationCount;
+    await assert.rejects(
+      adapter(
+        { operationId: "bootstrap-prequalification-database" },
+        { ...consumedState, materialization_seed_sha256: hash(driftedSeedBytes) },
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_MATERIALIZATION_SEED_(?:BINDING|DATABASE_IDENTITY)/u,
+    );
+    assert.equal(calls.length, callsBeforeSeedDatabaseIdentityDrift);
+    assert.equal(credentialGenerationCount, generationsBeforeSeedDatabaseIdentityDrift);
+    writeFileSync(materializationSeedPath, Buffer.from(`${canonicalJson(materializationSeed)}\n`), {
+      mode: 0o600,
+    });
     const callsBeforeCollision = calls.length;
     await assert.rejects(
       createPrequalificationDatabaseBootstrapAdapter({
@@ -1669,6 +1726,10 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     );
     assert.equal(output.full_live_authority_id, consumedState.authority_id);
     assert.equal(output.outer_state_sha256, outerStateSha256);
+    assert.equal(
+      output.database_identity_sha256,
+      "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7",
+    );
     assert.equal(output.recovery_mode, "FRESH_36_TO_45");
     assert.equal(output.ledger_before_count, 36);
     assert.equal(output.runpod_calls, 0);
@@ -1801,6 +1862,35 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(credentialGenerationCount, generationCountBeforeRecovery);
     assert.equal(migrationSqls.length, 9);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
+    const exactRecoveredReceiptBytes = readFileSync(receiptPath);
+    const driftedDatabaseIdentityReceipt = JSON.parse(exactRecoveredReceiptBytes);
+    driftedDatabaseIdentityReceipt.database_identity_sha256 = `sha256:${"0".repeat(64)}`;
+    delete driftedDatabaseIdentityReceipt.prequalification_database_bootstrap_sha256;
+    driftedDatabaseIdentityReceipt.prequalification_database_bootstrap_sha256 = hash(
+      Buffer.from(`${canonicalJson(driftedDatabaseIdentityReceipt)}\n`),
+    );
+    writeFileSync(receiptPath, Buffer.from(`${canonicalJson(driftedDatabaseIdentityReceipt)}\n`), {
+      mode: 0o600,
+    });
+    const callsBeforeReceiptIdentityDrift = calls.length;
+    const generationsBeforeReceiptIdentityDrift = credentialGenerationCount;
+    await assert.rejects(
+      adapter(
+        {
+          operationId: "bootstrap-prequalification-database",
+          authorizedUnsettled: true,
+          reconciliationOnly: true,
+          providerDispatchForbidden: true,
+        },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_RECEIPT_CONTRACT/u,
+    );
+    assert.equal(calls.length, callsBeforeReceiptIdentityDrift);
+    assert.equal(credentialGenerationCount, generationsBeforeReceiptIdentityDrift);
+    writeFileSync(receiptPath, exactRecoveredReceiptBytes, { mode: 0o600 });
 
     const bundleBytes = readFileSync(bundlePath);
     rmSync(bundlePath);
@@ -2253,6 +2343,8 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       full_live_authority_id: materialState.authority_id,
       outer_state_sha256: `sha256:${"3".repeat(64)}`,
       materialization_seed_sha256: materialState.materialization_seed_sha256,
+      database_identity_sha256:
+        "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7",
       operator_database_url_sha256: hash(operatorDatabaseUrl),
       runtime_database_url_sha256: hash(Buffer.from("static-0")),
       reconciler_database_url_sha256: hash(Buffer.from("static-8")),
@@ -3139,12 +3231,16 @@ test("post-consumption production-secret bootstrap binds every protected copy an
   const passPath = resolve(postgresDirectory, "owner.pgpass");
   writeFileSync(
     servicePath,
-    "[videoforge_v2_13_owner]\nhost=example.neon.tech\ndbname=videoforge\nuser=videoforge_owner\nsslmode=require\nchannel_binding=require\n",
+    "[videoforge_v2_13_owner]\nhost=ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech\ndbname=neondb\nuser=neondb_owner\nsslmode=require\nchannel_binding=require\n",
     { mode: 0o600 },
   );
-  writeFileSync(passPath, "example.neon.tech:5432:videoforge:videoforge_owner:owner-password\n", {
-    mode: 0o600,
-  });
+  writeFileSync(
+    passPath,
+    "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech:5432:neondb:neondb_owner:owner-password\n",
+    {
+      mode: 0o600,
+    },
+  );
   const seedPath = resolve(directory, "materialization-seed.json");
   const productionSecretsPath = resolve(directory, "production-secrets.json");
   const productionSecretBootstrapPath = resolve(directory, "production-secret-bootstrap.json");

@@ -38,10 +38,14 @@ const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
-const ROLE = /^[a-z_][a-z0-9_]{0,62}$/u;
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
 const NON_PRODUCTION_MARKER =
   /(?:^|[^a-z0-9])(fixture|test|testing|fake|mock|dummy|example)(?:[^a-z0-9]|$)/iu;
+const EXACT_DATABASE_IDENTITY = Object.freeze({
+  database: "neondb",
+  host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+  owner_role: "neondb_owner",
+});
 const PROPOSAL_RECORD_ALLOWED_DIFF_PATHS = Object.freeze([
   "project-context/00_START_HERE.md",
   "project-context/CURRENT_STATE.yaml",
@@ -313,12 +317,7 @@ function validateFacts(value) {
     value.schema_version !== FACTS_SCHEMA ||
     !UUID.test(value.full_live_authority_id ?? "") ||
     !exactKeys(value.database, ["database", "host", "owner_role"]) ||
-    typeof value.database.host !== "string" ||
-    value.database.host.length < 1 ||
-    value.database.host.length > 253 ||
-    /[\s/:@]/u.test(value.database.host) ||
-    !ROLE.test(value.database.database ?? "") ||
-    !ROLE.test(value.database.owner_role ?? "") ||
+    !sameJson(value.database, EXACT_DATABASE_IDENTITY) ||
     !exactKeys(value.retained_volume_manifest_sha256s, ["mage", "soulx"]) ||
     value.retained_volume_manifest_sha256s.mage !== RETAINED_LANES.mage.volumeManifestSha256 ||
     value.retained_volume_manifest_sha256s.soulx !== RETAINED_LANES.soulx.volumeManifestSha256 ||

@@ -145,9 +145,9 @@ const activationRecordBase = {
   },
   release: {},
   database: {
-    host: "ep-test.us-east-2.aws.neon.tech",
-    database: "videoforge",
-    owner_role: "videoforge_owner",
+    host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
+    database: "neondb",
+    owner_role: "neondb_owner",
     operator_role: "videoforge_hosted_operator",
     // The protected operator DSN does not exist until the consumed database-bootstrap operation
     // reaches migration prefix 45. The final activation materializer replaces this null with the
