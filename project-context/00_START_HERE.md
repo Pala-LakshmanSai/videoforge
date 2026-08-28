@@ -4,35 +4,44 @@
 
 ### New-chat launch point — 2026-08-28
 
-- The provider-free release source is
-  `73bd6edb15b3f67a8c2cb95bc5d2ecdc8376227a`, built from independently audited application code
-  `36e985a1dc2d6653f4e30f966ee3ac1ddb967e20`. Its sealed 26-operation successor proposal is
-  `sha256:8caac7e7658cb97bb82ccd8300fd685f334c247c895e2fbd6bf13fb10e32548e`; it awaits exact proposal-record commit/audit and fresh exact
-  approval. It supersedes proposal `sha256:6d7ffa4c80d7ee375ad34312919e49853e2bfdad0f3d515990a834195bb4378e`
-  at proposal-record commit `9c38cb3bf42a1f0279aea002c9969096cbe8cf9c`, bound to source
-  `8df55ce8e87682c305fb73362411d6bb02710853`. That proposal received exact approval, but seed
-  building failed closed on the protected envelope key-ID binding before any approval record,
-  authority, credential read, provider mutation, GPU use, or spend. Its approval is non-reusable.
+- The current provider-free release source is
+  `aa3ca2470ccc33ae3e6736997f5908b7788fd023`, built from independently audited application code
+  `dec217f0fb41a364bd32980d747b690f82463f8a`. Its fresh sealed 26-operation proposal is
+  `sha256:6cf20ed6184ea1817871593eab2998983f0b4d2381fb35fa5486a416a4fd5d99`; its proposal-record
+  commit is null/pending until that exact commit exists, and it still requires independent record
+  audit plus fresh exact approval. It supersedes the consumed proposal
+  `sha256:8caac7e7658cb97bb82ccd8300fd685f334c247c895e2fbd6bf13fb10e32548e` at proposal-record
+  commit `03312bfb2d641ed8da476a4c584fc55151a26056`, bound to source
+  `73bd6edb15b3f67a8c2cb95bc5d2ecdc8376227a`.
+- The prior exact approval was materialized once under authority
+  `v2-13-full-live-20260828-100309z-8caac7e7` (authority record commit
+  `3adefb462f851b4323d78474b5859b2c37afa698`) and failed before normal operation authorization.
+  It entered cleanup-only and is permanently non-reusable: no database-role credentials, internal
+  production secrets, database/Cloudflare activation, images, endpoints, GPU use, or normal
+  provider operation was created; attempt reserved and settled spend were both `$0`.
+  The archived protected state records cleanup completion and exact zero-worker, billing,
+  resource-reconciliation, and max-one restoration proofs at
+  `protected-inputs/v2-13/history/v2-13-full-live-20260828-100309z-8caac7e7/full-live-state.json`.
   The active handoff binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:8af588ab7822d8071f5cfd3751c3cc6a8e9e2d0d3b5704c26399ca0a5fe100d3` and UUID
-  `4dc1362a-dd0d-4e49-aa31-faf920d096bb`, plus protected static descriptor self-hash
-  `sha256:cc834b20da64dd2b3b7fe73577e8f3791c861cbdf5813eea197d27cd56ec6a33`.
+  `sha256:af10f28ed22cdea0cabf35ea700ea28962826fe1e490b9edfe7a1db0f5b5841d` and UUID
+  `4bba6253-1cfd-42e0-8d4f-b5694ed268a4`, plus protected static descriptor self-hash
+  `sha256:d4b158c5c8da9228c59364857c3da0d345ba78dd4d1f1b000511572d0f595b03`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
   part of the next task. Commit `e31e275a767bd9a098f4b94c078b50136d5b998b` makes the historical
   reuse-result validator distinguish its immutable old receipt hash from the exact completed rotation
   successor/current receipt, closing the temporal-path alias without changing either historical record.
-- Production is still `DISABLED_UNQUALIFIED`. Migrations 0037–0045, the three production database
-  roles, Cloudflare Worker/Workflows, immutable Mage/SoulX images, max-one RunPod lanes, and live
-  acceptance have not been activated under a current full-live authority.
+- Production remains `DISABLED_UNQUALIFIED`. No current full-live authority, provider call,
+  credential read, GPU use, spend, database role/secret, Cloudflare Worker/Workflow, immutable
+  Mage/SoulX image, endpoint, or live acceptance exists.
 - The last sealed read-only preflight proved zero temporary compute and bound the completed credential receipt,
   exact account-derived 404 HTML route, same two retained 50 GB EU-RO-1 volumes, and the official
   Serverless Flex rate of `$0.00031/second` (`$1.116/GPU-hour`) separately from the `$0.74/hour`
   Secure Pod catalog rate. Refresh it only after the new proposal and authority are valid, immediately
   before the first mutation boundary.
-- After approval, execute the closed graph serially: Mage qualification, SoulX qualification, guarded
+- After fresh exact approval, execute the closed graph serially: Mage qualification, SoulX qualification, guarded
   database/Cloudflare activation, exact max-one lanes, V2-09 through V2-13 acceptance, immediate
   temporary-compute drain, settled billing, and independent zero-job/zero-worker proof. Never keep a Pod
   or worker active when it is not strictly required; ambiguity, expiry, cancellation, or failure enters
@@ -55,14 +64,20 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free release source is `73bd6edb15b3f67a8c2cb95bc5d2ecdc8376227a`, built from
-source-readiness-audited and repaired application code `36e985a1dc2d6653f4e30f966ee3ac1ddb967e20`;
-default entrypoints remain no-op. It retains the zero-cap
+The current provider-free release source is `aa3ca2470ccc33ae3e6736997f5908b7788fd023`, built from
+source-readiness-audited and repaired application code `dec217f0fb41a364bd32980d747b690f82463f8a`;
+default entrypoints remain no-op. Its exact audited component pins include executor
+`sha256:0c2d78410033b06f96f6b18961106d9edee2e9d9bf99871dc616abb56c0d3fc1`, adapters
+`sha256:0fb8951aaf3599975e44963b4f1f25173b024b2891203b0b5dba4b2bb4688c7f`, orchestration authority
+`sha256:91ccf0f77c9a731fa3f6940e478b43dfa309e64fc132e3e984a758b5ac1998b`, and source closure
+`sha256:bc27e20cf1b3e05108c673ffcf112275576f5fa5e3e3335af3b470f142fbb3ce`; the approval validator
+is externally bound to the exact release-commit tree entry with no self-hash. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
 credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. The
-exact release closure and component hashes are bound by the pending successor proposal and its
-source-readiness evidence. This is source/test proof only. Production remains
+exact release closure and component hashes are bound by the fresh pending successor proposal
+`sha256:6cf20ed6184ea1817871593eab2998983f0b4d2381fb35fa5486a416a4fd5d99` and its source-readiness
+evidence. This is source/test proof only. Production remains
 `DISABLED_UNQUALIFIED`; migrations/grants/config and database roles are undeployed, and no
 full-live deployment bindings are activated.
 The credential rotation/normalization boundary is now completed once and non-reusable. Proposal
