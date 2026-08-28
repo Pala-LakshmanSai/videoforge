@@ -47,7 +47,7 @@ const sourceReadinessAuditBytes = await readFile(sourceReadinessAuditPath);
 assert(sourceReadinessAuditBytes.at(-1) === 0x0a, "SOURCE_READINESS_AUDIT_FINAL_NEWLINE");
 assert(
   sha256(sourceReadinessAuditBytes) ===
-    "sha256:90dfca9a957e9c3626694fb23b462643aa0d46e435cfebf16318d583dea0cd71",
+    "sha256:1edf766bfaaf99000bf79345733640e2c859799f304639b0975d8290471e3362",
   "SOURCE_READINESS_AUDIT_SHA256",
 );
 const sourceReadinessAudit = JSON.parse(sourceReadinessAuditBytes);
@@ -55,11 +55,11 @@ assert(
   sourceReadinessAudit.schema_version ===
     "videoforge.v2-13-full-live-source-readiness-audit/v1" &&
     sourceReadinessAudit.audited_code_commit ===
-      "f260b660112ada1e862867549ad7245bd862e87d" &&
+      "c1e51ac5155d72383e3475e35c1e4868f0770473" &&
     sourceReadinessAudit.audit_result === "PASS_READY_TO_RESEAL" &&
     sourceReadinessAudit.source_closure?.entry_count === 643 &&
     sourceReadinessAudit.source_closure?.sha256 ===
-      "sha256:2a665cefdd55819cd59c6ccd5a223bc8dc83b15d3da743cfb50fabd381272ff8" &&
+      "sha256:289cb00a9cfee45e697ecdf06719cfc79b1b04c41b12c01ca6c5bdf7b4760b85" &&
     sourceReadinessAudit.external_calls === 0 &&
     sourceReadinessAudit.provider_mutations === 0 &&
     sourceReadinessAudit.gpu_use === 0 &&
@@ -69,17 +69,17 @@ assert(
 const expectedProposalPath =
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
 const previousProposalSha256 =
-  "sha256:14116dc666a9699e4569537cd01b1af5c205ec29e0ebd5b69fa33bd1e8e23e46";
-const previousProposalRecordCommit = "634c48752b72b8ed9cbe3e5f71ffd4fb4feaf70f";
-const previousReleaseSourceCommit = "e2f4d6296bd84bbf14b106a6eea55b3b75ed7087";
-const previousAuthorityRecordCommit = "545bdff48913738072824ed04614944f5e1eb4c7";
+  "sha256:b5bc0fe550f79230d92d1e47d5be639e094f6a73853243c15c6eaa0f92d24762";
+const previousProposalRecordCommit = "127e63db6ad8739ffa6e18d0d3154561ddfe728d";
+const previousReleaseSourceCommit = "f99c2cbfa2ed3df73a050591e74eb97285bb82b0";
+const previousAuthorityRecordCommit = "256a182729cf303ad69986cd66025393a84f24d1";
 const previousApprovalRecordPath = `${path.dirname(expectedProposalPath)}/user-approval.json`;
 const previousAuthorityRecordPath = `${path.dirname(expectedProposalPath)}/approved-authority.json`;
 const previousApprovalRecordReference = `git:${previousAuthorityRecordCommit}:${previousApprovalRecordPath}`;
 const previousAuthorityRecordReference = `git:${previousAuthorityRecordCommit}:${previousAuthorityRecordPath}`;
 const historicalProposalSha256 =
-  "sha256:6cf20ed6184ea1817871593eab2998983f0b4d2381fb35fa5486a416a4fd5d99";
-const historicalProposalRecordCommit = "557bb861ec714a1aa984cac87289722d246481a6";
+  "sha256:14116dc666a9699e4569537cd01b1af5c205ec29e0ebd5b69fa33bd1e8e23e46";
+const historicalProposalRecordCommit = "634c48752b72b8ed9cbe3e5f71ffd4fb4feaf70f";
 const APPROVED_WRANGLER_OAUTH_SCOPES = Object.freeze([
   "account:read",
   "agent-memory:write",
@@ -160,18 +160,18 @@ const EXPECTED_MAGE_VOLUME_ID_SHA256 =
   "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619";
 const EXPECTED_SOULX_VOLUME_ID_SHA256 =
   "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
-const EXPECTED_RELEASE_SOURCE_COMMIT = "f99c2cbfa2ed3df73a050591e74eb97285bb82b0";
+const EXPECTED_RELEASE_SOURCE_COMMIT = "7374f0abade0706241cfc1288d0151fc83ee5d9a";
 const EXPECTED_APPROVAL_VALIDATOR_SHA256 =
-  "sha256:4740b6194b5e98870742e8a44b08c72eb29ffafa235c5741d4b1aaebc5378628";
+  "sha256:093a9ca77c329e7d6d6205e1927b9c6954f15999e595914c904abe3f94214d56";
 const EXPECTED_STATIC_RELEASE_DESCRIPTOR = Object.freeze({
   path: "protected-inputs/v2-13/static-release-descriptor.json",
-  sha256: "sha256:86cb2a4452dae84cf7409c4caa90cfb09a2d044fc69e6a667f4ab39d16b66071",
+  sha256: "sha256:5fe8f5a149f43b44467fc106670262d89b40a364dec7c0069fe2970ab17f0d99",
 });
 const EXPECTED_MATERIALIZATION_SEED_FACTS = Object.freeze({
   commit_field: "source.release_source_commit",
-  full_live_authority_id: "8c08f1f8-a15d-4197-a752-2f03b2404bce",
+  full_live_authority_id: "ecfa7a72-9680-4272-ba2a-b89d7a8864d1",
   path: "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-  sha256: "sha256:a06f55f430a46b861113b78741d701e7b2ee273dd14e2d4bdb1ac3578ec3588b",
+  sha256: "sha256:31da552111f2b6dbd3b55762ed44c02376205319f08a232bfe990cad0c8c0b22",
 });
 const EXPECTED_RELEASE_COMPONENT_HASHES = Object.freeze(
   Object.fromEntries(
@@ -315,19 +315,25 @@ const readGitText = (args, code) => {
 };
 assert(
   readGitText(["rev-parse", `${EXPECTED_RELEASE_SOURCE_COMMIT}^`], "SOURCE_PARENT") ===
-    "f260b660112ada1e862867549ad7245bd862e87d" &&
-    readGitText(["rev-parse", "f260b660112ada1e862867549ad7245bd862e87d^"], "READINESS_PARENT") ===
-      "bfd25ad8715fef1759a3e77347a34534e166b683" &&
+    "c1e51ac5155d72383e3475e35c1e4868f0770473" &&
+    readGitText(["rev-parse", "c1e51ac5155d72383e3475e35c1e4868f0770473^"], "READINESS_PARENT") ===
+      "e44aae0667be7a64fa03b27a3c1b5ed2468c6ad1" &&
+    readGitText(["rev-parse", "e44aae0667be7a64fa03b27a3c1b5ed2468c6ad1^"], "APPROVAL_SOURCE_REPAIR_PARENT") ===
+      previousAuthorityRecordCommit &&
     readGitText(["rev-parse", `${previousReleaseSourceCommit}^`], "PREVIOUS_SOURCE_PARENT") ===
-      "0124d8a5145f80e8b65ce564e27f61f665df5027" &&
+      "f260b660112ada1e862867549ad7245bd862e87d" &&
     readGitText(["rev-parse", `${previousProposalRecordCommit}^`], "PREVIOUS_RECORD_PARENT") ===
       previousReleaseSourceCommit &&
     readGitText(["rev-parse", `${previousAuthorityRecordCommit}^`], "PREVIOUS_AUTHORITY_PARENT") ===
       previousProposalRecordCommit &&
     readGitText(["rev-list", "--parents", "-n", "1", EXPECTED_RELEASE_SOURCE_COMMIT], "SOURCE_PARENT_RECORD") ===
-      `${EXPECTED_RELEASE_SOURCE_COMMIT} f260b660112ada1e862867549ad7245bd862e87d` &&
+      `${EXPECTED_RELEASE_SOURCE_COMMIT} c1e51ac5155d72383e3475e35c1e4868f0770473` &&
+    readGitText(["rev-list", "--parents", "-n", "1", "c1e51ac5155d72383e3475e35c1e4868f0770473"], "READINESS_PARENT_RECORD") ===
+      "c1e51ac5155d72383e3475e35c1e4868f0770473 e44aae0667be7a64fa03b27a3c1b5ed2468c6ad1" &&
+    readGitText(["rev-list", "--parents", "-n", "1", "e44aae0667be7a64fa03b27a3c1b5ed2468c6ad1"], "APPROVAL_SOURCE_REPAIR_PARENT_RECORD") ===
+      `e44aae0667be7a64fa03b27a3c1b5ed2468c6ad1 ${previousAuthorityRecordCommit}` &&
     readGitText(["rev-list", "--parents", "-n", "1", previousReleaseSourceCommit], "PREVIOUS_SOURCE_PARENT_RECORD") ===
-      `${previousReleaseSourceCommit} 0124d8a5145f80e8b65ce564e27f61f665df5027` &&
+      `${previousReleaseSourceCommit} f260b660112ada1e862867549ad7245bd862e87d` &&
     readGitText(["rev-list", "--parents", "-n", "1", previousProposalRecordCommit], "PREVIOUS_RECORD_PARENT_RECORD") ===
       `${previousProposalRecordCommit} ${previousReleaseSourceCommit}` &&
     readGitText(["rev-list", "--parents", "-n", "1", previousAuthorityRecordCommit], "PREVIOUS_AUTHORITY_PARENT_RECORD") ===
@@ -341,7 +347,7 @@ assert(
       "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/source-readiness-audit.json",
       "SOURCE_READINESS_AUDIT_SOURCE_MISSING",
     ),
-  ) === "sha256:90dfca9a957e9c3626694fb23b462643aa0d46e435cfebf16318d583dea0cd71",
+  ) === "sha256:1edf766bfaaf99000bf79345733640e2c859799f304639b0975d8290471e3362",
   "SOURCE_READINESS_AUDIT_SOURCE_SHA256",
 );
 const materializationSeedFactsBytes = readCommittedBytes(
@@ -362,13 +368,13 @@ assert(
     materializationSeedFacts.source_evidence?.source_readiness?.path ===
       "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/source-readiness-audit.json" &&
     materializationSeedFacts.source_evidence.source_readiness.sha256 ===
-      "sha256:90dfca9a957e9c3626694fb23b462643aa0d46e435cfebf16318d583dea0cd71" &&
+      "sha256:1edf766bfaaf99000bf79345733640e2c859799f304639b0975d8290471e3362" &&
     materializationSeedFacts.protected_input?.path ===
       "protected-inputs/v2-13/materialization-seed-input.json" &&
     materializationSeedFacts.protected_input.schema_version ===
       "videoforge.v213-materialization-seed-protected-input/v1" &&
     materializationSeedFacts.protected_input.sha256 ===
-      "sha256:fbd878124ee291acf9430b66fa3190006bdec8576af279d5df1f70c88cb11413",
+      "sha256:f5a82afba121cbe38751729c8efc92addccab09b0f79a85a5cd2dbac369562e5",
   "MATERIALIZATION_SEED_FACTS_CONTRACT",
 );
 validateStaticReleaseDescriptorFile({
@@ -613,17 +619,17 @@ assert(
     proposal.supersession.superseded_approval_record_materialized === true &&
     proposal.supersession.superseded_approval_record_path === previousApprovalRecordReference &&
     proposal.supersession.superseded_approval_record_sha256 ===
-      "sha256:a6c099a652a0c25ccaa5f1db309ede7f8b43640ef26a696fc41c6252872d8364" &&
+      "sha256:d53cca59a974ca028caf19f4345008e3082421bd26c05a0e47a02919a5035e4a" &&
     proposal.supersession.superseded_authority_materialized === true &&
     proposal.supersession.superseded_authority_id ===
-      "v2-13-full-live-20260828-133545z-14116dc6" &&
+      "v2-13-full-live-20260828-165157z-b5bc0fe5" &&
     proposal.supersession.superseded_authority_record_path === previousAuthorityRecordReference &&
     proposal.supersession.superseded_authority_record_sha256 ===
-      "sha256:09dc330a7459cebe23c66a8d757e530e9bf25de84c50ffa250249f494dcccac3" &&
+      "sha256:fe14dfc95c8f931c4602911b452890d6ed0f3347ccb48ae4a73d5e542caa2271" &&
     proposal.supersession.supersession_reason ===
-      "CONSUMED_AUTHORITY_FAILED_INITIAL_PREFLIGHT_CLEANUP_COMPLETE_RESERVED_PATH_COLLISION_REPAIRED" &&
+      "SOURCE_LINEAGE_REPAIR_REQUIRED" &&
     proposal.supersession.superseded_authority_state ===
-      "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY_ZERO_ATTEMPT_SPEND" &&
+      "SUPERSEDED_UNCONSUMED_NO_MUTATION" &&
     proposal.supersession.prior_approval_reusable === false &&
     proposal.supersession.fresh_exact_approval_required === true,
   "SUPERSESSION_PRIOR_PROPOSAL_BINDING",
@@ -1496,7 +1502,7 @@ console.log(
     superseded_proposal_sha256: previousProposalSha256,
     superseded_proposal_record_commit: previousProposalRecordCommit,
     superseded_approval_record_materialized: true,
-    superseded_authority_id: "v2-13-full-live-20260828-133545z-14116dc6",
+    superseded_authority_id: "v2-13-full-live-20260828-165157z-b5bc0fe5",
     superseded_authority_materialized: true,
     authority: "ABSENT",
     source_hashes: "BOUND_EXACT_RELEASE_COMPONENTS",

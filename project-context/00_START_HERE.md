@@ -5,16 +5,21 @@
 ### New-chat launch point — 2026-08-28
 
 - The current provider-free release source is
-  `f99c2cbfa2ed3df73a050591e74eb97285bb82b0`, an evidence-only child of independently audited
-  application code `f260b660112ada1e862867549ad7245bd862e87d`. Fresh sealed 26-operation proposal
-  `sha256:b5bc0fe550f79230d92d1e47d5be639e094f6a73853243c15c6eaa0f92d24762` is bound to this
+  `7374f0abade0706241cfc1288d0151fc83ee5d9a`, an evidence-only child of independently audited
+  source `c1e51ac5155d72383e3475e35c1e4868f0770473`. Fresh sealed 26-operation proposal
+  `sha256:b579fb054114e82e4b26e3b3bad62d7c5e42b851df64a6fe7576591acd149ff9` is bound to this
   source; its proposal-record commit remains null/pending until the exact five-path commit exists,
-  followed by independent record audit and
-  fresh exact approval. It supersedes the prior approved proposal
-  `sha256:14116dc666a9699e4569537cd01b1af5c205ec29e0ebd5b69fa33bd1e8e23e46` at proposal-record
-  commit `634c48752b72b8ed9cbe3e5f71ffd4fb4feaf70f`, bound to source
-  `aa3ca2470ccc33ae3e6736997f5908b7788fd023`.
-- That prior exact approval was materialized once under authority
+  followed by independent record audit and fresh exact approval. It supersedes proposal
+  `sha256:b5bc0fe550f79230d92d1e47d5be639e094f6a73853243c15c6eaa0f92d24762` at proposal-record
+  commit `127e63db6ad8739ffa6e18d0d3154561ddfe728d`, bound to source
+  `f99c2cbfa2ed3df73a050591e74eb97285bb82b0`.
+- The superseded proposal was explicitly approved and its unconsumed authority was recorded at
+  `256a182729cf303ad69986cd66025393a84f24d1` (approval hash
+  `sha256:d53cca59a974ca028caf19f4345008e3082421bd26c05a0e47a02919a5035e4a`, authority hash
+  `sha256:fe14dfc95c8f931c4602911b452890d6ed0f3347ccb48ae4a73d5e542caa2271`), then superseded
+  unconsumed with no mutation because source-lineage repair was required. It is non-reusable and
+  cannot authorize any credential, provider, deployment, GPU, or spend action.
+- The earlier exact approval was materialized once under authority
   `v2-13-full-live-20260828-133545z-14116dc6` (authority record commit
   `545bdff48913738072824ed04614944f5e1eb4c7`) and failed at initial preflight before normal operation authorization with PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH_DIRECTORY.
   It entered cleanup-only and is permanently non-reusable: no database-role credentials, internal
@@ -23,11 +28,11 @@
   The archived protected state records cleanup completion and exact zero-worker, billing,
   resource-reconciliation, and max-one restoration proofs at
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
-  The pending reseal binds materialization facts at
+  The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:a06f55f430a46b861113b78741d701e7b2ee273dd14e2d4bdb1ac3578ec3588b` and UUID
-  `8c08f1f8-a15d-4197-a752-2f03b2404bce`, plus protected static descriptor self-hash
-  `sha256:86cb2a4452dae84cf7409c4caa90cfb09a2d044fc69e6a667f4ab39d16b66071`.
+  `sha256:31da552111f2b6dbd3b55762ed44c02376205319f08a232bfe990cad0c8c0b22` and UUID
+  `ecfa7a72-9680-4272-ba2a-b89d7a8864d1`, plus protected static descriptor self-hash
+  `sha256:5fe8f5a149f43b44467fc106670262d89b40a364dec7c0069fe2970ab17f0d99`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -65,19 +70,19 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free release source is `f99c2cbfa2ed3df73a050591e74eb97285bb82b0`, built from
-source-readiness-audited and repaired application code `f260b660112ada1e862867549ad7245bd862e87d`;
+The current provider-free release source is `7374f0abade0706241cfc1288d0151fc83ee5d9a`, built from
+source-readiness-audited application source `c1e51ac5155d72383e3475e35c1e4868f0770473`;
 default entrypoints remain no-op. Its exact audited component pins include executor
-`sha256:21f2a14e9698700758a2ec3c46268a04d303044002d91507c2da6a6fe69d3e39`, adapters
-`sha256:e7d4dd8eb7b13356a74142978a904017868129cf03cac02bf1a77d9fc7a2c0e8`, orchestration authority
-`sha256:417a0ef7cbd6f81e7d5cdef61e0920f6ea7795fa42c8dd623119f6039e85cf27`, and source closure
-`sha256:7cc98eeb61a31bcfdff31dd8ed6e7f957cd16ef2c45cf178a0dc47263ccb0a56`; the approval validator
+`sha256:7b58010e15790218608fcb9f0df7eecf6155e5fd10bf11ea8dc6b5a5cfb6b000`, adapters
+`sha256:99cde95e368660b01bc90ea770a0f916e53cedae2532f5602f7019004aac6bab`, orchestration authority
+`sha256:edfb9a253b2de1f58591bf97d7a4ae0cf9ec0ce284b6834cdad6943935901246`, and source closure
+`sha256:289cb00a9cfee45e697ecdf06719cfc79b1b04c41b12c01ca6c5bdf7b4760b85`; the approval validator
 is externally bound to the exact release-commit tree entry with no self-hash. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
 credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. The
-exact release closure and component hashes are bound by the fresh pending successor proposal
-pending proposal and its source-readiness evidence. This is source/test proof only. Production remains
+exact release closure and component hashes are bound by the fresh sealed successor proposal and its
+source-readiness evidence. This is source/test proof only. Production remains
 `DISABLED_UNQUALIFIED`; migrations/grants/config and database roles are undeployed, and no
 full-live deployment bindings are activated.
 The credential rotation/normalization boundary is now completed once and non-reusable. Proposal
