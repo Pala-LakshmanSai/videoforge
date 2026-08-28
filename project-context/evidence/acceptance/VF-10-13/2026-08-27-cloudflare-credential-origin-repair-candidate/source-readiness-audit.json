@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "dec217f0fb41a364bd32980d747b690f82463f8a",
+  "audited_code_commit": "0124d8a5145f80e8b65ce564e27f61f665df5027",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.final-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-28T11:02:52.000Z",
+  "observed_at": "2026-08-28T12:42:21.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -17,7 +17,7 @@
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
     "entry_count": 643,
-    "sha256": "sha256:bc27e20cf1b3e05108c673ffcf112275576f5fa5e3e3335af3b470f142fbb3ce",
+    "sha256": "sha256:7cc98eeb61a31bcfdff31dd8ed6e7f957cd16ef2c45cf178a0dc47263ccb0a56",
     "exact": true
   },
   "production_origin": {
@@ -27,7 +27,7 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:bc27e20cf1b3e05108c673ffcf112275576f5fa5e3e3335af3b470f142fbb3ce"
+    "sha256": "sha256:7cc98eeb61a31bcfdff31dd8ed6e7f957cd16ef2c45cf178a0dc47263ccb0a56"
   },
   "validation": {
     "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
@@ -36,7 +36,7 @@
     "package_test_files_passed": 104,
     "package_tests_passed": 1256,
     "package_tests_skipped": 1,
-    "focused_release_script_tests_passed": 128,
+    "focused_release_script_tests_passed": 158,
     "control_plane_activation_tests_passed": 14,
     "soulx_tests_passed": 37,
     "independent_source_audit_result": "PASS_READY_TO_RESEAL",
@@ -112,6 +112,7 @@
     "This record contains no credentials or raw protected values.",
     "The release-source successor may add only this readiness record and the canonical materialization-seed facts before resealing; application and deployment bytes remain those audited at audited_code_commit.",
     "The previous 26-operation authority was consumed once, failed before normal operation authorization, and reached cleanup-complete with zero attempt spend; it is non-reusable.",
+    "The repaired executor now persists bounded secret-free failure diagnostics, checks authenticated time before phase and work mutations, retries only credential-free time reads, and keeps cleanup-only restart closable without normal seed verification.",
     "The canonical full verify is intentionally blocked only by the stale active candidate descriptor and component bindings that this evidence successor permits resealing; focused source, package, SQL, SoulX, closure, and NO_ACTION gates passed."
   ]
 }
