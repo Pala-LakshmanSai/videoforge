@@ -902,7 +902,10 @@ test("absent-role bootstrap crash enters distinct owner-readback partial cleanup
     assert.deepEqual(cleanupModes, Array(4).fill("BOOTSTRAP_PARTIAL_CLEANUP"));
     assert.equal(resumed.failed, true);
     assert.equal(resumed.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
-    assert.match(resumed.results.get("failure").message, /operator role absent/u);
+    assert.deepEqual(resumed.results.get("failure"), {
+      failure_boundary: "BOOTSTRAP_RECONCILIATION",
+      failure_code: "FULL_LIVE_OPERATION_FAILED",
+    });
     assert.equal(
       resumed.results.get("reconcile-exact-resources").localDatabaseCredentialCleanup
         .operatorRoleAbsent,
@@ -965,6 +968,84 @@ test("expired authenticated time enters cleanup-only before any normal mutation 
     assert.equal(called.includes("certify-v2-13-release"), false);
     assert.equal(result.failed, true);
     assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
+    assert.equal(result.state.failure_boundary, "PHASE_MUTATION_TRUSTED_TIME");
+    assert.equal(result.state.failure_code, "TRUSTED_TIME_EXPIRED_OR_FORGED");
+    assert.equal(result.state.cleanup_failure_code, result.state.failure_code);
+    assert.equal(result.state.phases.publication.state, "FAILED_CLEANUP_ONLY");
+    assert.deepEqual(
+      Object.values(result.state.phases)
+        .flatMap((phase) => Object.keys(phase.work))
+        .filter(
+          (id) =>
+            !id.includes(":restore-endpoints-max-one") &&
+            !id.includes(":prove-zero-workers") &&
+            !id.includes(":read-settled-billing") &&
+            !id.includes(":reconcile-exact-resources"),
+        ),
+      [],
+    );
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("initial preflight failure records only a bounded diagnostic and enters early cleanup", async () => {
+  const fixture = stateFixture();
+  const called = [];
+  try {
+    const result = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      preflight: async (_state, _sha256, mode) => {
+        assert.equal(mode.initial, true);
+        throw new Error("V2_13_FULL_LIVE_ADAPTER_PREFLIGHT_CONTRACT:/private/credential/path");
+      },
+      runOperation: async (operation, state, priorResults) => {
+        called.push(operation.id);
+        if (operation.phase !== "cleanup_and_reconciliation")
+          throw new Error("unexpected normal work");
+        return fakeResult(operation, state, priorResults);
+      },
+    });
+    assert.equal(result.failed, true);
+    assert.equal(result.state.failure_boundary, "INITIAL_PREFLIGHT");
+    assert.equal(result.state.failure_code, "PREFLIGHT_CONTRACT");
+    assert.deepEqual(result.results.get("failure"), {
+      failure_boundary: "INITIAL_PREFLIGHT",
+      failure_code: "PREFLIGHT_CONTRACT",
+    });
+    assert.doesNotMatch(JSON.stringify(result.results.get("failure")), /credential|private|path/u);
+    assert.doesNotMatch(readFileSync(fixture.path, "utf8"), /\/private\/credential\/path/u);
+    assert.deepEqual(called, [
+      "restore-endpoints-max-one",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources",
+    ]);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("initial seed failure records its exact safe code without retaining exception text", async () => {
+  const fixture = stateFixture();
+  try {
+    const result = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      verifyMaterializationSeed: async () => {
+        throw new Error(
+          "V2_13_FULL_LIVE_ORCHESTRATION_MATERIALIZATION_SEED_HASH:/private/seed-secret",
+        );
+      },
+      runOperation: async (operation, state, priorResults) =>
+        fakeResult(operation, state, priorResults),
+    });
+    assert.equal(result.failed, true);
+    assert.equal(result.state.failure_boundary, "INITIAL_MATERIALIZATION_SEED");
+    assert.equal(result.state.failure_code, "MATERIALIZATION_SEED_HASH");
+    assert.equal(result.state.cleanup_failure_code, "MATERIALIZATION_SEED_HASH");
+    assert.doesNotMatch(readFileSync(fixture.path, "utf8"), /seed-secret|private/u);
   } finally {
     rmSync(fixture.directory, { recursive: true, force: true });
   }
@@ -974,14 +1055,23 @@ test("cleanup-only restart skips every publication, qualification, and acceptanc
   const fixture = stateFixture();
   try {
     const state = enterCleanupOnly(JSON.parse(readFileSync(fixture.path, "utf8")), {
+      failureBoundary: "TEST_OPERATION_EXECUTION",
       failureCode: "TEST_RESTART",
       eventId: "v2-13-test-executor-0001:cleanup-entry:failed",
     });
     writeFileSync(fixture.path, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
     const called = [];
+    let seedVerifierCalls = 0;
     const result = await executeFullLive({
       statePath: fixture.path,
       expectedStateSha256: hash(readFileSync(fixture.path)),
+      verifyMaterializationSeed: async () => {
+        seedVerifierCalls += 1;
+        throw new Error("V2_13_FULL_LIVE_ORCHESTRATION_MATERIALIZATION_SEED_HASH");
+      },
+      verifyStaticReleaseDescriptor: async () => {
+        throw new Error("V2_13_FULL_LIVE_ORCHESTRATION_STATIC_RELEASE_DESCRIPTOR_HASH");
+      },
       runOperation: async (operation, current, prior) => {
         called.push(operation.id);
         return fakeResult(operation, current, prior);
@@ -993,6 +1083,7 @@ test("cleanup-only restart skips every publication, qualification, and acceptanc
       "read-settled-billing",
       "reconcile-exact-resources",
     ]);
+    assert.equal(seedVerifierCalls, 0);
     assert.equal(called.includes("certify-v2-13-release"), false);
     assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
   } finally {
@@ -1626,7 +1717,10 @@ test("reported cost above an exact reservation stops all later paid work", async
       },
     });
     assert.equal(result.failed, true);
-    assert.match(result.results.get("failure").message, /RESULT_COST/u);
+    assert.deepEqual(result.results.get("failure"), {
+      failure_boundary: "OPERATION_RESULT_VALIDATION",
+      failure_code: "RESULT_COST",
+    });
     assert.equal(called.filter((id) => id === "mage-live-qualification").length, 1);
     assert.equal(called.includes("soulx-live-qualification"), false);
     assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");

@@ -659,6 +659,35 @@ test("trusted time uses credential-free bounded HTTPS and one exact Date header"
   });
 });
 
+test("trusted time retries bounded credential-free read failures before returning one exact Date", () => {
+  let calls = 0;
+  const trusted = readAuthenticatedGithubTime({
+    run: () => {
+      calls += 1;
+      if (calls === 1) return result(6, "", "temporary DNS failure");
+      if (calls === 2) return result(0, "HTTP/2 200\r\n\r\n");
+      return result(0, "HTTP/2 200\r\ndate: Wed, 26 Aug 2026 12:00:00 GMT\r\n\r\n");
+    },
+  });
+  assert.equal(calls, 3);
+  assert.equal(trusted, "2026-08-26T12:00:00.000Z");
+});
+
+test("trusted time stops after the exact bounded attempt count", () => {
+  let calls = 0;
+  assert.throws(
+    () =>
+      readAuthenticatedGithubTime({
+        run: () => {
+          calls += 1;
+          return result(6, "", "temporary DNS failure");
+        },
+      }),
+    /V2_13_FULL_LIVE_ADAPTER_COMMAND/u,
+  );
+  assert.equal(calls, 3);
+});
+
 test("GitHub dispatch rejects ambiguous new runs and never redispatches", async () => {
   const calls = [];
   const makeRun = (databaseId) => ({

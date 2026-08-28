@@ -35,12 +35,12 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:0c2d78410033b06f96f6b18961106d9edee2e9d9bf99871dc616abb56c0d3fc1",
+    sha256: "sha256:21f2a14e9698700758a2ec3c46268a04d303044002d91507c2da6a6fe69d3e39",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:0fb8951aaf3599975e44963b4f1f25173b024b2891203b0b5dba4b2bb4688c7f",
+    sha256: "sha256:e7d4dd8eb7b13356a74142978a904017868129cf03cac02bf1a77d9fc7a2c0e8",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -52,7 +52,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:91ccf0f77c9a731fa3f6940e478b43dfa309e64fc132e3e984a758b5ac1998b3",
+    sha256: "sha256:417a0ef7cbd6f81e7d5cdef61e0920f6ea7795fa42c8dd623119f6039e85cf27",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -136,7 +136,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:bc27e20cf1b3e05108c673ffcf112275576f5fa5e3e3335af3b470f142fbb3ce",
+    sha256: "sha256:7cc98eeb61a31bcfdff31dd8ed6e7f957cd16ef2c45cf178a0dc47263ccb0a56",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
@@ -464,6 +464,8 @@ const EXACT_TRUSTED_TIME_POLICY = Object.freeze({
   proxy_environment_allowed: false,
   curl_default_config_allowed: false,
   subprocess_timeout_ms: 12_000,
+  maximum_credential_free_attempts_per_boundary: 3,
+  every_attempt_must_complete_before_phase_or_work_mutation: true,
   required_date_header_count: 1,
   date_header_match: "CASE_INSENSITIVE_^date:",
   date_parse_valid_required: true,

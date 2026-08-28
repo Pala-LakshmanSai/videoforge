@@ -32,6 +32,12 @@ const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
+// Failure diagnostics are deliberately opaque, bounded tokens.  They may be written to the
+// durable outer state and therefore must never contain a path, provider identifier, secret, or
+// exception text.  The executor maps trusted internal errors onto this shape before calling
+// enterCleanupOnly; the authority repeats the shape check at every state CAS boundary.
+const FAILURE_BOUNDARY = /^[A-Z][A-Z0-9_]{7,127}$/u;
+const FAILURE_CODE = /^[A-Z][A-Z0-9_]{7,127}$/u;
 const RUNPOD_ACCOUNT_ID_SHA256 =
   "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
 const EXACT_DATABASE_IDENTITY = Object.freeze({
@@ -1268,6 +1274,9 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     // state CAS that settles the bootstrap result and is repaired during result hydration after
     // a restart; never infer it from a preflight having run.
     operator_role_verified: false,
+    failure_boundary: null,
+    failure_code: null,
+    cleanup_failure_code: null,
     current_phase_index: 0,
     phases: phaseMap(),
     event_ids: [],
@@ -1301,7 +1310,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:0c2d78410033b06f96f6b18961106d9edee2e9d9bf99871dc616abb56c0d3fc1" ||
+      "sha256:21f2a14e9698700758a2ec3c46268a04d303044002d91507c2da6a6fe69d3e39" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||
@@ -1310,6 +1319,9 @@ function validateState(state) {
     !HASH.test(state.static_release_descriptor_sha256 ?? "") ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||
+    !Object.hasOwn(state, "failure_boundary") ||
+    !Object.hasOwn(state, "failure_code") ||
+    !Object.hasOwn(state, "cleanup_failure_code") ||
     !Object.hasOwn(state, "release_certification") ||
     ![
       "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
@@ -1395,6 +1407,30 @@ function validateState(state) {
     !["AUTHORIZED_PENDING_CREATION", "VERIFIED_EXACT_REMOTE"].includes(state.release_ref?.state)
   )
     fail("CUMULATIVE_CAP_OR_EVENT_REPLAY");
+  if (
+    (state.failure_boundary !== null && !FAILURE_BOUNDARY.test(state.failure_boundary)) ||
+    (state.failure_code !== null && !FAILURE_CODE.test(state.failure_code)) ||
+    (state.cleanup_failure_code !== null && !FAILURE_CODE.test(state.cleanup_failure_code))
+  )
+    fail("FAILURE_DIAGNOSTIC_CONTRACT");
+  const cleanupStates = new Set([
+    "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+    "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+  ]);
+  if (cleanupStates.has(state.state)) {
+    if (
+      !FAILURE_BOUNDARY.test(state.failure_boundary ?? "") ||
+      !FAILURE_CODE.test(state.failure_code ?? "") ||
+      state.cleanup_failure_code !== state.failure_code
+    )
+      fail("FAILURE_DIAGNOSTIC_REQUIRED");
+  } else if (
+    state.failure_boundary !== null ||
+    state.failure_code !== null ||
+    state.cleanup_failure_code !== null
+  ) {
+    fail("FAILURE_DIAGNOSTIC_STATE");
+  }
   if (
     state.release_ref.state === "VERIFIED_EXACT_REMOTE" &&
     !/^[a-z0-9][a-z0-9._:-]{7,191}$/u.test(state.release_ref.verification_event_id ?? "")
@@ -1654,9 +1690,10 @@ function completePhase(state, phaseName) {
   return validateState(state);
 }
 
-function enterCleanupOnly(state, { failureCode, eventId }) {
+function enterCleanupOnly(state, { failureBoundary, failureCode, eventId }) {
   validateState(state);
   if (state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") fail("NOT_IN_PROGRESS");
+  if (!FAILURE_BOUNDARY.test(failureBoundary ?? "")) fail("FAILURE_BOUNDARY");
   if (!/^[A-Z0-9][A-Z0-9_]{7,127}$/u.test(failureCode ?? "")) fail("FAILURE_CODE");
   if (!/^[a-z0-9][a-z0-9._:-]{7,191}$/u.test(eventId ?? "") || state.event_ids.includes(eventId))
     fail("EVENT_ID");
@@ -1666,6 +1703,8 @@ function enterCleanupOnly(state, { failureCode, eventId }) {
     state.phases[current].state = "FAILED_CLEANUP_ONLY";
   state.current_phase_index = PHASES.length - 1;
   state.phases.cleanup_and_reconciliation.state = "ACTIVE";
+  state.failure_boundary = failureBoundary;
+  state.failure_code = failureCode;
   state.cleanup_failure_code = failureCode;
   state.event_ids.push(eventId);
   return validateState(state);
@@ -2120,6 +2159,7 @@ async function main() {
   else if (command === "enter-cleanup-only")
     operation = (state) =>
       enterCleanupOnly(state, {
+        failureBoundary: args.get("failure-boundary"),
         failureCode: args.get("failure-code"),
         eventId: args.get("event-id"),
       });
@@ -2167,6 +2207,8 @@ export {
   MATERIALIZATION_SEED_ENV,
   MATERIALIZATION_SEED_SCHEMA,
   STATIC_RELEASE_DESCRIPTOR_ENV,
+  FAILURE_BOUNDARY,
+  FAILURE_CODE,
   PHASES,
   recordCleanupProof,
   recordSettledResult,

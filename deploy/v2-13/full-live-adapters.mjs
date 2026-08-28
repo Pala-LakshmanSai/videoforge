@@ -430,8 +430,11 @@ function exactRemoteTag(stdout, tag, expectedCommit, allowAbsent = false) {
 function readAuthenticatedGithubTime({
   run = closedTrustedTimeCommand,
   spawnTimeoutMs = 12_000,
+  maximumAttempts = 3,
 } = {}) {
-  const response = exactCommand((command, args) => run(command, args, spawnTimeoutMs), "curl", [
+  if (!Number.isInteger(maximumAttempts) || maximumAttempts < 1 || maximumAttempts > 3)
+    fail("TRUSTED_TIME_ATTEMPTS");
+  const args = [
     "--disable",
     "--silent",
     "--show-error",
@@ -444,13 +447,26 @@ function readAuthenticatedGithubTime({
     "--max-time",
     "10",
     "https://api.github.com/rate_limit",
-  ]);
-  const dates = response.stdout
-    .split(/\r?\n/u)
-    .filter((line) => /^date:/iu.test(line))
-    .map((line) => line.slice(line.indexOf(":") + 1).trim());
-  if (dates.length !== 1 || Number.isNaN(Date.parse(dates[0]))) fail("TRUSTED_TIME_READBACK");
-  return new Date(Date.parse(dates[0])).toISOString();
+  ];
+  let lastError;
+  for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
+    try {
+      const response = exactCommand(
+        (command, commandArgs) => run(command, commandArgs, spawnTimeoutMs),
+        "curl",
+        args,
+      );
+      const dates = response.stdout
+        .split(/\r?\n/u)
+        .filter((line) => /^date:/iu.test(line))
+        .map((line) => line.slice(line.indexOf(":") + 1).trim());
+      if (dates.length !== 1 || Number.isNaN(Date.parse(dates[0]))) fail("TRUSTED_TIME_READBACK");
+      return new Date(Date.parse(dates[0])).toISOString();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 function createGitReleaseAdapters({ run = productionCommand } = {}) {

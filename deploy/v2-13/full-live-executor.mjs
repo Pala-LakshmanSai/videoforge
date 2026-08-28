@@ -26,6 +26,8 @@ import {
   validateMaterializationSeedFile,
   validateStaticReleaseDescriptorFile,
   validateState,
+  FAILURE_BOUNDARY,
+  FAILURE_CODE,
 } from "./full-live-orchestration-authority.mjs";
 import {
   createConcreteFullLiveAdapters,
@@ -54,7 +56,7 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:0fb8951aaf3599975e44963b4f1f25173b024b2891203b0b5dba4b2bb4688c7f",
+    "sha256:e7d4dd8eb7b13356a74142978a904017868129cf03cac02bf1a77d9fc7a2c0e8",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
@@ -70,7 +72,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:bc27e20cf1b3e05108c673ffcf112275576f5fa5e3e3335af3b470f142fbb3ce",
+    "sha256:7cc98eeb61a31bcfdff31dd8ed6e7f957cd16ef2c45cf178a0dc47263ccb0a56",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -248,6 +250,55 @@ const CONCRETE_LIVE_ADAPTERS = createConcreteFullLiveAdapters();
 const fail = (code, detail = "") => {
   throw new Error(`V2_13_FULL_LIVE_EXECUTOR_${code}${detail ? `:${detail}` : ""}`);
 };
+
+const FAILURE_BOUNDARIES = Object.freeze({
+  initialStaticReleaseDescriptor: "INITIAL_STATIC_RELEASE_DESCRIPTOR",
+  initialMaterializationSeed: "INITIAL_MATERIALIZATION_SEED",
+  initialPreflight: "INITIAL_PREFLIGHT",
+  preOperationTrustedTime: "PRE_OPERATION_TRUSTED_TIME",
+  phaseMutationTrustedTime: "PHASE_MUTATION_TRUSTED_TIME",
+  operationStaticReleaseDescriptor: "OPERATION_STATIC_RELEASE_DESCRIPTOR",
+  operationMaterializationSeed: "OPERATION_MATERIALIZATION_SEED",
+  operationAuthorization: "OPERATION_AUTHORIZATION",
+  operationExecution: "OPERATION_EXECUTION",
+  operationResultValidation: "OPERATION_RESULT_VALIDATION",
+  settledResultHydration: "SETTLED_RESULT_HYDRATION",
+  materializationChainVerification: "MATERIALIZATION_CHAIN_VERIFICATION",
+  bootstrapReconciliation: "BOOTSTRAP_RECONCILIATION",
+  stagedPreflight: "STAGED_PREFLIGHT",
+  cleanupPreflight: "CLEANUP_PREFLIGHT",
+  cleanupProof: "CLEANUP_PROOF",
+  certificationStaticReleaseDescriptor: "CERTIFICATION_STATIC_RELEASE_DESCRIPTOR",
+  certificationMaterializationSeed: "CERTIFICATION_MATERIALIZATION_SEED",
+  certificationTrustedTime: "CERTIFICATION_TRUSTED_TIME",
+  certificationAuthorization: "CERTIFICATION_AUTHORIZATION",
+  certificationExecution: "CERTIFICATION_EXECUTION",
+  certificationResultValidation: "CERTIFICATION_RESULT_VALIDATION",
+});
+
+const SAFE_ERROR_PREFIXES = Object.freeze([
+  "V2_13_FULL_LIVE_EXECUTOR_",
+  "V2_13_FULL_LIVE_ORCHESTRATION_",
+  "V2_13_FULL_LIVE_ADAPTER_",
+  "V2_13_FULL_LIVE_APPROVAL_",
+  "V2_13_QUALIFIED_PROMOTION_",
+]);
+
+/**
+ * Return only a bounded internal code.  Exception text is intentionally never returned: adapter
+ * and child-process errors may include paths, provider bodies, IDs, or credential material.  A
+ * code produced by one of the reviewed VideoForge prefixes is safe after its detail suffix is
+ * removed; everything else is represented by the caller's stable fallback category.
+ */
+export function boundedFailureCode(error, fallbackCode = "UNCLASSIFIED_FAILURE") {
+  const message = typeof error?.message === "string" ? error.message : "";
+  for (const prefix of SAFE_ERROR_PREFIXES) {
+    if (!message.startsWith(prefix)) continue;
+    const candidate = message.slice(prefix.length).split(":", 1)[0];
+    if (FAILURE_CODE.test(candidate)) return candidate;
+  }
+  return FAILURE_CODE.test(fallbackCode) ? fallbackCode : "UNCLASSIFIED_FAILURE";
+}
 
 const eventId = (authorityId, operationId, suffix) =>
   `${authorityId}:${operationId}:${suffix}`.toLowerCase();
@@ -749,7 +800,37 @@ async function executeFullLive({
   )
     fail("NOT_IN_PROGRESS");
 
+  let failureBoundary = FAILURE_BOUNDARIES.initialStaticReleaseDescriptor;
+  const enterFailureCleanup = (error, fallbackCode) => {
+    const boundary = FAILURE_BOUNDARY.test(failureBoundary)
+      ? failureBoundary
+      : "UNCLASSIFIED_FAILURE_BOUNDARY";
+    const code = boundedFailureCode(error, fallbackCode);
+    current = stateMutation(statePath, current.sha256, (state) =>
+      enterCleanupOnly(state, {
+        failureBoundary: boundary,
+        failureCode: code,
+        eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
+      }),
+    );
+    results.set("failure", {
+      failure_boundary: boundary,
+      failure_code: code,
+    });
+  };
+
   const verifySeed = async (context = {}) => {
+    const staticBoundary = context.localCertification
+      ? FAILURE_BOUNDARIES.certificationStaticReleaseDescriptor
+      : context.operationId
+        ? FAILURE_BOUNDARIES.operationStaticReleaseDescriptor
+        : FAILURE_BOUNDARIES.initialStaticReleaseDescriptor;
+    const seedBoundary = context.localCertification
+      ? FAILURE_BOUNDARIES.certificationMaterializationSeed
+      : context.operationId
+        ? FAILURE_BOUNDARIES.operationMaterializationSeed
+        : FAILURE_BOUNDARIES.initialMaterializationSeed;
+    failureBoundary = staticBoundary;
     const descriptor = await verifyStaticReleaseDescriptor(
       structuredClone(current.state),
       current.sha256,
@@ -757,6 +838,7 @@ async function executeFullLive({
     );
     if (descriptor === false)
       fail("STATIC_RELEASE_DESCRIPTOR_VERIFICATION", context.operationId ?? "");
+    failureBoundary = seedBoundary;
     const result = await verifyMaterializationSeed(
       structuredClone(current.state),
       current.sha256,
@@ -764,12 +846,17 @@ async function executeFullLive({
     );
     if (result === false) fail("MATERIALIZATION_SEED_VERIFICATION", context.operationId ?? "");
   };
-  await verifySeed({
-    restart:
-      current.state.current_phase_index > 0 ||
-      current.state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
-    recovery: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
-  });
+  if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") {
+    try {
+      await verifySeed({
+        restart: current.state.current_phase_index > 0,
+        recovery: false,
+      });
+    } catch (error) {
+      if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") throw error;
+      enterFailureCleanup(error, "FULL_LIVE_OPERATION_FAILED");
+    }
+  }
 
   const begin = (phase) => {
     current = stateMutation(statePath, current.sha256, (state) => beginPhase(state, phase));
@@ -798,7 +885,8 @@ async function executeFullLive({
     }
   };
 
-  const checkTrustedTime = async () => {
+  const checkTrustedTime = async (boundary = FAILURE_BOUNDARIES.preOperationTrustedTime) => {
+    failureBoundary = boundary;
     const trustedIso = await trustedTime(structuredClone(current.state));
     const trustedMs = Date.parse(trustedIso ?? "");
     if (
@@ -834,6 +922,7 @@ async function executeFullLive({
     for (const operation of OPERATIONS) {
       const existing = workFor(operation);
       if (existing?.state !== "SETTLED_TERMINAL") continue;
+      failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
       let prior = existing.settled_result;
       if (prior === undefined && loadSettledResult !== undefined) {
         prior = await loadSettledResult({
@@ -870,6 +959,7 @@ async function executeFullLive({
       }
       results.set(operation.id, result);
       operatorRoleVerified = current.state.operator_role_verified === true;
+      failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
       await verifyChainAtBoundary(operation, "hydrated");
     }
   };
@@ -877,12 +967,21 @@ async function executeFullLive({
   const runOne = async (operation) => {
     const workId = workIdFor(operation);
     const existing = workFor(operation);
-    await verifySeed({
-      operationId: operation.id,
-      resumed: existing !== undefined,
-      recovery: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
-    });
+    const cleanupSafetyRecovery =
+      current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
+      CLEANUP_SAFETY_OPERATION_IDS.has(operation.id);
+    // A missing or drifted protected seed is itself a cleanup trigger. Once the durable state is
+    // cleanup-only, do not let the same failed normal-input verifier prevent the four closed
+    // safety operations from draining and proving provider state. Their adapters have separate
+    // cleanup-only contracts and may not resume normal or paid work.
+    if (!cleanupSafetyRecovery)
+      await verifySeed({
+        operationId: operation.id,
+        resumed: existing !== undefined,
+        recovery: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+      });
     if (existing?.state === "SETTLED_TERMINAL") {
+      failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
       let prior = results.get(operation.id) ?? existing.settled_result;
       if (prior === undefined && loadSettledResult !== undefined) {
         prior = await loadSettledResult({
@@ -911,6 +1010,7 @@ async function executeFullLive({
       }
       results.set(operation.id, result);
       operatorRoleVerified = current.state.operator_role_verified === true;
+      failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
       await verifyChainAtBoundary(operation, "settled");
       return result;
     }
@@ -920,6 +1020,7 @@ async function executeFullLive({
         current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS"
       ) {
         const authorizedOuterStateSha256 = current.sha256;
+        failureBoundary = FAILURE_BOUNDARIES.bootstrapReconciliation;
         const raw = await runOperation(
           operation,
           structuredClone(current.state),
@@ -937,6 +1038,7 @@ async function executeFullLive({
             providerDispatchForbidden: true,
           },
         );
+        failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
         const result = assertResult(operation, durableResult(raw), current.state, results, {
           authorizedOuterStateSha256,
         });
@@ -951,6 +1053,7 @@ async function executeFullLive({
         );
         results.set(operation.id, result);
         operatorRoleVerified = current.state.operator_role_verified === true;
+        failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
         await verifyChainAtBoundary(operation, "bootstrap-reconciled");
         return result;
       }
@@ -967,6 +1070,7 @@ async function executeFullLive({
         earlyCleanup && runEarlyCleanupOperation !== undefined
           ? runEarlyCleanupOperation
           : (runCleanupOperation ?? runOperation);
+      failureBoundary = FAILURE_BOUNDARIES.operationExecution;
       const raw = await runner(
         operation,
         structuredClone(current.state),
@@ -985,7 +1089,9 @@ async function executeFullLive({
           providerDispatchForbidden: true,
         },
       );
+      failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
       const result = assertResult(operation, durableResult(raw), current.state, results);
+      failureBoundary = FAILURE_BOUNDARIES.operationAuthorization;
       current = stateMutation(statePath, current.sha256, (state) =>
         settleCleanupWork(state, {
           workId,
@@ -994,11 +1100,15 @@ async function executeFullLive({
         }),
       );
       results.set(operation.id, result);
+      failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
       await verifyChainAtBoundary(operation, "cleanup-reconciled");
       return result;
     }
-    if (operation.id === RELEASE_CERTIFICATION_OPERATION_ID)
+    if (operation.id === RELEASE_CERTIFICATION_OPERATION_ID) {
+      failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
       certificationPredecessorEvidence(results);
+    }
+    failureBoundary = FAILURE_BOUNDARIES.operationAuthorization;
     current = stateMutation(statePath, current.sha256, (state) => {
       const event = eventId(state.authority_id, operation.id, "reserved");
       if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
@@ -1031,6 +1141,7 @@ async function executeFullLive({
       resumed: existing !== undefined,
     };
     const authorizedOuterStateSha256 = current.sha256;
+    failureBoundary = FAILURE_BOUNDARIES.operationExecution;
     const raw = await runner(
       operation,
       structuredClone(current.state),
@@ -1038,6 +1149,7 @@ async function executeFullLive({
       authorizedOuterStateSha256,
       executionContext,
     );
+    failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
     const result = assertResult(
       operation,
       durableResult(raw),
@@ -1070,6 +1182,7 @@ async function executeFullLive({
     });
     operatorRoleVerified = current.state.operator_role_verified === true;
     results.set(operation.id, result);
+    failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
     await verifyChainAtBoundary(operation, "settled");
     return result;
   };
@@ -1080,6 +1193,7 @@ async function executeFullLive({
     earlyCleanupFailure = canUseEarlyCleanup(current.state);
     const cleanupMode = cleanupModeFor(current.state);
     if (preflight !== undefined && !earlyCleanupFailure) {
+      failureBoundary = FAILURE_BOUNDARIES.cleanupPreflight;
       const mode = {
         cleanupOnly: true,
         earlyFailure: earlyCleanupFailure,
@@ -1124,6 +1238,7 @@ async function executeFullLive({
       workFor(bootstrapAtEntry)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE";
     while (true) {
       try {
+        failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
         await hydrateSettledResults();
         if (
           OPERATIONS.filter((operation) => CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)).some(
@@ -1132,6 +1247,7 @@ async function executeFullLive({
         )
           fail("AUTHORIZED_CLEANUP_WORK_AMBIGUOUS");
         if (preflight !== undefined) {
+          failureBoundary = FAILURE_BOUNDARIES.initialPreflight;
           const bootstrapOperation = OPERATIONS.find(
             (operation) => operation.id === "bootstrap-prequalification-database",
           );
@@ -1173,13 +1289,20 @@ async function executeFullLive({
             !phase
           )
             fail("PHASE_ORDER");
-          if (phase.state === "PENDING") begin(phaseName);
-          else if (phase.state !== "ACTIVE") fail("PHASE_ORDER");
+          if (phase.state === "PENDING") {
+            // The trusted clock must be checked before even the local phase reservation/mutation.
+            // A stale/forged clock therefore leaves the phase with no work history and enters the
+            // existing cleanup-only seam without authorizing the first operation.
+            await checkTrustedTime(FAILURE_BOUNDARIES.phaseMutationTrustedTime);
+            begin(phaseName);
+          } else if (phase.state !== "ACTIVE") fail("PHASE_ORDER");
           for (const operation of OPERATIONS.filter((item) => item.phase === phaseName)) {
-            if (!isSettled(operation)) await checkTrustedTime();
+            if (!isSettled(operation))
+              await checkTrustedTime(FAILURE_BOUNDARIES.preOperationTrustedTime);
             await runOne(operation);
             if (operation.id === "fresh-live-preflight" && preflight !== undefined) {
-              await checkTrustedTime();
+              await checkTrustedTime(FAILURE_BOUNDARIES.preOperationTrustedTime);
+              failureBoundary = FAILURE_BOUNDARIES.stagedPreflight;
               await preflight(
                 structuredClone(current.state),
                 current.sha256,
@@ -1198,7 +1321,10 @@ async function executeFullLive({
               );
             }
           }
-          if (current.state.phases[phaseName].state === "ACTIVE") complete(phaseName);
+          if (current.state.phases[phaseName].state === "ACTIVE") {
+            await checkTrustedTime(FAILURE_BOUNDARIES.phaseMutationTrustedTime);
+            complete(phaseName);
+          }
         }
         const cleanupPhase = current.state.phases.cleanup_and_reconciliation;
         if (cleanupPhase.state === "PENDING") begin("cleanup_and_reconciliation");
@@ -1224,19 +1350,12 @@ async function executeFullLive({
             continue;
           } catch (reconciliationError) {
             error = reconciliationError;
+            failureBoundary = FAILURE_BOUNDARIES.bootstrapReconciliation;
           }
         }
         if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
           earlyCleanupFailure = canUseEarlyCleanup(current.state);
-          current = stateMutation(statePath, current.sha256, (state) =>
-            enterCleanupOnly(state, {
-              failureCode: "FULL_LIVE_OPERATION_FAILED",
-              eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
-            }),
-          );
-          results.set("failure", {
-            message: error instanceof Error ? error.message : String(error),
-          });
+          enterFailureCleanup(error, "FULL_LIVE_OPERATION_FAILED");
           break;
         }
         throw error;
@@ -1257,6 +1376,7 @@ async function executeFullLive({
     );
     for (const operation of cleanupOperations) await runOne(operation);
 
+    failureBoundary = FAILURE_BOUNDARIES.cleanupProof;
     const { zero, billing, resources, maxOne } = cleanupProofEvidence(results);
     // The aggregate proof is permanently scoped to the four safety operations. Certification is a
     // separate transport-free, zero-spend state transition, so a bad local certification result can
@@ -1294,11 +1414,13 @@ async function executeFullLive({
           localCertification: true,
           reconciliationOnly: reconciling,
         });
+        failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
         certificationPredecessorEvidence(results);
         if (!reconciling) {
           // No seed, provider, database, or other work may occur between this authenticated time
           // read and the durable one-use authorization for the certification call.
-          await checkTrustedTime();
+          await checkTrustedTime(FAILURE_BOUNDARIES.certificationTrustedTime);
+          failureBoundary = FAILURE_BOUNDARIES.certificationAuthorization;
           current = stateMutation(statePath, current.sha256, (state) =>
             authorizeReleaseCertification(state, {
               workId: certificationWorkId,
@@ -1306,6 +1428,7 @@ async function executeFullLive({
             }),
           );
         }
+        failureBoundary = FAILURE_BOUNDARIES.certificationExecution;
         const raw = await runOperation(
           certification,
           structuredClone(current.state),
@@ -1326,6 +1449,7 @@ async function executeFullLive({
             dispatchForbidden: reconciling,
           },
         );
+        failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
         const result = assertResult(certification, durableResult(raw), current.state, results);
         current = stateMutation(statePath, current.sha256, (state) =>
           settleReleaseCertification(state, {
@@ -1335,6 +1459,7 @@ async function executeFullLive({
           }),
         );
         results.set(certification.id, result);
+        failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
         await verifyChainAtBoundary(certification, "certified");
       } else {
         const result = assertResult(
@@ -1353,12 +1478,7 @@ async function executeFullLive({
     });
   } catch (error) {
     if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
-      current = stateMutation(statePath, current.sha256, (state) =>
-        enterCleanupOnly(state, {
-          failureCode: "FULL_LIVE_CLEANUP_FAILED",
-          eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
-        }),
-      );
+      enterFailureCleanup(error, "FULL_LIVE_CLEANUP_FAILED");
     }
     throw error;
   }
@@ -1475,6 +1595,7 @@ export {
   CONFIRMATION,
   CONCRETE_LIVE_ADAPTERS,
   executeFullLive,
+  FAILURE_BOUNDARIES,
   missingConcreteTools,
   OPERATIONS,
   runPodMutationBoundaryReached,

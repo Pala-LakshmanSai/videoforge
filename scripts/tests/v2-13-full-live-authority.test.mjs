@@ -1858,6 +1858,7 @@ test("failure is terminal cleanup-only and cannot reopen a paid phase", () => {
   const state = freshStateFixture();
   beginPhase(state, "publication");
   enterCleanupOnly(state, {
+    failureBoundary: "TEST_OPERATION_EXECUTION",
     failureCode: "RELEASE_REF_COLLISION",
     eventId: "cleanup-entry-event-0001",
   });
@@ -1906,6 +1907,33 @@ test("failure is terminal cleanup-only and cannot reopen a paid phase", () => {
       .map((operationId) => `${state.authority_id}:${operationId}`.toLowerCase())
       .sort(),
   );
+});
+
+test("cleanup-only state persists a bounded failure boundary and code", () => {
+  const state = freshStateFixture();
+  assert.equal(state.failure_boundary, null);
+  assert.equal(state.failure_code, null);
+  assert.equal(state.cleanup_failure_code, null);
+  beginPhase(state, "publication");
+  enterCleanupOnly(state, {
+    failureBoundary: "INITIAL_PREFLIGHT",
+    failureCode: "PREFLIGHT_CONTRACT",
+    eventId: "cleanup-diagnostic-entry-event-0001",
+  });
+  assert.equal(state.failure_boundary, "INITIAL_PREFLIGHT");
+  assert.equal(state.failure_code, "PREFLIGHT_CONTRACT");
+  assert.equal(state.cleanup_failure_code, "PREFLIGHT_CONTRACT");
+  assert.doesNotThrow(() => validateState(state));
+
+  for (const [field, value] of [
+    ["failure_boundary", "/private/secret/path"],
+    ["failure_code", "raw secret message"],
+    ["cleanup_failure_code", "raw secret message"],
+  ]) {
+    const mutated = structuredClone(state);
+    mutated[field] = value;
+    assert.throws(() => validateState(mutated), /FAILURE_DIAGNOSTIC/u);
+  }
 });
 
 test("release certification is a separate record after the exact four-work cleanup proof", () => {
@@ -2071,6 +2099,9 @@ test("forged terminal state is rejected and every normal mutation stays closed",
   forged.full_live_executor_sha256 = EXACT_V3_RELEASE_COMPONENTS.full_live_executor.sha256;
   forged.state = "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY";
   forged.terminal = "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED";
+  forged.failure_boundary = "TEST_OPERATION_EXECUTION";
+  forged.failure_code = "TEST_FORGED_TERMINAL";
+  forged.cleanup_failure_code = "TEST_FORGED_TERMINAL";
   assert.throws(() => validateState(forged), /CLEANUP_COMPLETE_STATE_INVARIANT/u);
   assert.throws(() => beginPhase(forged, "publication"), /CLEANUP_COMPLETE_STATE_INVARIANT/u);
 
@@ -2082,6 +2113,7 @@ test("forged terminal state is rejected and every normal mutation stays closed",
   terminal.full_live_executor_sha256 = EXACT_V3_RELEASE_COMPONENTS.full_live_executor.sha256;
   beginPhase(terminal, "publication");
   enterCleanupOnly(terminal, {
+    failureBoundary: "TEST_OPERATION_EXECUTION",
     failureCode: "RELEASE_REF_COLLISION",
     eventId: "cleanup-entry-event-terminal-0001",
   });
