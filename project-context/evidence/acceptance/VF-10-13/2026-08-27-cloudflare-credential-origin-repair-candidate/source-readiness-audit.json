@@ -1,9 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "7c1f6c255cd8355295be93621e9347abe0442646",
+  "audited_code_commit": "36e985a1dc2d6653f4e30f966ee3ac1ddb967e20",
   "audit_result": "PASS_READY_TO_RESEAL",
-  "observed_at": "2026-08-27T23:52:08.000Z",
+  "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
+  "observer_id": "codex.final-source-audit",
+  "fixture_or_fake_transport_used": false,
+  "observed_at": "2026-08-28T08:40:06.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -13,8 +16,8 @@
   "spend_usd": 0,
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "entry_count": 634,
-    "sha256": "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8",
+    "entry_count": 643,
+    "sha256": "sha256:b3700853f6e4639b3c2874982fa56ede04dd0f182bd46761478ffe871931d4ae",
     "exact": true
   },
   "production_origin": {
@@ -24,17 +27,19 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8"
+    "sha256": "sha256:b3700853f6e4639b3c2874982fa56ede04dd0f182bd46761478ffe871931d4ae"
   },
   "validation": {
     "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
-    "full_verify_passed": true,
-    "installed_chrome_fixture_journeys_passed": 44,
-    "focused_web_tests_passed": 189,
-    "provider_free_script_tests_passed": 247,
-    "executor_tests_passed": 30,
-    "authority_adapter_activation_pair_tests_passed": 89,
-    "control_plane_tests_passed": 18,
+    "full_verify_passed": false,
+    "full_verify_expected_boundary": "STALE_ACTIVE_CANDIDATE_EXACT_RELEASE_COMPONENTS_PENDING_RESEAL",
+    "package_test_files_passed": 104,
+    "package_tests_passed": 1256,
+    "package_tests_skipped": 1,
+    "focused_release_script_tests_passed": 121,
+    "control_plane_activation_tests_passed": 14,
+    "soulx_tests_passed": 37,
+    "independent_source_audit_result": "PASS_READY_TO_RESEAL",
     "canonical_executor_state": "NO_ACTION"
   },
   "audit_facts": {
@@ -105,7 +110,8 @@
   },
   "notes": [
     "This record contains no credentials or raw protected values.",
-    "The release-source successor may add only this evidence record before resealing; application and deployment bytes remain those audited at audited_code_commit.",
-    "The previous 25-operation proposal and chat approval are non-reusable and no authority was materialized."
+    "The release-source successor may add only this readiness record and the canonical materialization-seed facts before resealing; application and deployment bytes remain those audited at audited_code_commit.",
+    "The previous 26-operation proposal and chat approval are non-reusable and no authority was materialized.",
+    "The canonical full verify is intentionally blocked only by the stale active candidate that this evidence successor permits resealing; focused source, package, SQL, SoulX, closure, and NO_ACTION gates passed."
   ]
 }
