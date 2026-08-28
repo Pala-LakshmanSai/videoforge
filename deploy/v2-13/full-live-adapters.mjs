@@ -86,6 +86,10 @@ const GUARDED_SECRET_NAMES = Object.freeze([
 ]);
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const BRIDGE_PATH = "apps/web/src/server/providers/v213-full-live-cli.ts";
+const BRIDGE_LOADER_PATH = "apps/web/node_modules/tsx/dist/loader.mjs";
+const BRIDGE_LOADER_PACKAGE_PATH = "node_modules/.pnpm/tsx@4.20.5/node_modules/tsx/dist/loader.mjs";
+const BRIDGE_LOADER_SOURCE_SHA256 =
+  "sha256:0b1c5b86192772fe9257710e739959cee5947c11ae1f93b61abfaa9b80c6def1";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
 const BRIDGE_CLI_SOURCE_SHA256 =
   "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0";
@@ -6018,6 +6022,101 @@ function bridgeChildTimeoutMs(state, context, command) {
   return Math.max(1, Math.min(maximum, expiresAt - Date.now()));
 }
 
+/**
+ * Resolve the only executable and TypeScript loader accepted by the bridge children.  The
+ * previous pnpm wrapper changed the package cwd before launching the relative bridge path and
+ * did not reliably carry arbitrary descriptor entries through its second process.  A direct Node
+ * launch keeps the source path absolute and lets Node inherit the exact descriptor array below.
+ * The loader is pinned both by its pnpm lockfile path/version and by the installed bytes; the
+ * bridge source itself is checked against BRIDGE_CLI_SOURCE_SHA256 by each adapter factory.
+ */
+function resolveSourceBoundBridgeLaunch({
+  root = ROOT,
+  nodeExecutable = process.execPath,
+  bridgePath = resolve(root, BRIDGE_PATH),
+  loaderPath = resolve(root, BRIDGE_LOADER_PATH),
+} = {}) {
+  const repositoryRoot = resolve(root);
+  const expectedBridgePath = resolve(repositoryRoot, BRIDGE_PATH);
+  const expectedLoaderPath = resolve(repositoryRoot, BRIDGE_LOADER_PACKAGE_PATH);
+  if (
+    typeof nodeExecutable !== "string" ||
+    nodeExecutable.length === 0 ||
+    !nodeExecutable.startsWith("/") ||
+    typeof bridgePath !== "string" ||
+    !bridgePath.startsWith("/") ||
+    typeof loaderPath !== "string" ||
+    !loaderPath.startsWith("/")
+  )
+    fail("BRIDGE_LAUNCH_PATH_INVALID");
+
+  let canonicalNodePath;
+  let canonicalBridgePath;
+  let canonicalLoaderPath;
+  try {
+    canonicalNodePath = realpathSync(nodeExecutable);
+    canonicalBridgePath = realpathSync(bridgePath);
+    canonicalLoaderPath = realpathSync(loaderPath);
+  } catch {
+    fail("BRIDGE_LAUNCH_PATH_INVALID");
+  }
+  if (
+    canonicalNodePath !== nodeExecutable ||
+    canonicalBridgePath !== expectedBridgePath ||
+    canonicalLoaderPath !== expectedLoaderPath
+  )
+    fail("BRIDGE_LAUNCH_PATH_INVALID");
+
+  let nodeMetadata;
+  let bridgeBytes;
+  let loaderBytes;
+  try {
+    nodeMetadata = lstatSync(canonicalNodePath);
+    bridgeBytes = readFileSync(canonicalBridgePath);
+    loaderBytes = readFileSync(canonicalLoaderPath);
+    if (!nodeMetadata.isFile() || (nodeMetadata.mode & 0o111) === 0)
+      fail("BRIDGE_EXECUTABLE_INVALID");
+  } catch (error) {
+    if (error instanceof Error && error.message === "BRIDGE_EXECUTABLE_INVALID") throw error;
+    fail("BRIDGE_LAUNCH_PATH_INVALID");
+  }
+  if (sha256(loaderBytes) !== BRIDGE_LOADER_SOURCE_SHA256) fail("BRIDGE_LOADER_SOURCE_DRIFT");
+  if (sha256(bridgeBytes) !== BRIDGE_CLI_SOURCE_SHA256) fail("BRIDGE_SOURCE_DRIFT");
+  return Object.freeze({
+    nodeExecutable: canonicalNodePath,
+    bridgePath: canonicalBridgePath,
+    loaderPath: canonicalLoaderPath,
+  });
+}
+
+function spawnSourceBoundBridgeChild({
+  args,
+  timeoutMs,
+  stdio,
+  childEnvironment,
+  timeoutCode,
+  executionCode,
+}) {
+  const launch = resolveSourceBoundBridgeLaunch();
+  const result = spawnSync(
+    launch.nodeExecutable,
+    ["--import", launch.loaderPath, launch.bridgePath, ...args],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      env: childEnvironment,
+      stdio,
+      maxBuffer: 4 * 1024 * 1024,
+      timeout: timeoutMs,
+      killSignal: "SIGTERM",
+    },
+  );
+  if (result.error?.code === "ETIMEDOUT" || (result.signal !== null && result.signal !== undefined))
+    fail(timeoutCode);
+  if (result.status !== 0 || typeof result.stdout !== "string") fail(executionCode);
+  return JSON.parse(result.stdout);
+}
+
 function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_MAX_TIMEOUT_MS }) {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > BRIDGE_CHILD_MAX_TIMEOUT_MS)
     fail("BRIDGE_CHILD_TIMEOUT_INVALID");
@@ -6105,26 +6204,14 @@ function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_
     files.forEach(([name], index) => {
       childEnvironment[`VIDEOFORGE_V213_BRIDGE_${name}`] = String(index + 3);
     });
-    const result = spawnSync(
-      "pnpm",
-      ["--filter", "@videoforge/web", "exec", "tsx", BRIDGE_PATH, "--execute", BRIDGE_CONFIRMATION],
-      {
-        cwd: ROOT,
-        encoding: "utf8",
-        env: childEnvironment,
-        stdio: ["ignore", "pipe", "pipe", ...opened],
-        maxBuffer: 4 * 1024 * 1024,
-        timeout: timeoutMs,
-        killSignal: "SIGTERM",
-      },
-    );
-    if (
-      result.error?.code === "ETIMEDOUT" ||
-      (result.signal !== null && result.signal !== undefined)
-    )
-      fail("BRIDGE_CHILD_TIMEOUT");
-    if (result.status !== 0 || typeof result.stdout !== "string") fail("BRIDGE_EXECUTION");
-    return JSON.parse(result.stdout);
+    return spawnSourceBoundBridgeChild({
+      args: ["--execute", BRIDGE_CONFIRMATION],
+      timeoutMs,
+      stdio: ["ignore", "pipe", "pipe", ...opened],
+      childEnvironment,
+      timeoutCode: "BRIDGE_CHILD_TIMEOUT",
+      executionCode: "BRIDGE_EXECUTION",
+    });
   } finally {
     for (const fd of opened) closeSync(fd);
     rmSync(directory, { recursive: true, force: true });
@@ -6171,35 +6258,14 @@ function productionReleaseCertificationSpawn({
     files.forEach(([name], index) => {
       childEnvironment[`VIDEOFORGE_V213_CERTIFICATION_${name}`] = String(index + 3);
     });
-    const result = spawnSync(
-      "pnpm",
-      [
-        "--filter",
-        "@videoforge/web",
-        "exec",
-        "tsx",
-        BRIDGE_PATH,
-        "--certify-release",
-        RELEASE_CERTIFICATION_CONFIRMATION,
-      ],
-      {
-        cwd: ROOT,
-        encoding: "utf8",
-        env: childEnvironment,
-        stdio: ["ignore", "pipe", "pipe", ...opened],
-        maxBuffer: 4 * 1024 * 1024,
-        timeout: timeoutMs,
-        killSignal: "SIGTERM",
-      },
-    );
-    if (
-      result.error?.code === "ETIMEDOUT" ||
-      (result.signal !== null && result.signal !== undefined)
-    )
-      fail("RELEASE_CERTIFICATION_CHILD_TIMEOUT");
-    if (result.status !== 0 || typeof result.stdout !== "string")
-      fail("RELEASE_CERTIFICATION_EXECUTION");
-    return JSON.parse(result.stdout);
+    return spawnSourceBoundBridgeChild({
+      args: ["--certify-release", RELEASE_CERTIFICATION_CONFIRMATION],
+      timeoutMs,
+      stdio: ["ignore", "pipe", "pipe", ...opened],
+      childEnvironment,
+      timeoutCode: "RELEASE_CERTIFICATION_CHILD_TIMEOUT",
+      executionCode: "RELEASE_CERTIFICATION_EXECUTION",
+    });
   } finally {
     for (const fd of opened) closeSync(fd);
     rmSync(directory, { recursive: true, force: true });
@@ -6247,34 +6313,14 @@ function productionCleanupReceiptSpawn({
     files.forEach(([name], index) => {
       childEnvironment[`VIDEOFORGE_V213_CLEANUP_RECEIPT_${name}`] = String(index + 3);
     });
-    const result = spawnSync(
-      "pnpm",
-      [
-        "--filter",
-        "@videoforge/web",
-        "exec",
-        "tsx",
-        BRIDGE_PATH,
-        "--finalize-cleanup-receipt",
-        CLEANUP_RECEIPT_CONFIRMATION,
-      ],
-      {
-        cwd: ROOT,
-        encoding: "utf8",
-        env: childEnvironment,
-        stdio: ["ignore", "pipe", "pipe", ...opened],
-        maxBuffer: 4 * 1024 * 1024,
-        timeout: timeoutMs,
-        killSignal: "SIGTERM",
-      },
-    );
-    if (
-      result.error?.code === "ETIMEDOUT" ||
-      (result.signal !== null && result.signal !== undefined)
-    )
-      fail("CLEANUP_RECEIPT_CHILD_TIMEOUT");
-    if (result.status !== 0 || typeof result.stdout !== "string") fail("CLEANUP_RECEIPT_EXECUTION");
-    return JSON.parse(result.stdout);
+    return spawnSourceBoundBridgeChild({
+      args: ["--finalize-cleanup-receipt", CLEANUP_RECEIPT_CONFIRMATION],
+      timeoutMs,
+      stdio: ["ignore", "pipe", "pipe", ...opened],
+      childEnvironment,
+      timeoutCode: "CLEANUP_RECEIPT_CHILD_TIMEOUT",
+      executionCode: "CLEANUP_RECEIPT_EXECUTION",
+    });
   } finally {
     for (const fd of opened) closeSync(fd);
     rmSync(directory, { recursive: true, force: true });
@@ -7365,6 +7411,7 @@ export {
   preflightConcreteFullLiveInputs,
   preflightPromotionInputs,
   prepareReleaseSourceWorktree,
+  resolveSourceBoundBridgeLaunch,
   readAuthenticatedGithubTime,
   exactRemoteTag,
   TAG,

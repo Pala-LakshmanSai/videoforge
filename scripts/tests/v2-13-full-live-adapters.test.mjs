@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import {
+  closeSync,
   chmodSync,
   linkSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -39,6 +42,7 @@ import {
   hashV213DryOutputBundle,
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
   readAuthenticatedGithubTime,
+  resolveSourceBoundBridgeLaunch,
   TAG,
   verifyPrequalificationDatabaseReceipt,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
@@ -2203,6 +2207,66 @@ test("global preflight excludes future artifacts and stage adapters validate the
     promotion.indexOf("refreshWranglerOAuthReadback") <
       promotion.indexOf('spawn("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler"'),
   );
+});
+
+test("source-bound direct bridge launch preserves request and RunPod FDs", () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-bridge-fd-regression-"));
+  chmodSync(directory, 0o700);
+  const authorityId = "11111111-1111-4111-8111-111111111111";
+  const request = {
+    schemaVersion: "videoforge.v213-full-live-command/v1",
+    commandId: "bridge-fd-regression",
+    stageAuthorityId: authorityId,
+    command: "restore-endpoints-max-one",
+    input: {
+      schemaVersion: "videoforge.v213-full-live-early-cleanup-input/v1",
+      fullLiveAuthorityId: authorityId,
+    },
+  };
+  const requestPath = resolve(directory, "request.json");
+  const runpodKeyPath = resolve(directory, "runpod-key");
+  writeFileSync(requestPath, `${JSON.stringify(request)}\n`, { mode: 0o600 });
+  // The key is deliberately too short.  The child must read both descriptors and stop at its
+  // protected-input validation seam, before constructing a provider transport or making a call.
+  writeFileSync(runpodKeyPath, "short-key", { mode: 0o600 });
+  const opened = [openSync(requestPath, "r"), openSync(runpodKeyPath, "r")];
+  try {
+    const launch = resolveSourceBoundBridgeLaunch();
+    const child = spawnSync(
+      launch.nodeExecutable,
+      [
+        "--import",
+        launch.loaderPath,
+        launch.bridgePath,
+        "--execute",
+        "EXECUTE_EXACT_V2_13_TYPESCRIPT_BRIDGE_COMMAND",
+      ],
+      {
+        cwd: resolve(process.cwd()),
+        encoding: "utf8",
+        env: {
+          PATH: process.env.PATH,
+          VIDEOFORGE_V213_BRIDGE_COMMAND: request.command,
+          VIDEOFORGE_V213_BRIDGE_REQUEST_FD: "3",
+          VIDEOFORGE_V213_BRIDGE_RUNPOD_API_KEY_FD: "4",
+        },
+        stdio: ["ignore", "pipe", "pipe", ...opened],
+      },
+    );
+    assert.notEqual(child.status, 0);
+    assert.equal(child.stdout, "");
+    assert.match(child.stderr, /EARLY_CLEANUP_PROTECTED_INPUT_INVALID/u);
+    assert.throws(
+      () =>
+        resolveSourceBoundBridgeLaunch({
+          loaderPath: resolve(directory, "not-the-pinned-loader.mjs"),
+        }),
+      /BRIDGE_LAUNCH_PATH_INVALID/u,
+    );
+  } finally {
+    opened.forEach((fd) => closeSync(fd));
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("canonical materializer derives all first-use artifacts, survives restart, and hash-chains mode-0600 bytes", async () => {
