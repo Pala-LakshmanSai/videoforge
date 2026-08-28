@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "f260b660112ada1e862867549ad7245bd862e87d",
+  "audited_code_commit": "c1e51ac5155d72383e3475e35c1e4868f0770473",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.final-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-28T14:06:12.000Z",
+  "observed_at": "2026-08-28T17:11:47.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -17,7 +17,7 @@
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
     "entry_count": 643,
-    "sha256": "sha256:2a665cefdd55819cd59c6ccd5a223bc8dc83b15d3da743cfb50fabd381272ff8",
+    "sha256": "sha256:289cb00a9cfee45e697ecdf06719cfc79b1b04c41b12c01ca6c5bdf7b4760b85",
     "exact": true
   },
   "production_origin": {
@@ -27,7 +27,7 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:2a665cefdd55819cd59c6ccd5a223bc8dc83b15d3da743cfb50fabd381272ff8"
+    "sha256": "sha256:289cb00a9cfee45e697ecdf06719cfc79b1b04c41b12c01ca6c5bdf7b4760b85"
   },
   "validation": {
     "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
@@ -36,7 +36,7 @@
     "package_test_files_passed": 104,
     "package_tests_passed": 1256,
     "package_tests_skipped": 1,
-    "focused_release_script_tests_passed": 109,
+    "focused_release_script_tests_passed": 110,
     "control_plane_activation_tests_passed": 14,
     "soulx_tests_passed": 37,
     "independent_source_audit_result": "PASS_READY_TO_RESEAL",
@@ -111,8 +111,8 @@
   "notes": [
     "This record contains no credentials or raw protected values.",
     "The release-source successor may add only this readiness record and the canonical materialization-seed facts before resealing; application and deployment bytes remain those audited at audited_code_commit.",
-    "The previous 26-operation authority was consumed once, failed at INITIAL_PREFLIGHT with PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH_DIRECTORY before normal operation authorization, and reached cleanup-complete with zero attempt spend; it is non-reusable.",
-    "The repaired reserved-path collision check accepts immutable tracked proposal and approval inputs with ordinary repository permissions while preserving canonical-parent, no-symlink, exact collision, and protected credential-output enforcement.",
+    "The immediately previous authority was recorded but never consumed because a pre-consumption audit found stale approval-branch binding; no credentials, provider calls, mutations, GPU use, or spend occurred, and that approval is non-reusable.",
+    "The repaired publication path and executor evidence validator require the exact codex/serverless-v2-roadmap-v4 branch and reject the stale unsuffixed branch while preserving non-force fast-forward and tree-byte proof.",
     "The canonical full verify is intentionally blocked only by the stale active candidate descriptor and component bindings that this evidence successor permits resealing; focused source, package, SQL, SoulX, closure, and NO_ACTION gates passed."
   ]
 }
