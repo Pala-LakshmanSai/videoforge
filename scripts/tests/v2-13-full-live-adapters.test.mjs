@@ -564,10 +564,10 @@ test("approval publication pushes the exact authority-record commit with FF and 
     result(0, `${proposalCommit}\n`),
     result(0, approval),
     result(0, authority),
-    result(0, `${remoteCommit}\trefs/heads/codex/serverless-v2-roadmap\n`),
+    result(0, `${remoteCommit}\trefs/heads/codex/serverless-v2-roadmap-v4\n`),
     result(0),
     result(0, "ok\n"),
-    result(0, `${authorityCommit}\trefs/heads/codex/serverless-v2-roadmap\n`),
+    result(0, `${authorityCommit}\trefs/heads/codex/serverless-v2-roadmap-v4\n`),
   ];
   const calls = [];
   const adapters = createGitReleaseAdapters({
@@ -578,8 +578,69 @@ test("approval publication pushes the exact authority-record commit with FF and 
   });
   const published = await adapters["approval-commit-push"]({}, publicationState);
   assert.equal(published.commit, authorityCommit);
+  assert.equal(published.branch, "codex/serverless-v2-roadmap-v4");
+  assert.deepEqual(calls[4][1], [
+    "ls-remote",
+    "--heads",
+    "origin",
+    "refs/heads/codex/serverless-v2-roadmap-v4",
+  ]);
+  assert.deepEqual(calls[7][1], [
+    "ls-remote",
+    "--heads",
+    "origin",
+    "refs/heads/codex/serverless-v2-roadmap-v4",
+  ]);
+  assert.deepEqual(calls[6][1], [
+    "push",
+    "--porcelain",
+    "origin",
+    `${authorityCommit}:refs/heads/codex/serverless-v2-roadmap-v4`,
+  ]);
   assert.deepEqual(calls[5][1], ["merge-base", "--is-ancestor", remoteCommit, authorityCommit]);
   assert.equal(replies.length, 0);
+});
+
+test("approval publication rejects a readback from the stale v3 branch", async () => {
+  const approval = '{"approval":true}\n';
+  const authority = '{"authority":true}\n';
+  const proposalCommit = "2".repeat(40);
+  const authorityCommit = "3".repeat(40);
+  const remoteCommit = "1".repeat(40);
+  const publicationState = {
+    ...state,
+    proposal_record_commit: proposalCommit,
+    authority_record_commit: authorityCommit,
+    approval_record_path: "evidence/user-approval.json",
+    authority_record_path: "evidence/approved-authority.json",
+    approval_sha256: hash(approval),
+    authority_sha256: hash(authority),
+  };
+  const calls = [];
+  const adapters = createGitReleaseAdapters({
+    run: (command, args) => {
+      calls.push([command, args]);
+      if (calls.length === 1) return result(0, "commit\n");
+      if (calls.length === 2) return result(0, `${proposalCommit}\n`);
+      if (calls.length === 3) return result(0, approval);
+      if (calls.length === 4) return result(0, authority);
+      return result(0, `${remoteCommit}\trefs/heads/codex/serverless-v2-roadmap\n`);
+    },
+  });
+  await assert.rejects(
+    adapters["approval-commit-push"]({}, publicationState),
+    /APPROVAL_BRANCH_READBACK/u,
+  );
+  assert.deepEqual(calls[4][1], [
+    "ls-remote",
+    "--heads",
+    "origin",
+    "refs/heads/codex/serverless-v2-roadmap-v4",
+  ]);
+  assert.equal(
+    calls.some(([, args]) => args[0] === "push"),
+    false,
+  );
 });
 
 test("GitHub workflow dispatch is single-shot and binds the one new exact-head run", async () => {

@@ -50,7 +50,7 @@ import { parseService, validateServiceFile } from "../v2-06/validate-pg-service.
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const TAG = "videoforge-v2-13-release-20260826-v3";
-const APPROVAL_BRANCH = "codex/serverless-v2-roadmap";
+const APPROVAL_BRANCH = "codex/serverless-v2-roadmap-v4";
 const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const EXACT_DATABASE_IDENTITY = Object.freeze({
@@ -544,7 +544,7 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
         "origin",
         `refs/heads/${APPROVAL_BRANCH}`,
       ]).stdout.trim();
-      if (!/^[0-9a-f]{40}\trefs\/heads\/codex\/serverless-v2-roadmap$/u.test(remoteBefore))
+      if (!/^[0-9a-f]{40}\trefs\/heads\/codex\/serverless-v2-roadmap-v4$/u.test(remoteBefore))
         fail("APPROVAL_BRANCH_READBACK");
       const remoteCommit = remoteBefore.slice(0, 40);
       exactCommand(run, "git", ["merge-base", "--is-ancestor", remoteCommit, commit]);
