@@ -35,7 +35,7 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:d9efa4761be27c4f3f8cd5871128fa54bcc981e2c41c200c0e711447e1ef3f80",
+    sha256: "sha256:2fa09d67e24e66107d3d8b3a0514cf406ee4fb318a7f6433b86d309e3ab79083",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
@@ -52,7 +52,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:603118f89703cd30b132f2e1dd584f7e1d601143008f896ef6d6f949f10f8939",
+    sha256: "sha256:ed90456561f8c0502e80fbb13ee722ea2bd5b6f9da77a389f5bfa4dd5ea6bde3",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
