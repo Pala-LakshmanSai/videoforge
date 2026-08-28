@@ -871,6 +871,96 @@ function validateMaterializationSeedFile({ path, expectedSha256, expectedFullLiv
   return Object.freeze({ value, sha256: expectedSha256 });
 }
 
+const STATIC_RELEASE_DESCRIPTOR_GATE_POLICY = Object.freeze({
+  operations_runbooks_ready: Object.freeze({
+    claims: Object.freeze([
+      "stuck_job_runbook",
+      "provider_outage_runbook",
+      "billing_runbook",
+      "rollback_runbook",
+    ]),
+    metricKeys: Object.freeze([
+      "billingRunbookSha256",
+      "providerOutageRunbookSha256",
+      "rollbackRunbookSha256",
+      "stuckJobRunbookSha256",
+    ]),
+    metricsPass: (metrics) => Object.values(metrics).every((item) => HASH.test(item ?? "")),
+  }),
+  backup_restore_ready: Object.freeze({
+    claims: Object.freeze([
+      "backup_readback_passed",
+      "restore_evidence_accepted",
+      "schema_migration_disposition_recorded",
+    ]),
+    metricKeys: Object.freeze([
+      "backupReadbackPassed",
+      "restoreEvidenceAccepted",
+      "schemaMigrationDisposition",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.backupReadbackPassed === true &&
+      metrics.restoreEvidenceAccepted === true &&
+      metrics.schemaMigrationDisposition === "DISPOSABLE_RESTORE_COMPLETED",
+  }),
+  security_clear: Object.freeze({
+    claims: Object.freeze([
+      "p0_zero",
+      "p1_zero",
+      "auth_tenant_boundary_passed",
+      "ssrf_path_upload_boundary_passed",
+      "secret_log_scan_passed",
+      "cost_amplification_guards_passed",
+      "legacy_runtime_bundle_scan_passed",
+    ]),
+    metricKeys: Object.freeze([
+      "authTenantPassed",
+      "costAmplificationGuardsPassed",
+      "legacyRuntimeBundleScanPassed",
+      "p0Count",
+      "p1Count",
+      "secretLogScanPassed",
+      "ssrfPathUploadPassed",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.p0Count === 0 &&
+      metrics.p1Count === 0 &&
+      metrics.authTenantPassed === true &&
+      metrics.ssrfPathUploadPassed === true &&
+      metrics.secretLogScanPassed === true &&
+      metrics.costAmplificationGuardsPassed === true &&
+      metrics.legacyRuntimeBundleScanPassed === true,
+  }),
+  production_transport_real: Object.freeze({
+    claims: Object.freeze([
+      "hosted_client_api_truth",
+      "fixture_controls_absent",
+      "fake_gpu_absent",
+      "fake_transport_absent",
+      "manual_pod_controls_absent",
+      "legacy_dispatch_exports_absent",
+    ]),
+    metricKeys: Object.freeze([
+      "fakeGpuProfileInBundle",
+      "fakeTransportInBundle",
+      "fixtureControlsInBundle",
+      "hostedClientApiTruth",
+      "legacyDispatchExportsInBundle",
+      "manualPodControlsInBundle",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.hostedClientApiTruth === true &&
+      metrics.fixtureControlsInBundle === false &&
+      metrics.fakeGpuProfileInBundle === false &&
+      metrics.fakeTransportInBundle === false &&
+      metrics.manualPodControlsInBundle === false &&
+      metrics.legacyDispatchExportsInBundle === false,
+  }),
+});
+const STATIC_RELEASE_DESCRIPTOR_GATES = Object.freeze(
+  Object.keys(STATIC_RELEASE_DESCRIPTOR_GATE_POLICY),
+);
+
 /** Verify canonical protected descriptor bytes before one-shot authority consumption or restart. */
 function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSourceCommit }) {
   if (
@@ -918,14 +1008,43 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
     !HASH.test(value.contractBundleSha256 ?? "") ||
     !HASH.test(value.descriptorSha256 ?? "") ||
     value.descriptorSha256 !== expectedSha256 ||
-    !exactObjectKeys(value.auditFacts, [
-      "backup_restore_ready",
-      "operations_runbooks_ready",
-      "production_transport_real",
-      "security_clear",
-    ])
+    !exactObjectKeys(value.auditFacts, STATIC_RELEASE_DESCRIPTOR_GATES)
   )
     fail("STATIC_RELEASE_DESCRIPTOR_CONTRACT");
+  for (const gate of STATIC_RELEASE_DESCRIPTOR_GATES) {
+    const fact = value.auditFacts[gate];
+    const policy = STATIC_RELEASE_DESCRIPTOR_GATE_POLICY[gate];
+    if (
+      !exactObjectKeys(fact, [
+        "claims",
+        "evidenceClass",
+        "evidencePath",
+        "fixtureOrFakeTransportUsed",
+        "gate",
+        "metrics",
+        "observedAt",
+        "observerId",
+        "sourceEvidenceSha256",
+      ]) ||
+      fact.gate !== gate ||
+      fact.evidenceClass !== "INDEPENDENT_RELEASE_AUDIT" ||
+      !HASH.test(fact.sourceEvidenceSha256 ?? "") ||
+      typeof fact.observerId !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(fact.observerId) ||
+      typeof fact.evidencePath !== "string" ||
+      !/^project-context\/evidence\/[A-Za-z0-9._/-]+\.json$/u.test(fact.evidencePath) ||
+      fact.evidencePath.includes("..") ||
+      typeof fact.observedAt !== "string" ||
+      Number.isNaN(Date.parse(fact.observedAt)) ||
+      new Date(fact.observedAt).toISOString() !== fact.observedAt ||
+      fact.fixtureOrFakeTransportUsed !== false ||
+      !Array.isArray(fact.claims) ||
+      JSON.stringify([...fact.claims].sort()) !== JSON.stringify([...policy.claims].sort()) ||
+      !exactObjectKeys(fact.metrics, policy.metricKeys) ||
+      !policy.metricsPass(fact.metrics)
+    )
+      fail("STATIC_RELEASE_DESCRIPTOR_FACTS");
+  }
   const unsigned = { ...value };
   delete unsigned.descriptorSha256;
   if (
@@ -1182,7 +1301,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:2fa09d67e24e66107d3d8b3a0514cf406ee4fb318a7f6433b86d309e3ab79083" ||
+      "sha256:72b98e330b48b8f84d3d6417dfa90b14b33780f1aaec5a92cbadfd141ae5ad8b" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||

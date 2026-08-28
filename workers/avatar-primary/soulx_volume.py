@@ -124,9 +124,7 @@ def canonical_json(value: object) -> bytes:
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
-def warmup_attestation_sha256(
-    container_digest: str, observed_facts: dict[str, object]
-) -> str:
+def warmup_attestation_sha256(container_digest: str, observed_facts: dict[str, object]) -> str:
     """Hash the source-bound warmup contract completed by ``SoulXRuntime``.
 
     The runtime records this value only after the real pipeline warmup call and CUDA synchronize

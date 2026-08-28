@@ -651,9 +651,7 @@ class SoulXServerlessTest(unittest.TestCase):
             result = asyncio.run(
                 soulx_serverless.handler({"id": "job-warmup-drift", "input": fixture.payload})
             )
-        self.assertEqual(
-            result["failure_code"], "SOULX_SERVERLESS_WARMUP_ATTESTATION_MISMATCH"
-        )
+        self.assertEqual(result["failure_code"], "SOULX_SERVERLESS_WARMUP_ATTESTATION_MISMATCH")
         generate.assert_not_awaited()
 
     def test_receipt_uses_source_bound_warmup_attestation_not_environment(self) -> None:

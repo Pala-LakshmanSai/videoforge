@@ -606,7 +606,8 @@ test("bootstrap partial cleanup accepts the adapter maximum and rejects overflow
       credentialBundleSha256: proof("a"),
       removedArtifactCount,
     };
-    const { cleanupSha256: _cleanupSha256, ...cleanupBody } = cleanup;
+    const cleanupBody = { ...cleanup };
+    delete cleanupBody.cleanupSha256;
     cleanup.cleanupSha256 = hash(Buffer.from(canonicalJson(cleanupBody)));
     const result = {
       ...base,

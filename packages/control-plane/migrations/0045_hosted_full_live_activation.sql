@@ -2451,24 +2451,24 @@ CREATE FUNCTION public.videoforge_v213_static_release_fact_valid(
 LANGUAGE plpgsql IMMUTABLE SET search_path=public,pg_catalog AS $$
 DECLARE metrics jsonb:=fact->'metrics'; claims text[];
 BEGIN
-  IF jsonb_typeof(fact)<>'object'
+  IF jsonb_typeof(fact) IS DISTINCT FROM 'object'
      OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(fact) key)
        IS DISTINCT FROM ARRAY['claims','evidenceClass','evidencePath',
          'fixtureOrFakeTransportUsed','gate','metrics','observedAt','observerId',
          'sourceEvidenceSha256']::text[]
      OR expected_gate NOT IN ('operations_runbooks_ready','backup_restore_ready',
        'security_clear','production_transport_real')
-     OR fact->>'gate'<>expected_gate
-     OR fact->>'evidenceClass'<>'INDEPENDENT_RELEASE_AUDIT'
-     OR fact->'fixtureOrFakeTransportUsed'<>'false'::jsonb
-     OR fact->>'sourceEvidenceSha256' !~ '^sha256:[0-9a-f]{64}$'
-     OR fact->>'observerId' !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
-     OR fact->>'evidencePath' !~ '^project-context/evidence/[A-Za-z0-9._/-]+\.json$'
-     OR fact->>'evidencePath' LIKE '%..%'
-     OR fact->>'observedAt' !~
+     OR fact->>'gate' IS DISTINCT FROM expected_gate
+     OR fact->>'evidenceClass' IS DISTINCT FROM 'INDEPENDENT_RELEASE_AUDIT'
+     OR fact->'fixtureOrFakeTransportUsed' IS DISTINCT FROM 'false'::jsonb
+     OR coalesce(fact->>'sourceEvidenceSha256','') !~ '^sha256:[0-9a-f]{64}$'
+     OR coalesce(fact->>'observerId','') !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
+     OR coalesce(fact->>'evidencePath','') !~ '^project-context/evidence/[A-Za-z0-9._/-]+\.json$'
+     OR coalesce(fact->>'evidencePath','') LIKE '%..%'
+     OR coalesce(fact->>'observedAt','') !~
        '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
-     OR jsonb_typeof(fact->'claims')<>'array'
-     OR jsonb_typeof(metrics)<>'object' THEN
+     OR jsonb_typeof(fact->'claims') IS DISTINCT FROM 'array'
+     OR jsonb_typeof(metrics) IS DISTINCT FROM 'object' THEN
     RETURN false;
   END IF;
   BEGIN
@@ -2479,24 +2479,24 @@ BEGIN
   SELECT array_agg(value ORDER BY value) INTO claims
     FROM jsonb_array_elements_text(fact->'claims') value;
   IF expected_gate='operations_runbooks_ready' THEN
-    RETURN claims=ARRAY['billing_runbook','provider_outage_runbook','rollback_runbook',
+    RETURN coalesce(claims=ARRAY['billing_runbook','provider_outage_runbook','rollback_runbook',
       'stuck_job_runbook']::text[]
       AND (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(metrics) key)=
         ARRAY['billingRunbookSha256','providerOutageRunbookSha256',
           'rollbackRunbookSha256','stuckJobRunbookSha256']::text[]
       AND NOT EXISTS(SELECT 1 FROM jsonb_each_text(metrics) item
-        WHERE item.value !~ '^sha256:[0-9a-f]{64}$');
+        WHERE coalesce(item.value,'') !~ '^sha256:[0-9a-f]{64}$'),false);
   ELSIF expected_gate='backup_restore_ready' THEN
-    RETURN claims=ARRAY['backup_readback_passed','restore_evidence_accepted',
+    RETURN coalesce(claims=ARRAY['backup_readback_passed','restore_evidence_accepted',
       'schema_migration_disposition_recorded']::text[]
       AND (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(metrics) key)=
         ARRAY['backupReadbackPassed','restoreEvidenceAccepted',
           'schemaMigrationDisposition']::text[]
       AND metrics->'backupReadbackPassed'='true'::jsonb
       AND metrics->'restoreEvidenceAccepted'='true'::jsonb
-      AND metrics->>'schemaMigrationDisposition'='DISPOSABLE_RESTORE_COMPLETED';
+      AND metrics->>'schemaMigrationDisposition'='DISPOSABLE_RESTORE_COMPLETED',false);
   ELSIF expected_gate='security_clear' THEN
-    RETURN claims=ARRAY['auth_tenant_boundary_passed','cost_amplification_guards_passed',
+    RETURN coalesce(claims=ARRAY['auth_tenant_boundary_passed','cost_amplification_guards_passed',
       'legacy_runtime_bundle_scan_passed','p0_zero','p1_zero','secret_log_scan_passed',
       'ssrf_path_upload_boundary_passed']::text[]
       AND (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(metrics) key)=
@@ -2508,9 +2508,9 @@ BEGIN
       AND metrics->'ssrfPathUploadPassed'='true'::jsonb
       AND metrics->'secretLogScanPassed'='true'::jsonb
       AND metrics->'costAmplificationGuardsPassed'='true'::jsonb
-      AND metrics->'legacyRuntimeBundleScanPassed'='true'::jsonb;
+      AND metrics->'legacyRuntimeBundleScanPassed'='true'::jsonb,false);
   END IF;
-  RETURN claims=ARRAY['fake_gpu_absent','fake_transport_absent','fixture_controls_absent',
+  RETURN coalesce(claims=ARRAY['fake_gpu_absent','fake_transport_absent','fixture_controls_absent',
     'hosted_client_api_truth','legacy_dispatch_exports_absent','manual_pod_controls_absent']::text[]
     AND (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(metrics) key)=
       ARRAY['fakeGpuProfileInBundle','fakeTransportInBundle','fixtureControlsInBundle',
@@ -2520,7 +2520,7 @@ BEGIN
     AND metrics->'fakeGpuProfileInBundle'='false'::jsonb
     AND metrics->'fakeTransportInBundle'='false'::jsonb
     AND metrics->'manualPodControlsInBundle'='false'::jsonb
-    AND metrics->'legacyDispatchExportsInBundle'='false'::jsonb;
+    AND metrics->'legacyDispatchExportsInBundle'='false'::jsonb,false);
 END;
 $$;
 

@@ -1324,7 +1324,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
   writeFileSync(receiptPath, `${JSON.stringify(receipt)}\n`, { mode: 0o600 });
   const currentAuthority = structuredClone(authority());
   currentAuthority.release.migration_manifest_sha256 = hash(manifestBytes);
-  currentAuthority.secret_sha256.DATABASE_URL = body.runtime_database_url_sha256;
+  currentAuthority.secret_sha256["DATABASE_URL"] = body.runtime_database_url_sha256;
   currentAuthority.secret_sha256.VIDEOFORGE_RECONCILER_DATABASE_URL =
     body.reconciler_database_url_sha256;
   const calls = [];

@@ -7,7 +7,7 @@
     },
     {
       "path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "sha256": "sha256:2862130ef1c8c3404603cc2d2e50d18f87323eadc198b27badf9b99993f10f3e"
+      "sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da"
     },
     {
       "path": ".github/workflows/avatar-quality-image.yml",
@@ -1031,11 +1031,11 @@
     },
     {
       "path": "deploy/v2-13/build-materialization-seed.mjs",
-      "sha256": "sha256:e30af714f6a12af6ddf0531852b9e7eef4690bdf9cb123a698f8f35f3eabcd7f"
+      "sha256": "sha256:61d16bf3e3d8c1e6ae51420930c39e7eb59a5bfe0253e2e04a3b2d36dce984d1"
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:62826a322012ee54033c15688a8b888daa53c6356116f85edce652efc552e7ac"
+      "sha256": "sha256:63c65ae2d009517e4fc6dc7d2314c7bae5bced10cdd9a43b385bf8dc1dfa926e"
     },
     {
       "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",
@@ -1839,11 +1839,11 @@
     },
     {
       "path": "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
-      "sha256": "sha256:a6c2a066cc222f25c627772ea5eb89f50ca552b7cbb1a21b46ab476aaaea19e9"
+      "sha256": "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b"
     },
     {
       "path": "packages/control-plane/migrations/manifest.json",
-      "sha256": "sha256:203bb3f7c6c83c99e87441f3c7d86248666dcd8f50e9cc17c119867adf30dc2b"
+      "sha256": "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47"
     },
     {
       "path": "packages/control-plane/package.json",
@@ -2355,7 +2355,7 @@
     },
     {
       "path": "workers/avatar-primary/Dockerfile.serverless",
-      "sha256": "sha256:4fcb7e215f1b9ea637057e41a7ea5af4e432c5f72ee61ef2ab2b93675f5a970f"
+      "sha256": "sha256:348661d34da0ada76ad0740a3be13a42b3843c4ad6ad12c394c6c9a50ced4ab0"
     },
     {
       "path": "workers/avatar-primary/prepare_soulx_volume.py",
@@ -2403,7 +2403,7 @@
     },
     {
       "path": "workers/avatar-primary/soulx_volume.py",
-      "sha256": "sha256:b767ef3cb9d867a623975db3d23a6bb1b2d15587db87db9e3db6cf1e73b07e0e"
+      "sha256": "sha256:1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32"
     },
     {
       "path": "workers/avatar-primary/src/videoforge_avatar_primary/__init__.py",

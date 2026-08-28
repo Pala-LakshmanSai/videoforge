@@ -148,6 +148,61 @@ function staticReleaseDescriptor() {
   return { ...unsigned, descriptorSha256: sha256(canonicalizeJson(unsigned)) };
 }
 
+test("0045 rejects JSON null static release provenance, claims, metrics, and fake evidence", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const fact = staticReleaseDescriptor().auditFacts.operations_runbooks_ready;
+    const assertInvalid = async (label, candidate) => {
+      const [{ valid }] = (
+        await executor.query(
+          "SELECT videoforge_v213_static_release_fact_valid($1,$2::jsonb) valid",
+          ["operations_runbooks_ready", JSON.stringify(candidate)],
+        )
+      ).rows;
+      assert.equal(valid, false, label);
+    };
+
+    for (const field of [
+      "gate",
+      "sourceEvidenceSha256",
+      "observerId",
+      "evidencePath",
+      "evidenceClass",
+      "observedAt",
+    ]) {
+      await assertInvalid(`JSON null provenance field: ${field}`, { ...fact, [field]: null });
+    }
+    await assertInvalid("JSON null fixture marker", {
+      ...fact,
+      fixtureOrFakeTransportUsed: null,
+    });
+    await assertInvalid("JSON null claims", { ...fact, claims: null });
+    await assertInvalid("JSON null metrics", { ...fact, metrics: null });
+    for (const metric of [
+      "stuckJobRunbookSha256",
+      "providerOutageRunbookSha256",
+      "billingRunbookSha256",
+      "rollbackRunbookSha256",
+    ]) {
+      await assertInvalid(`JSON null runbook metric hash: ${metric}`, {
+        ...fact,
+        metrics: { ...fact.metrics, [metric]: null },
+      });
+    }
+    await assertInvalid("wrong static release claims", {
+      ...fact,
+      claims: [...fact.claims.slice(0, -1), "wrong_claim"],
+    });
+    await assertInvalid("fake static release evidence marker", {
+      ...fact,
+      fixtureOrFakeTransportUsed: true,
+    });
+    await assertInvalid("fake static release evidence class", {
+      ...fact,
+      evidenceClass: "FAKE_EVIDENCE",
+    });
+  });
+});
+
 test("0045 permits only exact cleanup bridge claims after authority expiry", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     const expiredAuthorityId = uuid(45991);
@@ -646,7 +701,7 @@ test("0045 atomically records exact authority and promotes both fresh max-one la
     assert.equal(snapshot.verification.sourceCommit, authority.sourceCommit);
     assert.deepEqual(snapshot.verification.gate.migrationLedger.at(-1), {
       version: 45,
-      sha256: "sha256:a6c2a066cc222f25c627772ea5eb89f50ca552b7cbb1a21b46ab476aaaea19e9",
+      sha256: "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b",
     });
     assert.equal(snapshot.verification.gate.gpuTransport, "QUALIFIED_EXACT");
     assert.deepEqual(snapshot.verification.gate.cloudflare, {

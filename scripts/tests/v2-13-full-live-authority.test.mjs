@@ -735,6 +735,12 @@ test("protected static release descriptor rejects newline self-hash and exact-ke
       code,
     );
   };
+  const rehash = (descriptor) => {
+    const unsigned = { ...descriptor };
+    delete unsigned.descriptorSha256;
+    descriptor.descriptorSha256 = hash(Buffer.from(canonicalJson(unsigned)));
+    return descriptor;
+  };
   try {
     const newlineHashed = staticReleaseDescriptorFixture();
     const newlineUnsigned = { ...newlineHashed };
@@ -757,6 +763,39 @@ test("protected static release descriptor rejects newline self-hash and exact-ke
 
     const sourceDrift = staticReleaseDescriptorFixture();
     assertRejected(sourceDrift, "b".repeat(40), /STATIC_RELEASE_DESCRIPTOR_CONTRACT/u);
+
+    const booleanFacts = staticReleaseDescriptorFixture();
+    booleanFacts.auditFacts.security_clear = true;
+    assertRejected(
+      rehash(booleanFacts),
+      booleanFacts.sourceCommit,
+      /STATIC_RELEASE_DESCRIPTOR_FACTS/u,
+    );
+
+    const nullEvidence = staticReleaseDescriptorFixture();
+    nullEvidence.auditFacts.security_clear.observerId = null;
+    assertRejected(
+      rehash(nullEvidence),
+      nullEvidence.sourceCommit,
+      /STATIC_RELEASE_DESCRIPTOR_FACTS/u,
+    );
+
+    const reusedRestore = staticReleaseDescriptorFixture();
+    reusedRestore.auditFacts.backup_restore_ready.metrics.schemaMigrationDisposition =
+      "V206_RESTORE_REUSED_NO_SCHEMA_CHANGE";
+    assertRejected(
+      rehash(reusedRestore),
+      reusedRestore.sourceCommit,
+      /STATIC_RELEASE_DESCRIPTOR_FACTS/u,
+    );
+
+    const nonCanonicalObservedAt = staticReleaseDescriptorFixture();
+    nonCanonicalObservedAt.auditFacts.operations_runbooks_ready.observedAt = "2026-08-27T23:52:08Z";
+    assertRejected(
+      rehash(nonCanonicalObservedAt),
+      nonCanonicalObservedAt.sourceCommit,
+      /STATIC_RELEASE_DESCRIPTOR_FACTS/u,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

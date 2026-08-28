@@ -20,6 +20,7 @@ project-context/references/ranga/frames/**/*.[hH][eE][iI][cC]
 
 # Never commit local provider secrets, generated media, or model weights.
 .private-inputs/
+protected-inputs/
 elias yoder(sampe avatar).png
 .env
 .env.*

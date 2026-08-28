@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -14,7 +13,9 @@ const sourceDirectory = path.join(
 const validatorName = "validate-candidate.mjs";
 
 async function runMutation(mutateProposal, mutatePreflight = () => {}) {
-  const directory = await mkdtemp(path.join(tmpdir(), "videoforge-v213-cloudflare-proposal-"));
+  const directory = await mkdtemp(
+    path.join(path.dirname(sourceDirectory), ".tmp-cloudflare-proposal-"),
+  );
   try {
     const proposal = JSON.parse(
       await readFile(path.join(sourceDirectory, "combined-live-proposal.json"), "utf8"),
@@ -29,6 +30,10 @@ async function runMutation(mutateProposal, mutatePreflight = () => {}) {
       `${JSON.stringify(proposal, null, 2)}\n`,
     );
     await cp(path.join(sourceDirectory, validatorName), path.join(directory, validatorName));
+    await cp(
+      path.join(sourceDirectory, "source-readiness-audit.json"),
+      path.join(directory, "source-readiness-audit.json"),
+    );
     await writeFile(
       path.join(directory, "read-only-preflight.json"),
       `${JSON.stringify(preflight, null, 2)}\n`,

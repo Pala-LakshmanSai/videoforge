@@ -4389,9 +4389,7 @@ const V213_STATIC_RELEASE_GATE_POLICY = Object.freeze({
     metricsPass: (metrics) =>
       metrics.backupReadbackPassed === true &&
       metrics.restoreEvidenceAccepted === true &&
-      ["DISPOSABLE_RESTORE_COMPLETED", "V206_RESTORE_REUSED_NO_SCHEMA_CHANGE"].includes(
-        metrics.schemaMigrationDisposition,
-      ),
+      metrics.schemaMigrationDisposition === "DISPOSABLE_RESTORE_COMPLETED",
   }),
   security_clear: Object.freeze({
     claims: Object.freeze([

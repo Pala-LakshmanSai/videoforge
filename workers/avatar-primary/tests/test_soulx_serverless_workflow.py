@@ -105,9 +105,7 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
         )
         self.assertIsNotNone(declared_evidence_dockerfile_hash)
         assert declared_evidence_dockerfile_hash is not None
-        self.assertEqual(
-            declared_evidence_dockerfile_hash.group(1), _sha256(DOCKERFILE)
-        )
+        self.assertEqual(declared_evidence_dockerfile_hash.group(1), _sha256(DOCKERFILE))
 
     def test_every_dockerfile_copy_is_materialized_in_the_build_context(self) -> None:
         build_source = self.source.split(
@@ -223,7 +221,7 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
         for expected_hash in (
             "752b600d5428bb253d83d0c6044296bbcb4bb29f17d4df37c40fcf63c19b30e4",
             "b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080",
-            "b767ef3cb9d867a623975db3d23a6bb1b2d15587db87db9e3db6cf1e73b07e0e",
+            "1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32",
             "bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9",
             "7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775",
             "34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",

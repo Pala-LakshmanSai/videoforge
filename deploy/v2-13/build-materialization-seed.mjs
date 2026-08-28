@@ -356,7 +356,95 @@ function validateProtectedInput(value, facts, proposal) {
   return value;
 }
 
-function validateDescriptor(value, bytes, expectedSha256, sourceCommit) {
+const STATIC_RELEASE_GATE_POLICY = Object.freeze({
+  operations_runbooks_ready: Object.freeze({
+    claims: Object.freeze([
+      "stuck_job_runbook",
+      "provider_outage_runbook",
+      "billing_runbook",
+      "rollback_runbook",
+    ]),
+    metricKeys: Object.freeze([
+      "billingRunbookSha256",
+      "providerOutageRunbookSha256",
+      "rollbackRunbookSha256",
+      "stuckJobRunbookSha256",
+    ]),
+    metricsPass: (metrics) => Object.values(metrics).every((item) => HASH.test(item ?? "")),
+  }),
+  backup_restore_ready: Object.freeze({
+    claims: Object.freeze([
+      "backup_readback_passed",
+      "restore_evidence_accepted",
+      "schema_migration_disposition_recorded",
+    ]),
+    metricKeys: Object.freeze([
+      "backupReadbackPassed",
+      "restoreEvidenceAccepted",
+      "schemaMigrationDisposition",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.backupReadbackPassed === true &&
+      metrics.restoreEvidenceAccepted === true &&
+      metrics.schemaMigrationDisposition === "DISPOSABLE_RESTORE_COMPLETED",
+  }),
+  security_clear: Object.freeze({
+    claims: Object.freeze([
+      "p0_zero",
+      "p1_zero",
+      "auth_tenant_boundary_passed",
+      "ssrf_path_upload_boundary_passed",
+      "secret_log_scan_passed",
+      "cost_amplification_guards_passed",
+      "legacy_runtime_bundle_scan_passed",
+    ]),
+    metricKeys: Object.freeze([
+      "authTenantPassed",
+      "costAmplificationGuardsPassed",
+      "legacyRuntimeBundleScanPassed",
+      "p0Count",
+      "p1Count",
+      "secretLogScanPassed",
+      "ssrfPathUploadPassed",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.p0Count === 0 &&
+      metrics.p1Count === 0 &&
+      metrics.authTenantPassed === true &&
+      metrics.ssrfPathUploadPassed === true &&
+      metrics.secretLogScanPassed === true &&
+      metrics.costAmplificationGuardsPassed === true &&
+      metrics.legacyRuntimeBundleScanPassed === true,
+  }),
+  production_transport_real: Object.freeze({
+    claims: Object.freeze([
+      "hosted_client_api_truth",
+      "fixture_controls_absent",
+      "fake_gpu_absent",
+      "fake_transport_absent",
+      "manual_pod_controls_absent",
+      "legacy_dispatch_exports_absent",
+    ]),
+    metricKeys: Object.freeze([
+      "fakeGpuProfileInBundle",
+      "fakeTransportInBundle",
+      "fixtureControlsInBundle",
+      "hostedClientApiTruth",
+      "legacyDispatchExportsInBundle",
+      "manualPodControlsInBundle",
+    ]),
+    metricsPass: (metrics) =>
+      metrics.hostedClientApiTruth === true &&
+      metrics.fixtureControlsInBundle === false &&
+      metrics.fakeGpuProfileInBundle === false &&
+      metrics.fakeTransportInBundle === false &&
+      metrics.manualPodControlsInBundle === false &&
+      metrics.legacyDispatchExportsInBundle === false,
+  }),
+});
+const STATIC_RELEASE_GATES = Object.freeze(Object.keys(STATIC_RELEASE_GATE_POLICY));
+
+function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEvidence) {
   if (
     !exactKeys(value, [
       "auditFacts",
@@ -369,17 +457,47 @@ function validateDescriptor(value, bytes, expectedSha256, sourceCommit) {
     value.schemaVersion !== "videoforge.v213-static-release-descriptor/v1" ||
     value.sourceCommit !== sourceCommit ||
     value.descriptorSha256 !== expectedSha256 ||
-    !HASH.test(value.contractBundleSha256 ?? "") ||
-    !HASH.test(value.productionUrlSha256 ?? "") ||
-    !exactKeys(value.auditFacts, [
-      "backup_restore_ready",
-      "operations_runbooks_ready",
-      "production_transport_real",
-      "security_clear",
-    ]) ||
-    Object.values(value.auditFacts).some((item) => item !== true)
+    value.contractBundleSha256 !== sourceEvidence.readiness.contract_bundle.sha256 ||
+    value.productionUrlSha256 !== sourceEvidence.readiness.production_origin.sha256 ||
+    !exactKeys(value.auditFacts, STATIC_RELEASE_GATES)
   )
     fail("STATIC_DESCRIPTOR_CONTRACT");
+  for (const gate of STATIC_RELEASE_GATES) {
+    const fact = value.auditFacts[gate];
+    const policy = STATIC_RELEASE_GATE_POLICY[gate];
+    if (
+      !exactKeys(fact, [
+        "claims",
+        "evidenceClass",
+        "evidencePath",
+        "fixtureOrFakeTransportUsed",
+        "gate",
+        "metrics",
+        "observedAt",
+        "observerId",
+        "sourceEvidenceSha256",
+      ]) ||
+      fact.gate !== gate ||
+      fact.evidenceClass !== sourceEvidence.readiness.evidence_class ||
+      fact.sourceEvidenceSha256 !== sourceEvidence.sha256 ||
+      typeof fact.observerId !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(fact.observerId) ||
+      fact.observerId !== sourceEvidence.readiness.observer_id ||
+      typeof fact.evidencePath !== "string" ||
+      !/^project-context\/evidence\/[A-Za-z0-9._/-]+\.json$/u.test(fact.evidencePath) ||
+      fact.evidencePath.includes("..") ||
+      fact.evidencePath !== sourceEvidence.path ||
+      fact.observedAt !== sourceEvidence.readiness.observed_at ||
+      fact.fixtureOrFakeTransportUsed !== sourceEvidence.readiness.fixture_or_fake_transport_used ||
+      !Array.isArray(fact.claims) ||
+      JSON.stringify([...fact.claims].sort()) !== JSON.stringify([...policy.claims].sort()) ||
+      !exactKeys(fact.metrics, policy.metricKeys) ||
+      !policy.metricsPass(fact.metrics) ||
+      !sameJson(fact.claims, sourceEvidence.readiness.audit_facts[gate].claims) ||
+      !sameJson(fact.metrics, sourceEvidence.readiness.audit_facts[gate].metrics)
+    )
+      fail("STATIC_DESCRIPTOR_FACTS");
+  }
   const unsigned = { ...value };
   delete unsigned.descriptorSha256;
   if (
@@ -633,6 +751,10 @@ function validateSourceEvidence(
   if (
     readiness?.schema_version !== "videoforge.v2-13-full-live-source-readiness-audit/v1" ||
     readiness.audit_result !== "PASS_READY_TO_RESEAL" ||
+    readiness.evidence_class !== "INDEPENDENT_RELEASE_AUDIT" ||
+    typeof readiness.observer_id !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(readiness.observer_id) ||
+    readiness.fixture_or_fake_transport_used !== false ||
     readiness.credential_accessed !== false ||
     readiness.external_calls !== 0 ||
     readiness.gpu_use !== 0 ||
@@ -653,7 +775,10 @@ function validateSourceEvidence(
     !exactKeys(sourceClosure, ["path", "sha256"]) ||
     readiness?.source_closure?.path !== sourceClosure.path ||
     readiness.source_closure.sha256 !== sourceClosure.sha256 ||
-    readiness.source_closure.exact !== true
+    readiness.source_closure.exact !== true ||
+    readiness?.contract_bundle?.definition !== "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES" ||
+    readiness.contract_bundle.path !== sourceClosure.path ||
+    readiness.contract_bundle.sha256 !== sourceClosure.sha256
   )
     fail("SOURCE_READINESS_CONTRACT");
   const closureRead = readBoundSourceJson(sourceClosure, readSourceFile, "SOURCE_CLOSURE");
@@ -661,7 +786,8 @@ function validateSourceEvidence(
   if (
     closure?.schema_version !== "videoforge.v2-13-full-live-source-closure/v1" ||
     !Array.isArray(closure.entries) ||
-    closure.entries.length === 0
+    closure.entries.length === 0 ||
+    readiness.source_closure.entry_count !== closure.entries.length
   )
     fail("SOURCE_CLOSURE_CONTRACT");
   assertSourceClosureOrder(closure.entries);
@@ -699,6 +825,11 @@ function validateSourceEvidence(
     if (error instanceof Error && error.message.startsWith("V2_13_")) throw error;
     fail("SOURCE_EVIDENCE_LINEAGE");
   }
+  return Object.freeze({
+    path: facts.source_evidence.source_readiness.path,
+    sha256: facts.source_evidence.source_readiness.sha256,
+    readiness,
+  });
 }
 
 /**
@@ -766,17 +897,30 @@ function buildV213MaterializationSeed({
   if (sha256(protectedBytes) !== facts.protected_input.sha256) fail("PROTECTED_INPUT_HASH");
   const protectedInput = parseJson(protectedBytes, "PROTECTED_INPUT", { canonical: true });
   validateProtectedInput(protectedInput, facts, proposal);
-  const descriptorBytes = Buffer.from(staticReleaseDescriptorBytes);
-  const descriptor = parseJson(descriptorBytes, "STATIC_DESCRIPTOR", { canonical: true });
-  validateDescriptor(descriptor, descriptorBytes, binding.descriptor.sha256, binding.sourceCommit);
   // These records are committed provenance. The builder validates them but never refreshes them
   // through a network, provider, or credential read.
-  validateSourceEvidence(facts, proposal, binding, readSourceFile, validateSourceEvidenceLineage, [
-    binding.mageCaseGenerator.path,
-    binding.soulxCaseGenerator.path,
-    binding.mageCaseValidator.path,
-    binding.soulxCaseValidator.path,
-  ]);
+  const sourceEvidence = validateSourceEvidence(
+    facts,
+    proposal,
+    binding,
+    readSourceFile,
+    validateSourceEvidenceLineage,
+    [
+      binding.mageCaseGenerator.path,
+      binding.soulxCaseGenerator.path,
+      binding.mageCaseValidator.path,
+      binding.soulxCaseValidator.path,
+    ],
+  );
+  const descriptorBytes = Buffer.from(staticReleaseDescriptorBytes);
+  const descriptor = parseJson(descriptorBytes, "STATIC_DESCRIPTOR", { canonical: true });
+  validateDescriptor(
+    descriptor,
+    descriptorBytes,
+    binding.descriptor.sha256,
+    binding.sourceCommit,
+    sourceEvidence,
+  );
   const cropApproval = soulxCropApproval(facts, readSourceFile);
   const ledgerSha256 = migrationLedgerSha256(proposal, readSourceFile);
   const fullLiveAuthorityId = facts.full_live_authority_id;

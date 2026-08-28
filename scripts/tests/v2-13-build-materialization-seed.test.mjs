@@ -80,6 +80,89 @@ const cases = {
   soulxInvalidOutput: { lane: "soulx", id: "soulx-invalid-output", seconds: 2 },
   soulxTimeout: { lane: "soulx", id: "soulx-timeout", seconds: 2 },
 };
+
+function staticReleaseDescriptorAuditFacts(
+  sourceEvidenceSha256 = proof("1"),
+  observedAt = "2026-08-27T23:59:30.000Z",
+) {
+  const fact = (gate, claims, metrics) => ({
+    gate,
+    sourceEvidenceSha256,
+    observerId: "codex.runtime-contract-audit",
+    evidencePath: READINESS_PATH,
+    evidenceClass: "INDEPENDENT_RELEASE_AUDIT",
+    observedAt,
+    fixtureOrFakeTransportUsed: false,
+    claims,
+    metrics,
+  });
+  return {
+    backup_restore_ready: fact(
+      "backup_restore_ready",
+      [
+        "backup_readback_passed",
+        "restore_evidence_accepted",
+        "schema_migration_disposition_recorded",
+      ],
+      {
+        backupReadbackPassed: true,
+        restoreEvidenceAccepted: true,
+        schemaMigrationDisposition: "DISPOSABLE_RESTORE_COMPLETED",
+      },
+    ),
+    operations_runbooks_ready: fact(
+      "operations_runbooks_ready",
+      ["stuck_job_runbook", "provider_outage_runbook", "billing_runbook", "rollback_runbook"],
+      {
+        billingRunbookSha256: proof("2"),
+        providerOutageRunbookSha256: proof("3"),
+        rollbackRunbookSha256: proof("4"),
+        stuckJobRunbookSha256: proof("5"),
+      },
+    ),
+    production_transport_real: fact(
+      "production_transport_real",
+      [
+        "hosted_client_api_truth",
+        "fixture_controls_absent",
+        "fake_gpu_absent",
+        "fake_transport_absent",
+        "manual_pod_controls_absent",
+        "legacy_dispatch_exports_absent",
+      ],
+      {
+        fakeGpuProfileInBundle: false,
+        fakeTransportInBundle: false,
+        fixtureControlsInBundle: false,
+        hostedClientApiTruth: true,
+        legacyDispatchExportsInBundle: false,
+        manualPodControlsInBundle: false,
+      },
+    ),
+    security_clear: fact(
+      "security_clear",
+      [
+        "p0_zero",
+        "p1_zero",
+        "auth_tenant_boundary_passed",
+        "ssrf_path_upload_boundary_passed",
+        "secret_log_scan_passed",
+        "cost_amplification_guards_passed",
+        "legacy_runtime_bundle_scan_passed",
+      ],
+      {
+        authTenantPassed: true,
+        costAmplificationGuardsPassed: true,
+        legacyRuntimeBundleScanPassed: true,
+        p0Count: 0,
+        p1Count: 0,
+        secretLogScanPassed: true,
+        ssrfPathUploadPassed: true,
+      },
+    ),
+  };
+}
+
 function sourceReader(commit) {
   return (path) =>
     execFileSync("git", ["show", `${commit}:${path}`], {
@@ -414,43 +497,51 @@ function harness({
   proposal.source.exact_release_components.source_closure_manifest = ref(CLOSURE_PATH);
   proposal.source.pending_source_contract.release_component_sha256s.source_closure_manifest =
     sha256(closureBytes);
-  overlay.set(
-    READINESS_PATH,
-    Buffer.from(
-      `${JSON.stringify(
-        {
-          schema_version: "videoforge.v2-13-full-live-source-readiness-audit/v1",
-          audited_code_commit: "7c1f6c255cd8355295be93621e9347abe0442646",
-          audit_result: "PASS_READY_TO_RESEAL",
-          observed_at: "2026-08-27T23:59:30.000Z",
-          provider_state_observed: false,
-          credential_accessed: false,
-          external_calls: 0,
-          provider_mutations: 0,
-          gpu_use: 0,
-          spend_usd: 0,
-          source_closure: { path: CLOSURE_PATH, sha256: sha256(closureBytes), exact: true },
-          qualification_case_validation: {
-            path: caseValidationPath,
-            sha256: sha256(caseValidationBytes),
-            result: "PASS_ACTUAL_MAGE_AND_SOULX_WORKER_CONTRACTS",
-          },
-          production_origin: {
-            value: origin.public_origin,
-            sha256: sha256(Buffer.from(origin.public_origin)),
-          },
-          audit_facts: {
-            backup_restore_ready: {},
-            operations_runbooks_ready: {},
-            production_transport_real: {},
-            security_clear: {},
-          },
-        },
-        null,
-        2,
-      )}\n`,
+  const auditFacts = staticReleaseDescriptorAuditFacts();
+  const sourceClosureSha256 = sha256(closureBytes);
+  const sourceReadiness = {
+    schema_version: "videoforge.v2-13-full-live-source-readiness-audit/v1",
+    audited_code_commit: "7c1f6c255cd8355295be93621e9347abe0442646",
+    audit_result: "PASS_READY_TO_RESEAL",
+    evidence_class: "INDEPENDENT_RELEASE_AUDIT",
+    observer_id: "codex.runtime-contract-audit",
+    fixture_or_fake_transport_used: false,
+    observed_at: "2026-08-27T23:59:30.000Z",
+    provider_state_observed: false,
+    credential_accessed: false,
+    external_calls: 0,
+    provider_mutations: 0,
+    gpu_use: 0,
+    spend_usd: 0,
+    source_closure: {
+      path: CLOSURE_PATH,
+      entry_count: closureEntries.length,
+      sha256: sourceClosureSha256,
+      exact: true,
+    },
+    contract_bundle: {
+      definition: "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
+      path: CLOSURE_PATH,
+      sha256: sourceClosureSha256,
+    },
+    qualification_case_validation: {
+      path: caseValidationPath,
+      sha256: sha256(caseValidationBytes),
+      result: "PASS_ACTUAL_MAGE_AND_SOULX_WORKER_CONTRACTS",
+    },
+    production_origin: {
+      value: origin.public_origin,
+      sha256: sha256(Buffer.from(origin.public_origin)),
+    },
+    audit_facts: Object.fromEntries(
+      Object.entries(auditFacts).map(([gate, fact]) => [
+        gate,
+        { claims: fact.claims, metrics: fact.metrics },
+      ]),
     ),
-  );
+  };
+  const sourceReadinessBytes = Buffer.from(`${JSON.stringify(sourceReadiness, null, 2)}\n`);
+  overlay.set(READINESS_PATH, sourceReadinessBytes);
   const protectedInput = protectedTransform({
     schema_version: PROTECTED_INPUT_SCHEMA,
     qualification: { envelope_signing_key_id: envelopeSigningKeyId },
@@ -491,14 +582,9 @@ function harness({
   let descriptor = descriptorTransform({
     schemaVersion: "videoforge.v213-static-release-descriptor/v1",
     sourceCommit: proposal.source.release_source_commit,
-    productionUrlSha256: proof("a"),
-    contractBundleSha256: proof("b"),
-    auditFacts: {
-      backup_restore_ready: true,
-      operations_runbooks_ready: true,
-      production_transport_real: true,
-      security_clear: true,
-    },
+    productionUrlSha256: sourceReadiness.production_origin.sha256,
+    contractBundleSha256: sourceReadiness.contract_bundle.sha256,
+    auditFacts: staticReleaseDescriptorAuditFacts(sha256(sourceReadinessBytes)),
   });
   descriptor = {
     ...descriptor,
@@ -616,7 +702,17 @@ function buildTempGitEndToEndFixture() {
 
   const readiness = JSON.parse(input.overlay.get(READINESS_PATH));
   readiness.audited_code_commit = auditedCodeCommit;
-  readiness.source_closure = { path: CLOSURE_PATH, sha256: sha256(closureBytes), exact: true };
+  readiness.source_closure = {
+    path: CLOSURE_PATH,
+    entry_count: closure.entries.length,
+    sha256: sha256(closureBytes),
+    exact: true,
+  };
+  readiness.contract_bundle = {
+    definition: "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
+    path: CLOSURE_PATH,
+    sha256: sha256(closureBytes),
+  };
   const readinessBytes = Buffer.from(`${JSON.stringify(readiness, null, 2)}\n`);
   const facts = JSON.parse(input.overlay.get(FACTS_PATH));
   facts.source_evidence.source_readiness = {
@@ -650,14 +746,9 @@ function buildTempGitEndToEndFixture() {
   const descriptor = {
     schemaVersion: "videoforge.v213-static-release-descriptor/v1",
     sourceCommit: releaseSourceCommit,
-    productionUrlSha256: proof("a"),
-    contractBundleSha256: proof("b"),
-    auditFacts: {
-      backup_restore_ready: true,
-      operations_runbooks_ready: true,
-      production_transport_real: true,
-      security_clear: true,
-    },
+    productionUrlSha256: readiness.production_origin.sha256,
+    contractBundleSha256: readiness.contract_bundle.sha256,
+    auditFacts: staticReleaseDescriptorAuditFacts(sha256(readinessBytes)),
   };
   descriptor.descriptorSha256 = sha256(Buffer.from(canonicalJson(descriptor)));
   const descriptorBytes = canonicalBytes(descriptor);
@@ -920,17 +1011,56 @@ test("rejects drift in exact committed evidence referenced by the facts record",
   );
 });
 
-test("rejects a descriptor whose sealed audit facts are not all affirmative", () => {
-  const input = harness({
-    descriptorTransform(descriptor) {
+test("rejects descriptor evidence or top-level drift from committed readiness", () => {
+  const mutations = [
+    (descriptor) => {
       descriptor.auditFacts.security_clear = false;
-      return descriptor;
     },
-  });
-  assert.throws(
-    () => buildV213MaterializationSeed(input.arguments),
-    /V2_13_MATERIALIZATION_SEED_BUILDER_STATIC_DESCRIPTOR_CONTRACT/u,
-  );
+    (descriptor) => {
+      descriptor.auditFacts.security_clear.claims.pop();
+    },
+    (descriptor) => {
+      descriptor.auditFacts.security_clear.metrics.p0Count = 1;
+    },
+    (descriptor) => {
+      descriptor.auditFacts.security_clear.evidencePath =
+        "project-context/evidence/acceptance/VF-10-13/other.json";
+    },
+    (descriptor) => {
+      descriptor.auditFacts.security_clear.sourceEvidenceSha256 = proof("f");
+    },
+    (descriptor) => {
+      descriptor.auditFacts.security_clear.observedAt = "2026-08-28T00:00:01.000Z";
+    },
+    (descriptor) => {
+      descriptor.auditFacts.security_clear.observerId = "different.auditor";
+    },
+    (descriptor) => {
+      descriptor.auditFacts.security_clear.fixtureOrFakeTransportUsed = true;
+    },
+    (descriptor) => {
+      descriptor.auditFacts.backup_restore_ready.metrics.schemaMigrationDisposition =
+        "V206_RESTORE_REUSED_NO_SCHEMA_CHANGE";
+    },
+    (descriptor) => {
+      descriptor.productionUrlSha256 = proof("f");
+    },
+    (descriptor) => {
+      descriptor.contractBundleSha256 = proof("f");
+    },
+  ];
+  for (const mutate of mutations) {
+    const input = harness({
+      descriptorTransform(descriptor) {
+        mutate(descriptor);
+        return descriptor;
+      },
+    });
+    assert.throws(
+      () => buildV213MaterializationSeed(input.arguments),
+      /V2_13_MATERIALIZATION_SEED_BUILDER_STATIC_DESCRIPTOR_(?:CONTRACT|FACTS)/u,
+    );
+  }
 });
 
 test("rejects fixture markers and drift in exact case materializer components", () => {

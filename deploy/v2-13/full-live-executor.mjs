@@ -54,7 +54,7 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:62826a322012ee54033c15688a8b888daa53c6356116f85edce652efc552e7ac",
+    "sha256:63c65ae2d009517e4fc6dc7d2314c7bae5bced10cdd9a43b385bf8dc1dfa926e",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
@@ -64,13 +64,13 @@ const SOURCE_PINS = Object.freeze({
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
-    "sha256:a6c2a066cc222f25c627772ea5eb89f50ca552b7cbb1a21b46ab476aaaea19e9",
+    "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b",
   "deploy/v2-13/neon-full-live-operator-grants.sql":
     "sha256:38c80de06ef6eff67a03be35326150cf742393efc07fd43ea0b30780c28afab6",
   "packages/control-plane/migrations/manifest.json":
-    "sha256:203bb3f7c6c83c99e87441f3c7d86248666dcd8f50e9cc17c119867adf30dc2b",
+    "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:67bd88146a436b57999e1f243532aa8505aa1fd34136335b98c3d833eb4e1ac9",
+    "sha256:b3700853f6e4639b3c2874982fa56ede04dd0f182bd46761478ffe871931d4ae",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")

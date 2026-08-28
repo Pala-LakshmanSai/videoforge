@@ -9,6 +9,7 @@ apps/web/src/routeTree.gen.ts
 project-context/assets
 project-context/references/ranga/frames
 project-context
+protected-inputs
 docs
 packages/contracts/generated
 packages/contracts/.venv
