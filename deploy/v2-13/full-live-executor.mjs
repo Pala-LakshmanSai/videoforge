@@ -573,7 +573,7 @@ export function assertResult(
         localCleanup.runtimeAndReconcilerRolesAbsent !== true ||
         !Number.isInteger(localCleanup.removedArtifactCount) ||
         localCleanup.removedArtifactCount < 0 ||
-        localCleanup.removedArtifactCount > 12 ||
+        localCleanup.removedArtifactCount > 56 ||
         (localCleanup.cleanupState === "REMOVED_AUTHORITY_BOUND_FILES" &&
           (!HASH.test(localCleanup.credentialBundleSha256 ?? "") ||
             localCleanup.removedArtifactCount < 1)) ||

@@ -580,6 +580,59 @@ test("cleanup proof rejects a production cleanup state that disagrees with retai
   );
 });
 
+test("bootstrap partial cleanup accepts the adapter maximum and rejects overflow", () => {
+  const operation = OPERATIONS.find(({ id }) => id === "reconcile-exact-resources");
+  const state = {
+    authority_id: "v2-13-test-executor-0001",
+    operator_role_verified: false,
+    state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+    phases: {
+      bootstrap_prequalification_database: {
+        work: {
+          "v2-13-test-executor-0001:bootstrap-prequalification-database": {
+            state: "AUTHORIZED_ONCE_NOT_REDISPATCHABLE",
+          },
+        },
+      },
+    },
+  };
+  const base = bootstrapPartialCleanupResult(operation, state, new Map());
+  const withRemovedArtifactCount = (removedArtifactCount) => {
+    const cleanup = {
+      ...base.localDatabaseCredentialCleanup,
+      cleanupState: "REMOVED_AUTHORITY_BOUND_FILES",
+      credentialBundleSha256: proof("a"),
+      removedArtifactCount,
+    };
+    const { cleanupSha256: _cleanupSha256, ...cleanupBody } = cleanup;
+    cleanup.cleanupSha256 = hash(Buffer.from(canonicalJson(cleanupBody)));
+    const result = {
+      ...base,
+      localDatabaseCredentialCleanup: cleanup,
+    };
+    result.proofSha256 = hash(
+      Buffer.from(
+        canonicalJson({
+          providerCleanupEvidenceSha256: result.evidenceSha256,
+          localDatabaseCredentialCleanupSha256: cleanup.cleanupSha256,
+        }),
+      ),
+    );
+    return result;
+  };
+
+  assert.doesNotThrow(() =>
+    assertResult(operation, withRemovedArtifactCount(26), state, new Map()),
+  );
+  assert.doesNotThrow(() =>
+    assertResult(operation, withRemovedArtifactCount(56), state, new Map()),
+  );
+  assert.throws(
+    () => assertResult(operation, withRemovedArtifactCount(57), state, new Map()),
+    /PREQUALIFICATION_PARTIAL_CLEANUP_READBACK/u,
+  );
+});
+
 test("execute mode has a closed concrete catalog and requires exact state binding", () => {
   const result = spawnSync(
     process.execPath,
