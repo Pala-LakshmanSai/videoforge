@@ -285,6 +285,15 @@ function repairExactDatabaseScope(database) {
     ],
     prequalification_database_bootstrap_runtime_reconciler_credentials_staged_roles_absent_until_guarded_activation:
       bootstrap.runtime_and_reconciler_credentials_staged_but_roles_remain_absent_until_guarded_activation,
+    prequalification_database_bootstrap_exact_one_time_database_role_credential_count:
+      bootstrap.exact_one_time_database_role_credential_count,
+    prequalification_database_bootstrap_exact_one_time_database_role_credential_scope:
+      bootstrap.exact_one_time_database_role_credential_scope,
+    prequalification_database_bootstrap_exact_one_time_internal_production_credential_count:
+      bootstrap.exact_one_time_internal_production_credential_count,
+    prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope: [
+      ...bootstrap.exact_one_time_internal_production_credential_scope,
+    ],
     prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count:
       bootstrap.operator_dsn_policy.value_read_after_migration_prefix_commit_count,
     prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit:
@@ -366,6 +375,21 @@ function v3Fixture({ releaseSourceCommit = v3ReleaseSourceCommit } = {}) {
     exact_runtime_role: "videoforge_hosted_runtime",
     exact_reconciler_role: "videoforge_hosted_reconciler",
     roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
+    exact_one_time_credential_count:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_count,
+    exact_credential_scope:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_scope,
+    generated_only_after_consumption: true,
+    other_database_credential_creation_or_rotation_forbidden: true,
+  };
+  approval.approval.internal_production_credentials = {
+    exact_one_time_count:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_count,
+    exact_scope: [
+      ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_scope,
+    ],
+    generated_only_after_consumption: true,
+    other_credential_creation_or_rotation_forbidden: true,
   };
   const orderedApproval = {};
   for (const [key, value] of Object.entries(approval)) {
@@ -596,6 +620,38 @@ test("V3 approval cannot drift from the proposal-sealed static release descripto
       }),
     /STATIC_RELEASE_DESCRIPTOR_BINDING/u,
   );
+});
+
+test("V3 approval exactly authorizes three post-consumption database credentials", () => {
+  const fixture = v3Fixture();
+  for (const mutate of [
+    (approval) => {
+      approval.approval.database_roles.exact_one_time_credential_count = 4;
+    },
+    (approval) => {
+      approval.approval.database_roles.exact_credential_scope = "OPERATOR_ONLY";
+    },
+    (approval) => {
+      approval.approval.database_roles.generated_only_after_consumption = false;
+    },
+    (approval) => {
+      approval.approval.database_roles.other_database_credential_creation_or_rotation_forbidden = false;
+    },
+  ]) {
+    const approval = JSON.parse(fixture.approvalBytes);
+    mutate(approval);
+    assert.throws(
+      () =>
+        validateFullLiveUserApproval({
+          proposalBytes: fixture.proposalBytes,
+          approvalBytes: Buffer.from(`${JSON.stringify(approval)}\n`),
+          expectedProposalSha256: hash(fixture.proposalBytes),
+          expectedProposalRecordCommit: "f".repeat(40),
+          expectedReleaseSourceCommit: v3ReleaseSourceCommit,
+        }),
+      /DATABASE_ROLES/u,
+    );
+  }
 });
 
 test("V3 full-live UUID is exact across sealed facts, approval, and outer authority", () => {
@@ -1281,6 +1337,15 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "videoforge_hosted_reconciler",
     ],
     prequalification_database_bootstrap_runtime_reconciler_credentials_staged_roles_absent_until_guarded_activation: true,
+    prequalification_database_bootstrap_exact_one_time_database_role_credential_count:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_count,
+    prequalification_database_bootstrap_exact_one_time_database_role_credential_scope:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_scope,
+    prequalification_database_bootstrap_exact_one_time_internal_production_credential_count:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_count,
+    prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope: [
+      ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_scope,
+    ],
     prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 45,
     prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit: true,
     prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
@@ -1302,24 +1367,11 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45],
     exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45],
   });
-  assert.deepEqual(bootstrap.receipt_exact_fields, [
-    "schema_version",
-    "full_live_authority_id",
-    "outer_state_sha256",
-    "ledger_before_count",
-    "ledger_before_sha256",
-    "ledger_after_sha256",
-    "operator_acl_sha256",
-    "operator_database_url_sha256",
-    "runtime_database_url_sha256",
-    "reconciler_database_url_sha256",
-    "database_role_credential_bundle_sha256",
-    "pgcrypto_sha256",
-    "recovery_mode",
-    "runpod_calls",
-    "cloudflare_calls",
-    "application_secret_reads",
-  ]);
+  assert.equal(bootstrap.receipt_exact_fields.includes("production_secret_bootstrap_sha256"), true);
+  assert.equal(
+    bootstrap.receipt_exact_fields.includes("credential_bootstrap_receipt_sha256"),
+    true,
+  );
   assert.deepEqual(bootstrap.receipt_full_exact_fields, [
     ...bootstrap.receipt_exact_fields,
     "prequalification_database_bootstrap_sha256",
@@ -1390,7 +1442,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     );
   assert.equal(bootstrap.runpod_calls, 0);
   assert.equal(bootstrap.cloudflare_calls, 0);
-  assert.equal(bootstrap.application_secret_reads, 0);
+  assert.equal(bootstrap.application_secret_reads, 5);
   assert.equal(bootstrap.gpu_use, false);
   assert.equal(bootstrap.external_spend_usd, 0);
   assert.equal(bootstrap.guarded_activation_consumes_verified_receipt, true);

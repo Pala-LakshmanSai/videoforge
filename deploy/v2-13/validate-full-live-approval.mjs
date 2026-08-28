@@ -35,12 +35,12 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:37a5b67ae0f0332e37796ec3cd21572bebabce1e64245faf6688a4e2d79352fb",
+    sha256: "sha256:69babc26f72ac45c8ac340f49b53eb9f356f6e5da723a7edb511f15145e9496c",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:4d9d765cacfd50e671c6f22ce873ac4014a43bce707992d6352de8462f8b8036",
+    sha256: "sha256:3da96cbf5ada4d80b50eeeffebe54ae22ff5ffe93e976d61d100b527c28f3fb7",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -48,11 +48,11 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:91152ee194afad78f7a38105487982714afefa630fb2cc20328d65e92aa92ad0",
+    sha256: "sha256:57789d447adc4500566ebe4378b0c145a0d6fbe0a6782ce668084349f25d54d1",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:6444d16276b08073f5cb3ee508519e7c00e5808e8f513e0418feb4438dd5c978",
+    sha256: "sha256:fdd185ea0053da28997ffff8f1fb1b2d34ba70e06757d4085835231dea0f4b7e",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -72,7 +72,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:8547b80083bf959904a19d181a1fc81cbff23ed78474686501a0afb3e9bd14dc",
+    sha256: "sha256:fb4383065524b8b692d2d14e8067b7daf0cb890e2b724e227d1a35abd90297a7",
   }),
   materialization_seed_envelope_schema: Object.freeze({
     path: "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
@@ -136,7 +136,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:4df4b9112dab1bf41a4e26f1abe9cd0f8b49edd403d0acb48aa5f0a35dfc98e5",
+    sha256: "sha256:0409e411a2617d370e08e79360d64bb923bcc87d739142be0848a570bcc64af0",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
@@ -233,13 +233,16 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
   future_result_files_required_at_initial_preflight: false,
   protected_seed_schema: "videoforge.v213-full-live-materialization-seed/v1",
   protected_seed_contains_only: Object.freeze([
-    "outer-production-base",
-    "pre-endpoint-secrets-base",
+    "outer-production-descriptor-base",
+    "deterministic-envelope-key-id-only-no-key-material",
     "guarded-authority-base",
     "config-activation-base",
-    "media-manifest",
+    "null-media-manifest-sentinel",
     "promotion-base",
   ]),
+  preconsumption_production_secret_files_or_values_allowed: false,
+  postconsumption_production_secret_materialization_operation:
+    "bootstrap-prequalification-database",
   materialization_seed_sha256_field: "materialization_seed_sha256",
   materialization_seed_sha256_must_be_bound_in_outer_authority: true,
   materialization_seed_sha256_must_be_bound_in_consumption_record: true,
@@ -482,7 +485,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
   operation_id: "bootstrap-prequalification-database",
   phase: "bootstrap_prequalification_database",
   phase_cap_usd: 0,
-  result_schema: "videoforge.v213-prequalification-database-bootstrap-result/v2",
+  result_schema: "videoforge.v213-prequalification-database-bootstrap-result/v3",
   ordered_before_operation: "fresh-live-preflight",
   requires_consumed_outer_authority: true,
   exact_operator_role: "videoforge_hosted_operator",
@@ -507,6 +510,49 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
   exact_one_time_database_role_credential_scope:
     "OPERATOR_RUNTIME_RECONCILER_ONLY_INSIDE_CONSUMED_BOOTSTRAP",
   other_credential_creation_or_rotation_forbidden: true,
+  exact_one_time_internal_production_credential_count: 10,
+  exact_one_time_internal_production_credential_scope: Object.freeze([
+    "acceptance-evidence-signing-key",
+    "better-auth-secret",
+    "media-worker-token-secret",
+    "pair-dispatch-token-key",
+    "pair-envelope-signing-key",
+    "pair-provider-proof-key",
+    "provenance-receipt-hmac-key",
+    "stage-authority-signing-key",
+    "worker-operator-bearer",
+    "workflow-callback-secret",
+  ]),
+  completed_external_credential_bootstrap_receipt: Object.freeze({
+    schema: "videoforge.v2-13-credential-bootstrap-result/v1",
+    sha256: "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab",
+    protected_value_count: 4,
+    exact_value_kinds: Object.freeze([
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+    ]),
+    secret_free_receipt_rehashed_before_value_reads: true,
+    every_value_rehashed_against_receipt_and_source_binding: true,
+    creation_or_rotation_authorized: false,
+  }),
+  production_secret_materialization: Object.freeze({
+    operation_id: "bootstrap-prequalification-database",
+    requires_consumed_outer_authority: true,
+    canonical_bundle_schema: "videoforge.v213-production-secret-bootstrap/v1",
+    pre_endpoint_schema: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
+    exact_generated_credential_count: 10,
+    deterministic_key_ids_bound_to_full_live_authority: true,
+    seed_envelope_signing_key_id_must_equal_generated_pair_envelope_key_id: true,
+    google_and_r2_values_are_byte_equal_copies_of_receipt_bound_protected_files: true,
+    worker_bearer_is_byte_equal_in_bundle_secret_file_and_bridge_file: true,
+    runpod_api_key_is_byte_equal_in_protected_source_and_cloudflare_secret_file: true,
+    worker_origin_is_seed_derived: true,
+    deterministic_authority_bound_staging_and_exact_cas: true,
+    reconciliation_is_readback_only: true,
+    raw_values_forbidden_in_receipt_result_logs_and_argv: true,
+  }),
   deterministic_authority_bound_staging_paths_required: true,
   staging_path_binding: "FULL_LIVE_AUTHORITY_ID_AND_RESOLVED_FINAL_PATH_SHA256",
   random_secret_bearing_staging_paths_forbidden: true,
@@ -559,6 +605,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "schema_version",
     "full_live_authority_id",
     "outer_state_sha256",
+    "materialization_seed_sha256",
     "ledger_before_count",
     "ledger_before_sha256",
     "ledger_after_sha256",
@@ -567,6 +614,11 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "runtime_database_url_sha256",
     "reconciler_database_url_sha256",
     "database_role_credential_bundle_sha256",
+    "credential_bootstrap_receipt_sha256",
+    "production_secret_bootstrap_sha256",
+    "production_secrets_sha256",
+    "production_secret_file_sha256s",
+    "internal_credential_key_ids",
     "pgcrypto_sha256",
     "recovery_mode",
     "runpod_calls",
@@ -577,6 +629,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "schema_version",
     "full_live_authority_id",
     "outer_state_sha256",
+    "materialization_seed_sha256",
     "ledger_before_count",
     "ledger_before_sha256",
     "ledger_after_sha256",
@@ -585,6 +638,11 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "runtime_database_url_sha256",
     "reconciler_database_url_sha256",
     "database_role_credential_bundle_sha256",
+    "credential_bootstrap_receipt_sha256",
+    "production_secret_bootstrap_sha256",
+    "production_secrets_sha256",
+    "production_secret_file_sha256s",
+    "internal_credential_key_ids",
     "pgcrypto_sha256",
     "recovery_mode",
     "runpod_calls",
@@ -737,7 +795,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
   output_name: "prequalification_database_bootstrap_sha256",
   runpod_calls: 0,
   cloudflare_calls: 0,
-  application_secret_reads: 0,
+  application_secret_reads: 5,
   gpu_use: false,
   external_spend_usd: 0,
   failure_recovery:
@@ -1327,7 +1385,9 @@ function validateFullLiveUserApproval({
       "gpu",
       "retention",
       "provider_free_control_plane",
-      ...(isV3 ? ["immutable_github_release_ref", "database_roles"] : []),
+      ...(isV3
+        ? ["immutable_github_release_ref", "database_roles", "internal_production_credentials"]
+        : []),
     ]) ||
     !exactKeys(approval.approval.phase_caps_usd, Object.keys(EXPECTED_PHASE_CAPS)) ||
     !exactKeys(approval.approval.gpu, [
@@ -1361,6 +1421,23 @@ function validateFullLiveUserApproval({
       "plan_change_authorized",
       "stop_on_metered_plan_or_new_paid_resource",
     ]) ||
+    (isV3 &&
+      (!exactKeys(approval.approval.internal_production_credentials, [
+        "exact_one_time_count",
+        "exact_scope",
+        "generated_only_after_consumption",
+        "other_credential_creation_or_rotation_forbidden",
+      ]) ||
+        approval.approval.internal_production_credentials.exact_one_time_count !==
+          EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_count ||
+        JSON.stringify(approval.approval.internal_production_credentials.exact_scope) !==
+          JSON.stringify(
+            EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_scope,
+          ) ||
+        approval.approval.internal_production_credentials.generated_only_after_consumption !==
+          true ||
+        approval.approval.internal_production_credentials
+          .other_credential_creation_or_rotation_forbidden !== true)) ||
     !exactKeys(approval.execution_fences, EXECUTION_FENCE_KEYS)
   )
     fail("NESTED_SCHEMA");
@@ -1458,6 +1535,10 @@ function validateFullLiveUserApproval({
         "exact_runtime_role",
         "exact_reconciler_role",
         "roles_must_be_fresh_absent_distinct_login_noinherit_hardened",
+        "exact_one_time_credential_count",
+        "exact_credential_scope",
+        "generated_only_after_consumption",
+        "other_database_credential_creation_or_rotation_forbidden",
       ])
     )
       fail("V3_NESTED_SCHEMA");
@@ -1501,6 +1582,10 @@ function validateFullLiveUserApproval({
         "prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count",
         "prequalification_database_bootstrap_credential_roles",
         "prequalification_database_bootstrap_runtime_reconciler_credentials_staged_roles_absent_until_guarded_activation",
+        "prequalification_database_bootstrap_exact_one_time_database_role_credential_count",
+        "prequalification_database_bootstrap_exact_one_time_database_role_credential_scope",
+        "prequalification_database_bootstrap_exact_one_time_internal_production_credential_count",
+        "prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope",
         "prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count",
         "prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit",
         "prequalification_database_bootstrap_phase",
@@ -1552,6 +1637,18 @@ function validateFullLiveUserApproval({
         ) ||
       requestedDatabase.prequalification_database_bootstrap_runtime_reconciler_credentials_staged_roles_absent_until_guarded_activation !==
         EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.runtime_and_reconciler_credentials_staged_but_roles_remain_absent_until_guarded_activation ||
+      requestedDatabase.prequalification_database_bootstrap_exact_one_time_database_role_credential_count !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_count ||
+      requestedDatabase.prequalification_database_bootstrap_exact_one_time_database_role_credential_scope !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_scope ||
+      requestedDatabase.prequalification_database_bootstrap_exact_one_time_internal_production_credential_count !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_count ||
+      JSON.stringify(
+        requestedDatabase.prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope,
+      ) !==
+        JSON.stringify(
+          EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_scope,
+        ) ||
       requestedDatabase.prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count !==
         EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.operator_dsn_policy
           .value_read_after_migration_prefix_commit_count ||
@@ -1588,7 +1685,13 @@ function validateFullLiveUserApproval({
       approvedDatabase?.exact_operator_role !== requestedDatabase.exact_operator_role ||
       approvedDatabase?.exact_runtime_role !== requestedDatabase.exact_runtime_role ||
       approvedDatabase.exact_reconciler_role !== requestedDatabase.exact_reconciler_role ||
-      approvedDatabase.roles_must_be_fresh_absent_distinct_login_noinherit_hardened !== true
+      approvedDatabase.roles_must_be_fresh_absent_distinct_login_noinherit_hardened !== true ||
+      approvedDatabase.exact_one_time_credential_count !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_count ||
+      approvedDatabase.exact_credential_scope !==
+        EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_scope ||
+      approvedDatabase.generated_only_after_consumption !== true ||
+      approvedDatabase.other_database_credential_creation_or_rotation_forbidden !== true
     )
       fail("DATABASE_ROLES");
   }

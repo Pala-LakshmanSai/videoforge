@@ -1377,6 +1377,64 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
   const operatorPath = resolve(directory, "operator.database-url");
   const runtimePath = resolve(directory, "runtime.database-url");
   const reconcilerPath = resolve(directory, "reconciler.database-url");
+  const productionSecretsPath = resolve(directory, "production-secrets.json");
+  const productionSecretBootstrapPath = resolve(directory, "production-secret-bootstrap.json");
+  const workerOriginPath = resolve(directory, "worker-origin");
+  const workerBearerPath = resolve(directory, "worker-operator-bearer");
+  const materializationSeedPath = resolve(directory, "materialization-seed.json");
+  const credentialReceiptPath = resolve(directory, "credential-bootstrap.json");
+  const credentialSourceDirectory = resolve(directory, "credential-sources");
+  mkdirSync(credentialSourceDirectory, { mode: 0o700 });
+  const syntheticSourceValues = Object.freeze({
+    GOOGLE_CLIENT_ID: "fixture-google-client-id",
+    GOOGLE_CLIENT_SECRET: "fixture-google-client-secret",
+    R2_ACCESS_KEY_ID: "fixture-r2-access-key-id",
+    R2_SECRET_ACCESS_KEY: "fixture-r2-secret-access-key",
+    RUNPOD_API_KEY: "fixture-runpod-api-key-0123456789",
+  });
+  const syntheticSourcePaths = Object.fromEntries(
+    Object.keys(syntheticSourceValues).map((name) => [
+      name,
+      resolve(credentialSourceDirectory, name),
+    ]),
+  );
+  Object.entries(syntheticSourceValues).forEach(([name, value]) =>
+    writeFileSync(syntheticSourcePaths[name], value, { mode: 0o600 }),
+  );
+  const syntheticSecretHashes = Object.fromEntries(
+    Object.entries(syntheticSourceValues)
+      .filter(([name]) => name !== "RUNPOD_API_KEY")
+      .map(([name, value]) => [name, hash(Buffer.from(value))]),
+  );
+  const syntheticCredentialReceipt = {
+    schema_version: "videoforge.v2-13-credential-bootstrap-result/v1",
+    source_commit: sourceCommit,
+    google_authenticated_account_sha256: hash(Buffer.from("fixture-account")),
+    google_project_id: "fixture-project",
+    google_project_id_sha256: hash(Buffer.from("fixture-project")),
+    google_project_number_sha256: hash(Buffer.from("fixture-project-number")),
+    google_oauth_client_id_sha256: syntheticSecretHashes.GOOGLE_CLIENT_ID,
+    google_oauth_client_secret_sha256: syntheticSecretHashes.GOOGLE_CLIENT_SECRET,
+    google_redirect_uris_canonical_sha256: hash(Buffer.from("[]")),
+    google_javascript_origins_canonical_sha256: hash(Buffer.from("[]")),
+    cloudflare_account_id_sha256: hash(Buffer.from("fixture-cloudflare-account")),
+    r2_bucket_name_sha256: hash(Buffer.from("fixture-bucket")),
+    r2_permission_group: "fixture-permission-group",
+    r2_credential_type: "R2_S3_LONG_LIVED_ACCESS_KEY",
+    r2_credential_lifetime: "LONG_LIVED",
+    r2_credential_expiration_policy: "NO_EXPIRATION",
+    r2_credential_expiration_at: null,
+    r2_access_key_id_sha256: syntheticSecretHashes.R2_ACCESS_KEY_ID,
+    r2_secret_access_key_sha256: syntheticSecretHashes.R2_SECRET_ACCESS_KEY,
+    application_key_grammar: "fixture-key-grammar",
+    runpod_calls: 0,
+    gpu_hours: 0,
+    external_spend_usd: 0,
+  };
+  const syntheticCredentialReceiptBytes = Buffer.from(
+    `${canonicalJson(syntheticCredentialReceipt)}\n`,
+  );
+  writeFileSync(credentialReceiptPath, syntheticCredentialReceiptBytes, { mode: 0o600 });
   writeFileSync(
     servicePath,
     "[videoforge_v2_13_owner]\nhost=example.neon.tech\ndbname=videoforge\nuser=videoforge_owner\nsslmode=require\nchannel_binding=require\n",
@@ -1461,10 +1519,21 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     throw new Error(`unexpected fake psql SQL: ${sql.slice(0, 120)}`);
   };
   const outerStateSha256 = `sha256:${"f".repeat(64)}`;
+  const authorityId = "11111111-1111-4111-8111-111111111111";
+  const productionKeyId = (purpose) =>
+    `v213-${purpose}-${hash(Buffer.from(`${authorityId}\0${purpose}`)).slice(7, 31)}`;
+  const materializationSeed = materializationSeedFixture();
+  materializationSeed.production_input_base.fullLiveAuthorityId = authorityId;
+  materializationSeed.production_input_base.dualLaneInput.envelopeSigningKeyId =
+    productionKeyId("envelope");
+  writeFileSync(materializationSeedPath, `${canonicalJson(materializationSeed)}\n`, {
+    mode: 0o600,
+  });
+  const materializationSeedSha256 = hash(Buffer.from(`${canonicalJson(materializationSeed)}\n`));
   const consumedState = {
     ...state,
     schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v2",
-    authority_id: "v2-13-bootstrap-test-authority",
+    authority_id: authorityId,
     state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
     operator_role_verified: false,
   };
@@ -1473,12 +1542,30 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     VIDEOFORGE_V2_13_SECRET_INPUT_DIR: secretInputDirectory,
     VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE: runtimePath,
     VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE: reconcilerPath,
+    VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: materializationSeedPath,
+    VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE: productionSecretsPath,
+    VIDEOFORGE_V2_13_PRODUCTION_SECRET_BOOTSTRAP_FILE: productionSecretBootstrapPath,
+    VIDEOFORGE_V2_13_WORKER_ORIGIN_FILE: workerOriginPath,
+    VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE: workerBearerPath,
+    VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE: credentialReceiptPath,
+    VIDEOFORGE_V2_13_GOOGLE_CLIENT_ID_FILE: syntheticSourcePaths.GOOGLE_CLIENT_ID,
+    VIDEOFORGE_V2_13_GOOGLE_CLIENT_SECRET_FILE: syntheticSourcePaths.GOOGLE_CLIENT_SECRET,
+    VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE: syntheticSourcePaths.R2_ACCESS_KEY_ID,
+    VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE: syntheticSourcePaths.R2_SECRET_ACCESS_KEY,
+    VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE: syntheticSourcePaths.RUNPOD_API_KEY,
+  };
+  consumedState.materialization_seed_sha256 = materializationSeedSha256;
+  const credentialBootstrapBinding = {
+    receiptSchema: "videoforge.v2-13-credential-bootstrap-result/v1",
+    receiptSha256: hash(syntheticCredentialReceiptBytes),
+    secretHashes: syntheticSecretHashes,
   };
   let credentialGenerationCount = 0;
   try {
     const adapter = createPrequalificationDatabaseBootstrapAdapter({
       environment,
       run,
+      credentialBootstrapBinding,
       credentialRandomBytes: (size) => {
         assert.equal(migrationSqls.length, 9);
         credentialGenerationCount += 1;
@@ -1578,7 +1665,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(output.actualUsd, 0);
     assert.equal(
       output.schema_version,
-      "videoforge.v213-prequalification-database-bootstrap-result/v2",
+      "videoforge.v213-prequalification-database-bootstrap-result/v3",
     );
     assert.equal(output.full_live_authority_id, consumedState.authority_id);
     assert.equal(output.outer_state_sha256, outerStateSha256);
@@ -1586,10 +1673,10 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(output.ledger_before_count, 36);
     assert.equal(output.runpod_calls, 0);
     assert.equal(output.cloudflare_calls, 0);
-    assert.equal(output.application_secret_reads, 0);
+    assert.equal(output.application_secret_reads, 5);
     assert.equal(output.gpu_use, false);
     assert.equal(output.external_spend_usd, 0);
-    assert.equal(credentialGenerationCount, 3);
+    assert.equal(credentialGenerationCount, 13);
     assert.equal(
       new Set([
         output.operator_database_url_sha256,
@@ -1628,6 +1715,34 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(
       readFileSync(reconcilerPath, "utf8"),
       readFileSync(resolve(secretInputDirectory, "VIDEOFORGE_RECONCILER_DATABASE_URL"), "utf8"),
+    );
+    assert.equal(
+      output.credential_bootstrap_receipt_sha256,
+      credentialBootstrapBinding.receiptSha256,
+    );
+    assert.match(output.production_secret_bootstrap_sha256, /^sha256:[0-9a-f]{64}$/u);
+    assert.match(output.production_secrets_sha256, /^sha256:[0-9a-f]{64}$/u);
+    assert.equal(Object.keys(output.production_secret_file_sha256s).length, 18);
+    assert.equal(Object.keys(output.internal_credential_key_ids).length, 4);
+    assert.equal(
+      output.internal_credential_key_ids.pairEnvelopeSigningKeyId,
+      materializationSeed.production_input_base.dualLaneInput.envelopeSigningKeyId,
+    );
+    for (const name of [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "RUNPOD_API_KEY",
+    ])
+      assert.deepEqual(
+        readFileSync(resolve(secretInputDirectory, name)),
+        readFileSync(syntheticSourcePaths[name]),
+        `${name} must be byte-equal to the receipt-bound source`,
+      );
+    assert.deepEqual(
+      readFileSync(workerBearerPath),
+      readFileSync(resolve(secretInputDirectory, "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN")),
     );
     const generationsBeforeForbiddenNormalReplay = credentialGenerationCount;
     await assert.rejects(
@@ -1716,6 +1831,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
           ],
         ]),
         run,
+        credentialBootstrapBinding,
       }),
       /PREQUALIFICATION_RECEIPT_OUTER_CAS/u,
     );
@@ -1739,7 +1855,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
         ]),
         `sha256:${"f".repeat(64)}`,
       ),
-      /BRIDGE_PREQUALIFICATION_RECEIPT/u,
+      /PREQUALIFICATION_RECEIPT_CONTRACT/u,
     );
     const originalReceiptBytes = readFileSync(receiptPath);
     const mismatchedReceipt = {
@@ -1759,6 +1875,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
           ["bootstrap-prequalification-database", { ...output, ...mismatchedReceipt }],
         ]),
         run,
+        credentialBootstrapBinding,
       }),
       /PREQUALIFICATION_VERIFY_LEDGER_BEFORE/u,
     );
@@ -1768,6 +1885,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       environment,
       priorResults: new Map([["bootstrap-prequalification-database", recovered]]),
       run,
+      credentialBootstrapBinding,
     });
     assert.equal(verified.ledger.length, 45);
     assert.equal(lockedLedgerReads, lockedLedgerReadsBeforeVerifiedReceipt + 1);
@@ -1782,6 +1900,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
         environment,
         priorResults: new Map([["bootstrap-prequalification-database", recovered]]),
         run,
+        credentialBootstrapBinding,
       }),
       /PREQUALIFICATION_DATABASE_CREDENTIAL_FILE/u,
     );
@@ -1837,7 +1956,9 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(cleaned.fullLiveAuthorityId, cleanupState.authority_id);
     assert.equal(cleaned.operatorRoleAbsent, true);
     assert.equal(cleaned.runtimeAndReconcilerRolesAbsent, true);
-    assert.equal(cleaned.removedArtifactCount, 6);
+    // Five remaining database artifacts plus twenty-one authority-bound production-secret
+    // artifacts are removed only after the owner role-absence proof.
+    assert.equal(cleaned.removedArtifactCount, 26);
     assert.equal(cleaned.credentialBundleSha256, hash(bundleBytes));
     const { cleanupSha256, ...cleanupBody } = cleaned;
     assert.equal(cleanupSha256, hash(Buffer.from(canonicalJson(cleanupBody))));
@@ -2128,13 +2249,20 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       mode: 0o600,
     });
     later.set("bootstrap-prequalification-database", {
-      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v2",
+      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v3",
       full_live_authority_id: materialState.authority_id,
       outer_state_sha256: `sha256:${"3".repeat(64)}`,
+      materialization_seed_sha256: materialState.materialization_seed_sha256,
       operator_database_url_sha256: hash(operatorDatabaseUrl),
       runtime_database_url_sha256: hash(Buffer.from("static-0")),
       reconciler_database_url_sha256: hash(Buffer.from("static-8")),
       database_role_credential_bundle_sha256: `sha256:${"4".repeat(64)}`,
+      credential_bootstrap_receipt_sha256:
+        "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab",
+      production_secret_bootstrap_sha256: `sha256:${"6".repeat(64)}`,
+      production_secrets_sha256: `sha256:${"7".repeat(64)}`,
+      production_secret_file_sha256s: { DATABASE_URL: `sha256:${"8".repeat(64)}` },
+      internal_credential_key_ids: { pairEnvelopeSigningKeyId: "v213-envelope-key" },
       prequalification_database_bootstrap_sha256: `sha256:${"5".repeat(64)}`,
     });
     await assert.rejects(
@@ -2992,4 +3120,431 @@ test("acceptance adapter maps only redacted settled summaries into outer receipt
   });
   const result = await adapters["v2-10-operator-free-ranga-pilot"]();
   assert.deepEqual(result, { actualUsd: 0.5, accepted: true, ...summary });
+});
+
+test("post-consumption production-secret bootstrap binds every protected copy and reconciles by CAS", async () => {
+  // The fixture uses synthetic values and an injected expected-hash map; it never reads a
+  // developer credential or calls a provider. Production defaults remain the sealed proposal
+  // hashes. This seam lets this test exercise the complete file/CAS protocol without importing
+  // the real Google, R2, or RunPod values.
+  const directory = realpathSync(mkdtempSync(resolve(tmpdir(), "v213-production-secret-test-")));
+  chmodSync(directory, 0o700);
+  const postgresDirectory = resolve(directory, "postgres");
+  const secretDirectory = resolve(directory, "secret-input");
+  const sourceDirectory = resolve(directory, "credential-sources");
+  mkdirSync(postgresDirectory, { mode: 0o700 });
+  mkdirSync(secretDirectory, { mode: 0o700 });
+  mkdirSync(sourceDirectory, { mode: 0o700 });
+  const servicePath = resolve(postgresDirectory, "owner.pg_service.conf");
+  const passPath = resolve(postgresDirectory, "owner.pgpass");
+  writeFileSync(
+    servicePath,
+    "[videoforge_v2_13_owner]\nhost=example.neon.tech\ndbname=videoforge\nuser=videoforge_owner\nsslmode=require\nchannel_binding=require\n",
+    { mode: 0o600 },
+  );
+  writeFileSync(passPath, "example.neon.tech:5432:videoforge:videoforge_owner:owner-password\n", {
+    mode: 0o600,
+  });
+  const seedPath = resolve(directory, "materialization-seed.json");
+  const productionSecretsPath = resolve(directory, "production-secrets.json");
+  const productionSecretBootstrapPath = resolve(directory, "production-secret-bootstrap.json");
+  const workerOriginPath = resolve(directory, "worker-origin");
+  const workerBearerPath = resolve(directory, "worker-operator-bearer");
+  const receiptPath = resolve(directory, "credential-bootstrap.json");
+  const sourceValues = Object.freeze({
+    GOOGLE_CLIENT_ID: "fixture-google-client-id",
+    GOOGLE_CLIENT_SECRET: "fixture-google-client-secret",
+    R2_ACCESS_KEY_ID: "fixture-r2-access-key-id",
+    R2_SECRET_ACCESS_KEY: "fixture-r2-secret-access-key",
+    RUNPOD_API_KEY: "fixture-runpod-api-key-0123456789",
+  });
+  const sourcePaths = Object.fromEntries(
+    Object.keys(sourceValues).map((name) => [name, resolve(sourceDirectory, name)]),
+  );
+  Object.entries(sourceValues).forEach(([name, value]) =>
+    writeFileSync(sourcePaths[name], value, { mode: 0o600 }),
+  );
+  const sourceHashes = Object.fromEntries(
+    Object.entries(sourceValues)
+      .filter(([name]) => name !== "RUNPOD_API_KEY")
+      .map(([name, value]) => [name, hash(Buffer.from(value))]),
+  );
+  const credentialReceipt = {
+    schema_version: "videoforge.v2-13-credential-bootstrap-result/v1",
+    source_commit: sourceCommit,
+    google_authenticated_account_sha256: hash(Buffer.from("fixture-account")),
+    google_project_id: "fixture-project",
+    google_project_id_sha256: hash(Buffer.from("fixture-project")),
+    google_project_number_sha256: hash(Buffer.from("fixture-project-number")),
+    google_oauth_client_id_sha256: sourceHashes.GOOGLE_CLIENT_ID,
+    google_oauth_client_secret_sha256: sourceHashes.GOOGLE_CLIENT_SECRET,
+    google_redirect_uris_canonical_sha256: hash(Buffer.from("[]")),
+    google_javascript_origins_canonical_sha256: hash(Buffer.from("[]")),
+    cloudflare_account_id_sha256: hash(Buffer.from("fixture-cloudflare-account")),
+    r2_bucket_name_sha256: hash(Buffer.from("fixture-bucket")),
+    r2_permission_group: "fixture-permission-group",
+    r2_credential_type: "R2_S3_LONG_LIVED_ACCESS_KEY",
+    r2_credential_lifetime: "LONG_LIVED",
+    r2_credential_expiration_policy: "NO_EXPIRATION",
+    r2_credential_expiration_at: null,
+    r2_access_key_id_sha256: sourceHashes.R2_ACCESS_KEY_ID,
+    r2_secret_access_key_sha256: sourceHashes.R2_SECRET_ACCESS_KEY,
+    application_key_grammar: "fixture-key-grammar",
+    runpod_calls: 0,
+    gpu_hours: 0,
+    external_spend_usd: 0,
+  };
+  const credentialReceiptBytes = Buffer.from(`${canonicalJson(credentialReceipt)}\n`);
+  writeFileSync(receiptPath, credentialReceiptBytes, { mode: 0o600 });
+  const authorityId = "11111111-1111-4111-8111-111111111111";
+  const outerStateSha256 = hash(Buffer.from("fixture-outer-state"));
+  const productionKeyId = (purpose) =>
+    `v213-${purpose}-${hash(Buffer.from(`${authorityId}\0${purpose}`)).slice(7, 31)}`;
+  const seed = materializationSeedFixture();
+  seed.production_input_base.fullLiveAuthorityId = authorityId;
+  seed.production_input_base.dualLaneInput.envelopeSigningKeyId = productionKeyId("envelope");
+  writeFileSync(seedPath, `${canonicalJson(seed)}\n`, { mode: 0o600 });
+  const seedSha256 = hash(Buffer.from(`${canonicalJson(seed)}\n`));
+
+  const manifest = JSON.parse(
+    readFileSync("packages/control-plane/migrations/manifest.json", "utf8"),
+  );
+  const rows = (count) =>
+    manifest.migrations
+      .slice(0, count)
+      .map(({ version, name, filename, sha256 }) => `${version}\t${name}\t${filename}\t${sha256}`)
+      .join("\n");
+  const role = {
+    flags: {
+      rolcanlogin: true,
+      rolsuper: false,
+      rolcreaterole: false,
+      rolcreatedb: false,
+      rolinherit: false,
+      rolreplication: false,
+      rolbypassrls: false,
+      rolconfig: null,
+    },
+    memberships: 0,
+    ownership: 0,
+    extension_ownership: 0,
+    database_acl: 0,
+    effective_database_dangerous_acl: 0,
+    schema_acl: ["public:USAGE"],
+    effective_schema_dangerous_acl: 0,
+    table_acl: 0,
+    effective_table_acl: 0,
+    sequence_acl: 0,
+    effective_sequence_acl: 0,
+    default_acl: 0,
+    function_acl: [...PREQUALIFICATION_OPERATOR_FUNCTIONS].sort(),
+    public_function_acl: [],
+    public_default_function_acl: 0,
+  };
+  const calls = [];
+  let lockedLedgerReads = 0;
+  let operatorCreated = false;
+  const run = (command, args, options = {}) => {
+    calls.push([command, args, options]);
+    assert.equal(command, "psql");
+    const fileIndex = args.indexOf("--file");
+    if (fileIndex >= 0) {
+      const path = args[fileIndex + 1];
+      if (path.endsWith("neon-full-live-operator-grants.sql")) {
+        operatorCreated = true;
+        return result();
+      }
+      return result();
+    }
+    const sql = args[args.indexOf("--command") + 1] ?? "";
+    if (sql.includes("CREATE EXTENSION IF NOT EXISTS pgcrypto")) return result();
+    if (sql.includes("json_build_object('operator'"))
+      return result(
+        0,
+        `${JSON.stringify({ operator: operatorCreated ? 1 : 0, runtime: 0, reconciler: 0 })}\n`,
+      );
+    if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock")) {
+      lockedLedgerReads += 1;
+      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 45)}\n`);
+    }
+    if (sql.includes("rolname IN")) return result(0, "0\n");
+    if (sql.includes("count(*)::text FROM pg_roles"))
+      return result(0, `${operatorCreated ? 1 : 0}\n`);
+    if (sql.includes("FROM pg_extension WHERE extname='pgcrypto'"))
+      return result(0, '{"name":"pgcrypto","version":"1.3","schema":"public"}\n');
+    if (sql.includes("json_build_object('flags'")) return result(0, `${JSON.stringify(role)}\n`);
+    if (sql.includes("SELECT current_user WHERE")) return result(0, "videoforge_hosted_operator\n");
+    throw new Error(`unexpected fixture psql SQL: ${sql.slice(0, 120)}`);
+  };
+  const environment = {
+    VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: postgresDirectory,
+    VIDEOFORGE_V2_13_SECRET_INPUT_DIR: secretDirectory,
+    VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE: resolve(postgresDirectory, "runtime.database-url"),
+    VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE: resolve(
+      postgresDirectory,
+      "reconciler.database-url",
+    ),
+    VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: seedPath,
+    VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE: productionSecretsPath,
+    VIDEOFORGE_V2_13_PRODUCTION_SECRET_BOOTSTRAP_FILE: productionSecretBootstrapPath,
+    VIDEOFORGE_V2_13_WORKER_ORIGIN_FILE: workerOriginPath,
+    VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE: workerBearerPath,
+    VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE: receiptPath,
+    VIDEOFORGE_V2_13_GOOGLE_CLIENT_ID_FILE: sourcePaths.GOOGLE_CLIENT_ID,
+    VIDEOFORGE_V2_13_GOOGLE_CLIENT_SECRET_FILE: sourcePaths.GOOGLE_CLIENT_SECRET,
+    VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE: sourcePaths.R2_ACCESS_KEY_ID,
+    VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE: sourcePaths.R2_SECRET_ACCESS_KEY,
+    VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE: sourcePaths.RUNPOD_API_KEY,
+  };
+  const consumedState = {
+    ...state,
+    schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v2",
+    authority_id: authorityId,
+    state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
+    operator_role_verified: false,
+    materialization_seed_sha256: seedSha256,
+  };
+  let randomCalls = 0;
+  const fixtureRandomBytes = (size) => {
+    randomCalls += 1;
+    return Buffer.alloc(size, randomCalls);
+  };
+  const credentialBootstrapExpected = {
+    receiptSha256: hash(credentialReceiptBytes),
+    secretHashes: sourceHashes,
+  };
+  const adapter = createPrequalificationDatabaseBootstrapAdapter({
+    environment,
+    run,
+    credentialRandomBytes: fixtureRandomBytes,
+    credentialBootstrapBinding: {
+      receiptSchema: "videoforge.v2-13-credential-bootstrap-result/v1",
+      receiptSha256: credentialBootstrapExpected.receiptSha256,
+      secretHashes: credentialBootstrapExpected.secretHashes,
+    },
+  });
+  try {
+    const output = await adapter(
+      { operationId: "bootstrap-prequalification-database" },
+      consumedState,
+      new Map(),
+      outerStateSha256,
+    );
+    assert.equal(output.actualUsd, 0);
+    assert.equal(output.runpod_calls, 0);
+    assert.equal(output.cloudflare_calls, 0);
+    assert.equal(output.application_secret_reads, 5);
+    assert.equal(randomCalls, 13, "three DB credentials plus ten internal credentials");
+    assert.equal(
+      output.credential_bootstrap_receipt_sha256,
+      credentialBootstrapExpected.receiptSha256,
+    );
+    assert.match(output.production_secret_bootstrap_sha256, /^sha256:[0-9a-f]{64}$/u);
+    assert.match(output.production_secrets_sha256, /^sha256:[0-9a-f]{64}$/u);
+    assert.equal(Object.keys(output.production_secret_file_sha256s).length, 18);
+    assert.equal(Object.keys(output.internal_credential_key_ids).length, 4);
+    assert.equal(
+      output.internal_credential_key_ids.pairEnvelopeSigningKeyId,
+      seed.production_input_base.dualLaneInput.envelopeSigningKeyId,
+    );
+    const productionSecrets = JSON.parse(readFileSync(productionSecretsPath, "utf8"));
+    const productionBundle = JSON.parse(readFileSync(productionSecretBootstrapPath, "utf8"));
+    assert.equal(
+      productionSecrets.schemaVersion,
+      "videoforge.v213-full-live-pre-endpoint-secrets/v1",
+    );
+    assert.deepEqual(productionSecrets, {
+      schemaVersion: productionSecrets.schemaVersion,
+      stageAuthoritySigningKeyBase64: productionBundle.secrets.stageAuthoritySigningKeyBase64,
+      provenanceReceiptHmacKeyBase64: productionBundle.secrets.provenanceReceiptHmacKeyBase64,
+      provenanceReceiptKeyId: output.internal_credential_key_ids.provenanceReceiptKeyId,
+      acceptanceEvidenceSigningKeyBase64:
+        productionBundle.secrets.acceptanceEvidenceSigningKeyBase64,
+      pairDispatchTokenKeyBase64: productionBundle.secrets.pairDispatchTokenKeyBase64,
+      pairDispatchTokenKeyId: output.internal_credential_key_ids.pairDispatchTokenKeyId,
+      pairEnvelopeSigningKeyHex: productionBundle.secrets.pairEnvelopeSigningKeyHex,
+      pairEnvelopeSigningKeyId: output.internal_credential_key_ids.pairEnvelopeSigningKeyId,
+      pairProviderProofKeyHex: productionBundle.secrets.pairProviderProofKeyHex,
+      pairProviderProofKeyId: output.internal_credential_key_ids.pairProviderProofKeyId,
+    });
+    const copiedNames = [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+    ];
+    for (const name of copiedNames)
+      assert.deepEqual(
+        readFileSync(resolve(secretDirectory, name)),
+        readFileSync(sourcePaths[name]),
+        `${name} must be byte-equal to the receipt-bound source`,
+      );
+    assert.deepEqual(
+      readFileSync(resolve(secretDirectory, "RUNPOD_API_KEY")),
+      readFileSync(sourcePaths.RUNPOD_API_KEY),
+    );
+    assert.deepEqual(
+      readFileSync(workerBearerPath),
+      readFileSync(resolve(secretDirectory, "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN")),
+    );
+    const prequalificationReceiptText = readFileSync(
+      resolve(postgresDirectory, "prequalification-database-bootstrap.json"),
+      "utf8",
+    );
+    for (const value of Object.values(sourceValues))
+      assert.equal(
+        prequalificationReceiptText.includes(value),
+        false,
+        "bootstrap receipt must remain secret-free",
+      );
+    assert.equal(
+      readFileSync(workerOriginPath, "utf8"),
+      seed.activation_record_base.cloudflare.public_origin,
+    );
+    for (const [name, digest] of Object.entries(output.production_secret_file_sha256s))
+      assert.equal(digest, hash(readFileSync(resolve(secretDirectory, name))));
+    for (const path of [
+      productionSecretsPath,
+      productionSecretBootstrapPath,
+      workerOriginPath,
+      workerBearerPath,
+    ])
+      assert.equal(lstatSync(path).mode & 0o777, 0o600);
+
+    // A lost acknowledgement after all local files were linked is reconciled without a second
+    // random generation. The receipt is the final CAS publication, not permission to regenerate.
+    const receiptBytes = readFileSync(
+      resolve(postgresDirectory, "prequalification-database-bootstrap.json"),
+    );
+    rmSync(resolve(postgresDirectory, "prequalification-database-bootstrap.json"));
+    const beforeRecoveryRandomCalls = randomCalls;
+    const recovered = await adapter(
+      {
+        operationId: "bootstrap-prequalification-database",
+        authorizedUnsettled: true,
+        reconciliationOnly: true,
+        providerDispatchForbidden: true,
+      },
+      consumedState,
+      new Map(),
+      outerStateSha256,
+    );
+    assert.equal(randomCalls, beforeRecoveryRandomCalls);
+    assert.equal(
+      recovered.production_secret_bootstrap_sha256,
+      output.production_secret_bootstrap_sha256,
+    );
+    const recoveredReceipt = JSON.parse(
+      readFileSync(resolve(postgresDirectory, "prequalification-database-bootstrap.json"), "utf8"),
+    );
+    assert.notDeepEqual(
+      Buffer.from(`${canonicalJson(recoveredReceipt)}\n`),
+      receiptBytes,
+      "reconciliation may change only recovery mode and receipt CAS",
+    );
+    assert.equal(
+      recoveredReceipt.production_secret_bootstrap_sha256,
+      output.production_secret_bootstrap_sha256,
+    );
+    assert.deepEqual(
+      recoveredReceipt.production_secret_file_sha256s,
+      output.production_secret_file_sha256s,
+    );
+    const stagePath = databaseCredentialStagingPath(productionSecretBootstrapPath, authorityId);
+    writeFileSync(stagePath, "fixture-stage", { mode: 0o600, flag: "wx" });
+    const callsBeforeStageDrift = calls.length;
+    await assert.rejects(
+      adapter(
+        {
+          operationId: "bootstrap-prequalification-database",
+          authorizedUnsettled: true,
+          reconciliationOnly: true,
+          providerDispatchForbidden: true,
+        },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_RECONCILIATION_STAGING_PRESENT/u,
+    );
+    assert.equal(calls.length, callsBeforeStageDrift);
+    rmSync(stagePath);
+    const reconciliationContext = {
+      operationId: "bootstrap-prequalification-database",
+      authorizedUnsettled: true,
+      reconciliationOnly: true,
+      providerDispatchForbidden: true,
+    };
+    const beforeDriftRandomCalls = randomCalls;
+    for (const name of [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+    ]) {
+      const path = sourcePaths[name];
+      const bytes = readFileSync(path);
+      writeFileSync(path, Buffer.from(`${bytes}drift`), { mode: 0o600 });
+      await assert.rejects(
+        adapter(reconciliationContext, consumedState, new Map(), outerStateSha256),
+        /PRODUCTION_SECRET_BOOTSTRAP_(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET|R2_ACCESS_KEY_ID|R2_SECRET_ACCESS_KEY)_BINDING/u,
+      );
+      writeFileSync(path, bytes, { mode: 0o600 });
+    }
+    const sourceReceiptBytes = readFileSync(receiptPath);
+    writeFileSync(receiptPath, Buffer.from(`${sourceReceiptBytes}drift`), {
+      mode: 0o600,
+    });
+    await assert.rejects(
+      adapter(reconciliationContext, consumedState, new Map(), outerStateSha256),
+      /PRODUCTION_SECRET_BOOTSTRAP_CREDENTIAL_RECEIPT_HASH/u,
+    );
+    writeFileSync(receiptPath, sourceReceiptBytes, { mode: 0o600 });
+    const generatedGoogleIdPath = resolve(secretDirectory, "GOOGLE_CLIENT_ID");
+    const generatedGoogleIdBytes = readFileSync(generatedGoogleIdPath);
+    writeFileSync(generatedGoogleIdPath, Buffer.from(`${generatedGoogleIdBytes}drift`), {
+      mode: 0o600,
+    });
+    await assert.rejects(
+      adapter(reconciliationContext, consumedState, new Map(), outerStateSha256),
+      /MATERIALIZATION_OUTPUT_HASH_CAS|PRODUCTION_SECRET_BOOTSTRAP_COPY_BINDING|PRODUCTION_SECRET_BOOTSTRAP_RECONCILIATION_DRIFT/u,
+    );
+    writeFileSync(generatedGoogleIdPath, generatedGoogleIdBytes, { mode: 0o600 });
+    assert.equal(randomCalls, beforeDriftRandomCalls);
+    const bearerBytes = readFileSync(workerBearerPath);
+    writeFileSync(workerBearerPath, Buffer.from(`${bearerBytes}drift`), { mode: 0o600 });
+    await assert.rejects(
+      adapter(reconciliationContext, consumedState, new Map(), outerStateSha256),
+      /MATERIALIZATION_OUTPUT_HASH_CAS|PREQUALIFICATION_RECEIPT_REPLAY_DRIFT|PRODUCTION_SECRET_BOOTSTRAP_COPY_BINDING|PRODUCTION_SECRET_BOOTSTRAP_RECONCILIATION_DRIFT/u,
+    );
+    writeFileSync(workerBearerPath, bearerBytes, { mode: 0o600 });
+    assert.equal(randomCalls, beforeRecoveryRandomCalls);
+    assert.ok(calls.length > 0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("production-secret bootstrap rejects pre-consumption invocation before protected inputs", async () => {
+  const reads = [];
+  const environment = new Proxy(
+    {},
+    {
+      get(target, property) {
+        if (typeof property === "string" && property.includes("FILE")) reads.push(property);
+        return target[property];
+      },
+    },
+  );
+  const adapter = createPrequalificationDatabaseBootstrapAdapter({ environment });
+  await assert.rejects(
+    adapter(
+      { operationId: "bootstrap-prequalification-database" },
+      { schema_version: "wrong", state: "NOT_CONSUMED" },
+      new Map(),
+      hash(Buffer.from("fixture-outer-state")),
+    ),
+    /PREQUALIFICATION_CONSUMED_AUTHORITY_REQUIRED/u,
+  );
+  assert.deepEqual(reads, []);
 });

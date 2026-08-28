@@ -506,6 +506,10 @@ function deterministicUuid(value) {
   return `${hex.slice(0, 8).join("")}-${hex.slice(8, 12).join("")}-${hex.slice(12, 16).join("")}-${hex.slice(16, 20).join("")}-${hex.slice(20).join("")}`;
 }
 
+function deterministicProductionSecretKeyId(fullLiveAuthorityId, purpose) {
+  return `v213-${purpose}-${sha256(Buffer.from(`${fullLiveAuthorityId}\0${purpose}`)).slice(7, 31)}`;
+}
+
 function migrationLedgerSha256(proposal, readSourceFile) {
   const binding = proposal?.source?.exact_release_components?.migration_manifest;
   if (
@@ -760,6 +764,9 @@ function buildV213MaterializationSeed({
   const cropApproval = soulxCropApproval(facts, readSourceFile);
   const ledgerSha256 = migrationLedgerSha256(proposal, readSourceFile);
   const fullLiveAuthorityId = facts.full_live_authority_id;
+  const envelopeSigningKeyId = deterministicProductionSecretKeyId(fullLiveAuthorityId, "envelope");
+  if (protectedInput.qualification.envelope_signing_key_id !== envelopeSigningKeyId)
+    fail("PROTECTED_INPUT_ENVELOPE_KEY_ID_AUTHORITY_BINDING");
   const cf = {
     account_id: binding.accountId,
     worker_name: binding.workerName,
@@ -791,7 +798,7 @@ function buildV213MaterializationSeed({
         mageQualificationCapUsd: 4.5,
         soulxQualificationCapUsd: 1,
         qualificationEnvelopeSchemaSha256: binding.envelopeSchemaSource.sha256,
-        envelopeSigningKeyId: protectedInput.qualification.envelope_signing_key_id,
+        envelopeSigningKeyId,
         qualificationR2: {
           accountId: binding.accountId,
           bucketName: binding.r2BucketName,

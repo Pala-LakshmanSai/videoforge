@@ -44,7 +44,7 @@ const EXECUTOR_SHA256 = `sha256:${createHash("sha256")
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v2";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
 const PREQUALIFICATION_RECOVERY_MODES = new Set([
   "FRESH_36_TO_45",
   "RESUME_EXACT_PREFIX",
@@ -52,11 +52,11 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:4d9d765cacfd50e671c6f22ce873ac4014a43bce707992d6352de8462f8b8036",
+    "sha256:3da96cbf5ada4d80b50eeeffebe54ae22ff5ffe93e976d61d100b527c28f3fb7",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:91152ee194afad78f7a38105487982714afefa630fb2cc20328d65e92aa92ad0",
+    "sha256:57789d447adc4500566ebe4378b0c145a0d6fbe0a6782ce668084349f25d54d1",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
     "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
@@ -68,7 +68,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:203bb3f7c6c83c99e87441f3c7d86248666dcd8f50e9cc17c119867adf30dc2b",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:4df4b9112dab1bf41a4e26f1abe9cd0f8b49edd403d0acb48aa5f0a35dfc98e5",
+    "sha256:0409e411a2617d370e08e79360d64bb923bcc87d739142be0848a570bcc64af0",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -426,6 +426,11 @@ export function assertResult(
       "application_secret_reads",
       "cloudflare_calls",
       "database_role_credential_bundle_sha256",
+      "credential_bootstrap_receipt_sha256",
+      "production_secret_bootstrap_sha256",
+      "production_secrets_sha256",
+      "production_secret_file_sha256s",
+      "internal_credential_key_ids",
       "external_spend_usd",
       "full_live_authority_id",
       "gpu_use",
@@ -435,6 +440,7 @@ export function assertResult(
       "operator_acl_sha256",
       "operator_database_url_sha256",
       "outer_state_sha256",
+      "materialization_seed_sha256",
       "pgcrypto_sha256",
       "prequalification_database_bootstrap_sha256",
       "recovery_mode",
@@ -459,6 +465,16 @@ export function assertResult(
       !HASH.test(result.runtime_database_url_sha256 ?? "") ||
       !HASH.test(result.reconciler_database_url_sha256 ?? "") ||
       !HASH.test(result.database_role_credential_bundle_sha256 ?? "") ||
+      !HASH.test(result.credential_bootstrap_receipt_sha256 ?? "") ||
+      !HASH.test(result.production_secret_bootstrap_sha256 ?? "") ||
+      !HASH.test(result.production_secrets_sha256 ?? "") ||
+      typeof result.production_secret_file_sha256s !== "object" ||
+      result.production_secret_file_sha256s === null ||
+      Object.values(result.production_secret_file_sha256s).some((item) => !HASH.test(item)) ||
+      typeof result.internal_credential_key_ids !== "object" ||
+      result.internal_credential_key_ids === null ||
+      !HASH.test(result.materialization_seed_sha256 ?? "") ||
+      result.materialization_seed_sha256 !== state.materialization_seed_sha256 ||
       new Set([
         result.operator_database_url_sha256,
         result.runtime_database_url_sha256,
@@ -469,7 +485,7 @@ export function assertResult(
       !PREQUALIFICATION_RECOVERY_MODES.has(result.recovery_mode) ||
       result.runpod_calls !== 0 ||
       result.cloudflare_calls !== 0 ||
-      result.application_secret_reads !== 0 ||
+      result.application_secret_reads !== 5 ||
       result.gpu_use !== false ||
       result.external_spend_usd !== 0
     )

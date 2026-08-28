@@ -255,7 +255,10 @@ export function materializationSeedFixture() {
         mageQualificationCapUsd: 4.5,
         soulxQualificationCapUsd: 1,
         qualificationEnvelopeSchemaSha256: proof("9"),
-        envelopeSigningKeyId: "v2-13-envelope-signing-key",
+        envelopeSigningKeyId: `v213-envelope-${hash(`${FULL_LIVE_AUTHORITY_ID}\0envelope`).slice(
+          7,
+          31,
+        )}`,
         qualificationR2: {
           accountId: CLOUDFLARE_ACCOUNT_ID,
           bucketName: R2_BUCKET_NAME,

@@ -49,7 +49,7 @@ const EXACT_PRE_MUTATION_ROUTE_CONTENT_TYPE = "text/html; charset=UTF-8";
 const EXACT_PRE_MUTATION_ROUTE_BODY_LENGTH = 19984;
 const EXACT_PRE_MUTATION_ROUTE_BODY_SHA256 =
   "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976";
-const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v2";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_ADVISORY_LOCK = "1448494662,1";
 const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
@@ -81,6 +81,7 @@ const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "schema_version",
   "full_live_authority_id",
   "outer_state_sha256",
+  "materialization_seed_sha256",
   "ledger_before_count",
   "ledger_before_sha256",
   "ledger_after_sha256",
@@ -89,6 +90,11 @@ const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "runtime_database_url_sha256",
   "reconciler_database_url_sha256",
   "database_role_credential_bundle_sha256",
+  "credential_bootstrap_receipt_sha256",
+  "production_secret_bootstrap_sha256",
+  "production_secrets_sha256",
+  "production_secret_file_sha256s",
+  "internal_credential_key_ids",
   "pgcrypto_sha256",
   "recovery_mode",
   "runpod_calls",
@@ -218,6 +224,7 @@ function readPrequalificationReceipt(directory) {
     typeof value.full_live_authority_id !== "string" ||
     value.full_live_authority_id === "" ||
     !HASH.test(value.outer_state_sha256 ?? "") ||
+    !HASH.test(value.materialization_seed_sha256 ?? "") ||
     ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
     !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
@@ -231,6 +238,14 @@ function readPrequalificationReceipt(directory) {
     !HASH.test(value.runtime_database_url_sha256 ?? "") ||
     !HASH.test(value.reconciler_database_url_sha256 ?? "") ||
     !HASH.test(value.database_role_credential_bundle_sha256 ?? "") ||
+    !HASH.test(value.credential_bootstrap_receipt_sha256 ?? "") ||
+    !HASH.test(value.production_secret_bootstrap_sha256 ?? "") ||
+    !HASH.test(value.production_secrets_sha256 ?? "") ||
+    typeof value.production_secret_file_sha256s !== "object" ||
+    value.production_secret_file_sha256s === null ||
+    Object.values(value.production_secret_file_sha256s).some((item) => !HASH.test(item)) ||
+    typeof value.internal_credential_key_ids !== "object" ||
+    value.internal_credential_key_ids === null ||
     new Set([
       value.operator_database_url_sha256,
       value.runtime_database_url_sha256,
@@ -239,7 +254,7 @@ function readPrequalificationReceipt(directory) {
     !HASH.test(value.pgcrypto_sha256 ?? "") ||
     value.runpod_calls !== 0 ||
     value.cloudflare_calls !== 0 ||
-    value.application_secret_reads !== 0
+    value.application_secret_reads !== 5
   )
     fail("prequalification database bootstrap receipt contract drifted");
   const body = { ...value };

@@ -197,6 +197,14 @@ function harness({
   ];
   database.prequalification_database_bootstrap_runtime_reconciler_credentials_staged_roles_absent_until_guarded_activation =
     bootstrap.runtime_and_reconciler_credentials_staged_but_roles_remain_absent_until_guarded_activation;
+  database.prequalification_database_bootstrap_exact_one_time_database_role_credential_count =
+    bootstrap.exact_one_time_database_role_credential_count;
+  database.prequalification_database_bootstrap_exact_one_time_database_role_credential_scope =
+    bootstrap.exact_one_time_database_role_credential_scope;
+  database.prequalification_database_bootstrap_exact_one_time_internal_production_credential_count =
+    bootstrap.exact_one_time_internal_production_credential_count;
+  database.prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope =
+    [...bootstrap.exact_one_time_internal_production_credential_scope];
   database.prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count =
     bootstrap.operator_dsn_policy.value_read_after_migration_prefix_commit_count;
   database.prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit =
@@ -235,6 +243,10 @@ function harness({
       "prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count",
       "prequalification_database_bootstrap_credential_roles",
       "prequalification_database_bootstrap_runtime_reconciler_credentials_staged_roles_absent_until_guarded_activation",
+      "prequalification_database_bootstrap_exact_one_time_database_role_credential_count",
+      "prequalification_database_bootstrap_exact_one_time_database_role_credential_scope",
+      "prequalification_database_bootstrap_exact_one_time_internal_production_credential_count",
+      "prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope",
       "prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count",
       "prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit",
       "prequalification_database_bootstrap_phase",
@@ -277,7 +289,9 @@ function harness({
   const readSource = (path) => overlay.get(path) ?? gitSource(path);
   const ref = (path) => ({ path, sha256: sha256(readSource(path)) });
   const fullLiveAuthorityId = "12345678-1234-4123-8123-123456789abc";
-  const envelopeSigningKeyId = "qualification-signer-v1";
+  const envelopeSigningKeyId = `v213-envelope-${sha256(
+    Buffer.from(`${fullLiveAuthorityId}\0envelope`),
+  ).slice(7, 31)}`;
   const caseDocumentPath =
     "project-context/evidence/acceptance/VF-10-13/qualification-case-descriptor.json";
   const caseValidationPath =
@@ -691,6 +705,26 @@ function buildTempGitEndToEndFixture() {
   approvalWithSource.static_release_descriptor = structuredClone(descriptorBinding);
   approvalWithSource.approval.immutable_github_release_ref.exact_target_commit =
     releaseSourceCommit;
+  approvalWithSource.approval.internal_production_credentials = {
+    exact_one_time_count:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_count,
+    exact_scope:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_scope,
+    generated_only_after_consumption: true,
+    other_credential_creation_or_rotation_forbidden: true,
+  };
+  approvalWithSource.approval.database_roles = {
+    exact_operator_role: "videoforge_hosted_operator",
+    exact_runtime_role: "videoforge_hosted_runtime",
+    exact_reconciler_role: "videoforge_hosted_reconciler",
+    roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
+    exact_one_time_credential_count:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_count,
+    exact_credential_scope:
+      EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_database_role_credential_scope,
+    generated_only_after_consumption: true,
+    other_database_credential_creation_or_rotation_forbidden: true,
+  };
   approvalWithSource.statement = `I approve ${proposalSha256} at commit ${proposalRecordCommit} for one exact single-use execution with USD 17.50, USD 7 per month, no fallback, lightweight tag videoforge-v2-13-release-20260826-v3, and exact roles videoforge_hosted_operator, videoforge_hosted_runtime, and videoforge_hosted_reconciler.`;
   const orderedApproval = Object.fromEntries(
     [

@@ -42,7 +42,7 @@ import {
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const fingerprint = `sha256:${"a".repeat(64)}`;
 const PREQUALIFICATION_SCHEMA_FOR_TEST =
-  "videoforge.v213-prequalification-database-bootstrap-result/v2";
+  "videoforge.v213-prequalification-database-bootstrap-result/v3";
 const canonicalJson = (value) =>
   Array.isArray(value)
     ? `[${value.map((item) => canonicalJson(item)).join(",")}]`
@@ -1257,6 +1257,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
     schema_version: PREQUALIFICATION_SCHEMA_FOR_TEST,
     full_live_authority_id: "v2-13-test-authority-0001",
     outer_state_sha256: `sha256:${"e".repeat(64)}`,
+    materialization_seed_sha256: `sha256:${"a".repeat(64)}`,
     ledger_before_count: 36,
     ledger_before_sha256: hash(`${canonicalJson(before)}\n`),
     ledger_after_sha256: hash(`${canonicalJson(ledger)}\n`),
@@ -1265,11 +1266,40 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
     runtime_database_url_sha256: `sha256:${"b".repeat(64)}`,
     reconciler_database_url_sha256: `sha256:${"c".repeat(64)}`,
     database_role_credential_bundle_sha256: `sha256:${"d".repeat(64)}`,
+    credential_bootstrap_receipt_sha256: `sha256:${"1".repeat(64)}`,
+    production_secret_bootstrap_sha256: `sha256:${"2".repeat(64)}`,
+    production_secrets_sha256: `sha256:${"3".repeat(64)}`,
+    production_secret_file_sha256s: {
+      DATABASE_URL: `sha256:${"4".repeat(64)}`,
+      BETTER_AUTH_SECRET: `sha256:${"4".repeat(64)}`,
+      GOOGLE_CLIENT_ID: `sha256:${"4".repeat(64)}`,
+      GOOGLE_CLIENT_SECRET: `sha256:${"4".repeat(64)}`,
+      R2_ACCESS_KEY_ID: `sha256:${"4".repeat(64)}`,
+      R2_SECRET_ACCESS_KEY: `sha256:${"4".repeat(64)}`,
+      WORKFLOW_CALLBACK_SECRET: `sha256:${"4".repeat(64)}`,
+      MEDIA_WORKER_TOKEN_SECRET: `sha256:${"4".repeat(64)}`,
+      VIDEOFORGE_RECONCILER_DATABASE_URL: `sha256:${"4".repeat(64)}`,
+      VIDEOFORGE_DISPATCH_TOKEN_KEY: `sha256:${"4".repeat(64)}`,
+      VIDEOFORGE_DISPATCH_TOKEN_KEY_ID: `sha256:${"4".repeat(64)}`,
+      VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: `sha256:${"4".repeat(64)}`,
+      VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: `sha256:${"4".repeat(64)}`,
+      VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: `sha256:${"4".repeat(64)}`,
+      VIDEOFORGE_PROVIDER_PROOF_KEY_ID: `sha256:${"4".repeat(64)}`,
+      RUNPOD_API_KEY: `sha256:${"4".repeat(64)}`,
+      RUNPOD_API_BASE_URL: `sha256:${"4".repeat(64)}`,
+      VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: `sha256:${"4".repeat(64)}`,
+    },
+    internal_credential_key_ids: {
+      pairDispatchTokenKeyId: "v213-dispatch-key",
+      pairEnvelopeSigningKeyId: "v213-envelope-key",
+      pairProviderProofKeyId: "v213-provider-proof-key",
+      provenanceReceiptKeyId: "v213-provenance-receipt-key",
+    },
     pgcrypto_sha256: hash(`${canonicalJson(pgcrypto)}\n`),
     recovery_mode: "FRESH_36_TO_45",
     runpod_calls: 0,
     cloudflare_calls: 0,
-    application_secret_reads: 0,
+    application_secret_reads: 5,
   };
   const receipt = {
     ...body,

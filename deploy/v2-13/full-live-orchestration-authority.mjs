@@ -333,7 +333,11 @@ function validateQualificationCaseDescriptor(value) {
   );
 }
 
-function validateStaticDualLaneInput(value) {
+function deterministicProductionSecretKeyId(fullLiveAuthorityId, purpose) {
+  return `v213-${purpose}-${sha256(Buffer.from(`${fullLiveAuthorityId}\0${purpose}`)).slice(7, 31)}`;
+}
+
+function validateStaticDualLaneInput(value, fullLiveAuthorityId) {
   if (
     !exactObjectKeys(value, [
       "accountIdSha256",
@@ -352,6 +356,8 @@ function validateStaticDualLaneInput(value) {
     value.mageQualificationCapUsd !== 4.5 ||
     value.soulxQualificationCapUsd !== 1 ||
     !COMMAND_ID.test(value.envelopeSigningKeyId ?? "") ||
+    value.envelopeSigningKeyId !==
+      deterministicProductionSecretKeyId(fullLiveAuthorityId, "envelope") ||
     !validStaticSeedLane(value.mage, "mage", EXACT_RETAINED_LANES.mage) ||
     !validStaticSeedLane(value.soulx, "soulx", EXACT_RETAINED_LANES.soulx) ||
     !validateQualificationCaseDescriptor(value.qualificationCaseDescriptor) ||
@@ -732,7 +738,7 @@ function validateMaterializationSeedShape(value) {
     production.schemaVersion === "videoforge.v213-full-live-outer-input/v1" &&
     UUID.test(production.fullLiveAuthorityId ?? "") &&
     exactEmptyObject(production.authorityDocument) &&
-    validateStaticDualLaneInput(lanes) &&
+    validateStaticDualLaneInput(lanes, production.fullLiveAuthorityId) &&
     exactEmptyObject(production.commandPayloads) &&
     validateActivationRecordBase(value.activation_record_base) &&
     validateConfigActivationBase(value.config_activation_base) &&
@@ -1166,7 +1172,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:37a5b67ae0f0332e37796ec3cd21572bebabce1e64245faf6688a4e2d79352fb" ||
+      "sha256:69babc26f72ac45c8ac340f49b53eb9f356f6e5da723a7edb511f15145e9496c" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||

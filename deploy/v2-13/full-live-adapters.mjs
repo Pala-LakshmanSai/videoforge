@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   closeSync,
+  constants as fsConstants,
+  fstatSync,
   linkSync,
   lstatSync,
   mkdtempSync,
@@ -100,7 +102,22 @@ const BRIDGE_CLEANUP_CHILD_MAX_TIMEOUT_MS = 60_000;
 const RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS = 60_000;
 const CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS = 60_000;
 const EARLY_CLEANUP_INPUT_SCHEMA = "videoforge.v213-full-live-early-cleanup-input/v1";
-const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v2";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
+const PRODUCTION_SECRET_BOOTSTRAP_SCHEMA = "videoforge.v213-production-secret-bootstrap/v1";
+const CREDENTIAL_BOOTSTRAP_RECEIPT_SCHEMA = "videoforge.v2-13-credential-bootstrap-result/v1";
+const CREDENTIAL_BOOTSTRAP_RECEIPT_SHA256 =
+  "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab";
+const CREDENTIAL_BOOTSTRAP_SECRET_HASHES = Object.freeze({
+  GOOGLE_CLIENT_ID: "sha256:0150569d559bc69055805f48be9d54e9748a1fa34e6dffa6c293701b9814d932",
+  GOOGLE_CLIENT_SECRET: "sha256:c4d12264294b3275aebe6b8a51eb5a9f4a5a599c7694f48bcf8ba4422c8c6cfb",
+  R2_ACCESS_KEY_ID: "sha256:a322bcb37f84d28ddd0fd841f0eb3ad2feaf368f71c21deece4f9d1f8433e335",
+  R2_SECRET_ACCESS_KEY: "sha256:227e83b53468d6053b983a844473e04cbde8eff81c27b499127f106c394a900e",
+});
+const EXACT_CREDENTIAL_BOOTSTRAP_BINDING = Object.freeze({
+  receiptSchema: CREDENTIAL_BOOTSTRAP_RECEIPT_SCHEMA,
+  receiptSha256: CREDENTIAL_BOOTSTRAP_RECEIPT_SHA256,
+  secretHashes: CREDENTIAL_BOOTSTRAP_SECRET_HASHES,
+});
 const DATABASE_ROLE_CREDENTIAL_BUNDLE_SCHEMA = "videoforge.v213-database-role-credential-bundle/v1";
 const DATABASE_ROLE_CREDENTIAL_BUNDLE_NAME = "database-role-credentials.json";
 const DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA =
@@ -166,6 +183,7 @@ const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "schema_version",
   "full_live_authority_id",
   "outer_state_sha256",
+  "materialization_seed_sha256",
   "ledger_before_count",
   "ledger_before_sha256",
   "ledger_after_sha256",
@@ -174,6 +192,11 @@ const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "runtime_database_url_sha256",
   "reconciler_database_url_sha256",
   "database_role_credential_bundle_sha256",
+  "credential_bootstrap_receipt_sha256",
+  "production_secret_bootstrap_sha256",
+  "production_secrets_sha256",
+  "production_secret_file_sha256s",
+  "internal_credential_key_ids",
   "pgcrypto_sha256",
   "recovery_mode",
   "runpod_calls",
@@ -1815,6 +1838,378 @@ function protectedCollisionPath(path, code) {
   return resolve(path);
 }
 
+function readExactProtectedBytes(path, code) {
+  if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
+    fail(code);
+  protectedCanonicalDirectory(dirname(path), `${code}_DIRECTORY`);
+  let fd;
+  try {
+    fd = openSync(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    const before = fstatSync(fd);
+    if (!before.isFile() || (before.mode & 0o777) !== 0o600 || before.nlink !== 1) fail(code);
+    const bytes = readFileSync(fd);
+    const after = fstatSync(fd);
+    if (
+      before.dev !== after.dev ||
+      before.ino !== after.ino ||
+      before.size !== after.size ||
+      before.mtimeMs !== after.mtimeMs ||
+      after.nlink !== 1
+    )
+      fail(`${code}_RACE`);
+    return bytes;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail(code);
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+function productionSecretKeyId(authorityId, purpose) {
+  return `v213-${purpose}-${sha256(Buffer.from(`${authorityId}\0${purpose}`)).slice(7, 31)}`;
+}
+
+function productionSecretBootstrapPaths(environment, authorityId) {
+  const secretDirectory = protectedCanonicalDirectory(
+    environment.VIDEOFORGE_V2_13_SECRET_INPUT_DIR,
+    "PRODUCTION_SECRET_BOOTSTRAP_DIRECTORY",
+  );
+  const productionSecretsPath = requiredProtectedOutputPath(
+    environment.VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE,
+    "PRODUCTION_SECRET_BOOTSTRAP_PRODUCTION_SECRETS",
+  );
+  const bundlePath = requiredProtectedOutputPath(
+    environment.VIDEOFORGE_V2_13_PRODUCTION_SECRET_BOOTSTRAP_FILE ??
+      join(dirname(productionSecretsPath), "production-secret-bootstrap.json"),
+    "PRODUCTION_SECRET_BOOTSTRAP_BUNDLE",
+  );
+  const workerOriginPath = requiredProtectedOutputPath(
+    environment.VIDEOFORGE_V2_13_WORKER_ORIGIN_FILE,
+    "PRODUCTION_SECRET_BOOTSTRAP_WORKER_ORIGIN",
+  );
+  const workerBearerPath = requiredProtectedOutputPath(
+    environment.VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE,
+    "PRODUCTION_SECRET_BOOTSTRAP_WORKER_BEARER",
+  );
+  const outputs = Object.fromEntries(
+    GUARDED_SECRET_NAMES.filter(
+      (name) =>
+        ![
+          "VIDEOFORGE_MAGE_ENDPOINT_ID",
+          "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+          "VIDEOFORGE_SOULX_ENDPOINT_ID",
+          "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+        ].includes(name),
+    ).map((name) => [
+      name,
+      requiredProtectedOutputPath(
+        join(secretDirectory, name),
+        "PRODUCTION_SECRET_BOOTSTRAP_OUTPUT",
+      ),
+    ]),
+  );
+  const sourcePaths = {
+    credentialReceipt: environment.VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE,
+    GOOGLE_CLIENT_ID: environment.VIDEOFORGE_V2_13_GOOGLE_CLIENT_ID_FILE,
+    GOOGLE_CLIENT_SECRET: environment.VIDEOFORGE_V2_13_GOOGLE_CLIENT_SECRET_FILE,
+    R2_ACCESS_KEY_ID: environment.VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE,
+    R2_SECRET_ACCESS_KEY: environment.VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE,
+    RUNPOD_API_KEY: environment.VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE,
+  };
+  for (const path of Object.values(sourcePaths))
+    if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
+      fail("PRODUCTION_SECRET_BOOTSTRAP_SOURCE_PATH");
+  const allOutputs = [
+    bundlePath,
+    productionSecretsPath,
+    workerOriginPath,
+    workerBearerPath,
+    ...Object.values(outputs),
+  ];
+  if (new Set(allOutputs.map((path) => resolve(path))).size !== allOutputs.length)
+    fail("PRODUCTION_SECRET_BOOTSTRAP_OUTPUT_COLLISION");
+  if (
+    Object.values(sourcePaths).some((path) =>
+      allOutputs.map((outputPath) => resolve(outputPath)).includes(resolve(path)),
+    )
+  )
+    fail("PRODUCTION_SECRET_BOOTSTRAP_SOURCE_COLLISION");
+  return Object.freeze({
+    authorityId,
+    bundlePath,
+    productionSecretsPath,
+    workerOriginPath,
+    workerBearerPath,
+    outputs: Object.freeze(outputs),
+    sourcePaths: Object.freeze(sourcePaths),
+  });
+}
+
+function exactCredentialBootstrapInputs(paths, binding = EXACT_CREDENTIAL_BOOTSTRAP_BINDING) {
+  const receiptBytes = readExactProtectedBytes(
+    paths.sourcePaths.credentialReceipt,
+    "PRODUCTION_SECRET_BOOTSTRAP_CREDENTIAL_RECEIPT",
+  );
+  if (sha256(receiptBytes) !== binding.receiptSha256)
+    fail("PRODUCTION_SECRET_BOOTSTRAP_CREDENTIAL_RECEIPT_HASH");
+  let receipt;
+  try {
+    receipt = JSON.parse(receiptBytes.toString("utf8"));
+  } catch {
+    fail("PRODUCTION_SECRET_BOOTSTRAP_CREDENTIAL_RECEIPT_JSON");
+  }
+  if (
+    receipt?.schema_version !== binding.receiptSchema ||
+    receipt.runpod_calls !== 0 ||
+    receipt.gpu_hours !== 0 ||
+    receipt.external_spend_usd !== 0
+  )
+    fail("PRODUCTION_SECRET_BOOTSTRAP_CREDENTIAL_RECEIPT_CONTRACT");
+  const values = {};
+  const receiptFields = {
+    GOOGLE_CLIENT_ID: "google_oauth_client_id_sha256",
+    GOOGLE_CLIENT_SECRET: "google_oauth_client_secret_sha256",
+    R2_ACCESS_KEY_ID: "r2_access_key_id_sha256",
+    R2_SECRET_ACCESS_KEY: "r2_secret_access_key_sha256",
+  };
+  for (const [name, field] of Object.entries(receiptFields)) {
+    const bytes = readExactProtectedBytes(
+      paths.sourcePaths[name],
+      `PRODUCTION_SECRET_BOOTSTRAP_${name}`,
+    );
+    if (
+      bytes.length === 0 ||
+      bytes.includes(0) ||
+      sha256(bytes) !== binding.secretHashes[name] ||
+      receipt[field] !== binding.secretHashes[name]
+    )
+      fail(`PRODUCTION_SECRET_BOOTSTRAP_${name}_BINDING`);
+    values[name] = bytes.toString("utf8");
+  }
+  const runpod = readExactProtectedBytes(
+    paths.sourcePaths.RUNPOD_API_KEY,
+    "PRODUCTION_SECRET_BOOTSTRAP_RUNPOD_API_KEY",
+  );
+  if (
+    runpod.length < 20 ||
+    runpod.includes(0) ||
+    runpod.toString("utf8").trim() !== runpod.toString("utf8")
+  )
+    fail("PRODUCTION_SECRET_BOOTSTRAP_RUNPOD_API_KEY_BINDING");
+  values.RUNPOD_API_KEY = runpod.toString("utf8");
+  return Object.freeze({ receiptBytes, values: Object.freeze(values) });
+}
+
+function materializeProductionSecretBootstrap({
+  environment,
+  state,
+  outerStateSha256,
+  databaseCredentials,
+  secretRandomBytes = randomBytes,
+  credentialBootstrapBinding = EXACT_CREDENTIAL_BOOTSTRAP_BINDING,
+  createMissing,
+}) {
+  let seed;
+  let seedBytes;
+  try {
+    seedBytes = readExactProtectedBytes(
+      environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE,
+      "PRODUCTION_SECRET_BOOTSTRAP_SEED",
+    );
+    seed = JSON.parse(seedBytes.toString("utf8"));
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail("PRODUCTION_SECRET_BOOTSTRAP_SEED");
+  }
+  const canonicalSeed = Buffer.from(`${canonicalJson(seed)}\n`);
+  if (
+    Buffer.compare(seedBytes, canonicalSeed) !== 0 ||
+    !validateMaterializationSeedShape(seed) ||
+    sha256(canonicalSeed) !== state.materialization_seed_sha256
+  )
+    fail("PRODUCTION_SECRET_BOOTSTRAP_SEED_BINDING");
+  const paths = productionSecretBootstrapPaths(environment, state.authority_id);
+  const expectedIds = Object.freeze({
+    pairDispatchTokenKeyId: productionSecretKeyId(state.authority_id, "dispatch"),
+    pairEnvelopeSigningKeyId: productionSecretKeyId(state.authority_id, "envelope"),
+    pairProviderProofKeyId: productionSecretKeyId(state.authority_id, "provider-proof"),
+    provenanceReceiptKeyId: productionSecretKeyId(state.authority_id, "provenance"),
+  });
+  if (
+    seed.production_input_base.dualLaneInput.envelopeSigningKeyId !==
+    expectedIds.pairEnvelopeSigningKeyId
+  )
+    fail("PRODUCTION_SECRET_BOOTSTRAP_ENVELOPE_KEY_ID_BINDING");
+  const external = exactCredentialBootstrapInputs(paths, credentialBootstrapBinding);
+  let bundle;
+  if (lstatExists(paths.bundlePath)) {
+    const bytes = readExactProtectedBytes(paths.bundlePath, "PRODUCTION_SECRET_BOOTSTRAP_BUNDLE");
+    try {
+      bundle = JSON.parse(bytes.toString("utf8"));
+    } catch {
+      fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_JSON");
+    }
+    if (Buffer.compare(bytes, Buffer.from(`${canonicalJson(bundle)}\n`)) !== 0)
+      fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_CANONICAL");
+  } else {
+    if (!createMissing) fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_MISSING");
+    const next = () => {
+      const bytes = secretRandomBytes(32);
+      if (!Buffer.isBuffer(bytes) || bytes.length !== 32)
+        fail("PRODUCTION_SECRET_BOOTSTRAP_RANDOM");
+      return bytes;
+    };
+    const raw = Array.from({ length: 10 }, next);
+    if (new Set(raw.map((bytes) => sha256(bytes))).size !== raw.length)
+      fail("PRODUCTION_SECRET_BOOTSTRAP_RANDOM_REUSE");
+    bundle = {
+      schemaVersion: PRODUCTION_SECRET_BOOTSTRAP_SCHEMA,
+      fullLiveAuthorityId: state.authority_id,
+      outerStateSha256,
+      credentialBootstrapReceiptSha256: credentialBootstrapBinding.receiptSha256,
+      keyIds: expectedIds,
+      secrets: {
+        acceptanceEvidenceSigningKeyBase64: raw[0].toString("base64"),
+        betterAuthSecret: raw[1].toString("base64"),
+        mediaWorkerTokenSecret: raw[2].toString("base64"),
+        pairDispatchTokenKeyBase64: raw[3].toString("base64"),
+        pairEnvelopeSigningKeyHex: raw[4].toString("hex"),
+        pairProviderProofKeyHex: raw[5].toString("hex"),
+        provenanceReceiptHmacKeyBase64: raw[6].toString("base64"),
+        stageAuthoritySigningKeyBase64: raw[7].toString("base64"),
+        workerOperatorBearer: raw[8].toString("base64"),
+        workflowCallbackSecret: raw[9].toString("base64"),
+      },
+    };
+    exclusiveAtomicBytes(paths.bundlePath, Buffer.from(`${canonicalJson(bundle)}\n`), {
+      temporaryPath: databaseCredentialStagingPath(paths.bundlePath, state.authority_id),
+    });
+  }
+  if (
+    bundle?.schemaVersion !== PRODUCTION_SECRET_BOOTSTRAP_SCHEMA ||
+    bundle.fullLiveAuthorityId !== state.authority_id ||
+    bundle.outerStateSha256 !== outerStateSha256 ||
+    bundle.credentialBootstrapReceiptSha256 !== credentialBootstrapBinding.receiptSha256 ||
+    canonicalJson(bundle.keyIds) !== canonicalJson(expectedIds) ||
+    Object.keys(bundle.secrets ?? {})
+      .sort()
+      .join(",") !==
+      [
+        "acceptanceEvidenceSigningKeyBase64",
+        "betterAuthSecret",
+        "mediaWorkerTokenSecret",
+        "pairDispatchTokenKeyBase64",
+        "pairEnvelopeSigningKeyHex",
+        "pairProviderProofKeyHex",
+        "provenanceReceiptHmacKeyBase64",
+        "stageAuthoritySigningKeyBase64",
+        "workerOperatorBearer",
+        "workflowCallbackSecret",
+      ]
+        .sort()
+        .join(",")
+  )
+    fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_CONTRACT");
+  const productionSecrets = {
+    schemaVersion: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
+    stageAuthoritySigningKeyBase64: bundle.secrets.stageAuthoritySigningKeyBase64,
+    provenanceReceiptHmacKeyBase64: bundle.secrets.provenanceReceiptHmacKeyBase64,
+    provenanceReceiptKeyId: expectedIds.provenanceReceiptKeyId,
+    acceptanceEvidenceSigningKeyBase64: bundle.secrets.acceptanceEvidenceSigningKeyBase64,
+    pairDispatchTokenKeyBase64: bundle.secrets.pairDispatchTokenKeyBase64,
+    pairDispatchTokenKeyId: expectedIds.pairDispatchTokenKeyId,
+    pairEnvelopeSigningKeyHex: bundle.secrets.pairEnvelopeSigningKeyHex,
+    pairEnvelopeSigningKeyId: expectedIds.pairEnvelopeSigningKeyId,
+    pairProviderProofKeyHex: bundle.secrets.pairProviderProofKeyHex,
+    pairProviderProofKeyId: expectedIds.pairProviderProofKeyId,
+  };
+  const secretValues = {
+    DATABASE_URL: databaseCredentials.runtimeDatabaseUrl,
+    BETTER_AUTH_SECRET: bundle.secrets.betterAuthSecret,
+    GOOGLE_CLIENT_ID: external.values.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: external.values.GOOGLE_CLIENT_SECRET,
+    R2_ACCESS_KEY_ID: external.values.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: external.values.R2_SECRET_ACCESS_KEY,
+    WORKFLOW_CALLBACK_SECRET: bundle.secrets.workflowCallbackSecret,
+    MEDIA_WORKER_TOKEN_SECRET: bundle.secrets.mediaWorkerTokenSecret,
+    VIDEOFORGE_RECONCILER_DATABASE_URL: databaseCredentials.reconcilerDatabaseUrl,
+    VIDEOFORGE_DISPATCH_TOKEN_KEY: bundle.secrets.pairDispatchTokenKeyBase64,
+    VIDEOFORGE_DISPATCH_TOKEN_KEY_ID: expectedIds.pairDispatchTokenKeyId,
+    VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: bundle.secrets.pairEnvelopeSigningKeyHex,
+    VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: expectedIds.pairEnvelopeSigningKeyId,
+    VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: bundle.secrets.pairProviderProofKeyHex,
+    VIDEOFORGE_PROVIDER_PROOF_KEY_ID: expectedIds.pairProviderProofKeyId,
+    RUNPOD_API_KEY: external.values.RUNPOD_API_KEY,
+    RUNPOD_API_BASE_URL: "https://api.runpod.ai/v2",
+    VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: bundle.secrets.workerOperatorBearer,
+  };
+  const writes = [
+    [paths.productionSecretsPath, `${canonicalJson(productionSecrets)}\n`],
+    [paths.workerOriginPath, seed.activation_record_base.cloudflare.public_origin],
+    [paths.workerBearerPath, bundle.secrets.workerOperatorBearer],
+    ...Object.entries(secretValues).map(([name, value]) => [paths.outputs[name], value]),
+  ];
+  for (const [path, value] of writes) {
+    const expectedBytes = Buffer.from(value);
+    if (createMissing) {
+      exclusiveAtomicBytes(path, expectedBytes, {
+        temporaryPath: databaseCredentialStagingPath(path, state.authority_id),
+      });
+    } else if (
+      Buffer.compare(
+        readExactProtectedBytes(path, "PRODUCTION_SECRET_BOOTSTRAP_RECONCILIATION_READBACK"),
+        expectedBytes,
+      ) !== 0
+    ) {
+      fail("PRODUCTION_SECRET_BOOTSTRAP_RECONCILIATION_DRIFT");
+    }
+  }
+  loadBridgeProductionSecrets(environment, { requireEndpoints: false });
+  if (
+    readExactProtectedBytes(paths.workerBearerPath, "PRODUCTION_SECRET_BOOTSTRAP_BEARER").toString(
+      "utf8",
+    ) !==
+      readExactProtectedBytes(
+        paths.outputs.VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN,
+        "PRODUCTION_SECRET_BOOTSTRAP_BEARER_COPY",
+      ).toString("utf8") ||
+    readExactProtectedBytes(
+      paths.sourcePaths.RUNPOD_API_KEY,
+      "PRODUCTION_SECRET_BOOTSTRAP_RUNPOD_SOURCE",
+    ).toString("utf8") !==
+      readExactProtectedBytes(
+        paths.outputs.RUNPOD_API_KEY,
+        "PRODUCTION_SECRET_BOOTSTRAP_RUNPOD_COPY",
+      ).toString("utf8")
+  )
+    fail("PRODUCTION_SECRET_BOOTSTRAP_COPY_BINDING");
+  const fileSha256s = Object.fromEntries(
+    Object.entries(paths.outputs).map(([name, path]) => [
+      name,
+      sha256(readExactProtectedBytes(path, "PRODUCTION_SECRET_BOOTSTRAP_READBACK")),
+    ]),
+  );
+  const body = {
+    schemaVersion: PRODUCTION_SECRET_BOOTSTRAP_SCHEMA,
+    fullLiveAuthorityId: state.authority_id,
+    outerStateSha256,
+    credentialBootstrapReceiptSha256: credentialBootstrapBinding.receiptSha256,
+    productionSecretsSha256: sha256(
+      readExactProtectedBytes(
+        paths.productionSecretsPath,
+        "PRODUCTION_SECRET_BOOTSTRAP_PRODUCTION_SECRETS_READBACK",
+      ),
+    ),
+    productionSecretFileSha256s: fileSha256s,
+    internalCredentialKeyIds: expectedIds,
+  };
+  return Object.freeze({
+    ...body,
+    productionSecretBootstrapSha256: sha256(Buffer.from(`${canonicalJson(body)}\n`)),
+  });
+}
+
 function requiredProtectedOutputPath(path, code) {
   if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
     fail(code);
@@ -2255,6 +2650,8 @@ function materializeDatabaseRoleCredentials({
     reconciler_database_url_sha256: sha256(Buffer.from(bundle.credentials.reconciler.database_url)),
     database_role_credential_bundle_sha256: sha256(bundleBytes),
     operatorDatabaseUrl: bundle.credentials.operator.database_url,
+    runtimeDatabaseUrl: bundle.credentials.runtime.database_url,
+    reconcilerDatabaseUrl: bundle.credentials.reconciler.database_url,
   });
 }
 
@@ -2448,6 +2845,74 @@ async function cleanupPartialDatabaseRoleCredentials({
     observedStages.some((path) => lstatExists(path))
   )
     fail("PREQUALIFICATION_PARTIAL_CLEANUP_READBACK");
+  if (typeof environment.VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE === "string") {
+    const secretPaths = productionSecretBootstrapPaths(environment, state.authority_id);
+    const secretDerivedFinals = [
+      secretPaths.productionSecretsPath,
+      secretPaths.workerOriginPath,
+      secretPaths.workerBearerPath,
+      ...Object.values(secretPaths.outputs),
+    ];
+    const secretDerivedStages = secretDerivedFinals.map((path) =>
+      databaseCredentialStagingPath(path, state.authority_id),
+    );
+    const secretBundleStage = databaseCredentialStagingPath(
+      secretPaths.bundlePath,
+      state.authority_id,
+    );
+    const secretBundlePresent = lstatExists(secretPaths.bundlePath);
+    const secretBundleStagePresent = lstatExists(secretBundleStage);
+    const secretDerivedPresent = [...secretDerivedFinals, ...secretDerivedStages].some((path) =>
+      lstatExists(path),
+    );
+    if (!secretBundlePresent && !secretBundleStagePresent && secretDerivedPresent)
+      fail("PREQUALIFICATION_PARTIAL_CLEANUP_UNBOUND_PRODUCTION_SECRET");
+    if (secretBundlePresent || secretBundleStagePresent) {
+      const source = secretBundlePresent ? secretPaths.bundlePath : secretBundleStage;
+      const bytes = readExactProtectedBytes(
+        source,
+        "PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE",
+      );
+      if (secretDerivedPresent || secretBundlePresent) {
+        let value;
+        try {
+          value = JSON.parse(bytes.toString("utf8"));
+        } catch {
+          fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE");
+        }
+        if (
+          Buffer.compare(bytes, Buffer.from(`${canonicalJson(value)}\n`)) !== 0 ||
+          value?.schemaVersion !== PRODUCTION_SECRET_BOOTSTRAP_SCHEMA ||
+          value.fullLiveAuthorityId !== state.authority_id ||
+          !HASH.test(value.outerStateSha256 ?? "")
+        )
+          fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE");
+      }
+      for (const path of [...secretDerivedFinals, ...secretDerivedStages]) {
+        if (!lstatExists(path)) continue;
+        readExactProtectedBytes(path, "PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_FILE");
+        rmSync(path);
+        removedArtifactCount += 1;
+      }
+      if (secretBundleStagePresent) {
+        rmSync(secretBundleStage);
+        removedArtifactCount += 1;
+      }
+      if (secretBundlePresent) {
+        rmSync(secretPaths.bundlePath);
+        removedArtifactCount += 1;
+      }
+    }
+    if (
+      [
+        secretPaths.bundlePath,
+        secretBundleStage,
+        ...secretDerivedFinals,
+        ...secretDerivedStages,
+      ].some((path) => lstatExists(path))
+    )
+      fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_READBACK");
+  }
   const body = {
     schemaVersion: DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA,
     fullLiveAuthorityId: state.authority_id,
@@ -2488,7 +2953,7 @@ function exactPartialDatabaseCleanupResult(value, state) {
     value.runtimeAndReconcilerRolesAbsent !== true ||
     !Number.isInteger(value.removedArtifactCount) ||
     value.removedArtifactCount < 0 ||
-    value.removedArtifactCount > 12 ||
+    value.removedArtifactCount > 56 ||
     (value.cleanupState === "REMOVED_AUTHORITY_BOUND_FILES" &&
       (!HASH.test(value.credentialBundleSha256 ?? "") || value.removedArtifactCount < 1)) ||
     (value.cleanupState === "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING" &&
@@ -2690,7 +3155,10 @@ function parsePrequalificationRole(text) {
   return assertPrequalificationRoleExact(role);
 }
 
-function prequalificationReceiptFromFile(path) {
+function prequalificationReceiptFromFile(
+  path,
+  credentialBootstrapBinding = EXACT_CREDENTIAL_BOOTSTRAP_BINDING,
+) {
   if (!lstatExists(path)) return null;
   protectedFile(path, "PREQUALIFICATION_RECEIPT_FILE");
   let value;
@@ -2712,6 +3180,7 @@ function prequalificationReceiptFromFile(path) {
     typeof value.full_live_authority_id !== "string" ||
     value.full_live_authority_id === "" ||
     !HASH.test(value.outer_state_sha256 ?? "") ||
+    !HASH.test(value.materialization_seed_sha256 ?? "") ||
     !PREQUALIFICATION_LEDGER_PREFIX_COUNTS.includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
     !HASH.test(value.ledger_after_sha256 ?? "") ||
@@ -2720,6 +3189,31 @@ function prequalificationReceiptFromFile(path) {
     !HASH.test(value.runtime_database_url_sha256 ?? "") ||
     !HASH.test(value.reconciler_database_url_sha256 ?? "") ||
     !HASH.test(value.database_role_credential_bundle_sha256 ?? "") ||
+    value.credential_bootstrap_receipt_sha256 !== credentialBootstrapBinding.receiptSha256 ||
+    !HASH.test(value.production_secret_bootstrap_sha256 ?? "") ||
+    !HASH.test(value.production_secrets_sha256 ?? "") ||
+    Object.keys(value.production_secret_file_sha256s ?? {})
+      .sort()
+      .join(",") !==
+      GUARDED_SECRET_NAMES.filter(
+        (name) =>
+          ![
+            "VIDEOFORGE_MAGE_ENDPOINT_ID",
+            "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+            "VIDEOFORGE_SOULX_ENDPOINT_ID",
+            "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+          ].includes(name),
+      )
+        .sort()
+        .join(",") ||
+    Object.values(value.production_secret_file_sha256s ?? {}).some((item) => !HASH.test(item)) ||
+    Object.keys(value.internal_credential_key_ids ?? {})
+      .sort()
+      .join(",") !==
+      "pairDispatchTokenKeyId,pairEnvelopeSigningKeyId,pairProviderProofKeyId,provenanceReceiptKeyId" ||
+    Object.values(value.internal_credential_key_ids ?? {}).some(
+      (item) => typeof item !== "string" || item === "",
+    ) ||
     new Set([
       value.operator_database_url_sha256,
       value.runtime_database_url_sha256,
@@ -2733,7 +3227,7 @@ function prequalificationReceiptFromFile(path) {
     (value.recovery_mode === "VERIFIED_EXISTING_45" && value.ledger_before_count !== 45) ||
     value.runpod_calls !== 0 ||
     value.cloudflare_calls !== 0 ||
-    value.application_secret_reads !== 0 ||
+    value.application_secret_reads !== 5 ||
     value.prequalification_database_bootstrap_sha256 !==
       sha256(Buffer.from(`${canonicalJson(body)}\n`))
   )
@@ -2754,11 +3248,12 @@ async function verifyPrequalificationDatabaseReceipt({
   environment = process.env,
   priorResults,
   run = productionCommand,
+  credentialBootstrapBinding = EXACT_CREDENTIAL_BOOTSTRAP_BINDING,
 } = {}) {
   // Receipt bytes and the outer prior-result CAS are checked before any database credential,
   // RunPod key, or application secret is opened.
   const receiptPath = prequalificationPath(environment);
-  const receipt = prequalificationReceiptFromFile(receiptPath);
+  const receipt = prequalificationReceiptFromFile(receiptPath, credentialBootstrapBinding);
   const bootstrap = priorResults?.get?.("bootstrap-prequalification-database");
   if (
     bootstrap?.prequalification_database_bootstrap_sha256 !==
@@ -2804,6 +3299,29 @@ async function verifyPrequalificationDatabaseReceipt({
   ])
     if (databaseCredentials[field] !== receipt[field])
       fail("PREQUALIFICATION_VERIFY_DATABASE_CREDENTIALS");
+  const productionSecretBootstrap = materializeProductionSecretBootstrap({
+    environment,
+    state: {
+      authority_id: receipt.full_live_authority_id,
+      materialization_seed_sha256: receipt.materialization_seed_sha256,
+    },
+    outerStateSha256: receipt.outer_state_sha256,
+    databaseCredentials,
+    credentialBootstrapBinding,
+    createMissing: false,
+  });
+  if (
+    productionSecretBootstrap.credentialBootstrapReceiptSha256 !==
+      receipt.credential_bootstrap_receipt_sha256 ||
+    productionSecretBootstrap.productionSecretBootstrapSha256 !==
+      receipt.production_secret_bootstrap_sha256 ||
+    productionSecretBootstrap.productionSecretsSha256 !== receipt.production_secrets_sha256 ||
+    canonicalJson(productionSecretBootstrap.productionSecretFileSha256s) !==
+      canonicalJson(receipt.production_secret_file_sha256s) ||
+    canonicalJson(productionSecretBootstrap.internalCredentialKeyIds) !==
+      canonicalJson(receipt.internal_credential_key_ids)
+  )
+    fail("PREQUALIFICATION_VERIFY_PRODUCTION_SECRETS");
   const dbEnv = {
     PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin",
     HOME: environment.HOME ?? process.env.HOME ?? "/tmp",
@@ -2863,6 +3381,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
   environment = process.env,
   run = productionCommand,
   credentialRandomBytes = randomBytes,
+  credentialBootstrapBinding = EXACT_CREDENTIAL_BOOTSTRAP_BINDING,
 } = {}) {
   return async (context, state, _priorResults, outerStateSha256) => {
     assertConsumedDatabaseBootstrapInvocation(context, state, outerStateSha256);
@@ -2900,6 +3419,17 @@ function createPrequalificationDatabaseBootstrapAdapter({
       receiptPath,
       authorityId: state.authority_id,
     });
+    const secretBootstrapPaths = productionSecretBootstrapPaths(environment, state.authority_id);
+    const secretBootstrapFinals = [
+      secretBootstrapPaths.bundlePath,
+      secretBootstrapPaths.productionSecretsPath,
+      secretBootstrapPaths.workerOriginPath,
+      secretBootstrapPaths.workerBearerPath,
+      ...Object.values(secretBootstrapPaths.outputs),
+    ];
+    const secretBootstrapStages = secretBootstrapFinals.map((path) =>
+      databaseCredentialStagingPath(path, state.authority_id),
+    );
     const observedCredentialStages = assertOnlyCurrentDatabaseCredentialStages(
       credentialPaths,
       "PREQUALIFICATION_DATABASE_CREDENTIAL_STAGING_AUTHORITY_DRIFT",
@@ -2907,10 +3437,17 @@ function createPrequalificationDatabaseBootstrapAdapter({
     const credentialFinals = databaseCredentialFinalPaths(credentialPaths);
     if (
       initialExecution &&
-      (observedCredentialStages.length !== 0 || credentialFinals.some((path) => lstatExists(path)))
+      (observedCredentialStages.length !== 0 ||
+        credentialFinals.some((path) => lstatExists(path)) ||
+        secretBootstrapFinals.some((path) => lstatExists(path)) ||
+        secretBootstrapStages.some((path) => lstatExists(path)))
     )
       fail("PREQUALIFICATION_INITIAL_STATE_NOT_FRESH");
-    if (reconciliationOnly && observedCredentialStages.length !== 0)
+    if (
+      reconciliationOnly &&
+      (observedCredentialStages.length !== 0 ||
+        secretBootstrapStages.some((path) => lstatExists(path)))
+    )
       fail("PREQUALIFICATION_RECONCILIATION_STAGING_PRESENT");
     const dbEnv = {
       PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin",
@@ -2926,7 +3463,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
     // migration.  The owner connection is the only connection used until the full operator
     // state has been committed and read back.
     const before = prequalificationLockedLedger(query, manifest);
-    const existing = prequalificationReceiptFromFile(receiptPath);
+    const existing = prequalificationReceiptFromFile(receiptPath, credentialBootstrapBinding);
     const runtimeAbsent =
       query(
         `SELECT count(*)::text FROM pg_roles WHERE rolname IN (${prequalificationLiteral(PREQUALIFICATION_RUNTIME_ROLE)},${prequalificationLiteral(PREQUALIFICATION_RECONCILER_ROLE)})`,
@@ -3014,6 +3551,19 @@ function createPrequalificationDatabaseBootstrapAdapter({
       state,
       outerStateSha256,
       credentialRandomBytes,
+      createMissing: !reconciliationOnly,
+    });
+    // Complete and read back the entire authority-bound local secret bundle before the atomic
+    // operator-role transaction. A crash while publishing these local files therefore leaves no
+    // database role and is recoverable by bootstrap-partial cleanup; once the role exists,
+    // reconciliation is strictly readback-only over a complete bundle.
+    const productionSecretBootstrap = materializeProductionSecretBootstrap({
+      environment,
+      state,
+      outerStateSha256,
+      databaseCredentials,
+      secretRandomBytes: credentialRandomBytes,
+      credentialBootstrapBinding,
       createMissing: !reconciliationOnly,
     });
     if (!existing && operatorCount === 0) {
@@ -3137,6 +3687,15 @@ function createPrequalificationDatabaseBootstrapAdapter({
           databaseCredentials.reconciler_database_url_sha256 ||
         existing.database_role_credential_bundle_sha256 !==
           databaseCredentials.database_role_credential_bundle_sha256 ||
+        existing.credential_bootstrap_receipt_sha256 !==
+          productionSecretBootstrap.credentialBootstrapReceiptSha256 ||
+        existing.production_secret_bootstrap_sha256 !==
+          productionSecretBootstrap.productionSecretBootstrapSha256 ||
+        existing.production_secrets_sha256 !== productionSecretBootstrap.productionSecretsSha256 ||
+        canonicalJson(existing.production_secret_file_sha256s) !==
+          canonicalJson(productionSecretBootstrap.productionSecretFileSha256s) ||
+        canonicalJson(existing.internal_credential_key_ids) !==
+          canonicalJson(productionSecretBootstrap.internalCredentialKeyIds) ||
         existing.full_live_authority_id !== state.authority_id ||
         existing.outer_state_sha256 !== outerStateSha256
       )
@@ -3146,6 +3705,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
       schema_version: PREQUALIFICATION_SCHEMA,
       full_live_authority_id: state.authority_id,
       outer_state_sha256: outerStateSha256,
+      materialization_seed_sha256: state.materialization_seed_sha256,
       ledger_before_count: before.length,
       ledger_before_sha256: beforeSha256,
       ...after,
@@ -3154,10 +3714,16 @@ function createPrequalificationDatabaseBootstrapAdapter({
       reconciler_database_url_sha256: databaseCredentials.reconciler_database_url_sha256,
       database_role_credential_bundle_sha256:
         databaseCredentials.database_role_credential_bundle_sha256,
+      credential_bootstrap_receipt_sha256:
+        productionSecretBootstrap.credentialBootstrapReceiptSha256,
+      production_secret_bootstrap_sha256: productionSecretBootstrap.productionSecretBootstrapSha256,
+      production_secrets_sha256: productionSecretBootstrap.productionSecretsSha256,
+      production_secret_file_sha256s: productionSecretBootstrap.productionSecretFileSha256s,
+      internal_credential_key_ids: productionSecretBootstrap.internalCredentialKeyIds,
       recovery_mode: recoveryMode,
       runpod_calls: 0,
       cloudflare_calls: 0,
-      application_secret_reads: 0,
+      application_secret_reads: 5,
     };
     const receipt = {
       ...body,
@@ -5052,6 +5618,11 @@ function createProtectedInputMaterializer({
         !HASH.test(bootstrap.runtime_database_url_sha256 ?? "") ||
         !HASH.test(bootstrap.reconciler_database_url_sha256 ?? "") ||
         !HASH.test(bootstrap.database_role_credential_bundle_sha256 ?? "") ||
+        bootstrap.credential_bootstrap_receipt_sha256 !== CREDENTIAL_BOOTSTRAP_RECEIPT_SHA256 ||
+        !HASH.test(bootstrap.production_secret_bootstrap_sha256 ?? "") ||
+        !HASH.test(bootstrap.production_secrets_sha256 ?? "") ||
+        !HASH.test(bootstrap.materialization_seed_sha256 ?? "") ||
+        bootstrap.materialization_seed_sha256 !== state.materialization_seed_sha256 ||
         !HASH.test(bootstrap.prequalification_database_bootstrap_sha256 ?? "")
       )
         fail("MATERIALIZATION_DATABASE_CREDENTIAL_RECEIPT");
@@ -5997,6 +6568,21 @@ function preflightConcreteFullLiveInputs({
     requireEndpoints: requireEndpointSecrets,
     allowEither: !requireEndpointSecrets && cleanupOnly,
   });
+  const secretDirectory = protectedCanonicalDirectory(
+    environment.VIDEOFORGE_V2_13_SECRET_INPUT_DIR,
+    "BRIDGE_SECRET_INPUT_DIRECTORY",
+  );
+  if (
+    readExactProtectedBytes(
+      join(secretDirectory, "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN"),
+      "BRIDGE_WORKER_BEARER_SECRET",
+    ).toString("utf8") !== bridgeValues.VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE ||
+    readExactProtectedBytes(
+      join(secretDirectory, "RUNPOD_API_KEY"),
+      "BRIDGE_RUNPOD_SECRET",
+    ).toString("utf8") !== bridgeValues.VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE
+  )
+    fail("BRIDGE_PROTECTED_SECRET_COPY_BINDING");
   return Object.freeze({ production, cleanupOnly });
 }
 
@@ -6592,9 +7178,11 @@ function createConcreteFullLiveAdapters(options = {}) {
     ...createGitReleaseAdapters(options.git),
     ...createGithubDispatchAdapters(options.github),
     ...createGithubVerificationAdapters(options.githubVerification),
-    "bootstrap-prequalification-database": createPrequalificationDatabaseBootstrapAdapter(
-      options.prequalificationDatabase,
-    ),
+    "bootstrap-prequalification-database": createPrequalificationDatabaseBootstrapAdapter({
+      environment: concreteEnvironment,
+      ...(options.prequalificationDatabase ?? {}),
+      credentialBootstrapBinding: EXACT_CREDENTIAL_BOOTSTRAP_BINDING,
+    }),
     "guarded-activation-once": createGuardedActivationAdapter({
       ...(options.guarded ?? {}),
       requirePrequalificationReceipt: true,
