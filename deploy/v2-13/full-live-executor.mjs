@@ -1422,6 +1422,7 @@ async function main() {
       if (mode.staged === true)
         await verifyPrequalificationDatabaseReceipt({
           environment: process.env,
+          state,
           priorResults,
         });
       return preflightConcreteFullLiveInputs({
@@ -1448,9 +1449,10 @@ async function main() {
         expectedSha256: state.static_release_descriptor_sha256,
         expectedSourceCommit: state.release_source_commit,
       }),
-    verifyPrequalificationReceipt: async (_state, _outerStateSha256, _mode, priorResults) =>
+    verifyPrequalificationReceipt: async (state, _outerStateSha256, _mode, priorResults) =>
       verifyPrequalificationDatabaseReceipt({
         environment: process.env,
+        state,
         priorResults,
       }),
     verifyMaterializationChain: (state, priorResults, context) =>

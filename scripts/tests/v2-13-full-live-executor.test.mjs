@@ -1079,6 +1079,100 @@ test("fake command integration preserves the exact graph and terminal cleanup pr
   }
 });
 
+test("prequalification receipt checks keep the execution and live identities bound on both paths", async () => {
+  const executorSource = readFileSync("deploy/v2-13/full-live-executor.mjs", "utf8");
+  assert.match(
+    executorSource,
+    /if \(mode\.staged === true\)[\s\S]{0,240}verifyPrequalificationDatabaseReceipt\(\{[\s\S]{0,120}environment: process\.env,[\s\S]{0,80}state,[\s\S]{0,80}priorResults,/u,
+  );
+  assert.match(
+    executorSource,
+    /verifyPrequalificationReceipt: async \(state,[\s\S]{0,180}verifyPrequalificationDatabaseReceipt\(\{[\s\S]{0,120}environment: process\.env,[\s\S]{0,80}state,[\s\S]{0,80}priorResults,/u,
+  );
+  const fixture = stateFixture();
+  const expectedAuthorityId = "v2-13-test-executor-0001";
+  const expectedFullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
+  const exactReceipt = Object.freeze({
+    schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v3",
+    full_live_authority_id: expectedFullLiveAuthorityId,
+    prequalification_database_bootstrap_sha256: proof("5"),
+  });
+  const verificationPaths = [];
+  const verifyExactReceipt = async (state, _outerStateSha256, mode, priorResults) => {
+    verificationPaths.push(mode.cleanupOnly === true ? "cleanup" : "staged");
+    if (
+      state.authority_id !== expectedAuthorityId ||
+      state.full_live_authority_id !== expectedFullLiveAuthorityId
+    )
+      throw new Error("PREQUALIFICATION_RECEIPT_IDENTITY_DRIFT");
+    assert.notEqual(state.authority_id, state.full_live_authority_id);
+    const bootstrap = priorResults.get("bootstrap-prequalification-database");
+    assert.equal(bootstrap.full_live_authority_id, state.full_live_authority_id);
+    assert.equal(
+      bootstrap.prequalification_database_bootstrap_sha256,
+      exactReceipt.prequalification_database_bootstrap_sha256,
+    );
+    assert.deepEqual(
+      {
+        schema_version: bootstrap.schema_version,
+        full_live_authority_id: state.full_live_authority_id,
+        prequalification_database_bootstrap_sha256:
+          bootstrap.prequalification_database_bootstrap_sha256,
+      },
+      exactReceipt,
+    );
+    return exactReceipt;
+  };
+  try {
+    let qualificationFailed = false;
+    const result = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      preflight: async (state, outerStateSha256, mode, priorResults) => {
+        if (mode.staged === true)
+          await verifyExactReceipt(state, outerStateSha256, mode, priorResults);
+      },
+      verifyPrequalificationReceipt: verifyExactReceipt,
+      runOperation: async (operation, state, priorResults) => {
+        if (operation.id === "mage-live-qualification" && !qualificationFailed) {
+          qualificationFailed = true;
+          throw new Error("force receipt cleanup path");
+        }
+        return fakeResult(operation, state, priorResults);
+      },
+      runCleanupOperation: async (operation, state, priorResults) =>
+        fakeResult(operation, state, priorResults),
+    });
+    assert.equal(result.failed, true);
+    assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
+    assert.deepEqual(verificationPaths, ["staged", "cleanup"]);
+
+    await assert.rejects(
+      verifyExactReceipt(
+        {
+          authority_id: expectedAuthorityId,
+          full_live_authority_id: "22222222-2222-4222-8222-222222222222",
+        },
+        proof("0"),
+        { cleanupOnly: false },
+        new Map([
+          [
+            "bootstrap-prequalification-database",
+            {
+              full_live_authority_id: expectedFullLiveAuthorityId,
+              prequalification_database_bootstrap_sha256:
+                exactReceipt.prequalification_database_bootstrap_sha256,
+            },
+          ],
+        ]),
+      ),
+      /PREQUALIFICATION_RECEIPT_IDENTITY_DRIFT/u,
+    );
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
 test("invalid final certification evidence leaves the run non-certified and cleanup-only", async () => {
   const fixture = stateFixture();
   let certificationCalls = 0;
