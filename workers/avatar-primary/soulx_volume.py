@@ -14,6 +14,7 @@ WAV2VEC_REPOSITORY: Final = "facebook/wav2vec2-base-960h"
 WAV2VEC_REVISION: Final = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 RUNTIME_PROFILE_ID: Final = "videoforge_soulx_flashhead_pro_bf16_v1"
 VOLUME_SCHEMA: Final = "videoforge.soulx-flashhead-pro-volume/v1"
+WARMUP_ATTESTATION_SCHEMA: Final = "videoforge.soulx-warmup-attestation/v1"
 MARKER_NAME: Final = ".videoforge-soulx-flashhead-pro-volume.json"
 
 FILE_SPECS: Final = (
@@ -75,6 +76,45 @@ FILE_SPECS: Final = (
     },
 )
 
+EXPECTED_WARMUP_FACTS: Final = {
+    "base_data_completed": True,
+    "audio_embedding_completed": True,
+    "pipeline_output_contract": "33_RGB_512X512_FINITE_NONCONSTANT",
+    "cuda_synchronize_completed": True,
+    "sample_rate_hz": 16_000,
+    "target_fps": 25,
+    "frame_count": 33,
+    "motion_frame_count": 5,
+}
+
+
+def validate_warmup_observation(
+    *,
+    parameters: dict[str, object],
+    output_shape: tuple[int, ...] | None,
+    output_finite: bool,
+    output_min: float | None,
+    output_max: float | None,
+) -> dict[str, object]:
+    """Turn actual warmup observations into the one source-bound attestation contract."""
+
+    if parameters != {
+        "sample_rate": 16_000,
+        "tgt_fps": 25,
+        "frame_num": 33,
+        "motion_frames_num": 5,
+    }:
+        raise RuntimeError("SoulX warmup inference parameters drifted")
+    if (
+        output_shape != (33, 512, 512, 3)
+        or output_finite is not True
+        or output_min is None
+        or output_max is None
+        or output_min >= output_max
+    ):
+        raise RuntimeError("SoulX warmup output contract failed")
+    return dict(EXPECTED_WARMUP_FACTS)
+
 
 def volume_root() -> Path:
     return Path(os.environ.get("SOULX_MODEL_ROOT", "/runpod-volume/soulx-flashhead-pro"))
@@ -82,6 +122,43 @@ def volume_root() -> Path:
 
 def canonical_json(value: object) -> bytes:
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def warmup_attestation_sha256(
+    container_digest: str, observed_facts: dict[str, object]
+) -> str:
+    """Hash the source-bound warmup contract completed by ``SoulXRuntime``.
+
+    The runtime records this value only after the real pipeline warmup call and CUDA synchronize
+    both succeed. It is deterministic source/model evidence, not a caller-provided stand-in for
+    model output.
+    """
+
+    if (
+        len(container_digest) != 71
+        or not container_digest.startswith("sha256:")
+        or any(character not in "0123456789abcdef" for character in container_digest[7:])
+        or observed_facts != EXPECTED_WARMUP_FACTS
+    ):
+        raise RuntimeError("SoulX warmup attestation facts do not match the source-bound contract")
+    document = {
+        "schema_version": WARMUP_ATTESTATION_SCHEMA,
+        "container_digest": container_digest,
+        "source": {
+            "repository": SOULX_SOURCE_REPOSITORY,
+            "revision": SOULX_SOURCE_REVISION,
+        },
+        "model": {
+            "repository": SOULX_MODEL_REPOSITORY,
+            "revision": SOULX_MODEL_REVISION,
+            "manifest_sha256": "sha256:" + expected_manifest_sha256(),
+        },
+        "volume_schema_version": VOLUME_SCHEMA,
+        "runtime_profile_id": RUNTIME_PROFILE_ID,
+        "observed_facts": observed_facts,
+    }
+    encoded = json.dumps(document, sort_keys=True, separators=(",", ":")).encode()
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
 def sha256_file(path: Path, chunk_size: int = 8 * 1024 * 1024) -> str:

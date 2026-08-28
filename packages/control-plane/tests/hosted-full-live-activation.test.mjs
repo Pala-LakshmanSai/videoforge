@@ -646,7 +646,7 @@ test("0045 atomically records exact authority and promotes both fresh max-one la
     assert.equal(snapshot.verification.sourceCommit, authority.sourceCommit);
     assert.deepEqual(snapshot.verification.gate.migrationLedger.at(-1), {
       version: 45,
-      sha256: "sha256:352169e1e34e23bc36b2a3c1fb653747194fe0b560894bfdbfafb30d635561d7",
+      sha256: "sha256:a6c2a066cc222f25c627772ea5eb89f50ca552b7cbb1a21b46ab476aaaea19e9",
     });
     assert.equal(snapshot.verification.gate.gpuTransport, "QUALIFIED_EXACT");
     assert.deepEqual(snapshot.verification.gate.cloudflare, {
@@ -1126,6 +1126,7 @@ test("0045 durable authority tables are required by metadata and encrypted backu
     "hosted_full_live_promotions",
     "hosted_full_live_cloudflare_activations",
     "hosted_full_live_cloudflare_rollbacks",
+    "hosted_full_live_qualification_materialization_intents",
     "hosted_full_live_workflow_start_authorities",
     "hosted_full_live_workflow_start_claims",
     "hosted_full_live_workflow_start_results",
@@ -1169,9 +1170,14 @@ test("0045 durable authority tables are required by metadata and encrypted backu
     assert.match(backup, new RegExp(name, "u"));
     assert.match(restore, new RegExp(name, "u"));
   }
-  assert.match(vocabulary, /"hosted_full_live_manifest_read_claims"/u);
-  assert.match(backup, /hosted_full_live_manifest_read_claims/u);
-  assert.match(restore, /hosted_full_live_manifest_read_claims/u);
+  for (const name of [
+    "hosted_full_live_manifest_read_claims",
+    "hosted_full_live_qualification_materializations",
+  ]) {
+    assert.match(vocabulary, new RegExp(`"${name}"`, "u"));
+    assert.match(backup, new RegExp(name, "u"));
+    assert.match(restore, new RegExp(name, "u"));
+  }
 });
 
 test("0045 V2-09 terminal result derives signed duration and phase spend from durable evidence", async () => {

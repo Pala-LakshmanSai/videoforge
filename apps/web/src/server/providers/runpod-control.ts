@@ -329,12 +329,20 @@ const expectedV207EndpointEnvironment = (
   environment: Readonly<Record<string, string>>,
 ): Readonly<Record<string, string>> => {
   const endpointIdHash = hashRunPodV207EndpointIdentity(endpointId);
+  const soulx = environment.VIDEOFORGE_V213_LANE === "soulx";
+  const endpointBindingName = soulx
+    ? "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256"
+    : "VIDEOFORGE_MAGE_ENDPOINT_ID_HASH";
+  const forbiddenEndpointBindingName = soulx
+    ? "VIDEOFORGE_MAGE_ENDPOINT_ID_HASH"
+    : "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256";
   if (
     (environment.LOG_LEVEL !== undefined && environment.LOG_LEVEL !== "INFO") ||
     (environment.RUNPOD_INIT_TIMEOUT !== undefined &&
       environment.RUNPOD_INIT_TIMEOUT !== String(V207_RUNPOD_INIT_TIMEOUT_SECONDS)) ||
-    (environment.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH !== undefined &&
-      environment.VIDEOFORGE_MAGE_ENDPOINT_ID_HASH !== endpointIdHash)
+    (environment[endpointBindingName] !== undefined &&
+      environment[endpointBindingName] !== endpointIdHash) ||
+    environment[forbiddenEndpointBindingName] !== undefined
   ) {
     throw new RunPodControlError("RUNPOD_ENDPOINT_ID_BINDING_ENVIRONMENT_INVALID");
   }
@@ -342,7 +350,7 @@ const expectedV207EndpointEnvironment = (
     LOG_LEVEL: "INFO",
     RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
     ...environment,
-    VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: endpointIdHash,
+    [endpointBindingName]: endpointIdHash,
   });
 };
 
@@ -1311,6 +1319,42 @@ export class RunPodControlClient {
         (pod) => pod.endpointWorker && pod.desiredStatus === "RUNNING",
       ).length,
     });
+  }
+
+  /**
+   * Recover one retained network-volume id only inside the authenticated provider boundary.
+   * Callers persist and compare only its sealed hash; ambiguity or placement drift fails before
+   * an endpoint/template mutation can consume the raw id.
+   */
+  async resolveExactNetworkVolumeId(input: {
+    readonly volumeIdSha256: string;
+    readonly sizeGb: 50;
+    readonly region: "EU-RO-1";
+  }): Promise<string> {
+    if (!/^sha256:[0-9a-f]{64}$/u.test(input.volumeIdSha256)) {
+      throw new RunPodControlError("RUNPOD_NETWORK_VOLUME_BINDING_INVALID");
+    }
+    const value = await this.readInventory("/networkvolumes");
+    if (!Array.isArray(value)) throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+    const matches = value
+      .map(record)
+      .filter(
+        (volume): volume is Record<string, unknown> =>
+          volume !== null &&
+          typeof volume.id === "string" &&
+          ID.test(volume.id) &&
+          hashId(volume.id) === input.volumeIdSha256,
+      );
+    const match = matches[0];
+    if (
+      matches.length !== 1 ||
+      match === undefined ||
+      match.size !== input.sizeGb ||
+      match.dataCenterId !== input.region
+    ) {
+      throw new RunPodControlError("RUNPOD_NETWORK_VOLUME_BINDING_UNCONFIRMED");
+    }
+    return match.id as string;
   }
 
   /**

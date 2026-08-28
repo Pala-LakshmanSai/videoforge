@@ -84,6 +84,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "hosted_full_live_cloudflare_rollbacks",
   "hosted_full_live_stage_authorities",
   "hosted_full_live_stage_consumptions",
+  "hosted_full_live_qualification_materialization_intents",
   "hosted_full_live_stage_completions",
   "hosted_full_live_operation_events",
   "hosted_full_live_bridge_command_events",

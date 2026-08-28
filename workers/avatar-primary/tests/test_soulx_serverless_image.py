@@ -117,6 +117,8 @@ class SoulXServerlessImageDefinitionTests(unittest.TestCase):
     def test_build_hashes_match_exact_copied_sources(self) -> None:
         expected_paths = {
             "/opt/videoforge/soulx_serverless.py": AVATAR_ROOT / "soulx_serverless.py",
+            "/opt/videoforge/soulx_runtime.py": AVATAR_ROOT / "soulx_runtime.py",
+            "/opt/videoforge/soulx_volume.py": AVATAR_ROOT / "soulx_volume.py",
             "/opt/videoforge/soulx-serverless-entrypoint.py": (
                 AVATAR_ROOT / "soulx-serverless-entrypoint.py"
             ),

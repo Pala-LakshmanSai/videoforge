@@ -40,6 +40,7 @@ import {
 } from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
 import {
   EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
+  EXACT_BOOTSTRAP_PARTIAL_CLEANUP_POLICY,
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_DURABLE_BILLING_POLICY,
   EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY,
@@ -234,6 +235,9 @@ function repairExactPolicyFixture(proposal) {
   proposal.exact_execution_graph.early_no_database_cleanup_policy = structuredClone(
     EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY,
   );
+  proposal.exact_execution_graph.bootstrap_partial_cleanup_policy = structuredClone(
+    EXACT_BOOTSTRAP_PARTIAL_CLEANUP_POLICY,
+  );
   proposal.exact_execution_graph.crash_safe_cleanup_policy = structuredClone(
     EXACT_CRASH_SAFE_CLEANUP_POLICY,
   );
@@ -241,6 +245,66 @@ function repairExactPolicyFixture(proposal) {
     EXACT_DURABLE_BILLING_POLICY,
   );
   return proposal;
+}
+
+function repairExactDatabaseScope(database) {
+  const bootstrap = EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY;
+  return {
+    exact_operator_role: "videoforge_hosted_operator",
+    exact_runtime_role: "videoforge_hosted_runtime",
+    exact_reconciler_role: "videoforge_hosted_reconciler",
+    roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
+    pgcrypto_required: true,
+    prequalification_database_bootstrap_operator_function_signature_count:
+      bootstrap.exact_operator_function_signature_count,
+    prequalification_database_bootstrap_operator_function_signature_namespace:
+      bootstrap.exact_operator_function_signature_namespace,
+    prequalification_database_bootstrap_operator_function_signature_canonicalization:
+      bootstrap.exact_operator_function_signature_canonicalization,
+    prequalification_database_bootstrap_operator_acl_comparison:
+      bootstrap.exact_operator_function_acl_comparison,
+    prequalification_database_bootstrap_public_execute_readback_count:
+      bootstrap.public_function_execute_readback_count,
+    prequalification_database_bootstrap_public_default_execute_readback_count:
+      bootstrap.public_default_function_execute_readback_count,
+    prequalification_database_bootstrap_ownership_catalogs: [...bootstrap.ownership_catalogs],
+    prequalification_database_bootstrap_ownership_readback_is_cluster_wide:
+      bootstrap.ownership_readback_is_cluster_wide,
+    prequalification_database_bootstrap_requires_consumed_outer_authority:
+      bootstrap.requires_consumed_outer_authority,
+    prequalification_database_bootstrap_credential_bundle_schema:
+      bootstrap.database_role_credential_bundle_schema,
+    prequalification_database_bootstrap_credential_bundle_path:
+      bootstrap.database_role_credential_bundle_path,
+    prequalification_database_bootstrap_credentials_absent_before_consumed_bootstrap:
+      bootstrap.database_role_credentials_absent_before_consumed_bootstrap,
+    prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count:
+      bootstrap.database_role_credentials_materialized_after_migration_prefix_commit_count,
+    prequalification_database_bootstrap_credential_roles: [
+      ...bootstrap.database_role_credentials_exact_roles,
+    ],
+    prequalification_database_bootstrap_runtime_reconciler_credentials_staged_roles_absent_until_guarded_activation:
+      bootstrap.runtime_and_reconciler_credentials_staged_but_roles_remain_absent_until_guarded_activation,
+    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count:
+      bootstrap.operator_dsn_policy.value_read_after_migration_prefix_commit_count,
+    prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit:
+      bootstrap.operator_dsn_policy.value_read_forbidden_before_migration_prefix_commit,
+    prequalification_database_bootstrap_phase: bootstrap.phase,
+    prequalification_database_bootstrap_phase_cap_usd: bootstrap.phase_cap_usd,
+    prequalification_database_bootstrap_receipt_path: bootstrap.receipt_path,
+    prequalification_database_bootstrap_receipt_hash_field: bootstrap.receipt_hash_field,
+    prequalification_database_bootstrap_receipt_replay_cas_required:
+      bootstrap.receipt_replay_cas_required,
+    prequalification_database_bootstrap_recovery_mode_ledger_before_count: structuredClone(
+      bootstrap.recovery_mode_ledger_before_count,
+    ),
+    prequalification_database_bootstrap_recovery_mode_final_ledger_count:
+      bootstrap.recovery_mode_final_ledger_count,
+    exact_operator_function_signatures: [...bootstrap.exact_operator_function_signatures],
+    exact_initial_ledger_prefix_count: database.exact_initial_ledger_prefix_count,
+    exact_recoverable_prefix_counts: [...database.exact_recoverable_prefix_counts],
+    exact_migrations_to_apply: [...database.exact_migrations_to_apply],
+  };
 }
 
 function v3Fixture({ releaseSourceCommit = v3ReleaseSourceCommit } = {}) {
@@ -254,11 +318,9 @@ function v3Fixture({ releaseSourceCommit = v3ReleaseSourceCommit } = {}) {
   delete v3Proposal.source.base_source_commit_before_semantic_tag_repair;
   v3Proposal.immutable_github_release_ref_request.exact_target_commit = releaseSourceCommit;
   repairExactPolicyFixture(v3Proposal);
-  v3Proposal.requested_scope.database.prequalification_database_bootstrap_operator_function_signature_count =
-    EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signature_count;
-  v3Proposal.requested_scope.database.exact_operator_function_signatures = [
-    ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures,
-  ];
+  v3Proposal.requested_scope.database = repairExactDatabaseScope(
+    v3Proposal.requested_scope.database,
+  );
   v3Proposal.authority_record_commit_binding.materialization_seed_sha256_required_in_authority_and_consumption_state = true;
   v3Proposal.authority_record_commit_binding.materialization_seed_sha256_must_be_verified_before_execution = true;
   v3Proposal.source.exact_release_components = structuredClone(EXACT_V3_RELEASE_COMPONENTS);
@@ -268,6 +330,15 @@ function v3Fixture({ releaseSourceCommit = v3ReleaseSourceCommit } = {}) {
   };
   v3Proposal.requested_scope.static_release_descriptor = structuredClone(staticReleaseDescriptor);
   v3Proposal.sealing.static_release_descriptor = structuredClone(staticReleaseDescriptor);
+  const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
+  const materializationSeedFacts = {
+    commit_field: "source.release_source_commit",
+    full_live_authority_id: fullLiveAuthorityId,
+    path: "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
+    sha256: proof("c"),
+  };
+  v3Proposal.requested_scope.materialization_seed_facts = structuredClone(materializationSeedFacts);
+  v3Proposal.sealing.materialization_seed_facts = structuredClone(materializationSeedFacts);
   const v3ProposalBytes = Buffer.from(`${JSON.stringify(v3Proposal, null, 2)}\n`);
   const v3ProposalSha256 = hash(v3ProposalBytes);
   const v3Commit = "f".repeat(40);
@@ -296,17 +367,23 @@ function v3Fixture({ releaseSourceCommit = v3ReleaseSourceCommit } = {}) {
     exact_reconciler_role: "videoforge_hosted_reconciler",
     roles_must_be_fresh_absent_distinct_login_noinherit_hardened: true,
   };
-  delete approval.statement;
-  approval.static_release_descriptor = structuredClone(staticReleaseDescriptor);
-  approval.statement = `I approve ${v3ProposalSha256} at ${v3Commit} with USD 17.50, USD 7 per month, no fallback, tag videoforge-v2-13-release-20260826-v3, and roles videoforge_hosted_operator, videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
-  const v3ApprovalBytes = Buffer.from(`${JSON.stringify(approval, null, 2)}\n`);
+  const orderedApproval = {};
+  for (const [key, value] of Object.entries(approval)) {
+    orderedApproval[key] = value;
+    if (key === "authority_id") orderedApproval.full_live_authority_id = fullLiveAuthorityId;
+  }
+  delete orderedApproval.statement;
+  orderedApproval.static_release_descriptor = structuredClone(staticReleaseDescriptor);
+  orderedApproval.statement = `I approve ${v3ProposalSha256} at ${v3Commit} with USD 17.50, USD 7 per month, no fallback, tag videoforge-v2-13-release-20260826-v3, and roles videoforge_hosted_operator, videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
+  const v3ApprovalBytes = Buffer.from(`${JSON.stringify(orderedApproval, null, 2)}\n`);
   const authority = structuredClone(JSON.parse(authorityBytes));
-  authority.authority_id = approval.authority_id;
+  authority.authority_id = orderedApproval.authority_id;
+  authority.full_live_authority_id = orderedApproval.full_live_authority_id;
   authority.status = "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS";
-  authority.approved_at = approval.approved_at;
-  authority.expires_at = approval.expires_at;
+  authority.approved_at = orderedApproval.approved_at;
+  authority.expires_at = orderedApproval.expires_at;
   authority.lineage = {
-    proposal_path: approval.proposal.path,
+    proposal_path: orderedApproval.proposal.path,
     proposal_sha256: v3ProposalSha256,
     proposal_record_commit: v3Commit,
     release_source_commit: releaseSourceCommit,
@@ -335,7 +412,7 @@ function v3Fixture({ releaseSourceCommit = v3ReleaseSourceCommit } = {}) {
     external_action_taken: false,
   };
   authority.materialization_seed_sha256 = proof("a");
-  authority.static_release_descriptor = structuredClone(approval.static_release_descriptor);
+  authority.static_release_descriptor = structuredClone(orderedApproval.static_release_descriptor);
   authority.outer_orchestration.approval_schema_validator_sha256 = hash(
     readFileSync("deploy/v2-13/validate-full-live-approval.mjs"),
   );
@@ -521,6 +598,51 @@ test("V3 approval cannot drift from the proposal-sealed static release descripto
   );
 });
 
+test("V3 full-live UUID is exact across sealed facts, approval, and outer authority", () => {
+  const fixture = v3Fixture();
+  const approval = JSON.parse(fixture.approvalBytes);
+  approval.full_live_authority_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  assert.throws(
+    () =>
+      validateFullLiveUserApproval({
+        proposalBytes: fixture.proposalBytes,
+        approvalBytes: Buffer.from(`${JSON.stringify(approval)}\n`),
+        expectedProposalSha256: hash(fixture.proposalBytes),
+        expectedProposalRecordCommit: "f".repeat(40),
+        expectedReleaseSourceCommit: v3ReleaseSourceCommit,
+      }),
+    /SCHEMA/u,
+  );
+
+  const authority = structuredClone(fixture.authority);
+  authority.full_live_authority_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  assert.throws(
+    () =>
+      validateOuterAuthority({
+        ...fixture,
+        authority,
+        authorityBytes: Buffer.from(`${JSON.stringify(authority)}\n`),
+      }),
+    /AUTHORITY_LINEAGE/u,
+  );
+
+  const proposal = JSON.parse(fixture.proposalBytes);
+  proposal.requested_scope.materialization_seed_facts.full_live_authority_id =
+    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const proposalBytes = Buffer.from(`${JSON.stringify(proposal, null, 2)}\n`);
+  assert.throws(
+    () =>
+      validateFullLiveUserApproval({
+        proposalBytes,
+        approvalBytes: fixture.approvalBytes,
+        expectedProposalSha256: hash(proposalBytes),
+        expectedProposalRecordCommit: "f".repeat(40),
+        expectedReleaseSourceCommit: v3ReleaseSourceCommit,
+      }),
+    /V3_SUPERSESSION_OR_AUTHORITY/u,
+  );
+});
+
 test("protected static release descriptor accepts exact canonical mode-0600 bytes before consumption", () => {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v213-static-release-authority-"));
   chmodSync(directory, 0o700);
@@ -637,13 +759,28 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
             .map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`)
             .join(",")}}`
         : JSON.stringify(value);
-  writeFileSync(seedPath, `${JSON.stringify(seed)}\n`, { mode: 0o600 });
   const expected = hash(Buffer.from(`${canonical(seed)}\n`));
+  writeFileSync(seedPath, `${canonical(seed)}\n`, { mode: 0o600 });
   try {
     assert.equal(
       validateMaterializationSeedFile({ path: seedPath, expectedSha256: expected }).sha256,
       expected,
     );
+    assert.throws(
+      () =>
+        validateMaterializationSeedFile({
+          path: seedPath,
+          expectedSha256: expected,
+          expectedFullLiveAuthorityId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        }),
+      /MATERIALIZATION_SEED_AUTHORITY_BINDING/u,
+    );
+    writeFileSync(seedPath, `${JSON.stringify(seed, null, 2)}\n`, { mode: 0o600 });
+    assert.throws(
+      () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: expected }),
+      /MATERIALIZATION_SEED_CANONICAL_BYTES/u,
+    );
+    writeFileSync(seedPath, `${canonical(seed)}\n`, { mode: 0o600 });
     assert.throws(
       () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: proof("0") }),
       /MATERIALIZATION_SEED_HASH/u,
@@ -656,7 +793,7 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
     chmodSync(seedPath, 0o600);
     const nested = structuredClone(seed);
     nested.production_input_base.commandPayloads.endpointID = null;
-    writeFileSync(seedPath, `${JSON.stringify(nested)}\n`, { mode: 0o600 });
+    writeFileSync(seedPath, `${canonical(nested)}\n`, { mode: 0o600 });
     const nestedHash = hash(Buffer.from(`${canonical(nested)}\n`));
     assert.throws(
       () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: nestedHash }),
@@ -670,13 +807,13 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
         value.production_input_base.dualLaneInput.accountIdSha256 = proof("0");
       },
       (value) => {
-        delete value.production_input_base.dualLaneInput.mage.volumeId;
+        delete value.production_input_base.dualLaneInput.mage.volumeManifestSha256;
       },
       (value) => {
-        value.production_input_base.dualLaneInput.soulx.volumeId = "wrong-volume";
+        value.production_input_base.dualLaneInput.soulx.volumeIdSha256 = proof("0");
       },
       (value) => {
-        value.production_input_base.dualLaneInput.soulx.receiptKeyId = "different-key";
+        value.production_input_base.dualLaneInput.envelopeSigningKeyId = "";
       },
       (value) => {
         value.production_input_base.dualLaneInput.billingBaselineUsd = -1;
@@ -688,10 +825,11 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
         value.production_input_base.dualLaneInput.stageAuthorityPublicKeyPem = "PUBLIC KEY";
       },
       (value) => {
-        delete value.production_input_base.dualLaneInput.envelopes.soulxTimeout;
+        delete value.production_input_base.dualLaneInput.qualificationCaseDescriptor.cases
+          .soulxTimeout;
       },
       (value) => {
-        value.production_input_base.dualLaneInput.envelopes.mage = {};
+        value.production_input_base.dualLaneInput.qualificationCaseDescriptor.cases.mage = {};
       },
       (value) => {
         value.activation_record_base = {};
@@ -709,7 +847,7 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
     for (const mutate of contractMutations) {
       const invalid = structuredClone(seed);
       mutate(invalid);
-      writeFileSync(seedPath, `${JSON.stringify(invalid)}\n`, { mode: 0o600 });
+      writeFileSync(seedPath, `${canonical(invalid)}\n`, { mode: 0o600 });
       const invalidHash = hash(Buffer.from(`${canonical(invalid)}\n`));
       assert.throws(
         () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: invalidHash }),
@@ -724,7 +862,7 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
     ]) {
       const credential = structuredClone(seed);
       credential.promotion_record_base = { [section]: { [key]: "forbidden" } };
-      writeFileSync(seedPath, `${JSON.stringify(credential)}\n`, { mode: 0o600 });
+      writeFileSync(seedPath, `${canonical(credential)}\n`, { mode: 0o600 });
       const credentialHash = hash(Buffer.from(`${canonical(credential)}\n`));
       assert.throws(
         () => validateMaterializationSeedFile({ path: seedPath, expectedSha256: credentialHash }),
@@ -856,7 +994,7 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.prequalification_database_bootstrap_policy.operator_role_flags.rolinherit = true;
     },
     (proposal) => {
-      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.guarded_activation_receipt_verified_before_application_secret_reads = false;
+      proposal.exact_execution_graph.prequalification_database_bootstrap_policy.guarded_activation_receipt_verified_before_non_database_application_secret_reads = false;
     },
     (proposal) => {
       proposal.exact_execution_graph.prequalification_database_bootstrap_policy.post_bootstrap_receipt_verifier.cas_before_owner_database_read = false;
@@ -868,6 +1006,9 @@ test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-ord
       proposal.exact_execution_graph.early_no_database_cleanup_policy.exact_child_fd_environment.push(
         "OPERATOR_DATABASE_URL_FD",
       );
+    },
+    (proposal) => {
+      proposal.exact_execution_graph.bootstrap_partial_cleanup_policy.owner_database_mutation_forbidden = false;
     },
     (proposal) => {
       proposal.exact_execution_graph.durable_billing_policy.reserve_open_liability_before_paid_dispatch = false;
@@ -1077,6 +1218,10 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY,
   );
   assert.deepEqual(
+    proposal.exact_execution_graph.bootstrap_partial_cleanup_policy,
+    EXACT_BOOTSTRAP_PARTIAL_CLEANUP_POLICY,
+  );
+  assert.deepEqual(
     proposal.exact_execution_graph.durable_billing_policy,
     EXACT_DURABLE_BILLING_POLICY,
   );
@@ -1124,6 +1269,18 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "pg_ts_config.cfgowner",
     ],
     prequalification_database_bootstrap_ownership_readback_is_cluster_wide: true,
+    prequalification_database_bootstrap_requires_consumed_outer_authority: true,
+    prequalification_database_bootstrap_credential_bundle_schema:
+      "videoforge.v213-database-role-credential-bundle/v1",
+    prequalification_database_bootstrap_credential_bundle_path: "database-role-credentials.json",
+    prequalification_database_bootstrap_credentials_absent_before_consumed_bootstrap: true,
+    prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count: 45,
+    prequalification_database_bootstrap_credential_roles: [
+      "videoforge_hosted_operator",
+      "videoforge_hosted_runtime",
+      "videoforge_hosted_reconciler",
+    ],
+    prequalification_database_bootstrap_runtime_reconciler_credentials_staged_roles_absent_until_guarded_activation: true,
     prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 45,
     prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit: true,
     prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
@@ -1147,10 +1304,16 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   });
   assert.deepEqual(bootstrap.receipt_exact_fields, [
     "schema_version",
+    "full_live_authority_id",
+    "outer_state_sha256",
     "ledger_before_count",
     "ledger_before_sha256",
     "ledger_after_sha256",
     "operator_acl_sha256",
+    "operator_database_url_sha256",
+    "runtime_database_url_sha256",
+    "reconciler_database_url_sha256",
+    "database_role_credential_bundle_sha256",
     "pgcrypto_sha256",
     "recovery_mode",
     "runpod_calls",
@@ -1168,6 +1331,15 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   assert.equal(bootstrap.receipt_replay_requires_exact_all_fields, true);
   assert.equal(bootstrap.receipt_final_ledger_count, 45);
   assert.equal(bootstrap.operator_grants_sql_revoke_public_execute, true);
+  assert.equal(
+    bootstrap.absent_operator_role_creation_and_exact_grants_share_one_database_transaction,
+    true,
+  );
+  assert.equal(bootstrap.fresh_operator_password_available_only_inside_that_transaction, true);
+  assert.equal(
+    bootstrap.lost_transaction_commit_ack_reconciles_by_exact_acl_and_authenticated_operator_dsn,
+    true,
+  );
   assert.equal(bootstrap.public_execute_readback_must_be_empty, true);
   assert.equal(bootstrap.exact_operator_acl_order, "LEXICAL_CANONICAL_SIGNATURE");
   assert.equal(bootstrap.operator_dsn_policy.only_after_migrations, true);
@@ -1192,6 +1364,10 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   assert.equal(new Set(grantedSignatures).size, grantedSignatures.length);
   assert.deepEqual([...grantedSignatures].sort(), expectedSignatures);
   assert.match(grants, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"operator_role";/u);
+  assert.match(grants, /\\getenv operator_password V2_13_OPERATOR_PASSWORD/u);
+  assert.ok(grants.indexOf("BEGIN;") < grants.indexOf("CREATE ROLE %I LOGIN PASSWORD %L"));
+  assert.ok(grants.indexOf("CREATE ROLE %I LOGIN PASSWORD %L") < grantStart);
+  assert.ok(grants.indexOf("COMMIT;") > grants.indexOf("\\gset", grantEnd));
   assert.match(grants, /REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;/u);
   assert.match(
     grants,
@@ -1218,7 +1394,15 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   assert.equal(bootstrap.gpu_use, false);
   assert.equal(bootstrap.external_spend_usd, 0);
   assert.equal(bootstrap.guarded_activation_consumes_verified_receipt, true);
-  assert.equal(bootstrap.guarded_activation_receipt_verified_before_application_secret_reads, true);
+  assert.equal(
+    bootstrap.guarded_activation_receipt_verified_before_non_database_application_secret_reads,
+    true,
+  );
+  assert.equal(
+    bootstrap.authorized_unsettled_reconciliation.existing_role_without_exact_bundle_fails_closed,
+    true,
+  );
+  assert.equal(bootstrap.post_bootstrap_receipt_verifier.database_credential_hash_reads, 3);
   assert.equal(
     bootstrap.guarded_activation_receipt_verified_before_cloudflare_or_runtime_secret_reads,
     true,

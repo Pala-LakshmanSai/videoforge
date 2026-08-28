@@ -20,12 +20,16 @@ import type {
   V213InventoryRead,
   V213JobRead,
   V213LaneDeployment,
+  V213QualificationCaseMaterialization,
+  V213QualificationCaseDescriptor,
   V213SealedLane,
 } from "./v213-dual-lane-live.js";
 import type { V213WorkerReceiptDelivery } from "./v213-provenance-receipt.js";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u;
+const KEY_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+const HEX_KEY = /^(?:[0-9a-f]{2}){32,}$/u;
 
 export interface V213RunPodControlPort {
   createServerlessTemplate(
@@ -64,6 +68,11 @@ export interface V213RunPodControlPort {
     guard: RunPodDrainGuard,
   ): Promise<void>;
   inventory(now?: Date): Promise<RunPodInventory>;
+  resolveExactNetworkVolumeId(input: {
+    readonly volumeIdSha256: string;
+    readonly sizeGb: 50;
+    readonly region: "EU-RO-1";
+  }): Promise<string>;
   inventoryDisposableResources(): Promise<{
     readonly endpoints: readonly RunPodNamedResource[];
     readonly templates: readonly RunPodNamedResource[];
@@ -80,6 +89,8 @@ type JobPort = Pick<
 export interface V213RunPodDualLaneOptions {
   readonly durable: V213DualLaneTransport["durable"];
   readonly input: V213DualLaneInput;
+  /** Protected worker-only values. `null` is valid only for the non-creating cleanup transport. */
+  readonly workerEnvironment: V213WorkerEnvironmentSecrets | null;
   readonly control: V213RunPodControlPort;
   readonly accountPreflight: () => Promise<{ readonly accountIdHash: string }>;
   readonly readAdmissionFacts: () => Promise<{
@@ -94,8 +105,23 @@ export interface V213RunPodDualLaneOptions {
     result: RunPodJobResult,
     delivery: V213WorkerReceiptDelivery,
   ) => Promise<true>;
+  /** Post-consumption DB/R2-owned request materializer. It cannot dispatch a provider job. */
+  readonly materializeQualificationCase: (input: {
+    readonly descriptor: V213QualificationCaseDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+  }) => Promise<V213QualificationCaseMaterialization>;
   readonly sleep?: (milliseconds: number) => Promise<void>;
   readonly now?: () => Date;
+}
+
+export interface V213WorkerEnvironmentSecrets {
+  readonly envelopeSigningKeyId: string;
+  readonly envelopeSigningKeyHex: string;
+  readonly receiptKeyId: string;
+  readonly receiptSigningKeyHex: string;
+  readonly mageWorkerTokenHex: string;
 }
 
 export interface V213CleanupOperationRead {
@@ -171,6 +197,7 @@ function templateIdentityMatches(
     readonly resourceKey: string;
     readonly lane: "mage" | "soulx";
     readonly purpose: "qualification" | "production";
+    readonly environment: Readonly<Record<string, string>>;
   },
 ): boolean {
   if (candidate.name !== expected.name || !ID.test(candidate.id)) return false;
@@ -184,14 +211,91 @@ function templateIdentityMatches(
   const environment = raw.env;
   if (environment === null || typeof environment !== "object" || Array.isArray(environment))
     return false;
-  const env = environment as Record<string, unknown>;
   return (
-    env.LOG_LEVEL === "INFO" &&
-    env.RUNPOD_INIT_TIMEOUT === "800" &&
-    env.VIDEOFORGE_V213_RESOURCE_KEY_SHA256 === hashId(expected.resourceKey) &&
-    env.VIDEOFORGE_V213_LANE === expected.lane &&
-    env.VIDEOFORGE_V213_PURPOSE === expected.purpose
+    (environment as Record<string, unknown>).VIDEOFORGE_V213_RESOURCE_KEY_SHA256 ===
+      hashId(expected.resourceKey) && templateEnvironmentMatches(environment, expected.environment)
   );
+}
+
+function templateEnvironmentMatches(
+  observed: unknown,
+  expected: Readonly<Record<string, string>>,
+): boolean {
+  if (observed === null || typeof observed !== "object" || Array.isArray(observed)) return false;
+  const value = observed as Record<string, unknown>;
+  return (
+    Object.keys(value).sort().join(",") === Object.keys(expected).sort().join(",") &&
+    Object.entries(expected).every(([key, item]) => value[key] === item)
+  );
+}
+
+function workerEnvironmentForLane(input: {
+  readonly sealed: Pick<
+    V213SealedLane,
+    "lane" | "publicImage" | "volumeIdSha256" | "volumeManifestSha256"
+  >;
+  readonly purpose: "qualification" | "production";
+  readonly resourceKeySha256: string;
+  readonly secrets: V213WorkerEnvironmentSecrets | null;
+  readonly endpointIdSha256?: string;
+}): Readonly<Record<string, string>> {
+  const secrets = input.secrets;
+  const imageDigest = input.sealed.publicImage.split("@")[1];
+  if (
+    secrets === null ||
+    !KEY_ID.test(secrets.envelopeSigningKeyId) ||
+    !KEY_ID.test(secrets.receiptKeyId) ||
+    !HEX_KEY.test(secrets.envelopeSigningKeyHex) ||
+    !HEX_KEY.test(secrets.receiptSigningKeyHex) ||
+    !HEX_KEY.test(secrets.mageWorkerTokenHex) ||
+    new Set(
+      [secrets.envelopeSigningKeyHex, secrets.receiptSigningKeyHex, secrets.mageWorkerTokenHex].map(
+        (value) => createHash("sha256").update(Buffer.from(value, "hex")).digest("hex"),
+      ),
+    ).size !== 3 ||
+    !SHA256.test(input.resourceKeySha256) ||
+    !SHA256.test(input.sealed.volumeIdSha256) ||
+    !SHA256.test(input.sealed.volumeManifestSha256) ||
+    typeof imageDigest !== "string" ||
+    !SHA256.test(imageDigest) ||
+    (input.endpointIdSha256 !== undefined && !SHA256.test(input.endpointIdSha256))
+  )
+    throw new Error("V213_WORKER_ENVIRONMENT_INVALID");
+  const common = {
+    LOG_LEVEL: "INFO",
+    RUNPOD_INIT_TIMEOUT: "800",
+    VIDEOFORGE_V213_RESOURCE_KEY_SHA256: input.resourceKeySha256,
+    VIDEOFORGE_V213_LANE: input.sealed.lane,
+    VIDEOFORGE_V213_PURPOSE: input.purpose,
+    VIDEOFORGE_ENVELOPE_KEY_ID: secrets.envelopeSigningKeyId,
+    VIDEOFORGE_ENVELOPE_KEY_SHA256: `sha256:${createHash("sha256")
+      .update(Buffer.from(secrets.envelopeSigningKeyHex, "hex"))
+      .digest("hex")}`,
+    VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: secrets.envelopeSigningKeyHex,
+    VIDEOFORGE_RECEIPT_KEY_ID: secrets.receiptKeyId,
+    VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: secrets.receiptSigningKeyHex,
+  } as const;
+  if (input.sealed.lane === "mage")
+    return Object.freeze({
+      ...common,
+      VIDEOFORGE_MAGE_GPU_OFFERING_ID: "NVIDIA GeForce RTX 4090",
+      VIDEOFORGE_MAGE_MANIFEST_SHA256: input.sealed.volumeManifestSha256,
+      VIDEOFORGE_MAGE_VOLUME_ID_HASH: input.sealed.volumeIdSha256,
+      VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: input.sealed.publicImage,
+      VIDEOFORGE_MAGE_WORKER_TOKEN: secrets.mageWorkerTokenHex,
+      ...(input.endpointIdSha256 === undefined
+        ? {}
+        : { VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: input.endpointIdSha256 }),
+    });
+  return Object.freeze({
+    ...common,
+    VIDEOFORGE_SOULX_CONTAINER_DIGEST: imageDigest,
+    VIDEOFORGE_SOULX_MODEL_MANIFEST_SHA256: input.sealed.volumeManifestSha256,
+    VIDEOFORGE_SOULX_VOLUME_ID_SHA256: input.sealed.volumeIdSha256,
+    ...(input.endpointIdSha256 === undefined
+      ? {}
+      : { VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256: input.endpointIdSha256 }),
+  });
 }
 
 /**
@@ -336,6 +440,11 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       milliseconds,
     );
 
+  materializeQualificationCase = (
+    input: Parameters<V213DualLaneTransport["materializeQualificationCase"]>[0],
+  ): Promise<V213QualificationCaseMaterialization> =>
+    this.options.materializeQualificationCase(input);
+
   async freshAdmission(): Promise<V213AdmissionRead> {
     const [account, facts, inventory] = await Promise.all([
       this.options.accountPreflight(),
@@ -380,13 +489,29 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
   }) {
     const templateName = resourceName(input.resourceKey, "template");
     const endpointName = resourceName(input.resourceKey, "endpoint");
-    const environment = Object.freeze({
-      LOG_LEVEL: "INFO",
-      RUNPOD_INIT_TIMEOUT: "800",
-      VIDEOFORGE_V213_RESOURCE_KEY_SHA256: hashId(input.resourceKey),
-      VIDEOFORGE_V213_LANE: input.sealed.lane,
-      VIDEOFORGE_V213_PURPOSE: input.purpose,
+    if (
+      this.options.workerEnvironment?.envelopeSigningKeyId !==
+        this.options.input.envelopeSigningKeyId ||
+      this.options.workerEnvironment?.receiptKeyId !== this.options.input.receiptSigner.keyId
+    )
+      throw new Error("V213_WORKER_ENVIRONMENT_AUTHORITY_MISMATCH");
+    const environment = workerEnvironmentForLane({
+      sealed: input.sealed,
+      purpose: input.purpose,
+      resourceKeySha256: hashId(input.resourceKey),
+      secrets: this.options.workerEnvironment,
     });
+    // Resolve and hash-bind the retained volume before the first provider mutation. A missing,
+    // ambiguous, wrong-size, or wrong-region inventory entry must leave template creation at zero.
+    const networkVolumeId = await this.options.control.resolveExactNetworkVolumeId({
+      volumeIdSha256: input.sealed.volumeIdSha256,
+      sizeGb: 50,
+      region: "EU-RO-1",
+    });
+    const placement = {
+      networkVolumeId,
+      dataCenterIds: ["EU-RO-1"] as const,
+    };
     let template: RunPodResourceIdentity;
     try {
       template = await this.options.control.createServerlessTemplate(
@@ -413,6 +538,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
           resourceKey: input.resourceKey,
           lane: input.sealed.lane,
           purpose: input.purpose,
+          environment,
         })
       )
         throw new Error("V213_TEMPLATE_CREATE_RECONCILIATION_IDENTITY_MISMATCH");
@@ -426,10 +552,6 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
         gpuCount: 1 as const,
         idleTimeout: 5,
         executionTimeoutMs: 2_400_000,
-      };
-      const placement = {
-        networkVolumeId: input.sealed.volumeId,
-        dataCenterIds: ["EU-RO-1"] as const,
       };
       endpoint = await this.options.control.createScaleZeroEndpoint(
         endpointName,
@@ -708,6 +830,16 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     const template = templates[0]!;
     const endpointRaw = endpoint.raw as Record<string, unknown>;
     const templateRaw = template.raw as Record<string, unknown>;
+    const expectedTemplateEnvironment =
+      this.options.workerEnvironment === null
+        ? null
+        : workerEnvironmentForLane({
+            sealed,
+            purpose,
+            resourceKeySha256: hashId(resourceKey),
+            secrets: this.options.workerEnvironment,
+            endpointIdSha256: hashId(endpoint.id),
+          });
     if (
       endpointRaw.templateId !== template.id ||
       endpointRaw.workersMin !== 0 ||
@@ -717,7 +849,9 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       !providerVolumeMatches(endpointRaw, sealed.volumeIdSha256) ||
       (sealed.endpointIdSha256 !== undefined && hashId(endpoint.id) !== sealed.endpointIdSha256) ||
       (sealed.templateIdSha256 !== undefined && hashId(template.id) !== sealed.templateIdSha256) ||
-      templateRaw.imageName !== sealed.publicImage
+      templateRaw.imageName !== sealed.publicImage ||
+      (expectedTemplateEnvironment !== null &&
+        !templateEnvironmentMatches(templateRaw.env, expectedTemplateEnvironment))
     )
       throw new Error("V213_DETERMINISTIC_RESOURCE_READBACK_INVALID");
     const deployment: V213LaneDeployment = Object.freeze({
@@ -775,6 +909,30 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
         deployment.lane,
         true,
       );
+    const observedResourceKeySha256 =
+      templateRaw?.env !== null &&
+      typeof templateRaw?.env === "object" &&
+      !Array.isArray(templateRaw.env) &&
+      typeof (templateRaw.env as Record<string, unknown>).VIDEOFORGE_V213_RESOURCE_KEY_SHA256 ===
+        "string"
+        ? ((templateRaw.env as Record<string, unknown>)
+            .VIDEOFORGE_V213_RESOURCE_KEY_SHA256 as string)
+        : null;
+    const resourceNameDigest = templateItem?.name.match(/^vf_v213_([0-9a-f]{24})_template$/u)?.[1];
+    const expectedTemplateEnvironment =
+      binding &&
+      observedResourceKeySha256 !== null &&
+      SHA256.test(observedResourceKeySha256) &&
+      resourceNameDigest === observedResourceKeySha256.slice(7, 31) &&
+      this.options.workerEnvironment !== null
+        ? workerEnvironmentForLane({
+            sealed: binding,
+            purpose: deployment.purpose,
+            resourceKeySha256: observedResourceKeySha256,
+            secrets: this.options.workerEnvironment,
+            endpointIdSha256: deployment.endpointIdSha256,
+          })
+        : null;
     if (
       !binding ||
       endpoint.length !== 1 ||
@@ -789,7 +947,10 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
         hashId(endpointItem!.id) !== binding.endpointIdSha256) ||
       (binding.templateIdSha256 !== undefined &&
         hashId(templateItem!.id) !== binding.templateIdSha256) ||
-      templateRaw?.imageName !== binding.publicImage
+      templateRaw?.imageName !== binding.publicImage ||
+      this.options.workerEnvironment === null ||
+      expectedTemplateEnvironment === null ||
+      !templateEnvironmentMatches(templateRaw.env, expectedTemplateEnvironment)
     )
       throw new Error("V213_DEPLOYMENT_READBACK_MISSING");
     return deployment;

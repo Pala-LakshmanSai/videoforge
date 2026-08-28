@@ -44,7 +44,7 @@ const EXECUTOR_SHA256 = `sha256:${createHash("sha256")
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v2";
 const PREQUALIFICATION_RECOVERY_MODES = new Set([
   "FRESH_36_TO_45",
   "RESUME_EXACT_PREFIX",
@@ -52,23 +52,23 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:0556bd306fd572d9d1816297bec09a9398a249af8301bdf3e7a867a57e44c38e",
+    "sha256:4d9d765cacfd50e671c6f22ce873ac4014a43bce707992d6352de8462f8b8036",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:bedc5b1a2af1380c83bc2a6223dcfba072b6c2deb38d54bf1f05b32801f0e758",
+    "sha256:91152ee194afad78f7a38105487982714afefa630fb2cc20328d65e92aa92ad0",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:a83d5ee164cb279b5381272eec66f70b10904883806e81caf75e774ac9f30102",
+    "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
-    "sha256:7734369295715d57b92ae0ca399ad8514cee5babb2b5d1acd749a860fd4b22c0",
+    "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
-    "sha256:352169e1e34e23bc36b2a3c1fb653747194fe0b560894bfdbfafb30d635561d7",
+    "sha256:a6c2a066cc222f25c627772ea5eb89f50ca552b7cbb1a21b46ab476aaaea19e9",
   "deploy/v2-13/neon-full-live-operator-grants.sql":
-    "sha256:f97dcc4b85f48a16b994eaf7e50c91502a12a4600f0b17fd81ee6d31b8db74de",
+    "sha256:38c80de06ef6eff67a03be35326150cf742393efc07fd43ea0b30780c28afab6",
   "packages/control-plane/migrations/manifest.json":
-    "sha256:f0f8bd8d1aec2097b87efd12a58954861c127b2fef0240af4fe238108950f6bf",
+    "sha256:203bb3f7c6c83c99e87441f3c7d86248666dcd8f50e9cc17c119867adf30dc2b",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:793ed7a86a7b2b5767dd2b7f96f26b931d37490f9bb133448da337e9c6bbfec8",
+    "sha256:4df4b9112dab1bf41a4e26f1abe9cd0f8b49edd403d0acb48aa5f0a35dfc98e5",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -222,6 +222,22 @@ function canUseEarlyCleanup(state) {
   return state?.operator_role_verified !== true && !runPodMutationBoundaryReached(state);
 }
 
+function requiresBootstrapPartialCleanup(state) {
+  if (state?.operator_role_verified === true) return false;
+  const workId = `${state?.authority_id}:bootstrap-prequalification-database`.toLowerCase();
+  return (
+    state?.phases?.bootstrap_prequalification_database?.work?.[workId]?.state ===
+    "AUTHORIZED_ONCE_NOT_REDISPATCHABLE"
+  );
+}
+
+function cleanupModeFor(state) {
+  if (!canUseEarlyCleanup(state)) return "NORMAL_OPERATOR_CLEANUP";
+  return requiresBootstrapPartialCleanup(state)
+    ? "BOOTSTRAP_PARTIAL_CLEANUP"
+    : "EARLY_NO_DATABASE_CLEANUP";
+}
+
 // Guarded activation is real, but it cannot safely run before the preceding image, qualification,
 // endpoint, and evidence adapters exist. Keep the closed-world live surface empty until all of the
 // graph is callable and independently reviewed.
@@ -248,6 +264,21 @@ function exactKeys(value, expected) {
     JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...expected].sort())
   );
 }
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(",")}}`;
+  return JSON.stringify(value);
+}
+
+const canonicalSha256 = (value) =>
+  `sha256:${createHash("sha256")
+    .update(Buffer.from(canonicalJson(value)))
+    .digest("hex")}`;
 
 /** The final certification consumes only current-run, already-settled evidence. This check runs
  * before its zero-spend adapter is invoked, so a missing or ambiguous receipt cannot cause even a
@@ -308,7 +339,13 @@ export function cleanupProofEvidence(results) {
   return Object.freeze({ zero, billing, resources, maxOne });
 }
 
-export function assertResult(operation, result, state, results) {
+export function assertResult(
+  operation,
+  result,
+  state,
+  results,
+  { authorizedOuterStateSha256 } = {},
+) {
   if (result === null || typeof result !== "object" || Array.isArray(result))
     fail("RESULT_CONTRACT", operation.id);
   if (
@@ -388,26 +425,45 @@ export function assertResult(operation, result, state, results) {
       "actualUsd",
       "application_secret_reads",
       "cloudflare_calls",
+      "database_role_credential_bundle_sha256",
       "external_spend_usd",
+      "full_live_authority_id",
       "gpu_use",
       "ledger_after_sha256",
       "ledger_before_count",
       "ledger_before_sha256",
       "operator_acl_sha256",
+      "operator_database_url_sha256",
+      "outer_state_sha256",
       "pgcrypto_sha256",
       "prequalification_database_bootstrap_sha256",
       "recovery_mode",
+      "reconciler_database_url_sha256",
       "runpod_calls",
+      "runtime_database_url_sha256",
       "schema_version",
     ];
     if (
       JSON.stringify(Object.keys(result).sort()) !== JSON.stringify(bootstrapKeys.sort()) ||
       result.schema_version !== PREQUALIFICATION_SCHEMA ||
+      result.full_live_authority_id !== state.authority_id ||
+      !HASH.test(result.outer_state_sha256 ?? "") ||
+      (authorizedOuterStateSha256 !== undefined &&
+        result.outer_state_sha256 !== authorizedOuterStateSha256) ||
       !Number.isInteger(result.ledger_before_count) ||
       ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(result.ledger_before_count) ||
       !HASH.test(result.ledger_after_sha256 ?? "") ||
       !HASH.test(result.ledger_before_sha256 ?? "") ||
       !HASH.test(result.operator_acl_sha256 ?? "") ||
+      !HASH.test(result.operator_database_url_sha256 ?? "") ||
+      !HASH.test(result.runtime_database_url_sha256 ?? "") ||
+      !HASH.test(result.reconciler_database_url_sha256 ?? "") ||
+      !HASH.test(result.database_role_credential_bundle_sha256 ?? "") ||
+      new Set([
+        result.operator_database_url_sha256,
+        result.runtime_database_url_sha256,
+        result.reconciler_database_url_sha256,
+      ]).size !== 3 ||
       !HASH.test(result.pgcrypto_sha256 ?? "") ||
       !HASH.test(result.prequalification_database_bootstrap_sha256 ?? "") ||
       !PREQUALIFICATION_RECOVERY_MODES.has(result.recovery_mode) ||
@@ -475,6 +531,56 @@ export function assertResult(operation, result, state, results) {
       result.retainedProductionEndpoints === 0 &&
       result.productionResourcesAbsent === true;
     if (!exactPairRetained && !allProductionAbsent) fail("CLEANUP_PRODUCTION_STATE", operation.id);
+  }
+  if (operation.id === "reconcile-exact-resources") {
+    const localCleanup = result.localDatabaseCredentialCleanup;
+    if (requiresBootstrapPartialCleanup(state)) {
+      if (
+        !exactKeys(localCleanup, [
+          "cleanupSha256",
+          "cleanupState",
+          "credentialBundleSha256",
+          "fullLiveAuthorityId",
+          "operatorRoleAbsent",
+          "removedArtifactCount",
+          "runtimeAndReconcilerRolesAbsent",
+          "schemaVersion",
+        ]) ||
+        localCleanup.schemaVersion !== "videoforge.v213-database-role-credential-cleanup/v1" ||
+        localCleanup.fullLiveAuthorityId !== state.authority_id ||
+        ![
+          "REMOVED_AUTHORITY_BOUND_FILES",
+          "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING",
+          "ALREADY_ABSENT",
+        ].includes(localCleanup.cleanupState) ||
+        localCleanup.operatorRoleAbsent !== true ||
+        localCleanup.runtimeAndReconcilerRolesAbsent !== true ||
+        !Number.isInteger(localCleanup.removedArtifactCount) ||
+        localCleanup.removedArtifactCount < 0 ||
+        localCleanup.removedArtifactCount > 12 ||
+        (localCleanup.cleanupState === "REMOVED_AUTHORITY_BOUND_FILES" &&
+          (!HASH.test(localCleanup.credentialBundleSha256 ?? "") ||
+            localCleanup.removedArtifactCount < 1)) ||
+        (localCleanup.cleanupState === "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING" &&
+          (localCleanup.credentialBundleSha256 !== null ||
+            localCleanup.removedArtifactCount !== 1)) ||
+        (localCleanup.cleanupState === "ALREADY_ABSENT" &&
+          (localCleanup.credentialBundleSha256 !== null || localCleanup.removedArtifactCount !== 0))
+      )
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_READBACK", operation.id);
+      const { cleanupSha256, ...cleanupBody } = localCleanup;
+      const expectedProofSha256 = canonicalSha256({
+        providerCleanupEvidenceSha256: result.evidenceSha256,
+        localDatabaseCredentialCleanupSha256: cleanupSha256,
+      });
+      if (
+        cleanupSha256 !== canonicalSha256(cleanupBody) ||
+        result.proofSha256 !== expectedProofSha256
+      )
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_READBACK", operation.id);
+    } else if (localCleanup !== undefined) {
+      fail("PREQUALIFICATION_PARTIAL_CLEANUP_UNAUTHORIZED", operation.id);
+    }
   }
   if (operation.phase.includes("qualification") && operation.id.includes("live-qualification")) {
     if (
@@ -790,6 +896,45 @@ async function executeFullLive({
     }
     if (existing?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE") {
       if (
+        operation.id === "bootstrap-prequalification-database" &&
+        current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS"
+      ) {
+        const authorizedOuterStateSha256 = current.sha256;
+        const raw = await runOperation(
+          operation,
+          structuredClone(current.state),
+          new Map(results),
+          authorizedOuterStateSha256,
+          {
+            operationId: operation.id,
+            cleanupOnly: false,
+            earlyFailure: false,
+            endpointFree: false,
+            operatorRoleVerified: false,
+            resumed: true,
+            authorizedUnsettled: true,
+            reconciliationOnly: true,
+            providerDispatchForbidden: true,
+          },
+        );
+        const result = assertResult(operation, durableResult(raw), current.state, results, {
+          authorizedOuterStateSha256,
+        });
+        current = stateMutation(statePath, current.sha256, (state) =>
+          settleWork(state, {
+            phaseName: operation.phase,
+            workId,
+            actualUsd: result.actualUsd,
+            eventId: eventId(state.authority_id, operation.id, "reconciled"),
+            result,
+          }),
+        );
+        results.set(operation.id, result);
+        operatorRoleVerified = current.state.operator_role_verified === true;
+        await verifyChainAtBoundary(operation, "bootstrap-reconciled");
+        return result;
+      }
+      if (
         current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" ||
         !CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)
       )
@@ -797,6 +942,7 @@ async function executeFullLive({
       // A cleanup transport gap is not permission to repeat paid/live work. It is permission only
       // to reconcile the already-authorized safety operation through idempotent cleanup/readback.
       const earlyCleanup = canUseEarlyCleanup(current.state);
+      const cleanupMode = cleanupModeFor(current.state);
       const runner =
         earlyCleanup && runEarlyCleanupOperation !== undefined
           ? runEarlyCleanupOperation
@@ -811,6 +957,7 @@ async function executeFullLive({
           cleanupOnly: true,
           earlyFailure: earlyCleanup,
           endpointFree: earlyCleanup,
+          cleanupMode,
           operatorRoleVerified,
           resumed: true,
           authorizedUnsettled: true,
@@ -858,17 +1005,28 @@ async function executeFullLive({
       cleanupOnly,
       earlyFailure: earlyCleanup,
       endpointFree: earlyCleanup,
+      providerDispatchForbidden: earlyCleanup,
+      cleanupMode: cleanupOnly ? cleanupModeFor(current.state) : undefined,
       operatorRoleVerified,
       resumed: existing !== undefined,
     };
+    const authorizedOuterStateSha256 = current.sha256;
     const raw = await runner(
       operation,
       structuredClone(current.state),
       new Map(results),
-      current.sha256,
+      authorizedOuterStateSha256,
       executionContext,
     );
-    const result = assertResult(operation, durableResult(raw), current.state, results);
+    const result = assertResult(
+      operation,
+      durableResult(raw),
+      current.state,
+      results,
+      operation.id === "bootstrap-prequalification-database"
+        ? { authorizedOuterStateSha256 }
+        : undefined,
+    );
     if (operation.id === "release-tag-readback") {
       current = stateMutation(statePath, current.sha256, (state) =>
         recordVerifiedReleaseRef(state, {
@@ -900,11 +1058,14 @@ async function executeFullLive({
   const runCleanupPreflight = async () => {
     if (cleanupPreflightDone) return;
     earlyCleanupFailure = canUseEarlyCleanup(current.state);
+    const cleanupMode = cleanupModeFor(current.state);
     if (preflight !== undefined && !earlyCleanupFailure) {
       const mode = {
         cleanupOnly: true,
         earlyFailure: earlyCleanupFailure,
         endpointFree: earlyCleanupFailure,
+        providerDispatchForbidden: earlyCleanupFailure,
+        cleanupMode,
         operatorRoleVerified,
         bootstrapOnly: false,
         operatorOnly: true,
@@ -932,89 +1093,134 @@ async function executeFullLive({
     earlyCleanupFailure = canUseEarlyCleanup(current.state);
   }
   if (!resumedCleanupOnly) {
-    try {
-      await hydrateSettledResults();
-      if (
-        OPERATIONS.filter((operation) => CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)).some(
-          (operation) => workFor(operation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE",
-        )
-      )
-        fail("AUTHORIZED_CLEANUP_WORK_AMBIGUOUS");
-      if (preflight !== undefined)
-        await preflight(
-          structuredClone(current.state),
-          current.sha256,
-          {
-            cleanupOnly: false,
-            earlyFailure: false,
-            endpointFree: false,
-            operatorRoleVerified,
-            bootstrapOnly: true,
-            operatorOnly: false,
-            initial: true,
-            staged: false,
-            requireEndpointSecrets: false,
-          },
-          new Map(results),
-        );
-      const normalPhases = [
-        ...new Set(
-          OPERATIONS.filter((operation) => operation.phase !== "cleanup_and_reconciliation").map(
-            (operation) => operation.phase,
-          ),
-        ),
-      ];
-      for (const phaseName of normalPhases) {
-        const phase = current.state.phases[phaseName];
-        if (phase?.state === "COMPLETE") continue;
-        const expectedPhaseIndex = PHASES.findIndex(([name]) => name === phaseName);
+    const bootstrapAtEntry = OPERATIONS.find(
+      (operation) => operation.id === "bootstrap-prequalification-database",
+    );
+    // A process that starts from an already-authorized bootstrap is itself the single allowed
+    // reconciliation attempt. If that readback fails, enter cleanup-only instead of issuing a
+    // duplicate provider-free database read in the same resumed process.
+    let sameProcessBootstrapReconciliationAttempted =
+      bootstrapAtEntry !== undefined &&
+      workFor(bootstrapAtEntry)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE";
+    while (true) {
+      try {
+        await hydrateSettledResults();
         if (
-          expectedPhaseIndex < 0 ||
-          current.state.current_phase_index !== expectedPhaseIndex ||
-          !phase
+          OPERATIONS.filter((operation) => CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)).some(
+            (operation) => workFor(operation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE",
+          )
         )
-          fail("PHASE_ORDER");
-        if (phase.state === "PENDING") begin(phaseName);
-        else if (phase.state !== "ACTIVE") fail("PHASE_ORDER");
-        for (const operation of OPERATIONS.filter((item) => item.phase === phaseName)) {
-          if (!isSettled(operation)) await checkTrustedTime();
-          await runOne(operation);
-          if (operation.id === "fresh-live-preflight" && preflight !== undefined) {
-            await checkTrustedTime();
-            await preflight(
-              structuredClone(current.state),
-              current.sha256,
-              {
-                cleanupOnly: false,
-                earlyFailure: false,
-                endpointFree: false,
-                operatorRoleVerified,
-                bootstrapOnly: false,
-                operatorOnly: false,
-                initial: false,
-                staged: true,
-                requireEndpointSecrets: false,
-              },
-              new Map(results),
-            );
+          fail("AUTHORIZED_CLEANUP_WORK_AMBIGUOUS");
+        if (preflight !== undefined) {
+          const bootstrapOperation = OPERATIONS.find(
+            (operation) => operation.id === "bootstrap-prequalification-database",
+          );
+          const bootstrapReconciliation =
+            bootstrapOperation !== undefined &&
+            workFor(bootstrapOperation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE";
+          await preflight(
+            structuredClone(current.state),
+            current.sha256,
+            {
+              cleanupOnly: false,
+              earlyFailure: false,
+              endpointFree: false,
+              operatorRoleVerified,
+              bootstrapOnly: true,
+              bootstrapReconciliation,
+              operatorOnly: false,
+              initial: true,
+              staged: false,
+              requireEndpointSecrets: false,
+            },
+            new Map(results),
+          );
+        }
+        const normalPhases = [
+          ...new Set(
+            OPERATIONS.filter((operation) => operation.phase !== "cleanup_and_reconciliation").map(
+              (operation) => operation.phase,
+            ),
+          ),
+        ];
+        for (const phaseName of normalPhases) {
+          const phase = current.state.phases[phaseName];
+          if (phase?.state === "COMPLETE") continue;
+          const expectedPhaseIndex = PHASES.findIndex(([name]) => name === phaseName);
+          if (
+            expectedPhaseIndex < 0 ||
+            current.state.current_phase_index !== expectedPhaseIndex ||
+            !phase
+          )
+            fail("PHASE_ORDER");
+          if (phase.state === "PENDING") begin(phaseName);
+          else if (phase.state !== "ACTIVE") fail("PHASE_ORDER");
+          for (const operation of OPERATIONS.filter((item) => item.phase === phaseName)) {
+            if (!isSettled(operation)) await checkTrustedTime();
+            await runOne(operation);
+            if (operation.id === "fresh-live-preflight" && preflight !== undefined) {
+              await checkTrustedTime();
+              await preflight(
+                structuredClone(current.state),
+                current.sha256,
+                {
+                  cleanupOnly: false,
+                  earlyFailure: false,
+                  endpointFree: false,
+                  operatorRoleVerified,
+                  bootstrapOnly: false,
+                  operatorOnly: false,
+                  initial: false,
+                  staged: true,
+                  requireEndpointSecrets: false,
+                },
+                new Map(results),
+              );
+            }
+          }
+          if (current.state.phases[phaseName].state === "ACTIVE") complete(phaseName);
+        }
+        const cleanupPhase = current.state.phases.cleanup_and_reconciliation;
+        if (cleanupPhase.state === "PENDING") begin("cleanup_and_reconciliation");
+        else if (cleanupPhase.state !== "ACTIVE") fail("PHASE_ORDER");
+        break;
+      } catch (caught) {
+        let error = caught;
+        const bootstrap = OPERATIONS.find(
+          (operation) => operation.id === "bootstrap-prequalification-database",
+        );
+        if (
+          !sameProcessBootstrapReconciliationAttempted &&
+          bootstrap !== undefined &&
+          current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
+          workFor(bootstrap)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE"
+        ) {
+          sameProcessBootstrapReconciliationAttempted = true;
+          try {
+            // A thrown psql result can be a lost acknowledgement after the one transaction that
+            // creates the operator role and exact grants. Re-enter only the bootstrap's explicit
+            // provider-free, readback-only reconciliation before making cleanup-only irreversible.
+            await runOne(bootstrap);
+            continue;
+          } catch (reconciliationError) {
+            error = reconciliationError;
           }
         }
-        if (current.state.phases[phaseName].state === "ACTIVE") complete(phaseName);
+        if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
+          earlyCleanupFailure = canUseEarlyCleanup(current.state);
+          current = stateMutation(statePath, current.sha256, (state) =>
+            enterCleanupOnly(state, {
+              failureCode: "FULL_LIVE_OPERATION_FAILED",
+              eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
+            }),
+          );
+          results.set("failure", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+          break;
+        }
+        throw error;
       }
-      const cleanupPhase = current.state.phases.cleanup_and_reconciliation;
-      if (cleanupPhase.state === "PENDING") begin("cleanup_and_reconciliation");
-      else if (cleanupPhase.state !== "ACTIVE") fail("PHASE_ORDER");
-    } catch (error) {
-      if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
-        earlyCleanupFailure = canUseEarlyCleanup(current.state);
-        current = stateMutation(statePath, current.sha256, (state) =>
-          enterCleanupOnly(state, {
-            failureCode: "FULL_LIVE_OPERATION_FAILED",
-            eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
-          }),
-        );
-        results.set("failure", { message: error instanceof Error ? error.message : String(error) });
-      } else throw error;
     }
   }
 

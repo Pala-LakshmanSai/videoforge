@@ -1,4 +1,11 @@
-import { createHash, createHmac, createPrivateKey, randomBytes, sign } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  createPrivateKey,
+  createPublicKey,
+  randomBytes,
+  sign,
+} from "node:crypto";
 import { chmodSync, existsSync, lstatSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -47,13 +54,17 @@ import {
   createV213Max1Deployments,
   issueV213StageAuthority,
   readV213DualLaneAdmission,
+  readV213PrequalificationAdmission,
   runV213MageQualification,
   runV213SoulXQualification,
+  V213_QUALIFICATION_CASE_DESCRIPTORS,
 } from "./v213-dual-lane-live.js";
 import type {
   V213AdmissionHandoff,
   V213DualLaneInput,
   V213MageQualificationHandoff,
+  V213QualificationCaseMaterialization,
+  V213PrequalificationInput,
   V213SoulXQualificationHandoff,
 } from "./v213-dual-lane-live.js";
 import { fetchCp07Catalog } from "./runpod-echo-cp07-preflight.js";
@@ -62,6 +73,11 @@ import {
   type V213AttributableCleanupResult,
   type V213RunPodDualLaneTransport,
 } from "./v213-runpod-dual-lane-transport.js";
+import {
+  createV213DirectQualificationMaterializer,
+  validateV213DirectQualificationInputs,
+  type V213QualificationProtectedSourceBytes,
+} from "./v213-direct-qualification-materializer.js";
 import {
   awaitV209TerminalAcceptance,
   commitAndScheduleV209ShortPair,
@@ -346,6 +362,16 @@ export interface V213ProtectedInputs {
   readonly productionSecretsRaw: string;
   /** Exact protected mode-0600 Playwright auth state; absent only in provider-free construction tests. */
   readonly chromeAuthStatePath?: string;
+  /** Present only in the Mage/SoulX child. These FDs are never opened for preflight or cleanup. */
+  readonly qualification?: Readonly<{
+    readonly r2: Readonly<{
+      readonly accountId: string;
+      readonly bucketName: string;
+      readonly accessKeyId: string;
+      readonly secretAccessKey: string;
+    }>;
+    readonly sourceBytes?: V213QualificationProtectedSourceBytes;
+  }>;
 }
 
 /**
@@ -384,6 +410,23 @@ export interface V213EarlyCleanupProtectedInputs {
     readonly fullLiveAuthorityId: string;
   };
 }
+
+const V213_EARLY_CLEANUP_RETAINED_LANES = Object.freeze([
+  Object.freeze({
+    lane: "mage" as const,
+    volumeIdSha256:
+      "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619" as const,
+    volumeManifestSha256:
+      "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b" as const,
+  }),
+  Object.freeze({
+    lane: "soulx" as const,
+    volumeIdSha256:
+      "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be" as const,
+    volumeManifestSha256:
+      "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626" as const,
+  }),
+]);
 
 interface V213CleanupInput {
   readonly schemaVersion: "videoforge.v213-full-live-cleanup-input/v1";
@@ -518,6 +561,15 @@ export const V213_BRIDGE_ENVIRONMENT = Object.freeze({
   workerOperatorBearerFd: `${PREFIX}WORKER_OPERATOR_BEARER_FD`,
   productionSecretsFd: `${PREFIX}PRODUCTION_SECRETS_FD`,
   chromeAuthStatePathFd: `${PREFIX}CHROME_AUTH_STATE_PATH_FD`,
+  qualificationR2AccountIdFd: `${PREFIX}QUALIFICATION_R2_ACCOUNT_ID_FD`,
+  qualificationR2AccessKeyIdFd: `${PREFIX}QUALIFICATION_R2_ACCESS_KEY_ID_FD`,
+  qualificationR2SecretAccessKeyFd: `${PREFIX}QUALIFICATION_R2_SECRET_ACCESS_KEY_FD`,
+  qualificationR2BucketNameFd: `${PREFIX}QUALIFICATION_R2_BUCKET_NAME_FD`,
+  qualificationAvatarSourceFd: `${PREFIX}QUALIFICATION_AVATAR_SOURCE_FD`,
+  qualificationAudio2sFd: `${PREFIX}QUALIFICATION_AUDIO_2S_FD`,
+  qualificationAudio4sFd: `${PREFIX}QUALIFICATION_AUDIO_4S_FD`,
+  qualificationAudio6sFd: `${PREFIX}QUALIFICATION_AUDIO_6S_FD`,
+  qualificationAudio10sFd: `${PREFIX}QUALIFICATION_AUDIO_10S_FD`,
 } as const);
 
 export const V213_RELEASE_CERTIFICATION_ENVIRONMENT = Object.freeze({
@@ -538,7 +590,33 @@ export const V213_OPERATOR_EVIDENCE_ENVIRONMENT = Object.freeze({
   workerOperatorBearerFd: `${OPERATOR_EVIDENCE_PREFIX}WORKER_OPERATOR_BEARER_FD`,
 } as const);
 
-const ALLOWED_ENVIRONMENT = new Set<string>(Object.values(V213_BRIDGE_ENVIRONMENT));
+const NON_QUALIFICATION_ENVIRONMENT = new Set<string>([
+  V213_BRIDGE_ENVIRONMENT.command,
+  V213_BRIDGE_ENVIRONMENT.requestFd,
+  V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd,
+  V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd,
+  V213_BRIDGE_ENVIRONMENT.runtimeDatabaseUrlFd,
+  V213_BRIDGE_ENVIRONMENT.reconcilerDatabaseUrlFd,
+  V213_BRIDGE_ENVIRONMENT.workerOriginFd,
+  V213_BRIDGE_ENVIRONMENT.workerOperatorBearerFd,
+  V213_BRIDGE_ENVIRONMENT.productionSecretsFd,
+  V213_BRIDGE_ENVIRONMENT.chromeAuthStatePathFd,
+]);
+const MAGE_QUALIFICATION_ENVIRONMENT = new Set<string>([
+  ...NON_QUALIFICATION_ENVIRONMENT,
+  V213_BRIDGE_ENVIRONMENT.qualificationR2AccountIdFd,
+  V213_BRIDGE_ENVIRONMENT.qualificationR2AccessKeyIdFd,
+  V213_BRIDGE_ENVIRONMENT.qualificationR2SecretAccessKeyFd,
+  V213_BRIDGE_ENVIRONMENT.qualificationR2BucketNameFd,
+]);
+const SOULX_QUALIFICATION_ENVIRONMENT = new Set<string>([
+  ...MAGE_QUALIFICATION_ENVIRONMENT,
+  V213_BRIDGE_ENVIRONMENT.qualificationAvatarSourceFd,
+  V213_BRIDGE_ENVIRONMENT.qualificationAudio2sFd,
+  V213_BRIDGE_ENVIRONMENT.qualificationAudio4sFd,
+  V213_BRIDGE_ENVIRONMENT.qualificationAudio6sFd,
+  V213_BRIDGE_ENVIRONMENT.qualificationAudio10sFd,
+]);
 const CLEANUP_ALLOWED_ENVIRONMENT = new Set<string>([
   V213_BRIDGE_ENVIRONMENT.command,
   V213_BRIDGE_ENVIRONMENT.requestFd,
@@ -729,6 +807,20 @@ function readProtectedFd(value: string | undefined, code: string): string {
   return bytes.toString("utf8");
 }
 
+function readProtectedBinaryFd(value: string | undefined, code: string): Uint8Array<ArrayBuffer> {
+  if (!/^[0-9]{1,3}$/u.test(value ?? "")) fail(code);
+  const fd = Number(value);
+  if (!Number.isSafeInteger(fd) || fd < 3 || fd > 255) fail(code);
+  let bytes: Buffer;
+  try {
+    bytes = readFileSync(fd);
+  } catch {
+    fail(code);
+  }
+  if (bytes.length < 44 || bytes.length > 16 * 1024 * 1024) fail(code);
+  return Uint8Array.from(bytes);
+}
+
 function operatorDatabaseUrlSha256(value: string): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 }
@@ -880,6 +972,22 @@ function productionSecrets(
   )
     fail("PRODUCTION_SECRET_REUSE_FORBIDDEN");
   return Object.freeze(value as unknown as V213ProductionSecrets);
+}
+
+function v213WorkerEnvironmentSecrets(secrets: V213ProductionSecrets) {
+  const pairDispatchKey = Buffer.from(secrets.pairDispatchTokenKeyBase64, "base64");
+  const mageWorkerTokenHex = createHmac("sha256", pairDispatchKey)
+    .update("videoforge.v213-mage-serverless-worker-token/v1", "utf8")
+    .digest("hex");
+  return Object.freeze({
+    envelopeSigningKeyId: secrets.pairEnvelopeSigningKeyId,
+    envelopeSigningKeyHex: secrets.pairEnvelopeSigningKeyHex,
+    receiptKeyId: secrets.provenanceReceiptKeyId,
+    receiptSigningKeyHex: Buffer.from(secrets.provenanceReceiptHmacKeyBase64, "base64").toString(
+      "hex",
+    ),
+    mageWorkerTokenHex,
+  });
 }
 
 export function readV213ReleaseCertificationProtectedInputs(
@@ -1039,12 +1147,26 @@ export function readV213OperatorEvidenceProtectedInputs(
 export function readV213ProtectedInputs(
   environment: NodeJS.ProcessEnv,
   readFd: (value: string | undefined, code: string) => string = readProtectedFd,
+  readBinaryFd: (
+    value: string | undefined,
+    code: string,
+  ) => Uint8Array<ArrayBuffer> = readProtectedBinaryFd,
 ): V213ProtectedInputs {
+  const command = environment[V213_BRIDGE_ENVIRONMENT.command];
+  const qualificationCommand =
+    command === "mage-live-qualification" || command === "soulx-live-qualification";
   const extras = Object.keys(environment).filter(
-    (name) => name.startsWith(PREFIX) && !ALLOWED_ENVIRONMENT.has(name),
+    (name) =>
+      name.startsWith(PREFIX) &&
+      !(
+        command === "mage-live-qualification"
+          ? MAGE_QUALIFICATION_ENVIRONMENT
+          : command === "soulx-live-qualification"
+            ? SOULX_QUALIFICATION_ENVIRONMENT
+            : NON_QUALIFICATION_ENVIRONMENT
+      ).has(name),
   );
   if (extras.length > 0) fail("AMBIENT_BINDING_REJECTED");
-  const command = environment[V213_BRIDGE_ENVIRONMENT.command];
   if (!COMMANDS.has(command ?? "")) fail("COMMAND_INVALID");
   if (command === "fresh-live-preflight") fail("PREQUALIFICATION_INPUTS_REQUIRED");
   let request: V213FullLiveCommandRequest;
@@ -1096,6 +1218,54 @@ export function readV213ProtectedInputs(
     productionSecretsRaw,
     CLEANUP_COMMANDS.has(command) ? "either" : command.startsWith("v2-") ? "final" : "pre-endpoint",
   );
+  const qualification = qualificationCommand
+    ? Object.freeze({
+        r2: Object.freeze({
+          accountId: readFd(
+            environment[V213_BRIDGE_ENVIRONMENT.qualificationR2AccountIdFd],
+            "QUALIFICATION_R2_ACCOUNT_ID_FD_INVALID",
+          ),
+          accessKeyId: readFd(
+            environment[V213_BRIDGE_ENVIRONMENT.qualificationR2AccessKeyIdFd],
+            "QUALIFICATION_R2_ACCESS_KEY_ID_FD_INVALID",
+          ),
+          secretAccessKey: readFd(
+            environment[V213_BRIDGE_ENVIRONMENT.qualificationR2SecretAccessKeyFd],
+            "QUALIFICATION_R2_SECRET_ACCESS_KEY_FD_INVALID",
+          ),
+          bucketName: readFd(
+            environment[V213_BRIDGE_ENVIRONMENT.qualificationR2BucketNameFd],
+            "QUALIFICATION_R2_BUCKET_NAME_FD_INVALID",
+          ),
+        }),
+        ...(command !== "soulx-live-qualification"
+          ? {}
+          : {
+              sourceBytes: Object.freeze({
+                avatarSource: readBinaryFd(
+                  environment[V213_BRIDGE_ENVIRONMENT.qualificationAvatarSourceFd],
+                  "QUALIFICATION_AVATAR_SOURCE_FD_INVALID",
+                ),
+                soulx2s: readBinaryFd(
+                  environment[V213_BRIDGE_ENVIRONMENT.qualificationAudio2sFd],
+                  "QUALIFICATION_AUDIO_2S_FD_INVALID",
+                ),
+                soulx4s: readBinaryFd(
+                  environment[V213_BRIDGE_ENVIRONMENT.qualificationAudio4sFd],
+                  "QUALIFICATION_AUDIO_4S_FD_INVALID",
+                ),
+                soulx6s: readBinaryFd(
+                  environment[V213_BRIDGE_ENVIRONMENT.qualificationAudio6sFd],
+                  "QUALIFICATION_AUDIO_6S_FD_INVALID",
+                ),
+                soulx10s: readBinaryFd(
+                  environment[V213_BRIDGE_ENVIRONMENT.qualificationAudio10sFd],
+                  "QUALIFICATION_AUDIO_10S_FD_INVALID",
+                ),
+              }),
+            }),
+      })
+    : undefined;
   let parsedOrigin: URL;
   try {
     parsedOrigin = new URL(workerOrigin);
@@ -1132,6 +1302,7 @@ export function readV213ProtectedInputs(
     productionSecrets: secrets,
     productionSecretsRaw,
     chromeAuthStatePath,
+    ...(qualification === undefined ? {} : { qualification }),
   });
 }
 
@@ -1611,6 +1782,9 @@ export function createV213ProductionPrimitives(input: {
   readonly verifyOutputReadback: Parameters<
     typeof createV213RunPodDualLaneTransport
   >[0]["verifyOutputReadback"];
+  readonly materializeQualificationCase: Parameters<
+    typeof createV213RunPodDualLaneTransport
+  >[0]["materializeQualificationCase"];
 }) {
   const commandInput = object(input.protectedInputs.request.input);
   const outerStateSha256 = commandInput?.outerStateSha256;
@@ -1626,10 +1800,12 @@ export function createV213ProductionPrimitives(input: {
   const dualLaneTransport = createV213RunPodDualLaneTransport({
     durable: input.durableStageStore,
     input: input.dualLaneInput,
+    workerEnvironment: v213WorkerEnvironmentSecrets(input.protectedInputs.productionSecrets),
     control,
     accountPreflight: () => assertSujalRunPodAccount(input.protectedInputs.runpodApiKey),
     readAdmissionFacts: input.readAdmissionFacts,
     verifyOutputReadback: input.verifyOutputReadback,
+    materializeQualificationCase: input.materializeQualificationCase,
     createJobClient: (endpointId) =>
       new RunPodServerlessJobClient({
         apiKey: input.protectedInputs.runpodApiKey,
@@ -1673,8 +1849,71 @@ interface V213ProductionInput {
   readonly schemaVersion: "videoforge.v213-full-live-production-input/v1";
   readonly outerStateSha256: `sha256:${string}`;
   readonly fullLiveAuthorityId: string;
-  readonly dualLaneInput: Omit<V213DualLaneInput, "receiptSigner">;
+  readonly dualLaneInput: Omit<V213DualLaneInput, "receiptSigner" | "stageAuthorityPublicKeyPem">;
   readonly commandPayload: Readonly<Record<string, unknown>>;
+}
+
+interface V213PrequalificationCommandInput {
+  readonly schemaVersion: "videoforge.v213-full-live-prequalification-input/v1";
+  readonly outerStateSha256: `sha256:${string}`;
+  readonly fullLiveAuthorityId: string;
+  readonly dualLaneInput: V213PrequalificationInput;
+  readonly commandPayload: Readonly<{
+    readonly authorityDocument: Readonly<Record<string, unknown>>;
+  }>;
+}
+
+function exactPrequalificationInput(value: JsonValue): V213PrequalificationCommandInput {
+  const item = object(value);
+  const dual = object(item?.dualLaneInput);
+  const mage = object(dual?.mage);
+  const soulx = object(dual?.soulx);
+  const payload = object(item?.commandPayload);
+  if (
+    item?.schemaVersion !== "videoforge.v213-full-live-prequalification-input/v1" ||
+    Object.keys(item).sort().join(",") !==
+      "commandPayload,dualLaneInput,fullLiveAuthorityId,outerStateSha256,schemaVersion" ||
+    typeof item.outerStateSha256 !== "string" ||
+    !SHA256.test(item.outerStateSha256) ||
+    typeof item.fullLiveAuthorityId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+      item.fullLiveAuthorityId,
+    ) ||
+    dual === null ||
+    Object.keys(dual).sort().join(",") !==
+      "accountIdSha256,envelopeSigningKeyId,mage,mageQualificationCapUsd,qualificationCaseDescriptors,qualificationEnvelopeSchemaSha256,qualificationGeneratorSha256,qualificationProtectedInputDescriptors,qualificationR2,qualificationSourceRefs,soulx,soulxQualificationCapUsd,totalCapUsd" ||
+    typeof dual.accountIdSha256 !== "string" ||
+    !SHA256.test(dual.accountIdSha256) ||
+    dual.totalCapUsd !== 17.5 ||
+    dual.mageQualificationCapUsd !== 4.5 ||
+    dual.soulxQualificationCapUsd !== 1 ||
+    typeof dual.qualificationEnvelopeSchemaSha256 !== "string" ||
+    !SHA256.test(dual.qualificationEnvelopeSchemaSha256) ||
+    typeof dual.qualificationGeneratorSha256 !== "string" ||
+    !SHA256.test(dual.qualificationGeneratorSha256) ||
+    typeof dual.envelopeSigningKeyId !== "string" ||
+    !COMMAND_ID.test(dual.envelopeSigningKeyId) ||
+    canonicalizeJson(dual.qualificationCaseDescriptors as JsonValue) !==
+      canonicalizeJson(V213_QUALIFICATION_CASE_DESCRIPTORS as unknown as JsonValue) ||
+    !validQualificationStaticBindings(dual) ||
+    mage === null ||
+    soulx === null ||
+    Object.keys(mage).sort().join(",") !== "lane,volumeIdSha256,volumeManifestSha256" ||
+    Object.keys(soulx).sort().join(",") !== "lane,volumeIdSha256,volumeManifestSha256" ||
+    mage.lane !== "mage" ||
+    soulx.lane !== "soulx" ||
+    ![
+      mage.volumeIdSha256,
+      mage.volumeManifestSha256,
+      soulx.volumeIdSha256,
+      soulx.volumeManifestSha256,
+    ].every((hashValue) => typeof hashValue === "string" && SHA256.test(hashValue)) ||
+    payload === null ||
+    Object.keys(payload).join(",") !== "authorityDocument" ||
+    object(payload.authorityDocument) === null
+  )
+    fail("PREQUALIFICATION_INPUT_INVALID");
+  return value as unknown as V213PrequalificationCommandInput;
 }
 
 function validSealedLane(value: unknown, lane: "mage" | "soulx"): boolean {
@@ -1682,7 +1921,7 @@ function validSealedLane(value: unknown, lane: "mage" | "soulx"): boolean {
   return Boolean(
     item &&
       Object.keys(item).sort().join(",") ===
-        "deploymentSha256,lane,publicImage,receiptKeyId,sourceCommit,volumeId,volumeIdSha256,volumeManifestSha256" &&
+        "deploymentSha256,lane,publicImage,sourceCommit,volumeIdSha256,volumeManifestSha256" &&
       item.lane === lane &&
       typeof item.publicImage === "string" &&
       /^ghcr\.io\/.+@sha256:[0-9a-f]{64}$/u.test(item.publicImage) &&
@@ -1690,42 +1929,34 @@ function validSealedLane(value: unknown, lane: "mage" | "soulx"): boolean {
       /^[0-9a-f]{40}$/u.test(item.sourceCommit) &&
       typeof item.deploymentSha256 === "string" &&
       SHA256.test(item.deploymentSha256) &&
-      typeof item.volumeId === "string" &&
-      COMMAND_ID.test(item.volumeId) &&
       typeof item.volumeIdSha256 === "string" &&
       SHA256.test(item.volumeIdSha256) &&
       typeof item.volumeManifestSha256 === "string" &&
-      SHA256.test(item.volumeManifestSha256) &&
-      typeof item.receiptKeyId === "string" &&
-      COMMAND_ID.test(item.receiptKeyId),
+      SHA256.test(item.volumeManifestSha256),
   );
 }
 
-function validDualLaneInput(value: unknown): value is Omit<V213DualLaneInput, "receiptSigner"> {
+function validDualLaneInput(
+  value: unknown,
+): value is Omit<V213DualLaneInput, "receiptSigner" | "stageAuthorityPublicKeyPem"> {
   const item = object(value);
-  const envelopeKeys = [
-    "mage",
-    "soulx10s",
-    "soulx2s",
-    "soulx4s",
-    "soulx6s",
-    "soulxCancel",
-    "soulxInvalidOutput",
-    "soulxTimeout",
-  ];
   const required = [
     "accountIdSha256",
     "billingBaselineUsd",
-    "envelopes",
+    "envelopeSigningKeyId",
     "mage",
     "mageQualificationCapUsd",
+    "qualificationCaseDescriptors",
+    "qualificationEnvelopeSchemaSha256",
+    "qualificationGeneratorSha256",
+    "qualificationProtectedInputDescriptors",
+    "qualificationR2",
+    "qualificationSourceRefs",
     "soulx",
     "soulxQualificationCapUsd",
-    "stageAuthorityPublicKeyPem",
     "totalCapUsd",
   ];
   const allowed = [...required, "maxStatusReads", "minimumStableReadSpacingMs", "pollIntervalMs"];
-  const envelopes = object(item?.envelopes);
   return Boolean(
     item &&
       Object.keys(item).every((key) => allowed.includes(key)) &&
@@ -1740,10 +1971,78 @@ function validDualLaneInput(value: unknown): value is Omit<V213DualLaneInput, "r
       item.totalCapUsd === 17.5 &&
       item.mageQualificationCapUsd === 4.5 &&
       item.soulxQualificationCapUsd === 1 &&
-      typeof item.stageAuthorityPublicKeyPem === "string" &&
-      item.stageAuthorityPublicKeyPem.includes("PUBLIC KEY") &&
-      envelopes &&
-      Object.keys(envelopes).sort().join(",") === envelopeKeys.sort().join(","),
+      typeof item.envelopeSigningKeyId === "string" &&
+      COMMAND_ID.test(item.envelopeSigningKeyId) &&
+      typeof item.qualificationEnvelopeSchemaSha256 === "string" &&
+      SHA256.test(item.qualificationEnvelopeSchemaSha256) &&
+      typeof item.qualificationGeneratorSha256 === "string" &&
+      SHA256.test(item.qualificationGeneratorSha256) &&
+      canonicalizeJson(item.qualificationCaseDescriptors as JsonValue) ===
+        canonicalizeJson(V213_QUALIFICATION_CASE_DESCRIPTORS as unknown as JsonValue) &&
+      validQualificationStaticBindings(item),
+  );
+}
+
+function validQualificationStaticBindings(value: Record<string, unknown>): boolean {
+  const refs = object(value.qualificationSourceRefs);
+  const generators = object(refs?.generators);
+  const validators = object(refs?.validators);
+  const protectedInputs = object(value.qualificationProtectedInputDescriptors);
+  const r2 = object(value.qualificationR2);
+  const sourceRef = (candidate: unknown) => {
+    const item = object(candidate);
+    return Boolean(
+      item &&
+        Object.keys(item).sort().join(",") === "path,sha256" &&
+        typeof item.path === "string" &&
+        !item.path.startsWith("/") &&
+        !item.path.split("/").includes("..") &&
+        typeof item.sha256 === "string" &&
+        SHA256.test(item.sha256),
+    );
+  };
+  const protectedInput = (key: string, contentType: "image/png" | "audio/wav") => {
+    const item = object(protectedInputs?.[key]);
+    return Boolean(
+      item &&
+        Object.keys(item).sort().join(",") === "contentType,path,sha256,sizeBytes" &&
+        item.contentType === contentType &&
+        typeof item.path === "string" &&
+        item.path.startsWith(".videoforge/private/") &&
+        !item.path.split("/").includes("..") &&
+        typeof item.sha256 === "string" &&
+        SHA256.test(item.sha256) &&
+        Number.isSafeInteger(item.sizeBytes) &&
+        Number(item.sizeBytes) > 0 &&
+        Number(item.sizeBytes) <= 16 * 1024 * 1024,
+    );
+  };
+  return Boolean(
+    refs &&
+      Object.keys(refs).sort().join(",") === "caseSource,generators,validators" &&
+      generators &&
+      Object.keys(generators).sort().join(",") === "mage,soulx" &&
+      validators &&
+      Object.keys(validators).sort().join(",") === "mage,soulx" &&
+      sourceRef(refs.caseSource) &&
+      sourceRef(generators.mage) &&
+      sourceRef(generators.soulx) &&
+      sourceRef(validators.mage) &&
+      sourceRef(validators.soulx) &&
+      protectedInputs &&
+      Object.keys(protectedInputs).sort().join(",") ===
+        "avatarSource,soulx10s,soulx2s,soulx4s,soulx6s" &&
+      protectedInput("avatarSource", "image/png") &&
+      protectedInput("soulx2s", "audio/wav") &&
+      protectedInput("soulx4s", "audio/wav") &&
+      protectedInput("soulx6s", "audio/wav") &&
+      protectedInput("soulx10s", "audio/wav") &&
+      r2 &&
+      Object.keys(r2).sort().join(",") === "accountId,bucketName" &&
+      typeof r2.accountId === "string" &&
+      /^[0-9a-f]{32}$/u.test(r2.accountId) &&
+      typeof r2.bucketName === "string" &&
+      /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u.test(r2.bucketName),
   );
 }
 
@@ -1892,6 +2191,14 @@ type V213ProductionFactoryPorts = Readonly<{
   loadResolvedRenderManifest?: Parameters<
     typeof createV213SqlJitMaterializer
   >[0]["loadResolvedRenderManifest"];
+  /**
+   * Post-consumption, pre-dispatch DB/R2 materializer. It is the only qualification seam allowed
+   * to mint bounded transfer ports or sign a worker envelope; the static seed carries descriptors
+   * and source hashes only.
+   */
+  materializeQualificationCase?: Parameters<
+    typeof createV213RunPodDualLaneTransport
+  >[0]["materializeQualificationCase"];
   createDatabases: (inputs: V213ProtectedInputs) => Readonly<{
     operator: TransactionalSqlExecutor;
     runtime: TransactionalSqlExecutor;
@@ -2750,6 +3057,7 @@ export async function createV213CleanupRuntime(
       return createV213RunPodDualLaneTransport({
         durable: {} as never,
         input: lanes as never,
+        workerEnvironment: null,
         control,
         accountPreflight: async () => ({}) as never,
         readAdmissionFacts: async () => ({
@@ -2762,6 +3070,9 @@ export async function createV213CleanupRuntime(
           ),
         }),
         verifyOutputReadback: async () => true,
+        materializeQualificationCase: async () => {
+          fail("CLEANUP_QUALIFICATION_MATERIALIZATION_FORBIDDEN");
+        },
         createJobClient: (endpointId) =>
           new RunPodServerlessJobClient({
             apiKey: cleanupInputs.runpodApiKey,
@@ -2857,19 +3168,56 @@ export async function createV213CleanupRuntime(
   });
 }
 
-/**
- * Construct the cleanup runtime used when failure occurs before the operator role/ACL is
- * durably verified.  This is deliberately a no-op proof runtime: no SQL executor, connection,
- * cleanup-scope claim, endpoint mutation, billing request, or production secret is constructed.
- * The RunPod key remains part of the protected boundary so a caller cannot widen the child
- * process's environment, but the early proof itself performs zero provider calls.
- */
+/** Construct the provider-read-only cleanup runtime used before the operator role/ACL settles. */
 export async function createV213EarlyCleanupRuntime(
   inputs: V213EarlyCleanupProtectedInputs,
+  ports: {
+    readonly createTransport?: (inputs: V213EarlyCleanupProtectedInputs) => V213CleanupTransport;
+    readonly sleep?: (milliseconds: number) => Promise<void>;
+  } = {},
 ): Promise<V213FullLiveBridgeRuntime> {
   if (!CLEANUP_COMMANDS.has(inputs.request.command)) fail("EARLY_CLEANUP_COMMAND_INVALID");
   if (inputs.earlyCleanupInput.fullLiveAuthorityId !== inputs.request.stageAuthorityId)
     fail("EARLY_CLEANUP_AUTHORITY_DRIFT");
+  const transport = (
+    ports.createTransport ??
+    ((earlyInputs) => {
+      const control = new RunPodControlClient({ apiKey: earlyInputs.runpodApiKey });
+      const lanes = Object.fromEntries(
+        V213_EARLY_CLEANUP_RETAINED_LANES.map((lane) => [lane.lane, lane]),
+      );
+      return createV213RunPodDualLaneTransport({
+        durable: {} as never,
+        input: lanes as never,
+        workerEnvironment: null,
+        control,
+        accountPreflight: async () => ({}) as never,
+        readAdmissionFacts: async () => ({
+          checkedAt: new Date().toISOString(),
+          availability: "LOW",
+          flexRateUsdPerGpuHour: 0,
+          cumulativeBillingUsd: await readEndpointBilling(
+            earlyInputs.runpodApiKey,
+            globalThis.fetch,
+          ),
+        }),
+        verifyOutputReadback: async () => true,
+        materializeQualificationCase: async () => {
+          fail("EARLY_CLEANUP_QUALIFICATION_MATERIALIZATION_FORBIDDEN");
+        },
+        createJobClient: (endpointId) =>
+          new RunPodServerlessJobClient({
+            apiKey: earlyInputs.runpodApiKey,
+            endpointId,
+            guard: new RunPodDrainGuard(),
+          }),
+        sleep: ports.sleep,
+      });
+    })
+  )(inputs);
+  const sleep =
+    ports.sleep ??
+    ((milliseconds: number) => new Promise((done) => setTimeout(done, milliseconds)));
   const completed = new Map<string, V213FullLiveCommandResult>();
   const journal: V213FullLiveJournal = {
     async claim(input) {
@@ -2877,8 +3225,8 @@ export async function createV213EarlyCleanupRuntime(
       return prior === undefined ? { action: "EXECUTE" } : { action: "DONE", result: prior };
     },
     async ambiguous() {
-      // There is no durable side effect to reconcile in this branch.  The outer executor keeps
-      // the cleanup work terminal and never redispatches it.
+      // The child performs readback only. The outer cleanup work remains authorized and can be
+      // reconciled without converting an ambiguous read into a provider mutation.
     },
     async complete(operationId, result) {
       const prior = completed.get(operationId);
@@ -2887,65 +3235,76 @@ export async function createV213EarlyCleanupRuntime(
       completed.set(operationId, result);
     },
   };
-  const common = {
-    databaseCleanupClaimed: false,
-    databaseCalls: 0,
-    providerCalls: 0,
-    runpodCalls: 0,
-    cloudflareCalls: 0,
-    applicationSecretReads: 0,
-    externalSpendUsd: 0,
-    gpuUse: false,
-  } as const;
   const handlers = Object.fromEntries(
     V213_FULL_LIVE_COMMANDS.map((command) => {
       if (command === "restore-endpoints-max-one")
         return [
           command,
           async () =>
-            evidence({
-              ...common,
-              restorationPerformed: false,
-              productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
-              productionResourcesAbsent: true,
-              bothEndpointsMaxWorkersOne: false,
-              retainedProductionEndpoints: 0,
-            }),
+            evidence(
+              summarizeV213EndpointRestoration(await transport.cleanupAttributableResources([])),
+            ),
         ];
       if (command === "prove-zero-workers")
         return [
           command,
-          async () =>
-            evidence({
-              ...common,
-              zeroWorkers: true,
-              reads: [],
-              stableReads: 0,
-            }),
+          async () => {
+            const reads = [];
+            for (let index = 0; index < 3; index += 1) {
+              const inventory = await transport.inventory();
+              if (
+                inventory.runningPods !== 0 ||
+                inventory.activeWorkers !== 0 ||
+                inventory.queuedJobs !== 0
+              )
+                fail("ZERO_WORKERS_NOT_PROVEN");
+              reads.push(inventory);
+              if (index < 2) await sleep(2_000);
+            }
+            return evidence({ zeroWorkers: true, reads } as never);
+          },
         ];
       if (command === "read-settled-billing")
         return [
           command,
           async () =>
-            evidence({
-              ...common,
-              cumulativeBillingUsd: 0,
-              billingReads: [],
-              billingReadCount: 0,
-              billingStable: true,
-              withinCumulativeCap: true,
-            }),
+            evidence(
+              await readStableBillingEvidence({
+                read: () => transport.billingAmount(),
+                sleep,
+                baselineMode: "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION",
+                baselineUsd: null,
+                totalCapUsd: 17.5,
+              }),
+            ),
         ];
       if (command === "reconcile-exact-resources")
         return [
           command,
-          async () =>
-            evidence({
-              ...common,
-              reconciliationPerformed: false,
-              resourceReads: 0,
-              onlyApprovedRetainedVolumes: true,
-            }),
+          async () => {
+            const inventory = await transport.inventory();
+            const expected = V213_EARLY_CLEANUP_RETAINED_LANES.map(
+              (lane) => lane.volumeIdSha256,
+            ).sort();
+            const actual = inventory.volumes.map((volume) => volume.idSha256).sort();
+            const exactVolumes = V213_EARLY_CLEANUP_RETAINED_LANES.every((lane) => {
+              const volume = inventory.volumes.find(
+                (candidate) => candidate.idSha256 === lane.volumeIdSha256,
+              );
+              return (
+                volume?.sizeGb === 50 &&
+                volume.region === "EU-RO-1" &&
+                volume.manifestSha256 === lane.volumeManifestSha256
+              );
+            });
+            if (
+              inventory.volumes.length !== 2 ||
+              !exactVolumes ||
+              canonicalizeJson(actual as never) !== canonicalizeJson(expected as never)
+            )
+              fail("CLEANUP_RETAINED_VOLUME_DRIFT");
+            return evidence({ ...inventory, onlyApprovedRetainedVolumes: true } as never);
+          },
         ];
       return [command, async () => fail("EARLY_CLEANUP_COMMAND_NOT_ALLOWED")];
     }),
@@ -2970,47 +3329,49 @@ export async function createV213PrequalificationRuntime(
   ports: V213PrequalificationFactoryPorts = defaultPrequalificationPorts,
 ): Promise<V213FullLiveBridgeRuntime> {
   if (inputs.request.command !== "fresh-live-preflight") fail("PREQUALIFICATION_COMMAND_INVALID");
-  const production = exactProductionInput(inputs.request.input);
-  const receiptKeyId = production.dualLaneInput.mage.receiptKeyId;
-  if (receiptKeyId !== production.dualLaneInput.soulx.receiptKeyId) fail("RECEIPT_KEY_ID_DRIFT");
-  const dualLaneInput = Object.freeze({
-    ...production.dualLaneInput,
-    // Admission validates the key id but does not sign a receipt.  Do not read or register the
-    // production HMAC key before guarded activation has provisioned the full secret set.
-    receiptSigner: new ProvenanceReceiptSigner(receiptKeyId, Buffer.alloc(32)),
-  }) as V213DualLaneInput;
+  const production = exactPrequalificationInput(inputs.request.input);
+  const dualLaneInput = production.dualLaneInput;
   const operatorDatabase = ports.createOperatorDatabase(inputs);
   const control = new RunPodControlClient({ apiKey: inputs.runpodApiKey });
-  const transport = createV213RunPodDualLaneTransport({
-    // The admission operation is read-only and cannot reach durable stage mutation methods.
-    durable: {} as never,
-    input: dualLaneInput,
-    control,
-    accountPreflight: () => assertSujalRunPodAccount(inputs.runpodApiKey),
-    readAdmissionFacts: async () => {
-      const candidates = await fetchCp07Catalog(inputs.runpodApiKey, ports.fetch);
-      const exact = candidates.find(
-        (candidate) =>
-          candidate.displayName === "NVIDIA GeForce RTX 4090" && candidate.region === "EU-RO-1",
-      );
-      if (!exact) fail("RUNPOD_EXACT_OFFERING_UNAVAILABLE");
-      return {
-        checkedAt: ports.now().toISOString(),
-        availability: exact.availability,
-        // `exact.rateUsdPerHour` is the Secure Pod catalog rate. Do not label it Serverless Flex.
-        flexRateUsdPerGpuHour: V213_SERVERLESS_FLEX_RATE_SOURCE.rateUsdPerGpuHour,
-        cumulativeBillingUsd: await readEndpointBilling(inputs.runpodApiKey, ports.fetch),
-      };
-    },
-    // This port is unreachable from readV213DualLaneAdmission. Keep it fail-closed if the
-    // prequalification handler is ever widened accidentally.
-    verifyOutputReadback: async () => fail("PREQUALIFICATION_OUTPUT_READBACK_FORBIDDEN"),
-    createJobClient: () => {
-      fail("PREQUALIFICATION_JOB_CLIENT_FORBIDDEN");
-    },
-    sleep: ports.sleep,
-    now: ports.now,
-  });
+  const freshAdmission = async () => {
+    const [account, candidates, cumulativeBillingUsd, inventory] = await Promise.all([
+      assertSujalRunPodAccount(inputs.runpodApiKey),
+      fetchCp07Catalog(inputs.runpodApiKey, ports.fetch),
+      readEndpointBilling(inputs.runpodApiKey, ports.fetch),
+      control.inventory(ports.now()),
+    ]);
+    const exact = candidates.find(
+      (candidate) =>
+        candidate.displayName === "NVIDIA GeForce RTX 4090" && candidate.region === "EU-RO-1",
+    );
+    if (!exact) fail("RUNPOD_EXACT_OFFERING_UNAVAILABLE");
+    return Object.freeze({
+      checkedAt: inventory.checkedAt,
+      accountIdSha256: account.accountIdHash,
+      gpu: "NVIDIA GeForce RTX 4090" as const,
+      region: "EU-RO-1" as const,
+      availability: exact.availability,
+      flexRateUsdPerGpuHour: V213_SERVERLESS_FLEX_RATE_SOURCE.rateUsdPerGpuHour,
+      cumulativeBillingUsd,
+      runningPods: inventory.runningPodCount,
+      activeWorkers: inventory.activeServerlessWorkerCount,
+      endpoints: inventory.endpoints.length,
+      privateTemplates: inventory.privateTemplateCount,
+      volumes: Object.freeze(
+        inventory.networkVolumes.map((volume) => {
+          const sealed = [dualLaneInput.mage, dualLaneInput.soulx].find(
+            (lane) => lane.volumeIdSha256 === volume.idHash,
+          );
+          return Object.freeze({
+            idSha256: volume.idHash,
+            sizeGb: volume.sizeGb ?? -1,
+            region: volume.dataCenterId as "EU-RO-1",
+            manifestSha256: sealed?.volumeManifestSha256 ?? "sha256:unknown",
+          });
+        }),
+      ),
+    });
+  };
   const payload = production.commandPayload;
   const preflight: V213FullLiveCommandHandler = async () => {
     const { authorityDocument } = exactPayload<{ authorityDocument: Record<string, unknown> }>(
@@ -3018,8 +3379,8 @@ export async function createV213PrequalificationRuntime(
       ["authorityDocument"],
     );
     if (
-      authorityDocument.sourceCommit !== dualLaneInput.mage.sourceCommit ||
-      authorityDocument.sourceCommit !== dualLaneInput.soulx.sourceCommit ||
+      typeof authorityDocument.sourceCommit !== "string" ||
+      !/^[0-9a-f]{40}$/u.test(authorityDocument.sourceCommit) ||
       authorityDocument.maximumCumulativeSpendUsd !== 17.5 ||
       authorityDocument.singleUse !== true
     )
@@ -3038,7 +3399,12 @@ export async function createV213PrequalificationRuntime(
       !SHA256.test(registered.authority_document_sha256)
     )
       fail("FULL_LIVE_AUTHORITY_REGISTRATION_FAILED");
-    return evidence((await readV213DualLaneAdmission(transport, dualLaneInput)) as never);
+    return evidence(
+      (await readV213PrequalificationAdmission(
+        { freshAdmission, now: ports.now },
+        dualLaneInput,
+      )) as never,
+    );
   };
   const forbidden: V213FullLiveCommandHandler = async () => {
     fail("PREQUALIFICATION_COMMAND_NOT_ALLOWED");
@@ -3069,15 +3435,37 @@ export async function createV213ProductionRuntime(
   const secrets = inputs.productionSecrets;
   const receiptSecret = Buffer.from(secrets.provenanceReceiptHmacKeyBase64, "base64");
   const receiptSigner = new ProvenanceReceiptSigner(secrets.provenanceReceiptKeyId, receiptSecret);
+  const stagePrivateKey = createPrivateKey({
+    key: Buffer.from(secrets.stageAuthoritySigningKeyBase64, "base64"),
+    format: "der",
+    type: "pkcs8",
+  });
   const dualLaneInput = Object.freeze({
     ...production.dualLaneInput,
     receiptSigner,
+    stageAuthorityPublicKeyPem: createPublicKey(stagePrivateKey)
+      .export({ type: "spki", format: "pem" })
+      .toString(),
   }) as V213DualLaneInput;
   if (
-    dualLaneInput.mage?.receiptKeyId !== secrets.provenanceReceiptKeyId ||
-    dualLaneInput.soulx?.receiptKeyId !== secrets.provenanceReceiptKeyId
-  )
-    fail("RECEIPT_KEY_ID_DRIFT");
+    ports.materializeQualificationCase === undefined &&
+    (inputs.request.command === "mage-live-qualification" ||
+      inputs.request.command === "soulx-live-qualification")
+  ) {
+    if (inputs.qualification === undefined) fail("QUALIFICATION_JIT_PROTECTED_INPUT_UNAVAILABLE");
+    if (
+      inputs.qualification.r2.accountId !== dualLaneInput.qualificationR2.accountId ||
+      inputs.qualification.r2.bucketName !== dualLaneInput.qualificationR2.bucketName
+    )
+      fail("QUALIFICATION_JIT_R2_BINDING_DRIFT");
+    validateV213DirectQualificationInputs({
+      operationId: inputs.request.command,
+      sourceRefs: dualLaneInput.qualificationSourceRefs,
+      protectedInputDescriptors: dualLaneInput.qualificationProtectedInputDescriptors,
+      protectedSourceBytes: inputs.qualification.sourceBytes,
+      r2: inputs.qualification.r2,
+    });
+  }
   const databases = ports.createDatabases(inputs);
   const acceptanceEvidenceKey = Buffer.from(secrets.acceptanceEvidenceSigningKeyBase64, "base64");
   for (const [keyId, secretBase64] of [
@@ -3097,10 +3485,44 @@ export async function createV213ProductionRuntime(
     fullLiveAuthorityId: production.fullLiveAuthorityId,
     signingKey: Buffer.from(secrets.stageAuthoritySigningKeyBase64, "base64"),
   });
+  const qualificationMaterializer =
+    ports.materializeQualificationCase ??
+    (() => {
+      if (
+        inputs.request.command !== "mage-live-qualification" &&
+        inputs.request.command !== "soulx-live-qualification"
+      )
+        return async (): Promise<V213QualificationCaseMaterialization> =>
+          fail("QUALIFICATION_JIT_MATERIALIZER_UNAVAILABLE");
+      if (inputs.qualification === undefined) fail("QUALIFICATION_JIT_PROTECTED_INPUT_UNAVAILABLE");
+      if (
+        inputs.qualification.r2.accountId !== dualLaneInput.qualificationR2.accountId ||
+        inputs.qualification.r2.bucketName !== dualLaneInput.qualificationR2.bucketName
+      )
+        fail("QUALIFICATION_JIT_R2_BINDING_DRIFT");
+      return createV213DirectQualificationMaterializer({
+        fullLiveAuthorityId: production.fullLiveAuthorityId,
+        operationId: inputs.request.command,
+        outerStateSha256: production.outerStateSha256,
+        sourceCommit: dualLaneInput.mage.sourceCommit,
+        sourceRefs: dualLaneInput.qualificationSourceRefs,
+        protectedInputDescriptors: dualLaneInput.qualificationProtectedInputDescriptors,
+        protectedSourceBytes: inputs.qualification.sourceBytes,
+        r2: inputs.qualification.r2,
+        signing: {
+          secretHex: secrets.pairEnvelopeSigningKeyHex,
+          keyId: secrets.pairEnvelopeSigningKeyId,
+        },
+        database: databases.operator,
+        fetch: ports.fetch,
+        now: ports.now,
+      });
+    })();
   const control = new RunPodControlClient({ apiKey: inputs.runpodApiKey });
   const transport = createV213RunPodDualLaneTransport({
     durable,
     input: dualLaneInput,
+    workerEnvironment: v213WorkerEnvironmentSecrets(secrets),
     control,
     accountPreflight: () => assertSujalRunPodAccount(inputs.runpodApiKey),
     readAdmissionFacts: async () => {
@@ -3136,6 +3558,7 @@ export async function createV213ProductionRuntime(
         endpointId,
         guard: new RunPodDrainGuard(),
       }),
+    materializeQualificationCase: qualificationMaterializer,
     sleep: ports.sleep,
     now: ports.now,
   });
@@ -3716,6 +4139,9 @@ export async function createV213ProductionRuntime(
       secrets.pairProviderProofKeyHex,
       Buffer.from(secrets.pairEnvelopeSigningKeyHex, "hex").toString("utf8"),
       Buffer.from(secrets.pairProviderProofKeyHex, "hex").toString("utf8"),
+      ...(inputs.qualification
+        ? [inputs.qualification.r2.accessKeyId, inputs.qualification.r2.secretAccessKey]
+        : []),
       ...(secrets.mageEndpointId ? [secrets.mageEndpointId] : []),
       ...(secrets.soulxEndpointId ? [secrets.soulxEndpointId] : []),
     ]),
@@ -3926,6 +4352,7 @@ export async function runV213FullLiveCli(
     ) => Promise<V213FullLiveBridgeRuntime>;
     readonly write?: (value: string) => void;
     readonly readFd?: (value: string | undefined, code: string) => string;
+    readonly readBinaryFd?: (value: string | undefined, code: string) => Uint8Array<ArrayBuffer>;
   } = {},
 ): Promise<void> {
   const write = options.write ?? ((value) => process.stdout.write(value));
@@ -3960,7 +4387,11 @@ export async function runV213FullLiveCli(
       const runtime = await (options.createCleanupRuntime ?? createV213CleanupRuntime)(inputs);
       result = await executeV213FullLiveCommand(inputs.request, runtime);
     } else {
-      const inputs = readV213ProtectedInputs(environment, readFd);
+      const inputs = readV213ProtectedInputs(
+        environment,
+        readFd,
+        options.readBinaryFd ?? readProtectedBinaryFd,
+      );
       const runtime = await (options.createRuntime ?? createV213ProductionRuntime)(inputs);
       result = await executeV213FullLiveCommand(inputs.request, {
         ...runtime,

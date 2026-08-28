@@ -49,6 +49,7 @@ if "soulx_runtime" not in sys.modules:
     sys.modules["soulx_runtime"] = runtime_module
 
 import soulx_serverless  # noqa: E402
+from soulx_volume import EXPECTED_WARMUP_FACTS, warmup_attestation_sha256  # noqa: E402
 
 
 def digest(value: bytes) -> str:
@@ -117,6 +118,9 @@ class FakeRuntime:
                 "compile_warmup_ms": 4,
                 "model_ready_ms": 9,
             },
+            "warmup_attestation_sha256": warmup_attestation_sha256(
+                "sha256:" + "3" * 64, dict(EXPECTED_WARMUP_FACTS)
+            ),
         }
 
 
@@ -305,7 +309,6 @@ class SoulXServerlessTest(unittest.TestCase):
                 "VIDEOFORGE_SOULX_MODEL_MANIFEST_SHA256": "sha256:" + "4" * 64,
                 "VIDEOFORGE_SOULX_VOLUME_ID_SHA256": "sha256:" + "5" * 64,
                 "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256": "sha256:" + "8" * 64,
-                "VIDEOFORGE_SOULX_WARMUP_OUTPUT_SHA256": "sha256:" + "9" * 64,
                 "VIDEOFORGE_RECEIPT_KEY_ID": "worker-key-a",
                 "VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX": "ab" * 32,
                 "VIDEOFORGE_ENVELOPE_KEY_ID": ENVELOPE_KEY_ID,
@@ -624,6 +627,41 @@ class SoulXServerlessTest(unittest.TestCase):
             self.assertEqual(result["failure_code"], "SOULX_SERVERLESS_GPU_NOT_QUALIFIED")
             generate.assert_not_awaited()
             soulx_serverless._claimed_deliveries.clear()
+
+    def test_warmup_attestation_is_runtime_derived_and_source_bound_before_inference(self) -> None:
+        fixture = Fixture((2,))
+        runtime = FakeRuntime()
+        health = runtime.health()
+        health["warmup_attestation_sha256"] = "sha256:" + "9" * 64
+        runtime.health = lambda value=health: value  # type: ignore[method-assign]
+        with (
+            patch.dict(
+                os.environ,
+                {"VIDEOFORGE_SOULX_WARMUP_OUTPUT_SHA256": "sha256:" + "a" * 64},
+                clear=False,
+            ),
+            patch.object(
+                soulx_serverless,
+                "verify_volume",
+                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+            ),
+            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
+            patch.object(soulx_serverless, "_generate", AsyncMock()) as generate,
+        ):
+            result = asyncio.run(
+                soulx_serverless.handler({"id": "job-warmup-drift", "input": fixture.payload})
+            )
+        self.assertEqual(
+            result["failure_code"], "SOULX_SERVERLESS_WARMUP_ATTESTATION_MISMATCH"
+        )
+        generate.assert_not_awaited()
+
+    def test_receipt_uses_source_bound_warmup_attestation_not_environment(self) -> None:
+        self.assertEqual(
+            FakeRuntime().health()["warmup_attestation_sha256"],
+            warmup_attestation_sha256("sha256:" + "3" * 64, dict(EXPECTED_WARMUP_FACTS)),
+        )
+        self.assertNotIn("VIDEOFORGE_SOULX_WARMUP_OUTPUT_SHA256", os.environ)
 
     def test_wrong_lane_fails_before_runtime(self) -> None:
         fixture = Fixture((2,))

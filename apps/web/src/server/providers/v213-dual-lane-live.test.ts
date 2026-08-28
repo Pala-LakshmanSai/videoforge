@@ -12,6 +12,7 @@ import {
   V213_GPU,
   V213_GPU_VRAM_BYTES,
   V213_MAX_RATE_USD_PER_GPU_HOUR,
+  V213_QUALIFICATION_CASE_DESCRIPTORS,
   V213_REGION,
   createV213Max1Deployments,
   issueV213StageAuthority,
@@ -25,8 +26,10 @@ import {
   type V213InventoryRead,
   type V213JobRead,
   type V213LaneDeployment,
+  type V213QualificationCaseDescriptor,
   type V213SealedLane,
 } from "./v213-dual-lane-live";
+import { v213SoulxWarmupAttestationSha256 } from "./v213-provenance-receipt";
 
 const stageKeys = generateKeyPairSync("ed25519");
 const receiptSigner = new ProvenanceReceiptSigner("v213-receipt-key", Buffer.alloc(32, 7));
@@ -47,30 +50,76 @@ const hash = async (value: string): Promise<string> => {
 };
 
 const lane = async (name: "mage" | "soulx", character: string): Promise<V213SealedLane> => {
-  const volumeId = `volume-${name}`;
   return {
     lane: name,
     publicImage: `ghcr.io/pala-lakshmansai/videoforge-${name}@${sha(character)}`,
     sourceCommit: character.repeat(40),
     deploymentSha256: sha(character === "a" ? "c" : "d"),
-    volumeId,
-    volumeIdSha256: await hash(volumeId),
+    volumeIdSha256: await hash(`volume-${name}`),
     volumeManifestSha256: sha(character === "a" ? "e" : "f"),
-    receiptKeyId: receiptSigner.keyId,
   };
 };
 
-const request = (lane: "mage" | "soulx", caseId: string, seconds: number): JsonValue => ({
+const qualificationRequest = (
+  deployment: V213LaneDeployment,
+  descriptor: V213QualificationCaseDescriptor,
+): JsonValue => ({
   envelope: {
     schema: "serverless-worker-job-envelope/v3",
-    dispatch_token: `dispatch-${caseId}-${"x".repeat(32)}`,
+    dispatch_token: `dispatch-${descriptor.id}-${"x".repeat(32)}`,
     tenant: { account_id: "account-a", workspace_id: "workspace-a" },
-    work: { attempt_id: `attempt-${caseId}` },
+    work: {
+      project_revision_id: "revision-a",
+      generation_request_id: `generation-${descriptor.id}`,
+      task_id: `task-${descriptor.id}`,
+      attempt_id: `attempt-${descriptor.id}`,
+      lane: descriptor.lane === "mage" ? "mage_image" : "soulx_avatar",
+      items_manifest_sha256: sha("8"),
+      item_count: 1,
+    },
     runtime: {
-      deployment_id: lane === "mage" ? sha("c") : sha("d"),
+      endpoint_profile_id: `v213-${descriptor.lane}-qualification`,
+      deployment_id: deployment.deploymentSha256,
+      container_digest: deployment.image.slice(deployment.image.indexOf("sha256:")),
+      model_manifest_sha256: deployment.volumeManifestSha256,
+      volume_id_sha256: deployment.volumeIdSha256,
+      volume_mount: "/runpod-volume",
+      volume_write_policy: "APPLICATION_READ_ONLY",
+      scratch_root_policy: "JOB_LOCAL_SCRATCH_OUTSIDE_MODEL_VOLUME",
+      gpu_allowlist: [V213_GPU],
+      region: V213_REGION,
+    },
+    artifacts: {
+      input_manifest_sha256: sha("9"),
+      output_prefix: `tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/${descriptor.lane === "mage" ? "mage-image" : "soulx-avatar"}/job/attempt-${descriptor.id}`,
+      transfer_port_reservation_ids: [`reservation-${descriptor.id}`],
+    },
+    limits: {
+      expires_at: "2026-08-26T01:00:00.000Z",
+      max_items: 1,
+      max_input_bytes: 1_000_000,
+      max_output_bytes: 10_000_000,
+      execution_timeout_seconds: 2_400,
+      init_timeout_seconds: 800,
+    },
+    policy: {
+      model_download_permitted: false,
+      volume_mutation_permitted: false,
+      pod_lifecycle_permitted: false,
+      queue_purge_permitted: false,
+    },
+    authority_sha256: sha("a"),
+    signature: {
+      algorithm: "HMAC-SHA256",
+      key_id: receiptSigner.keyId,
+      value: "0".repeat(64),
     },
   },
-  batch: { case_id: caseId, seconds },
+  batch: { case_id: descriptor.id, seconds: descriptor.seconds },
+  ports: {
+    input: { reservation_id: `input-${descriptor.id}` },
+    output: { reservation_id: `output-${descriptor.id}` },
+  },
 });
 
 const makeInput = async (): Promise<V213DualLaneInput> => ({
@@ -86,16 +135,33 @@ const makeInput = async (): Promise<V213DualLaneInput> => ({
   minimumStableReadSpacingMs: 250,
   maxStatusReads: 2,
   pollIntervalMs: 100,
-  envelopes: {
-    mage: request("mage", "mage-cold-representative", 0),
-    soulx2s: request("soulx", "soulx-cold-2s", 2),
-    soulx4s: request("soulx", "soulx-warm-4s", 4),
-    soulx6s: request("soulx", "soulx-warm-6s", 6),
-    soulx10s: request("soulx", "soulx-warm-10s", 10),
-    soulxCancel: request("soulx", "soulx-cancel", 2),
-    soulxInvalidOutput: request("soulx", "soulx-invalid-output", 2),
-    soulxTimeout: request("soulx", "soulx-timeout", 2),
+  qualificationEnvelopeSchemaSha256: sha("4"),
+  envelopeSigningKeyId: receiptSigner.keyId,
+  qualificationGeneratorSha256: sha("5"),
+  qualificationCaseDescriptors: V213_QUALIFICATION_CASE_DESCRIPTORS,
+  qualificationSourceRefs: {
+    caseSource: { path: "case.ts", sha256: sha("1") as `sha256:${string}` },
+    generators: {
+      mage: { path: "mage.mjs", sha256: sha("2") as `sha256:${string}` },
+      soulx: { path: "soulx.mjs", sha256: sha("3") as `sha256:${string}` },
+    },
+    validators: {
+      mage: { path: "mage.py", sha256: sha("4") as `sha256:${string}` },
+      soulx: { path: "soulx.py", sha256: sha("5") as `sha256:${string}` },
+    },
   },
+  qualificationProtectedInputDescriptors: Object.fromEntries(
+    ["avatarSource", "soulx2s", "soulx4s", "soulx6s", "soulx10s"].map((key) => [
+      key,
+      {
+        path: `.videoforge/private/${key}`,
+        sha256: sha("6"),
+        sizeBytes: 100,
+        contentType: key === "avatarSource" ? "image/png" : "audio/wav",
+      },
+    ]),
+  ) as V213DualLaneInput["qualificationProtectedInputDescriptors"],
+  qualificationR2: { accountId: "a".repeat(32), bucketName: "fixture-private" },
 });
 
 type FakeOptions = {
@@ -247,7 +313,12 @@ const makeFake = (
       model_ready_evidence: {
         state: "MODEL_READY",
         warmup_completed: true,
-        warmup_output_sha256: sha("7") as `sha256:${string}`,
+        warmup_output_sha256:
+          deployment.lane === "soulx"
+            ? v213SoulxWarmupAttestationSha256(
+                deployment.image.slice(deployment.image.indexOf("sha256:")) as `sha256:${string}`,
+              )
+            : (sha("7") as `sha256:${string}`),
       },
       timings: {
         allocation_ms: 1,
@@ -372,6 +443,21 @@ const makeFake = (
       return options.lostCreateAck
         ? ({ kind: "ACK_UNKNOWN" } as const)
         : ({ kind: "ACK", deployment } as const);
+    },
+    materializeQualificationCase: async ({ descriptor, deployment, stageAuthorityId }) => {
+      const materializedRequest = qualificationRequest(deployment, descriptor);
+      const caseDescriptorSha256 = canonicalHash(descriptor);
+      return {
+        schemaVersion: "videoforge.v213-qualification-case-materialization/v1",
+        caseDescriptorSha256,
+        materializationEvidenceSha256: canonicalHash({
+          caseDescriptorSha256,
+          deploymentSha256: canonicalHash(deployment),
+          requestSha256: canonicalHash(materializedRequest),
+          stageAuthorityId,
+        }),
+        request: materializedRequest,
+      };
     },
     findLaneByResourceKey: async (resourceKey) => resourceKeys.get(resourceKey) ?? null,
     readLane: async (deployment) => ({ ...deployment }),

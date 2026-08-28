@@ -28,7 +28,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from soulx_runtime import SoulXRuntime
-from soulx_volume import verify_volume
+from soulx_volume import EXPECTED_WARMUP_FACTS, verify_volume, warmup_attestation_sha256
 from secure_scratch import ScratchIsolationError, soulx_worker_io, validate_scoped_port
 from serverless_envelope import (
     EnvelopeRejection,
@@ -808,6 +808,14 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         runtime_ready_epoch = time.time()
         runtime_health = runtime.health()
         gpu = _observed_gpu(runtime_health)
+        observed_warmup_attestation_sha256 = _expect_sha256(
+            runtime_health.get("warmup_attestation_sha256"),
+            "SOULX_SERVERLESS_WARMUP_HASH_INVALID",
+        )
+        if observed_warmup_attestation_sha256 != warmup_attestation_sha256(
+            accepted["runtime"]["container_digest"], dict(EXPECTED_WARMUP_FACTS)
+        ):
+            raise ServerlessSoulXError("SOULX_SERVERLESS_WARMUP_ATTESTATION_MISMATCH")
         allocation_ms, container_ready_ms = _signed_dispatch_timings(
             accepted,
             handler_started_epoch=handler_started_epoch,
@@ -971,10 +979,9 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 "model_ready_evidence": {
                     "state": "MODEL_READY",
                     "warmup_completed": True,
-                    "warmup_output_sha256": _expect_sha256(
-                        _environment("VIDEOFORGE_SOULX_WARMUP_OUTPUT_SHA256"),
-                        "SOULX_SERVERLESS_WARMUP_HASH_INVALID",
-                    ),
+                    # The v1 receipt key is retained for wire compatibility; the value is an exact
+                    # source/deployment-bound warmup attestation, never an environment placeholder.
+                    "warmup_output_sha256": observed_warmup_attestation_sha256,
                 },
                 "timings": {
                     "allocation_ms": allocation_ms,

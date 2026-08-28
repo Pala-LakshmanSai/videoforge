@@ -7,7 +7,7 @@
     },
     {
       "path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "sha256": "sha256:83af3a513a2e61c6139a9e7237e22339f046d28401d4266cb9cd64e9d01532d5"
+      "sha256": "sha256:2862130ef1c8c3404603cc2d2e50d18f87323eadc198b27badf9b99993f10f3e"
     },
     {
       "path": ".github/workflows/avatar-quality-image.yml",
@@ -423,7 +423,7 @@
     },
     {
       "path": "apps/web/src/server/hosted/hosted-pair-production-composition.ts",
-      "sha256": "sha256:ae71c70b4597bb4a645f6141e0f60b0fcc9d8358bbbf57a78b64827e1303fdc4"
+      "sha256": "sha256:045f956c33279a3defc8f45735736fc1d5c2af08eadd527007861f6ed0e28376"
     },
     {
       "path": "apps/web/src/server/hosted/hosted-pair-runtime-executor.ts",
@@ -500,6 +500,10 @@
     {
       "path": "apps/web/src/server/hosted/v213-post-consumption-selection.ts",
       "sha256": "sha256:46c5c086fdb284739ac97faad6f8443f62aee39a5402144f281ada6d9bffba17"
+    },
+    {
+      "path": "apps/web/src/server/hosted/v213-qualification-materializer.ts",
+      "sha256": "sha256:663b084d70789e935fb5f26b8807bab45597129773de9e5395f660414e97d0e3"
     },
     {
       "path": "apps/web/src/server/hosted/v213-resolved-render-manifest-route.ts",
@@ -595,7 +599,7 @@
     },
     {
       "path": "apps/web/src/server/providers/runpod-control.ts",
-      "sha256": "sha256:ac3ce544090b1360e9450b8e938715d44be606882d4936a3ffce406e9db13ffc"
+      "sha256": "sha256:7359e4de4a7cb15a299ae249c1a483b99ccc2d022467e59332add374199816a8"
     },
     {
       "path": "apps/web/src/server/providers/runpod-echo-cp07-10s-benchmark-execute.ts",
@@ -742,16 +746,20 @@
       "sha256": "sha256:305944852bcdef09415e1c481bb249ba3cbacbcd218308c38a7d7f5cce6ab0fa"
     },
     {
+      "path": "apps/web/src/server/providers/v213-direct-qualification-materializer.ts",
+      "sha256": "sha256:faf895d2c5e72b133090a7d9913d72e86fc5f1c5d2c26f2d583593c2cc3d9baa"
+    },
+    {
       "path": "apps/web/src/server/providers/v213-dual-lane-live.ts",
-      "sha256": "sha256:da96887c2d681dd3677e01383e418a42ef65c565452cbbafceb278956dff2114"
+      "sha256": "sha256:3716aeb1601390b4800f094ecf29823c2f42e25fa64e1b16e3481c5bab2ee8a2"
     },
     {
       "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-      "sha256": "sha256:a83d5ee164cb279b5381272eec66f70b10904883806e81caf75e774ac9f30102"
+      "sha256": "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0"
     },
     {
       "path": "apps/web/src/server/providers/v213-provenance-receipt.ts",
-      "sha256": "sha256:ab1bb930b8cee4d7542cbf2f9eb6b9a43296d49327da4afb01a36833caa5cd28"
+      "sha256": "sha256:ebab5a755ad180ccf7b33ee34f5f5ac342fec692493036c5a655faf8e4af46a2"
     },
     {
       "path": "apps/web/src/server/providers/v213-real-chrome-operator-main.ts",
@@ -767,7 +775,7 @@
     },
     {
       "path": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
-      "sha256": "sha256:7734369295715d57b92ae0ca399ad8514cee5babb2b5d1acd749a860fd4b22c0"
+      "sha256": "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2"
     },
     {
       "path": "apps/web/src/server/providers/v213-v212-live-chrome-integration.ts",
@@ -1007,7 +1015,7 @@
     },
     {
       "path": "deploy/v2-06/backup.sh",
-      "sha256": "sha256:65ab095eb24d30667021a3d7e8a9f9a255fa305cf17661865a3d7ae34c2c7aed"
+      "sha256": "sha256:d3ad63846f190a178ec538dd85ea76a046ed15d1294968c26787c870b29dffba"
     },
     {
       "path": "deploy/v2-06/neon-runtime-grants.sql",
@@ -1015,23 +1023,47 @@
     },
     {
       "path": "deploy/v2-06/restore-drill.sh",
-      "sha256": "sha256:bbea762df9ef7f0760ea87d58d6d62538354ca3053f9748a9048033d4df7290a"
+      "sha256": "sha256:86b59c2143ba80789917cad328b1f343c9c28c874cd29be205bc0534e2de7d78"
     },
     {
       "path": "deploy/v2-06/validate-pg-service.mjs",
       "sha256": "sha256:08fce81dcb856d365b9aaa728e16f827fcb07ac4ce027d20feeab3972d246e7e"
     },
     {
+      "path": "deploy/v2-13/build-materialization-seed.mjs",
+      "sha256": "sha256:8547b80083bf959904a19d181a1fc81cbff23ed78474686501a0afb3e9bd14dc"
+    },
+    {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:0556bd306fd572d9d1816297bec09a9398a249af8301bdf3e7a867a57e44c38e"
+      "sha256": "sha256:4d9d765cacfd50e671c6f22ce873ac4014a43bce707992d6352de8462f8b8036"
+    },
+    {
+      "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",
+      "sha256": "sha256:0e67d6f43e74528d8f9d4a18e05d32001ae476269dd9fda6744a553ad3a59824"
+    },
+    {
+      "path": "deploy/v2-13/generate-mage-qualification-case.mjs",
+      "sha256": "sha256:f94f5665b2d7b453f630b5649b0a5c89e5f77f16c497d13718960f3e9ac8346c"
+    },
+    {
+      "path": "deploy/v2-13/generate-soulx-qualification-cases.d.mts",
+      "sha256": "sha256:b730e74bba69d1ec3c6d5ae8c68c020186ea76315856091be5c0cc87f22271eb"
+    },
+    {
+      "path": "deploy/v2-13/generate-soulx-qualification-cases.mjs",
+      "sha256": "sha256:f78bf77c409c8a8b4d43ba91cd3d3d35f239e90a91911f031b67ca160ef64453"
     },
     {
       "path": "deploy/v2-13/guarded-activation.mjs",
-      "sha256": "sha256:bedc5b1a2af1380c83bc2a6223dcfba072b6c2deb38d54bf1f05b32801f0e758"
+      "sha256": "sha256:91152ee194afad78f7a38105487982714afefa630fb2cc20328d65e92aa92ad0"
+    },
+    {
+      "path": "deploy/v2-13/media-worker-release-readback.mjs",
+      "sha256": "sha256:933e78b9c9bddeb7681af0f4a397d2352c1253199d6b4d8a3af874aad3c959d7"
     },
     {
       "path": "deploy/v2-13/neon-full-live-operator-grants.sql",
-      "sha256": "sha256:f97dcc4b85f48a16b994eaf7e50c91502a12a4600f0b17fd81ee6d31b8db74de"
+      "sha256": "sha256:38c80de06ef6eff67a03be35326150cf742393efc07fd43ea0b30780c28afab6"
     },
     {
       "path": "deploy/v2-13/neon-pair-reconciler-grants.sql",
@@ -1047,7 +1079,7 @@
     },
     {
       "path": "deploy/v2-13/validate-materialization-seed-production-input.mts",
-      "sha256": "sha256:0b40fda24bcb2983b8d8e2ceece1254064f0cb1c3fb0712795c2a9ed68677d88"
+      "sha256": "sha256:d2d8dc879bb29fbf7df207885b2d604d90f0b3047710fbec9e794afd745f4682"
     },
     {
       "path": "deploy/v2-13/validate-production-config.mjs",
@@ -1807,11 +1839,11 @@
     },
     {
       "path": "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
-      "sha256": "sha256:352169e1e34e23bc36b2a3c1fb653747194fe0b560894bfdbfafb30d635561d7"
+      "sha256": "sha256:a6c2a066cc222f25c627772ea5eb89f50ca552b7cbb1a21b46ab476aaaea19e9"
     },
     {
       "path": "packages/control-plane/migrations/manifest.json",
-      "sha256": "sha256:f0f8bd8d1aec2097b87efd12a58954861c127b2fef0240af4fe238108950f6bf"
+      "sha256": "sha256:203bb3f7c6c83c99e87441f3c7d86248666dcd8f50e9cc17c119867adf30dc2b"
     },
     {
       "path": "packages/control-plane/package.json",
@@ -1887,7 +1919,7 @@
     },
     {
       "path": "packages/control-plane/src/backup/metadata-snapshot.ts",
-      "sha256": "sha256:16df25ad6f3896cd28c30c26946ae0184d3776602f87e14d3b1b1d3631eb609e"
+      "sha256": "sha256:c476e0f6826d88f29435ef9479f4f541a4aaa625bf1f448f82ba85ab4f0d5128"
     },
     {
       "path": "packages/control-plane/src/database/index.ts",
@@ -1903,7 +1935,7 @@
     },
     {
       "path": "packages/control-plane/src/database/vocabulary.ts",
-      "sha256": "sha256:93a3e56836b0e35df1dc009aa9cf543fe75e40ce60e1dc120e624c6947c87881"
+      "sha256": "sha256:24c64195e283d6315f438deac9f51152c199a152ffb025af4203d77b7b114ac4"
     },
     {
       "path": "packages/control-plane/src/global-session/index.ts",
@@ -2047,7 +2079,7 @@
     },
     {
       "path": "packages/control-plane/src/serverless/receipts.ts",
-      "sha256": "sha256:7a7276daaba2e129ed2cc2dc4f301cdfade5adff80fffa60d8e3458d06d5e49b"
+      "sha256": "sha256:d1117c630451ab205d487a4a4a127f1af8954ca9dc7ddf721b1392a71c9968a5"
     },
     {
       "path": "packages/control-plane/src/serverless/transport.ts",
@@ -2298,6 +2330,10 @@
       "sha256": "sha256:5c8bff8f844e9f8b7e869e45edca99aaf0b3972f7e9eacb57525cef47f6bf760"
     },
     {
+      "path": "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
+      "sha256": "sha256:cce6fab312222b1068ce1764ed6af2387b8f7f0904fd28270c0148cfdde37a28"
+    },
+    {
       "path": "scripts/verify-v2-05-production-bundle.mjs",
       "sha256": "sha256:c12c50a6cbf9fd781eb4bcd6b7260d3a032f588043a43884f6278c5777ef58c3"
     },
@@ -2319,7 +2355,7 @@
     },
     {
       "path": "workers/avatar-primary/Dockerfile.serverless",
-      "sha256": "sha256:bb8249c300f55e334912e75048497eeafffe41ac74f670ef01c105710d4c65bd"
+      "sha256": "sha256:4fcb7e215f1b9ea637057e41a7ea5af4e432c5f72ee61ef2ab2b93675f5a970f"
     },
     {
       "path": "workers/avatar-primary/prepare_soulx_volume.py",
@@ -2359,15 +2395,15 @@
     },
     {
       "path": "workers/avatar-primary/soulx_runtime.py",
-      "sha256": "sha256:d4979818e1dd03acf6a80fff75cee841fc70af5b78f5dfe4e61f102d60d68e34"
+      "sha256": "sha256:b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080"
     },
     {
       "path": "workers/avatar-primary/soulx_serverless.py",
-      "sha256": "sha256:268be251e9a60200d7eb2b0899d3e1b962c9222b235d2c876d97460c6ca37ad9"
+      "sha256": "sha256:752b600d5428bb253d83d0c6044296bbcb4bb29f17d4df37c40fcf63c19b30e4"
     },
     {
       "path": "workers/avatar-primary/soulx_volume.py",
-      "sha256": "sha256:ea3801adaf2d7762b403c37514a1f90f31d8b7748cd393ede73c44c98ab5e914"
+      "sha256": "sha256:b767ef3cb9d867a623975db3d23a6bb1b2d15587db87db9e3db6cf1e73b07e0e"
     },
     {
       "path": "workers/avatar-primary/src/videoforge_avatar_primary/__init__.py",

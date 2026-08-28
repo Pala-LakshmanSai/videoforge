@@ -42,7 +42,7 @@ import {
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const fingerprint = `sha256:${"a".repeat(64)}`;
 const PREQUALIFICATION_SCHEMA_FOR_TEST =
-  "videoforge.v213-prequalification-database-bootstrap-result/v1";
+  "videoforge.v213-prequalification-database-bootstrap-result/v2";
 const canonicalJson = (value) =>
   Array.isArray(value)
     ? `[${value.map((item) => canonicalJson(item)).join(",")}]`
@@ -1255,10 +1255,16 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
   const pgcrypto = { name: "pgcrypto", version: "1.3", schema: "public" };
   const body = {
     schema_version: PREQUALIFICATION_SCHEMA_FOR_TEST,
+    full_live_authority_id: "v2-13-test-authority-0001",
+    outer_state_sha256: `sha256:${"e".repeat(64)}`,
     ledger_before_count: 36,
     ledger_before_sha256: hash(`${canonicalJson(before)}\n`),
     ledger_after_sha256: hash(`${canonicalJson(ledger)}\n`),
     operator_acl_sha256: hash(`${canonicalJson(role)}\n`),
+    operator_database_url_sha256: fingerprint,
+    runtime_database_url_sha256: `sha256:${"b".repeat(64)}`,
+    reconciler_database_url_sha256: `sha256:${"c".repeat(64)}`,
+    database_role_credential_bundle_sha256: `sha256:${"d".repeat(64)}`,
     pgcrypto_sha256: hash(`${canonicalJson(pgcrypto)}\n`),
     recovery_mode: "FRESH_36_TO_45",
     runpod_calls: 0,
@@ -1281,6 +1287,9 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
   writeFileSync(receiptPath, `${JSON.stringify(receipt)}\n`, { mode: 0o600 });
   const currentAuthority = structuredClone(authority());
   currentAuthority.release.migration_manifest_sha256 = hash(manifestBytes);
+  currentAuthority.secret_sha256.DATABASE_URL = body.runtime_database_url_sha256;
+  currentAuthority.secret_sha256.VIDEOFORGE_RECONCILER_DATABASE_URL =
+    body.reconciler_database_url_sha256;
   const calls = [];
   const runCommand = (_command, args) => {
     const sql = args[args.indexOf("--command") + 1] ?? "";

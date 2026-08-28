@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { spawnSync } from "node:child_process";
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, generateKeyPairSync } from "node:crypto";
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -44,6 +44,7 @@ import {
   type V213FullLiveCommandRequest,
 } from "./v213-full-live-cli.js";
 import { v213EvidenceKeyId } from "../hosted/v213-live-production-adapters.js";
+import { V213_QUALIFICATION_CASE_DESCRIPTORS } from "./v213-dual-lane-live.js";
 
 const HASH = `sha256:${"a".repeat(64)}` as const;
 
@@ -148,42 +149,77 @@ function request(command: V213FullLiveCommand): V213FullLiveCommandRequest {
   };
 }
 
+function qualificationStaticBindings() {
+  const protectedInput = (
+    path: string,
+    character: string,
+    contentType: "image/png" | "audio/wav",
+  ) => ({ path, sha256: `sha256:${character.repeat(64)}`, sizeBytes: 100, contentType });
+  return {
+    qualificationGeneratorSha256: `sha256:${"1".repeat(64)}`,
+    qualificationCaseDescriptors: V213_QUALIFICATION_CASE_DESCRIPTORS,
+    qualificationSourceRefs: {
+      caseSource: {
+        path: "apps/web/src/server/providers/v213-dual-lane-live.ts",
+        sha256: `sha256:${"2".repeat(64)}`,
+      },
+      generators: {
+        mage: {
+          path: "deploy/v2-13/generate-mage-qualification-case.mjs",
+          sha256: `sha256:${"3".repeat(64)}`,
+        },
+        soulx: {
+          path: "deploy/v2-13/generate-soulx-qualification-cases.mjs",
+          sha256: `sha256:${"4".repeat(64)}`,
+        },
+      },
+      validators: {
+        mage: {
+          path: "workers/image-media/src/videoforge_image_media/mage_production.py",
+          sha256: `sha256:${"5".repeat(64)}`,
+        },
+        soulx: {
+          path: "workers/avatar-primary/soulx_serverless.py",
+          sha256: `sha256:${"6".repeat(64)}`,
+        },
+      },
+    },
+    qualificationProtectedInputDescriptors: {
+      avatarSource: protectedInput(".videoforge/private/avatar.png", "7", "image/png"),
+      soulx2s: protectedInput(".videoforge/private/audio-2s.wav", "8", "audio/wav"),
+      soulx4s: protectedInput(".videoforge/private/audio-4s.wav", "9", "audio/wav"),
+      soulx6s: protectedInput(".videoforge/private/audio-6s.wav", "a", "audio/wav"),
+      soulx10s: protectedInput(".videoforge/private/audio-10s.wav", "b", "audio/wav"),
+    },
+    qualificationR2: {
+      accountId: "c".repeat(32),
+      bucketName: "videoforge-private",
+    },
+  } as const;
+}
+
 function prequalificationRequest(): V213FullLiveCommandRequest {
-  const lane = (name: "mage" | "soulx", sourceCommit: string, imageHash: string) => ({
+  const lane = (name: "mage" | "soulx", suffix: string) => ({
     lane: name,
-    publicImage: `ghcr.io/example/${name}@sha256:${imageHash}`,
-    sourceCommit,
-    deploymentSha256: HASH,
-    volumeId: `volume-${name}`,
-    volumeIdSha256: `sha256:${"b".repeat(64)}`,
-    volumeManifestSha256: `sha256:${"c".repeat(64)}`,
-    receiptKeyId: "receipt-key-1",
+    volumeIdSha256: `sha256:${suffix.repeat(64)}`,
+    volumeManifestSha256: `sha256:${suffix === "b" ? "c".repeat(64) : "d".repeat(64)}`,
   });
   return {
     ...request("fresh-live-preflight"),
     input: {
-      schemaVersion: "videoforge.v213-full-live-production-input/v1",
+      schemaVersion: "videoforge.v213-full-live-prequalification-input/v1",
       outerStateSha256: HASH,
       fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
       dualLaneInput: {
         accountIdSha256: HASH,
-        mage: lane("mage", "1".repeat(40), "1".repeat(64)),
-        soulx: lane("soulx", "2".repeat(40), "2".repeat(64)),
-        billingBaselineUsd: 0,
+        mage: lane("mage", "b"),
+        soulx: lane("soulx", "e"),
         totalCapUsd: 17.5,
         mageQualificationCapUsd: 4.5,
         soulxQualificationCapUsd: 1,
-        stageAuthorityPublicKeyPem: "-----BEGIN PUBLIC KEY-----\nfixture\n-----END PUBLIC KEY-----",
-        envelopes: {
-          mage: {},
-          soulx2s: {},
-          soulx4s: {},
-          soulx6s: {},
-          soulx10s: {},
-          soulxCancel: {},
-          soulxInvalidOutput: {},
-          soulxTimeout: {},
-        },
+        qualificationEnvelopeSchemaSha256: `sha256:${"f".repeat(64)}`,
+        envelopeSigningKeyId: "pair-envelope-key-1",
+        ...qualificationStaticBindings(),
       },
       commandPayload: {
         authorityDocument: {
@@ -1533,7 +1569,7 @@ describe("V2-13 full-live TypeScript bridge", () => {
     expect([...values.values()].join("\n")).not.toContain("mageEndpointId");
   });
 
-  it("executes pre-bootstrap cleanup with only request and RunPod inputs and zero database calls", async () => {
+  it("executes pre-bootstrap cleanup with real RunPod reads and zero database calls", async () => {
     const authorityId = "11111111-1111-4111-8111-111111111111";
     const earlyRequest = {
       schemaVersion: "videoforge.v213-full-live-command/v1",
@@ -1555,7 +1591,39 @@ describe("V2-13 full-live TypeScript bridge", () => {
       [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "11",
     };
     const database = vi.fn();
-    const createEarlyRuntime = vi.fn((inputs) => createV213EarlyCleanupRuntime(inputs));
+    const inventory = vi.fn(async () => ({
+      checkedAt: "2026-08-28T10:00:00.000Z",
+      runningPods: 0,
+      activeWorkers: 0,
+      queuedJobs: 0,
+      endpointIdSha256s: [],
+      templateIdSha256s: [],
+      volumes: [
+        {
+          idSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+          sizeGb: 50,
+          region: "EU-RO-1",
+          manifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+        },
+        {
+          idSha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+          sizeGb: 50,
+          region: "EU-RO-1",
+          manifestSha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+        },
+      ],
+    }));
+    const transport = {
+      inventory,
+      billingAmount: vi.fn(async () => 3),
+      cleanupAttributableResources: vi.fn(),
+    };
+    const createEarlyRuntime = vi.fn((inputs) =>
+      createV213EarlyCleanupRuntime(inputs, {
+        createTransport: () => transport as never,
+        sleep: vi.fn(),
+      }),
+    );
     const createCleanupRuntime = vi.fn(() => {
       throw new Error("normal cleanup runtime must not be constructed");
     });
@@ -1586,16 +1654,44 @@ describe("V2-13 full-live TypeScript bridge", () => {
       state: "TERMINAL",
       summary: {
         zeroWorkers: true,
-        databaseCleanupClaimed: false,
-        databaseCalls: 0,
-        runpodCalls: 0,
-        cloudflareCalls: 0,
-        applicationSecretReads: 0,
-        externalSpendUsd: 0,
-        gpuUse: false,
       },
     });
+    expect(inventory).toHaveBeenCalledTimes(3);
     expect(() => readV213EarlyCleanupProtectedInputs(environment, readFd)).not.toThrow();
+  });
+
+  it("refuses an early-cleanup zero-worker proof when real inventory has active compute", async () => {
+    const authorityId = "11111111-1111-4111-8111-111111111111";
+    const request = {
+      schemaVersion: "videoforge.v213-full-live-command/v1",
+      commandId: "cleanup:early:active-compute",
+      stageAuthorityId: authorityId,
+      command: "prove-zero-workers",
+      input: {
+        schemaVersion: "videoforge.v213-full-live-early-cleanup-input/v1",
+        fullLiveAuthorityId: authorityId,
+      },
+    } as const;
+    const runtime = await createV213EarlyCleanupRuntime(
+      { request, runpodApiKey: "r".repeat(32), earlyCleanupInput: request.input },
+      {
+        createTransport: () =>
+          ({
+            inventory: vi.fn(async () => ({
+              runningPods: 1,
+              activeWorkers: 1,
+              queuedJobs: 0,
+              volumes: [],
+            })),
+            billingAmount: vi.fn(),
+            cleanupAttributableResources: vi.fn(),
+          }) as never,
+        sleep: vi.fn(),
+      },
+    );
+    await expect(executeV213FullLiveCommand(request, runtime)).rejects.toThrow(
+      "ZERO_WORKERS_NOT_PROVEN",
+    );
   });
 
   it("requires three equal, spaced final billing reads for either cleanup baseline mode", async () => {
@@ -1799,6 +1895,7 @@ describe("V2-13 full-live TypeScript bridge", () => {
 
   it("constructs the entire direct production catalog from protected inputs without provider calls", async () => {
     const secret = (byte: number) => Buffer.alloc(32, byte).toString("base64");
+    const { privateKey: stagePrivateKey } = generateKeyPairSync("ed25519");
     const database = {
       query: vi.fn(async (_sql: string, parameters: readonly unknown[]) => ({
         rows: [{ value: parameters[0] }],
@@ -1818,37 +1915,24 @@ describe("V2-13 full-live TypeScript bridge", () => {
             publicImage: `ghcr.io/example/mage@sha256:${"1".repeat(64)}`,
             sourceCommit: "1".repeat(40),
             deploymentSha256: HASH,
-            volumeId: "volume-mage",
             volumeIdSha256: `sha256:${"2".repeat(64)}`,
             volumeManifestSha256: `sha256:${"3".repeat(64)}`,
-            receiptKeyId: "receipt-key-1",
           },
           soulx: {
             lane: "soulx",
             publicImage: `ghcr.io/example/soulx@sha256:${"4".repeat(64)}`,
             sourceCommit: "4".repeat(40),
             deploymentSha256: `sha256:${"4".repeat(64)}`,
-            volumeId: "volume-soulx",
             volumeIdSha256: `sha256:${"5".repeat(64)}`,
             volumeManifestSha256: `sha256:${"6".repeat(64)}`,
-            receiptKeyId: "receipt-key-1",
           },
           billingBaselineUsd: 0,
           totalCapUsd: 17.5,
           mageQualificationCapUsd: 4.5,
           soulxQualificationCapUsd: 1,
-          stageAuthorityPublicKeyPem:
-            "-----BEGIN PUBLIC KEY-----\nfixture\n-----END PUBLIC KEY-----",
-          envelopes: {
-            mage: {},
-            soulx2s: {},
-            soulx4s: {},
-            soulx6s: {},
-            soulx10s: {},
-            soulxCancel: {},
-            soulxInvalidOutput: {},
-            soulxTimeout: {},
-          },
+          qualificationEnvelopeSchemaSha256: `sha256:${"7".repeat(64)}`,
+          envelopeSigningKeyId: "pair-envelope-key-1",
+          ...qualificationStaticBindings(),
         },
         commandPayload: {},
       },
@@ -1863,7 +1947,9 @@ describe("V2-13 full-live TypeScript bridge", () => {
       workerOperatorBearer: "o".repeat(48),
       productionSecrets: {
         schemaVersion: "videoforge.v213-full-live-production-secrets/v1",
-        stageAuthoritySigningKeyBase64: secret(1),
+        stageAuthoritySigningKeyBase64: stagePrivateKey
+          .export({ type: "pkcs8", format: "der" })
+          .toString("base64"),
         provenanceReceiptHmacKeyBase64: secret(2),
         provenanceReceiptKeyId: "receipt-key-1",
         acceptanceEvidenceSigningKeyBase64: secret(3),
@@ -1890,6 +1976,145 @@ describe("V2-13 full-live TypeScript bridge", () => {
       true,
     );
     expect(database.query).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects corrupted SoulX protected bytes before DB, R2, or RunPod construction", async () => {
+    const secret = (byte: number) => Buffer.alloc(32, byte).toString("base64");
+    const { privateKey: stagePrivateKey } = generateKeyPairSync("ed25519");
+    const sourceBytes = {
+      avatarSource: new Uint8Array(64).fill(1),
+      soulx2s: new Uint8Array(64).fill(2),
+      soulx4s: new Uint8Array(64).fill(3),
+      soulx6s: new Uint8Array(64).fill(4),
+      soulx10s: new Uint8Array(64).fill(5),
+    };
+    const protectedDescriptor = (
+      path: string,
+      bytes: Uint8Array,
+      contentType: "image/png" | "audio/wav",
+    ) => ({
+      path,
+      sha256: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+      sizeBytes: bytes.byteLength,
+      contentType,
+    });
+    const staticBindings = qualificationStaticBindings();
+    const productionRequest = {
+      ...request("soulx-live-qualification"),
+      input: {
+        schemaVersion: "videoforge.v213-full-live-production-input/v1",
+        outerStateSha256: HASH,
+        fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+        dualLaneInput: {
+          accountIdSha256: HASH,
+          mage: {
+            lane: "mage",
+            publicImage: `ghcr.io/example/mage@sha256:${"1".repeat(64)}`,
+            sourceCommit: "1".repeat(40),
+            deploymentSha256: HASH,
+            volumeIdSha256: `sha256:${"2".repeat(64)}`,
+            volumeManifestSha256: `sha256:${"3".repeat(64)}`,
+          },
+          soulx: {
+            lane: "soulx",
+            publicImage: `ghcr.io/example/soulx@sha256:${"4".repeat(64)}`,
+            sourceCommit: "1".repeat(40),
+            deploymentSha256: `sha256:${"4".repeat(64)}`,
+            volumeIdSha256: `sha256:${"5".repeat(64)}`,
+            volumeManifestSha256: `sha256:${"6".repeat(64)}`,
+          },
+          billingBaselineUsd: 0,
+          totalCapUsd: 17.5,
+          mageQualificationCapUsd: 4.5,
+          soulxQualificationCapUsd: 1,
+          qualificationEnvelopeSchemaSha256: `sha256:${"7".repeat(64)}`,
+          envelopeSigningKeyId: "pair-envelope-key-1",
+          ...staticBindings,
+          qualificationProtectedInputDescriptors: {
+            avatarSource: protectedDescriptor(
+              ".videoforge/private/avatar.png",
+              sourceBytes.avatarSource,
+              "image/png",
+            ),
+            soulx2s: protectedDescriptor(
+              ".videoforge/private/audio-2s.wav",
+              sourceBytes.soulx2s,
+              "audio/wav",
+            ),
+            soulx4s: protectedDescriptor(
+              ".videoforge/private/audio-4s.wav",
+              sourceBytes.soulx4s,
+              "audio/wav",
+            ),
+            soulx6s: protectedDescriptor(
+              ".videoforge/private/audio-6s.wav",
+              sourceBytes.soulx6s,
+              "audio/wav",
+            ),
+            soulx10s: protectedDescriptor(
+              ".videoforge/private/audio-10s.wav",
+              sourceBytes.soulx10s,
+              "audio/wav",
+            ),
+          },
+        },
+        commandPayload: {},
+      },
+    } as never;
+    const corrupted = {
+      ...sourceBytes,
+      avatarSource: Uint8Array.from(sourceBytes.avatarSource, (value, index) =>
+        index === 8 ? value ^ 1 : value,
+      ),
+    };
+    const protectedInputs = {
+      request: productionRequest,
+      runpodApiKey: "r".repeat(32),
+      operatorDatabaseUrl: "postgres://operator@example/db",
+      runtimeDatabaseUrl: "postgres://runtime@example/db",
+      reconcilerDatabaseUrl: "postgres://reconciler@example/db",
+      workerOrigin: "https://videoforge.example",
+      workerOperatorBearer: "o".repeat(48),
+      productionSecrets: {
+        schemaVersion: "videoforge.v213-full-live-production-secrets/v1",
+        stageAuthoritySigningKeyBase64: stagePrivateKey
+          .export({ type: "pkcs8", format: "der" })
+          .toString("base64"),
+        provenanceReceiptHmacKeyBase64: secret(2),
+        provenanceReceiptKeyId: "receipt-key-1",
+        acceptanceEvidenceSigningKeyBase64: secret(3),
+        pairDispatchTokenKeyBase64: secret(4),
+        pairDispatchTokenKeyId: "pair-dispatch-key-1",
+        pairEnvelopeSigningKeyHex: Buffer.alloc(32, 5).toString("hex"),
+        pairEnvelopeSigningKeyId: "pair-envelope-key-1",
+        pairProviderProofKeyHex: Buffer.alloc(32, 6).toString("hex"),
+        pairProviderProofKeyId: "pair-proof-key-1",
+        mageEndpointId: "mage-endpoint-1",
+        soulxEndpointId: "soulx-endpoint-1",
+      },
+      productionSecretsRaw: "protected-secrets-document",
+      qualification: {
+        r2: {
+          accountId: staticBindings.qualificationR2.accountId,
+          bucketName: staticBindings.qualificationR2.bucketName,
+          accessKeyId: "A".repeat(24),
+          secretAccessKey: "S".repeat(40),
+        },
+        sourceBytes: corrupted,
+      },
+    } as const;
+    const createDatabases = vi.fn();
+    const fetchPort = vi.fn();
+    await expect(
+      createV213ProductionRuntime(protectedInputs, {
+        fetch: fetchPort,
+        now: () => new Date("2026-08-26T00:00:00.000Z"),
+        sleep: vi.fn(),
+        createDatabases,
+      }),
+    ).rejects.toThrow("V213_QUALIFICATION_PROTECTED_INPUT_DRIFT");
+    expect(createDatabases).not.toHaveBeenCalled();
+    expect(fetchPort).not.toHaveBeenCalled();
   });
 
   it("installed tsx direct execute rejects a missing protected descriptor before mutation", () => {

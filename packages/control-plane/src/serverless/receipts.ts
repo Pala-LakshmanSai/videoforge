@@ -99,7 +99,8 @@ export type ReceiptVerificationErrorCode =
   | "RECEIPT_SIGNATURE_INVALID"
   | "RECEIPT_TENANT_MISMATCH"
   | "RECEIPT_TOKEN_MISMATCH"
-  | "RECEIPT_VOLUME_MUTATED";
+  | "RECEIPT_VOLUME_MUTATED"
+  | "RECEIPT_WARMUP_ATTESTATION_MISMATCH";
 
 export class ReceiptVerificationError extends Error {
   constructor(
@@ -208,6 +209,8 @@ export interface ReceiptExpectation {
   readonly volumeIdSha256: Sha256;
   readonly volumeManifestSha256: Sha256;
   readonly modelManifestSha256: Sha256;
+  /** Source/deployment-bound expected warmup attestation for lanes that define one. */
+  readonly warmupAttestationSha256?: Sha256;
   readonly gpuAllowlist: readonly string[];
   /** Every previously accepted nonce for this attempt. A receipt may never reuse one. */
   readonly seenNonces: ReadonlySet<number>;
@@ -297,6 +300,15 @@ export function verifyProvenanceReceipt(
     throw new ReceiptVerificationError(
       "RECEIPT_GPU_NOT_ALLOWED",
       "The runtime probe reports a GPU outside the qualified allowlist.",
+    );
+  }
+  if (
+    expectation.warmupAttestationSha256 !== undefined &&
+    receipt.model_ready_evidence.warmup_output_sha256 !== expectation.warmupAttestationSha256
+  ) {
+    throw new ReceiptVerificationError(
+      "RECEIPT_WARMUP_ATTESTATION_MISMATCH",
+      "The worker warmup attestation does not match the source-bound deployment contract.",
     );
   }
   if (

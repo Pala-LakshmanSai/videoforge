@@ -13,7 +13,11 @@ import {
 } from "@videoforge/control-plane";
 import { describe, expect, it } from "vitest";
 
-import { V213ProvenanceReceiptError, verifyV213WorkerReceipt } from "./v213-provenance-receipt";
+import {
+  V213ProvenanceReceiptError,
+  v213SoulxWarmupAttestationSha256,
+  verifyV213WorkerReceipt,
+} from "./v213-provenance-receipt";
 
 const sha = (value: string): Sha256 => canonicalSha256({ value });
 const signer = new ProvenanceReceiptSigner("receipt-key-v1", Buffer.alloc(32, 7));
@@ -134,6 +138,26 @@ describe("V2-13 HMAC provenance receipt verifier", () => {
         { ...value.expectation, [field]: sha("wrong") },
       ),
     ).toThrowError(expect.objectContaining({ code } satisfies Partial<ReceiptVerificationError>));
+  });
+
+  it("derives an exact deployment-bound SoulX attestation and rejects receipt drift", () => {
+    const value = fixture();
+    const expected = v213SoulxWarmupAttestationSha256(value.body.deployment.container_digest);
+    expect(expected).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    expect(v213SoulxWarmupAttestationSha256(`sha256:${"3".repeat(64)}`)).toBe(
+      "sha256:7d57d52f414f17a0b3a47e1909da6048cb4c72e8236c9c48c39e3ccdec6219a0",
+    );
+    expect(() =>
+      verifyV213WorkerReceipt(
+        signer,
+        { receipt: value.receipt, receiptBodyBase64: value.bytes.toString("base64") },
+        { ...value.expectation, warmupAttestationSha256: expected },
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "RECEIPT_WARMUP_ATTESTATION_MISMATCH",
+      } satisfies Partial<ReceiptVerificationError>),
+    );
   });
 
   it("rejects a substituted body even when the receipt HMAC remains valid", () => {

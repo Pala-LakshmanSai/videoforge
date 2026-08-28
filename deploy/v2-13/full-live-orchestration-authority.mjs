@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash, createPublicKey } from "node:crypto";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   closeSync,
@@ -24,10 +24,7 @@ import {
   SECRET_NAMES as GUARDED_SECRET_NAMES,
   validateAuthority as validateGuardedActivationAuthority,
 } from "./guarded-activation.mjs";
-import {
-  validateMediaWorkerReleaseManifest,
-  validateProductionConfig,
-} from "./validate-production-config.mjs";
+import { validateProductionConfig } from "./validate-production-config.mjs";
 import { validatePromotionRecord } from "./promote-qualified-production.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -44,7 +41,7 @@ const STATIC_RELEASE_DESCRIPTOR_ENV = "VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTO
 const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_PATH =
   "deploy/v2-13/validate-materialization-seed-production-input.mts";
 const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_SHA256 =
-  "sha256:0b40fda24bcb2983b8d8e2ceece1254064f0cb1c3fb0712795c2a9ed68677d88";
+  "sha256:d2d8dc879bb29fbf7df207885b2d604d90f0b3047710fbec9e794afd745f4682";
 const EXACT_RETAINED_LANES = Object.freeze({
   mage: Object.freeze({
     volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
@@ -193,71 +190,176 @@ const hasForbiddenSeedKey = (value, forbidden) =>
     ([key, nested]) => forbidden.has(key.toLowerCase()) || hasForbiddenSeedKey(nested, forbidden),
   );
 
-const validStageAuthorityPublicKey = (value) => {
-  if (typeof value !== "string" || !value.startsWith("-----BEGIN PUBLIC KEY-----\n")) return false;
-  try {
-    return createPublicKey(value).asymmetricKeyType === "ed25519";
-  } catch {
-    return false;
-  }
-};
-
 const validStaticSeedLane = (value, lane, retained) =>
-  exactObjectKeys(value, [
-    "lane",
-    "receiptKeyId",
-    "volumeId",
-    "volumeIdSha256",
-    "volumeManifestSha256",
-  ]) &&
+  exactObjectKeys(value, ["lane", "volumeIdSha256", "volumeManifestSha256"]) &&
   value.lane === lane &&
-  COMMAND_ID.test(value.volumeId ?? "") &&
-  sha256(Buffer.from(value.volumeId)) === retained.volumeIdSha256 &&
   value.volumeIdSha256 === retained.volumeIdSha256 &&
-  value.volumeManifestSha256 === retained.volumeManifestSha256 &&
-  COMMAND_ID.test(value.receiptKeyId ?? "");
+  value.volumeManifestSha256 === retained.volumeManifestSha256;
+
+const QUALIFICATION_CASE_KEYS = Object.freeze([
+  "mage",
+  "soulx10s",
+  "soulx2s",
+  "soulx4s",
+  "soulx6s",
+  "soulxCancel",
+  "soulxInvalidOutput",
+  "soulxTimeout",
+]);
+const EXACT_QUALIFICATION_CASES = Object.freeze({
+  mage: Object.freeze({
+    lane: "mage",
+    id: "mage-cold-representative",
+    seconds: 0,
+    mode: "complete",
+    cold: true,
+  }),
+  soulx2s: Object.freeze({
+    lane: "soulx",
+    id: "soulx-cold-2s",
+    seconds: 2,
+    mode: "complete",
+    cold: true,
+  }),
+  soulx4s: Object.freeze({
+    lane: "soulx",
+    id: "soulx-warm-4s",
+    seconds: 4,
+    mode: "complete",
+    cold: false,
+  }),
+  soulx6s: Object.freeze({
+    lane: "soulx",
+    id: "soulx-warm-6s",
+    seconds: 6,
+    mode: "complete",
+    cold: false,
+  }),
+  soulx10s: Object.freeze({
+    lane: "soulx",
+    id: "soulx-warm-10s",
+    seconds: 10,
+    mode: "complete",
+    cold: false,
+  }),
+  soulxCancel: Object.freeze({
+    lane: "soulx",
+    id: "soulx-cancel",
+    seconds: 2,
+    mode: "cancel",
+    cold: false,
+  }),
+  soulxInvalidOutput: Object.freeze({
+    lane: "soulx",
+    id: "soulx-invalid-output",
+    seconds: 2,
+    mode: "invalid",
+    cold: false,
+  }),
+  soulxTimeout: Object.freeze({
+    lane: "soulx",
+    id: "soulx-timeout",
+    seconds: 2,
+    mode: "timeout",
+    cold: false,
+  }),
+});
+const EXACT_QUALIFICATION_PROTECTED_INPUTS = Object.freeze({
+  avatarSource: Object.freeze({
+    path: ".videoforge/private/vf-9-24u/new-avatar-sample.png",
+    sha256: "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+    sizeBytes: 1_912_005,
+    contentType: "image/png",
+  }),
+  soulx2s: Object.freeze({
+    path: ".videoforge/private/cp07-inputs/echo-span-2s-padded.wav",
+    sha256: "sha256:b7ad261af40caf574e9edadf856f28ccddc306a109d15523c81a427ec38e72d3",
+    sizeBytes: 80_278,
+    contentType: "audio/wav",
+  }),
+  soulx4s: Object.freeze({
+    path: ".videoforge/private/cp07-inputs/echo-span-4s-padded.wav",
+    sha256: "sha256:076f477f512835a3e606b3312682cf1b4a3eb62e211300843023840969d09019",
+    sizeBytes: 160_278,
+    contentType: "audio/wav",
+  }),
+  soulx6s: Object.freeze({
+    path: ".videoforge/private/cp07-inputs/echo-span-6s-padded.wav",
+    sha256: "sha256:c7c67903aae4ca8a235792402c64ffa69be3bd423babd4e0447726db27539761",
+    sizeBytes: 212_118,
+    contentType: "audio/wav",
+  }),
+  soulx10s: Object.freeze({
+    path: ".videoforge/private/vf-9-24u/new-avatar-third-10.00s.wav",
+    sha256: "sha256:51765f504d1a241af1aa05040cd06bbf377768bc3b2806000191f23855e577cb",
+    sizeBytes: 320_278,
+    contentType: "audio/wav",
+  }),
+});
+const validSourceRef = (value, path) =>
+  exactObjectKeys(value, ["path", "sha256"]) &&
+  value.path === path &&
+  HASH.test(value.sha256 ?? "");
+
+function validateQualificationCaseDescriptor(value) {
+  return (
+    exactObjectKeys(value, [
+      "caseSource",
+      "cases",
+      "envelopeSchema",
+      "generators",
+      "protectedInputs",
+      "schemaVersion",
+      "validators",
+    ]) &&
+    value.schemaVersion === "videoforge.v213-qualification-case-materialization-descriptor/v1" &&
+    validSourceRef(value.caseSource, "apps/web/src/server/providers/v213-dual-lane-live.ts") &&
+    validSourceRef(
+      value.envelopeSchema,
+      "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
+    ) &&
+    exactObjectKeys(value.generators, ["mage", "soulx"]) &&
+    validSourceRef(value.generators.mage, "deploy/v2-13/generate-mage-qualification-case.mjs") &&
+    validSourceRef(value.generators.soulx, "deploy/v2-13/generate-soulx-qualification-cases.mjs") &&
+    exactObjectKeys(value.validators, ["mage", "soulx"]) &&
+    validSourceRef(
+      value.validators.mage,
+      "workers/image-media/src/videoforge_image_media/mage_production.py",
+    ) &&
+    validSourceRef(value.validators.soulx, "workers/avatar-primary/soulx_serverless.py") &&
+    canonicalJson(value.protectedInputs) === canonicalJson(EXACT_QUALIFICATION_PROTECTED_INPUTS) &&
+    exactObjectKeys(value.cases, QUALIFICATION_CASE_KEYS) &&
+    canonicalJson(value.cases) === canonicalJson(EXACT_QUALIFICATION_CASES)
+  );
+}
 
 function validateStaticDualLaneInput(value) {
-  const envelopeKeys = [
-    "mage",
-    "soulx10s",
-    "soulx2s",
-    "soulx4s",
-    "soulx6s",
-    "soulxCancel",
-    "soulxInvalidOutput",
-    "soulxTimeout",
-  ];
   if (
     !exactObjectKeys(value, [
       "accountIdSha256",
-      "billingBaselineUsd",
-      "envelopes",
+      "envelopeSigningKeyId",
       "mage",
       "mageQualificationCapUsd",
+      "qualificationCaseDescriptor",
+      "qualificationEnvelopeSchemaSha256",
+      "qualificationR2",
       "soulx",
       "soulxQualificationCapUsd",
-      "stageAuthorityPublicKeyPem",
       "totalCapUsd",
     ]) ||
     value.accountIdSha256 !== RUNPOD_ACCOUNT_ID_SHA256 ||
-    !Number.isFinite(value.billingBaselineUsd) ||
-    value.billingBaselineUsd < 0 ||
     value.totalCapUsd !== 17.5 ||
     value.mageQualificationCapUsd !== 4.5 ||
     value.soulxQualificationCapUsd !== 1 ||
-    !validStageAuthorityPublicKey(value.stageAuthorityPublicKeyPem) ||
+    !COMMAND_ID.test(value.envelopeSigningKeyId ?? "") ||
     !validStaticSeedLane(value.mage, "mage", EXACT_RETAINED_LANES.mage) ||
     !validStaticSeedLane(value.soulx, "soulx", EXACT_RETAINED_LANES.soulx) ||
-    value.mage.receiptKeyId !== value.soulx.receiptKeyId ||
-    !exactObjectKeys(value.envelopes, envelopeKeys) ||
-    Object.values(value.envelopes).some(
-      (envelope) =>
-        envelope === null ||
-        typeof envelope !== "object" ||
-        Array.isArray(envelope) ||
-        Object.keys(envelope).length === 0,
-    )
+    !validateQualificationCaseDescriptor(value.qualificationCaseDescriptor) ||
+    value.qualificationEnvelopeSchemaSha256 !==
+      value.qualificationCaseDescriptor.envelopeSchema.sha256 ||
+    !exactObjectKeys(value.qualificationR2, ["accountId", "bucketName"]) ||
+    !/^[0-9a-f]{32}$/u.test(value.qualificationR2.accountId ?? "") ||
+    !/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u.test(value.qualificationR2.bucketName ?? "")
   )
     return false;
   return true;
@@ -308,7 +410,21 @@ function validateActivationRecordBase(value) {
     value.authority.confirmation_sha256 !== sha256(Buffer.from(GUARDED_ACTIVATION_CONFIRMATION)) ||
     !exactEmptyObject(value.release) ||
     !exactEmptyObject(value.gates) ||
-    value.secret_sha256 !== null
+    value.secret_sha256 !== null ||
+    !exactObjectKeys(value.database, [
+      "database",
+      "exact_manifest_ledger_required",
+      "first_migration",
+      "host",
+      "last_migration",
+      "owner_role",
+      "operator_role",
+      "operator_database_url_sha256",
+      "pgcrypto_required",
+      "reconciler_role",
+      "runtime_role",
+    ]) ||
+    value.database.operator_database_url_sha256 !== null
   )
     return false;
   const filled = structuredClone(value);
@@ -341,6 +457,21 @@ function validateActivationRecordBase(value) {
     mage_deployment_snapshot_sha256: proof("9"),
     soulx_deployment_snapshot_sha256: proof("a"),
     paid_dispatch_authority_sha256: proof("b"),
+  });
+  // Only the final, post-bootstrap activation document carries this fingerprint. Use a validator-
+  // local proof value to exercise the real guarded contract without requiring or reading a
+  // credential before the outer single-use authority has been consumed.
+  filled.database.operator_database_url_sha256 = proof("d");
+  Object.assign(filled.cloudflare, {
+    workers_dev_subdomain_readback_sha256: proof("e"),
+    pre_mutation_account_readback_sha256: proof("f"),
+    pre_mutation_worker_absence_sha256: proof("1"),
+    pre_mutation_workflow_inventory_sha256: proof("2"),
+    pre_mutation_r2_inventory_sha256: proof("3"),
+    pre_mutation_route_content_type: "text/html; charset=UTF-8",
+    pre_mutation_route_body_length: 19984,
+    pre_mutation_route_readback_sha256:
+      "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976",
   });
   filled.secret_sha256 = Object.fromEntries(GUARDED_SECRET_NAMES.map((name) => [name, proof("c")]));
   try {
@@ -570,6 +701,7 @@ function validateMaterializationSeedShape(value) {
     value?.activation_record_base?.gates?.mage_deployment_snapshot_sha256,
     value?.activation_record_base?.gates?.soulx_deployment_snapshot_sha256,
     value?.activation_record_base?.gates?.paid_dispatch_authority_sha256,
+    value?.activation_record_base?.database?.operator_database_url_sha256,
     value?.promotion_record_base?.release?.disabled_config_sha256,
     value?.promotion_record_base?.release?.enabled_config_sha256,
     value?.promotion_record_base?.database?.authority_document_sha256,
@@ -580,13 +712,6 @@ function validateMaterializationSeedShape(value) {
     value?.promotion_record_base?.cloudflare?.disabled_version_id,
     value?.promotion_record_base?.cloudflare?.disabled_version_sha256,
   ];
-  let releaseManifestValid = false;
-  try {
-    validateMediaWorkerReleaseManifest(value?.release_manifest);
-    releaseManifestValid = true;
-  } catch {
-    releaseManifestValid = false;
-  }
   return (
     value !== null &&
     typeof value === "object" &&
@@ -611,7 +736,7 @@ function validateMaterializationSeedShape(value) {
     exactEmptyObject(production.commandPayloads) &&
     validateActivationRecordBase(value.activation_record_base) &&
     validateConfigActivationBase(value.config_activation_base) &&
-    releaseManifestValid &&
+    value.release_manifest === null &&
     validatePromotionRecordBase(value.promotion_record_base) &&
     value.activation_record_base.cloudflare.account_id ===
       value.config_activation_base.cloudflare.account_id &&
@@ -619,6 +744,8 @@ function validateMaterializationSeedShape(value) {
       value.config_activation_base.cloudflare.public_origin &&
     value.activation_record_base.cloudflare.r2_bucket_name ===
       value.config_activation_base.cloudflare.r2_bucket_name &&
+    lanes.qualificationR2.accountId === value.activation_record_base.cloudflare.account_id &&
+    lanes.qualificationR2.bucketName === value.activation_record_base.cloudflare.r2_bucket_name &&
     value.activation_record_base.cloudflare.worker_name ===
       value.config_activation_base.cloudflare.worker_name &&
     value.activation_record_base.cloudflare.workflow_name ===
@@ -649,7 +776,7 @@ function validateMaterializationSeedShape(value) {
  * the exact canonical JSON hash and protected file seam so a restart cannot silently read a
  * different seed.  This function deliberately does not inspect credentials or call a provider.
  */
-function validateMaterializationSeedFile({ path, expectedSha256 }) {
+function validateMaterializationSeedFile({ path, expectedSha256, expectedFullLiveAuthorityId }) {
   if (
     !HASH.test(expectedSha256 ?? "") ||
     typeof path !== "string" ||
@@ -684,7 +811,14 @@ function validateMaterializationSeedFile({ path, expectedSha256 }) {
     fail("MATERIALIZATION_SEED_JSON");
   }
   if (!validateMaterializationSeedShape(value)) fail("MATERIALIZATION_SEED_CONTRACT");
+  if (
+    expectedFullLiveAuthorityId !== undefined &&
+    (value.production_input_base.fullLiveAuthorityId !== expectedFullLiveAuthorityId ||
+      !UUID.test(expectedFullLiveAuthorityId))
+  )
+    fail("MATERIALIZATION_SEED_AUTHORITY_BINDING");
   const canonicalBytes = Buffer.from(`${canonicalJson(value)}\n`);
+  if (Buffer.compare(bytes, canonicalBytes) !== 0) fail("MATERIALIZATION_SEED_CANONICAL_BYTES");
   if (sha256(canonicalBytes) !== expectedSha256) fail("MATERIALIZATION_SEED_HASH");
   if (
     sha256(readFileSync(resolve(ROOT, MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_PATH))) !==
@@ -803,6 +937,7 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
   if (
     authority.schema_version !== "videoforge.v2-13-full-live-approved-authority/v1" ||
     !AUTHORITY_ID.test(authority.authority_id ?? "") ||
+    !UUID.test(authority.full_live_authority_id ?? "") ||
     authority.status !== "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS" ||
     authority.single_use !== true ||
     authority.consumed !== false ||
@@ -841,6 +976,7 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
   });
   if (
     authority.authority_id !== validated.authorityId ||
+    authority.full_live_authority_id !== validated.fullLiveAuthorityId ||
     authority.lineage?.user_approval_sha256 !== validated.approvalSha256 ||
     authority.static_release_descriptor.path !== validated.staticReleaseDescriptorPath ||
     authority.static_release_descriptor.sha256 !== validated.staticReleaseDescriptorSha256 ||
@@ -972,6 +1108,7 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
   return {
     schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v2",
     authority_id: authority.authority_id,
+    full_live_authority_id: authority.full_live_authority_id,
     authority_sha256: sha256(authorityBytes),
     proposal_sha256: validated.proposalSha256,
     approval_sha256: validated.approvalSha256,
@@ -1016,6 +1153,7 @@ function validateState(state) {
   if (
     state?.schema_version !== "videoforge.v2-13-full-live-orchestration-consumption/v2" ||
     !AUTHORITY_ID.test(state.authority_id ?? "") ||
+    !UUID.test(state.full_live_authority_id ?? "") ||
     !HASH.test(state.authority_sha256 ?? "") ||
     !/^[0-9a-f]{40}$/u.test(state.authority_record_commit ?? "") ||
     ![state.approval_record_path, state.authority_record_path].every(
@@ -1028,7 +1166,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:8bdf4079222117e1ac38bca3a7170e5bd9cf6aea5ffbcbc70cf587af73fdbf49" ||
+      "sha256:37a5b67ae0f0332e37796ec3cd21572bebabce1e64245faf6688a4e2d79352fb" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||
@@ -1796,6 +1934,7 @@ async function main() {
     validateMaterializationSeedFile({
       path: process.env[MATERIALIZATION_SEED_ENV],
       expectedSha256: authority.materialization_seed_sha256,
+      expectedFullLiveAuthorityId: authority.full_live_authority_id,
     });
     if (args.has("trusted-iso")) fail("CALLER_TRUSTED_TIME_FORBIDDEN");
     assertTrustedTime(validated.approvedAt, validated.expiresAt, readAuthenticatedTrustedTime());

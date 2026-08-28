@@ -8,12 +8,13 @@ import {
   openSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
@@ -28,6 +29,21 @@ import {
   WRANGLER_OAUTH_CONFIG_ENV,
 } from "./guarded-activation.mjs";
 import { validateMaterializationSeedShape } from "./full-live-orchestration-authority.mjs";
+import {
+  MEDIA_WORKER_RELEASE_HTML_URL,
+  MEDIA_WORKER_RELEASE_MANIFEST,
+  MEDIA_WORKER_RELEASE_MANIFEST_NAME,
+  MEDIA_WORKER_RELEASE_MANIFEST_SHA256,
+  MEDIA_WORKER_RELEASE_MANIFEST_SIZE_BYTES,
+  MEDIA_WORKER_RELEASE_MANIFEST_URL,
+  MEDIA_WORKER_RELEASE_PUBLISHED_AT,
+  MEDIA_WORKER_RELEASE_READBACK_PARENT_OPERATION_ID,
+  MEDIA_WORKER_RELEASE_READBACK_SCHEMA,
+  MEDIA_WORKER_RELEASE_REPOSITORY,
+  MEDIA_WORKER_RELEASE_TAG,
+  MEDIA_WORKER_RELEASE_TARGET_COMMIT,
+  readMediaWorkerReleaseReadback,
+} from "./media-worker-release-readback.mjs";
 import { parseService, validateServiceFile } from "../v2-06/validate-pg-service.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -63,7 +79,7 @@ const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("h
 const BRIDGE_PATH = "apps/web/src/server/providers/v213-full-live-cli.ts";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
 const BRIDGE_CLI_SOURCE_SHA256 =
-  "sha256:a83d5ee164cb279b5381272eec66f70b10904883806e81caf75e774ac9f30102";
+  "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0";
 const PREQUALIFICATION_MIGRATION_MANIFEST_PATH = "packages/control-plane/migrations/manifest.json";
 const PREQUALIFICATION_OPERATOR_GRANTS_PATH = "deploy/v2-13/neon-full-live-operator-grants.sql";
 const PREQUALIFICATION_MIGRATION_MANIFEST_SHA256 = sha256(
@@ -84,7 +100,12 @@ const BRIDGE_CLEANUP_CHILD_MAX_TIMEOUT_MS = 60_000;
 const RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS = 60_000;
 const CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS = 60_000;
 const EARLY_CLEANUP_INPUT_SCHEMA = "videoforge.v213-full-live-early-cleanup-input/v1";
-const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v2";
+const DATABASE_ROLE_CREDENTIAL_BUNDLE_SCHEMA = "videoforge.v213-database-role-credential-bundle/v1";
+const DATABASE_ROLE_CREDENTIAL_BUNDLE_NAME = "database-role-credentials.json";
+const DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA =
+  "videoforge.v213-database-role-credential-cleanup/v1";
+const OUTER_CONSUMPTION_SCHEMA = "videoforge.v2-13-full-live-orchestration-consumption/v2";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_RUNTIME_ROLE = "videoforge_hosted_runtime";
 const PREQUALIFICATION_RECONCILER_ROLE = "videoforge_hosted_reconciler";
@@ -100,6 +121,7 @@ const PREQUALIFICATION_LEDGER_PREFIX_COUNTS = Object.freeze([
 const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_claim_v213_bridge_command(jsonb)",
   "videoforge_claim_v213_operation(jsonb)",
+  "videoforge_claim_v213_qualification_materialization(jsonb)",
   "videoforge_claim_v213_stage_authority(jsonb)",
   "videoforge_complete_v213_stage_authority(text,text,jsonb)",
   "videoforge_load_v213_bridge_acceptance_call(jsonb)",
@@ -108,6 +130,7 @@ const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_load_v213_stage_handoff(uuid,text,text)",
   "videoforge_materialize_v213_release_facts(jsonb)",
   "videoforge_persist_v213_jit_materialization(jsonb)",
+  "videoforge_persist_v213_qualification_materialization(jsonb)",
   "videoforge_persist_v213_release_certification(jsonb)",
   "videoforge_persist_v213_release_chrome(jsonb)",
   "videoforge_prepare_v213_jit_operation(jsonb)",
@@ -119,6 +142,7 @@ const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_read_v213_jit_materialization(jsonb)",
   "videoforge_read_v213_operation_receipt(jsonb)",
   "videoforge_read_v213_operator_evidence(jsonb)",
+  "videoforge_read_v213_qualification_materialization(jsonb)",
   "videoforge_read_v213_release_certification(jsonb)",
   "videoforge_read_v213_release_chrome(jsonb)",
   "videoforge_read_v213_release_fact_materialization(jsonb)",
@@ -140,10 +164,16 @@ const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
 ]);
 const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "schema_version",
+  "full_live_authority_id",
+  "outer_state_sha256",
   "ledger_before_count",
   "ledger_before_sha256",
   "ledger_after_sha256",
   "operator_acl_sha256",
+  "operator_database_url_sha256",
+  "runtime_database_url_sha256",
+  "reconciler_database_url_sha256",
+  "database_role_credential_bundle_sha256",
   "pgcrypto_sha256",
   "recovery_mode",
   "runpod_calls",
@@ -188,6 +218,38 @@ const BRIDGE_PROTECTED_FILES = Object.freeze([
   ["WORKER_OPERATOR_BEARER_FD", "VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE"],
   ["PRODUCTION_SECRETS_FD", "VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE"],
 ]);
+const QUALIFICATION_PROTECTED_INPUTS = Object.freeze({
+  avatarSource: Object.freeze({
+    path: ".videoforge/private/vf-9-24u/new-avatar-sample.png",
+    sha256: "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+    sizeBytes: 1_912_005,
+    contentType: "image/png",
+  }),
+  soulx2s: Object.freeze({
+    path: ".videoforge/private/cp07-inputs/echo-span-2s-padded.wav",
+    sha256: "sha256:b7ad261af40caf574e9edadf856f28ccddc306a109d15523c81a427ec38e72d3",
+    sizeBytes: 80_278,
+    contentType: "audio/wav",
+  }),
+  soulx4s: Object.freeze({
+    path: ".videoforge/private/cp07-inputs/echo-span-4s-padded.wav",
+    sha256: "sha256:076f477f512835a3e606b3312682cf1b4a3eb62e211300843023840969d09019",
+    sizeBytes: 160_278,
+    contentType: "audio/wav",
+  }),
+  soulx6s: Object.freeze({
+    path: ".videoforge/private/cp07-inputs/echo-span-6s-padded.wav",
+    sha256: "sha256:c7c67903aae4ca8a235792402c64ffa69be3bd423babd4e0447726db27539761",
+    sizeBytes: 212_118,
+    contentType: "audio/wav",
+  }),
+  soulx10s: Object.freeze({
+    path: ".videoforge/private/vf-9-24u/new-avatar-third-10.00s.wav",
+    sha256: "sha256:51765f504d1a241af1aa05040cd06bbf377768bc3b2806000191f23855e577cb",
+    sizeBytes: 320_278,
+    contentType: "audio/wav",
+  }),
+});
 
 const fail = (code, detail = "") => {
   throw new Error(`V2_13_FULL_LIVE_ADAPTER_${code}${detail ? `:${detail}` : ""}`);
@@ -1434,6 +1496,28 @@ function protectedFile(path, code) {
   return path;
 }
 
+function protectedSingleLinkFile(path, code) {
+  protectedFile(path, code);
+  if (realpathSync(path) !== resolve(path) || lstatSync(path).nlink !== 1) fail(code);
+  return path;
+}
+
+function qualificationProtectedInputFiles(descriptors) {
+  if (canonicalJson(descriptors) !== canonicalJson(QUALIFICATION_PROTECTED_INPUTS))
+    fail("QUALIFICATION_PROTECTED_INPUT_DESCRIPTOR_DRIFT");
+  return Object.fromEntries(
+    Object.entries(QUALIFICATION_PROTECTED_INPUTS).map(([key, descriptor]) => {
+      const path = resolve(ROOT, descriptor.path);
+      if (relative(ROOT, path) !== descriptor.path) fail("QUALIFICATION_PROTECTED_INPUT_PATH", key);
+      protectedSingleLinkFile(path, `QUALIFICATION_PROTECTED_INPUT:${key}`);
+      const bytes = readFileSync(path);
+      if (bytes.length !== descriptor.sizeBytes || sha256(bytes) !== descriptor.sha256)
+        fail("QUALIFICATION_PROTECTED_INPUT_DRIFT", key);
+      return [key, path];
+    }),
+  );
+}
+
 function parseExactOperatorDatabaseUrl(
   raw,
   { host, database, role = PREQUALIFICATION_OPERATOR_ROLE },
@@ -1519,6 +1603,7 @@ const MATERIALIZATION_ENTRY_KEYS = Object.freeze([
 ]);
 const MATERIALIZATION_STAGE_ORDER = Object.freeze([
   "production-input",
+  "media-worker-release-readback",
   "max-one-endpoint-bindings",
   "activation-record",
   "promotion-record",
@@ -1716,10 +1801,37 @@ function protectedDirectory(path, code) {
   return path;
 }
 
-function exclusiveAtomicBytes(path, bytes) {
+function protectedCanonicalDirectory(path, code) {
+  protectedDirectory(path, code);
+  if (realpathSync(path) !== resolve(path)) fail(code);
+  return path;
+}
+
+function protectedCollisionPath(path, code) {
+  if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
+    fail(code);
+  protectedCanonicalDirectory(dirname(path), `${code}_DIRECTORY`);
+  if (lstatExists(path)) protectedSingleLinkFile(path, code);
+  return resolve(path);
+}
+
+function requiredProtectedOutputPath(path, code) {
+  if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
+    fail(code);
+  protectedCanonicalDirectory(dirname(path), `${code}_DIRECTORY`);
+  return path;
+}
+
+function exclusiveAtomicBytes(path, bytes, { temporaryPath } = {}) {
   protectedDirectory(dirname(path), "MATERIALIZATION_OUTPUT_DIRECTORY");
-  const temporary = `${path}.${randomBytes(8).toString("hex")}.next`;
-  writeFileSync(temporary, bytes, { mode: 0o600, flag: "wx" });
+  const temporary = temporaryPath ?? `${path}.${randomBytes(8).toString("hex")}.next`;
+  if (lstatExists(temporary)) {
+    protectedFile(temporary, "MATERIALIZATION_OUTPUT_STAGING_FILE");
+    if (Buffer.compare(readFileSync(temporary), bytes) !== 0)
+      fail("MATERIALIZATION_OUTPUT_STAGING_DRIFT", path);
+  } else {
+    writeFileSync(temporary, bytes, { mode: 0o600, flag: "wx" });
+  }
   try {
     linkSync(temporary, path);
   } catch {
@@ -1834,6 +1946,560 @@ function prequalificationPath(environment) {
   const path = configured ?? join(directory, PREQUALIFICATION_RECEIPT_NAME);
   if (resolve(dirname(path)) !== resolve(directory)) fail("PREQUALIFICATION_RECEIPT_PATH");
   return path;
+}
+
+function assertConsumedDatabaseBootstrapInvocation(context, state, outerStateSha256) {
+  if (
+    context?.operationId !== "bootstrap-prequalification-database" ||
+    state?.schema_version !== OUTER_CONSUMPTION_SCHEMA ||
+    state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" ||
+    typeof state.authority_id !== "string" ||
+    state.authority_id === "" ||
+    !HASH.test(outerStateSha256 ?? "")
+  )
+    fail("PREQUALIFICATION_CONSUMED_AUTHORITY_REQUIRED");
+}
+
+function databaseCredentialBundlePath(directory) {
+  return join(directory, DATABASE_ROLE_CREDENTIAL_BUNDLE_NAME);
+}
+
+function databaseCredentialStagingPath(path, authorityId) {
+  if (typeof authorityId !== "string" || authorityId === "" || authorityId.includes("\0"))
+    fail("PREQUALIFICATION_DATABASE_CREDENTIAL_STAGING_AUTHORITY");
+  const binding = sha256(Buffer.from(`${authorityId}\0${resolve(path)}`)).slice(
+    "sha256:".length,
+    31,
+  );
+  return join(dirname(path), `.${basename(path)}.${binding}.v213-stage`);
+}
+
+function databaseCredentialPaths({ directory, environment, receiptPath, authorityId }) {
+  protectedCanonicalDirectory(directory, "PREQUALIFICATION_POSTGRES_DIRECTORY_CANONICAL");
+  const secretDirectory = protectedCanonicalDirectory(
+    environment.VIDEOFORGE_V2_13_SECRET_INPUT_DIR,
+    "PREQUALIFICATION_SECRET_INPUT_DIRECTORY",
+  );
+  const operatorPath = join(directory, "operator.database-url");
+  if (
+    environment.VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE !== undefined &&
+    resolve(environment.VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE) !== resolve(operatorPath)
+  )
+    fail("PREQUALIFICATION_OPERATOR_DATABASE_URL_PATH");
+  const paths = Object.freeze({
+    operator: Object.freeze([operatorPath]),
+    runtime: Object.freeze([
+      requiredProtectedOutputPath(
+        environment.VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE,
+        "PREQUALIFICATION_RUNTIME_DATABASE_URL_PATH",
+      ),
+      join(secretDirectory, "DATABASE_URL"),
+    ]),
+    reconciler: Object.freeze([
+      requiredProtectedOutputPath(
+        environment.VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE,
+        "PREQUALIFICATION_RECONCILER_DATABASE_URL_PATH",
+      ),
+      join(secretDirectory, "VIDEOFORGE_RECONCILER_DATABASE_URL"),
+    ]),
+  });
+  const bundlePath = databaseCredentialBundlePath(directory);
+  const staging = Object.freeze({
+    bundle: databaseCredentialStagingPath(bundlePath, authorityId),
+    operator: Object.freeze(
+      paths.operator.map((path) => databaseCredentialStagingPath(path, authorityId)),
+    ),
+    runtime: Object.freeze(
+      paths.runtime.map((path) => databaseCredentialStagingPath(path, authorityId)),
+    ),
+    reconciler: Object.freeze(
+      paths.reconciler.map((path) => databaseCredentialStagingPath(path, authorityId)),
+    ),
+  });
+  const generatedPaths = [
+    bundlePath,
+    staging.bundle,
+    ...Object.values(paths).flat(),
+    ...[staging.operator, staging.runtime, staging.reconciler].flat(),
+  ].map((path) => resolve(path));
+  if (new Set(generatedPaths).size !== generatedPaths.length)
+    fail("PREQUALIFICATION_DATABASE_CREDENTIAL_PATH_COLLISION");
+  const intendedCredentialEnvironmentNames = new Set([
+    "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE",
+    "VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE",
+    "VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE",
+  ]);
+  const reservedPaths = [
+    join(directory, "owner.pg_service.conf"),
+    join(directory, "owner.pgpass"),
+    receiptPath,
+    ...Object.entries(environment)
+      .filter(
+        ([name, path]) =>
+          /^VIDEOFORGE_V2_13_.+_FILE$/u.test(name) &&
+          !intendedCredentialEnvironmentNames.has(name) &&
+          typeof path === "string" &&
+          path !== "",
+      )
+      .map(([, path]) => path),
+  ].map((path) =>
+    protectedCollisionPath(path, "PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH"),
+  );
+  if (generatedPaths.some((path) => reservedPaths.includes(path)))
+    fail("PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH_COLLISION");
+  return Object.freeze({ bundlePath, paths, staging });
+}
+
+function databaseCredentialFinalPaths(credentialPaths) {
+  return [credentialPaths.bundlePath, ...Object.values(credentialPaths.paths).flat()];
+}
+
+function databaseCredentialStagingPaths(credentialPaths) {
+  return [
+    credentialPaths.staging.bundle,
+    ...credentialPaths.staging.operator,
+    ...credentialPaths.staging.runtime,
+    ...credentialPaths.staging.reconciler,
+  ];
+}
+
+function databaseCredentialStageInventory(credentialPaths) {
+  const stages = new Set();
+  for (const finalPath of databaseCredentialFinalPaths(credentialPaths)) {
+    const prefix = `.${basename(finalPath)}.`;
+    for (const name of readdirSync(dirname(finalPath))) {
+      if (
+        name.startsWith(prefix) &&
+        name.endsWith(".v213-stage") &&
+        /^[0-9a-f]{24}$/u.test(name.slice(prefix.length, -".v213-stage".length))
+      )
+        stages.add(resolve(dirname(finalPath), name));
+    }
+  }
+  return [...stages].sort();
+}
+
+function assertOnlyCurrentDatabaseCredentialStages(credentialPaths, code) {
+  const expected = new Set(
+    databaseCredentialStagingPaths(credentialPaths).map((path) => resolve(path)),
+  );
+  const observed = databaseCredentialStageInventory(credentialPaths);
+  if (observed.some((path) => !expected.has(path))) fail(code);
+  return observed;
+}
+
+function validateDatabaseCredentialCrashPair(finalPath, stagePath, code) {
+  const finalPresent = lstatExists(finalPath);
+  const stagePresent = lstatExists(stagePath);
+  if (!finalPresent && !stagePresent) return;
+  if (finalPresent) {
+    protectedFile(finalPath, code);
+    if (realpathSync(finalPath) !== resolve(finalPath)) fail(code);
+  }
+  if (stagePresent) {
+    protectedFile(stagePath, code);
+    if (realpathSync(stagePath) !== resolve(stagePath)) fail(code);
+  }
+  const finalStatus = finalPresent ? lstatSync(finalPath) : null;
+  const stageStatus = stagePresent ? lstatSync(stagePath) : null;
+  if (finalPresent && stagePresent) {
+    if (
+      finalStatus.dev !== stageStatus.dev ||
+      finalStatus.ino !== stageStatus.ino ||
+      finalStatus.nlink !== 2 ||
+      stageStatus.nlink !== 2
+    )
+      fail(code);
+  } else if ((finalStatus ?? stageStatus).nlink !== 1) fail(code);
+}
+
+function databaseCredentialUrl({ service, role, password }) {
+  if (typeof role !== "string" || role === "" || !Buffer.isBuffer(password) || password.length < 32)
+    fail("PREQUALIFICATION_DATABASE_CREDENTIAL_GENERATION");
+  const value = new URL("postgresql://placeholder:placeholder@localhost/database");
+  value.username = role;
+  value.password = password.toString("base64url");
+  value.hostname = service.get("host");
+  value.port = service.get("port") ?? "";
+  value.pathname = `/${encodeURIComponent(service.get("dbname"))}`;
+  value.search = "";
+  value.searchParams.set("sslmode", "require");
+  value.searchParams.set("channel_binding", "require");
+  const raw = value.toString();
+  parseExactOperatorDatabaseUrl(
+    raw,
+    { host: service.get("host"), database: service.get("dbname"), role },
+    "PREQUALIFICATION_DATABASE_CREDENTIAL_GENERATION",
+  );
+  return raw;
+}
+
+function validateDatabaseRoleCredentialBundle(bundle, { state, outerStateSha256, service }) {
+  if (
+    !exactObjectKeys(bundle, [
+      "credentials",
+      "database",
+      "full_live_authority_id",
+      "outer_state_sha256",
+      "schema_version",
+    ]) ||
+    bundle.schema_version !== DATABASE_ROLE_CREDENTIAL_BUNDLE_SCHEMA ||
+    bundle.full_live_authority_id !== state.authority_id ||
+    bundle.outer_state_sha256 !== outerStateSha256 ||
+    !exactObjectKeys(bundle.database, ["database", "host"]) ||
+    bundle.database.host !== service.get("host") ||
+    bundle.database.database !== service.get("dbname") ||
+    !exactObjectKeys(bundle.credentials, ["operator", "reconciler", "runtime"])
+  )
+    fail("PREQUALIFICATION_DATABASE_CREDENTIAL_BUNDLE");
+  const roles = Object.freeze({
+    operator: PREQUALIFICATION_OPERATOR_ROLE,
+    runtime: PREQUALIFICATION_RUNTIME_ROLE,
+    reconciler: PREQUALIFICATION_RECONCILER_ROLE,
+  });
+  for (const [kind, role] of Object.entries(roles)) {
+    const credential = bundle.credentials[kind];
+    if (!exactObjectKeys(credential, ["database_url", "role"]) || credential.role !== role)
+      fail("PREQUALIFICATION_DATABASE_CREDENTIAL_BUNDLE");
+    parseExactOperatorDatabaseUrl(
+      credential.database_url,
+      { host: service.get("host"), database: service.get("dbname"), role },
+      "PREQUALIFICATION_DATABASE_CREDENTIAL_BUNDLE",
+    );
+  }
+  const hashes = Object.values(bundle.credentials).map((credential) =>
+    sha256(Buffer.from(credential.database_url)),
+  );
+  if (new Set(hashes).size !== hashes.length) fail("PREQUALIFICATION_DATABASE_CREDENTIAL_DISTINCT");
+  return bundle;
+}
+
+function materializeDatabaseRoleCredentials({
+  credentialPaths,
+  service,
+  state,
+  outerStateSha256,
+  credentialRandomBytes = randomBytes,
+  createMissing = true,
+}) {
+  const { bundlePath, paths, staging } = credentialPaths;
+  if (databaseCredentialStageInventory(credentialPaths).length !== 0)
+    fail("PREQUALIFICATION_DATABASE_CREDENTIAL_STAGING_PRESENT");
+  let bundle;
+  let bundleBytes;
+  if (lstatExists(bundlePath)) {
+    protectedSingleLinkFile(bundlePath, "PREQUALIFICATION_DATABASE_CREDENTIAL_BUNDLE_FILE");
+    bundleBytes = readFileSync(bundlePath);
+    try {
+      bundle = JSON.parse(bundleBytes);
+    } catch {
+      fail("PREQUALIFICATION_DATABASE_CREDENTIAL_BUNDLE_JSON");
+    }
+  } else {
+    if (!createMissing) fail("PREQUALIFICATION_DATABASE_CREDENTIAL_BUNDLE_MISSING");
+    if (
+      Object.values(paths)
+        .flat()
+        .some((path) => lstatExists(path))
+    )
+      fail("PREQUALIFICATION_UNBOUND_DATABASE_CREDENTIAL");
+    const credentials = Object.fromEntries(
+      [
+        ["operator", PREQUALIFICATION_OPERATOR_ROLE],
+        ["runtime", PREQUALIFICATION_RUNTIME_ROLE],
+        ["reconciler", PREQUALIFICATION_RECONCILER_ROLE],
+      ].map(([kind, role]) => [
+        kind,
+        {
+          role,
+          database_url: databaseCredentialUrl({
+            service,
+            role,
+            password: credentialRandomBytes(48),
+          }),
+        },
+      ]),
+    );
+    bundle = {
+      schema_version: DATABASE_ROLE_CREDENTIAL_BUNDLE_SCHEMA,
+      full_live_authority_id: state.authority_id,
+      outer_state_sha256: outerStateSha256,
+      database: { host: service.get("host"), database: service.get("dbname") },
+      credentials,
+    };
+    bundleBytes = Buffer.from(`${canonicalJson(bundle)}\n`);
+    exclusiveAtomicBytes(bundlePath, bundleBytes, { temporaryPath: staging.bundle });
+  }
+  validateDatabaseRoleCredentialBundle(bundle, { state, outerStateSha256, service });
+  if (Buffer.compare(bundleBytes, Buffer.from(`${canonicalJson(bundle)}\n`)) !== 0)
+    fail("PREQUALIFICATION_DATABASE_CREDENTIAL_BUNDLE_CANONICAL");
+
+  for (const [kind, targets] of Object.entries(paths)) {
+    const bytes = Buffer.from(bundle.credentials[kind].database_url);
+    for (const [index, target] of targets.entries()) {
+      if (!lstatExists(target)) {
+        if (!createMissing) fail("PREQUALIFICATION_DATABASE_CREDENTIAL_FILE_MISSING");
+        exclusiveAtomicBytes(target, bytes, { temporaryPath: staging[kind][index] });
+      } else {
+        protectedSingleLinkFile(target, "PREQUALIFICATION_DATABASE_CREDENTIAL_FILE");
+        if (Buffer.compare(readFileSync(target), bytes) !== 0)
+          fail("PREQUALIFICATION_DATABASE_CREDENTIAL_FILE_DRIFT");
+      }
+    }
+  }
+  if (databaseCredentialStageInventory(credentialPaths).length !== 0)
+    fail("PREQUALIFICATION_DATABASE_CREDENTIAL_STAGING_READBACK");
+  return Object.freeze({
+    operator_database_url_sha256: sha256(Buffer.from(bundle.credentials.operator.database_url)),
+    runtime_database_url_sha256: sha256(Buffer.from(bundle.credentials.runtime.database_url)),
+    reconciler_database_url_sha256: sha256(Buffer.from(bundle.credentials.reconciler.database_url)),
+    database_role_credential_bundle_sha256: sha256(bundleBytes),
+    operatorDatabaseUrl: bundle.credentials.operator.database_url,
+  });
+}
+
+async function cleanupPartialDatabaseRoleCredentials({
+  environment = process.env,
+  run = productionCommand,
+  state,
+} = {}) {
+  const workId = `${state?.authority_id}:bootstrap-prequalification-database`.toLowerCase();
+  if (
+    state?.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" ||
+    state.operator_role_verified !== false ||
+    state.phases?.bootstrap_prequalification_database?.work?.[workId]?.state !==
+      "AUTHORIZED_ONCE_NOT_REDISPATCHABLE"
+  )
+    fail("PREQUALIFICATION_PARTIAL_CLEANUP_AUTHORITY");
+  const directory = protectedDirectory(
+    environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
+    "PREQUALIFICATION_POSTGRES_DIRECTORY",
+  );
+  const servicePath = join(directory, "owner.pg_service.conf");
+  const passPath = join(directory, "owner.pgpass");
+  const receiptPath = prequalificationPath(environment);
+  const service = await parseService(servicePath, "videoforge_v2_13_owner");
+  protectedFile(passPath, "PREQUALIFICATION_OWNER_PASS");
+  await validateServiceFile(
+    servicePath,
+    "videoforge_v2_13_owner",
+    service.get("host"),
+    service.get("dbname"),
+    service.get("user"),
+  );
+  if (service.get("user") === PREQUALIFICATION_OPERATOR_ROLE)
+    fail("PREQUALIFICATION_OWNER_OPERATOR_COLLISION");
+  const credentialPaths = databaseCredentialPaths({
+    directory,
+    environment,
+    receiptPath,
+    authorityId: state.authority_id,
+  });
+  const dbEnv = {
+    PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin",
+    HOME: environment.HOME ?? process.env.HOME ?? "/tmp",
+    PGSERVICEFILE: servicePath,
+    PGSERVICE: "videoforge_v2_13_owner",
+    PGPASSFILE: passPath,
+  };
+  const rolesText = prequalificationCommand(
+    run,
+    "psql",
+    prequalificationQueryArgs(
+      `BEGIN; SELECT pg_advisory_xact_lock(${PREQUALIFICATION_ADVISORY_LOCK}); SELECT json_build_object('operator',(SELECT count(*) FROM pg_roles WHERE rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}),'runtime',(SELECT count(*) FROM pg_roles WHERE rolname=${prequalificationLiteral(PREQUALIFICATION_RUNTIME_ROLE)}),'reconciler',(SELECT count(*) FROM pg_roles WHERE rolname=${prequalificationLiteral(PREQUALIFICATION_RECONCILER_ROLE)}))::text; COMMIT;`,
+    ),
+    dbEnv,
+    "PREQUALIFICATION_PARTIAL_CLEANUP_ROLE_READBACK",
+  );
+  let roles;
+  try {
+    roles = JSON.parse(rolesText);
+  } catch {
+    fail("PREQUALIFICATION_PARTIAL_CLEANUP_ROLE_READBACK");
+  }
+  if (
+    !exactObjectKeys(roles, ["operator", "reconciler", "runtime"]) ||
+    roles.operator !== 0 ||
+    roles.runtime !== 0 ||
+    roles.reconciler !== 0
+  )
+    fail("PREQUALIFICATION_PARTIAL_CLEANUP_ROLE_PRESENT");
+  if (lstatExists(receiptPath)) fail("PREQUALIFICATION_PARTIAL_CLEANUP_RECEIPT_PRESENT");
+
+  const targets = Object.values(credentialPaths.paths).flat();
+  const targetStages = [
+    ...credentialPaths.staging.operator,
+    ...credentialPaths.staging.runtime,
+    ...credentialPaths.staging.reconciler,
+  ];
+  const observedStages = assertOnlyCurrentDatabaseCredentialStages(
+    credentialPaths,
+    "PREQUALIFICATION_PARTIAL_CLEANUP_STAGING_AUTHORITY_DRIFT",
+  );
+  const bundlePresent = lstatExists(credentialPaths.bundlePath);
+  const bundleStagePresent = lstatExists(credentialPaths.staging.bundle);
+  const credentialArtifactsPresent = [...targets, ...targetStages].some((path) =>
+    lstatExists(path),
+  );
+  if (!bundlePresent && !bundleStagePresent && credentialArtifactsPresent)
+    fail("PREQUALIFICATION_PARTIAL_CLEANUP_UNBOUND_CREDENTIAL");
+  validateDatabaseCredentialCrashPair(
+    credentialPaths.bundlePath,
+    credentialPaths.staging.bundle,
+    "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_LINK_TOPOLOGY",
+  );
+  for (const kind of ["operator", "runtime", "reconciler"])
+    for (const [index, path] of credentialPaths.paths[kind].entries())
+      validateDatabaseCredentialCrashPair(
+        path,
+        credentialPaths.staging[kind][index],
+        "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_LINK_TOPOLOGY",
+      );
+  let credentialBundleSha256 = null;
+  let removedArtifactCount = 0;
+  let incompleteBundleStageOnly = false;
+  if (bundlePresent || bundleStagePresent) {
+    const manifest = prequalificationManifest();
+    if (
+      prequalificationLockedLedger(
+        (sql, code) =>
+          prequalificationCommand(run, "psql", prequalificationQueryArgs(sql), dbEnv, code),
+        manifest,
+      ).length !== 45
+    )
+      fail("PREQUALIFICATION_PARTIAL_CLEANUP_LEDGER");
+    let bundleBytes;
+    if (bundlePresent) {
+      protectedFile(
+        credentialPaths.bundlePath,
+        "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE",
+      );
+      bundleBytes = readFileSync(credentialPaths.bundlePath);
+    } else {
+      protectedFile(
+        credentialPaths.staging.bundle,
+        "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_STAGE",
+      );
+      bundleBytes = readFileSync(credentialPaths.staging.bundle);
+    }
+    let bundle;
+    if (!bundlePresent && !credentialArtifactsPresent) {
+      incompleteBundleStageOnly = true;
+    } else {
+      try {
+        bundle = JSON.parse(bundleBytes);
+      } catch {
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE");
+      }
+    }
+    if (!incompleteBundleStageOnly) {
+      validateDatabaseRoleCredentialBundle(bundle, {
+        state,
+        outerStateSha256: bundle?.outer_state_sha256,
+        service,
+      });
+      if (
+        !HASH.test(bundle.outer_state_sha256 ?? "") ||
+        Buffer.compare(bundleBytes, Buffer.from(`${canonicalJson(bundle)}\n`)) !== 0
+      )
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE");
+      credentialBundleSha256 = sha256(bundleBytes);
+      if (bundlePresent && bundleStagePresent) {
+        protectedFile(
+          credentialPaths.staging.bundle,
+          "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_STAGE",
+        );
+        if (Buffer.compare(readFileSync(credentialPaths.staging.bundle), bundleBytes) !== 0)
+          fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_STAGE_DRIFT");
+      }
+      for (const [kind, paths] of Object.entries(credentialPaths.paths)) {
+        const expected = Buffer.from(bundle.credentials[kind].database_url);
+        for (const path of paths) {
+          if (!lstatExists(path)) continue;
+          protectedFile(path, "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_FILE");
+          if (Buffer.compare(readFileSync(path), expected) !== 0)
+            fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_FILE_DRIFT");
+        }
+      }
+    }
+    for (const path of targetStages) {
+      if (!lstatExists(path)) continue;
+      protectedFile(path, "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_STAGE");
+    }
+    // Delete the copies first and the authority-bound canonical bundle last. A crash before the
+    // final unlink leaves enough provenance for the same cleanup-only operation to resume safely.
+    for (const path of [...targets, ...targetStages]) {
+      if (!lstatExists(path)) continue;
+      rmSync(path);
+      removedArtifactCount += 1;
+    }
+    if (bundleStagePresent) {
+      rmSync(credentialPaths.staging.bundle);
+      removedArtifactCount += 1;
+    }
+    if (bundlePresent) {
+      rmSync(credentialPaths.bundlePath);
+      removedArtifactCount += 1;
+    }
+  }
+  if (
+    databaseCredentialFinalPaths(credentialPaths).some((path) => lstatExists(path)) ||
+    databaseCredentialStageInventory(credentialPaths).length !== 0 ||
+    observedStages.some((path) => lstatExists(path))
+  )
+    fail("PREQUALIFICATION_PARTIAL_CLEANUP_READBACK");
+  const body = {
+    schemaVersion: DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA,
+    fullLiveAuthorityId: state.authority_id,
+    cleanupState:
+      bundlePresent || bundleStagePresent
+        ? incompleteBundleStageOnly
+          ? "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING"
+          : "REMOVED_AUTHORITY_BOUND_FILES"
+        : "ALREADY_ABSENT",
+    operatorRoleAbsent: true,
+    runtimeAndReconcilerRolesAbsent: true,
+    credentialBundleSha256,
+    removedArtifactCount,
+  };
+  return Object.freeze({ ...body, cleanupSha256: canonicalSha256(body) });
+}
+
+function exactPartialDatabaseCleanupResult(value, state) {
+  if (
+    !exactObjectKeys(value, [
+      "cleanupSha256",
+      "cleanupState",
+      "credentialBundleSha256",
+      "fullLiveAuthorityId",
+      "operatorRoleAbsent",
+      "removedArtifactCount",
+      "runtimeAndReconcilerRolesAbsent",
+      "schemaVersion",
+    ]) ||
+    value.schemaVersion !== DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA ||
+    value.fullLiveAuthorityId !== state?.authority_id ||
+    ![
+      "REMOVED_AUTHORITY_BOUND_FILES",
+      "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING",
+      "ALREADY_ABSENT",
+    ].includes(value.cleanupState) ||
+    value.operatorRoleAbsent !== true ||
+    value.runtimeAndReconcilerRolesAbsent !== true ||
+    !Number.isInteger(value.removedArtifactCount) ||
+    value.removedArtifactCount < 0 ||
+    value.removedArtifactCount > 12 ||
+    (value.cleanupState === "REMOVED_AUTHORITY_BOUND_FILES" &&
+      (!HASH.test(value.credentialBundleSha256 ?? "") || value.removedArtifactCount < 1)) ||
+    (value.cleanupState === "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING" &&
+      (value.credentialBundleSha256 !== null || value.removedArtifactCount !== 1)) ||
+    (value.cleanupState === "ALREADY_ABSENT" &&
+      (value.credentialBundleSha256 !== null || value.removedArtifactCount !== 0))
+  )
+    fail("PREQUALIFICATION_PARTIAL_CLEANUP_RESULT");
+  const { cleanupSha256, ...body } = value;
+  if (cleanupSha256 !== canonicalSha256(body)) fail("PREQUALIFICATION_PARTIAL_CLEANUP_RESULT");
+  return Object.freeze(value);
 }
 
 function prequalificationCommand(run, command, args, environment, code) {
@@ -2043,10 +2709,22 @@ function prequalificationReceiptFromFile(path) {
   delete body.prequalification_database_bootstrap_sha256;
   if (
     value.schema_version !== PREQUALIFICATION_SCHEMA ||
+    typeof value.full_live_authority_id !== "string" ||
+    value.full_live_authority_id === "" ||
+    !HASH.test(value.outer_state_sha256 ?? "") ||
     !PREQUALIFICATION_LEDGER_PREFIX_COUNTS.includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
     !HASH.test(value.ledger_after_sha256 ?? "") ||
     !HASH.test(value.operator_acl_sha256 ?? "") ||
+    !HASH.test(value.operator_database_url_sha256 ?? "") ||
+    !HASH.test(value.runtime_database_url_sha256 ?? "") ||
+    !HASH.test(value.reconciler_database_url_sha256 ?? "") ||
+    !HASH.test(value.database_role_credential_bundle_sha256 ?? "") ||
+    new Set([
+      value.operator_database_url_sha256,
+      value.runtime_database_url_sha256,
+      value.reconciler_database_url_sha256,
+    ]).size !== 3 ||
     !HASH.test(value.pgcrypto_sha256 ?? "") ||
     !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
     (value.recovery_mode === "FRESH_36_TO_45" && value.ledger_before_count !== 36) ||
@@ -2079,7 +2757,8 @@ async function verifyPrequalificationDatabaseReceipt({
 } = {}) {
   // Receipt bytes and the outer prior-result CAS are checked before any database credential,
   // RunPod key, or application secret is opened.
-  const receipt = prequalificationReceiptFromFile(prequalificationPath(environment));
+  const receiptPath = prequalificationPath(environment);
+  const receipt = prequalificationReceiptFromFile(receiptPath);
   const bootstrap = priorResults?.get?.("bootstrap-prequalification-database");
   if (
     bootstrap?.prequalification_database_bootstrap_sha256 !==
@@ -2104,6 +2783,27 @@ async function verifyPrequalificationDatabaseReceipt({
   );
   if (service.get("user") === PREQUALIFICATION_OPERATOR_ROLE)
     fail("PREQUALIFICATION_VERIFY_OWNER_OPERATOR_COLLISION");
+  const credentialPaths = databaseCredentialPaths({
+    directory,
+    environment,
+    receiptPath,
+    authorityId: receipt.full_live_authority_id,
+  });
+  const databaseCredentials = materializeDatabaseRoleCredentials({
+    credentialPaths,
+    service,
+    state: { authority_id: receipt.full_live_authority_id },
+    outerStateSha256: receipt.outer_state_sha256,
+    createMissing: false,
+  });
+  for (const field of [
+    "operator_database_url_sha256",
+    "runtime_database_url_sha256",
+    "reconciler_database_url_sha256",
+    "database_role_credential_bundle_sha256",
+  ])
+    if (databaseCredentials[field] !== receipt[field])
+      fail("PREQUALIFICATION_VERIFY_DATABASE_CREDENTIALS");
   const dbEnv = {
     PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin",
     HOME: environment.HOME ?? process.env.HOME ?? "/tmp",
@@ -2162,8 +2862,17 @@ async function verifyPrequalificationDatabaseReceipt({
 function createPrequalificationDatabaseBootstrapAdapter({
   environment = process.env,
   run = productionCommand,
+  credentialRandomBytes = randomBytes,
 } = {}) {
-  return async () => {
+  return async (context, state, _priorResults, outerStateSha256) => {
+    assertConsumedDatabaseBootstrapInvocation(context, state, outerStateSha256);
+    const reconciliationOnly =
+      context?.authorizedUnsettled === true &&
+      context?.reconciliationOnly === true &&
+      context?.providerDispatchForbidden === true;
+    const initialExecution =
+      context?.authorizedUnsettled !== true && context?.reconciliationOnly !== true;
+    if (!initialExecution && !reconciliationOnly) fail("PREQUALIFICATION_RECONCILIATION_CONTEXT");
     const directory = protectedDirectory(
       environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
       "PREQUALIFICATION_POSTGRES_DIRECTORY",
@@ -2173,7 +2882,6 @@ function createPrequalificationDatabaseBootstrapAdapter({
     const operatorPath = join(directory, "operator.database-url");
     const service = await parseService(servicePath, "videoforge_v2_13_owner");
     protectedFile(passPath, "PREQUALIFICATION_OWNER_PASS");
-    protectedFile(operatorPath, "PREQUALIFICATION_OPERATOR_DSN");
     await validateServiceFile(
       servicePath,
       "videoforge_v2_13_owner",
@@ -2183,6 +2891,27 @@ function createPrequalificationDatabaseBootstrapAdapter({
     );
     if (service.get("user") === PREQUALIFICATION_OPERATOR_ROLE)
       fail("PREQUALIFICATION_OWNER_OPERATOR_COLLISION");
+    const receiptPath = prequalificationPath(environment);
+    // Resolve every generated and reserved protected path before a migration, credential write,
+    // or role mutation. A path collision is an authority-contract failure, never a late I/O error.
+    const credentialPaths = databaseCredentialPaths({
+      directory,
+      environment,
+      receiptPath,
+      authorityId: state.authority_id,
+    });
+    const observedCredentialStages = assertOnlyCurrentDatabaseCredentialStages(
+      credentialPaths,
+      "PREQUALIFICATION_DATABASE_CREDENTIAL_STAGING_AUTHORITY_DRIFT",
+    );
+    const credentialFinals = databaseCredentialFinalPaths(credentialPaths);
+    if (
+      initialExecution &&
+      (observedCredentialStages.length !== 0 || credentialFinals.some((path) => lstatExists(path)))
+    )
+      fail("PREQUALIFICATION_INITIAL_STATE_NOT_FRESH");
+    if (reconciliationOnly && observedCredentialStages.length !== 0)
+      fail("PREQUALIFICATION_RECONCILIATION_STAGING_PRESENT");
     const dbEnv = {
       PATH: environment.PATH ?? process.env.PATH ?? "/usr/bin:/bin",
       HOME: environment.HOME ?? process.env.HOME ?? "/tmp",
@@ -2197,7 +2926,6 @@ function createPrequalificationDatabaseBootstrapAdapter({
     // migration.  The owner connection is the only connection used until the full operator
     // state has been committed and read back.
     const before = prequalificationLockedLedger(query, manifest);
-    const receiptPath = prequalificationPath(environment);
     const existing = prequalificationReceiptFromFile(receiptPath);
     const runtimeAbsent =
       query(
@@ -2218,7 +2946,11 @@ function createPrequalificationDatabaseBootstrapAdapter({
       (before.length < 45 && operatorCount !== 0)
     )
       fail("PREQUALIFICATION_OPERATOR_ROLE_DRIFT");
+    if (initialExecution && (operatorCount !== 0 || existing !== null))
+      fail("PREQUALIFICATION_INITIAL_STATE_NOT_FRESH");
     if (operatorCount === 1) {
+      if (!lstatExists(credentialPaths.bundlePath))
+        fail("PREQUALIFICATION_OPERATOR_CREDENTIAL_BINDING_MISSING");
       // A pre-existing role is accepted only when the complete, canonical readback is exact.
       // This also prevents a lost receipt from being treated as permission to re-grant.
       const role = parsePrequalificationRole(
@@ -2229,6 +2961,14 @@ function createPrequalificationDatabaseBootstrapAdapter({
       );
       if (!role) fail("PREQUALIFICATION_OPERATOR_ROLE_DRIFT");
     }
+    if (
+      reconciliationOnly &&
+      (before.length !== 45 ||
+        operatorCount !== 1 ||
+        credentialFinals.some((path) => !lstatExists(path)))
+    )
+      fail("PREQUALIFICATION_RECONCILIATION_READBACK_INCOMPLETE");
+    if (existing && operatorCount !== 1) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
     if (existing && before.length !== 45) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
     const recoveryMode =
       before.length === 36
@@ -2268,11 +3008,19 @@ function createPrequalificationDatabaseBootstrapAdapter({
         }
       }
     }
+    const databaseCredentials = materializeDatabaseRoleCredentials({
+      credentialPaths,
+      service,
+      state,
+      outerStateSha256,
+      credentialRandomBytes,
+      createMissing: !reconciliationOnly,
+    });
     if (!existing && operatorCount === 0) {
       // The operator DSN is deliberately not decoded or opened until the migration prefix is
       // complete.  Owner credentials are the only database inputs used for prefix discovery and
       // migrations; the operator password is needed only for the post-migration role creation.
-      const operatorRaw = readFileSync(operatorPath, "utf8");
+      const operatorRaw = databaseCredentials.operatorDatabaseUrl;
       const operator = parseExactOperatorDatabaseUrl(
         operatorRaw,
         { host: service.get("host"), database: service.get("dbname") },
@@ -2285,21 +3033,9 @@ function createPrequalificationDatabaseBootstrapAdapter({
         fail("PREQUALIFICATION_OPERATOR_BINDING");
       }
       const operatorEnv = { ...dbEnv, V2_13_OPERATOR_PASSWORD: operatorPassword };
-      // Role creation and grant application run after the migration prefix has reached 45.  The
-      // role password is supplied through psql's private environment channel and never argv/logs.
-      const createRoleSql = String.raw`BEGIN;
-SELECT pg_advisory_xact_lock(${PREQUALIFICATION_ADVISORY_LOCK});
-${prequalificationPrefixGuardSql(manifest, 45)}
-\getenv operator_password V2_13_OPERATOR_PASSWORD
-SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}, :'operator_password') WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=${prequalificationLiteral(PREQUALIFICATION_OPERATOR_ROLE)}) \gexec`;
-      const roleSql = `${createRoleSql}\nCOMMIT;\n`;
-      prequalificationCommand(
-        run,
-        "psql",
-        ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--command", roleSql],
-        operatorEnv,
-        "PREQUALIFICATION_OPERATOR_CREATE",
-      );
+      // The grants script creates the absent role and applies/readbacks the exact ACL in one
+      // transaction. A lost commit acknowledgement therefore exposes either no role or the fully
+      // verified role; it can never strand a half-granted login.
       prequalificationCommand(
         run,
         "psql",
@@ -2312,10 +3048,46 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
           "--file",
           resolve(ROOT, PREQUALIFICATION_OPERATOR_GRANTS_PATH),
         ],
-        dbEnv,
-        "PREQUALIFICATION_OPERATOR_GRANTS",
+        operatorEnv,
+        "PREQUALIFICATION_OPERATOR_CREATE_AND_GRANTS",
       );
     }
+    const operatorBinding = parseExactOperatorDatabaseUrl(
+      databaseCredentials.operatorDatabaseUrl,
+      {
+        host: service.get("host"),
+        database: service.get("dbname"),
+        role: PREQUALIFICATION_OPERATOR_ROLE,
+      },
+      "PREQUALIFICATION_OPERATOR_CREDENTIAL_READBACK",
+    );
+    let operatorPassword;
+    try {
+      operatorPassword = decodeURIComponent(operatorBinding.password);
+    } catch {
+      fail("PREQUALIFICATION_OPERATOR_CREDENTIAL_READBACK");
+    }
+    const operatorCredentialReadback = prequalificationCommand(
+      run,
+      "psql",
+      prequalificationQueryArgs(
+        "SELECT current_user WHERE current_user='videoforge_hosted_operator'",
+      ),
+      {
+        PATH: dbEnv.PATH,
+        HOME: dbEnv.HOME,
+        PGHOST: service.get("host"),
+        PGPORT: service.get("port") ?? "",
+        PGDATABASE: service.get("dbname"),
+        PGUSER: PREQUALIFICATION_OPERATOR_ROLE,
+        PGPASSWORD: operatorPassword,
+        PGSSLMODE: "require",
+        PGCHANNELBINDING: "require",
+      },
+      "PREQUALIFICATION_OPERATOR_CREDENTIAL_READBACK",
+    );
+    if (operatorCredentialReadback !== PREQUALIFICATION_OPERATOR_ROLE)
+      fail("PREQUALIFICATION_OPERATOR_CREDENTIAL_READBACK");
     const ledger = prequalificationLockedLedger(query, manifest);
     if (ledger.length !== 45) fail("PREQUALIFICATION_LEDGER_FINAL");
     let pgcrypto;
@@ -2357,15 +3129,31 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
           sha256(Buffer.from(`${canonicalJson(existingPrefix)}\n`)) ||
         existing.ledger_after_sha256 !== after.ledger_after_sha256 ||
         existing.operator_acl_sha256 !== after.operator_acl_sha256 ||
-        existing.pgcrypto_sha256 !== after.pgcrypto_sha256
+        existing.pgcrypto_sha256 !== after.pgcrypto_sha256 ||
+        existing.operator_database_url_sha256 !==
+          databaseCredentials.operator_database_url_sha256 ||
+        existing.runtime_database_url_sha256 !== databaseCredentials.runtime_database_url_sha256 ||
+        existing.reconciler_database_url_sha256 !==
+          databaseCredentials.reconciler_database_url_sha256 ||
+        existing.database_role_credential_bundle_sha256 !==
+          databaseCredentials.database_role_credential_bundle_sha256 ||
+        existing.full_live_authority_id !== state.authority_id ||
+        existing.outer_state_sha256 !== outerStateSha256
       )
         fail("PREQUALIFICATION_RECEIPT_REPLAY_DRIFT");
     }
     const body = {
       schema_version: PREQUALIFICATION_SCHEMA,
+      full_live_authority_id: state.authority_id,
+      outer_state_sha256: outerStateSha256,
       ledger_before_count: before.length,
       ledger_before_sha256: beforeSha256,
       ...after,
+      operator_database_url_sha256: databaseCredentials.operator_database_url_sha256,
+      runtime_database_url_sha256: databaseCredentials.runtime_database_url_sha256,
+      reconciler_database_url_sha256: databaseCredentials.reconciler_database_url_sha256,
+      database_role_credential_bundle_sha256:
+        databaseCredentials.database_role_credential_bundle_sha256,
       recovery_mode: recoveryMode,
       runpod_calls: 0,
       cloudflare_calls: 0,
@@ -2430,6 +3218,83 @@ const exactObjectKeys = (value, keys) =>
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
 
 const canonicalSha256 = (value) => sha256(Buffer.from(canonicalJson(value)));
+
+function exactMediaWorkerReleaseReadback(value, state, outerStateSha256) {
+  const keys = [
+    "actualUsd",
+    "authorityId",
+    "binaryDownloads",
+    "credentialsUsed",
+    "draft",
+    "externalSpendUsd",
+    "finalDownloadUrl",
+    "gpuUse",
+    "immutable",
+    "manifest",
+    "manifestAsset",
+    "manifestSha256",
+    "manifestSizeBytes",
+    "manifestUrl",
+    "outerStateSha256",
+    "prerelease",
+    "providerMutations",
+    "publishedAt",
+    "reconciliationSha256",
+    "redirectCount",
+    "releaseHtmlUrl",
+    "repository",
+    "schemaVersion",
+    "state",
+    "tagName",
+    "targetCommit",
+  ];
+  if (!exactObjectKeys(value, keys)) fail("MEDIA_WORKER_RELEASE_READBACK_CONTRACT");
+  const { reconciliationSha256, ...unsigned } = value;
+  if (
+    value.schemaVersion !== MEDIA_WORKER_RELEASE_READBACK_SCHEMA ||
+    value.state !== "VERIFIED_EXACT_PUBLIC_GITHUB_RELEASE" ||
+    value.authorityId !== state.authority_id ||
+    value.outerStateSha256 !== outerStateSha256 ||
+    value.repository !== MEDIA_WORKER_RELEASE_REPOSITORY ||
+    value.tagName !== MEDIA_WORKER_RELEASE_TAG ||
+    value.targetCommit !== MEDIA_WORKER_RELEASE_TARGET_COMMIT ||
+    value.releaseHtmlUrl !== MEDIA_WORKER_RELEASE_HTML_URL ||
+    value.publishedAt !== MEDIA_WORKER_RELEASE_PUBLISHED_AT ||
+    value.draft !== false ||
+    value.prerelease !== false ||
+    value.immutable !== true ||
+    !exactObjectKeys(value.manifestAsset, [
+      "browserDownloadUrl",
+      "contentType",
+      "digest",
+      "name",
+      "sizeBytes",
+      "state",
+    ]) ||
+    value.manifestAsset.name !== MEDIA_WORKER_RELEASE_MANIFEST_NAME ||
+    value.manifestAsset.sizeBytes !== MEDIA_WORKER_RELEASE_MANIFEST_SIZE_BYTES ||
+    value.manifestAsset.digest !== MEDIA_WORKER_RELEASE_MANIFEST_SHA256 ||
+    value.manifestAsset.state !== "uploaded" ||
+    value.manifestAsset.contentType !== "application/json" ||
+    value.manifestAsset.browserDownloadUrl !== MEDIA_WORKER_RELEASE_MANIFEST_URL ||
+    value.manifestUrl !== MEDIA_WORKER_RELEASE_MANIFEST_URL ||
+    value.manifestSizeBytes !== MEDIA_WORKER_RELEASE_MANIFEST_SIZE_BYTES ||
+    value.manifestSha256 !== MEDIA_WORKER_RELEASE_MANIFEST_SHA256 ||
+    canonicalJson(value.manifest) !== canonicalJson(MEDIA_WORKER_RELEASE_MANIFEST) ||
+    value.binaryDownloads !== 0 ||
+    value.credentialsUsed !== false ||
+    value.providerMutations !== 0 ||
+    value.gpuUse !== false ||
+    value.externalSpendUsd !== 0 ||
+    value.actualUsd !== 0 ||
+    !Number.isInteger(value.redirectCount) ||
+    value.redirectCount < 0 ||
+    value.redirectCount > 1 ||
+    canonicalSha256(unsigned) !== reconciliationSha256
+  )
+    fail("MEDIA_WORKER_RELEASE_READBACK_CONTRACT");
+  return value;
+}
 
 function validateV213Execution(execution, checkpoint, state, expectedProjectIdentities) {
   const keys = [
@@ -4000,6 +4865,7 @@ function createProtectedWorkflowStartAuthorityAdapter({
 function createProtectedInputMaterializer({
   environment = process.env,
   run = productionCommand,
+  readMediaWorkerRelease = readMediaWorkerReleaseReadback,
   validateProduction = loadBridgeProductionInput,
   validateGuarded = preflightGuardedActivationInputs,
   validatePromotion = preflightPromotionInputs,
@@ -4032,6 +4898,47 @@ function createProtectedInputMaterializer({
     const bytes = Buffer.from(`${canonicalJson(value)}\n`);
     exclusiveAtomicBytes(path, bytes);
     return sha256(bytes);
+  };
+  const authorityDocument = (source, state) => ({
+    ...source.production_input_base.authorityDocument,
+    authorityId: state.authority_id,
+    proposalSha256: state.proposal_sha256,
+    approvalSha256: state.approval_sha256,
+    proposalCommit: state.proposal_record_commit,
+    sourceCommit: state.release_source_commit,
+    executorSha256: state.full_live_executor_sha256,
+    approvedAt: state.approved_at,
+    expiresAt: state.expires_at,
+    maximumCumulativeSpendUsd: 17.5,
+    singleUse: true,
+  });
+  const dynamicDualLaneInput = (source, billingBaselineUsd) => {
+    const value = structuredClone(source.production_input_base.dualLaneInput);
+    const descriptor = value.qualificationCaseDescriptor;
+    value.qualificationGeneratorSha256 = canonicalSha256(descriptor.generators);
+    value.qualificationSourceRefs = {
+      caseSource: descriptor.caseSource,
+      generators: descriptor.generators,
+      validators: descriptor.validators,
+    };
+    value.qualificationProtectedInputDescriptors = descriptor.protectedInputs;
+    value.qualificationCaseDescriptors = [
+      "mage",
+      "soulx2s",
+      "soulx4s",
+      "soulx6s",
+      "soulx10s",
+      "soulxCancel",
+      "soulxInvalidOutput",
+      "soulxTimeout",
+    ].map((key) => ({ key, ...descriptor.cases[key] }));
+    value.qualificationR2 = {
+      accountId: source.activation_record_base.cloudflare.account_id,
+      bucketName: source.activation_record_base.cloudflare.r2_bucket_name,
+    };
+    value.billingBaselineUsd = billingBaselineUsd;
+    delete value.qualificationCaseDescriptor;
+    return value;
   };
   const record = ({ stage, state, outerStateSha256, inputs, outputs }) => {
     const chainPath = environment.VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE;
@@ -4096,23 +5003,22 @@ function createProtectedInputMaterializer({
       });
     }
     if (operationId === "fresh-live-preflight") {
+      // The read-only child consumes the descriptor-only seed directly. The full production
+      // input cannot exist until this operation has established the current billing baseline.
+      seed(state);
+      return;
+    }
+    if (operationId === "mage-live-qualification") {
       const source = seed(state);
       const mage = exactReceipt(priorResults, "mage-image-workflow-verification");
       const soulx = exactReceipt(priorResults, "soulx-image-workflow-verification");
+      const preflight = priorResults.get("fresh-live-preflight");
+      const billingBaselineUsd = preflight?.bridgeSummary?.admission?.cumulativeBillingUsd;
+      if (!Number.isFinite(billingBaselineUsd) || billingBaselineUsd < 0)
+        fail("MATERIALIZATION_FRESH_BILLING_BASELINE");
       const production = structuredClone(source.production_input_base);
-      production.authorityDocument = {
-        ...production.authorityDocument,
-        authorityId: state.authority_id,
-        proposalSha256: state.proposal_sha256,
-        approvalSha256: state.approval_sha256,
-        proposalCommit: state.proposal_record_commit,
-        sourceCommit: state.release_source_commit,
-        executorSha256: state.full_live_executor_sha256,
-        approvedAt: state.approved_at,
-        expiresAt: state.expires_at,
-        maximumCumulativeSpendUsd: 17.5,
-        singleUse: true,
-      };
+      production.authorityDocument = authorityDocument(source, state);
+      production.dualLaneInput = dynamicDualLaneInput(source, billingBaselineUsd);
       for (const [lane, receipt, repository] of [
         ["mage", mage, "pala-lakshmansai/videoforge-mage-v2-07"],
         ["soulx", soulx, "pala-lakshmansai/videoforge-soulx-serverless-v2-08"],
@@ -4130,6 +5036,7 @@ function createProtectedInputMaterializer({
         inputs: {
           mage_image: mage.evidenceSha256,
           soulx_image: soulx.evidenceSha256,
+          fresh_preflight: preflight.evidenceSha256,
         },
         outputs: { production_input_sha256: output },
       });
@@ -4137,6 +5044,17 @@ function createProtectedInputMaterializer({
     }
     if (operationId === "guarded-activation-once") {
       const source = seed(state);
+      const bootstrap = priorResults.get("bootstrap-prequalification-database");
+      if (
+        bootstrap?.schema_version !== PREQUALIFICATION_SCHEMA ||
+        bootstrap.full_live_authority_id !== state.authority_id ||
+        !HASH.test(bootstrap.operator_database_url_sha256 ?? "") ||
+        !HASH.test(bootstrap.runtime_database_url_sha256 ?? "") ||
+        !HASH.test(bootstrap.reconciler_database_url_sha256 ?? "") ||
+        !HASH.test(bootstrap.database_role_credential_bundle_sha256 ?? "") ||
+        !HASH.test(bootstrap.prequalification_database_bootstrap_sha256 ?? "")
+      )
+        fail("MATERIALIZATION_DATABASE_CREDENTIAL_RECEIPT");
       const mage = exactReceipt(priorResults, "mage-live-qualification");
       const soulx = exactReceipt(priorResults, "soulx-live-qualification");
       const endpoints = exactReceipt(priorResults, "create-exact-max-one-endpoints");
@@ -4152,6 +5070,30 @@ function createProtectedInputMaterializer({
         mageProduction.endpointId === soulxProduction.endpointId
       )
         fail("MATERIALIZATION_MAX_ONE_ENDPOINT_BINDINGS");
+      if (typeof readMediaWorkerRelease !== "function")
+        fail("MEDIA_WORKER_RELEASE_READBACK_UNAVAILABLE");
+      const releaseReadback = exactMediaWorkerReleaseReadback(
+        await readMediaWorkerRelease({
+          parentOperationId: operationId,
+          state,
+          priorResults,
+          outerStateSha256,
+        }),
+        state,
+        outerStateSha256,
+      );
+      record({
+        stage: "media-worker-release-readback",
+        state,
+        outerStateSha256,
+        inputs: {
+          prequalification_database_bootstrap: bootstrap.prequalification_database_bootstrap_sha256,
+        },
+        outputs: {
+          media_worker_release_manifest_asset_sha256: releaseReadback.manifestSha256,
+          media_worker_release_readback_sha256: releaseReadback.reconciliationSha256,
+        },
+      });
       const preEndpointSecrets = loadBridgeProductionSecrets(environment, {
         requireEndpoints: false,
         allowEither: true,
@@ -4208,6 +5150,26 @@ function createProtectedInputMaterializer({
           return [name, sha256(value)];
         }),
       );
+      const operatorDatabaseUrlSha256 = sha256(
+        readFileSync(
+          protectedFile(
+            join(
+              protectedDirectory(
+                environment.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR,
+                "MATERIALIZATION_POSTGRES_INPUT_DIRECTORY",
+              ),
+              "operator.database-url",
+            ),
+            "MATERIALIZATION_OPERATOR_DATABASE_URL",
+          ),
+        ),
+      );
+      if (
+        operatorDatabaseUrlSha256 !== bootstrap.operator_database_url_sha256 ||
+        secretSha256.DATABASE_URL !== bootstrap.runtime_database_url_sha256 ||
+        secretSha256.VIDEOFORGE_RECONCILER_DATABASE_URL !== bootstrap.reconciler_database_url_sha256
+      )
+        fail("MATERIALIZATION_DATABASE_CREDENTIAL_BINDING");
       record({
         stage: "max-one-endpoint-bindings",
         state,
@@ -4225,7 +5187,7 @@ function createProtectedInputMaterializer({
       });
       const manifestSha256 = writeJson(
         environment.VIDEOFORGE_V2_13_RELEASE_MANIFEST_FILE,
-        source.release_manifest,
+        releaseReadback.manifest,
       );
       const config = structuredClone(source.config_activation_base);
       config.authority.approved_at = state.approved_at;
@@ -4259,6 +5221,7 @@ function createProtectedInputMaterializer({
       if (!Buffer.isBuffer(renderedBytes)) fail("MATERIALIZATION_DISABLED_CONFIG_BYTES");
       exclusiveAtomicBytes(environment.VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE, renderedBytes);
       const activation = structuredClone(source.activation_record_base);
+      activation.database.operator_database_url_sha256 = operatorDatabaseUrlSha256;
       activation.secret_sha256 = secretSha256;
       Object.assign(activation.authority, {
         mode: "APPROVED_EXECUTE",
@@ -4300,6 +5263,7 @@ function createProtectedInputMaterializer({
         outerStateSha256,
         inputs: {
           mage_qualification: mage.evidenceSha256,
+          media_worker_release_readback: releaseReadback.reconciliationSha256,
           soulx_qualification: soulx.evidenceSha256,
           max_one_endpoints: endpoints.evidenceSha256,
         },
@@ -4312,7 +5276,11 @@ function createProtectedInputMaterializer({
           release_manifest_sha256: manifestSha256,
         },
       });
-      return;
+      return Object.freeze({
+        mediaWorkerReleaseManifestAssetSha256: releaseReadback.manifestSha256,
+        mediaWorkerReleaseManifestFileSha256: manifestSha256,
+        mediaWorkerReleaseReadbackSha256: releaseReadback.reconciliationSha256,
+      });
     }
     if (operationId === "promote-qualified-production") {
       const source = seed(state);
@@ -4424,6 +5392,9 @@ function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_
   try {
     writeFileSync(requestPath, `${JSON.stringify(request)}\n`, { encoding: "utf8", mode: 0o600 });
     const earlyCleanup = request.input?.schemaVersion === EARLY_CLEANUP_INPUT_SCHEMA;
+    const qualification = ["mage-live-qualification", "soulx-live-qualification"].includes(
+      request.command,
+    );
     const protectedFiles = earlyCleanup
       ? BRIDGE_PROTECTED_FILES.filter(([fdName]) => fdName === "RUNPOD_API_KEY_FD")
       : request.command === "fresh-live-preflight"
@@ -4435,12 +5406,61 @@ function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_
               ["RUNPOD_API_KEY_FD", "OPERATOR_DATABASE_URL_FD"].includes(fdName),
             )
           : BRIDGE_PROTECTED_FILES;
+    const qualificationFiles = [];
+    if (qualification) {
+      const binding = request.input?.dualLaneInput?.qualificationR2;
+      if (
+        !exactObjectKeys(binding, ["accountId", "bucketName"]) ||
+        !/^[0-9a-f]{32}$/u.test(binding.accountId ?? "") ||
+        !/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u.test(binding.bucketName ?? "")
+      )
+        fail("QUALIFICATION_R2_BINDING");
+      const accountPath = resolve(directory, "r2-account-id");
+      const bucketPath = resolve(directory, "r2-bucket-name");
+      writeFileSync(accountPath, binding.accountId, { encoding: "utf8", mode: 0o600, flag: "wx" });
+      writeFileSync(bucketPath, binding.bucketName, { encoding: "utf8", mode: 0o600, flag: "wx" });
+      const secretDirectory = protectedCanonicalDirectory(
+        environment.VIDEOFORGE_V2_13_SECRET_INPUT_DIR,
+        "QUALIFICATION_SECRET_INPUT_DIRECTORY",
+      );
+      qualificationFiles.push(
+        ["QUALIFICATION_R2_ACCOUNT_ID_FD", accountPath],
+        [
+          "QUALIFICATION_R2_ACCESS_KEY_ID_FD",
+          protectedSingleLinkFile(
+            join(secretDirectory, "R2_ACCESS_KEY_ID"),
+            "QUALIFICATION_R2_ACCESS_KEY_ID",
+          ),
+        ],
+        [
+          "QUALIFICATION_R2_SECRET_ACCESS_KEY_FD",
+          protectedSingleLinkFile(
+            join(secretDirectory, "R2_SECRET_ACCESS_KEY"),
+            "QUALIFICATION_R2_SECRET_ACCESS_KEY",
+          ),
+        ],
+        ["QUALIFICATION_R2_BUCKET_NAME_FD", bucketPath],
+      );
+      if (request.command === "soulx-live-qualification") {
+        const inputs = qualificationProtectedInputFiles(
+          request.input?.dualLaneInput?.qualificationProtectedInputDescriptors,
+        );
+        qualificationFiles.push(
+          ["QUALIFICATION_AVATAR_SOURCE_FD", inputs.avatarSource],
+          ["QUALIFICATION_AUDIO_2S_FD", inputs.soulx2s],
+          ["QUALIFICATION_AUDIO_4S_FD", inputs.soulx4s],
+          ["QUALIFICATION_AUDIO_6S_FD", inputs.soulx6s],
+          ["QUALIFICATION_AUDIO_10S_FD", inputs.soulx10s],
+        );
+      }
+    }
     const files = [
       ["REQUEST_FD", requestPath],
       ...protectedFiles.map(([fdName, variable]) => [
         fdName,
         protectedFile(environment[variable], `BRIDGE_PROTECTED_FILE:${variable}`),
       ]),
+      ...qualificationFiles,
     ];
     for (const [, path] of files) opened.push(openSync(path, "r"));
     const childEnvironment = {
@@ -4626,6 +5646,73 @@ function productionCleanupReceiptSpawn({
   }
 }
 
+function loadBridgePrequalificationInput(environment, state, outerStateSha256) {
+  let seed;
+  let bytes;
+  try {
+    bytes = readFileSync(
+      protectedFile(
+        environment.VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE,
+        "BRIDGE_PREQUALIFICATION_SEED_FILE",
+      ),
+    );
+    seed = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail("BRIDGE_PREQUALIFICATION_SEED_FILE");
+  }
+  const canonical = Buffer.from(`${canonicalJson(seed)}\n`);
+  if (
+    Buffer.compare(bytes, canonical) !== 0 ||
+    !validateMaterializationSeedShape(seed) ||
+    sha256(canonical) !== state.materialization_seed_sha256
+  )
+    fail("BRIDGE_PREQUALIFICATION_SEED_BINDING");
+  const staticDualLaneInput = structuredClone(seed.production_input_base.dualLaneInput);
+  const descriptor = staticDualLaneInput.qualificationCaseDescriptor;
+  staticDualLaneInput.qualificationGeneratorSha256 = canonicalSha256(descriptor.generators);
+  staticDualLaneInput.qualificationSourceRefs = {
+    caseSource: descriptor.caseSource,
+    generators: descriptor.generators,
+    validators: descriptor.validators,
+  };
+  staticDualLaneInput.qualificationProtectedInputDescriptors = descriptor.protectedInputs;
+  staticDualLaneInput.qualificationCaseDescriptors = [
+    "mage",
+    "soulx2s",
+    "soulx4s",
+    "soulx6s",
+    "soulx10s",
+    "soulxCancel",
+    "soulxInvalidOutput",
+    "soulxTimeout",
+  ].map((key) => ({ key, ...descriptor.cases[key] }));
+  staticDualLaneInput.qualificationR2 = {
+    accountId: seed.activation_record_base.cloudflare.account_id,
+    bucketName: seed.activation_record_base.cloudflare.r2_bucket_name,
+  };
+  delete staticDualLaneInput.qualificationCaseDescriptor;
+  return Object.freeze({
+    schemaVersion: "videoforge.v213-full-live-prequalification-input/v1",
+    outerStateSha256,
+    fullLiveAuthorityId: seed.production_input_base.fullLiveAuthorityId,
+    dualLaneInput: staticDualLaneInput,
+    commandPayload: {
+      authorityDocument: {
+        authorityId: state.authority_id,
+        proposalSha256: state.proposal_sha256,
+        approvalSha256: state.approval_sha256,
+        proposalCommit: state.proposal_record_commit,
+        sourceCommit: state.release_source_commit,
+        executorSha256: state.full_live_executor_sha256,
+        approvedAt: state.approved_at,
+        expiresAt: state.expires_at,
+        maximumCumulativeSpendUsd: 17.5,
+        singleUse: true,
+      },
+    },
+  });
+}
+
 function loadBridgeProductionInput(environment) {
   const path = protectedFile(
     environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE,
@@ -4773,6 +5860,7 @@ function preflightConcreteFullLiveInputs({
   state,
   cleanupOnly = false,
   bootstrapOnly = false,
+  bootstrapReconciliation = false,
   operatorOnly = false,
   allowUnmaterializedProductionInput = false,
   requireEndpointSecrets = false,
@@ -4784,11 +5872,37 @@ function preflightConcreteFullLiveInputs({
     );
     const service = join(directory, "owner.pg_service.conf");
     const pass = join(directory, "owner.pgpass");
-    const operator = join(directory, "operator.database-url");
     protectedFile(pass, "PREQUALIFICATION_OWNER_PASS");
-    protectedFile(operator, "PREQUALIFICATION_OPERATOR_DSN");
     protectedFile(service, "PREQUALIFICATION_OWNER_SERVICE");
-    return Object.freeze({ bootstrapOnly: true, postgresInputDirectory: directory });
+    const receiptPath = prequalificationPath(environment);
+    const credentialPaths = databaseCredentialPaths({
+      directory,
+      environment,
+      receiptPath,
+      authorityId: state?.authority_id,
+    });
+    const credentialFiles = databaseCredentialFinalPaths(credentialPaths);
+    const observedCredentialStages = assertOnlyCurrentDatabaseCredentialStages(
+      credentialPaths,
+      "PREQUALIFICATION_DATABASE_CREDENTIAL_STAGING_AUTHORITY_DRIFT",
+    );
+    if (state?.operator_role_verified === true) {
+      for (const path of credentialFiles)
+        protectedSingleLinkFile(path, "PREQUALIFICATION_SETTLED_DATABASE_CREDENTIAL");
+      if (observedCredentialStages.length !== 0)
+        fail("PREQUALIFICATION_SETTLED_DATABASE_CREDENTIAL_STAGING_PRESENT");
+    } else if (
+      bootstrapReconciliation !== true &&
+      (credentialFiles.some((path) => lstatExists(path)) || observedCredentialStages.length !== 0)
+    ) {
+      fail("PREQUALIFICATION_UNSETTLED_DATABASE_CREDENTIAL_PRESENT");
+    }
+    return Object.freeze({
+      bootstrapOnly: true,
+      bootstrapReconciliation,
+      postgresInputDirectory: directory,
+      databaseCredentialsPresent: state?.operator_role_verified === true,
+    });
   }
   const productionPath = environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE;
   if (typeof productionPath !== "string" || productionPath === "" || productionPath.includes("\0"))
@@ -5014,15 +6128,17 @@ function createTypeScriptBridgeAdapters({
   environment = process.env,
   spawnBridge = productionBridgeSpawn,
   spawnCleanupReceipt = productionCleanupReceiptSpawn,
+  cleanupPartialDatabaseCredentials = cleanupPartialDatabaseRoleCredentials,
   requirePrequalificationReceipt = false,
   prepareAcceptanceAuthority,
   expectedCliSha256 = BRIDGE_CLI_SOURCE_SHA256,
-  expectedTransportSha256 = "sha256:7734369295715d57b92ae0ca399ad8514cee5babb2b5d1acd749a860fd4b22c0",
+  expectedTransportSha256 = "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2",
 } = {}) {
   const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
   const actualTransportSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_TRANSPORT_PATH)));
   if (actualCliSha256 !== expectedCliSha256) fail("BRIDGE_SOURCE_DRIFT");
   if (actualTransportSha256 !== expectedTransportSha256) fail("BRIDGE_TRANSPORT_SOURCE_DRIFT");
+  const bootstrapPartialCleanupPreambles = new Map();
   const run =
     (command) =>
     async (context = {}, state, priorResults, outerStateSha256) => {
@@ -5037,12 +6153,38 @@ function createTypeScriptBridgeAdapters({
           fail("BRIDGE_PREQUALIFICATION_RECEIPT");
       }
       const earlyCleanup = CLEANUP_BRIDGE_COMMANDS.has(command) && context?.earlyFailure === true;
+      const bootstrapPartialCleanup =
+        earlyCleanup && context?.cleanupMode === "BOOTSTRAP_PARTIAL_CLEANUP";
+      if (
+        earlyCleanup &&
+        !["BOOTSTRAP_PARTIAL_CLEANUP", "EARLY_NO_DATABASE_CLEANUP"].includes(context?.cleanupMode)
+      )
+        fail("BRIDGE_EARLY_CLEANUP_MODE", command);
+      if (earlyCleanup && context?.providerDispatchForbidden !== true)
+        fail("BRIDGE_EARLY_CLEANUP_PROVIDER_DISPATCH_FENCE", command);
+      let localDatabaseCredentialCleanup = null;
+      if (bootstrapPartialCleanup) {
+        let preamble = bootstrapPartialCleanupPreambles.get(state.authority_id);
+        if (preamble === undefined) {
+          preamble = Promise.resolve(
+            cleanupPartialDatabaseCredentials({ environment, state }),
+          ).then((value) => exactPartialDatabaseCleanupResult(value, state));
+          bootstrapPartialCleanupPreambles.set(state.authority_id, preamble);
+        }
+        localDatabaseCredentialCleanup = await preamble;
+      }
       const cleanup =
         CLEANUP_BRIDGE_COMMANDS.has(command) && !earlyCleanup
           ? loadBridgeCleanupInput(environment)
           : null;
+      const prequalification =
+        command === "fresh-live-preflight" && !earlyCleanup
+          ? loadBridgePrequalificationInput(environment, state, outerStateSha256)
+          : null;
       const production =
-        cleanup === null && !earlyCleanup ? loadBridgeProductionInput(environment) : null;
+        cleanup === null && prequalification === null && !earlyCleanup
+          ? loadBridgeProductionInput(environment)
+          : null;
       const earlyCleanupInput = earlyCleanup
         ? {
             schemaVersion: EARLY_CLEANUP_INPUT_SCHEMA,
@@ -5069,9 +6211,10 @@ function createTypeScriptBridgeAdapters({
             environment,
             state,
             operatorOnly: true,
+            allowUnmaterializedProductionInput: true,
           });
         }
-        commandPayload = { authorityDocument: production.authorityDocument };
+        commandPayload = prequalification.commandPayload;
       }
       if (command === "mage-live-qualification")
         commandPayload = { admission: priorResults.get("fresh-live-preflight")?.bridgeSummary };
@@ -5096,8 +6239,12 @@ function createTypeScriptBridgeAdapters({
       const acceptanceCheckpoint = Object.entries(V213_JIT_COMMANDS).find(
         ([, acceptedCommand]) => acceptedCommand === command,
       )?.[0];
-      let operationStageAuthorityId = (production ?? cleanup ?? earlyCleanupInput)
-        .fullLiveAuthorityId;
+      let operationStageAuthorityId = (
+        production ??
+        prequalification ??
+        cleanup ??
+        earlyCleanupInput
+      ).fullLiveAuthorityId;
       if (production !== null && acceptanceCheckpoint !== undefined) {
         if (typeof prepareAcceptanceAuthority === "function") {
           const predecessorEvidenceSha256s = {};
@@ -5127,21 +6274,23 @@ function createTypeScriptBridgeAdapters({
       }
       const request = {
         schemaVersion: "videoforge.v213-full-live-command/v1",
-        commandId: `v213:${(production ?? cleanup ?? earlyCleanupInput).fullLiveAuthorityId}:${command}`,
+        commandId: `v213:${(production ?? prequalification ?? cleanup ?? earlyCleanupInput).fullLiveAuthorityId}:${command}`,
         stageAuthorityId: operationStageAuthorityId,
         command,
         input:
           earlyCleanupInput !== null
             ? earlyCleanupInput
-            : cleanup === null
-              ? {
-                  schemaVersion: "videoforge.v213-full-live-production-input/v1",
-                  outerStateSha256,
-                  fullLiveAuthorityId: production.fullLiveAuthorityId,
-                  dualLaneInput: production.dualLaneInput,
-                  commandPayload,
-                }
-              : cleanup,
+            : prequalification !== null
+              ? prequalification
+              : cleanup === null
+                ? {
+                    schemaVersion: "videoforge.v213-full-live-production-input/v1",
+                    outerStateSha256,
+                    fullLiveAuthorityId: production.fullLiveAuthorityId,
+                    dualLaneInput: production.dualLaneInput,
+                    commandPayload,
+                  }
+                : cleanup,
       };
       const result = await spawnBridge({
         environment,
@@ -5271,11 +6420,22 @@ function createTypeScriptBridgeAdapters({
           withinCumulativeCap: summary.withinCumulativeCap === true,
           cumulativeUsd: summary.cumulativeBillingUsd,
         };
-      return {
-        ...base,
-        proofSha256: durableEvidenceSha256,
-        onlyApprovedRetainedVolumes: summary.onlyApprovedRetainedVolumes === true,
-      };
+      if (command === "reconcile-exact-resources") {
+        const proofSha256 =
+          localDatabaseCredentialCleanup === null
+            ? durableEvidenceSha256
+            : canonicalSha256({
+                providerCleanupEvidenceSha256: durableEvidenceSha256,
+                localDatabaseCredentialCleanupSha256: localDatabaseCredentialCleanup.cleanupSha256,
+              });
+        return {
+          ...base,
+          proofSha256,
+          onlyApprovedRetainedVolumes: summary.onlyApprovedRetainedVolumes === true,
+          ...(localDatabaseCredentialCleanup === null ? {} : { localDatabaseCredentialCleanup }),
+        };
+      }
+      return { ...base, proofSha256: durableEvidenceSha256 };
     };
   return Object.freeze(
     Object.fromEntries(BRIDGE_COMMANDS.map((command) => [command, run(command)])),
@@ -5484,9 +6644,28 @@ function createConcreteFullLiveAdapters(options = {}) {
               priorResults,
               run: options.prequalificationVerifier?.run ?? productionCommand,
             });
-          if (!earlyCleanup && operationId !== "certify-v2-13-release")
-            await materialize({ operationId, state, priorResults, outerStateSha256 });
-          return adapter(context, state, priorResults, outerStateSha256);
+          const protectedMaterialization =
+            !earlyCleanup && operationId !== "certify-v2-13-release"
+              ? await materialize({ operationId, state, priorResults, outerStateSha256 })
+              : undefined;
+          const result = await adapter(context, state, priorResults, outerStateSha256);
+          if (operationId !== "guarded-activation-once") return result;
+          if (
+            !exactObjectKeys(protectedMaterialization, [
+              "mediaWorkerReleaseManifestAssetSha256",
+              "mediaWorkerReleaseManifestFileSha256",
+              "mediaWorkerReleaseReadbackSha256",
+            ]) ||
+            Object.values(protectedMaterialization).some((value) => !HASH.test(value ?? ""))
+          )
+            fail("MEDIA_WORKER_RELEASE_MATERIALIZATION_RESULT");
+          return Object.freeze({
+            ...result,
+            materialization: Object.freeze({
+              ...result.materialization,
+              ...protectedMaterialization,
+            }),
+          });
         },
       ]),
     ),
@@ -5497,6 +6676,8 @@ export {
   createConcreteFullLiveAdapters,
   createPrequalificationDatabaseBootstrapAdapter,
   createPrequalificationDatabaseAdapter,
+  cleanupPartialDatabaseRoleCredentials,
+  databaseCredentialStagingPath,
   verifyPrequalificationDatabaseReceipt,
   createWorkflowStartAuthorityAdapter,
   createProtectedWorkflowStartAuthorityAdapter,

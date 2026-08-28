@@ -12,35 +12,64 @@ const PUBLIC_ORIGIN = `https://${WORKER_NAME}.example.workers.dev`;
 const RETAINED_LANES = {
   mage: {
     lane: "mage",
-    volumeId: "c7kg89brtj",
     volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
     volumeManifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
-    receiptKeyId: "v2-13-fixture-receipt-key",
   },
   soulx: {
     lane: "soulx",
-    volumeId: "8byeafac9f",
     volumeIdSha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
     volumeManifestSha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
-    receiptKeyId: "v2-13-fixture-receipt-key",
   },
 };
-const STAGE_AUTHORITY_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAd1CnjP/Qb9yK1oBKEOwE4YZJvsRtfbUdCmtSmwH8xpU=
------END PUBLIC KEY-----
-`;
-const QUALIFICATION_ENVELOPES = Object.fromEntries(
-  [
-    "mage",
-    "soulx2s",
-    "soulx4s",
-    "soulx6s",
-    "soulx10s",
-    "soulxCancel",
-    "soulxInvalidOutput",
-    "soulxTimeout",
-  ].map((name) => [name, { fixture_case: name }]),
-);
+const QUALIFICATION_CASES = {
+  mage: { lane: "mage", id: "mage-cold-representative", seconds: 0, mode: "complete", cold: true },
+  soulx2s: { lane: "soulx", id: "soulx-cold-2s", seconds: 2, mode: "complete", cold: true },
+  soulx4s: { lane: "soulx", id: "soulx-warm-4s", seconds: 4, mode: "complete", cold: false },
+  soulx6s: { lane: "soulx", id: "soulx-warm-6s", seconds: 6, mode: "complete", cold: false },
+  soulx10s: { lane: "soulx", id: "soulx-warm-10s", seconds: 10, mode: "complete", cold: false },
+  soulxCancel: { lane: "soulx", id: "soulx-cancel", seconds: 2, mode: "cancel", cold: false },
+  soulxInvalidOutput: {
+    lane: "soulx",
+    id: "soulx-invalid-output",
+    seconds: 2,
+    mode: "invalid",
+    cold: false,
+  },
+  soulxTimeout: { lane: "soulx", id: "soulx-timeout", seconds: 2, mode: "timeout", cold: false },
+};
+const QUALIFICATION_PROTECTED_INPUTS = {
+  avatarSource: {
+    path: ".videoforge/private/vf-9-24u/new-avatar-sample.png",
+    sha256: "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83",
+    sizeBytes: 1_912_005,
+    contentType: "image/png",
+  },
+  soulx2s: {
+    path: ".videoforge/private/cp07-inputs/echo-span-2s-padded.wav",
+    sha256: "sha256:b7ad261af40caf574e9edadf856f28ccddc306a109d15523c81a427ec38e72d3",
+    sizeBytes: 80_278,
+    contentType: "audio/wav",
+  },
+  soulx4s: {
+    path: ".videoforge/private/cp07-inputs/echo-span-4s-padded.wav",
+    sha256: "sha256:076f477f512835a3e606b3312682cf1b4a3eb62e211300843023840969d09019",
+    sizeBytes: 160_278,
+    contentType: "audio/wav",
+  },
+  soulx6s: {
+    path: ".videoforge/private/cp07-inputs/echo-span-6s-padded.wav",
+    sha256: "sha256:c7c67903aae4ca8a235792402c64ffa69be3bd423babd4e0447726db27539761",
+    sizeBytes: 212_118,
+    contentType: "audio/wav",
+  },
+  soulx10s: {
+    path: ".videoforge/private/vf-9-24u/new-avatar-third-10.00s.wav",
+    sha256: "sha256:51765f504d1a241af1aa05040cd06bbf377768bc3b2806000191f23855e577cb",
+    sizeBytes: 320_278,
+    contentType: "audio/wav",
+  },
+};
+const sourceRef = (path, letter) => ({ path, sha256: proof(letter) });
 const OAUTH_SCOPES = [
   "account:read",
   "agent-memory:write",
@@ -120,7 +149,10 @@ const activationRecordBase = {
     database: "videoforge",
     owner_role: "videoforge_owner",
     operator_role: "videoforge_hosted_operator",
-    operator_database_url_sha256: proof("1"),
+    // The protected operator DSN does not exist until the consumed database-bootstrap operation
+    // reaches migration prefix 45. The final activation materializer replaces this null with the
+    // exact hash carried by that operation's settled receipt.
+    operator_database_url_sha256: null,
     runtime_role: "videoforge_hosted_runtime",
     reconciler_role: "videoforge_hosted_reconciler",
     pgcrypto_required: true,
@@ -141,15 +173,6 @@ const activationRecordBase = {
     wrangler_oauth_config_path_sha256: proof("2"),
     oauth_scopes: OAUTH_SCOPES,
     workers_dev_subdomain: "example",
-    workers_dev_subdomain_readback_sha256: proof("3"),
-    pre_mutation_account_readback_sha256: proof("4"),
-    pre_mutation_worker_absence_sha256: proof("5"),
-    pre_mutation_workflow_inventory_sha256: proof("6"),
-    pre_mutation_r2_inventory_sha256: proof("7"),
-    pre_mutation_route_readback_sha256:
-      "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976",
-    pre_mutation_route_content_type: "text/html; charset=UTF-8",
-    pre_mutation_route_body_length: 19984,
   },
   gates: {},
   soulx_crop_approval: soulxCropApproval,
@@ -215,26 +238,6 @@ const promotionRecordBase = {
   },
 };
 
-const releaseManifest = {
-  schema_version: "videoforge-media-worker-release/v1",
-  version: "1.0.0",
-  minimum_protocol_version: 1,
-  execution_bundle_sha256: proof("9"),
-  whisper_model_sha256: proof("a"),
-  windows: {
-    url: "https://downloads.videoforge.example/worker.exe",
-    sha256: proof("b"),
-    size_bytes: 1,
-    trust: "UNSIGNED_BETA",
-  },
-  macos: {
-    url: "https://downloads.videoforge.example/worker.dmg",
-    sha256: proof("c"),
-    size_bytes: 1,
-    trust: "AD_HOC_BETA",
-  },
-};
-
 export function materializationSeedFixture() {
   return structuredClone({
     schema_version: "videoforge.v213-full-live-materialization-seed/v1",
@@ -248,18 +251,42 @@ export function materializationSeedFixture() {
         accountIdSha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
         mage: structuredClone(RETAINED_LANES.mage),
         soulx: structuredClone(RETAINED_LANES.soulx),
-        billingBaselineUsd: 0,
         totalCapUsd: 17.5,
         mageQualificationCapUsd: 4.5,
         soulxQualificationCapUsd: 1,
-        stageAuthorityPublicKeyPem: STAGE_AUTHORITY_PUBLIC_KEY_PEM,
-        envelopes: structuredClone(QUALIFICATION_ENVELOPES),
+        qualificationEnvelopeSchemaSha256: proof("9"),
+        envelopeSigningKeyId: "v2-13-envelope-signing-key",
+        qualificationR2: {
+          accountId: CLOUDFLARE_ACCOUNT_ID,
+          bucketName: R2_BUCKET_NAME,
+        },
+        qualificationCaseDescriptor: {
+          schemaVersion: "videoforge.v213-qualification-case-materialization-descriptor/v1",
+          caseSource: sourceRef("apps/web/src/server/providers/v213-dual-lane-live.ts", "a"),
+          envelopeSchema: sourceRef(
+            "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
+            "9",
+          ),
+          generators: {
+            mage: sourceRef("deploy/v2-13/generate-mage-qualification-case.mjs", "b"),
+            soulx: sourceRef("deploy/v2-13/generate-soulx-qualification-cases.mjs", "c"),
+          },
+          validators: {
+            mage: sourceRef(
+              "workers/image-media/src/videoforge_image_media/mage_production.py",
+              "d",
+            ),
+            soulx: sourceRef("workers/avatar-primary/soulx_serverless.py", "e"),
+          },
+          protectedInputs: structuredClone(QUALIFICATION_PROTECTED_INPUTS),
+          cases: structuredClone(QUALIFICATION_CASES),
+        },
       },
       commandPayloads: {},
     },
     activation_record_base: activationRecordBase,
     config_activation_base: configActivationBase,
-    release_manifest: releaseManifest,
+    release_manifest: null,
     promotion_record_base: promotionRecordBase,
   });
 }

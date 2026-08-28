@@ -1,5 +1,6 @@
 import { canonicalizeJson, validateContract, type JsonValue } from "@videoforge/contracts";
 import {
+  canonicalSha256,
   ReceiptVerificationError,
   verifyProvenanceReceipt,
   type ProvenanceReceipt,
@@ -8,6 +9,34 @@ import {
 } from "@videoforge/control-plane";
 
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
+
+export function v213SoulxWarmupAttestationSha256(containerDigest: `sha256:${string}`) {
+  return canonicalSha256({
+    schema_version: "videoforge.soulx-warmup-attestation/v1",
+    container_digest: containerDigest,
+    source: {
+      repository: "Soul-AILab/SoulX-FlashHead",
+      revision: "9bc03de06bb0de82cd6bc477804512ae06144bf2",
+    },
+    model: {
+      repository: "Soul-AILab/SoulX-FlashHead-1_3B",
+      revision: "59119b6c681230c3eeee157e224ae1941746711e",
+      manifest_sha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+    },
+    volume_schema_version: "videoforge.soulx-flashhead-pro-volume/v1",
+    runtime_profile_id: "videoforge_soulx_flashhead_pro_bf16_v1",
+    observed_facts: {
+      base_data_completed: true,
+      audio_embedding_completed: true,
+      pipeline_output_contract: "33_RGB_512X512_FINITE_NONCONSTANT",
+      cuda_synchronize_completed: true,
+      sample_rate_hz: 16_000,
+      target_fps: 25,
+      frame_count: 33,
+      motion_frame_count: 5,
+    },
+  });
+}
 
 export class V213ProvenanceReceiptError extends Error {
   constructor(readonly code: "V213_RECEIPT_BODY_INVALID" | "V213_RECEIPT_SCHEMA_INVALID") {

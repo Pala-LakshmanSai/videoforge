@@ -50,18 +50,23 @@ RUN python -m pip install --no-cache-dir --requirement requirements.serverless.t
 COPY workers/common ./common
 COPY packages/contracts/python/videoforge_contracts ./src/videoforge_contracts
 COPY workers/avatar-primary/soulx_serverless.py ./soulx_serverless.py
+COPY workers/avatar-primary/soulx_runtime.py ./soulx_runtime.py
+COPY workers/avatar-primary/soulx_volume.py ./soulx_volume.py
 COPY workers/avatar-primary/soulx-serverless-entrypoint.py ./soulx-serverless-entrypoint.py
 
 # These exact source hashes deliberately make an unreviewed handler/common/schema drift a build
 # failure. Any later repair must explicitly rebind this image definition before publication.
 RUN printf '%s  %s\n' \
-      268be251e9a60200d7eb2b0899d3e1b962c9222b235d2c876d97460c6ca37ad9 /opt/videoforge/soulx_serverless.py \
+      752b600d5428bb253d83d0c6044296bbcb4bb29f17d4df37c40fcf63c19b30e4 /opt/videoforge/soulx_serverless.py \
+      b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080 /opt/videoforge/soulx_runtime.py \
+      b767ef3cb9d867a623975db3d23a6bb1b2d15587db87db9e3db6cf1e73b07e0e /opt/videoforge/soulx_volume.py \
       bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9 /opt/videoforge/soulx-serverless-entrypoint.py \
       7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775 /opt/videoforge/common/secure_scratch.py \
       34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
       6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
     | sha256sum --check --strict \
     && python -m compileall -q /opt/videoforge/soulx_serverless.py \
+       /opt/videoforge/soulx_runtime.py /opt/videoforge/soulx_volume.py \
        /opt/videoforge/soulx-serverless-entrypoint.py /opt/videoforge/common \
        /opt/videoforge/src/videoforge_contracts \
     && test ! -e /opt/videoforge/soulx_prepare_service.py \

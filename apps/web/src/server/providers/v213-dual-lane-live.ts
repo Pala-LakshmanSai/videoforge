@@ -1,6 +1,10 @@
 import { createHash, verify } from "node:crypto";
 
-import { canonicalizeJson, type JsonValue } from "@videoforge/contracts";
+import {
+  canonicalizeJson,
+  validateAndHashContractDocument,
+  type JsonValue,
+} from "@videoforge/contracts";
 import {
   ReceiptVerificationError,
   type ProvenanceReceipt,
@@ -8,7 +12,11 @@ import {
   type ReceiptExpectation,
 } from "@videoforge/control-plane";
 
-import { verifyV213WorkerReceipt, type V213WorkerReceiptDelivery } from "./v213-provenance-receipt";
+import {
+  v213SoulxWarmupAttestationSha256,
+  verifyV213WorkerReceipt,
+  type V213WorkerReceiptDelivery,
+} from "./v213-provenance-receipt";
 
 export const V213_REGION = "EU-RO-1" as const;
 export const V213_GPU = "NVIDIA GeForce RTX 4090" as const;
@@ -24,6 +32,7 @@ export const V213_VOLUME_MOUNT = "/runpod-volume" as const;
 export const V213_SOULX_COLD_READY_LIMIT_MS = 7 * 60 * 1_000;
 
 export type V213Lane = "mage" | "soulx";
+export type V213QualificationCaseMode = "complete" | "cancel" | "invalid" | "timeout";
 export type V213Availability = "LOW" | "MEDIUM" | "HIGH";
 export type V213JobStatus =
   | "IN_QUEUE"
@@ -45,10 +54,8 @@ export interface V213SealedLane {
   readonly publicImage: string;
   readonly sourceCommit: string;
   readonly deploymentSha256: string;
-  readonly volumeId: string;
   readonly volumeIdSha256: string;
   readonly volumeManifestSha256: string;
-  readonly receiptKeyId: string;
 }
 
 export interface V213AdmissionRead {
@@ -94,6 +101,102 @@ export interface V213LaneDeployment {
   readonly scalerType: "REQUEST_COUNT";
   readonly scalerValue: 1;
   readonly initTimeoutSeconds: number;
+}
+
+export interface V213QualificationCaseDescriptor {
+  readonly key:
+    | "mage"
+    | "soulx2s"
+    | "soulx4s"
+    | "soulx6s"
+    | "soulx10s"
+    | "soulxCancel"
+    | "soulxInvalidOutput"
+    | "soulxTimeout";
+  readonly lane: V213Lane;
+  readonly id: string;
+  readonly seconds: number;
+  readonly mode: V213QualificationCaseMode;
+  readonly cold: boolean;
+}
+
+/**
+ * Source-bound qualification plan. It contains no signed envelope, presigned port, provider
+ * identity, billing value or credential-derived fact. Those values are materialized just in time
+ * after the outer authority has been consumed and immediately before the one allowed dispatch.
+ */
+export const V213_QUALIFICATION_CASE_DESCRIPTORS = Object.freeze([
+  Object.freeze({
+    key: "mage",
+    lane: "mage",
+    id: "mage-cold-representative",
+    seconds: 0,
+    mode: "complete",
+    cold: true,
+  }),
+  Object.freeze({
+    key: "soulx2s",
+    lane: "soulx",
+    id: "soulx-cold-2s",
+    seconds: 2,
+    mode: "complete",
+    cold: true,
+  }),
+  Object.freeze({
+    key: "soulx4s",
+    lane: "soulx",
+    id: "soulx-warm-4s",
+    seconds: 4,
+    mode: "complete",
+    cold: false,
+  }),
+  Object.freeze({
+    key: "soulx6s",
+    lane: "soulx",
+    id: "soulx-warm-6s",
+    seconds: 6,
+    mode: "complete",
+    cold: false,
+  }),
+  Object.freeze({
+    key: "soulx10s",
+    lane: "soulx",
+    id: "soulx-warm-10s",
+    seconds: 10,
+    mode: "complete",
+    cold: false,
+  }),
+  Object.freeze({
+    key: "soulxCancel",
+    lane: "soulx",
+    id: "soulx-cancel",
+    seconds: 2,
+    mode: "cancel",
+    cold: false,
+  }),
+  Object.freeze({
+    key: "soulxInvalidOutput",
+    lane: "soulx",
+    id: "soulx-invalid-output",
+    seconds: 2,
+    mode: "invalid",
+    cold: false,
+  }),
+  Object.freeze({
+    key: "soulxTimeout",
+    lane: "soulx",
+    id: "soulx-timeout",
+    seconds: 2,
+    mode: "timeout",
+    cold: false,
+  }),
+] as const satisfies readonly V213QualificationCaseDescriptor[]);
+
+export interface V213QualificationCaseMaterialization {
+  readonly schemaVersion: "videoforge.v213-qualification-case-materialization/v1";
+  readonly caseDescriptorSha256: string;
+  readonly materializationEvidenceSha256: string;
+  readonly request: JsonValue;
 }
 
 export type V213Stage = "mage" | "soulx" | "production";
@@ -211,6 +314,17 @@ export interface V213DualLaneTransport {
         }>;
       }>
   >;
+  /**
+   * DB/R2-owned post-consumption seam. Implementations stage exact input bytes, mint bounded
+   * transfer ports, construct a complete worker request, and HMAC-sign its envelope. No provider
+   * dispatch is reachable through this port.
+   */
+  readonly materializeQualificationCase: (input: {
+    readonly descriptor: V213QualificationCaseDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+  }) => Promise<V213QualificationCaseMaterialization>;
   readonly findLaneByResourceKey: (resourceKey: string) => Promise<V213LaneDeployment | null>;
   readonly readLane: (deployment: V213LaneDeployment) => Promise<V213LaneDeployment>;
   readonly dispatch: (input: {
@@ -246,17 +360,74 @@ export interface V213DualLaneInput {
   readonly minimumStableReadSpacingMs?: number;
   readonly maxStatusReads?: number;
   readonly pollIntervalMs?: number;
-  readonly envelopes: Readonly<{
-    readonly mage: JsonValue;
-    readonly soulx2s: JsonValue;
-    readonly soulx4s: JsonValue;
-    readonly soulx6s: JsonValue;
-    readonly soulx10s: JsonValue;
-    readonly soulxCancel: JsonValue;
-    readonly soulxInvalidOutput: JsonValue;
-    readonly soulxTimeout: JsonValue;
+  readonly qualificationEnvelopeSchemaSha256: string;
+  readonly envelopeSigningKeyId: string;
+  readonly qualificationGeneratorSha256: string;
+  readonly qualificationCaseDescriptors: readonly V213QualificationCaseDescriptor[];
+  readonly qualificationSourceRefs: Readonly<{
+    readonly caseSource: Readonly<{ readonly path: string; readonly sha256: `sha256:${string}` }>;
+    readonly generators: Readonly<{
+      readonly mage: Readonly<{ readonly path: string; readonly sha256: `sha256:${string}` }>;
+      readonly soulx: Readonly<{ readonly path: string; readonly sha256: `sha256:${string}` }>;
+    }>;
+    readonly validators: Readonly<{
+      readonly mage: Readonly<{ readonly path: string; readonly sha256: `sha256:${string}` }>;
+      readonly soulx: Readonly<{ readonly path: string; readonly sha256: `sha256:${string}` }>;
+    }>;
+  }>;
+  readonly qualificationProtectedInputDescriptors: Readonly<{
+    readonly avatarSource: Readonly<{
+      readonly path: string;
+      readonly sha256: `sha256:${string}`;
+      readonly sizeBytes: number;
+      readonly contentType: "image/png";
+    }>;
+    readonly soulx2s: Readonly<{
+      readonly path: string;
+      readonly sha256: `sha256:${string}`;
+      readonly sizeBytes: number;
+      readonly contentType: "audio/wav";
+    }>;
+    readonly soulx4s: Readonly<{
+      readonly path: string;
+      readonly sha256: `sha256:${string}`;
+      readonly sizeBytes: number;
+      readonly contentType: "audio/wav";
+    }>;
+    readonly soulx6s: Readonly<{
+      readonly path: string;
+      readonly sha256: `sha256:${string}`;
+      readonly sizeBytes: number;
+      readonly contentType: "audio/wav";
+    }>;
+    readonly soulx10s: Readonly<{
+      readonly path: string;
+      readonly sha256: `sha256:${string}`;
+      readonly sizeBytes: number;
+      readonly contentType: "audio/wav";
+    }>;
+  }>;
+  readonly qualificationR2: Readonly<{
+    readonly accountId: string;
+    readonly bucketName: string;
   }>;
 }
+
+export type V213PrequalificationInput = Readonly<{
+  readonly accountIdSha256: string;
+  readonly mage: Pick<V213SealedLane, "lane" | "volumeIdSha256" | "volumeManifestSha256">;
+  readonly soulx: Pick<V213SealedLane, "lane" | "volumeIdSha256" | "volumeManifestSha256">;
+  readonly totalCapUsd: 17.5;
+  readonly mageQualificationCapUsd: 4.5;
+  readonly soulxQualificationCapUsd: 1;
+  readonly qualificationEnvelopeSchemaSha256: string;
+  readonly envelopeSigningKeyId: string;
+  readonly qualificationGeneratorSha256: string;
+  readonly qualificationCaseDescriptors: readonly V213QualificationCaseDescriptor[];
+  readonly qualificationSourceRefs: V213DualLaneInput["qualificationSourceRefs"];
+  readonly qualificationProtectedInputDescriptors: V213DualLaneInput["qualificationProtectedInputDescriptors"];
+  readonly qualificationR2: V213DualLaneInput["qualificationR2"];
+}>;
 
 export interface V213DualLaneSuccess {
   readonly schemaVersion: "videoforge.v213-dual-lane-live/v1";
@@ -335,7 +506,38 @@ const hashV213Input = (input: V213DualLaneInput): string =>
     stageAuthorityPublicKeyPem: input.stageAuthorityPublicKeyPem,
     maxStatusReads: input.maxStatusReads ?? 180,
     pollIntervalMs: input.pollIntervalMs ?? 2_000,
-    envelopes: input.envelopes,
+    qualificationEnvelopeSchemaSha256: input.qualificationEnvelopeSchemaSha256,
+    envelopeSigningKeyId: input.envelopeSigningKeyId,
+    qualificationGeneratorSha256: input.qualificationGeneratorSha256,
+    qualificationCaseDescriptors: input.qualificationCaseDescriptors,
+    qualificationSourceRefs: input.qualificationSourceRefs,
+    qualificationProtectedInputDescriptors: input.qualificationProtectedInputDescriptors,
+    qualificationR2: input.qualificationR2,
+  });
+
+const hashV213AdmissionInput = (input: V213PrequalificationInput): string =>
+  hashCanonical({
+    accountIdSha256: input.accountIdSha256,
+    mage: {
+      lane: input.mage.lane,
+      volumeIdSha256: input.mage.volumeIdSha256,
+      volumeManifestSha256: input.mage.volumeManifestSha256,
+    },
+    soulx: {
+      lane: input.soulx.lane,
+      volumeIdSha256: input.soulx.volumeIdSha256,
+      volumeManifestSha256: input.soulx.volumeManifestSha256,
+    },
+    totalCapUsd: input.totalCapUsd,
+    mageQualificationCapUsd: input.mageQualificationCapUsd,
+    soulxQualificationCapUsd: input.soulxQualificationCapUsd,
+    qualificationEnvelopeSchemaSha256: input.qualificationEnvelopeSchemaSha256,
+    envelopeSigningKeyId: input.envelopeSigningKeyId,
+    qualificationGeneratorSha256: input.qualificationGeneratorSha256,
+    qualificationCaseDescriptors: input.qualificationCaseDescriptors,
+    qualificationSourceRefs: input.qualificationSourceRefs,
+    qualificationProtectedInputDescriptors: input.qualificationProtectedInputDescriptors,
+    qualificationR2: input.qualificationR2,
   });
 
 const sealHandoff = <T extends object>(
@@ -448,10 +650,8 @@ function assertSealedLane(value: V213SealedLane, lane: V213Lane): void {
     !IMAGE.test(value.publicImage) ||
     !COMMIT.test(value.sourceCommit) ||
     !SHA256.test(value.deploymentSha256) ||
-    !ID.test(value.volumeId) ||
-    hashId(value.volumeId) !== value.volumeIdSha256 ||
-    !SHA256.test(value.volumeManifestSha256) ||
-    !ID.test(value.receiptKeyId)
+    !SHA256.test(value.volumeIdSha256) ||
+    !SHA256.test(value.volumeManifestSha256)
   ) {
     fail("V213_SEALED_LANE_INVALID");
   }
@@ -499,6 +699,100 @@ function assertAdmission(read: V213AdmissionRead, input: V213DualLaneInput): voi
     fail("V213_FRESH_ADMISSION_REJECTED");
   }
   assertVolumes(read.volumes, [input.mage, input.soulx]);
+}
+
+function assertPrequalificationInput(input: V213PrequalificationInput): void {
+  if (
+    input.accountIdSha256 === "" ||
+    !SHA256.test(input.accountIdSha256) ||
+    input.mage.lane !== "mage" ||
+    input.soulx.lane !== "soulx" ||
+    !SHA256.test(input.mage.volumeIdSha256) ||
+    !SHA256.test(input.mage.volumeManifestSha256) ||
+    !SHA256.test(input.soulx.volumeIdSha256) ||
+    !SHA256.test(input.soulx.volumeManifestSha256) ||
+    input.mage.volumeIdSha256 === input.soulx.volumeIdSha256 ||
+    input.totalCapUsd !== V213_TOTAL_CAP_USD ||
+    input.mageQualificationCapUsd !== V213_MAGE_QUALIFICATION_CAP_USD ||
+    input.soulxQualificationCapUsd !== V213_SOULX_QUALIFICATION_CAP_USD ||
+    !SHA256.test(input.qualificationEnvelopeSchemaSha256) ||
+    !SHA256.test(input.qualificationGeneratorSha256) ||
+    !ID.test(input.envelopeSigningKeyId) ||
+    !validQualificationStaticBindings(input) ||
+    canonicalizeJson(input.qualificationCaseDescriptors as unknown as JsonValue) !==
+      canonicalizeJson(V213_QUALIFICATION_CASE_DESCRIPTORS as unknown as JsonValue)
+  )
+    fail("V213_PREQUALIFICATION_INPUT_INVALID");
+}
+
+function validQualificationStaticBindings(
+  input: Pick<
+    V213DualLaneInput,
+    "qualificationSourceRefs" | "qualificationProtectedInputDescriptors" | "qualificationR2"
+  >,
+): boolean {
+  const refs = input.qualificationSourceRefs;
+  const sourceRef = (value: { readonly path: string; readonly sha256: string }) =>
+    value !== null &&
+    typeof value === "object" &&
+    !value.path.startsWith("/") &&
+    !value.path.split("/").includes("..") &&
+    SHA256.test(value.sha256);
+  const protectedInput = (value: {
+    readonly path: string;
+    readonly sha256: string;
+    readonly sizeBytes: number;
+  }) =>
+    value !== null &&
+    typeof value === "object" &&
+    value.path.startsWith(".videoforge/private/") &&
+    !value.path.split("/").includes("..") &&
+    SHA256.test(value.sha256) &&
+    Number.isSafeInteger(value.sizeBytes) &&
+    value.sizeBytes > 0 &&
+    value.sizeBytes <= 16 * 1024 * 1024;
+  return Boolean(
+    refs &&
+      sourceRef(refs.caseSource) &&
+      sourceRef(refs.generators.mage) &&
+      sourceRef(refs.generators.soulx) &&
+      sourceRef(refs.validators.mage) &&
+      sourceRef(refs.validators.soulx) &&
+      protectedInput(input.qualificationProtectedInputDescriptors.avatarSource) &&
+      input.qualificationProtectedInputDescriptors.avatarSource.contentType === "image/png" &&
+      (["soulx2s", "soulx4s", "soulx6s", "soulx10s"] as const).every(
+        (key) =>
+          protectedInput(input.qualificationProtectedInputDescriptors[key]) &&
+          input.qualificationProtectedInputDescriptors[key].contentType === "audio/wav",
+      ) &&
+      /^[0-9a-f]{32}$/u.test(input.qualificationR2.accountId) &&
+      /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u.test(input.qualificationR2.bucketName),
+  );
+}
+
+function assertPrequalificationAdmission(
+  read: V213AdmissionRead,
+  input: V213PrequalificationInput,
+  now: Date,
+): void {
+  if (
+    read.accountIdSha256 !== input.accountIdSha256 ||
+    read.gpu !== V213_GPU ||
+    read.region !== V213_REGION ||
+    !(["LOW", "MEDIUM", "HIGH"] as const).includes(read.availability) ||
+    !finiteMoney(read.flexRateUsdPerGpuHour) ||
+    read.flexRateUsdPerGpuHour > V213_MAX_RATE_USD_PER_GPU_HOUR ||
+    !finiteMoney(read.cumulativeBillingUsd) ||
+    read.runningPods !== 0 ||
+    read.activeWorkers !== 0 ||
+    read.endpoints !== 0 ||
+    read.privateTemplates !== 0 ||
+    !Number.isFinite(now.getTime()) ||
+    !Number.isFinite(Date.parse(read.checkedAt)) ||
+    Math.abs(now.getTime() - Date.parse(read.checkedAt)) > 60_000
+  )
+    fail("V213_FRESH_ADMISSION_REJECTED");
+  assertVolumes(read.volumes, [input.mage as V213SealedLane, input.soulx as V213SealedLane]);
 }
 
 function assertDeployment(
@@ -629,11 +923,86 @@ async function createAndReadLane(
 type Case = Readonly<{
   lane: V213Lane;
   id: string;
-  envelope: JsonValue;
+  request: JsonValue;
   seconds: number;
   mode: "complete" | "cancel" | "invalid" | "timeout";
   cold: boolean;
 }>;
+
+async function materializeQualificationCase(
+  transport: V213DualLaneTransport,
+  input: V213DualLaneInput,
+  deployment: V213LaneDeployment,
+  descriptor: V213QualificationCaseDescriptor,
+  stageAuthorityId: string,
+): Promise<Case> {
+  const descriptorSha256 = hashCanonical(descriptor);
+  const materialized = await transport.materializeQualificationCase({
+    descriptor,
+    deployment,
+    stageAuthorityId,
+    inputSha256: hashV213Input(input),
+  });
+  const request =
+    materialized?.request !== null &&
+    typeof materialized?.request === "object" &&
+    !Array.isArray(materialized.request)
+      ? (materialized.request as Record<string, JsonValue>)
+      : null;
+  const envelope =
+    request?.envelope !== null &&
+    typeof request?.envelope === "object" &&
+    !Array.isArray(request.envelope)
+      ? (request.envelope as Record<string, JsonValue>)
+      : null;
+  let validatedEnvelope: Record<string, unknown> | null = null;
+  try {
+    validatedEnvelope = (
+      await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", envelope)
+    ).value as unknown as Record<string, unknown>;
+  } catch {
+    validatedEnvelope = null;
+  }
+  const runtime = validatedEnvelope?.runtime as Record<string, unknown> | undefined;
+  const work = validatedEnvelope?.work as Record<string, unknown> | undefined;
+  const materializationEvidenceSha256 =
+    request === null
+      ? ""
+      : hashCanonical({
+          caseDescriptorSha256: descriptorSha256,
+          deploymentSha256: hashCanonical(deployment),
+          requestSha256: hashCanonical(request),
+          stageAuthorityId,
+        });
+  if (
+    materialized?.schemaVersion !== "videoforge.v213-qualification-case-materialization/v1" ||
+    materialized.caseDescriptorSha256 !== descriptorSha256 ||
+    materialized.materializationEvidenceSha256 !== materializationEvidenceSha256 ||
+    request === null ||
+    validatedEnvelope === null ||
+    !Object.hasOwn(request, "batch") ||
+    !Object.hasOwn(request, "ports") ||
+    Object.hasOwn(request, "policy") ||
+    work?.lane !== (descriptor.lane === "mage" ? "mage_image" : "soulx_avatar") ||
+    runtime?.container_digest !== deployment.image.slice(deployment.image.indexOf("sha256:")) ||
+    runtime?.model_manifest_sha256 !== deployment.volumeManifestSha256 ||
+    runtime?.volume_id_sha256 !== deployment.volumeIdSha256 ||
+    runtime?.volume_mount !== V213_VOLUME_MOUNT ||
+    runtime?.region !== V213_REGION ||
+    validatedEnvelope.signature === null ||
+    typeof validatedEnvelope.signature !== "object" ||
+    (validatedEnvelope.signature as Record<string, unknown>).key_id !== input.envelopeSigningKeyId
+  )
+    fail("V213_QUALIFICATION_MATERIALIZATION_INVALID");
+  return Object.freeze({
+    lane: descriptor.lane,
+    id: descriptor.id,
+    request: materialized.request,
+    seconds: descriptor.seconds,
+    mode: descriptor.mode,
+    cold: descriptor.cold,
+  });
+}
 
 async function dispatchOnce(
   transport: V213DualLaneTransport,
@@ -643,13 +1012,13 @@ async function dispatchOnce(
 ): Promise<{ jobId: string; requestSha256: string; envelopeSha256: string }> {
   const requestKey = `v213-${testCase.id}`;
   if (
-    !testCase.envelope ||
-    typeof testCase.envelope !== "object" ||
-    Array.isArray(testCase.envelope)
+    !testCase.request ||
+    typeof testCase.request !== "object" ||
+    Array.isArray(testCase.request)
   ) {
     fail("V213_QUALIFICATION_REQUEST_INVALID");
   }
-  const request = testCase.envelope as Record<string, JsonValue>;
+  const request = testCase.request as Record<string, JsonValue>;
   const signedEnvelope = request.envelope;
   if (!signedEnvelope || typeof signedEnvelope !== "object" || Array.isArray(signedEnvelope)) {
     fail("V213_QUALIFICATION_REQUEST_INVALID");
@@ -671,7 +1040,7 @@ async function dispatchOnce(
   if (claim.action === "EXECUTE") {
     let ack: V213DispatchAck;
     try {
-      ack = await transport.dispatch({ deployment, requestKey, envelope: testCase.envelope });
+      ack = await transport.dispatch({ deployment, requestKey, envelope: testCase.request });
     } catch {
       ack = { kind: "ACK_UNKNOWN" };
     }
@@ -714,7 +1083,7 @@ function assertReceipt(
   usedReceiptNonces: Set<number>,
 ): ProvenanceReceipt {
   if (!delivery) throw new V213DualLaneError("V213_QUALIFICATION_RECEIPT_INVALID");
-  const request = testCase.envelope as Record<string, JsonValue>;
+  const request = testCase.request as Record<string, JsonValue>;
   const signedEnvelope = request.envelope as Record<string, JsonValue>;
   const tenant = signedEnvelope.tenant as Record<string, JsonValue>;
   const work = signedEnvelope.work as Record<string, JsonValue>;
@@ -745,6 +1114,13 @@ function assertReceipt(
     volumeIdSha256: deployment.volumeIdSha256 as `sha256:${string}`,
     volumeManifestSha256: deployment.volumeManifestSha256 as `sha256:${string}`,
     modelManifestSha256: deployment.volumeManifestSha256 as `sha256:${string}`,
+    ...(deployment.lane === "soulx"
+      ? {
+          warmupAttestationSha256: v213SoulxWarmupAttestationSha256(
+            deployment.image.slice(deployment.image.indexOf("sha256:")) as `sha256:${string}`,
+          ),
+        }
+      : {}),
     gpuAllowlist: [V213_GPU],
     seenNonces: usedReceiptNonces,
   };
@@ -953,8 +1329,13 @@ function assertInput(input: V213DualLaneInput): void {
   if (
     !SHA256.test(input.accountIdSha256) ||
     !input.stageAuthorityPublicKeyPem.includes("PUBLIC KEY") ||
-    input.receiptSigner.keyId !== input.mage.receiptKeyId ||
-    input.receiptSigner.keyId !== input.soulx.receiptKeyId ||
+    !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u.test(input.receiptSigner.keyId) ||
+    !SHA256.test(input.qualificationEnvelopeSchemaSha256) ||
+    !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u.test(input.envelopeSigningKeyId) ||
+    !SHA256.test(input.qualificationGeneratorSha256) ||
+    !validQualificationStaticBindings(input) ||
+    canonicalizeJson(input.qualificationCaseDescriptors as unknown as JsonValue) !==
+      canonicalizeJson(V213_QUALIFICATION_CASE_DESCRIPTORS as unknown as JsonValue) ||
     !finiteMoney(input.billingBaselineUsd) ||
     input.totalCapUsd !== V213_TOTAL_CAP_USD ||
     input.mageQualificationCapUsd !== V213_MAGE_QUALIFICATION_CAP_USD ||
@@ -969,6 +1350,15 @@ function assertInput(input: V213DualLaneInput): void {
   if (input.mage.volumeIdSha256 === input.soulx.volumeIdSha256) {
     fail("V213_VOLUME_INTEGRITY_MISMATCH");
   }
+}
+
+function qualificationDescriptor(
+  input: V213DualLaneInput,
+  key: V213QualificationCaseDescriptor["key"],
+): V213QualificationCaseDescriptor {
+  const descriptors = input.qualificationCaseDescriptors.filter((item) => item.key === key);
+  if (descriptors.length !== 1) fail("V213_QUALIFICATION_CASE_DESCRIPTOR_INVALID");
+  return descriptors[0]!;
 }
 
 export async function issueV213StageAuthority(
@@ -1176,6 +1566,26 @@ async function stableQualificationZeroRead(
 }
 
 /** Read-only first stage. Persist its exact handoff before authorizing the Mage mutation stage. */
+export async function readV213PrequalificationAdmission(
+  port: Readonly<{
+    readonly freshAdmission: () => Promise<V213AdmissionRead>;
+    readonly now: () => Date;
+  }>,
+  input: V213PrequalificationInput,
+): Promise<V213AdmissionHandoff> {
+  assertPrequalificationInput(input);
+  const admission = await port.freshAdmission();
+  assertPrequalificationAdmission(admission, input, port.now());
+  if (!moneyLeq(input.mageQualificationCapUsd + input.soulxQualificationCapUsd, input.totalCapUsd))
+    fail("V213_CAP_RESERVATION_REJECTED");
+  return sealHandoff({
+    schemaVersion: "videoforge.v213-admission-handoff/v1" as const,
+    inputSha256: hashV213AdmissionInput(input),
+    admission,
+  });
+}
+
+/** Read-only first stage. Persist its exact handoff before authorizing the Mage mutation stage. */
 export async function readV213DualLaneAdmission(
   transport: V213DualLaneTransport,
   input: V213DualLaneInput,
@@ -1200,7 +1610,7 @@ export async function readV213DualLaneAdmission(
   }
   return sealHandoff({
     schemaVersion: "videoforge.v213-admission-handoff/v1" as const,
-    inputSha256: hashV213Input(input),
+    inputSha256: hashV213AdmissionInput(input),
     admission,
   });
 }
@@ -1217,7 +1627,7 @@ export async function runV213MageQualification(
   assertHandoffHash(admissionHandoff);
   if (
     admissionHandoff.schemaVersion !== "videoforge.v213-admission-handoff/v1" ||
-    admissionHandoff.inputSha256 !== hashV213Input(input)
+    admissionHandoff.inputSha256 !== hashV213AdmissionInput(input)
   ) {
     fail("V213_MAGE_STAGE_PREDECESSOR_INVALID");
   }
@@ -1233,14 +1643,13 @@ export async function runV213MageQualification(
       authority.authorityId,
     );
     created.push(mageQualification);
-    const mageCase: Case = {
-      lane: "mage",
-      id: "mage-cold-representative",
-      envelope: input.envelopes.mage,
-      seconds: 0,
-      mode: "complete",
-      cold: true,
-    };
+    const mageCase = await materializeQualificationCase(
+      transport,
+      input,
+      mageQualification,
+      qualificationDescriptor(input, "mage"),
+      authority.authorityId,
+    );
     const mageReceipt = await runCase(
       transport,
       mageQualification,
@@ -1316,67 +1725,24 @@ export async function runV213SoulXQualification(
       authority.authorityId,
     );
     created.push(soulxQualification);
-    const soulxCases: readonly Case[] = [
-      {
-        lane: "soulx",
-        id: "soulx-cold-2s",
-        envelope: input.envelopes.soulx2s,
-        seconds: 2,
-        mode: "complete",
-        cold: true,
-      },
-      {
-        lane: "soulx",
-        id: "soulx-warm-4s",
-        envelope: input.envelopes.soulx4s,
-        seconds: 4,
-        mode: "complete",
-        cold: false,
-      },
-      {
-        lane: "soulx",
-        id: "soulx-warm-6s",
-        envelope: input.envelopes.soulx6s,
-        seconds: 6,
-        mode: "complete",
-        cold: false,
-      },
-      {
-        lane: "soulx",
-        id: "soulx-warm-10s",
-        envelope: input.envelopes.soulx10s,
-        seconds: 10,
-        mode: "complete",
-        cold: false,
-      },
-      {
-        lane: "soulx",
-        id: "soulx-cancel",
-        envelope: input.envelopes.soulxCancel,
-        seconds: 2,
-        mode: "cancel",
-        cold: false,
-      },
-      {
-        lane: "soulx",
-        id: "soulx-invalid-output",
-        envelope: input.envelopes.soulxInvalidOutput,
-        seconds: 2,
-        mode: "invalid",
-        cold: false,
-      },
-      {
-        lane: "soulx",
-        id: "soulx-timeout",
-        envelope: input.envelopes.soulxTimeout,
-        seconds: 2,
-        mode: "timeout",
-        cold: false,
-      },
-    ];
     const receipts: ProvenanceReceipt[] = [];
     const usedReceiptNonces = new Set<number>();
-    for (const testCase of soulxCases) {
+    for (const key of [
+      "soulx2s",
+      "soulx4s",
+      "soulx6s",
+      "soulx10s",
+      "soulxCancel",
+      "soulxInvalidOutput",
+      "soulxTimeout",
+    ] as const) {
+      const testCase = await materializeQualificationCase(
+        transport,
+        input,
+        soulxQualification,
+        qualificationDescriptor(input, key),
+        authority.authorityId,
+      );
       const receipt = await runCase(
         transport,
         soulxQualification,

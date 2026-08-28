@@ -49,7 +49,7 @@ const EXACT_PRE_MUTATION_ROUTE_CONTENT_TYPE = "text/html; charset=UTF-8";
 const EXACT_PRE_MUTATION_ROUTE_BODY_LENGTH = 19984;
 const EXACT_PRE_MUTATION_ROUTE_BODY_SHA256 =
   "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976";
-const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v1";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v2";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_ADVISORY_LOCK = "1448494662,1";
 const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
@@ -79,10 +79,16 @@ const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
 ]);
 const PREQUALIFICATION_RECEIPT_FIELDS = Object.freeze([
   "schema_version",
+  "full_live_authority_id",
+  "outer_state_sha256",
   "ledger_before_count",
   "ledger_before_sha256",
   "ledger_after_sha256",
   "operator_acl_sha256",
+  "operator_database_url_sha256",
+  "runtime_database_url_sha256",
+  "reconciler_database_url_sha256",
+  "database_role_credential_bundle_sha256",
   "pgcrypto_sha256",
   "recovery_mode",
   "runpod_calls",
@@ -209,6 +215,9 @@ function readPrequalificationReceipt(directory) {
       "prequalification_database_bootstrap_sha256",
     ]) ||
     value.schema_version !== PREQUALIFICATION_SCHEMA ||
+    typeof value.full_live_authority_id !== "string" ||
+    value.full_live_authority_id === "" ||
+    !HASH.test(value.outer_state_sha256 ?? "") ||
     ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
     !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
@@ -218,6 +227,15 @@ function readPrequalificationReceipt(directory) {
     (value.recovery_mode === "VERIFIED_EXISTING_45" && value.ledger_before_count !== 45) ||
     !HASH.test(value.ledger_after_sha256 ?? "") ||
     !HASH.test(value.operator_acl_sha256 ?? "") ||
+    !HASH.test(value.operator_database_url_sha256 ?? "") ||
+    !HASH.test(value.runtime_database_url_sha256 ?? "") ||
+    !HASH.test(value.reconciler_database_url_sha256 ?? "") ||
+    !HASH.test(value.database_role_credential_bundle_sha256 ?? "") ||
+    new Set([
+      value.operator_database_url_sha256,
+      value.runtime_database_url_sha256,
+      value.reconciler_database_url_sha256,
+    ]).size !== 3 ||
     !HASH.test(value.pgcrypto_sha256 ?? "") ||
     value.runpod_calls !== 0 ||
     value.cloudflare_calls !== 0 ||
@@ -434,6 +452,14 @@ async function verifyPrequalificationDatabase(
   if (capture("SELECT current_user::text") !== authority.database.owner_role)
     fail("prequalification database connection is not the approved owner");
   const receipt = readPrequalificationReceipt(postgresInputDirectory);
+  if (
+    receipt.full_live_authority_id !== authority.authority.authority_id ||
+    receipt.operator_database_url_sha256 !== authority.database.operator_database_url_sha256 ||
+    receipt.runtime_database_url_sha256 !== authority.secret_sha256.DATABASE_URL ||
+    receipt.reconciler_database_url_sha256 !==
+      authority.secret_sha256.VIDEOFORGE_RECONCILER_DATABASE_URL
+  )
+    fail("prequalification database credential receipt does not match guarded authority");
   const ledgerText = capture(
     `BEGIN; SELECT pg_advisory_xact_lock(${PREQUALIFICATION_ADVISORY_LOCK}); SELECT version::text,name,filename,sha256 FROM public.videoforge_schema_migrations ORDER BY version; COMMIT;`,
   );
@@ -794,14 +820,14 @@ function validateAuthority(value) {
       "native_sample_sha256",
       "split_sample_sha256",
     ].some((name) => !HASH.test(value.soulx_crop_approval[name])) ||
-    JSON.stringify(value.soulx_crop_approval.avatar_source_geometry) !==
-      JSON.stringify({ width: 1672, height: 941 }) ||
-    JSON.stringify(value.soulx_crop_approval.native_sample_geometry) !==
-      JSON.stringify({ width: 512, height: 512, fps: 25 }) ||
-    JSON.stringify(value.soulx_crop_approval.full_output_geometry) !==
-      JSON.stringify({ width: 1920, height: 1080, fps: 30 }) ||
-    JSON.stringify(value.soulx_crop_approval.split_output_geometry) !==
-      JSON.stringify({ width: 1920, height: 1080, fps: 30 })
+    canonicalJson(value.soulx_crop_approval.avatar_source_geometry) !==
+      canonicalJson({ width: 1672, height: 941 }) ||
+    canonicalJson(value.soulx_crop_approval.native_sample_geometry) !==
+      canonicalJson({ width: 512, height: 512, fps: 25 }) ||
+    canonicalJson(value.soulx_crop_approval.full_output_geometry) !==
+      canonicalJson({ width: 1920, height: 1080, fps: 30 }) ||
+    canonicalJson(value.soulx_crop_approval.split_output_geometry) !==
+      canonicalJson({ width: 1920, height: 1080, fps: 30 })
   )
     fail("SoulX crop approval identity, media, or geometry pins are not exact");
   if (
@@ -1329,8 +1355,13 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
   mode(operatorPath, "file", 0o600, "operator database URL file");
   const operatorRaw = readFileSync(operatorPath, "utf8");
   if (
+    bootstrapReceipt.full_live_authority_id !== authority.authority.authority_id ||
+    sha256(values.get("DATABASE_URL")) !== bootstrapReceipt.runtime_database_url_sha256 ||
+    sha256(values.get("VIDEOFORGE_RECONCILER_DATABASE_URL")) !==
+      bootstrapReceipt.reconciler_database_url_sha256 ||
     operatorRaw !== operatorRaw.trim() ||
-    sha256(operatorRaw) !== authority.database.operator_database_url_sha256
+    sha256(operatorRaw) !== authority.database.operator_database_url_sha256 ||
+    sha256(operatorRaw) !== bootstrapReceipt.operator_database_url_sha256
   )
     fail("operator database URL does not match its approved fingerprint");
   const operator = parseExactOperatorDatabaseUrl(operatorRaw, {

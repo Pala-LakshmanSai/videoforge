@@ -101,6 +101,12 @@ for required_table in hosted_full_live_authorities hosted_full_live_promotions h
     exit 1
   fi
 done
+for required_table in hosted_full_live_qualification_materialization_intents hosted_full_live_qualification_materializations; do
+  if ! grep -Eq "[[:space:]]TABLE[[:space:]]+public[[:space:]]+${required_table}[[:space:]]" "$archive_list"; then
+    echo "backup archive does not contain durable full-live qualification materialization table ${required_table}" >&2
+    exit 1
+  fi
+done
 openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
   -in "$raw_backup" -out "$encrypted_backup" -pass "file:$passphrase_file"
 # mktemp reserves an unpredictable private path, while the envelope writer deliberately opens its

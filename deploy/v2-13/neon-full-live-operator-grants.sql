@@ -5,9 +5,25 @@
 \quit
 \endif
 \set ON_ERROR_STOP on
+\getenv operator_password V2_13_OPERATOR_PASSWORD
 BEGIN;
 SET search_path = public, pg_catalog;
 SELECT pg_advisory_xact_lock(1448494662,1);
+SELECT format(
+  'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
+  :'operator_role',
+  :'operator_password'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=:'operator_role')
+  AND NULLIF(:'operator_password','') IS NOT NULL
+\gexec
+SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=:'operator_role') AS operator_role_present
+\gset
+\if :operator_role_present
+\else
+ROLLBACK;
+\quit
+\endif
 GRANT USAGE ON SCHEMA public TO :"operator_role";
 REVOKE CREATE ON SCHEMA public FROM :"operator_role";
 -- Remove the ambient PUBLIC capabilities before granting the operator's exact function set.
@@ -58,6 +74,9 @@ GRANT EXECUTE ON FUNCTION public.videoforge_record_v213_stage_authority(uuid,jso
   public.videoforge_project_v213_release_certification(jsonb),
   public.videoforge_persist_v213_release_certification(jsonb),
   public.videoforge_read_v213_release_certification(jsonb)
+  ,public.videoforge_claim_v213_qualification_materialization(jsonb)
+  ,public.videoforge_persist_v213_qualification_materialization(jsonb)
+  ,public.videoforge_read_v213_qualification_materialization(jsonb)
 TO :"operator_role";
 WITH target AS (
   SELECT oid FROM pg_roles WHERE rolname=:'operator_role'
@@ -130,6 +149,9 @@ expected_functions(oid,signature) AS (VALUES
   ('public.videoforge_project_v213_release_certification(jsonb)'::regprocedure::oid,'videoforge_project_v213_release_certification(jsonb)'),
   ('public.videoforge_persist_v213_release_certification(jsonb)'::regprocedure::oid,'videoforge_persist_v213_release_certification(jsonb)'),
   ('public.videoforge_read_v213_release_certification(jsonb)'::regprocedure::oid,'videoforge_read_v213_release_certification(jsonb)'),
+  ('public.videoforge_claim_v213_qualification_materialization(jsonb)'::regprocedure::oid,'videoforge_claim_v213_qualification_materialization(jsonb)'),
+  ('public.videoforge_persist_v213_qualification_materialization(jsonb)'::regprocedure::oid,'videoforge_persist_v213_qualification_materialization(jsonb)'),
+  ('public.videoforge_read_v213_qualification_materialization(jsonb)'::regprocedure::oid,'videoforge_read_v213_qualification_materialization(jsonb)'),
   ('public.videoforge_transition_v213_bridge_command(jsonb)'::regprocedure::oid,'videoforge_transition_v213_bridge_command(jsonb)'),
   ('public.videoforge_transition_v213_operation(jsonb)'::regprocedure::oid,'videoforge_transition_v213_operation(jsonb)')
 ),

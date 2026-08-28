@@ -62,7 +62,7 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
         declarations = re.findall(
             r'"([^"|]+)\|([0-9a-f]{64})\|(/opt/videoforge/[^"|]+)"', self.source
         )
-        self.assertEqual(len(declarations), 5)
+        self.assertEqual(len(declarations), 7)
         for source_path, expected_hash, image_path in declarations:
             self.assertEqual(expected_hash, _sha256(REPO_ROOT / source_path), source_path)
             self.assertIn(f"{expected_hash} {image_path}", self.dockerfile)
@@ -75,6 +75,92 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
         self.assertEqual(len(dependency_declarations), 3)
         for source_path, expected_hash in dependency_declarations:
             self.assertEqual(expected_hash, _sha256(REPO_ROOT / source_path), source_path)
+
+        evidence_hashes = dict(
+            re.findall(
+                r'"([^"\\]+)": \(\n\s+"sha256:([0-9a-f]{64})"\n\s+\)',
+                self.source,
+            )
+        )
+        for source_path in (
+            "workers/avatar-primary/soulx_serverless.py",
+            "workers/avatar-primary/soulx_runtime.py",
+            "workers/avatar-primary/soulx_volume.py",
+            "workers/avatar-primary/soulx-serverless-entrypoint.py",
+            "workers/common/secure_scratch.py",
+            "workers/common/serverless_envelope.py",
+            "packages/contracts/python/videoforge_contracts/__init__.py",
+            "packages/contracts/python/videoforge_contracts/_schema_documents.py",
+            "packages/contracts/python/videoforge_contracts/models.py",
+            "packages/contracts/python/videoforge_contracts/validator.py",
+        ):
+            self.assertEqual(
+                evidence_hashes.get(source_path),
+                _sha256(REPO_ROOT / source_path),
+                source_path,
+            )
+
+        declared_evidence_dockerfile_hash = re.search(
+            r'"dockerfile_sha256": \(\n\s+"sha256:([0-9a-f]{64})"', self.source
+        )
+        self.assertIsNotNone(declared_evidence_dockerfile_hash)
+        assert declared_evidence_dockerfile_hash is not None
+        self.assertEqual(
+            declared_evidence_dockerfile_hash.group(1), _sha256(DOCKERFILE)
+        )
+
+    def test_every_dockerfile_copy_is_materialized_in_the_build_context(self) -> None:
+        build_source = self.source.split(
+            "- name: Build exact linux-amd64 candidate without a model volume", 1
+        )[1].split("- name: Authenticate and reject any unbound same-commit tag", 1)[0]
+        copy_sources = re.findall(r"^COPY\s+(\S+)\s+\S+\s*$", self.dockerfile, re.MULTILINE)
+        self.assertEqual(
+            copy_sources,
+            [
+                "workers/avatar-primary/requirements.serverless.txt",
+                "workers/common",
+                "packages/contracts/python/videoforge_contracts",
+                "workers/avatar-primary/soulx_serverless.py",
+                "workers/avatar-primary/soulx_runtime.py",
+                "workers/avatar-primary/soulx_volume.py",
+                "workers/avatar-primary/soulx-serverless-entrypoint.py",
+            ],
+        )
+        context_sources: set[str] = set()
+        for source in copy_sources:
+            path = REPO_ROOT / source
+            if path.is_file():
+                context_sources.add(source)
+            else:
+                context_sources.update(
+                    item.relative_to(REPO_ROOT).as_posix()
+                    for item in path.rglob("*")
+                    if item.is_file() and "__pycache__" not in item.parts and item.suffix != ".pyc"
+                )
+        for source_path in context_sources:
+            self.assertIn(source_path, build_source, source_path)
+
+        image_paths = {
+            "workers/avatar-primary/requirements.serverless.txt": "/opt/videoforge/requirements.serverless.txt",
+            "workers/avatar-primary/soulx_serverless.py": "/opt/videoforge/soulx_serverless.py",
+            "workers/avatar-primary/soulx_runtime.py": "/opt/videoforge/soulx_runtime.py",
+            "workers/avatar-primary/soulx_volume.py": "/opt/videoforge/soulx_volume.py",
+            "workers/avatar-primary/soulx-serverless-entrypoint.py": "/opt/videoforge/soulx-serverless-entrypoint.py",
+            "workers/common/secure_scratch.py": "/opt/videoforge/common/secure_scratch.py",
+            "workers/common/serverless_envelope.py": "/opt/videoforge/common/serverless_envelope.py",
+            "packages/contracts/python/videoforge_contracts/__init__.py": "/opt/videoforge/src/videoforge_contracts/__init__.py",
+            "packages/contracts/python/videoforge_contracts/_schema_documents.py": "/opt/videoforge/src/videoforge_contracts/_schema_documents.py",
+            "packages/contracts/python/videoforge_contracts/models.py": "/opt/videoforge/src/videoforge_contracts/models.py",
+            "packages/contracts/python/videoforge_contracts/validator.py": "/opt/videoforge/src/videoforge_contracts/validator.py",
+        }
+        for source_path, image_path in image_paths.items():
+            expected_hash = _sha256(REPO_ROOT / source_path)
+            self.assertIn(f"{expected_hash} {image_path}", self.source, image_path)
+            self.assertGreaterEqual(
+                self.source.count(f"{expected_hash} {image_path}"),
+                2,
+                image_path,
+            )
 
     def test_build_uses_exact_image_definition_without_model_preparation(self) -> None:
         build_source = self.source.split(
@@ -135,11 +221,16 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
         self.assertIn('ai.videoforge.source-commit\\"}}', publish)
         self.assertIn('= "$GITHUB_SHA"', publish)
         for expected_hash in (
-            "268be251e9a60200d7eb2b0899d3e1b962c9222b235d2c876d97460c6ca37ad9",
+            "752b600d5428bb253d83d0c6044296bbcb4bb29f17d4df37c40fcf63c19b30e4",
+            "b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080",
+            "b767ef3cb9d867a623975db3d23a6bb1b2d15587db87db9e3db6cf1e73b07e0e",
             "bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9",
             "7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775",
             "34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
             "6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6",
+            "83650cf6430fd82e26c855df5f91b34cf5a4eda2beebf7650d8cf86e27f88443",
+            "b31ebc93f99c055c0ab158b72027d652ae9cbb4b232562167672cdde35c63c09",
+            "88e5d7a6023f10c46be3be34204539231c4eee57f14519788952b3a4a686adca",
         ):
             self.assertIn(expected_hash, publish)
         self.assertIn("sha256sum --check --strict", publish)

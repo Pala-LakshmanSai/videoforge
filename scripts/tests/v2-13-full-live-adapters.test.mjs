@@ -3,11 +3,14 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import {
   chmodSync,
+  linkSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -15,6 +18,8 @@ import test from "node:test";
 
 import {
   closedTrustedTimeCommand,
+  cleanupPartialDatabaseRoleCredentials,
+  databaseCredentialStagingPath,
   createConcreteFullLiveAdapters,
   createPrequalificationDatabaseBootstrapAdapter,
   createGitReleaseAdapters,
@@ -37,6 +42,19 @@ import {
   TAG,
   verifyPrequalificationDatabaseReceipt,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
+import {
+  MEDIA_WORKER_RELEASE_HTML_URL,
+  MEDIA_WORKER_RELEASE_MANIFEST,
+  MEDIA_WORKER_RELEASE_MANIFEST_NAME,
+  MEDIA_WORKER_RELEASE_MANIFEST_SHA256,
+  MEDIA_WORKER_RELEASE_MANIFEST_SIZE_BYTES,
+  MEDIA_WORKER_RELEASE_MANIFEST_URL,
+  MEDIA_WORKER_RELEASE_PUBLISHED_AT,
+  MEDIA_WORKER_RELEASE_READBACK_SCHEMA,
+  MEDIA_WORKER_RELEASE_REPOSITORY,
+  MEDIA_WORKER_RELEASE_TAG,
+  MEDIA_WORKER_RELEASE_TARGET_COMMIT,
+} from "../../deploy/v2-13/media-worker-release-readback.mjs";
 import { materializationSeedFixture } from "./fixtures/v2-13-materialization-seed.mjs";
 
 const sourceCommit = "4".repeat(40);
@@ -61,6 +79,43 @@ const canonicalJson = (value) =>
           .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
           .join(",")}}`
       : JSON.stringify(value);
+const mediaWorkerReleaseReadback = ({ state: currentState, outerStateSha256 }) => {
+  const unsigned = {
+    actualUsd: 0,
+    schemaVersion: MEDIA_WORKER_RELEASE_READBACK_SCHEMA,
+    state: "VERIFIED_EXACT_PUBLIC_GITHUB_RELEASE",
+    authorityId: currentState.authority_id,
+    outerStateSha256,
+    repository: MEDIA_WORKER_RELEASE_REPOSITORY,
+    tagName: MEDIA_WORKER_RELEASE_TAG,
+    targetCommit: MEDIA_WORKER_RELEASE_TARGET_COMMIT,
+    releaseHtmlUrl: MEDIA_WORKER_RELEASE_HTML_URL,
+    publishedAt: MEDIA_WORKER_RELEASE_PUBLISHED_AT,
+    draft: false,
+    prerelease: false,
+    immutable: true,
+    manifestAsset: {
+      name: MEDIA_WORKER_RELEASE_MANIFEST_NAME,
+      sizeBytes: MEDIA_WORKER_RELEASE_MANIFEST_SIZE_BYTES,
+      digest: MEDIA_WORKER_RELEASE_MANIFEST_SHA256,
+      state: "uploaded",
+      contentType: "application/json",
+      browserDownloadUrl: MEDIA_WORKER_RELEASE_MANIFEST_URL,
+    },
+    manifestUrl: MEDIA_WORKER_RELEASE_MANIFEST_URL,
+    finalDownloadUrl: MEDIA_WORKER_RELEASE_MANIFEST_URL,
+    redirectCount: 0,
+    manifestSizeBytes: MEDIA_WORKER_RELEASE_MANIFEST_SIZE_BYTES,
+    manifestSha256: MEDIA_WORKER_RELEASE_MANIFEST_SHA256,
+    manifest: MEDIA_WORKER_RELEASE_MANIFEST,
+    binaryDownloads: 0,
+    credentialsUsed: false,
+    providerMutations: 0,
+    gpuUse: false,
+    externalSpendUsd: 0,
+  };
+  return { ...unsigned, reconciliationSha256: hash(Buffer.from(canonicalJson(unsigned))) };
+};
 const preEndpointSecrets = () => ({
   schemaVersion: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
   stageAuthoritySigningKeyBase64: Buffer.alloc(32, 1).toString("base64"),
@@ -920,34 +975,47 @@ test("staged qualification adapters preserve admission, Mage, SoulX, then max-on
 });
 
 test("concrete catalog exposes publication, guarded activation, and the protected TS bridge", () => {
-  assert.deepEqual(Object.keys(createConcreteFullLiveAdapters()).sort(), [
-    "approval-commit-push",
-    "bootstrap-prequalification-database",
-    "certify-v2-13-release",
-    "create-exact-max-one-endpoints",
-    "fresh-live-preflight",
-    "guarded-activation-once",
-    "mage-image-workflow-dispatch",
-    "mage-image-workflow-verification",
-    "mage-live-qualification",
-    "promote-qualified-production",
-    "prove-zero-workers",
-    "read-settled-billing",
-    "reconcile-exact-resources",
-    "record-workflow-start-authority",
-    "release-tag-create",
-    "release-tag-push",
-    "release-tag-readback",
-    "restore-endpoints-max-one",
-    "soulx-image-workflow-dispatch",
-    "soulx-image-workflow-verification",
-    "soulx-live-qualification",
-    "v2-09-short-hosted-project",
-    "v2-10-operator-free-ranga-pilot",
-    "v2-11-two-concurrent-owned-projects",
-    "v2-12-long-output",
-    "v2-13-final-two-lane-smoke",
-  ]);
+  const currentBridgePins = {
+    expectedCliSha256: hash(
+      readFileSync(resolve(process.cwd(), "apps/web/src/server/providers/v213-full-live-cli.ts")),
+    ),
+    expectedTransportSha256: hash(
+      readFileSync(
+        resolve(process.cwd(), "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts"),
+      ),
+    ),
+  };
+  assert.deepEqual(
+    Object.keys(createConcreteFullLiveAdapters({ bridge: currentBridgePins })).sort(),
+    [
+      "approval-commit-push",
+      "bootstrap-prequalification-database",
+      "certify-v2-13-release",
+      "create-exact-max-one-endpoints",
+      "fresh-live-preflight",
+      "guarded-activation-once",
+      "mage-image-workflow-dispatch",
+      "mage-image-workflow-verification",
+      "mage-live-qualification",
+      "promote-qualified-production",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources",
+      "record-workflow-start-authority",
+      "release-tag-create",
+      "release-tag-push",
+      "release-tag-readback",
+      "restore-endpoints-max-one",
+      "soulx-image-workflow-dispatch",
+      "soulx-image-workflow-verification",
+      "soulx-live-qualification",
+      "v2-09-short-hosted-project",
+      "v2-10-operator-free-ranga-pilot",
+      "v2-11-two-concurrent-owned-projects",
+      "v2-12-long-output",
+      "v2-13-final-two-lane-smoke",
+    ],
+  );
 });
 
 test("workflow-start materializes only the four post-consumption role identities", async () => {
@@ -1300,11 +1368,15 @@ test("identity-only workflow materialization never injects future command payloa
 });
 
 test("prequalification bootstrap executes the exact manifest tail through a locked fake-psql seam", async () => {
-  const directory = mkdtempSync(resolve(tmpdir(), "v213-prequalification-test-"));
+  const directory = realpathSync(mkdtempSync(resolve(tmpdir(), "v213-prequalification-test-")));
   chmodSync(directory, 0o700);
+  const secretInputDirectory = resolve(directory, "secret-input");
+  mkdirSync(secretInputDirectory, { mode: 0o700 });
   const servicePath = resolve(directory, "owner.pg_service.conf");
   const passPath = resolve(directory, "owner.pgpass");
   const operatorPath = resolve(directory, "operator.database-url");
+  const runtimePath = resolve(directory, "runtime.database-url");
+  const reconcilerPath = resolve(directory, "reconciler.database-url");
   writeFileSync(
     servicePath,
     "[videoforge_v2_13_owner]\nhost=example.neon.tech\ndbname=videoforge\nuser=videoforge_owner\nsslmode=require\nchannel_binding=require\n",
@@ -1313,11 +1385,6 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
   writeFileSync(passPath, "example.neon.tech:5432:videoforge:videoforge_owner:owner-password\n", {
     mode: 0o600,
   });
-  writeFileSync(
-    operatorPath,
-    "postgresql://videoforge_hosted_operator:operator-password@example.neon.tech/videoforge?sslmode=require&channel_binding=require",
-    { mode: 0o600 },
-  );
   const manifest = JSON.parse(
     readFileSync("packages/control-plane/migrations/manifest.json", "utf8"),
   );
@@ -1356,38 +1423,165 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
   const migrationSqls = [];
   const calls = [];
   let lockedLedgerReads = 0;
-  const run = (command, args) => {
+  let operatorCreated = false;
+  const run = (command, args, options = {}) => {
     calls.push([command, args]);
     assert.equal(command, "psql");
     const fileIndex = args.indexOf("--file");
     if (fileIndex >= 0) {
       const path = args[fileIndex + 1];
-      if (path.endsWith("neon-full-live-operator-grants.sql")) return result();
+      if (path.endsWith("neon-full-live-operator-grants.sql")) {
+        assert.equal(typeof options.environment?.V2_13_OPERATOR_PASSWORD, "string");
+        assert.notEqual(options.environment.V2_13_OPERATOR_PASSWORD, "");
+        operatorCreated = true;
+        return result();
+      }
       const sql = readFileSync(path, "utf8");
       migrationSqls.push(sql);
       return result();
     }
     const sql = args[args.indexOf("--command") + 1] ?? "";
     if (sql.includes("CREATE EXTENSION IF NOT EXISTS pgcrypto")) return result();
-    if (sql.includes("CREATE ROLE")) return result();
+    if (sql.includes("json_build_object('operator'"))
+      return result(
+        0,
+        `${JSON.stringify({ operator: operatorCreated ? 1 : 0, runtime: 0, reconciler: 0 })}\n`,
+      );
     if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock")) {
       lockedLedgerReads += 1;
       return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 45)}\n`);
     }
     if (sql.includes("rolname IN")) return result(0, "0\n");
-    if (sql.includes("count(*)::text FROM pg_roles")) return result(0, "0\n");
+    if (sql.includes("count(*)::text FROM pg_roles"))
+      return result(0, `${operatorCreated ? 1 : 0}\n`);
     if (sql.includes("FROM pg_extension WHERE extname='pgcrypto'"))
       return result(0, '{"name":"pgcrypto","version":"1.3","schema":"public"}\n');
     if (sql.includes("json_build_object('flags'")) return result(0, `${JSON.stringify(role)}\n`);
+    if (sql.includes("SELECT current_user WHERE")) return result(0, "videoforge_hosted_operator\n");
     throw new Error(`unexpected fake psql SQL: ${sql.slice(0, 120)}`);
   };
+  const outerStateSha256 = `sha256:${"f".repeat(64)}`;
+  const consumedState = {
+    ...state,
+    schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v2",
+    authority_id: "v2-13-bootstrap-test-authority",
+    state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
+    operator_role_verified: false,
+  };
+  const environment = {
+    VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory,
+    VIDEOFORGE_V2_13_SECRET_INPUT_DIR: secretInputDirectory,
+    VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE: runtimePath,
+    VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE: reconcilerPath,
+  };
+  let credentialGenerationCount = 0;
   try {
     const adapter = createPrequalificationDatabaseBootstrapAdapter({
-      environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+      environment,
       run,
+      credentialRandomBytes: (size) => {
+        assert.equal(migrationSqls.length, 9);
+        credentialGenerationCount += 1;
+        return Buffer.alloc(size, credentialGenerationCount);
+      },
     });
-    const output = await adapter({}, state);
+    assert.throws(() => lstatSync(operatorPath), /ENOENT/u);
+    await assert.rejects(
+      adapter(
+        { operationId: "bootstrap-prequalification-database" },
+        { ...consumedState, schema_version: "wrong" },
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_CONSUMED_AUTHORITY_REQUIRED/u,
+    );
+    assert.throws(() => lstatSync(operatorPath), /ENOENT/u);
+    const callsBeforeCollision = calls.length;
+    await assert.rejects(
+      createPrequalificationDatabaseBootstrapAdapter({
+        environment: {
+          ...environment,
+          VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: runtimePath,
+        },
+        run,
+      })(
+        { operationId: "bootstrap-prequalification-database" },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH_COLLISION/u,
+    );
+    assert.equal(calls.length, callsBeforeCollision);
+    assert.throws(() => lstatSync(operatorPath), /ENOENT/u);
+    const secretAlias = resolve(directory, "secret-alias");
+    symlinkSync(secretInputDirectory, secretAlias, "dir");
+    const callsBeforeSymlinkAlias = calls.length;
+    await assert.rejects(
+      createPrequalificationDatabaseBootstrapAdapter({
+        environment: {
+          ...environment,
+          VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: resolve(secretAlias, "DATABASE_URL"),
+        },
+        run,
+      })(
+        { operationId: "bootstrap-prequalification-database" },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH_DIRECTORY/u,
+    );
+    assert.equal(calls.length, callsBeforeSymlinkAlias);
+    rmSync(secretAlias);
+    const bundlePath = resolve(directory, "database-role-credentials.json");
+    const staleAuthorityBundleStage = databaseCredentialStagingPath(
+      bundlePath,
+      "v2-13-prior-authority",
+    );
+    writeFileSync(staleAuthorityBundleStage, "stale", { mode: 0o600, flag: "wx" });
+    const callsBeforeStaleStage = calls.length;
+    await assert.rejects(
+      adapter(
+        { operationId: "bootstrap-prequalification-database" },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_DATABASE_CREDENTIAL_STAGING_AUTHORITY_DRIFT/u,
+    );
+    assert.equal(calls.length, callsBeforeStaleStage);
+    rmSync(staleAuthorityBundleStage);
+    const currentAuthorityBundleStage = databaseCredentialStagingPath(
+      bundlePath,
+      consumedState.authority_id,
+    );
+    writeFileSync(currentAuthorityBundleStage, '{"truncated":', { mode: 0o600, flag: "wx" });
+    const callsBeforeCurrentStage = calls.length;
+    await assert.rejects(
+      adapter(
+        { operationId: "bootstrap-prequalification-database" },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_INITIAL_STATE_NOT_FRESH/u,
+    );
+    assert.equal(calls.length, callsBeforeCurrentStage);
+    rmSync(currentAuthorityBundleStage);
+    const output = await adapter(
+      { operationId: "bootstrap-prequalification-database" },
+      consumedState,
+      new Map(),
+      outerStateSha256,
+    );
     assert.equal(output.actualUsd, 0);
+    assert.equal(
+      output.schema_version,
+      "videoforge.v213-prequalification-database-bootstrap-result/v2",
+    );
+    assert.equal(output.full_live_authority_id, consumedState.authority_id);
+    assert.equal(output.outer_state_sha256, outerStateSha256);
     assert.equal(output.recovery_mode, "FRESH_36_TO_45");
     assert.equal(output.ledger_before_count, 36);
     assert.equal(output.runpod_calls, 0);
@@ -1395,6 +1589,15 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(output.application_secret_reads, 0);
     assert.equal(output.gpu_use, false);
     assert.equal(output.external_spend_usd, 0);
+    assert.equal(credentialGenerationCount, 3);
+    assert.equal(
+      new Set([
+        output.operator_database_url_sha256,
+        output.runtime_database_url_sha256,
+        output.reconciler_database_url_sha256,
+      ]).size,
+      3,
+    );
     assert.equal(lockedLedgerReads, 2);
     assert.equal(migrationSqls.length, 9);
     for (const [index, sql] of migrationSqls.entries()) {
@@ -1409,10 +1612,103 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(receipt.recovery_mode, "FRESH_36_TO_45");
     assert.equal(receipt.ledger_before_count, 36);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
+    for (const path of [
+      operatorPath,
+      runtimePath,
+      reconcilerPath,
+      resolve(secretInputDirectory, "DATABASE_URL"),
+      resolve(secretInputDirectory, "VIDEOFORGE_RECONCILER_DATABASE_URL"),
+      resolve(directory, "database-role-credentials.json"),
+    ])
+      assert.equal(lstatSync(path).mode & 0o777, 0o600);
+    assert.equal(
+      readFileSync(runtimePath, "utf8"),
+      readFileSync(resolve(secretInputDirectory, "DATABASE_URL"), "utf8"),
+    );
+    assert.equal(
+      readFileSync(reconcilerPath, "utf8"),
+      readFileSync(resolve(secretInputDirectory, "VIDEOFORGE_RECONCILER_DATABASE_URL"), "utf8"),
+    );
+    const generationsBeforeForbiddenNormalReplay = credentialGenerationCount;
+    await assert.rejects(
+      adapter(
+        { operationId: "bootstrap-prequalification-database" },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_INITIAL_STATE_NOT_FRESH/u,
+    );
+    assert.equal(credentialGenerationCount, generationsBeforeForbiddenNormalReplay);
+    const generationCountBeforeRecovery = credentialGenerationCount;
+    // Simulate a lost process after the atomic role+grants commit but before the local receipt.
+    rmSync(receiptPath);
+    const operatorStagePath = databaseCredentialStagingPath(
+      operatorPath,
+      consumedState.authority_id,
+    );
+    writeFileSync(operatorStagePath, readFileSync(operatorPath), { mode: 0o600, flag: "wx" });
+    const callsBeforeRejectedStagedReconciliation = calls.length;
+    await assert.rejects(
+      adapter(
+        {
+          operationId: "bootstrap-prequalification-database",
+          authorizedUnsettled: true,
+          reconciliationOnly: true,
+          providerDispatchForbidden: true,
+        },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_RECONCILIATION_STAGING_PRESENT/u,
+    );
+    assert.equal(calls.length, callsBeforeRejectedStagedReconciliation);
+    rmSync(operatorStagePath);
+    const recovered = await adapter(
+      {
+        operationId: "bootstrap-prequalification-database",
+        authorizedUnsettled: true,
+        reconciliationOnly: true,
+        providerDispatchForbidden: true,
+      },
+      consumedState,
+      new Map(),
+      outerStateSha256,
+    );
+    assert.equal(recovered.recovery_mode, "VERIFIED_EXISTING_45");
+    assert.equal(recovered.ledger_before_count, 45);
+    assert.equal(recovered.operator_database_url_sha256, output.operator_database_url_sha256);
+    assert.equal(
+      recovered.database_role_credential_bundle_sha256,
+      output.database_role_credential_bundle_sha256,
+    );
+    assert.equal(credentialGenerationCount, generationCountBeforeRecovery);
+    assert.equal(migrationSqls.length, 9);
+    assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
+
+    const bundleBytes = readFileSync(bundlePath);
+    rmSync(bundlePath);
+    await assert.rejects(
+      adapter(
+        {
+          operationId: "bootstrap-prequalification-database",
+          authorizedUnsettled: true,
+          reconciliationOnly: true,
+          providerDispatchForbidden: true,
+        },
+        consumedState,
+        new Map(),
+        outerStateSha256,
+      ),
+      /PREQUALIFICATION_OPERATOR_CREDENTIAL_BINDING_MISSING/u,
+    );
+    assert.equal(credentialGenerationCount, generationCountBeforeRecovery);
+    writeFileSync(bundlePath, bundleBytes, { mode: 0o600, flag: "wx" });
     const callsBeforeRejectedCas = calls.length;
     await assert.rejects(
       verifyPrequalificationDatabaseReceipt({
-        environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+        environment,
         priorResults: new Map([
           [
             "bootstrap-prequalification-database",
@@ -1425,7 +1721,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     );
     assert.equal(calls.length, callsBeforeRejectedCas);
     const bridge = createTypeScriptBridgeAdapters({
-      environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+      environment,
       requirePrequalificationReceipt: true,
       spawnBridge: async () => {
         throw new Error("bridge must not start before receipt CAS");
@@ -1458,7 +1754,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     writeFileSync(receiptPath, `${canonicalJson(mismatchedReceipt)}\n`, { mode: 0o600 });
     await assert.rejects(
       verifyPrequalificationDatabaseReceipt({
-        environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
+        environment,
         priorResults: new Map([
           ["bootstrap-prequalification-database", { ...output, ...mismatchedReceipt }],
         ]),
@@ -1467,17 +1763,182 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       /PREQUALIFICATION_VERIFY_LEDGER_BEFORE/u,
     );
     writeFileSync(receiptPath, originalReceiptBytes, { mode: 0o600 });
+    const lockedLedgerReadsBeforeVerifiedReceipt = lockedLedgerReads;
     const verified = await verifyPrequalificationDatabaseReceipt({
-      environment: { VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory },
-      priorResults: new Map([["bootstrap-prequalification-database", output]]),
+      environment,
+      priorResults: new Map([["bootstrap-prequalification-database", recovered]]),
       run,
     });
     assert.equal(verified.ledger.length, 45);
-    assert.equal(lockedLedgerReads, 4);
+    assert.equal(lockedLedgerReads, lockedLedgerReadsBeforeVerifiedReceipt + 1);
     assert.equal(
       calls.every(([command]) => command === "psql"),
       true,
     );
+    const unexpectedOperatorHardLink = resolve(directory, "unexpected-operator-hard-link");
+    linkSync(operatorPath, unexpectedOperatorHardLink);
+    await assert.rejects(
+      verifyPrequalificationDatabaseReceipt({
+        environment,
+        priorResults: new Map([["bootstrap-prequalification-database", recovered]]),
+        run,
+      }),
+      /PREQUALIFICATION_DATABASE_CREDENTIAL_FILE/u,
+    );
+    rmSync(unexpectedOperatorHardLink);
+
+    const cleanupWorkId =
+      `${consumedState.authority_id}:bootstrap-prequalification-database`.toLowerCase();
+    const cleanupState = {
+      ...consumedState,
+      state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+      phases: {
+        bootstrap_prequalification_database: {
+          work: {
+            [cleanupWorkId]: { state: "AUTHORIZED_ONCE_NOT_REDISPATCHABLE" },
+          },
+        },
+      },
+    };
+    const credentialArtifacts = [
+      operatorPath,
+      runtimePath,
+      reconcilerPath,
+      resolve(secretInputDirectory, "DATABASE_URL"),
+      resolve(secretInputDirectory, "VIDEOFORGE_RECONCILER_DATABASE_URL"),
+      bundlePath,
+    ];
+    const bundleStagePath = databaseCredentialStagingPath(bundlePath, consumedState.authority_id);
+    linkSync(bundlePath, bundleStagePath);
+    credentialArtifacts.push(bundleStagePath);
+    const artifactBytesBeforeRejectedCleanup = credentialArtifacts.map((path) =>
+      readFileSync(path),
+    );
+    await assert.rejects(
+      cleanupPartialDatabaseRoleCredentials({ environment, run, state: cleanupState }),
+      /PREQUALIFICATION_PARTIAL_CLEANUP_ROLE_PRESENT/u,
+    );
+    credentialArtifacts.forEach((path, index) =>
+      assert.deepEqual(readFileSync(path), artifactBytesBeforeRejectedCleanup[index]),
+    );
+
+    // Model the opposite atomic-transaction outcome: the process wrote its local authority-bound
+    // credential files only partially, but the role+grants transaction did not commit. Cleanup may
+    // remove only those exact files after the owner readback proves every target role absent.
+    rmSync(resolve(secretInputDirectory, "DATABASE_URL"));
+    operatorCreated = false;
+    rmSync(receiptPath);
+    const cleaned = await cleanupPartialDatabaseRoleCredentials({
+      environment,
+      run,
+      state: cleanupState,
+    });
+    assert.equal(cleaned.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
+    assert.equal(cleaned.fullLiveAuthorityId, cleanupState.authority_id);
+    assert.equal(cleaned.operatorRoleAbsent, true);
+    assert.equal(cleaned.runtimeAndReconcilerRolesAbsent, true);
+    assert.equal(cleaned.removedArtifactCount, 6);
+    assert.equal(cleaned.credentialBundleSha256, hash(bundleBytes));
+    const { cleanupSha256, ...cleanupBody } = cleaned;
+    assert.equal(cleanupSha256, hash(Buffer.from(canonicalJson(cleanupBody))));
+    for (const path of credentialArtifacts) assert.throws(() => lstatSync(path), /ENOENT/u);
+    const replayedCleanup = await cleanupPartialDatabaseRoleCredentials({
+      environment,
+      run,
+      state: cleanupState,
+    });
+    assert.equal(replayedCleanup.cleanupState, "ALREADY_ABSENT");
+    assert.equal(replayedCleanup.credentialBundleSha256, null);
+    assert.equal(replayedCleanup.removedArtifactCount, 0);
+
+    // A hard crash can interrupt an exclusive write before link(2), leaving only a truncated,
+    // deterministic current-authority bundle stage. Role-absence proof permits deleting exactly
+    // that file without parsing its incomplete secret bytes.
+    writeFileSync(bundleStagePath, '{"truncated":', { mode: 0o600, flag: "wx" });
+    const truncatedBundleCleanup = await cleanupPartialDatabaseRoleCredentials({
+      environment,
+      run,
+      state: cleanupState,
+    });
+    assert.equal(truncatedBundleCleanup.cleanupState, "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING");
+    assert.equal(truncatedBundleCleanup.credentialBundleSha256, null);
+    assert.equal(truncatedBundleCleanup.removedArtifactCount, 1);
+    assert.throws(() => lstatSync(bundleStagePath), /ENOENT/u);
+
+    // A hard crash after link(2) but before stage unlink leaves both exact bundle copies.
+    writeFileSync(bundleStagePath, bundleBytes, { mode: 0o600, flag: "wx" });
+    linkSync(bundleStagePath, bundlePath);
+    const linkedBundleCleanup = await cleanupPartialDatabaseRoleCredentials({
+      environment,
+      run,
+      state: cleanupState,
+    });
+    assert.equal(linkedBundleCleanup.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
+    assert.equal(linkedBundleCleanup.credentialBundleSha256, hash(bundleBytes));
+    assert.equal(linkedBundleCleanup.removedArtifactCount, 2);
+
+    const credentialBundle = JSON.parse(bundleBytes);
+    const databaseUrlTargets = [
+      ["operator", operatorPath],
+      ["runtime", runtimePath],
+      ["runtime", resolve(secretInputDirectory, "DATABASE_URL")],
+      ["reconciler", reconcilerPath],
+      ["reconciler", resolve(secretInputDirectory, "VIDEOFORGE_RECONCILER_DATABASE_URL")],
+    ];
+    for (const [kind, target] of databaseUrlTargets) {
+      const stage = databaseCredentialStagingPath(target, consumedState.authority_id);
+      const expected = Buffer.from(credentialBundle.credentials[kind].database_url);
+
+      // Before link: the deterministic per-copy stage may be incomplete, but a final canonical
+      // bundle still proves which authority owns the cleanup scope.
+      writeFileSync(bundlePath, bundleBytes, { mode: 0o600, flag: "wx" });
+      writeFileSync(stage, "partial", { mode: 0o600, flag: "wx" });
+      const beforeLink = await cleanupPartialDatabaseRoleCredentials({
+        environment,
+        run,
+        state: cleanupState,
+      });
+      assert.equal(beforeLink.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
+      assert.equal(beforeLink.removedArtifactCount, 2);
+      assert.equal(beforeLink.credentialBundleSha256, hash(bundleBytes));
+      assert.throws(() => lstatSync(stage), /ENOENT/u);
+
+      // After link but before unlink: both exact copies are discoverable and removed, with the
+      // database URL copies preceding the canonical bundle deletion.
+      writeFileSync(bundlePath, bundleBytes, { mode: 0o600, flag: "wx" });
+      writeFileSync(stage, expected, { mode: 0o600, flag: "wx" });
+      linkSync(stage, target);
+      const afterLink = await cleanupPartialDatabaseRoleCredentials({
+        environment,
+        run,
+        state: cleanupState,
+      });
+      assert.equal(afterLink.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
+      assert.equal(afterLink.removedArtifactCount, 3);
+      assert.equal(afterLink.credentialBundleSha256, hash(bundleBytes));
+      assert.throws(() => lstatSync(target), /ENOENT/u);
+      assert.throws(() => lstatSync(stage), /ENOENT/u);
+    }
+
+    writeFileSync(bundlePath, bundleBytes, { mode: 0o600, flag: "wx" });
+    const unexpectedBundleHardLink = resolve(directory, "unexpected-bundle-hard-link");
+    linkSync(bundlePath, unexpectedBundleHardLink);
+    await assert.rejects(
+      cleanupPartialDatabaseRoleCredentials({ environment, run, state: cleanupState }),
+      /PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_LINK_TOPOLOGY/u,
+    );
+    assert.deepEqual(readFileSync(bundlePath), bundleBytes);
+    rmSync(unexpectedBundleHardLink);
+    rmSync(bundlePath);
+
+    const foreignStage = databaseCredentialStagingPath(bundlePath, "v2-13-foreign-authority");
+    writeFileSync(foreignStage, "foreign", { mode: 0o600, flag: "wx" });
+    await assert.rejects(
+      cleanupPartialDatabaseRoleCredentials({ environment, run, state: cleanupState }),
+      /PREQUALIFICATION_PARTIAL_CLEANUP_STAGING_AUTHORITY_DRIFT/u,
+    );
+    assert.equal(readFileSync(foreignStage, "utf8"), "foreign");
+    rmSync(foreignStage);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -1523,7 +1984,9 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
   const promotionPath = resolve(directory, "promotion.json");
   const productionSecretsPath = resolve(directory, "production-secrets.json");
   const secretInputDirectory = resolve(directory, "secret-input");
+  const postgresInputDirectory = resolve(directory, "postgres-input");
   mkdirSync(secretInputDirectory, { mode: 0o700 });
+  mkdirSync(postgresInputDirectory, { mode: 0o700 });
   const staticSecretNames = [
     "DATABASE_URL",
     "BETTER_AUTH_SECRET",
@@ -1563,11 +2026,13 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE: promotionPath,
     VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE: productionSecretsPath,
     VIDEOFORGE_V2_13_SECRET_INPUT_DIR: secretInputDirectory,
+    VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: postgresInputDirectory,
   };
   const validated = { production: 0, guarded: 0, promotion: 0 };
-  const factory = () =>
+  const factory = ({ readMediaWorkerRelease = mediaWorkerReleaseReadback } = {}) =>
     createProtectedInputMaterializer({
       environment,
+      readMediaWorkerRelease,
       validateProduction: () => {
         validated.production += 1;
         return JSON.parse(readFileSync(outputPath, "utf8"));
@@ -1586,6 +2051,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
   const materialize = factory();
   const materialState = {
     ...state,
+    state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
     authority_id: "v2-13-materializer-test-0001",
     proposal_sha256: `sha256:${"1".repeat(64)}`,
     approval_sha256: `sha256:${"2".repeat(64)}`,
@@ -1610,6 +2076,17 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       state: materialState,
       priorResults: prior,
       outerStateSha256: `sha256:${"9".repeat(64)}`,
+    });
+    assert.throws(() => readFileSync(outputPath), /ENOENT/u);
+    prior.set("fresh-live-preflight", {
+      evidenceSha256: `sha256:${"9".repeat(64)}`,
+      bridgeSummary: { admission: { cumulativeBillingUsd: 10 } },
+    });
+    await materialize({
+      operationId: "mage-live-qualification",
+      state: materialState,
+      priorResults: prior,
+      outerStateSha256: `sha256:${"a".repeat(64)}`,
     });
     const output = JSON.parse(readFileSync(outputPath, "utf8"));
     const chain = JSON.parse(readFileSync(chainPath, "utf8"));
@@ -1644,6 +2121,45 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
         },
       },
     });
+    const operatorDatabaseUrl = Buffer.from(
+      "postgresql://videoforge_hosted_operator:operator-password@db.example.invalid/videoforge?sslmode=require",
+    );
+    writeFileSync(resolve(postgresInputDirectory, "operator.database-url"), operatorDatabaseUrl, {
+      mode: 0o600,
+    });
+    later.set("bootstrap-prequalification-database", {
+      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v2",
+      full_live_authority_id: materialState.authority_id,
+      outer_state_sha256: `sha256:${"3".repeat(64)}`,
+      operator_database_url_sha256: hash(operatorDatabaseUrl),
+      runtime_database_url_sha256: hash(Buffer.from("static-0")),
+      reconciler_database_url_sha256: hash(Buffer.from("static-8")),
+      database_role_credential_bundle_sha256: `sha256:${"4".repeat(64)}`,
+      prequalification_database_bootstrap_sha256: `sha256:${"5".repeat(64)}`,
+    });
+    await assert.rejects(
+      factory({
+        readMediaWorkerRelease: async (input) => ({
+          ...mediaWorkerReleaseReadback(input),
+          manifestSha256: `sha256:${"0".repeat(64)}`,
+        }),
+      })({
+        operationId: "guarded-activation-once",
+        state: materialState,
+        priorResults: later,
+        outerStateSha256: `sha256:${"f".repeat(64)}`,
+      }),
+      /MEDIA_WORKER_RELEASE_READBACK_CONTRACT/u,
+    );
+    assert.throws(() => readFileSync(manifestPath), /ENOENT/u);
+    assert.equal(JSON.parse(readFileSync(chainPath, "utf8")).entries.length, 1);
+    for (const name of [
+      "VIDEOFORGE_MAGE_ENDPOINT_ID",
+      "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+      "VIDEOFORGE_SOULX_ENDPOINT_ID",
+      "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+    ])
+      assert.throws(() => lstatSync(resolve(secretInputDirectory, name)), /ENOENT/u);
     await factory()({
       operationId: "guarded-activation-once",
       state: materialState,
@@ -1666,7 +2182,13 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     const completeChain = JSON.parse(readFileSync(chainPath, "utf8"));
     assert.deepEqual(
       completeChain.entries.map((entry) => entry.kind),
-      ["production-input", "max-one-endpoint-bindings", "activation-record", "promotion-record"],
+      [
+        "production-input",
+        "media-worker-release-readback",
+        "max-one-endpoint-bindings",
+        "activation-record",
+        "promotion-record",
+      ],
     );
     assert.equal(
       completeChain.entries[1].prior_chain_sha256,
@@ -1679,6 +2201,10 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
     assert.equal(
       completeChain.entries[3].prior_chain_sha256,
       completeChain.entries[2].entry_sha256,
+    );
+    assert.equal(
+      completeChain.entries[4].prior_chain_sha256,
+      completeChain.entries[3].entry_sha256,
     );
     for (const path of [manifestPath, configPath, disabledPath, activationPath, promotionPath])
       assert.equal(lstatSync(path).mode & 0o777, 0o600);
@@ -1696,12 +2222,13 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       `sha256:${"f".repeat(64)}`,
     );
     const activation = JSON.parse(readFileSync(activationPath, "utf8"));
+    assert.deepEqual(JSON.parse(readFileSync(manifestPath, "utf8")), MEDIA_WORKER_RELEASE_MANIFEST);
     assert.equal(Object.keys(activation.secret_sha256).length, 22);
     assert.equal(activation.secret_sha256.VIDEOFORGE_MAGE_ENDPOINT_ID, hash("mage-endpoint"));
     assert.deepEqual(validated, { production: 2, guarded: 1, promotion: 1 });
     await assert.rejects(
       factory()({
-        operationId: "fresh-live-preflight",
+        operationId: "mage-live-qualification",
         state: materialState,
         priorResults: prior,
         outerStateSha256: `sha256:${"a".repeat(64)}`,
@@ -1831,7 +2358,11 @@ test("cleanup-only materializes and chains an endpoint-free descriptor without f
 test("protected TypeScript bridge chains only opaque qualification hashes across processes", async () => {
   const directory = mkdtempSync(resolve(tmpdir(), "v213-bridge-adapter-test-"));
   chmodSync(directory, 0o700);
+  const seedPath = resolve(directory, "materialization-seed.json");
   const inputPath = resolve(directory, "production-input.json");
+  const seed = materializationSeedFixture();
+  const seedBytes = Buffer.from(`${canonicalJson(seed)}\n`);
+  writeFileSync(seedPath, seedBytes, { mode: 0o600 });
   writeFileSync(
     inputPath,
     JSON.stringify({
@@ -1878,21 +2409,44 @@ test("protected TypeScript bridge chains only opaque qualification hashes across
     };
   };
   try {
+    const bridgeState = {
+      ...state,
+      authority_id: "v2-13-bridge-adapter-test",
+      proposal_sha256: `sha256:${"5".repeat(64)}`,
+      approval_sha256: `sha256:${"6".repeat(64)}`,
+      proposal_record_commit: "7".repeat(40),
+      full_live_executor_sha256: `sha256:${"8".repeat(64)}`,
+      materialization_seed_sha256: hash(seedBytes),
+    };
     const adapters = createTypeScriptBridgeAdapters({
-      environment: { VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: inputPath },
+      environment: {
+        VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: seedPath,
+        VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: inputPath,
+      },
+      expectedCliSha256: hash(
+        readFileSync(resolve(process.cwd(), "apps/web/src/server/providers/v213-full-live-cli.ts")),
+      ),
+      expectedTransportSha256: hash(
+        readFileSync(
+          resolve(
+            process.cwd(),
+            "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
+          ),
+        ),
+      ),
       spawnBridge,
     });
     const prior = new Map();
     const preflight = await adapters["fresh-live-preflight"](
       {},
-      state,
+      bridgeState,
       prior,
       `sha256:${"a".repeat(64)}`,
     );
     prior.set("fresh-live-preflight", preflight);
     const mage = await adapters["mage-live-qualification"](
       {},
-      state,
+      bridgeState,
       prior,
       `sha256:${"b".repeat(64)}`,
     );
@@ -1949,6 +2503,14 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
       // stale until final reseal.
       expectedCliSha256: hash(
         readFileSync(resolve(process.cwd(), "apps/web/src/server/providers/v213-full-live-cli.ts")),
+      ),
+      expectedTransportSha256: hash(
+        readFileSync(
+          resolve(
+            process.cwd(),
+            "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
+          ),
+        ),
       ),
       spawnBridge: async ({ request }) => {
         requests.push(request);
@@ -2039,6 +2601,184 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("bootstrap-partial cleanup runs owner-local preamble before exact provider readbacks", async () => {
+  const fullLiveAuthorityId = "v2-13-bootstrap-partial-cleanup-test";
+  const workId = `${fullLiveAuthorityId}:bootstrap-prequalification-database`;
+  const state = {
+    authority_id: fullLiveAuthorityId,
+    state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+    operator_role_verified: false,
+    phases: {
+      bootstrap_prequalification_database: {
+        work: { [workId]: { state: "AUTHORIZED_ONCE_NOT_REDISPATCHABLE" } },
+      },
+    },
+  };
+  const cleanupBody = {
+    schemaVersion: "videoforge.v213-database-role-credential-cleanup/v1",
+    fullLiveAuthorityId,
+    cleanupState: "ALREADY_ABSENT",
+    operatorRoleAbsent: true,
+    runtimeAndReconcilerRolesAbsent: true,
+    credentialBundleSha256: null,
+    removedArtifactCount: 0,
+  };
+  const localCleanup = {
+    ...cleanupBody,
+    cleanupSha256: hash(Buffer.from(canonicalJson(cleanupBody))),
+  };
+  const summaries = {
+    "restore-endpoints-max-one": {
+      restorationPerformed: false,
+      productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+      productionResourcesAbsent: true,
+      bothEndpointsMaxWorkersOne: false,
+      retainedProductionEndpoints: 0,
+    },
+    "prove-zero-workers": { zeroWorkers: true, reads: [{}, {}, {}] },
+    "read-settled-billing": {
+      cumulativeBillingUsd: 3,
+      billingReads: [3, 3, 3],
+      billingReadCount: 3,
+      billingStable: true,
+      withinCumulativeCap: true,
+    },
+    "reconcile-exact-resources": {
+      checkedAt: "2026-08-28T10:00:00.000Z",
+      runningPods: 0,
+      activeWorkers: 0,
+      queuedJobs: 0,
+      endpointIdSha256s: [],
+      templateIdSha256s: [],
+      volumes: [],
+      onlyApprovedRetainedVolumes: true,
+    },
+  };
+  const providerEvidenceSha256 = hash(
+    Buffer.from(canonicalJson(summaries["reconcile-exact-resources"])),
+  );
+  let cleanupCalls = 0;
+  let bridgeCalls = 0;
+  const adapters = createTypeScriptBridgeAdapters({
+    expectedCliSha256: hash(
+      readFileSync(resolve(process.cwd(), "apps/web/src/server/providers/v213-full-live-cli.ts")),
+    ),
+    expectedTransportSha256: hash(
+      readFileSync(
+        resolve(process.cwd(), "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts"),
+      ),
+    ),
+    cleanupPartialDatabaseCredentials: async ({ state: supplied }) => {
+      cleanupCalls += 1;
+      assert.equal(supplied, state);
+      return localCleanup;
+    },
+    spawnBridge: async ({ request }) => {
+      bridgeCalls += 1;
+      assert.equal(cleanupCalls, 1);
+      const summary = summaries[request.command];
+      assert.ok(summary);
+      return {
+        schemaVersion: "videoforge.v213-full-live-command-result/v1",
+        commandId: request.commandId,
+        command: request.command,
+        state: "TERMINAL",
+        evidenceSha256: hash(Buffer.from(canonicalJson(summary))),
+        summary,
+      };
+    },
+  });
+  const context = {
+    cleanupOnly: true,
+    earlyFailure: true,
+    endpointFree: true,
+    providerDispatchForbidden: true,
+    cleanupMode: "BOOTSTRAP_PARTIAL_CLEANUP",
+  };
+  const outputs = new Map();
+  for (const [index, command] of [
+    "restore-endpoints-max-one",
+    "prove-zero-workers",
+    "read-settled-billing",
+    "reconcile-exact-resources",
+  ].entries())
+    outputs.set(
+      command,
+      await adapters[command](context, state, new Map(), `sha256:${String(index + 1).repeat(64)}`),
+    );
+  const output = outputs.get("reconcile-exact-resources");
+  assert.equal(cleanupCalls, 1);
+  assert.equal(bridgeCalls, 4);
+  assert.equal(outputs.get("restore-endpoints-max-one").productionResourcesAbsent, true);
+  assert.equal(outputs.get("prove-zero-workers").zeroWorkers, true);
+  assert.equal(outputs.get("read-settled-billing").withinCumulativeCap, true);
+  assert.deepEqual(output.localDatabaseCredentialCleanup, localCleanup);
+  assert.equal(
+    output.proofSha256,
+    hash(
+      Buffer.from(
+        canonicalJson({
+          providerCleanupEvidenceSha256: providerEvidenceSha256,
+          localDatabaseCredentialCleanupSha256: localCleanup.cleanupSha256,
+        }),
+      ),
+    ),
+  );
+  await assert.rejects(
+    adapters["reconcile-exact-resources"](
+      { ...context, cleanupMode: "UNKNOWN_CLEANUP" },
+      state,
+      new Map(),
+      `sha256:${"b".repeat(64)}`,
+    ),
+    /BRIDGE_EARLY_CLEANUP_MODE/u,
+  );
+  assert.equal(cleanupCalls, 1);
+  await assert.rejects(
+    adapters["reconcile-exact-resources"](
+      { ...context, providerDispatchForbidden: false },
+      state,
+      new Map(),
+      `sha256:${"c".repeat(64)}`,
+    ),
+    /BRIDGE_EARLY_CLEANUP_PROVIDER_DISPATCH_FENCE/u,
+  );
+  assert.equal(cleanupCalls, 1);
+
+  let failedPreambleCalls = 0;
+  let failedBridgeCalls = 0;
+  const missingRunPodAdapters = createTypeScriptBridgeAdapters({
+    expectedCliSha256: hash(
+      readFileSync(resolve(process.cwd(), "apps/web/src/server/providers/v213-full-live-cli.ts")),
+    ),
+    expectedTransportSha256: hash(
+      readFileSync(
+        resolve(process.cwd(), "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts"),
+      ),
+    ),
+    cleanupPartialDatabaseCredentials: async () => {
+      failedPreambleCalls += 1;
+      return localCleanup;
+    },
+    spawnBridge: async () => {
+      failedBridgeCalls += 1;
+      assert.equal(failedPreambleCalls, 1);
+      throw new Error("missing RunPod key");
+    },
+  });
+  await assert.rejects(
+    missingRunPodAdapters["restore-endpoints-max-one"](
+      context,
+      state,
+      new Map(),
+      `sha256:${"d".repeat(64)}`,
+    ),
+    /missing RunPod key/u,
+  );
+  assert.equal(failedPreambleCalls, 1);
+  assert.equal(failedBridgeCalls, 1);
 });
 
 test("release certification uses a separate DB-only child and preserves recovery readback flags", async () => {

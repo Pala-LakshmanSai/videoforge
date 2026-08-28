@@ -18,7 +18,14 @@ import soundfile as sf
 import torch
 from PIL import Image
 
-from soulx_volume import SOULX_SOURCE_REVISION, expected_manifest_sha256, verify_volume, volume_root
+from soulx_volume import (
+    SOULX_SOURCE_REVISION,
+    expected_manifest_sha256,
+    validate_warmup_observation,
+    verify_volume,
+    volume_root,
+    warmup_attestation_sha256,
+)
 
 
 class SoulXRuntime:
@@ -33,6 +40,7 @@ class SoulXRuntime:
         self._boot_started = time.monotonic()
         self._timings: dict[str, int] = {}
         self._gpu: dict[str, Any] = {}
+        self._warmup_attestation_sha256: str | None = None
 
     def initialize(self) -> None:
         try:
@@ -62,7 +70,10 @@ class SoulXRuntime:
             )
             self._timings["model_load_ms"] = round((time.monotonic() - load_started) * 1000)
             warmup_started = time.monotonic()
-            self._warmup()
+            warmup_facts = self._warmup()
+            self._warmup_attestation_sha256 = warmup_attestation_sha256(
+                os.environ.get("VIDEOFORGE_SOULX_CONTAINER_DIGEST", ""), warmup_facts
+            )
             self._timings["compile_warmup_ms"] = round((time.monotonic() - warmup_started) * 1000)
             self._timings["model_ready_ms"] = round((time.monotonic() - self._boot_started) * 1000)
             self._timings["manifest_total_bytes"] = int(verification["total_bytes"])
@@ -74,7 +85,7 @@ class SoulXRuntime:
                 self._state = "failed"
                 self._error = f"{type(error).__name__}: {error}"
 
-    def _warmup(self) -> None:
+    def _warmup(self) -> dict[str, object]:
         with tempfile.TemporaryDirectory(prefix="vf924s-warmup-") as temp_dir:
             image_path = Path(temp_dir) / "warmup.png"
             Image.new("RGB", (512, 512), (112, 112, 112)).save(image_path)
@@ -101,8 +112,22 @@ class SoulXRuntime:
                 params["cached_audio_duration"] * params["tgt_fps"] - params["frame_num"],
                 params["cached_audio_duration"] * params["tgt_fps"],
             )
-            self._infer.run_pipeline(self._pipeline, embedding)
+            frames = self._infer.run_pipeline(self._pipeline, embedding)
             torch.cuda.synchronize()
+            params_contract = {
+                "sample_rate": params.get("sample_rate"),
+                "tgt_fps": params.get("tgt_fps"),
+                "frame_num": params.get("frame_num"),
+                "motion_frames_num": params.get("motion_frames_num"),
+            }
+            observed = frames.detach().float().cpu().numpy()
+            return validate_warmup_observation(
+                parameters=params_contract,
+                output_shape=tuple(observed.shape),
+                output_finite=bool(np.isfinite(observed).all()),
+                output_min=float(observed.min()) if observed.size else None,
+                output_max=float(observed.max()) if observed.size else None,
+            )
 
     def health(self) -> dict[str, Any]:
         with self._state_lock:
@@ -113,6 +138,7 @@ class SoulXRuntime:
                 "error": self._error,
                 "source_revision": SOULX_SOURCE_REVISION,
                 "manifest_sha256": expected_manifest_sha256(),
+                "warmup_attestation_sha256": self._warmup_attestation_sha256,
                 "settings": {
                     "model_type": "pro",
                     "precision": "bfloat16",

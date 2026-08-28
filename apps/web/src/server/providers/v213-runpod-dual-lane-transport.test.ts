@@ -3,7 +3,10 @@ import { createHash } from "node:crypto";
 import { ProvenanceReceiptSigner } from "@videoforge/control-plane";
 
 import { createV213RunPodDualLaneTransport } from "./v213-runpod-dual-lane-transport.js";
-import type { V213DualLaneInput } from "./v213-dual-lane-live.js";
+import {
+  V213_QUALIFICATION_CASE_DESCRIPTORS,
+  type V213DualLaneInput,
+} from "./v213-dual-lane-live.js";
 
 const sha = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}`;
 const idSha = (value: string) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -14,10 +17,8 @@ function input(): V213DualLaneInput {
     publicImage: `ghcr.io/example/${lane}@${sha(marker)}`,
     sourceCommit: marker.repeat(40),
     deploymentSha256: sha(marker),
-    volumeId,
     volumeIdSha256: idSha(volumeId),
     volumeManifestSha256: sha(marker === "a" ? "e" : "f"),
-    receiptKeyId: "fixture-receipt-key",
   });
   return {
     accountIdSha256: sha("9"),
@@ -29,16 +30,33 @@ function input(): V213DualLaneInput {
     soulxQualificationCapUsd: 1,
     stageAuthorityPublicKeyPem: "fixture",
     receiptSigner: new ProvenanceReceiptSigner("fixture-receipt-key", new Uint8Array(32).fill(7)),
-    envelopes: {
-      mage: {},
-      soulx2s: {},
-      soulx4s: {},
-      soulx6s: {},
-      soulx10s: {},
-      soulxCancel: {},
-      soulxInvalidOutput: {},
-      soulxTimeout: {},
+    qualificationEnvelopeSchemaSha256: sha("4"),
+    envelopeSigningKeyId: "fixture-receipt-key",
+    qualificationGeneratorSha256: sha("5"),
+    qualificationCaseDescriptors: V213_QUALIFICATION_CASE_DESCRIPTORS,
+    qualificationSourceRefs: {
+      caseSource: { path: "case.ts", sha256: sha("1") as `sha256:${string}` },
+      generators: {
+        mage: { path: "mage.mjs", sha256: sha("2") as `sha256:${string}` },
+        soulx: { path: "soulx.mjs", sha256: sha("3") as `sha256:${string}` },
+      },
+      validators: {
+        mage: { path: "mage.py", sha256: sha("4") as `sha256:${string}` },
+        soulx: { path: "soulx.py", sha256: sha("5") as `sha256:${string}` },
+      },
     },
+    qualificationProtectedInputDescriptors: Object.fromEntries(
+      ["avatarSource", "soulx2s", "soulx4s", "soulx6s", "soulx10s"].map((key) => [
+        key,
+        {
+          path: `.videoforge/private/${key}`,
+          sha256: sha("6"),
+          sizeBytes: 100,
+          contentType: key === "avatarSource" ? "image/png" : "audio/wav",
+        },
+      ]),
+    ) as V213DualLaneInput["qualificationProtectedInputDescriptors"],
+    qualificationR2: { accountId: "a".repeat(32), bucketName: "fixture-private" },
   };
 }
 
@@ -50,6 +68,7 @@ function fixture(
     templateLaneOverride?: string;
     templatePurposeOverride?: string;
     templateResourceKeyHashOverride?: string;
+    boundReceiptKeyIdOverride?: string;
     endpointCreateAmbiguous?: boolean;
     withDelivery?: boolean;
     deletionRemains?: boolean;
@@ -58,6 +77,13 @@ function fixture(
   } = {},
 ) {
   const model = input();
+  const workerEnvironment = Object.freeze({
+    envelopeSigningKeyId: model.envelopeSigningKeyId,
+    envelopeSigningKeyHex: "11".repeat(32),
+    receiptKeyId: model.receiptSigner.keyId,
+    receiptSigningKeyHex: "22".repeat(32),
+    mageWorkerTokenHex: "33".repeat(32),
+  });
   const endpoints: { id: string; idHash: string; name: string }[] = [];
   const templates: { id: string; idHash: string; name: string }[] = [];
   const endpointRaw = new Map<string, Record<string, unknown>>();
@@ -113,7 +139,27 @@ function fixture(
         return item;
       },
     ),
-    bindV207EndpointIdentity: vi.fn(async () => undefined),
+    bindV207EndpointIdentity: vi.fn(
+      async (
+        endpointId: string,
+        templateId: string,
+        _policy: unknown,
+        _placement: unknown,
+        environment: Readonly<Record<string, string>>,
+      ) => {
+        const raw = templateRaw.get(templateId);
+        if (!raw) throw new Error("fixture template missing");
+        raw.env = {
+          ...environment,
+          [environment.VIDEOFORGE_V213_LANE === "soulx"
+            ? "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256"
+            : "VIDEOFORGE_MAGE_ENDPOINT_ID_HASH"]: idSha(endpointId),
+          ...(options.boundReceiptKeyIdOverride === undefined
+            ? {}
+            : { VIDEOFORGE_RECEIPT_KEY_ID: options.boundReceiptKeyIdOverride }),
+        };
+      },
+    ),
     inventoryDisposableResources: vi.fn(async () => ({
       endpoints: endpoints.map((item) => ({ ...item, raw: endpointRaw.get(item.id)! })),
       templates: templates.map((item) => ({ ...item, raw: templateRaw.get(item.id)! })),
@@ -140,6 +186,11 @@ function fixture(
       runningPodCount: 0,
       activeServerlessWorkerCount: 0,
     })),
+    resolveExactNetworkVolumeId: vi.fn(async ({ volumeIdSha256 }) => {
+      if (volumeIdSha256 === model.mage.volumeIdSha256) return "volume_mage";
+      if (volumeIdSha256 === model.soulx.volumeIdSha256) return "volume_soulx";
+      throw new Error("RUNPOD_NETWORK_VOLUME_BINDING_UNCONFIRMED");
+    }),
     deleteEndpoint: vi.fn(async (id: string) => {
       if (options.deletionRemains) return;
       endpoints.splice(
@@ -196,10 +247,14 @@ function fixture(
     void endpointId;
     return client;
   });
-  const makeTransport = (transportInput: V213DualLaneInput = model) =>
+  const makeTransport = (
+    transportInput: V213DualLaneInput = model,
+    exactWorkerEnvironment: typeof workerEnvironment | null = workerEnvironment,
+  ) =>
     createV213RunPodDualLaneTransport({
       durable: {} as never,
       input: transportInput,
+      workerEnvironment: exactWorkerEnvironment,
       control,
       accountPreflight: async () => ({ accountIdHash: model.accountIdSha256 }),
       readAdmissionFacts: async () => ({
@@ -210,6 +265,9 @@ function fixture(
       }),
       createJobClient,
       verifyOutputReadback,
+      materializeQualificationCase: async () => {
+        throw new Error("UNUSED_QUALIFICATION_MATERIALIZER");
+      },
       sleep: async () => undefined,
       now: () => new Date("2026-08-26T00:30:00.000Z"),
     });
@@ -222,10 +280,108 @@ function fixture(
     model,
     verifyOutputReadback,
     createJobClient,
+    workerEnvironment,
   };
 }
 
 describe("V213 concrete RunPod dual-lane transport", () => {
+  it("resolves the exact retained volume before any template or endpoint mutation", async () => {
+    const { transport, control, model } = fixture();
+    control.resolveExactNetworkVolumeId.mockRejectedValueOnce(
+      new Error("RUNPOD_NETWORK_VOLUME_BINDING_UNCONFIRMED"),
+    );
+    await expect(
+      transport.createLane({
+        sealed: model.mage,
+        purpose: "qualification",
+        resourceKey: "stage:mage:qualification",
+        workersMin: 0,
+        workersMax: 1,
+      }),
+    ).rejects.toThrow("RUNPOD_NETWORK_VOLUME_BINDING_UNCONFIRMED");
+    expect(control.createServerlessTemplate).not.toHaveBeenCalled();
+    expect(control.createScaleZeroEndpoint).not.toHaveBeenCalled();
+    expect(control.bindV207EndpointIdentity).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing or identity-drifted worker auth before any provider call", async () => {
+    const { makeTransport, control, model, workerEnvironment } = fixture();
+    for (const transport of [
+      makeTransport(model, null),
+      makeTransport(model, {
+        ...workerEnvironment,
+        envelopeSigningKeyId: "different-envelope-key",
+      }),
+    ]) {
+      await expect(
+        transport.createLane({
+          sealed: model.mage,
+          purpose: "qualification",
+          resourceKey: "stage:mage:invalid-worker-auth",
+          workersMin: 0,
+          workersMax: 1,
+        }),
+      ).rejects.toThrow("V213_WORKER_ENVIRONMENT_AUTHORITY_MISMATCH");
+    }
+    expect(control.resolveExactNetworkVolumeId).not.toHaveBeenCalled();
+    expect(control.createServerlessTemplate).not.toHaveBeenCalled();
+    expect(control.createScaleZeroEndpoint).not.toHaveBeenCalled();
+  });
+
+  it("injects and reads back exact lane worker auth, image, model, and volume bindings", async () => {
+    const { transport, control, model, workerEnvironment } = fixture();
+    for (const sealed of [model.mage, model.soulx] as const) {
+      const created = await transport.createLane({
+        sealed,
+        purpose: "qualification",
+        resourceKey: `stage:${sealed.lane}:exact-worker-env`,
+        workersMin: 0,
+        workersMax: 1,
+      });
+      if (created.kind !== "ACK") throw new Error("fixture");
+      await expect(transport.readLane(created.deployment)).resolves.toEqual(created.deployment);
+    }
+    const mageEnvironment = control.createServerlessTemplate.mock.calls[0]?.[3];
+    const soulxEnvironment = control.createServerlessTemplate.mock.calls[1]?.[3];
+    expect(mageEnvironment).toMatchObject({
+      VIDEOFORGE_ENVELOPE_KEY_ID: workerEnvironment.envelopeSigningKeyId,
+      VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: workerEnvironment.envelopeSigningKeyHex,
+      VIDEOFORGE_RECEIPT_KEY_ID: workerEnvironment.receiptKeyId,
+      VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: workerEnvironment.receiptSigningKeyHex,
+      VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: model.mage.publicImage,
+      VIDEOFORGE_MAGE_MANIFEST_SHA256: model.mage.volumeManifestSha256,
+      VIDEOFORGE_MAGE_VOLUME_ID_HASH: model.mage.volumeIdSha256,
+    });
+    expect(soulxEnvironment).toMatchObject({
+      VIDEOFORGE_ENVELOPE_KEY_ID: workerEnvironment.envelopeSigningKeyId,
+      VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: workerEnvironment.envelopeSigningKeyHex,
+      VIDEOFORGE_RECEIPT_KEY_ID: workerEnvironment.receiptKeyId,
+      VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: workerEnvironment.receiptSigningKeyHex,
+      VIDEOFORGE_SOULX_CONTAINER_DIGEST: model.soulx.publicImage.split("@")[1],
+      VIDEOFORGE_SOULX_MODEL_MANIFEST_SHA256: model.soulx.volumeManifestSha256,
+      VIDEOFORGE_SOULX_VOLUME_ID_SHA256: model.soulx.volumeIdSha256,
+    });
+  });
+
+  it("rejects a worker environment mutation on readback before dispatch", async () => {
+    const { transport, control, client, model } = fixture({
+      boundReceiptKeyIdOverride: "mutated-receipt-key",
+    });
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: "stage:soulx:mutated-worker-env",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await expect(transport.readLane(created.deployment)).rejects.toThrow(
+      "V213_DEPLOYMENT_READBACK_MISSING",
+    );
+    expect(control.bindV207EndpointIdentity).toHaveBeenCalledOnce();
+    expect(client.dispatch).not.toHaveBeenCalled();
+  });
+
   it("creates deterministic max-one resources, runs one job and deletes only after zero", async () => {
     const { transport, control, client, model } = fixture();
     const created = await transport.createLane({

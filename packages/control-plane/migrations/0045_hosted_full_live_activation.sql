@@ -8697,3 +8697,452 @@ REVOKE ALL ON FUNCTION public.videoforge_read_v213_release_chrome(jsonb) FROM PU
 REVOKE ALL ON FUNCTION public.videoforge_project_v213_release_certification(jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_persist_v213_release_certification(jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_read_v213_release_certification(jsonb) FROM PUBLIC;
+
+-- Mage/SoulX case bodies are materialized only after the exact stage authority is consumed.
+-- Long-lived R2/signing credentials never enter these tables. The short-lived worker request is
+-- encrypted for lost-response reconciliation and is immutable once persisted.
+CREATE TABLE public.hosted_full_live_qualification_materialization_intents (
+  full_live_authority_id uuid NOT NULL REFERENCES public.hosted_full_live_authorities(id),
+  operation_id text NOT NULL CHECK(operation_id IN ('mage-live-qualification','soulx-live-qualification')),
+  case_id text NOT NULL CHECK(case_id IN ('mage-cold-representative','soulx-cold-2s','soulx-warm-4s',
+    'soulx-warm-6s','soulx-warm-10s','soulx-cancel','soulx-invalid-output','soulx-timeout')),
+  stage_authority_id text NOT NULL REFERENCES public.hosted_full_live_stage_authorities(authority_id),
+  outer_state_sha256 text NOT NULL CHECK(outer_state_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  input_sha256 text NOT NULL CHECK(input_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  request_sha256 text NOT NULL CHECK(request_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  source_refs_sha256 text NOT NULL CHECK(source_refs_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  created_at timestamptz NOT NULL DEFAULT transaction_timestamp(),
+  PRIMARY KEY(full_live_authority_id,operation_id,case_id),
+  UNIQUE(stage_authority_id,case_id),
+  UNIQUE(request_sha256)
+);
+CREATE TABLE public.hosted_full_live_qualification_materializations (
+  full_live_authority_id uuid NOT NULL,
+  operation_id text NOT NULL,
+  case_id text NOT NULL,
+  request_sha256 text NOT NULL UNIQUE CHECK(request_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  materialization_evidence_sha256 text NOT NULL UNIQUE CHECK(materialization_evidence_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  result_sha256 text NOT NULL UNIQUE CHECK(result_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  result_ciphertext bytea NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT transaction_timestamp(),
+  PRIMARY KEY(full_live_authority_id,operation_id,case_id),
+  FOREIGN KEY(full_live_authority_id,operation_id,case_id)
+    REFERENCES public.hosted_full_live_qualification_materialization_intents(
+      full_live_authority_id,operation_id,case_id)
+);
+CREATE TRIGGER hosted_full_live_qualification_materialization_intents_append_only
+  BEFORE UPDATE OR DELETE ON public.hosted_full_live_qualification_materialization_intents
+  FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
+CREATE TRIGGER hosted_full_live_qualification_materializations_append_only
+  BEFORE UPDATE OR DELETE ON public.hosted_full_live_qualification_materializations
+  FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
+ALTER TABLE public.hosted_full_live_qualification_materialization_intents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hosted_full_live_qualification_materialization_intents FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.hosted_full_live_qualification_materializations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hosted_full_live_qualification_materializations FORCE ROW LEVEL SECURITY;
+CREATE POLICY hosted_full_live_qualification_materialization_intents_owner_only
+  ON public.hosted_full_live_qualification_materialization_intents USING(false) WITH CHECK(false);
+CREATE POLICY hosted_full_live_qualification_materializations_owner_only
+  ON public.hosted_full_live_qualification_materializations USING(false) WITH CHECK(false);
+REVOKE ALL ON TABLE public.hosted_full_live_qualification_materialization_intents FROM PUBLIC;
+REVOKE ALL ON TABLE public.hosted_full_live_qualification_materializations FROM PUBLIC;
+
+CREATE FUNCTION public.videoforge_claim_v213_qualification_materialization(supplied jsonb)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE
+  db_now timestamptz:=transaction_timestamp(); full_authority uuid;
+  stage public.hosted_full_live_stage_authorities%ROWTYPE;
+  intent public.hosted_full_live_qualification_materialization_intents%ROWTYPE;
+  existing public.hosted_full_live_qualification_materializations%ROWTYPE;
+  expected_hash text; refs_hash text; op text:=supplied->>'operationId';
+  case_name text:=supplied->'descriptor'->>'id'; lane_name text:=supplied->'descriptor'->>'lane';
+BEGIN
+  IF jsonb_typeof(supplied)<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied) key)
+       IS DISTINCT FROM ARRAY['caseSourceRef','deployment','descriptor','fullLiveAuthorityId',
+         'generatorRef','inputSha256','inputs','operationId','outerStateSha256','requestSha256',
+         'schemaVersion','sourceCommit','stageAuthorityId','validatorRef']::text[]
+     OR supplied->>'schemaVersion'<>'videoforge.v213-qualification-materialization-request/v1'
+     OR supplied->>'fullLiveAuthorityId' !~
+       '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     OR op NOT IN ('mage-live-qualification','soulx-live-qualification')
+     OR supplied->>'stageAuthorityId' !~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$'
+     OR supplied->>'outerStateSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied->>'inputSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied->>'requestSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied->>'sourceCommit' !~ '^[0-9a-f]{40}$'
+     OR jsonb_typeof(supplied->'descriptor')<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied->'descriptor') key)
+       IS DISTINCT FROM ARRAY['cold','id','key','lane','mode','seconds']::text[]
+     OR supplied->'descriptor'->>'key' NOT IN
+       ('mage','soulx2s','soulx4s','soulx6s','soulx10s','soulxCancel','soulxInvalidOutput','soulxTimeout')
+     OR supplied->'descriptor'->>'id' !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
+     OR supplied->'descriptor'->>'lane' NOT IN ('mage','soulx')
+     OR supplied->'descriptor'->>'mode' NOT IN ('complete','cancel','invalid','timeout')
+     OR supplied->'descriptor'->'seconds' NOT IN ('0'::jsonb,'2'::jsonb,'4'::jsonb,'6'::jsonb,'10'::jsonb)
+     OR jsonb_typeof(supplied->'descriptor'->'cold')<>'boolean'
+     OR jsonb_typeof(supplied->'deployment')<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied->'deployment') key)
+       IS DISTINCT FROM ARRAY['deploymentSha256','endpointId','endpointIdSha256','gpu','gpuCount',
+         'handlerConcurrency','image','initTimeoutSeconds','lane','purpose','region','scalerType',
+         'scalerValue','sourceCommit','templateId','templateIdSha256','volumeIdSha256',
+         'volumeManifestSha256','volumeMount','volumeSizeGb','workersMax','workersMin']::text[]
+     OR supplied->'deployment'->>'purpose'<>'qualification'
+     OR supplied->'deployment'->>'lane'<>lane_name
+     OR supplied->'deployment'->>'sourceCommit'<>supplied->>'sourceCommit'
+     OR supplied->'deployment'->>'region'<>'EU-RO-1'
+     OR supplied->'deployment'->>'gpu'<>'NVIDIA GeForce RTX 4090'
+     OR supplied->'deployment'->'gpuCount'<>'1'::jsonb
+     OR supplied->'deployment'->'handlerConcurrency'<>'1'::jsonb
+     OR supplied->'deployment'->>'scalerType'<>'REQUEST_COUNT'
+     OR supplied->'deployment'->'scalerValue'<>'1'::jsonb
+     OR supplied->'deployment'->'workersMin'<>'0'::jsonb
+     OR supplied->'deployment'->'workersMax'<>'1'::jsonb
+     OR supplied->'deployment'->>'volumeMount'<>'/runpod-volume'
+     OR supplied->'deployment'->'volumeSizeGb'<>'50'::jsonb
+     OR supplied->'deployment'->>'endpointId' !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
+     OR supplied->'deployment'->>'templateId' !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
+     OR supplied->'deployment'->>'endpointIdSha256'<>
+       'sha256:'||encode(sha256(convert_to(supplied->'deployment'->>'endpointId','UTF8')),'hex')
+     OR supplied->'deployment'->>'templateIdSha256'<>
+       'sha256:'||encode(sha256(convert_to(supplied->'deployment'->>'templateId','UTF8')),'hex')
+     OR supplied->'deployment'->>'deploymentSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied->'deployment'->>'volumeIdSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied->'deployment'->>'volumeManifestSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied->'deployment'->>'image' !~ '^.+@sha256:[0-9a-f]{64}$'
+     OR jsonb_typeof(supplied->'inputs')<>'array'
+     OR (op='mage-live-qualification' AND jsonb_array_length(supplied->'inputs')<>0)
+     OR (op='soulx-live-qualification' AND jsonb_array_length(supplied->'inputs')<>2)
+     OR EXISTS(SELECT 1 FROM jsonb_array_elements(supplied->'inputs') input
+       WHERE jsonb_typeof(input)<>'object'
+          OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(input) key)
+             IS DISTINCT FROM ARRAY['assetId','bodyBase64','contentType','reservationId','role','sha256']::text[]
+          OR input->>'role' NOT IN ('avatar_source','audio')
+          OR input->>'assetId' !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
+          OR input->>'reservationId' !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
+          OR input->>'contentType' NOT IN ('image/png','audio/wav')
+          OR input->>'sha256' !~ '^sha256:[0-9a-f]{64}$'
+          OR input->>'bodyBase64' !~ '^[A-Za-z0-9+/]+={0,2}$'
+          OR (input->>'role'='avatar_source' AND input->>'contentType'<>'image/png')
+          OR (input->>'role'='audio' AND input->>'contentType'<>'audio/wav'))
+     OR (op='soulx-live-qualification' AND
+       ((supplied->'inputs'->0->>'role')<>'avatar_source' OR
+        (supplied->'inputs'->1->>'role')<>'audio'))
+     OR jsonb_typeof(supplied->'caseSourceRef')<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied->'caseSourceRef') key)
+       IS DISTINCT FROM ARRAY['path','sha256']::text[]
+     OR supplied->'caseSourceRef'->>'path'<>'apps/web/src/server/providers/v213-dual-lane-live.ts'
+     OR supplied->'caseSourceRef'->>'sha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR jsonb_typeof(supplied->'generatorRef')<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied->'generatorRef') key)
+       IS DISTINCT FROM ARRAY['path','sha256']::text[]
+     OR supplied->'generatorRef'->>'path'<>(CASE WHEN lane_name='mage'
+       THEN 'deploy/v2-13/generate-mage-qualification-case.mjs'
+       ELSE 'deploy/v2-13/generate-soulx-qualification-cases.mjs' END)
+     OR supplied->'generatorRef'->>'sha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR jsonb_typeof(supplied->'validatorRef')<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied->'validatorRef') key)
+       IS DISTINCT FROM ARRAY['path','sha256']::text[]
+     OR supplied->'validatorRef'->>'path'<>(CASE WHEN lane_name='mage'
+       THEN 'workers/image-media/src/videoforge_image_media/mage_production.py'
+       ELSE 'workers/avatar-primary/soulx_serverless.py' END)
+     OR supplied->'validatorRef'->>'sha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR (op='mage-live-qualification' AND (lane_name<>'mage' OR case_name<>'mage-cold-representative'))
+     OR (op='soulx-live-qualification' AND (lane_name<>'soulx' OR case_name NOT IN
+       ('soulx-cold-2s','soulx-warm-4s','soulx-warm-6s','soulx-warm-10s',
+        'soulx-cancel','soulx-invalid-output','soulx-timeout')))
+     OR NOT (
+       supplied->'descriptor'=jsonb_build_object('key','mage','lane','mage','id','mage-cold-representative',
+         'seconds',0,'mode','complete','cold',true)
+       OR supplied->'descriptor'=jsonb_build_object('key','soulx2s','lane','soulx','id','soulx-cold-2s',
+         'seconds',2,'mode','complete','cold',true)
+       OR supplied->'descriptor'=jsonb_build_object('key','soulx4s','lane','soulx','id','soulx-warm-4s',
+         'seconds',4,'mode','complete','cold',false)
+       OR supplied->'descriptor'=jsonb_build_object('key','soulx6s','lane','soulx','id','soulx-warm-6s',
+         'seconds',6,'mode','complete','cold',false)
+       OR supplied->'descriptor'=jsonb_build_object('key','soulx10s','lane','soulx','id','soulx-warm-10s',
+         'seconds',10,'mode','complete','cold',false)
+       OR supplied->'descriptor'=jsonb_build_object('key','soulxCancel','lane','soulx','id','soulx-cancel',
+         'seconds',2,'mode','cancel','cold',false)
+       OR supplied->'descriptor'=jsonb_build_object('key','soulxInvalidOutput','lane','soulx',
+         'id','soulx-invalid-output','seconds',2,'mode','invalid','cold',false)
+       OR supplied->'descriptor'=jsonb_build_object('key','soulxTimeout','lane','soulx','id','soulx-timeout',
+         'seconds',2,'mode','timeout','cold',false)
+     ) THEN
+    RAISE EXCEPTION 'V213 qualification materialization claim invalid' USING ERRCODE='23514';
+  END IF;
+  expected_hash:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
+    supplied-'requestSha256'),'UTF8')),'hex');
+  refs_hash:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(jsonb_build_object(
+    'caseSourceRef',supplied->'caseSourceRef','generatorRef',supplied->'generatorRef',
+    'validatorRef',supplied->'validatorRef')),'UTF8')),'hex');
+  IF expected_hash<>supplied->>'requestSha256' THEN
+    RAISE EXCEPTION 'V213 qualification materialization request hash drift' USING ERRCODE='23514';
+  END IF;
+  full_authority:=(supplied->>'fullLiveAuthorityId')::uuid;
+  -- Serialize the exact authority/operation/case tuple as well as the request hash.  A hostile
+  -- retry must not race a different request body into the unique tuple after the stage was
+  -- consumed.
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    full_authority::text||':'||op||':'||case_name,213));
+  PERFORM pg_advisory_xact_lock(hashtextextended(supplied->>'requestSha256',213));
+  SELECT * INTO intent FROM public.hosted_full_live_qualification_materialization_intents i
+    WHERE i.full_live_authority_id=full_authority AND i.operation_id=op AND i.case_id=case_name
+    FOR UPDATE;
+  IF intent.full_live_authority_id IS NOT NULL THEN
+    IF intent.stage_authority_id<>supplied->>'stageAuthorityId'
+       OR intent.outer_state_sha256<>supplied->>'outerStateSha256'
+       OR intent.input_sha256<>supplied->>'inputSha256'
+       OR intent.request_sha256<>supplied->>'requestSha256'
+       OR intent.source_refs_sha256<>refs_hash THEN
+      RAISE EXCEPTION 'V213 qualification materialization replay drift' USING ERRCODE='23505';
+    END IF;
+    SELECT * INTO existing FROM public.hosted_full_live_qualification_materializations m
+      WHERE m.full_live_authority_id=full_authority AND m.operation_id=op AND m.case_id=case_name;
+    IF existing.full_live_authority_id IS NOT NULL THEN
+      RETURN 'EXISTING';
+    END IF;
+  END IF;
+  SELECT s.* INTO stage FROM public.hosted_full_live_stage_authorities s
+    JOIN public.hosted_full_live_stage_consumptions c ON c.authority_id=s.authority_id
+    JOIN public.hosted_full_live_authorities a ON a.id=s.full_live_authority_id
+    WHERE s.authority_id=supplied->>'stageAuthorityId'
+      AND s.full_live_authority_id=full_authority
+      AND s.stage=lane_name AND s.input_sha256=supplied->>'inputSha256'
+      AND s.expires_at>db_now AND a.expires_at>db_now
+      AND a.source_commit=supplied->>'sourceCommit'
+      AND a.authority_document->>'sourceCommit'=a.source_commit
+      AND a.authority_document->>'proposalSha256'=a.proposal_sha256
+      AND a.authority_document->>'executorSha256'=a.executor_sha256
+      AND a.single_use
+      AND NOT EXISTS(SELECT 1 FROM public.hosted_full_live_promotions p WHERE p.authority_id=a.id)
+      AND NOT EXISTS(SELECT 1 FROM public.hosted_full_live_stage_completions d
+        WHERE d.authority_id=s.authority_id)
+    FOR UPDATE OF s,c,a;
+  IF stage.authority_id IS NULL THEN
+    RAISE EXCEPTION 'V213 qualification materialization authority unavailable' USING ERRCODE='42501';
+  END IF;
+  IF intent.full_live_authority_id IS NOT NULL THEN
+    RETURN 'RECONCILE';
+  END IF;
+  INSERT INTO public.hosted_full_live_qualification_materialization_intents(
+    full_live_authority_id,operation_id,case_id,stage_authority_id,outer_state_sha256,
+    input_sha256,request_sha256,source_refs_sha256)
+  VALUES(full_authority,op,case_name,supplied->>'stageAuthorityId',supplied->>'outerStateSha256',
+    supplied->>'inputSha256',supplied->>'requestSha256',refs_hash);
+  RETURN 'EXECUTE';
+END;
+$$;
+
+CREATE FUNCTION public.videoforge_persist_v213_qualification_materialization(supplied jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE
+  db_now timestamptz:=transaction_timestamp();
+  request jsonb:=supplied->'request'; materialization jsonb:=supplied->'materialization';
+  full_authority uuid; op text; case_name text; handoff_key text:=current_setting('videoforge.v213_handoff_key',true);
+  intent public.hosted_full_live_qualification_materialization_intents%ROWTYPE;
+  stage public.hosted_full_live_stage_authorities%ROWTYPE;
+  existing public.hosted_full_live_qualification_materializations%ROWTYPE;
+  expected_result_hash text; expected_refs_hash text; expected_request_hash text;
+  expected_evidence_hash text; worker_request jsonb; descriptor_sha text;
+BEGIN
+  IF jsonb_typeof(supplied)<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied) key)
+       IS DISTINCT FROM ARRAY['materialization','request']::text[]
+     OR jsonb_typeof(request)<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(request) key)
+       IS DISTINCT FROM ARRAY['caseSourceRef','deployment','descriptor','fullLiveAuthorityId',
+         'generatorRef','inputSha256','inputs','operationId','outerStateSha256','requestSha256',
+         'schemaVersion','sourceCommit','stageAuthorityId','validatorRef']::text[]
+     OR request->>'schemaVersion'<>'videoforge.v213-qualification-materialization-request/v1'
+     OR request->>'fullLiveAuthorityId' !~
+       '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     OR request->>'operationId' NOT IN ('mage-live-qualification','soulx-live-qualification')
+     OR request->>'stageAuthorityId' !~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$'
+     OR request->>'outerStateSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR request->>'inputSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR request->>'requestSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR request->>'sourceCommit' !~ '^[0-9a-f]{40}$'
+     OR jsonb_typeof(request->'descriptor')<>'object'
+     OR request->'descriptor'->>'id' !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
+     OR request->'descriptor'->>'lane' NOT IN ('mage','soulx')
+     OR request->'descriptor'->>'id' NOT IN ('mage-cold-representative','soulx-cold-2s',
+       'soulx-warm-4s','soulx-warm-6s','soulx-warm-10s','soulx-cancel','soulx-invalid-output',
+       'soulx-timeout')
+     OR jsonb_typeof(materialization)<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(materialization) key)
+       IS DISTINCT FROM ARRAY['fullLiveAuthorityId','materialization','operationId','outerStateSha256',
+         'requestSha256','resultSha256','schemaVersion','sourceRefsSha256','stageAuthorityId']::text[]
+     OR handoff_key IS NULL OR handoff_key !~ '^(?:[0-9a-f]{2}){32,}$'
+     OR materialization->>'schemaVersion'<>'videoforge.v213-qualification-materialization-result/v1'
+     OR materialization->>'fullLiveAuthorityId' !~
+       '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     OR materialization->>'operationId' NOT IN ('mage-live-qualification','soulx-live-qualification')
+     OR materialization->>'stageAuthorityId' !~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$'
+     OR materialization->>'outerStateSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR materialization->>'requestSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR materialization->>'sourceRefsSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR materialization->>'resultSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR jsonb_typeof(materialization->'materialization')<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(materialization->'materialization') key)
+       IS DISTINCT FROM ARRAY['caseDescriptorSha256','materializationEvidenceSha256','request',
+         'schemaVersion']::text[]
+     OR materialization->'materialization'->>'schemaVersion'<>
+       'videoforge.v213-qualification-case-materialization/v1'
+     OR materialization->'materialization'->>'caseDescriptorSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR materialization->'materialization'->>'materializationEvidenceSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR jsonb_typeof(materialization->'materialization'->'request')<>'object' THEN
+    RAISE EXCEPTION 'V213 qualification materialization persistence invalid' USING ERRCODE='23514';
+  END IF;
+  full_authority:=(request->>'fullLiveAuthorityId')::uuid; op:=request->>'operationId';
+  case_name:=request->'descriptor'->>'id';
+  expected_request_hash:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
+    request-'requestSha256'),'UTF8')),'hex');
+  IF expected_request_hash<>request->>'requestSha256' THEN
+    RAISE EXCEPTION 'V213 qualification materialization request hash drift' USING ERRCODE='23514';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    full_authority::text||':'||op||':'||case_name,213));
+  PERFORM pg_advisory_xact_lock(hashtextextended(request->>'requestSha256',213));
+  SELECT * INTO intent FROM public.hosted_full_live_qualification_materialization_intents i
+    WHERE i.full_live_authority_id=full_authority AND i.operation_id=op AND i.case_id=case_name
+    FOR UPDATE;
+  SELECT s.* INTO stage FROM public.hosted_full_live_stage_authorities s
+    JOIN public.hosted_full_live_stage_consumptions c ON c.authority_id=s.authority_id
+    JOIN public.hosted_full_live_authorities a ON a.id=s.full_live_authority_id
+    WHERE s.authority_id=request->>'stageAuthorityId'
+      AND s.full_live_authority_id=full_authority
+      AND s.stage=request->'descriptor'->>'lane'
+      AND s.input_sha256=request->>'inputSha256'
+      AND s.expires_at>db_now AND a.expires_at>db_now
+      AND a.source_commit=request->>'sourceCommit'
+      AND a.authority_document->>'sourceCommit'=a.source_commit
+      AND a.authority_document->>'proposalSha256'=a.proposal_sha256
+      AND a.authority_document->>'executorSha256'=a.executor_sha256
+      AND a.single_use
+      AND NOT EXISTS(SELECT 1 FROM public.hosted_full_live_promotions p WHERE p.authority_id=a.id)
+      AND NOT EXISTS(SELECT 1 FROM public.hosted_full_live_stage_completions d
+        WHERE d.authority_id=s.authority_id)
+    FOR UPDATE OF s,c,a;
+  expected_refs_hash:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(jsonb_build_object(
+    'caseSourceRef',request->'caseSourceRef','generatorRef',request->'generatorRef',
+    'validatorRef',request->'validatorRef')),'UTF8')),'hex');
+  worker_request:=materialization->'materialization'->'request';
+  descriptor_sha:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
+    request->'descriptor'),'UTF8')),'hex');
+  expected_evidence_hash:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
+    jsonb_build_object('caseDescriptorSha256',descriptor_sha,
+      'deploymentSha256','sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
+        request->'deployment'),'UTF8')),'hex'),
+      'requestSha256','sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
+        worker_request),'UTF8')),'hex'),
+      'stageAuthorityId',request->>'stageAuthorityId')),'UTF8')),'hex');
+  expected_result_hash:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
+    materialization-'resultSha256'),'UTF8')),'hex');
+  IF intent.full_live_authority_id IS NULL
+     OR stage.authority_id IS NULL
+     OR intent.stage_authority_id<>request->>'stageAuthorityId'
+     OR intent.outer_state_sha256<>request->>'outerStateSha256'
+     OR intent.request_sha256<>request->>'requestSha256'
+     OR intent.source_refs_sha256<>expected_refs_hash
+     OR materialization->>'requestSha256'<>expected_request_hash
+     OR materialization->>'fullLiveAuthorityId'<>full_authority::text
+     OR materialization->>'operationId'<>op
+     OR materialization->>'stageAuthorityId'<>intent.stage_authority_id
+     OR materialization->>'outerStateSha256'<>intent.outer_state_sha256
+     OR materialization->>'requestSha256'<>intent.request_sha256
+     OR materialization->>'sourceRefsSha256'<>intent.source_refs_sha256
+     OR materialization->'materialization'->>'caseDescriptorSha256'<>descriptor_sha
+     OR materialization->'materialization'->>'materializationEvidenceSha256'<>expected_evidence_hash
+     OR expected_result_hash<>materialization->>'resultSha256' THEN
+    RAISE EXCEPTION 'V213 qualification materialization persistence drift' USING ERRCODE='23514';
+  END IF;
+  SELECT * INTO existing FROM public.hosted_full_live_qualification_materializations m
+    WHERE m.full_live_authority_id=full_authority AND m.operation_id=op AND m.case_id=case_name;
+  IF existing.full_live_authority_id IS NOT NULL THEN
+    IF existing.request_sha256<>intent.request_sha256
+       OR existing.materialization_evidence_sha256<>
+         materialization->'materialization'->>'materializationEvidenceSha256'
+       OR existing.result_sha256<>materialization->>'resultSha256'
+       OR pgp_sym_decrypt(existing.result_ciphertext,handoff_key)::jsonb<>materialization THEN
+      RAISE EXCEPTION 'V213 qualification materialization result replay drift' USING ERRCODE='23505';
+    END IF;
+    RETURN materialization;
+  END IF;
+  INSERT INTO public.hosted_full_live_qualification_materializations(full_live_authority_id,
+    operation_id,case_id,request_sha256,materialization_evidence_sha256,result_sha256,result_ciphertext)
+  VALUES(full_authority,op,case_name,intent.request_sha256,
+    materialization->'materialization'->>'materializationEvidenceSha256',
+    materialization->>'resultSha256',pgp_sym_encrypt(public.videoforge_canonical_jsonb(materialization),
+      handoff_key,'cipher-algo=aes256,compress-algo=0'));
+  RETURN materialization;
+END;
+$$;
+
+CREATE FUNCTION public.videoforge_read_v213_qualification_materialization(supplied jsonb)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE
+  db_now timestamptz:=transaction_timestamp();
+  handoff_key text:=current_setting('videoforge.v213_handoff_key',true);
+  intent public.hosted_full_live_qualification_materialization_intents%ROWTYPE;
+  existing public.hosted_full_live_qualification_materializations%ROWTYPE;
+  result jsonb;
+BEGIN
+  IF jsonb_typeof(supplied)<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied) key)
+       IS DISTINCT FROM ARRAY['caseId','fullLiveAuthorityId','operationId','outerStateSha256',
+         'requestSha256','stageAuthorityId']::text[]
+     OR supplied->>'fullLiveAuthorityId' !~
+       '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     OR supplied->>'operationId' NOT IN ('mage-live-qualification','soulx-live-qualification')
+     OR supplied->>'caseId' NOT IN ('mage-cold-representative','soulx-cold-2s','soulx-warm-4s',
+       'soulx-warm-6s','soulx-warm-10s','soulx-cancel','soulx-invalid-output','soulx-timeout')
+     OR supplied->>'stageAuthorityId' !~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$'
+     OR supplied->>'outerStateSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied->>'requestSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR handoff_key IS NULL OR handoff_key !~ '^(?:[0-9a-f]{2}){32,}$' THEN
+    RAISE EXCEPTION 'V213 qualification materialization read invalid' USING ERRCODE='42501';
+  END IF;
+  SELECT i.* INTO intent FROM public.hosted_full_live_qualification_materialization_intents i
+    JOIN public.hosted_full_live_stage_authorities s ON s.authority_id=i.stage_authority_id
+    JOIN public.hosted_full_live_stage_consumptions c ON c.authority_id=s.authority_id
+    JOIN public.hosted_full_live_authorities a ON a.id=i.full_live_authority_id
+    WHERE i.full_live_authority_id=(supplied->>'fullLiveAuthorityId')::uuid
+      AND i.operation_id=supplied->>'operationId' AND i.case_id=supplied->>'caseId'
+      AND i.stage_authority_id=supplied->>'stageAuthorityId'
+      AND i.outer_state_sha256=supplied->>'outerStateSha256'
+      AND i.request_sha256=supplied->>'requestSha256'
+      AND s.stage=(CASE WHEN supplied->>'operationId'='mage-live-qualification'
+        THEN 'mage' ELSE 'soulx' END)
+      AND s.expires_at>db_now AND a.expires_at>db_now
+      AND a.source_commit=a.authority_document->>'sourceCommit'
+      AND a.proposal_sha256=a.authority_document->>'proposalSha256'
+      AND a.executor_sha256=a.authority_document->>'executorSha256'
+      AND a.single_use
+      AND NOT EXISTS(SELECT 1 FROM public.hosted_full_live_promotions p WHERE p.authority_id=a.id)
+      AND NOT EXISTS(SELECT 1 FROM public.hosted_full_live_stage_completions d
+        WHERE d.authority_id=s.authority_id);
+  IF intent.full_live_authority_id IS NULL THEN
+    RAISE EXCEPTION 'V213 qualification materialization read unavailable' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO existing FROM public.hosted_full_live_qualification_materializations m
+    WHERE m.full_live_authority_id=intent.full_live_authority_id
+      AND m.operation_id=intent.operation_id AND m.case_id=intent.case_id;
+  IF existing.full_live_authority_id IS NULL THEN RETURN NULL; END IF;
+  result:=pgp_sym_decrypt(existing.result_ciphertext,handoff_key)::jsonb;
+  IF result->>'schemaVersion'<>'videoforge.v213-qualification-materialization-result/v1'
+     OR result->>'fullLiveAuthorityId'<>intent.full_live_authority_id::text
+     OR result->>'operationId'<>intent.operation_id
+     OR result->>'stageAuthorityId'<>intent.stage_authority_id
+     OR result->>'outerStateSha256'<>intent.outer_state_sha256
+     OR result->>'requestSha256'<>intent.request_sha256
+     OR result->>'resultSha256'<>existing.result_sha256 THEN
+    RAISE EXCEPTION 'V213 qualification materialization read drift' USING ERRCODE='23505';
+  END IF;
+  RETURN result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.videoforge_claim_v213_qualification_materialization(jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.videoforge_persist_v213_qualification_materialization(jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.videoforge_read_v213_qualification_materialization(jsonb) FROM PUBLIC;

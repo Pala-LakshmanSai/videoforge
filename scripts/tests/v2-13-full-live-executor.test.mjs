@@ -24,13 +24,33 @@ import {
 
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
-const executeFullLive = (options) =>
-  executeFullLiveRaw({
+const canonicalJson = (value) =>
+  Array.isArray(value)
+    ? `[${value.map((item) => canonicalJson(item)).join(",")}]`
+    : value !== null && typeof value === "object"
+      ? `{${Object.keys(value)
+          .sort()
+          .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+          .join(",")}}`
+      : JSON.stringify(value);
+let currentAuthorizedOuterStateSha256;
+const executeFullLive = (options) => {
+  const runOperation = options.runOperation;
+  return executeFullLiveRaw({
     trustedTime: async () => "2026-08-26T12:00:00.000Z",
     verifyMaterializationSeed: async () => true,
     verifyStaticReleaseDescriptor: async () => true,
     ...options,
+    runOperation: async (...args) => {
+      currentAuthorizedOuterStateSha256 = args[3];
+      try {
+        return await runOperation(...args);
+      } finally {
+        currentAuthorizedOuterStateSha256 = undefined;
+      }
+    },
   });
+};
 
 test("production source closure rejects any covered byte drift before execution", () => {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-source-closure-"));
@@ -65,6 +85,7 @@ function stateFixture() {
   const path = join(directory, "state.json");
   const authority = {
     authority_id: "v2-13-test-executor-0001",
+    full_live_authority_id: "11111111-1111-4111-8111-111111111111",
     materialization_seed_sha256: proof("a"),
     static_release_descriptor: {
       path: "project-context/evidence/acceptance/VF-10-13/static-release-descriptor.json",
@@ -84,6 +105,7 @@ function stateFixture() {
     approvalRecordPath: "evidence/user-approval.json",
     authorityRecordPath: "evidence/approved-authority.json",
     releaseSourceCommit: "a".repeat(40),
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
     approvedAt: "2026-08-26T00:00:00.000Z",
     expiresAt: "2026-08-27T00:00:00.000Z",
     staticReleaseDescriptorPath:
@@ -94,15 +116,22 @@ function stateFixture() {
   return { directory, path, sha256: hash(readFileSync(path)) };
 }
 
-function fakeResult(operation, state, priorResults) {
+function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) {
   const result = { actualUsd: operation.reserveUsd };
   if (operation.id === "bootstrap-prequalification-database")
     Object.assign(result, {
-      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v1",
+      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v2",
+      full_live_authority_id: state.authority_id,
+      outer_state_sha256:
+        authorizedOuterStateSha256 ?? currentAuthorizedOuterStateSha256 ?? proof("0"),
       ledger_before_count: 36,
       ledger_before_sha256: proof("1"),
       ledger_after_sha256: proof("2"),
       operator_acl_sha256: proof("3"),
+      operator_database_url_sha256: proof("6"),
+      runtime_database_url_sha256: proof("7"),
+      reconciler_database_url_sha256: proof("8"),
+      database_role_credential_bundle_sha256: proof("9"),
       pgcrypto_sha256: proof("4"),
       prequalification_database_bootstrap_sha256: proof("5"),
       recovery_mode: "FRESH_36_TO_45",
@@ -248,6 +277,39 @@ function fakeResult(operation, state, priorResults) {
       predecessorEvidenceSha256s,
     });
   }
+  return result;
+}
+
+function bootstrapPartialCleanupResult(operation, state, priorResults) {
+  const result = fakeResult(operation, state, priorResults);
+  if (operation.id === "restore-endpoints-max-one")
+    Object.assign(result, {
+      productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+      productionResourcesAbsent: true,
+      bothEndpointsMaxWorkersOne: false,
+      retainedProductionEndpoints: 0,
+    });
+  if (operation.id !== "reconcile-exact-resources") return result;
+  const cleanupBody = {
+    schemaVersion: "videoforge.v213-database-role-credential-cleanup/v1",
+    fullLiveAuthorityId: state.authority_id,
+    cleanupState: "ALREADY_ABSENT",
+    operatorRoleAbsent: true,
+    runtimeAndReconcilerRolesAbsent: true,
+    credentialBundleSha256: null,
+    removedArtifactCount: 0,
+  };
+  const cleanupSha256 = hash(Buffer.from(canonicalJson(cleanupBody)));
+  result.evidenceSha256 = proof("e");
+  result.localDatabaseCredentialCleanup = { ...cleanupBody, cleanupSha256 };
+  result.proofSha256 = hash(
+    Buffer.from(
+      canonicalJson({
+        providerCleanupEvidenceSha256: result.evidenceSha256,
+        localDatabaseCredentialCleanupSha256: cleanupSha256,
+      }),
+    ),
+  );
   return result;
 }
 
@@ -546,13 +608,220 @@ test("early cleanup is selected only when no RunPod mutation operation has histo
         selected.push("normal");
         return fakeResult(operation, state, priorResults);
       },
-      runEarlyCleanupOperation: async (operation, state, priorResults) => {
+      runEarlyCleanupOperation: async (
+        operation,
+        state,
+        priorResults,
+        _outerStateSha256,
+        context,
+      ) => {
         selected.push("early");
+        assert.equal(context.cleanupMode, "EARLY_NO_DATABASE_CLEANUP");
+        assert.equal(context.providerDispatchForbidden, true);
         return fakeResult(operation, state, priorResults);
       },
     });
     assert.deepEqual(selected, ["early", "early", "early", "early"]);
     assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("early cleanup provider-proof failure cannot mark cleanup complete", async () => {
+  const fixture = stateFixture();
+  try {
+    await assert.rejects(
+      executeFullLive({
+        statePath: fixture.path,
+        expectedStateSha256: fixture.sha256,
+        preflight: async (_state, _sha256, mode) => {
+          if (mode.initial) throw new Error("PROTECTED_INPUT_MISSING");
+        },
+        runOperation: async () => {
+          throw new Error("must not run");
+        },
+        runEarlyCleanupOperation: async (_operation, _state, _prior, _outer, context) => {
+          assert.equal(context.providerDispatchForbidden, true);
+          throw new Error("RUNPOD_READBACK_UNAVAILABLE");
+        },
+      }),
+      /RUNPOD_READBACK_UNAVAILABLE/u,
+    );
+    const persisted = JSON.parse(readFileSync(fixture.path, "utf8"));
+    assert.equal(persisted.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY");
+    assert.equal(persisted.cleanup_proof, null);
+    assert.notEqual(persisted.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("authorized bootstrap crash resumes exactly one readback-only reconciliation", async () => {
+  const fixture = stateFixture();
+  const crashStatePath = join(fixture.directory, "bootstrap-committed-crash-state.json");
+  try {
+    await assert.rejects(
+      executeFullLive({
+        statePath: fixture.path,
+        expectedStateSha256: fixture.sha256,
+        runOperation: async (operation, state, priorResults, outerStateSha256) => {
+          if (operation.id === "bootstrap-prequalification-database") {
+            assert.equal(outerStateSha256, hash(readFileSync(fixture.path)));
+            writeFileSync(crashStatePath, readFileSync(fixture.path), { mode: 0o600 });
+            throw new Error("simulated hard crash after atomic bootstrap commit");
+          }
+          if (operation.id === "restore-endpoints-max-one")
+            throw new Error("stop abandoned in-process cleanup");
+          return fakeResult(operation, state, priorResults);
+        },
+      }),
+      /stop abandoned in-process cleanup/u,
+    );
+    const crashed = JSON.parse(readFileSync(crashStatePath, "utf8"));
+    const bootstrapWork =
+      crashed.phases.bootstrap_prequalification_database.work[
+        `${crashed.authority_id}:bootstrap-prequalification-database`
+      ];
+    assert.equal(crashed.state, "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS");
+    assert.equal(bootstrapWork.state, "AUTHORIZED_ONCE_NOT_REDISPATCHABLE");
+    assert.equal(crashed.operator_role_verified, false);
+
+    let reconciliationCalls = 0;
+    let reconciliationPreflights = 0;
+    const resumed = await executeFullLive({
+      statePath: crashStatePath,
+      expectedStateSha256: hash(readFileSync(crashStatePath)),
+      preflight: async (_state, _sha256, mode) => {
+        if (mode.bootstrapOnly) {
+          reconciliationPreflights += 1;
+          assert.equal(mode.bootstrapReconciliation, true);
+        }
+      },
+      runOperation: async (operation, state, priorResults, outerStateSha256, context) => {
+        if (operation.id === "bootstrap-prequalification-database") {
+          reconciliationCalls += 1;
+          assert.equal(context.resumed, true);
+          assert.equal(context.authorizedUnsettled, true);
+          assert.equal(context.reconciliationOnly, true);
+          assert.equal(context.providerDispatchForbidden, true);
+          const value = fakeResult(operation, state, priorResults);
+          value.outer_state_sha256 = outerStateSha256;
+          value.ledger_before_count = 45;
+          value.recovery_mode = "VERIFIED_EXISTING_45";
+          return value;
+        }
+        return fakeResult(operation, state, priorResults);
+      },
+    });
+    assert.equal(reconciliationPreflights, 1);
+    assert.equal(reconciliationCalls, 1);
+    assert.equal(resumed.state.operator_role_verified, true);
+    assert.equal(resumed.state.state, "CONSUMED_SINGLE_EXECUTION_COMPLETE");
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("lost bootstrap transaction acknowledgement reconciles before cleanup-only becomes irreversible", async () => {
+  const fixture = stateFixture();
+  let bootstrapCalls = 0;
+  let earlyCleanupCalls = 0;
+  try {
+    const completed = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      runOperation: async (operation, state, priorResults, _outerStateSha256, context) => {
+        if (operation.id === "bootstrap-prequalification-database") {
+          bootstrapCalls += 1;
+          if (bootstrapCalls === 1) throw new Error("simulated lost psql commit acknowledgement");
+          assert.equal(context.resumed, true);
+          assert.equal(context.authorizedUnsettled, true);
+          assert.equal(context.reconciliationOnly, true);
+          assert.equal(context.providerDispatchForbidden, true);
+          const reconciled = fakeResult(operation, state, priorResults);
+          reconciled.ledger_before_count = 45;
+          reconciled.recovery_mode = "VERIFIED_EXISTING_45";
+          return reconciled;
+        }
+        return fakeResult(operation, state, priorResults);
+      },
+      runEarlyCleanupOperation: async () => {
+        earlyCleanupCalls += 1;
+        throw new Error("cleanup must not run after an exact bootstrap readback");
+      },
+    });
+    assert.equal(bootstrapCalls, 2);
+    assert.equal(earlyCleanupCalls, 0);
+    assert.equal(completed.failed, false);
+    assert.equal(completed.state.state, "CONSUMED_SINGLE_EXECUTION_COMPLETE");
+    assert.equal(completed.state.operator_role_verified, true);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("absent-role bootstrap crash enters distinct owner-readback partial cleanup mode", async () => {
+  const fixture = stateFixture();
+  const crashStatePath = join(fixture.directory, "bootstrap-absent-role-crash-state.json");
+  try {
+    await assert.rejects(
+      executeFullLive({
+        statePath: fixture.path,
+        expectedStateSha256: fixture.sha256,
+        runOperation: async (operation, state, priorResults) => {
+          if (operation.id === "bootstrap-prequalification-database") {
+            writeFileSync(crashStatePath, readFileSync(fixture.path), { mode: 0o600 });
+            throw new Error("simulated hard crash before role transaction");
+          }
+          if (operation.id === "restore-endpoints-max-one")
+            throw new Error("stop abandoned in-process cleanup");
+          return fakeResult(operation, state, priorResults);
+        },
+      }),
+      /stop abandoned in-process cleanup/u,
+    );
+
+    const cleanupModes = [];
+    let bootstrapReconciliationCalls = 0;
+    const resumed = await executeFullLive({
+      statePath: crashStatePath,
+      expectedStateSha256: hash(readFileSync(crashStatePath)),
+      preflight: async (_state, _sha256, mode) => {
+        assert.equal(mode.bootstrapOnly, true);
+        assert.equal(mode.bootstrapReconciliation, true);
+      },
+      runOperation: async (operation, _state, _priorResults, _outerStateSha256, context) => {
+        assert.equal(operation.id, "bootstrap-prequalification-database");
+        bootstrapReconciliationCalls += 1;
+        assert.equal(context.reconciliationOnly, true);
+        throw new Error("readback proves operator role absent");
+      },
+      runEarlyCleanupOperation: async (
+        operation,
+        state,
+        priorResults,
+        _outerStateSha256,
+        context,
+      ) => {
+        cleanupModes.push(context.cleanupMode);
+        assert.equal(context.cleanupOnly, true);
+        assert.equal(context.earlyFailure, true);
+        assert.equal(context.endpointFree, true);
+        assert.equal(context.providerDispatchForbidden, true);
+        return bootstrapPartialCleanupResult(operation, state, priorResults);
+      },
+    });
+    assert.equal(bootstrapReconciliationCalls, 1);
+    assert.deepEqual(cleanupModes, Array(4).fill("BOOTSTRAP_PARTIAL_CLEANUP"));
+    assert.equal(resumed.failed, true);
+    assert.equal(resumed.state.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
+    assert.match(resumed.results.get("failure").message, /operator role absent/u);
+    assert.equal(
+      resumed.results.get("reconcile-exact-resources").localDatabaseCredentialCleanup
+        .operatorRoleAbsent,
+      true,
+    );
   } finally {
     rmSync(fixture.directory, { recursive: true, force: true });
   }
@@ -874,9 +1143,9 @@ test("trusted time is checked immediately before local certification", async () 
         events.push("trusted-time");
         return "2026-08-26T12:00:00.000Z";
       },
-      runOperation: async (operation, state, priorResults) => {
+      runOperation: async (operation, state, priorResults, outerStateSha256) => {
         if (operation.id === "certify-v2-13-release") events.push("certification-call");
-        return fakeResult(operation, state, priorResults);
+        return fakeResult(operation, state, priorResults, outerStateSha256);
       },
     });
     assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_COMPLETE");
@@ -907,9 +1176,9 @@ test("expiry immediately before certification closes release and preserves clean
             ? "2026-08-27T00:00:00.001Z"
             : "2026-08-26T12:00:00.000Z";
         },
-        runOperation: async (operation, state, priorResults) => {
+        runOperation: async (operation, state, priorResults, outerStateSha256) => {
           if (operation.id === "certify-v2-13-release") certificationCalls += 1;
-          return fakeResult(operation, state, priorResults);
+          return fakeResult(operation, state, priorResults, outerStateSha256);
         },
       }),
       /TRUSTED_TIME_EXPIRED_OR_FORGED/u,
