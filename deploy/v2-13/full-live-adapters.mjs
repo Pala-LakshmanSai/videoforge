@@ -1875,8 +1875,22 @@ function protectedCanonicalDirectory(path, code) {
 function protectedCollisionPath(path, code) {
   if (typeof path !== "string" || path === "" || !path.startsWith("/") || path.includes("\0"))
     fail(code);
-  protectedCanonicalDirectory(dirname(path), `${code}_DIRECTORY`);
-  if (lstatExists(path)) protectedSingleLinkFile(path, code);
+  // This helper computes a collision identity only. Reserved inputs include immutable tracked
+  // proposal and approval files whose repository parents correctly use ordinary non-secret
+  // permissions. Requiring all such parents to be mode-0700 rejects them before bootstrap. Keep
+  // the no-alias boundary, while leaving mode/link enforcement to each file's actual consumer.
+  let canonicalParent;
+  try {
+    canonicalParent = realpathSync(dirname(path));
+  } catch {
+    fail(`${code}_DIRECTORY`);
+  }
+  if (canonicalParent !== resolve(dirname(path))) fail(`${code}_DIRECTORY`);
+  if (lstatExists(path)) {
+    const metadata = lstatSync(path);
+    if (!metadata.isFile() || metadata.isSymbolicLink() || realpathSync(path) !== resolve(path))
+      fail(code);
+  }
   return resolve(path);
 }
 

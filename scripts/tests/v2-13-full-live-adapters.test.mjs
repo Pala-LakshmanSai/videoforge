@@ -1416,9 +1416,13 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
   const productionSecretBootstrapPath = resolve(directory, "production-secret-bootstrap.json");
   const workerOriginPath = resolve(directory, "worker-origin");
   const workerBearerPath = resolve(directory, "worker-operator-bearer");
+  const trackedInputDirectory = resolve(directory, "tracked-proposal-input");
+  const trackedProposalPath = resolve(trackedInputDirectory, "combined-live-proposal.json");
   const materializationSeedPath = resolve(directory, "materialization-seed.json");
   const credentialReceiptPath = resolve(directory, "credential-bootstrap.json");
   const credentialSourceDirectory = resolve(directory, "credential-sources");
+  mkdirSync(trackedInputDirectory, { mode: 0o755 });
+  writeFileSync(trackedProposalPath, "{}\n", { mode: 0o644 });
   mkdirSync(credentialSourceDirectory, { mode: 0o700 });
   const syntheticSourceValues = Object.freeze({
     GOOGLE_CLIENT_ID: "fixture-google-client-id",
@@ -1594,6 +1598,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE: syntheticSourcePaths.R2_ACCESS_KEY_ID,
     VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE: syntheticSourcePaths.R2_SECRET_ACCESS_KEY,
     VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE: syntheticSourcePaths.RUNPOD_API_KEY,
+    VIDEOFORGE_V2_13_PROPOSAL_FILE: trackedProposalPath,
   };
   consumedState.materialization_seed_sha256 = materializationSeedSha256;
   const credentialBootstrapBinding = {
