@@ -4,13 +4,20 @@
 
 ### New-chat launch point — 2026-08-28
 
-- The independently audited provider-free source is
-  `2f314531b4d65904bec99cb421db49aa579b5820`. Its sealed 26-operation successor proposal is
-  `sha256:2d64eefd1f5f139907fa02839d7abd90b6f0a81aca3190a48ab7420f8cfe07cc`; it awaits exact proposal-record commit/audit and fresh approval. It
-  explicitly supersedes proposal `sha256:d328736b…c4a5ea43` at proposal-record commit `8fc0d913`:
-  that proposal received exact chat approval, but no approval record or authority was materialized
-  before the 26-operation acceptance/static-descriptor repair invalidated it. No credential access,
-  provider mutation, GPU use, or spend occurred under it.
+- The provider-free release source is
+  `73bd6edb15b3f67a8c2cb95bc5d2ecdc8376227a`, built from independently audited application code
+  `36e985a1dc2d6653f4e30f966ee3ac1ddb967e20`. Its sealed 26-operation successor proposal is
+  `sha256:8caac7e7658cb97bb82ccd8300fd685f334c247c895e2fbd6bf13fb10e32548e`; it awaits exact proposal-record commit/audit and fresh exact
+  approval. It supersedes proposal `sha256:6d7ffa4c80d7ee375ad34312919e49853e2bfdad0f3d515990a834195bb4378e`
+  at proposal-record commit `9c38cb3bf42a1f0279aea002c9969096cbe8cf9c`, bound to source
+  `8df55ce8e87682c305fb73362411d6bb02710853`. That proposal received exact approval, but seed
+  building failed closed on the protected envelope key-ID binding before any approval record,
+  authority, credential read, provider mutation, GPU use, or spend. Its approval is non-reusable.
+  The active handoff binds materialization facts at
+  `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
+  `sha256:8af588ab7822d8071f5cfd3751c3cc6a8e9e2d0d3b5704c26399ca0a5fe100d3` and UUID
+  `4dc1362a-dd0d-4e49-aa31-faf920d096bb`, plus protected static descriptor self-hash
+  `sha256:cc834b20da64dd2b3b7fe73577e8f3791c861cbdf5813eea197d27cd56ec6a33`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -48,18 +55,16 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free source is source-readiness-audited and repaired at `2f314531b4d65904bec99cb421db49aa579b5820`;
+The current provider-free release source is `73bd6edb15b3f67a8c2cb95bc5d2ecdc8376227a`, built from
+source-readiness-audited and repaired application code `36e985a1dc2d6653f4e30f966ee3ac1ddb967e20`;
 default entrypoints remain no-op. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
-credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. Current
-repair component hashes are: executor `sha256:8bdf4079222117e1ac38bca3a7170e5bd9cf6aea5ffbcbc70cf587af73fdbf49`,
-adapters `sha256:0556bd306fd572d9d1816297bec09a9398a249af8301bdf3e7a867a57e44c38e`, orchestration
-`sha256:f57ee0d30274eeadfbcac2a0666d808b7d71bdff33afeb7a4efb00cf7ed73929`, approval validator tree entry
-`sha256:8d1ffc1af4d9bea876d4d019d5b677455893fef8398aabf56fdd0cdb61e4d0d3`, and guarded activation
-`sha256:bedc5b1a2af1380c83bc2a6223dcfba072b6c2deb38d54bf1f05b32801f0e758`. This is source/test
-proof only. Production remains `DISABLED_UNQUALIFIED`; migrations/grants/config and database roles
-are undeployed, and no full-live deployment bindings are activated.
+credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. The
+exact release closure and component hashes are bound by the pending successor proposal and its
+source-readiness evidence. This is source/test proof only. Production remains
+`DISABLED_UNQUALIFIED`; migrations/grants/config and database roles are undeployed, and no
+full-live deployment bindings are activated.
 The credential rotation/normalization boundary is now completed once and non-reusable. Proposal
 `sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73` at commit
 `1845be6c852654c8396f2973981733ce64a3d2d0`
@@ -126,10 +131,14 @@ audited baseline; source `3f7b588` passed its independent audit before the later
 finding. The replacement proposal
 `sha256:45894ac0…01aaca` was resealed against the prior source; its fresh authority `59dfe8a` is
 superseded unconsumed with no mutation after the Cloudflare boundary audit. The active successor
-`2026-08-27-cloudflare-credential-origin-repair-candidate` is resealed against `2f31453` and awaits a
-proposal-record audit and fresh exact approval (`sha256:2d64eefd…cfe07cc`). Its protected Google OAuth and R2 credential identities and scope hashes
-are receipt-bound and verified; the receipt is complete and non-reusable. The repaired source still
-requires an exact proposal-record commit/audit and exact approval.
+`2026-08-27-cloudflare-credential-origin-repair-candidate` is resealed against release source
+`73bd6ed` from audited code `36e985a1` and awaits a proposal-record audit and fresh exact approval
+(`sha256:8caac7e7658cb97bb82ccd8300fd685f334c247c895e2fbd6bf13fb10e32548e`). It supersedes proposal `sha256:6d7ffa4c…4378e` at
+`9c38cb3` (source `8df55ce8`), whose exact approval failed closed during seed building before any
+approval record, authority, credential read, provider mutation, GPU use, or spend. Its protected Google OAuth and R2 credential
+identities and scope hashes are receipt-bound and verified; the receipt is complete and
+non-reusable. The repaired source still requires an exact proposal-record commit/audit and exact
+approval.
 It requires protected Wrangler OAuth only (no raw API-token file or `CLOUDFLARE_API_TOKEN` export),
 authenticated account and workers.dev subdomain derivation, exact absent HTTP 404
 `text/html; charset=UTF-8` body of 19,984 bytes with `sha256:2000e6b2…580976` before creation (not
