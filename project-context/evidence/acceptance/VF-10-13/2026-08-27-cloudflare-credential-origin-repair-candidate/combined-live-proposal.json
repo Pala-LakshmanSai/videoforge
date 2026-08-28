@@ -18,34 +18,34 @@
     "required_next_action": "obtain fresh exact user approval of this sealed 26-operation proposal and static release descriptor before any authority record, credential access, provider call, mutation, GPU use, or spend",
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:d4b158c5c8da9228c59364857c3da0d345ba78dd4d1f1b000511572d0f595b03"
+      "sha256": "sha256:2b56d003dbece7589363a39ddf3a481d126fc97cdab9a40af496d0ec7d1842d8"
     },
     "materialization_seed_facts": {
       "commit_field": "source.release_source_commit",
-      "full_live_authority_id": "4bba6253-1cfd-42e0-8d4f-b5694ed268a4",
+      "full_live_authority_id": "8b35ac30-7dbf-4eca-b069-046d4f9afd57",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:af10f28ed22cdea0cabf35ea700ea28962826fe1e490b9edfe7a1db0f5b5841d"
+      "sha256": "sha256:7baeb86c548e59de99131f13c9f647150927d21b756edfa97fafd875e95c6471"
     }
   },
   "supersession": {
-    "supersedes_proposal_sha256": "sha256:8caac7e7658cb97bb82ccd8300fd685f334c247c895e2fbd6bf13fb10e32548e",
-    "supersedes_proposal_record_commit": "03312bfb2d641ed8da476a4c584fc55151a26056",
+    "supersedes_proposal_sha256": "sha256:6cf20ed6184ea1817871593eab2998983f0b4d2381fb35fa5486a416a4fd5d99",
+    "supersedes_proposal_record_commit": "557bb861ec714a1aa984cac87289722d246481a6",
     "superseded_exact_user_approval_received_in_current_task": true,
     "superseded_approval_record_materialized": true,
-    "superseded_approval_record_path": "git:3adefb462f851b4323d78474b5859b2c37afa698:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/user-approval.json",
-    "superseded_approval_record_sha256": "sha256:21a236f211f7bf5049cbf417e065d6467b71b29ceba961d06636e6d9618324a4",
+    "superseded_approval_record_path": "git:909c9773845a4c07ce25eadca493b82ee68fb19c:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/user-approval.json",
+    "superseded_approval_record_sha256": "sha256:a11c35cc00fb6e9ef7ec6cc0052c8ce09d115712e88b293d80012b0a126426ea",
     "superseded_authority_materialized": true,
-    "superseded_authority_id": "v2-13-full-live-20260828-100309z-8caac7e7",
-    "superseded_authority_record_path": "git:3adefb462f851b4323d78474b5859b2c37afa698:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/approved-authority.json",
-    "superseded_authority_record_sha256": "sha256:6a10cda59f4731ced1450e15c8cc8ef640b59cc08029c76d82d5dfe85a0f3f41",
-    "supersession_reason": "CONSUMED_AUTHORITY_FAILED_BEFORE_NORMAL_OPERATION_AUTHORIZATION_CLEANUP_COMPLETE_BRIDGE_AND_MATERIALIZATION_CHAIN_REPAIRED",
+    "superseded_authority_id": "v2-13-full-live-20260828-114602z-6cf20ed6",
+    "superseded_authority_record_path": "git:909c9773845a4c07ce25eadca493b82ee68fb19c:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/approved-authority.json",
+    "superseded_authority_record_sha256": "sha256:9d136f890d9b7ba2099a82e2f5e6391afea131c71b16faab44e86fed29bf6492",
+    "supersession_reason": "CONSUMED_AUTHORITY_FAILED_BEFORE_NORMAL_OPERATION_AUTHORIZATION_CLEANUP_COMPLETE_TRUSTED_TIME_FAILURE_EVIDENCE_AND_CLEANUP_RESTART_REPAIRED",
     "superseded_authority_state": "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY_ZERO_ATTEMPT_SPEND",
     "prior_approval_reusable": false,
     "fresh_exact_approval_required": true
   },
   "source": {
-    "release_source_commit": "aa3ca2470ccc33ae3e6736997f5908b7788fd023",
-    "repaired_release_source_commit": "aa3ca2470ccc33ae3e6736997f5908b7788fd023",
+    "release_source_commit": "e2f4d6296bd84bbf14b106a6eea55b3b75ed7087",
+    "repaired_release_source_commit": "e2f4d6296bd84bbf14b106a6eea55b3b75ed7087",
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
     "future_authority_record_commit": null,
@@ -57,12 +57,12 @@
     "exact_release_components": {
       "full_live_executor": {
         "path": "deploy/v2-13/full-live-executor.mjs",
-        "sha256": "sha256:0c2d78410033b06f96f6b18961106d9edee2e9d9bf99871dc616abb56c0d3fc1",
+        "sha256": "sha256:21f2a14e9698700758a2ec3c46268a04d303044002d91507c2da6a6fe69d3e39",
         "sole_canonical_live_mutation_path": true
       },
       "full_live_adapters": {
         "path": "deploy/v2-13/full-live-adapters.mjs",
-        "sha256": "sha256:0fb8951aaf3599975e44963b4f1f25173b024b2891203b0b5dba4b2bb4688c7f"
+        "sha256": "sha256:e7d4dd8eb7b13356a74142978a904017868129cf03cac02bf1a77d9fc7a2c0e8"
       },
       "promotion": {
         "path": "deploy/v2-13/promote-qualified-production.mjs",
@@ -74,7 +74,7 @@
       },
       "orchestration_authority": {
         "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-        "sha256": "sha256:91ccf0f77c9a731fa3f6940e478b43dfa309e64fc132e3e984a758b5ac1998b3"
+        "sha256": "sha256:417a0ef7cbd6f81e7d5cdef61e0920f6ea7795fa42c8dd623119f6039e85cf27"
       },
       "typescript_cli_bridge": {
         "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -158,7 +158,7 @@
       },
       "source_closure_manifest": {
         "path": "deploy/v2-13/full-live-source-closure.json",
-        "sha256": "sha256:bc27e20cf1b3e05108c673ffcf112275576f5fa5e3e3335af3b470f142fbb3ce"
+        "sha256": "sha256:7cc98eeb61a31bcfdff31dd8ed6e7f957cd16ef2c45cf178a0dc47263ccb0a56"
       },
       "approval_validator": {
         "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -174,13 +174,13 @@
     },
     "pending_source_contract": {
       "status": "SOURCE_BOUND_AUDITED",
-      "release_source_commit": "aa3ca2470ccc33ae3e6736997f5908b7788fd023",
+      "release_source_commit": "e2f4d6296bd84bbf14b106a6eea55b3b75ed7087",
       "release_component_sha256s": {
-        "full_live_executor": "sha256:0c2d78410033b06f96f6b18961106d9edee2e9d9bf99871dc616abb56c0d3fc1",
-        "full_live_adapters": "sha256:0fb8951aaf3599975e44963b4f1f25173b024b2891203b0b5dba4b2bb4688c7f",
+        "full_live_executor": "sha256:21f2a14e9698700758a2ec3c46268a04d303044002d91507c2da6a6fe69d3e39",
+        "full_live_adapters": "sha256:e7d4dd8eb7b13356a74142978a904017868129cf03cac02bf1a77d9fc7a2c0e8",
         "promotion": "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
         "guarded_activation": "sha256:b5be2bb99a151e82129f685b083ae78db2395f46e0dbf3ff62822fb20f1cc5e8",
-        "orchestration_authority": "sha256:91ccf0f77c9a731fa3f6940e478b43dfa309e64fc132e3e984a758b5ac1998b3",
+        "orchestration_authority": "sha256:417a0ef7cbd6f81e7d5cdef61e0920f6ea7795fa42c8dd623119f6039e85cf27",
         "typescript_cli_bridge": "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0",
         "runpod_dual_lane_transport": "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2",
         "direct_qualification_materializer": "sha256:faf895d2c5e72b133090a7d9913d72e86fc5f1c5d2c26f2d583593c2cc3d9baa",
@@ -201,7 +201,7 @@
         "production_config_validator": "sha256:9860d815d101dd25b8a98ef5231df6054a42c9820edabaf6bb871dcaf5fc83f6",
         "pg_service_validator": "sha256:08fce81dcb856d365b9aaa728e16f827fcb07ac4ce027d20feeab3972d246e7e",
         "migration_manifest": "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
-        "source_closure_manifest": "sha256:bc27e20cf1b3e05108c673ffcf112275576f5fa5e3e3335af3b470f142fbb3ce"
+        "source_closure_manifest": "sha256:7cc98eeb61a31bcfdff31dd8ed6e7f957cd16ef2c45cf178a0dc47263ccb0a56"
       },
       "source_hashes_must_be_bound_before_reseal": false,
       "credential_receipt_binding": {
@@ -1606,6 +1606,8 @@
       "proxy_environment_allowed": false,
       "curl_default_config_allowed": false,
       "subprocess_timeout_ms": 12000,
+      "maximum_credential_free_attempts_per_boundary": 3,
+      "every_attempt_must_complete_before_phase_or_work_mutation": true,
       "required_date_header_count": 1,
       "date_header_match": "CASE_INSENSITIVE_^date:",
       "date_parse_valid_required": true,
@@ -1686,7 +1688,7 @@
     "creation_requested": true,
     "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-    "exact_target_commit": "aa3ca2470ccc33ae3e6736997f5908b7788fd023",
+    "exact_target_commit": "e2f4d6296bd84bbf14b106a6eea55b3b75ed7087",
     "tag_kind": "LIGHTWEIGHT",
     "maximum_new_refs": 1,
     "force_update_authorized": false,
@@ -1699,8 +1701,8 @@
       "remote exact tag absence proved immediately before creation",
       "final source worker commit and all component hashes are independently audited and bound before reseal"
     ],
-    "exact_mutation": "create one lightweight tag locally at aa3ca2470ccc33ae3e6736997f5908b7788fd023 and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
-    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to aa3ca2470ccc33ae3e6736997f5908b7788fd023",
+    "exact_mutation": "create one lightweight tag locally at e2f4d6296bd84bbf14b106a6eea55b3b75ed7087 and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
+    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to e2f4d6296bd84bbf14b106a6eea55b3b75ed7087",
     "stop_on_presence_collision_or_drift": true
   },
   "requested_scope": {
@@ -2108,13 +2110,13 @@
     "plan_change_authorized": false,
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:d4b158c5c8da9228c59364857c3da0d345ba78dd4d1f1b000511572d0f595b03"
+      "sha256": "sha256:2b56d003dbece7589363a39ddf3a481d126fc97cdab9a40af496d0ec7d1842d8"
     },
     "materialization_seed_facts": {
       "commit_field": "source.release_source_commit",
-      "full_live_authority_id": "4bba6253-1cfd-42e0-8d4f-b5694ed268a4",
+      "full_live_authority_id": "8b35ac30-7dbf-4eca-b069-046d4f9afd57",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:af10f28ed22cdea0cabf35ea700ea28962826fe1e490b9edfe7a1db0f5b5841d"
+      "sha256": "sha256:7baeb86c548e59de99131f13c9f647150927d21b756edfa97fafd875e95c6471"
     }
   },
   "ordered_operations": [
@@ -2267,7 +2269,7 @@
     ],
     "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, official Serverless Flex USD 0.00031/second (USD 1.116/GPU-hour) maximum, reject above, no fallback",
     "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
-    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to aa3ca2470ccc33ae3e6736997f5908b7788fd023 without force, then prove exact remote readback",
+    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to e2f4d6296bd84bbf14b106a6eea55b3b75ed7087 without force, then prove exact remote readback",
     "requested_exact_database_roles": [
       "videoforge_hosted_operator",
       "videoforge_hosted_runtime",

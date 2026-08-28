@@ -5,28 +5,29 @@
 ### New-chat launch point — 2026-08-28
 
 - The current provider-free release source is
-  `aa3ca2470ccc33ae3e6736997f5908b7788fd023`, built from independently audited application code
-  `dec217f0fb41a364bd32980d747b690f82463f8a`. Its fresh sealed 26-operation proposal is
-  `sha256:6cf20ed6184ea1817871593eab2998983f0b4d2381fb35fa5486a416a4fd5d99`; its proposal-record
-  commit is null/pending until that exact commit exists, and it still requires independent record
-  audit plus fresh exact approval. It supersedes the consumed proposal
-  `sha256:8caac7e7658cb97bb82ccd8300fd685f334c247c895e2fbd6bf13fb10e32548e` at proposal-record
-  commit `03312bfb2d641ed8da476a4c584fc55151a26056`, bound to source
-  `73bd6edb15b3f67a8c2cb95bc5d2ecdc8376227a`.
-- The prior exact approval was materialized once under authority
-  `v2-13-full-live-20260828-100309z-8caac7e7` (authority record commit
-  `3adefb462f851b4323d78474b5859b2c37afa698`) and failed before normal operation authorization.
+  `e2f4d6296bd84bbf14b106a6eea55b3b75ed7087`, an evidence-only child of independently audited
+  application code `0124d8a5145f80e8b65ce564e27f61f665df5027`. Fresh sealed 26-operation proposal
+  `sha256:14116dc666a9699e4569537cd01b1af5c205ec29e0ebd5b69fa33bd1e8e23e46` is bound to this
+  source; its proposal-record commit remains null/pending until the exact five-path commit exists,
+  followed by independent record audit and
+  fresh exact approval. It supersedes the prior approved proposal
+  `sha256:6cf20ed6184ea1817871593eab2998983f0b4d2381fb35fa5486a416a4fd5d99` at proposal-record
+  commit `557bb861ec714a1aa984cac87289722d246481a6`, bound to source
+  `aa3ca2470ccc33ae3e6736997f5908b7788fd023`.
+- That prior exact approval was materialized once under authority
+  `v2-13-full-live-20260828-114602z-6cf20ed6` (authority record commit
+  `909c9773845a4c07ce25eadca493b82ee68fb19c`) and failed before normal operation authorization.
   It entered cleanup-only and is permanently non-reusable: no database-role credentials, internal
   production secrets, database/Cloudflare activation, images, endpoints, GPU use, or normal
   provider operation was created; attempt reserved and settled spend were both `$0`.
   The archived protected state records cleanup completion and exact zero-worker, billing,
   resource-reconciliation, and max-one restoration proofs at
-  `protected-inputs/v2-13/history/v2-13-full-live-20260828-100309z-8caac7e7/full-live-state.json`.
-  The active handoff binds materialization facts at
+  `protected-inputs/v2-13/history/v2-13-full-live-20260828-114602z-6cf20ed6/full-live-state.json`.
+  The pending reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:af10f28ed22cdea0cabf35ea700ea28962826fe1e490b9edfe7a1db0f5b5841d` and UUID
-  `4bba6253-1cfd-42e0-8d4f-b5694ed268a4`, plus protected static descriptor self-hash
-  `sha256:d4b158c5c8da9228c59364857c3da0d345ba78dd4d1f1b000511572d0f595b03`.
+  `sha256:7baeb86c548e59de99131f13c9f647150927d21b756edfa97fafd875e95c6471` and UUID
+  `8b35ac30-7dbf-4eca-b069-046d4f9afd57`, plus protected static descriptor self-hash
+  `sha256:2b56d003dbece7589363a39ddf3a481d126fc97cdab9a40af496d0ec7d1842d8`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -64,20 +65,19 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free release source is `aa3ca2470ccc33ae3e6736997f5908b7788fd023`, built from
-source-readiness-audited and repaired application code `dec217f0fb41a364bd32980d747b690f82463f8a`;
+The current provider-free release source is `e2f4d6296bd84bbf14b106a6eea55b3b75ed7087`, built from
+source-readiness-audited and repaired application code `0124d8a5145f80e8b65ce564e27f61f665df5027`;
 default entrypoints remain no-op. Its exact audited component pins include executor
-`sha256:0c2d78410033b06f96f6b18961106d9edee2e9d9bf99871dc616abb56c0d3fc1`, adapters
-`sha256:0fb8951aaf3599975e44963b4f1f25173b024b2891203b0b5dba4b2bb4688c7f`, orchestration authority
-`sha256:91ccf0f77c9a731fa3f6940e478b43dfa309e64fc132e3e984a758b5ac1998b`, and source closure
-`sha256:bc27e20cf1b3e05108c673ffcf112275576f5fa5e3e3335af3b470f142fbb3ce`; the approval validator
+`sha256:21f2a14e9698700758a2ec3c46268a04d303044002d91507c2da6a6fe69d3e39`, adapters
+`sha256:e7d4dd8eb7b13356a74142978a904017868129cf03cac02bf1a77d9fc7a2c0e8`, orchestration authority
+`sha256:417a0ef7cbd6f81e7d5cdef61e0920f6ea7795fa42c8dd623119f6039e85cf27`, and source closure
+`sha256:7cc98eeb61a31bcfdff31dd8ed6e7f957cd16ef2c45cf178a0dc47263ccb0a56`; the approval validator
 is externally bound to the exact release-commit tree entry with no self-hash. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
 `fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
 credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. The
 exact release closure and component hashes are bound by the fresh pending successor proposal
-`sha256:6cf20ed6184ea1817871593eab2998983f0b4d2381fb35fa5486a416a4fd5d99` and its source-readiness
-evidence. This is source/test proof only. Production remains
+pending proposal and its source-readiness evidence. This is source/test proof only. Production remains
 `DISABLED_UNQUALIFIED`; migrations/grants/config and database roles are undeployed, and no
 full-live deployment bindings are activated.
 The credential rotation/normalization boundary is now completed once and non-reusable. Proposal
