@@ -1031,7 +1031,7 @@
     },
     {
       "path": "deploy/v2-13/build-materialization-seed.mjs",
-      "sha256": "sha256:fb4383065524b8b692d2d14e8067b7daf0cb890e2b724e227d1a35abd90297a7"
+      "sha256": "sha256:5779db73680dd82d67de48746fe266520cac994d1509f5d541a7b5d8e8617cbf"
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",

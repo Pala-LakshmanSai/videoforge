@@ -182,6 +182,25 @@ const exactKeys = (value, keys) =>
   !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
 const sameJson = (left, right) => canonicalJson(left) === canonicalJson(right);
+// Array.prototype.sort() without a comparator is ordered by UTF-16 code units. Keep the
+// source-closure validator on that exact deterministic ordering rather than locale collation.
+const compareCodeUnitLexically = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
+
+function assertSourceClosureOrder(entries) {
+  let previousPath = "";
+  const seen = new Set();
+  for (const entry of entries) {
+    const path = entry?.path;
+    if (
+      typeof path !== "string" ||
+      seen.has(path) ||
+      (previousPath !== "" && compareCodeUnitLexically(path, previousPath) <= 0)
+    )
+      fail("SOURCE_CLOSURE_CONTRACT");
+    seen.add(path);
+    previousPath = path;
+  }
+}
 
 function parseJson(bytes, code, { canonical = false } = {}) {
   let value;
@@ -646,21 +665,19 @@ function validateSourceEvidence(
     closure.entries.length === 0
   )
     fail("SOURCE_CLOSURE_CONTRACT");
-  let previousPath = "";
+  assertSourceClosureOrder(closure.entries);
   const seen = new Set();
   for (const entry of closure.entries) {
     if (
       !exactKeys(entry, ["path", "sha256"]) ||
       !HASH.test(entry.sha256 ?? "") ||
       sourcePath(entry.path, "SOURCE_CLOSURE_PATH") !== entry.path ||
-      seen.has(entry.path) ||
-      (previousPath !== "" && entry.path.localeCompare(previousPath) <= 0)
+      seen.has(entry.path)
     )
       fail("SOURCE_CLOSURE_CONTRACT");
     const sourceBytes = readBoundSourceBytes(entry, readSourceFile, "SOURCE_CLOSURE_ENTRY");
     if (sha256(sourceBytes) !== entry.sha256) fail("SOURCE_CLOSURE_ENTRY_HASH");
     seen.add(entry.path);
-    previousPath = entry.path;
   }
   for (const requiredPath of [
     BUILDER_PATH,
@@ -1651,6 +1668,7 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) main();
 
 export {
   assertCommitLineage,
+  assertSourceClosureOrder,
   assertSourceEvidenceLineage,
   buildV213MaterializationSeed,
   canonicalBytes,

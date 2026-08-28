@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 
 import {
+  assertSourceClosureOrder,
   assertSourceEvidenceLineage,
   buildV213MaterializationSeed,
   canonicalBytes,
@@ -1339,4 +1340,21 @@ test("production builder has no fixture, environment, credential-reader, or prov
   assert.doesNotMatch(source, /process\.env|fetch\s*\(|https\.request|cloudflareOAuthApiResponse/u);
   assert.doesNotMatch(source, /DATABASE_URL|RUNPOD_API_KEY|R2_SECRET_ACCESS_KEY/u);
   assert.match(source, /execFileSync\("git", \["show"/u);
+});
+
+test("production builder uses the generated real-live closure order and rejects mutations", () => {
+  const closure = JSON.parse(readFileSync(new URL(CLOSURE_PATH, ROOT)));
+  const entries = closure.entries;
+  assert.ok(entries.length > 600);
+  assert.deepEqual(
+    entries.map((entry) => entry.path),
+    entries.map((entry) => entry.path).sort(),
+  );
+  assert.doesNotThrow(() => assertSourceClosureOrder(entries));
+
+  const reversed = [...entries].reverse();
+  assert.throws(() => assertSourceClosureOrder(reversed), /SOURCE_CLOSURE_CONTRACT/u);
+
+  const duplicated = [...entries, entries.at(-1)];
+  assert.throws(() => assertSourceClosureOrder(duplicated), /SOURCE_CLOSURE_CONTRACT/u);
 });

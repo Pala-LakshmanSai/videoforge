@@ -35,7 +35,7 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:448e6e938e3c9d5c83b20a716faace7fc0ec7357d018e83d5e20780d258995e1",
+    sha256: "sha256:9977ecfbf39dda509c5818cfdb6a26b75acb9ba54a335898e7480ecd70c763b8",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
@@ -52,7 +52,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:89a20b61896ba174718fb31b292afc1647889665111b9c761e18b16673434f71",
+    sha256: "sha256:2124cd8a1fd3c083a214a37b17b17d663f7a3462e3ddc00c4c5efb400b244d37",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -72,7 +72,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:fb4383065524b8b692d2d14e8067b7daf0cb890e2b724e227d1a35abd90297a7",
+    sha256: "sha256:5779db73680dd82d67de48746fe266520cac994d1509f5d541a7b5d8e8617cbf",
   }),
   materialization_seed_envelope_schema: Object.freeze({
     path: "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
@@ -136,7 +136,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:0409e411a2617d370e08e79360d64bb923bcc87d739142be0848a570bcc64af0",
+    sha256: "sha256:c477ce4e79e3a013792e4aa05f941c5886d3de70e2b64be6f425b8ec40478845",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
