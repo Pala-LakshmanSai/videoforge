@@ -316,7 +316,11 @@ interface ProjectDetailResponse {
     readonly planned_tasks: number | string;
     readonly completed_tasks: number | string;
     readonly failed_tasks: number | string;
-    readonly stage: "WAITING_FOR_GPU_QUALIFICATION" | "READY_FOR_RENDER" | "FAILED";
+    readonly stage:
+      | "WAITING_FOR_GPU_QUALIFICATION"
+      | "READY_FOR_GPU_DISPATCH"
+      | "READY_FOR_RENDER"
+      | "FAILED";
   };
   readonly queue?: HostedQueueSnapshot | null;
   readonly stages?: readonly HostedStage[];

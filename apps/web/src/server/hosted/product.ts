@@ -16,7 +16,10 @@ import {
   hostedVoiceoverArtifactProbe,
   validateHostedVoiceover,
 } from "./audio-validation";
-import { hostedGpuReadinessForConfiguration } from "./gpu-readiness";
+import {
+  hostedGpuReadinessForConfiguration,
+  type HostedGpuReadiness,
+} from "./gpu-readiness";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
 import { canonicalJson } from "./submission";
@@ -2477,6 +2480,28 @@ type HostedPreflightBlocker = {
   readonly severity: "BLOCKING" | "ADVISORY";
 };
 
+export function hostedGpuProductState(
+  readiness: Pick<HostedGpuReadiness, "dispatch_available">,
+): {
+  readonly projectedUsd: 0 | null;
+  readonly pendingState: "READY_FOR_GPU_DISPATCH" | "WAITING_FOR_GPU_QUALIFICATION";
+  readonly estimateDetail: string;
+} {
+  return readiness.dispatch_available
+    ? {
+        projectedUsd: null,
+        pendingState: "READY_FOR_GPU_DISPATCH",
+        estimateDetail:
+          "GPU projection is unavailable until exact lane work is materialized. The selected cap is the hard maximum.",
+      }
+    : {
+        projectedUsd: 0,
+        pendingState: "WAITING_FOR_GPU_QUALIFICATION",
+        estimateDetail:
+          "Provider-free personal-worker estimate. GPU provider cost is not projected while transport is DISABLED_UNQUALIFIED.",
+      };
+}
+
 async function projectPreflight(
   request: Request,
   config: HostedRuntimeConfiguration,
@@ -2573,19 +2598,17 @@ async function projectPreflight(
     }
     const cap = input.spendCapUsd;
     const ok = blockers.every((blocker) => blocker.severity !== "BLOCKING");
-    const projectedUsd = gpuReadiness.dispatch_available ? cap : 0;
+    const gpuProductState = hostedGpuProductState(gpuReadiness);
     return response({
       schema_version: "videoforge-hosted-project-preflight/v1",
       ok,
       ready: ok,
       estimate: {
-        projected_usd: projectedUsd,
+        projected_usd: gpuProductState.projectedUsd,
         minimum_usd: 0,
         maximum_usd: cap,
         cap_usd: cap,
-        detail: gpuReadiness.dispatch_available
-          ? "Conservative GPU reservation ceiling. Settled provider cost can be lower and never exceeds the selected cap."
-          : "Provider-free personal-worker estimate. GPU provider cost is not projected while transport is DISABLED_UNQUALIFIED.",
+        detail: gpuProductState.estimateDetail,
         voiceover_bytes: input.voiceover.contentLength,
         duration_ms: input.voiceover.durationMs,
         generation_mode: input.generationMode,
@@ -3778,6 +3801,8 @@ async function projectDetail(
     const render = (detail.attempts as Record<string, unknown>[]).find(
       (value) => value.kind === "RENDER",
     );
+    const gpuReadiness = hostedGpuReadinessForConfiguration(config);
+    const gpuPendingState = hostedGpuProductState(gpuReadiness).pendingState;
     const stages = [
       {
         id: "transcription",
@@ -3802,7 +3827,7 @@ async function projectDetail(
       {
         id: "image-generation",
         name: "Image generation",
-        status: String(laneState("mage_image")?.state ?? "WAITING_FOR_GPU_QUALIFICATION"),
+        status: String(laneState("mage_image")?.state ?? gpuPendingState),
         progress_percent: laneProgress("mage_image"),
         started_at: timestampOrNull(laneState("mage_image")?.created_at),
         completed_at: timestampOrNull(laneState("mage_image")?.terminal_at),
@@ -3812,7 +3837,7 @@ async function projectDetail(
       {
         id: "avatar-generation",
         name: "Avatar generation",
-        status: String(laneState("soulx_avatar")?.state ?? "WAITING_FOR_GPU_QUALIFICATION"),
+        status: String(laneState("soulx_avatar")?.state ?? gpuPendingState),
         progress_percent: laneProgress("soulx_avatar"),
         started_at: timestampOrNull(laneState("soulx_avatar")?.created_at),
         completed_at: timestampOrNull(laneState("soulx_avatar")?.terminal_at),
@@ -3943,7 +3968,6 @@ async function projectDetail(
         ).url;
       }
     }
-    const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     return response({
       schema_version: "videoforge-hosted-project-detail/v1",
       project: detail.project,
@@ -3962,7 +3986,7 @@ async function projectDetail(
                       Number(detail.generation.completed_tasks) ===
                         Number(detail.generation.planned_tasks)
                     ? "READY_FOR_RENDER"
-                    : "WAITING_FOR_GPU_QUALIFICATION",
+                    : gpuPendingState,
             },
       queue,
       stages,

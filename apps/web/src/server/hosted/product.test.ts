@@ -49,7 +49,7 @@ vi.mock("./neon", () => ({
 }));
 
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
-import { handleHostedProductRequest } from "./product";
+import { handleHostedProductRequest, hostedGpuProductState } from "./product";
 
 const ORIGIN = "https://hosted.example.test";
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
@@ -88,6 +88,19 @@ async function errorCode(result: Response | null): Promise<string | null> {
 }
 
 describe("hosted product route contract", () => {
+  it("reports qualified work as dispatch-ready without inventing a GPU estimate", () => {
+    expect(hostedGpuProductState({ dispatch_available: true })).toStrictEqual({
+      projectedUsd: null,
+      pendingState: "READY_FOR_GPU_DISPATCH",
+      estimateDetail:
+        "GPU projection is unavailable until exact lane work is materialized. The selected cap is the hard maximum.",
+    });
+    expect(hostedGpuProductState({ dispatch_available: false })).toMatchObject({
+      projectedUsd: 0,
+      pendingState: "WAITING_FOR_GPU_QUALIFICATION",
+    });
+  });
+
   it.each([
     "/api/v2/hosted/avatars",
     `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
