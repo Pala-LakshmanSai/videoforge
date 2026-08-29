@@ -24,7 +24,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:52e755d1994a0b91961d2b1c2af91f687939a66171e8229be62b97f805a1f7f1"
+      "sha256": "sha256:b048c38c957547bb6d03791db94a49f483b894dd722f892ce160bce0e9d026b6"
     },
     "workflow_registration_evidence": {
       "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
@@ -94,7 +94,7 @@
     "future_approval_record_basename": "user-approval.json",
     "future_authority_record_basename": "approved-authority.json",
     "execution_control": {
-      "commit": "be194f3cf733803c17d621d622b4e3a8551f7d2a",
+      "commit": "26d37b87f73fc062b195f328b22a4839c524ac70",
       "exact_components": {
         "approval_validator": {
           "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -169,7 +169,7 @@
         },
         "orchestration_authority": {
           "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-          "sha256": "sha256:6c85b2cea75760ae7e3c0220c710ae7fab8ce6ce15e97562327b739a90b7e967"
+          "sha256": "sha256:fa11cc6fb145c94075e988ec5d423504e00549f731ab38078290e2c636ca070f"
         },
         "promotion": {
           "path": "deploy/v2-13/promote-qualified-production.mjs",
@@ -1891,7 +1891,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:52e755d1994a0b91961d2b1c2af91f687939a66171e8229be62b97f805a1f7f1"
+      "sha256": "sha256:b048c38c957547bb6d03791db94a49f483b894dd722f892ce160bce0e9d026b6"
     }
   },
   "requested_scope": {
@@ -2319,7 +2319,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:52e755d1994a0b91961d2b1c2af91f687939a66171e8229be62b97f805a1f7f1"
+      "sha256": "sha256:b048c38c957547bb6d03791db94a49f483b894dd722f892ce160bce0e9d026b6"
     },
     "workflow_registration_evidence": {
       "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
