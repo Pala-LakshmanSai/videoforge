@@ -208,4 +208,17 @@ describe("hosted product route contract", () => {
     expect(queueSql).not.toContain("total.workspace_id");
     expect(queueSql).toContain("ahead.queue_order < request.queue_order");
   });
+
+  it("consumes a retryable attempt exactly once before reopening its request", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const retryStart = source.indexOf("async function retryProjectAttempt(");
+    const retryEnd = source.indexOf("async function projectManifest(", retryStart);
+    const retry = source.slice(retryStart, retryEnd);
+    expect(retry).toContain("SET state = 'PERMANENT_FAILED'");
+    expect(retry).toContain("state = 'RETRYABLE_FAILED' AND version = $4");
+    expect(retry).toContain("request.state = 'FAILED'");
+    expect(retry).toContain("task.state = 'FAILED'");
+    expect(retry).not.toContain("request.state IN ('FAILED','RETRY_WAIT')");
+    expect(retry).not.toContain("task.state IN ('FAILED','RETRY_WAIT')");
+  });
 });

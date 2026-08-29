@@ -2149,7 +2149,8 @@ async function retryProjectAttempt(
       ]);
       const result = await transaction.query<HostedPresetRow>(
         `SELECT attempt.id AS attempt_id, attempt.lane, attempt.attempt_ordinal,
-                attempt.state AS attempt_state, attempt.task_id,
+                attempt.state AS attempt_state, attempt.version AS attempt_version,
+                attempt.task_id,
                 task.state AS task_state, task.version AS task_version,
                 request.id AS generation_request_id, request.state AS request_state,
                 request.attempt_ordinal AS request_attempt_ordinal,
@@ -2166,30 +2167,59 @@ async function retryProjectAttempt(
             AND attempt.project_id = $3 AND attempt.id = $4
             AND attempt.state = 'RETRYABLE_FAILED'
             AND attempt.attempt_ordinal < 3
-            AND request.state IN ('FAILED','RETRY_WAIT')
-            AND task.state IN ('FAILED','RETRY_WAIT')
+            AND request.state = 'FAILED'
+            AND task.state = 'FAILED'
           FOR UPDATE OF attempt, task, request`,
         [scope.account_id, scope.workspace_id, projectId, input.attemptId],
       );
       const target = result.rows[0];
       if (!target) return null;
-      await transaction.query(
+      const consumed = await transaction.query(
+        `UPDATE serverless_attempts
+            SET state = 'PERMANENT_FAILED', terminal_at = COALESCE(terminal_at, now()),
+                version = version + 1, updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3
+            AND state = 'RETRYABLE_FAILED' AND version = $4
+          RETURNING id`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          rowString(target, "attempt_id"),
+          Number(target.attempt_version),
+        ],
+      );
+      if (consumed.rows.length !== 1) throw new Error("RETRY_NOT_ALLOWED");
+      const requestUpdated = await transaction.query(
         `UPDATE generation_requests
             SET state = 'RETRY_WAIT', attempt_ordinal = attempt_ordinal + 1,
                 terminal_at = NULL, admitted_at = NULL, version = version + 1,
                 updated_at = now()
           WHERE account_id = $1 AND workspace_id = $2 AND id = $3
-            AND state IN ('FAILED','RETRY_WAIT')`,
-        [scope.account_id, scope.workspace_id, rowString(target, "generation_request_id")],
+            AND state = 'FAILED' AND version = $4
+          RETURNING id`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          rowString(target, "generation_request_id"),
+          Number(target.request_version),
+        ],
       );
-      await transaction.query(
+      const taskUpdated = await transaction.query(
         `UPDATE generation_tasks
             SET state = 'RETRY_WAIT', finished_at = NULL, version = version + 1,
                 updated_at = now()
           WHERE account_id = $1 AND workspace_id = $2 AND id = $3
-            AND state IN ('FAILED','RETRY_WAIT')`,
-        [scope.account_id, scope.workspace_id, rowString(target, "task_id")],
+            AND state = 'FAILED' AND version = $4
+          RETURNING id`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          rowString(target, "task_id"),
+          Number(target.task_version),
+        ],
       );
+      if (requestUpdated.rows.length !== 1 || taskUpdated.rows.length !== 1)
+        throw new Error("RETRY_NOT_ALLOWED");
       return target;
     });
     if (!retried) return response({ error: { code: "RETRY_NOT_ALLOWED" } }, 409);
@@ -2203,6 +2233,10 @@ async function retryProjectAttempt(
       redispatch: false,
       provider_calls_authorized: false,
     });
+  } catch (error) {
+    if (error instanceof Error && error.message === "RETRY_NOT_ALLOWED")
+      return response({ error: { code: error.message } }, 409);
+    throw error;
   } finally {
     await pool.end();
   }
