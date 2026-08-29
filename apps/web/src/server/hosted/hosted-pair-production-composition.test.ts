@@ -196,6 +196,25 @@ async function restartFixture() {
 }
 
 describe("hosted production pair composition", () => {
+  it("accepts the exact current 37..49 manifest ledger", () => {
+    expect(HOSTED_PAIR_REQUIRED_MIGRATIONS).toEqual([
+      [37, "sha256:e21a04350d2685f231bbfa8ac9a1109a22194ab0e227d49a9dfa4c68d84aa9ef"],
+      [38, "sha256:de64f32ab2b07d9e3448e29f466ea6a26e48f507cab12800abc2efd7393afe00"],
+      [39, "sha256:1b602747e8a5ed91c76d1a602d5b7be87a6139cdcf862dd7da10fd9f45238637"],
+      [40, "sha256:9e7cbbecd515c8781f66a6888d1283abeb2e91baee4f61d6ad1857775a67c1a3"],
+      [41, "sha256:24f161e5c441f7cfa6b7837d185e64b3eae182d729c8ef21ef6850aeec9bcf84"],
+      [42, "sha256:d7168a4143a813df7b9114f76f1efe71aa287bec4b1f137ab414a98e65e6b967"],
+      [43, "sha256:590386f350c606da0be673376d14a9609df5f221268b2a932d4e00d608b2b927"],
+      [44, "sha256:8ab2a30c7df970531e521fac0662f666ef2689a908057fa4525a623c11622a6f"],
+      [45, "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b"],
+      [46, "sha256:d98e020a52a1820db811f5c9a679651c1169000ebe28c1d00b35e04c003ba33b"],
+      [47, "sha256:d9840c7033b823a7f9a03e13d7213c50b81d40c7f89423f6c6f4ecc7e8e8649a"],
+      [48, "sha256:8181d1c050690a8e15ce5cef7473a5caa872d5f868b18f059574dbd4fcbdc82d"],
+      [49, "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31"],
+    ]);
+    expect(evaluateHostedPairProductionGate(gate())).toEqual({ state: "READY" });
+  });
+
   it("returns disabled before DB reconstruction or provider transport", async () => {
     const fixture = await restartFixture();
     await expect(
@@ -214,7 +233,7 @@ describe("hosted production pair composition", () => {
 
   it("rejects ledger, qualification, approval, role, or key drift", () => {
     expect(evaluateHostedPairProductionGate(gate({ migrationLedger: [] }))).toMatchObject({
-      reason: "MIGRATION_LEDGER_0037_0045_INVALID",
+      reason: "MIGRATION_LEDGER_0037_0049_INVALID",
     });
     expect(
       evaluateHostedPairProductionGate(
