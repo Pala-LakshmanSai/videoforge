@@ -476,6 +476,7 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
       const target = state.release_ref?.exact_target_commit;
       if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
       const reconciliationOnly =
+        state.release_ref?.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" ||
         state.release_ref?.state === "AUTHORIZED_PENDING_RECONCILIATION";
       const local = exactCommand(
         run,
@@ -527,6 +528,7 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
       const target = state.release_ref?.exact_target_commit;
       if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
       const reconciliationOnly =
+        state.release_ref?.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" ||
         state.release_ref?.state === "AUTHORIZED_PENDING_RECONCILIATION";
       if (!reconciliationOnly) {
         const local = exactCommand(run, "git", ["rev-parse", `refs/tags/${tag}^{commit}`]);

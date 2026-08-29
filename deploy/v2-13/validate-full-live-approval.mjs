@@ -62,12 +62,12 @@ const EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:9180d2e78a8651944a78007892285e1eb72196012cd9eb7fa3c8aa8c9d002737",
+    sha256: "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:caa7df16360f0257758be12852f2131aad73adc5e2db8e3f91e21c122261ab34",
+    sha256: "sha256:19256a5a9872203ed29062360a0f962374c5f37a254b9591bd48fa7af701ea20",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -79,7 +79,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:6d143770f0c6440252c7ce9b718af5da6fc4b633a3bf757f8337f50f165261d5",
+    sha256: "sha256:ce4a92127d098392504bd1641d61865d3c94cfb7624de6939fe31157f1199e03",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -163,11 +163,37 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:1a7a9e4102c4288fe33e4c2f82db299738703e2211a7e11f8a40822a786c136d",
+    sha256: "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
     source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
+  }),
+});
+const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
+  approval_validator: Object.freeze({
+    path: "deploy/v2-13/validate-full-live-approval.mjs",
+    source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
+  }),
+  full_live_adapters: Object.freeze({
+    path: "deploy/v2-13/full-live-adapters.mjs",
+    sha256: "sha256:4f8f9f035d8ba2ee0d36c37dd2155add7f9a1931423b989dde14e74ab336f809",
+  }),
+  full_live_executor: Object.freeze({
+    path: "deploy/v2-13/full-live-executor.mjs",
+    sha256: "sha256:762b8bd4e6ead059d0054473353467380259dfe322f1239672a277f4efe5b1f3",
+  }),
+  materialization_seed_builder: Object.freeze({
+    path: "deploy/v2-13/build-materialization-seed.mjs",
+    sha256: "sha256:1e7f282a0a7e924a43aa39f330ad5ce907d1999bc8096bbd025baea01c8d497f",
+  }),
+  orchestration_authority: Object.freeze({
+    path: "deploy/v2-13/full-live-orchestration-authority.mjs",
+    sha256: "sha256:3359c9c45e24a400c9f0d93bded961e8df1ff2223322829108717568f69ea9ab",
+  }),
+  source_closure_manifest: Object.freeze({
+    path: "deploy/v2-13/full-live-source-closure.json",
+    sha256: "sha256:9eef569614b90eb4ea8b2b7cb2540c39b7ed8bbc238b31ded4b7ce4062e12686",
   }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({
@@ -1311,15 +1337,7 @@ function validateFullLiveUserApproval({
   const approval = parse(approvalBytes, "APPROVAL");
   const isV4 = proposal.schema_version === PROPOSAL_SCHEMA_V4;
   const isModern = proposal.schema_version === PROPOSAL_SCHEMA_V3 || isV4;
-  const expectedReleaseComponents = isV4
-    ? {
-        ...EXACT_V3_RELEASE_COMPONENTS,
-        approval_validator: {
-          path: "deploy/v2-13/validate-full-live-approval.mjs",
-          source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
-        },
-      }
-    : EXACT_V3_RELEASE_COMPONENTS;
+  const expectedReleaseComponents = EXACT_V3_RELEASE_COMPONENTS;
   const requestedStaticReleaseDescriptor = proposal.requested_scope?.static_release_descriptor;
   const sealedStaticReleaseDescriptor = proposal.sealing?.static_release_descriptor;
   const requestedMaterializationSeedFacts = proposal.requested_scope?.materialization_seed_facts;
@@ -1338,8 +1356,16 @@ function validateFullLiveUserApproval({
     fail("PROPOSAL_CONTRACT");
   if (
     isV4 &&
-    (!COMMIT.test(proposal.source?.execution_control_commit ?? "") ||
-      proposal.source.execution_control_commit === expectedReleaseSourceCommit ||
+    (!COMMIT.test(proposal.source?.execution_control?.commit ?? "") ||
+      proposal.source.execution_control.commit === expectedReleaseSourceCommit ||
+      !exactKeys(proposal.source.execution_control, ["commit", "exact_components"]) ||
+      JSON.stringify(proposal.source.execution_control.exact_components) !==
+        JSON.stringify(EXACT_V4_EXECUTION_CONTROL_COMPONENTS) ||
+      JSON.stringify(proposal.source.execution_control.exact_components?.approval_validator) !==
+        JSON.stringify({
+          path: "deploy/v2-13/validate-full-live-approval.mjs",
+          source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
+        }) ||
       JSON.stringify(proposal.supersession?.predecessor_release_attempt) !==
         JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT))
   )
@@ -1519,7 +1545,7 @@ function validateFullLiveUserApproval({
     approval.proposal?.proposal_record_commit !== expectedProposalRecordCommit ||
     approval.proposal?.release_source_commit !== expectedReleaseSourceCommit ||
     (isV4 &&
-      approval.proposal?.execution_control_commit !== proposal.source.execution_control_commit) ||
+      approval.proposal?.execution_control_commit !== proposal.source.execution_control.commit) ||
     approval.proposal?.path !== proposal.source.proposal_path
   )
     fail("LINEAGE");
@@ -1779,7 +1805,7 @@ function validateFullLiveUserApproval({
     fail("STATEMENT");
   if (
     isV4 &&
-    (!approval.statement.includes(proposal.source.execution_control_commit) ||
+    (!approval.statement.includes(proposal.source.execution_control.commit) ||
       !approval.statement.includes(EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256))
   )
     fail("STATEMENT_EXECUTION_CONTROL_OR_PREDECESSOR");
@@ -1795,8 +1821,11 @@ function validateFullLiveUserApproval({
     proposalRecordCommit: expectedProposalRecordCommit,
     releaseSourceCommit: expectedReleaseSourceCommit,
     executionControlCommit: isV4
-      ? proposal.source.execution_control_commit
+      ? proposal.source.execution_control.commit
       : expectedReleaseSourceCommit,
+    executionControlComponents: isV4
+      ? proposal.source.execution_control.exact_components
+      : null,
     predecessorReleaseAttempt: isV4 ? EXACT_PREDECESSOR_RELEASE_ATTEMPT : null,
     approvalValidatorSourceBinding: isV4
       ? EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING
@@ -1813,6 +1842,8 @@ function validateFullLiveUserApproval({
 export {
   EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
   EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
+  EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,

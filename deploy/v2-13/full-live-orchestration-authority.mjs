@@ -15,6 +15,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  EXACT_PREDECESSOR_RELEASE_ATTEMPT,
   EXPECTED_PHASE_CAPS,
   validateFullLiveUserApproval,
 } from "./validate-full-live-approval.mjs";
@@ -1134,8 +1135,8 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
         : "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION") ||
     authority.github_release_ref?.ref_creation_authorized_by_approved_proposal !==
       !reconcilesExistingTag ||
-    authority.github_release_ref?.successor_tag_mutation_authorized !==
-      !reconcilesExistingTag ||
+    (reconcilesExistingTag &&
+      authority.github_release_ref?.successor_tag_mutation_authorized !== false) ||
     authority.github_release_ref?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
     authority.github_release_ref?.exact_target_commit !== validated.releaseSourceCommit ||
     (reconcilesExistingTag &&
@@ -1191,6 +1192,24 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     sha256(readFileSync(resolve(ROOT, approvalValidatorPath))) !== approvalValidatorSha256
   )
     fail("APPROVAL_VALIDATOR_TREE_BYTES");
+  for (const [name, component] of Object.entries(validated.executionControlComponents ?? {})) {
+    if (name === "approval_validator") continue;
+    let committedBytes;
+    try {
+      committedBytes = execFileSync(
+        "git",
+        ["show", `${validated.executionControlCommit}:${component.path}`],
+        { cwd: ROOT, maxBuffer: 16 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] },
+      );
+    } catch {
+      fail("EXECUTION_CONTROL_TREE_ENTRY_UNAVAILABLE");
+    }
+    if (
+      sha256(committedBytes) !== component.sha256 ||
+      sha256(readFileSync(resolve(ROOT, component.path))) !== component.sha256
+    )
+      fail("EXECUTION_CONTROL_TREE_BYTES");
+  }
   for (const [pathKey, hashKey] of [
     ["orchestration_tool_path", "orchestration_tool_sha256"],
     ["guarded_activation_path", "guarded_activation_sha256"],
@@ -1265,7 +1284,10 @@ function readAuthenticatedTrustedTime() {
 
 function initialConsumptionRecord(authority, authorityBytes, validated) {
   return {
-    schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v2",
+    schema_version:
+      validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
+        ? "videoforge.v2-13-full-live-orchestration-consumption/v3"
+        : "videoforge.v2-13-full-live-orchestration-consumption/v2",
     authority_id: authority.authority_id,
     full_live_authority_id: authority.full_live_authority_id,
     authority_sha256: sha256(authorityBytes),
@@ -1307,9 +1329,13 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
         validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
           ? "AUTHORIZED_PENDING_RECONCILIATION"
           : "AUTHORIZED_PENDING_CREATION",
+      mode:
+        validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
+          ? "PREDECESSOR_BOUND_RECONCILIATION_ONLY"
+          : "LEGACY_SINGLE_CREATION",
       verification_event_id: null,
     },
-    predecessor_release_attempt: validated.predecessorReleaseAttempt,
+    predecessor_release_attempt: validated.predecessorReleaseAttempt ?? null,
     cleanup_proof: null,
     release_certification: null,
     terminal: null,
@@ -1317,13 +1343,20 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
 }
 
 function validateState(state) {
+  const isV3State =
+    state?.schema_version === "videoforge.v2-13-full-live-orchestration-consumption/v3";
+  const isV2State =
+    state?.schema_version === "videoforge.v2-13-full-live-orchestration-consumption/v2";
+  const executionControlCommit = state.execution_control_commit ?? state.release_source_commit;
+  const releaseMode = state.release_ref?.mode ?? "LEGACY_SINGLE_CREATION";
+  const predecessorReleaseAttempt = state.predecessor_release_attempt ?? null;
   if (
-    state?.schema_version !== "videoforge.v2-13-full-live-orchestration-consumption/v2" ||
+    (!isV2State && !isV3State) ||
     !AUTHORITY_ID.test(state.authority_id ?? "") ||
     !UUID.test(state.full_live_authority_id ?? "") ||
     !HASH.test(state.authority_sha256 ?? "") ||
     !/^[0-9a-f]{40}$/u.test(state.authority_record_commit ?? "") ||
-    !/^[0-9a-f]{40}$/u.test(state.execution_control_commit ?? "") ||
+    !/^[0-9a-f]{40}$/u.test(executionControlCommit ?? "") ||
     ![state.approval_record_path, state.authority_record_path].every(
       (path) =>
         typeof path === "string" &&
@@ -1334,7 +1367,9 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:9180d2e78a8651944a78007892285e1eb72196012cd9eb7fa3c8aa8c9d002737" ||
+      (isV3State
+        ? "sha256:762b8bd4e6ead059d0054473353467380259dfe322f1239672a277f4efe5b1f3"
+        : "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910") ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||
@@ -1437,17 +1472,25 @@ function validateState(state) {
   )
     fail("CUMULATIVE_CAP_OR_EVENT_REPLAY");
   if (
-    state.execution_control_commit !== state.release_source_commit &&
-    (state.predecessor_release_attempt?.authority_id !==
-      "v2-13-full-live-20260829-022710z-62a9ebb2" ||
-      state.predecessor_release_attempt?.terminal_state_sha256 !==
-        "sha256:1dbf573b408507cbe4eecb813e0e6ec5564153f96183a3329d5fd06b5342969b" ||
-      state.predecessor_release_attempt?.tag_create_result_sha256 !==
-        "sha256:29d68b30b0f866fb40a32de97f6a08f6e27799790822a3bfb7409704cd9df5fc" ||
-      state.predecessor_release_attempt?.tag_push_result_sha256 !==
-        "sha256:f71b313cebd5080cb72cc48731ef48992d0987a37cf7d245b180a765c9f3036b" ||
-      state.predecessor_release_attempt?.tag_readback_result_sha256 !==
-        "sha256:e2f8d0a1a471423ac43c5031f65ff052a334eb29e9b6f922f569dcd9287c43ad")
+    (releaseMode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" &&
+      (!isV3State ||
+        executionControlCommit === state.release_source_commit ||
+        JSON.stringify(predecessorReleaseAttempt) !==
+          JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) ||
+        !["AUTHORIZED_PENDING_RECONCILIATION", "VERIFIED_EXACT_REMOTE"].includes(
+          state.release_ref.state,
+        ))) ||
+    (releaseMode === "LEGACY_SINGLE_CREATION" &&
+      (isV3State ||
+        executionControlCommit !== state.release_source_commit ||
+        predecessorReleaseAttempt !== null ||
+        !["AUTHORIZED_PENDING_CREATION", "VERIFIED_EXACT_REMOTE"].includes(
+          state.release_ref.state,
+        ))) ||
+    ![
+      "PREDECESSOR_BOUND_RECONCILIATION_ONLY",
+      "LEGACY_SINGLE_CREATION",
+    ].includes(releaseMode)
   )
     fail("PREDECESSOR_RELEASE_ATTEMPT");
   if (

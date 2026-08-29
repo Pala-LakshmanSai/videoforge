@@ -509,6 +509,10 @@ function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEv
 
 function validateProposal(proposal, proposalPath) {
   const sourceCommit = proposal?.source?.release_source_commit;
+  const isV4 = proposal?.schema_version === "videoforge.v2-13-full-live-completion-proposal/v4";
+  const executionControl = proposal?.source?.execution_control;
+  const executionControlCommit = isV4 ? executionControl?.commit : sourceCommit;
+  const executionControlComponents = isV4 ? executionControl?.exact_components : null;
   const factsBinding = proposal?.sealing?.materialization_seed_facts;
   if (
     proposal?.source?.proposal_path !== proposalPath ||
@@ -549,7 +553,9 @@ function validateProposal(proposal, proposalPath) {
     proposal.source.exact_release_components?.materialization_seed_soulx_case_validator;
   const productionConfigValidator =
     proposal.source.exact_release_components?.production_config_validator;
-  const approvalValidator = proposal.source.exact_release_components?.approval_validator;
+  const approvalValidator = isV4
+    ? executionControlComponents?.approval_validator
+    : proposal.source.exact_release_components?.approval_validator;
   if (
     requested.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     requested.phase_caps_usd?.mage_qualification !== 4.5 ||
@@ -610,7 +616,24 @@ function validateProposal(proposal, proposalPath) {
       productionConfigValidator.sha256 ||
     approvalValidator?.path !== APPROVAL_VALIDATOR_PATH ||
     approvalValidator?.source_commit_tree_binding?.tree_entry_path !== APPROVAL_VALIDATOR_PATH ||
-    approvalValidator.source_commit_tree_binding.commit_field !== "source.release_source_commit"
+    approvalValidator.source_commit_tree_binding.commit_field !==
+      (isV4 ? "source.execution_control_commit" : "source.release_source_commit") ||
+    !COMMIT.test(executionControlCommit ?? "") ||
+    (isV4 &&
+      (!exactKeys(executionControl, ["commit", "exact_components"]) ||
+        !exactKeys(executionControlComponents, [
+          "approval_validator",
+          "full_live_adapters",
+          "full_live_executor",
+          "materialization_seed_builder",
+          "orchestration_authority",
+          "source_closure_manifest",
+        ]) ||
+        Object.values(executionControlComponents).some(
+          (component) =>
+            component?.path !== APPROVAL_VALIDATOR_PATH &&
+            (!exactKeys(component, ["path", "sha256"]) || !HASH.test(component.sha256 ?? "")),
+        )))
   )
     fail("PROPOSAL_CONTRACT");
   return Object.freeze({
@@ -624,6 +647,8 @@ function validateProposal(proposal, proposalPath) {
     soulxCaseGenerator,
     soulxCaseValidator,
     descriptor,
+    executionControlCommit,
+    executionControlComponents,
     factsBinding,
     oauthScopes: structuredClone(cf.oauth_scopes),
     publicOrigin: origin.public_origin,
@@ -1656,14 +1681,35 @@ function writeV213MaterializationSeed({
   const proposal = parseJson(proposalBytes, "PROPOSAL_RECORD");
   const binding = validateProposal(proposal, proposalPath);
   const sourceCommit = binding.sourceCommit;
+  const executionControlCommit = binding.executionControlCommit;
   assertCommitLineage(
     repositoryRoot,
-    sourceCommit,
+    executionControlCommit,
     proposalRecordCommit,
     proposalPath,
     proposalSha256,
   );
-  const readSourceFile = (path) => gitShow(repositoryRoot, sourceCommit, path, "SOURCE_RECORD");
+  const executionControlPaths = new Set(
+    Object.values(binding.executionControlComponents ?? {}).map((component) => component.path),
+  );
+  for (const [name, component] of Object.entries(binding.executionControlComponents ?? {})) {
+    const bytes = gitShow(
+      repositoryRoot,
+      executionControlCommit,
+      component.path,
+      "EXECUTION_CONTROL_SOURCE",
+    );
+    if (name !== "approval_validator" && sha256(bytes) !== component.sha256)
+      fail("EXECUTION_CONTROL_SOURCE_HASH");
+  }
+  executionControlPaths.add(binding.factsBinding.path);
+  const readSourceFile = (path) =>
+    gitShow(
+      repositoryRoot,
+      executionControlPaths.has(path) ? executionControlCommit : sourceCommit,
+      path,
+      "SOURCE_RECORD",
+    );
   const factsRead = readBoundSourceJson(
     { path: binding.factsBinding.path, sha256: binding.factsBinding.sha256 },
     readSourceFile,
@@ -1672,6 +1718,7 @@ function writeV213MaterializationSeed({
   if (Buffer.compare(factsRead.bytes, canonicalBytes(factsRead.value)) !== 0)
     fail("FACTS_NONCANONICAL");
   const facts = validateFacts(factsRead.value);
+  executionControlPaths.add(facts.source_evidence.source_readiness.path);
   if (
     typeof staticReleaseDescriptorFile !== "string" ||
     typeof protectedInputFile !== "string" ||
@@ -1691,9 +1738,13 @@ function writeV213MaterializationSeed({
   )
     fail("PROTECTED_PATH_BINDING");
   const approvalBytes = secureRead(approvalFile, "APPROVAL", { anchorRoot: repositoryRoot });
-  const sourceClosureRef = proposal.source.exact_release_components.source_closure_manifest;
+  const sourceClosureRef =
+    binding.executionControlComponents?.source_closure_manifest ??
+    proposal.source.exact_release_components.source_closure_manifest;
   readBoundSourceJson(sourceClosureRef, readSourceFile, "APPROVAL_SOURCE_CLOSURE");
-  const approvalValidator = proposal.source.exact_release_components?.approval_validator;
+  const approvalValidator =
+    binding.executionControlComponents?.approval_validator ??
+    proposal.source.exact_release_components?.approval_validator;
   if (
     !exactKeys(approvalValidator, ["path", "source_commit_tree_binding"]) ||
     approvalValidator.path !== APPROVAL_VALIDATOR_PATH ||
@@ -1706,7 +1757,10 @@ function writeV213MaterializationSeed({
       "self_hash_forbidden",
     ]) ||
     approvalValidator.source_commit_tree_binding.mode !== "EXTERNAL_GIT_COMMIT_TREE_ENTRY" ||
-    approvalValidator.source_commit_tree_binding.commit_field !== "source.release_source_commit" ||
+    approvalValidator.source_commit_tree_binding.commit_field !==
+      (binding.executionControlComponents
+        ? "source.execution_control_commit"
+        : "source.release_source_commit") ||
     approvalValidator.source_commit_tree_binding.tree_entry_path !== APPROVAL_VALIDATOR_PATH ||
     approvalValidator.source_commit_tree_binding.verification !==
       "GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256" ||
@@ -1719,7 +1773,7 @@ function writeV213MaterializationSeed({
   // from the proposal's immutable release source commit.
   const validatorBytes = gitShow(
     repositoryRoot,
-    binding.sourceCommit,
+    binding.executionControlCommit,
     approvalValidator.path,
     "APPROVAL_VALIDATOR_SOURCE",
   );

@@ -57,7 +57,7 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:caa7df16360f0257758be12852f2131aad73adc5e2db8e3f91e21c122261ab34",
+    "sha256:4f8f9f035d8ba2ee0d36c37dd2155add7f9a1931423b989dde14e74ab336f809",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
@@ -73,7 +73,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:1a7a9e4102c4288fe33e4c2f82db299738703e2211a7e11f8a40822a786c136d",
+    "sha256:9eef569614b90eb4ea8b2b7cb2540c39b7ed8bbc238b31ded4b7ce4062e12686",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -414,7 +414,7 @@ export function assertResult(
     if (
       result.exactTagReady !== true ||
       result.targetCommit !== state.release_ref.exact_target_commit ||
-      (state.execution_control_commit !== state.release_source_commit &&
+      (state.release_ref.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" &&
         result.mutationPerformed !== false)
     )
       fail("RELEASE_REF_CREATE", operation.id);
@@ -424,7 +424,7 @@ export function assertResult(
       result.tagName !== state.release_ref.exact_tag_name ||
       result.targetCommit !== state.release_ref.exact_target_commit ||
       typeof result.pushPerformed !== "boolean" ||
-      (state.execution_control_commit !== state.release_source_commit &&
+      (state.release_ref.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" &&
         result.mutationPerformed !== false) ||
       result.forceUsed !== false
     )
@@ -434,7 +434,7 @@ export function assertResult(
     if (
       result.tagName !== state.release_ref.exact_tag_name ||
       result.targetCommit !== state.release_ref.exact_target_commit ||
-      (state.execution_control_commit !== state.release_source_commit &&
+      (state.release_ref.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" &&
         result.mutationPerformed !== false)
     )
       fail("RELEASE_REF_READBACK", operation.id);

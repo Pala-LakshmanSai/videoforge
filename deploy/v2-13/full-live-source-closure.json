@@ -1031,11 +1031,11 @@
     },
     {
       "path": "deploy/v2-13/build-materialization-seed.mjs",
-      "sha256": "sha256:61d16bf3e3d8c1e6ae51420930c39e7eb59a5bfe0253e2e04a3b2d36dce984d1"
+      "sha256": "sha256:1e7f282a0a7e924a43aa39f330ad5ce907d1999bc8096bbd025baea01c8d497f"
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:caa7df16360f0257758be12852f2131aad73adc5e2db8e3f91e21c122261ab34"
+      "sha256": "sha256:4f8f9f035d8ba2ee0d36c37dd2155add7f9a1931423b989dde14e74ab336f809"
     },
     {
       "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",

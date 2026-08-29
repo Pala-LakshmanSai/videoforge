@@ -622,7 +622,7 @@ function harness({
 function releaseTreeApprovalValidator(sourceBytes, exactReleaseComponents) {
   const source = Buffer.from(sourceBytes).toString("utf8");
   const start = source.indexOf("const EXACT_V3_RELEASE_COMPONENTS = Object.freeze(");
-  const end = source.indexOf("const EXPECTED_PHASE_CAPS", start);
+  const end = source.indexOf("const EXACT_V4_EXECUTION_CONTROL_COMPONENTS", start);
   assert.ok(
     start >= 0 && end > start,
     "approval validator must expose its exact component contract",
