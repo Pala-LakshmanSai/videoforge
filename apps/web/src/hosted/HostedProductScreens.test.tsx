@@ -14,8 +14,11 @@ import {
   HostedProjectScreen,
   HostedStylesHubScreen,
   HostedUsageScreen,
+  HOSTED_SHA256_CHUNK_BYTES,
   audioDurationMs,
+  hostedFileSha256,
   isFailClosedGpuReadiness,
+  normalizeHostedReturnTo,
   parseWavDurationMs,
 } from "./HostedProductScreens";
 
@@ -63,6 +66,66 @@ const gpuReadiness = {
     },
   ] as const,
 };
+
+describe("hosted browser security boundaries", () => {
+  const origin = "https://videoforge.example";
+
+  it("normalizes a same-origin internal return path with query and hash", () => {
+    expect(
+      normalizeHostedReturnTo("/projects/../review?project=private#output", "/projects", origin),
+    ).toBe("/review?project=private#output");
+  });
+
+  it.each([
+    "javascript:alert(1)",
+    "data:text/html,unsafe",
+    "https://attacker.example/phish",
+    "//attacker.example/phish",
+    "///attacker.example/phish",
+    "\\\\attacker.example\\phish",
+    "/safe\\attacker",
+    "/%5c%5cattacker.example",
+    "/safe\nheader",
+    "/safe%0d%0aheader",
+  ])("rejects unsafe return target %s", (value) => {
+    expect(normalizeHostedReturnTo(value, "/avatars", origin)).toBe("/avatars");
+  });
+
+  it("hashes the exact file bytes with incremental SHA-256", async () => {
+    await expect(
+      hostedFileSha256(new File(["abc"], "voiceover.mp3", { type: "audio/mpeg" })),
+    ).resolves.toBe(
+      "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    );
+  });
+
+  it("bounds a declared 1 GiB file read to one fixed-size slice when cancelled", async () => {
+    const controller = new AbortController();
+    const ranges: [number, number][] = [];
+    const wholeFileRead = vi.fn();
+    const syntheticFile = {
+      size: 1_073_741_824,
+      arrayBuffer: wholeFileRead,
+      slice(start = 0, end = 1_073_741_824) {
+        ranges.push([start, end]);
+        return { size: end - start } as Blob;
+      },
+    } as unknown as Blob;
+
+    await expect(
+      hostedFileSha256(syntheticFile, {
+        signal: controller.signal,
+        readChunk: async (chunk) => {
+          controller.abort();
+          return new ArrayBuffer(chunk.size);
+        },
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(ranges).toEqual([[0, HOSTED_SHA256_CHUNK_BYTES]]);
+    expect(wholeFileRead).not.toHaveBeenCalled();
+  });
+});
 
 describe("hosted product journey", () => {
   it("accepts only the exact closed-world hosted GPU readiness payload", () => {

@@ -33,6 +33,24 @@ const MIN_STYLE_REFERENCES = 3;
 const DEFAULT_SPEND_CAP_USD = "1.00";
 const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
 const VOICEOVER_TYPES = new Set(["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"]);
+export const HOSTED_SHA256_CHUNK_BYTES = 4 * 1024 * 1024;
+
+const SHA256_INITIAL_STATE = [
+  0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
+  0x5be0cd19,
+] as const;
+const SHA256_ROUND_CONSTANTS = new Uint32Array([
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
+  0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
+  0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
+  0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+  0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+  0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+  0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+  0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+  0xc67178f2,
+]);
 
 export interface CatalogResponse {
   readonly avatars: readonly {
@@ -397,8 +415,8 @@ async function bounded<T>(promise: Promise<T>, message: string, timeoutMs = 30_0
   }
 }
 
-/** File.arrayBuffer() can remain pending for extension-backed file inputs in Chrome. */
-async function readFileBytes(file: File): Promise<ArrayBuffer> {
+/** Blob.arrayBuffer() can remain pending for extension-backed file inputs in Chrome. */
+async function readBlobBytes(blob: Blob): Promise<ArrayBuffer> {
   return await new Promise<ArrayBuffer>((resolve, reject) => {
     const reader = new FileReader();
     const timeout: ReturnType<typeof setTimeout> = setTimeout(() => {
@@ -416,13 +434,158 @@ async function readFileBytes(file: File): Promise<ArrayBuffer> {
     };
     reader.onerror = fail;
     reader.onabort = fail;
-    reader.readAsArrayBuffer(file);
+    reader.readAsArrayBuffer(blob);
   });
 }
 
-async function sha256(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await readFileBytes(file));
-  return `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+function rotateRight(value: number, count: number): number {
+  return (value >>> count) | (value << (32 - count));
+}
+
+class IncrementalSha256 {
+  readonly #state = new Uint32Array(SHA256_INITIAL_STATE);
+  readonly #block = new Uint8Array(64);
+  readonly #schedule = new Uint32Array(64);
+  #blockLength = 0;
+  #bytesHashed = 0;
+  #finished = false;
+
+  update(bytes: Uint8Array): void {
+    if (this.#finished) throw new Error("SHA-256 digest is already finalized.");
+    this.#bytesHashed += bytes.byteLength;
+    let offset = 0;
+
+    if (this.#blockLength > 0) {
+      const needed = 64 - this.#blockLength;
+      const copied = Math.min(needed, bytes.byteLength);
+      this.#block.set(bytes.subarray(0, copied), this.#blockLength);
+      this.#blockLength += copied;
+      offset += copied;
+      if (this.#blockLength === 64) {
+        this.#compress(this.#block, 0);
+        this.#blockLength = 0;
+      }
+    }
+
+    while (offset + 64 <= bytes.byteLength) {
+      this.#compress(bytes, offset);
+      offset += 64;
+    }
+    if (offset < bytes.byteLength) {
+      this.#block.set(bytes.subarray(offset), 0);
+      this.#blockLength = bytes.byteLength - offset;
+    }
+  }
+
+  digestHex(): string {
+    if (this.#finished) throw new Error("SHA-256 digest is already finalized.");
+    this.#finished = true;
+    const bitLength = this.#bytesHashed * 8;
+
+    this.#block[this.#blockLength++] = 0x80;
+    if (this.#blockLength > 56) {
+      this.#block.fill(0, this.#blockLength);
+      this.#compress(this.#block, 0);
+      this.#blockLength = 0;
+    }
+    this.#block.fill(0, this.#blockLength, 56);
+    const view = new DataView(this.#block.buffer);
+    view.setUint32(56, Math.floor(bitLength / 0x1_0000_0000), false);
+    view.setUint32(60, bitLength >>> 0, false);
+    this.#compress(this.#block, 0);
+
+    return Array.from(this.#state, (word) => word.toString(16).padStart(8, "0")).join("");
+  }
+
+  #compress(bytes: Uint8Array, offset: number): void {
+    const words = this.#schedule;
+    for (let index = 0; index < 16; index += 1) {
+      const start = offset + index * 4;
+      words[index] =
+        ((bytes[start]! << 24) |
+          (bytes[start + 1]! << 16) |
+          (bytes[start + 2]! << 8) |
+          bytes[start + 3]!) >>>
+        0;
+    }
+    for (let index = 16; index < 64; index += 1) {
+      const prior15 = words[index - 15]!;
+      const prior2 = words[index - 2]!;
+      const sigma0 =
+        rotateRight(prior15, 7) ^ rotateRight(prior15, 18) ^ (prior15 >>> 3);
+      const sigma1 = rotateRight(prior2, 17) ^ rotateRight(prior2, 19) ^ (prior2 >>> 10);
+      words[index] =
+        (words[index - 16]! + sigma0 + words[index - 7]! + sigma1) >>> 0;
+    }
+
+    let a = this.#state[0]!;
+    let b = this.#state[1]!;
+    let c = this.#state[2]!;
+    let d = this.#state[3]!;
+    let e = this.#state[4]!;
+    let f = this.#state[5]!;
+    let g = this.#state[6]!;
+    let h = this.#state[7]!;
+
+    for (let index = 0; index < 64; index += 1) {
+      const sum1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25);
+      const choose = (e & f) ^ (~e & g);
+      const temporary1 = (h + sum1 + choose + SHA256_ROUND_CONSTANTS[index]! + words[index]!) >>> 0;
+      const sum0 = rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22);
+      const majority = (a & b) ^ (a & c) ^ (b & c);
+      const temporary2 = (sum0 + majority) >>> 0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temporary1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temporary1 + temporary2) >>> 0;
+    }
+
+    this.#state[0] = (this.#state[0]! + a) >>> 0;
+    this.#state[1] = (this.#state[1]! + b) >>> 0;
+    this.#state[2] = (this.#state[2]! + c) >>> 0;
+    this.#state[3] = (this.#state[3]! + d) >>> 0;
+    this.#state[4] = (this.#state[4]! + e) >>> 0;
+    this.#state[5] = (this.#state[5]! + f) >>> 0;
+    this.#state[6] = (this.#state[6]! + g) >>> 0;
+    this.#state[7] = (this.#state[7]! + h) >>> 0;
+  }
+}
+
+function abortError(): DOMException {
+  return new DOMException("File hashing was cancelled.", "AbortError");
+}
+
+interface HostedFileHashOptions {
+  readonly signal?: AbortSignal;
+  readonly readChunk?: (chunk: Blob) => Promise<ArrayBuffer>;
+}
+
+/** Incremental SHA-256 keeps peak file memory bounded to one fixed-size slice. */
+export async function hostedFileSha256(
+  file: Blob,
+  options: HostedFileHashOptions = {},
+): Promise<`sha256:${string}`> {
+  if (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_VOICEOVER_BYTES) {
+    throw new Error("The selected file is outside the bounded hashing contract.");
+  }
+  const hash = new IncrementalSha256();
+  const readChunk = options.readChunk ?? readBlobBytes;
+  for (let offset = 0; offset < file.size; offset += HOSTED_SHA256_CHUNK_BYTES) {
+    if (options.signal?.aborted) throw abortError();
+    const end = Math.min(file.size, offset + HOSTED_SHA256_CHUNK_BYTES);
+    const buffer = await readChunk(file.slice(offset, end));
+    if (options.signal?.aborted) throw abortError();
+    if (buffer.byteLength !== end - offset) throw new Error(FILE_ACCESS_HINT);
+    hash.update(new Uint8Array(buffer));
+    if (end < file.size && end % (HOSTED_SHA256_CHUNK_BYTES * 4) === 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+  }
+  return `sha256:${hash.digestHex()}`;
 }
 
 function readAscii(view: DataView, offset: number, length: number): string {
@@ -432,9 +595,14 @@ function readAscii(view: DataView, offset: number, length: number): string {
 }
 
 /** Read duration from the RIFF/WAVE container without relying on media-element events. */
-export function parseWavDurationMs(buffer: ArrayBuffer): number | null {
+export function parseWavDurationMs(
+  buffer: ArrayBuffer,
+  totalByteLength = buffer.byteLength,
+): number | null {
   const view = new DataView(buffer);
   if (
+    !Number.isSafeInteger(totalByteLength) ||
+    totalByteLength < buffer.byteLength ||
     view.byteLength < 12 ||
     readAscii(view, 0, 4) !== "RIFF" ||
     readAscii(view, 8, 4) !== "WAVE"
@@ -447,13 +615,15 @@ export function parseWavDurationMs(buffer: ArrayBuffer): number | null {
   while (offset + 8 <= view.byteLength) {
     const chunkSize = view.getUint32(offset + 4, true);
     const chunkStart = offset + 8;
-    if (chunkStart + chunkSize > view.byteLength) return null;
     const chunkId = readAscii(view, offset, 4);
-    if (chunkId === "fmt " && chunkSize >= 12) byteRate = view.getUint32(chunkStart + 8, true);
+    if (chunkId === "fmt " && chunkSize >= 12 && chunkStart + 12 <= view.byteLength)
+      byteRate = view.getUint32(chunkStart + 8, true);
     if (chunkId === "data") {
+      if (chunkStart + chunkSize > totalByteLength) return null;
       dataBytes = chunkSize;
       break;
     }
+    if (chunkStart + chunkSize > view.byteLength) return null;
     offset = chunkStart + chunkSize + (chunkSize % 2);
   }
   if (!Number.isSafeInteger(byteRate) || byteRate <= 0 || !Number.isSafeInteger(dataBytes))
@@ -469,7 +639,10 @@ function validateAudioDurationMs(value: number): number {
 
 export async function audioDurationMs(file: File): Promise<number> {
   if (file.type === "audio/wav" || /\.wav$/iu.test(file.name)) {
-    const parsed = parseWavDurationMs(await readFileBytes(file));
+    const parsed = parseWavDurationMs(
+      await readBlobBytes(file.slice(0, Math.min(file.size, 1024 * 1024))),
+      file.size,
+    );
     if (parsed !== null) return validateAudioDurationMs(parsed);
   }
   const url = URL.createObjectURL(file);
@@ -580,6 +753,43 @@ async function putHostedUpload(upload: HostedUploadDescriptor, file: File): Prom
   if (!result.ok) throw new Error(`Private upload failed (HTTP ${result.status}).`);
 }
 
+const ENCODED_UNSAFE_RETURN_TO_CHARACTERS = /%(?:0[0-9a-f]|1[0-9a-f]|5c|7f)/iu;
+
+function hasUnsafeReturnToCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return character === "\\" || code <= 0x1f || code === 0x7f;
+  });
+}
+
+function normalizedInternalPath(value: string, origin: string): string | null {
+  if (
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    hasUnsafeReturnToCharacter(value) ||
+    ENCODED_UNSAFE_RETURN_TO_CHARACTERS.test(value)
+  ) {
+    return null;
+  }
+  try {
+    const parsed = new URL(value, origin);
+    if (parsed.origin !== origin) return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeHostedReturnTo(
+  value: string | null,
+  fallback: string,
+  origin = window.location.origin,
+): string {
+  return (value === null ? null : normalizedInternalPath(value, origin)) ??
+    normalizedInternalPath(fallback, origin) ??
+    "/";
+}
+
 function presetVersionId(
   item: CatalogResponse["avatars"][number] | CatalogResponse["styles"][number],
 ) {
@@ -675,11 +885,7 @@ export function HostedCreateProjectScreen() {
       if (!VOICEOVER_TYPES.has(contentType))
         throw new Error("Use WAV, FLAC, MP3, M4A, or AAC audio.");
       if (voiceover.size > MAX_VOICEOVER_BYTES) throw new Error("Voiceover must be at most 1 GB.");
-      const checksumSha256 = await bounded(
-        sha256(voiceover),
-        "Voiceover checksum timed out. Choose the file again and retry.",
-        15_000,
-      );
+      const checksumSha256 = await hostedFileSha256(voiceover);
       const durationMs = await bounded(
         audioDurationMs(voiceover),
         "Voiceover duration timed out. Choose a valid WAV, FLAC, MP3, M4A, or AAC file and retry.",
@@ -1254,7 +1460,10 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
   const title = isAvatar ? "New avatar" : "New image style";
   const itemLabel = isAvatar ? "avatar" : "style";
   const params = new URLSearchParams(window.location.search);
-  const returnTo = params.get("returnTo") || (isAvatar ? "/avatars" : "/styles");
+  const returnTo = normalizeHostedReturnTo(
+    params.get("returnTo"),
+    isAvatar ? "/avatars" : "/styles",
+  );
   const parentId = params.get("parentId");
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
@@ -1311,7 +1520,11 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
       const dimensions = await imageDimensions(file);
       if (dimensions.width < 512 || dimensions.height < 512)
         throw new Error("Avatar source must be at least 512×512 pixels.");
-      const checksum = await bounded(sha256(file), "Avatar checksum timed out. Try again.", 15_000);
+      const checksum = await bounded(
+        hostedFileSha256(file),
+        "Avatar checksum timed out. Try again.",
+        15_000,
+      );
       if (avatarSource) URL.revokeObjectURL(avatarSource.objectUrl);
       setAvatarSource({
         file,
@@ -1343,7 +1556,7 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
     try {
       const checksums = await Promise.all(
         files.map((file) =>
-          bounded(sha256(file), "Style reference checksum timed out. Try again.", 15_000),
+          bounded(hostedFileSha256(file), "Style reference checksum timed out. Try again.", 15_000),
         ),
       );
       setStyleSources(
