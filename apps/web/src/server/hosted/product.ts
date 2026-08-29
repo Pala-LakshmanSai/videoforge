@@ -1161,9 +1161,45 @@ async function resolveProjectPresets(
   };
 }
 
-async function parseHostedJson(request: Request, code: string): Promise<unknown | Response> {
+async function parseHostedJson(
+  request: Request,
+  code: string,
+  maximumBytes = 131_072,
+): Promise<unknown | Response> {
+  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim();
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader === null ? null : Number(contentLengthHeader);
+  if (
+    contentType !== "application/json" ||
+    (contentLength !== null &&
+      (!Number.isSafeInteger(contentLength) || contentLength < 0 || contentLength > maximumBytes))
+  ) {
+    return response({ error: { code } }, 400);
+  }
   try {
-    return await request.json();
+    if (!request.body) return response({ error: { code } }, 400);
+    const reader = request.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maximumBytes) {
+        await reader.cancel();
+        return response({ error: { code } }, 400);
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return JSON.parse(
+      new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes),
+    ) as unknown;
   } catch {
     return response({ error: { code } }, 400);
   }
@@ -2632,18 +2668,14 @@ async function projectPreflight(
 ): Promise<Response> {
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  let raw: unknown;
-  try {
-    raw = await request.json();
-  } catch {
-    return response({ error: { code: "PROJECT_PREFLIGHT_REJECTED" } }, 400);
-  }
-  const input = parseCreate(raw);
-  if (!input) return response({ error: { code: "PROJECT_PREFLIGHT_REJECTED" } }, 400);
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
+    const raw = await parseHostedJson(request, "PROJECT_PREFLIGHT_REJECTED");
+    if (raw instanceof Response) return raw;
+    const input = parseCreate(raw);
+    if (!input) return response({ error: { code: "PROJECT_PREFLIGHT_REJECTED" } }, 400);
     const facts = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
@@ -2756,20 +2788,16 @@ async function createProject(
   const idempotencyKey = request.headers.get("idempotency-key") ?? "";
   if (!IDEMPOTENCY.test(idempotencyKey))
     return response({ error: { code: "PROJECT_IDEMPOTENCY_REQUIRED" } }, 400);
-  let raw: unknown;
-  try {
-    raw = await request.json();
-  } catch {
-    return response({ error: { code: "PROJECT_CREATE_REJECTED" } }, 400);
-  }
-  const input = parseCreate(raw);
-  if (!input) return response({ error: { code: "PROJECT_CREATE_REJECTED" } }, 400);
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
+    const raw = await parseHostedJson(request, "PROJECT_CREATE_REJECTED");
+    if (raw instanceof Response) return raw;
+    const input = parseCreate(raw);
+    if (!input) return response({ error: { code: "PROJECT_CREATE_REJECTED" } }, 400);
     const requestSha256 = await sha256(canonicalJson(raw));
     const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
@@ -3351,19 +3379,14 @@ async function renderHandoff(
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return response({ error: { code: "HOSTED_RENDER_HANDOFF_REJECTED" } }, 400);
-  }
-  const asrAttemptId = parseRenderHandoff(body);
-  if (!asrAttemptId) return response({ error: { code: "HOSTED_RENDER_HANDOFF_REJECTED" } }, 400);
-
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
+    const body = await parseHostedJson(request, "HOSTED_RENDER_HANDOFF_REJECTED", 4_096);
+    if (body instanceof Response) return body;
+    const asrAttemptId = parseRenderHandoff(body);
+    if (!asrAttemptId) return response({ error: { code: "HOSTED_RENDER_HANDOFF_REJECTED" } }, 400);
     const state = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
@@ -4146,19 +4169,15 @@ async function approveReview(
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return response({ error: { code: "REVIEW_REJECTED" } }, 400);
-  }
-  const attemptId = (body as { attempt_id?: unknown } | null)?.attempt_id;
-  if (typeof attemptId !== "string" || !UUID.test(attemptId))
-    return response({ error: { code: "REVIEW_REJECTED" } }, 400);
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
+    const body = await parseHostedJson(request, "REVIEW_REJECTED", 4_096);
+    if (body instanceof Response) return body;
+    const attemptId = (body as { attempt_id?: unknown } | null)?.attempt_id;
+    if (typeof attemptId !== "string" || !UUID.test(attemptId))
+      return response({ error: { code: "REVIEW_REJECTED" } }, 400);
     const approved = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",

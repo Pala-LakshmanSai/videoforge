@@ -171,8 +171,11 @@ describe("hosted product route contract", () => {
   it("fails closed before tenant data access when the hosted rate limit is exhausted", async () => {
     testState.query.mockClear();
     testState.rateLimitRows[0]!.allowed = false;
+    const candidate = request(`/api/v2/hosted/projects/${PROJECT_ID}/review`, "POST", {
+      attempt_id: "22222222-2222-4222-8222-222222222222",
+    });
     const result = await handleHostedProductRequest(
-      request(`/api/v2/hosted/projects/${PROJECT_ID}/manifest`, "GET"),
+      candidate,
       environment,
       config,
       executionContext,
@@ -185,7 +188,23 @@ describe("hosted product route contract", () => {
         String(sql).includes("videoforge_hosted_session_scope"),
       ),
     ).toBe(false);
+    expect(candidate.bodyUsed).toBe(false);
     testState.rateLimitRows[0]!.allowed = true;
+  });
+
+  it("rejects an oversized hosted JSON body before parsing it", async () => {
+    const candidate = request("/api/v2/hosted/projects/preflight", "POST", {}, true, {
+      "content-length": "131073",
+    });
+    const result = await handleHostedProductRequest(
+      candidate,
+      environment,
+      config,
+      executionContext,
+    );
+    expect(result?.status).toBe(400);
+    await expect(errorCode(result)).resolves.toBe("PROJECT_PREFLIGHT_REJECTED");
+    expect(candidate.bodyUsed).toBe(false);
   });
 
   it("keeps provenance manifest unavailable until an approved render exists", async () => {
