@@ -475,7 +475,12 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
       const tag = state.release_ref?.exact_tag_name;
       const target = state.release_source_commit;
       if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
-      const local = exactCommand(run, "git", ["show-ref", "--verify", `refs/tags/${tag}`], [0, 1]);
+      const local = exactCommand(
+        run,
+        "git",
+        ["show-ref", "--verify", "--quiet", `refs/tags/${tag}`],
+        [0, 1],
+      );
       if (local.status !== 1 || local.stdout !== "") fail("LOCAL_TAG_ALREADY_EXISTS");
       const remote = exactCommand(run, "git", [
         "ls-remote",

@@ -520,6 +520,7 @@ test("git release adapters require absence, create one lightweight tag, push non
   assert.equal((await adapters["release-tag-create"]({}, state)).created, true);
   assert.equal((await adapters["release-tag-push"]({}, state)).forceUsed, false);
   assert.equal((await adapters["release-tag-readback"]({}, state)).targetCommit, sourceCommit);
+  assert.deepEqual(calls[0][1], ["show-ref", "--verify", "--quiet", `refs/tags/${TAG}`]);
   assert.deepEqual(calls[5][1], [
     "push",
     "--porcelain",
