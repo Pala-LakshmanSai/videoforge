@@ -59,6 +59,8 @@ const CASE_SOURCE_PATH = "apps/web/src/server/providers/v213-dual-lane-live.ts";
 const PRODUCTION_CONFIG_VALIDATOR_PATH = "deploy/v2-13/validate-production-config.mjs";
 const APPROVAL_VALIDATOR_PATH = "deploy/v2-13/validate-full-live-approval.mjs";
 const CLOSURE_PATH = "deploy/v2-13/full-live-source-closure.json";
+const V3_PROPOSAL_SCHEMA = "videoforge.v2-13-full-live-completion-proposal/v3";
+const V4_PROPOSAL_SCHEMA = "videoforge.v2-13-full-live-completion-proposal/v4";
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
 const envelopeKeys = [
   "mage",
@@ -225,11 +227,21 @@ function harness({
   descriptorTransform = (value) => value,
   factsPretty = false,
   factsTransform = (value) => value,
+  proposalSchema,
   proposalTransform = (value) => value,
   protectedPretty = false,
   protectedTransform = (value) => value,
 } = {}) {
   const proposal = JSON.parse(readFileSync(new URL(PROPOSAL_PATH, ROOT)));
+  if (proposalSchema !== undefined) {
+    proposal.schema_version = proposalSchema;
+    if (proposalSchema !== V4_PROPOSAL_SCHEMA) delete proposal.source.execution_control;
+  }
+  const isV4Proposal = proposal.schema_version === V4_PROPOSAL_SCHEMA;
+  if (isV4Proposal) {
+    proposal.source.execution_control.exact_components.approval_validator.source_commit_tree_binding.commit_field =
+      "source.execution_control.commit";
+  }
   proposal.exact_execution_graph.ordered_operation_ids = [...EXACT_OPERATION_IDS];
   for (const [key, value] of [
     ["bootstrap_partial_cleanup_policy", EXACT_BOOTSTRAP_PARTIAL_CLEANUP_POLICY],
@@ -358,6 +370,12 @@ function harness({
     path: BUILDER_PATH,
     sha256: builderSha256,
   };
+  if (isV4Proposal) {
+    proposal.source.execution_control.exact_components.materialization_seed_builder = {
+      path: BUILDER_PATH,
+      sha256: builderSha256,
+    };
+  }
   proposal.source.pending_source_contract.release_component_sha256s.materialization_seed_builder =
     builderSha256;
   overlay.set(BUILDER_PATH, builderBytes);
@@ -497,6 +515,9 @@ function harness({
   proposal.source.exact_release_components.source_closure_manifest = ref(CLOSURE_PATH);
   proposal.source.pending_source_contract.release_component_sha256s.source_closure_manifest =
     sha256(closureBytes);
+  if (isV4Proposal) {
+    proposal.source.execution_control.exact_components.source_closure_manifest = ref(CLOSURE_PATH);
+  }
   const auditFacts = staticReleaseDescriptorAuditFacts();
   const sourceClosureSha256 = sha256(closureBytes);
   const sourceReadiness = {
@@ -572,7 +593,10 @@ function harness({
   });
   const factsBytes = encode(facts, factsPretty);
   const factsBinding = {
-    commit_field: "source.release_source_commit",
+    commit_field:
+      isV4Proposal
+        ? "source.execution_control.commit"
+        : "source.release_source_commit",
     full_live_authority_id: fullLiveAuthorityId,
     path: FACTS_PATH,
     sha256: sha256(factsBytes),
@@ -611,7 +635,12 @@ function harness({
       staticReleaseDescriptorBytes,
       validateSourceEvidenceLineage(input) {
         assert.equal(input.auditedCodeCommit, "7c1f6c255cd8355295be93621e9347abe0442646");
-        assert.equal(input.releaseSourceCommit, proposal.source.release_source_commit);
+        assert.equal(
+          input.releaseSourceCommit,
+          isV4Proposal
+            ? proposal.source.execution_control.commit
+            : proposal.source.release_source_commit,
+        );
         assert.equal(input.factsPath, FACTS_PATH);
         assert.equal(input.sourceReadinessPath, READINESS_PATH);
       },
@@ -643,7 +672,7 @@ function replaceDeep(value, from, to) {
 }
 
 function buildTempGitEndToEndFixture() {
-  const input = harness();
+  const input = harness({ proposalSchema: V3_PROPOSAL_SCHEMA });
   const repositoryRoot = mkdtempSync(join(tmpdir(), "v213-seed-builder-git-"));
   initializeRepository(repositoryRoot);
   const sourceBytes = input.arguments.readSourceFile;
@@ -759,6 +788,10 @@ function buildTempGitEndToEndFixture() {
   input.proposal.sealing.static_release_descriptor = descriptorBinding;
   input.proposal.requested_scope.static_release_descriptor = structuredClone(descriptorBinding);
   input.proposal.immutable_github_release_ref_request.exact_target_commit = releaseSourceCommit;
+  if (input.proposal.schema_version === V3_PROPOSAL_SCHEMA) {
+    input.proposal.immutable_github_release_ref_request.creation_requested = true;
+    input.proposal.immutable_github_release_ref_request.maximum_new_refs = 1;
+  }
 
   const proposalBytes = Buffer.from(`${JSON.stringify(input.proposal, null, 2)}\n`);
   write(repositoryRoot, PROPOSAL_PATH, proposalBytes);

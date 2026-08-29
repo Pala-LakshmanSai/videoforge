@@ -73,7 +73,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:b3e6f0114a5890a016dbcb331e7e521d606140d6e8aeca3fab07c0416e2be391",
+    "sha256:29abe43e9cd1df0fa56bba6b0fa283b1476e7a18ddbe0fe34642e46d65bfe347",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")

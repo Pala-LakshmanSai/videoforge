@@ -519,7 +519,8 @@ function validateProposal(proposal, proposalPath) {
     proposalPath !== PROPOSAL_PATH ||
     !COMMIT.test(sourceCommit ?? "") ||
     !exactKeys(factsBinding, ["commit_field", "full_live_authority_id", "path", "sha256"]) ||
-    factsBinding.commit_field !== "source.release_source_commit" ||
+    factsBinding.commit_field !==
+      (isV4 ? "source.execution_control.commit" : "source.release_source_commit") ||
     !UUID.test(factsBinding.full_live_authority_id ?? "") ||
     !HASH.test(factsBinding.sha256 ?? "") ||
     !sameJson(factsBinding, proposal?.requested_scope?.materialization_seed_facts)
@@ -620,7 +621,7 @@ function validateProposal(proposal, proposalPath) {
     approvalValidator?.path !== APPROVAL_VALIDATOR_PATH ||
     approvalValidator?.source_commit_tree_binding?.tree_entry_path !== APPROVAL_VALIDATOR_PATH ||
     approvalValidator.source_commit_tree_binding.commit_field !==
-      (isV4 ? "source.execution_control_commit" : "source.release_source_commit") ||
+      (isV4 ? "source.execution_control.commit" : "source.release_source_commit") ||
     !COMMIT.test(executionControlCommit ?? "") ||
     (isV4 &&
       (!exactKeys(executionControl, ["commit", "exact_components"]) ||
@@ -866,9 +867,10 @@ function validateSourceEvidence(
 }
 
 /**
- * Pure, provider-free assembly boundary. Callers supply exact raw bytes and a reader that returns
- * bytes from proposal.source.release_source_commit; values are never loaded from fixtures or the
- * process environment.
+ * Pure, provider-free assembly boundary. Callers supply exact raw bytes and a commit-aware reader
+ * that routes immutable payload paths to proposal.source.release_source_commit and V4 control or
+ * evidence paths to proposal.source.execution_control.commit. Values are never loaded from
+ * fixtures or the process environment.
  */
 function buildV213MaterializationSeed({
   proposalBytes,
@@ -1767,7 +1769,7 @@ function writeV213MaterializationSeed({
     approvalValidator.source_commit_tree_binding.mode !== "EXTERNAL_GIT_COMMIT_TREE_ENTRY" ||
     approvalValidator.source_commit_tree_binding.commit_field !==
       (binding.executionControlComponents
-        ? "source.execution_control_commit"
+        ? "source.execution_control.commit"
         : "source.release_source_commit") ||
     approvalValidator.source_commit_tree_binding.tree_entry_path !== APPROVAL_VALIDATOR_PATH ||
     approvalValidator.source_commit_tree_binding.verification !==
@@ -1778,7 +1780,7 @@ function writeV213MaterializationSeed({
     fail("APPROVAL_VALIDATOR_TREE_BINDING");
   // The validator deliberately uses an external tree-entry binding. Keeping it out of the
   // closure avoids a self-referential source-closure hash while still executing the exact bytes
-  // from the proposal's immutable release source commit.
+  // from the proposal's V4 execution-control commit (or the legacy release commit for V3).
   const validatorBytes = gitShow(
     repositoryRoot,
     binding.executionControlCommit,

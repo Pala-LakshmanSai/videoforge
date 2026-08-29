@@ -749,6 +749,18 @@ test("protected static release descriptor accepts exact canonical mode-0600 byte
   }
 });
 
+test("V4 consume binds the protected descriptor to the immutable release payload commit", () => {
+  const source = readFileSync("deploy/v2-13/full-live-orchestration-authority.mjs", "utf8");
+  assert.match(
+    source,
+    /validateStaticReleaseDescriptorFile\(\{[\s\S]*?expectedSourceCommit:\s*validated\.releaseSourceCommit,[\s\S]*?\}\);/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /expectedSourceCommit:\s*validated\.executionControlCommit\s*\?\?/u,
+  );
+});
+
 test("protected static release descriptor rejects newline self-hash and exact-key or source drift", () => {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v213-static-release-drift-"));
   chmodSync(directory, 0o700);

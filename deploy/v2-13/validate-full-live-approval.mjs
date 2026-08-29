@@ -62,7 +62,7 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 });
 const EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING = Object.freeze({
   mode: "EXTERNAL_GIT_COMMIT_TREE_ENTRY",
-  commit_field: "source.execution_control_commit",
+  commit_field: "source.execution_control.commit",
   tree_entry_path: "deploy/v2-13/validate-full-live-approval.mjs",
   verification: "GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256",
   embedded_current_file_sha256: false,
@@ -190,7 +190,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:7463ecf7439f6b636e165d8ba8a4e96c5803df56ba0c08c5140c688801e25f44",
+    sha256: "sha256:f24184bf7d11106d310c49da3ca29061adf7692d57db169f802aa8994d13e0e4",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
@@ -198,15 +198,15 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:0d4c4d55f2b6b2f1ba88d4b7182928605edf5bc9a79e803dd65d3058449fd883",
+    sha256: "sha256:51c6f167f0681ed1287f72d1d60a6524e7d912302c3b2ca1e1d380ce20a3d2ea",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:737c43f0610a7e5304ceb40a6a91b6eac7b72c9a11ad6b948a0ce11a1c167745",
+    sha256: "sha256:98c2501f77848e5cdc45605d6d9df8079a269a8562abaa334c5c52728f15722e",
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:b3e6f0114a5890a016dbcb331e7e521d606140d6e8aeca3fab07c0416e2be391",
+    sha256: "sha256:29abe43e9cd1df0fa56bba6b0fa283b1476e7a18ddbe0fe34642e46d65bfe347",
   }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({
@@ -1313,9 +1313,9 @@ const exactStaticReleaseDescriptor = (value) =>
   !value.path.split("/").includes("..") &&
   value.path.endsWith(".json") &&
   HASH.test(value.sha256 ?? "");
-const exactMaterializationSeedFacts = (value) =>
+const exactMaterializationSeedFacts = (value, commitField) =>
   exactKeys(value, ["commit_field", "full_live_authority_id", "path", "sha256"]) &&
-  value.commit_field === "source.release_source_commit" &&
+  value.commit_field === commitField &&
   UUID.test(value.full_live_authority_id ?? "") &&
   typeof value.path === "string" &&
   value.path.length > 0 &&
@@ -1407,8 +1407,14 @@ function validateFullLiveUserApproval({
       !exactStaticReleaseDescriptor(sealedStaticReleaseDescriptor) ||
       JSON.stringify(requestedStaticReleaseDescriptor) !==
         JSON.stringify(sealedStaticReleaseDescriptor) ||
-      !exactMaterializationSeedFacts(requestedMaterializationSeedFacts) ||
-      !exactMaterializationSeedFacts(sealedMaterializationSeedFacts) ||
+      !exactMaterializationSeedFacts(
+        requestedMaterializationSeedFacts,
+        isV4 ? "source.execution_control.commit" : "source.release_source_commit",
+      ) ||
+      !exactMaterializationSeedFacts(
+        sealedMaterializationSeedFacts,
+        isV4 ? "source.execution_control.commit" : "source.release_source_commit",
+      ) ||
       JSON.stringify(requestedMaterializationSeedFacts) !==
         JSON.stringify(sealedMaterializationSeedFacts) ||
       JSON.stringify(proposal.exact_execution_graph?.ordered_operation_ids) !==

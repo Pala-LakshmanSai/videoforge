@@ -1158,7 +1158,7 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
   const approvalValidatorBinding = validated.approvalValidatorSourceBinding;
   if (
     approvalValidatorPath !== approvalValidatorBinding.tree_entry_path ||
-    !["source.release_source_commit", "source.execution_control_commit"].includes(
+    !["source.release_source_commit", "source.execution_control.commit"].includes(
       approvalValidatorBinding.commit_field,
     ) ||
     approvalValidatorBinding.verification !==
@@ -1374,7 +1374,7 @@ function validateState(state) {
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
       (isV3State
-        ? "sha256:7463ecf7439f6b636e165d8ba8a4e96c5803df56ba0c08c5140c688801e25f44"
+        ? "sha256:f24184bf7d11106d310c49da3ca29061adf7692d57db169f802aa8994d13e0e4"
         : "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910") ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
@@ -2200,7 +2200,7 @@ async function main() {
     validateStaticReleaseDescriptorFile({
       path: process.env[STATIC_RELEASE_DESCRIPTOR_ENV],
       expectedSha256: authority.static_release_descriptor.sha256,
-      expectedSourceCommit: validated.executionControlCommit ?? validated.releaseSourceCommit,
+      expectedSourceCommit: validated.releaseSourceCommit,
     });
     validateMaterializationSeedFile({
       path: process.env[MATERIALIZATION_SEED_ENV],
