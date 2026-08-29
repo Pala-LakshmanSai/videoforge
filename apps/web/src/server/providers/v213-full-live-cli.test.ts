@@ -41,6 +41,7 @@ import {
   verifyV213WorkflowOperatorRouteSource,
   type V213FullLiveBridgeRuntime,
   type V213FullLiveCommand,
+  type V213FullLiveCommandHandler,
   type V213FullLiveCommandRequest,
 } from "./v213-full-live-cli.js";
 import { v213EvidenceKeyId } from "../hosted/v213-live-production-adapters.js";
@@ -1309,6 +1310,36 @@ describe("V2-13 full-live TypeScript bridge", () => {
     const { schemaVersion, ...certificationRequest } = unsigned;
     expect(schemaVersion).toBe("videoforge.v213-local-release-certification-request/v1");
     expect(certify).toHaveBeenCalledWith(certificationRequest);
+    const cancellation = new AbortController();
+    let certificationStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      certificationStarted = resolve;
+    });
+    const waitingCertifier = vi.fn(async () => {
+      certificationStarted();
+      return new Promise<typeof result>((resolve) => {
+        cancellation.signal.addEventListener("abort", () => resolve(result), { once: true });
+      });
+    });
+    let cancelledOutput = "";
+    const pendingCertification = runV213ReleaseCertificationCli(
+      ["--certify-release", "EXECUTE_EXACT_V2_13_LOCAL_RELEASE_CERTIFICATION"],
+      {
+        environment,
+        readFd,
+        createOperatorDatabase,
+        createCertifier: () => waitingCertifier,
+        cancellation: { signal: cancellation.signal },
+        write: (value) => (cancelledOutput += value),
+      },
+    );
+    await started;
+    cancellation.abort();
+    await expect(pendingCertification).rejects.toEqual(
+      expect.objectContaining({ code: "CANCELLATION_REQUESTED" }),
+    );
+    expect(waitingCertifier).toHaveBeenCalledOnce();
+    expect(cancelledOutput).toBe("");
     expect(() =>
       readV213ReleaseCertificationProtectedInputs(
         { ...environment, [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "23" },
@@ -1323,13 +1354,14 @@ describe("V2-13 full-live TypeScript bridge", () => {
     const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
     const summary = { zeroWorkers: true, reads: [{}, {}, {}] };
     const unsigned = {
-      schemaVersion: "videoforge.v213-local-cleanup-receipt-finalization-request/v1" as const,
+      schemaVersion: "videoforge.v213-local-cleanup-receipt-finalization-request/v2" as const,
       fullLiveAuthorityId,
       operationId: "prove-zero-workers" as const,
       outerStateSha256: canonicalSha256({ outer: "cleanup" }),
       providerCleanupEvidenceSha256: canonicalSha256(summary),
       summary,
       readbackOnly: true,
+      failureCleanup: false,
     };
     const request = { ...unsigned, requestSha256: canonicalSha256(unsigned) };
     const operatorDatabaseUrl =
@@ -1375,7 +1407,7 @@ describe("V2-13 full-live TypeScript bridge", () => {
     );
     expect(JSON.parse(output)).toEqual(result);
     const { schemaVersion, requestSha256, ...finalizeRequest } = request;
-    expect(schemaVersion).toBe("videoforge.v213-local-cleanup-receipt-finalization-request/v1");
+    expect(schemaVersion).toBe("videoforge.v213-local-cleanup-receipt-finalization-request/v2");
     expect(requestSha256).toBe(canonicalSha256(unsigned));
     expect(finalize).toHaveBeenCalledWith(finalizeRequest);
     expect(createOperatorDatabase).toHaveBeenCalledOnce();
@@ -1500,6 +1532,9 @@ describe("V2-13 full-live TypeScript bridge", () => {
         billingBaselineMode: "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION",
         billingBaselineUsd: null,
         totalCapUsd: 17.5,
+        authorizedUnsettled: false,
+        reconciliationOnly: false,
+        providerDispatchForbidden: false,
         retainedLanes: [
           { lane: "mage", volumeIdSha256: HASH, volumeManifestSha256: HASH },
           {
@@ -1711,6 +1746,9 @@ describe("V2-13 full-live TypeScript bridge", () => {
           billingBaselineMode,
           billingBaselineUsd,
           totalCapUsd: 17.5,
+          authorizedUnsettled: false,
+          reconciliationOnly: false,
+          providerDispatchForbidden: false,
           retainedLanes: [
             { lane: "mage", volumeIdSha256: HASH, volumeManifestSha256: HASH },
             {
@@ -1769,6 +1807,9 @@ describe("V2-13 full-live TypeScript bridge", () => {
         billingBaselineMode: "PRIOR_FRESH_PREFLIGHT",
         billingBaselineUsd: 0,
         totalCapUsd: 17.5,
+        authorizedUnsettled: false,
+        reconciliationOnly: false,
+        providerDispatchForbidden: false,
         retainedLanes: [
           { lane: "mage", volumeIdSha256: HASH, volumeManifestSha256: HASH },
           {
@@ -1811,6 +1852,224 @@ describe("V2-13 full-live TypeScript bridge", () => {
     );
   });
 
+  it("binds exact qualified-production rollback proof into both promotion-aware cleanup results", async () => {
+    const authorityId = "11111111-1111-4111-8111-111111111111";
+    const unsignedProof = {
+      schemaVersion: "videoforge.v213-qualified-production-cleanup-proof/v1",
+      fullLiveAuthorityId: authorityId,
+      promotionId: "22222222-2222-4222-8222-222222222222",
+      state: "DISABLED_UNQUALIFIED",
+      enabled: false,
+      gpuDispatchPerformed: false,
+      productionRedispatched: false,
+      providerReadbackPassed: true,
+      routeStatus: 503,
+      disabledConfigSha256: `sha256:${"d".repeat(64)}`,
+      disabledVersionSha256: `sha256:${"e".repeat(64)}`,
+      databasePromotionAttempted: true,
+      databasePromotionSha256: `sha256:${"a".repeat(64)}`,
+      databaseRollbackRecorded: true,
+      databaseRollbackSha256: `sha256:${"f".repeat(64)}`,
+    } as const;
+    const proof = {
+      ...unsignedProof,
+      proofSha256: canonicalSha256(unsignedProof),
+    } as const;
+    const requestValue = {
+      schemaVersion: "videoforge.v213-full-live-command/v1",
+      commandId: "cleanup:promotion-aware",
+      stageAuthorityId: authorityId,
+      command: "restore-endpoints-max-one",
+      input: {
+        schemaVersion: "videoforge.v213-full-live-cleanup-input/v1",
+        fullLiveAuthorityId: authorityId,
+        billingBaselineMode: "PRIOR_FRESH_PREFLIGHT",
+        billingBaselineUsd: 0,
+        totalCapUsd: 17.5,
+        authorizedUnsettled: false,
+        reconciliationOnly: false,
+        providerDispatchForbidden: false,
+        qualifiedProductionCleanup: proof,
+        retainedLanes: [
+          { lane: "mage", volumeIdSha256: HASH, volumeManifestSha256: HASH },
+          {
+            lane: "soulx",
+            volumeIdSha256: `sha256:${"b".repeat(64)}`,
+            volumeManifestSha256: `sha256:${"c".repeat(64)}`,
+          },
+        ],
+      },
+    } as const;
+    const values = new Map([
+      ["10", JSON.stringify(requestValue)],
+      ["11", "r".repeat(32)],
+      [
+        "12",
+        "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+      ],
+    ]);
+    const environment = {
+      [V213_BRIDGE_ENVIRONMENT.command]: requestValue.command,
+      [V213_BRIDGE_ENVIRONMENT.requestFd]: "10",
+      [V213_BRIDGE_ENVIRONMENT.runpodApiKeyFd]: "11",
+      [V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd]: "12",
+    };
+    const readFd = (fd: string | undefined) => values.get(fd ?? "") ?? "";
+    const protectedInputs = readV213CleanupProtectedInputs(environment, readFd);
+    const database = {
+      query: vi.fn(async () => ({
+        rows: [
+          {
+            value: {
+              schemaVersion: "videoforge.v213-cleanup-scope/v1",
+              fullLiveAuthorityId: authorityId,
+              stages: [],
+            },
+          },
+        ],
+      })),
+      transaction: vi.fn(),
+    };
+    const transport = {
+      cleanupAttributableResources: vi.fn(async () => ({
+        production: [],
+        productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+        productionResourcesAbsent: true,
+        deletedEndpointIdSha256s: [],
+        deletedTemplateIdSha256s: [],
+      })),
+      inventory: vi.fn(async () => ({
+        checkedAt: "2026-08-29T00:00:00.000Z",
+        runningPods: 0,
+        activeWorkers: 0,
+        queuedJobs: 0,
+        endpointIdSha256s: [],
+        templateIdSha256s: [],
+        volumes: requestValue.input.retainedLanes.map((lane) => ({
+          idSha256: lane.volumeIdSha256,
+          sizeGb: 50,
+          region: "EU-RO-1",
+          manifestSha256: lane.volumeManifestSha256,
+        })),
+      })),
+      billingAmount: vi.fn(),
+    };
+    const runtime = await createV213CleanupRuntime(protectedInputs, {
+      createOperatorDatabase: () => database as never,
+      createTransport: () => transport as never,
+    });
+    const restored = await runtime.handlers["restore-endpoints-max-one"](requestValue);
+    const reconciled = await runtime.handlers["reconcile-exact-resources"]({
+      ...requestValue,
+      command: "reconcile-exact-resources",
+    });
+    expect((restored.summary as Record<string, unknown>).qualifiedProductionCleanup).toEqual(proof);
+    expect((reconciled.summary as Record<string, unknown>).qualifiedProductionCleanup).toEqual(
+      proof,
+    );
+    expect(transport.cleanupAttributableResources).toHaveBeenCalledOnce();
+    expect(transport.inventory).toHaveBeenCalledOnce();
+
+    const mutated = {
+      ...requestValue,
+      input: {
+        ...requestValue.input,
+        qualifiedProductionCleanup: { ...proof, productionRedispatched: true },
+      },
+    };
+    values.set("10", JSON.stringify(mutated));
+    expect(() => readV213CleanupProtectedInputs(environment, readFd)).toThrowError(
+      expect.objectContaining({ code: "QUALIFIED_PRODUCTION_CLEANUP_PROOF_INVALID" }),
+    );
+  });
+
+  it("hard-routes provider-dispatch-forbidden endpoint cleanup to read-only reconciliation", async () => {
+    const authorityId = "11111111-1111-4111-8111-111111111111";
+    const requestValue = {
+      schemaVersion: "videoforge.v213-full-live-command/v1",
+      commandId: "cleanup:readback-only",
+      stageAuthorityId: authorityId,
+      command: "restore-endpoints-max-one",
+      input: {
+        schemaVersion: "videoforge.v213-full-live-cleanup-input/v1",
+        fullLiveAuthorityId: authorityId,
+        billingBaselineMode: "PRIOR_FRESH_PREFLIGHT",
+        billingBaselineUsd: 0,
+        totalCapUsd: 17.5,
+        authorizedUnsettled: true,
+        reconciliationOnly: true,
+        providerDispatchForbidden: true,
+        retainedLanes: [
+          { lane: "mage", volumeIdSha256: HASH, volumeManifestSha256: HASH },
+          {
+            lane: "soulx",
+            volumeIdSha256: `sha256:${"b".repeat(64)}`,
+            volumeManifestSha256: `sha256:${"c".repeat(64)}`,
+          },
+        ],
+      },
+    } as const;
+    const database = {
+      query: vi.fn(async () => ({
+        rows: [
+          {
+            value: {
+              schemaVersion: "videoforge.v213-cleanup-scope/v1",
+              fullLiveAuthorityId: authorityId,
+              stages: [],
+            },
+          },
+        ],
+      })),
+      transaction: vi.fn(),
+    };
+    const cleanupAttributableResources = vi.fn(async () => {
+      throw new Error("MUTATING_CLEANUP_MUST_NOT_RUN");
+    });
+    const reconciliationReadback = {
+      providerMutationPerformed: false,
+      runningPods: 0,
+      activeWorkers: 0,
+      queuedJobs: 0,
+      observedJobs: [],
+      endpointIdSha256s: [],
+      templateIdSha256s: [],
+      volumeIdSha256s: requestValue.input.retainedLanes.map((lane) => lane.volumeIdSha256).sort(),
+    } as const;
+    const reconcileAttributableCleanupReadback = vi.fn(async () => ({
+      production: [],
+      productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT" as const,
+      productionResourcesAbsent: true,
+      deletedEndpointIdSha256s: [],
+      deletedTemplateIdSha256s: [],
+      reconciliationReadback,
+    }));
+    const runtime = await createV213CleanupRuntime(
+      {
+        request: requestValue,
+        runpodApiKey: "r".repeat(32),
+        operatorDatabaseUrl:
+          "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+        cleanupInput: requestValue.input,
+      },
+      {
+        createOperatorDatabase: () => database as never,
+        createTransport: () =>
+          ({
+            cleanupAttributableResources,
+            reconcileAttributableCleanupReadback,
+            inventory: vi.fn(),
+            billingAmount: vi.fn(),
+          }) as never,
+      },
+    );
+    await expect(
+      runtime.handlers["restore-endpoints-max-one"](requestValue),
+    ).resolves.toMatchObject({ summary: { reconciliationReadback } });
+    expect(reconcileAttributableCleanupReadback).toHaveBeenCalledOnce();
+    expect(cleanupAttributableResources).not.toHaveBeenCalled();
+  });
+
   it("never redispatches an ambiguous non-cleanup command but permits cleanup reconciliation", async () => {
     const blocked = runtime("RECONCILE");
     await expect(
@@ -1818,10 +2077,55 @@ describe("V2-13 full-live TypeScript bridge", () => {
     ).rejects.toEqual(expect.objectContaining({ code: "AMBIGUOUS_REDISPATCH_FORBIDDEN" }));
     expect(blocked.handlers["v2-10-operator-free-ranga-pilot"]).not.toHaveBeenCalled();
 
-    const cleanup = runtime("RECONCILE");
+    const fencedCleanupRequest = {
+      ...request("reconcile-exact-resources"),
+      input: {
+        authorizedUnsettled: true,
+        reconciliationOnly: true,
+        providerDispatchForbidden: true,
+      },
+    } as V213FullLiveCommandRequest;
+    const forbiddenInitialDispatch = runtime("EXECUTE");
     await expect(
-      executeV213FullLiveCommand(request("reconcile-exact-resources"), cleanup),
-    ).resolves.toMatchObject({ state: "TERMINAL" });
+      executeV213FullLiveCommand(fencedCleanupRequest, forbiddenInitialDispatch),
+    ).rejects.toEqual(expect.objectContaining({ code: "PROVIDER_REDISPATCH_FORBIDDEN" }));
+    expect(forbiddenInitialDispatch.handlers["reconcile-exact-resources"]).not.toHaveBeenCalled();
+
+    const cleanup = runtime("RECONCILE");
+    await expect(executeV213FullLiveCommand(fencedCleanupRequest, cleanup)).resolves.toMatchObject({
+      state: "TERMINAL",
+    });
+    expect(cleanup.handlers["reconcile-exact-resources"]).toHaveBeenCalledOnce();
+  });
+
+  it("cancels an in-flight provider wait, journals ambiguity, and never completes it", async () => {
+    const controller = new AbortController();
+    const base = runtime();
+    let started!: () => void;
+    const waiting = new Promise<void>((resolveStarted) => {
+      started = resolveStarted;
+    });
+    const handler: V213FullLiveCommandHandler = vi.fn(async () => {
+      started();
+      return new Promise<never>((_resolve, reject) => {
+        controller.signal.addEventListener("abort", () => reject(new Error("cancelled wait")), {
+          once: true,
+        });
+      });
+    });
+    const fixture: V213FullLiveBridgeRuntime = {
+      ...base,
+      handlers: { ...base.handlers, "mage-live-qualification": handler },
+      cancellation: { signal: controller.signal },
+    };
+    const executing = executeV213FullLiveCommand(request("mage-live-qualification"), fixture);
+    await waiting;
+    controller.abort();
+    await expect(executing).rejects.toEqual(
+      expect.objectContaining({ code: "CANCELLATION_REQUESTED" }),
+    );
+    expect(fixture.journal.ambiguous).toHaveBeenCalledOnce();
+    expect(fixture.journal.complete).not.toHaveBeenCalled();
   });
 
   it("journals ambiguity and returns only bounded error codes", async () => {

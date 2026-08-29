@@ -3,7 +3,7 @@
   "state": "DISABLED_UNQUALIFIED",
   "migration_ledger": {
     "first": 37,
-    "last": 45,
+    "last": 46,
     "exact_manifest_required": true
   },
   "database_roles": {

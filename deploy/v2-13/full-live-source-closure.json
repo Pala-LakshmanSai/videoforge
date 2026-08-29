@@ -7,7 +7,7 @@
     },
     {
       "path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da"
+      "sha256": "sha256:cd07aeeb794b1e897194f2fc950c7bd999349d571d240c50d60f6eb40f1c597d"
     },
     {
       "path": ".github/workflows/avatar-quality-image.yml",
@@ -19,7 +19,7 @@
     },
     {
       "path": ".github/workflows/mage-image.yml",
-      "sha256": "sha256:28bb288dc90718989d24bc8bc8eceba807a6087892b127436411ce91777cfa05"
+      "sha256": "sha256:b6b0f99099a16fb46f181bd1b07314267c9ae7ad6b62d5b5f7436fdb4f5c5697"
     },
     {
       "path": ".github/workflows/media-worker-release.yml",
@@ -491,7 +491,7 @@
     },
     {
       "path": "apps/web/src/server/hosted/v213-live-production-adapters.ts",
-      "sha256": "sha256:2b01f8273bdd183cf86db51f8bfa49a5d4dda0c8c59df4b3039f237042a90a88"
+      "sha256": "sha256:be35e36c9259b9450d249c5886d376d7f1e71081205b328cc7be7ca1bd8f9b1e"
     },
     {
       "path": "apps/web/src/server/hosted/v213-operator-workflow.ts",
@@ -755,7 +755,7 @@
     },
     {
       "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-      "sha256": "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0"
+      "sha256": "sha256:9f844e9b03adb4db2a3ff9200f1fb8faabc2ce5907fa95af98a2ba061d042a71"
     },
     {
       "path": "apps/web/src/server/providers/v213-provenance-receipt.ts",
@@ -775,7 +775,7 @@
     },
     {
       "path": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
-      "sha256": "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2"
+      "sha256": "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2"
     },
     {
       "path": "apps/web/src/server/providers/v213-v212-live-chrome-integration.ts",
@@ -1031,11 +1031,11 @@
     },
     {
       "path": "deploy/v2-13/build-materialization-seed.mjs",
-      "sha256": "sha256:51c6f167f0681ed1287f72d1d60a6524e7d912302c3b2ca1e1d380ce20a3d2ea"
+      "sha256": "sha256:2ca8828018bdc7300eedf7598d165efc9e0ba9796e6110affc15bf2c6b51d122"
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:3d7e6f2dfb320b2fe4f2f36a17bcd8b53b39ad8f271e0c60928ec7d6069033e0"
+      "sha256": "sha256:16b127071ff70590fa577837db32b364f7c224fca48456e8f7bb9924272a7cba"
     },
     {
       "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",
@@ -1055,7 +1055,7 @@
     },
     {
       "path": "deploy/v2-13/guarded-activation.mjs",
-      "sha256": "sha256:7522808e31aa83d92bd5d8bcdc768438ba11ce5cd69f6fd8be45e0671148fa85"
+      "sha256": "sha256:a1cf8ece7ffad213550c79db246eb4e3b187928ff38273cbce4a3c0e87b6689d"
     },
     {
       "path": "deploy/v2-13/media-worker-release-readback.mjs",
@@ -1063,15 +1063,15 @@
     },
     {
       "path": "deploy/v2-13/neon-full-live-operator-grants.sql",
-      "sha256": "sha256:38c80de06ef6eff67a03be35326150cf742393efc07fd43ea0b30780c28afab6"
+      "sha256": "sha256:c0f5e521dba2478001db24027ef48f4f01ec3888bf4885eef862f4d8b214b613"
     },
     {
       "path": "deploy/v2-13/neon-pair-reconciler-grants.sql",
-      "sha256": "sha256:7d6fc701c5f71c1a3dc09ee08268e4f8caa58e69a85594258ce864aa673b49a7"
+      "sha256": "sha256:0ae991d90b8b21761fe132ce6ea543a5716c0fa4b294429466df73c51bfebdaf"
     },
     {
       "path": "deploy/v2-13/promote-qualified-production.mjs",
-      "sha256": "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2"
+      "sha256": "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba"
     },
     {
       "path": "deploy/v2-13/render-production-config.mjs",
@@ -1842,8 +1842,12 @@
       "sha256": "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b"
     },
     {
+      "path": "packages/control-plane/migrations/0046_hosted_full_live_cleanup_recovery.sql",
+      "sha256": "sha256:c8e54e98561c7590208bd80831ea9a853477a4a8999d7ee244244b16d778c809"
+    },
+    {
       "path": "packages/control-plane/migrations/manifest.json",
-      "sha256": "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47"
+      "sha256": "sha256:9dfcc91da2ea46a7dfa0e299a92616a5b6f6255bf20efc0d1cf457fdfe78fac3"
     },
     {
       "path": "packages/control-plane/package.json",
@@ -1919,7 +1923,7 @@
     },
     {
       "path": "packages/control-plane/src/backup/metadata-snapshot.ts",
-      "sha256": "sha256:c476e0f6826d88f29435ef9479f4f541a4aaa625bf1f448f82ba85ab4f0d5128"
+      "sha256": "sha256:d86690c8d45746e4f8255c5ba9968351c9de38c3a6e76b7c6394311087ab0309"
     },
     {
       "path": "packages/control-plane/src/database/index.ts",
@@ -1935,7 +1939,7 @@
     },
     {
       "path": "packages/control-plane/src/database/vocabulary.ts",
-      "sha256": "sha256:24c64195e283d6315f438deac9f51152c199a152ffb025af4203d77b7b114ac4"
+      "sha256": "sha256:385d14488a57b44d74569e96b5116484e89b6cb30aa028855e8cb69f1fbc1a4c"
     },
     {
       "path": "packages/control-plane/src/global-session/index.ts",

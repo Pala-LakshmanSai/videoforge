@@ -4,6 +4,8 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   closeSync,
+  existsSync,
+  fsyncSync,
   lstatSync,
   openSync,
   readFileSync,
@@ -50,6 +52,26 @@ const CONFIRMATION = "CONSUME_EXACT_V2_13_FULL_LIVE_AUTHORITY";
 const MATERIALIZATION_SEED_SCHEMA = "videoforge.v213-full-live-materialization-seed/v1";
 const MATERIALIZATION_SEED_ENV = "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE";
 const STATIC_RELEASE_DESCRIPTOR_ENV = "VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE";
+const STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1 = "videoforge.v213-static-release-descriptor/v1";
+const STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2 = "videoforge.v213-static-release-descriptor/v2";
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA =
+  "videoforge.v213-soulx-workflow-registration-evidence/v1";
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS = Object.freeze([
+  "schema_version",
+  "repository",
+  "default_branch",
+  "default_branch_commit",
+  "workflow_file",
+  "workflow_name",
+  "workflow_path",
+  "default_branch_workflow_sha256",
+  "release_source_commit",
+  "release_source_workflow_sha256",
+  "registration_state",
+  "materialized",
+  "bound_to_release_source",
+  "evidence_sha256",
+]);
 const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_PATH =
   "deploy/v2-13/validate-materialization-seed-production-input.mts";
 const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_SHA256 =
@@ -968,6 +990,31 @@ const STATIC_RELEASE_DESCRIPTOR_GATES = Object.freeze(
   Object.keys(STATIC_RELEASE_DESCRIPTOR_GATE_POLICY),
 );
 
+function validateWorkflowRegistrationEvidence(value, expectedSourceCommit, code) {
+  const unsigned = { ...value };
+  delete unsigned.evidence_sha256;
+  if (
+    !exactObjectKeys(value, SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS) ||
+    value.schema_version !== SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA ||
+    value.repository !== "Pala-LakshmanSai/videoforge" ||
+    value.default_branch !== "main" ||
+    !/^[0-9a-f]{40}$/u.test(value.default_branch_commit ?? "") ||
+    value.workflow_file !== "avatar-primary-serverless-image.yml" ||
+    value.workflow_name !== "avatar-primary-serverless-image" ||
+    value.workflow_path !== ".github/workflows/avatar-primary-serverless-image.yml" ||
+    !HASH.test(value.default_branch_workflow_sha256 ?? "") ||
+    value.release_source_commit !== expectedSourceCommit ||
+    !HASH.test(value.release_source_workflow_sha256 ?? "") ||
+    value.default_branch_workflow_sha256 !== value.release_source_workflow_sha256 ||
+    value.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
+    value.materialized !== true ||
+    value.bound_to_release_source !== true ||
+    sha256(Buffer.from(canonicalJson(unsigned))) !== value.evidence_sha256
+  )
+    fail(code);
+  return value;
+}
+
 /** Verify canonical protected descriptor bytes before one-shot authority consumption or restart. */
 function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSourceCommit }) {
   if (
@@ -1000,6 +1047,7 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
     (file.mode & 0o777) !== 0o600
   )
     fail("STATIC_RELEASE_DESCRIPTOR_MODE_OR_TYPE");
+  const isV2 = value?.schemaVersion === STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2;
   if (
     !exactObjectKeys(value, [
       "auditFacts",
@@ -1008,8 +1056,11 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
       "productionUrlSha256",
       "schemaVersion",
       "sourceCommit",
+      ...(isV2 ? ["workflowRegistrationEvidence"] : []),
     ]) ||
-    value.schemaVersion !== "videoforge.v213-static-release-descriptor/v1" ||
+    ![STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1, STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2].includes(
+      value.schemaVersion,
+    ) ||
     value.sourceCommit !== expectedSourceCommit ||
     !HASH.test(value.productionUrlSha256 ?? "") ||
     !HASH.test(value.contractBundleSha256 ?? "") ||
@@ -1018,6 +1069,13 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
     !exactObjectKeys(value.auditFacts, STATIC_RELEASE_DESCRIPTOR_GATES)
   )
     fail("STATIC_RELEASE_DESCRIPTOR_CONTRACT");
+  if (isV2) {
+    validateWorkflowRegistrationEvidence(
+      value.workflowRegistrationEvidence,
+      expectedSourceCommit,
+      "STATIC_RELEASE_DESCRIPTOR_WORKFLOW_REGISTRATION",
+    );
+  }
   for (const gate of STATIC_RELEASE_DESCRIPTOR_GATES) {
     const fact = value.auditFacts[gate];
     const policy = STATIC_RELEASE_DESCRIPTOR_GATE_POLICY[gate];
@@ -1287,7 +1345,11 @@ function readAuthenticatedTrustedTime() {
   return new Date(Date.parse(dates[0])).toISOString();
 }
 
-function initialConsumptionRecord(authority, authorityBytes, validated) {
+function initialConsumptionRecord(authority, authorityBytes, validated, staticReleaseDescriptor) {
+  const workflowRegistrationEvidence =
+    staticReleaseDescriptor?.schemaVersion === STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2
+      ? staticReleaseDescriptor.workflowRegistrationEvidence
+      : undefined;
   return {
     schema_version:
       validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
@@ -1309,6 +1371,14 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     materialization_seed_sha256: authority.materialization_seed_sha256,
     static_release_descriptor_path: validated.staticReleaseDescriptorPath,
     static_release_descriptor_sha256: validated.staticReleaseDescriptorSha256,
+    static_release_descriptor_schema_version:
+      staticReleaseDescriptor?.schemaVersion ?? STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1,
+    ...(workflowRegistrationEvidence === undefined
+      ? {}
+      : {
+          soulx_workflow_registration_evidence: workflowRegistrationEvidence,
+          soulx_workflow_registration_evidence_sha256: workflowRegistrationEvidence.evidence_sha256,
+        }),
     approved_at: validated.approvedAt,
     expires_at: validated.expiresAt,
     state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
@@ -1355,6 +1425,8 @@ function validateState(state) {
   const executionControlCommit = state.execution_control_commit ?? state.release_source_commit;
   const releaseMode = state.release_ref?.mode ?? "LEGACY_SINGLE_CREATION";
   const predecessorReleaseAttempt = state.predecessor_release_attempt ?? null;
+  const staticReleaseDescriptorSchemaVersion =
+    state.static_release_descriptor_schema_version ?? STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1;
   if (
     (!isV2State && !isV3State) ||
     !AUTHORITY_ID.test(state.authority_id ?? "") ||
@@ -1373,7 +1445,7 @@ function validateState(state) {
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
       (isV3State
-        ? "sha256:d3c642c9a5a80a419acb6d5b6f9a842b9fa2fca40bbdb330ad141032f019bb1c"
+        ? "sha256:b2e4decce3a69faa9abc517f0c8777a492e90f3f06b081971af01fb4132ffc46"
         : "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910") ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
@@ -1381,6 +1453,9 @@ function validateState(state) {
     state.static_release_descriptor_path.split("/").includes("..") ||
     !state.static_release_descriptor_path.endsWith(".json") ||
     !HASH.test(state.static_release_descriptor_sha256 ?? "") ||
+    ![STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1, STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2].includes(
+      staticReleaseDescriptorSchemaVersion,
+    ) ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||
     !Object.hasOwn(state, "failure_boundary") ||
@@ -1435,7 +1510,38 @@ function validateState(state) {
       )
         fail("WORK_CONTRACT");
     }
+    const workReserved = finiteUsd(
+      Object.values(phase.work).reduce((sum, work) => sum + work.reservation_usd, 0),
+      "PHASE_WORK_RESERVED",
+    );
+    const workSettled = finiteUsd(
+      Object.values(phase.work).reduce(
+        (sum, work) => sum + (work.settled_usd === null ? 0 : work.settled_usd),
+        0,
+      ),
+      "PHASE_WORK_SETTLED",
+    );
+    if (workReserved !== phase.reserved_usd || workSettled !== phase.settled_usd)
+      fail("PHASE_WORK_SUM_MISMATCH");
   }
+  const workflowRegistrationEvidence = state.soulx_workflow_registration_evidence;
+  const workflowRegistrationEvidenceSha256 = state.soulx_workflow_registration_evidence_sha256;
+  if (
+    (workflowRegistrationEvidence === undefined) !==
+      (workflowRegistrationEvidenceSha256 === undefined) ||
+    (staticReleaseDescriptorSchemaVersion === STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2) !==
+      (workflowRegistrationEvidence !== undefined) ||
+    (workflowRegistrationEvidence !== undefined &&
+      (!HASH.test(workflowRegistrationEvidenceSha256 ?? "") ||
+        workflowRegistrationEvidence?.evidence_sha256 !== workflowRegistrationEvidenceSha256))
+  )
+    fail("WORKFLOW_REGISTRATION_STATE_BINDING");
+  if (workflowRegistrationEvidence !== undefined)
+    validateWorkflowRegistrationEvidence(
+      workflowRegistrationEvidence,
+      state.release_source_commit,
+      "WORKFLOW_REGISTRATION_STATE_BINDING",
+    );
   const certificationWorkId = `${state.authority_id}:certify-v2-13-release`.toLowerCase();
   const actualWorkIds = [
     ...Object.values(state.phases).flatMap((phase) => Object.keys(phase.work)),
@@ -2009,33 +2115,106 @@ function writeExclusive(path, value) {
   exactPath(path, "file", 0o600, "STATE_FILE");
 }
 
+function fsyncDirectory(path) {
+  const descriptor = openSync(path, "r");
+  try {
+    fsyncSync(descriptor);
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
+function processStartIdentity(pid) {
+  try {
+    const output = execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 2_000,
+    }).trim();
+    return output === "" ? null : sha256(Buffer.from(`${pid}\0${output}`));
+  } catch {
+    return null;
+  }
+}
+
+function acquireStateLock(lockPath, expectedSha256) {
+  const processStartSha256 = processStartIdentity(process.pid);
+  if (!HASH.test(processStartSha256 ?? "")) fail("STATE_LOCK_PROCESS_IDENTITY");
+  const body = Buffer.from(
+    `${JSON.stringify({ pid: process.pid, process_start_sha256: processStartSha256, expected_state_sha256: expectedSha256 })}\n`,
+  );
+  try {
+    const descriptor = openSync(lockPath, "wx", 0o600);
+    try {
+      writeFileSync(descriptor, body);
+      fsyncSync(descriptor);
+    } finally {
+      closeSync(descriptor);
+    }
+    exactPath(lockPath, "file", 0o600, "STATE_LOCK");
+    fsyncDirectory(dirname(lockPath));
+    return;
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+  }
+  exactPath(lockPath, "file", 0o600, "STATE_LOCK");
+  let existing;
+  try {
+    existing = JSON.parse(readFileSync(lockPath, "utf8"));
+  } catch {
+    fail("STATE_LOCK_DRIFT");
+  }
+  if (
+    !exactObjectKeys(existing, ["expected_state_sha256", "pid", "process_start_sha256"]) ||
+    !Number.isSafeInteger(existing.pid) ||
+    existing.pid < 1 ||
+    !HASH.test(existing.process_start_sha256 ?? "") ||
+    !HASH.test(existing.expected_state_sha256 ?? "")
+  )
+    fail("STATE_LOCK_DRIFT");
+  if (processStartIdentity(existing.pid) === existing.process_start_sha256) fail("STATE_LOCKED");
+  const stalePath = `${lockPath}.stale-${existing.pid}`;
+  try {
+    renameSync(lockPath, stalePath);
+  } catch {
+    fail("STATE_LOCKED");
+  }
+  rmSync(stalePath, { force: true });
+  fsyncDirectory(dirname(lockPath));
+  acquireStateLock(lockPath, expectedSha256);
+}
+
 function updateState(path, expectedSha256, operation) {
   exactPath(dirname(path), "directory", 0o700, "STATE_DIRECTORY");
   exactPath(path, "file", 0o600, "STATE_FILE");
   const lockPath = `${path}.lock`;
-  let lock;
-  try {
-    lock = openSync(lockPath, "wx", 0o600);
-  } catch {
-    fail("STATE_LOCKED");
-  }
+  acquireStateLock(lockPath, expectedSha256);
   try {
     const bytes = readFileSync(path);
     if (sha256(bytes) !== expectedSha256) fail("STATE_SHA256");
     const next = operation(parse(bytes, "STATE"));
     const temporary = `${path}.next`;
-    writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`, {
-      encoding: "utf8",
-      mode: 0o600,
-      flag: "wx",
-    });
+    const nextBytes = Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
+    if (existsSync(temporary)) {
+      exactPath(temporary, "file", 0o600, "NEXT_STATE_FILE");
+      if (Buffer.compare(readFileSync(temporary), nextBytes) !== 0) fail("NEXT_STATE_DRIFT");
+    } else {
+      const descriptor = openSync(temporary, "wx", 0o600);
+      try {
+        writeFileSync(descriptor, nextBytes);
+        fsyncSync(descriptor);
+      } finally {
+        closeSync(descriptor);
+      }
+    }
     exactPath(temporary, "file", 0o600, "NEXT_STATE_FILE");
     renameSync(temporary, path);
+    fsyncDirectory(dirname(path));
     exactPath(path, "file", 0o600, "STATE_FILE");
     return { state: next, sha256: sha256(readFileSync(path)) };
   } finally {
-    if (lock !== undefined) closeSync(lock);
     rmSync(lockPath, { force: true });
+    fsyncDirectory(dirname(path));
   }
 }
 
@@ -2193,7 +2372,7 @@ async function main() {
       authorityBytes,
       authorityRecordCommit: args.get("authority-record-commit"),
     });
-    validateStaticReleaseDescriptorFile({
+    const staticReleaseDescriptor = validateStaticReleaseDescriptorFile({
       path: process.env[STATIC_RELEASE_DESCRIPTOR_ENV],
       expectedSha256: authority.static_release_descriptor.sha256,
       expectedSourceCommit: validated.releaseSourceCommit,
@@ -2210,7 +2389,12 @@ async function main() {
       proposalBytes,
     });
     const state = validateState(
-      initialConsumptionRecord(authority, authorityBytes, { ...validated, ...record }),
+      initialConsumptionRecord(
+        authority,
+        authorityBytes,
+        { ...validated, ...record },
+        staticReleaseDescriptor,
+      ),
     );
     const statePath = resolve(args.get("state-file"));
     writeExclusive(statePath, state);

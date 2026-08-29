@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 import {
@@ -51,6 +51,7 @@ import {
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_V3_RELEASE_COMPONENTS,
+  EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
   EXACT_WORKFLOW_START_AUTHORITY_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
   EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
@@ -85,7 +86,30 @@ const canonicalJson = (value) =>
           .join(",")}}`
       : JSON.stringify(value);
 
-function staticReleaseDescriptorFixture(sourceCommit = "a".repeat(40)) {
+function workflowRegistrationEvidenceFixture(sourceCommit = "a".repeat(40)) {
+  const workflowSha256 = hash(Buffer.from("avatar-primary-serverless-image workflow\n"));
+  const unsigned = {
+    schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v1",
+    repository: "Pala-LakshmanSai/videoforge",
+    default_branch: "main",
+    default_branch_commit: "b".repeat(40),
+    workflow_file: "avatar-primary-serverless-image.yml",
+    workflow_name: "avatar-primary-serverless-image",
+    workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+    default_branch_workflow_sha256: workflowSha256,
+    release_source_commit: sourceCommit,
+    release_source_workflow_sha256: workflowSha256,
+    registration_state: "REGISTERED_EXACT_DEFAULT_BRANCH",
+    materialized: true,
+    bound_to_release_source: true,
+  };
+  return { ...unsigned, evidence_sha256: hash(Buffer.from(canonicalJson(unsigned))) };
+}
+
+function staticReleaseDescriptorFixture(
+  sourceCommit = "a".repeat(40),
+  schemaVersion = "videoforge.v213-static-release-descriptor/v1",
+) {
   const sourceEvidenceSha256 = proof("1");
   const fact = (gate, claims, metrics) => ({
     claims,
@@ -166,8 +190,11 @@ function staticReleaseDescriptorFixture(sourceCommit = "a".repeat(40)) {
     },
     contractBundleSha256: proof("6"),
     productionUrlSha256: proof("7"),
-    schemaVersion: "videoforge.v213-static-release-descriptor/v1",
+    schemaVersion,
     sourceCommit,
+    ...(schemaVersion === "videoforge.v213-static-release-descriptor/v2"
+      ? { workflowRegistrationEvidence: workflowRegistrationEvidenceFixture(sourceCommit) }
+      : {}),
   };
   return {
     ...unsigned,
@@ -216,6 +243,11 @@ function withApprovalValidatorReleaseTree(bytes, callback) {
 }
 
 function repairExactPolicyFixture(proposal) {
+  if (proposal.source?.execution_control) {
+    proposal.source.execution_control.exact_components = structuredClone(
+      EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
+    );
+  }
   proposal.exact_execution_graph.ordered_operation_ids = [...EXACT_OPERATION_IDS];
   proposal.exact_execution_graph.internal_materialization_policy = structuredClone(
     EXACT_INTERNAL_MATERIALIZATION_POLICY,
@@ -248,7 +280,7 @@ function repairExactPolicyFixture(proposal) {
   return proposal;
 }
 
-function repairExactDatabaseScope(database) {
+function repairExactDatabaseScope() {
   const bootstrap = EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY;
   return {
     exact_operator_role: "videoforge_hosted_operator",
@@ -311,9 +343,9 @@ function repairExactDatabaseScope(database) {
     prequalification_database_bootstrap_recovery_mode_final_ledger_count:
       bootstrap.recovery_mode_final_ledger_count,
     exact_operator_function_signatures: [...bootstrap.exact_operator_function_signatures],
-    exact_initial_ledger_prefix_count: database.exact_initial_ledger_prefix_count,
-    exact_recoverable_prefix_counts: [...database.exact_recoverable_prefix_counts],
-    exact_migrations_to_apply: [...database.exact_migrations_to_apply],
+    exact_initial_ledger_prefix_count: 36,
+    exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
+    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
   };
 }
 
@@ -464,7 +496,11 @@ function activeProposalFixture() {
       "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
     ),
   );
-  return repairExactPolicyFixture(activeProposal);
+  repairExactPolicyFixture(activeProposal);
+  activeProposal.requested_scope.database = repairExactDatabaseScope(
+    activeProposal.requested_scope.database,
+  );
+  return activeProposal;
 }
 
 function v4ApprovalFixture() {
@@ -802,6 +838,52 @@ test("protected static release descriptor accepts exact canonical mode-0600 byte
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("descriptor v2 consumption durably copies and hash-binds exact repair evidence", () => {
+  withApprovalValidatorReleaseTree(readFileSync(approvalValidatorPath), (releaseCommit) => {
+    const fixture = v3Fixture({ releaseSourceCommit: releaseCommit });
+    const { validated } = validateOuterAuthority(fixture);
+    const descriptor = staticReleaseDescriptorFixture(
+      releaseCommit,
+      "videoforge.v213-static-release-descriptor/v2",
+    );
+    const state = initialConsumptionRecord(
+      fixture.authority,
+      fixture.authorityBytes,
+      {
+        ...validated,
+        authorityRecordCommit: "e".repeat(40),
+        approvalRecordPath: "project-context/evidence/acceptance/VF-10-13/test/user-approval.json",
+        authorityRecordPath:
+          "project-context/evidence/acceptance/VF-10-13/test/approved-authority.json",
+      },
+      descriptor,
+    );
+    state.full_live_executor_sha256 = EXACT_V3_RELEASE_COMPONENTS.full_live_executor.sha256;
+    assert.equal(
+      state.static_release_descriptor_schema_version,
+      "videoforge.v213-static-release-descriptor/v2",
+    );
+    assert.deepEqual(
+      state.soulx_workflow_registration_evidence,
+      descriptor.workflowRegistrationEvidence,
+    );
+    assert.equal(
+      state.soulx_workflow_registration_evidence_sha256,
+      descriptor.workflowRegistrationEvidence.evidence_sha256,
+    );
+    assert.doesNotThrow(() => validateState(state));
+    const drifted = structuredClone(state);
+    drifted.soulx_workflow_registration_evidence.default_branch_commit = "c".repeat(40);
+    assert.throws(() => validateState(drifted), /WORKFLOW_REGISTRATION_STATE_BINDING/u);
+  });
+});
+
+test("historical descriptor v1 state remains validation-compatible without the new schema field", () => {
+  const historical = freshStateFixture();
+  delete historical.static_release_descriptor_schema_version;
+  assert.doesNotThrow(() => validateState(historical));
 });
 
 test("V4 consume binds the protected descriptor to the immutable release payload commit", () => {
@@ -1463,7 +1545,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "videoforge.v213-database-role-credential-bundle/v1",
     prequalification_database_bootstrap_credential_bundle_path: "database-role-credentials.json",
     prequalification_database_bootstrap_credentials_absent_before_consumed_bootstrap: true,
-    prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count: 45,
+    prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count: 46,
     prequalification_database_bootstrap_credential_roles: [
       "videoforge_hosted_operator",
       "videoforge_hosted_runtime",
@@ -1479,7 +1561,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope: [
       ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_scope,
     ],
-    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 45,
+    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 46,
     prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit: true,
     prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
     prequalification_database_bootstrap_phase_cap_usd: 0,
@@ -1488,17 +1570,17 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "prequalification_database_bootstrap_sha256",
     prequalification_database_bootstrap_receipt_replay_cas_required: true,
     prequalification_database_bootstrap_recovery_mode_ledger_before_count: {
-      FRESH_36_TO_45: 36,
-      RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44],
-      VERIFIED_EXISTING_45: 45,
+      FRESH_36_TO_46: 36,
+      RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45],
+      VERIFIED_EXISTING_46: 46,
     },
-    prequalification_database_bootstrap_recovery_mode_final_ledger_count: 45,
+    prequalification_database_bootstrap_recovery_mode_final_ledger_count: 46,
     exact_operator_function_signatures: [
       ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures,
     ],
     exact_initial_ledger_prefix_count: 36,
-    exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45],
-    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45],
+    exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
+    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
   });
   assert.equal(bootstrap.receipt_exact_fields.includes("production_secret_bootstrap_sha256"), true);
   assert.equal(bootstrap.receipt_exact_fields.includes("database_identity_sha256"), true);
@@ -1524,7 +1606,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   assert.equal(bootstrap.receipt_parent_directory_mode, "0700");
   assert.equal(bootstrap.receipt_secret_free, true);
   assert.equal(bootstrap.receipt_replay_requires_exact_all_fields, true);
-  assert.equal(bootstrap.receipt_final_ledger_count, 45);
+  assert.equal(bootstrap.receipt_final_ledger_count, 46);
   assert.equal(bootstrap.operator_grants_sql_revoke_public_execute, true);
   assert.equal(
     bootstrap.absent_operator_role_creation_and_exact_grants_share_one_database_transaction,
@@ -1573,13 +1655,17 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     grants.slice(grantStart, grantEnd),
     /GRANT\s+EXECUTE\s+ON\s+FUNCTION[\s\S]*?\bTO\s+PUBLIC\b/iu,
   );
-  const migration = readFileSync(
-    "packages/control-plane/migrations/0045_hosted_full_live_activation.sql",
-    "utf8",
-  );
+  const migration = [
+    readFileSync("packages/control-plane/migrations/0045_hosted_full_live_activation.sql", "utf8"),
+    readFileSync(
+      "packages/control-plane/migrations/0046_hosted_full_live_cleanup_recovery.sql",
+      "utf8",
+    ),
+  ].join("\n");
+  const normalizedMigration = migration.replace(/\s+/gu, " ");
   for (const signature of bootstrap.exact_operator_function_signatures)
     assert.equal(
-      migration.includes(`REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC;`),
+      normalizedMigration.includes(`REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC;`),
       true,
       `public execute revoke missing for ${signature}`,
     );
@@ -1603,11 +1689,11 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     true,
   );
   assert.deepEqual(bootstrap.recovery_mode_ledger_before_count, {
-    FRESH_36_TO_45: 36,
-    RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44],
-    VERIFIED_EXISTING_45: 45,
+    FRESH_36_TO_46: 36,
+    RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45],
+    VERIFIED_EXISTING_46: 46,
   });
-  assert.equal(bootstrap.recovery_mode_final_ledger_count, 45);
+  assert.equal(bootstrap.recovery_mode_final_ledger_count, 46);
   assert.equal(bootstrap.guarded_activation_reapplies_migrations_or_operator_role, false);
 });
 
@@ -1950,6 +2036,13 @@ test("single-use ledger enforces phase order, phase caps, cumulative cap, and no
   );
   assert.equal(validateState(state).total_reserved_usd, 4.5);
   assert.equal(validateState(state).total_settled_usd, 1.25);
+  const mismatchedPhaseReserved = structuredClone(state);
+  mismatchedPhaseReserved.phases.mage_qualification.reserved_usd = 4.49;
+  assert.throws(() => validateState(mismatchedPhaseReserved), /PHASE_WORK_SUM_MISMATCH/u);
+  const mismatchedPhaseSettled = structuredClone(state);
+  mismatchedPhaseSettled.phases.mage_qualification.settled_usd = 1.24;
+  mismatchedPhaseSettled.total_settled_usd = 1.24;
+  assert.throws(() => validateState(mismatchedPhaseSettled), /PHASE_WORK_SUM_MISMATCH/u);
   assert.throws(() => beginPhase(state, "v2_09_short_hosted_project"), /PHASE_ORDER/u);
 });
 
@@ -2102,7 +2195,7 @@ test("release certification is a separate record after the exact four-work clean
   );
 });
 
-test("state storage requires mode-0700 real directory, mode-0600 file, and exact prior hash", () => {
+test("state storage requires mode-0700 real directory, mode-0600 file, and exact prior hash", async () => {
   const state = freshStateFixture();
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-outer-state-"));
   chmodSync(directory, 0o700);
@@ -2113,6 +2206,34 @@ test("state storage requires mode-0700 real directory, mode-0600 file, and exact
     const updated = updateState(path, before, (value) => beginPhase(value, "publication"));
     assert.equal(updated.state.phases.publication.state, "ACTIVE");
     assert.throws(() => updateState(path, before, (value) => value), /STATE_SHA256/u);
+    const nextPath = `${path}.next`;
+    writeFileSync(nextPath, `${JSON.stringify(updated.state, null, 2)}\n`, {
+      mode: 0o600,
+      flag: "wx",
+    });
+    const recovered = updateState(path, updated.sha256, (value) => value);
+    assert.equal(recovered.sha256, updated.sha256);
+    assert.equal(existsSync(nextPath), false);
+
+    writeFileSync(nextPath, "{}\n", { mode: 0o600, flag: "wx" });
+    assert.throws(() => updateState(path, recovered.sha256, (value) => value), /NEXT_STATE_DRIFT/u);
+    assert.equal(hash(readFileSync(path)), recovered.sha256);
+    rmSync(nextPath);
+
+    const lockPath = `${path}.lock`;
+    writeFileSync(
+      lockPath,
+      `${JSON.stringify({ pid: process.pid, process_start_sha256: hash(Buffer.from(`${process.pid}\0${execFileSync("ps", ["-o", "lstart=", "-p", String(process.pid)], { encoding: "utf8" }).trim()}`)), expected_state_sha256: recovered.sha256 })}\n`,
+      { mode: 0o600, flag: "wx" },
+    );
+    assert.throws(() => updateState(path, recovered.sha256, (value) => value), /STATE_LOCKED/u);
+    rmSync(lockPath);
+    writeFileSync(
+      lockPath,
+      `${JSON.stringify({ pid: 2147483647, process_start_sha256: proof("d"), expected_state_sha256: recovered.sha256 })}\n`,
+      { mode: 0o600, flag: "wx" },
+    );
+    assert.equal(updateState(path, recovered.sha256, (value) => value).sha256, recovered.sha256);
     chmodSync(path, 0o644);
     assert.throws(
       () => updateState(path, updated.sha256, (value) => value),
@@ -2124,6 +2245,40 @@ test("state storage requires mode-0700 real directory, mode-0600 file, and exact
     assert.throws(
       () => updateState(link, updated.sha256, (value) => value),
       /STATE_FILE_MODE_OR_TYPE/u,
+    );
+    const authorityModule = resolve("deploy/v2-13/full-live-orchestration-authority.mjs");
+    const childSource = `
+      const { updateState } = await import(${JSON.stringify(authorityModule)});
+      try {
+        updateState(${JSON.stringify(path)}, ${JSON.stringify(recovered.sha256)}, (value) => {
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+          value.concurrent_cas_winner = process.pid;
+          return value;
+        });
+      } catch (error) {
+        process.stderr.write(String(error?.message ?? error));
+        process.exitCode = 1;
+      }
+    `;
+    const runChild = () =>
+      new Promise((done) => {
+        const child = spawn(process.execPath, ["--input-type=module", "--eval", childSource], {
+          stdio: ["ignore", "ignore", "pipe"],
+        });
+        let stderr = "";
+        child.stderr.setEncoding("utf8");
+        child.stderr.on("data", (chunk) => {
+          stderr += chunk;
+        });
+        child.on("close", (code) => done({ code, stderr }));
+      });
+    const raced = await Promise.all([runChild(), runChild()]);
+    assert.equal(raced.filter(({ code }) => code === 0).length, 1);
+    assert.equal(
+      raced
+        .filter(({ code }) => code !== 0)
+        .every(({ stderr }) => /STATE_LOCKED|STATE_SHA256/u.test(stderr)),
+      true,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });

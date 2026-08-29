@@ -445,6 +445,7 @@ const STATIC_RELEASE_GATE_POLICY = Object.freeze({
 const STATIC_RELEASE_GATES = Object.freeze(Object.keys(STATIC_RELEASE_GATE_POLICY));
 
 function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEvidence) {
+  const isV2 = value?.schemaVersion === "videoforge.v213-static-release-descriptor/v2";
   if (
     !exactKeys(value, [
       "auditFacts",
@@ -453,8 +454,12 @@ function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEv
       "productionUrlSha256",
       "schemaVersion",
       "sourceCommit",
+      ...(isV2 ? ["workflowRegistrationEvidence"] : []),
     ]) ||
-    value.schemaVersion !== "videoforge.v213-static-release-descriptor/v1" ||
+    ![
+      "videoforge.v213-static-release-descriptor/v1",
+      "videoforge.v213-static-release-descriptor/v2",
+    ].includes(value.schemaVersion) ||
     value.sourceCommit !== sourceCommit ||
     value.descriptorSha256 !== expectedSha256 ||
     value.contractBundleSha256 !== sourceEvidence.readiness.contract_bundle.sha256 ||
@@ -462,6 +467,45 @@ function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEv
     !exactKeys(value.auditFacts, STATIC_RELEASE_GATES)
   )
     fail("STATIC_DESCRIPTOR_CONTRACT");
+  if (isV2) {
+    const evidence = value.workflowRegistrationEvidence;
+    const unsignedEvidence = { ...evidence };
+    delete unsignedEvidence.evidence_sha256;
+    if (
+      !exactKeys(evidence, [
+        "schema_version",
+        "repository",
+        "default_branch",
+        "default_branch_commit",
+        "workflow_file",
+        "workflow_name",
+        "workflow_path",
+        "default_branch_workflow_sha256",
+        "release_source_commit",
+        "release_source_workflow_sha256",
+        "registration_state",
+        "materialized",
+        "bound_to_release_source",
+        "evidence_sha256",
+      ]) ||
+      evidence.schema_version !== "videoforge.v213-soulx-workflow-registration-evidence/v1" ||
+      evidence.repository !== "Pala-LakshmanSai/videoforge" ||
+      evidence.default_branch !== "main" ||
+      !/^[0-9a-f]{40}$/u.test(evidence.default_branch_commit ?? "") ||
+      evidence.workflow_file !== "avatar-primary-serverless-image.yml" ||
+      evidence.workflow_name !== "avatar-primary-serverless-image" ||
+      evidence.workflow_path !== ".github/workflows/avatar-primary-serverless-image.yml" ||
+      !HASH.test(evidence.default_branch_workflow_sha256 ?? "") ||
+      evidence.release_source_commit !== sourceCommit ||
+      !HASH.test(evidence.release_source_workflow_sha256 ?? "") ||
+      evidence.default_branch_workflow_sha256 !== evidence.release_source_workflow_sha256 ||
+      evidence.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
+      evidence.materialized !== true ||
+      evidence.bound_to_release_source !== true ||
+      sha256(Buffer.from(canonicalJson(unsignedEvidence))) !== evidence.evidence_sha256
+    )
+      fail("STATIC_DESCRIPTOR_WORKFLOW_REGISTRATION");
+  }
   for (const gate of STATIC_RELEASE_GATES) {
     const fact = value.auditFacts[gate];
     const policy = STATIC_RELEASE_GATE_POLICY[gate];
@@ -688,7 +732,7 @@ function migrationLedgerSha256(proposal, readSourceFile) {
   if (
     value?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(value.migrations) ||
-    value.migrations.length !== 45
+    value.migrations.length !== 46
   )
     fail("MIGRATION_MANIFEST_CONTRACT");
   value.migrations.forEach((migration, index) => {
@@ -1044,7 +1088,7 @@ function buildV213MaterializationSeed({
         reconciler_role: proposal.requested_scope.database.exact_reconciler_role,
         pgcrypto_required: true,
         first_migration: 37,
-        last_migration: 45,
+        last_migration: 46,
         exact_manifest_ledger_required: true,
       },
       cloudflare: {

@@ -1,11 +1,13 @@
-import { spawnSync } from "node:child_process";
+import { spawn as spawnChild, spawnSync } from "node:child_process";
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   closeSync,
   constants as fsConstants,
   fstatSync,
+  fsyncSync,
   linkSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   openSync,
   readFileSync,
@@ -13,6 +15,7 @@ import {
   realpathSync,
   renameSync,
   rmSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -23,6 +26,7 @@ import { createRequire } from "node:module";
 import {
   createPromotionDatabaseAdapter,
   promoteQualifiedProduction,
+  reconcileQualifiedProductionCleanup,
 } from "./promote-qualified-production.mjs";
 import {
   APPROVED_WRANGLER_OAUTH_SCOPES,
@@ -53,6 +57,61 @@ const TAG = "videoforge-v2-13-release-20260826-v3";
 const APPROVAL_BRANCH = "codex/serverless-v2-roadmap-v4";
 const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const RUNPOD_ACCOUNT_ID_SHA256 =
+  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
+const RUNPOD_PER_MUTATION_ADMISSION_SCHEMA = "videoforge.v213-runpod-per-mutation-admission/v2";
+const RUNPOD_PER_MUTATION_OPERATION_IDS = new Set([
+  "mage-live-qualification",
+  "soulx-live-qualification",
+  "create-exact-max-one-endpoints",
+  "v2-09-short-hosted-project",
+  "v2-10-operator-free-ranga-pilot",
+  "v2-11-two-concurrent-owned-projects",
+  "v2-12-long-output",
+  "v2-13-final-two-lane-smoke",
+]);
+const RUNPOD_ACCEPTANCE_OPERATION_IDS = new Set(
+  [...RUNPOD_PER_MUTATION_OPERATION_IDS].filter((operationId) => operationId.startsWith("v2-")),
+);
+const RUNPOD_SERVERLESS_FLEX_CATALOG_URL =
+  "https://api.runpod.io/v2/catalog/gpus?include=AVAILABILITY&product=SERVERLESS";
+const RUNPOD_SERVERLESS_FLEX_RATE_SOURCE =
+  "https://docs.runpod.io/serverless/endpoints/endpoint-configurations";
+const RUNPOD_RETAINED_LANES = Object.freeze([
+  Object.freeze({
+    lane: "mage",
+    volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    volumeManifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+  }),
+  Object.freeze({
+    lane: "soulx",
+    volumeIdSha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    volumeManifestSha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+  }),
+]);
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA =
+  "videoforge.v213-soulx-workflow-registration-evidence/v1";
+const SOULX_WORKFLOW_REGISTRATION_REPOSITORY = "Pala-LakshmanSai/videoforge";
+const SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH = "main";
+const SOULX_WORKFLOW_REGISTRATION_FILE = "avatar-primary-serverless-image.yml";
+const SOULX_WORKFLOW_REGISTRATION_PATH = `.github/workflows/${SOULX_WORKFLOW_REGISTRATION_FILE}`;
+const SOULX_WORKFLOW_REGISTRATION_NAME = "avatar-primary-serverless-image";
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS = Object.freeze([
+  "schema_version",
+  "repository",
+  "default_branch",
+  "default_branch_commit",
+  "workflow_file",
+  "workflow_name",
+  "workflow_path",
+  "default_branch_workflow_sha256",
+  "release_source_commit",
+  "release_source_workflow_sha256",
+  "registration_state",
+  "materialized",
+  "bound_to_release_source",
+  "evidence_sha256",
+]);
 const EXACT_DATABASE_IDENTITY = Object.freeze({
   database: "neondb",
   host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
@@ -92,7 +151,7 @@ const BRIDGE_LOADER_SOURCE_SHA256 =
   "sha256:0b1c5b86192772fe9257710e739959cee5947c11ae1f93b61abfaa9b80c6def1";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
 const BRIDGE_CLI_SOURCE_SHA256 =
-  "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0";
+  "sha256:9f844e9b03adb4db2a3ff9200f1fb8faabc2ce5907fa95af98a2ba061d042a71";
 const PREQUALIFICATION_MIGRATION_MANIFEST_PATH = "packages/control-plane/migrations/manifest.json";
 const PREQUALIFICATION_OPERATOR_GRANTS_PATH = "deploy/v2-13/neon-full-live-operator-grants.sql";
 const PREQUALIFICATION_MIGRATION_MANIFEST_SHA256 = sha256(
@@ -107,7 +166,7 @@ const RELEASE_CERTIFICATION_REQUEST_SCHEMA =
   "videoforge.v213-local-release-certification-request/v1";
 const CLEANUP_RECEIPT_CONFIRMATION = "FINALIZE_EXACT_V2_13_CLEANUP_RECEIPT";
 const CLEANUP_RECEIPT_REQUEST_SCHEMA =
-  "videoforge.v213-local-cleanup-receipt-finalization-request/v1";
+  "videoforge.v213-local-cleanup-receipt-finalization-request/v2";
 const BRIDGE_CHILD_MAX_TIMEOUT_MS = 1_800_000;
 const BRIDGE_CLEANUP_CHILD_MAX_TIMEOUT_MS = 60_000;
 const RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS = 60_000;
@@ -140,15 +199,16 @@ const PREQUALIFICATION_RUNTIME_ROLE = "videoforge_hosted_runtime";
 const PREQUALIFICATION_RECONCILER_ROLE = "videoforge_hosted_reconciler";
 const PREQUALIFICATION_RECEIPT_NAME = "prequalification-database-bootstrap.json";
 const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
-  "FRESH_36_TO_45",
+  "FRESH_36_TO_46",
   "RESUME_EXACT_PREFIX",
-  "VERIFIED_EXISTING_45",
+  "VERIFIED_EXISTING_46",
 ]);
 const PREQUALIFICATION_LEDGER_PREFIX_COUNTS = Object.freeze([
-  36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46,
 ]);
 const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_claim_v213_bridge_command(jsonb)",
+  "videoforge_claim_v213_cleanup_receipt_intent(jsonb)",
   "videoforge_claim_v213_operation(jsonb)",
   "videoforge_claim_v213_qualification_materialization(jsonb)",
   "videoforge_claim_v213_stage_authority(jsonb)",
@@ -179,6 +239,7 @@ const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_record_v213_acceptance_authority(jsonb)",
   "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
   "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+  "videoforge_record_v213_disabled_promotion_closure(uuid,jsonb)",
   "videoforge_record_v213_operation_receipt(jsonb)",
   "videoforge_record_v213_receipt_verification_key(text,text)",
   "videoforge_record_v213_signed_evidence(jsonb)",
@@ -290,6 +351,131 @@ const QUALIFICATION_PROTECTED_INPUTS = Object.freeze({
 const fail = (code, detail = "") => {
   throw new Error(`V2_13_FULL_LIVE_ADAPTER_${code}${detail ? `:${detail}` : ""}`);
 };
+
+const CHILD_TERMINATION_GRACE_MS = 2_000;
+const PROMOTION_CHILD_MAX_TIMEOUT_MS = 5 * 60_000;
+
+/**
+ * Run one bounded child without ever resolving/rejecting before the child has closed. Cancellation
+ * first requests cooperative SIGTERM, then escalates to SIGKILL for the isolated process group.
+ * This is the quiescence boundary used by bridge children and mutating Wrangler commands: the
+ * executor cannot begin cleanup while any child from the cancelled operation can still act.
+ */
+async function runCancellableChildProcess({
+  command,
+  args,
+  options = {},
+  timeoutMs,
+  cancellationSignal,
+  timeoutCode,
+  cancellationCode,
+  executionCode,
+  spawn = spawnChild,
+}) {
+  if (
+    typeof command !== "string" ||
+    command === "" ||
+    !Array.isArray(args) ||
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < 1 ||
+    !(cancellationSignal === undefined || cancellationSignal instanceof AbortSignal) ||
+    [timeoutCode, cancellationCode, executionCode].some(
+      (value) => typeof value !== "string" || value === "",
+    )
+  )
+    fail("CHILD_PROCESS_CONTRACT");
+  if (cancellationSignal?.aborted === true) fail(cancellationCode);
+
+  let child;
+  try {
+    child = spawn(command, args, {
+      ...options,
+      detached: true,
+      encoding: undefined,
+    });
+  } catch {
+    fail(executionCode);
+  }
+  if (child === null || typeof child !== "object" || typeof child.once !== "function")
+    fail(executionCode);
+
+  const stdoutChunks = [];
+  const stderrChunks = [];
+  let stdoutBytes = 0;
+  let stderrBytes = 0;
+  let terminalReason = null;
+  let childError = null;
+  let closed = false;
+  let killTimer;
+  const maximumBytes = options.maxBuffer ?? 4 * 1024 * 1024;
+  const capture = (chunks, kind) => (value) => {
+    const bytes = Buffer.from(value);
+    if (kind === "stdout") stdoutBytes += bytes.length;
+    else stderrBytes += bytes.length;
+    if (stdoutBytes > maximumBytes || stderrBytes > maximumBytes) {
+      terminalReason ??= "execution";
+      terminate("SIGTERM");
+      return;
+    }
+    chunks.push(bytes);
+  };
+  child.stdout?.on("data", capture(stdoutChunks, "stdout"));
+  child.stderr?.on("data", capture(stderrChunks, "stderr"));
+
+  const terminate = (signal) => {
+    if (closed) return;
+    try {
+      if (Number.isSafeInteger(child.pid) && child.pid > 0) process.kill(-child.pid, signal);
+      else child.kill?.(signal);
+    } catch (error) {
+      if (error?.code !== "ESRCH") childError ??= error;
+    }
+    if (signal === "SIGTERM" && killTimer === undefined)
+      killTimer = setTimeout(() => terminate("SIGKILL"), CHILD_TERMINATION_GRACE_MS);
+  };
+  const requestCancellation = () => {
+    terminalReason ??= "cancelled";
+    terminate("SIGTERM");
+  };
+  cancellationSignal?.addEventListener("abort", requestCancellation, { once: true });
+  if (cancellationSignal?.aborted === true) requestCancellation();
+  const timeout = setTimeout(() => {
+    terminalReason ??= "timeout";
+    terminate("SIGTERM");
+  }, timeoutMs);
+
+  return await new Promise((resolveResult, rejectResult) => {
+    child.once("error", (error) => {
+      childError = error;
+    });
+    child.once("close", (status, signal) => {
+      closed = true;
+      clearTimeout(timeout);
+      clearTimeout(killTimer);
+      cancellationSignal?.removeEventListener("abort", requestCancellation);
+      const rejectCode =
+        terminalReason === "cancelled"
+          ? cancellationCode
+          : terminalReason === "timeout"
+            ? timeoutCode
+            : terminalReason === "execution" || childError !== null
+              ? executionCode
+              : null;
+      if (rejectCode !== null) {
+        rejectResult(new Error(`V2_13_FULL_LIVE_ADAPTER_${rejectCode}`));
+        return;
+      }
+      resolveResult(
+        Object.freeze({
+          status,
+          signal,
+          stdout: Buffer.concat(stdoutChunks, stdoutBytes).toString(options.encoding ?? "utf8"),
+          stderr: Buffer.concat(stderrChunks, stderrBytes).toString(options.encoding ?? "utf8"),
+        }),
+      );
+    });
+  });
+}
 
 /** Hash the closed Wrangler dry-output tree, never Wrangler's console text. */
 function hashV213DryOutputBundle(directory) {
@@ -650,17 +836,205 @@ function parseRuns(bytes, workflow, headSha) {
   );
 }
 
-function createGithubDispatchAdapters({
-  run = productionCommand,
-  wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds)),
-  maximumPolls = 30,
-  pollIntervalMs = 2_000,
-} = {}) {
+/**
+ * The GitHub Actions API resolves a workflow file from the repository default branch before it
+ * considers the requested ref.  Keep that prerequisite provider-free and explicit: a release
+ * source copy of the workflow is not evidence that the default branch has registered it.
+ *
+ * The evidence is materialized by the provider-free repair/audit path and bound into the outer
+ * execution state by its canonical hash.  This validator only checks those already-materialized
+ * bytes; it deliberately performs no GitHub or other provider read.
+ */
+function exactSoulxWorkflowRegistrationEvidence(value, releaseSourceCommit) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    JSON.stringify(Object.keys(value).sort()) !==
+      JSON.stringify(SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS.slice().sort()) ||
+    value.schema_version !== SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA ||
+    value.repository !== SOULX_WORKFLOW_REGISTRATION_REPOSITORY ||
+    value.default_branch !== SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH ||
+    !COMMIT.test(value.default_branch_commit ?? "") ||
+    value.workflow_file !== SOULX_WORKFLOW_REGISTRATION_FILE ||
+    value.workflow_name !== SOULX_WORKFLOW_REGISTRATION_NAME ||
+    value.workflow_path !== SOULX_WORKFLOW_REGISTRATION_PATH ||
+    !HASH.test(value.default_branch_workflow_sha256 ?? "") ||
+    value.release_source_commit !== releaseSourceCommit ||
+    !HASH.test(value.release_source_workflow_sha256 ?? "") ||
+    value.default_branch_workflow_sha256 !== value.release_source_workflow_sha256 ||
+    value.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
+    value.materialized !== true ||
+    value.bound_to_release_source !== true ||
+    !HASH.test(value.evidence_sha256 ?? "")
+  )
+    fail("SOULX_WORKFLOW_REGISTRATION_EVIDENCE_CONTRACT");
+  const unsigned = { ...value };
+  delete unsigned.evidence_sha256;
+  if (sha256(Buffer.from(canonicalJson(unsigned))) !== value.evidence_sha256)
+    fail("SOULX_WORKFLOW_REGISTRATION_EVIDENCE_HASH");
+  return Object.freeze(value);
+}
+
+function validateSoulxWorkflowRegistrationEvidence(value, state) {
+  if (
+    state?.static_release_descriptor_schema_version !==
+    "videoforge.v213-static-release-descriptor/v2"
+  )
+    fail("WORKFLOW_REGISTRATION_DESCRIPTOR_V2_REQUIRED");
+  exactSoulxWorkflowRegistrationEvidence(value, state?.release_source_commit);
+  if (
+    state?.release_ref?.exact_tag_name !== TAG ||
+    state?.release_ref?.exact_target_commit !== state?.release_source_commit
+  )
+    fail("SOULX_WORKFLOW_REGISTRATION_RELEASE_BINDING");
+  const stateBinding =
+    state?.soulx_workflow_registration_evidence_sha256 ??
+    state?.workflow_registration_evidence_sha256;
+  if (!HASH.test(stateBinding ?? "")) fail("SOULX_WORKFLOW_REGISTRATION_UNBOUND");
+  if (stateBinding !== value.evidence_sha256) fail("SOULX_WORKFLOW_REGISTRATION_BINDING_MISMATCH");
+  return Object.freeze(value);
+}
+
+const DEFAULT_BRANCH_WORKFLOWS = Object.freeze([
+  Object.freeze({ file: "mage-image.yml", name: "mage-image" }),
+  Object.freeze({
+    file: SOULX_WORKFLOW_REGISTRATION_FILE,
+    name: SOULX_WORKFLOW_REGISTRATION_NAME,
+  }),
+]);
+
+function exactGithubJson(run, endpoint, code) {
+  const response = exactCommand(run, "gh", ["api", "--method", "GET", endpoint]);
+  try {
+    return JSON.parse(response.stdout);
+  } catch {
+    fail(code);
+  }
+}
+
+function githubContentBytes(value, code) {
+  if (
+    value?.type !== "file" ||
+    value.encoding !== "base64" ||
+    typeof value.content !== "string" ||
+    !/^[0-9a-f]{40}$/u.test(value.sha ?? "") ||
+    !Number.isInteger(value.size) ||
+    value.size < 1
+  )
+    fail(code);
+  const compact = value.content.replaceAll(/\s/gu, "");
+  let bytes;
+  try {
+    bytes = Buffer.from(compact, "base64");
+  } catch {
+    fail(code);
+  }
+  if (
+    bytes.length !== value.size ||
+    bytes.toString("base64").replaceAll("=", "") !== compact.replaceAll("=", "")
+  )
+    fail(code);
+  return bytes;
+}
+
+function verifyFreshDefaultBranchWorkflowRegistration({ run, state, soulxRegistration }) {
+  const repositoryEndpoint = `repos/${SOULX_WORKFLOW_REGISTRATION_REPOSITORY}`;
+  const repository = exactGithubJson(run, repositoryEndpoint, "WORKFLOW_DEFAULT_BRANCH_REPOSITORY");
+  if (repository?.default_branch !== SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH)
+    fail("WORKFLOW_DEFAULT_BRANCH_DRIFT");
+  const commit = exactGithubJson(
+    run,
+    `${repositoryEndpoint}/commits/${SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH}`,
+    "WORKFLOW_DEFAULT_BRANCH_COMMIT",
+  );
+  if (!COMMIT.test(commit?.sha ?? "")) fail("WORKFLOW_DEFAULT_BRANCH_COMMIT");
+  const workflows = [];
+  for (const expected of DEFAULT_BRANCH_WORKFLOWS) {
+    const path = `.github/workflows/${expected.file}`;
+    const registration = exactGithubJson(
+      run,
+      `${repositoryEndpoint}/actions/workflows/${encodeURIComponent(expected.file)}`,
+      "WORKFLOW_DEFAULT_BRANCH_REGISTRATION",
+    );
+    if (
+      !Number.isInteger(registration?.id) ||
+      registration.id < 1 ||
+      registration.name !== expected.name ||
+      registration.path !== path ||
+      registration.state !== "active"
+    )
+      fail("WORKFLOW_DEFAULT_BRANCH_REGISTRATION");
+    const encodedPath = path
+      .split("/")
+      .map((part) => encodeURIComponent(part))
+      .join("/");
+    const mainBytes = githubContentBytes(
+      exactGithubJson(
+        run,
+        `${repositoryEndpoint}/contents/${encodedPath}?ref=${commit.sha}`,
+        "WORKFLOW_DEFAULT_BRANCH_CONTENT",
+      ),
+      "WORKFLOW_DEFAULT_BRANCH_CONTENT",
+    );
+    const releaseBytes = githubContentBytes(
+      exactGithubJson(
+        run,
+        `${repositoryEndpoint}/contents/${encodedPath}?ref=${state.release_source_commit}`,
+        "WORKFLOW_RELEASE_SOURCE_CONTENT",
+      ),
+      "WORKFLOW_RELEASE_SOURCE_CONTENT",
+    );
+    const mainSha256 = sha256(mainBytes);
+    const releaseSha256 = sha256(releaseBytes);
+    if (Buffer.compare(mainBytes, releaseBytes) !== 0 || mainSha256 !== releaseSha256)
+      fail("WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT");
+    if (
+      expected.file === SOULX_WORKFLOW_REGISTRATION_FILE &&
+      (commit.sha !== soulxRegistration.default_branch_commit ||
+        mainSha256 !== soulxRegistration.default_branch_workflow_sha256 ||
+        releaseSha256 !== soulxRegistration.release_source_workflow_sha256)
+    )
+      fail("SOULX_WORKFLOW_REGISTRATION_STALE");
+    workflows.push({
+      workflowId: registration.id,
+      workflowFile: expected.file,
+      workflowName: expected.name,
+      workflowSha256: mainSha256,
+    });
+  }
+  const proof = {
+    schemaVersion: "videoforge.v213-fresh-default-branch-workflow-readback/v1",
+    repository: SOULX_WORKFLOW_REGISTRATION_REPOSITORY,
+    defaultBranch: SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH,
+    defaultBranchCommit: commit.sha,
+    releaseSourceCommit: state.release_source_commit,
+    workflows,
+    exactBothRegisteredAndByteIdentical: true,
+  };
+  return Object.freeze({ ...proof, proofSha256: canonicalSha256(proof) });
+}
+
+function createGithubDispatchAdapters(options = {}) {
+  if (
+    options === null ||
+    typeof options !== "object" ||
+    Array.isArray(options) ||
+    Object.keys(options).some(
+      (key) => !["run", "wait", "maximumPolls", "pollIntervalMs"].includes(key),
+    )
+  )
+    fail("WORKFLOW_DISPATCH_OPTIONS");
+  const {
+    run = productionCommand,
+    wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds)),
+    maximumPolls = 30,
+    pollIntervalMs = 2_000,
+  } = options;
   if (!Number.isInteger(maximumPolls) || maximumPolls < 1 || maximumPolls > 60)
     fail("GITHUB_POLL_BOUND");
   if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 0 || pollIntervalMs > 10_000)
     fail("GITHUB_POLL_INTERVAL");
-
   const dispatch = async ({ state, workflowFile, workflowName, fields }) => {
     const tag = state.release_ref?.exact_tag_name;
     const headSha = state.release_source_commit;
@@ -670,6 +1044,9 @@ function createGithubDispatchAdapters({
       !COMMIT.test(headSha)
     )
       fail("WORKFLOW_RELEASE_REF");
+    const candidate = state?.soulx_workflow_registration_evidence;
+    if (candidate === undefined || candidate === null) fail("SOULX_WORKFLOW_REGISTRATION_REQUIRED");
+    const soulxRegistration = validateSoulxWorkflowRegistrationEvidence(candidate, state);
     const listArgs = [
       "run",
       "list",
@@ -686,6 +1063,12 @@ function createGithubDispatchAdapters({
     ];
     const before = parseRuns(exactCommand(run, "gh", listArgs).stdout, workflowName, headSha);
     const beforeIds = new Set(before.map(({ databaseId }) => databaseId));
+    const freshWorkflowReadback = verifyFreshDefaultBranchWorkflowRegistration({
+      run,
+      state,
+      soulxRegistration,
+    });
+    if (!HASH.test(freshWorkflowReadback?.proofSha256 ?? "")) fail("WORKFLOW_FRESH_READBACK_PROOF");
     const dispatchArgs = ["workflow", "run", workflowFile, "--ref", tag];
     for (const [name, value] of fields) dispatchArgs.push("--field", `${name}=${value}`);
     exactCommand(run, "gh", dispatchArgs);
@@ -703,6 +1086,9 @@ function createGithubDispatchAdapters({
           runId: String(after[0].databaseId),
           headSha,
           dispatchAccepted: true,
+          freshWorkflowReadback: structuredClone(freshWorkflowReadback),
+          freshWorkflowReadbackSha256: freshWorkflowReadback.proofSha256,
+          workflowRegistrationEvidenceSha256: soulxRegistration.evidence_sha256,
         };
     }
     fail("GITHUB_DISPATCH_RUN_NOT_FOUND");
@@ -739,6 +1125,10 @@ const WORKFLOW_EVIDENCE = Object.freeze({
     lane: "mage_image",
     repository: "pala-lakshmansai/videoforge-mage-v2-07",
     digestKey: "manifest_digest",
+    configDigestKey: "config_digest",
+    layerDigestKey: "layer_digest",
+    v1ConfigDigestKey: "config_digest",
+    v1LayerDigestKey: "layer_digest",
   },
   "soulx-image-workflow-verification": {
     workflowName: "avatar-primary-serverless-image",
@@ -748,11 +1138,683 @@ const WORKFLOW_EVIDENCE = Object.freeze({
     lane: "soulx_avatar",
     repository: "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
     digestKey: "image_digest",
+    configDigestKey: "config_digest",
+    layerDigestKey: null,
+    v1ConfigDigestKey: "local_image_id",
+    v1LayerDigestKey: null,
   },
 });
 
+const IMAGE_DEPLOYABILITY_V1_SCHEMA = "videoforge-image-deployability/v1";
+const IMAGE_DEPLOYABILITY_SCHEMA = "videoforge-image-deployability/v2";
+const ANONYMOUS_GHCR_PROOF_SCHEMA = "videoforge-anonymous-ghcr-publication-proof/v1";
+const IMAGE_PUBLICATION_WORKFLOW_REPOSITORY = "Pala-LakshmanSai/videoforge";
+const GHCR_ORIGIN = "https://ghcr.io";
+const GHCR_TOKEN_PATH = "/token";
+const GHCR_BLOB_REDIRECT_HOST = "pkg-containers.githubusercontent.com";
+const GHCR_ANONYMOUS_READ_TIMEOUT_MS = 60_000;
+const GHCR_TOKEN_MAX_BYTES = 65_536;
+const GHCR_MANIFEST_MAX_BYTES = 8 * 1024 * 1024;
+const IMAGE_MANIFEST_MEDIA_TYPES = new Set([
+  "application/vnd.docker.distribution.manifest.v2+json",
+  "application/vnd.oci.image.manifest.v1+json",
+]);
+const IMAGE_CONFIG_MEDIA_TYPES = new Set([
+  "application/vnd.docker.container.image.v1+json",
+  "application/vnd.oci.image.config.v1+json",
+]);
+const IMAGE_LAYER_MEDIA_TYPES = new Set([
+  "application/vnd.docker.image.rootfs.diff.tar.gzip",
+  "application/vnd.oci.image.layer.v1.tar",
+  "application/vnd.oci.image.layer.v1.tar+gzip",
+]);
+
+function imageProofCanonicalJson(value) {
+  if (value === null || typeof value === "boolean" || typeof value === "string")
+    return JSON.stringify(value);
+  if (typeof value === "number" && Number.isFinite(value)) return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(imageProofCanonicalJson).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${imageProofCanonicalJson(value[key])}`)
+      .join(",")}}`;
+  fail("ANONYMOUS_PUBLICATION_PROOF_VALUE");
+}
+
+function imageProofExactKeys(value, keys) {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort())
+  );
+}
+
+function validateImageBlobProof(value, { kind, index, mediaTypes, approvedMs, expiresMs }) {
+  const observedMs = Date.parse(value?.registry_observed_at ?? "");
+  if (
+    !imageProofExactKeys(value, [
+      "kind",
+      "index",
+      "digest",
+      "media_type",
+      "declared_size_bytes",
+      "observed_size_bytes",
+      "content_sha256",
+      "http_status",
+      "registry_observed_at",
+    ]) ||
+    value.kind !== kind ||
+    value.index !== index ||
+    !HASH.test(value.digest ?? "") ||
+    !mediaTypes.has(value.media_type) ||
+    !Number.isSafeInteger(value.declared_size_bytes) ||
+    value.declared_size_bytes <= 0 ||
+    value.observed_size_bytes !== value.declared_size_bytes ||
+    value.content_sha256 !== value.digest ||
+    value.http_status !== 200 ||
+    Number.isNaN(observedMs) ||
+    observedMs < approvedMs ||
+    observedMs > expiresMs
+  )
+    fail("ANONYMOUS_PUBLICATION_BLOB_PROOF");
+  return value;
+}
+
+function validateAnonymousGhcrPublicationProof(proof, { evidence, expected, state, runId }) {
+  if (
+    !imageProofExactKeys(proof, [
+      "schema_version",
+      "registry",
+      "repository",
+      "authentication",
+      "workflow_repository",
+      "workflow_name",
+      "workflow_ref",
+      "workflow_commit",
+      "workflow_run_id",
+      "registry_observed_at",
+      "manifest",
+      "config",
+      "layers",
+      "all_blobs_verified",
+      "proof_sha256",
+    ]) ||
+    proof.schema_version !== ANONYMOUS_GHCR_PROOF_SCHEMA ||
+    proof.registry !== "ghcr.io" ||
+    proof.repository !== expected.repository ||
+    proof.authentication !== "GHCR_ANONYMOUS_PULL_TOKEN" ||
+    proof.workflow_repository !== IMAGE_PUBLICATION_WORKFLOW_REPOSITORY ||
+    proof.workflow_name !== expected.workflowName ||
+    proof.workflow_ref !== `refs/tags/${state?.release_ref?.exact_tag_name ?? ""}` ||
+    proof.workflow_commit !== state?.release_source_commit ||
+    proof.workflow_run_id !== runId ||
+    proof.all_blobs_verified !== true ||
+    !HASH.test(proof.proof_sha256 ?? "") ||
+    !Array.isArray(proof.layers) ||
+    proof.layers.length < 1 ||
+    proof.layers.length > 128
+  )
+    fail("ANONYMOUS_PUBLICATION_PROOF_CONTRACT");
+  const observedMs = Date.parse(proof.registry_observed_at ?? "");
+  const approvedMs = Date.parse(state?.approved_at ?? "");
+  const expiresMs = Date.parse(state?.expires_at ?? "");
+  if (
+    Number.isNaN(observedMs) ||
+    Number.isNaN(approvedMs) ||
+    Number.isNaN(expiresMs) ||
+    observedMs < approvedMs ||
+    observedMs > expiresMs
+  )
+    fail("ANONYMOUS_PUBLICATION_PROOF_TIME");
+  if (
+    !imageProofExactKeys(proof.manifest, [
+      "digest",
+      "header_digest",
+      "content_sha256",
+      "media_type",
+      "response_content_type",
+      "size_bytes",
+      "http_status",
+    ]) ||
+    proof.manifest.digest !== evidence?.[expected.digestKey] ||
+    proof.manifest.header_digest !== proof.manifest.digest ||
+    proof.manifest.content_sha256 !== proof.manifest.digest ||
+    !IMAGE_MANIFEST_MEDIA_TYPES.has(proof.manifest.media_type) ||
+    proof.manifest.response_content_type !== proof.manifest.media_type ||
+    !Number.isSafeInteger(proof.manifest.size_bytes) ||
+    proof.manifest.size_bytes <= 0 ||
+    proof.manifest.http_status !== 200
+  )
+    fail("ANONYMOUS_PUBLICATION_MANIFEST_PROOF");
+  validateImageBlobProof(proof.config, {
+    kind: "config",
+    index: 0,
+    mediaTypes: IMAGE_CONFIG_MEDIA_TYPES,
+    approvedMs: Math.max(approvedMs, observedMs),
+    expiresMs,
+  });
+  proof.layers.forEach((layer, index) =>
+    validateImageBlobProof(layer, {
+      kind: "layer",
+      index,
+      mediaTypes: IMAGE_LAYER_MEDIA_TYPES,
+      approvedMs: Math.max(approvedMs, observedMs),
+      expiresMs,
+    }),
+  );
+  const blobObservedTimes = [proof.config, ...proof.layers].map((item) =>
+    Date.parse(item.registry_observed_at),
+  );
+  if (blobObservedTimes.some((value, index) => index > 0 && value < blobObservedTimes[index - 1]))
+    fail("ANONYMOUS_PUBLICATION_BLOB_TIME_ORDER");
+  const blobDigests = [proof.config.digest, ...proof.layers.map((layer) => layer.digest)];
+  if (new Set(blobDigests).size !== blobDigests.length)
+    fail("ANONYMOUS_PUBLICATION_BLOB_DUPLICATE");
+  const configDigestKey =
+    evidence?.schema_version === IMAGE_DEPLOYABILITY_V1_SCHEMA
+      ? (expected.v1ConfigDigestKey ?? expected.configDigestKey)
+      : expected.configDigestKey;
+  const layerDigestKey =
+    evidence?.schema_version === IMAGE_DEPLOYABILITY_V1_SCHEMA
+      ? (expected.v1LayerDigestKey ?? expected.layerDigestKey)
+      : expected.layerDigestKey;
+  if (evidence?.[configDigestKey] !== proof.config.digest)
+    fail("ANONYMOUS_PUBLICATION_CONFIG_BINDING");
+  if (layerDigestKey !== null && evidence?.[layerDigestKey] !== proof.layers.at(-1)?.digest)
+    fail("ANONYMOUS_PUBLICATION_LAYER_BINDING");
+  const unsigned = structuredClone(proof);
+  delete unsigned.proof_sha256;
+  if (sha256(Buffer.from(imageProofCanonicalJson(unsigned))) !== proof.proof_sha256)
+    fail("ANONYMOUS_PUBLICATION_PROOF_HASH");
+  return Object.freeze(structuredClone(proof));
+}
+
+function anonymousGhcrAdapterError(error) {
+  return error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_");
+}
+
+function assertAnonymousGhcrNotCancelled(isCancelled) {
+  if (isCancelled()) fail("ANONYMOUS_GHCR_CANCELLED");
+}
+
+async function boundedAnonymousGhcrWait({ action, remaining, isCancelled, controller }) {
+  assertAnonymousGhcrNotCancelled(isCancelled);
+  const timeoutMs = Math.min(GHCR_ANONYMOUS_READ_TIMEOUT_MS, remaining());
+  let timedOut = false;
+  let cancelled = false;
+  let timeout;
+  let cancellationPoll;
+  const guard = new Promise((_, reject) => {
+    const rejectWith = (code) => {
+      try {
+        fail(code);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    timeout = setTimeout(() => {
+      timedOut = true;
+      controller?.abort();
+      rejectWith("ANONYMOUS_GHCR_TIMEOUT");
+    }, timeoutMs);
+    cancellationPoll = setInterval(() => {
+      if (!isCancelled()) return;
+      cancelled = true;
+      controller?.abort();
+      rejectWith("ANONYMOUS_GHCR_CANCELLED");
+    }, 25);
+  });
+  try {
+    const value = await Promise.race([Promise.resolve().then(action), guard]);
+    remaining();
+    assertAnonymousGhcrNotCancelled(isCancelled);
+    return value;
+  } catch (error) {
+    if (cancelled || isCancelled()) fail("ANONYMOUS_GHCR_CANCELLED");
+    if (timedOut) fail("ANONYMOUS_GHCR_TIMEOUT");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    clearInterval(cancellationPoll);
+  }
+}
+
+function exactGhcrResponse(response) {
+  if (
+    response === null ||
+    typeof response !== "object" ||
+    !Number.isInteger(response.status) ||
+    response.status < 100 ||
+    response.status > 599 ||
+    typeof response.headers?.get !== "function"
+  )
+    fail("ANONYMOUS_GHCR_RESPONSE_CONTRACT");
+  return response;
+}
+
+async function anonymousGhcrFetch({ fetch, url, headers, redirect, remaining, isCancelled }) {
+  const controller = new AbortController();
+  let response;
+  try {
+    response = await boundedAnonymousGhcrWait({
+      remaining,
+      isCancelled,
+      controller,
+      action: () =>
+        fetch(url, {
+          method: "GET",
+          headers,
+          credentials: "omit",
+          redirect,
+          cache: "no-store",
+          signal: controller.signal,
+        }),
+    });
+  } catch (error) {
+    if (anonymousGhcrAdapterError(error)) throw error;
+    fail("ANONYMOUS_GHCR_FETCH");
+  }
+  return Object.freeze({ response: exactGhcrResponse(response), controller });
+}
+
+function exactContentLength(response, expectedSizeBytes) {
+  const raw = response.headers.get("content-length");
+  if (raw === null) return;
+  if (!/^(0|[1-9][0-9]*)$/u.test(raw) || Number(raw) !== expectedSizeBytes)
+    fail("ANONYMOUS_GHCR_CONTENT_LENGTH");
+}
+
+async function readAnonymousGhcrBody({
+  response,
+  controller,
+  expectedSizeBytes,
+  expectedDigest,
+  maximumSizeBytes = expectedSizeBytes,
+  collect = false,
+  remaining,
+  isCancelled,
+}) {
+  if (
+    !Number.isSafeInteger(maximumSizeBytes) ||
+    maximumSizeBytes < 1 ||
+    (expectedSizeBytes !== null &&
+      (!Number.isSafeInteger(expectedSizeBytes) || expectedSizeBytes < 1)) ||
+    (expectedDigest !== null && !HASH.test(expectedDigest)) ||
+    typeof response.body?.getReader !== "function"
+  )
+    fail("ANONYMOUS_GHCR_BODY_CONTRACT");
+  const reader = response.body.getReader();
+  const contentHash = createHash("sha256");
+  const chunks = [];
+  let observedSizeBytes = 0;
+  try {
+    while (true) {
+      const item = await boundedAnonymousGhcrWait({
+        action: () => reader.read(),
+        remaining,
+        isCancelled,
+        controller,
+      });
+      if (item?.done === true) break;
+      if (!(item?.value instanceof Uint8Array)) fail("ANONYMOUS_GHCR_BODY_CHUNK");
+      const chunk = Buffer.from(item.value);
+      observedSizeBytes += chunk.length;
+      if (!Number.isSafeInteger(observedSizeBytes) || observedSizeBytes > maximumSizeBytes)
+        fail("ANONYMOUS_GHCR_BODY_SIZE");
+      contentHash.update(chunk);
+      if (collect) chunks.push(chunk);
+    }
+  } catch (error) {
+    controller.abort();
+    if (anonymousGhcrAdapterError(error)) throw error;
+    fail("ANONYMOUS_GHCR_BODY_READ");
+  } finally {
+    reader.releaseLock();
+  }
+  if (expectedSizeBytes !== null && observedSizeBytes !== expectedSizeBytes)
+    fail("ANONYMOUS_GHCR_BODY_SIZE");
+  exactContentLength(response, observedSizeBytes);
+  const contentSha256 = `sha256:${contentHash.digest("hex")}`;
+  if (expectedDigest !== null && contentSha256 !== expectedDigest)
+    fail("ANONYMOUS_GHCR_BODY_DIGEST");
+  return Object.freeze({
+    bytes: collect ? Buffer.concat(chunks, observedSizeBytes) : null,
+    observedSizeBytes,
+    contentSha256,
+  });
+}
+
+function allowedGhcrBlobRedirect(location, sourceUrl, expectedDigest) {
+  let target;
+  try {
+    target = new URL(location, sourceUrl);
+  } catch {
+    fail("ANONYMOUS_GHCR_BLOB_REDIRECT");
+  }
+  const escapedDigest = expectedDigest.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  if (
+    target.protocol !== "https:" ||
+    target.hostname !== GHCR_BLOB_REDIRECT_HOST ||
+    target.username !== "" ||
+    target.password !== "" ||
+    target.hash !== "" ||
+    !target.searchParams.has("se") ||
+    !target.searchParams.has("sig") ||
+    !new RegExp(`^/ghcrblobs[^/]+/blobs/${escapedDigest}$`, "u").test(target.pathname)
+  )
+    fail("ANONYMOUS_GHCR_BLOB_REDIRECT");
+  return target.href;
+}
+
+async function acquireAnonymousGhcrPullToken({ fetch, repository, remaining, isCancelled }) {
+  const tokenUrl = new URL(GHCR_TOKEN_PATH, GHCR_ORIGIN);
+  tokenUrl.searchParams.set("service", "ghcr.io");
+  tokenUrl.searchParams.set("scope", `repository:${repository}:pull`);
+  const { response, controller } = await anonymousGhcrFetch({
+    fetch,
+    url: tokenUrl.href,
+    headers: { accept: "application/json" },
+    redirect: "error",
+    remaining,
+    isCancelled,
+  });
+  if (response.status !== 200) {
+    controller.abort();
+    fail("ANONYMOUS_GHCR_TOKEN_HTTP", String(response.status));
+  }
+  const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (contentType !== "application/json") fail("ANONYMOUS_GHCR_TOKEN_MEDIA_TYPE");
+  const body = await readAnonymousGhcrBody({
+    response,
+    controller,
+    expectedSizeBytes: null,
+    expectedDigest: null,
+    maximumSizeBytes: GHCR_TOKEN_MAX_BYTES,
+    collect: true,
+    remaining,
+    isCancelled,
+  });
+  let value;
+  try {
+    value = JSON.parse(body.bytes.toString("utf8"));
+  } catch {
+    fail("ANONYMOUS_GHCR_TOKEN_JSON");
+  }
+  const token = value?.token ?? value?.access_token;
+  if (
+    typeof token !== "string" ||
+    token.length < 20 ||
+    token.length > 8192 ||
+    /\s/u.test(token) ||
+    (value?.token !== undefined &&
+      value?.access_token !== undefined &&
+      value.token !== value.access_token)
+  )
+    fail("ANONYMOUS_GHCR_TOKEN_CONTRACT");
+  return token;
+}
+
+async function getAnonymousGhcrBytes({
+  fetch,
+  repository,
+  path,
+  token,
+  accept,
+  expectedDigest,
+  expectedSizeBytes,
+  maximumSizeBytes = expectedSizeBytes,
+  collect = false,
+  kind,
+  remaining,
+  isCancelled,
+}) {
+  const sourceUrl = `${GHCR_ORIGIN}/v2/${repository}/${path}`;
+  let read = await anonymousGhcrFetch({
+    fetch,
+    url: sourceUrl,
+    headers: { accept, authorization: `Bearer ${token}` },
+    redirect: "manual",
+    remaining,
+    isCancelled,
+  });
+  if (read.response.status >= 300 && read.response.status < 400) {
+    if (kind !== "blob") fail("ANONYMOUS_GHCR_REDIRECT");
+    const location = read.response.headers.get("location");
+    if (location === null) fail("ANONYMOUS_GHCR_BLOB_REDIRECT");
+    const redirectUrl = allowedGhcrBlobRedirect(location, sourceUrl, expectedDigest);
+    read.controller.abort();
+    read = await anonymousGhcrFetch({
+      fetch,
+      url: redirectUrl,
+      headers: { accept },
+      redirect: "error",
+      remaining,
+      isCancelled,
+    });
+  }
+  if (read.response.status !== 200) {
+    read.controller.abort();
+    fail(`ANONYMOUS_GHCR_${kind.toUpperCase()}_HTTP`, String(read.response.status));
+  }
+  return {
+    response: read.response,
+    body: await readAnonymousGhcrBody({
+      response: read.response,
+      controller: read.controller,
+      expectedSizeBytes,
+      expectedDigest,
+      maximumSizeBytes,
+      collect,
+      remaining,
+      isCancelled,
+    }),
+  };
+}
+
+function exactImageDescriptor(value, mediaTypes, kind) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    !mediaTypes.has(value.mediaType) ||
+    !HASH.test(value.digest ?? "") ||
+    !Number.isSafeInteger(value.size) ||
+    value.size < 1
+  )
+    fail(`ANONYMOUS_GHCR_${kind.toUpperCase()}_DESCRIPTOR`);
+  return Object.freeze({ mediaType: value.mediaType, digest: value.digest, size: value.size });
+}
+
+async function verifyTaggedV1AnonymousGhcrReadback({
+  fetch,
+  evidence,
+  expected,
+  state,
+  runId,
+  trustedTime,
+  remaining,
+  isCancelled,
+}) {
+  const approvedMs = Date.parse(state?.approved_at ?? "");
+  const expiresMs = Date.parse(state?.expires_at ?? "");
+  if (Number.isNaN(approvedMs) || Number.isNaN(expiresMs) || approvedMs > expiresMs)
+    fail("ANONYMOUS_GHCR_AUTHORITY_TIME");
+  let priorObservedMs = approvedMs;
+  const observeTrustedTime = async () => {
+    const value = await boundedAnonymousGhcrWait({
+      action: () => trustedTime(Math.min(12_000, remaining())),
+      remaining,
+      isCancelled,
+    });
+    const observedMs = Date.parse(value ?? "");
+    if (
+      Number.isNaN(observedMs) ||
+      observedMs < approvedMs ||
+      observedMs > expiresMs ||
+      observedMs < priorObservedMs
+    )
+      fail("ANONYMOUS_GHCR_AUTHORITY_TIME");
+    priorObservedMs = observedMs;
+    return new Date(observedMs).toISOString();
+  };
+
+  await observeTrustedTime();
+  const token = await acquireAnonymousGhcrPullToken({
+    fetch,
+    repository: expected.repository,
+    remaining,
+    isCancelled,
+  });
+  const digest = evidence?.[expected.digestKey];
+  if (!HASH.test(digest ?? "")) fail("ANONYMOUS_GHCR_MANIFEST_DIGEST");
+  const manifestRead = await getAnonymousGhcrBytes({
+    fetch,
+    repository: expected.repository,
+    path: `manifests/${digest}`,
+    token,
+    accept: [...IMAGE_MANIFEST_MEDIA_TYPES].join(", "),
+    expectedDigest: digest,
+    expectedSizeBytes: null,
+    maximumSizeBytes: GHCR_MANIFEST_MAX_BYTES,
+    collect: true,
+    kind: "manifest",
+    remaining,
+    isCancelled,
+  });
+  const headerDigest = manifestRead.response.headers.get("docker-content-digest");
+  const responseContentType = manifestRead.response.headers
+    .get("content-type")
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  if (
+    headerDigest !== digest ||
+    manifestRead.body.contentSha256 !== digest ||
+    !IMAGE_MANIFEST_MEDIA_TYPES.has(responseContentType)
+  )
+    fail("ANONYMOUS_GHCR_MANIFEST_IDENTITY");
+  let manifest;
+  try {
+    manifest = JSON.parse(manifestRead.body.bytes.toString("utf8"));
+  } catch {
+    fail("ANONYMOUS_GHCR_MANIFEST_JSON");
+  }
+  if (
+    manifest?.schemaVersion !== 2 ||
+    manifest.mediaType !== responseContentType ||
+    !Array.isArray(manifest.layers) ||
+    manifest.layers.length < 1 ||
+    manifest.layers.length > 128
+  )
+    fail("ANONYMOUS_GHCR_MANIFEST_CONTRACT");
+  const config = exactImageDescriptor(manifest.config, IMAGE_CONFIG_MEDIA_TYPES, "config");
+  const layers = manifest.layers.map((layer) =>
+    exactImageDescriptor(layer, IMAGE_LAYER_MEDIA_TYPES, "layer"),
+  );
+  const descriptorDigests = [config.digest, ...layers.map((layer) => layer.digest)];
+  if (new Set(descriptorDigests).size !== descriptorDigests.length)
+    fail("ANONYMOUS_GHCR_BLOB_DUPLICATE");
+  const configDigestKey = expected.v1ConfigDigestKey ?? expected.configDigestKey;
+  const layerDigestKey = expected.v1LayerDigestKey ?? expected.layerDigestKey;
+  if (evidence?.[configDigestKey] !== config.digest) fail("ANONYMOUS_GHCR_CONFIG_BINDING");
+  if (layerDigestKey !== null && evidence?.[layerDigestKey] !== layers.at(-1)?.digest)
+    fail("ANONYMOUS_GHCR_LAYER_BINDING");
+  const manifestObservedAt = await observeTrustedTime();
+
+  const configRead = await getAnonymousGhcrBytes({
+    fetch,
+    repository: expected.repository,
+    path: `blobs/${config.digest}`,
+    token,
+    accept: config.mediaType,
+    expectedDigest: config.digest,
+    expectedSizeBytes: config.size,
+    collect: false,
+    kind: "blob",
+    remaining,
+    isCancelled,
+  });
+  void configRead.response;
+  const configObservedAt = await observeTrustedTime();
+  const layerProofs = [];
+  for (const [index, layer] of layers.entries()) {
+    const layerRead = await getAnonymousGhcrBytes({
+      fetch,
+      repository: expected.repository,
+      path: `blobs/${layer.digest}`,
+      token,
+      accept: layer.mediaType,
+      expectedDigest: layer.digest,
+      expectedSizeBytes: layer.size,
+      collect: false,
+      kind: "blob",
+      remaining,
+      isCancelled,
+    });
+    void layerRead.response;
+    layerProofs.push({
+      kind: "layer",
+      index,
+      digest: layer.digest,
+      media_type: layer.mediaType,
+      declared_size_bytes: layer.size,
+      observed_size_bytes: layerRead.body.observedSizeBytes,
+      content_sha256: layerRead.body.contentSha256,
+      http_status: 200,
+      registry_observed_at: await observeTrustedTime(),
+    });
+  }
+  const unsignedProof = {
+    schema_version: ANONYMOUS_GHCR_PROOF_SCHEMA,
+    registry: "ghcr.io",
+    repository: expected.repository,
+    authentication: "GHCR_ANONYMOUS_PULL_TOKEN",
+    workflow_repository: IMAGE_PUBLICATION_WORKFLOW_REPOSITORY,
+    workflow_name: expected.workflowName,
+    workflow_ref: `refs/tags/${state.release_ref.exact_tag_name}`,
+    workflow_commit: state.release_source_commit,
+    workflow_run_id: runId,
+    registry_observed_at: manifestObservedAt,
+    manifest: {
+      digest,
+      header_digest: headerDigest,
+      content_sha256: manifestRead.body.contentSha256,
+      media_type: manifest.mediaType,
+      response_content_type: responseContentType,
+      size_bytes: manifestRead.body.observedSizeBytes,
+      http_status: 200,
+    },
+    config: {
+      kind: "config",
+      index: 0,
+      digest: config.digest,
+      media_type: config.mediaType,
+      declared_size_bytes: config.size,
+      observed_size_bytes: configRead.body.observedSizeBytes,
+      content_sha256: configRead.body.contentSha256,
+      http_status: 200,
+      registry_observed_at: configObservedAt,
+    },
+    layers: layerProofs,
+    all_blobs_verified: true,
+  };
+  const proof = {
+    ...unsignedProof,
+    proof_sha256: sha256(Buffer.from(imageProofCanonicalJson(unsignedProof))),
+  };
+  return validateAnonymousGhcrPublicationProof(proof, {
+    evidence,
+    expected,
+    state,
+    runId,
+  });
+}
+
 function createGithubVerificationAdapters({
   run = (command, args, timeoutMs) => boundedCommand(command, args, timeoutMs),
+  fetch = (input, init) => globalThis.fetch(input, init),
   wait = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds)),
   maximumPolls = 180,
   pollIntervalMs = 10_000,
@@ -762,6 +1824,7 @@ function createGithubVerificationAdapters({
     readAuthenticatedGithubTime({ spawnTimeoutMs: Math.min(12_000, timeoutMs) }),
   isCancelled = () => false,
 } = {}) {
+  if (typeof fetch !== "function") fail("GITHUB_VERIFICATION_FETCH_CONTRACT");
   if (!Number.isInteger(maximumPolls) || maximumPolls < 1 || maximumPolls > 180)
     fail("GITHUB_VERIFICATION_POLL_BOUND");
   if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 0 || pollIntervalMs > 10_000)
@@ -844,7 +1907,9 @@ function createGithubVerificationAdapters({
           }
           const digest = evidence?.[expected.digestKey];
           if (
-            evidence?.schema_version !== "videoforge-image-deployability/v1" ||
+            ![IMAGE_DEPLOYABILITY_V1_SCHEMA, IMAGE_DEPLOYABILITY_SCHEMA].includes(
+              evidence?.schema_version,
+            ) ||
             evidence.checkpoint !== expected.checkpoint ||
             evidence.lane !== expected.lane ||
             evidence.source_commit !== state.release_source_commit ||
@@ -865,6 +1930,24 @@ function createGithubVerificationAdapters({
             evidence.immutable_image !== `ghcr.io/${expected.repository}@${digest}`
           )
             fail("WORKFLOW_EVIDENCE_CONTRACT");
+          const anonymousProof =
+            evidence.schema_version === IMAGE_DEPLOYABILITY_SCHEMA
+              ? validateAnonymousGhcrPublicationProof(evidence.anonymous_publication_proof, {
+                  evidence,
+                  expected,
+                  state,
+                  runId,
+                })
+              : await verifyTaggedV1AnonymousGhcrReadback({
+                  fetch,
+                  evidence,
+                  expected,
+                  state,
+                  runId,
+                  trustedTime,
+                  remaining,
+                  isCancelled,
+                });
           remaining();
           return {
             actualUsd: 0,
@@ -874,6 +1957,7 @@ function createGithubVerificationAdapters({
             evidenceSha256: sha256(evidenceBytes),
             publicManifestSha256: digest,
             publicAllBlobsVerified: true,
+            anonymousPublicationProofSha256: anonymousProof.proof_sha256,
             conclusion: "success",
           };
         } finally {
@@ -1126,68 +2210,281 @@ function createStagedQualificationAdapters({ api, transport, input }) {
   });
 }
 
+const PROMOTION_JOURNAL_STEPS = new Set([
+  "DATABASE_PROMOTION",
+  "DRY_RUN",
+  "CLOUDFLARE_DEPLOY",
+  "CLOUDFLARE_READBACK",
+  "ROUTE_READBACK",
+  "ACTIVATION_RECORD",
+  "CLOUDFLARE_ROLLBACK",
+  "ROLLBACK_RECORD",
+  "PROMOTION_COMPLETE",
+]);
+
+function exactPromotionJournalLookup(value) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    !/^[0-9a-f-]{36}$/u.test(value.promotionId ?? "") ||
+    !PROMOTION_JOURNAL_STEPS.has(value.step) ||
+    !["INTENT", "CONFIRMED"].includes(value.status)
+  )
+    fail("PROMOTION_JOURNAL_LOOKUP");
+  return Object.freeze({
+    promotionId: value.promotionId,
+    step: value.step,
+    status: value.status,
+  });
+}
+
+function promotionJournalEntryPath(directory, lookup) {
+  const exact = exactPromotionJournalLookup(lookup);
+  return resolve(directory, `${exact.promotionId}.${exact.step}.${exact.status}.json`);
+}
+
+function syncDirectory(directory, code) {
+  let descriptor;
+  try {
+    descriptor = openSync(directory, fsConstants.O_RDONLY);
+    fsyncSync(descriptor);
+  } catch {
+    fail(code);
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+/**
+ * Durable one-file-per-entry promotion journal. A fully fsynced staging inode is hard-linked into
+ * its immutable final name, so a crash can expose either no entry or the complete entry, never a
+ * truncated acknowledgement. The private directory makes the hard-link CAS safe from foreign
+ * writers; an existing final name must contain the exact same canonical entry.
+ */
+function createDurablePromotionFileJournal({ directory }) {
+  if (typeof directory !== "string" || directory === "" || directory.includes("\0"))
+    fail("PROMOTION_JOURNAL_DIRECTORY");
+  const requestedDirectory = resolve(directory);
+  try {
+    mkdirSync(requestedDirectory, { mode: 0o700 });
+    syncDirectory(dirname(requestedDirectory), "PROMOTION_JOURNAL_PARENT_SYNC");
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+  }
+  let metadata;
+  let canonicalDirectory;
+  try {
+    metadata = lstatSync(requestedDirectory);
+    canonicalDirectory = realpathSync(requestedDirectory);
+  } catch {
+    fail("PROMOTION_JOURNAL_DIRECTORY");
+  }
+  if (!metadata.isDirectory() || metadata.isSymbolicLink() || (metadata.mode & 0o077) !== 0)
+    fail("PROMOTION_JOURNAL_DIRECTORY");
+
+  const read = async (lookup) => {
+    const path = promotionJournalEntryPath(canonicalDirectory, lookup);
+    if (!lstatExists(path)) return null;
+    protectedFile(path, "PROMOTION_JOURNAL_ENTRY");
+    let value;
+    try {
+      value = JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      fail("PROMOTION_JOURNAL_ENTRY");
+    }
+    const exact = exactPromotionJournalLookup(value);
+    const expected = exactPromotionJournalLookup(lookup);
+    if (canonicalJson(exact) !== canonicalJson(expected)) fail("PROMOTION_JOURNAL_ENTRY_DRIFT");
+    return Object.freeze(value);
+  };
+
+  return Object.freeze({
+    read,
+    async record(entry) {
+      const lookup = exactPromotionJournalLookup(entry);
+      const finalPath = promotionJournalEntryPath(canonicalDirectory, lookup);
+      const existing = await read(lookup);
+      if (existing !== null) {
+        if (canonicalJson(existing) !== canonicalJson(entry)) fail("PROMOTION_JOURNAL_ENTRY_DRIFT");
+        return existing;
+      }
+      const stagePath = resolve(
+        canonicalDirectory,
+        `.${basename(finalPath)}.${randomBytes(16).toString("hex")}.stage`,
+      );
+      let descriptor;
+      try {
+        descriptor = openSync(
+          stagePath,
+          fsConstants.O_WRONLY |
+            fsConstants.O_CREAT |
+            fsConstants.O_EXCL |
+            (fsConstants.O_NOFOLLOW ?? 0),
+          0o600,
+        );
+        writeFileSync(descriptor, `${canonicalJson(entry)}\n`, "utf8");
+        fsyncSync(descriptor);
+        closeSync(descriptor);
+        descriptor = undefined;
+        try {
+          linkSync(stagePath, finalPath);
+          syncDirectory(canonicalDirectory, "PROMOTION_JOURNAL_DIRECTORY_SYNC");
+        } catch (error) {
+          if (error?.code !== "EEXIST") throw error;
+          const raced = await read(lookup);
+          if (raced === null || canonicalJson(raced) !== canonicalJson(entry))
+            fail("PROMOTION_JOURNAL_ENTRY_DRIFT");
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_"))
+          throw error;
+        fail("PROMOTION_JOURNAL_WRITE");
+      } finally {
+        if (descriptor !== undefined) closeSync(descriptor);
+        if (lstatExists(stagePath)) unlinkSync(stagePath);
+        syncDirectory(canonicalDirectory, "PROMOTION_JOURNAL_DIRECTORY_SYNC");
+      }
+      const recorded = await read(lookup);
+      if (recorded === null || canonicalJson(recorded) !== canonicalJson(entry))
+        fail("PROMOTION_JOURNAL_ACK_UNKNOWN");
+      return recorded;
+    },
+  });
+}
+
+function promotionActivationReadback(readback) {
+  return {
+    schemaVersion: "videoforge.v213-cloudflare-activation-readback/v1",
+    sourceCommit: readback.sourceCommit,
+    versionIdSha256: readback.versionIdSha256,
+    deployedExecutableSha256: readback.deployedExecutableSha256,
+    deployedConfigSha256: readback.deployedConfigSha256,
+    productionUrlSha256: readback.productionUrlSha256,
+    routeStatus: readback.routeStatus,
+    routeBodySha256: readback.routeBodySha256,
+    routeVersionSha256: readback.routeVersionSha256,
+    routeReadbackSha256: readback.routeReadbackSha256,
+    observedAt: readback.observedAt,
+  };
+}
+
+function promotionRollbackReadback(readback) {
+  return {
+    schemaVersion: "videoforge.v213-cloudflare-rollback-readback/v1",
+    disabledVersionIdSha256: readback.disabledVersionIdSha256,
+    disabledConfigSha256: readback.disabledConfigSha256,
+    routeStatus: readback.routeStatus,
+    routeVersionSha256: readback.routeVersionSha256,
+    observedAt: readback.observedAt,
+  };
+}
+
+function promotionDisabledClosureReadback(readback) {
+  return {
+    schemaVersion: "videoforge.v213-disabled-promotion-closure/v1",
+    promotionId: readback.promotionId,
+    disabledVersionIdSha256: readback.disabledVersionIdSha256,
+    disabledConfigSha256: readback.disabledConfigSha256,
+    routeStatus: readback.routeStatus,
+    routeVersionSha256: readback.routeVersionSha256,
+    observedAt: readback.observedAt,
+  };
+}
+
+function createRecoverableQualifiedPromotionTransport({ database, cloudflare, journal, recovery }) {
+  const db = createPromotionDatabaseAdapter(database);
+  const transport = {
+    promoteDatabase: (input) => db.promote(input),
+    dryRun: cloudflare.dryRun,
+    deploy: cloudflare.deploy,
+    readback: cloudflare.readback,
+    routeReadback: cloudflare.routeReadback,
+    rollback: cloudflare.rollback,
+    recordActivation: ({ activationId, promotionId, ...readback }) =>
+      db.recordCloudflareActivation({
+        activationId,
+        promotionId,
+        readback: promotionActivationReadback(readback),
+      }),
+    recordRollback: ({ rollbackId, activationId, promotionId, ...readback }) =>
+      db.recordCloudflareRollback({
+        rollbackId,
+        activationId,
+        promotionId,
+        readback: promotionRollbackReadback(readback),
+      }),
+    recordDisabledPromotionClosure: ({ closureId, promotionId, closure }) =>
+      db.recordDisabledPromotionClosure({
+        closureId,
+        promotionId,
+        closure: promotionDisabledClosureReadback({ promotionId, ...closure }),
+      }),
+  };
+  const durableRecovery =
+    recovery ??
+    Object.freeze({
+      journal,
+      reconcileDatabasePromotion: transport.promoteDatabase,
+      reconcileDeployment: cloudflare.reconcileDeployment,
+      reconcileActivation: transport.recordActivation,
+      readDisabledDeployment: cloudflare.readDisabledDeployment,
+      reconcileRollback: cloudflare.reconcileRollback,
+      reconcileRollbackRecord: transport.recordRollback,
+      reconcileDisabledPromotionClosure: transport.recordDisabledPromotionClosure,
+    });
+  return Object.freeze({ ...transport, recovery: durableRecovery });
+}
+
 function createQualifiedPromotionAdapter({
   record,
   disabledConfigBytes,
   transport,
   database,
   cloudflare,
+  journal,
+  recovery,
 }) {
   if (!transport) {
-    const db = createPromotionDatabaseAdapter(database);
     if (
       cloudflare === null ||
       typeof cloudflare !== "object" ||
-      ["dryRun", "deploy", "readback", "routeReadback", "rollback"].some(
-        (name) => typeof cloudflare[name] !== "function",
-      )
+      [
+        "dryRun",
+        "deploy",
+        "readback",
+        "routeReadback",
+        "rollback",
+        "reconcileDeployment",
+        "readDisabledDeployment",
+        "reconcileRollback",
+      ].some((name) => typeof cloudflare[name] !== "function")
     )
       fail("PROMOTION_CLOUDFLARE_TRANSPORT");
-    transport = Object.freeze({
-      promoteDatabase: (input) => db.promote(input),
-      dryRun: cloudflare.dryRun,
-      deploy: cloudflare.deploy,
-      readback: cloudflare.readback,
-      routeReadback: cloudflare.routeReadback,
-      rollback: cloudflare.rollback,
-      recordActivation: ({ activationId, promotionId, ...readback }) =>
-        db.recordCloudflareActivation({
-          activationId,
-          promotionId,
-          readback: {
-            schemaVersion: "videoforge.v213-cloudflare-activation-readback/v1",
-            sourceCommit: readback.sourceCommit,
-            versionIdSha256: readback.versionIdSha256,
-            deployedExecutableSha256: readback.deployedExecutableSha256,
-            deployedConfigSha256: readback.deployedConfigSha256,
-            productionUrlSha256: readback.productionUrlSha256,
-            routeStatus: readback.routeStatus,
-            routeBodySha256: readback.routeBodySha256,
-            routeVersionSha256: readback.routeVersionSha256,
-            routeReadbackSha256: readback.routeReadbackSha256,
-            observedAt: readback.observedAt,
-          },
-        }),
-      recordRollback: ({ rollbackId, activationId, promotionId, ...readback }) =>
-        db.recordCloudflareRollback({
-          rollbackId,
-          activationId,
-          promotionId,
-          readback: {
-            schemaVersion: "videoforge.v213-cloudflare-rollback-readback/v1",
-            disabledVersionIdSha256: readback.disabledVersionIdSha256,
-            disabledConfigSha256: readback.disabledConfigSha256,
-            routeStatus: readback.routeStatus,
-            routeVersionSha256: readback.routeVersionSha256,
-            observedAt: readback.observedAt,
-          },
-        }),
+    transport = createRecoverableQualifiedPromotionTransport({
+      database,
+      cloudflare,
+      journal,
+      recovery,
     });
   }
-  return async () => ({
+  const adapter = async () => ({
     actualUsd: 0,
     ...(await promoteQualifiedProduction({ record, disabledConfigBytes, transport })),
   });
+  adapter.reconcileCleanup = async (context) => {
+    if (context?.earlyFailure === true) fail("PROMOTION_CLEANUP_CONTEXT");
+    return Object.freeze({
+      record: Object.freeze(record),
+      result: await reconcileQualifiedProductionCleanup({
+        record,
+        disabledConfigBytes,
+        transport,
+      }),
+    });
+  };
+  adapter.hasCleanupMaterialization = async () => true;
+  return Object.freeze(adapter);
 }
 
 function createProtectedPromotionAdapter({
@@ -1195,7 +2492,13 @@ function createProtectedPromotionAdapter({
   spawn = spawnSync,
   fetchImpl = fetch,
 } = {}) {
-  return async (_operation, state) => {
+  const run = async ({ cleanupOnly, context = {} }, state) => {
+    const cancellationSignal = cleanupOnly ? undefined : context.cancellationSignal;
+    const checkCancellation = () => {
+      if (cancellationSignal?.aborted === true) fail("PROMOTION_CANCELLED");
+      context.cancellationCheck?.();
+    };
+    checkCancellation();
     const promotionPreflight = preflightPromotionInputs({ environment, state, spawn });
     const recordPath = protectedFile(
       environment.VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE,
@@ -1238,6 +2541,17 @@ function createProtectedPromotionAdapter({
     const disabledRollbackPath = resolve(directory, "wrangler.disabled.json");
     const dryOutput = resolve(directory, "dry-run");
     let enabledConfig;
+    try {
+      enabledConfig = JSON.parse(disabledConfigBytes.toString("utf8"));
+      enabledConfig.vars.VIDEOFORGE_GPU_TRANSPORT = "QUALIFIED_EXACT";
+    } catch {
+      fail("PROMOTION_ENABLED_CONFIG_RENDER");
+    }
+    const enabledConfigBytes = Buffer.from(`${JSON.stringify(enabledConfig, null, 2)}\n`);
+    if (sha256(enabledConfigBytes) !== record.release.enabled_config_sha256)
+      fail("PROMOTION_ENABLED_CONFIG_HASH");
+    writeFileSync(enabledPath, enabledConfigBytes, { mode: 0o600, flag: "wx" });
+    writeFileSync(disabledRollbackPath, disabledConfigBytes, { mode: 0o600, flag: "wx" });
     // The account was authenticated and scope-checked before this adapter can invoke any
     // Wrangler command. Keep the checked identity for every later refresh/readback.
     let cloudflareAccountId = promotionPreflight.accountId;
@@ -1253,8 +2567,37 @@ function createProtectedPromotionAdapter({
       CI: "1",
       WRANGLER_SEND_METRICS: "false",
     });
-    const runWrangler = (args) => {
+    const promotionTimeoutMs = () => {
+      const remaining = Date.parse(state?.expires_at ?? "") - Date.now();
+      return cleanupOnly || !Number.isFinite(remaining)
+        ? PROMOTION_CHILD_MAX_TIMEOUT_MS
+        : Math.max(1, Math.min(PROMOTION_CHILD_MAX_TIMEOUT_MS, remaining));
+    };
+    const runCommand = async (command, args, options, code) => {
+      checkCancellation();
+      if (spawn !== spawnSync) {
+        const result = spawn(command, args, options);
+        if (result.status !== 0 || typeof result.stdout !== "string") fail(code);
+        checkCancellation();
+        return result;
+      }
+      const result = await runCancellableChildProcess({
+        command,
+        args,
+        options,
+        timeoutMs: promotionTimeoutMs(),
+        cancellationSignal,
+        timeoutCode: `${code}_TIMEOUT`,
+        cancellationCode: "PROMOTION_CANCELLED",
+        executionCode: code,
+      });
+      if (result.status !== 0 || typeof result.stdout !== "string") fail(code);
+      checkCancellation();
+      return result;
+    };
+    const runWrangler = async (args) => {
       if (!/^[0-9a-f]{32}$/u.test(cloudflareAccountId ?? "")) fail("PROMOTION_ACCOUNT_ID_DRIFT");
+      checkCancellation();
       refreshWranglerOAuthReadback({
         configPath: oauthConfigPath,
         environment,
@@ -1262,23 +2605,27 @@ function createProtectedPromotionAdapter({
         expectedScopes,
         spawn,
       });
-      const result = spawn("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler", ...args], {
-        cwd: ROOT,
-        encoding: "utf8",
-        shell: false,
-        env: oauthEnvironment,
-        stdio: ["ignore", "pipe", "pipe"],
-        maxBuffer: 4 * 1024 * 1024,
-      });
-      if (result.status !== 0 || typeof result.stdout !== "string")
-        fail("PROMOTION_CLOUDFLARE_COMMAND");
+      checkCancellation();
+      const result = await runCommand(
+        "pnpm",
+        ["--filter", "@videoforge/web", "exec", "wrangler", ...args],
+        {
+          cwd: ROOT,
+          encoding: "utf8",
+          shell: false,
+          env: oauthEnvironment,
+          stdio: ["ignore", "pipe", "pipe"],
+          maxBuffer: 4 * 1024 * 1024,
+        },
+        "PROMOTION_CLOUDFLARE_COMMAND",
+      );
       return result.stdout;
     };
-    const activeVersion = () => {
+    const activeVersion = async (configPath = enabledPath) => {
       let value;
       try {
         value = JSON.parse(
-          runWrangler(["deployments", "status", "--json", "--config", enabledPath]),
+          await runWrangler(["deployments", "status", "--json", "--config", configPath]),
         );
       } catch {
         fail("PROMOTION_VERSION_READBACK");
@@ -1297,9 +2644,73 @@ function createProtectedPromotionAdapter({
       if (new Set(found).size !== 1) fail("PROMOTION_VERSION_READBACK");
       return [...new Set(found)][0];
     };
+    const versionReadback = async (versionId, configPath = enabledPath) => {
+      let version;
+      try {
+        version = JSON.parse(
+          await runWrangler(["versions", "view", versionId, "--json", "--config", configPath]),
+        );
+      } catch {
+        fail("PROMOTION_BINDING_READBACK");
+      }
+      const versionText = JSON.stringify(version);
+      return Object.freeze({
+        versionText,
+        exactBindings: [
+          "VIDEO_WORKFLOW",
+          "HOSTED_PAIR_WORKFLOW",
+          "VIDEOFORGE_RUNTIME_DATABASE",
+          "VIDEOFORGE_RECONCILER_DATABASE",
+          "VIDEOFORGE_GPU_TRANSPORT",
+        ].every((name) => versionText.includes(name)),
+        gpuTransport: versionText.includes("QUALIFIED_EXACT")
+          ? "QUALIFIED_EXACT"
+          : versionText.includes("DISABLED_UNQUALIFIED")
+            ? "DISABLED_UNQUALIFIED"
+            : null,
+      });
+    };
+    const disabledDeploymentReadback = async () => {
+      const versionId = await activeVersion(disabledRollbackPath);
+      if (versionId !== record.cloudflare.disabled_version_id) return null;
+      const version = await versionReadback(versionId, disabledRollbackPath);
+      let route;
+      try {
+        route = await fetchImpl(`${record.cloudflare.public_origin}/api/v2/hosted/status`, {
+          method: "GET",
+          redirect: "error",
+          signal:
+            cancellationSignal === undefined
+              ? AbortSignal.timeout(30_000)
+              : AbortSignal.any([cancellationSignal, AbortSignal.timeout(30_000)]),
+        });
+      } catch {
+        fail("PROMOTION_ROLLBACK_ROUTE_READBACK");
+      }
+      const routeVersionId = route.headers.get("x-videoforge-worker-version");
+      let body;
+      try {
+        body = await route.json();
+      } catch {
+        fail("PROMOTION_ROLLBACK_ROUTE_READBACK");
+      }
+      return Object.freeze({
+        gpuTransport: body?.gpu_transport ?? version.gpuTransport,
+        configSha256: record.release.disabled_config_sha256,
+        versionSha256: sha256(Buffer.from(versionId)),
+        gpuDispatchPerformed: false,
+        cloudflareMutationPerformed: false,
+        routeDisabled: versionId === record.cloudflare.disabled_version_id,
+        routeStatus: route.status,
+        routeVersionSha256: routeVersionId ? sha256(Buffer.from(routeVersionId)) : null,
+        observedAt: new Date().toISOString(),
+      });
+    };
     const cloudflare = {
       dryRun: async (bytes) => {
-        enabledConfig = JSON.parse(bytes.toString("utf8"));
+        const candidate = JSON.parse(bytes.toString("utf8"));
+        if (canonicalJson(candidate) !== canonicalJson(enabledConfig))
+          fail("PROMOTION_ENABLED_CONFIG_DRIFT");
         if (!/^[0-9a-f]{32}$/u.test(String(enabledConfig.account_id ?? "")))
           fail("PROMOTION_ACCOUNT_ID_DRIFT");
         cloudflareAccountId = String(enabledConfig.account_id);
@@ -1307,16 +2718,20 @@ function createProtectedPromotionAdapter({
           fail("PROMOTION_ACCOUNT_ID_DRIFT");
         if (sha256(Buffer.from(cloudflareAccountId)) !== record.cloudflare.account_id_sha256)
           fail("PROMOTION_ACCOUNT_ID_DRIFT");
-        writeFileSync(enabledPath, bytes, { mode: 0o600 });
-        const build = spawn("pnpm", ["--filter", "@videoforge/web", "build:cloudflare"], {
-          cwd: ROOT,
-          encoding: "utf8",
-          shell: false,
-          env: { PATH: environment.PATH ?? process.env.PATH, CI: "1" },
-          stdio: ["ignore", "pipe", "pipe"],
-        });
+        const build = await runCommand(
+          "pnpm",
+          ["--filter", "@videoforge/web", "build:cloudflare"],
+          {
+            cwd: ROOT,
+            encoding: "utf8",
+            shell: false,
+            env: { PATH: environment.PATH ?? process.env.PATH, CI: "1" },
+            stdio: ["ignore", "pipe", "pipe"],
+          },
+          "PROMOTION_PRODUCTION_FIREWALL",
+        );
         if (build.status !== 0) fail("PROMOTION_PRODUCTION_FIREWALL");
-        runWrangler(["deploy", "--dry-run", "--outdir", dryOutput, "--config", enabledPath]);
+        await runWrangler(["deploy", "--dry-run", "--outdir", dryOutput, "--config", enabledPath]);
         return {
           configSha256: sha256(bytes),
           bundleSha256: hashV213DryOutputBundle(dryOutput),
@@ -1326,8 +2741,10 @@ function createProtectedPromotionAdapter({
         };
       },
       deploy: async (bytes) => {
-        runWrangler(["deploy", "--config", enabledPath]);
-        const versionId = activeVersion();
+        if (sha256(bytes) !== record.release.enabled_config_sha256)
+          fail("PROMOTION_ENABLED_CONFIG_DRIFT");
+        await runWrangler(["deploy", "--config", enabledPath]);
+        const versionId = await activeVersion(enabledPath);
         return {
           configSha256: sha256(bytes),
           versionSha256: sha256(Buffer.from(versionId)),
@@ -1337,28 +2754,13 @@ function createProtectedPromotionAdapter({
         };
       },
       readback: async (deployed) => {
-        const versionId = activeVersion();
+        const versionId = await activeVersion(enabledPath);
         if (deployed.versionId !== versionId) fail("PROMOTION_DEPLOYED_VERSION_DRIFT");
-        let version;
-        try {
-          version = JSON.parse(
-            runWrangler(["versions", "view", versionId, "--json", "--config", enabledPath]),
-          );
-        } catch {
-          fail("PROMOTION_BINDING_READBACK");
-        }
-        const versionText = JSON.stringify(version);
-        const exactBindings = [
-          "VIDEO_WORKFLOW",
-          "HOSTED_PAIR_WORKFLOW",
-          "VIDEOFORGE_RUNTIME_DATABASE",
-          "VIDEOFORGE_RECONCILER_DATABASE",
-          "VIDEOFORGE_GPU_TRANSPORT",
-        ].every((name) => versionText.includes(name));
+        const version = await versionReadback(versionId, enabledPath);
         const proof = {
           versionId,
           configSha256: record.release.enabled_config_sha256,
-          exactBindings,
+          exactBindings: version.exactBindings,
         };
         return {
           versionSha256: sha256(Buffer.from(versionId)),
@@ -1367,12 +2769,26 @@ function createProtectedPromotionAdapter({
           workflowName: record.cloudflare.workflow_name,
           pairWorkflowName: `${record.cloudflare.workflow_name}-pair`,
           publicOrigin: record.cloudflare.public_origin,
-          gpuTransport: enabledConfig.vars.VIDEOFORGE_GPU_TRANSPORT,
-          exactBindings,
+          gpuTransport: version.gpuTransport,
+          exactBindings: version.exactBindings,
           gpuDispatchPerformed: false,
           cloudflareMutationPerformed: false,
           evidenceSha256: sha256(Buffer.from(JSON.stringify(proof))),
         };
+      },
+      reconcileDeployment: async () => {
+        const versionId = await activeVersion(enabledPath);
+        if (versionId === record.cloudflare.disabled_version_id) return null;
+        const version = await versionReadback(versionId, enabledPath);
+        if (version.gpuTransport !== "QUALIFIED_EXACT" || version.exactBindings !== true)
+          return null;
+        return Object.freeze({
+          configSha256: record.release.enabled_config_sha256,
+          versionSha256: sha256(Buffer.from(versionId)),
+          versionId,
+          gpuDispatchPerformed: false,
+          cloudflareMutationPerformed: true,
+        });
       },
       routeReadback: async (readback) => {
         let route;
@@ -1380,7 +2796,10 @@ function createProtectedPromotionAdapter({
           route = await fetchImpl(`${record.cloudflare.public_origin}/api/v2/hosted/status`, {
             method: "GET",
             redirect: "error",
-            signal: AbortSignal.timeout(30_000),
+            signal:
+              cancellationSignal === undefined
+                ? AbortSignal.timeout(30_000)
+                : AbortSignal.any([cancellationSignal, AbortSignal.timeout(30_000)]),
           });
         } catch {
           fail("PROMOTION_ROUTE_READBACK");
@@ -1408,96 +2827,223 @@ function createProtectedPromotionAdapter({
         };
       },
       rollback: async (bytes) => {
-        writeFileSync(disabledRollbackPath, bytes, { mode: 0o600 });
-        runWrangler([
+        if (sha256(bytes) !== record.release.disabled_config_sha256)
+          fail("PROMOTION_DISABLED_CONFIG_DRIFT");
+        await runWrangler([
           "rollback",
           record.cloudflare.disabled_version_id,
           "--yes",
           "--config",
           disabledRollbackPath,
         ]);
-        const versionId = activeVersion();
-        let route;
-        try {
-          route = await fetchImpl(`${record.cloudflare.public_origin}/api/v2/hosted/status`, {
-            method: "GET",
-            redirect: "error",
-            signal: AbortSignal.timeout(30_000),
-          });
-        } catch {
-          fail("PROMOTION_ROLLBACK_ROUTE_READBACK");
-        }
-        const routeVersionId = route.headers.get("x-videoforge-worker-version");
-        let body;
-        try {
-          body = await route.json();
-        } catch {
-          fail("PROMOTION_ROLLBACK_ROUTE_READBACK");
-        }
-        return {
-          gpuTransport: body?.gpu_transport,
-          configSha256: sha256(bytes),
-          versionSha256: sha256(Buffer.from(versionId)),
-          gpuDispatchPerformed: false,
-          cloudflareMutationPerformed: true,
-          routeDisabled: versionId === record.cloudflare.disabled_version_id,
-          routeStatus: route.status,
-          routeVersionSha256: routeVersionId ? sha256(Buffer.from(routeVersionId)) : null,
-          observedAt: new Date().toISOString(),
-        };
+        const readback = await disabledDeploymentReadback();
+        if (readback === null) fail("PROMOTION_ROLLBACK_VERSION_READBACK");
+        return Object.freeze({ ...readback, cloudflareMutationPerformed: true });
       },
+      readDisabledDeployment: disabledDeploymentReadback,
+      reconcileRollback: async () =>
+        (await disabledDeploymentReadback()) ?? cloudflare.rollback(disabledConfigBytes),
     };
     try {
+      const journal = createDurablePromotionFileJournal({
+        directory: resolve(dirname(recordPath), `.${basename(recordPath)}.journal`),
+      });
+      const transport = createRecoverableQualifiedPromotionTransport({
+        database,
+        cloudflare,
+        journal,
+      });
+      const result = await (cleanupOnly
+        ? reconcileQualifiedProductionCleanup({ record, disabledConfigBytes, transport })
+        : promoteQualifiedProduction({ record, disabledConfigBytes, transport }));
+      if (cleanupOnly)
+        return Object.freeze({ record: Object.freeze(record), result: Object.freeze(result) });
       return {
         actualUsd: 0,
-        ...(await promoteQualifiedProduction({
-          record,
-          disabledConfigBytes,
-          transport: (() => {
-            const db = createPromotionDatabaseAdapter(database);
-            return {
-              promoteDatabase: db.promote,
-              ...cloudflare,
-              recordActivation: ({ activationId, promotionId, ...readback }) =>
-                db.recordCloudflareActivation({
-                  activationId,
-                  promotionId,
-                  readback: {
-                    schemaVersion: "videoforge.v213-cloudflare-activation-readback/v1",
-                    sourceCommit: readback.sourceCommit,
-                    versionIdSha256: readback.versionIdSha256,
-                    deployedExecutableSha256: readback.deployedExecutableSha256,
-                    deployedConfigSha256: readback.deployedConfigSha256,
-                    productionUrlSha256: readback.productionUrlSha256,
-                    routeStatus: readback.routeStatus,
-                    routeBodySha256: readback.routeBodySha256,
-                    routeVersionSha256: readback.routeVersionSha256,
-                    routeReadbackSha256: readback.routeReadbackSha256,
-                    observedAt: readback.observedAt,
-                  },
-                }),
-              recordRollback: ({ rollbackId, activationId, promotionId, ...readback }) =>
-                db.recordCloudflareRollback({
-                  rollbackId,
-                  activationId,
-                  promotionId,
-                  readback: {
-                    schemaVersion: "videoforge.v213-cloudflare-rollback-readback/v1",
-                    disabledVersionIdSha256: readback.disabledVersionIdSha256,
-                    disabledConfigSha256: readback.disabledConfigSha256,
-                    routeStatus: readback.routeStatus,
-                    routeVersionSha256: readback.routeVersionSha256,
-                    observedAt: readback.observedAt,
-                  },
-                }),
-            };
-          })(),
-        })),
+        ...result,
       };
     } finally {
       await pool.end();
       rmSync(directory, { recursive: true, force: true });
     }
+  };
+  const adapter = (context, state) => run({ cleanupOnly: false, context }, state);
+  adapter.reconcileCleanup = (context, state) => {
+    if (context?.earlyFailure === true) fail("PROMOTION_CLEANUP_CONTEXT");
+    return run({ cleanupOnly: true, context }, state);
+  };
+  adapter.hasCleanupMaterialization = async () => {
+    const recordPath = environment.VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE;
+    if (typeof recordPath !== "string" || recordPath === "") fail("PROMOTION_RECORD_FILE_MISSING");
+    const journalPath = resolve(dirname(recordPath), `.${basename(recordPath)}.journal`);
+    if (lstatExists(recordPath)) {
+      protectedFile(recordPath, "PROMOTION_RECORD_FILE");
+      return true;
+    }
+    if (lstatExists(journalPath)) fail("PROMOTION_JOURNAL_WITHOUT_RECORD");
+    return false;
+  };
+  return Object.freeze(adapter);
+}
+
+const QUALIFIED_PRODUCTION_CLEANUP_PROOF_SCHEMA =
+  "videoforge.v213-qualified-production-cleanup-proof/v1";
+const PROMOTION_CLEANUP_ABSENCE_PROOF_SCHEMA = "videoforge.v213-promotion-cleanup-absence-proof/v1";
+
+function exactQualifiedProductionCleanupProof(value) {
+  const keys = [
+    "databasePromotionAttempted",
+    "databasePromotionSha256",
+    "databaseRollbackRecorded",
+    "databaseRollbackSha256",
+    "disabledConfigSha256",
+    "disabledVersionSha256",
+    "enabled",
+    "fullLiveAuthorityId",
+    "gpuDispatchPerformed",
+    "productionRedispatched",
+    "promotionId",
+    "proofSha256",
+    "providerReadbackPassed",
+    "routeStatus",
+    "schemaVersion",
+    "state",
+  ];
+  if (
+    !exactObjectKeys(value, keys) ||
+    value.schemaVersion !== QUALIFIED_PRODUCTION_CLEANUP_PROOF_SCHEMA ||
+    !/^[0-9a-f-]{36}$/u.test(value.fullLiveAuthorityId ?? "") ||
+    !/^[0-9a-f-]{36}$/u.test(value.promotionId ?? "") ||
+    value.state !== "DISABLED_UNQUALIFIED" ||
+    value.enabled !== false ||
+    value.gpuDispatchPerformed !== false ||
+    value.productionRedispatched !== false ||
+    value.providerReadbackPassed !== true ||
+    value.routeStatus !== 503 ||
+    !HASH.test(value.disabledConfigSha256 ?? "") ||
+    !HASH.test(value.disabledVersionSha256 ?? "") ||
+    typeof value.databasePromotionAttempted !== "boolean" ||
+    (value.databasePromotionAttempted
+      ? !HASH.test(value.databasePromotionSha256 ?? "")
+      : value.databasePromotionSha256 !== null) ||
+    typeof value.databaseRollbackRecorded !== "boolean" ||
+    (value.databaseRollbackRecorded
+      ? !HASH.test(value.databaseRollbackSha256 ?? "")
+      : value.databaseRollbackSha256 !== null) ||
+    value.databasePromotionAttempted !== value.databaseRollbackRecorded ||
+    !HASH.test(value.proofSha256 ?? "")
+  )
+    fail("PROMOTION_CLEANUP_PROOF");
+  const unsigned = { ...value };
+  delete unsigned.proofSha256;
+  if (canonicalSha256(unsigned) !== value.proofSha256) fail("PROMOTION_CLEANUP_PROOF_HASH");
+  return Object.freeze(value);
+}
+
+function createQualifiedProductionCleanupProof(record, result) {
+  if (
+    result?.state !== "DISABLED_UNQUALIFIED" ||
+    result.enabled !== false ||
+    result.gpuDispatchPerformed !== false ||
+    result.versionSha256 !== record?.cloudflare?.disabled_version_sha256 ||
+    typeof result.databasePromotionAttempted !== "boolean" ||
+    (result.databasePromotionAttempted
+      ? !HASH.test(result.databasePromotionSha256 ?? "")
+      : result.databasePromotionSha256 !== null) ||
+    typeof result.rollbackRecorded !== "boolean" ||
+    (result.rollbackRecorded
+      ? !HASH.test(result.rollbackSha256 ?? "")
+      : result.rollbackSha256 !== null) ||
+    result.databasePromotionAttempted !== result.rollbackRecorded
+  )
+    fail("PROMOTION_CLEANUP_RESULT");
+  const unsigned = {
+    schemaVersion: QUALIFIED_PRODUCTION_CLEANUP_PROOF_SCHEMA,
+    fullLiveAuthorityId: record.database.full_live_authority_id,
+    promotionId: record.database.promotion_id,
+    state: "DISABLED_UNQUALIFIED",
+    enabled: false,
+    gpuDispatchPerformed: false,
+    productionRedispatched: false,
+    providerReadbackPassed: true,
+    routeStatus: 503,
+    disabledConfigSha256: record.release.disabled_config_sha256,
+    disabledVersionSha256: record.cloudflare.disabled_version_sha256,
+    databasePromotionAttempted: result.databasePromotionAttempted,
+    databasePromotionSha256: result.databasePromotionSha256,
+    databaseRollbackRecorded: result.rollbackRecorded,
+    databaseRollbackSha256: result.rollbackSha256,
+  };
+  return exactQualifiedProductionCleanupProof({
+    ...unsigned,
+    proofSha256: canonicalSha256(unsigned),
+  });
+}
+
+function createPromotionCleanupAbsenceProof(state) {
+  if (
+    !/^[0-9a-f-]{36}$/u.test(state?.authority_id ?? "") ||
+    !/^[0-9a-f-]{36}$/u.test(state?.full_live_authority_id ?? "")
+  )
+    fail("PROMOTION_CLEANUP_ABSENCE_STATE");
+  const unsigned = {
+    schemaVersion: PROMOTION_CLEANUP_ABSENCE_PROOF_SCHEMA,
+    authorityId: state.authority_id,
+    fullLiveAuthorityId: state.full_live_authority_id,
+    promotionWorkId: `${state.authority_id}:promote-qualified-production`.toLowerCase(),
+    promotionRecordMaterialized: false,
+    promotionJournalMaterialized: false,
+    databaseMutationPossible: false,
+    cloudflareMutationPossible: false,
+  };
+  return Object.freeze({ ...unsigned, proofSha256: canonicalSha256(unsigned) });
+}
+
+function createPromotionAwareCleanupAdapter({
+  operationId,
+  adapter,
+  reconcilePromotionCleanup,
+  hasPromotionMaterialization,
+}) {
+  if (
+    !["restore-endpoints-max-one", "reconcile-exact-resources"].includes(operationId) ||
+    typeof adapter !== "function" ||
+    typeof reconcilePromotionCleanup !== "function" ||
+    typeof hasPromotionMaterialization !== "function"
+  )
+    fail("PROMOTION_CLEANUP_ADAPTER_CONTRACT");
+  return async (context, state, priorResults, outerStateSha256) => {
+    if (context?.earlyFailure === true)
+      return adapter(context, state, priorResults, outerStateSha256);
+    if ((await hasPromotionMaterialization(context, state)) === false) {
+      const proof = createPromotionCleanupAbsenceProof(state);
+      const result = await adapter(context, state, priorResults, outerStateSha256);
+      if ((await hasPromotionMaterialization(context, state)) !== false)
+        fail("PROMOTION_MATERIALIZED_DURING_ABSENCE_CLEANUP");
+      return Object.freeze({
+        ...result,
+        promotionCleanupAbsence: proof,
+        promotionCleanupAbsenceEvidenceSha256: proof.proofSha256,
+      });
+    }
+    const reconciled = await reconcilePromotionCleanup(
+      context,
+      state,
+      priorResults,
+      outerStateSha256,
+    );
+    const proof = createQualifiedProductionCleanupProof(reconciled.record, reconciled.result);
+    const result = await adapter(
+      Object.freeze({ ...context, qualifiedProductionCleanup: proof }),
+      state,
+      priorResults,
+      outerStateSha256,
+    );
+    return Object.freeze({
+      ...result,
+      qualifiedProductionCleanup: proof,
+      promotionCleanupEvidenceSha256: proof.proofSha256,
+    });
   };
 }
 
@@ -1914,6 +3460,16 @@ function exactProductionDeploymentMaterialization(production) {
       deployment.endpointId === "" ||
       deployment.endpointId.includes("\0") ||
       sha256(Buffer.from(deployment.endpointId)) !== deployment.endpointIdSha256 ||
+      !HASH.test(deployment.templateIdSha256 ?? "") ||
+      !/^ghcr\.io\/.+@sha256:[0-9a-f]{64}$/u.test(deployment.image ?? "") ||
+      !COMMIT.test(deployment.sourceCommit ?? "") ||
+      deployment.volumeIdSha256 !==
+        RUNPOD_RETAINED_LANES.find((item) => item.lane === lane)?.volumeIdSha256 ||
+      deployment.volumeManifestSha256 !==
+        RUNPOD_RETAINED_LANES.find((item) => item.lane === lane)?.volumeManifestSha256 ||
+      deployment.region !== "EU-RO-1" ||
+      deployment.gpu !== "NVIDIA GeForce RTX 4090" ||
+      deployment.gpuCount !== 1 ||
       deployment.workersMin !== 0 ||
       deployment.workersMax !== 1 ||
       !HASH.test(deployment.deploymentSha256 ?? "")
@@ -1922,12 +3478,449 @@ function exactProductionDeploymentMaterialization(production) {
     output[lane] = Object.freeze({
       endpointId: deployment.endpointId,
       endpointIdSha256: deployment.endpointIdSha256,
+      templateIdSha256: deployment.templateIdSha256,
+      imageSha256: sha256(Buffer.from(deployment.image)),
+      sourceCommit: deployment.sourceCommit,
+      deploymentSha256: deployment.deploymentSha256,
+      volumeIdSha256: deployment.volumeIdSha256,
+      volumeManifestSha256: deployment.volumeManifestSha256,
+      region: deployment.region,
+      gpu: deployment.gpu,
+      gpuCount: deployment.gpuCount,
+      workersMin: deployment.workersMin,
+      workersMax: deployment.workersMax,
       deploymentSnapshotSha256: sha256(Buffer.from(`${canonicalJson(deployment)}\n`)),
     });
   }
   if (output.mage.endpointId === output.soulx.endpointId)
     fail("MAX_ONE_DEPLOYMENT_MATERIALIZATION_DISTINCT");
   return Object.freeze(output);
+}
+
+function expectedRunPodMutationEndpointBindings(operationId, priorResults) {
+  if (!RUNPOD_ACCEPTANCE_OPERATION_IDS.has(operationId)) return Object.freeze([]);
+  const production = priorResults?.get("create-exact-max-one-endpoints")?.materialization
+    ?.production;
+  const bindings = ["mage", "soulx"].map((lane) => {
+    const deployment = production?.[lane];
+    const binding = {
+      lane,
+      endpointIdSha256: deployment?.endpointIdSha256,
+      templateIdSha256: deployment?.templateIdSha256,
+      imageSha256: deployment?.imageSha256,
+      deploymentSha256: deployment?.deploymentSha256,
+      volumeIdSha256: deployment?.volumeIdSha256,
+      volumeManifestSha256: deployment?.volumeManifestSha256,
+      region: deployment?.region,
+      gpu: deployment?.gpu,
+      gpuCount: deployment?.gpuCount,
+      workersMin: deployment?.workersMin,
+      workersMax: deployment?.workersMax,
+    };
+    if (
+      ![
+        binding.endpointIdSha256,
+        binding.templateIdSha256,
+        binding.imageSha256,
+        binding.deploymentSha256,
+        binding.volumeIdSha256,
+        binding.volumeManifestSha256,
+      ].every((value) => HASH.test(value ?? "")) ||
+      binding.region !== "EU-RO-1" ||
+      binding.gpu !== "NVIDIA GeForce RTX 4090" ||
+      binding.gpuCount !== 1 ||
+      binding.workersMin !== 0 ||
+      binding.workersMax !== 1
+    )
+      fail("RUNPOD_MUTATION_ADMISSION_ENDPOINT_PREDECESSOR", operationId);
+    return Object.freeze(binding);
+  });
+  if (
+    new Set(bindings.map((binding) => binding.endpointIdSha256)).size !== 2 ||
+    new Set(bindings.map((binding) => binding.templateIdSha256)).size !== 2
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_ENDPOINT_PREDECESSOR", operationId);
+  return Object.freeze(bindings);
+}
+
+async function readRunPodAdmissionJson(fetchImpl, url, apiKey, init = {}) {
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      ...init,
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        ...(init.body === undefined ? {} : { "content-type": "application/json" }),
+      },
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    fail("RUNPOD_MUTATION_ADMISSION_READ_AMBIGUOUS");
+  }
+  if (!response?.ok) fail("RUNPOD_MUTATION_ADMISSION_READ_FAILED");
+  try {
+    return await response.json();
+  } catch {
+    fail("RUNPOD_MUTATION_ADMISSION_RESPONSE");
+  }
+}
+
+function exactRunPodInventoryArray(value, code) {
+  if (!Array.isArray(value)) fail(code);
+  return value;
+}
+
+function parseAuthenticatedRunPodServerlessFlexOffering(catalog) {
+  const gpus = exactRunPodInventoryArray(catalog?.gpus, "RUNPOD_MUTATION_ADMISSION_RATE_CATALOG");
+  const matches = gpus.filter(
+    (candidate) =>
+      candidate?.manufacturer === "NVIDIA" &&
+      [candidate.id, candidate.name].includes("NVIDIA GeForce RTX 4090"),
+  );
+  const rateUsdPerSecond = Number(matches[0]?.price?.flex);
+  const dataCenters = exactRunPodInventoryArray(
+    matches[0]?.dataCenters,
+    "RUNPOD_MUTATION_ADMISSION_SERVERLESS_AVAILABILITY",
+  );
+  const regions = dataCenters.filter((region) => region?.id === "EU-RO-1");
+  const availability = regions[0]?.availability;
+  if (
+    matches.length !== 1 ||
+    !Number.isFinite(rateUsdPerSecond) ||
+    rateUsdPerSecond <= 0 ||
+    regions.length !== 1 ||
+    !["LOW", "MEDIUM", "HIGH"].includes(availability)
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG");
+  return Object.freeze({
+    rateUsdPerSecond,
+    rateUsdPerGpuHour: rateUsdPerSecond * 3600,
+    availability,
+  });
+}
+
+export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
+  const { rateUsdPerSecond, rateUsdPerGpuHour } =
+    parseAuthenticatedRunPodServerlessFlexOffering(catalog);
+  return Object.freeze({ rateUsdPerSecond, rateUsdPerGpuHour });
+}
+
+export function parseOfficialRunPodServerlessFlexRate(markdown) {
+  if (typeof markdown !== "string" || markdown.length === 0 || markdown.length > 2_000_000)
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_SOURCE");
+  const rows = markdown
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|") && line.endsWith("|"))
+    .map((line) =>
+      line
+        .slice(1, -1)
+        .split("|")
+        .map((cell) => cell.trim()),
+    );
+  const headers = rows.filter(
+    (row) =>
+      row.some((cell) => /^GPU type\(s\)$/iu.test(cell)) &&
+      row.some((cell) => /^Cost per second$/iu.test(cell)),
+  );
+  if (headers.length !== 1) fail("RUNPOD_MUTATION_ADMISSION_RATE_SOURCE");
+  const costIndex = headers[0].findIndex((cell) => /^Cost per second$/iu.test(cell));
+  const matches = rows.filter((row) => row.some((cell) => cell === "4090 PRO"));
+  const rateMatch = /^\$([0-9]+(?:\.[0-9]+)?)$/u.exec(matches[0]?.[costIndex] ?? "");
+  const rateUsdPerSecond = Number(rateMatch?.[1]);
+  if (matches.length !== 1 || !Number.isFinite(rateUsdPerSecond) || rateUsdPerSecond <= 0)
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_SOURCE");
+  return Object.freeze({
+    rateUsdPerSecond,
+    rateUsdPerGpuHour: rateUsdPerSecond * 3600,
+  });
+}
+
+async function readOfficialRunPodServerlessFlexRate(fetchImpl, trustedTime) {
+  let response;
+  try {
+    response = await fetchImpl(RUNPOD_SERVERLESS_FLEX_RATE_SOURCE, {
+      method: "GET",
+      headers: { accept: "text/markdown" },
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_READ_AMBIGUOUS");
+  }
+  const contentType = response?.headers?.get?.("content-type") ?? "";
+  const sourceCheckedAt = response?.headers?.get?.("date") ?? "";
+  const sourceMs = Date.parse(sourceCheckedAt);
+  const trustedMs = Date.parse(trustedTime ?? "");
+  if (
+    !response?.ok ||
+    !/^text\/markdown(?:;|$)/iu.test(contentType) ||
+    (response.url !== undefined &&
+      response.url !== "" &&
+      response.url !== RUNPOD_SERVERLESS_FLEX_RATE_SOURCE) ||
+    Number.isNaN(sourceMs) ||
+    Number.isNaN(trustedMs) ||
+    Math.abs(sourceMs - trustedMs) > 300_000
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_SOURCE");
+  let markdown;
+  try {
+    markdown = await response.text();
+  } catch {
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_SOURCE");
+  }
+  return Object.freeze({
+    ...parseOfficialRunPodServerlessFlexRate(markdown),
+    sourceCheckedAt: new Date(sourceMs).toISOString(),
+    sourceSha256: sha256(Buffer.from(markdown)),
+  });
+}
+
+const RUNPOD_TERMINAL_COMPUTE_STATES = new Set(["EXITED", "TERMINATED"]);
+
+function exactTerminalRunPodState(record, code) {
+  if (record === null || typeof record !== "object" || Array.isArray(record)) fail(code);
+  const desiredStatus = record.desiredStatus;
+  const status = record.status;
+  if (
+    typeof desiredStatus !== "string" ||
+    typeof status !== "string" ||
+    !RUNPOD_TERMINAL_COMPUTE_STATES.has(desiredStatus) ||
+    !RUNPOD_TERMINAL_COMPUTE_STATES.has(status)
+  )
+    fail(code);
+}
+
+function exactRunPodEndpointVolumeId(endpoint) {
+  const singular = endpoint?.networkVolumeId;
+  const plural = endpoint?.networkVolumeIds;
+  const singularValid = typeof singular === "string" && singular !== "" && !singular.includes("\0");
+  const pluralValid =
+    Array.isArray(plural) &&
+    plural.length === 1 &&
+    typeof plural[0] === "string" &&
+    plural[0] !== "" &&
+    !plural[0].includes("\0");
+  if (!singularValid && !pluralValid) fail("RUNPOD_MUTATION_ADMISSION_ENDPOINT_VOLUME");
+  if (singularValid && pluralValid && singular !== plural[0])
+    fail("RUNPOD_MUTATION_ADMISSION_ENDPOINT_VOLUME");
+  return singularValid ? singular : plural[0];
+}
+
+function exactObservedRunPodEndpointBinding(endpoint, templates, expected) {
+  if (
+    endpoint === null ||
+    typeof endpoint !== "object" ||
+    Array.isArray(endpoint) ||
+    typeof endpoint.id !== "string" ||
+    sha256(Buffer.from(endpoint.id)) !== expected.endpointIdSha256 ||
+    typeof endpoint.templateId !== "string" ||
+    sha256(Buffer.from(endpoint.templateId)) !== expected.templateIdSha256 ||
+    endpoint.workersMin !== 0 ||
+    endpoint.workersMax !== 1 ||
+    endpoint.gpuCount !== 1 ||
+    canonicalJson(endpoint.gpuTypeIds) !== canonicalJson(["NVIDIA GeForce RTX 4090"]) ||
+    canonicalJson(endpoint.dataCenterIds) !== canonicalJson(["EU-RO-1"]) ||
+    !Array.isArray(endpoint.workers)
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_ENDPOINTS");
+  for (const worker of endpoint.workers)
+    exactTerminalRunPodState(worker, "RUNPOD_MUTATION_ADMISSION_WORKER_STATE");
+  const providerVolumeId = exactRunPodEndpointVolumeId(endpoint);
+  if (sha256(Buffer.from(providerVolumeId)) !== expected.volumeIdSha256)
+    fail("RUNPOD_MUTATION_ADMISSION_ENDPOINT_VOLUME");
+  const templateMatches = templates.filter(
+    (template) =>
+      typeof template?.id === "string" &&
+      sha256(Buffer.from(template.id)) === expected.templateIdSha256,
+  );
+  if (
+    templateMatches.length !== 1 ||
+    templateMatches[0].id !== endpoint.templateId ||
+    typeof templateMatches[0].imageName !== "string" ||
+    sha256(Buffer.from(templateMatches[0].imageName)) !== expected.imageSha256
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_TEMPLATE_DRIFT");
+  return Object.freeze(structuredClone(expected));
+}
+
+export function validateRunPodPerMutationRawComputeInventory({
+  pods: podsValue,
+  endpoints: endpointsValue,
+  templates: templatesValue,
+  expectedEndpointBindings,
+}) {
+  const pods = exactRunPodInventoryArray(podsValue, "RUNPOD_MUTATION_ADMISSION_PODS");
+  for (const pod of pods) exactTerminalRunPodState(pod, "RUNPOD_MUTATION_ADMISSION_POD_STATE");
+  const endpoints = exactRunPodInventoryArray(
+    endpointsValue,
+    "RUNPOD_MUTATION_ADMISSION_ENDPOINTS",
+  );
+  const templates = exactRunPodInventoryArray(
+    templatesValue,
+    "RUNPOD_MUTATION_ADMISSION_TEMPLATES",
+  );
+  if (
+    !Array.isArray(expectedEndpointBindings) ||
+    endpoints.length !== expectedEndpointBindings.length ||
+    templates.length !== expectedEndpointBindings.length
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_ENDPOINT_DRIFT");
+  const endpointBindings = expectedEndpointBindings.map((expected) => {
+    const matches = endpoints.filter(
+      (endpoint) =>
+        typeof endpoint?.id === "string" &&
+        sha256(Buffer.from(endpoint.id)) === expected.endpointIdSha256,
+    );
+    if (matches.length !== 1) fail("RUNPOD_MUTATION_ADMISSION_ENDPOINT_DRIFT");
+    return exactObservedRunPodEndpointBinding(matches[0], templates, expected);
+  });
+  if (
+    new Set(endpointBindings.map((binding) => binding.templateIdSha256)).size !== templates.length
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_TEMPLATE_DRIFT");
+  return Object.freeze(endpointBindings);
+}
+
+/**
+ * Read-only RunPod guard used immediately before each operation that can create an endpoint or
+ * dispatch GPU work. It intentionally returns only hashes and bounded public facts: raw provider
+ * IDs and the API key never cross into the outer executor state.
+ */
+function createRunPodPerMutationAdmissionReader({
+  environment = process.env,
+  fetchImpl = fetch,
+  now = () => new Date(),
+} = {}) {
+  if (typeof fetchImpl !== "function" || typeof now !== "function")
+    fail("RUNPOD_MUTATION_ADMISSION_READER");
+  return async ({ operation, state, priorResults, outerStateSha256, trustedTime }) => {
+    const operationId = operation?.id;
+    if (!RUNPOD_PER_MUTATION_OPERATION_IDS.has(operationId))
+      fail("RUNPOD_MUTATION_ADMISSION_OPERATION");
+    if (!HASH.test(outerStateSha256 ?? "") || !(priorResults instanceof Map))
+      fail("RUNPOD_MUTATION_ADMISSION_CONTEXT");
+    const trustedMs = Date.parse(trustedTime ?? "");
+    const approvedMs = Date.parse(state?.approved_at ?? "");
+    const expiresMs = Date.parse(state?.expires_at ?? "");
+    if (
+      Number.isNaN(trustedMs) ||
+      Number.isNaN(approvedMs) ||
+      Number.isNaN(expiresMs) ||
+      approvedMs > expiresMs ||
+      trustedMs < approvedMs ||
+      trustedMs > expiresMs
+    )
+      fail("RUNPOD_MUTATION_ADMISSION_TIME");
+    const apiKey = readFileSync(
+      protectedFile(
+        environment.VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE,
+        "RUNPOD_MUTATION_ADMISSION_KEY_FILE",
+      ),
+      "utf8",
+    );
+    if (apiKey.trim() !== apiKey || apiKey.length < 20 || apiKey.includes("\0"))
+      fail("RUNPOD_MUTATION_ADMISSION_KEY_FILE");
+    const authorization = { apiKey };
+    const [
+      account,
+      serverlessCatalog,
+      podsValue,
+      endpointsValue,
+      templatesValue,
+      volumesValue,
+      officialPricing,
+    ] = await Promise.all([
+      readRunPodAdmissionJson(fetchImpl, "https://api.runpod.io/graphql", authorization.apiKey, {
+        method: "POST",
+        body: JSON.stringify({ query: "query VideoForgeAccountIdentity { myself { id } }" }),
+      }),
+      readRunPodAdmissionJson(fetchImpl, RUNPOD_SERVERLESS_FLEX_CATALOG_URL, authorization.apiKey),
+      readRunPodAdmissionJson(
+        fetchImpl,
+        "https://rest.runpod.io/v1/pods?includeWorkers=true",
+        authorization.apiKey,
+      ),
+      readRunPodAdmissionJson(
+        fetchImpl,
+        "https://rest.runpod.io/v1/endpoints?includeTemplate=true&includeWorkers=true",
+        authorization.apiKey,
+      ),
+      readRunPodAdmissionJson(
+        fetchImpl,
+        "https://rest.runpod.io/v1/templates?includeEndpointBoundTemplates=true",
+        authorization.apiKey,
+      ),
+      readRunPodAdmissionJson(
+        fetchImpl,
+        "https://rest.runpod.io/v1/networkvolumes",
+        authorization.apiKey,
+      ),
+      readOfficialRunPodServerlessFlexRate(fetchImpl, trustedTime),
+    ]);
+    const accountId = account?.data?.myself?.id;
+    if (
+      typeof accountId !== "string" ||
+      account?.errors !== undefined ||
+      sha256(Buffer.from(accountId)) !== RUNPOD_ACCOUNT_ID_SHA256
+    )
+      fail("RUNPOD_MUTATION_ADMISSION_ACCOUNT");
+    const authenticatedOffering = parseAuthenticatedRunPodServerlessFlexOffering(serverlessCatalog);
+    if (
+      authenticatedOffering.rateUsdPerSecond !== officialPricing.rateUsdPerSecond ||
+      authenticatedOffering.rateUsdPerGpuHour !== officialPricing.rateUsdPerGpuHour
+    )
+      fail("RUNPOD_MUTATION_ADMISSION_RATE_DRIFT");
+    const expectedEndpointBindings = expectedRunPodMutationEndpointBindings(
+      operationId,
+      priorResults,
+    );
+    const endpointBindings = validateRunPodPerMutationRawComputeInventory({
+      pods: podsValue,
+      endpoints: endpointsValue,
+      templates: templatesValue,
+      expectedEndpointBindings,
+    });
+    const volumes = exactRunPodInventoryArray(volumesValue, "RUNPOD_MUTATION_ADMISSION_VOLUMES");
+    const exactVolumes = RUNPOD_RETAINED_LANES.map((lane) => {
+      const matches = volumes.filter(
+        (volume) =>
+          typeof volume?.id === "string" && sha256(Buffer.from(volume.id)) === lane.volumeIdSha256,
+      );
+      if (matches.length !== 1 || matches[0]?.size !== 50 || matches[0]?.dataCenterId !== "EU-RO-1")
+        fail("RUNPOD_MUTATION_ADMISSION_VOLUME_DRIFT");
+      return Object.freeze({ ...lane, sizeGb: 50, region: "EU-RO-1" });
+    });
+    if (volumes.length !== exactVolumes.length) fail("RUNPOD_MUTATION_ADMISSION_VOLUME_DRIFT");
+    const observed = now();
+    const observedMs = observed instanceof Date ? observed.getTime() : Number.NaN;
+    if (!Number.isFinite(observedMs) || Math.abs(observedMs - trustedMs) > 60_000)
+      fail("RUNPOD_MUTATION_ADMISSION_TIME");
+    const unsigned = {
+      schemaVersion: RUNPOD_PER_MUTATION_ADMISSION_SCHEMA,
+      operationId,
+      outerStateSha256BeforeAuthorization: outerStateSha256,
+      checkedAt: new Date(observedMs).toISOString(),
+      authenticatedAccountSha256: RUNPOD_ACCOUNT_ID_SHA256,
+      exactGpu: "NVIDIA GeForce RTX 4090",
+      region: "EU-RO-1",
+      availability: authenticatedOffering.availability,
+      serverlessFlexRateUsdPerSecond: authenticatedOffering.rateUsdPerSecond,
+      serverlessFlexRateUsdPerGpuHour: authenticatedOffering.rateUsdPerGpuHour,
+      serverlessFlexRateSource: RUNPOD_SERVERLESS_FLEX_RATE_SOURCE,
+      serverlessFlexRateSourceCheckedAt: officialPricing.sourceCheckedAt,
+      serverlessFlexRateSourceSha256: officialPricing.sourceSha256,
+      serverlessFlexRateAuthenticatedCatalogSha256: canonicalSha256(serverlessCatalog),
+      noFallback: true,
+      activeWorkers: 0,
+      runningPods: 0,
+      endpointBindings,
+      retainedVolumes: exactVolumes,
+      serverlessCatalogSha256: canonicalSha256(serverlessCatalog),
+    };
+    return Object.freeze({ ...unsigned, proofSha256: canonicalSha256(unsigned) });
+  };
 }
 
 function protectedDirectory(path, code) {
@@ -2033,6 +4026,117 @@ function readStateBoundMaterializationSeed(environment, state, code) {
 
 function productionSecretKeyId(authorityId, purpose) {
   return `v213-${purpose}-${sha256(Buffer.from(`${authorityId}\0${purpose}`)).slice(7, 31)}`;
+}
+
+const PRODUCTION_INTERNAL_SECRET_KEYS = Object.freeze([
+  "acceptanceEvidenceSigningKeyBase64",
+  "betterAuthSecret",
+  "mediaWorkerTokenSecret",
+  "pairDispatchTokenKeyBase64",
+  "pairEnvelopeSigningKeyHex",
+  "pairProviderProofKeyHex",
+  "provenanceReceiptHmacKeyBase64",
+  "stageAuthoritySigningKeyBase64",
+  "workerOperatorBearer",
+  "workflowCallbackSecret",
+]);
+
+function exactProductionSecretBundle(
+  bundle,
+  {
+    state,
+    outerStateSha256,
+    credentialBootstrapReceiptSha256 = CREDENTIAL_BOOTSTRAP_RECEIPT_SHA256,
+  },
+) {
+  const expectedIds = Object.freeze({
+    pairDispatchTokenKeyId: productionSecretKeyId(state.full_live_authority_id, "dispatch"),
+    pairEnvelopeSigningKeyId: productionSecretKeyId(state.full_live_authority_id, "envelope"),
+    pairProviderProofKeyId: productionSecretKeyId(state.full_live_authority_id, "provider-proof"),
+    provenanceReceiptKeyId: productionSecretKeyId(state.full_live_authority_id, "provenance"),
+  });
+  if (
+    bundle?.schemaVersion !== PRODUCTION_SECRET_BOOTSTRAP_SCHEMA ||
+    bundle.fullLiveAuthorityId !== state.full_live_authority_id ||
+    bundle.outerStateSha256 !== outerStateSha256 ||
+    bundle.credentialBootstrapReceiptSha256 !== credentialBootstrapReceiptSha256 ||
+    canonicalJson(bundle.keyIds) !== canonicalJson(expectedIds) ||
+    JSON.stringify(Object.keys(bundle.secrets ?? {}).sort()) !==
+      JSON.stringify(PRODUCTION_INTERNAL_SECRET_KEYS.slice().sort())
+  )
+    fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_CONTRACT");
+  const rawSecrets = PRODUCTION_INTERNAL_SECRET_KEYS.map((name) => {
+    const value = bundle.secrets[name];
+    if (typeof value !== "string") fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_SECRET");
+    if (name.endsWith("Hex")) {
+      if (!/^[0-9a-f]{64}$/u.test(value)) fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_SECRET");
+      return Buffer.from(value, "hex");
+    }
+    let bytes;
+    try {
+      bytes = Buffer.from(value, "base64");
+    } catch {
+      fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_SECRET");
+    }
+    if (bytes.length !== 32 || bytes.toString("base64") !== value)
+      fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_SECRET");
+    return bytes;
+  });
+  if (new Set(rawSecrets.map((bytes) => sha256(bytes))).size !== rawSecrets.length)
+    fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_SECRET_REUSE");
+  return Object.freeze({ bundle, expectedIds });
+}
+
+function expectedProductionSecretWrites({
+  paths,
+  bundle,
+  expectedIds,
+  seed,
+  external,
+  databaseCredentials,
+}) {
+  const productionSecrets = {
+    schemaVersion: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
+    stageAuthoritySigningKeyBase64: bundle.secrets.stageAuthoritySigningKeyBase64,
+    provenanceReceiptHmacKeyBase64: bundle.secrets.provenanceReceiptHmacKeyBase64,
+    provenanceReceiptKeyId: expectedIds.provenanceReceiptKeyId,
+    acceptanceEvidenceSigningKeyBase64: bundle.secrets.acceptanceEvidenceSigningKeyBase64,
+    pairDispatchTokenKeyBase64: bundle.secrets.pairDispatchTokenKeyBase64,
+    pairDispatchTokenKeyId: expectedIds.pairDispatchTokenKeyId,
+    pairEnvelopeSigningKeyHex: bundle.secrets.pairEnvelopeSigningKeyHex,
+    pairEnvelopeSigningKeyId: expectedIds.pairEnvelopeSigningKeyId,
+    pairProviderProofKeyHex: bundle.secrets.pairProviderProofKeyHex,
+    pairProviderProofKeyId: expectedIds.pairProviderProofKeyId,
+  };
+  const secretValues = {
+    DATABASE_URL: databaseCredentials.runtimeDatabaseUrl,
+    BETTER_AUTH_SECRET: bundle.secrets.betterAuthSecret,
+    GOOGLE_CLIENT_ID: external.values.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: external.values.GOOGLE_CLIENT_SECRET,
+    R2_ACCESS_KEY_ID: external.values.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: external.values.R2_SECRET_ACCESS_KEY,
+    WORKFLOW_CALLBACK_SECRET: bundle.secrets.workflowCallbackSecret,
+    MEDIA_WORKER_TOKEN_SECRET: bundle.secrets.mediaWorkerTokenSecret,
+    VIDEOFORGE_RECONCILER_DATABASE_URL: databaseCredentials.reconcilerDatabaseUrl,
+    VIDEOFORGE_DISPATCH_TOKEN_KEY: bundle.secrets.pairDispatchTokenKeyBase64,
+    VIDEOFORGE_DISPATCH_TOKEN_KEY_ID: expectedIds.pairDispatchTokenKeyId,
+    VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: bundle.secrets.pairEnvelopeSigningKeyHex,
+    VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: expectedIds.pairEnvelopeSigningKeyId,
+    VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: bundle.secrets.pairProviderProofKeyHex,
+    VIDEOFORGE_PROVIDER_PROOF_KEY_ID: expectedIds.pairProviderProofKeyId,
+    RUNPOD_API_KEY: external.values.RUNPOD_API_KEY,
+    RUNPOD_API_BASE_URL: "https://api.runpod.ai/v2",
+    VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: bundle.secrets.workerOperatorBearer,
+  };
+  return Object.freeze([
+    [paths.productionSecretsPath, Buffer.from(`${canonicalJson(productionSecrets)}\n`)],
+    [paths.workerOriginPath, Buffer.from(seed.activation_record_base.cloudflare.public_origin)],
+    [paths.workerBearerPath, Buffer.from(bundle.secrets.workerOperatorBearer)],
+    ...Object.entries(secretValues).map(([name, value]) => [
+      paths.outputs[name],
+      Buffer.from(value),
+    ]),
+  ]);
 }
 
 function productionSecretBootstrapPaths(environment, authorityId) {
@@ -2237,72 +4341,20 @@ function materializeProductionSecretBootstrap({
       temporaryPath: databaseCredentialStagingPath(paths.bundlePath, state.authority_id),
     });
   }
-  if (
-    bundle?.schemaVersion !== PRODUCTION_SECRET_BOOTSTRAP_SCHEMA ||
-    bundle.fullLiveAuthorityId !== state.full_live_authority_id ||
-    bundle.outerStateSha256 !== outerStateSha256 ||
-    bundle.credentialBootstrapReceiptSha256 !== credentialBootstrapBinding.receiptSha256 ||
-    canonicalJson(bundle.keyIds) !== canonicalJson(expectedIds) ||
-    Object.keys(bundle.secrets ?? {})
-      .sort()
-      .join(",") !==
-      [
-        "acceptanceEvidenceSigningKeyBase64",
-        "betterAuthSecret",
-        "mediaWorkerTokenSecret",
-        "pairDispatchTokenKeyBase64",
-        "pairEnvelopeSigningKeyHex",
-        "pairProviderProofKeyHex",
-        "provenanceReceiptHmacKeyBase64",
-        "stageAuthoritySigningKeyBase64",
-        "workerOperatorBearer",
-        "workflowCallbackSecret",
-      ]
-        .sort()
-        .join(",")
-  )
-    fail("PRODUCTION_SECRET_BOOTSTRAP_BUNDLE_CONTRACT");
-  const productionSecrets = {
-    schemaVersion: "videoforge.v213-full-live-pre-endpoint-secrets/v1",
-    stageAuthoritySigningKeyBase64: bundle.secrets.stageAuthoritySigningKeyBase64,
-    provenanceReceiptHmacKeyBase64: bundle.secrets.provenanceReceiptHmacKeyBase64,
-    provenanceReceiptKeyId: expectedIds.provenanceReceiptKeyId,
-    acceptanceEvidenceSigningKeyBase64: bundle.secrets.acceptanceEvidenceSigningKeyBase64,
-    pairDispatchTokenKeyBase64: bundle.secrets.pairDispatchTokenKeyBase64,
-    pairDispatchTokenKeyId: expectedIds.pairDispatchTokenKeyId,
-    pairEnvelopeSigningKeyHex: bundle.secrets.pairEnvelopeSigningKeyHex,
-    pairEnvelopeSigningKeyId: expectedIds.pairEnvelopeSigningKeyId,
-    pairProviderProofKeyHex: bundle.secrets.pairProviderProofKeyHex,
-    pairProviderProofKeyId: expectedIds.pairProviderProofKeyId,
-  };
-  const secretValues = {
-    DATABASE_URL: databaseCredentials.runtimeDatabaseUrl,
-    BETTER_AUTH_SECRET: bundle.secrets.betterAuthSecret,
-    GOOGLE_CLIENT_ID: external.values.GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET: external.values.GOOGLE_CLIENT_SECRET,
-    R2_ACCESS_KEY_ID: external.values.R2_ACCESS_KEY_ID,
-    R2_SECRET_ACCESS_KEY: external.values.R2_SECRET_ACCESS_KEY,
-    WORKFLOW_CALLBACK_SECRET: bundle.secrets.workflowCallbackSecret,
-    MEDIA_WORKER_TOKEN_SECRET: bundle.secrets.mediaWorkerTokenSecret,
-    VIDEOFORGE_RECONCILER_DATABASE_URL: databaseCredentials.reconcilerDatabaseUrl,
-    VIDEOFORGE_DISPATCH_TOKEN_KEY: bundle.secrets.pairDispatchTokenKeyBase64,
-    VIDEOFORGE_DISPATCH_TOKEN_KEY_ID: expectedIds.pairDispatchTokenKeyId,
-    VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: bundle.secrets.pairEnvelopeSigningKeyHex,
-    VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: expectedIds.pairEnvelopeSigningKeyId,
-    VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: bundle.secrets.pairProviderProofKeyHex,
-    VIDEOFORGE_PROVIDER_PROOF_KEY_ID: expectedIds.pairProviderProofKeyId,
-    RUNPOD_API_KEY: external.values.RUNPOD_API_KEY,
-    RUNPOD_API_BASE_URL: "https://api.runpod.ai/v2",
-    VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: bundle.secrets.workerOperatorBearer,
-  };
-  const writes = [
-    [paths.productionSecretsPath, `${canonicalJson(productionSecrets)}\n`],
-    [paths.workerOriginPath, seed.activation_record_base.cloudflare.public_origin],
-    [paths.workerBearerPath, bundle.secrets.workerOperatorBearer],
-    ...Object.entries(secretValues).map(([name, value]) => [paths.outputs[name], value]),
-  ];
-  for (const [path, value] of writes) {
-    const expectedBytes = Buffer.from(value);
+  exactProductionSecretBundle(bundle, {
+    state,
+    outerStateSha256,
+    credentialBootstrapReceiptSha256: credentialBootstrapBinding.receiptSha256,
+  });
+  const writes = expectedProductionSecretWrites({
+    paths,
+    bundle,
+    expectedIds,
+    seed,
+    external,
+    databaseCredentials,
+  });
+  for (const [path, expectedBytes] of writes) {
     if (createMissing) {
       exclusiveAtomicBytes(path, expectedBytes, {
         temporaryPath: databaseCredentialStagingPath(path, state.authority_id),
@@ -2622,9 +4674,9 @@ function databaseCredentialStagingPaths(credentialPaths) {
   ];
 }
 
-function databaseCredentialStageInventory(credentialPaths) {
+function protectedStageInventory(finalPaths) {
   const stages = new Set();
-  for (const finalPath of databaseCredentialFinalPaths(credentialPaths)) {
+  for (const finalPath of new Set(finalPaths.map((path) => resolve(path)))) {
     const prefix = `.${basename(finalPath)}.`;
     for (const name of readdirSync(dirname(finalPath))) {
       if (
@@ -2636,6 +4688,19 @@ function databaseCredentialStageInventory(credentialPaths) {
     }
   }
   return [...stages].sort();
+}
+
+function databaseCredentialStageInventory(credentialPaths) {
+  return protectedStageInventory(databaseCredentialFinalPaths(credentialPaths));
+}
+
+function assertOnlyCurrentProtectedStages(finalPaths, authorityId, code) {
+  const expected = new Set(
+    finalPaths.map((path) => resolve(databaseCredentialStagingPath(path, authorityId))),
+  );
+  const observed = protectedStageInventory(finalPaths);
+  if (observed.some((path) => !expected.has(path))) fail(code);
+  return observed;
 }
 
 function assertOnlyCurrentDatabaseCredentialStages(credentialPaths, code) {
@@ -2670,6 +4735,77 @@ function validateDatabaseCredentialCrashPair(finalPath, stagePath, code) {
     )
       fail(code);
   } else if ((finalStatus ?? stageStatus).nlink !== 1) fail(code);
+}
+
+function readProtectedCrashPairBytes(finalPath, stagePath, code) {
+  validateDatabaseCredentialCrashPair(finalPath, stagePath, code);
+  const paths = [finalPath, stagePath].filter((path) => lstatExists(path));
+  if (paths.length === 0) return null;
+  const expectedLinks = paths.length;
+  const opened = [];
+  try {
+    for (const path of paths) {
+      protectedCanonicalDirectory(dirname(path), `${code}_DIRECTORY`);
+      const fd = openSync(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+      const item = { path, fd, before: null, bytes: null };
+      opened.push(item);
+      const descriptor = fstatSync(fd);
+      const linkedPath = lstatSync(path);
+      if (
+        !descriptor.isFile() ||
+        !linkedPath.isFile() ||
+        linkedPath.isSymbolicLink() ||
+        (descriptor.mode & 0o777) !== 0o600 ||
+        (linkedPath.mode & 0o777) !== 0o600 ||
+        descriptor.nlink !== expectedLinks ||
+        linkedPath.nlink !== expectedLinks ||
+        descriptor.dev !== linkedPath.dev ||
+        descriptor.ino !== linkedPath.ino ||
+        realpathSync(path) !== resolve(path)
+      )
+        fail(code);
+      item.before = descriptor;
+      item.bytes = readFileSync(fd);
+    }
+    if (
+      opened.length === 2 &&
+      (opened[0].before.dev !== opened[1].before.dev ||
+        opened[0].before.ino !== opened[1].before.ino)
+    )
+      fail(code);
+    for (const item of opened) {
+      const descriptor = fstatSync(item.fd);
+      const linkedPath = lstatSync(item.path);
+      if (
+        descriptor.dev !== item.before.dev ||
+        descriptor.ino !== item.before.ino ||
+        descriptor.size !== item.before.size ||
+        descriptor.mtimeMs !== item.before.mtimeMs ||
+        descriptor.nlink !== expectedLinks ||
+        linkedPath.dev !== item.before.dev ||
+        linkedPath.ino !== item.before.ino ||
+        linkedPath.size !== item.before.size ||
+        linkedPath.mtimeMs !== item.before.mtimeMs ||
+        linkedPath.nlink !== expectedLinks
+      )
+        fail(`${code}_RACE`);
+    }
+    if (opened.length === 2 && Buffer.compare(opened[0].bytes, opened[1].bytes) !== 0)
+      fail(`${code}_DRIFT`);
+    return opened[0].bytes;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_")) throw error;
+    fail(code);
+  } finally {
+    for (const item of opened) closeSync(item.fd);
+  }
+}
+
+function validateExpectedCrashPairBytes(finalPath, stagePath, expectedBytes, code) {
+  if (!Buffer.isBuffer(expectedBytes)) fail(code);
+  const bytes = readProtectedCrashPairBytes(finalPath, stagePath, code);
+  if (bytes !== null && Buffer.compare(bytes, expectedBytes) !== 0) fail(`${code}_DRIFT`);
+  return bytes;
 }
 
 function databaseCredentialUrl({ service, role, password }) {
@@ -2823,7 +4959,10 @@ async function cleanupPartialDatabaseRoleCredentials({
   environment = process.env,
   run = productionCommand,
   state,
+  credentialBootstrapBinding = EXACT_CREDENTIAL_BOOTSTRAP_BINDING,
+  remove = rmSync,
 } = {}) {
+  if (typeof remove !== "function") fail("PREQUALIFICATION_PARTIAL_CLEANUP_REMOVE");
   const workId = `${state?.authority_id}:bootstrap-prequalification-database`.toLowerCase();
   if (
     state?.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" ||
@@ -2904,21 +5043,28 @@ async function cleanupPartialDatabaseRoleCredentials({
   );
   if (!bundlePresent && !bundleStagePresent && credentialArtifactsPresent)
     fail("PREQUALIFICATION_PARTIAL_CLEANUP_UNBOUND_CREDENTIAL");
-  validateDatabaseCredentialCrashPair(
-    credentialPaths.bundlePath,
-    credentialPaths.staging.bundle,
-    "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_LINK_TOPOLOGY",
-  );
-  for (const kind of ["operator", "runtime", "reconciler"])
-    for (const [index, path] of credentialPaths.paths[kind].entries())
-      validateDatabaseCredentialCrashPair(
-        path,
-        credentialPaths.staging[kind][index],
-        "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_LINK_TOPOLOGY",
-      );
+
   let credentialBundleSha256 = null;
-  let removedArtifactCount = 0;
-  let incompleteBundleStageOnly = false;
+  let credentialBundle = null;
+  let productionSecretArtifactsPresent = false;
+  let secretReadbackFinals = [];
+  let observedSecretStages = [];
+  const deletionPlan = [];
+  const scheduled = new Set();
+  const schedule = (path) => {
+    const canonical = resolve(path);
+    if (lstatExists(path) && !scheduled.has(canonical)) {
+      scheduled.add(canonical);
+      deletionPlan.push(path);
+    }
+  };
+  const scheduleCrashPair = (finalPath, stagePath) => {
+    // Preserve the published final whenever a crash interrupts a pair deletion. The authority
+    // bundle is deleted only after every derived pair has disappeared.
+    schedule(stagePath);
+    schedule(finalPath);
+  };
+
   if (bundlePresent || bundleStagePresent) {
     const manifest = prequalificationManifest();
     if (
@@ -2926,89 +5072,42 @@ async function cleanupPartialDatabaseRoleCredentials({
         (sql, code) =>
           prequalificationCommand(run, "psql", prequalificationQueryArgs(sql), dbEnv, code),
         manifest,
-      ).length !== 45
+      ).length !== 46
     )
       fail("PREQUALIFICATION_PARTIAL_CLEANUP_LEDGER");
-    let bundleBytes;
-    if (bundlePresent) {
-      protectedFile(
-        credentialPaths.bundlePath,
-        "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE",
-      );
-      bundleBytes = readFileSync(credentialPaths.bundlePath);
-    } else {
-      protectedFile(
-        credentialPaths.staging.bundle,
-        "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_STAGE",
-      );
-      bundleBytes = readFileSync(credentialPaths.staging.bundle);
-    }
+    const bundleBytes = readProtectedCrashPairBytes(
+      credentialPaths.bundlePath,
+      credentialPaths.staging.bundle,
+      "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE",
+    );
     let bundle;
-    if (!bundlePresent && !credentialArtifactsPresent) {
-      incompleteBundleStageOnly = true;
-    } else {
-      try {
-        bundle = JSON.parse(bundleBytes);
-      } catch {
-        fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE");
-      }
+    try {
+      bundle = JSON.parse(bundleBytes);
+    } catch {
+      fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE");
     }
-    if (!incompleteBundleStageOnly) {
-      validateDatabaseRoleCredentialBundle(bundle, {
-        state,
-        outerStateSha256: bundle?.outer_state_sha256,
-        service,
-      });
-      if (
-        !HASH.test(bundle.outer_state_sha256 ?? "") ||
-        Buffer.compare(bundleBytes, Buffer.from(`${canonicalJson(bundle)}\n`)) !== 0
-      )
-        fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE");
-      credentialBundleSha256 = sha256(bundleBytes);
-      if (bundlePresent && bundleStagePresent) {
-        protectedFile(
-          credentialPaths.staging.bundle,
-          "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_STAGE",
+    credentialBundle = bundle;
+    validateDatabaseRoleCredentialBundle(bundle, {
+      state,
+      outerStateSha256: bundle?.outer_state_sha256,
+      service,
+    });
+    if (
+      !HASH.test(bundle.outer_state_sha256 ?? "") ||
+      Buffer.compare(bundleBytes, Buffer.from(`${canonicalJson(bundle)}\n`)) !== 0
+    )
+      fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE");
+    credentialBundleSha256 = sha256(bundleBytes);
+    for (const kind of ["operator", "runtime", "reconciler"])
+      for (const [index, path] of credentialPaths.paths[kind].entries())
+        validateExpectedCrashPairBytes(
+          path,
+          credentialPaths.staging[kind][index],
+          Buffer.from(bundle.credentials[kind].database_url),
+          "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_FILE",
         );
-        if (Buffer.compare(readFileSync(credentialPaths.staging.bundle), bundleBytes) !== 0)
-          fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_STAGE_DRIFT");
-      }
-      for (const [kind, paths] of Object.entries(credentialPaths.paths)) {
-        const expected = Buffer.from(bundle.credentials[kind].database_url);
-        for (const path of paths) {
-          if (!lstatExists(path)) continue;
-          protectedFile(path, "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_FILE");
-          if (Buffer.compare(readFileSync(path), expected) !== 0)
-            fail("PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_FILE_DRIFT");
-        }
-      }
-    }
-    for (const path of targetStages) {
-      if (!lstatExists(path)) continue;
-      protectedFile(path, "PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_STAGE");
-    }
-    // Delete the copies first and the authority-bound canonical bundle last. A crash before the
-    // final unlink leaves enough provenance for the same cleanup-only operation to resume safely.
-    for (const path of [...targets, ...targetStages]) {
-      if (!lstatExists(path)) continue;
-      rmSync(path);
-      removedArtifactCount += 1;
-    }
-    if (bundleStagePresent) {
-      rmSync(credentialPaths.staging.bundle);
-      removedArtifactCount += 1;
-    }
-    if (bundlePresent) {
-      rmSync(credentialPaths.bundlePath);
-      removedArtifactCount += 1;
-    }
   }
-  if (
-    databaseCredentialFinalPaths(credentialPaths).some((path) => lstatExists(path)) ||
-    databaseCredentialStageInventory(credentialPaths).length !== 0 ||
-    observedStages.some((path) => lstatExists(path))
-  )
-    fail("PREQUALIFICATION_PARTIAL_CLEANUP_READBACK");
+
   if (typeof environment.VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE === "string") {
     const secretPaths = productionSecretBootstrapPaths(environment, state.authority_id);
     const secretDerivedFinals = [
@@ -3017,7 +5116,21 @@ async function cleanupPartialDatabaseRoleCredentials({
       secretPaths.workerBearerPath,
       ...Object.values(secretPaths.outputs),
     ];
-    const secretDerivedStages = secretDerivedFinals.map((path) =>
+    const secretFinals = [secretPaths.bundlePath, ...secretDerivedFinals];
+    secretReadbackFinals = secretFinals;
+    observedSecretStages = assertOnlyCurrentProtectedStages(
+      secretFinals,
+      state.authority_id,
+      "PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_STAGING_AUTHORITY_DRIFT",
+    );
+    const databaseSecretFinals = [
+      secretPaths.outputs.DATABASE_URL,
+      secretPaths.outputs.VIDEOFORGE_RECONCILER_DATABASE_URL,
+    ];
+    const nonDatabaseSecretFinals = secretDerivedFinals.filter(
+      (path) => !databaseSecretFinals.includes(path),
+    );
+    const nonDatabaseSecretStages = nonDatabaseSecretFinals.map((path) =>
       databaseCredentialStagingPath(path, state.authority_id),
     );
     const secretBundleStage = databaseCredentialStagingPath(
@@ -3026,65 +5139,133 @@ async function cleanupPartialDatabaseRoleCredentials({
     );
     const secretBundlePresent = lstatExists(secretPaths.bundlePath);
     const secretBundleStagePresent = lstatExists(secretBundleStage);
-    const secretDerivedPresent = [...secretDerivedFinals, ...secretDerivedStages].some((path) =>
-      lstatExists(path),
-    );
-    if (!secretBundlePresent && !secretBundleStagePresent && secretDerivedPresent)
+    const nonDatabaseSecretDerivedPresent = [
+      ...nonDatabaseSecretFinals,
+      ...nonDatabaseSecretStages,
+    ].some((path) => lstatExists(path));
+    if (!secretBundlePresent && !secretBundleStagePresent && nonDatabaseSecretDerivedPresent)
       fail("PREQUALIFICATION_PARTIAL_CLEANUP_UNBOUND_PRODUCTION_SECRET");
     if (secretBundlePresent || secretBundleStagePresent) {
-      const source = secretBundlePresent ? secretPaths.bundlePath : secretBundleStage;
-      const bytes = readExactProtectedBytes(
-        source,
-        "PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE",
-      );
-      if (secretDerivedPresent || secretBundlePresent) {
-        let value;
-        try {
-          value = JSON.parse(bytes.toString("utf8"));
-        } catch {
-          fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE");
-        }
-        if (
-          Buffer.compare(bytes, Buffer.from(`${canonicalJson(value)}\n`)) !== 0 ||
-          value?.schemaVersion !== PRODUCTION_SECRET_BOOTSTRAP_SCHEMA ||
-          value.fullLiveAuthorityId !== state.full_live_authority_id ||
-          !HASH.test(value.outerStateSha256 ?? "")
-        )
-          fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE");
-      }
-      for (const path of [...secretDerivedFinals, ...secretDerivedStages]) {
-        if (!lstatExists(path)) continue;
-        readExactProtectedBytes(path, "PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_FILE");
-        rmSync(path);
-        removedArtifactCount += 1;
-      }
-      if (secretBundleStagePresent) {
-        rmSync(secretBundleStage);
-        removedArtifactCount += 1;
-      }
-      if (secretBundlePresent) {
-        rmSync(secretPaths.bundlePath);
-        removedArtifactCount += 1;
-      }
-    }
-    if (
-      [
+      productionSecretArtifactsPresent = true;
+      if (credentialBundle === null)
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_DATABASE_BINDING");
+      const bytes = readProtectedCrashPairBytes(
         secretPaths.bundlePath,
         secretBundleStage,
-        ...secretDerivedFinals,
-        ...secretDerivedStages,
-      ].some((path) => lstatExists(path))
-    )
-      fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_READBACK");
+        "PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE",
+      );
+      let value;
+      try {
+        value = JSON.parse(bytes.toString("utf8"));
+      } catch {
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE");
+      }
+      if (
+        Buffer.compare(bytes, Buffer.from(`${canonicalJson(value)}\n`)) !== 0 ||
+        !HASH.test(value?.outerStateSha256 ?? "") ||
+        value.outerStateSha256 !== credentialBundle.outer_state_sha256 ||
+        !exactObjectKeys(value, [
+          "credentialBootstrapReceiptSha256",
+          "fullLiveAuthorityId",
+          "keyIds",
+          "outerStateSha256",
+          "schemaVersion",
+          "secrets",
+        ])
+      )
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_BUNDLE");
+      const { seed } = readStateBoundMaterializationSeed(
+        environment,
+        state,
+        "PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_SEED",
+      );
+      const external = exactCredentialBootstrapInputs(secretPaths, credentialBootstrapBinding);
+      const { expectedIds } = exactProductionSecretBundle(value, {
+        state,
+        outerStateSha256: value.outerStateSha256,
+        credentialBootstrapReceiptSha256: credentialBootstrapBinding.receiptSha256,
+      });
+      if (
+        seed.production_input_base.dualLaneInput.envelopeSigningKeyId !==
+        expectedIds.pairEnvelopeSigningKeyId
+      )
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_ENVELOPE_KEY_ID_BINDING");
+      const expectedWrites = expectedProductionSecretWrites({
+        paths: secretPaths,
+        bundle: value,
+        expectedIds,
+        seed,
+        external,
+        databaseCredentials: {
+          runtimeDatabaseUrl: credentialBundle.credentials.runtime.database_url,
+          reconcilerDatabaseUrl: credentialBundle.credentials.reconciler.database_url,
+        },
+      });
+      if (
+        expectedWrites.length !== secretDerivedFinals.length ||
+        new Set(expectedWrites.map(([path]) => resolve(path))).size !==
+          secretDerivedFinals.length ||
+        secretDerivedFinals.some(
+          (path) =>
+            !expectedWrites.some(([expectedPath]) => resolve(expectedPath) === resolve(path)),
+        )
+      )
+        fail("PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_WRITE_SET");
+      // Validate every surviving final/staging byte before the first unlink. Missing entries are
+      // safe: they are either a never-published stage or an already-deleted prefix from a prior
+      // crash. The authority-bound bundle remains until all derived copies are absent.
+      for (const [path, expected] of expectedWrites) {
+        validateExpectedCrashPairBytes(
+          path,
+          databaseCredentialStagingPath(path, state.authority_id),
+          expected,
+          "PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_FILE",
+        );
+      }
+      for (const path of nonDatabaseSecretFinals)
+        scheduleCrashPair(path, databaseCredentialStagingPath(path, state.authority_id));
+      scheduleCrashPair(secretPaths.bundlePath, secretBundleStage);
+    }
   }
+
+  if (credentialBundle !== null) {
+    for (const kind of ["operator", "runtime", "reconciler"])
+      for (const [index, path] of credentialPaths.paths[kind].entries())
+        scheduleCrashPair(path, credentialPaths.staging[kind][index]);
+    // The canonical database credential bundle is the final unlink. It is the provenance root for
+    // every DB credential and every secret copy that can survive any preceding crash boundary.
+    scheduleCrashPair(credentialPaths.bundlePath, credentialPaths.staging.bundle);
+  }
+  if (
+    deletionPlan.length > 56 ||
+    (bundlePresent && deletionPlan.at(-1) !== credentialPaths.bundlePath) ||
+    (!bundlePresent && bundleStagePresent && deletionPlan.at(-1) !== credentialPaths.staging.bundle)
+  )
+    fail("PREQUALIFICATION_PARTIAL_CLEANUP_DELETION_PLAN");
+
+  let removedArtifactCount = 0;
+  for (const path of deletionPlan) {
+    if (!lstatExists(path)) fail("PREQUALIFICATION_PARTIAL_CLEANUP_DELETION_RACE");
+    remove(path);
+    if (lstatExists(path)) fail("PREQUALIFICATION_PARTIAL_CLEANUP_DELETION_READBACK");
+    removedArtifactCount += 1;
+  }
+  if (
+    databaseCredentialFinalPaths(credentialPaths).some((path) => lstatExists(path)) ||
+    databaseCredentialStageInventory(credentialPaths).length !== 0 ||
+    observedStages.some((path) => lstatExists(path)) ||
+    secretReadbackFinals.some((path) => lstatExists(path)) ||
+    (secretReadbackFinals.length > 0 &&
+      protectedStageInventory(secretReadbackFinals).length !== 0) ||
+    observedSecretStages.some((path) => lstatExists(path))
+  )
+    fail("PREQUALIFICATION_PARTIAL_CLEANUP_READBACK");
   const body = {
     schemaVersion: DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA,
     fullLiveAuthorityId: state.full_live_authority_id,
     cleanupState:
-      bundlePresent || bundleStagePresent
-        ? incompleteBundleStageOnly
-          ? "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING"
-          : "REMOVED_AUTHORITY_BOUND_FILES"
+      bundlePresent || bundleStagePresent || productionSecretArtifactsPresent
+        ? "REMOVED_AUTHORITY_BOUND_FILES"
         : "ALREADY_ABSENT",
     operatorRoleAbsent: true,
     runtimeAndReconcilerRolesAbsent: true,
@@ -3119,7 +5300,9 @@ function exactPartialDatabaseCleanupResult(value, state) {
     value.removedArtifactCount < 0 ||
     value.removedArtifactCount > 56 ||
     (value.cleanupState === "REMOVED_AUTHORITY_BOUND_FILES" &&
-      (!HASH.test(value.credentialBundleSha256 ?? "") || value.removedArtifactCount < 1)) ||
+      (value.removedArtifactCount < 1 ||
+        (value.credentialBundleSha256 !== null &&
+          !HASH.test(value.credentialBundleSha256 ?? "")))) ||
     (value.cleanupState === "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING" &&
       (value.credentialBundleSha256 !== null || value.removedArtifactCount !== 1)) ||
     (value.cleanupState === "ALREADY_ABSENT" &&
@@ -3179,7 +5362,7 @@ function prequalificationLedger(text, manifest) {
 
 const PREQUALIFICATION_ADVISORY_LOCK = "1448494662,1";
 
-function prequalificationFunctionSignatureSql(functionAlias = "p", namespaceAlias = "n") {
+function prequalificationFunctionSignatureSql(functionAlias = "p") {
   // Do not use pg_get_function_identity_arguments here: its output contains argument names and
   // version-dependent spellings such as "timestamp with time zone".  Resolve the argument OIDs
   // directly and format each type, preserving order.  This is stable in PostgreSQL and PGlite,
@@ -3222,7 +5405,7 @@ function prequalificationManifest() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 45
+    manifest.migrations.length !== 46
   )
     fail("PREQUALIFICATION_MANIFEST");
   for (const [index, migration] of manifest.migrations.entries()) {
@@ -3385,10 +5568,10 @@ function prequalificationReceiptFromFile(
     ]).size !== 3 ||
     !HASH.test(value.pgcrypto_sha256 ?? "") ||
     !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
-    (value.recovery_mode === "FRESH_36_TO_45" && value.ledger_before_count !== 36) ||
+    (value.recovery_mode === "FRESH_36_TO_46" && value.ledger_before_count !== 36) ||
     (value.recovery_mode === "RESUME_EXACT_PREFIX" &&
-      ![37, 38, 39, 40, 41, 42, 43, 44].includes(value.ledger_before_count)) ||
-    (value.recovery_mode === "VERIFIED_EXISTING_45" && value.ledger_before_count !== 45) ||
+      ![37, 38, 39, 40, 41, 42, 43, 44, 45].includes(value.ledger_before_count)) ||
+    (value.recovery_mode === "VERIFIED_EXISTING_46" && value.ledger_before_count !== 46) ||
     value.runpod_calls !== 0 ||
     value.cloudflare_calls !== 0 ||
     value.application_secret_reads !== 5 ||
@@ -3511,7 +5694,7 @@ async function verifyPrequalificationDatabaseReceipt({
   const manifest = prequalificationManifest();
   const ledger = prequalificationLockedLedger(query, manifest);
   if (
-    ledger.length !== 45 ||
+    ledger.length !== 46 ||
     sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== receipt.ledger_after_sha256
   )
     fail("PREQUALIFICATION_VERIFY_LEDGER");
@@ -3583,7 +5766,6 @@ function createPrequalificationDatabaseBootstrapAdapter({
     );
     const servicePath = join(directory, "owner.pg_service.conf");
     const passPath = join(directory, "owner.pgpass");
-    const operatorPath = join(directory, "operator.database-url");
     const service = await parseService(servicePath, "videoforge_v2_13_owner");
     if (
       service.get("host") !== seed.activation_record_base.database.host ||
@@ -3671,7 +5853,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
       !Number.isInteger(operatorCount) ||
       operatorCount < 0 ||
       operatorCount > 1 ||
-      (before.length < 45 && operatorCount !== 0)
+      (before.length < 46 && operatorCount !== 0)
     )
       fail("PREQUALIFICATION_OPERATOR_ROLE_DRIFT");
     if (initialExecution && (operatorCount !== 0 || existing !== null))
@@ -3691,20 +5873,20 @@ function createPrequalificationDatabaseBootstrapAdapter({
     }
     if (
       reconciliationOnly &&
-      (before.length !== 45 ||
+      (before.length !== 46 ||
         operatorCount !== 1 ||
         credentialFinals.some((path) => !lstatExists(path)))
     )
       fail("PREQUALIFICATION_RECONCILIATION_READBACK_INCOMPLETE");
     if (existing && operatorCount !== 1) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
-    if (existing && before.length !== 45) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
+    if (existing && before.length !== 46) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
     const recoveryMode =
       before.length === 36
-        ? "FRESH_36_TO_45"
-        : before.length === 45
-          ? "VERIFIED_EXISTING_45"
+        ? "FRESH_36_TO_46"
+        : before.length === 46
+          ? "VERIFIED_EXISTING_46"
           : "RESUME_EXACT_PREFIX";
-    if (!existing && before.length < 45) {
+    if (!existing && before.length < 46) {
       prequalificationCommand(
         run,
         "psql",
@@ -3830,7 +6012,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
     if (operatorCredentialReadback !== PREQUALIFICATION_OPERATOR_ROLE)
       fail("PREQUALIFICATION_OPERATOR_CREDENTIAL_READBACK");
     const ledger = prequalificationLockedLedger(query, manifest);
-    if (ledger.length !== 45) fail("PREQUALIFICATION_LEDGER_FINAL");
+    if (ledger.length !== 46) fail("PREQUALIFICATION_LEDGER_FINAL");
     let pgcrypto;
     try {
       pgcrypto = JSON.parse(
@@ -4488,7 +6670,8 @@ const V213_POST_CONSUMPTION_FACT_KEYS = Object.freeze([
   "fullLiveAuthorityId",
   "roleScopedIdentities",
 ]);
-const V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA = "videoforge.v213-static-release-descriptor/v1";
+const V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1 = "videoforge.v213-static-release-descriptor/v1";
+const V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2 = "videoforge.v213-static-release-descriptor/v2";
 const V213_STATIC_RELEASE_GATE_POLICY = Object.freeze({
   operations_runbooks_ready: Object.freeze({
     claims: Object.freeze([
@@ -4578,6 +6761,7 @@ const V213_STATIC_RELEASE_GATE_POLICY = Object.freeze({
 const V213_STATIC_RELEASE_GATES = Object.freeze(Object.keys(V213_STATIC_RELEASE_GATE_POLICY));
 
 function exactStaticReleaseDescriptor(value, expectedSourceCommit, expectedSha256) {
+  const isV2 = value?.schemaVersion === V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2;
   if (
     !exactObjectKeys(value, [
       "auditFacts",
@@ -4586,8 +6770,11 @@ function exactStaticReleaseDescriptor(value, expectedSourceCommit, expectedSha25
       "productionUrlSha256",
       "schemaVersion",
       "sourceCommit",
+      ...(isV2 ? ["workflowRegistrationEvidence"] : []),
     ]) ||
-    value.schemaVersion !== V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA ||
+    ![V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1, V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2].includes(
+      value.schemaVersion,
+    ) ||
     value.sourceCommit !== expectedSourceCommit ||
     !HASH.test(value.productionUrlSha256 ?? "") ||
     !HASH.test(value.contractBundleSha256 ?? "") ||
@@ -4596,6 +6783,11 @@ function exactStaticReleaseDescriptor(value, expectedSourceCommit, expectedSha25
     !exactObjectKeys(value.auditFacts, V213_STATIC_RELEASE_GATES)
   )
     fail("STATIC_RELEASE_DESCRIPTOR_CONTRACT");
+  if (isV2)
+    exactSoulxWorkflowRegistrationEvidence(
+      value.workflowRegistrationEvidence,
+      expectedSourceCommit,
+    );
   for (const gate of V213_STATIC_RELEASE_GATES) {
     const fact = value.auditFacts[gate];
     const policy = V213_STATIC_RELEASE_GATE_POLICY[gate];
@@ -6229,35 +8421,42 @@ function resolveSourceBoundBridgeLaunch({
   });
 }
 
-function spawnSourceBoundBridgeChild({
+async function spawnSourceBoundBridgeChild({
   args,
   timeoutMs,
   stdio,
   childEnvironment,
   timeoutCode,
   executionCode,
+  cancellationSignal,
 }) {
   const launch = resolveSourceBoundBridgeLaunch();
-  const result = spawnSync(
-    launch.nodeExecutable,
-    ["--import", launch.loaderPath, launch.bridgePath, ...args],
-    {
+  const result = await runCancellableChildProcess({
+    command: launch.nodeExecutable,
+    args: ["--import", launch.loaderPath, launch.bridgePath, ...args],
+    options: {
       cwd: ROOT,
       encoding: "utf8",
       env: childEnvironment,
       stdio,
       maxBuffer: 4 * 1024 * 1024,
-      timeout: timeoutMs,
-      killSignal: "SIGTERM",
     },
-  );
-  if (result.error?.code === "ETIMEDOUT" || (result.signal !== null && result.signal !== undefined))
-    fail(timeoutCode);
+    timeoutMs,
+    cancellationSignal,
+    timeoutCode,
+    cancellationCode: "BRIDGE_CHILD_CANCELLED",
+    executionCode,
+  });
   if (result.status !== 0 || typeof result.stdout !== "string") fail(executionCode);
   return JSON.parse(result.stdout);
 }
 
-function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_MAX_TIMEOUT_MS }) {
+async function productionBridgeSpawn({
+  environment,
+  request,
+  timeoutMs = BRIDGE_CHILD_MAX_TIMEOUT_MS,
+  cancellationSignal,
+}) {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > BRIDGE_CHILD_MAX_TIMEOUT_MS)
     fail("BRIDGE_CHILD_TIMEOUT_INVALID");
   const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v213-bridge-"));
@@ -6344,13 +8543,14 @@ function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_
     files.forEach(([name], index) => {
       childEnvironment[`VIDEOFORGE_V213_BRIDGE_${name}`] = String(index + 3);
     });
-    return spawnSourceBoundBridgeChild({
+    return await spawnSourceBoundBridgeChild({
       args: ["--execute", BRIDGE_CONFIRMATION],
       timeoutMs,
       stdio: ["ignore", "pipe", "pipe", ...opened],
       childEnvironment,
       timeoutCode: "BRIDGE_CHILD_TIMEOUT",
       executionCode: "BRIDGE_EXECUTION",
+      cancellationSignal,
     });
   } finally {
     for (const fd of opened) closeSync(fd);
@@ -6360,10 +8560,11 @@ function productionBridgeSpawn({ environment, request, timeoutMs = BRIDGE_CHILD_
 
 /** Separate zero-provider child. The FD allowlist is intentionally limited to the exact request,
  * operator database URL, and existing acceptance-evidence key container. */
-function productionReleaseCertificationSpawn({
+async function productionReleaseCertificationSpawn({
   environment,
   request,
   timeoutMs = RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS,
+  cancellationSignal,
 }) {
   if (
     !Number.isSafeInteger(timeoutMs) ||
@@ -6398,13 +8599,14 @@ function productionReleaseCertificationSpawn({
     files.forEach(([name], index) => {
       childEnvironment[`VIDEOFORGE_V213_CERTIFICATION_${name}`] = String(index + 3);
     });
-    return spawnSourceBoundBridgeChild({
+    return await spawnSourceBoundBridgeChild({
       args: ["--certify-release", RELEASE_CERTIFICATION_CONFIRMATION],
       timeoutMs,
       stdio: ["ignore", "pipe", "pipe", ...opened],
       childEnvironment,
       timeoutCode: "RELEASE_CERTIFICATION_CHILD_TIMEOUT",
       executionCode: "RELEASE_CERTIFICATION_EXECUTION",
+      cancellationSignal,
     });
   } finally {
     for (const fd of opened) closeSync(fd);
@@ -6415,10 +8617,11 @@ function productionReleaseCertificationSpawn({
 /** A second child boundary after provider cleanup has returned. It receives no RunPod key,
  * provider endpoint, runtime database, Worker bearer, or production input. The only secret is the
  * existing evidence HMAC key copied into a mode-0600 ephemeral file for this one local process. */
-function productionCleanupReceiptSpawn({
+async function productionCleanupReceiptSpawn({
   environment,
   request,
   timeoutMs = CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS,
+  cancellationSignal,
 }) {
   if (
     !Number.isSafeInteger(timeoutMs) ||
@@ -6453,13 +8656,14 @@ function productionCleanupReceiptSpawn({
     files.forEach(([name], index) => {
       childEnvironment[`VIDEOFORGE_V213_CLEANUP_RECEIPT_${name}`] = String(index + 3);
     });
-    return spawnSourceBoundBridgeChild({
+    return await spawnSourceBoundBridgeChild({
       args: ["--finalize-cleanup-receipt", CLEANUP_RECEIPT_CONFIRMATION],
       timeoutMs,
       stdio: ["ignore", "pipe", "pipe", ...opened],
       childEnvironment,
       timeoutCode: "CLEANUP_RECEIPT_CHILD_TIMEOUT",
       executionCode: "CLEANUP_RECEIPT_EXECUTION",
+      cancellationSignal,
     });
   } finally {
     for (const fd of opened) closeSync(fd);
@@ -6957,7 +9161,9 @@ function exactCleanupReceiptFinalizationResult(value, request) {
     value.providerCleanupEvidenceSha256 !== request.providerCleanupEvidenceSha256 ||
     value.readbackOnly !== request.readbackOnly ||
     !HASH.test(value.receiptArtifactSha256 ?? "") ||
-    !HASH.test(value.releaseFactMaterializationSha256 ?? "")
+    (request.failureCleanup
+      ? value.releaseFactMaterializationSha256 !== null
+      : !HASH.test(value.releaseFactMaterializationSha256 ?? ""))
   )
     fail("CLEANUP_RECEIPT_RESULT", request.operationId);
   return Object.freeze(value);
@@ -6971,7 +9177,7 @@ function createTypeScriptBridgeAdapters({
   requirePrequalificationReceipt = false,
   prepareAcceptanceAuthority,
   expectedCliSha256 = BRIDGE_CLI_SOURCE_SHA256,
-  expectedTransportSha256 = "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2",
+  expectedTransportSha256 = "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2",
 } = {}) {
   const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
   const actualTransportSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_TRANSPORT_PATH)));
@@ -7016,6 +9222,43 @@ function createTypeScriptBridgeAdapters({
         CLEANUP_BRIDGE_COMMANDS.has(command) && !earlyCleanup
           ? loadBridgeCleanupInput(environment)
           : null;
+      const cleanupReconciliation =
+        cleanup !== null &&
+        context?.resumed === true &&
+        context?.authorizedUnsettled === true &&
+        context?.reconciliationOnly === true &&
+        context?.providerDispatchForbidden === true;
+      const cleanupInitial =
+        cleanup !== null &&
+        (context?.resumed === false || context?.resumed === undefined) &&
+        context?.authorizedUnsettled !== true &&
+        context?.reconciliationOnly !== true &&
+        context?.providerDispatchForbidden !== true;
+      if (cleanup !== null && !cleanupInitial && !cleanupReconciliation)
+        fail("BRIDGE_CLEANUP_EXECUTION_CONTEXT", command);
+      let cleanupRequestInput =
+        cleanup === null
+          ? null
+          : Object.freeze({
+              ...cleanup,
+              authorizedUnsettled: cleanupReconciliation,
+              reconciliationOnly: cleanupReconciliation,
+              providerDispatchForbidden: cleanupReconciliation,
+            });
+      if (context?.qualifiedProductionCleanup !== undefined) {
+        if (
+          cleanup === null ||
+          !["restore-endpoints-max-one", "reconcile-exact-resources"].includes(command)
+        )
+          fail("PROMOTION_CLEANUP_PROOF_SCOPE", command);
+        const proof = exactQualifiedProductionCleanupProof(context.qualifiedProductionCleanup);
+        if (proof.fullLiveAuthorityId !== cleanup.fullLiveAuthorityId)
+          fail("PROMOTION_CLEANUP_PROOF_AUTHORITY", command);
+        cleanupRequestInput = Object.freeze({
+          ...cleanupRequestInput,
+          qualifiedProductionCleanup: proof,
+        });
+      }
       const prequalification =
         command === "fresh-live-preflight" && !earlyCleanup
           ? loadBridgePrequalificationInput(environment, state, outerStateSha256)
@@ -7129,12 +9372,13 @@ function createTypeScriptBridgeAdapters({
                     dualLaneInput: production.dualLaneInput,
                     commandPayload,
                   }
-                : cleanup,
+                : cleanupRequestInput,
       };
       const result = await spawnBridge({
         environment,
         request,
         timeoutMs: bridgeChildTimeoutMs(state, context, command),
+        cancellationSignal: context.cancellationSignal,
       });
       if (
         result?.schemaVersion !== "videoforge.v213-full-live-command-result/v1" ||
@@ -7147,20 +9391,17 @@ function createTypeScriptBridgeAdapters({
       )
         fail("BRIDGE_RESULT", command);
       const summary = result.summary;
+      if (
+        cleanupRequestInput?.qualifiedProductionCleanup !== undefined &&
+        canonicalJson(summary.qualifiedProductionCleanup) !==
+          canonicalJson(cleanupRequestInput.qualifiedProductionCleanup)
+      )
+        fail("PROMOTION_CLEANUP_PROOF_READBACK", command);
       let durableEvidenceSha256 = result.evidenceSha256;
       if (cleanup !== null) {
         if (canonicalSha256(summary) !== result.evidenceSha256)
           fail("CLEANUP_RECEIPT_PROVIDER_EVIDENCE_DRIFT", command);
-        const reconciliation =
-          context?.resumed === true &&
-          context?.authorizedUnsettled === true &&
-          context?.reconciliationOnly === true &&
-          context?.providerDispatchForbidden === true;
-        const initial =
-          (context?.resumed === false || context?.resumed === undefined) &&
-          context?.authorizedUnsettled !== true &&
-          context?.reconciliationOnly !== true;
-        if (!initial && !reconciliation) fail("CLEANUP_RECEIPT_CONTEXT", command);
+        if (!cleanupInitial && !cleanupReconciliation) fail("CLEANUP_RECEIPT_CONTEXT", command);
         const unsignedCleanupReceiptRequest = {
           schemaVersion: CLEANUP_RECEIPT_REQUEST_SCHEMA,
           fullLiveAuthorityId: cleanup.fullLiveAuthorityId,
@@ -7168,7 +9409,8 @@ function createTypeScriptBridgeAdapters({
           outerStateSha256,
           providerCleanupEvidenceSha256: result.evidenceSha256,
           summary,
-          readbackOnly: reconciliation,
+          readbackOnly: cleanupReconciliation,
+          failureCleanup: context?.cleanupOnly === true,
         };
         const cleanupReceiptRequest = {
           ...unsignedCleanupReceiptRequest,
@@ -7179,6 +9421,7 @@ function createTypeScriptBridgeAdapters({
             environment,
             request: cleanupReceiptRequest,
             timeoutMs: CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS,
+            cancellationSignal: context.cancellationSignal,
           }),
           cleanupReceiptRequest,
         );
@@ -7402,6 +9645,7 @@ function createReleaseCertificationAdapter({
       environment,
       request,
       timeoutMs: RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS,
+      cancellationSignal: context.cancellationSignal,
     });
     return exactReleaseCertificationResult(result, predecessorEvidenceSha256s);
   };
@@ -7427,6 +9671,27 @@ function createConcreteFullLiveAdapters(options = {}) {
         environment: concreteEnvironment,
         ...postConsumptionOptions,
       });
+  const promotionAdapter = options.promotion
+    ? createQualifiedPromotionAdapter(options.promotion)
+    : createProtectedPromotionAdapter(options.protectedPromotion);
+  const bridgeAdapters = {
+    ...createTypeScriptBridgeAdapters({
+      ...(options.bridge ?? {}),
+      requirePrequalificationReceipt: true,
+      prepareAcceptanceAuthority: workflowStartAuthorityAdapter.prepareAcceptanceAuthority,
+    }),
+    ...(options.cleanup?.adapters ?? {}),
+  };
+  const reconcilePromotionCleanup = (...args) => promotionAdapter.reconcileCleanup(...args);
+  const hasPromotionMaterialization = (...args) =>
+    promotionAdapter.hasCleanupMaterialization(...args);
+  for (const operationId of ["restore-endpoints-max-one", "reconcile-exact-resources"])
+    bridgeAdapters[operationId] = createPromotionAwareCleanupAdapter({
+      operationId,
+      adapter: bridgeAdapters[operationId],
+      reconcilePromotionCleanup,
+      hasPromotionMaterialization,
+    });
   const adapters = {
     ...createGitReleaseAdapters(options.git),
     ...createGithubDispatchAdapters(options.github),
@@ -7441,18 +9706,11 @@ function createConcreteFullLiveAdapters(options = {}) {
       requirePrequalificationReceipt: true,
     }),
     ...(options.qualification ? createStagedQualificationAdapters(options.qualification) : {}),
-    "promote-qualified-production": options.promotion
-      ? createQualifiedPromotionAdapter(options.promotion)
-      : createProtectedPromotionAdapter(options.protectedPromotion),
+    "promote-qualified-production": promotionAdapter,
     "record-workflow-start-authority": workflowStartAuthorityAdapter,
     ...(options.acceptance ? createV213AcceptanceAdapters(options.acceptance) : {}),
-    ...createTypeScriptBridgeAdapters({
-      ...(options.bridge ?? {}),
-      requirePrequalificationReceipt: true,
-      prepareAcceptanceAuthority: workflowStartAuthorityAdapter.prepareAcceptanceAuthority,
-    }),
+    ...bridgeAdapters,
     "certify-v2-13-release": createReleaseCertificationAdapter(options.releaseCertification),
-    ...(options.cleanup?.adapters ?? {}),
   };
   const materialize =
     options.materializer === false
@@ -7489,7 +9747,29 @@ function createConcreteFullLiveAdapters(options = {}) {
             !earlyCleanup && operationId !== "certify-v2-13-release"
               ? await materialize({ operationId, state, priorResults, outerStateSha256 })
               : undefined;
+          const mutationAdmission = context?.mutationAdmission;
+          if (RUNPOD_PER_MUTATION_OPERATION_IDS.has(operationId)) {
+            if (
+              mutationAdmission?.schemaVersion !== RUNPOD_PER_MUTATION_ADMISSION_SCHEMA ||
+              mutationAdmission.operationId !== operationId ||
+              mutationAdmission.outerStateSha256BeforeAuthorization !==
+                context?.mutationAdmissionOuterStateSha256 ||
+              !HASH.test(mutationAdmission.proofSha256 ?? "")
+            )
+              fail("RUNPOD_MUTATION_ADMISSION_CONTEXT", operationId);
+            const unsignedAdmission = { ...mutationAdmission };
+            delete unsignedAdmission.proofSha256;
+            if (canonicalSha256(unsignedAdmission) !== mutationAdmission.proofSha256)
+              fail("RUNPOD_MUTATION_ADMISSION_HASH", operationId);
+          }
           const result = await adapter(context, state, priorResults, outerStateSha256);
+          if (RUNPOD_PER_MUTATION_OPERATION_IDS.has(operationId))
+            return Object.freeze({
+              ...result,
+              mutationAdmission: mutationAdmission,
+              mutationAdmissionProofSha256: mutationAdmission.proofSha256,
+              mutationAdmissionCheckedAt: mutationAdmission.checkedAt,
+            });
           if (operationId !== "guarded-activation-once") return result;
           if (
             !exactObjectKeys(protectedMaterialization, [
@@ -7513,8 +9793,18 @@ function createConcreteFullLiveAdapters(options = {}) {
   );
 }
 
+// These legacy validators remain solely to read historical protected records during archive
+// reconciliation. They are intentionally not part of the live adapter catalog.
+void MEDIA_WORKER_RELEASE_READBACK_PARENT_OPERATION_ID;
+void V213_COMMAND_PAYLOAD_KEYS;
+void exactJustInTimeAcceptanceAuthority;
+void readProtectedPostConsumptionMaterialization;
+void injectPostConsumptionCommandPayloads;
+void createAcceptanceAuthorityDatabaseAdapter;
+
 export {
   createConcreteFullLiveAdapters,
+  createRunPodPerMutationAdmissionReader,
   createPrequalificationDatabaseBootstrapAdapter,
   createPrequalificationDatabaseAdapter,
   cleanupPartialDatabaseRoleCredentials,
@@ -7534,18 +9824,25 @@ export {
   createGitReleaseAdapters,
   createGuardedActivationAdapter,
   createProtectedInputMaterializer,
+  createDurablePromotionFileJournal,
+  createPromotionAwareCleanupAdapter,
   createQualifiedPromotionAdapter,
+  createQualifiedProductionCleanupProof,
+  createRecoverableQualifiedPromotionTransport,
   createV213DurableStageStore,
   createV213AcceptanceAdapters,
   createStagedQualificationAdapters,
   createTypeScriptBridgeAdapters,
   createReleaseCertificationAdapter,
+  runCancellableChildProcess,
   verifyMaterializationChainFile,
   productionBridgeSpawn,
   productionCleanupReceiptSpawn,
   productionReleaseCertificationSpawn,
   createGithubDispatchAdapters,
   createGithubVerificationAdapters,
+  validateAnonymousGhcrPublicationProof,
+  validateSoulxWorkflowRegistrationEvidence,
   hashV213DryOutputBundle,
   preflightGuardedActivationInputs,
   preflightConcreteFullLiveInputs,

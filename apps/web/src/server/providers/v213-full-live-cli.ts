@@ -121,7 +121,7 @@ const OPERATOR_DATABASE_ROLE = "videoforge_hosted_operator";
 const V213_RELEASE_CERTIFICATION_REQUEST_SCHEMA =
   "videoforge.v213-local-release-certification-request/v1" as const;
 const V213_CLEANUP_RECEIPT_REQUEST_SCHEMA =
-  "videoforge.v213-local-cleanup-receipt-finalization-request/v1" as const;
+  "videoforge.v213-local-cleanup-receipt-finalization-request/v2" as const;
 const OPERATOR_EVIDENCE_CONFIRMATION = "INGEST_EXACT_V2_13_OPERATOR_EVIDENCE";
 
 // RunPod's CP-07 catalog lookup is still authoritative for exact 4090 EU-RO-1 availability,
@@ -183,6 +183,9 @@ export function summarizeV213EndpointRestoration(result: V213AttributableCleanup
     releaseCurrentRestored,
     deletedEndpointIdSha256s: [...result.deletedEndpointIdSha256s],
     deletedTemplateIdSha256s: [...result.deletedTemplateIdSha256s],
+    ...(result.reconciliationReadback === undefined
+      ? {}
+      : { reconciliationReadback: result.reconciliationReadback }),
   };
 }
 
@@ -256,6 +259,35 @@ export class V213FullLiveBridgeError extends Error {
   }
 }
 
+export interface V213CancellationSource {
+  readonly signal?: AbortSignal;
+  readonly isCancelled?: () => boolean;
+}
+
+function checkV213Cancellation(source?: V213CancellationSource): void {
+  if (source?.signal?.aborted === true || source?.isCancelled?.() === true)
+    fail("CANCELLATION_REQUESTED");
+}
+
+async function atV213CancellationBoundary<Value>(
+  source: V213CancellationSource | undefined,
+  operation: () => Promise<Value> | Value,
+): Promise<Value> {
+  checkV213Cancellation(source);
+  const pending = Promise.resolve().then(operation);
+  try {
+    // Never abandon an in-process mutation promise. The outer process boundary terminates a
+    // non-cooperative child after its grace period, while cooperative handlers settle here before
+    // this process reports cancellation and before the executor may begin cleanup.
+    const value = await pending;
+    checkV213Cancellation(source);
+    return value;
+  } catch (error) {
+    checkV213Cancellation(source);
+    throw error;
+  }
+}
+
 export interface V213FullLiveCommandRequest {
   readonly schemaVersion: "videoforge.v213-full-live-command/v1";
   readonly commandId: string;
@@ -304,6 +336,8 @@ export interface V213FullLiveBridgeRuntime {
   readonly handlers: V213FullLiveCommandHandlers;
   /** Exact protected values are scrubbed even if a handler places one under an innocuous key. */
   readonly protectedValues: readonly string[];
+  /** Process-local cancellation is never serialized into the command or durable result. */
+  readonly cancellation?: V213CancellationSource;
 }
 
 type QualificationCommand =
@@ -394,6 +428,25 @@ export interface V213CleanupProtectedInputs {
   readonly cleanupInput: V213CleanupInput;
 }
 
+export interface V213QualifiedProductionCleanupProof {
+  readonly schemaVersion: "videoforge.v213-qualified-production-cleanup-proof/v1";
+  readonly fullLiveAuthorityId: string;
+  readonly promotionId: string;
+  readonly state: "DISABLED_UNQUALIFIED";
+  readonly enabled: false;
+  readonly gpuDispatchPerformed: false;
+  readonly productionRedispatched: false;
+  readonly providerReadbackPassed: true;
+  readonly routeStatus: 503;
+  readonly disabledConfigSha256: `sha256:${string}`;
+  readonly disabledVersionSha256: `sha256:${string}`;
+  readonly databasePromotionAttempted: boolean;
+  readonly databasePromotionSha256: `sha256:${string}` | null;
+  readonly databaseRollbackRecorded: boolean;
+  readonly databaseRollbackSha256: `sha256:${string}` | null;
+  readonly proofSha256: `sha256:${string}`;
+}
+
 export const V213_EARLY_CLEANUP_INPUT_SCHEMA =
   "videoforge.v213-full-live-early-cleanup-input/v1" as const;
 
@@ -434,6 +487,10 @@ interface V213CleanupInput {
   readonly billingBaselineMode: "PRIOR_FRESH_PREFLIGHT" | "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION";
   readonly billingBaselineUsd: number | null;
   readonly totalCapUsd: 17.5;
+  readonly authorizedUnsettled: boolean;
+  readonly reconciliationOnly: boolean;
+  readonly providerDispatchForbidden: boolean;
+  readonly qualifiedProductionCleanup?: V213QualifiedProductionCleanupProof;
   readonly retainedLanes: readonly Readonly<{
     lane: "mage" | "soulx";
     volumeIdSha256: `sha256:${string}`;
@@ -769,10 +826,12 @@ function exactCleanupReceiptRequest(value: unknown): V213CleanupReceiptChildRequ
     summary === null ||
     canonicalSha256(summary) !== item.providerCleanupEvidenceSha256 ||
     typeof item.readbackOnly !== "boolean" ||
+    typeof item.failureCleanup !== "boolean" ||
     typeof item.requestSha256 !== "string" ||
     !SHA256.test(item.requestSha256) ||
     Object.keys(item).sort().join(",") !==
       [
+        "failureCleanup",
         "fullLiveAuthorityId",
         "operationId",
         "outerStateSha256",
@@ -1357,9 +1416,67 @@ export function readV213PrequalificationProtectedInputs(
   return Object.freeze({ request, runpodApiKey, operatorDatabaseUrl });
 }
 
+function exactQualifiedProductionCleanupProof(
+  value: unknown,
+): V213QualifiedProductionCleanupProof | undefined {
+  if (value === undefined) return undefined;
+  const proof = object(value);
+  const keys = [
+    "databasePromotionAttempted",
+    "databasePromotionSha256",
+    "databaseRollbackRecorded",
+    "databaseRollbackSha256",
+    "disabledConfigSha256",
+    "disabledVersionSha256",
+    "enabled",
+    "fullLiveAuthorityId",
+    "gpuDispatchPerformed",
+    "productionRedispatched",
+    "promotionId",
+    "proofSha256",
+    "providerReadbackPassed",
+    "routeStatus",
+    "schemaVersion",
+    "state",
+  ];
+  if (
+    proof?.schemaVersion !== "videoforge.v213-qualified-production-cleanup-proof/v1" ||
+    Object.keys(proof).sort().join(",") !== keys.sort().join(",") ||
+    !UUID.test(String(proof.fullLiveAuthorityId ?? "")) ||
+    !UUID.test(String(proof.promotionId ?? "")) ||
+    proof.state !== "DISABLED_UNQUALIFIED" ||
+    proof.enabled !== false ||
+    proof.gpuDispatchPerformed !== false ||
+    proof.productionRedispatched !== false ||
+    proof.providerReadbackPassed !== true ||
+    proof.routeStatus !== 503 ||
+    !SHA256.test(String(proof.disabledConfigSha256 ?? "")) ||
+    !SHA256.test(String(proof.disabledVersionSha256 ?? "")) ||
+    typeof proof.databasePromotionAttempted !== "boolean" ||
+    (proof.databasePromotionAttempted
+      ? !SHA256.test(String(proof.databasePromotionSha256 ?? ""))
+      : proof.databasePromotionSha256 !== null) ||
+    typeof proof.databaseRollbackRecorded !== "boolean" ||
+    (proof.databaseRollbackRecorded
+      ? !SHA256.test(String(proof.databaseRollbackSha256 ?? ""))
+      : proof.databaseRollbackSha256 !== null) ||
+    proof.databasePromotionAttempted !== proof.databaseRollbackRecorded ||
+    !SHA256.test(String(proof.proofSha256 ?? ""))
+  )
+    fail("QUALIFIED_PRODUCTION_CLEANUP_PROOF_INVALID");
+  const unsigned = { ...proof };
+  delete unsigned.proofSha256;
+  if (canonicalSha256(unsigned) !== proof.proofSha256)
+    fail("QUALIFIED_PRODUCTION_CLEANUP_PROOF_INVALID");
+  return proof as unknown as V213QualifiedProductionCleanupProof;
+}
+
 function exactCleanupInput(value: unknown): V213CleanupInput {
   const item = object(value);
   const lanes = Array.isArray(item?.retainedLanes) ? item.retainedLanes : [];
+  const qualifiedProductionCleanup = exactQualifiedProductionCleanupProof(
+    item?.qualifiedProductionCleanup,
+  );
   if (
     item?.schemaVersion !== "videoforge.v213-full-live-cleanup-input/v1" ||
     typeof item.fullLiveAuthorityId !== "string" ||
@@ -1376,6 +1493,17 @@ function exactCleanupInput(value: unknown): V213CleanupInput {
     (item.billingBaselineMode === "ESTABLISH_CURRENT_NO_RUNPOD_MUTATION" &&
       item.billingBaselineUsd !== null) ||
     item.totalCapUsd !== 17.5 ||
+    typeof item.authorizedUnsettled !== "boolean" ||
+    typeof item.reconciliationOnly !== "boolean" ||
+    typeof item.providerDispatchForbidden !== "boolean" ||
+    !(
+      (item.authorizedUnsettled === false &&
+        item.reconciliationOnly === false &&
+        item.providerDispatchForbidden === false) ||
+      (item.authorizedUnsettled === true &&
+        item.reconciliationOnly === true &&
+        item.providerDispatchForbidden === true)
+    ) ||
     lanes.length !== 2 ||
     lanes.some((value) => {
       const lane = object(value);
@@ -1390,8 +1518,12 @@ function exactCleanupInput(value: unknown): V213CleanupInput {
       );
     }) ||
     new Set(lanes.map((value) => object(value)?.lane)).size !== 2 ||
-    Object.keys(item).sort().join(",") !==
-      "billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,retainedLanes,schemaVersion,totalCapUsd"
+    ![
+      "authorizedUnsettled,billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,providerDispatchForbidden,reconciliationOnly,retainedLanes,schemaVersion,totalCapUsd",
+      "authorizedUnsettled,billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,providerDispatchForbidden,qualifiedProductionCleanup,reconciliationOnly,retainedLanes,schemaVersion,totalCapUsd",
+    ].includes(Object.keys(item).sort().join(",")) ||
+    (qualifiedProductionCleanup !== undefined &&
+      qualifiedProductionCleanup.fullLiveAuthorityId !== item.fullLiveAuthorityId)
   )
     fail("CLEANUP_INPUT_INVALID");
   return value as V213CleanupInput;
@@ -1636,19 +1768,30 @@ export async function executeV213FullLiveCommand(
   runtime: V213FullLiveBridgeRuntime,
 ): Promise<V213FullLiveCommandResult> {
   const request = exactRequest(requestValue);
+  const requestInput = object(request.input);
+  const cleanupReadbackOnly =
+    requestInput?.authorizedUnsettled === true &&
+    requestInput.reconciliationOnly === true &&
+    requestInput.providerDispatchForbidden === true;
+  if (cleanupReadbackOnly && !CLEANUP_COMMANDS.has(request.command))
+    fail("PROVIDER_DISPATCH_FENCE_SCOPE_INVALID");
   const requestSha256 = sha256(request as unknown as JsonValue);
-  const claim = await runtime.journal.claim({
-    operationId: request.commandId,
-    stageAuthorityId: request.stageAuthorityId,
-    kind: kindFor(request.command),
-    requestSha256,
-    resourceKey: `v213:${request.command}:${request.commandId}`,
-  });
+  const claim = await atV213CancellationBoundary(runtime.cancellation, () =>
+    runtime.journal.claim({
+      operationId: request.commandId,
+      stageAuthorityId: request.stageAuthorityId,
+      kind: kindFor(request.command),
+      requestSha256,
+      resourceKey: `v213:${request.command}:${request.commandId}`,
+    }),
+  );
   if (claim.action === "DONE") return claim.result;
-  if (claim.action === "RECONCILE" && !CLEANUP_COMMANDS.has(request.command))
-    fail("AMBIGUOUS_REDISPATCH_FORBIDDEN");
+  if (claim.action === "EXECUTE" && cleanupReadbackOnly) fail("PROVIDER_REDISPATCH_FORBIDDEN");
+  if (claim.action === "RECONCILE" && !cleanupReadbackOnly) fail("AMBIGUOUS_REDISPATCH_FORBIDDEN");
   try {
-    const handled = await runtime.handlers[request.command](request);
+    const handled = await atV213CancellationBoundary(runtime.cancellation, () =>
+      runtime.handlers[request.command](request),
+    );
     if (!SHA256.test(handled.evidenceSha256) || handled.summary === undefined)
       fail("HANDLER_RESULT_INVALID");
     const result = Object.freeze({
@@ -1659,7 +1802,9 @@ export async function executeV213FullLiveCommand(
       evidenceSha256: handled.evidenceSha256,
       summary: redactV213Output(handled.summary, runtime.protectedValues),
     });
-    await runtime.journal.complete(request.commandId, result);
+    await atV213CancellationBoundary(runtime.cancellation, () =>
+      runtime.journal.complete(request.commandId, result),
+    );
     return result;
   } catch (error) {
     if (claim.action === "EXECUTE") {
@@ -3025,7 +3170,10 @@ async function postAcceptance(
 
 type V213CleanupTransport = Pick<
   V213RunPodDualLaneTransport,
-  "cleanupAttributableResources" | "inventory" | "billingAmount"
+  | "cleanupAttributableResources"
+  | "reconcileAttributableCleanupReadback"
+  | "inventory"
+  | "billingAmount"
 >;
 
 export async function createV213CleanupRuntime(
@@ -3103,12 +3251,19 @@ export async function createV213CleanupRuntime(
   const sleep =
     ports.sleep ?? ((milliseconds) => new Promise((done) => setTimeout(done, milliseconds)));
   const cleanup: Readonly<Record<CleanupCommand, V213FullLiveCommandHandler>> = Object.freeze({
-    "restore-endpoints-max-one": async () =>
-      evidence(
-        summarizeV213EndpointRestoration(
-          await transport.cleanupAttributableResources(await loadCleanupScope()),
-        ),
-      ),
+    "restore-endpoints-max-one": async () => {
+      const summary = summarizeV213EndpointRestoration(
+        await (descriptor.providerDispatchForbidden
+          ? transport.reconcileAttributableCleanupReadback(await loadCleanupScope())
+          : transport.cleanupAttributableResources(await loadCleanupScope())),
+      ) as Record<string, JsonValue>;
+      return evidence({
+        ...summary,
+        ...(descriptor.qualifiedProductionCleanup === undefined
+          ? {}
+          : { qualifiedProductionCleanup: descriptor.qualifiedProductionCleanup }),
+      } as never);
+    },
     "prove-zero-workers": async () => {
       const reads = [];
       for (let index = 0; index < 3; index += 1) {
@@ -3158,6 +3313,9 @@ export async function createV213CleanupRuntime(
       return evidence({
         ...inventory,
         onlyApprovedRetainedVolumes: true,
+        ...(descriptor.qualifiedProductionCleanup === undefined
+          ? {}
+          : { qualifiedProductionCleanup: descriptor.qualifiedProductionCleanup }),
       } as never);
     },
   });
@@ -4167,6 +4325,26 @@ function noAction() {
   });
 }
 
+function createProcessV213CancellationSource(): V213CancellationSource & {
+  readonly dispose: () => void;
+} {
+  const controller = new AbortController();
+  const request = () => {
+    if (!controller.signal.aborted)
+      controller.abort(new V213FullLiveBridgeError("CANCELLATION_REQUESTED"));
+  };
+  process.on("SIGINT", request);
+  process.on("SIGTERM", request);
+  return Object.freeze({
+    signal: controller.signal,
+    isCancelled: () => controller.signal.aborted,
+    dispose: () => {
+      process.off("SIGINT", request);
+      process.off("SIGTERM", request);
+    },
+  });
+}
+
 export async function ingestV213AcceptanceOperatorEvidence(input: {
   readonly workerOrigin: string;
   readonly workerOperatorBearer: string;
@@ -4221,6 +4399,7 @@ export async function runV213ReleaseCertificationCli(
     readonly now?: () => Date;
     readonly createOperatorDatabase?: (url: string) => TransactionalSqlExecutor;
     readonly createCertifier?: typeof createV213SqlReleaseCertifier;
+    readonly cancellation?: V213CancellationSource;
   } = {},
 ): Promise<void> {
   if (
@@ -4229,10 +4408,12 @@ export async function runV213ReleaseCertificationCli(
     argv[1] !== RELEASE_CERTIFICATION_CONFIRMATION
   )
     fail("RELEASE_CERTIFICATION_ARGUMENTS_INVALID");
+  checkV213Cancellation(options.cancellation);
   const inputs = readV213ReleaseCertificationProtectedInputs(
     options.environment ?? process.env,
     options.readFd ?? readProtectedFd,
   );
+  checkV213Cancellation(options.cancellation);
   try {
     const database = (
       options.createOperatorDatabase ?? ((url) => createNeonExecutor(createNeonPool(url)))
@@ -4245,10 +4426,14 @@ export async function runV213ReleaseCertificationCli(
     const { schemaVersion, requestSha256, ...certificationRequest } = inputs.request;
     void schemaVersion;
     void requestSha256;
-    const result: V213FinalReleaseCertificationResult = await certify(certificationRequest);
+    const result: V213FinalReleaseCertificationResult = await atV213CancellationBoundary(
+      options.cancellation,
+      () => certify(certificationRequest),
+    );
     const serialized = JSON.stringify(result);
     if (inputs.protectedValues.some((secret) => secret.length > 0 && serialized.includes(secret)))
       fail("RELEASE_CERTIFICATION_PROTECTED_OUTPUT");
+    checkV213Cancellation(options.cancellation);
     (options.write ?? ((value) => process.stdout.write(value)))(`${serialized}\n`);
   } catch (error) {
     if (error instanceof V213FullLiveBridgeError) throw error;
@@ -4257,8 +4442,9 @@ export async function runV213ReleaseCertificationCli(
 }
 
 /** Separate post-provider cleanup boundary. It constructs only the operator database and the
- * signed-evidence finalizer. In readback mode the finalizer is forbidden from inserting evidence,
- * operation receipts, or release facts. */
+ * signed-evidence finalizer. In provider readback mode, the append-only receipt intent permits the
+ * DB-only suffix to reconcile exact missing evidence, receipt, and fact rows without another
+ * provider mutation. */
 export async function runV213CleanupReceiptCli(
   argv: readonly string[],
   options: {
@@ -4311,6 +4497,7 @@ export async function runV213OperatorEvidenceIngestionCli(
     readonly write?: (value: string) => void;
     readonly fetch?: WorkflowFetch;
     readonly now?: () => Date;
+    readonly cancellation?: V213CancellationSource;
   } = {},
 ): Promise<void> {
   if (
@@ -4319,20 +4506,26 @@ export async function runV213OperatorEvidenceIngestionCli(
     argv[1] !== OPERATOR_EVIDENCE_CONFIRMATION
   )
     fail("OPERATOR_EVIDENCE_ARGUMENTS_INVALID");
+  checkV213Cancellation(options.cancellation);
   const inputs = readV213OperatorEvidenceProtectedInputs(
     options.environment ?? process.env,
     options.readFd ?? readProtectedFd,
     options.now,
   );
-  const result = await ingestV213AcceptanceOperatorEvidence({
-    workerOrigin: inputs.workerOrigin,
-    workerOperatorBearer: inputs.workerOperatorBearer,
-    request: inputs.request,
-    fetch: options.fetch,
-  });
+  checkV213Cancellation(options.cancellation);
+  const result = await atV213CancellationBoundary(options.cancellation, () =>
+    ingestV213AcceptanceOperatorEvidence({
+      workerOrigin: inputs.workerOrigin,
+      workerOperatorBearer: inputs.workerOperatorBearer,
+      request: inputs.request,
+      fetch: options.fetch,
+      signal: options.cancellation?.signal,
+    }),
+  );
   const serialized = JSON.stringify(result);
   if (inputs.protectedValues.some((secret) => secret.length > 0 && serialized.includes(secret)))
     fail("OPERATOR_EVIDENCE_PROTECTED_OUTPUT");
+  checkV213Cancellation(options.cancellation);
   (options.write ?? ((value) => process.stdout.write(value)))(`${serialized}\n`);
 }
 
@@ -4353,6 +4546,7 @@ export async function runV213FullLiveCli(
     readonly write?: (value: string) => void;
     readonly readFd?: (value: string | undefined, code: string) => string;
     readonly readBinaryFd?: (value: string | undefined, code: string) => Uint8Array<ArrayBuffer>;
+    readonly cancellation?: V213CancellationSource;
   } = {},
 ): Promise<void> {
   const write = options.write ?? ((value) => process.stdout.write(value));
@@ -4364,15 +4558,24 @@ export async function runV213FullLiveCli(
     fail("ARGUMENTS_INVALID");
   const environment = options.environment ?? process.env;
   const command = environment[V213_BRIDGE_ENVIRONMENT.command];
+  // A cancellation stops normal/provider work. The four safety commands deliberately ignore the
+  // already-observed signal so the same child boundary can still drain and prove final state.
+  const cancellation = CLEANUP_COMMANDS.has(command as V213FullLiveCommand)
+    ? undefined
+    : options.cancellation;
+  checkV213Cancellation(cancellation);
   const readFd = options.readFd ?? readProtectedFd;
   let result: V213FullLiveCommandResult;
   try {
     if (command === "fresh-live-preflight") {
       const inputs = readV213PrequalificationProtectedInputs(environment, readFd);
-      const runtime = await (
-        options.createPrequalificationRuntime ?? createV213PrequalificationRuntime
-      )(inputs);
-      result = await executeV213FullLiveCommand(inputs.request, runtime);
+      const runtime = await atV213CancellationBoundary(cancellation, () =>
+        (options.createPrequalificationRuntime ?? createV213PrequalificationRuntime)(inputs),
+      );
+      result = await executeV213FullLiveCommand(inputs.request, {
+        ...runtime,
+        cancellation: cancellation ?? runtime.cancellation,
+      });
     } else if (
       CLEANUP_COMMANDS.has(command as V213FullLiveCommand) &&
       environment[V213_BRIDGE_ENVIRONMENT.operatorDatabaseUrlFd] === undefined
@@ -4381,20 +4584,29 @@ export async function runV213FullLiveCli(
       const runtime = await (options.createEarlyCleanupRuntime ?? createV213EarlyCleanupRuntime)(
         inputs,
       );
-      result = await executeV213FullLiveCommand(inputs.request, runtime);
+      result = await executeV213FullLiveCommand(inputs.request, {
+        ...runtime,
+        cancellation: undefined,
+      });
     } else if (CLEANUP_COMMANDS.has(command as V213FullLiveCommand)) {
       const inputs = readV213CleanupProtectedInputs(environment, readFd);
       const runtime = await (options.createCleanupRuntime ?? createV213CleanupRuntime)(inputs);
-      result = await executeV213FullLiveCommand(inputs.request, runtime);
+      result = await executeV213FullLiveCommand(inputs.request, {
+        ...runtime,
+        cancellation: undefined,
+      });
     } else {
       const inputs = readV213ProtectedInputs(
         environment,
         readFd,
         options.readBinaryFd ?? readProtectedBinaryFd,
       );
-      const runtime = await (options.createRuntime ?? createV213ProductionRuntime)(inputs);
+      const runtime = await atV213CancellationBoundary(cancellation, () =>
+        (options.createRuntime ?? createV213ProductionRuntime)(inputs),
+      );
       result = await executeV213FullLiveCommand(inputs.request, {
         ...runtime,
+        cancellation: cancellation ?? runtime.cancellation,
         protectedValues: Object.freeze([
           ...runtime.protectedValues,
           inputs.runpodApiKey,
@@ -4415,11 +4627,17 @@ export async function runV213FullLiveCli(
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const argv = process.argv.slice(2);
-  if (argv[0] === "--certify-release") await runV213ReleaseCertificationCli(argv);
-  else if (argv[0] === "--finalize-cleanup-receipt") await runV213CleanupReceiptCli(argv);
-  else if (argv[0] === "--ingest-operator-evidence")
-    await runV213OperatorEvidenceIngestionCli(argv);
-  else await runV213FullLiveCli(argv);
+  const cancellation = createProcessV213CancellationSource();
+  try {
+    if (argv[0] === "--certify-release")
+      await runV213ReleaseCertificationCli(argv, { cancellation });
+    else if (argv[0] === "--finalize-cleanup-receipt") await runV213CleanupReceiptCli(argv);
+    else if (argv[0] === "--ingest-operator-evidence")
+      await runV213OperatorEvidenceIngestionCli(argv, { cancellation });
+    else await runV213FullLiveCli(argv, { cancellation });
+  } finally {
+    cancellation.dispose();
+  }
 }
 
 export const V213_FULL_LIVE_CLI_CONFIRMATION = CONFIRMATION;

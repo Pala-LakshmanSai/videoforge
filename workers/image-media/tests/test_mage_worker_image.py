@@ -217,9 +217,11 @@ class MageWorkerImageTest(unittest.TestCase):
         self.assertIn("mage-serverless-v2-07-deployability", workflow)
         self.assertIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflow)
         self.assertIn("Prove anonymous public pull visibility of exact Mage digest", workflow)
-        self.assertIn(".config.digest, .layers[].digest", workflow)
+        self.assertIn('(.config | ["config", "0", .digest, .mediaType', workflow)
+        self.assertIn(".layers | to_entries[]", workflow)
         self.assertIn('test "$public_digest" = "$MAGE_EXPECTED_MANIFEST_DIGEST"', workflow)
-        self.assertIn("curl -sS -L -o /dev/null -w '%{http_code}' -I", workflow)
+        self.assertIn('blob_status="$(curl --fail --silent --show-error --location', workflow)
+        self.assertIn('"all_blobs_verified": True', workflow)
 
     def test_hosted_smoke_binds_exact_candidate_layer_payload(self) -> None:
         workflow = (ROOT.parents[1] / ".github/workflows/mage-image.yml").read_text(

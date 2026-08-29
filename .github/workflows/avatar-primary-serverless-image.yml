@@ -328,22 +328,129 @@ jobs:
           test -n "$anonymous_token"
           public_manifest="$RUNNER_TEMP/v208-public-manifest.json"
           public_headers="$RUNNER_TEMP/v208-public-manifest.headers"
-          curl -fsSL -D "$public_headers" \
+          manifest_status="$(curl --fail --silent --show-error --location \
+            --dump-header "$public_headers" --output "$public_manifest" --write-out '%{http_code}' \
             -H "Authorization: Bearer $anonymous_token" \
             -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
-            "https://ghcr.io/v2/${repository}/manifests/$SOULX_IMAGE_DIGEST" \
-            -o "$public_manifest"
+            "https://ghcr.io/v2/${repository}/manifests/$SOULX_IMAGE_DIGEST")"
+          test "$manifest_status" = "200"
           public_digest="sha256:$(sha256sum "$public_manifest" | awk '{print $1}')"
           header_digest="$(awk 'BEGIN { IGNORECASE=1 } /^Docker-Content-Digest:/ { gsub("\r", "", $2); print $2 }' "$public_headers" | tail -1)"
+          response_content_type="$(awk 'BEGIN { IGNORECASE=1 } /^Content-Type:/ { gsub("\r", "", $2); split($2, value, ";"); print value[1] }' "$public_headers" | tail -1)"
+          registry_observed_at="$(awk 'BEGIN { IGNORECASE=1 } /^Date:/ { sub(/^[^:]*:[[:space:]]*/, ""); gsub("\r", ""); print }' "$public_headers" | tail -1)"
+          manifest_media_type="$(jq -r '.mediaType' "$public_manifest")"
           test "$public_digest" = "$SOULX_IMAGE_DIGEST"
           test "$header_digest" = "$SOULX_IMAGE_DIGEST"
-          while IFS= read -r blob; do
+          case "$manifest_media_type" in
+            application/vnd.docker.distribution.manifest.v2+json|application/vnd.oci.image.manifest.v1+json) ;;
+            *) exit 1 ;;
+          esac
+          test "$response_content_type" = "$manifest_media_type"
+          test -n "$registry_observed_at"
+          blob_proofs="$RUNNER_TEMP/v208-public-blob-proofs.tsv"
+          : > "$blob_proofs"
+          while IFS=$'\t' read -r kind index blob media_type declared_size; do
+            [[ "$kind" = "config" || "$kind" = "layer" ]]
+            [[ "$index" =~ ^[0-9]+$ ]]
             [[ "$blob" =~ ^sha256:[a-f0-9]{64}$ ]]
-            test "$(curl -sS -L -o /dev/null -w '%{http_code}' -I \
+            [[ "$declared_size" =~ ^[1-9][0-9]*$ ]]
+            blob_file="$RUNNER_TEMP/v208-public-${kind}-${index}.blob"
+            blob_headers="$RUNNER_TEMP/v208-public-${kind}-${index}.headers"
+            blob_status="$(curl --fail --silent --show-error --location \
+              --dump-header "$blob_headers" --output "$blob_file" --write-out '%{http_code}' \
               -H "Authorization: Bearer $anonymous_token" \
-              "https://ghcr.io/v2/${repository}/blobs/$blob")" = "200"
-          done < <(jq -r '.config.digest, .layers[].digest' "$public_manifest")
+              "https://ghcr.io/v2/${repository}/blobs/$blob")"
+            test "$blob_status" = "200"
+            observed_digest="sha256:$(sha256sum "$blob_file" | awk '{print $1}')"
+            observed_size="$(stat -c%s "$blob_file")"
+            blob_observed_at="$(awk 'BEGIN { IGNORECASE=1 } /^Date:/ { sub(/^[^:]*:[[:space:]]*/, ""); gsub("\r", ""); print }' "$blob_headers" | tail -1)"
+            test "$observed_digest" = "$blob"
+            test "$observed_size" = "$declared_size"
+            test -n "$blob_observed_at"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+              "$kind" "$index" "$blob" "$media_type" "$declared_size" \
+              "$observed_size" "$observed_digest" "$blob_status" "$blob_observed_at" \
+              >> "$blob_proofs"
+            rm -f -- "$blob_file"
+          done < <(jq -r '
+            (.config | ["config", "0", .digest, .mediaType, (.size | tostring)] | @tsv),
+            (.layers | to_entries[] |
+              ["layer", (.key | tostring), .value.digest, .value.mediaType,
+               (.value.size | tostring)] | @tsv)
+          ' "$public_manifest")
+          export PUBLIC_REPOSITORY="$repository"
+          export PUBLIC_MANIFEST_STATUS="$manifest_status"
+          export PUBLIC_MANIFEST_DIGEST="$public_digest"
+          export PUBLIC_MANIFEST_HEADER_DIGEST="$header_digest"
+          export PUBLIC_MANIFEST_MEDIA_TYPE="$manifest_media_type"
+          export PUBLIC_MANIFEST_RESPONSE_CONTENT_TYPE="$response_content_type"
+          export PUBLIC_MANIFEST_SIZE="$(stat -c%s "$public_manifest")"
+          export PUBLIC_REGISTRY_OBSERVED_AT="$registry_observed_at"
+          export PUBLIC_BLOB_PROOFS="$blob_proofs"
+          proof_path="$RUNNER_TEMP/v208-anonymous-publication-proof.json"
+          export PUBLIC_PROOF_PATH="$proof_path"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          rows = []
+          for line in Path(os.environ["PUBLIC_BLOB_PROOFS"]).read_text(encoding="utf-8").splitlines():
+              kind, index, digest, media_type, declared, observed, content_hash, status, observed_at = line.split("\t")
+              rows.append({
+                  "kind": kind,
+                  "index": int(index),
+                  "digest": digest,
+                  "media_type": media_type,
+                  "declared_size_bytes": int(declared),
+                  "observed_size_bytes": int(observed),
+                  "content_sha256": content_hash,
+                  "http_status": int(status),
+                  "registry_observed_at": observed_at,
+              })
+          config = [item for item in rows if item["kind"] == "config"]
+          layers = sorted(
+              (item for item in rows if item["kind"] == "layer"),
+              key=lambda item: item["index"],
+          )
+          if len(config) != 1 or config[0]["index"] != 0 or not layers:
+              raise SystemExit("anonymous public blob proof set is incomplete")
+          if [item["index"] for item in layers] != list(range(len(layers))):
+              raise SystemExit("anonymous public layer proof order is invalid")
+          proof = {
+              "schema_version": "videoforge-anonymous-ghcr-publication-proof/v1",
+              "registry": "ghcr.io",
+              "repository": os.environ["PUBLIC_REPOSITORY"],
+              "authentication": "GHCR_ANONYMOUS_PULL_TOKEN",
+              "workflow_repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow_name": "avatar-primary-serverless-image",
+              "workflow_ref": os.environ["GITHUB_REF"],
+              "workflow_commit": os.environ["GITHUB_SHA"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "registry_observed_at": os.environ["PUBLIC_REGISTRY_OBSERVED_AT"],
+              "manifest": {
+                  "digest": os.environ["PUBLIC_MANIFEST_DIGEST"],
+                  "header_digest": os.environ["PUBLIC_MANIFEST_HEADER_DIGEST"],
+                  "content_sha256": os.environ["PUBLIC_MANIFEST_DIGEST"],
+                  "media_type": os.environ["PUBLIC_MANIFEST_MEDIA_TYPE"],
+                  "response_content_type": os.environ["PUBLIC_MANIFEST_RESPONSE_CONTENT_TYPE"],
+                  "size_bytes": int(os.environ["PUBLIC_MANIFEST_SIZE"]),
+                  "http_status": int(os.environ["PUBLIC_MANIFEST_STATUS"]),
+              },
+              "config": config[0],
+              "layers": layers,
+              "all_blobs_verified": True,
+          }
+          canonical = json.dumps(proof, sort_keys=True, separators=(",", ":")).encode()
+          proof["proof_sha256"] = "sha256:" + hashlib.sha256(canonical).hexdigest()
+          Path(os.environ["PUBLIC_PROOF_PATH"]).write_text(
+              json.dumps(proof, sort_keys=True, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
+          PY
           unset anonymous_token
+          echo "SOULX_ANONYMOUS_PUBLICATION_PROOF_PATH=$proof_path" >> "$GITHUB_ENV"
           echo "anonymous_public_pull=passed" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Write deployability and publication evidence
@@ -362,8 +469,17 @@ jobs:
           from pathlib import Path
 
           published = os.environ["SOULX_PUBLISHED"] == "true"
+          anonymous_proof = (
+              json.loads(
+                  Path(os.environ["SOULX_ANONYMOUS_PUBLICATION_PROOF_PATH"]).read_text(
+                      encoding="utf-8"
+                  )
+              )
+              if published
+              else None
+          )
           record = {
-              "schema_version": "videoforge-image-deployability/v1",
+              "schema_version": "videoforge-image-deployability/v2",
               "checkpoint": "V2-08",
               "lane": "soulx_avatar",
               "source_commit": os.environ["GITHUB_SHA"],
@@ -378,6 +494,8 @@ jobs:
               "local_image_id": os.environ["SOULX_LOCAL_IMAGE_ID"],
               "immutable_image": os.environ["SOULX_IMMUTABLE_IMAGE"] or None,
               "image_digest": os.environ["SOULX_IMAGE_DIGEST"] or None,
+              "config_digest": anonymous_proof["config"]["digest"] if published else None,
+              "anonymous_publication_proof": anonymous_proof,
               "dockerfile_sha256": (
                   "sha256:348661d34da0ada76ad0740a3be13a42b3843c4ad6ad12c394c6c9a50ced4ab0"
               ),

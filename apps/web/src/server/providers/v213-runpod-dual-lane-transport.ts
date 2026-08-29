@@ -155,6 +155,20 @@ export interface V213AttributableCleanupResult {
   readonly productionResourcesAbsent?: boolean;
   readonly deletedEndpointIdSha256s: readonly string[];
   readonly deletedTemplateIdSha256s: readonly string[];
+  readonly reconciliationReadback?: Readonly<{
+    readonly providerMutationPerformed: false;
+    readonly runningPods: 0;
+    readonly activeWorkers: 0;
+    readonly queuedJobs: 0;
+    readonly observedJobs: readonly Readonly<{
+      readonly jobIdSha256: string;
+      readonly endpointIdSha256: string;
+      readonly status: "COMPLETED" | "FAILED" | "CANCELLED" | "TIMED_OUT";
+    }>[];
+    readonly endpointIdSha256s: readonly string[];
+    readonly templateIdSha256s: readonly string[];
+    readonly volumeIdSha256s: readonly string[];
+  }>;
 }
 
 const hashId = (value: string) =>
@@ -1227,6 +1241,138 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       productionResourcesAbsent: !productionExact,
       deletedEndpointIdSha256s: Object.freeze(deletedEndpoints.sort()),
       deletedTemplateIdSha256s: Object.freeze(deletedTemplates.sort()),
+    });
+  }
+
+  /**
+   * ACK_UNKNOWN cleanup reconciliation is provider-read-only. It proves the terminal state left by
+   * the original authorized cleanup call, but has no route to cancel jobs or create/update/delete
+   * resources. Any still-active job, worker, partial lane, qualification resource, or incomplete
+   * production pair remains unsettled and fails closed for the outer cleanup-only executor.
+   */
+  async reconcileAttributableCleanupReadback(
+    stages: readonly V213CleanupStageRead[],
+  ): Promise<V213AttributableCleanupResult> {
+    const stageByName = new Map(stages.map((stage) => [stage.stage, stage]));
+    if (
+      stageByName.size !== stages.length ||
+      stages.some((stage) => !ID.test(stage.stageAuthorityId))
+    )
+      throw new Error("V213_CLEANUP_SCOPE_INVALID");
+    const resourceKeys = stages.flatMap((stage) => {
+      if (stage.stage === "mage") return [`v213-${stage.stageAuthorityId}-mage-qualification`];
+      if (stage.stage === "soulx") return [`v213-${stage.stageAuthorityId}-soulx-qualification`];
+      return [
+        `v213-${stage.stageAuthorityId}-mage-production`,
+        `v213-${stage.stageAuthorityId}-soulx-production`,
+      ];
+    });
+    const observedJobs: {
+      jobIdSha256: string;
+      endpointIdSha256: string;
+      status: "COMPLETED" | "FAILED" | "CANCELLED" | "TIMED_OUT";
+    }[] = [];
+    for (const stage of stages) {
+      const endpointBindings = stage.operations
+        .filter((operation) => operation.kind === "create")
+        .flatMap((operation) => {
+          if (
+            operation.evidence === null ||
+            typeof operation.evidence !== "object" ||
+            Array.isArray(operation.evidence)
+          )
+            return [];
+          const evidence = operation.evidence as Record<string, unknown>;
+          if (typeof evidence.endpointId !== "string" || !ID.test(evidence.endpointId)) return [];
+          const endpointIdSha256 = hashId(evidence.endpointId);
+          if (
+            typeof evidence.endpointIdSha256 !== "string" ||
+            evidence.endpointIdSha256 !== endpointIdSha256
+          )
+            throw new Error("V213_CLEANUP_READBACK_JOB_ENDPOINT_DRIFT");
+          return [{ endpointId: evidence.endpointId, endpointIdSha256 }];
+        });
+      for (const operation of stage.operations.filter((item) => item.kind === "dispatch")) {
+        if (!operation.providerId || !ID.test(operation.providerId))
+          throw new Error("V213_CLEANUP_READBACK_JOB_ID_UNAVAILABLE");
+        const endpointCandidates = endpointBindings.filter((binding) =>
+          stage.operations.some(
+            (candidate) =>
+              (candidate.kind === "status" || candidate.kind === "cancel") &&
+              candidate.providerId === operation.providerId &&
+              (candidate.resourceKey === `${binding.endpointIdSha256}:${operation.providerId}` ||
+                candidate.resourceKey.startsWith(
+                  `${binding.endpointIdSha256}:${operation.providerId}:`,
+                )),
+          ),
+        );
+        const endpoint =
+          endpointCandidates.length === 1
+            ? endpointCandidates[0]
+            : endpointBindings.length === 1
+              ? endpointBindings[0]
+              : undefined;
+        if (!endpoint) throw new Error("V213_CLEANUP_READBACK_JOB_ENDPOINT_UNAVAILABLE");
+        const observed = await this.status(endpoint.endpointId, operation.providerId);
+        if (observed.status === "IN_QUEUE" || observed.status === "IN_PROGRESS")
+          throw new Error("V213_CLEANUP_READBACK_JOB_ACTIVE");
+        observedJobs.push({
+          jobIdSha256: hashId(observed.jobId),
+          endpointIdSha256: endpoint.endpointIdSha256,
+          status: observed.status,
+        });
+      }
+    }
+
+    const productionKeys = resourceKeys.filter((key) => key.endsWith("-production"));
+    const productionOperations = stageByName.get("production")?.operations ?? [];
+    const production: V213LaneDeployment[] = [];
+    for (const key of productionKeys) {
+      const resources = await this.findNamedResources(key);
+      if (resources.endpoints.length === 0 && resources.templates.length === 0) continue;
+      if (resources.endpoints.length !== 1 || resources.templates.length !== 1)
+        throw new Error("V213_CLEANUP_READBACK_PARTIAL_RESOURCE");
+      const binding = this.bindingForResourceKey(key, productionOperations);
+      if (!binding) throw new Error("V213_CLEANUP_READBACK_BINDING_UNAVAILABLE");
+      const deployment = await this.findLaneByResourceKey(key, binding);
+      if (!deployment) throw new Error("V213_CLEANUP_READBACK_RESOURCE_DRIFT");
+      production.push(deployment);
+    }
+    for (const key of resourceKeys.filter((value) => value.endsWith("-qualification"))) {
+      const resources = await this.findNamedResources(key);
+      if (resources.endpoints.length !== 0 || resources.templates.length !== 0)
+        throw new Error("V213_CLEANUP_READBACK_QUALIFICATION_REMAINS");
+    }
+    const productionExact =
+      productionKeys.length === 2 &&
+      production.length === 2 &&
+      new Set(production.map((deployment) => deployment.lane)).size === 2;
+    if (!productionExact && production.length !== 0)
+      throw new Error("V213_CLEANUP_READBACK_PRODUCTION_PARTIAL");
+
+    const inventory = await this.inventory();
+    if (inventory.runningPods !== 0 || inventory.activeWorkers !== 0 || inventory.queuedJobs !== 0)
+      throw new Error("V213_CLEANUP_READBACK_COMPUTE_ACTIVE");
+    return Object.freeze({
+      production: Object.freeze(productionExact ? production : []),
+      productionCleanupState: productionExact
+        ? "EXACT_MAX_ONE_PAIR_RETAINED"
+        : "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+      productionResourcesAbsent: !productionExact,
+      deletedEndpointIdSha256s: Object.freeze([]),
+      deletedTemplateIdSha256s: Object.freeze([]),
+      reconciliationReadback: Object.freeze({
+        providerMutationPerformed: false,
+        runningPods: 0,
+        activeWorkers: 0,
+        queuedJobs: 0,
+        observedJobs: Object.freeze(
+          observedJobs.sort((left, right) => left.jobIdSha256.localeCompare(right.jobIdSha256)),
+        ),
+        endpointIdSha256s: Object.freeze([...inventory.endpointIdSha256s].sort()),
+        templateIdSha256s: Object.freeze([...inventory.templateIdSha256s].sort()),
+        volumeIdSha256s: Object.freeze(inventory.volumes.map((volume) => volume.idSha256).sort()),
+      }),
     });
   }
 

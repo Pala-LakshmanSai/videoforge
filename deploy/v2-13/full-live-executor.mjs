@@ -1,8 +1,18 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { createHash, randomBytes } from "node:crypto";
+import {
+  closeSync,
+  constants as fsConstants,
+  fsyncSync,
+  linkSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -31,6 +41,7 @@ import {
 } from "./full-live-orchestration-authority.mjs";
 import {
   createConcreteFullLiveAdapters,
+  createRunPodPerMutationAdmissionReader,
   preflightConcreteFullLiveInputs,
   readAuthenticatedGithubTime,
   verifyPrequalificationDatabaseReceipt,
@@ -46,34 +57,67 @@ const EXECUTOR_SHA256 = `sha256:${createHash("sha256")
 const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const APPROVAL_BRANCH = "codex/serverless-v2-roadmap-v4";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const COMMIT = /^[0-9a-f]{40}$/u;
+const FRESH_WORKFLOW_READBACK_SCHEMA = "videoforge.v213-fresh-default-branch-workflow-readback/v1";
+const WORKFLOW_REGISTRATION_REPOSITORY = "Pala-LakshmanSai/videoforge";
+const WORKFLOW_REGISTRATION_DEFAULT_BRANCH = "main";
+const EXACT_DEFAULT_BRANCH_WORKFLOWS = Object.freeze([
+  Object.freeze({ workflowFile: "mage-image.yml", workflowName: "mage-image" }),
+  Object.freeze({
+    workflowFile: "avatar-primary-serverless-image.yml",
+    workflowName: "avatar-primary-serverless-image",
+  }),
+]);
+const RUNPOD_PER_MUTATION_ADMISSION_SCHEMA = "videoforge.v213-runpod-per-mutation-admission/v2";
+const RUNPOD_ACCOUNT_ID_SHA256 =
+  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
+const RUNPOD_SERVERLESS_FLEX_RATE_USD_PER_SECOND = 0.00031;
+const RUNPOD_SERVERLESS_FLEX_RATE_SOURCE =
+  "https://docs.runpod.io/serverless/endpoints/endpoint-configurations";
+const RUNPOD_RETAINED_VOLUME_BINDINGS = Object.freeze([
+  Object.freeze({
+    lane: "mage",
+    volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    volumeManifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    sizeGb: 50,
+    region: "EU-RO-1",
+  }),
+  Object.freeze({
+    lane: "soulx",
+    volumeIdSha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    volumeManifestSha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+    sizeGb: 50,
+    region: "EU-RO-1",
+  }),
+]);
 const EXACT_DATABASE_IDENTITY_SHA256 =
   "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
 const PREQUALIFICATION_RECOVERY_MODES = new Set([
-  "FRESH_36_TO_45",
+  "FRESH_36_TO_46",
   "RESUME_EXACT_PREFIX",
-  "VERIFIED_EXISTING_45",
+  "VERIFIED_EXISTING_46",
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:3d7e6f2dfb320b2fe4f2f36a17bcd8b53b39ad8f271e0c60928ec7d6069033e0",
+    "sha256:16b127071ff70590fa577837db32b364f7c224fca48456e8f7bb9924272a7cba",
   "deploy/v2-13/promote-qualified-production.mjs":
-    "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
+    "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:7522808e31aa83d92bd5d8bcdc768438ba11ce5cd69f6fd8be45e0671148fa85",
+    "sha256:a1cf8ece7ffad213550c79db246eb4e3b187928ff38273cbce4a3c0e87b6689d",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0",
+    "sha256:9f844e9b03adb4db2a3ff9200f1fb8faabc2ce5907fa95af98a2ba061d042a71",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
-    "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2",
+    "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
     "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b",
   "deploy/v2-13/neon-full-live-operator-grants.sql":
-    "sha256:38c80de06ef6eff67a03be35326150cf742393efc07fd43ea0b30780c28afab6",
+    "sha256:c0f5e521dba2478001db24027ef48f4f01ec3888bf4885eef862f4d8b214b613",
   "packages/control-plane/migrations/manifest.json":
-    "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
+    "sha256:9dfcc91da2ea46a7dfa0e299a92616a5b6f6255bf20efc0d1cf457fdfe78fac3",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:4d348ad85f803ad36ea3c3e3df54dfb601af45e308bfd55282c1d9ed1340433b",
+    "sha256:2da9f49b28adb6d46cbd2594eef59a22080b386d60672a82c98049b1ef941809",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -191,6 +235,10 @@ const RELEASE_CERTIFICATION_PREDECESSORS = Object.freeze([
 ]);
 const RELEASE_CERTIFICATION_RESULT_SCHEMA = "videoforge.v213-final-release-certification-result/v1";
 const V213_SMOKE_RESULT_SCHEMA = "videoforge.v213-fresh-two-lane-smoke-result/v1";
+const CANCELLATION_RECORD_SCHEMA = "videoforge.v213-full-live-cancellation-record/v1";
+const CANCELLATION_RECORD_SOURCES = new Set(["SIGINT", "SIGTERM", "INJECTED_SOURCE"]);
+const QUALIFIED_PRODUCTION_CLEANUP_PROOF_SCHEMA =
+  "videoforge.v213-qualified-production-cleanup-proof/v1";
 const CLEANUP_SAFETY_OPERATION_IDS = new Set([
   "restore-endpoints-max-one",
   "prove-zero-workers",
@@ -223,6 +271,187 @@ function runPodMutationBoundaryReached(state) {
   return false;
 }
 
+function expectedMutationEndpointBindings(operation, results) {
+  if (!operation.id.startsWith("v2-")) return Object.freeze([]);
+  const production = results.get("create-exact-max-one-endpoints")?.materialization?.production;
+  const bindings = ["mage", "soulx"].map((lane) => {
+    const deployment = production?.[lane];
+    const binding = {
+      lane,
+      endpointIdSha256: deployment?.endpointIdSha256,
+      templateIdSha256: deployment?.templateIdSha256,
+      imageSha256: deployment?.imageSha256,
+      deploymentSha256: deployment?.deploymentSha256,
+      volumeIdSha256: deployment?.volumeIdSha256,
+      volumeManifestSha256: deployment?.volumeManifestSha256,
+      region: deployment?.region,
+      gpu: deployment?.gpu,
+      gpuCount: deployment?.gpuCount,
+      workersMin: deployment?.workersMin,
+      workersMax: deployment?.workersMax,
+    };
+    if (
+      !exactKeys(binding, [
+        "deploymentSha256",
+        "endpointIdSha256",
+        "gpu",
+        "gpuCount",
+        "imageSha256",
+        "lane",
+        "region",
+        "templateIdSha256",
+        "volumeIdSha256",
+        "volumeManifestSha256",
+        "workersMax",
+        "workersMin",
+      ]) ||
+      ![
+        binding.endpointIdSha256,
+        binding.templateIdSha256,
+        binding.imageSha256,
+        binding.deploymentSha256,
+        binding.volumeIdSha256,
+        binding.volumeManifestSha256,
+      ].every((value) => HASH.test(value ?? "")) ||
+      binding.region !== "EU-RO-1" ||
+      binding.gpu !== "NVIDIA GeForce RTX 4090" ||
+      binding.gpuCount !== 1 ||
+      binding.workersMin !== 0 ||
+      binding.workersMax !== 1
+    )
+      fail("PER_MUTATION_RUNPOD_ADMISSION_ENDPOINT_PREDECESSOR", operation.id);
+    return Object.freeze(binding);
+  });
+  if (
+    new Set(bindings.map((binding) => binding.endpointIdSha256)).size !== 2 ||
+    new Set(bindings.map((binding) => binding.templateIdSha256)).size !== 2
+  )
+    fail("PER_MUTATION_RUNPOD_ADMISSION_ENDPOINT_PREDECESSOR", operation.id);
+  return Object.freeze(bindings);
+}
+
+export function validateRunPodPerMutationAdmission({
+  operation,
+  proof,
+  state,
+  results,
+  outerStateSha256,
+  trustedTime,
+}) {
+  const expectedKeys = [
+    "activeWorkers",
+    "authenticatedAccountSha256",
+    "availability",
+    "checkedAt",
+    "endpointBindings",
+    "exactGpu",
+    "noFallback",
+    "operationId",
+    "outerStateSha256BeforeAuthorization",
+    "proofSha256",
+    "region",
+    "retainedVolumes",
+    "runningPods",
+    "schemaVersion",
+    "serverlessCatalogSha256",
+    "serverlessFlexRateUsdPerGpuHour",
+    "serverlessFlexRateUsdPerSecond",
+    "serverlessFlexRateAuthenticatedCatalogSha256",
+    "serverlessFlexRateSource",
+    "serverlessFlexRateSourceCheckedAt",
+    "serverlessFlexRateSourceSha256",
+  ];
+  if (
+    !RUNPOD_MUTATION_OPERATION_IDS.has(operation?.id) ||
+    !(results instanceof Map) ||
+    !HASH.test(outerStateSha256 ?? "") ||
+    !exactKeys(proof, expectedKeys) ||
+    proof.schemaVersion !== RUNPOD_PER_MUTATION_ADMISSION_SCHEMA ||
+    proof.operationId !== operation.id ||
+    proof.outerStateSha256BeforeAuthorization !== outerStateSha256 ||
+    proof.authenticatedAccountSha256 !== RUNPOD_ACCOUNT_ID_SHA256 ||
+    proof.exactGpu !== "NVIDIA GeForce RTX 4090" ||
+    proof.region !== "EU-RO-1" ||
+    !["LOW", "MEDIUM", "HIGH"].includes(proof.availability) ||
+    typeof proof.serverlessFlexRateUsdPerSecond !== "number" ||
+    !Number.isFinite(proof.serverlessFlexRateUsdPerSecond) ||
+    proof.serverlessFlexRateUsdPerSecond < 0 ||
+    proof.serverlessFlexRateUsdPerSecond > RUNPOD_SERVERLESS_FLEX_RATE_USD_PER_SECOND ||
+    typeof proof.serverlessFlexRateUsdPerGpuHour !== "number" ||
+    !Number.isFinite(proof.serverlessFlexRateUsdPerGpuHour) ||
+    proof.serverlessFlexRateUsdPerGpuHour < 0 ||
+    proof.serverlessFlexRateUsdPerGpuHour > EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR ||
+    Math.abs(proof.serverlessFlexRateUsdPerGpuHour - proof.serverlessFlexRateUsdPerSecond * 3600) >
+      Number.EPSILON * 3600 ||
+    proof.serverlessFlexRateSource !== RUNPOD_SERVERLESS_FLEX_RATE_SOURCE ||
+    !HASH.test(proof.serverlessFlexRateAuthenticatedCatalogSha256 ?? "") ||
+    !HASH.test(proof.serverlessFlexRateSourceSha256 ?? "") ||
+    proof.noFallback !== true ||
+    proof.activeWorkers !== 0 ||
+    proof.runningPods !== 0 ||
+    !HASH.test(proof.serverlessCatalogSha256 ?? "") ||
+    proof.serverlessCatalogSha256 !== proof.serverlessFlexRateAuthenticatedCatalogSha256 ||
+    !HASH.test(proof.proofSha256 ?? "")
+  )
+    fail("PER_MUTATION_RUNPOD_ADMISSION", operation?.id);
+  const unsigned = { ...proof };
+  delete unsigned.proofSha256;
+  if (canonicalSha256(unsigned) !== proof.proofSha256)
+    fail("PER_MUTATION_RUNPOD_ADMISSION_HASH", operation.id);
+  const checkedMs = Date.parse(proof.checkedAt ?? "");
+  const rateSourceCheckedMs = Date.parse(proof.serverlessFlexRateSourceCheckedAt ?? "");
+  const trustedMs = Date.parse(trustedTime ?? proof.checkedAt ?? "");
+  const approvedMs = Date.parse(state?.approved_at ?? "");
+  const expiresMs = Date.parse(state?.expires_at ?? "");
+  if (
+    Number.isNaN(checkedMs) ||
+    Number.isNaN(rateSourceCheckedMs) ||
+    Number.isNaN(trustedMs) ||
+    Number.isNaN(approvedMs) ||
+    Number.isNaN(expiresMs) ||
+    approvedMs > expiresMs ||
+    Math.abs(checkedMs - trustedMs) > 60_000 ||
+    Math.abs(rateSourceCheckedMs - trustedMs) > 300_000 ||
+    checkedMs < approvedMs ||
+    checkedMs > expiresMs
+  )
+    fail("PER_MUTATION_RUNPOD_ADMISSION_TIME", operation.id);
+  if (
+    canonicalJson(proof.endpointBindings) !==
+      canonicalJson(expectedMutationEndpointBindings(operation, results)) ||
+    canonicalJson(proof.retainedVolumes) !== canonicalJson(RUNPOD_RETAINED_VOLUME_BINDINGS)
+  )
+    fail("PER_MUTATION_RUNPOD_ADMISSION_RESOURCE_DRIFT", operation.id);
+  return Object.freeze(structuredClone(proof));
+}
+
+export async function readFreshRunPodMutationAdmission({
+  readMutationAdmission,
+  operation,
+  state,
+  results,
+  outerStateSha256,
+  trustedTime,
+}) {
+  if (typeof readMutationAdmission !== "function")
+    fail("PER_MUTATION_RUNPOD_ADMISSION_READER_REQUIRED", operation?.id);
+  const proof = await readMutationAdmission({
+    operation: structuredClone(operation),
+    state: structuredClone(state),
+    priorResults: new Map(results),
+    outerStateSha256,
+    trustedTime,
+  });
+  return validateRunPodPerMutationAdmission({
+    operation,
+    proof,
+    state,
+    results,
+    outerStateSha256,
+    trustedTime,
+  });
+}
+
 function canUseEarlyCleanup(state) {
   return state?.operator_role_verified !== true && !runPodMutationBoundaryReached(state);
 }
@@ -246,13 +475,18 @@ function cleanupModeFor(state) {
 // Guarded activation is real, but it cannot safely run before the preceding image, qualification,
 // endpoint, and evidence adapters exist. Keep the closed-world live surface empty until all of the
 // graph is callable and independently reviewed.
-const CONCRETE_LIVE_ADAPTERS = createConcreteFullLiveAdapters();
+let productionCancellationRequested = false;
+const productionCancellationSource = () => productionCancellationRequested;
+const CONCRETE_LIVE_ADAPTERS = createConcreteFullLiveAdapters({
+  githubVerification: { isCancelled: productionCancellationSource },
+});
 
 const fail = (code, detail = "") => {
   throw new Error(`V2_13_FULL_LIVE_EXECUTOR_${code}${detail ? `:${detail}` : ""}`);
 };
 
 const FAILURE_BOUNDARIES = Object.freeze({
+  cancellation: "CANCELLATION_REQUESTED",
   initialStaticReleaseDescriptor: "INITIAL_STATIC_RELEASE_DESCRIPTOR",
   initialMaterializationSeed: "INITIAL_MATERIALIZATION_SEED",
   initialPreflight: "INITIAL_PREFLIGHT",
@@ -260,6 +494,7 @@ const FAILURE_BOUNDARIES = Object.freeze({
   phaseMutationTrustedTime: "PHASE_MUTATION_TRUSTED_TIME",
   operationStaticReleaseDescriptor: "OPERATION_STATIC_RELEASE_DESCRIPTOR",
   operationMaterializationSeed: "OPERATION_MATERIALIZATION_SEED",
+  perMutationAdmission: "PER_MUTATION_RUNPOD_ADMISSION",
   operationAuthorization: "OPERATION_AUTHORIZATION",
   operationExecution: "OPERATION_EXECUTION",
   operationResultValidation: "OPERATION_RESULT_VALIDATION",
@@ -334,6 +569,394 @@ const canonicalSha256 = (value) =>
     .update(Buffer.from(canonicalJson(value)))
     .digest("hex")}`;
 
+function validateFreshWorkflowReadbackResult(result, state) {
+  const proof = result?.freshWorkflowReadback;
+  if (
+    !exactKeys(proof, [
+      "defaultBranch",
+      "defaultBranchCommit",
+      "exactBothRegisteredAndByteIdentical",
+      "proofSha256",
+      "releaseSourceCommit",
+      "repository",
+      "schemaVersion",
+      "workflows",
+    ]) ||
+    proof.schemaVersion !== FRESH_WORKFLOW_READBACK_SCHEMA ||
+    proof.repository !== WORKFLOW_REGISTRATION_REPOSITORY ||
+    proof.defaultBranch !== WORKFLOW_REGISTRATION_DEFAULT_BRANCH ||
+    !COMMIT.test(proof.defaultBranchCommit ?? "") ||
+    proof.releaseSourceCommit !== state.release_source_commit ||
+    proof.exactBothRegisteredAndByteIdentical !== true ||
+    !Array.isArray(proof.workflows) ||
+    proof.workflows.length !== EXACT_DEFAULT_BRANCH_WORKFLOWS.length ||
+    !HASH.test(proof.proofSha256 ?? "") ||
+    result.freshWorkflowReadbackSha256 !== proof.proofSha256 ||
+    result.workflowRegistrationEvidenceSha256 !== state.soulx_workflow_registration_evidence_sha256
+  )
+    fail("WORKFLOW_FRESH_READBACK_BINDING");
+  for (const [index, expected] of EXACT_DEFAULT_BRANCH_WORKFLOWS.entries()) {
+    const workflow = proof.workflows[index];
+    if (
+      !exactKeys(workflow, ["workflowFile", "workflowId", "workflowName", "workflowSha256"]) ||
+      workflow.workflowFile !== expected.workflowFile ||
+      workflow.workflowName !== expected.workflowName ||
+      !Number.isSafeInteger(workflow.workflowId) ||
+      workflow.workflowId < 1 ||
+      !HASH.test(workflow.workflowSha256 ?? "")
+    )
+      fail("WORKFLOW_FRESH_READBACK_WORKFLOW");
+  }
+  if (
+    proof.workflows[0].workflowId === proof.workflows[1].workflowId ||
+    proof.defaultBranchCommit !==
+      state.soulx_workflow_registration_evidence?.default_branch_commit ||
+    proof.workflows[1].workflowSha256 !==
+      state.soulx_workflow_registration_evidence?.default_branch_workflow_sha256
+  )
+    fail("WORKFLOW_FRESH_READBACK_REGISTRATION_BINDING");
+  const unsigned = { ...proof };
+  delete unsigned.proofSha256;
+  if (canonicalSha256(unsigned) !== proof.proofSha256) fail("WORKFLOW_FRESH_READBACK_HASH");
+  return Object.freeze(structuredClone(proof));
+}
+
+function syncCancellationDirectory(path) {
+  let descriptor;
+  try {
+    descriptor = openSync(dirname(path), fsConstants.O_RDONLY);
+    fsyncSync(descriptor);
+  } catch {
+    fail("CANCELLATION_RECORD_DIRECTORY_SYNC");
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+function exactCancellationRecord(value, expected = {}) {
+  const keys = [
+    "authorityId",
+    "fullLiveAuthorityId",
+    "recordSha256",
+    "requestedAt",
+    "schemaVersion",
+    "source",
+    "stateSha256AtRequest",
+  ];
+  if (
+    !exactKeys(value, keys) ||
+    value.schemaVersion !== CANCELLATION_RECORD_SCHEMA ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,191}$/u.test(value.authorityId ?? "") ||
+    !UUID.test(value.fullLiveAuthorityId ?? "") ||
+    !CANCELLATION_RECORD_SOURCES.has(value.source) ||
+    Number.isNaN(Date.parse(value.requestedAt ?? "")) ||
+    !HASH.test(value.stateSha256AtRequest ?? "") ||
+    !HASH.test(value.recordSha256 ?? "") ||
+    (expected.authorityId !== undefined && value.authorityId !== expected.authorityId) ||
+    (expected.fullLiveAuthorityId !== undefined &&
+      value.fullLiveAuthorityId !== expected.fullLiveAuthorityId)
+  )
+    fail("CANCELLATION_RECORD_INVALID");
+  const unsigned = { ...value };
+  delete unsigned.recordSha256;
+  if (canonicalSha256(unsigned) !== value.recordSha256) fail("CANCELLATION_RECORD_INVALID");
+  return Object.freeze(value);
+}
+
+export function readDurableCancellationRecord({ path, authorityId, fullLiveAuthorityId }) {
+  if (typeof path !== "string" || path === "" || path.includes("\0"))
+    fail("CANCELLATION_RECORD_PATH");
+  let metadata;
+  try {
+    metadata = lstatSync(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    fail("CANCELLATION_RECORD_READ");
+  }
+  if (!metadata.isFile() || metadata.isSymbolicLink() || (metadata.mode & 0o077) !== 0)
+    fail("CANCELLATION_RECORD_FILE");
+  let value;
+  try {
+    value = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    fail("CANCELLATION_RECORD_READ");
+  }
+  return exactCancellationRecord(value, { authorityId, fullLiveAuthorityId });
+}
+
+export function recordDurableCancellation({ path, statePath, source, now = () => new Date() }) {
+  if (
+    typeof path !== "string" ||
+    path === "" ||
+    path.includes("\0") ||
+    typeof statePath !== "string" ||
+    statePath === "" ||
+    statePath.includes("\0") ||
+    !CANCELLATION_RECORD_SOURCES.has(source)
+  )
+    fail("CANCELLATION_RECORD_INPUT");
+  let stateBytes;
+  let state;
+  try {
+    stateBytes = readFileSync(statePath);
+    state = JSON.parse(stateBytes.toString("utf8"));
+  } catch {
+    fail("CANCELLATION_STATE_READ");
+  }
+  validateState(state);
+  const existing = readDurableCancellationRecord({
+    path,
+    authorityId: state.authority_id,
+    fullLiveAuthorityId: state.full_live_authority_id,
+  });
+  if (existing !== null) return existing;
+  const requestedAt = now().toISOString();
+  if (Number.isNaN(Date.parse(requestedAt))) fail("CANCELLATION_RECORD_TIME");
+  const unsigned = {
+    schemaVersion: CANCELLATION_RECORD_SCHEMA,
+    authorityId: state.authority_id,
+    fullLiveAuthorityId: state.full_live_authority_id,
+    source,
+    requestedAt,
+    stateSha256AtRequest: `sha256:${createHash("sha256").update(stateBytes).digest("hex")}`,
+  };
+  const record = Object.freeze({ ...unsigned, recordSha256: canonicalSha256(unsigned) });
+  const finalPath = resolve(path);
+  const stagePath = `${finalPath}.${process.pid}.${randomBytes(12).toString("hex")}.stage`;
+  let descriptor;
+  try {
+    descriptor = openSync(
+      stagePath,
+      fsConstants.O_WRONLY |
+        fsConstants.O_CREAT |
+        fsConstants.O_EXCL |
+        (fsConstants.O_NOFOLLOW ?? 0),
+      0o600,
+    );
+    writeFileSync(descriptor, `${canonicalJson(record)}\n`, "utf8");
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
+    try {
+      linkSync(stagePath, finalPath);
+      syncCancellationDirectory(finalPath);
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_EXECUTOR_"))
+      throw error;
+    fail("CANCELLATION_RECORD_WRITE");
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+    try {
+      unlinkSync(stagePath);
+      syncCancellationDirectory(finalPath);
+    } catch (error) {
+      if (error?.code !== "ENOENT") fail("CANCELLATION_RECORD_WRITE");
+    }
+  }
+  return readDurableCancellationRecord({
+    path: finalPath,
+    authorityId: state.authority_id,
+    fullLiveAuthorityId: state.full_live_authority_id,
+  });
+}
+
+export function createDurableCancellationSource({
+  statePath,
+  recordPath = `${statePath}.cancellation.json`,
+  now,
+} = {}) {
+  if (typeof statePath !== "string" || statePath === "" || statePath.includes("\0"))
+    fail("CANCELLATION_STATE_PATH");
+  const controller = new AbortController();
+  let observedRecord = null;
+  const currentState = () => {
+    let state;
+    try {
+      state = JSON.parse(readFileSync(statePath, "utf8"));
+    } catch {
+      fail("CANCELLATION_STATE_READ");
+    }
+    validateState(state);
+    return state;
+  };
+  const read = () => {
+    const state = currentState();
+    observedRecord = readDurableCancellationRecord({
+      path: recordPath,
+      authorityId: state.authority_id,
+      fullLiveAuthorityId: state.full_live_authority_id,
+    });
+    if (observedRecord !== null && !controller.signal.aborted)
+      controller.abort(new Error("V2_13_FULL_LIVE_EXECUTOR_CANCELLATION_REQUESTED"));
+    return observedRecord;
+  };
+  const request = (source) => {
+    try {
+      observedRecord = recordDurableCancellation({
+        path: recordPath,
+        statePath,
+        source,
+        now,
+      });
+    } finally {
+      if (!controller.signal.aborted)
+        controller.abort(new Error("V2_13_FULL_LIVE_EXECUTOR_CANCELLATION_REQUESTED"));
+    }
+    return observedRecord;
+  };
+  return Object.freeze({
+    recordPath: resolve(recordPath),
+    signal: controller.signal,
+    read,
+    request,
+    isCancelled: () => read() !== null,
+    record: () => observedRecord,
+  });
+}
+
+function promotionAttemptRecorded(state) {
+  const operation = OPERATIONS.find(({ id }) => id === "promote-qualified-production");
+  if (!operation || state === null || typeof state !== "object") return false;
+  const workId = `${state.authority_id}:${operation.id}`.toLowerCase();
+  return state.phases?.[operation.phase]?.work?.[workId] !== undefined;
+}
+
+function exactQualifiedProductionCleanupProof(value, { requireRollback = false } = {}) {
+  const keys = [
+    "databasePromotionAttempted",
+    "databasePromotionSha256",
+    "databaseRollbackRecorded",
+    "databaseRollbackSha256",
+    "disabledConfigSha256",
+    "disabledVersionSha256",
+    "enabled",
+    "fullLiveAuthorityId",
+    "gpuDispatchPerformed",
+    "productionRedispatched",
+    "promotionId",
+    "proofSha256",
+    "providerReadbackPassed",
+    "routeStatus",
+    "schemaVersion",
+    "state",
+  ];
+  if (
+    !exactKeys(value, keys) ||
+    value.schemaVersion !== QUALIFIED_PRODUCTION_CLEANUP_PROOF_SCHEMA ||
+    !UUID.test(value.fullLiveAuthorityId ?? "") ||
+    !UUID.test(value.promotionId ?? "") ||
+    value.state !== "DISABLED_UNQUALIFIED" ||
+    value.enabled !== false ||
+    value.gpuDispatchPerformed !== false ||
+    value.productionRedispatched !== false ||
+    value.providerReadbackPassed !== true ||
+    value.routeStatus !== 503 ||
+    !HASH.test(value.disabledConfigSha256 ?? "") ||
+    !HASH.test(value.disabledVersionSha256 ?? "") ||
+    typeof value.databasePromotionAttempted !== "boolean" ||
+    (value.databasePromotionAttempted
+      ? !HASH.test(value.databasePromotionSha256 ?? "")
+      : value.databasePromotionSha256 !== null) ||
+    typeof value.databaseRollbackRecorded !== "boolean" ||
+    (value.databaseRollbackRecorded
+      ? !HASH.test(value.databaseRollbackSha256 ?? "")
+      : value.databaseRollbackSha256 !== null) ||
+    value.databasePromotionAttempted !== value.databaseRollbackRecorded ||
+    (requireRollback && value.databasePromotionAttempted !== true) ||
+    (requireRollback && value.databaseRollbackRecorded !== true) ||
+    !HASH.test(value.proofSha256 ?? "")
+  )
+    fail("QUALIFIED_PRODUCTION_CLEANUP_PROOF");
+  const unsigned = { ...value };
+  delete unsigned.proofSha256;
+  if (canonicalSha256(unsigned) !== value.proofSha256) fail("QUALIFIED_PRODUCTION_CLEANUP_PROOF");
+  return Object.freeze(value);
+}
+
+function exactPromotionCleanupAbsenceProof(value, { authorityId, fullLiveAuthorityId } = {}) {
+  const keys = [
+    "authorityId",
+    "cloudflareMutationPossible",
+    "databaseMutationPossible",
+    "fullLiveAuthorityId",
+    "promotionJournalMaterialized",
+    "promotionRecordMaterialized",
+    "promotionWorkId",
+    "proofSha256",
+    "schemaVersion",
+  ];
+  if (
+    !exactKeys(value, keys) ||
+    value.schemaVersion !== "videoforge.v213-promotion-cleanup-absence-proof/v1" ||
+    !UUID.test(value.authorityId ?? "") ||
+    !UUID.test(value.fullLiveAuthorityId ?? "") ||
+    value.promotionWorkId !== `${value.authorityId}:promote-qualified-production`.toLowerCase() ||
+    value.promotionRecordMaterialized !== false ||
+    value.promotionJournalMaterialized !== false ||
+    value.databaseMutationPossible !== false ||
+    value.cloudflareMutationPossible !== false ||
+    (authorityId !== undefined && value.authorityId !== authorityId) ||
+    (fullLiveAuthorityId !== undefined && value.fullLiveAuthorityId !== fullLiveAuthorityId) ||
+    !HASH.test(value.proofSha256 ?? "")
+  )
+    fail("PROMOTION_CLEANUP_ABSENCE_PROOF");
+  const unsigned = { ...value };
+  delete unsigned.proofSha256;
+  if (canonicalSha256(unsigned) !== value.proofSha256) fail("PROMOTION_CLEANUP_ABSENCE_PROOF");
+  return Object.freeze(value);
+}
+
+function resultQualifiedProductionCleanup(
+  result,
+  { required = false, requireRollback = false, authorityId } = {},
+) {
+  const hasProof = result?.qualifiedProductionCleanup !== undefined;
+  const hasEvidence = result?.promotionCleanupEvidenceSha256 !== undefined;
+  if (!hasProof && !hasEvidence && !required) return null;
+  if (!hasProof || !hasEvidence) fail("QUALIFIED_PRODUCTION_CLEANUP_MISSING");
+  const proof = exactQualifiedProductionCleanupProof(result.qualifiedProductionCleanup, {
+    requireRollback,
+  });
+  if (
+    result.promotionCleanupEvidenceSha256 !== proof.proofSha256 ||
+    (authorityId !== undefined && proof.fullLiveAuthorityId !== authorityId)
+  )
+    fail("QUALIFIED_PRODUCTION_CLEANUP_EVIDENCE");
+  return proof;
+}
+
+function resultPromotionCleanupClosure(
+  result,
+  { required = false, requireRollback = false, authorityId, fullLiveAuthorityId } = {},
+) {
+  const qualified = resultQualifiedProductionCleanup(result, {
+    required: false,
+    requireRollback,
+    authorityId: fullLiveAuthorityId,
+  });
+  const hasAbsence = result?.promotionCleanupAbsence !== undefined;
+  const hasAbsenceEvidence = result?.promotionCleanupAbsenceEvidenceSha256 !== undefined;
+  if (qualified !== null && (hasAbsence || hasAbsenceEvidence))
+    fail("PROMOTION_CLEANUP_CLOSURE_AMBIGUOUS");
+  if (!hasAbsence && !hasAbsenceEvidence) {
+    if (qualified !== null) return Object.freeze({ kind: "QUALIFIED", proof: qualified });
+    if (required) fail("PROMOTION_CLEANUP_CLOSURE_MISSING");
+    return null;
+  }
+  if (!hasAbsence || !hasAbsenceEvidence || requireRollback)
+    fail("PROMOTION_CLEANUP_ABSENCE_INVALID");
+  const proof = exactPromotionCleanupAbsenceProof(result.promotionCleanupAbsence, {
+    authorityId,
+    fullLiveAuthorityId,
+  });
+  if (result.promotionCleanupAbsenceEvidenceSha256 !== proof.proofSha256)
+    fail("PROMOTION_CLEANUP_ABSENCE_EVIDENCE");
+  return Object.freeze({ kind: "ABSENT", proof });
+}
+
 /** The final certification consumes only current-run, already-settled evidence. This check runs
  * before its zero-spend adapter is invoked, so a missing or ambiguous receipt cannot cause even a
  * read-only certification dispatch. */
@@ -347,7 +970,17 @@ export function certificationPredecessorEvidence(results) {
   }
   const smoke = results.get("v2-13-final-two-lane-smoke");
   const restoration = results.get("restore-endpoints-max-one");
+  const resources = results.get("reconcile-exact-resources");
+  const restorationPromotionCleanup = resultQualifiedProductionCleanup(restoration, {
+    required: true,
+    requireRollback: true,
+  });
+  const resourcePromotionCleanup = resultQualifiedProductionCleanup(resources, {
+    required: true,
+    requireRollback: true,
+  });
   if (
+    canonicalJson(restorationPromotionCleanup) !== canonicalJson(resourcePromotionCleanup) ||
     smoke?.schemaVersion !== V213_SMOKE_RESULT_SCHEMA ||
     smoke.smokeOnly !== true ||
     smoke.releaseCertified !== false ||
@@ -355,7 +988,7 @@ export function certificationPredecessorEvidence(results) {
     smoke.evidenceSha256 !== smoke.signedSmokeEvidenceSha256 ||
     results.get("prove-zero-workers")?.zeroWorkers !== true ||
     results.get("read-settled-billing")?.withinCumulativeCap !== true ||
-    results.get("reconcile-exact-resources")?.onlyApprovedRetainedVolumes !== true ||
+    resources?.onlyApprovedRetainedVolumes !== true ||
     restoration?.productionCleanupState !== "EXACT_MAX_ONE_PAIR_RETAINED" ||
     restoration.bothEndpointsMaxWorkersOne !== true ||
     restoration.retainedProductionEndpoints !== 2 ||
@@ -365,12 +998,26 @@ export function certificationPredecessorEvidence(results) {
   return Object.freeze(evidence);
 }
 
-export function cleanupProofEvidence(results) {
+export function cleanupProofEvidence(
+  results,
+  { requireQualifiedProductionCleanup = results.has("promote-qualified-production") } = {},
+) {
   const zero = results.get("prove-zero-workers");
   const billing = results.get("read-settled-billing");
   const resources = results.get("reconcile-exact-resources");
   const maxOne = results.get("restore-endpoints-max-one");
+  const requireRollback = results.has("promote-qualified-production");
+  const maxOnePromotionCleanup = resultPromotionCleanupClosure(maxOne, {
+    required: requireQualifiedProductionCleanup,
+    requireRollback,
+  });
+  const resourcePromotionCleanup = resultPromotionCleanupClosure(resources, {
+    required: requireQualifiedProductionCleanup,
+    requireRollback,
+  });
   if (
+    ((maxOnePromotionCleanup !== null || resourcePromotionCleanup !== null) &&
+      canonicalJson(maxOnePromotionCleanup) !== canonicalJson(resourcePromotionCleanup)) ||
     !HASH.test(zero?.proofSha256 ?? "") ||
     zero?.zeroWorkers !== true ||
     !HASH.test(billing?.proofSha256 ?? "") ||
@@ -398,7 +1045,7 @@ export function assertResult(
   result,
   state,
   results,
-  { authorizedOuterStateSha256 } = {},
+  { authorizedOuterStateSha256, mutationAdmission } = {},
 ) {
   if (result === null || typeof result !== "object" || Array.isArray(result))
     fail("RESULT_CONTRACT", operation.id);
@@ -409,6 +1056,30 @@ export function assertResult(
     result.actualUsd > operation.reserveUsd
   )
     fail("RESULT_COST", operation.id);
+
+  if (RUNPOD_MUTATION_OPERATION_IDS.has(operation.id)) {
+    const workId = `${state.authority_id}:${operation.id}`.toLowerCase();
+    const authorizationEventId =
+      state.phases?.[operation.phase]?.work?.[workId]?.authorization_event_id;
+    const admissionEvent = /:reserved-([0-9a-f]{64})$/u.exec(authorizationEventId ?? "");
+    if (admissionEvent === null)
+      fail("PER_MUTATION_RUNPOD_ADMISSION_AUTHORIZATION_BINDING", operation.id);
+    const proof = validateRunPodPerMutationAdmission({
+      operation,
+      proof: result.mutationAdmission,
+      state,
+      results,
+      outerStateSha256: result.mutationAdmission?.outerStateSha256BeforeAuthorization,
+      trustedTime: result.mutationAdmissionCheckedAt,
+    });
+    if (
+      admissionEvent[1] !== proof.proofSha256.slice("sha256:".length) ||
+      result.mutationAdmissionProofSha256 !== proof.proofSha256 ||
+      result.mutationAdmissionCheckedAt !== proof.checkedAt ||
+      (mutationAdmission !== undefined && canonicalJson(mutationAdmission) !== canonicalJson(proof))
+    )
+      fail("PER_MUTATION_RUNPOD_ADMISSION_RESULT_BINDING", operation.id);
+  }
 
   if (operation.id === "release-tag-create") {
     if (
@@ -448,6 +1119,7 @@ export function assertResult(
       fail("APPROVAL_COMMIT_READBACK", operation.id);
   }
   if (operation.id.endsWith("image-workflow-dispatch")) {
+    validateFreshWorkflowReadbackResult(result, state);
     if (
       !/^[1-9][0-9]*$/u.test(String(result.runId ?? "")) ||
       result.headSha !== state.release_source_commit ||
@@ -522,7 +1194,7 @@ export function assertResult(
       (authorizedOuterStateSha256 !== undefined &&
         result.outer_state_sha256 !== authorizedOuterStateSha256) ||
       !Number.isInteger(result.ledger_before_count) ||
-      ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45].includes(result.ledger_before_count) ||
+      ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46].includes(result.ledger_before_count) ||
       !HASH.test(result.ledger_after_sha256 ?? "") ||
       !HASH.test(result.ledger_before_sha256 ?? "") ||
       !HASH.test(result.operator_acl_sha256 ?? "") ||
@@ -557,10 +1229,10 @@ export function assertResult(
     )
       fail("PREQUALIFICATION_DATABASE_BOOTSTRAP_READBACK", operation.id);
     if (
-      (result.recovery_mode === "FRESH_36_TO_45" && result.ledger_before_count !== 36) ||
+      (result.recovery_mode === "FRESH_36_TO_46" && result.ledger_before_count !== 36) ||
       (result.recovery_mode === "RESUME_EXACT_PREFIX" &&
-        ![37, 38, 39, 40, 41, 42, 43, 44].includes(result.ledger_before_count)) ||
-      (result.recovery_mode === "VERIFIED_EXISTING_45" && result.ledger_before_count !== 45)
+        ![37, 38, 39, 40, 41, 42, 43, 44, 45].includes(result.ledger_before_count)) ||
+      (result.recovery_mode === "VERIFIED_EXISTING_46" && result.ledger_before_count !== 46)
     )
       fail("PREQUALIFICATION_RECOVERY_MODE", operation.id);
   }
@@ -613,8 +1285,20 @@ export function assertResult(
       result.retainedProductionEndpoints === 0 &&
       result.productionResourcesAbsent === true;
     if (!exactPairRetained && !allProductionAbsent) fail("CLEANUP_PRODUCTION_STATE", operation.id);
+    resultPromotionCleanupClosure(result, {
+      required: promotionAttemptRecorded(state) || results.has("promote-qualified-production"),
+      requireRollback: results.has("promote-qualified-production"),
+      authorityId: state?.authority_id,
+      fullLiveAuthorityId: state?.full_live_authority_id,
+    });
   }
   if (operation.id === "reconcile-exact-resources") {
+    resultPromotionCleanupClosure(result, {
+      required: promotionAttemptRecorded(state) || results.has("promote-qualified-production"),
+      requireRollback: results.has("promote-qualified-production"),
+      authorityId: state?.authority_id,
+      fullLiveAuthorityId: state?.full_live_authority_id,
+    });
     const localCleanup = result.localDatabaseCredentialCleanup;
     if (requiresBootstrapPartialCleanup(state)) {
       if (
@@ -755,6 +1439,7 @@ async function executeFullLive({
   runOperation,
   runCleanupOperation,
   runEarlyCleanupOperation,
+  readMutationAdmission,
   preflight,
   trustedTime,
   loadSettledResult,
@@ -763,13 +1448,24 @@ async function executeFullLive({
   verifyMaterializationSeed,
   verifyStaticReleaseDescriptor,
   verifyPrequalificationReceipt,
+  isCancelled = () => false,
+  cancellationSignal,
+  recordCancellation = () => null,
 }) {
   if (typeof runOperation !== "function") fail("RUNNER_REQUIRED");
   if (typeof trustedTime !== "function") fail("TRUSTED_TIME_REQUIRED");
+  if (typeof isCancelled !== "function") fail("CANCELLATION_SOURCE_CONTRACT");
+  if (cancellationSignal !== undefined && !(cancellationSignal instanceof AbortSignal))
+    fail("CANCELLATION_SIGNAL_CONTRACT");
+  if (typeof recordCancellation !== "function") fail("CANCELLATION_RECORDER_CONTRACT");
   if (runCleanupOperation !== undefined && typeof runCleanupOperation !== "function")
     fail("CLEANUP_RUNNER_CONTRACT");
   if (runEarlyCleanupOperation !== undefined && typeof runEarlyCleanupOperation !== "function")
     fail("EARLY_CLEANUP_RUNNER_CONTRACT");
+  if (readMutationAdmission !== undefined && typeof readMutationAdmission !== "function")
+    fail("PER_MUTATION_RUNPOD_ADMISSION_READER_CONTRACT");
+  if (runOperation.requiresPerMutationAdmission === true && readMutationAdmission === undefined)
+    fail("PER_MUTATION_RUNPOD_ADMISSION_READER_REQUIRED");
   if (preflight !== undefined && typeof preflight !== "function") fail("PREFLIGHT_CONTRACT");
   if (loadSettledResult !== undefined && typeof loadSettledResult !== "function")
     fail("SETTLED_RESULT_LOADER_CONTRACT");
@@ -829,6 +1525,88 @@ async function executeFullLive({
       failure_code: code,
     });
   };
+  let cancellationRecord = null;
+  const operationCancellation = new AbortController();
+  const requestOperationCancellation = () => {
+    if (!operationCancellation.signal.aborted)
+      operationCancellation.abort(new Error("V2_13_FULL_LIVE_EXECUTOR_CANCELLATION_REQUESTED"));
+  };
+  cancellationSignal?.addEventListener("abort", requestOperationCancellation, { once: true });
+  if (cancellationSignal?.aborted === true) requestOperationCancellation();
+  const checkCancellation = () => {
+    if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
+      const requested =
+        operationCancellation.signal.aborted === true ||
+        cancellationSignal?.aborted === true ||
+        isCancelled(structuredClone(current.state));
+      if (!requested) return;
+      requestOperationCancellation();
+      failureBoundary = FAILURE_BOUNDARIES.cancellation;
+      cancellationRecord ??= recordCancellation(structuredClone(current.state));
+      if (
+        cancellationRecord !== null &&
+        cancellationRecord !== undefined &&
+        (!HASH.test(cancellationRecord.recordSha256 ?? "") ||
+          cancellationRecord.authorityId !== current.state.authority_id ||
+          cancellationRecord.fullLiveAuthorityId !== current.state.full_live_authority_id)
+      )
+        fail("CANCELLATION_RECORD_BINDING");
+      fail("CANCELLATION_REQUESTED");
+    }
+  };
+  const awaitCancellable = async (operation) => {
+    checkCancellation();
+    const pending = Promise.resolve().then(operation);
+    let polledError = null;
+    const poll = setInterval(() => {
+      if (polledError !== null) return;
+      try {
+        checkCancellation();
+      } catch (error) {
+        polledError = error;
+        requestOperationCancellation();
+      }
+    }, 25);
+    try {
+      // The shared signal gives cooperative adapters and child-process wrappers an immediate abort
+      // request.  Never race past `pending`, though: cleanup must not overlap an adapter that is
+      // still capable of provider or database effects.  Once it settles, the cancellation check
+      // discards any normal result and moves the durable state to cleanup-only.
+      const value = await pending;
+      if (polledError !== null) throw polledError;
+      checkCancellation();
+      return value;
+    } catch (error) {
+      // Cancellation outranks an abort-shaped child error, but only after that child has actually
+      // terminated and its promise has settled.
+      if (
+        current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
+        (operationCancellation.signal.aborted === true || cancellationSignal?.aborted === true)
+      ) {
+        failureBoundary = FAILURE_BOUNDARIES.cancellation;
+        cancellationRecord ??= recordCancellation(structuredClone(current.state));
+        if (
+          cancellationRecord !== null &&
+          cancellationRecord !== undefined &&
+          (!HASH.test(cancellationRecord.recordSha256 ?? "") ||
+            cancellationRecord.authorityId !== current.state.authority_id ||
+            cancellationRecord.fullLiveAuthorityId !== current.state.full_live_authority_id)
+        )
+          fail("CANCELLATION_RECORD_BINDING");
+        fail("CANCELLATION_REQUESTED");
+      }
+      checkCancellation();
+      throw error;
+    } finally {
+      clearInterval(poll);
+    }
+  };
+  const normalCancellationContext = () =>
+    Object.freeze({
+      cancellationSignal: operationCancellation.signal,
+      cancellationCheck: checkCancellation,
+      cancellationRecordSha256: cancellationRecord?.recordSha256 ?? null,
+    });
 
   const verifySeed = async (context = {}) => {
     const staticBoundary = context.localCertification
@@ -842,23 +1620,28 @@ async function executeFullLive({
         ? FAILURE_BOUNDARIES.operationMaterializationSeed
         : FAILURE_BOUNDARIES.initialMaterializationSeed;
     failureBoundary = staticBoundary;
-    const descriptor = await verifyStaticReleaseDescriptor(
-      structuredClone(current.state),
-      current.sha256,
-      structuredClone(context),
+    const descriptor = await awaitCancellable(() =>
+      verifyStaticReleaseDescriptor(
+        structuredClone(current.state),
+        current.sha256,
+        structuredClone(context),
+      ),
     );
     if (descriptor === false)
       fail("STATIC_RELEASE_DESCRIPTOR_VERIFICATION", context.operationId ?? "");
     failureBoundary = seedBoundary;
-    const result = await verifyMaterializationSeed(
-      structuredClone(current.state),
-      current.sha256,
-      structuredClone(context),
+    const result = await awaitCancellable(() =>
+      verifyMaterializationSeed(
+        structuredClone(current.state),
+        current.sha256,
+        structuredClone(context),
+      ),
     );
     if (result === false) fail("MATERIALIZATION_SEED_VERIFICATION", context.operationId ?? "");
   };
   if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") {
     try {
+      checkCancellation();
       await verifySeed({
         restart: current.state.current_phase_index > 0,
         recovery: false,
@@ -897,8 +1680,10 @@ async function executeFullLive({
   };
 
   const checkTrustedTime = async (boundary = FAILURE_BOUNDARIES.preOperationTrustedTime) => {
+    checkCancellation();
     failureBoundary = boundary;
-    const trustedIso = await trustedTime(structuredClone(current.state));
+    const trustedIso = await awaitCancellable(() => trustedTime(structuredClone(current.state)));
+    checkCancellation();
     const trustedMs = Date.parse(trustedIso ?? "");
     if (
       Number.isNaN(trustedMs) ||
@@ -906,22 +1691,26 @@ async function executeFullLive({
       trustedMs > Date.parse(current.state.expires_at)
     )
       fail("TRUSTED_TIME_EXPIRED_OR_FORGED");
+    return new Date(trustedMs).toISOString();
   };
 
   let earlyCleanupFailure = false;
 
   const verifyChainAtBoundary = async (operation, boundary) => {
     if (chainVerifier === undefined) return;
-    await chainVerifier(structuredClone(current.state), new Map(results), {
-      operation: structuredClone(operation),
-      boundary,
-      outerStateSha256: current.sha256,
-      settledResultSha256:
-        current.state.phases[operation.phase]?.work?.[workIdFor(operation)]?.settled_result_sha256,
-      earlyFailure:
-        current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
-        canUseEarlyCleanup(current.state),
-    });
+    await awaitCancellable(() =>
+      chainVerifier(structuredClone(current.state), new Map(results), {
+        operation: structuredClone(operation),
+        boundary,
+        outerStateSha256: current.sha256,
+        settledResultSha256:
+          current.state.phases[operation.phase]?.work?.[workIdFor(operation)]
+            ?.settled_result_sha256,
+        earlyFailure:
+          current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
+          canUseEarlyCleanup(current.state),
+      }),
+    );
   };
 
   // Rebuild the in-memory predecessor map in graph order before any resumed adapter is called.
@@ -931,18 +1720,22 @@ async function executeFullLive({
   // operation result and is persisted back through the state CAS below.
   const hydrateSettledResults = async () => {
     for (const operation of OPERATIONS) {
+      checkCancellation();
       const existing = workFor(operation);
       if (existing?.state !== "SETTLED_TERMINAL") continue;
       failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
       let prior = existing.settled_result;
       if (prior === undefined && loadSettledResult !== undefined) {
-        prior = await loadSettledResult({
-          operation: structuredClone(operation),
-          state: structuredClone(current.state),
-          workId: workIdFor(operation),
-          work: structuredClone(existing),
-          outerStateSha256: current.sha256,
-        });
+        prior = await awaitCancellable(() =>
+          loadSettledResult({
+            operation: structuredClone(operation),
+            state: structuredClone(current.state),
+            workId: workIdFor(operation),
+            work: structuredClone(existing),
+            outerStateSha256: current.sha256,
+          }),
+        );
+        checkCancellation();
         prior = durableResult(prior);
         const loaded = assertResult(operation, prior, current.state, results);
         current = stateMutation(statePath, current.sha256, (state) =>
@@ -976,6 +1769,7 @@ async function executeFullLive({
   };
 
   const runOne = async (operation) => {
+    checkCancellation();
     const workId = workIdFor(operation);
     const existing = workFor(operation);
     const cleanupSafetyRecovery =
@@ -991,17 +1785,20 @@ async function executeFullLive({
         resumed: existing !== undefined,
         recovery: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
       });
+    checkCancellation();
     if (existing?.state === "SETTLED_TERMINAL") {
       failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
       let prior = results.get(operation.id) ?? existing.settled_result;
       if (prior === undefined && loadSettledResult !== undefined) {
-        prior = await loadSettledResult({
-          operation: structuredClone(operation),
-          state: structuredClone(current.state),
-          workId,
-          work: structuredClone(existing),
-          outerStateSha256: current.sha256,
-        });
+        prior = await awaitCancellable(() =>
+          loadSettledResult({
+            operation: structuredClone(operation),
+            state: structuredClone(current.state),
+            workId,
+            work: structuredClone(existing),
+            outerStateSha256: current.sha256,
+          }),
+        );
         prior = durableResult(prior);
         const loaded = assertResult(operation, prior, current.state, results);
         current = stateMutation(statePath, current.sha256, (state) =>
@@ -1032,22 +1829,25 @@ async function executeFullLive({
       ) {
         const authorizedOuterStateSha256 = current.sha256;
         failureBoundary = FAILURE_BOUNDARIES.bootstrapReconciliation;
-        const raw = await runOperation(
-          operation,
-          structuredClone(current.state),
-          new Map(results),
-          authorizedOuterStateSha256,
-          {
-            operationId: operation.id,
-            cleanupOnly: false,
-            earlyFailure: false,
-            endpointFree: false,
-            operatorRoleVerified: false,
-            resumed: true,
-            authorizedUnsettled: true,
-            reconciliationOnly: true,
-            providerDispatchForbidden: true,
-          },
+        const raw = await awaitCancellable(() =>
+          runOperation(
+            operation,
+            structuredClone(current.state),
+            new Map(results),
+            authorizedOuterStateSha256,
+            {
+              operationId: operation.id,
+              cleanupOnly: false,
+              earlyFailure: false,
+              endpointFree: false,
+              operatorRoleVerified: false,
+              resumed: true,
+              authorizedUnsettled: true,
+              reconciliationOnly: true,
+              providerDispatchForbidden: true,
+              ...normalCancellationContext(),
+            },
+          ),
         );
         failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
         const result = assertResult(operation, durableResult(raw), current.state, results, {
@@ -1119,9 +1919,36 @@ async function executeFullLive({
       failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
       certificationPredecessorEvidence(results);
     }
+    let mutationAdmission;
+    let mutationAdmissionOuterStateSha256;
+    if (RUNPOD_MUTATION_OPERATION_IDS.has(operation.id)) {
+      if (readMutationAdmission === undefined)
+        fail("PER_MUTATION_RUNPOD_ADMISSION_READER_REQUIRED", operation.id);
+      failureBoundary = FAILURE_BOUNDARIES.perMutationAdmission;
+      const admissionTrustedTime = await checkTrustedTime(FAILURE_BOUNDARIES.perMutationAdmission);
+      mutationAdmissionOuterStateSha256 = current.sha256;
+      mutationAdmission = await awaitCancellable(() =>
+        readFreshRunPodMutationAdmission({
+          readMutationAdmission,
+          operation,
+          state: current.state,
+          results,
+          outerStateSha256: mutationAdmissionOuterStateSha256,
+          trustedTime: admissionTrustedTime,
+        }),
+      );
+      checkCancellation();
+    }
     failureBoundary = FAILURE_BOUNDARIES.operationAuthorization;
+    checkCancellation();
     current = stateMutation(statePath, current.sha256, (state) => {
-      const event = eventId(state.authority_id, operation.id, "reserved");
+      const event = eventId(
+        state.authority_id,
+        operation.id,
+        mutationAdmission === undefined
+          ? "reserved"
+          : `reserved-${mutationAdmission.proofSha256.slice("sha256:".length)}`,
+      );
       if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
         return authorizeCleanupWork(state, { workId, eventId: event });
       return authorizeWork(state, {
@@ -1150,24 +1977,29 @@ async function executeFullLive({
       cleanupMode: cleanupOnly ? cleanupModeFor(current.state) : undefined,
       operatorRoleVerified,
       resumed: existing !== undefined,
+      mutationAdmission,
+      mutationAdmissionOuterStateSha256,
+      ...(cleanupOnly ? {} : normalCancellationContext()),
     };
     const authorizedOuterStateSha256 = current.sha256;
     failureBoundary = FAILURE_BOUNDARIES.operationExecution;
-    const raw = await runner(
-      operation,
-      structuredClone(current.state),
-      new Map(results),
-      authorizedOuterStateSha256,
-      executionContext,
-    );
+    const invoke = () =>
+      runner(
+        operation,
+        structuredClone(current.state),
+        new Map(results),
+        authorizedOuterStateSha256,
+        executionContext,
+      );
+    const raw = cleanupOnly ? await invoke() : await awaitCancellable(invoke);
     failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
     const result = assertResult(
       operation,
       durableResult(raw),
       current.state,
       results,
-      operation.id === "bootstrap-prequalification-database"
-        ? { authorizedOuterStateSha256 }
+      operation.id === "bootstrap-prequalification-database" || mutationAdmission !== undefined
+        ? { authorizedOuterStateSha256, mutationAdmission }
         : undefined,
     );
     if (operation.id === "release-tag-readback") {
@@ -1195,6 +2027,7 @@ async function executeFullLive({
     results.set(operation.id, result);
     failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
     await verifyChainAtBoundary(operation, "settled");
+    checkCancellation();
     return result;
   };
 
@@ -1258,6 +2091,7 @@ async function executeFullLive({
         )
           fail("AUTHORIZED_CLEANUP_WORK_AMBIGUOUS");
         if (preflight !== undefined) {
+          checkCancellation();
           failureBoundary = FAILURE_BOUNDARIES.initialPreflight;
           const bootstrapOperation = OPERATIONS.find(
             (operation) => operation.id === "bootstrap-prequalification-database",
@@ -1265,23 +2099,27 @@ async function executeFullLive({
           const bootstrapReconciliation =
             bootstrapOperation !== undefined &&
             workFor(bootstrapOperation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE";
-          await preflight(
-            structuredClone(current.state),
-            current.sha256,
-            {
-              cleanupOnly: false,
-              earlyFailure: false,
-              endpointFree: false,
-              operatorRoleVerified,
-              bootstrapOnly: true,
-              bootstrapReconciliation,
-              operatorOnly: false,
-              initial: true,
-              staged: false,
-              requireEndpointSecrets: false,
-            },
-            new Map(results),
+          await awaitCancellable(() =>
+            preflight(
+              structuredClone(current.state),
+              current.sha256,
+              {
+                cleanupOnly: false,
+                earlyFailure: false,
+                endpointFree: false,
+                operatorRoleVerified,
+                bootstrapOnly: true,
+                bootstrapReconciliation,
+                operatorOnly: false,
+                initial: true,
+                staged: false,
+                requireEndpointSecrets: false,
+                ...normalCancellationContext(),
+              },
+              new Map(results),
+            ),
           );
+          checkCancellation();
         }
         const normalPhases = [
           ...new Set(
@@ -1314,22 +2152,26 @@ async function executeFullLive({
             if (operation.id === "fresh-live-preflight" && preflight !== undefined) {
               await checkTrustedTime(FAILURE_BOUNDARIES.preOperationTrustedTime);
               failureBoundary = FAILURE_BOUNDARIES.stagedPreflight;
-              await preflight(
-                structuredClone(current.state),
-                current.sha256,
-                {
-                  cleanupOnly: false,
-                  earlyFailure: false,
-                  endpointFree: false,
-                  operatorRoleVerified,
-                  bootstrapOnly: false,
-                  operatorOnly: false,
-                  initial: false,
-                  staged: true,
-                  requireEndpointSecrets: false,
-                },
-                new Map(results),
+              await awaitCancellable(() =>
+                preflight(
+                  structuredClone(current.state),
+                  current.sha256,
+                  {
+                    cleanupOnly: false,
+                    earlyFailure: false,
+                    endpointFree: false,
+                    operatorRoleVerified,
+                    bootstrapOnly: false,
+                    operatorOnly: false,
+                    initial: false,
+                    staged: true,
+                    requireEndpointSecrets: false,
+                    ...normalCancellationContext(),
+                  },
+                  new Map(results),
+                ),
               );
+              checkCancellation();
             }
           }
           if (current.state.phases[phaseName].state === "ACTIVE") {
@@ -1364,6 +2206,16 @@ async function executeFullLive({
             failureBoundary = FAILURE_BOUNDARIES.bootstrapReconciliation;
           }
         }
+        if (
+          current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
+          (cancellationSignal?.aborted === true || isCancelled(structuredClone(current.state)))
+        ) {
+          try {
+            checkCancellation();
+          } catch (cancellationError) {
+            error = cancellationError;
+          }
+        }
         if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
           earlyCleanupFailure = canUseEarlyCleanup(current.state);
           enterFailureCleanup(error, "FULL_LIVE_OPERATION_FAILED");
@@ -1388,7 +2240,9 @@ async function executeFullLive({
     for (const operation of cleanupOperations) await runOne(operation);
 
     failureBoundary = FAILURE_BOUNDARIES.cleanupProof;
-    const { zero, billing, resources, maxOne } = cleanupProofEvidence(results);
+    const { zero, billing, resources, maxOne } = cleanupProofEvidence(results, {
+      requireQualifiedProductionCleanup: promotionAttemptRecorded(current.state),
+    });
     // The aggregate proof is permanently scoped to the four safety operations. Certification is a
     // separate transport-free, zero-spend state transition, so a bad local certification result can
     // never strand drain, billing, or retained-resource closure.
@@ -1440,25 +2294,28 @@ async function executeFullLive({
           );
         }
         failureBoundary = FAILURE_BOUNDARIES.certificationExecution;
-        const raw = await runOperation(
-          certification,
-          structuredClone(current.state),
-          new Map(results),
-          current.sha256,
-          {
-            operationId: certification.id,
-            cleanupOnly: false,
-            earlyFailure: false,
-            endpointFree: false,
-            operatorRoleVerified,
-            resumed: reconciling,
-            localCertification: true,
-            providerDispatchForbidden: true,
-            authorizedUnsettled: reconciling,
-            reconciliationOnly: reconciling,
-            persistenceForbidden: reconciling,
-            dispatchForbidden: reconciling,
-          },
+        const raw = await awaitCancellable(() =>
+          runOperation(
+            certification,
+            structuredClone(current.state),
+            new Map(results),
+            current.sha256,
+            {
+              operationId: certification.id,
+              cleanupOnly: false,
+              earlyFailure: false,
+              endpointFree: false,
+              operatorRoleVerified,
+              resumed: reconciling,
+              localCertification: true,
+              providerDispatchForbidden: true,
+              authorizedUnsettled: reconciling,
+              reconciliationOnly: reconciling,
+              persistenceForbidden: reconciling,
+              dispatchForbidden: reconciling,
+              ...normalCancellationContext(),
+            },
+          ),
         );
         failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
         const result = assertResult(certification, durableResult(raw), current.state, results);
@@ -1546,55 +2403,89 @@ async function main() {
       outerStateSha256,
       executionContext,
     );
-  const result = await executeFullLive({
+  Object.defineProperty(runConcreteOperation, "requiresPerMutationAdmission", { value: true });
+  const readMutationAdmission = createRunPodPerMutationAdmissionReader({
+    environment: process.env,
+  });
+  const cancellation = createDurableCancellationSource({
     statePath,
-    expectedStateSha256,
-    preflight: async (state, _sha256, mode, priorResults) => {
-      if (mode.staged === true)
-        await verifyPrequalificationDatabaseReceipt({
+    recordPath:
+      process.env.VIDEOFORGE_V2_13_CANCELLATION_RECORD_FILE ?? `${statePath}.cancellation.json`,
+  });
+  productionCancellationRequested = false;
+  if (cancellation.isCancelled()) productionCancellationRequested = true;
+  const requestCancellation = (source) => {
+    productionCancellationRequested = true;
+    try {
+      cancellation.request(source);
+    } catch {
+      // The in-memory and AbortSignal fences still stop normal work. The executor subsequently
+      // fails closed if it cannot bind a durable record before entering cleanup-only.
+    }
+  };
+  const requestSigint = () => requestCancellation("SIGINT");
+  const requestSigterm = () => requestCancellation("SIGTERM");
+  process.on("SIGINT", requestSigint);
+  process.on("SIGTERM", requestSigterm);
+  let result;
+  try {
+    result = await executeFullLive({
+      statePath,
+      expectedStateSha256,
+      preflight: async (state, _sha256, mode, priorResults) => {
+        if (mode.staged === true)
+          await verifyPrequalificationDatabaseReceipt({
+            environment: process.env,
+            state,
+            priorResults,
+          });
+        return preflightConcreteFullLiveInputs({
+          state,
+          cleanupOnly: mode.cleanupOnly,
+          bootstrapOnly: mode.bootstrapOnly === true,
+          operatorOnly: mode.operatorOnly === true,
+          requireEndpointSecrets: mode.requireEndpointSecrets === true,
+          allowUnmaterializedProductionInput: true,
+        });
+      },
+      trustedTime: () => readAuthenticatedGithubTime(),
+      readMutationAdmission,
+      runOperation: runConcreteOperation,
+      runCleanupOperation: runConcreteOperation,
+      runEarlyCleanupOperation: runConcreteOperation,
+      verifyMaterializationSeed: (state) =>
+        validateMaterializationSeedFile({
+          path: process.env[MATERIALIZATION_SEED_ENV],
+          expectedSha256: state.materialization_seed_sha256,
+        }),
+      verifyStaticReleaseDescriptor: (state) =>
+        validateStaticReleaseDescriptorFile({
+          path: process.env[STATIC_RELEASE_DESCRIPTOR_ENV],
+          expectedSha256: state.static_release_descriptor_sha256,
+          expectedSourceCommit: state.release_source_commit,
+        }),
+      verifyPrequalificationReceipt: async (state, _outerStateSha256, _mode, priorResults) =>
+        verifyPrequalificationDatabaseReceipt({
           environment: process.env,
           state,
           priorResults,
-        });
-      return preflightConcreteFullLiveInputs({
-        state,
-        cleanupOnly: mode.cleanupOnly,
-        bootstrapOnly: mode.bootstrapOnly === true,
-        operatorOnly: mode.operatorOnly === true,
-        requireEndpointSecrets: mode.requireEndpointSecrets === true,
-        allowUnmaterializedProductionInput: true,
-      });
-    },
-    trustedTime: () => readAuthenticatedGithubTime(),
-    runOperation: runConcreteOperation,
-    runCleanupOperation: runConcreteOperation,
-    runEarlyCleanupOperation: runConcreteOperation,
-    verifyMaterializationSeed: (state) =>
-      validateMaterializationSeedFile({
-        path: process.env[MATERIALIZATION_SEED_ENV],
-        expectedSha256: state.materialization_seed_sha256,
-      }),
-    verifyStaticReleaseDescriptor: (state) =>
-      validateStaticReleaseDescriptorFile({
-        path: process.env[STATIC_RELEASE_DESCRIPTOR_ENV],
-        expectedSha256: state.static_release_descriptor_sha256,
-        expectedSourceCommit: state.release_source_commit,
-      }),
-    verifyPrequalificationReceipt: async (state, _outerStateSha256, _mode, priorResults) =>
-      verifyPrequalificationDatabaseReceipt({
-        environment: process.env,
-        state,
-        priorResults,
-      }),
-    verifyMaterializationChain: (state, priorResults, context) =>
-      verifyMaterializationChainFile({
-        environment: process.env,
-        state,
-        priorResults,
-        operation: context.operation,
-        earlyFailure: context.earlyFailure === true,
-      }),
-  });
+        }),
+      verifyMaterializationChain: (state, priorResults, context) =>
+        verifyMaterializationChainFile({
+          environment: process.env,
+          state,
+          priorResults,
+          operation: context.operation,
+          earlyFailure: context.earlyFailure === true,
+        }),
+      isCancelled: () => productionCancellationSource() || cancellation.isCancelled(),
+      cancellationSignal: cancellation.signal,
+      recordCancellation: () => cancellation.record() ?? cancellation.request("INJECTED_SOURCE"),
+    });
+  } finally {
+    process.off("SIGINT", requestSigint);
+    process.off("SIGTERM", requestSigterm);
+  }
   process.stdout.write(
     `${JSON.stringify({ state_file: statePath, state_sha256: result.sha256, state: result.state.state, failed: result.failed })}\n`,
   );

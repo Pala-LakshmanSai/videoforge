@@ -918,6 +918,125 @@ describe("V213 concrete RunPod dual-lane transport", () => {
     expect(control.deleteTemplate).not.toHaveBeenCalled();
   });
 
+  it("reconciles ACK_UNKNOWN cleanup by exact provider readback with zero mutations", async () => {
+    const { transport, control, client, model } = fixture();
+    const mageKey = "v213-stage_production-mage-production";
+    const soulxKey = "v213-stage_production-soulx-production";
+    const mage = await transport.createLane({
+      sealed: model.mage,
+      purpose: "production",
+      resourceKey: mageKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    const soulx = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "production",
+      resourceKey: soulxKey,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (mage.kind !== "ACK" || soulx.kind !== "ACK") throw new Error("fixture");
+    const terminalJob = await client.dispatch("cleanup-readback-terminal-job");
+    control.createServerlessTemplate.mockClear();
+    control.createScaleZeroEndpoint.mockClear();
+    control.bindV207EndpointIdentity.mockClear();
+    control.deleteEndpoint.mockClear();
+    control.deleteTemplate.mockClear();
+    client.cancel.mockClear();
+    client.dispatch.mockClear();
+    const result = await transport.reconcileAttributableCleanupReadback([
+      {
+        stage: "production",
+        stageAuthorityId: "stage_production",
+        operations: [
+          {
+            kind: "create",
+            resourceKey: mageKey,
+            state: "ACKED",
+            providerId: mage.deployment.endpointId,
+            evidence: mage.deployment,
+          },
+          {
+            kind: "create",
+            resourceKey: soulxKey,
+            state: "ACKED",
+            providerId: soulx.deployment.endpointId,
+            evidence: soulx.deployment,
+          },
+          {
+            kind: "dispatch",
+            resourceKey: `${soulxKey}:terminal-job`,
+            state: "ACKED",
+            providerId: terminalJob.id,
+            evidence: null,
+          },
+          {
+            kind: "status",
+            resourceKey: `${soulx.deployment.endpointIdSha256}:${terminalJob.id}:0`,
+            state: "TERMINAL",
+            providerId: terminalJob.id,
+            evidence: { jobId: terminalJob.id, status: "COMPLETED" },
+          },
+        ],
+      },
+    ]);
+    expect(result).toMatchObject({
+      productionCleanupState: "EXACT_MAX_ONE_PAIR_RETAINED",
+      productionResourcesAbsent: false,
+      production: [mage.deployment, soulx.deployment],
+      reconciliationReadback: {
+        providerMutationPerformed: false,
+        runningPods: 0,
+        activeWorkers: 0,
+        queuedJobs: 0,
+        observedJobs: [
+          {
+            jobIdSha256: idSha(terminalJob.id),
+            endpointIdSha256: soulx.deployment.endpointIdSha256,
+            status: "COMPLETED",
+          },
+        ],
+        endpointIdSha256s: [
+          mage.deployment.endpointIdSha256,
+          soulx.deployment.endpointIdSha256,
+        ].sort(),
+        templateIdSha256s: [
+          mage.deployment.templateIdSha256,
+          soulx.deployment.templateIdSha256,
+        ].sort(),
+        volumeIdSha256s: [model.mage.volumeIdSha256, model.soulx.volumeIdSha256].sort(),
+      },
+    });
+    expect(control.createServerlessTemplate).not.toHaveBeenCalled();
+    expect(control.createScaleZeroEndpoint).not.toHaveBeenCalled();
+    expect(control.bindV207EndpointIdentity).not.toHaveBeenCalled();
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+    expect(client.dispatch).not.toHaveBeenCalled();
+    expect(client.cancel).not.toHaveBeenCalled();
+    await expect(
+      transport.reconcileAttributableCleanupReadback([
+        {
+          stage: "mage",
+          stageAuthorityId: "stage_mage",
+          operations: [
+            {
+              kind: "dispatch",
+              resourceKey: "v213-unknown-job",
+              state: "ACK_UNKNOWN",
+              providerId: null,
+              evidence: null,
+            },
+          ],
+        },
+      ]),
+    ).rejects.toThrow("V213_CLEANUP_READBACK_JOB_ID_UNAVAILABLE");
+    expect(control.deleteEndpoint).not.toHaveBeenCalled();
+    expect(control.deleteTemplate).not.toHaveBeenCalled();
+    expect(client.cancel).not.toHaveBeenCalled();
+  });
+
   it("rejects production cleanup when journaled volume binding drifts from hash-only scope", async () => {
     const { transport, makeTransport, control, model } = fixture();
     const resourceKey = "v213-stage_production-mage-production";

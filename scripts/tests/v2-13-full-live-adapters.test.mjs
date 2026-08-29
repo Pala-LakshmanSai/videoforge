@@ -27,6 +27,10 @@ import {
   createPrequalificationDatabaseBootstrapAdapter,
   createGitReleaseAdapters,
   createGuardedActivationAdapter,
+  createDurablePromotionFileJournal,
+  createPromotionAwareCleanupAdapter,
+  createQualifiedProductionCleanupProof,
+  createRecoverableQualifiedPromotionTransport,
   createWorkflowStartAuthorityAdapter,
   createProtectedWorkflowStartAuthorityAdapter,
   createPostConsumptionMaterializationProducer,
@@ -44,6 +48,7 @@ import {
   readAuthenticatedGithubTime,
   resolveSourceBoundBridgeLaunch,
   TAG,
+  validateSoulxWorkflowRegistrationEvidence,
   verifyPrequalificationDatabaseReceipt,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
 import {
@@ -83,6 +88,103 @@ const canonicalJson = (value) =>
           .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
           .join(",")}}`
       : JSON.stringify(value);
+const soulxWorkflowRegistrationEvidenceFixture = (overrides = {}) => {
+  const unsigned = {
+    schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v1",
+    repository: "Pala-LakshmanSai/videoforge",
+    default_branch: "main",
+    default_branch_commit: "5".repeat(40),
+    workflow_file: "avatar-primary-serverless-image.yml",
+    workflow_name: "avatar-primary-serverless-image",
+    workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+    default_branch_workflow_sha256: hash(Buffer.from("avatar-primary-serverless-image.yml")),
+    release_source_commit: sourceCommit,
+    release_source_workflow_sha256: hash(Buffer.from("avatar-primary-serverless-image.yml")),
+    registration_state: "REGISTERED_EXACT_DEFAULT_BRANCH",
+    materialized: true,
+    bound_to_release_source: true,
+    ...overrides,
+  };
+  return {
+    ...unsigned,
+    evidence_sha256: hash(Buffer.from(canonicalJson(unsigned))),
+  };
+};
+const stateWithSoulxWorkflowRegistration = (evidence) => ({
+  ...state,
+  static_release_descriptor_schema_version: "videoforge.v213-static-release-descriptor/v2",
+  soulx_workflow_registration_evidence_sha256: evidence.evidence_sha256,
+  soulx_workflow_registration_evidence: evidence,
+});
+
+function workflowDispatchRunner({
+  evidence,
+  workflowName,
+  newRuns,
+  defaultBranch = "main",
+  mainCommit = evidence.default_branch_commit,
+  missingWorkflow = null,
+  inactiveWorkflow = null,
+  driftWorkflow = null,
+} = {}) {
+  const calls = [];
+  let listCalls = 0;
+  const bytes = {
+    "mage-image.yml": Buffer.from("mage-image workflow\n"),
+    "avatar-primary-serverless-image.yml": Buffer.from("avatar-primary-serverless-image.yml"),
+  };
+  const run = (command, args) => {
+    calls.push([command, args]);
+    if (args[0] === "run" && args[1] === "list") {
+      listCalls += 1;
+      return result(0, JSON.stringify(listCalls === 1 ? [] : newRuns));
+    }
+    if (args[0] === "workflow") return result(0);
+    const endpoint = args.at(-1);
+    if (endpoint === "repos/Pala-LakshmanSai/videoforge")
+      return result(0, JSON.stringify({ default_branch: defaultBranch }));
+    if (endpoint === "repos/Pala-LakshmanSai/videoforge/commits/main")
+      return result(0, JSON.stringify({ sha: mainCommit }));
+    const registration = endpoint?.match(/actions\/workflows\/(.+)$/u);
+    if (registration) {
+      const file = decodeURIComponent(registration[1]);
+      if (file === missingWorkflow) return result(1, "", "not found");
+      const expectedName =
+        file === "mage-image.yml" ? "mage-image" : "avatar-primary-serverless-image";
+      return result(
+        0,
+        JSON.stringify({
+          id: file === "mage-image.yml" ? 101 : 102,
+          name: expectedName,
+          path: `.github/workflows/${file}`,
+          state: file === inactiveWorkflow ? "disabled_manually" : "active",
+        }),
+      );
+    }
+    const content = endpoint?.match(/contents\/.github\/workflows\/([^?]+)\?ref=(.+)$/u);
+    if (content) {
+      const file = decodeURIComponent(content[1]);
+      const ref = decodeURIComponent(content[2]);
+      const baseBytes = bytes[file];
+      const body =
+        file === driftWorkflow && ref === mainCommit
+          ? Buffer.concat([baseBytes, Buffer.from("drift")])
+          : baseBytes;
+      return result(
+        0,
+        JSON.stringify({
+          type: "file",
+          encoding: "base64",
+          content: body.toString("base64"),
+          sha: file === "mage-image.yml" ? "6".repeat(40) : "7".repeat(40),
+          size: body.length,
+        }),
+      );
+    }
+    throw new Error(`unexpected workflow fixture command: ${command} ${args.join(" ")}`);
+  };
+  return { calls, run, workflowName };
+}
 const mediaWorkerReleaseReadback = ({ state: currentState, outerStateSha256 }) => {
   const unsigned = {
     actualUsd: 0,
@@ -758,39 +860,33 @@ test("approval publication creates the absent exact v4 branch without force", as
 });
 
 test("GitHub workflow dispatch is single-shot and binds the one new exact-head run", async () => {
-  const calls = [];
-  const oldRun = {
-    databaseId: 10,
-    headSha: sourceCommit,
-    workflowName: "mage-image",
-    status: "completed",
-  };
+  const evidence = soulxWorkflowRegistrationEvidenceFixture();
   const newRun = {
     databaseId: 11,
     headSha: sourceCommit,
     workflowName: "mage-image",
     status: "queued",
   };
-  const replies = [
-    result(0, JSON.stringify([oldRun])),
-    result(0),
-    result(0, JSON.stringify([newRun, oldRun])),
-  ];
+  const fixture = workflowDispatchRunner({
+    evidence,
+    workflowName: "mage-image",
+    newRuns: [newRun],
+  });
   const adapters = createGithubDispatchAdapters({
     maximumPolls: 1,
     pollIntervalMs: 0,
-    run: (command, args) => {
-      calls.push([command, args]);
-      return replies.shift();
-    },
+    run: fixture.run,
   });
-  const dispatched = await adapters["mage-image-workflow-dispatch"]({}, state);
+  const dispatched = await adapters["mage-image-workflow-dispatch"](
+    {},
+    stateWithSoulxWorkflowRegistration(evidence),
+  );
   assert.equal(dispatched.runId, "11");
   assert.equal(
-    calls.filter(([command, args]) => command === "gh" && args[0] === "workflow").length,
+    fixture.calls.filter(([command, args]) => command === "gh" && args[0] === "workflow").length,
     1,
   );
-  assert.deepEqual(calls[1][1], [
+  assert.deepEqual(fixture.calls.find(([, args]) => args[0] === "workflow")[1], [
     "workflow",
     "run",
     "mage-image.yml",
@@ -799,6 +895,192 @@ test("GitHub workflow dispatch is single-shot and binds the one new exact-head r
     "--field",
     "publish=true",
   ]);
+  const dispatchIndex = fixture.calls.findIndex(([, args]) => args[0] === "workflow");
+  assert.match(
+    fixture.calls[dispatchIndex - 1][1].at(-1),
+    /avatar-primary-serverless-image\.yml\?ref=4444444444444444444444444444444444444444$/u,
+  );
+  assert.equal(
+    fixture.calls.filter(([, args]) => args.at(-1)?.includes("actions/workflows/")).length,
+    2,
+  );
+});
+
+test("SoulX workflow dispatch fails closed before any GitHub command without registration evidence", async () => {
+  const calls = [];
+  const adapters = createGithubDispatchAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: (command, args) => {
+      calls.push([command, args]);
+      return result(0, "[]");
+    },
+  });
+  await assert.rejects(
+    adapters["soulx-image-workflow-dispatch"]({}, state),
+    /SOULX_WORKFLOW_REGISTRATION_REQUIRED/u,
+  );
+  assert.deepEqual(calls, []);
+});
+
+test("SoulX workflow dispatch fails closed on a mismatched bound registration hash", async () => {
+  const evidence = soulxWorkflowRegistrationEvidenceFixture();
+  const calls = [];
+  const adapters = createGithubDispatchAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: (command, args) => {
+      calls.push([command, args]);
+      return result(0, "[]");
+    },
+  });
+  await assert.rejects(
+    adapters["soulx-image-workflow-dispatch"](
+      {},
+      {
+        ...stateWithSoulxWorkflowRegistration(evidence),
+        soulx_workflow_registration_evidence_sha256: hash(Buffer.from("different")),
+      },
+    ),
+    /SOULX_WORKFLOW_REGISTRATION_BINDING_MISMATCH/u,
+  );
+  assert.deepEqual(calls, []);
+});
+
+test("SoulX workflow dispatch accepts only an exact materialized default-branch registration", async () => {
+  const evidence = soulxWorkflowRegistrationEvidenceFixture();
+  const stateWithEvidence = stateWithSoulxWorkflowRegistration(evidence);
+  assert.equal(
+    validateSoulxWorkflowRegistrationEvidence(evidence, stateWithEvidence).evidence_sha256,
+    evidence.evidence_sha256,
+  );
+  const newRun = {
+    databaseId: 12,
+    headSha: sourceCommit,
+    workflowName: "avatar-primary-serverless-image",
+    status: "queued",
+  };
+  const fixture = workflowDispatchRunner({
+    evidence,
+    workflowName: "avatar-primary-serverless-image",
+    newRuns: [newRun],
+  });
+  const adapters = createGithubDispatchAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: fixture.run,
+  });
+  const dispatched = await adapters["soulx-image-workflow-dispatch"]({}, stateWithEvidence);
+  assert.equal(dispatched.runId, "12");
+  assert.equal(dispatched.workflowRegistrationEvidenceSha256, evidence.evidence_sha256);
+  assert.equal(
+    dispatched.freshWorkflowReadbackSha256,
+    dispatched.freshWorkflowReadback.proofSha256,
+  );
+  assert.deepEqual(
+    dispatched.freshWorkflowReadback.workflows.map(
+      ({ workflowFile, workflowName, workflowSha256 }) => ({
+        workflowFile,
+        workflowName,
+        workflowSha256,
+      }),
+    ),
+    [
+      {
+        workflowFile: "mage-image.yml",
+        workflowName: "mage-image",
+        workflowSha256: hash(Buffer.from("mage-image workflow\n")),
+      },
+      {
+        workflowFile: "avatar-primary-serverless-image.yml",
+        workflowName: "avatar-primary-serverless-image",
+        workflowSha256: evidence.default_branch_workflow_sha256,
+      },
+    ],
+  );
+  const unsignedReadback = { ...dispatched.freshWorkflowReadback };
+  delete unsignedReadback.proofSha256;
+  assert.equal(
+    dispatched.freshWorkflowReadback.proofSha256,
+    hash(Buffer.from(canonicalJson(unsignedReadback))),
+  );
+  assert.equal(
+    fixture.calls.filter(([command, args]) => command === "gh" && args[0] === "workflow").length,
+    1,
+  );
+});
+
+test("historical descriptor v1 cannot dispatch even when supplied copied registration bytes", async () => {
+  const evidence = soulxWorkflowRegistrationEvidenceFixture();
+  const calls = [];
+  const adapters = createGithubDispatchAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: (command, args) => {
+      calls.push([command, args]);
+      return result(0, "[]");
+    },
+  });
+  await assert.rejects(
+    adapters["mage-image-workflow-dispatch"](
+      {},
+      {
+        ...state,
+        static_release_descriptor_schema_version: "videoforge.v213-static-release-descriptor/v1",
+        soulx_workflow_registration_evidence: evidence,
+        soulx_workflow_registration_evidence_sha256: evidence.evidence_sha256,
+      },
+    ),
+    /WORKFLOW_REGISTRATION_DESCRIPTOR_V2_REQUIRED/u,
+  );
+  assert.deepEqual(calls, []);
+});
+
+test("fresh dual-workflow gate stops before dispatch on moved main missing inactive byte drift or stale evidence", async () => {
+  const evidence = soulxWorkflowRegistrationEvidenceFixture();
+  const cases = [
+    [{ defaultBranch: "trunk" }, /WORKFLOW_DEFAULT_BRANCH_DRIFT/u],
+    [{ missingWorkflow: "mage-image.yml" }, /COMMAND/u],
+    [{ inactiveWorkflow: "avatar-primary-serverless-image.yml" }, /REGISTRATION/u],
+    [{ driftWorkflow: "mage-image.yml" }, /WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT/u],
+    [{ mainCommit: "8".repeat(40) }, /SOULX_WORKFLOW_REGISTRATION_STALE/u],
+  ];
+  for (const [drift, expected] of cases) {
+    const fixture = workflowDispatchRunner({
+      evidence,
+      workflowName: "mage-image",
+      newRuns: [],
+      ...drift,
+    });
+    const adapters = createGithubDispatchAdapters({
+      maximumPolls: 1,
+      pollIntervalMs: 0,
+      run: fixture.run,
+    });
+    await assert.rejects(
+      adapters["mage-image-workflow-dispatch"]({}, stateWithSoulxWorkflowRegistration(evidence)),
+      expected,
+    );
+    assert.equal(
+      fixture.calls.some(([, args]) => args[0] === "workflow" && args[1] === "run"),
+      false,
+    );
+  }
+});
+
+test("workflow gate rejects evidence and verifier injection options", () => {
+  const evidence = soulxWorkflowRegistrationEvidenceFixture();
+  assert.throws(
+    () => createGithubDispatchAdapters({ workflowRegistrationEvidence: evidence }),
+    /WORKFLOW_DISPATCH_OPTIONS/u,
+  );
+  assert.throws(
+    () =>
+      createGithubDispatchAdapters({
+        verifyFreshWorkflowRegistration: () => ({ proofSha256: hash(Buffer.from("forged")) }),
+      }),
+    /WORKFLOW_DISPATCH_OPTIONS/u,
+  );
 });
 
 test("trusted time uses credential-free bounded HTTPS and one exact Date header", () => {
@@ -864,40 +1146,86 @@ test("trusted time stops after the exact bounded attempt count", () => {
 });
 
 test("GitHub dispatch rejects ambiguous new runs and never redispatches", async () => {
-  const calls = [];
+  const evidence = soulxWorkflowRegistrationEvidenceFixture();
   const makeRun = (databaseId) => ({
     databaseId,
     headSha: sourceCommit,
     workflowName: "avatar-primary-serverless-image",
     status: "queued",
   });
-  const replies = [
-    result(0, "[]"),
-    result(0),
-    result(0, JSON.stringify([makeRun(20), makeRun(21)])),
-  ];
+  const fixture = workflowDispatchRunner({
+    evidence,
+    workflowName: "avatar-primary-serverless-image",
+    newRuns: [makeRun(20), makeRun(21)],
+  });
   const adapters = createGithubDispatchAdapters({
     maximumPolls: 1,
     pollIntervalMs: 0,
-    run: (command, args) => {
-      calls.push([command, args]);
-      return replies.shift();
-    },
+    run: fixture.run,
   });
   await assert.rejects(
-    adapters["soulx-image-workflow-dispatch"]({}, state),
+    adapters["soulx-image-workflow-dispatch"]({}, stateWithSoulxWorkflowRegistration(evidence)),
     /GITHUB_DISPATCH_AMBIGUOUS/u,
   );
   assert.equal(
-    calls.filter(([command, args]) => command === "gh" && args[0] === "workflow").length,
+    fixture.calls.filter(([command, args]) => command === "gh" && args[0] === "workflow").length,
     1,
   );
 });
 
 test("GitHub verification binds exact successful run and immutable deployability artifact", async () => {
   const digest = `sha256:${"6".repeat(64)}`;
+  const configDigest = `sha256:${"7".repeat(64)}`;
+  const layerDigest = `sha256:${"8".repeat(64)}`;
+  const anonymousProof = {
+    schema_version: "videoforge-anonymous-ghcr-publication-proof/v1",
+    registry: "ghcr.io",
+    repository: "pala-lakshmansai/videoforge-mage-v2-07",
+    authentication: "GHCR_ANONYMOUS_PULL_TOKEN",
+    workflow_repository: "Pala-LakshmanSai/videoforge",
+    workflow_name: "mage-image",
+    workflow_ref: `refs/tags/${TAG}`,
+    workflow_commit: sourceCommit,
+    workflow_run_id: "11",
+    registry_observed_at: "2026-08-26T12:00:00Z",
+    manifest: {
+      digest,
+      header_digest: digest,
+      content_sha256: digest,
+      media_type: "application/vnd.docker.distribution.manifest.v2+json",
+      response_content_type: "application/vnd.docker.distribution.manifest.v2+json",
+      size_bytes: 123,
+      http_status: 200,
+    },
+    config: {
+      kind: "config",
+      index: 0,
+      digest: configDigest,
+      media_type: "application/vnd.docker.container.image.v1+json",
+      declared_size_bytes: 11,
+      observed_size_bytes: 11,
+      content_sha256: configDigest,
+      http_status: 200,
+      registry_observed_at: "2026-08-26T12:00:00Z",
+    },
+    layers: [
+      {
+        kind: "layer",
+        index: 0,
+        digest: layerDigest,
+        media_type: "application/vnd.docker.image.rootfs.diff.tar.gzip",
+        declared_size_bytes: 22,
+        observed_size_bytes: 22,
+        content_sha256: layerDigest,
+        http_status: 200,
+        registry_observed_at: "2026-08-26T12:00:01Z",
+      },
+    ],
+    all_blobs_verified: true,
+  };
+  anonymousProof.proof_sha256 = hash(Buffer.from(canonicalJson(anonymousProof)));
   const evidence = {
-    schema_version: "videoforge-image-deployability/v1",
+    schema_version: "videoforge-image-deployability/v2",
     checkpoint: "V2-07",
     lane: "mage_image",
     source_commit: sourceCommit,
@@ -914,6 +1242,9 @@ test("GitHub verification binds exact successful run and immutable deployability
     provider_endpoint_mutation_performed: false,
     immutable_image: `ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@${digest}`,
     manifest_digest: digest,
+    config_digest: configDigest,
+    layer_digest: layerDigest,
+    anonymous_publication_proof: anonymousProof,
   };
   const statuses = ["queued", "in_progress", "completed"];
   let viewCalls = 0;
@@ -948,6 +1279,7 @@ test("GitHub verification binds exact successful run and immutable deployability
   assert.equal(verified.imageDigest, digest);
   assert.equal(viewCalls, 3);
   assert.equal(verified.publicAllBlobsVerified, true);
+  assert.equal(verified.anonymousPublicationProofSha256, anonymousProof.proof_sha256);
   assert.match(verified.evidenceSha256, /^sha256:[0-9a-f]{64}$/u);
 });
 
@@ -1124,17 +1456,286 @@ test("promotion hashes closed dry-output bytes, independent of Wrangler stdout",
   }
 });
 
+test("promotion journal atomically persists exact restart entries and rejects same-key drift", async () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-promotion-journal-test-"));
+  const journalDirectory = resolve(directory, "journal");
+  try {
+    const journal = createDurablePromotionFileJournal({ directory: journalDirectory });
+    const entry = {
+      schemaVersion: "videoforge.v213-qualified-promotion-journal-entry/v1",
+      promotionId: "55555555-5555-4555-8555-555555555555",
+      authorityId: "44444444-4444-4444-8444-444444444444",
+      step: "CLOUDFLARE_DEPLOY",
+      status: "INTENT",
+      inputSha256: hash(Buffer.from("deploy-input")),
+      input: { enabledConfigSha256: hash(Buffer.from("enabled")) },
+      outputSha256: null,
+      output: null,
+    };
+    assert.deepEqual(await journal.record(entry), entry);
+    const restarted = createDurablePromotionFileJournal({ directory: journalDirectory });
+    assert.deepEqual(
+      await restarted.read({
+        promotionId: entry.promotionId,
+        step: entry.step,
+        status: entry.status,
+      }),
+      entry,
+    );
+    await assert.rejects(
+      restarted.record({ ...entry, inputSha256: hash(Buffer.from("drift")) }),
+      /PROMOTION_JOURNAL_ENTRY_DRIFT/u,
+    );
+    assert.equal(lstatSync(journalDirectory).mode & 0o077, 0);
+    const entryPath = resolve(
+      journalDirectory,
+      `${entry.promotionId}.${entry.step}.${entry.status}.json`,
+    );
+    assert.equal(lstatSync(entryPath).mode & 0o077, 0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("qualified promotion transport reconciles durable intents without repeating provider deploy", async () => {
+  const calls = [];
+  const database = {
+    query: async (sql, parameters) => {
+      calls.push(["database", sql, parameters]);
+      if (sql.includes("videoforge_promote_hosted_full_live"))
+        return { rows: [{ decision_sha256: hash(Buffer.from("database-promotion")) }] };
+      if (sql.includes("videoforge_record_v213_cloudflare_activation"))
+        return {
+          rows: [
+            {
+              activation: {
+                versionIdSha256: hash(Buffer.from("enabled-version")),
+                readbackSha256: hash(Buffer.from("activation-readback")),
+              },
+            },
+          ],
+        };
+      if (sql.includes("videoforge_record_v213_cloudflare_rollback"))
+        return {
+          rows: [
+            {
+              rollback: {
+                rollbackSha256: hash(Buffer.from("rollback-record")),
+                disabledVersionIdSha256: hash(Buffer.from("disabled-version")),
+                disabledConfigSha256: hash(Buffer.from("disabled-config")),
+              },
+            },
+          ],
+        };
+      throw new Error("unexpected database query");
+    },
+  };
+  let providerDeploys = 0;
+  const recoveredDeployment = { versionSha256: hash(Buffer.from("enabled-version")) };
+  const disabledDeployment = { versionSha256: hash(Buffer.from("disabled-version")) };
+  const cloudflare = {
+    dryRun: async () => ({}),
+    deploy: async () => {
+      providerDeploys += 1;
+      return recoveredDeployment;
+    },
+    readback: async () => ({}),
+    routeReadback: async () => ({}),
+    rollback: async () => ({}),
+    reconcileDeployment: async () => {
+      calls.push(["cloudflare", "reconcile-deployment"]);
+      return recoveredDeployment;
+    },
+    readDisabledDeployment: async () => disabledDeployment,
+    reconcileRollback: async () => disabledDeployment,
+  };
+  const journal = { read: async () => null, record: async (entry) => entry };
+  const transport = createRecoverableQualifiedPromotionTransport({
+    database,
+    cloudflare,
+    journal,
+  });
+  assert.equal(transport.recovery.journal, journal);
+  assert.equal(await transport.recovery.reconcileDeployment(), recoveredDeployment);
+  assert.equal(providerDeploys, 0);
+  assert.equal(await transport.recovery.readDisabledDeployment(), disabledDeployment);
+  assert.equal(await transport.recovery.reconcileRollback(), disabledDeployment);
+  assert.equal(providerDeploys, 0);
+  const databasePromotionInput = {
+    promotionId: "55555555-5555-4555-8555-555555555555",
+    authorityId: "44444444-4444-4444-8444-444444444444",
+    promotion: { exact: true },
+  };
+  assert.match(
+    (await transport.recovery.reconcileDatabasePromotion(databasePromotionInput)).decision_sha256,
+    /^sha256:[0-9a-f]{64}$/u,
+  );
+  const activation = await transport.recovery.reconcileActivation({
+    activationId: "66666666-6666-4666-8666-666666666666",
+    promotionId: databasePromotionInput.promotionId,
+    sourceCommit,
+    versionIdSha256: recoveredDeployment.versionSha256,
+    deployedExecutableSha256: hash(Buffer.from("executable")),
+    deployedConfigSha256: hash(Buffer.from("enabled-config")),
+    productionUrlSha256: hash(Buffer.from("origin")),
+    routeStatus: 200,
+    routeBodySha256: hash(Buffer.from("route-body")),
+    routeVersionSha256: recoveredDeployment.versionSha256,
+    routeReadbackSha256: hash(Buffer.from("route-readback")),
+    observedAt: "2026-08-29T00:00:00.000Z",
+    evidenceSha256: hash(Buffer.from("evidence")),
+  });
+  assert.match(activation.readbackSha256, /^sha256:[0-9a-f]{64}$/u);
+  const rollback = await transport.recovery.reconcileRollbackRecord({
+    rollbackId: "77777777-7777-4777-8777-777777777777",
+    activationId: "66666666-6666-4666-8666-666666666666",
+    promotionId: databasePromotionInput.promotionId,
+    disabledVersionIdSha256: disabledDeployment.versionSha256,
+    disabledConfigSha256: hash(Buffer.from("disabled-config")),
+    routeStatus: 503,
+    routeVersionSha256: disabledDeployment.versionSha256,
+    observedAt: "2026-08-29T00:01:00.000Z",
+  });
+  assert.match(rollback.rollbackSha256, /^sha256:[0-9a-f]{64}$/u);
+  assert.equal(providerDeploys, 0);
+  assert.deepEqual(
+    calls.filter(([kind]) => kind === "cloudflare"),
+    [["cloudflare", "reconcile-deployment"]],
+  );
+});
+
+test("cleanup-only op22/op25 binds stable disabled-production and exact DB rollback proof", async () => {
+  const record = {
+    database: {
+      full_live_authority_id: "44444444-4444-4444-8444-444444444444",
+      promotion_id: "55555555-5555-4555-8555-555555555555",
+    },
+    release: { disabled_config_sha256: hash(Buffer.from("disabled-config")) },
+    cloudflare: { disabled_version_sha256: hash(Buffer.from("disabled-version")) },
+  };
+  const reconciliation = {
+    record,
+    result: {
+      state: "DISABLED_UNQUALIFIED",
+      enabled: false,
+      gpuDispatchPerformed: false,
+      versionSha256: record.cloudflare.disabled_version_sha256,
+      databasePromotionAttempted: true,
+      databasePromotionSha256: hash(Buffer.from("database-promotion")),
+      rollbackRecorded: true,
+      rollbackSha256: hash(Buffer.from("rollback-record")),
+    },
+  };
+  const proof = createQualifiedProductionCleanupProof(record, reconciliation.result);
+  let reconciliations = 0;
+  let observedContext;
+  const wrapped = createPromotionAwareCleanupAdapter({
+    operationId: "restore-endpoints-max-one",
+    reconcilePromotionCleanup: async () => {
+      reconciliations += 1;
+      return reconciliation;
+    },
+    hasPromotionMaterialization: async () => true,
+    adapter: async (context) => {
+      observedContext = context;
+      return {
+        actualUsd: 0,
+        proofSha256: hash(Buffer.from("cleanup-receipt")),
+        bridgeSummary: { qualifiedProductionCleanup: context.qualifiedProductionCleanup },
+      };
+    },
+  });
+  const cleanup = await wrapped(
+    { cleanupOnly: true, earlyFailure: false },
+    {},
+    new Map(),
+    hash(Buffer.from("outer-state")),
+  );
+  assert.equal(reconciliations, 1);
+  assert.deepEqual(observedContext.qualifiedProductionCleanup, proof);
+  assert.deepEqual(cleanup.qualifiedProductionCleanup, proof);
+  assert.equal(cleanup.promotionCleanupEvidenceSha256, proof.proofSha256);
+  assert.equal(proof.productionRedispatched, false);
+  assert.equal(proof.databaseRollbackRecorded, true);
+
+  const normal = await wrapped(
+    { cleanupOnly: false },
+    {},
+    new Map(),
+    hash(Buffer.from("normal-outer-state")),
+  );
+  assert.deepEqual(normal.qualifiedProductionCleanup, proof);
+  await wrapped(
+    { cleanupOnly: true, earlyFailure: true },
+    {},
+    new Map(),
+    hash(Buffer.from("early-outer-state")),
+  );
+  assert.equal(reconciliations, 2);
+});
+
+test("cleanup closes an authorized but never-materialized promotion without requiring op15 artifact", async () => {
+  let reconciliations = 0;
+  const state = {
+    authority_id: "33333333-3333-4333-8333-333333333333",
+    full_live_authority_id: "44444444-4444-4444-8444-444444444444",
+  };
+  const wrapped = createPromotionAwareCleanupAdapter({
+    operationId: "reconcile-exact-resources",
+    hasPromotionMaterialization: async () => false,
+    reconcilePromotionCleanup: async () => {
+      reconciliations += 1;
+      assert.fail("promotion reconciliation requires materialized promotion bytes");
+    },
+    adapter: async () => ({ actualUsd: 0, proofSha256: hash(Buffer.from("resources")) }),
+  });
+  const result = await wrapped(
+    { cleanupOnly: true, earlyFailure: false },
+    state,
+    new Map(),
+    hash(Buffer.from("outer")),
+  );
+  assert.equal(reconciliations, 0);
+  assert.equal(result.promotionCleanupAbsence.promotionRecordMaterialized, false);
+  assert.equal(result.promotionCleanupAbsence.databaseMutationPossible, false);
+  assert.equal(
+    result.promotionCleanupAbsenceEvidenceSha256,
+    result.promotionCleanupAbsence.proofSha256,
+  );
+});
+
 test("staged qualification adapters preserve admission, Mage, SoulX, then max-one boundaries", async () => {
   const calls = [];
   const deployment = (lane, marker) => {
     const endpointId = `${lane}-endpoint`;
+    const retained =
+      lane === "mage"
+        ? {
+            volumeIdSha256:
+              "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+            volumeManifestSha256:
+              "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+          }
+        : {
+            volumeIdSha256:
+              "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+            volumeManifestSha256:
+              "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+          };
     return {
       lane,
       workersMin: 0,
       workersMax: 1,
       endpointId,
       endpointIdSha256: hash(endpointId),
+      templateIdSha256: hash(`${lane}-template`),
+      image: `ghcr.io/example/${lane}@sha256:${marker.repeat(64)}`,
+      sourceCommit: "1".repeat(40),
       deploymentSha256: `sha256:${marker.repeat(64)}`,
+      ...retained,
+      region: "EU-RO-1",
+      gpu: "NVIDIA GeForce RTX 4090",
+      gpuCount: 1,
     };
   };
   const receipt = (marker, cost) => ({
@@ -1758,7 +2359,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       );
     if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock")) {
       lockedLedgerReads += 1;
-      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 45)}\n`);
+      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 46)}\n`);
     }
     if (sql.includes("rolname IN")) return result(0, "0\n");
     if (sql.includes("count(*)::text FROM pg_roles"))
@@ -1821,7 +2422,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       run,
       credentialBootstrapBinding,
       credentialRandomBytes: (size) => {
-        assert.equal(migrationSqls.length, 9);
+        assert.equal(migrationSqls.length, 10);
         credentialGenerationCount += 1;
         return Buffer.alloc(size, credentialGenerationCount);
       },
@@ -1997,7 +2598,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       output.database_identity_sha256,
       "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7",
     );
-    assert.equal(output.recovery_mode, "FRESH_36_TO_45");
+    assert.equal(output.recovery_mode, "FRESH_36_TO_46");
     assert.equal(output.ledger_before_count, 36);
     assert.equal(output.runpod_calls, 0);
     assert.equal(output.cloudflare_calls, 0);
@@ -2014,7 +2615,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       3,
     );
     assert.equal(lockedLedgerReads, 2);
-    assert.equal(migrationSqls.length, 9);
+    assert.equal(migrationSqls.length, 10);
     for (const [index, sql] of migrationSqls.entries()) {
       assert.match(sql, /BEGIN;/u);
       assert.match(sql, /pg_advisory_xact_lock\(1448494662,1\)/u);
@@ -2024,7 +2625,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     }
     const receiptPath = resolve(directory, "prequalification-database-bootstrap.json");
     const receipt = JSON.parse(readFileSync(receiptPath, "utf8"));
-    assert.equal(receipt.recovery_mode, "FRESH_36_TO_45");
+    assert.equal(receipt.recovery_mode, "FRESH_36_TO_46");
     assert.equal(receipt.ledger_before_count, 36);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
     for (const path of [
@@ -2119,15 +2720,15 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       new Map(),
       outerStateSha256,
     );
-    assert.equal(recovered.recovery_mode, "VERIFIED_EXISTING_45");
-    assert.equal(recovered.ledger_before_count, 45);
+    assert.equal(recovered.recovery_mode, "VERIFIED_EXISTING_46");
+    assert.equal(recovered.ledger_before_count, 46);
     assert.equal(recovered.operator_database_url_sha256, output.operator_database_url_sha256);
     assert.equal(
       recovered.database_role_credential_bundle_sha256,
       output.database_role_credential_bundle_sha256,
     );
     assert.equal(credentialGenerationCount, generationCountBeforeRecovery);
-    assert.equal(migrationSqls.length, 9);
+    assert.equal(migrationSqls.length, 10);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
     const exactRecoveredReceiptBytes = readFileSync(receiptPath);
     const driftedDatabaseIdentityReceipt = JSON.parse(exactRecoveredReceiptBytes);
@@ -2247,7 +2848,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       run,
       credentialBootstrapBinding,
     });
-    assert.equal(verified.ledger.length, 45);
+    assert.equal(verified.ledger.length, 46);
     assert.equal(lockedLedgerReads, lockedLedgerReadsBeforeVerifiedReceipt + 1);
     assert.equal(
       calls.every(([command]) => command === "psql"),
@@ -2295,7 +2896,12 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       readFileSync(path),
     );
     await assert.rejects(
-      cleanupPartialDatabaseRoleCredentials({ environment, run, state: cleanupState }),
+      cleanupPartialDatabaseRoleCredentials({
+        environment,
+        run,
+        state: cleanupState,
+        credentialBootstrapBinding,
+      }),
       /PREQUALIFICATION_PARTIAL_CLEANUP_ROLE_PRESENT/u,
     );
     credentialArtifacts.forEach((path, index) =>
@@ -2312,6 +2918,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       environment,
       run,
       state: cleanupState,
+      credentialBootstrapBinding,
     });
     assert.equal(cleaned.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
     assert.equal(cleaned.fullLiveAuthorityId, cleanupState.full_live_authority_id);
@@ -2328,24 +2935,26 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       environment,
       run,
       state: cleanupState,
+      credentialBootstrapBinding,
     });
     assert.equal(replayedCleanup.cleanupState, "ALREADY_ABSENT");
     assert.equal(replayedCleanup.credentialBundleSha256, null);
     assert.equal(replayedCleanup.removedArtifactCount, 0);
 
-    // A hard crash can interrupt an exclusive write before link(2), leaving only a truncated,
-    // deterministic current-authority bundle stage. Role-absence proof permits deleting exactly
-    // that file without parsing its incomplete secret bytes.
+    // A deterministic path is not proof of ownership. Truncated bundle stages now fail closed
+    // before deletion; only exact authority-bound canonical bytes may be removed.
     writeFileSync(bundleStagePath, '{"truncated":', { mode: 0o600, flag: "wx" });
-    const truncatedBundleCleanup = await cleanupPartialDatabaseRoleCredentials({
-      environment,
-      run,
-      state: cleanupState,
-    });
-    assert.equal(truncatedBundleCleanup.cleanupState, "REMOVED_INCOMPLETE_AUTHORITY_BOUND_STAGING");
-    assert.equal(truncatedBundleCleanup.credentialBundleSha256, null);
-    assert.equal(truncatedBundleCleanup.removedArtifactCount, 1);
-    assert.throws(() => lstatSync(bundleStagePath), /ENOENT/u);
+    await assert.rejects(
+      cleanupPartialDatabaseRoleCredentials({
+        environment,
+        run,
+        state: cleanupState,
+        credentialBootstrapBinding,
+      }),
+      /PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE/u,
+    );
+    assert.equal(readFileSync(bundleStagePath, "utf8"), '{"truncated":');
+    rmSync(bundleStagePath);
 
     // A hard crash after link(2) but before stage unlink leaves both exact bundle copies.
     writeFileSync(bundleStagePath, bundleBytes, { mode: 0o600, flag: "wx" });
@@ -2354,6 +2963,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       environment,
       run,
       state: cleanupState,
+      credentialBootstrapBinding,
     });
     assert.equal(linkedBundleCleanup.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
     assert.equal(linkedBundleCleanup.credentialBundleSha256, hash(bundleBytes));
@@ -2371,19 +2981,22 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       const stage = databaseCredentialStagingPath(target, consumedState.authority_id);
       const expected = Buffer.from(credentialBundle.credentials[kind].database_url);
 
-      // Before link: the deterministic per-copy stage may be incomplete, but a final canonical
-      // bundle still proves which authority owns the cleanup scope.
+      // Before link, an incomplete per-copy stage is unauthenticated and must remain untouched.
       writeFileSync(bundlePath, bundleBytes, { mode: 0o600, flag: "wx" });
       writeFileSync(stage, "partial", { mode: 0o600, flag: "wx" });
-      const beforeLink = await cleanupPartialDatabaseRoleCredentials({
-        environment,
-        run,
-        state: cleanupState,
-      });
-      assert.equal(beforeLink.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
-      assert.equal(beforeLink.removedArtifactCount, 2);
-      assert.equal(beforeLink.credentialBundleSha256, hash(bundleBytes));
-      assert.throws(() => lstatSync(stage), /ENOENT/u);
+      await assert.rejects(
+        cleanupPartialDatabaseRoleCredentials({
+          environment,
+          run,
+          state: cleanupState,
+          credentialBootstrapBinding,
+        }),
+        /PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_FILE_DRIFT/u,
+      );
+      assert.equal(readFileSync(stage, "utf8"), "partial");
+      assert.deepEqual(readFileSync(bundlePath), bundleBytes);
+      rmSync(stage);
+      rmSync(bundlePath);
 
       // After link but before unlink: both exact copies are discoverable and removed, with the
       // database URL copies preceding the canonical bundle deletion.
@@ -2394,6 +3007,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
         environment,
         run,
         state: cleanupState,
+        credentialBootstrapBinding,
       });
       assert.equal(afterLink.cleanupState, "REMOVED_AUTHORITY_BOUND_FILES");
       assert.equal(afterLink.removedArtifactCount, 3);
@@ -2406,8 +3020,13 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     const unexpectedBundleHardLink = resolve(directory, "unexpected-bundle-hard-link");
     linkSync(bundlePath, unexpectedBundleHardLink);
     await assert.rejects(
-      cleanupPartialDatabaseRoleCredentials({ environment, run, state: cleanupState }),
-      /PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE_LINK_TOPOLOGY/u,
+      cleanupPartialDatabaseRoleCredentials({
+        environment,
+        run,
+        state: cleanupState,
+        credentialBootstrapBinding,
+      }),
+      /PREQUALIFICATION_PARTIAL_CLEANUP_CREDENTIAL_BUNDLE/u,
     );
     assert.deepEqual(readFileSync(bundlePath), bundleBytes);
     rmSync(unexpectedBundleHardLink);
@@ -2416,11 +3035,93 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     const foreignStage = databaseCredentialStagingPath(bundlePath, "v2-13-foreign-authority");
     writeFileSync(foreignStage, "foreign", { mode: 0o600, flag: "wx" });
     await assert.rejects(
-      cleanupPartialDatabaseRoleCredentials({ environment, run, state: cleanupState }),
+      cleanupPartialDatabaseRoleCredentials({
+        environment,
+        run,
+        state: cleanupState,
+        credentialBootstrapBinding,
+      }),
       /PREQUALIFICATION_PARTIAL_CLEANUP_STAGING_AUTHORITY_DRIFT/u,
     );
     assert.equal(readFileSync(foreignStage, "utf8"), "foreign");
     rmSync(foreignStage);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("bootstrap-partial cleanup rejects orphan secret-only remnants without the database bundle", async () => {
+  const directory = realpathSync(mkdtempSync(resolve(tmpdir(), "v213-secret-only-cleanup-test-")));
+  chmodSync(directory, 0o700);
+  const secretInputDirectory = resolve(directory, "secret-input");
+  mkdirSync(secretInputDirectory, { mode: 0o700 });
+  const servicePath = resolve(directory, "owner.pg_service.conf");
+  const passPath = resolve(directory, "owner.pgpass");
+  const productionSecretsPath = resolve(directory, "production-secrets.json");
+  const productionSecretBootstrapPath = resolve(directory, "production-secret-bootstrap.json");
+  const workerOriginPath = resolve(directory, "worker-origin");
+  const workerBearerPath = resolve(directory, "worker-bearer");
+  const runtimePath = resolve(directory, "runtime.database-url");
+  const reconcilerPath = resolve(directory, "reconciler.database-url");
+  const sourcePath = (name) => resolve(directory, `source-${name}`);
+  writeFileSync(
+    servicePath,
+    "[videoforge_v2_13_owner]\nhost=ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech\ndbname=neondb\nuser=neondb_owner\nsslmode=require\nchannel_binding=require\n",
+    { mode: 0o600 },
+  );
+  writeFileSync(
+    passPath,
+    "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech:5432:neondb:neondb_owner:owner-password\n",
+    { mode: 0o600 },
+  );
+  const authorityId = "v2-13-secret-only-cleanup-authority";
+  const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
+  const workId = `${authorityId}:bootstrap-prequalification-database`.toLowerCase();
+  const state = {
+    authority_id: authorityId,
+    full_live_authority_id: fullLiveAuthorityId,
+    state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+    operator_role_verified: false,
+    phases: {
+      bootstrap_prequalification_database: {
+        work: { [workId]: { state: "AUTHORIZED_ONCE_NOT_REDISPATCHABLE" } },
+      },
+    },
+  };
+  const environment = {
+    VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: directory,
+    VIDEOFORGE_V2_13_SECRET_INPUT_DIR: secretInputDirectory,
+    VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE: runtimePath,
+    VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE: reconcilerPath,
+    VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE: productionSecretsPath,
+    VIDEOFORGE_V2_13_PRODUCTION_SECRET_BOOTSTRAP_FILE: productionSecretBootstrapPath,
+    VIDEOFORGE_V2_13_WORKER_ORIGIN_FILE: workerOriginPath,
+    VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE: workerBearerPath,
+    VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE: sourcePath("credential-receipt"),
+    VIDEOFORGE_V2_13_GOOGLE_CLIENT_ID_FILE: sourcePath("google-client-id"),
+    VIDEOFORGE_V2_13_GOOGLE_CLIENT_SECRET_FILE: sourcePath("google-client-secret"),
+    VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE: sourcePath("r2-access-key"),
+    VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE: sourcePath("r2-secret-key"),
+    VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE: sourcePath("runpod-api-key"),
+  };
+  const outerStateSha256 = hash(Buffer.from("secret-only-cleanup-outer-state"));
+  const secretBundle = {
+    schemaVersion: "videoforge.v213-production-secret-bootstrap/v1",
+    fullLiveAuthorityId,
+    outerStateSha256,
+  };
+  writeFileSync(productionSecretBootstrapPath, `${canonicalJson(secretBundle)}\n`, { mode: 0o600 });
+  const run = (command, args) => {
+    assert.equal(command, "psql");
+    assert.match(args[args.indexOf("--command") + 1] ?? "", /json_build_object\('operator'/u);
+    return result(0, `${JSON.stringify({ operator: 0, runtime: 0, reconciler: 0 })}\n`);
+  };
+  try {
+    await assert.rejects(
+      cleanupPartialDatabaseRoleCredentials({ environment, run, state }),
+      /PREQUALIFICATION_PARTIAL_CLEANUP_SECRET_DATABASE_BINDING/u,
+    );
+    assert.doesNotThrow(() => lstatSync(productionSecretBootstrapPath));
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -2449,7 +3150,7 @@ test("global preflight excludes future artifacts and stage adapters validate the
   assert.ok(promotion.indexOf("preflightPromotionInputs") < promotion.indexOf("const runWrangler"));
   assert.ok(
     promotion.indexOf("refreshWranglerOAuthReadback") <
-      promotion.indexOf('spawn("pnpm", ["--filter", "@videoforge/web", "exec", "wrangler"'),
+      promotion.indexOf("const result = await runCommand("),
   );
 });
 
@@ -3710,7 +4411,7 @@ test("post-consumption production-secret bootstrap binds every protected copy an
       );
     if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock")) {
       lockedLedgerReads += 1;
-      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 45)}\n`);
+      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 46)}\n`);
     }
     if (sql.includes("rolname IN")) return result(0, "0\n");
     if (sql.includes("count(*)::text FROM pg_roles"))

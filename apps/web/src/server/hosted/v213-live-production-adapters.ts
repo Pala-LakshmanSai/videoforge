@@ -737,6 +737,7 @@ export interface V213SqlCleanupReceiptFinalizationRequest extends Record<string,
   readonly providerCleanupEvidenceSha256: Sha256;
   readonly summary: Readonly<Record<string, unknown>>;
   readonly readbackOnly: boolean;
+  readonly failureCleanup: boolean;
 }
 
 export interface V213SqlCleanupReceiptFinalizationResult extends Record<string, unknown> {
@@ -745,15 +746,32 @@ export interface V213SqlCleanupReceiptFinalizationResult extends Record<string, 
   readonly operationId: V213CleanupReceiptOperation;
   readonly providerCleanupEvidenceSha256: Sha256;
   readonly receiptArtifactSha256: Sha256;
-  readonly releaseFactMaterializationSha256: Sha256;
+  readonly releaseFactMaterializationSha256: Sha256 | null;
   readonly readbackOnly: boolean;
 }
 
-/** Finalizes a provider-cleanup journal result in a separate DB-only boundary. The recovery mode
- * performs exact readback only: it cannot create signed evidence, operation receipts, or facts. */
+export type V213CleanupReceiptIntentState = "NO_ATTEMPT" | "ACK_UNKNOWN";
+
+export type V213CleanupReceiptPersistenceBoundary =
+  | "BEFORE_INTENT_CLAIM"
+  | "AFTER_INTENT_CLAIM"
+  | "BEFORE_EVIDENCE_STORE"
+  | "AFTER_EVIDENCE_STORE"
+  | "BEFORE_RECEIPT_STORE"
+  | "AFTER_RECEIPT_STORE"
+  | "BEFORE_FACT_MATERIALIZATION"
+  | "AFTER_FACT_MATERIALIZATION";
+
+/** Finalizes a provider-cleanup journal result in a separate DB-only boundary. `readbackOnly`
+ * describes the already-completed provider side. The DB suffix always claims an append-only
+ * intent and may idempotently finish missing evidence, receipt, or fact rows after a crash. */
 export function createV213SqlCleanupReceiptFinalizer(input: {
   readonly database: TransactionalSqlExecutor;
   readonly evidenceSigningKey: Uint8Array;
+  readonly onPersistenceBoundary?: (
+    boundary: V213CleanupReceiptPersistenceBoundary,
+    intentState: V213CleanupReceiptIntentState | null,
+  ) => void | Promise<void>;
 }) {
   const evidence = new V213SqlSignedEvidenceStore(input.database, input.evidenceSigningKey);
   const materializeReleaseFacts = createV213SqlReleaseFactMaterializer(input.database);
@@ -767,7 +785,8 @@ export function createV213SqlCleanupReceiptFinalizer(input: {
       !SHA256.test(request.outerStateSha256) ||
       !SHA256.test(request.providerCleanupEvidenceSha256) ||
       request.providerCleanupEvidenceSha256 !== canonicalSha256(summary) ||
-      typeof request.readbackOnly !== "boolean"
+      typeof request.readbackOnly !== "boolean" ||
+      typeof request.failureCleanup !== "boolean"
     )
       throw new Error("V213_CLEANUP_RECEIPT_FINALIZATION_REQUEST_INVALID");
     const document = Object.freeze({
@@ -779,37 +798,77 @@ export function createV213SqlCleanupReceiptFinalizer(input: {
       summary: Object.freeze({ ...summary }),
     });
     const receiptArtifactSha256 = canonicalSha256(document);
-    const factRequest: V213ReleaseFactMaterializationRequest = {
+    const intentDocument = Object.freeze({
+      schemaVersion: "videoforge.v213-cleanup-receipt-intent/v1",
       fullLiveAuthorityId: request.fullLiveAuthorityId,
-      completedOperationId: request.operationId,
-      completedEvidenceSha256: receiptArtifactSha256,
-    };
-    let materialization: V213ReleaseFactMaterializationResult;
-    if (request.readbackOnly) {
-      materialization = exactReleaseFactMaterialization(
-        await queryValue(
-          input.database,
-          "SELECT public.videoforge_read_v213_release_fact_materialization($1::jsonb) AS value",
-          factRequest,
-        ),
-        factRequest,
-      );
-    } else {
-      const stored = await evidence.signAndStore("RELEASE", document, receiptArtifactSha256);
-      if (stored.artifactSha256 !== receiptArtifactSha256)
-        throw new Error("V213_CLEANUP_RECEIPT_STORE_INVALID");
-      const recorded = await queryValue(
+      operationId: request.operationId,
+      outerStateSha256: request.outerStateSha256,
+      providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
+      receiptArtifactSha256,
+      receiptDocument: document,
+    });
+    const expectedIntentSha256 = canonicalSha256(intentDocument);
+    const boundary = async (
+      name: V213CleanupReceiptPersistenceBoundary,
+      state: V213CleanupReceiptIntentState | null,
+    ) => input.onPersistenceBoundary?.(name, state);
+    await boundary("BEFORE_INTENT_CLAIM", null);
+    const intent = record(
+      await queryValue(
         input.database,
-        "SELECT public.videoforge_record_v213_operation_receipt($1::jsonb) AS value",
+        "SELECT public.videoforge_claim_v213_cleanup_receipt_intent($1::jsonb) AS value",
         {
           fullLiveAuthorityId: request.fullLiveAuthorityId,
           operationId: request.operationId,
-          artifactSha256: receiptArtifactSha256,
+          outerStateSha256: request.outerStateSha256,
+          providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
+          receiptArtifactSha256,
           document,
         },
-      );
-      if (recorded !== receiptArtifactSha256) throw new Error("V213_CLEANUP_RECEIPT_STORE_INVALID");
-      materialization = await materializeReleaseFacts(factRequest);
+      ),
+      "V213_CLEANUP_RECEIPT_INTENT_INVALID",
+    );
+    exactKeys(
+      intent,
+      ["intentSha256", "intentState", "receiptArtifactSha256"],
+      "V213_CLEANUP_RECEIPT_INTENT_INVALID",
+    );
+    if (
+      !["NO_ATTEMPT", "ACK_UNKNOWN"].includes(String(intent.intentState)) ||
+      intent.intentSha256 !== expectedIntentSha256 ||
+      intent.receiptArtifactSha256 !== receiptArtifactSha256
+    )
+      throw new Error("V213_CLEANUP_RECEIPT_INTENT_INVALID");
+    const intentState = intent.intentState as V213CleanupReceiptIntentState;
+    await boundary("AFTER_INTENT_CLAIM", intentState);
+    await boundary("BEFORE_EVIDENCE_STORE", intentState);
+    const storedReference = await evidence.signAndStore("RELEASE", document, receiptArtifactSha256);
+    if (storedReference.artifactSha256 !== receiptArtifactSha256)
+      throw new Error("V213_CLEANUP_RECEIPT_STORE_INVALID");
+    await boundary("AFTER_EVIDENCE_STORE", intentState);
+    await boundary("BEFORE_RECEIPT_STORE", intentState);
+    const recorded = await queryValue(
+      input.database,
+      "SELECT public.videoforge_record_v213_operation_receipt($1::jsonb) AS value",
+      {
+        fullLiveAuthorityId: request.fullLiveAuthorityId,
+        operationId: request.operationId,
+        artifactSha256: receiptArtifactSha256,
+        document,
+      },
+    );
+    if (recorded !== receiptArtifactSha256) throw new Error("V213_CLEANUP_RECEIPT_STORE_INVALID");
+    await boundary("AFTER_RECEIPT_STORE", intentState);
+    let releaseFactMaterializationSha256: Sha256 | null = null;
+    if (!request.failureCleanup) {
+      await boundary("BEFORE_FACT_MATERIALIZATION", intentState);
+      const materialization = await materializeReleaseFacts({
+        fullLiveAuthorityId: request.fullLiveAuthorityId,
+        completedOperationId: request.operationId,
+        completedEvidenceSha256: receiptArtifactSha256,
+      });
+      releaseFactMaterializationSha256 = materialization.materializationSha256;
+      await boundary("AFTER_FACT_MATERIALIZATION", intentState);
     }
     const stored = await evidence.loadAndVerify("RELEASE", {
       artifactSha256: receiptArtifactSha256,
@@ -846,7 +905,7 @@ export function createV213SqlCleanupReceiptFinalizer(input: {
       operationId: request.operationId,
       providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
       receiptArtifactSha256,
-      releaseFactMaterializationSha256: materialization.materializationSha256,
+      releaseFactMaterializationSha256,
       readbackOnly: request.readbackOnly,
     });
   };

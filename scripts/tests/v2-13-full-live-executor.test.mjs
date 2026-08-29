@@ -10,10 +10,12 @@ import {
   assertResult,
   certificationPredecessorEvidence,
   cleanupProofEvidence,
+  createDurableCancellationSource,
   executeFullLive as executeFullLiveRaw,
   missingConcreteTools,
   OPERATIONS,
   runPodMutationBoundaryReached,
+  readDurableCancellationRecord,
   validateFullLiveSourceClosure,
 } from "../../deploy/v2-13/full-live-executor.mjs";
 import {
@@ -34,6 +36,151 @@ const canonicalJson = (value) =>
           .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
           .join(",")}}`
       : JSON.stringify(value);
+const workflowRegistrationEvidenceFixture = (sourceCommit = "a".repeat(40)) => {
+  const unsigned = {
+    schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v1",
+    repository: "Pala-LakshmanSai/videoforge",
+    default_branch: "main",
+    default_branch_commit: "5".repeat(40),
+    workflow_file: "avatar-primary-serverless-image.yml",
+    workflow_name: "avatar-primary-serverless-image",
+    workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+    default_branch_workflow_sha256: proof("5"),
+    release_source_commit: sourceCommit,
+    release_source_workflow_sha256: proof("5"),
+    registration_state: "REGISTERED_EXACT_DEFAULT_BRANCH",
+    materialized: true,
+    bound_to_release_source: true,
+  };
+  return { ...unsigned, evidence_sha256: hash(Buffer.from(canonicalJson(unsigned))) };
+};
+
+const freshWorkflowReadbackFixture = (state) => {
+  const unsigned = {
+    schemaVersion: "videoforge.v213-fresh-default-branch-workflow-readback/v1",
+    repository: "Pala-LakshmanSai/videoforge",
+    defaultBranch: "main",
+    defaultBranchCommit: state.soulx_workflow_registration_evidence.default_branch_commit,
+    releaseSourceCommit: state.release_source_commit,
+    workflows: [
+      {
+        workflowId: 101,
+        workflowFile: "mage-image.yml",
+        workflowName: "mage-image",
+        workflowSha256: proof("4"),
+      },
+      {
+        workflowId: 102,
+        workflowFile: "avatar-primary-serverless-image.yml",
+        workflowName: "avatar-primary-serverless-image",
+        workflowSha256: state.soulx_workflow_registration_evidence.default_branch_workflow_sha256,
+      },
+    ],
+    exactBothRegisteredAndByteIdentical: true,
+  };
+  return { ...unsigned, proofSha256: hash(Buffer.from(canonicalJson(unsigned))) };
+};
+const retainedVolumesFixture = Object.freeze([
+  Object.freeze({
+    lane: "mage",
+    volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    volumeManifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    sizeGb: 50,
+    region: "EU-RO-1",
+  }),
+  Object.freeze({
+    lane: "soulx",
+    volumeIdSha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    volumeManifestSha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+    sizeGb: 50,
+    region: "EU-RO-1",
+  }),
+]);
+const endpointBindingsFixture = Object.freeze(
+  retainedVolumesFixture.map((volume, index) =>
+    Object.freeze({
+      lane: volume.lane,
+      endpointIdSha256: proof(index === 0 ? "1" : "2"),
+      templateIdSha256: proof(index === 0 ? "3" : "4"),
+      imageSha256: proof(index === 0 ? "5" : "6"),
+      deploymentSha256: proof(index === 0 ? "7" : "8"),
+      volumeIdSha256: volume.volumeIdSha256,
+      volumeManifestSha256: volume.volumeManifestSha256,
+      region: "EU-RO-1",
+      gpu: "NVIDIA GeForce RTX 4090",
+      gpuCount: 1,
+      workersMin: 0,
+      workersMax: 1,
+    }),
+  ),
+);
+function mutationAdmissionFixture({ operation, priorResults, outerStateSha256, trustedTime }) {
+  const production = priorResults.get("create-exact-max-one-endpoints")?.materialization
+    ?.production;
+  const endpointBindings = operation.id.startsWith("v2-")
+    ? [structuredClone(production.mage), structuredClone(production.soulx)]
+    : [];
+  const unsigned = {
+    schemaVersion: "videoforge.v213-runpod-per-mutation-admission/v2",
+    operationId: operation.id,
+    outerStateSha256BeforeAuthorization: outerStateSha256,
+    checkedAt: trustedTime,
+    authenticatedAccountSha256:
+      "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    exactGpu: "NVIDIA GeForce RTX 4090",
+    region: "EU-RO-1",
+    availability: "LOW",
+    serverlessFlexRateUsdPerSecond: 0.00031,
+    serverlessFlexRateUsdPerGpuHour: 1.116,
+    serverlessFlexRateAuthenticatedCatalogSha256: proof("9"),
+    serverlessFlexRateSource: "https://docs.runpod.io/serverless/endpoints/endpoint-configurations",
+    serverlessFlexRateSourceCheckedAt: trustedTime,
+    serverlessFlexRateSourceSha256: proof("a"),
+    noFallback: true,
+    activeWorkers: 0,
+    runningPods: 0,
+    endpointBindings,
+    retainedVolumes: structuredClone(retainedVolumesFixture),
+    serverlessCatalogSha256: proof("9"),
+  };
+  return { ...unsigned, proofSha256: hash(Buffer.from(canonicalJson(unsigned))) };
+}
+const qualifiedProductionCleanupProof = (
+  fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111",
+) => {
+  const unsigned = {
+    schemaVersion: "videoforge.v213-qualified-production-cleanup-proof/v1",
+    fullLiveAuthorityId,
+    promotionId: "22222222-2222-4222-8222-222222222222",
+    state: "DISABLED_UNQUALIFIED",
+    enabled: false,
+    gpuDispatchPerformed: false,
+    productionRedispatched: false,
+    providerReadbackPassed: true,
+    routeStatus: 503,
+    disabledConfigSha256: proof("4"),
+    disabledVersionSha256: proof("5"),
+    databasePromotionAttempted: true,
+    databasePromotionSha256: proof("7"),
+    databaseRollbackRecorded: true,
+    databaseRollbackSha256: proof("6"),
+  };
+  return { ...unsigned, proofSha256: hash(Buffer.from(canonicalJson(unsigned))) };
+};
+const promotionCleanupAbsenceProof = () => {
+  const authorityId = "33333333-3333-4333-8333-333333333333";
+  const unsigned = {
+    schemaVersion: "videoforge.v213-promotion-cleanup-absence-proof/v1",
+    authorityId,
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+    promotionWorkId: `${authorityId}:promote-qualified-production`,
+    promotionRecordMaterialized: false,
+    promotionJournalMaterialized: false,
+    databaseMutationPossible: false,
+    cloudflareMutationPossible: false,
+  };
+  return { ...unsigned, proofSha256: hash(Buffer.from(canonicalJson(unsigned))) };
+};
 let currentAuthorizedOuterStateSha256;
 const executeFullLive = (options) => {
   const runOperation = options.runOperation;
@@ -41,11 +188,21 @@ const executeFullLive = (options) => {
     trustedTime: async () => "2026-08-26T12:00:00.000Z",
     verifyMaterializationSeed: async () => true,
     verifyStaticReleaseDescriptor: async () => true,
+    readMutationAdmission: async (input) => mutationAdmissionFixture(input),
     ...options,
     runOperation: async (...args) => {
       currentAuthorizedOuterStateSha256 = args[3];
       try {
-        return await runOperation(...args);
+        const result = await runOperation(...args);
+        const mutationAdmission = args[4]?.mutationAdmission;
+        return mutationAdmission === undefined
+          ? result
+          : {
+              ...result,
+              mutationAdmission,
+              mutationAdmissionProofSha256: mutationAdmission.proofSha256,
+              mutationAdmissionCheckedAt: mutationAdmission.checkedAt,
+            };
       } finally {
         currentAuthorizedOuterStateSha256 = undefined;
       }
@@ -116,7 +273,16 @@ function stateFixture() {
       "project-context/evidence/acceptance/VF-10-13/static-release-descriptor.json",
     staticReleaseDescriptorSha256: proof("d"),
   };
-  writeExclusive(path, initialConsumptionRecord(authority, authorityBytes, validated));
+  const workflowRegistrationEvidence = workflowRegistrationEvidenceFixture(
+    validated.releaseSourceCommit,
+  );
+  writeExclusive(
+    path,
+    initialConsumptionRecord(authority, authorityBytes, validated, {
+      schemaVersion: "videoforge.v213-static-release-descriptor/v2",
+      workflowRegistrationEvidence,
+    }),
+  );
   return { directory, path, sha256: hash(readFileSync(path)) };
 }
 
@@ -170,7 +336,7 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       },
       pgcrypto_sha256: proof("4"),
       prequalification_database_bootstrap_sha256: proof("5"),
-      recovery_mode: "FRESH_36_TO_45",
+      recovery_mode: "FRESH_36_TO_46",
       runpod_calls: 0,
       cloudflare_calls: 0,
       application_secret_reads: 5,
@@ -204,12 +370,17 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       exactRemoteReadback: true,
       branch: "codex/serverless-v2-roadmap-v4",
     });
-  if (operation.id.endsWith("image-workflow-dispatch"))
+  if (operation.id.endsWith("image-workflow-dispatch")) {
+    const freshWorkflowReadback = freshWorkflowReadbackFixture(state);
     Object.assign(result, {
       runId: operation.id.startsWith("mage") ? "1001" : "1002",
       headSha: state.release_source_commit,
       dispatchAccepted: true,
+      freshWorkflowReadback,
+      freshWorkflowReadbackSha256: freshWorkflowReadback.proofSha256,
+      workflowRegistrationEvidenceSha256: state.soulx_workflow_registration_evidence_sha256,
     });
+  }
   if (operation.id.endsWith("image-workflow-verification")) {
     const dispatchId = operation.id.replace("verification", "dispatch");
     Object.assign(result, {
@@ -264,6 +435,12 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       bothMaxWorkersOne: true,
       bothWorkersMinZero: true,
       evidenceSha256: proof("f"),
+      materialization: {
+        production: {
+          mage: structuredClone(endpointBindingsFixture[0]),
+          soulx: structuredClone(endpointBindingsFixture[1]),
+        },
+      },
     });
   if (operation.id.startsWith("v2-"))
     Object.assign(result, {
@@ -286,20 +463,31 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       releaseCertified: false,
       signedSmokeEvidenceSha256: result.evidenceSha256,
     });
-  if (operation.id === "restore-endpoints-max-one")
+  if (operation.id === "restore-endpoints-max-one") {
+    const promotionCleanup = qualifiedProductionCleanupProof(state.full_live_authority_id);
     Object.assign(result, {
       proofSha256: proof("b"),
       productionCleanupState: "EXACT_MAX_ONE_PAIR_RETAINED",
       productionResourcesAbsent: false,
       bothEndpointsMaxWorkersOne: true,
       retainedProductionEndpoints: 2,
+      qualifiedProductionCleanup: promotionCleanup,
+      promotionCleanupEvidenceSha256: promotionCleanup.proofSha256,
     });
+  }
   if (operation.id === "prove-zero-workers")
     Object.assign(result, { proofSha256: proof("c"), zeroWorkers: true });
   if (operation.id === "read-settled-billing")
     Object.assign(result, { proofSha256: proof("d"), withinCumulativeCap: true });
-  if (operation.id === "reconcile-exact-resources")
-    Object.assign(result, { proofSha256: proof("e"), onlyApprovedRetainedVolumes: true });
+  if (operation.id === "reconcile-exact-resources") {
+    const promotionCleanup = qualifiedProductionCleanupProof(state.full_live_authority_id);
+    Object.assign(result, {
+      proofSha256: proof("e"),
+      onlyApprovedRetainedVolumes: true,
+      qualifiedProductionCleanup: promotionCleanup,
+      promotionCleanupEvidenceSha256: promotionCleanup.proofSha256,
+    });
+  }
   if (operation.id === "certify-v2-13-release") {
     const predecessorEvidenceSha256s = certificationPredecessorEvidence(priorResults);
     Object.assign(result, {
@@ -374,6 +562,7 @@ test("the resealed graph has exactly 26 operations and certifies only after reco
 });
 
 function certificationPredecessorFixture() {
+  const promotionCleanup = qualifiedProductionCleanupProof();
   return new Map([
     [
       "v2-13-final-two-lane-smoke",
@@ -394,11 +583,21 @@ function certificationPredecessorFixture() {
         productionResourcesAbsent: false,
         bothEndpointsMaxWorkersOne: true,
         retainedProductionEndpoints: 2,
+        qualifiedProductionCleanup: promotionCleanup,
+        promotionCleanupEvidenceSha256: promotionCleanup.proofSha256,
       },
     ],
     ["prove-zero-workers", { proofSha256: proof("c"), zeroWorkers: true }],
     ["read-settled-billing", { proofSha256: proof("d"), withinCumulativeCap: true }],
-    ["reconcile-exact-resources", { proofSha256: proof("e"), onlyApprovedRetainedVolumes: true }],
+    [
+      "reconcile-exact-resources",
+      {
+        proofSha256: proof("e"),
+        onlyApprovedRetainedVolumes: true,
+        qualifiedProductionCleanup: promotionCleanup,
+        promotionCleanupEvidenceSha256: promotionCleanup.proofSha256,
+      },
+    ],
   ]);
 }
 
@@ -457,6 +656,43 @@ test("final certification rejects a ledger bound to an extra or different receip
 
 test("the smoke operation cannot claim release certification", () => {
   const operation = OPERATIONS.find(({ id }) => id === "v2-13-final-two-lane-smoke");
+  const priorResults = new Map([
+    [
+      "create-exact-max-one-endpoints",
+      {
+        materialization: {
+          production: {
+            mage: structuredClone(endpointBindingsFixture[0]),
+            soulx: structuredClone(endpointBindingsFixture[1]),
+          },
+        },
+      },
+    ],
+  ]);
+  const outerStateSha256 = proof("c");
+  const checkedAt = "2026-08-26T12:00:00.000Z";
+  const mutationAdmission = mutationAdmissionFixture({
+    operation,
+    priorResults,
+    outerStateSha256,
+    trustedTime: checkedAt,
+  });
+  const authorityId = "v2-13-test-executor-0001";
+  const workId = `${authorityId}:${operation.id}`.toLowerCase();
+  const state = {
+    authority_id: authorityId,
+    approved_at: "2026-08-26T00:00:00.000Z",
+    expires_at: "2026-08-27T00:00:00.000Z",
+    phases: {
+      [operation.phase]: {
+        work: {
+          [workId]: {
+            authorization_event_id: `${workId}:reserved-${mutationAdmission.proofSha256.slice(7)}`,
+          },
+        },
+      },
+    },
+  };
   const result = {
     actualUsd: 2,
     accepted: true,
@@ -468,8 +704,18 @@ test("the smoke operation cannot claim release certification", () => {
     smokeOnly: true,
     releaseCertified: true,
     signedSmokeEvidenceSha256: proof("a"),
+    mutationAdmission,
+    mutationAdmissionProofSha256: mutationAdmission.proofSha256,
+    mutationAdmissionCheckedAt: checkedAt,
   };
-  assert.throws(() => assertResult(operation, result, {}, new Map()), /V2_13_SCOPE/u);
+  assert.throws(
+    () =>
+      assertResult(operation, result, state, priorResults, {
+        authorizedOuterStateSha256: outerStateSha256,
+        mutationAdmission,
+      }),
+    /V2_13_SCOPE/u,
+  );
 });
 
 test("default command performs zero actions and reports every concrete tooling gap", () => {
@@ -509,6 +755,52 @@ test("approval commit result requires the exact v4 branch and rejects the stale 
       ),
     /APPROVAL_COMMIT_READBACK/u,
   );
+});
+
+test("workflow dispatch result durably binds the full canonical fresh dual-workflow proof", () => {
+  const operation = OPERATIONS.find(({ id }) => id === "mage-image-workflow-dispatch");
+  const registration = workflowRegistrationEvidenceFixture();
+  const state = {
+    release_source_commit: "a".repeat(40),
+    soulx_workflow_registration_evidence: registration,
+    soulx_workflow_registration_evidence_sha256: registration.evidence_sha256,
+  };
+  const accepted = fakeResult(operation, state, new Map());
+  assert.equal(assertResult(operation, accepted, state, new Map()), accepted);
+
+  const tampered = [
+    { ...accepted, freshWorkflowReadback: undefined },
+    {
+      ...accepted,
+      freshWorkflowReadback: {
+        ...accepted.freshWorkflowReadback,
+        releaseSourceCommit: "b".repeat(40),
+      },
+    },
+    {
+      ...accepted,
+      freshWorkflowReadback: {
+        ...accepted.freshWorkflowReadback,
+        workflows: accepted.freshWorkflowReadback.workflows.toReversed(),
+      },
+    },
+    {
+      ...accepted,
+      freshWorkflowReadback: {
+        ...accepted.freshWorkflowReadback,
+        workflows: accepted.freshWorkflowReadback.workflows.map((workflow, index) =>
+          index === 1 ? { ...workflow, workflowSha256: proof("6") } : workflow,
+        ),
+      },
+    },
+    { ...accepted, freshWorkflowReadbackSha256: proof("7") },
+    { ...accepted, workflowRegistrationEvidenceSha256: proof("8") },
+  ];
+  for (const result of tampered)
+    assert.throws(
+      () => assertResult(operation, result, state, new Map()),
+      /WORKFLOW_FRESH_READBACK/u,
+    );
 });
 
 test("fresh preflight rejects a Serverless Flex rate above the exact current snapshot", () => {
@@ -665,6 +957,26 @@ test("bootstrap partial cleanup accepts the adapter maximum and rejects overflow
   assert.doesNotThrow(() =>
     assertResult(operation, withRemovedArtifactCount(56), state, new Map()),
   );
+  const secretOnly = withRemovedArtifactCount(44);
+  secretOnly.localDatabaseCredentialCleanup.credentialBundleSha256 = null;
+  const secretOnlyBody = { ...secretOnly.localDatabaseCredentialCleanup };
+  delete secretOnlyBody.cleanupSha256;
+  secretOnly.localDatabaseCredentialCleanup.cleanupSha256 = hash(
+    Buffer.from(canonicalJson(secretOnlyBody)),
+  );
+  secretOnly.proofSha256 = hash(
+    Buffer.from(
+      canonicalJson({
+        providerCleanupEvidenceSha256: secretOnly.evidenceSha256,
+        localDatabaseCredentialCleanupSha256:
+          secretOnly.localDatabaseCredentialCleanup.cleanupSha256,
+      }),
+    ),
+  );
+  assert.throws(
+    () => assertResult(operation, secretOnly, state, new Map()),
+    /PREQUALIFICATION_PARTIAL_CLEANUP_READBACK/u,
+  );
   assert.throws(
     () => assertResult(operation, withRemovedArtifactCount(57), state, new Map()),
     /PREQUALIFICATION_PARTIAL_CLEANUP_READBACK/u,
@@ -710,6 +1022,218 @@ test("global protected-input preflight enters endpoint-free cleanup before norma
   } finally {
     rmSync(fixture.directory, { recursive: true, force: true });
   }
+});
+
+test("durable cancellation before initial work authorizes no normal operation and completes cleanup", async () => {
+  const fixture = stateFixture();
+  const called = [];
+  try {
+    const result = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      isCancelled: () => true,
+      runOperation: async (operation, state, priorResults) => {
+        called.push(operation.id);
+        assert.equal(operation.phase, "cleanup_and_reconciliation");
+        return fakeResult(operation, state, priorResults);
+      },
+    });
+    assert.equal(result.failed, true);
+    assert.equal(result.state.failure_boundary, "CANCELLATION_REQUESTED");
+    assert.equal(result.state.failure_code, "CANCELLATION_REQUESTED");
+    assert.deepEqual(called, [
+      "restore-endpoints-max-one",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources",
+    ]);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("cancellation after one settled operation never authorizes the next normal operation", async () => {
+  const fixture = stateFixture();
+  const called = [];
+  try {
+    const result = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      isCancelled: (state) =>
+        Object.values(state.phases.publication.work).some(
+          (work) => work.state === "SETTLED_TERMINAL",
+        ),
+      runOperation: async (operation, state, priorResults) => {
+        called.push(operation.id);
+        return fakeResult(operation, state, priorResults);
+      },
+    });
+    assert.equal(result.failed, true);
+    assert.equal(called[0], "release-tag-create");
+    assert.equal(called.includes("release-tag-push"), false);
+    assert.deepEqual(called.slice(1), [
+      "restore-endpoints-max-one",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources",
+    ]);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("durable cancellation record survives restart and remains authority-bound", () => {
+  const fixture = stateFixture();
+  const recordPath = `${fixture.path}.cancellation.json`;
+  try {
+    const source = createDurableCancellationSource({
+      statePath: fixture.path,
+      recordPath,
+      now: () => new Date("2026-08-26T12:00:00.000Z"),
+    });
+    const record = source.request("INJECTED_SOURCE");
+    assert.equal(record.source, "INJECTED_SOURCE");
+    assert.equal(record.fullLiveAuthorityId, "11111111-1111-4111-8111-111111111111");
+    assert.equal(source.signal.aborted, true);
+    const restarted = createDurableCancellationSource({ statePath: fixture.path, recordPath });
+    assert.equal(restarted.isCancelled(), true);
+    assert.equal(restarted.signal.aborted, true);
+    assert.equal(
+      readDurableCancellationRecord({
+        path: recordPath,
+        authorityId: "v2-13-test-executor-0001",
+        fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+      }).recordSha256,
+      record.recordSha256,
+    );
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("cancellation during an external wait enters cleanup-only without settling or redispatch", async () => {
+  const fixture = stateFixture();
+  const cancellation = createDurableCancellationSource({
+    statePath: fixture.path,
+    recordPath: `${fixture.path}.cancellation.json`,
+    now: () => new Date("2026-08-26T12:00:00.000Z"),
+  });
+  const normal = [];
+  const cleanup = [];
+  try {
+    const result = await executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      cancellationSignal: cancellation.signal,
+      isCancelled: cancellation.isCancelled,
+      recordCancellation: () => cancellation.record() ?? cancellation.request("INJECTED_SOURCE"),
+      runOperation: async (operation, _state, _priorResults, _outerStateSha256, context) => {
+        normal.push(operation.id);
+        assert.equal(context.cancellationSignal instanceof AbortSignal, true);
+        assert.equal(context.cancellationSignal.aborted, false);
+        setImmediate(() => cancellation.request("INJECTED_SOURCE"));
+        return new Promise((_resolve, reject) => {
+          context.cancellationSignal.addEventListener(
+            "abort",
+            () => reject(new Error("cancelled external wait")),
+            { once: true },
+          );
+        });
+      },
+      runCleanupOperation: async (operation, state, priorResults) => {
+        cleanup.push(operation.id);
+        return fakeResult(operation, state, priorResults);
+      },
+    });
+    assert.deepEqual(normal, ["release-tag-create"]);
+    assert.deepEqual(cleanup, [
+      "restore-endpoints-max-one",
+      "prove-zero-workers",
+      "read-settled-billing",
+      "reconcile-exact-resources",
+    ]);
+    assert.equal(result.state.failure_boundary, "CANCELLATION_REQUESTED");
+    assert.equal(result.state.failure_code, "CANCELLATION_REQUESTED");
+    const publicationWork = Object.values(result.state.phases.publication.work);
+    assert.equal(publicationWork.length, 1);
+    assert.equal(publicationWork[0].state, "AUTHORIZED_ONCE_NOT_REDISPATCHABLE");
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("post-promotion op22/op25 reject missing, non-503, or unbound rollback evidence", () => {
+  const state = { full_live_authority_id: "11111111-1111-4111-8111-111111111111" };
+  const results = new Map([["promote-qualified-production", { state: "QUALIFIED_EXACT" }]]);
+  for (const operationId of ["restore-endpoints-max-one", "reconcile-exact-resources"]) {
+    const operation = OPERATIONS.find(({ id }) => id === operationId);
+    const exact = fakeResult(operation, state, results);
+    const missing = { ...exact };
+    delete missing.qualifiedProductionCleanup;
+    delete missing.promotionCleanupEvidenceSha256;
+    assert.throws(
+      () => assertResult(operation, missing, state, results),
+      /PROMOTION_CLEANUP_CLOSURE_MISSING/u,
+    );
+    const routeDrift = {
+      ...exact,
+      qualifiedProductionCleanup: {
+        ...exact.qualifiedProductionCleanup,
+        routeStatus: 200,
+      },
+    };
+    assert.throws(
+      () => assertResult(operation, routeDrift, state, results),
+      /QUALIFIED_PRODUCTION_CLEANUP_PROOF/u,
+    );
+    assert.throws(
+      () =>
+        assertResult(
+          operation,
+          { ...exact, promotionCleanupEvidenceSha256: proof("9") },
+          state,
+          results,
+        ),
+      /QUALIFIED_PRODUCTION_CLEANUP_EVIDENCE/u,
+    );
+  }
+});
+
+test("cleanup proof accepts exact promotion absence only when rollback is not required", () => {
+  const absence = promotionCleanupAbsenceProof();
+  const results = new Map([
+    [
+      "restore-endpoints-max-one",
+      {
+        proofSha256: proof("b"),
+        productionCleanupState: "ALL_ATTRIBUTABLE_PRODUCTION_ABSENT",
+        productionResourcesAbsent: true,
+        bothEndpointsMaxWorkersOne: false,
+        retainedProductionEndpoints: 0,
+        promotionCleanupAbsence: absence,
+        promotionCleanupAbsenceEvidenceSha256: absence.proofSha256,
+      },
+    ],
+    ["prove-zero-workers", { proofSha256: proof("c"), zeroWorkers: true }],
+    ["read-settled-billing", { proofSha256: proof("d"), withinCumulativeCap: true }],
+    [
+      "reconcile-exact-resources",
+      {
+        proofSha256: proof("e"),
+        onlyApprovedRetainedVolumes: true,
+        promotionCleanupAbsence: absence,
+        promotionCleanupAbsenceEvidenceSha256: absence.proofSha256,
+      },
+    ],
+  ]);
+  assert.doesNotThrow(() =>
+    cleanupProofEvidence(results, { requireQualifiedProductionCleanup: true }),
+  );
+  results.set("promote-qualified-production", { state: "QUALIFIED_EXACT" });
+  assert.throws(
+    () => cleanupProofEvidence(results, { requireQualifiedProductionCleanup: true }),
+    /PROMOTION_CLEANUP_ABSENCE_INVALID/u,
+  );
 });
 
 test("early cleanup is selected only when no RunPod mutation operation has history", async () => {
@@ -828,8 +1352,8 @@ test("authorized bootstrap crash resumes exactly one readback-only reconciliatio
           assert.equal(context.providerDispatchForbidden, true);
           const value = fakeResult(operation, state, priorResults);
           value.outer_state_sha256 = outerStateSha256;
-          value.ledger_before_count = 45;
-          value.recovery_mode = "VERIFIED_EXISTING_45";
+          value.ledger_before_count = 46;
+          value.recovery_mode = "VERIFIED_EXISTING_46";
           return value;
         }
         return fakeResult(operation, state, priorResults);
@@ -861,8 +1385,8 @@ test("lost bootstrap transaction acknowledgement reconciles before cleanup-only 
           assert.equal(context.reconciliationOnly, true);
           assert.equal(context.providerDispatchForbidden, true);
           const reconciled = fakeResult(operation, state, priorResults);
-          reconciled.ledger_before_count = 45;
-          reconciled.recovery_mode = "VERIFIED_EXISTING_45";
+          reconciled.ledger_before_count = 46;
+          reconciled.recovery_mode = "VERIFIED_EXISTING_46";
           return reconciled;
         }
         return fakeResult(operation, state, priorResults);
@@ -983,7 +1507,7 @@ test("expired authenticated time enters cleanup-only before any normal mutation 
   const fixture = stateFixture();
   const called = [];
   try {
-    const result = await executeFullLiveRaw({
+    const result = await executeFullLive({
       statePath: fixture.path,
       expectedStateSha256: fixture.sha256,
       trustedTime: async () => "2026-08-27T00:00:01.000Z",
@@ -1171,7 +1695,11 @@ test("fake command integration preserves the exact graph and terminal cleanup pr
       OPERATIONS.map(({ id }) => id),
     );
     assert.equal(result.failed, false);
-    assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_COMPLETE");
+    assert.equal(
+      result.state.state,
+      "CONSUMED_SINGLE_EXECUTION_COMPLETE",
+      JSON.stringify(result.results.get("failure") ?? null),
+    );
     assert.equal(result.state.total_reserved_usd, 17.5);
     assert.equal(result.state.total_settled_usd, 17.5);
     assert.equal(result.state.cleanup_proof.zero_worker_proof_sha256, proof("c"));
@@ -1437,7 +1965,7 @@ test("trusted time is checked immediately before local certification", async () 
   const fixture = stateFixture();
   const events = [];
   try {
-    const result = await executeFullLiveRaw({
+    const result = await executeFullLive({
       statePath: fixture.path,
       expectedStateSha256: fixture.sha256,
       verifyMaterializationSeed: async (_state, _sha256, context) => {
@@ -1454,7 +1982,11 @@ test("trusted time is checked immediately before local certification", async () 
         return fakeResult(operation, state, priorResults, outerStateSha256);
       },
     });
-    assert.equal(result.state.state, "CONSUMED_SINGLE_EXECUTION_COMPLETE");
+    assert.equal(
+      result.state.state,
+      "CONSUMED_SINGLE_EXECUTION_COMPLETE",
+      JSON.stringify(result.results.get("failure") ?? null),
+    );
     assert.deepEqual(events.slice(-3), [
       "certification-seed",
       "trusted-time",
@@ -1471,7 +2003,7 @@ test("expiry immediately before certification closes release and preserves clean
   let certificationCalls = 0;
   try {
     await assert.rejects(
-      executeFullLiveRaw({
+      executeFullLive({
         statePath: fixture.path,
         expectedStateSha256: fixture.sha256,
         verifyMaterializationSeed: async () => true,

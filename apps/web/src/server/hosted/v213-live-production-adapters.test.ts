@@ -298,7 +298,7 @@ function releaseGateFact(gate: V213ReleaseGate): V213ReleaseEvidenceFact {
 }
 
 describe("V213 hosted live production adapters", () => {
-  it("persists a cleanup receipt once and makes reconciliation exact readback only", async () => {
+  it("claims cleanup receipt intent and idempotently reconciles the DB suffix", async () => {
     const fullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
     const summary = Object.freeze({
       zeroWorkers: true,
@@ -311,13 +311,40 @@ describe("V213 hosted live production adapters", () => {
       providerCleanupEvidenceSha256: canonicalSha256(summary),
       summary,
       readbackOnly: false,
+      failureCleanup: false,
     });
     let signedEvidence: Record<string, unknown> | undefined;
     let operationReceipt: Record<string, unknown> | undefined;
+    let intentClaimed = false;
     const sqlCalls: string[] = [];
     const query = vi.fn(async (sql: string, values: readonly unknown[]) => {
       sqlCalls.push(sql);
       const supplied = JSON.parse(String(values[0])) as Record<string, unknown>;
+      if (sql.includes("claim_v213_cleanup_receipt_intent")) {
+        const intentDocument = {
+          schemaVersion: "videoforge.v213-cleanup-receipt-intent/v1",
+          fullLiveAuthorityId: supplied.fullLiveAuthorityId,
+          operationId: supplied.operationId,
+          outerStateSha256: supplied.outerStateSha256,
+          providerCleanupEvidenceSha256: supplied.providerCleanupEvidenceSha256,
+          receiptArtifactSha256: supplied.receiptArtifactSha256,
+          receiptDocument: supplied.document,
+        };
+        const intentState = intentClaimed ? "ACK_UNKNOWN" : "NO_ATTEMPT";
+        intentClaimed = true;
+        return {
+          rows: [
+            {
+              value: {
+                intentSha256: canonicalSha256(intentDocument),
+                intentState,
+                receiptArtifactSha256: supplied.receiptArtifactSha256,
+              },
+            },
+          ],
+          rowCount: 1,
+        };
+      }
       if (sql.includes("record_v213_signed_evidence")) {
         signedEvidence = supplied;
         return { rows: [{ value: supplied.artifactSha256 }], rowCount: 1 };
@@ -379,11 +406,20 @@ describe("V213 hosted live production adapters", () => {
       ...initial,
       readbackOnly: true,
     });
-    expect(sqlCalls).toHaveLength(3);
-    expect(sqlCalls.every((sql) => sql.includes("read") || sql.includes("load"))).toBe(true);
-    expect(sqlCalls.some((sql) => sql.includes("record") || sql.includes("materialize"))).toBe(
-      false,
-    );
+    expect(sqlCalls.some((sql) => sql.includes("claim_v213_cleanup_receipt_intent"))).toBe(true);
+    expect(sqlCalls.some((sql) => sql.includes("record_v213_operation_receipt"))).toBe(true);
+    expect(sqlCalls.some((sql) => sql.includes("materialize_v213_release_facts"))).toBe(true);
+
+    sqlCalls.length = 0;
+    await expect(
+      finalize({ ...request, readbackOnly: true, failureCleanup: true }),
+    ).resolves.toEqual({
+      ...initial,
+      releaseFactMaterializationSha256: null,
+      readbackOnly: true,
+    });
+    expect(sqlCalls.some((sql) => sql.includes("record_v213_operation_receipt"))).toBe(true);
+    expect(sqlCalls.some((sql) => sql.includes("materialize_v213_release_facts"))).toBe(false);
   });
 
   it("materializes source-owned release facts and requires exact append-only readback", async () => {

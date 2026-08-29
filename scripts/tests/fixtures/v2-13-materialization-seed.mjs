@@ -151,14 +151,14 @@ const activationRecordBase = {
     owner_role: "neondb_owner",
     operator_role: "videoforge_hosted_operator",
     // The protected operator DSN does not exist until the consumed database-bootstrap operation
-    // reaches migration prefix 45. The final activation materializer replaces this null with the
+    // reaches migration prefix 46. The final activation materializer replaces this null with the
     // exact hash carried by that operation's settled receipt.
     operator_database_url_sha256: null,
     runtime_role: "videoforge_hosted_runtime",
     reconciler_role: "videoforge_hosted_reconciler",
     pgcrypto_required: true,
     first_migration: 37,
-    last_migration: 45,
+    last_migration: 46,
     exact_manifest_ledger_required: true,
   },
   cloudflare: {

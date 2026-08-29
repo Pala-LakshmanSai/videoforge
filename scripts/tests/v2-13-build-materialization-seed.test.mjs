@@ -165,6 +165,27 @@ function staticReleaseDescriptorAuditFacts(
   };
 }
 
+function workflowRegistrationEvidence(sourceCommit, overrides = {}) {
+  const workflowSha256 = sha256(Buffer.from("avatar-primary-serverless-image workflow\n"));
+  const unsigned = {
+    schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v1",
+    repository: "Pala-LakshmanSai/videoforge",
+    default_branch: "main",
+    default_branch_commit: "9".repeat(40),
+    workflow_file: "avatar-primary-serverless-image.yml",
+    workflow_name: "avatar-primary-serverless-image",
+    workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+    default_branch_workflow_sha256: workflowSha256,
+    release_source_commit: sourceCommit,
+    release_source_workflow_sha256: workflowSha256,
+    registration_state: "REGISTERED_EXACT_DEFAULT_BRANCH",
+    materialized: true,
+    bound_to_release_source: true,
+    ...overrides,
+  };
+  return { ...unsigned, evidence_sha256: sha256(Buffer.from(canonicalJson(unsigned))) };
+}
+
 function sourceReader(commit) {
   return (path) =>
     execFileSync("git", ["show", `${commit}:${path}`], {
@@ -317,6 +338,9 @@ function harness({
   database.prequalification_database_bootstrap_recovery_mode_final_ledger_count =
     bootstrap.recovery_mode_final_ledger_count;
   database.exact_operator_function_signatures = [...bootstrap.exact_operator_function_signatures];
+  database.exact_initial_ledger_prefix_count = 36;
+  database.exact_recoverable_prefix_counts = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
+  database.exact_migrations_to_apply = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
   proposal.requested_scope.database = Object.fromEntries(
     [
       "exact_operator_role",
@@ -361,6 +385,20 @@ function harness({
   const gitSource = sourceReader(proposal.source.release_source_commit);
   const origin = proposal.source.pending_source_contract.account_and_workers_dev_origin;
   const overlay = new Map();
+  const migrationManifestPath = "packages/control-plane/migrations/manifest.json";
+  const migrationManifestBytes = readFileSync(new URL(migrationManifestPath, ROOT));
+  const migrationManifest = JSON.parse(migrationManifestBytes);
+  overlay.set(migrationManifestPath, migrationManifestBytes);
+  proposal.source.exact_release_components.migration_manifest = {
+    path: migrationManifestPath,
+    sha256: sha256(migrationManifestBytes),
+  };
+  proposal.source.pending_source_contract.release_component_sha256s.migration_manifest =
+    sha256(migrationManifestBytes);
+  for (const migration of migrationManifest.migrations) {
+    const migrationPath = `packages/control-plane/migrations/${migration.filename}`;
+    overlay.set(migrationPath, readFileSync(new URL(migrationPath, ROOT)));
+  }
   const builderBytes = readFileSync(new URL(BUILDER_PATH, ROOT));
   const qualificationCaseSourceBytes = Buffer.from(
     caseSourceTransform(readFileSync(new URL(CASE_SOURCE_PATH, ROOT))),
@@ -920,7 +958,7 @@ test("builds the exact static production seed from proposal-bound source and pro
   assert.equal(first.seed.activation_record_base.database.operator_database_url_sha256, null);
   assert.equal(
     first.seed.promotion_record_base.database.migration_ledger_sha256,
-    "sha256:c35923de90961f9f7dce7aff5cd2c36ffdc66cfc96915c45c4c031cfb9288722",
+    "sha256:4a5bf7db976aed79cf6840edf321f9c19528d5a6c5608f196643bbfde27a3393",
   );
   assert.equal(
     Object.hasOwn(first.seed.production_input_base.dualLaneInput, "billingBaselineUsd"),
@@ -939,6 +977,34 @@ test("builds the exact static production seed from proposal-bound source and pro
   );
   assert.equal(first.seed.static_only, true);
   assert.equal(first.seed.future_output_hashes_present, false);
+});
+
+test("descriptor v2 embeds exact hash-bound repair evidence while v1 remains build-compatible", () => {
+  const v2 = harness({
+    descriptorTransform(descriptor) {
+      descriptor.schemaVersion = "videoforge.v213-static-release-descriptor/v2";
+      descriptor.workflowRegistrationEvidence = workflowRegistrationEvidence(
+        descriptor.sourceCommit,
+      );
+      return descriptor;
+    },
+  });
+  assert.doesNotThrow(() => buildV213MaterializationSeed(v2.arguments));
+
+  const forged = harness({
+    descriptorTransform(descriptor) {
+      descriptor.schemaVersion = "videoforge.v213-static-release-descriptor/v2";
+      descriptor.workflowRegistrationEvidence = workflowRegistrationEvidence(
+        descriptor.sourceCommit,
+      );
+      descriptor.workflowRegistrationEvidence.default_branch_commit = "8".repeat(40);
+      return descriptor;
+    },
+  });
+  assert.throws(
+    () => buildV213MaterializationSeed(forged.arguments),
+    /STATIC_DESCRIPTOR_WORKFLOW_REGISTRATION/u,
+  );
 });
 
 test("fails closed when the committed proposal does not bind the authenticated facts record", () => {

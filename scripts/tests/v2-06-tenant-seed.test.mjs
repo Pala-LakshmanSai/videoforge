@@ -134,7 +134,7 @@ test("mutation SQL is transactional, idempotent, tenant-bound, and has no delete
   });
   assert.match(source, /BEGIN;/u);
   assert.match(source, /COMMIT;/u);
-  assert.equal(MIGRATION_HEAD, 45);
+  assert.equal(MIGRATION_HEAD, 46);
   assert.match(source, new RegExp(`committed manifest head ${MIGRATION_HEAD}`, "u"));
   assert.match(source, /requires the exact committed migration ledger/u);
   assert.match(source, /SET LOCAL videoforge\.account_id/u);

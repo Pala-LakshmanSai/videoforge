@@ -117,7 +117,7 @@ function authority() {
       reconciler_role: "videoforge_hosted_reconciler",
       pgcrypto_required: true,
       first_migration: 37,
-      last_migration: 45,
+      last_migration: 46,
       exact_manifest_ledger_required: true,
     },
     cloudflare: {
@@ -222,7 +222,7 @@ test("authority and plan are exact, zero-spend, and closed-world", () => {
     "videoforge-production-video",
     "videoforge-production-video-pair",
   ]);
-  assert.deepEqual(result.migration_range, [37, 45]);
+  assert.deepEqual(result.migration_range, [37, 46]);
   assert.throws(
     () =>
       validateAuthority({
@@ -1331,7 +1331,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
       provenanceReceiptKeyId: "v213-provenance-receipt-key",
     },
     pgcrypto_sha256: hash(`${canonicalJson(pgcrypto)}\n`),
-    recovery_mode: "FRESH_36_TO_45",
+    recovery_mode: "FRESH_36_TO_46",
     runpod_calls: 0,
     cloudflare_calls: 0,
     application_secret_reads: 5,
@@ -1380,7 +1380,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
       verified.receipt.prequalification_database_bootstrap_sha256,
       receipt.prequalification_database_bootstrap_sha256,
     );
-    assert.equal(verified.ledger.length, 45);
+    assert.equal(verified.ledger.length, 46);
     assert.equal(verified.pgcrypto.name, "pgcrypto");
     assert.equal(verified.role.function_acl.length, 18);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
