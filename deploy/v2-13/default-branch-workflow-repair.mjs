@@ -794,7 +794,7 @@ export async function readCredentialFreeTrustedTime(runCommand = defaultRunComma
     "5",
     "--max-time",
     "10",
-    "https://api.github.com/rate_limit",
+    "https://api.github.com/",
   ];
   let raw;
   try {

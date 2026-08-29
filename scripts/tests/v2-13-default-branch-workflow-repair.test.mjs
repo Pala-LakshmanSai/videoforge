@@ -712,6 +712,7 @@ test("pre-consumption trusted time is CA verified and credential free", async ()
     assert.equal(args[0], "--disable");
     assert.equal(args.includes("--proto"), true);
     assert.equal(args.includes("=https"), true);
+    assert.equal(args.at(-1), "https://api.github.com/");
     assert.deepEqual(Object.keys(options.env).sort(), ["NO_PROXY", "PATH", "no_proxy"]);
     return { status: 0, stdout: "HTTP/2 200\ndate: Sat, 29 Aug 2026 06:00:00 GMT\n" };
   });
