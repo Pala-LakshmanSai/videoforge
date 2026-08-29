@@ -2369,19 +2369,39 @@ function acquireStateLock(lockPath, expectedSha256) {
   const body = Buffer.from(
     `${JSON.stringify({ pid: process.pid, process_start_sha256: processStartSha256, expected_state_sha256: expectedSha256 })}\n`,
   );
+  const candidatePath = `${lockPath}.candidate-${process.pid}-${processStartSha256.slice(7)}-${randomBytes(8).toString("hex")}`;
+  let candidateCreated = false;
   try {
-    const descriptor = openSync(lockPath, "wx", 0o600);
+    const descriptor = openSync(candidatePath, "wx", 0o600);
+    candidateCreated = true;
     try {
       writeFileSync(descriptor, body);
       fsyncSync(descriptor);
     } finally {
       closeSync(descriptor);
     }
-    exactPath(lockPath, "file", 0o600, "STATE_LOCK");
+    exactPath(candidatePath, "file", 0o600, "STATE_LOCK_CANDIDATE");
     fsyncDirectory(dirname(lockPath));
-    return;
-  } catch (error) {
-    if (error?.code !== "EEXIST") throw error;
+    // Claim the canonical name only after the complete record is durable.  A competing reader
+    // can therefore observe either no lock or a complete JSON record, never an empty/partial
+    // file between open(2) and write(2).
+    try {
+      linkSync(candidatePath, lockPath);
+      fsyncDirectory(dirname(lockPath));
+      return;
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+    }
+  } finally {
+    if (candidateCreated) {
+      try {
+        unlinkSync(candidatePath);
+        fsyncDirectory(dirname(lockPath));
+      } catch {
+        // If the candidate was linked, the canonical lock is complete and authoritative; an
+        // orphaned candidate is harmless and must not trigger removal of the canonical winner.
+      }
+    }
   }
   exactPath(lockPath, "file", 0o600, "STATE_LOCK");
   let existing;
