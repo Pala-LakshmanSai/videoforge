@@ -170,7 +170,7 @@ async function readHostedCatalog(): Promise<CatalogResponse> {
 
 interface HostedAttempt {
   readonly id: string;
-  readonly kind: "ASR" | "RENDER";
+  readonly kind: "ASR" | "RENDER" | "MAGE_IMAGE" | "SOULX_AVATAR";
   readonly state: string;
   readonly version: number;
   readonly created_at: string;
@@ -533,7 +533,14 @@ function statusTone(
 }
 
 function preflightReady(value: HostedPreflightResponse | null): boolean {
-  return value?.ready === true || value?.ok === true;
+  return value?.ready === true && value?.ok === true;
+}
+
+function attemptLabel(kind: HostedAttempt["kind"]): string {
+  if (kind === "ASR") return "Transcribe voiceover";
+  if (kind === "MAGE_IMAGE") return "Generate scene image";
+  if (kind === "SOULX_AVATAR") return "Generate avatar segment";
+  return "Render final video";
 }
 
 function preflightBlockers(value: HostedPreflightResponse | null): readonly string[] {
@@ -947,6 +954,7 @@ export function HostedCreateProjectScreen() {
                 inputMode="decimal"
                 type="number"
                 min="0.1"
+                max="2"
                 step="0.01"
                 value={spendCapUsd}
                 onChange={(event) => {
@@ -1969,9 +1977,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           {query.data.attempts.map((attempt) => (
             <article className="entity-row" key={attempt.id}>
               <div>
-                <strong>
-                  {attempt.kind === "ASR" ? "Transcribe voiceover" : "Render final video"}
-                </strong>
+                <strong>{attemptLabel(attempt.kind)}</strong>
                 <small>{attempt.id}</small>
                 {attempt.error_message ? <small>{attempt.error_message}</small> : null}
                 {attempt.timing ? (
