@@ -52,7 +52,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:edfb9a253b2de1f58591bf97d7a4ae0cf9ec0ce284b6834cdad6943935901246",
+    sha256: "sha256:ce4a92127d098392504bd1641d61865d3c94cfb7624de6939fe31157f1199e03",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
