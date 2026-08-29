@@ -1,0 +1,81 @@
+{
+  "schema_version": "videoforge.v2-13-default-branch-workflow-repair-authority/v2",
+  "authority_id": "v2-13-default-branch-repair-20260829-113453z-graphql",
+  "state": "APPROVED_UNCONSUMED",
+  "use_count": 0,
+  "validation": {
+    "schema_version": "videoforge.v2-13-default-branch-workflow-repair-validation/v2",
+    "status": "PASS",
+    "validator_commit": "ef700a7a5dceff38237a0a8b46f34b2acb12d67b",
+    "validator_sha256": "sha256:ff8cb7035093ff4d8bc5c30ff3869e08bb1044040b8f5d4b1c7e442809e73606",
+    "authority_binding_sha256": "sha256:fcd46e850cc899575f759e20dbc38f2807417c801bbe4e29f140f4d3a405bd65"
+  },
+  "operation": {
+    "id": "repair-default-branch-workflow-once",
+    "action": "GRAPHQL_CREATE_EXACT_DEFAULT_BRANCH_WORKFLOW",
+    "single_use": true
+  },
+  "lineage": {
+    "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-29-default-branch-workflow-repair-v2-candidate/proposal.json",
+    "proposal_sha256": "sha256:41e7646f8b1abdff56fbc83f5b16f7d9893551efed9204dc1ad721301bb486d6",
+    "proposal_record_commit": "8e1522b87fa1e9bf0cdb55a79d5967ae8b8812aa",
+    "approval_path": "project-context/evidence/acceptance/VF-10-13/2026-08-29-default-branch-workflow-repair-v2-candidate/approval.json",
+    "approval_sha256": "sha256:c335821618022c1be18f7fcd0f011b9f583cf84315fb39362541048b419ddc2c",
+    "approval_record_commit": "308edfcda61b0977c6537b2d4f4c1e05edc89aea",
+    "authority_record_path": "project-context/evidence/acceptance/VF-10-13/2026-08-29-default-branch-workflow-repair-v2-candidate/authority.json",
+    "authority_record_commit": null,
+    "validator_path": "deploy/v2-13/default-branch-workflow-repair.mjs",
+    "validator_commit": "ef700a7a5dceff38237a0a8b46f34b2acb12d67b",
+    "validator_sha256": "sha256:ff8cb7035093ff4d8bc5c30ff3869e08bb1044040b8f5d4b1c7e442809e73606",
+    "execution_control_commit": "ef700a7a5dceff38237a0a8b46f34b2acb12d67b",
+    "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "lineage_sha256": "sha256:3a2cc79e3eb5be97cd5f07bda044c82e74144bdfdb0890d32f9d77e3ea08f2dc"
+  },
+  "target": {
+    "repository": "Pala-LakshmanSai/videoforge",
+    "default_branch_name": "main",
+    "default_branch_sha": "6a71c39de3aa9533bf18d70e0bc620fa0d11559e",
+    "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "workflow": {
+      "path": ".github/workflows/avatar-primary-serverless-image.yml",
+      "blob_sha1": "70f6c434dbb6a73011d7e004c61ddd8d409e74d1",
+      "blob_sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da"
+    },
+    "resulting": {
+      "commit_sha": null,
+      "tree_sha": "7e14c1008620f1930ae2c5a0e76c69ecf4e9e5aa",
+      "tree_entries_sha256": "sha256:af29613822e787a02b031fa960897c543c5425b76bb88d056eecb50069ca9115",
+      "parent_commit_shas": [
+        "6a71c39de3aa9533bf18d70e0bc620fa0d11559e"
+      ]
+    },
+    "workflow_registration": {
+      "name": "avatar-primary-serverless-image",
+      "path": ".github/workflows/avatar-primary-serverless-image.yml",
+      "state": "active"
+    }
+  },
+  "mechanism": {
+    "type": "GRAPHQL_CREATE_COMMIT",
+    "graphql_mutation": "createCommitOnBranch",
+    "expected_head_oid": "6a71c39de3aa9533bf18d70e0bc620fa0d11559e",
+    "additions_count": 1,
+    "deletions_count": 0,
+    "create_only": true,
+    "commit_message": {
+      "headline": "Publish exact SoulX workflow on default branch"
+    },
+    "request_sha256": "sha256:bc1d9810d7696f4bbfe1bb857f425ffbe44538f290e0d254e4549b7bda4e9914",
+    "force": false,
+    "delete": false,
+    "tags": false,
+    "secrets": false,
+    "dispatch": false,
+    "fallback": false,
+    "replay": false
+  },
+  "issued_at": "2026-08-29T11:34:53.000Z",
+  "expires_at": "2026-08-30T11:34:53.000Z",
+  "consumed_at": null,
+  "execution_id": null
+}
