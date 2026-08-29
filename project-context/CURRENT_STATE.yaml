@@ -41,8 +41,8 @@ new_chat_handoff:
   credential_authority_reusable: false
   full_live_authority_present: false
   production_transport: DISABLED_UNQUALIFIED
-  overall_completion_estimate_percent: 75
-  product_source_completion_estimate_percent: 92
+  overall_completion_estimate_percent: 78
+  product_source_completion_estimate_percent: 96
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
@@ -85,6 +85,18 @@ two_track_execution:
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 provider_free_product_progress:
+  v2_13_crash_safe_hardening_commit: "359ac2daf88234695b80b0a2eca65c436f7eb7d9"
+  v2_13_crash_safe_hardening_status: PROVIDER_FREE_IMPLEMENTED_CANONICAL_VERIFY_PASS_INDEPENDENT_AUDIT_PASS
+  v2_13_crash_safe_hardening_note: "The exact default-branch repair tool now binds its running validator bytes and durable pre-mutation intent; full-live execution holds one crash-safe canonical whole-run lease; cleanup restarts retain one logical bridge/receipt identity, use readback-only reconciliation, and reuse the durable receipt summary even when fresh readback timestamps drift. Canonical pnpm verify, 44 installed-Chrome journeys, focused V2-13 suites, and independent audits pass. No credential access, provider call/mutation, GPU use, spend, tag mutation, deployment, or publication occurred."
+  v2_13_crash_safe_release_hashes:
+    full_live_adapters: "sha256:711d9fd5b99bb4e3278c85d22265a2cbae845bfa17bbd34ee1fad2c653076cab"
+    full_live_executor: "sha256:1ad3b725ef7204e3310383ccb52b9ce526e66313ee50c2e045200b6aadf4d805"
+    orchestration_authority: "sha256:133a5ab3a205e8f117ae43baef5e5b9916d82345d5d2281b4be24953317aeba5"
+    source_closure: "sha256:8fad8a4356513caa1d9540c6b3166add91d84887f36f3e4a6fb4bb2e95436532"
+    migration_0046: "sha256:d98e020a52a1820db811f5c9a679651c1169000ebe28c1d00b35e04c003ba33b"
+    migration_manifest: "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d"
+    operator_grants: "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5"
+  v2_13_crash_safe_next_boundary: "Materialize and independently audit one exact zero-spend single-use default-branch workflow repair proposal for commit 359ac2d, then obtain fresh exact user approval before the one GitHub mutation. After exact readback, reseal a distinct full-live successor and obtain another fresh exact approval before credentials, providers, GPU, or spend."
   full_live_execution_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
   full_live_execution_source_status: FRESH_INDEPENDENTLY_AUDITED_PROVIDER_FREE_RELEASE_SOURCE
   full_live_execution_source_note: "Release source commit 15af5e2 carried the consumed 26-operation V2-13 graph. Its exact tag was reconciled without mutation and immutable Mage publication succeeded, but the single-use run stopped at SoulX workflow dispatch because that workflow is absent from GitHub default branch main. Cleanup is complete at zero attempt spend; the authority is terminal and no further provider, credential, GPU, or deployment action is authorized."
