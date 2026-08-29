@@ -33,6 +33,8 @@ const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_SPEND_CAP_USD = 2;
 const MAX_EXTRA_PROMPT_KEYWORDS = 500;
 const MAX_OPTIONAL_SCRIPT = 100_000;
+const HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED = false;
+const HOSTED_TARGETED_RETRY_QUALIFIED = false;
 // Migration 0002 requires every revision budget to be at least $0.10. This is only the
 // persisted revision ceiling; V2-06 personal-worker execution remains provider-free at $0.
 const PERSONAL_WORKER_MINIMUM_COST_MICRO_USD = 100_000;
@@ -148,6 +150,21 @@ function response(value: unknown, status = 200): Response {
       "x-videoforge-runtime": "hosted-v2-06",
     },
   });
+}
+
+function unavailableHostedCapability(code: string): Response {
+  return response(
+    {
+      error: {
+        code,
+        message:
+          code === "PRESET_CREATION_NOT_QUALIFIED"
+            ? "This release supports built-in and already-ready tenant presets only."
+            : "Targeted GPU retry is not qualified in this release; no replacement was dispatched.",
+      },
+    },
+    409,
+  );
 }
 
 function sameOrigin(request: Request, config: HostedRuntimeConfiguration): boolean {
@@ -1184,6 +1201,8 @@ async function avatarCreate(
 ): Promise<Response> {
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+    return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const idempotencyKey = request.headers.get("idempotency-key") ?? "";
   if (!IDEMPOTENCY.test(idempotencyKey))
     return response({ error: { code: "AVATAR_IDEMPOTENCY_REQUIRED" } }, 400);
@@ -1363,6 +1382,8 @@ async function avatarCommit(
   if (!UUID.test(profileOrVersionId)) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+    return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "AVATAR_COMMIT_REJECTED");
   if (raw instanceof Response) return raw;
   if (!parseEmptyObject(raw)) return response({ error: { code: "AVATAR_COMMIT_REJECTED" } }, 400);
@@ -1460,6 +1481,8 @@ async function avatarApprove(
   if (!UUID.test(profileOrVersionId)) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+    return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "AVATAR_APPROVAL_REJECTED");
   if (raw instanceof Response) return raw;
   if (!parseAvatarApproval(raw))
@@ -1572,6 +1595,8 @@ async function styleCreate(
 ): Promise<Response> {
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+    return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const idempotencyKey = request.headers.get("idempotency-key") ?? "";
   if (!IDEMPOTENCY.test(idempotencyKey))
     return response({ error: { code: "STYLE_IDEMPOTENCY_REQUIRED" } }, 400);
@@ -1811,6 +1836,8 @@ async function styleCommit(
   if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+    return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "STYLE_COMMIT_REJECTED");
   if (raw instanceof Response) return raw;
   if (!parseEmptyObject(raw)) return response({ error: { code: "STYLE_COMMIT_REJECTED" } }, 400);
@@ -1940,6 +1967,8 @@ async function styleAnalyze(
   if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+    return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "STYLE_ANALYSIS_REJECTED");
   if (raw instanceof Response) return raw;
   if (!parseStyleAnalysis(raw))
@@ -2044,6 +2073,8 @@ async function stylePublish(
   if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+    return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "STYLE_PUBLISH_REJECTED");
   if (raw instanceof Response) return raw;
   const input = parseStylePublish(raw);
@@ -2132,6 +2163,8 @@ async function retryProjectAttempt(
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!HOSTED_TARGETED_RETRY_QUALIFIED)
+    return unavailableHostedCapability("TARGETED_RETRY_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "RETRY_REJECTED");
   if (raw instanceof Response) return raw;
   const input = parseRetry(raw);
@@ -3950,8 +3983,8 @@ async function projectDetail(
         severity: "ERROR",
         status: String(task.state),
         message: `Generation task ${String(task.task_key)} is ${String(task.state)}.`,
-        retryable: task.state === "RETRY_WAIT",
-        replacement_allowed: task.state === "RETRY_WAIT",
+        retryable: false,
+        replacement_allowed: false,
       })),
       ...serverlessAttempts
         .filter((attempt) =>
@@ -3964,8 +3997,8 @@ async function projectDetail(
           severity: "ERROR",
           status: String(attempt.state),
           message: `The ${String(attempt.lane)} lane attempt is ${String(attempt.state)}.`,
-          retryable: attempt.state === "RETRYABLE_FAILED",
-          replacement_allowed: attempt.state === "RETRYABLE_FAILED",
+          retryable: false,
+          replacement_allowed: false,
         })),
     ];
     const sheet = await contactSheet(

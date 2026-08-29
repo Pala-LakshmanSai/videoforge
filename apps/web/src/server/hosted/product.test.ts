@@ -123,35 +123,14 @@ describe("hosted product route contract", () => {
 
   it.each([
     "/api/v2/hosted/avatars",
+    `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
     `/api/v2/hosted/avatars/${PRESET_ID}/approve`,
     "/api/v2/hosted/styles",
+    `/api/v2/hosted/styles/${PRESET_ID}/commit`,
     `/api/v2/hosted/styles/${PRESET_ID}/analyze`,
     `/api/v2/hosted/styles/${PRESET_ID}/publish`,
     `/api/v2/hosted/projects/${PROJECT_ID}/retry`,
-  ])("rejects malformed JSON contracts on %s before database access", async (path) => {
-    testState.query.mockClear();
-    const result = await handleHostedProductRequest(
-      request(
-        path,
-        "POST",
-        { unexpected: true },
-        true,
-        path === "/api/v2/hosted/avatars" || path === "/api/v2/hosted/styles"
-          ? { "idempotency-key": "hosted-test-idempotency-0001" }
-          : {},
-      ),
-      environment,
-      config,
-      executionContext,
-    );
-    expect(result?.status).toBe(400);
-    expect(testState.query).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
-    `/api/v2/hosted/styles/${PRESET_ID}/commit`,
-  ])("rejects extra keys on exact empty commit body %s", async (path) => {
+  ])("fails closed for an unqualified write capability before database access: %s", async (path) => {
     testState.query.mockClear();
     const result = await handleHostedProductRequest(
       request(path, "POST", { unexpected: true }),
@@ -159,7 +138,12 @@ describe("hosted product route contract", () => {
       config,
       executionContext,
     );
-    expect(result?.status).toBe(400);
+    expect(result?.status).toBe(409);
+    await expect(errorCode(result)).resolves.toBe(
+      path.endsWith("/retry")
+        ? "TARGETED_RETRY_NOT_QUALIFIED"
+        : "PRESET_CREATION_NOT_QUALIFIED",
+    );
     expect(testState.query).not.toHaveBeenCalled();
   });
 

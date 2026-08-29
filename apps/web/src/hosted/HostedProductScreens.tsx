@@ -812,12 +812,6 @@ export function normalizeHostedReturnTo(
     "/";
 }
 
-function presetVersionId(
-  item: CatalogResponse["avatars"][number] | CatalogResponse["styles"][number],
-) {
-  return item.version_id;
-}
-
 function presetState(item: CatalogResponse["avatars"][number] | CatalogResponse["styles"][number]) {
   return item.status ?? item.state ?? "READY";
 }
@@ -1316,10 +1310,7 @@ export function HostedCreateProjectScreen() {
 
 type HostedPresetHubKind = "avatars" | "styles";
 
-/**
- * The hosted catalog exposes tenant-owned immutable versions and routes creation through the
- * dedicated preset wizard; project creation never accepts a per-project upload.
- */
+/** The invited release exposes only immutable presets that are already ready. */
 function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
@@ -1362,34 +1353,21 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         eyebrow="Private hosted staging"
         title={title}
         description={`Only ${itemLabel}s owned by this account can be used for generation.`}
-        actions={
-          <Link className="button button-primary" to={isAvatar ? "/avatars/new" : "/styles/new"}>
-            <Upload size={16} /> New {itemLabel}
-          </Link>
-        }
       />
       <div className="notice" role="status">
-        <strong>Tenant-private immutable versions.</strong> New source uploads are validated,
-        reviewed, and approved before they become selectable by a project.
+        <strong>Built-ins and already-ready tenant presets only.</strong> New custom {itemLabel}
+        creation is not qualified in this invited release.
       </div>
       <Panel eyebrow="Tenant-private catalog" heading={`Ready ${itemLabel}s`}>
         {items.length === 0 ? (
           <EmptyState
             icon={<Icon />}
             title={`No ready ${itemLabel}s yet`}
-            body={`This account has no ready ${itemLabel} yet. Create one here and complete its private review before generation. If hosted creation is not enabled for this account, an activation owner must provision a bounded fixture.`}
+            body={`This account has no ready ${itemLabel} yet. An activation owner must provision an immutable built-in or already-validated tenant preset before generation.`}
             action={
-              <div className="cluster">
-                <Link
-                  className="button button-primary"
-                  to={isAvatar ? "/avatars/new" : "/styles/new"}
-                >
-                  Create {itemLabel}
-                </Link>
-                <Link className="button button-secondary" to="/settings">
-                  Open Settings
-                </Link>
-              </div>
+              <Link className="button button-secondary" to="/settings">
+                Open Settings
+              </Link>
             }
           />
         ) : (
@@ -1407,12 +1385,6 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
                   <Badge tone={statusTone(presetState(item))}>
                     {normalizedStatus(presetState(item))}
                   </Badge>
-                  <a
-                    className="button button-ghost"
-                    href={`${isAvatar ? "/avatars/new" : "/styles/new"}?parentId=${encodeURIComponent(presetVersionId(item))}`}
-                  >
-                    New version
-                  </a>
                 </div>
               </article>
             ))}
@@ -2079,14 +2051,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       readJson(`/api/v2/cpu-attempts/${attemptId}`, { method: "POST", body: "{}" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
-  const retry = useMutation({
-    mutationFn: ({ attemptId, assetId }: { attemptId: string; assetId?: string | null }) =>
-      readJson(`/api/v2/hosted/projects/${projectId}/retry`, {
-        method: "POST",
-        body: JSON.stringify({ attempt_id: attemptId, asset_id: assetId ?? null }),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
-  });
   if (query.isPending)
     return (
       <Panel eyebrow="Hosted project" heading="Loading progress">
@@ -2249,15 +2213,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   <small>{Math.round(attempt.progress_percent)}%</small>
                 </div>
               ) : null}
-              {attempt.state === "FAILED" ? (
-                <Button
-                  variant="secondary"
-                  busy={retry.isPending && retry.variables?.attemptId === attempt.id}
-                  onClick={() => retry.mutate({ attemptId: attempt.id, assetId: attempt.asset_id })}
-                >
-                  Retry this stage
-                </Button>
-              ) : null}
             </article>
           ))}
         </div>
@@ -2372,11 +2327,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
         </div>
       ) : null}
-      {retry.isError ? (
-        <div className="validation validation-danger" role="alert">
-          {retry.error.message}
-        </div>
-      ) : null}
       <Button variant="secondary" onClick={() => void query.refetch()}>
         <RefreshCw size={15} /> Refresh
       </Button>
@@ -2402,14 +2352,6 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
       readJson(`/api/v2/hosted/projects/${projectId}/review`, {
         method: "POST",
         body: JSON.stringify({ attempt_id: candidate?.id }),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
-  });
-  const retry = useMutation({
-    mutationFn: ({ attemptId, assetId }: { attemptId: string; assetId?: string | null }) =>
-      readJson(`/api/v2/hosted/projects/${projectId}/retry`, {
-        method: "POST",
-        body: JSON.stringify({ attempt_id: attemptId, asset_id: assetId ?? null }),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
@@ -2512,17 +2454,6 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
                   {flag.asset_id ? <small>Asset · {flag.asset_id}</small> : null}
                 </div>
                 <Badge tone={statusTone(flag.status)}>{normalizedStatus(flag.status)}</Badge>
-                {flag.retryable && !candidate.approved_at ? (
-                  <Button
-                    variant="secondary"
-                    busy={retry.isPending && retry.variables?.assetId === flag.asset_id}
-                    onClick={() =>
-                      retry.mutate({ attemptId: candidate.id, assetId: flag.asset_id })
-                    }
-                  >
-                    Retry this asset
-                  </Button>
-                ) : null}
                 {flag.replacement_allowed ? (
                   <small>Replacement requires an authorized source upload.</small>
                 ) : null}
@@ -2552,11 +2483,6 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
       </Panel>
       {approve.isError ? (
         <div className="validation validation-danger">{approve.error.message}</div>
-      ) : null}
-      {retry.isError ? (
-        <div className="validation validation-danger" role="alert">
-          {retry.error.message}
-        </div>
       ) : null}
     </>
   );
