@@ -173,7 +173,7 @@ const BRIDGE_CLEANUP_CHILD_MAX_TIMEOUT_MS = 60_000;
 const RELEASE_CERTIFICATION_CHILD_MAX_TIMEOUT_MS = 60_000;
 const CLEANUP_RECEIPT_CHILD_MAX_TIMEOUT_MS = 60_000;
 const EARLY_CLEANUP_INPUT_SCHEMA = "videoforge.v213-full-live-early-cleanup-input/v1";
-const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v4";
 const PRODUCTION_SECRET_BOOTSTRAP_SCHEMA = "videoforge.v213-production-secret-bootstrap/v1";
 const CREDENTIAL_BOOTSTRAP_RECEIPT_SCHEMA = "videoforge.v2-13-credential-bootstrap-result/v1";
 const CREDENTIAL_BOOTSTRAP_RECEIPT_SHA256 =
@@ -200,12 +200,12 @@ const PREQUALIFICATION_RUNTIME_ROLE = "videoforge_hosted_runtime";
 const PREQUALIFICATION_RECONCILER_ROLE = "videoforge_hosted_reconciler";
 const PREQUALIFICATION_RECEIPT_NAME = "prequalification-database-bootstrap.json";
 const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
-  "FRESH_36_TO_48",
+  "FRESH_36_TO_49",
   "RESUME_EXACT_PREFIX",
-  "VERIFIED_EXISTING_48",
+  "VERIFIED_EXISTING_49",
 ]);
 const PREQUALIFICATION_LEDGER_PREFIX_COUNTS = Object.freeze([
-  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
 ]);
 const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_claim_v213_bridge_command(jsonb)",
@@ -5158,7 +5158,7 @@ async function cleanupPartialDatabaseRoleCredentials({
         (sql, code) =>
           prequalificationCommand(run, "psql", prequalificationQueryArgs(sql), dbEnv, code),
         manifest,
-      ).length !== 48
+      ).length !== 49
     )
       fail("PREQUALIFICATION_PARTIAL_CLEANUP_LEDGER");
     const bundleBytes = readProtectedCrashPairBytes(
@@ -5491,7 +5491,7 @@ function prequalificationManifest() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 48
+    manifest.migrations.length !== 49
   )
     fail("PREQUALIFICATION_MANIFEST");
   for (const [index, migration] of manifest.migrations.entries()) {
@@ -5654,10 +5654,10 @@ function prequalificationReceiptFromFile(
     ]).size !== 3 ||
     !HASH.test(value.pgcrypto_sha256 ?? "") ||
     !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
-    (value.recovery_mode === "FRESH_36_TO_48" && value.ledger_before_count !== 36) ||
+    (value.recovery_mode === "FRESH_36_TO_49" && value.ledger_before_count !== 36) ||
     (value.recovery_mode === "RESUME_EXACT_PREFIX" &&
-      ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47].includes(value.ledger_before_count)) ||
-    (value.recovery_mode === "VERIFIED_EXISTING_48" && value.ledger_before_count !== 48) ||
+      ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48].includes(value.ledger_before_count)) ||
+    (value.recovery_mode === "VERIFIED_EXISTING_49" && value.ledger_before_count !== 49) ||
     value.runpod_calls !== 0 ||
     value.cloudflare_calls !== 0 ||
     value.application_secret_reads !== 5 ||
@@ -5780,7 +5780,7 @@ async function verifyPrequalificationDatabaseReceipt({
   const manifest = prequalificationManifest();
   const ledger = prequalificationLockedLedger(query, manifest);
   if (
-    ledger.length !== 48 ||
+    ledger.length !== 49 ||
     sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== receipt.ledger_after_sha256
   )
     fail("PREQUALIFICATION_VERIFY_LEDGER");
@@ -5959,20 +5959,20 @@ function createPrequalificationDatabaseBootstrapAdapter({
     }
     if (
       reconciliationOnly &&
-      (before.length !== 48 ||
+      (before.length !== 49 ||
         operatorCount !== 1 ||
         credentialFinals.some((path) => !lstatExists(path)))
     )
       fail("PREQUALIFICATION_RECONCILIATION_READBACK_INCOMPLETE");
     if (existing && operatorCount !== 1) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
-    if (existing && before.length !== 48) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
+    if (existing && before.length !== 49) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
     const recoveryMode =
       before.length === 36
-        ? "FRESH_36_TO_48"
-        : before.length === 48
-          ? "VERIFIED_EXISTING_48"
+        ? "FRESH_36_TO_49"
+        : before.length === 49
+          ? "VERIFIED_EXISTING_49"
           : "RESUME_EXACT_PREFIX";
-    if (!existing && before.length < 48) {
+    if (!existing && before.length < 49) {
       prequalificationCommand(
         run,
         "psql",
@@ -6098,7 +6098,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
     if (operatorCredentialReadback !== PREQUALIFICATION_OPERATOR_ROLE)
       fail("PREQUALIFICATION_OPERATOR_CREDENTIAL_READBACK");
     const ledger = prequalificationLockedLedger(query, manifest);
-    if (ledger.length !== 48) fail("PREQUALIFICATION_LEDGER_FINAL");
+    if (ledger.length !== 49) fail("PREQUALIFICATION_LEDGER_FINAL");
     let pgcrypto;
     try {
       pgcrypto = JSON.parse(

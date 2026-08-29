@@ -30,10 +30,10 @@ export function validateProductionPairBoundary({ bindings, reconcilerSql, runtim
     bindings.state !== "DISABLED_UNQUALIFIED" ||
     !exactKeys(bindings.migration_ledger, ["exact_manifest_required", "first", "last"]) ||
     bindings.migration_ledger.first !== 37 ||
-    bindings.migration_ledger.last !== 48 ||
+    bindings.migration_ledger.last !== 49 ||
     bindings.migration_ledger.exact_manifest_required !== true
   )
-    fail("binding contract or exact 0037-0048 ledger gate drifted");
+    fail("binding contract or exact 0037-0049 ledger gate drifted");
   if (
     !exactKeys(bindings.database_roles, ["must_be_distinct", "reconciler", "runtime"]) ||
     bindings.database_roles.must_be_distinct !== true ||

@@ -56,13 +56,13 @@ const EXACT_PRE_MUTATION_ROUTE_CONTENT_TYPE = "text/html; charset=UTF-8";
 const EXACT_PRE_MUTATION_ROUTE_BODY_LENGTH = 19984;
 const EXACT_PRE_MUTATION_ROUTE_BODY_SHA256 =
   "sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976";
-const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
+const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v4";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_ADVISORY_LOCK = "1448494662,1";
 const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
-  "FRESH_36_TO_48",
+  "FRESH_36_TO_49",
   "RESUME_EXACT_PREFIX",
-  "VERIFIED_EXISTING_48",
+  "VERIFIED_EXISTING_49",
 ]);
 const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_load_v213_bridge_acceptance_call(jsonb)",
@@ -234,13 +234,13 @@ function readPrequalificationReceipt(directory) {
     !HASH.test(value.outer_state_sha256 ?? "") ||
     !HASH.test(value.materialization_seed_sha256 ?? "") ||
     value.database_identity_sha256 !== EXACT_DATABASE_IDENTITY_SHA256 ||
-    ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48].includes(value.ledger_before_count) ||
+    ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49].includes(value.ledger_before_count) ||
     !HASH.test(value.ledger_before_sha256 ?? "") ||
     !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
-    (value.recovery_mode === "FRESH_36_TO_48" && value.ledger_before_count !== 36) ||
+    (value.recovery_mode === "FRESH_36_TO_49" && value.ledger_before_count !== 36) ||
     (value.recovery_mode === "RESUME_EXACT_PREFIX" &&
-      ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47].includes(value.ledger_before_count)) ||
-    (value.recovery_mode === "VERIFIED_EXISTING_48" && value.ledger_before_count !== 48) ||
+      ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48].includes(value.ledger_before_count)) ||
+    (value.recovery_mode === "VERIFIED_EXISTING_49" && value.ledger_before_count !== 49) ||
     !HASH.test(value.ledger_after_sha256 ?? "") ||
     !HASH.test(value.operator_acl_sha256 ?? "") ||
     !HASH.test(value.operator_database_url_sha256 ?? "") ||
@@ -293,9 +293,9 @@ function prequalificationManifest() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 48
+    manifest.migrations.length !== 49
   )
-    fail("prequalification migration manifest is not the exact 48-row contract");
+    fail("prequalification migration manifest is not the exact 49-row contract");
   for (const [index, migration] of manifest.migrations.entries()) {
     if (
       migration?.version !== index + 1 ||
@@ -309,7 +309,7 @@ function prequalificationManifest() {
   return Object.freeze({ manifest, bytes });
 }
 
-function prequalificationLedger(text, manifest, expectedCount = 48) {
+function prequalificationLedger(text, manifest, expectedCount = 49) {
   const rows =
     text === ""
       ? []
@@ -491,14 +491,14 @@ async function verifyPrequalificationDatabase(
   const ledger = prequalificationLedger(ledgerText, manifestResult.manifest);
   const ledgerAfterSha256 = sha256(Buffer.from(`${canonicalJson(ledger)}\n`));
   if (ledgerAfterSha256 !== receipt.ledger_after_sha256)
-    fail("prequalification database ledger receipt does not match exact 48-row manifest");
+    fail("prequalification database ledger receipt does not match exact 49-row manifest");
   const beforePrefix = ledger.slice(0, receipt.ledger_before_count);
   if (
     sha256(Buffer.from(`${canonicalJson(beforePrefix)}\n`)) !== receipt.ledger_before_sha256 ||
-    (receipt.recovery_mode === "FRESH_36_TO_48" && receipt.ledger_before_count !== 36) ||
+    (receipt.recovery_mode === "FRESH_36_TO_49" && receipt.ledger_before_count !== 36) ||
     (receipt.recovery_mode === "RESUME_EXACT_PREFIX" &&
-      ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47].includes(receipt.ledger_before_count)) ||
-    (receipt.recovery_mode === "VERIFIED_EXISTING_48" && receipt.ledger_before_count !== 48)
+      ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48].includes(receipt.ledger_before_count)) ||
+    (receipt.recovery_mode === "VERIFIED_EXISTING_49" && receipt.ledger_before_count !== 49)
   )
     fail("prequalification database receipt before-prefix hash is not exact");
   let pgcrypto;
@@ -734,7 +734,7 @@ function validateAuthority(value) {
     ]) ||
     value.database.pgcrypto_required !== true ||
     value.database.first_migration !== 37 ||
-    value.database.last_migration !== 48 ||
+    value.database.last_migration !== 49 ||
     value.database.exact_manifest_ledger_required !== true ||
     value.database.host !== EXACT_DATABASE_IDENTITY.host ||
     value.database.database !== EXACT_DATABASE_IDENTITY.database ||
@@ -754,7 +754,7 @@ function validateAuthority(value) {
     value.database.operator_role !== PREQUALIFICATION_OPERATOR_ROLE ||
     !HASH.test(value.database.operator_database_url_sha256 ?? "")
   )
-    fail("database identity, roles, or exact 0037-0048 gate drifted");
+    fail("database identity, roles, or exact 0037-0049 gate drifted");
   if (
     !exactKeys(value.cloudflare, [
       "account_id",
@@ -1027,9 +1027,9 @@ function prevalidate(args) {
   if (PREQUALIFICATION_OPERATOR_GRANTS_SHA256 !== authority.release.operator_grants_sha256)
     fail("operator grants bytes do not match authority");
   const manifest = JSON.parse(manifestBytes);
-  const tail = manifest.migrations.slice(-12);
+  const tail = manifest.migrations.slice(-13);
   if (
-    tail.length !== 12 ||
+    tail.length !== 13 ||
     tail.some((entry, index) => entry.version !== 37 + index) ||
     tail.some(
       (entry) =>
@@ -1037,7 +1037,7 @@ function prevalidate(args) {
         entry.sha256,
     )
   )
-    fail("migration 0037-0048 bytes do not match the exact manifest tail");
+    fail("migration 0037-0049 bytes do not match the exact manifest tail");
   if (
     sha256(readFileSync(resolve(args.get("config-activation-record")))) !==
       authority.release.production_config_activation_sha256 ||
@@ -1192,12 +1192,12 @@ function plan(authority) {
   return {
     schema_version: "videoforge-v2-13-guarded-activation-plan/v1",
     release_commit: authority.release.commit,
-    migration_range: [37, 48],
+    migration_range: [37, 49],
     database: [
       "verify owner service identity",
       "create pgcrypto extension",
       "provision two distinct LOGIN NOINHERIT hardened roles",
-      "apply exact manifest migrations through 0048",
+      "apply exact manifest migrations through 0049",
       "apply exact runtime and reconciler ACLs",
       "read back exact ledger, role flags, table ACLs, and function ACLs",
     ],
@@ -1486,10 +1486,10 @@ async function databaseActivation(authority, values, postgresInputDirectory) {
       return { version: Number(version), name, filename, sha256: sha256Value };
     });
   if (
-    ledger.length !== 48 ||
+    ledger.length !== 49 ||
     sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== bootstrapReceipt.ledger_after_sha256
   )
-    fail("prequalification database bootstrap ledger receipt does not match exact prefix 48");
+    fail("prequalification database bootstrap ledger receipt does not match exact prefix 49");
   const rolePrecheck = run(
     "psql",
     [
@@ -1573,10 +1573,10 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATER
   );
   const ledgerAfter = prequalificationLedger(ledgerAfterText, prequalificationManifest().manifest);
   if (
-    ledgerAfter.length !== 48 ||
+    ledgerAfter.length !== 49 ||
     sha256(Buffer.from(`${canonicalJson(ledgerAfter)}\n`)) !== bootstrapReceipt.ledger_after_sha256
   )
-    fail("prequalification database bootstrap was not consumed at exact prefix 48");
+    fail("prequalification database bootstrap was not consumed at exact prefix 49");
   const reconcilerSignature = prequalificationFunctionSignatureSql("p", "n");
   const exactReconcilerReadback = `SELECT ((SELECT count(*)=3 AND bool_and(rolcanlogin AND NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls AND rolconfig IS NULL) FROM pg_roles WHERE rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles member_role ON member_role.oid=m.member JOIN pg_roles granted_role ON granted_role.oid=m.roleid WHERE member_role.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}') OR granted_role.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_database d JOIN pg_roles r ON r.oid=d.datdba WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_extension e JOIN pg_roles r ON r.oid=e.extowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_roles r ON r.oid=t.typowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_foreign_data_wrapper f JOIN pg_roles r ON r.oid=f.fdwowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_foreign_server s JOIN pg_roles r ON r.oid=s.srvowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_event_trigger e JOIN pg_roles r ON r.oid=e.evtowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_tablespace t JOIN pg_roles r ON r.oid=t.spcowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_publication p JOIN pg_roles r ON r.oid=p.pubowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_subscription s JOIN pg_roles r ON r.oid=s.subowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_largeobject_metadata l JOIN pg_roles r ON r.oid=l.lomowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_collation c JOIN pg_roles r ON r.oid=c.collowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_ts_dict d JOIN pg_roles r ON r.oid=d.dictowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND NOT EXISTS (SELECT 1 FROM pg_ts_config c JOIN pg_roles r ON r.oid=c.cfgowner WHERE r.rolname IN ('${authority.database.runtime_role}','${authority.database.reconciler_role}','${authority.database.operator_role}')) AND (SELECT array_agg(${reconcilerSignature} ORDER BY ${reconcilerSignature})=ARRAY['videoforge_current_account_id()','videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)','videoforge_load_hosted_v209_settlement_guard(uuid,uuid,uuid)','videoforge_settle_hosted_pair_cleanup_v2(uuid,uuid,uuid,jsonb,jsonb,jsonb)']::text[] FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND has_function_privilege('${authority.database.reconciler_role}',p.oid,'EXECUTE')) AND NOT EXISTS (SELECT 1 FROM information_schema.role_table_grants WHERE grantee IN ('${authority.database.reconciler_role}','${authority.database.operator_role}') AND table_schema='public'))::text;`;
   const reconcilerReadbackWithV209 = exactReconcilerReadback
@@ -2789,7 +2789,7 @@ async function main() {
     resolve(args.get("user-approval-file")),
   );
   consumeAuthorityOnce(authority, authorityBytes);
-  // The database receipt, exact 48-row manifest, pgcrypto fingerprint, and operator ACL are
+  // The database receipt, exact 49-row manifest, pgcrypto fingerprint, and operator ACL are
   // verified before reading any Cloudflare OAuth credential or application/runtime secret.
   await verifyPrequalificationDatabase(authority, resolve(args.get("postgres-input-dir")));
   const evidenceBase = {
@@ -2825,7 +2825,7 @@ async function main() {
       schema_version: "videoforge-v2-13-guarded-activation-result/v1",
       state: "DISABLED_UNQUALIFIED",
       commit: authority.release.commit,
-      migration_ledger: "48/48 exact",
+      migration_ledger: "49/49 exact",
       role_acl_readback: "exact",
       secret_name_readback: `${SECRET_NAMES.length}/${SECRET_NAMES.length} exact`,
       secret_value_fingerprints: "matched authority before mutation",
@@ -2838,7 +2838,7 @@ async function main() {
       outcome: "SUCCEEDED",
       disabled_version_id: activationReadback.disabledVersionId,
       disabled_version_sha256: sha256(activationReadback.disabledVersionId),
-      migration_ledger: "48/48 exact",
+      migration_ledger: "49/49 exact",
       role_acl_readback: "exact",
       secret_name_readback: `${SECRET_NAMES.length}/${SECRET_NAMES.length} exact`,
       partial_secret_cleanup_required: false,

@@ -294,7 +294,7 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
   const result = { actualUsd: operation.reserveUsd };
   if (operation.id === "bootstrap-prequalification-database")
     Object.assign(result, {
-      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v3",
+      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v4",
       full_live_authority_id: state.full_live_authority_id,
       outer_state_sha256:
         authorizedOuterStateSha256 ?? currentAuthorizedOuterStateSha256 ?? proof("0"),
@@ -340,7 +340,7 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       },
       pgcrypto_sha256: proof("4"),
       prequalification_database_bootstrap_sha256: proof("5"),
-      recovery_mode: "FRESH_36_TO_48",
+      recovery_mode: "FRESH_36_TO_49",
       runpod_calls: 0,
       cloudflare_calls: 0,
       application_secret_reads: 5,
@@ -1602,8 +1602,8 @@ test("authorized bootstrap crash resumes exactly one readback-only reconciliatio
           assert.equal(context.providerDispatchForbidden, true);
           const value = fakeResult(operation, state, priorResults);
           value.outer_state_sha256 = outerStateSha256;
-          value.ledger_before_count = 48;
-          value.recovery_mode = "VERIFIED_EXISTING_48";
+          value.ledger_before_count = 49;
+          value.recovery_mode = "VERIFIED_EXISTING_49";
           return value;
         }
         return fakeResult(operation, state, priorResults);
@@ -1635,8 +1635,8 @@ test("lost bootstrap transaction acknowledgement reconciles before cleanup-only 
           assert.equal(context.reconciliationOnly, true);
           assert.equal(context.providerDispatchForbidden, true);
           const reconciled = fakeResult(operation, state, priorResults);
-          reconciled.ledger_before_count = 48;
-          reconciled.recovery_mode = "VERIFIED_EXISTING_48";
+          reconciled.ledger_before_count = 49;
+          reconciled.recovery_mode = "VERIFIED_EXISTING_49";
           return reconciled;
         }
         return fakeResult(operation, state, priorResults);
@@ -1998,7 +1998,7 @@ test("prequalification receipt checks keep the execution and live identities bou
   const expectedAuthorityId = "v2-13-test-executor-0001";
   const expectedFullLiveAuthorityId = "11111111-1111-4111-8111-111111111111";
   const exactReceipt = Object.freeze({
-    schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v3",
+    schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v4",
     full_live_authority_id: expectedFullLiveAuthorityId,
     prequalification_database_bootstrap_sha256: proof("5"),
   });

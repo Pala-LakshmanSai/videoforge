@@ -2394,7 +2394,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       );
     if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock")) {
       lockedLedgerReads += 1;
-      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 48)}\n`);
+      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 49)}\n`);
     }
     if (sql.includes("rolname IN")) return result(0, "0\n");
     if (sql.includes("count(*)::text FROM pg_roles"))
@@ -2457,7 +2457,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       run,
       credentialBootstrapBinding,
       credentialRandomBytes: (size) => {
-        assert.equal(migrationSqls.length, 12);
+        assert.equal(migrationSqls.length, 13);
         credentialGenerationCount += 1;
         return Buffer.alloc(size, credentialGenerationCount);
       },
@@ -2625,7 +2625,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     assert.equal(output.actualUsd, 0);
     assert.equal(
       output.schema_version,
-      "videoforge.v213-prequalification-database-bootstrap-result/v3",
+      "videoforge.v213-prequalification-database-bootstrap-result/v4",
     );
     assert.equal(output.full_live_authority_id, consumedState.full_live_authority_id);
     assert.equal(output.outer_state_sha256, outerStateSha256);
@@ -2633,7 +2633,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       output.database_identity_sha256,
       "sha256:7f2c802c531f4e5630d6a15b2f26bf65ea04f599b28c19fc3daa5d741c7567d7",
     );
-    assert.equal(output.recovery_mode, "FRESH_36_TO_48");
+    assert.equal(output.recovery_mode, "FRESH_36_TO_49");
     assert.equal(output.ledger_before_count, 36);
     assert.equal(output.runpod_calls, 0);
     assert.equal(output.cloudflare_calls, 0);
@@ -2650,7 +2650,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       3,
     );
     assert.equal(lockedLedgerReads, 2);
-    assert.equal(migrationSqls.length, 12);
+    assert.equal(migrationSqls.length, 13);
     for (const [index, sql] of migrationSqls.entries()) {
       assert.match(sql, /BEGIN;/u);
       assert.match(sql, /pg_advisory_xact_lock\(1448494662,1\)/u);
@@ -2660,7 +2660,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     }
     const receiptPath = resolve(directory, "prequalification-database-bootstrap.json");
     const receipt = JSON.parse(readFileSync(receiptPath, "utf8"));
-    assert.equal(receipt.recovery_mode, "FRESH_36_TO_48");
+    assert.equal(receipt.recovery_mode, "FRESH_36_TO_49");
     assert.equal(receipt.ledger_before_count, 36);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
     for (const path of [
@@ -2755,15 +2755,15 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       new Map(),
       outerStateSha256,
     );
-    assert.equal(recovered.recovery_mode, "VERIFIED_EXISTING_48");
-    assert.equal(recovered.ledger_before_count, 48);
+    assert.equal(recovered.recovery_mode, "VERIFIED_EXISTING_49");
+    assert.equal(recovered.ledger_before_count, 49);
     assert.equal(recovered.operator_database_url_sha256, output.operator_database_url_sha256);
     assert.equal(
       recovered.database_role_credential_bundle_sha256,
       output.database_role_credential_bundle_sha256,
     );
     assert.equal(credentialGenerationCount, generationCountBeforeRecovery);
-    assert.equal(migrationSqls.length, 12);
+    assert.equal(migrationSqls.length, 13);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);
     const exactRecoveredReceiptBytes = readFileSync(receiptPath);
     const driftedDatabaseIdentityReceipt = JSON.parse(exactRecoveredReceiptBytes);
@@ -2883,7 +2883,7 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
       run,
       credentialBootstrapBinding,
     });
-    assert.equal(verified.ledger.length, 48);
+    assert.equal(verified.ledger.length, 49);
     assert.equal(lockedLedgerReads, lockedLedgerReadsBeforeVerifiedReceipt + 1);
     assert.equal(
       calls.every(([command]) => command === "psql"),
@@ -3418,7 +3418,7 @@ test("canonical materializer derives all first-use artifacts, survives restart, 
       mode: 0o600,
     });
     later.set("bootstrap-prequalification-database", {
-      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v3",
+      schema_version: "videoforge.v213-prequalification-database-bootstrap-result/v4",
       full_live_authority_id: materialState.full_live_authority_id,
       outer_state_sha256: `sha256:${"3".repeat(64)}`,
       materialization_seed_sha256: materialState.materialization_seed_sha256,
@@ -4446,7 +4446,7 @@ test("post-consumption production-secret bootstrap binds every protected copy an
       );
     if (sql.includes("BEGIN;") && sql.includes("pg_advisory_xact_lock")) {
       lockedLedgerReads += 1;
-      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 48)}\n`);
+      return result(0, `${rows(lockedLedgerReads === 1 ? 36 : 49)}\n`);
     }
     if (sql.includes("rolname IN")) return result(0, "0\n");
     if (sql.includes("count(*)::text FROM pg_roles"))

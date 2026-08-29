@@ -42,7 +42,7 @@ import {
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const fingerprint = `sha256:${"a".repeat(64)}`;
 const PREQUALIFICATION_SCHEMA_FOR_TEST =
-  "videoforge.v213-prequalification-database-bootstrap-result/v3";
+  "videoforge.v213-prequalification-database-bootstrap-result/v4";
 const canonicalJson = (value) =>
   Array.isArray(value)
     ? `[${value.map((item) => canonicalJson(item)).join(",")}]`
@@ -117,7 +117,7 @@ function authority() {
       reconciler_role: "videoforge_hosted_reconciler",
       pgcrypto_required: true,
       first_migration: 37,
-      last_migration: 48,
+      last_migration: 49,
       exact_manifest_ledger_required: true,
     },
     cloudflare: {
@@ -222,7 +222,7 @@ test("authority and plan are exact, zero-spend, and closed-world", () => {
     "videoforge-production-video",
     "videoforge-production-video-pair",
   ]);
-  assert.deepEqual(result.migration_range, [37, 48]);
+  assert.deepEqual(result.migration_range, [37, 49]);
   assert.throws(
     () =>
       validateAuthority({
@@ -1331,7 +1331,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
       provenanceReceiptKeyId: "v213-provenance-receipt-key",
     },
     pgcrypto_sha256: hash(`${canonicalJson(pgcrypto)}\n`),
-    recovery_mode: "FRESH_36_TO_48",
+    recovery_mode: "FRESH_36_TO_49",
     runpod_calls: 0,
     cloudflare_calls: 0,
     application_secret_reads: 5,
@@ -1380,7 +1380,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
       verified.receipt.prequalification_database_bootstrap_sha256,
       receipt.prequalification_database_bootstrap_sha256,
     );
-    assert.equal(verified.ledger.length, 48);
+    assert.equal(verified.ledger.length, 49);
     assert.equal(verified.pgcrypto.name, "pgcrypto");
     assert.equal(verified.role.function_acl.length, 19);
     assert.equal(lstatSync(receiptPath).mode & 0o777, 0o600);

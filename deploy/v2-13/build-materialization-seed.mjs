@@ -692,6 +692,7 @@ function validateProposal(proposal, proposalPath) {
           "migration_0046",
           "migration_0047",
           "migration_0048",
+          "migration_0049",
           "migration_manifest",
           "operator_grants",
           "orchestration_authority",
@@ -759,7 +760,7 @@ function migrationLedgerSha256(proposal, proposalBinding, readSourceFile) {
   if (
     value?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(value.migrations) ||
-    value.migrations.length !== 48
+    value.migrations.length !== 49
   )
     fail("MIGRATION_MANIFEST_CONTRACT");
   value.migrations.forEach((migration, index) => {
@@ -1116,7 +1117,7 @@ function buildV213MaterializationSeed({
         reconciler_role: proposal.requested_scope.database.exact_reconciler_role,
         pgcrypto_required: true,
         first_migration: 37,
-        last_migration: 48,
+        last_migration: 49,
         exact_manifest_ledger_required: true,
       },
       cloudflare: {

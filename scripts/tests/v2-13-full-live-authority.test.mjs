@@ -351,8 +351,8 @@ function repairExactDatabaseScope() {
       bootstrap.recovery_mode_final_ledger_count,
     exact_operator_function_signatures: [...bootstrap.exact_operator_function_signatures],
     exact_initial_ledger_prefix_count: 36,
-    exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47],
-    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+    exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49],
   };
 }
 
@@ -1594,7 +1594,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "videoforge.v213-database-role-credential-bundle/v1",
     prequalification_database_bootstrap_credential_bundle_path: "database-role-credentials.json",
     prequalification_database_bootstrap_credentials_absent_before_consumed_bootstrap: true,
-    prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count: 48,
+    prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count: 49,
     prequalification_database_bootstrap_credential_roles: [
       "videoforge_hosted_operator",
       "videoforge_hosted_runtime",
@@ -1610,7 +1610,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope: [
       ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_scope,
     ],
-    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 48,
+    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 49,
     prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit: true,
     prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
     prequalification_database_bootstrap_phase_cap_usd: 0,
@@ -1619,17 +1619,17 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "prequalification_database_bootstrap_sha256",
     prequalification_database_bootstrap_receipt_replay_cas_required: true,
     prequalification_database_bootstrap_recovery_mode_ledger_before_count: {
-      FRESH_36_TO_48: 36,
-      RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47],
-      VERIFIED_EXISTING_48: 48,
+      FRESH_36_TO_49: 36,
+      RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+      VERIFIED_EXISTING_49: 49,
     },
-    prequalification_database_bootstrap_recovery_mode_final_ledger_count: 48,
+    prequalification_database_bootstrap_recovery_mode_final_ledger_count: 49,
     exact_operator_function_signatures: [
       ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures,
     ],
     exact_initial_ledger_prefix_count: 36,
-    exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47],
-    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+    exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49],
   });
   assert.equal(bootstrap.receipt_exact_fields.includes("production_secret_bootstrap_sha256"), true);
   assert.equal(bootstrap.receipt_exact_fields.includes("database_identity_sha256"), true);
@@ -1655,7 +1655,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   assert.equal(bootstrap.receipt_parent_directory_mode, "0700");
   assert.equal(bootstrap.receipt_secret_free, true);
   assert.equal(bootstrap.receipt_replay_requires_exact_all_fields, true);
-  assert.equal(bootstrap.receipt_final_ledger_count, 48);
+  assert.equal(bootstrap.receipt_final_ledger_count, 49);
   assert.equal(bootstrap.operator_grants_sql_revoke_public_execute, true);
   assert.equal(
     bootstrap.absent_operator_role_creation_and_exact_grants_share_one_database_transaction,
@@ -1747,6 +1747,28 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     systemAvatarMigration,
     /REVOKE ALL ON FUNCTION public\.videoforge_consume_hosted_rate_limit\(text, text\) FROM PUBLIC;/u,
   );
+  const promotionLineageMigrationPath = EXACT_V4_EXECUTION_CONTROL_COMPONENTS.migration_0049.path;
+  const promotionLineageMigration = readFileSync(promotionLineageMigrationPath, "utf8");
+  assert.equal(
+    hash(Buffer.from(promotionLineageMigration)),
+    EXACT_V4_EXECUTION_CONTROL_COMPONENTS.migration_0049.sha256,
+  );
+  assert.match(
+    promotionLineageMigration,
+    /CREATE OR REPLACE FUNCTION public\.videoforge_promote_hosted_full_live\(/u,
+  );
+  assert.match(
+    promotionLineageMigration,
+    /version=49 AND name='hosted_full_live_promotion_lineage'\s+AND filename='0049_hosted_full_live_promotion_lineage\.sql'/u,
+  );
+  assert.match(
+    promotionLineageMigration,
+    /count\(\*\) FROM public\.videoforge_schema_migrations\)<>49/u,
+  );
+  assert.match(
+    promotionLineageMigration,
+    /max\(version\) FROM public\.videoforge_schema_migrations\)<>49/u,
+  );
   const normalizedMigration = migration.replace(/\s+/gu, " ");
   for (const signature of bootstrap.exact_operator_function_signatures)
     assert.equal(
@@ -1774,11 +1796,11 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     true,
   );
   assert.deepEqual(bootstrap.recovery_mode_ledger_before_count, {
-    FRESH_36_TO_48: 36,
-    RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47],
-    VERIFIED_EXISTING_48: 48,
+    FRESH_36_TO_49: 36,
+    RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+    VERIFIED_EXISTING_49: 49,
   });
-  assert.equal(bootstrap.recovery_mode_final_ledger_count, 48);
+  assert.equal(bootstrap.recovery_mode_final_ledger_count, 49);
   assert.equal(bootstrap.guarded_activation_reapplies_migrations_or_operator_role, false);
 });
 
