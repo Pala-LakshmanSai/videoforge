@@ -32,10 +32,10 @@ const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13
 const DESCRIPTOR_PATH = path.join(ROOT, "protected-inputs/v2-13/static-release-descriptor.json");
 const PROTECTED_INPUT_PATH = path.join(ROOT, "protected-inputs/v2-13/materialization-seed-input.json");
 const RELEASE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
-const EXECUTION_CONTROL_COMMIT = "b0d13ba9829cd8612ff5273125aa4512789c83fb";
-const AUDITED_CODE_COMMIT = "5772a3eb975e1b7d3cc69c703007d46bcf613abf";
-const FACTS_SHA256 = "sha256:71dfc0ed081f6fd9ceaa52d88149504f9cf62f7073679f77bda8a2f05d27debf";
-const AUDIT_SHA256 = "sha256:51f20cac38a589846efdcb252e0c22409e4620399ac5d63f66c15375b883c121";
+const EXECUTION_CONTROL_COMMIT = "be194f3cf733803c17d621d622b4e3a8551f7d2a";
+const AUDITED_CODE_COMMIT = "eac19d7d56076bf473e19df163d3c3a2935b7862";
+const FACTS_SHA256 = "sha256:52e755d1994a0b91961d2b1c2af91f687939a66171e8229be62b97f805a1f7f1";
+const AUDIT_SHA256 = "sha256:1bf0b1dfac9454e375ec894dc4d00ae7bee0e915456f3db276e1b0545c3cc0d2";
 const DESCRIPTOR_SHA256 = "sha256:197ba94ef9694f3cfb4b7dab7da21cfda473bb0f49d66cae3a9ee4e5d7338051";
 const PROTECTED_INPUT_SHA256 = "sha256:2c6b83e44814776566ba13c4eb0d2fd08cf9d76f9772f47f4315d677ec9d5d6a";
 const FULL_LIVE_AUTHORITY_ID = "a03edc8f-817f-4579-8bce-28b3447ce30f";
@@ -246,7 +246,7 @@ assert(sha256(factsBytes) === FACTS_SHA256, "FACTS_SHA256");
 assert(
   audit.schema_version === "videoforge.v2-13-full-live-source-readiness-audit/v1" &&
     audit.audited_code_commit === AUDITED_CODE_COMMIT &&
-    audit.audit_result === "PASS_READY_TO_RESEAL" &&
+    audit.audit_result === "PASS_READY_TO_BIND" &&
     audit.evidence_class === "INDEPENDENT_RELEASE_AUDIT" &&
     audit.fixture_or_fake_transport_used === false &&
     audit.external_calls === 0 && audit.provider_mutations === 0 && audit.gpu_use === 0 && audit.spend_usd === 0 &&
@@ -454,16 +454,16 @@ assert(
   requestedDatabase.prequalification_database_bootstrap_operator_function_signature_count === 45 &&
     JSON.stringify(requestedDatabase.exact_operator_function_signatures) ===
       JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures) &&
-    requestedDatabase.prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count === 48 &&
-    requestedDatabase.prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count === 48 &&
+    requestedDatabase.prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count === 49 &&
+    requestedDatabase.prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count === 49 &&
     JSON.stringify(requestedDatabase.prequalification_database_bootstrap_recovery_mode_ledger_before_count) ===
       JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.recovery_mode_ledger_before_count) &&
-    requestedDatabase.prequalification_database_bootstrap_recovery_mode_final_ledger_count === 48 &&
+    requestedDatabase.prequalification_database_bootstrap_recovery_mode_final_ledger_count === 49 &&
     JSON.stringify(requestedDatabase.exact_recoverable_prefix_counts) ===
-      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]) &&
+      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]) &&
     JSON.stringify(requestedDatabase.exact_migrations_to_apply) ===
-      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]),
-  "REQUESTED_DATABASE_LEDGER48_BINDING",
+      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49]),
+  "REQUESTED_DATABASE_LEDGER49_BINDING",
 );
 const ref = proposal.immutable_github_release_ref_request;
 assert(

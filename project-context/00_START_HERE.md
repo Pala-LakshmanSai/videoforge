@@ -2,16 +2,19 @@
 
 ## Active handoff — read this section first
 
-### New-chat launch point — 2026-08-28
+### New-chat launch point — 2026-08-29
 
-- Fresh full-live successor proposal `sha256:0afb4f86c23ab729ec408f356b6a289ad7cbbbb380c6c83ef41c3914a34152fe`
+- Fresh full-live successor proposal `sha256:1f13d12f5806771296fc246387ea68a9b9251f3ed0c61c5f0f607e3623009b13`
   is sealed against execution-control evidence commit
-  `b0d13ba9829cd8612ff5273125aa4512789c83fb` and immutable release source
-  `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. The V4 control commit binds the
-  48-row runtime migration manifest and all 22 exact execution-control components while preserving
-  the immutable 45-row V3 payload. It preserves the exact closed 26-operation graph and all caps,
-  performs predecessor-bound Mage readback with no redispatch, and binds repaired GitHub `main`
-  workflow registration. No approval or live authority exists;
+  `be194f3cf733803c17d621d622b4e3a8551f7d2a` and immutable release source
+  `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. The source-readiness audit binds application source
+  commit `eac19d7d56076bf473e19df163d3c3a2935b7862`, audit
+  `sha256:1bf0b1dfac9454e375ec894dc4d00ae7bee0e915456f3db276e1b0545c3cc0d2`, and materialization
+  facts `sha256:52e755d1994a0b91961d2b1c2af91f687939a66171e8229be62b97f805a1f7f1`. The V4 control
+  commit binds the 49-row runtime migration manifest and all 22 exact execution-control components
+  while preserving the immutable 45-row V3 payload. It preserves the exact closed 26-operation graph
+  and all caps, performs predecessor-bound Mage readback with no redispatch, and binds repaired GitHub
+  `main` workflow registration. No approval or live authority exists;
   credential access, provider mutation, GPU use, and spend remain unauthorized.
 - Final pre-execution audit stopped proposal `sha256:41e7646f…486d6` before protected authority
   materialization or consumption because GitHub now returns HTTP 404 to unauthenticated
@@ -68,7 +71,7 @@
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:71dfc0ed081f6fd9ceaa52d88149504f9cf62f7073679f77bda8a2f05d27debf` and UUID
+  `sha256:52e755d1994a0b91961d2b1c2af91f687939a66171e8229be62b97f805a1f7f1` and UUID
   `a03edc8f-817f-4579-8bce-28b3447ce30f`, plus protected static descriptor self-hash
   `sha256:197ba94ef9694f3cfb4b7dab7da21cfda473bb0f49d66cae3a9ee4e5d7338051`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
