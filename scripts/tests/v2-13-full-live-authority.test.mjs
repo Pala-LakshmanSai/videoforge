@@ -6,6 +6,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -2414,6 +2415,79 @@ test("state storage requires mode-0700 real directory, mode-0600 file, and exact
         .filter(({ code }) => code !== 0)
         .every(({ stderr }) => /STATE_LOCKED|STATE_SHA256/u.test(stderr)),
       true,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("stale state lock takeover is synchronized and leaves no lock debris", async () => {
+  const state = freshStateFixture();
+  const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-stale-state-"));
+  chmodSync(directory, 0o700);
+  const path = join(directory, "state.json");
+  const barrier = join(directory, "barrier");
+  mkdirSync(barrier, { mode: 0o700 });
+  try {
+    writeExclusive(path, state);
+    const expectedSha256 = hash(readFileSync(path));
+    const lockPath = `${path}.lock`;
+    writeFileSync(
+      lockPath,
+      `${JSON.stringify({ pid: 2147483647, process_start_sha256: proof("d"), expected_state_sha256: expectedSha256 })}\n`,
+      { mode: 0o600, flag: "wx" },
+    );
+    const authorityModule = resolve("deploy/v2-13/full-live-orchestration-authority.mjs");
+    const contenderCount = 6;
+    const childSource = (id) => `
+      import { readdirSync, writeFileSync } from "node:fs";
+      const { updateState } = await import(${JSON.stringify(authorityModule)});
+      const barrier = ${JSON.stringify(barrier)};
+      const readyPath = ${JSON.stringify(join(barrier, `ready-${id}`))};
+      writeFileSync(readyPath, "ready\\n", { mode: 0o600, flag: "wx" });
+      const deadline = Date.now() + 15_000;
+      while (readdirSync(barrier).filter((entry) => /^ready-[0-9]+$/u.test(entry)).length < ${contenderCount}) {
+        if (Date.now() >= deadline) throw new Error("STALE_LOCK_BARRIER_TIMEOUT");
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+      }
+      try {
+        updateState(${JSON.stringify(path)}, ${JSON.stringify(expectedSha256)}, (value) => {
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2_000);
+          value.stale_lock_winner = ${JSON.stringify(id)};
+          return value;
+        });
+      } catch (error) {
+        process.stderr.write(String(error?.message ?? error));
+        process.exitCode = 1;
+      }
+    `;
+    const runChild = (id) =>
+      new Promise((done) => {
+        const child = spawn(process.execPath, ["--input-type=module", "--eval", childSource(id)], {
+          stdio: ["ignore", "ignore", "pipe"],
+        });
+        let stderr = "";
+        child.stderr.setEncoding("utf8");
+        child.stderr.on("data", (chunk) => {
+          stderr += chunk;
+        });
+        child.on("close", (code) => done({ code, stderr }));
+      });
+    const raced = await Promise.all(
+      Array.from({ length: contenderCount }, (_, id) => runChild(id)),
+    );
+    assert.equal(raced.filter(({ code }) => code === 0).length, 1);
+    assert.equal(
+      raced
+        .filter(({ code }) => code !== 0)
+        .every(({ stderr }) => /STATE_LOCKED|STATE_SHA256/u.test(stderr)),
+      true,
+    );
+    assert.deepEqual(
+      readdirSync(directory).filter((entry) =>
+        /state\.json\.(?:lock|candidate-|stale-)/u.test(entry),
+      ),
+      [],
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });

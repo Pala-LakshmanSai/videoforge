@@ -39,6 +39,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
 const EXECUTION_LEASE_SCHEMA = "videoforge.v213-full-live-execution-lease/v1";
 const EXECUTION_LEASE_SUFFIX = ".execution-lease";
+const STATE_LOCK_RETRY_LIMIT = 8;
 // Failure diagnostics are deliberately opaque, bounded tokens.  They may be written to the
 // durable outer state and therefore must never contain a path, provider identifier, secret, or
 // exception text.  The executor maps trusted internal errors onto this shape before calling
@@ -2363,51 +2364,24 @@ function releaseExecutionLease(pathOrLease, maybeLease) {
   fsyncDirectory(dirname(leasePath));
 }
 
-function acquireStateLock(lockPath, expectedSha256) {
-  const processStartSha256 = processStartIdentity(process.pid);
-  if (!HASH.test(processStartSha256 ?? "")) fail("STATE_LOCK_PROCESS_IDENTITY");
-  const body = Buffer.from(
-    `${JSON.stringify({ pid: process.pid, process_start_sha256: processStartSha256, expected_state_sha256: expectedSha256 })}\n`,
-  );
-  const candidatePath = `${lockPath}.candidate-${process.pid}-${processStartSha256.slice(7)}-${randomBytes(8).toString("hex")}`;
-  let candidateCreated = false;
+function sameStateLockStat(left, right) {
+  return left?.dev === right?.dev && left?.ino === right?.ino && left?.mode === right?.mode;
+}
+
+function readStateLockSnapshot(lockPath) {
+  let initialMetadata;
   try {
-    const descriptor = openSync(candidatePath, "wx", 0o600);
-    candidateCreated = true;
-    try {
-      writeFileSync(descriptor, body);
-      fsyncSync(descriptor);
-    } finally {
-      closeSync(descriptor);
-    }
-    exactPath(candidatePath, "file", 0o600, "STATE_LOCK_CANDIDATE");
-    fsyncDirectory(dirname(lockPath));
-    // Claim the canonical name only after the complete record is durable.  A competing reader
-    // can therefore observe either no lock or a complete JSON record, never an empty/partial
-    // file between open(2) and write(2).
-    try {
-      linkSync(candidatePath, lockPath);
-      fsyncDirectory(dirname(lockPath));
-      return;
-    } catch (error) {
-      if (error?.code !== "EEXIST") throw error;
-    }
-  } finally {
-    if (candidateCreated) {
-      try {
-        unlinkSync(candidatePath);
-        fsyncDirectory(dirname(lockPath));
-      } catch {
-        // If the candidate was linked, the canonical lock is complete and authoritative; an
-        // orphaned candidate is harmless and must not trigger removal of the canonical winner.
-      }
-    }
+    exactPath(lockPath, "file", 0o600, "STATE_LOCK");
+    initialMetadata = lstatSync(lockPath);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
   }
-  exactPath(lockPath, "file", 0o600, "STATE_LOCK");
   let existing;
   try {
     existing = JSON.parse(readFileSync(lockPath, "utf8"));
-  } catch {
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
     fail("STATE_LOCK_DRIFT");
   }
   if (
@@ -2418,16 +2392,102 @@ function acquireStateLock(lockPath, expectedSha256) {
     !HASH.test(existing.expected_state_sha256 ?? "")
   )
     fail("STATE_LOCK_DRIFT");
-  if (processStartIdentity(existing.pid) === existing.process_start_sha256) fail("STATE_LOCKED");
-  const stalePath = `${lockPath}.stale-${existing.pid}`;
+  let finalMetadata;
   try {
-    renameSync(lockPath, stalePath);
-  } catch {
-    fail("STATE_LOCKED");
+    exactPath(lockPath, "file", 0o600, "STATE_LOCK");
+    finalMetadata = lstatSync(lockPath);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
   }
-  rmSync(stalePath, { force: true });
-  fsyncDirectory(dirname(lockPath));
-  acquireStateLock(lockPath, expectedSha256);
+  if (!sameStateLockStat(initialMetadata, finalMetadata)) return null;
+  return { existing, metadata: finalMetadata };
+}
+
+function acquireStateLock(lockPath, expectedSha256) {
+  const processStartSha256 = processStartIdentity(process.pid);
+  if (!HASH.test(processStartSha256 ?? "")) fail("STATE_LOCK_PROCESS_IDENTITY");
+  const body = Buffer.from(
+    `${JSON.stringify({ pid: process.pid, process_start_sha256: processStartSha256, expected_state_sha256: expectedSha256 })}\n`,
+  );
+  for (let attempt = 0; attempt < STATE_LOCK_RETRY_LIMIT; attempt += 1) {
+    const candidatePath = `${lockPath}.candidate-${process.pid}-${processStartSha256.slice(7)}-${randomBytes(8).toString("hex")}`;
+    let candidateCreated = false;
+    try {
+      let descriptor;
+      try {
+        descriptor = openSync(candidatePath, "wx", 0o600);
+      } catch (error) {
+        if (error?.code === "EEXIST") continue;
+        throw error;
+      }
+      candidateCreated = true;
+      try {
+        writeFileSync(descriptor, body);
+        fsyncSync(descriptor);
+      } finally {
+        closeSync(descriptor);
+      }
+      exactPath(candidatePath, "file", 0o600, "STATE_LOCK_CANDIDATE");
+      fsyncDirectory(dirname(lockPath));
+      // Claim the canonical name only after the complete record is durable.  A competing reader
+      // can therefore observe either no lock or a complete JSON record, never an empty/partial
+      // file between open(2) and write(2).
+      try {
+        linkSync(candidatePath, lockPath);
+        fsyncDirectory(dirname(lockPath));
+        return;
+      } catch (error) {
+        if (error?.code !== "EEXIST") throw error;
+      }
+    } finally {
+      if (candidateCreated) {
+        try {
+          unlinkSync(candidatePath);
+          fsyncDirectory(dirname(lockPath));
+        } catch {
+          // If the candidate was linked, the canonical lock is complete and authoritative; an
+          // orphaned candidate is harmless and must not trigger removal of the canonical winner.
+        }
+      }
+    }
+    const observed = readStateLockSnapshot(lockPath);
+    // A competing winner may have completed and released its lock before this loser inspected
+    // it.  Retry boundedly instead of leaking the transient ENOENT to the caller.
+    if (observed === null) continue;
+    if (processStartIdentity(observed.existing.pid) === observed.existing.process_start_sha256)
+      fail("STATE_LOCKED");
+
+    // Re-read both the complete record and its file identity immediately before stale takeover.
+    // A newer claimant must never be renamed merely because an older stale snapshot was read.
+    const confirmed = readStateLockSnapshot(lockPath);
+    if (confirmed === null) continue;
+    if (
+      !sameStateLockStat(observed.metadata, confirmed.metadata) ||
+      observed.existing.pid !== confirmed.existing.pid ||
+      observed.existing.process_start_sha256 !== confirmed.existing.process_start_sha256 ||
+      observed.existing.expected_state_sha256 !== confirmed.existing.expected_state_sha256
+    )
+      fail("STATE_LOCKED");
+    let latestMetadata;
+    try {
+      latestMetadata = lstatSync(lockPath);
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      throw error;
+    }
+    if (!sameStateLockStat(confirmed.metadata, latestMetadata)) fail("STATE_LOCKED");
+    const stalePath = `${lockPath}.stale-${observed.existing.pid}`;
+    try {
+      renameSync(lockPath, stalePath);
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      fail("STATE_LOCKED");
+    }
+    rmSync(stalePath, { force: true });
+    fsyncDirectory(dirname(lockPath));
+  }
+  fail("STATE_LOCKED");
 }
 
 function updateState(path, expectedSha256, operation, executionLease = null) {
