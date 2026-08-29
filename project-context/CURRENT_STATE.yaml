@@ -27,7 +27,7 @@ current_goal_boundary:
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
   provider_free_product_action: "The exact rotation/normalization authority was consumed once and completed. It added one same-client Google secret, secured and hash-read it before disabling only the exposed old secret, and normalized only the two local R2 files. Preserve the exact resources/files and secret-free receipt; the authority is non-reusable. No further credential, provider, R2, RunPod, GPU, spend, retry, or redispatch action is authorized under this boundary."
-  note: "Immutable release payload and exact tag remain at 15af5e20ce3c80eb61d5d1e807a87e8840ed9685. Execution control 62e361e15de53369910e60226f27859b5b5a7f08 and V4 proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce were consumed once by authority v2-13-full-live-20260829-052951z-6852970d. Mage publication succeeded; SoulX workflow dispatch did not settle because the workflow is absent from GitHub default branch main. Cleanup proved zero compute, credentials, secrets, deployment, GPU use, or attempt spend. The authority is terminal and non-reusable. Provider-free default-branch repair, independent audit, a new resealed proposal, and fresh exact approval are required."
+  note: "Immutable release payload and exact tag remain at 15af5e20ce3c80eb61d5d1e807a87e8840ed9685. Execution control 62e361e15de53369910e60226f27859b5b5a7f08 and V4 proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce were consumed once by authority v2-13-full-live-20260829-052951z-6852970d. Mage publication succeeded; SoulX workflow dispatch did not settle because the workflow is absent from GitHub default branch main. Cleanup proved zero compute, credentials, secrets, deployment, GPU use, or attempt spend. The authority is terminal and non-reusable. Provider-free atomic default-branch repair source is implemented and independently audited; an exact zero-spend proposal and fresh approval are required before its one GitHub mutation."
 
 new_chat_handoff:
   status: TERMINAL_CLEANUP_COMPLETE_PROVIDER_FREE_REPAIR_REQUIRED
@@ -46,7 +46,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Provider-free repair the SoulX workflow publication boundary so the exact workflow exists on GitHub default branch main, independently audit the repair, reseal a new source-bound proposal, and request fresh exact approval. Consumed proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce and authority v2-13-full-live-20260829-052951z-6852970d cannot be replayed or redispatched. No credential read, provider mutation, GPU use, or spend is authorized."
+  next_action: "Materialize and independently audit the exact zero-spend, single-use GraphQL compare-and-swap default-branch repair proposal against remote main 6a71c39de3aa9533bf18d70e0bc620fa0d11559e, then request fresh exact approval before the one GitHub mutation. After exact readback, reseal the distinct full-live successor and obtain another fresh approval. No credential read, provider mutation, GPU use, or spend is currently authorized."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -85,6 +85,25 @@ two_track_execution:
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
 provider_free_product_progress:
+  v2_13_atomic_default_branch_repair_commit: "31a19d33ce4233533c7be140c52c94de2d6a5bd1"
+  v2_13_atomic_default_branch_repair_status: PROVIDER_FREE_IMPLEMENTED_FOCUSED_TESTS_PASS_INDEPENDENT_AUDIT_PASS
+  v2_13_atomic_default_branch_repair_validator_sha256: "sha256:ff8cb7035093ff4d8bc5c30ff3869e08bb1044040b8f5d4b1c7e442809e73606"
+  v2_13_atomic_default_branch_repair_test_sha256: "sha256:f3a5deb0e694126de8c64ab78649b075fc0888ae61396cf5c85610dabd60e897"
+  v2_13_atomic_default_branch_repair_note: "The repair seam now supports exactly one GitHub GraphQL createCommitOnBranch mutation with expectedHeadOid CAS, one exact release-source workflow addition, no deletions, force, tags, secrets, dispatch, retry, replay, or fallback, durable request-bound intent, exact ACK/readback tree-parent-ref-message binding, and readback-only crash reconciliation. Focused tests pass 34/34 and independent security re-audit is clean."
+  v2_13_atomic_default_branch_target:
+    repository: Pala-LakshmanSai/videoforge
+    branch: main
+    observed_commit: "6a71c39de3aa9533bf18d70e0bc620fa0d11559e"
+    observed_tree: "4436cd0352d9a6c4988ffaf668df6056363ee25f"
+    workflow_path: .github/workflows/avatar-primary-serverless-image.yml
+    workflow_state: ABSENT
+    release_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
+    workflow_blob_sha1: "70f6c434dbb6a73011d7e004c61ddd8d409e74d1"
+    workflow_blob_sha256: "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da"
+    expected_resulting_tree: "7e14c1008620f1930ae2c5a0e76c69ecf4e9e5aa"
+    expected_resulting_tree_entries_sha256: "sha256:af29613822e787a02b031fa960897c543c5425b76bb88d056eecb50069ca9115"
+    expected_resulting_tree_entries: 1338
+    spend_usd: 0
   v2_13_crash_safe_hardening_commit: "359ac2daf88234695b80b0a2eca65c436f7eb7d9"
   v2_13_crash_safe_hardening_status: PROVIDER_FREE_IMPLEMENTED_CANONICAL_VERIFY_PASS_INDEPENDENT_AUDIT_PASS
   v2_13_crash_safe_hardening_note: "The exact default-branch repair tool now binds its running validator bytes and durable pre-mutation intent; full-live execution holds one crash-safe canonical whole-run lease; cleanup restarts retain one logical bridge/receipt identity, use readback-only reconciliation, and reuse the durable receipt summary even when fresh readback timestamps drift. Canonical pnpm verify, 44 installed-Chrome journeys, focused V2-13 suites, and independent audits pass. No credential access, provider call/mutation, GPU use, spend, tag mutation, deployment, or publication occurred."
@@ -96,7 +115,7 @@ provider_free_product_progress:
     migration_0046: "sha256:d98e020a52a1820db811f5c9a679651c1169000ebe28c1d00b35e04c003ba33b"
     migration_manifest: "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d"
     operator_grants: "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5"
-  v2_13_crash_safe_next_boundary: "Materialize and independently audit one exact zero-spend single-use default-branch workflow repair proposal for commit 359ac2d, then obtain fresh exact user approval before the one GitHub mutation. After exact readback, reseal a distinct full-live successor and obtain another fresh exact approval before credentials, providers, GPU, or spend."
+  v2_13_crash_safe_next_boundary: "Materialize and independently audit one exact zero-spend single-use default-branch workflow repair proposal from atomic repair commit 31a19d3, then obtain fresh exact user approval before the one GitHub mutation. After exact readback, reseal a distinct full-live successor and obtain another fresh exact approval before credentials, providers, GPU, or spend."
   full_live_execution_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
   full_live_execution_source_status: FRESH_INDEPENDENTLY_AUDITED_PROVIDER_FREE_RELEASE_SOURCE
   full_live_execution_source_note: "Release source commit 15af5e2 carried the consumed 26-operation V2-13 graph. Its exact tag was reconciled without mutation and immutable Mage publication succeeded, but the single-use run stopped at SoulX workflow dispatch because that workflow is absent from GitHub default branch main. Cleanup is complete at zero attempt spend; the authority is terminal and no further provider, credential, GPU, or deployment action is authorized."
@@ -301,7 +320,7 @@ provider_free_product_progress:
   fresh_v2_13_audit_status: CONSUMED_TERMINAL_CLEANUP_COMPLETE_SOULX_DEFAULT_BRANCH_REPAIR_REQUIRED
   fresh_v2_13_release_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Provider-free repair the SoulX workflow publication boundary on GitHub default branch main, independently audit the exact repair, reseal a new source-bound proposal, and obtain fresh exact approval before any remote mutation or credential/provider action. Proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce and authority v2-13-full-live-20260829-052951z-6852970d were consumed once and cannot be replayed or redispatched; current credential read, provider mutation, GPU use, and spend authority is zero."
+  next_v2_13_action: "Materialize and independently audit the exact zero-spend single-use GraphQL CAS repair proposal against remote main 6a71c39de3aa9533bf18d70e0bc620fa0d11559e, then obtain fresh exact approval before the one GitHub mutation. After exact readback, reseal the distinct full-live successor. Consumed proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce and authority v2-13-full-live-20260829-052951z-6852970d cannot be replayed or redispatched; current credential read, provider mutation, GPU use, and spend authority is zero."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -4520,7 +4539,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Provider-free repair the SoulX workflow publication boundary so the exact workflow exists on GitHub default branch before dispatch, independently audit and reseal a new successor, then request fresh exact approval. Authority v2-13-full-live-20260829-052951z-6852970d is terminal and cannot be replayed or redispatched."
+  goal: "Materialize and independently audit the exact atomic default-branch workflow repair proposal, obtain fresh approval for its one zero-spend GitHub mutation, then reseal the distinct full-live successor. Authority v2-13-full-live-20260829-052951z-6852970d is terminal and cannot be replayed or redispatched."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

@@ -4,6 +4,15 @@
 
 ### New-chat launch point — 2026-08-28
 
+- Provider-free repair commit `31a19d33ce4233533c7be140c52c94de2d6a5bd1` closes the
+  default-branch publication design gap with one atomic GitHub GraphQL
+  `createCommitOnBranch(expectedHeadOid)` mutation. It can add only the exact release-source SoulX
+  workflow, binds the expected resulting tree, persists mutation intent before the call, and permits
+  readback-only recovery with no retry or replay. Focused tests pass 34/34 and independent security
+  re-audit is clean. Fresh read-only evidence still shows `main` at `6a71c39d`, missing the workflow;
+  the exact expected resulting tree is `7e14c1008620f1930ae2c5a0e76c69ecf4e9e5aa`. No remote
+  mutation, credential access, GPU use, or spend occurred. Next: seal the zero-spend single-use repair
+  proposal and obtain fresh exact approval before the one GitHub mutation.
 - V4 proposal `sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce`
   at proposal record `1ba62090c763cb4993cd5f9806e63c6629be1997` was approved and consumed once under
   authority `v2-13-full-live-20260829-052951z-6852970d`. Exact tag readback and approval-branch
