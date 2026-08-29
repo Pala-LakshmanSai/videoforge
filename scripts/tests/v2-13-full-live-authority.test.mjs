@@ -352,7 +352,7 @@ function repairExactDatabaseScope() {
     exact_operator_function_signatures: [...bootstrap.exact_operator_function_signatures],
     exact_initial_ledger_prefix_count: 36,
     exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
-    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
+    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47],
   };
 }
 
@@ -1594,7 +1594,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "videoforge.v213-database-role-credential-bundle/v1",
     prequalification_database_bootstrap_credential_bundle_path: "database-role-credentials.json",
     prequalification_database_bootstrap_credentials_absent_before_consumed_bootstrap: true,
-    prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count: 46,
+    prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count: 47,
     prequalification_database_bootstrap_credential_roles: [
       "videoforge_hosted_operator",
       "videoforge_hosted_runtime",
@@ -1610,7 +1610,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     prequalification_database_bootstrap_exact_one_time_internal_production_credential_scope: [
       ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_scope,
     ],
-    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 46,
+    prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count: 47,
     prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit: true,
     prequalification_database_bootstrap_phase: "bootstrap_prequalification_database",
     prequalification_database_bootstrap_phase_cap_usd: 0,
@@ -1619,17 +1619,17 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "prequalification_database_bootstrap_sha256",
     prequalification_database_bootstrap_receipt_replay_cas_required: true,
     prequalification_database_bootstrap_recovery_mode_ledger_before_count: {
-      FRESH_36_TO_46: 36,
-      RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45],
-      VERIFIED_EXISTING_46: 46,
+      FRESH_36_TO_47: 36,
+      RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
+      VERIFIED_EXISTING_47: 47,
     },
-    prequalification_database_bootstrap_recovery_mode_final_ledger_count: 46,
+    prequalification_database_bootstrap_recovery_mode_final_ledger_count: 47,
     exact_operator_function_signatures: [
       ...EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures,
     ],
     exact_initial_ledger_prefix_count: 36,
     exact_recoverable_prefix_counts: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
-    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
+    exact_migrations_to_apply: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47],
   });
   assert.equal(bootstrap.receipt_exact_fields.includes("production_secret_bootstrap_sha256"), true);
   assert.equal(bootstrap.receipt_exact_fields.includes("database_identity_sha256"), true);
@@ -1655,7 +1655,7 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
   assert.equal(bootstrap.receipt_parent_directory_mode, "0700");
   assert.equal(bootstrap.receipt_secret_free, true);
   assert.equal(bootstrap.receipt_replay_requires_exact_all_fields, true);
-  assert.equal(bootstrap.receipt_final_ledger_count, 46);
+  assert.equal(bootstrap.receipt_final_ledger_count, 47);
   assert.equal(bootstrap.operator_grants_sql_revoke_public_execute, true);
   assert.equal(
     bootstrap.absent_operator_role_creation_and_exact_grants_share_one_database_transaction,
@@ -1711,6 +1711,18 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
       "utf8",
     ),
   ].join("\n");
+  const inviteMigration = readFileSync(
+    "packages/control-plane/migrations/0047_hosted_invite_code_redemption.sql",
+    "utf8",
+  );
+  assert.match(
+    inviteMigration,
+    /CREATE FUNCTION public\.videoforge_redeem_hosted_invite\(\s*supplied_session_token text,\s*supplied_verifier_sha256 text/u,
+  );
+  assert.match(
+    inviteMigration,
+    /REVOKE ALL ON FUNCTION public\.videoforge_redeem_hosted_invite\(text, text\) FROM PUBLIC;/u,
+  );
   const normalizedMigration = migration.replace(/\s+/gu, " ");
   for (const signature of bootstrap.exact_operator_function_signatures)
     assert.equal(
@@ -1738,11 +1750,11 @@ test("V3 proposal binds the zero-provider prequalification database bootstrap", 
     true,
   );
   assert.deepEqual(bootstrap.recovery_mode_ledger_before_count, {
-    FRESH_36_TO_46: 36,
-    RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45],
-    VERIFIED_EXISTING_46: 46,
+    FRESH_36_TO_47: 36,
+    RESUME_EXACT_PREFIX: [37, 38, 39, 40, 41, 42, 43, 44, 45, 46],
+    VERIFIED_EXISTING_47: 47,
   });
-  assert.equal(bootstrap.recovery_mode_final_ledger_count, 46);
+  assert.equal(bootstrap.recovery_mode_final_ledger_count, 47);
   assert.equal(bootstrap.guarded_activation_reapplies_migrations_or_operator_role, false);
 });
 

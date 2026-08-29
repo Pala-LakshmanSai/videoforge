@@ -200,12 +200,12 @@ const PREQUALIFICATION_RUNTIME_ROLE = "videoforge_hosted_runtime";
 const PREQUALIFICATION_RECONCILER_ROLE = "videoforge_hosted_reconciler";
 const PREQUALIFICATION_RECEIPT_NAME = "prequalification-database-bootstrap.json";
 const PREQUALIFICATION_RECOVERY_MODES = Object.freeze([
-  "FRESH_36_TO_46",
+  "FRESH_36_TO_47",
   "RESUME_EXACT_PREFIX",
-  "VERIFIED_EXISTING_46",
+  "VERIFIED_EXISTING_47",
 ]);
 const PREQUALIFICATION_LEDGER_PREFIX_COUNTS = Object.freeze([
-  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46,
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
 ]);
 const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_claim_v213_bridge_command(jsonb)",
@@ -5158,7 +5158,7 @@ async function cleanupPartialDatabaseRoleCredentials({
         (sql, code) =>
           prequalificationCommand(run, "psql", prequalificationQueryArgs(sql), dbEnv, code),
         manifest,
-      ).length !== 46
+      ).length !== 47
     )
       fail("PREQUALIFICATION_PARTIAL_CLEANUP_LEDGER");
     const bundleBytes = readProtectedCrashPairBytes(
@@ -5491,7 +5491,7 @@ function prequalificationManifest() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 46
+    manifest.migrations.length !== 47
   )
     fail("PREQUALIFICATION_MANIFEST");
   for (const [index, migration] of manifest.migrations.entries()) {
@@ -5654,10 +5654,10 @@ function prequalificationReceiptFromFile(
     ]).size !== 3 ||
     !HASH.test(value.pgcrypto_sha256 ?? "") ||
     !PREQUALIFICATION_RECOVERY_MODES.includes(value.recovery_mode) ||
-    (value.recovery_mode === "FRESH_36_TO_46" && value.ledger_before_count !== 36) ||
+    (value.recovery_mode === "FRESH_36_TO_47" && value.ledger_before_count !== 36) ||
     (value.recovery_mode === "RESUME_EXACT_PREFIX" &&
-      ![37, 38, 39, 40, 41, 42, 43, 44, 45].includes(value.ledger_before_count)) ||
-    (value.recovery_mode === "VERIFIED_EXISTING_46" && value.ledger_before_count !== 46) ||
+      ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46].includes(value.ledger_before_count)) ||
+    (value.recovery_mode === "VERIFIED_EXISTING_47" && value.ledger_before_count !== 47) ||
     value.runpod_calls !== 0 ||
     value.cloudflare_calls !== 0 ||
     value.application_secret_reads !== 5 ||
@@ -5780,7 +5780,7 @@ async function verifyPrequalificationDatabaseReceipt({
   const manifest = prequalificationManifest();
   const ledger = prequalificationLockedLedger(query, manifest);
   if (
-    ledger.length !== 46 ||
+    ledger.length !== 47 ||
     sha256(Buffer.from(`${canonicalJson(ledger)}\n`)) !== receipt.ledger_after_sha256
   )
     fail("PREQUALIFICATION_VERIFY_LEDGER");
@@ -5959,20 +5959,20 @@ function createPrequalificationDatabaseBootstrapAdapter({
     }
     if (
       reconciliationOnly &&
-      (before.length !== 46 ||
+      (before.length !== 47 ||
         operatorCount !== 1 ||
         credentialFinals.some((path) => !lstatExists(path)))
     )
       fail("PREQUALIFICATION_RECONCILIATION_READBACK_INCOMPLETE");
     if (existing && operatorCount !== 1) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
-    if (existing && before.length !== 46) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
+    if (existing && before.length !== 47) fail("PREQUALIFICATION_RECEIPT_STATE_DRIFT");
     const recoveryMode =
       before.length === 36
-        ? "FRESH_36_TO_46"
-        : before.length === 46
-          ? "VERIFIED_EXISTING_46"
+        ? "FRESH_36_TO_47"
+        : before.length === 47
+          ? "VERIFIED_EXISTING_47"
           : "RESUME_EXACT_PREFIX";
-    if (!existing && before.length < 46) {
+    if (!existing && before.length < 47) {
       prequalificationCommand(
         run,
         "psql",
@@ -6098,7 +6098,7 @@ function createPrequalificationDatabaseBootstrapAdapter({
     if (operatorCredentialReadback !== PREQUALIFICATION_OPERATOR_ROLE)
       fail("PREQUALIFICATION_OPERATOR_CREDENTIAL_READBACK");
     const ledger = prequalificationLockedLedger(query, manifest);
-    if (ledger.length !== 46) fail("PREQUALIFICATION_LEDGER_FINAL");
+    if (ledger.length !== 47) fail("PREQUALIFICATION_LEDGER_FINAL");
     let pgcrypto;
     try {
       pgcrypto = JSON.parse(

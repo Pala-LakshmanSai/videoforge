@@ -101,17 +101,17 @@ const EXACT_DATABASE_IDENTITY_SHA256 =
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
 const PREQUALIFICATION_RECOVERY_MODES = new Set([
-  "FRESH_36_TO_46",
+  "FRESH_36_TO_47",
   "RESUME_EXACT_PREFIX",
-  "VERIFIED_EXISTING_46",
+  "VERIFIED_EXISTING_47",
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:c4f0f4867bb7c19207c7cbe334261f7208949d5906347bc15e1a2fd04b2de4ff",
+    "sha256:4dba78aed03d942b7551ffc3de8fe5205d878784f7d3d35082e8f20cddede75d",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:f760505d3fdabfe8540cfc836304d70e4da8a1c76516474ffffbdef14cc4b0b3",
+    "sha256:3a587b5b460ef7dbf1eeb0825c72575a20ff351b7f52d84d9475493b33bcb30d",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
     "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
@@ -121,7 +121,7 @@ const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/neon-full-live-operator-grants.sql":
     "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5",
   "packages/control-plane/migrations/manifest.json":
-    "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d",
+    "sha256:dce23fa46e96144db292ee0df746bd5fd8a20c7c4977e4907148d411deed36ff",
   "deploy/v2-13/full-live-source-closure.json":
     "sha256:bc18e7f87c01759ccca1f28519d95c6b7ee563a7b8d08f650c3de0ea2dba4f12",
 });
@@ -1263,10 +1263,10 @@ export function assertResult(
     )
       fail("PREQUALIFICATION_DATABASE_BOOTSTRAP_READBACK", operation.id);
     if (
-      (result.recovery_mode === "FRESH_36_TO_46" && result.ledger_before_count !== 36) ||
+      (result.recovery_mode === "FRESH_36_TO_47" && result.ledger_before_count !== 36) ||
       (result.recovery_mode === "RESUME_EXACT_PREFIX" &&
-        ![37, 38, 39, 40, 41, 42, 43, 44, 45].includes(result.ledger_before_count)) ||
-      (result.recovery_mode === "VERIFIED_EXISTING_46" && result.ledger_before_count !== 46)
+        ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46].includes(result.ledger_before_count)) ||
+      (result.recovery_mode === "VERIFIED_EXISTING_47" && result.ledger_before_count !== 47)
     )
       fail("PREQUALIFICATION_RECOVERY_MODE", operation.id);
   }

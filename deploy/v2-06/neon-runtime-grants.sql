@@ -33,6 +33,11 @@ TO :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION public.videoforge_hosted_session_scope(text)
 TO :"runtime_role";
+-- Migration 0047 is the sole hosted invite-redemption capability.  The browser submits only
+-- the authenticated session token and exact verifier hash; the SECURITY DEFINER function keeps
+-- invite consumption and admission atomic while the runtime receives no direct invite-table DML.
+GRANT EXECUTE ON FUNCTION public.videoforge_redeem_hosted_invite(text, text)
+TO :"runtime_role";
 -- RLS policies call this stable tenant-principal helper while evaluating every tenant row.
 GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id()
 TO :"runtime_role";

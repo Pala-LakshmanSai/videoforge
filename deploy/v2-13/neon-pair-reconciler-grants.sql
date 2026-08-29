@@ -1,4 +1,4 @@
--- Apply only with the migration owner after migrations 0037-0046 have an exact manifest ledger.
+-- Apply only with the migration owner after migrations 0037-0047 have an exact manifest ledger.
 -- Both login roles are pre-created, unprivileged, NOINHERIT roles. Credentials are provisioned
 -- separately and must never be passed through this file.
 --   psql --variable=runtime_role=... --variable=reconciler_role=... --file=...

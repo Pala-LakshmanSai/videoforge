@@ -10,6 +10,10 @@ test("the hosted runtime can append through the exact function but has no direct
   assert.match(source, /GRANT EXECUTE ON FUNCTION public\.videoforge_current_account_id\(\)/u);
   assert.match(
     source,
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_redeem_hosted_invite\(text, text\)\s+TO :"runtime_role";/u,
+  );
+  assert.match(
+    source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_append_hosted_render_plan\([\s\S]*?uuid, uuid, uuid, uuid, text, jsonb, text[\s\S]*?TO :"runtime_role";/u,
   );
   assert.match(

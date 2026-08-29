@@ -52,6 +52,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_media_worker_device_scope(text)",
   "videoforge_media_worker_enrollment_consume(uuid,text)",
   "videoforge_media_worker_enrollment_poll(uuid,text,timestamp with time zone)",
+  "videoforge_redeem_hosted_invite(text,text)",
   "videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)",
   "videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)",
   "videoforge_begin_hosted_pair_send(uuid,uuid,uuid,text,uuid,text)",
