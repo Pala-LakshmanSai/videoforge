@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "5ed4fbbef0abf889155abdfb56efcdf006100c73",
+  "audited_code_commit": "84b0760456e7450917407696cea6d23333ee1f42",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.successor-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-29T14:34:48.000Z",
+  "observed_at": "2026-08-29T16:50:46.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -16,8 +16,8 @@
   "spend_usd": 0,
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "entry_count": 644,
-    "sha256": "sha256:bc18e7f87c01759ccca1f28519d95c6b7ee563a7b8d08f650c3de0ea2dba4f12",
+    "entry_count": 648,
+    "sha256": "sha256:58b1703372c68409267926a53dd70ba80cbcb5454eda9ece341719905555fa23",
     "exact": true
   },
   "production_origin": {
@@ -27,18 +27,18 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:bc18e7f87c01759ccca1f28519d95c6b7ee563a7b8d08f650c3de0ea2dba4f12"
+    "sha256": "sha256:58b1703372c68409267926a53dd70ba80cbcb5454eda9ece341719905555fa23"
   },
   "validation": {
     "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
     "full_verify_passed": false,
     "full_verify_expected_boundary": "POST_RESEAL_CANONICAL_VERIFY_REQUIRED",
-    "package_test_files_passed": 104,
-    "package_tests_passed": 1256,
-    "package_tests_skipped": 1,
-    "focused_release_script_tests_passed": 221,
-    "control_plane_activation_tests_passed": 14,
-    "soulx_tests_passed": 37,
+    "package_test_files_passed": 5,
+    "package_tests_passed": 80,
+    "package_tests_skipped": 0,
+    "focused_release_script_tests_passed": 91,
+    "control_plane_activation_tests_passed": 0,
+    "soulx_tests_passed": 0,
     "independent_source_audit_result": "PASS_READY_TO_RESEAL",
     "canonical_executor_state": "NO_ACTION"
   },
@@ -115,8 +115,8 @@
     "The successor binds the exact predecessor terminal archive and performs zero tag mutation. Mage operation 5 is predecessor-bound readback and reconciliation of workflow run 33236590768 and its immutable evidence; operation 6 re-verifies that exact result without workflow redispatch.",
     "Default-branch repair authority v2-13-default-branch-repair-20260829-120719z-graphql was consumed exactly once at zero spend. GitHub main is c24d37e164d3fcf93c04d53a1e8f06ab972c5d46, and the exact release-source SoulX workflow is registered active with hash-bound evidence sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42.",
     "V3 payload contracts remain backward compatible while 19 V4 execution-control components are separately commit-tree-bound. Guarded activation runs only from the successor control commit, rejects predecessor authority replay, and proves every non-control closure byte equals the immutable payload.",
-    "The focused authority, builder, adapter, executor, guarded-activation, promotion, migration-0046, and cleanup-recovery checks pass 221 of 221 at clean audited source commit 5ed4fbbef0abf889155abdfb56efcdf006100c73. Exact commit and closure checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-reseal gate.",
-    "Audited source 5ed4fbbef0abf889155abdfb56efcdf006100c73 routes every V4 source-closure entry and the 46-row migration manifest through the exact execution-control commit, classifies all 15 intentional differences from immutable V3 payload 15af5e2 as 19 closed control components, preserves guarded payload equivalence for every other byte, and rebinds executor state/source pins without changing the immutable release payload or lightweight tag.",
+    "The focused executor and authority checks pass 91 of 91 at clean audited source commit 84b0760456e7450917407696cea6d23333ee1f42, and the focused hosted product surface passes 80 of 80. Exact commit and closure checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-reseal gate.",
+    "Audited source 84b0760456e7450917407696cea6d23333ee1f42 binds all 648 closure entries, the 48-row migration manifest, executor, orchestration authority, and externally tree-bound approval validator without changing the immutable release payload or lightweight tag.",
     "The successor authority identifier is proven distinct from the exact predecessor in both approval validation and outer authority validation before durable single-use consumption; guarded activation repeats the check as defense in depth."
   ]
 }
