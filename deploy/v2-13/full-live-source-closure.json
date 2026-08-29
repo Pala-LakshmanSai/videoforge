@@ -151,11 +151,11 @@
     },
     {
       "path": "apps/web/src/hosted/HostedProductScreens.tsx",
-      "sha256": "sha256:cb6ff23a49de0d7ddc4ea9bf75f5152dfce87b14fe88def4fd6ff5c81dff908a"
+      "sha256": "sha256:43142d91eadda7a7c169020d2f27ffdf5109b139368fa48e02a5e55674624e00"
     },
     {
       "path": "apps/web/src/hosted/HostedStagingApp.tsx",
-      "sha256": "sha256:77030beefc2dc106d83c19b051533da109d51ac3f04ce1dabb86b89a88434006"
+      "sha256": "sha256:0dbedf3730888d50e3749c9aa69e84b43f0b70b719576323ac3fe81b67bb1759"
     },
     {
       "path": "apps/web/src/hosted/MediaWorkerSetup.tsx",
@@ -371,7 +371,11 @@
     },
     {
       "path": "apps/web/src/server/hosted/app.ts",
-      "sha256": "sha256:a5b04e9b5df64c73530ae2e8f86600c58be64c2cfbadd2c5cbe1ede279784c6b"
+      "sha256": "sha256:17b11eb317348e8d21675d34dc2095d917253cd159818a00a1ed4e37a1483b8d"
+    },
+    {
+      "path": "apps/web/src/server/hosted/audio-validation.ts",
+      "sha256": "sha256:2dbe2ac035a9da01cc86b7fb08ef76113e59f485a7321aecf58cc791c3ca27be"
     },
     {
       "path": "apps/web/src/server/hosted/auth.ts",
@@ -383,7 +387,7 @@
     },
     {
       "path": "apps/web/src/server/hosted/configuration.ts",
-      "sha256": "sha256:3ed62edd17cd43dc5fa1c6712498dfa001b7d8232831acba0202e083831907b4"
+      "sha256": "sha256:9227382f83f6b2b4daf8134d0f2db08051c35c9903c1b35ea4fe743e5ce242e2"
     },
     {
       "path": "apps/web/src/server/hosted/crypto.ts",
@@ -399,7 +403,7 @@
     },
     {
       "path": "apps/web/src/server/hosted/gpu-readiness.ts",
-      "sha256": "sha256:0351739b89f46e92a39f6802876a167f41223e7d0af3681821ba4c5467f8df60"
+      "sha256": "sha256:b7c53658195f521b0bb5e751ad29ced8933377b0ad6b860b09c5d5fc90ce6c73"
     },
     {
       "path": "apps/web/src/server/hosted/hosted-atomic-pair-predispatch.ts",
@@ -442,6 +446,10 @@
       "sha256": "sha256:2707f12f8cfbc859934e90051a6338aa550c6572ba5a1a4ee230d16c661fc2d7"
     },
     {
+      "path": "apps/web/src/server/hosted/invite-redemption.ts",
+      "sha256": "sha256:3eaab07ebcaf37309c079c45ab072e2a3d52f5611bfbc1e1b10ae1b11c047bbd"
+    },
+    {
       "path": "apps/web/src/server/hosted/legacy-cloud-run-contract.ts",
       "sha256": "sha256:0474dc76d1a1e6a2eee93f85cb21fee1bcfe7f1faa1ef9e4ced5a01b9838e432"
     },
@@ -455,11 +463,11 @@
     },
     {
       "path": "apps/web/src/server/hosted/product.ts",
-      "sha256": "sha256:fd16c04c65e524ebae3e481073f63480f5e7841b775ce69e9693980924dbdfa0"
+      "sha256": "sha256:743426af14f17920bbf5db3c03cdd696c328381f5bdb9b19525c8c82d5ca8917"
     },
     {
       "path": "apps/web/src/server/hosted/r2.ts",
-      "sha256": "sha256:473026cd897b6bd45df0a10d3ecff5b3705cafd6dd421924ea2114ad532baa71"
+      "sha256": "sha256:6bb733a5e8b6e0e3e6b69c60668ef841da9740265a2383f82703c2d8e9864e1b"
     },
     {
       "path": "apps/web/src/server/hosted/render-plan-materialization.ts",
@@ -747,7 +755,7 @@
     },
     {
       "path": "apps/web/src/server/providers/v213-direct-qualification-materializer.ts",
-      "sha256": "sha256:faf895d2c5e72b133090a7d9913d72e86fc5f1c5d2c26f2d583593c2cc3d9baa"
+      "sha256": "sha256:a12d9d063b6d85b67ca715ac8b5eb2c27c15dfa389ee1d3c963bb3317f242d37"
     },
     {
       "path": "apps/web/src/server/providers/v213-dual-lane-live.ts",
@@ -1019,7 +1027,7 @@
     },
     {
       "path": "deploy/v2-06/neon-runtime-grants.sql",
-      "sha256": "sha256:df43df13634319fa97e8f19f4459af5e01c42b8f144f00c8527f5f873ec7085f"
+      "sha256": "sha256:6696c0e4879d97061db9ce11b546045fcdddc878bcd9817737fce5070c108536"
     },
     {
       "path": "deploy/v2-06/restore-drill.sh",
@@ -1031,11 +1039,11 @@
     },
     {
       "path": "deploy/v2-13/build-materialization-seed.mjs",
-      "sha256": "sha256:078370a000ceec314fac64c950a56f63df9e12e864bd5c2d32a14e8d8c688ffa"
+      "sha256": "sha256:f122e09b6700c9c5bb52b439f357458d65c03c64dabf451e6b50e70c1921ed09"
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:c4f0f4867bb7c19207c7cbe334261f7208949d5906347bc15e1a2fd04b2de4ff"
+      "sha256": "sha256:5ca80cb1699da9ed6d67045feed18516d41466b0eda957882247d82a1c4e4de6"
     },
     {
       "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",
@@ -1055,7 +1063,7 @@
     },
     {
       "path": "deploy/v2-13/guarded-activation.mjs",
-      "sha256": "sha256:f760505d3fdabfe8540cfc836304d70e4da8a1c76516474ffffbdef14cc4b0b3"
+      "sha256": "sha256:82200aad43ff1d04b7b6021c41dd27fe5381aa34c00d080fe2ce51c0ede91fc2"
     },
     {
       "path": "deploy/v2-13/media-worker-release-readback.mjs",
@@ -1067,7 +1075,7 @@
     },
     {
       "path": "deploy/v2-13/neon-pair-reconciler-grants.sql",
-      "sha256": "sha256:0ae991d90b8b21761fe132ce6ea543a5716c0fa4b294429466df73c51bfebdaf"
+      "sha256": "sha256:e17712c53374db8d20927f31ffb29cd422710bf400e2deb40e4eec2aef1beebe"
     },
     {
       "path": "deploy/v2-13/promote-qualified-production.mjs",
@@ -1846,8 +1854,16 @@
       "sha256": "sha256:d98e020a52a1820db811f5c9a679651c1169000ebe28c1d00b35e04c003ba33b"
     },
     {
+      "path": "packages/control-plane/migrations/0047_hosted_invite_code_redemption.sql",
+      "sha256": "sha256:d9840c7033b823a7f9a03e13d7213c50b81d40c7f89423f6c6f4ecc7e8e8649a"
+    },
+    {
+      "path": "packages/control-plane/migrations/0048_hosted_system_avatar_asset_snapshot_reader.sql",
+      "sha256": "sha256:8181d1c050690a8e15ce5cef7473a5caa872d5f868b18f059574dbd4fcbdc82d"
+    },
+    {
       "path": "packages/control-plane/migrations/manifest.json",
-      "sha256": "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d"
+      "sha256": "sha256:bd177cfbbbd8df8ff84be752247a12da8dcf10ed9f3e5026c4e7aaaaf7a3d31c"
     },
     {
       "path": "packages/control-plane/package.json",
@@ -2095,7 +2111,7 @@
     },
     {
       "path": "packages/control-plane/src/shared-app/repository.ts",
-      "sha256": "sha256:9a8ce9824c1d8a93c4d2aedc05a979478e8a00bc9217e20a2774718108c84287"
+      "sha256": "sha256:4d50d86512cd43a720151e4a7050493f54795ff2d44db10d2eb03a830a441b7d"
     },
     {
       "path": "packages/control-plane/src/styles/derived-artifact-edit.ts",
