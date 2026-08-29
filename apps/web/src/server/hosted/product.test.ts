@@ -194,7 +194,7 @@ describe("hosted product route contract", () => {
 
   it("rejects an oversized hosted JSON body before parsing it", async () => {
     const candidate = request("/api/v2/hosted/projects/preflight", "POST", {}, true, {
-      "content-length": "131073",
+      "content-length": "524289",
     });
     const result = await handleHostedProductRequest(
       candidate,

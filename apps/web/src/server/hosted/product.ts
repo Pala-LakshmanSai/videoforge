@@ -1164,7 +1164,7 @@ async function resolveProjectPresets(
 async function parseHostedJson(
   request: Request,
   code: string,
-  maximumBytes = 131_072,
+  maximumBytes = 524_288,
 ): Promise<unknown | Response> {
   const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim();
   const contentLengthHeader = request.headers.get("content-length");
