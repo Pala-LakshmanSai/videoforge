@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "18e46940aa47c6e17da4d3a90441f7ad638d9f96",
+  "audited_code_commit": "735a43f9c13976f59c7457e3674382a691d81437",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.final-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-29T04:28:41.000Z",
+  "observed_at": "2026-08-29T05:06:31.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -36,7 +36,7 @@
     "package_test_files_passed": 104,
     "package_tests_passed": 1256,
     "package_tests_skipped": 1,
-    "focused_release_script_tests_passed": 167,
+    "focused_release_script_tests_passed": 142,
     "control_plane_activation_tests_passed": 14,
     "soulx_tests_passed": 37,
     "independent_source_audit_result": "PASS_READY_TO_RESEAL",
@@ -115,7 +115,8 @@
     "The successor binds the predecessor terminal-state hash and all three settled tag result hashes, performs zero tag mutation, and hard-stops if the exact remote tag is absent or mismatched.",
     "The repaired approval publication accepts an absent exact v4 branch, skips merge-base only for exact absence, uses a normal non-force push, and requires exact remote equality.",
     "V3 payload contracts remain backward compatible while seven V4 execution-control components are separately commit-tree-bound. Guarded activation runs only from the successor control commit, rejects predecessor authority replay, and proves every non-control closure byte equals the immutable payload.",
-    "The fresh independent five-suite audit passed 167 of 167 selected tests after excluding only stale candidate-dependent lifecycle checks pending this final V4 reseal. The canonical provider-free verify passed formatting, lint, typecheck, builds, browser parity, 104 web files with 1256 passing tests and one skip, 365 control-plane tests, and all non-candidate script tests; its only expected failure was the stale candidate AUDIT_CONTRACT. Exact commit diff checks and canonical executor NO_ACTION passed with zero external calls, mutation, GPU use, or spend.",
+    "The fresh independent repair audit found no P0/P1/P2 finding. The focused authority, builder, adapter, and executor checks passed 142 of 142 after excluding only the stale candidate-dependent lifecycle check pending this reseal; exact V4 zero-tag approval passes while every tag-mutation drift fails closed. The old sealed candidate correctly rejects the repaired approval validator as source drift. Exact commit diff checks and canonical executor NO_ACTION passed with zero external calls, mutation, GPU use, or spend.",
+    "The superseded proposal sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23 received explicit approval but was invalidated before approval-record, authority, credential, provider, GPU, or spend action because its V4 approval validator still required legacy one-tag creation fields. Repair commit 735a43f9c13976f59c7457e3674382a691d81437 makes V4 approval explicitly require predecessor-bound readback, zero new refs, and no successor tag mutation while preserving V3 behavior.",
     "The successor authority identifier is proven distinct from the exact predecessor in both approval validation and outer authority validation before durable single-use consumption; guarded activation repeats the check as defense in depth."
   ]
 }
