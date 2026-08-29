@@ -1837,7 +1837,7 @@ test("trusted lineage rejects rename, merge, and extra-path proposal histories",
   });
 });
 
-test("successor candidate validates its exact lifecycle gate and supersedes the prior authority", () => {
+test("consumed successor candidate remains reproducible from its terminal archive", () => {
   const output = execFileSync(
     "node",
     [
@@ -1846,10 +1846,15 @@ test("successor candidate validates its exact lifecycle gate and supersedes the 
     { encoding: "utf8" },
   );
   const result = JSON.parse(output);
-  assert.ok(
-    ["PASS_BLOCKED_UNSEALED", "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL"].includes(result.status),
+  assert.equal(result.status, "PASS_TERMINAL_ARCHIVE_REPRODUCIBLE");
+  assert.equal(result.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
+  assert.equal(result.authority, "v2-13-full-live-20260829-052951z-6852970d");
+  assert.equal(result.reusable, false);
+  assert.equal(result.no_redispatch, true);
+  assert.equal(
+    result.terminal_state_sha256,
+    "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9",
   );
-  assert.equal(result.authority, "ABSENT");
   const activeProposal = JSON.parse(
     readFileSync(
       "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",

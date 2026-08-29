@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-28"
+updated_at: "2026-08-29"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -27,10 +27,10 @@ current_goal_boundary:
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
   provider_free_product_action: "The exact rotation/normalization authority was consumed once and completed. It added one same-client Google secret, secured and hash-read it before disabling only the exposed old secret, and normalized only the two local R2 files. Preserve the exact resources/files and secret-free receipt; the authority is non-reusable. No further credential, provider, R2, RunPod, GPU, spend, retry, or redispatch action is authorized under this boundary."
-  note: "Immutable release payload and exact tag remain at 15af5e20ce3c80eb61d5d1e807a87e8840ed9685. Independently audited successor execution control is 62e361e15de53369910e60226f27859b5b5a7f08. Fresh exact V4 proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce binds both plus the terminal predecessor attempt. The predecessor authority was consumed once, created/pushed/read back the exact tag, stopped at APPROVAL_BRANCH_READBACK, and completed cleanup with zero compute, credentials, secrets, deployment, GPU use, or finite spend. It is non-reusable. The successor performs zero tag mutation and requires fresh exact approval."
+  note: "Immutable release payload and exact tag remain at 15af5e20ce3c80eb61d5d1e807a87e8840ed9685. Execution control 62e361e15de53369910e60226f27859b5b5a7f08 and V4 proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce were consumed once by authority v2-13-full-live-20260829-052951z-6852970d. Mage publication succeeded; SoulX workflow dispatch did not settle because the workflow is absent from GitHub default branch main. Cleanup proved zero compute, credentials, secrets, deployment, GPU use, or attempt spend. The authority is terminal and non-reusable. Provider-free default-branch repair, independent audit, a new resealed proposal, and fresh exact approval are required."
 
 new_chat_handoff:
-  status: PENDING_FRESH_EXACT_USER_APPROVAL
+  status: TERMINAL_CLEANUP_COMPLETE_PROVIDER_FREE_REPAIR_REQUIRED
   starting_point: CURRENT_CLEAN_GIT_HEAD
   independently_audited_full_live_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
   independently_audited_application_code_commit: "735a43f9c13976f59c7457e3674382a691d81437"
@@ -46,7 +46,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Commit and independently audit exact V4 proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce against payload 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 and execution control 62e361e15de53369910e60226f27859b5b5a7f08, then request one fresh exact user approval. No credential read, provider mutation, GPU use, or spend is authorized."
+  next_action: "Provider-free repair the SoulX workflow publication boundary so the exact workflow exists on GitHub default branch main, independently audit the repair, reseal a new source-bound proposal, and request fresh exact approval. Consumed proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce and authority v2-13-full-live-20260829-052951z-6852970d cannot be replayed or redispatched. No credential read, provider mutation, GPU use, or spend is authorized."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -286,10 +286,10 @@ provider_free_product_progress:
   credential_bootstrap_reuse_audit_rollback_attempted: false
   fresh_v2_13_audited_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
   fresh_v2_13_audited_application_code_commit: "735a43f9c13976f59c7457e3674382a691d81437"
-  fresh_v2_13_audit_status: PASS_ZERO_TAG_APPROVAL_REPAIR_READY_TO_RESEAL_PENDING_PROPOSAL_RECORD_AUDIT_AND_FRESH_APPROVAL
+  fresh_v2_13_audit_status: CONSUMED_TERMINAL_CLEANUP_COMPLETE_SOULX_DEFAULT_BRANCH_REPAIR_REQUIRED
   fresh_v2_13_release_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Commit and independently audit fresh exact proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce against immutable payload 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 and execution control 62e361e15de53369910e60226f27859b5b5a7f08, then obtain fresh exact approval before any credential/provider action. The approved sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23 tuple was invalidated before materialization by the V4 legacy tag-creation approval defect and is non-reusable; no credential read, provider mutation, GPU use, or spend occurred."
+  next_v2_13_action: "Provider-free repair the SoulX workflow publication boundary on GitHub default branch main, independently audit the exact repair, reseal a new source-bound proposal, and obtain fresh exact approval before any remote mutation or credential/provider action. Proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce and authority v2-13-full-live-20260829-052951z-6852970d were consumed once and cannot be replayed or redispatched; current credential read, provider mutation, GPU use, and spend authority is zero."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."

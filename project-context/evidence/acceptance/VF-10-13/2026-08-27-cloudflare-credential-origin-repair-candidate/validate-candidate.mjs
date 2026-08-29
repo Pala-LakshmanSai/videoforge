@@ -28,16 +28,21 @@ const PROPOSAL_PATH = path.join(DIRECTORY, "combined-live-proposal.json");
 const AUDIT_PATH = path.join(DIRECTORY, "source-readiness-audit.json");
 const READ_ONLY_PREFLIGHT_PATH = path.join(DIRECTORY, "read-only-preflight.json");
 const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json");
-const DESCRIPTOR_PATH = path.join(ROOT, "protected-inputs/v2-13/static-release-descriptor.json");
-const PROTECTED_INPUT_PATH = path.join(ROOT, "protected-inputs/v2-13/materialization-seed-input.json");
+const TERMINAL_ARCHIVE = "protected-inputs/v2-13/history/v2-13-full-live-20260829-052951z-6852970d";
+const DESCRIPTOR_PATH = path.join(ROOT, TERMINAL_ARCHIVE, "static-release-descriptor.json");
+const PROTECTED_INPUT_PATH = path.join(ROOT, TERMINAL_ARCHIVE, "materialization-seed-input.json");
+const TERMINAL_STATE_PATH = path.join(ROOT, TERMINAL_ARCHIVE, "full-live-state.json");
 const RELEASE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
 const EXECUTION_CONTROL_COMMIT = "62e361e15de53369910e60226f27859b5b5a7f08";
+const PROPOSAL_RECORD_COMMIT = "1ba62090c763cb4993cd5f9806e63c6629be1997";
 const AUDITED_CODE_COMMIT = "735a43f9c13976f59c7457e3674382a691d81437";
 const FACTS_SHA256 = "sha256:1b09f8246046de1c94eaf993c13a08f4916f5801aa6c38d22b948a4315bee92c";
 const AUDIT_SHA256 = "sha256:70bdfdb8110a8f16e52dd24613496706d3efa1f6f43bb5542c2032e2d22583bb";
 const DESCRIPTOR_SHA256 = "sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df";
 const PROTECTED_INPUT_SHA256 = "sha256:5bd197624e8b9496e2a88d262858447342f21aaf11be1581825050aa1b6b1518";
 const FULL_LIVE_AUTHORITY_ID = "e6eff3f9-f0fe-48b6-a638-56a42a0f30bd";
+const CONSUMED_AUTHORITY_ID = "v2-13-full-live-20260829-052951z-6852970d";
+const TERMINAL_STATE_SHA256 = "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9";
 const TAG = "videoforge-v2-13-release-20260826-v3";
 const EXACT_OAUTH_SCOPES = [
   "account:read", "agent-memory:write", "ai-search:run", "ai-search:write", "ai:write",
@@ -70,8 +75,17 @@ const { bytes: proposalBytes, value: proposal } = await readJson(PROPOSAL_PATH, 
 const { bytes: auditBytes, value: audit } = await readJson(AUDIT_PATH, "AUDIT");
 const { value: readOnlyPreflight } = await readJson(READ_ONLY_PREFLIGHT_PATH, "READ_ONLY_PREFLIGHT");
 const { bytes: factsBytes, value: facts } = await readJson(FACTS_PATH, "FACTS");
+const { bytes: terminalStateBytes, value: terminalState } = await readJson(TERMINAL_STATE_PATH, "TERMINAL_STATE");
 assert(sha256(auditBytes) === AUDIT_SHA256, "AUDIT_SHA256");
 assert(sha256(factsBytes) === FACTS_SHA256, "FACTS_SHA256");
+assert(sha256(terminalStateBytes) === TERMINAL_STATE_SHA256, "TERMINAL_STATE_SHA256");
+assert(
+  terminalState.authority_id === CONSUMED_AUTHORITY_ID &&
+    terminalState.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY" &&
+    terminalState.terminal === "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED" &&
+    terminalState.no_redispatch === true,
+  "TERMINAL_STATE_CONTRACT",
+);
 assert(
   audit.schema_version === "videoforge.v2-13-full-live-source-readiness-audit/v1" &&
     audit.audited_code_commit === AUDITED_CODE_COMMIT &&
@@ -269,21 +283,19 @@ assert(
   "STOP_CONDITIONS",
 );
 
-const head = git("rev-parse", "HEAD");
-if (head !== EXECUTION_CONTROL_COMMIT) {
-  assert(git("rev-parse", `${head}^`) === EXECUTION_CONTROL_COMMIT, "PROPOSAL_RECORD_PARENT");
-  const proposalRecordPaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", head)
-    .split("\n")
-    .filter(Boolean)
-    .sort();
-  assert(JSON.stringify(proposalRecordPaths) === JSON.stringify([
-    "project-context/00_START_HERE.md",
-    "project-context/CURRENT_STATE.yaml",
-    "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
-    "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
-    "project-context/tasks/VF-10-13.md",
-  ]), "PROPOSAL_RECORD_PATHS");
-}
+assert(git("rev-parse", `${PROPOSAL_RECORD_COMMIT}^`) === EXECUTION_CONTROL_COMMIT, "PROPOSAL_RECORD_PARENT");
+const proposalRecordPaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", PROPOSAL_RECORD_COMMIT)
+  .split("\n")
+  .filter(Boolean)
+  .sort();
+assert(JSON.stringify(proposalRecordPaths) === JSON.stringify([
+  "project-context/00_START_HERE.md",
+  "project-context/CURRENT_STATE.yaml",
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
+  "project-context/tasks/VF-10-13.md",
+]), "PROPOSAL_RECORD_PATHS");
+const head = PROPOSAL_RECORD_COMMIT;
 assert(git("rev-parse", `${EXECUTION_CONTROL_COMMIT}^`) === AUDITED_CODE_COMMIT, "EVIDENCE_PARENT");
 const evidencePaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", EXECUTION_CONTROL_COMMIT).split("\n").filter(Boolean).sort();
 assert(JSON.stringify(evidencePaths) === JSON.stringify([
@@ -297,16 +309,16 @@ const executor = JSON.parse(execFileSync(process.execPath, [path.join(ROOT, "dep
 assert(executor.state === "NO_ACTION" && executor.ordered_operations?.length === 26 && executor.external_calls === 0 && executor.mutations === 0 && executor.gpu_use === 0 && executor.spend_usd === 0, "EXECUTOR_NO_ACTION");
 
 process.stdout.write(`${JSON.stringify({
-  schema_version: "videoforge.v2-13-successor-candidate-validation/v1",
-  status:
-    head === EXECUTION_CONTROL_COMMIT
-      ? "PASS_BLOCKED_UNSEALED"
-      : "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
-  state: "PASS_PENDING_FRESH_EXACT_APPROVAL",
-  authority: "ABSENT",
+  schema_version: "videoforge.v2-13-terminal-candidate-validation/v1",
+  status: "PASS_TERMINAL_ARCHIVE_REPRODUCIBLE",
+  state: terminalState.state,
+  authority: CONSUMED_AUTHORITY_ID,
+  reusable: false,
+  no_redispatch: true,
   superseded_authority_id: proposal.supersession.superseded_authority_id,
   superseded_proposal_sha256: proposal.supersession.supersedes_proposal_sha256,
   proposal_sha256: sha256(proposalBytes),
+  terminal_state_sha256: TERMINAL_STATE_SHA256,
   release_source_commit: RELEASE_SOURCE_COMMIT,
   execution_control_commit: EXECUTION_CONTROL_COMMIT,
   predecessor_terminal_state_sha256: EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256,
