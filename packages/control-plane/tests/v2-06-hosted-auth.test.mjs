@@ -103,22 +103,52 @@ test("hosted auth database rejects credential-provider rows", async () => {
   });
 });
 
-test("first verified session atomically consumes one invite and creates one private account", async () => {
+test("exact hosted invite redemption atomically consumes one invite and creates one private account", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const identities = [
       [11, "hosted-user-alpha-00000001", "alpha@example.test"],
       [12, "hosted-user-bravo-00000001", "bravo@example.test"],
     ];
+    const sessions = [];
     for (const [ordinal, userId, email] of identities) {
       await seedInvite(executor, ordinal, email);
       await insertHostedUser(executor, userId, email);
       await insertGoogleAccount(executor, `hosted-account-${ordinal}-00000001`, userId);
-      await insertSession(
-        executor,
-        `hosted-session-${ordinal}-00000001`,
-        userId,
-        `hosted-session-token-${ordinal}-000000000000000000000001`,
+      const sessionToken = `hosted-session-token-${ordinal}-000000000000000000000001`;
+      await insertSession(executor, `hosted-session-${ordinal}-00000001`, userId, sessionToken);
+      sessions.push([sessionToken, sha256(`invite-${ordinal}`)]);
+    }
+
+    const beforeRedemption = await executor.query(
+      `SELECT
+         (SELECT count(*)::int FROM hosted_auth_links) AS links,
+         (SELECT count(*)::int FROM accounts WHERE scope_kind = 'USER') AS accounts,
+         (SELECT count(*)::int FROM workspaces workspace
+           JOIN accounts account ON account.id = workspace.account_id
+          WHERE workspace.is_default AND account.scope_kind = 'USER') AS workspaces,
+         (SELECT count(*)::int FROM memberships membership
+           JOIN accounts account ON account.id = membership.account_id
+          WHERE membership.status = 'ACTIVE' AND account.scope_kind = 'USER') AS memberships,
+         (SELECT count(*)::int FROM invite_codes WHERE state = 'CONSUMED') AS consumed,
+         (SELECT count(*)::int FROM invite_redemptions) AS redemptions`,
+    );
+    assert.deepEqual(beforeRedemption.rows, [
+      {
+        links: 0,
+        accounts: 0,
+        workspaces: 0,
+        memberships: 0,
+        consumed: 0,
+        redemptions: 0,
+      },
+    ]);
+
+    for (const [sessionToken, verifierSha256] of sessions) {
+      const redemption = await executor.query(
+        `SELECT * FROM videoforge_redeem_hosted_invite($1, $2)`,
+        [sessionToken, verifierSha256],
       );
+      assert.deepEqual(redemption.rows, [{ outcome: "ADMITTED" }]);
     }
 
     const truth = await executor.query(
