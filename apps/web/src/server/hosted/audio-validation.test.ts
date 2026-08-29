@@ -259,4 +259,39 @@ describe("authoritative hosted voiceover validation", () => {
       "VOICEOVER_WAV_INVALID",
     );
   });
+
+  it("rejects WAVs that exceed the bounded chunk-scan limit", async () => {
+    const chunkCount = 65;
+    const bytes = new Uint8Array(12 + chunkCount * 8);
+    const view = new DataView(bytes.buffer);
+    writeAscii(bytes, 0, "RIFF");
+    view.setUint32(4, bytes.byteLength - 8, true);
+    writeAscii(bytes, 8, "WAVE");
+    for (let index = 0; index < chunkCount; index += 1) {
+      const offset = 12 + index * 8;
+      writeAscii(bytes, offset, "JUNK");
+      view.setUint32(offset + 4, 0, true);
+    }
+
+    const reads: { length: number; offset: number }[] = [];
+    const reader: HostedAudioRangeReader = {
+      size: bytes.byteLength,
+      async read(offset, length) {
+        reads.push({ offset, length });
+        return bytes.slice(offset, offset + length);
+      },
+    };
+
+    await expectCode(
+      validateHostedVoiceover({
+        declaredContentLength: bytes.byteLength,
+        declaredContentType: "audio/wav",
+        declaredDurationMs: 20_000,
+        reader,
+      }),
+      "VOICEOVER_WAV_INVALID",
+    );
+    expect(reads.filter((read) => read.length === 8)).toHaveLength(64);
+    expect(reads.some((read) => read.offset === 12 + 64 * 8)).toBe(false);
+  });
 });
