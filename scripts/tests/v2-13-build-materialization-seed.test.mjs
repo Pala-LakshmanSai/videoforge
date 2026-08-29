@@ -353,8 +353,8 @@ function harness({
     bootstrap.recovery_mode_final_ledger_count;
   database.exact_operator_function_signatures = [...bootstrap.exact_operator_function_signatures];
   database.exact_initial_ledger_prefix_count = 36;
-  database.exact_recoverable_prefix_counts = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
-  database.exact_migrations_to_apply = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47];
+  database.exact_recoverable_prefix_counts = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47];
+  database.exact_migrations_to_apply = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48];
   proposal.requested_scope.database = Object.fromEntries(
     [
       "exact_operator_role",
@@ -980,7 +980,7 @@ test("builds the exact static production seed from proposal-bound source and pro
   assert.equal(first.seed.activation_record_base.database.operator_database_url_sha256, null);
   assert.equal(
     first.seed.promotion_record_base.database.migration_ledger_sha256,
-    "sha256:538e44423ebea6f65294759f42bfa46023684748b0232e7dbea538978a61cba3",
+    "sha256:282ba5dfae4a51e5e1e6ecd95143bd51062181a0ed124db3b7af9c68daf1a516",
   );
   assert.equal(
     Object.hasOwn(first.seed.production_input_base.dualLaneInput, "billingBaselineUsd"),

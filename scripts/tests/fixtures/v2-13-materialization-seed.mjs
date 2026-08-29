@@ -158,7 +158,7 @@ const activationRecordBase = {
     reconciler_role: "videoforge_hosted_reconciler",
     pgcrypto_required: true,
     first_migration: 37,
-    last_migration: 47,
+    last_migration: 48,
     exact_manifest_ledger_required: true,
   },
   cloudflare: {

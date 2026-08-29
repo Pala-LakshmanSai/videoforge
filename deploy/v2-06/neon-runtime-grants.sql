@@ -38,6 +38,16 @@ TO :"runtime_role";
 -- invite consumption and admission atomic while the runtime receives no direct invite-table DML.
 GRANT EXECUTE ON FUNCTION public.videoforge_redeem_hosted_invite(text, text)
 TO :"runtime_role";
+-- Migration 0048 is the sole hosted-runtime path to immutable SYSTEM avatar source metadata.
+-- The exact version UUID is the only input; arbitrary SYSTEM asset lookup and table access remain
+-- unavailable to the runtime through this read-only SECURITY DEFINER routine.
+GRANT EXECUTE ON FUNCTION public.videoforge_read_system_avatar_version_assets(uuid)
+TO :"runtime_role";
+-- Migration 0048 also exposes one database-atomic authenticated throttle. The operation policy,
+-- window, and identity key are resolved inside the SECURITY DEFINER routine; callers cannot set
+-- limits or bypass the session-token lookup.
+GRANT EXECUTE ON FUNCTION public.videoforge_consume_hosted_rate_limit(text, text)
+TO :"runtime_role";
 -- RLS policies call this stable tenant-principal helper while evaluating every tenant row.
 GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id()
 TO :"runtime_role";

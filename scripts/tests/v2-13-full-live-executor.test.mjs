@@ -340,7 +340,7 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       },
       pgcrypto_sha256: proof("4"),
       prequalification_database_bootstrap_sha256: proof("5"),
-      recovery_mode: "FRESH_36_TO_47",
+      recovery_mode: "FRESH_36_TO_48",
       runpod_calls: 0,
       cloudflare_calls: 0,
       application_secret_reads: 5,
@@ -1602,8 +1602,8 @@ test("authorized bootstrap crash resumes exactly one readback-only reconciliatio
           assert.equal(context.providerDispatchForbidden, true);
           const value = fakeResult(operation, state, priorResults);
           value.outer_state_sha256 = outerStateSha256;
-          value.ledger_before_count = 47;
-          value.recovery_mode = "VERIFIED_EXISTING_47";
+          value.ledger_before_count = 48;
+          value.recovery_mode = "VERIFIED_EXISTING_48";
           return value;
         }
         return fakeResult(operation, state, priorResults);
@@ -1635,8 +1635,8 @@ test("lost bootstrap transaction acknowledgement reconciles before cleanup-only 
           assert.equal(context.reconciliationOnly, true);
           assert.equal(context.providerDispatchForbidden, true);
           const reconciled = fakeResult(operation, state, priorResults);
-          reconciled.ledger_before_count = 47;
-          reconciled.recovery_mode = "VERIFIED_EXISTING_47";
+          reconciled.ledger_before_count = 48;
+          reconciled.recovery_mode = "VERIFIED_EXISTING_48";
           return reconciled;
         }
         return fakeResult(operation, state, priorResults);

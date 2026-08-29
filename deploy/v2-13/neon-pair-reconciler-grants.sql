@@ -1,4 +1,4 @@
--- Apply only with the migration owner after migrations 0037-0047 have an exact manifest ledger.
+-- Apply only with the migration owner after migrations 0037-0048 have an exact manifest ledger.
 -- Both login roles are pre-created, unprivileged, NOINHERIT roles. Credentials are provisioned
 -- separately and must never be passed through this file.
 --   psql --variable=runtime_role=... --variable=reconciler_role=... --file=...
@@ -63,6 +63,10 @@ GRANT EXECUTE ON FUNCTION
   public.videoforge_cancel_v213_v211_promoted_probe(jsonb),
   public.videoforge_authorize_v213_v211_restore(jsonb),
   public.videoforge_ingest_v213_acceptance_operator_evidence(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_read_system_avatar_version_assets(uuid)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_consume_hosted_rate_limit(text, text)
 TO :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id()
@@ -136,6 +140,10 @@ SELECT
     'public.videoforge_authorize_v213_v211_restore(jsonb)','EXECUTE')
   AND has_function_privilege(:'runtime_role',
     'public.videoforge_ingest_v213_acceptance_operator_evidence(jsonb)','EXECUTE')
+  AND has_function_privilege(:'runtime_role',
+    'public.videoforge_read_system_avatar_version_assets(uuid)','EXECUTE')
+  AND has_function_privilege(:'runtime_role',
+    'public.videoforge_consume_hosted_rate_limit(text,text)','EXECUTE')
   AND (NOT has_table_privilege(:'reconciler_role','public.serverless_attempts','SELECT'))
   AND (NOT has_table_privilege(:'reconciler_role','public.provider_workload_leases','UPDATE'))
   AS pair_acl_exact

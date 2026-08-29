@@ -282,6 +282,12 @@
       "name": "hosted_invite_code_redemption",
       "filename": "0047_hosted_invite_code_redemption.sql",
       "sha256": "sha256:d9840c7033b823a7f9a03e13d7213c50b81d40c7f89423f6c6f4ecc7e8e8649a"
+    },
+    {
+      "version": 48,
+      "name": "hosted_system_avatar_asset_snapshot_reader",
+      "filename": "0048_hosted_system_avatar_asset_snapshot_reader.sql",
+      "sha256": "sha256:8181d1c050690a8e15ce5cef7473a5caa872d5f868b18f059574dbd4fcbdc82d"
     }
   ]
 }

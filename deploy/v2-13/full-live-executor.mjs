@@ -101,17 +101,17 @@ const EXACT_DATABASE_IDENTITY_SHA256 =
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const PREQUALIFICATION_SCHEMA = "videoforge.v213-prequalification-database-bootstrap-result/v3";
 const PREQUALIFICATION_RECOVERY_MODES = new Set([
-  "FRESH_36_TO_47",
+  "FRESH_36_TO_48",
   "RESUME_EXACT_PREFIX",
-  "VERIFIED_EXISTING_47",
+  "VERIFIED_EXISTING_48",
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:4dba78aed03d942b7551ffc3de8fe5205d878784f7d3d35082e8f20cddede75d",
+    "sha256:5ca80cb1699da9ed6d67045feed18516d41466b0eda957882247d82a1c4e4de6",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:3a587b5b460ef7dbf1eeb0825c72575a20ff351b7f52d84d9475493b33bcb30d",
+    "sha256:82200aad43ff1d04b7b6021c41dd27fe5381aa34c00d080fe2ce51c0ede91fc2",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
     "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
@@ -121,7 +121,7 @@ const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/neon-full-live-operator-grants.sql":
     "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5",
   "packages/control-plane/migrations/manifest.json":
-    "sha256:dce23fa46e96144db292ee0df746bd5fd8a20c7c4977e4907148d411deed36ff",
+    "sha256:bd177cfbbbd8df8ff84be752247a12da8dcf10ed9f3e5026c4e7aaaaf7a3d31c",
   "deploy/v2-13/full-live-source-closure.json":
     "sha256:bc18e7f87c01759ccca1f28519d95c6b7ee563a7b8d08f650c3de0ea2dba4f12",
 });
@@ -1228,7 +1228,7 @@ export function assertResult(
       (authorizedOuterStateSha256 !== undefined &&
         result.outer_state_sha256 !== authorizedOuterStateSha256) ||
       !Number.isInteger(result.ledger_before_count) ||
-      ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46].includes(result.ledger_before_count) ||
+      ![36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48].includes(result.ledger_before_count) ||
       !HASH.test(result.ledger_after_sha256 ?? "") ||
       !HASH.test(result.ledger_before_sha256 ?? "") ||
       !HASH.test(result.operator_acl_sha256 ?? "") ||
@@ -1263,10 +1263,10 @@ export function assertResult(
     )
       fail("PREQUALIFICATION_DATABASE_BOOTSTRAP_READBACK", operation.id);
     if (
-      (result.recovery_mode === "FRESH_36_TO_47" && result.ledger_before_count !== 36) ||
+      (result.recovery_mode === "FRESH_36_TO_48" && result.ledger_before_count !== 36) ||
       (result.recovery_mode === "RESUME_EXACT_PREFIX" &&
-        ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46].includes(result.ledger_before_count)) ||
-      (result.recovery_mode === "VERIFIED_EXISTING_47" && result.ledger_before_count !== 47)
+        ![37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47].includes(result.ledger_before_count)) ||
+      (result.recovery_mode === "VERIFIED_EXISTING_48" && result.ledger_before_count !== 48)
     )
       fail("PREQUALIFICATION_RECOVERY_MODE", operation.id);
   }
