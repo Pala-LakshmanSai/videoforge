@@ -210,7 +210,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:0ef10e5d5ee2fd86f18181be2003f42eb731d52d698057afb2753a2392605dd3",
+    sha256: "sha256:8024f0b001c5d9d6fbec9942a36a0f04f59b545e14b547fb8cec9d8fc5abc9a8",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
@@ -250,7 +250,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:0fac8c04e9b0d524371ba4efaf8d114f026925a9f5bbcd966f7db62e0cc3bcdc",
+    sha256: "sha256:d24fe8cb867f183483bed996aced36609a7009c2e954256c72b1920614ebfa95",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -270,7 +270,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:58b1703372c68409267926a53dd70ba80cbcb5454eda9ece341719905555fa23",
+    sha256: "sha256:20e87ee1f6c7cdf77f02f8e5ba3eda76e911b92079bac7ec8bcb29c87df34b40",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -651,9 +651,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
   exact_initial_ledger_prefix_count: 36,
   exact_recoverable_prefix_counts: Object.freeze([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]),
   reject_ledger_drift_or_count_above_48: true,
-  pgcrypto_then_exact_migrations: Object.freeze([
-    37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
-  ]),
+  pgcrypto_then_exact_migrations: Object.freeze([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]),
   each_migration_requires_advisory_lock_and_single_transaction: true,
   owner_connection_uses_only_protected_pg_service_and_pgpass: true,
   exact_owner_database_identity: Object.freeze({
@@ -1010,7 +1008,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
       "operator_database_url_hash",
       "runtime_database_url_hash",
       "reconciler_database_url_hash",
-    "ledger48",
+      "ledger48",
       "pgcrypto",
       "exact_operator_acl",
     ]),
@@ -1900,7 +1898,7 @@ function validateFullLiveUserApproval({
         ) ||
       requestedDatabase.exact_initial_ledger_prefix_count !== 36 ||
       JSON.stringify(requestedDatabase.exact_recoverable_prefix_counts) !==
-      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]) ||
+        JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]) ||
       JSON.stringify(requestedDatabase.exact_migrations_to_apply) !==
         JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]) ||
       approvedDatabase?.exact_operator_role !== requestedDatabase.exact_operator_role ||

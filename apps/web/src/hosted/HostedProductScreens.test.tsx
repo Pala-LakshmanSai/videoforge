@@ -94,9 +94,7 @@ describe("hosted browser security boundaries", () => {
   it("hashes the exact file bytes with incremental SHA-256", async () => {
     await expect(
       hostedFileSha256(new File(["abc"], "voiceover.mp3", { type: "audio/mpeg" })),
-    ).resolves.toBe(
-      "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    );
+    ).resolves.toBe("sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   });
 
   it("bounds a declared 1 GiB file read to one fixed-size slice when cancelled", async () => {

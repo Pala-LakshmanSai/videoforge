@@ -14,9 +14,7 @@ const EXTENSIBLE_GUID_TAIL = new Uint8Array([
 export type HostedAudioContainer = "AAC" | "FLAC" | "M4A" | "MP3" | "WAV";
 export type HostedWavCodec = "IEEE_FLOAT" | "PCM";
 
-export const HOSTED_AUTHORITATIVE_VOICEOVER_CONTENT_TYPES = Object.freeze([
-  "audio/wav",
-] as const);
+export const HOSTED_AUTHORITATIVE_VOICEOVER_CONTENT_TYPES = Object.freeze(["audio/wav"] as const);
 export const HOSTED_AUTHORITATIVE_VOICEOVER_CONTRACT = Object.freeze({
   schema_version: "videoforge-hosted-authoritative-voiceover-contract/v1" as const,
   accepted_content_types: HOSTED_AUTHORITATIVE_VOICEOVER_CONTENT_TYPES,
@@ -143,7 +141,10 @@ async function readExact(
     offset + length > reader.size ||
     accounting.bytesRead + length > MAX_VALIDATION_READ_BYTES
   ) {
-    fail("VOICEOVER_READ_FAILED", "Voiceover ranged validation exceeded its bounded read contract.");
+    fail(
+      "VOICEOVER_READ_FAILED",
+      "Voiceover ranged validation exceeded its bounded read contract.",
+    );
   }
   let value: ArrayBuffer | Uint8Array;
   try {
@@ -258,8 +259,7 @@ async function validateWav(
         Math.min(chunkBytes, MAX_RANGE_READ_BYTES),
       );
       const formatTag = uint16(format, 0);
-      codec =
-        formatTag === 1 ? "PCM" : formatTag === 3 ? "IEEE_FLOAT" : extensibleCodec(format);
+      codec = formatTag === 1 ? "PCM" : formatTag === 3 ? "IEEE_FLOAT" : extensibleCodec(format);
       if (codec === null) {
         fail(
           "VOICEOVER_SERVER_CODEC_UNAVAILABLE",
@@ -283,7 +283,10 @@ async function validateWav(
         blockAlign !== channels * (bitsPerSample / 8) ||
         byteRate !== sampleRate * blockAlign
       ) {
-        fail("VOICEOVER_WAV_INVALID", "WAV channel, sample-rate, or sample-format metadata is invalid.");
+        fail(
+          "VOICEOVER_WAV_INVALID",
+          "WAV channel, sample-rate, or sample-format metadata is invalid.",
+        );
       }
     } else if (chunkId === "data") {
       if (dataBytes !== null || chunkBytes < 1) {
@@ -302,11 +305,17 @@ async function validateWav(
     sampleFrames < sampleRate * MIN_DURATION_SECONDS ||
     sampleFrames > sampleRate * MAX_DURATION_SECONDS
   ) {
-    fail("VOICEOVER_DURATION_INVALID", "Voiceover duration must be between 10 seconds and 60 minutes.");
+    fail(
+      "VOICEOVER_DURATION_INVALID",
+      "Voiceover duration must be between 10 seconds and 60 minutes.",
+    );
   }
   const durationMs = Math.round((sampleFrames * 1_000) / sampleRate);
   if (input.declaredDurationMs !== durationMs) {
-    fail("VOICEOVER_DURATION_MISMATCH", "Client duration does not match authoritative WAV metadata.");
+    fail(
+      "VOICEOVER_DURATION_MISMATCH",
+      "Client duration does not match authoritative WAV metadata.",
+    );
   }
 
   return Object.freeze({
@@ -343,9 +352,7 @@ export async function validateHostedVoiceover(
   }
   if (
     !contentTypeMatches("WAV", input.declaredContentType) &&
-    !["audio/aac", "audio/flac", "audio/mp4", "audio/mpeg"].includes(
-      input.declaredContentType,
-    )
+    !["audio/aac", "audio/flac", "audio/mp4", "audio/mpeg"].includes(input.declaredContentType)
   ) {
     fail("VOICEOVER_DECLARATION_INVALID", "Voiceover declared content type is unsupported.");
   }
@@ -357,10 +364,16 @@ export async function validateHostedVoiceover(
   const header = await readExact(reader, accounting, 0, Math.min(12, reader.size));
   const container = detectContainer(header);
   if (container === null) {
-    fail("VOICEOVER_MAGIC_INVALID", "Voiceover content has no supported audio container signature.");
+    fail(
+      "VOICEOVER_MAGIC_INVALID",
+      "Voiceover content has no supported audio container signature.",
+    );
   }
   if (!contentTypeMatches(container, input.declaredContentType)) {
-    fail("VOICEOVER_MIME_MAGIC_MISMATCH", "Voiceover MIME type does not match its content signature.");
+    fail(
+      "VOICEOVER_MIME_MAGIC_MISMATCH",
+      "Voiceover MIME type does not match its content signature.",
+    );
   }
   if (container !== "WAV") {
     fail(

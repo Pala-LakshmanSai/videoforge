@@ -187,12 +187,7 @@ test("0047 rejects invalid, mismatched, expired, revoked, consumed, and unauthen
     );
 
     const revokedCode = "test-invitation-code-0047-revoked";
-    const revokedId = await issue(
-      repository,
-      13,
-      "revoked-owner@example.test",
-      revokedCode,
-    );
+    const revokedId = await issue(repository, 13, "revoked-owner@example.test", revokedCode);
     await executor.query(
       `UPDATE invite_codes SET state='REVOKED',revoked_at=now(),version=version+1 WHERE id=$1`,
       [revokedId],
@@ -206,12 +201,7 @@ test("0047 rejects invalid, mismatched, expired, revoked, consumed, and unauthen
     );
 
     const consumedCode = "test-invitation-code-0047-consumed";
-    const consumedId = await issue(
-      repository,
-      14,
-      "consumed-owner@example.test",
-      consumedCode,
-    );
+    const consumedId = await issue(repository, 14, "consumed-owner@example.test", consumedCode);
     await executor.query(
       `UPDATE invite_codes SET state='CONSUMED',consumed_at=now(),version=version+1 WHERE id=$1`,
       [consumedId],
@@ -276,9 +266,10 @@ test("an exact retained 0046 ledger upgrades only 0047 and preserves admitted se
     const returningSession = await addSession(executor, 20, retained.userId);
     assert.equal(
       (
-        await executor.query("SELECT count(*)::int count FROM videoforge_hosted_session_scope($1)", [
-          returningSession,
-        ])
+        await executor.query(
+          "SELECT count(*)::int count FROM videoforge_hosted_session_scope($1)",
+          [returningSession],
+        )
       ).rows[0].count,
       1,
     );
@@ -286,9 +277,10 @@ test("an exact retained 0046 ledger upgrades only 0047 and preserves admitted se
     const pendingSession = await addSession(executor, 21, pending.userId);
     assert.equal(
       (
-        await executor.query("SELECT count(*)::int count FROM videoforge_hosted_session_scope($1)", [
-          pendingSession,
-        ])
+        await executor.query(
+          "SELECT count(*)::int count FROM videoforge_hosted_session_scope($1)",
+          [pendingSession],
+        )
       ).rows[0].count,
       0,
       "0047 must not infer admission from email alone",

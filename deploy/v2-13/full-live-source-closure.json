@@ -151,7 +151,7 @@
     },
     {
       "path": "apps/web/src/hosted/HostedProductScreens.tsx",
-      "sha256": "sha256:43142d91eadda7a7c169020d2f27ffdf5109b139368fa48e02a5e55674624e00"
+      "sha256": "sha256:7f3006395272465e18b6000c00624582aa3e7a2ad8a23d8d9e8e06a445306b8a"
     },
     {
       "path": "apps/web/src/hosted/HostedStagingApp.tsx",
@@ -375,7 +375,7 @@
     },
     {
       "path": "apps/web/src/server/hosted/audio-validation.ts",
-      "sha256": "sha256:2dbe2ac035a9da01cc86b7fb08ef76113e59f485a7321aecf58cc791c3ca27be"
+      "sha256": "sha256:c5d0acb122034754b9070bac41065d5328b39911edcf219bcedbf84080504ada"
     },
     {
       "path": "apps/web/src/server/hosted/auth.ts",

@@ -207,17 +207,20 @@ describe("authoritative hosted voiceover validation", () => {
       new Uint8Array([0, 0, 0, 12, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]),
     ],
     ["AAC", "audio/mp4", new Uint8Array([0xff, 0xf1, 0x50, 0x80, 0, 0, 0, 0, 0, 0, 0, 0])],
-  ] as const)("fails closed for %s without an authoritative edge decoder", async (_, type, bytes) => {
-    await expectCode(
-      validateHostedVoiceover({
-        declaredContentLength: bytes.byteLength,
-        declaredContentType: type,
-        declaredDurationMs: 20_000,
-        reader: byteReader(bytes),
-      }),
-      "VOICEOVER_SERVER_CODEC_UNAVAILABLE",
-    );
-  });
+  ] as const)(
+    "fails closed for %s without an authoritative edge decoder",
+    async (_, type, bytes) => {
+      await expectCode(
+        validateHostedVoiceover({
+          declaredContentLength: bytes.byteLength,
+          declaredContentType: type,
+          declaredDurationMs: 20_000,
+          reader: byteReader(bytes),
+        }),
+        "VOICEOVER_SERVER_CODEC_UNAVAILABLE",
+      );
+    },
+  );
 
   it("rejects a compressed codec inside a WAV container", async () => {
     const fixture = syntheticWav({ formatTag: 6 });

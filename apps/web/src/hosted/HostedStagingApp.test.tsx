@@ -150,10 +150,7 @@ describe("hosted staging access boundary", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         if (String(input) === "/api/v2/tenant") {
-          return Response.json(
-            { error: { code: "INVITE_ADMISSION_REQUIRED" } },
-            { status: 403 },
-          );
+          return Response.json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, { status: 403 });
         }
         if (String(input) === "/api/v2/hosted/status") {
           return Response.json({ authentication: ["GOOGLE"] });
