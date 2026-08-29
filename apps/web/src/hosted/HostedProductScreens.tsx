@@ -32,7 +32,7 @@ const MAX_STYLE_REFERENCES = 8;
 const MIN_STYLE_REFERENCES = 3;
 const DEFAULT_SPEND_CAP_USD = "1.00";
 const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
-const VOICEOVER_TYPES = new Set(["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"]);
+const VOICEOVER_TYPES = new Set(["audio/wav"]);
 export const HOSTED_SHA256_CHUNK_BYTES = 4 * 1024 * 1024;
 
 const SHA256_INITIAL_STATE = [
@@ -864,16 +864,11 @@ export function HostedCreateProjectScreen() {
   const [preflightResult, setPreflightResult] = useState<HostedPreflightResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const contentTypeForVoiceover = (file: File): string => {
-    if (file.type === "audio/aac") return "audio/mp4";
-    if (file.type) return file.type;
     if (/\.wav$/iu.test(file.name)) return "audio/wav";
-    if (/\.flac$/iu.test(file.name)) return "audio/flac";
-    if (/\.mp3$/iu.test(file.name)) return "audio/mpeg";
-    if (/\.(m4a|aac)$/iu.test(file.name)) return "audio/mp4";
-    return "";
+    return file.type === "audio/wav" ? file.type : "";
   };
   const cap = Number(spendCapUsd);
-  const capValid = Number.isFinite(cap) && cap >= 0.1;
+  const capValid = Number.isFinite(cap) && cap >= 0.1 && cap <= 2;
   const keywordsValid = extraPromptKeywords.length <= 500;
   const canPreflight = Boolean(
     title.trim() && avatarVersionId && styleVersionId && voiceover && capValid && keywordsValid,
@@ -883,12 +878,12 @@ export function HostedCreateProjectScreen() {
       if (!voiceover) throw new Error("Choose a voiceover first.");
       const contentType = contentTypeForVoiceover(voiceover);
       if (!VOICEOVER_TYPES.has(contentType))
-        throw new Error("Use WAV, FLAC, MP3, M4A, or AAC audio.");
+        throw new Error("Use PCM or IEEE-float WAV audio for hosted generation.");
       if (voiceover.size > MAX_VOICEOVER_BYTES) throw new Error("Voiceover must be at most 1 GB.");
       const checksumSha256 = await hostedFileSha256(voiceover);
       const durationMs = await bounded(
         audioDurationMs(voiceover),
-        "Voiceover duration timed out. Choose a valid WAV, FLAC, MP3, M4A, or AAC file and retry.",
+        "Voiceover duration timed out. Choose a valid WAV file and retry.",
         15_000,
       );
       const result = await bounded(
@@ -1063,7 +1058,7 @@ export function HostedCreateProjectScreen() {
             <input
               aria-label="Final English voiceover"
               type="file"
-              accept="audio/wav,audio/flac,audio/mpeg,audio/mp4,.wav,.flac,.mp3,.m4a"
+              accept="audio/wav,.wav"
               onChange={(event) => {
                 const selected = event.target.files?.[0] ?? null;
                 setPreflightResult(null);
