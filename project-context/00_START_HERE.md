@@ -6,10 +6,16 @@
 
 - The immutable provider-free release payload and exact lightweight tag remain bound to
   `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. Independently audited successor execution control is
-  bound to `67e5624ed8ba2c2596c42ce6839703f6c46263df`. Fresh sealed V4 26-operation proposal
-  `sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23` binds both commits and the
+  bound to `62e361e15de53369910e60226f27859b5b5a7f08`. Fresh sealed V4 26-operation proposal
+  `sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce` binds both commits and the
   exact predecessor terminal attempt; its proposal-record commit remains null/pending until the
   exact five-path commit exists, followed by independent record audit and fresh exact approval.
+- Proposal `sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23`
+  at record `2dd4c2056c974c7d0f2548b3c81a2bd6ddf2cf19` received exact approval, but a final
+  pre-materialization probe found that its V4 approval validator still required legacy one-tag
+  creation fields. No approval record, authority, credential access, provider action, GPU use, or
+  spend occurred. Repair `735a43f9c13976f59c7457e3674382a691d81437` requires zero new refs and
+  predecessor-bound readback; the prior approval is non-reusable.
 - The immediate predecessor authority `v2-13-full-live-20260829-022710z-62a9ebb2` was consumed once.
   It created, pushed, and verified the exact tag at the immutable payload, then stopped at
   `APPROVAL_BRANCH_READBACK`. Cleanup completed with zero Pods, workers, queues, GPU use, finite
@@ -28,9 +34,9 @@
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:b1b1f75e85115fef1805c43805428d43b4dd607f638e470e0d466b9d80f2b769` and UUID
-  `33d3218d-ac46-4881-a3b0-81c09205662e`, plus protected static descriptor self-hash
-  `sha256:704d2e92ffa6861069676942f25d981dfdd484f5cbbeb6b77dec633dea820f41`.
+  `sha256:1b09f8246046de1c94eaf993c13a08f4916f5801aa6c38d22b948a4315bee92c` and UUID
+  `e6eff3f9-f0fe-48b6-a638-56a42a0f30bd`, plus protected static descriptor self-hash
+  `sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is

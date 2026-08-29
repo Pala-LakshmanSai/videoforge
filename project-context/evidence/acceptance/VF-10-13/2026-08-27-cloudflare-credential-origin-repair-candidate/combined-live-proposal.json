@@ -18,13 +18,13 @@
     "required_next_action": "obtain fresh exact user approval of this sealed 26-operation proposal and static release descriptor before any authority record, credential access, provider call, mutation, GPU use, or spend",
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:704d2e92ffa6861069676942f25d981dfdd484f5cbbeb6b77dec633dea820f41"
+      "sha256": "sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df"
     },
     "materialization_seed_facts": {
       "commit_field": "source.execution_control.commit",
-      "full_live_authority_id": "33d3218d-ac46-4881-a3b0-81c09205662e",
+      "full_live_authority_id": "e6eff3f9-f0fe-48b6-a638-56a42a0f30bd",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:b1b1f75e85115fef1805c43805428d43b4dd607f638e470e0d466b9d80f2b769"
+      "sha256": "sha256:1b09f8246046de1c94eaf993c13a08f4916f5801aa6c38d22b948a4315bee92c"
     }
   },
   "supersession": {
@@ -69,7 +69,7 @@
     "future_approval_record_basename": "user-approval.json",
     "future_authority_record_basename": "approved-authority.json",
     "execution_control": {
-      "commit": "67e5624ed8ba2c2596c42ce6839703f6c46263df",
+      "commit": "62e361e15de53369910e60226f27859b5b5a7f08",
       "exact_components": {
         "approval_validator": {
           "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -2166,13 +2166,13 @@
     "plan_change_authorized": false,
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:704d2e92ffa6861069676942f25d981dfdd484f5cbbeb6b77dec633dea820f41"
+      "sha256": "sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df"
     },
     "materialization_seed_facts": {
       "commit_field": "source.execution_control.commit",
-      "full_live_authority_id": "33d3218d-ac46-4881-a3b0-81c09205662e",
+      "full_live_authority_id": "e6eff3f9-f0fe-48b6-a638-56a42a0f30bd",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:b1b1f75e85115fef1805c43805428d43b4dd607f638e470e0d466b9d80f2b769"
+      "sha256": "sha256:1b09f8246046de1c94eaf993c13a08f4916f5801aa6c38d22b948a4315bee92c"
     }
   },
   "ordered_operations": [
