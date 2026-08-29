@@ -15,7 +15,6 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
   EXPECTED_PHASE_CAPS,
   validateFullLiveUserApproval,
 } from "./validate-full-live-approval.mjs";
@@ -1115,6 +1114,8 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     expectedProposalRecordCommit: authority.lineage?.proposal_record_commit,
     expectedReleaseSourceCommit: authority.lineage?.release_source_commit,
   });
+  const reconcilesExistingTag =
+    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4";
   if (
     authority.authority_id !== validated.authorityId ||
     authority.full_live_authority_id !== validated.fullLiveAuthorityId ||
@@ -1123,20 +1124,37 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     authority.static_release_descriptor.sha256 !== validated.staticReleaseDescriptorSha256 ||
     authority.approved_at !== validated.approvedAt ||
     authority.expires_at !== validated.expiresAt ||
-    validated.proposalSchema !== "videoforge.v2-13-full-live-completion-proposal/v3" ||
-    authority.github_release_ref?.status !== "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION" ||
-    authority.github_release_ref?.ref_creation_authorized_by_approved_proposal !== true ||
+    ![
+      "videoforge.v2-13-full-live-completion-proposal/v3",
+      "videoforge.v2-13-full-live-completion-proposal/v4",
+    ].includes(validated.proposalSchema) ||
+    authority.github_release_ref?.status !==
+      (reconcilesExistingTag
+        ? "AUTHORIZED_EXACT_SINGLE_REF_PENDING_RECONCILIATION"
+        : "AUTHORIZED_EXACT_SINGLE_REF_PENDING_CREATION") ||
+    authority.github_release_ref?.ref_creation_authorized_by_approved_proposal !==
+      !reconcilesExistingTag ||
+    authority.github_release_ref?.successor_tag_mutation_authorized !==
+      !reconcilesExistingTag ||
     authority.github_release_ref?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
     authority.github_release_ref?.exact_target_commit !== validated.releaseSourceCommit ||
+    (reconcilesExistingTag &&
+      (authority.github_release_ref?.predecessor_terminal_state_sha256 !==
+        validated.predecessorReleaseAttempt?.terminal_state_sha256 ||
+        authority.github_release_ref?.predecessor_authority_id !==
+          validated.predecessorReleaseAttempt?.authority_id)) ||
     authority.github_release_ref?.external_action_taken !== false
   )
     fail("AUTHORITY_LINEAGE");
   const approvalValidatorPath = authority.outer_orchestration?.approval_schema_validator_path;
   const approvalValidatorSha256 = authority.outer_orchestration?.approval_schema_validator_sha256;
+  const approvalValidatorBinding = validated.approvalValidatorSourceBinding;
   if (
-    approvalValidatorPath !== EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING.tree_entry_path ||
-    EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING.commit_field !== "source.release_source_commit" ||
-    EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING.verification !==
+    approvalValidatorPath !== approvalValidatorBinding.tree_entry_path ||
+    !["source.release_source_commit", "source.execution_control_commit"].includes(
+      approvalValidatorBinding.commit_field,
+    ) ||
+    approvalValidatorBinding.verification !==
       "GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256" ||
     !HASH.test(approvalValidatorSha256 ?? "")
   )
@@ -1145,7 +1163,7 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
   try {
     resolvedReleaseCommit = execFileSync(
       "git",
-      ["rev-parse", `${validated.releaseSourceCommit}^{commit}`],
+      ["rev-parse", `${validated.executionControlCommit}^{commit}`],
       {
         cwd: ROOT,
         encoding: "utf8",
@@ -1156,13 +1174,13 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
   } catch {
     fail("APPROVAL_VALIDATOR_RELEASE_COMMIT");
   }
-  if (resolvedReleaseCommit !== validated.releaseSourceCommit)
+  if (resolvedReleaseCommit !== validated.executionControlCommit)
     fail("APPROVAL_VALIDATOR_RELEASE_COMMIT");
   let committedApprovalValidatorBytes;
   try {
     committedApprovalValidatorBytes = execFileSync(
       "git",
-      ["show", `${validated.releaseSourceCommit}:${approvalValidatorPath}`],
+      ["show", `${validated.executionControlCommit}:${approvalValidatorPath}`],
       { cwd: ROOT, maxBuffer: 4 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] },
     );
   } catch {
@@ -1258,6 +1276,7 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     approval_record_path: validated.approvalRecordPath,
     authority_record_path: validated.authorityRecordPath,
     release_source_commit: validated.releaseSourceCommit,
+    execution_control_commit: validated.executionControlCommit ?? validated.releaseSourceCommit,
     full_live_executor_path: authority.outer_orchestration.full_live_executor_path,
     full_live_executor_sha256: authority.outer_orchestration.full_live_executor_sha256,
     materialization_seed_sha256: authority.materialization_seed_sha256,
@@ -1284,9 +1303,13 @@ function initialConsumptionRecord(authority, authorityBytes, validated) {
     release_ref: {
       exact_tag_name: "videoforge-v2-13-release-20260826-v3",
       exact_target_commit: validated.releaseSourceCommit,
-      state: "AUTHORIZED_PENDING_CREATION",
+      state:
+        validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
+          ? "AUTHORIZED_PENDING_RECONCILIATION"
+          : "AUTHORIZED_PENDING_CREATION",
       verification_event_id: null,
     },
+    predecessor_release_attempt: validated.predecessorReleaseAttempt,
     cleanup_proof: null,
     release_certification: null,
     terminal: null,
@@ -1300,6 +1323,7 @@ function validateState(state) {
     !UUID.test(state.full_live_authority_id ?? "") ||
     !HASH.test(state.authority_sha256 ?? "") ||
     !/^[0-9a-f]{40}$/u.test(state.authority_record_commit ?? "") ||
+    !/^[0-9a-f]{40}$/u.test(state.execution_control_commit ?? "") ||
     ![state.approval_record_path, state.authority_record_path].every(
       (path) =>
         typeof path === "string" &&
@@ -1310,7 +1334,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:ea4f020f0f283432a1e75baea848c771fc72e416427ab0551b7002362e1fb8fc" ||
+      "sha256:9180d2e78a8651944a78007892285e1eb72196012cd9eb7fa3c8aa8c9d002737" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||
@@ -1403,10 +1427,29 @@ function validateState(state) {
     new Set(state.work_ids).size !== state.work_ids.length ||
     JSON.stringify([...actualWorkIds].sort()) !== JSON.stringify([...state.work_ids].sort()) ||
     state.release_ref?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
-    state.release_ref?.exact_target_commit !== state.release_source_commit ||
-    !["AUTHORIZED_PENDING_CREATION", "VERIFIED_EXACT_REMOTE"].includes(state.release_ref?.state)
+    !/^[0-9a-f]{40}$/u.test(state.release_ref?.exact_target_commit ?? "") ||
+    state.release_ref.exact_target_commit !== state.release_source_commit ||
+    ![
+      "AUTHORIZED_PENDING_CREATION",
+      "AUTHORIZED_PENDING_RECONCILIATION",
+      "VERIFIED_EXACT_REMOTE",
+    ].includes(state.release_ref?.state)
   )
     fail("CUMULATIVE_CAP_OR_EVENT_REPLAY");
+  if (
+    state.execution_control_commit !== state.release_source_commit &&
+    (state.predecessor_release_attempt?.authority_id !==
+      "v2-13-full-live-20260829-022710z-62a9ebb2" ||
+      state.predecessor_release_attempt?.terminal_state_sha256 !==
+        "sha256:1dbf573b408507cbe4eecb813e0e6ec5564153f96183a3329d5fd06b5342969b" ||
+      state.predecessor_release_attempt?.tag_create_result_sha256 !==
+        "sha256:29d68b30b0f866fb40a32de97f6a08f6e27799790822a3bfb7409704cd9df5fc" ||
+      state.predecessor_release_attempt?.tag_push_result_sha256 !==
+        "sha256:f71b313cebd5080cb72cc48731ef48992d0987a37cf7d245b180a765c9f3036b" ||
+      state.predecessor_release_attempt?.tag_readback_result_sha256 !==
+        "sha256:e2f8d0a1a471423ac43c5031f65ff052a334eb29e9b6f922f569dcd9287c43ad")
+  )
+    fail("PREDECESSOR_RELEASE_ATTEMPT");
   if (
     (state.failure_boundary !== null && !FAILURE_BOUNDARY.test(state.failure_boundary)) ||
     (state.failure_code !== null && !FAILURE_CODE.test(state.failure_code)) ||
@@ -1581,7 +1624,9 @@ function recordVerifiedReleaseRef(state, { tagName, targetCommit, eventId }) {
   requireInProgress(state);
   if (state.phases.publication.state !== "ACTIVE") fail("PUBLICATION_NOT_ACTIVE");
   if (
-    state.release_ref.state !== "AUTHORIZED_PENDING_CREATION" ||
+    !["AUTHORIZED_PENDING_CREATION", "AUTHORIZED_PENDING_RECONCILIATION"].includes(
+      state.release_ref.state,
+    ) ||
     tagName !== state.release_ref.exact_tag_name ||
     targetCommit !== state.release_ref.exact_target_commit ||
     !/^[a-z0-9][a-z0-9._:-]{7,191}$/u.test(eventId ?? "") ||
@@ -1955,9 +2000,10 @@ function trustedCommitLineage(
 ) {
   const commit = /^[0-9a-f]{40}$/u;
   if (
-    !commit.test(validated?.releaseSourceCommit ?? "") ||
+    !commit.test(validated?.executionControlCommit ?? validated?.releaseSourceCommit ?? "") ||
     !commit.test(validated?.proposalRecordCommit ?? "") ||
-    validated.releaseSourceCommit === validated.proposalRecordCommit ||
+    (validated.executionControlCommit ?? validated.releaseSourceCommit) ===
+      validated.proposalRecordCommit ||
     proposalPath !== PROPOSAL_RECORD_PATH ||
     !Buffer.isBuffer(proposalBytes) ||
     sha256(proposalBytes) !== validated.proposalSha256
@@ -1971,8 +2017,10 @@ function trustedCommitLineage(
     }).trim();
   try {
     if (
-      git("rev-parse", `${validated.releaseSourceCommit}^{commit}`) !==
-        validated.releaseSourceCommit ||
+      git(
+        "rev-parse",
+        `${validated.executionControlCommit ?? validated.releaseSourceCommit}^{commit}`,
+      ) !== (validated.executionControlCommit ?? validated.releaseSourceCommit) ||
       git("rev-parse", `${validated.proposalRecordCommit}^{commit}`) !==
         validated.proposalRecordCommit
     )
@@ -1982,7 +2030,7 @@ function trustedCommitLineage(
       [
         "merge-base",
         "--is-ancestor",
-        validated.releaseSourceCommit,
+        validated.executionControlCommit ?? validated.releaseSourceCommit,
         validated.proposalRecordCommit,
       ],
       { cwd: ROOT, stdio: "ignore" },
@@ -1991,14 +2039,14 @@ function trustedCommitLineage(
       "rev-list",
       "--first-parent",
       "--reverse",
-      `${validated.releaseSourceCommit}..${validated.proposalRecordCommit}`,
+      `${validated.executionControlCommit ?? validated.releaseSourceCommit}..${validated.proposalRecordCommit}`,
     )
       .split("\n")
       .filter(Boolean);
     if (chain.length === 0) fail("COMMIT_LINEAGE");
     const allowed = new Set(PROPOSAL_RECORD_ALLOWED_DIFF_PATHS);
     const changed = new Set();
-    let parent = validated.releaseSourceCommit;
+    let parent = validated.executionControlCommit ?? validated.releaseSourceCommit;
     for (const commitSha of chain) {
       const parents = git("rev-list", "--parents", "-n", "1", commitSha).split(/\s+/u).slice(1);
       if (parents.length !== 1 || parents[0] !== parent) fail("COMMIT_LINEAGE");
@@ -2103,7 +2151,7 @@ async function main() {
     validateStaticReleaseDescriptorFile({
       path: process.env[STATIC_RELEASE_DESCRIPTOR_ENV],
       expectedSha256: authority.static_release_descriptor.sha256,
-      expectedSourceCommit: validated.releaseSourceCommit,
+      expectedSourceCommit: validated.executionControlCommit ?? validated.releaseSourceCommit,
     });
     validateMaterializationSeedFile({
       path: process.env[MATERIALIZATION_SEED_ENV],

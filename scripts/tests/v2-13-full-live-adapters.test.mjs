@@ -565,18 +565,48 @@ test("git release adapter rejects mismatched local or remote tags", async () => 
 });
 
 test("git release adapter reconciles the exact predecessor tag without retarget or force", async () => {
+  const reconciliationState = {
+    ...state,
+    release_ref: { ...state.release_ref, state: "AUTHORIZED_PENDING_RECONCILIATION" },
+  };
   const exactReplies = [
     result(1),
     result(0, `${sourceCommit}\trefs/tags/${TAG}\n`),
-    result(0),
-    result(0, `${sourceCommit}\n`),
   ];
-  const exactRemote = createGitReleaseAdapters({ run: () => exactReplies.shift() });
-  const reconciled = await exactRemote["release-tag-create"]({}, state);
-  assert.equal(reconciled.created, true);
+  const calls = [];
+  const exactRemote = createGitReleaseAdapters({
+    run: (command, args) => {
+      calls.push([command, args]);
+      return exactReplies.shift();
+    },
+  });
+  const reconciled = await exactRemote["release-tag-create"]({}, reconciliationState);
+  assert.equal(reconciled.created, false);
   assert.equal(reconciled.verifiedExistingExact, true);
   assert.equal(reconciled.exactTagReady, true);
+  assert.equal(reconciled.mutationPerformed, false);
+  assert.equal(calls.some(([, args]) => args[0] === "tag"), false);
   assert.equal(exactReplies.length, 0);
+});
+
+test("predecessor reconciliation hard-stops when the exact remote tag is absent", async () => {
+  const reconciliationState = {
+    ...state,
+    release_ref: { ...state.release_ref, state: "AUTHORIZED_PENDING_RECONCILIATION" },
+  };
+  const replies = [result(1), result(0, "")];
+  const calls = [];
+  const adapters = createGitReleaseAdapters({
+    run: (command, args) => {
+      calls.push([command, args]);
+      return replies.shift();
+    },
+  });
+  await assert.rejects(
+    adapters["release-tag-create"]({}, reconciliationState),
+    /PREDECESSOR_REMOTE_TAG_ABSENT/u,
+  );
+  assert.equal(calls.some(([, args]) => ["tag", "push"].includes(args[0])), false);
 });
 
 test("approval publication pushes the exact authority-record commit with FF and tree-byte proof", async () => {

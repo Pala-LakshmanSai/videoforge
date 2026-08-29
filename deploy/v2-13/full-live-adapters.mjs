@@ -473,8 +473,10 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
   return Object.freeze({
     "release-tag-create": async (_operation, state) => {
       const tag = state.release_ref?.exact_tag_name;
-      const target = state.release_source_commit;
+      const target = state.release_ref?.exact_target_commit;
       if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
+      const reconciliationOnly =
+        state.release_ref?.state === "AUTHORIZED_PENDING_RECONCILIATION";
       const local = exactCommand(
         run,
         "git",
@@ -496,6 +498,17 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
         `refs/tags/${tag}`,
       ]);
       const remoteAlreadyExact = exactRemoteTag(remote.stdout, tag, target, true);
+      if (reconciliationOnly) {
+        if (!remoteAlreadyExact) fail("PREDECESSOR_REMOTE_TAG_ABSENT");
+        return {
+          actualUsd: 0,
+          created: false,
+          verifiedExistingExact: true,
+          exactTagReady: true,
+          mutationPerformed: false,
+          targetCommit: target,
+        };
+      }
       const created = local.status === 1;
       if (created) exactCommand(run, "git", ["tag", tag, target]);
       const readback = exactCommand(run, "git", ["rev-parse", `refs/tags/${tag}^{commit}`]);
@@ -505,15 +518,20 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
         created,
         verifiedExistingExact: local.status === 0 || remoteAlreadyExact,
         exactTagReady: true,
+        mutationPerformed: created,
         targetCommit: target,
       };
     },
     "release-tag-push": async (_operation, state) => {
       const tag = state.release_ref?.exact_tag_name;
-      const target = state.release_source_commit;
+      const target = state.release_ref?.exact_target_commit;
       if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
-      const local = exactCommand(run, "git", ["rev-parse", `refs/tags/${tag}^{commit}`]);
-      if (local.stdout.trim() !== target) fail("LOCAL_TAG_PUSH_READBACK");
+      const reconciliationOnly =
+        state.release_ref?.state === "AUTHORIZED_PENDING_RECONCILIATION";
+      if (!reconciliationOnly) {
+        const local = exactCommand(run, "git", ["rev-parse", `refs/tags/${tag}^{commit}`]);
+        if (local.stdout.trim() !== target) fail("LOCAL_TAG_PUSH_READBACK");
+      }
       const remote = exactCommand(run, "git", [
         "ls-remote",
         "--refs",
@@ -521,6 +539,7 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
         `refs/tags/${tag}`,
       ]);
       const alreadyExact = exactRemoteTag(remote.stdout, tag, target, true);
+      if (reconciliationOnly && !alreadyExact) fail("PREDECESSOR_REMOTE_TAG_ABSENT");
       if (!alreadyExact)
         exactCommand(run, "git", [
           "push",
@@ -534,12 +553,13 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
         targetCommit: target,
         pushPerformed: !alreadyExact,
         reconciledExistingExact: alreadyExact,
+        mutationPerformed: !alreadyExact,
         forceUsed: false,
       };
     },
     "release-tag-readback": async (_operation, state) => {
       const tag = state.release_ref?.exact_tag_name;
-      const target = state.release_source_commit;
+      const target = state.release_ref?.exact_target_commit;
       if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
       const remote = exactCommand(run, "git", [
         "ls-remote",
@@ -548,7 +568,7 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
         `refs/tags/${tag}`,
       ]);
       exactRemoteTag(remote.stdout, tag, target);
-      return { actualUsd: 0, tagName: tag, targetCommit: target };
+      return { actualUsd: 0, tagName: tag, targetCommit: target, mutationPerformed: false };
     },
     "approval-commit-push": async (_operation, state) => {
       const commit = state.authority_record_commit;

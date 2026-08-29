@@ -6,8 +6,27 @@ const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const PROPOSAL_SCHEMA_V2 = "videoforge.v2-13-full-live-completion-proposal/v2";
 const PROPOSAL_SCHEMA_V3 = "videoforge.v2-13-full-live-completion-proposal/v3";
+const PROPOSAL_SCHEMA_V4 = "videoforge.v2-13-full-live-completion-proposal/v4";
 const APPROVAL_SCHEMA_V1 = "videoforge.v2-13-full-live-user-approval/v1";
 const APPROVAL_SCHEMA_V2 = "videoforge.v2-13-full-live-user-approval/v2";
+const APPROVAL_SCHEMA_V3 = "videoforge.v2-13-full-live-user-approval/v3";
+const EXACT_PREDECESSOR_RELEASE_ATTEMPT = Object.freeze({
+  authority_id: "v2-13-full-live-20260829-022710z-62a9ebb2",
+  authority_record_commit: "7e43a289a58b7ab0805f019fcfe82d0efa2c2848",
+  proposal_sha256: "sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6",
+  terminal_state_sha256: "sha256:1dbf573b408507cbe4eecb813e0e6ec5564153f96183a3329d5fd06b5342969b",
+  terminal_state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+  terminal: "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED",
+  failure_code: "APPROVAL_BRANCH_READBACK",
+  exact_tag_name: "videoforge-v2-13-release-20260826-v3",
+  exact_tag_target_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+  tag_create_result_sha256:
+    "sha256:29d68b30b0f866fb40a32de97f6a08f6e27799790822a3bfb7409704cd9df5fc",
+  tag_push_result_sha256:
+    "sha256:f71b313cebd5080cb72cc48731ef48992d0987a37cf7d245b180a765c9f3036b",
+  tag_readback_result_sha256:
+    "sha256:e2f8d0a1a471423ac43c5031f65ff052a334eb29e9b6f922f569dcd9287c43ad",
+});
 const EXPECTED_SERVERLESS_FLEX_RATE_SOURCE = Object.freeze({
   provider: "RunPod",
   product: "SERVERLESS_FLEX",
@@ -32,15 +51,23 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
   embedded_current_file_sha256: false,
   self_hash_forbidden: true,
 });
+const EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING = Object.freeze({
+  mode: "EXTERNAL_GIT_COMMIT_TREE_ENTRY",
+  commit_field: "source.execution_control_commit",
+  tree_entry_path: "deploy/v2-13/validate-full-live-approval.mjs",
+  verification: "GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256",
+  embedded_current_file_sha256: false,
+  self_hash_forbidden: true,
+});
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910",
+    sha256: "sha256:9180d2e78a8651944a78007892285e1eb72196012cd9eb7fa3c8aa8c9d002737",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:19256a5a9872203ed29062360a0f962374c5f37a254b9591bd48fa7af701ea20",
+    sha256: "sha256:caa7df16360f0257758be12852f2131aad73adc5e2db8e3f91e21c122261ab34",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -52,7 +79,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:ce4a92127d098392504bd1641d61865d3c94cfb7624de6939fe31157f1199e03",
+    sha256: "sha256:6d143770f0c6440252c7ce9b718af5da6fc4b633a3bf757f8337f50f165261d5",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -136,7 +163,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb",
+    sha256: "sha256:1a7a9e4102c4288fe33e4c2f82db299738703e2211a7e11f8a40822a786c136d",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
@@ -1282,13 +1309,25 @@ function validateFullLiveUserApproval({
   if (!COMMIT.test(expectedReleaseSourceCommit ?? "")) fail("RELEASE_SOURCE_COMMIT");
   const proposal = parse(proposalBytes, "PROPOSAL");
   const approval = parse(approvalBytes, "APPROVAL");
-  const isV3 = proposal.schema_version === PROPOSAL_SCHEMA_V3;
+  const isV4 = proposal.schema_version === PROPOSAL_SCHEMA_V4;
+  const isModern = proposal.schema_version === PROPOSAL_SCHEMA_V3 || isV4;
+  const expectedReleaseComponents = isV4
+    ? {
+        ...EXACT_V3_RELEASE_COMPONENTS,
+        approval_validator: {
+          path: "deploy/v2-13/validate-full-live-approval.mjs",
+          source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
+        },
+      }
+    : EXACT_V3_RELEASE_COMPONENTS;
   const requestedStaticReleaseDescriptor = proposal.requested_scope?.static_release_descriptor;
   const sealedStaticReleaseDescriptor = proposal.sealing?.static_release_descriptor;
   const requestedMaterializationSeedFacts = proposal.requested_scope?.materialization_seed_facts;
   const sealedMaterializationSeedFacts = proposal.sealing?.materialization_seed_facts;
   if (
-    ![PROPOSAL_SCHEMA_V2, PROPOSAL_SCHEMA_V3].includes(proposal.schema_version) ||
+    ![PROPOSAL_SCHEMA_V2, PROPOSAL_SCHEMA_V3, PROPOSAL_SCHEMA_V4].includes(
+      proposal.schema_version,
+    ) ||
     proposal.task_id !== "VF-10-13" ||
     proposal.proposal_status !== "PENDING_FRESH_EXACT_USER_APPROVAL" ||
     proposal.source?.release_source_commit !== expectedReleaseSourceCommit ||
@@ -1298,7 +1337,15 @@ function validateFullLiveUserApproval({
   )
     fail("PROPOSAL_CONTRACT");
   if (
-    isV3 &&
+    isV4 &&
+    (!COMMIT.test(proposal.source?.execution_control_commit ?? "") ||
+      proposal.source.execution_control_commit === expectedReleaseSourceCommit ||
+      JSON.stringify(proposal.supersession?.predecessor_release_attempt) !==
+        JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT))
+  )
+    fail("EXECUTION_CONTROL_OR_PREDECESSOR_BINDING");
+  if (
+    isModern &&
     (proposal.sealing?.sealed_for_exact_user_approval !== true ||
       proposal.sealing?.current_bytes_are_approval_ineligible !== false ||
       proposal.supersession?.prior_approval_reusable !== false ||
@@ -1354,7 +1401,7 @@ function validateFullLiveUserApproval({
       JSON.stringify(proposal.requested_scope?.cloudflare_secret_allowlist) !==
         JSON.stringify(EXACT_CLOUDFLARE_SECRET_NAMES) ||
       JSON.stringify(proposal.source?.exact_release_components) !==
-        JSON.stringify(EXACT_V3_RELEASE_COMPONENTS))
+        JSON.stringify(expectedReleaseComponents))
   )
     fail("V3_SUPERSESSION_OR_AUTHORITY");
   if (
@@ -1363,22 +1410,23 @@ function validateFullLiveUserApproval({
       "checkpoint_range",
       "task_id",
       "authority_id",
-      ...(isV3 ? ["full_live_authority_id"] : []),
+      ...(isModern ? ["full_live_authority_id"] : []),
       "approval_source",
       "approved_at",
       "expires_at",
       "proposal",
       "approval",
       "execution_fences",
-      ...(isV3 ? ["static_release_descriptor"] : []),
+      ...(isModern ? ["static_release_descriptor"] : []),
       "statement",
     ]) ||
-    approval.schema_version !== (isV3 ? APPROVAL_SCHEMA_V2 : APPROVAL_SCHEMA_V1) ||
+    approval.schema_version !==
+      (isV4 ? APPROVAL_SCHEMA_V3 : isModern ? APPROVAL_SCHEMA_V2 : APPROVAL_SCHEMA_V1) ||
     approval.task_id !== "VF-10-13" ||
     JSON.stringify(approval.checkpoint_range) !== JSON.stringify(CHECKPOINT_RANGE) ||
     approval.approval_source !== "explicit_user_approval_in_current_codex_task" ||
     !AUTHORITY_ID.test(approval.authority_id) ||
-    (isV3 &&
+    (isModern &&
       approval.full_live_authority_id !== requestedMaterializationSeedFacts.full_live_authority_id)
   )
     fail("SCHEMA");
@@ -1388,8 +1436,9 @@ function validateFullLiveUserApproval({
       "sha256",
       "proposal_record_commit",
       "release_source_commit",
+      ...(isV4 ? ["execution_control_commit"] : []),
     ]) ||
-    (isV3 && !exactStaticReleaseDescriptor(approval.static_release_descriptor)) ||
+    (isModern && !exactStaticReleaseDescriptor(approval.static_release_descriptor)) ||
     !exactKeys(approval.approval, [
       "exact_proposal_approved",
       "all_and_only_ordered_operations_approved",
@@ -1400,7 +1449,7 @@ function validateFullLiveUserApproval({
       "gpu",
       "retention",
       "provider_free_control_plane",
-      ...(isV3
+      ...(isModern
         ? ["immutable_github_release_ref", "database_roles", "internal_production_credentials"]
         : []),
     ]) ||
@@ -1436,7 +1485,7 @@ function validateFullLiveUserApproval({
       "plan_change_authorized",
       "stop_on_metered_plan_or_new_paid_resource",
     ]) ||
-    (isV3 &&
+    (isModern &&
       (!exactKeys(approval.approval.internal_production_credentials, [
         "exact_one_time_count",
         "exact_scope",
@@ -1469,11 +1518,13 @@ function validateFullLiveUserApproval({
     approval.proposal?.sha256 !== expectedProposalSha256 ||
     approval.proposal?.proposal_record_commit !== expectedProposalRecordCommit ||
     approval.proposal?.release_source_commit !== expectedReleaseSourceCommit ||
+    (isV4 &&
+      approval.proposal?.execution_control_commit !== proposal.source.execution_control_commit) ||
     approval.proposal?.path !== proposal.source.proposal_path
   )
     fail("LINEAGE");
   if (
-    isV3 &&
+    isModern &&
     (JSON.stringify(approval.static_release_descriptor) !==
       JSON.stringify(requestedStaticReleaseDescriptor) ||
       JSON.stringify(approval.static_release_descriptor) !==
@@ -1529,7 +1580,7 @@ function validateFullLiveUserApproval({
     approved.provider_free_control_plane?.stop_on_metered_plan_or_new_paid_resource !== true
   )
     fail("GUARDED_CHILD_SCOPE");
-  if (isV3) {
+  if (isModern) {
     const requestedRef = proposal.immutable_github_release_ref_request;
     const approvedRef = approved.immutable_github_release_ref;
     const requestedDatabase = proposal.requested_scope?.database;
@@ -1719,35 +1770,49 @@ function validateFullLiveUserApproval({
     !approval.statement.includes("USD 17.50") ||
     !approval.statement.includes("USD 7 per month") ||
     !approval.statement.includes("no fallback") ||
-    (isV3 &&
+    (isModern &&
       (!approval.statement.includes("videoforge-v2-13-release-20260826-v3") ||
         !approval.statement.includes("videoforge_hosted_operator") ||
         !approval.statement.includes("videoforge_hosted_runtime") ||
         !approval.statement.includes("videoforge_hosted_reconciler")))
   )
     fail("STATEMENT");
+  if (
+    isV4 &&
+    (!approval.statement.includes(proposal.source.execution_control_commit) ||
+      !approval.statement.includes(EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256))
+  )
+    fail("STATEMENT_EXECUTION_CONTROL_OR_PREDECESSOR");
   return Object.freeze({
     authorityId: approval.authority_id,
-    fullLiveAuthorityId: isV3 ? approval.full_live_authority_id : null,
+    fullLiveAuthorityId: isModern ? approval.full_live_authority_id : null,
     approvedAt: approval.approved_at,
     expiresAt: approval.expires_at,
     proposalSha256: expectedProposalSha256,
     approvalSha256: sha256(approvalBytes),
-    staticReleaseDescriptorPath: isV3 ? requestedStaticReleaseDescriptor.path : null,
-    staticReleaseDescriptorSha256: isV3 ? requestedStaticReleaseDescriptor.sha256 : null,
+    staticReleaseDescriptorPath: isModern ? requestedStaticReleaseDescriptor.path : null,
+    staticReleaseDescriptorSha256: isModern ? requestedStaticReleaseDescriptor.sha256 : null,
     proposalRecordCommit: expectedProposalRecordCommit,
     releaseSourceCommit: expectedReleaseSourceCommit,
+    executionControlCommit: isV4
+      ? proposal.source.execution_control_commit
+      : expectedReleaseSourceCommit,
+    predecessorReleaseAttempt: isV4 ? EXACT_PREDECESSOR_RELEASE_ATTEMPT : null,
+    approvalValidatorSourceBinding: isV4
+      ? EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING
+      : EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
     maximumCumulativeFiniteRunpodSpendUsd: 17.5,
     phaseCapsUsd: EXPECTED_PHASE_CAPS,
     proposalSchema: proposal.schema_version,
-    exactOperatorRole: isV3 ? approved.database_roles.exact_operator_role : null,
-    exactRuntimeRole: isV3 ? approved.database_roles.exact_runtime_role : null,
-    exactReconcilerRole: isV3 ? approved.database_roles.exact_reconciler_role : null,
+    exactOperatorRole: isModern ? approved.database_roles.exact_operator_role : null,
+    exactRuntimeRole: isModern ? approved.database_roles.exact_runtime_role : null,
+    exactReconcilerRole: isModern ? approved.database_roles.exact_reconciler_role : null,
   });
 }
 
 export {
   EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
+  EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
