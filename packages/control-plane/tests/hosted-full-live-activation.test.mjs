@@ -700,8 +700,8 @@ test("0045 atomically records exact authority and promotes both fresh max-one la
     assert.equal(snapshot.verification.signatureVerified, true);
     assert.equal(snapshot.verification.sourceCommit, authority.sourceCommit);
     assert.deepEqual(snapshot.verification.gate.migrationLedger.at(-1), {
-      version: 45,
-      sha256: "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b",
+      version: 48,
+      sha256: "sha256:8181d1c050690a8e15ce5cef7473a5caa872d5f868b18f059574dbd4fcbdc82d",
     });
     assert.equal(snapshot.verification.gate.gpuTransport, "QUALIFIED_EXACT");
     assert.deepEqual(snapshot.verification.gate.cloudflare, {

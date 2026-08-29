@@ -14,6 +14,13 @@ const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 const MAX_SERIALIZED_SNAPSHOT_BYTES = 128 * 1_024 * 1_024;
 const MAX_SECRET_SCAN_NODES = 1_000_000;
 
+// Migration 0048 adds the hosted auth throttle table. It contains Better Auth identity-linked
+// counters and remains outside portable metadata snapshots alongside the other auth tables.
+const METADATA_NON_PORTABLE_TABLE_NAMES = Object.freeze([
+  ...NON_PORTABLE_TABLE_NAMES,
+  "hosted_auth_rate_limits",
+] as const);
+
 /**
  * Migration 0018 seeds the reserved SYSTEM and LEGACY scope rows into every database, so they are
  * schema baseline rather than tenant metadata. Excluding them keeps a freshly migrated destination
@@ -450,7 +457,7 @@ async function assertExpectedSchema(executor: SqlExecutor): Promise<void> {
   const expected = [
     ...RELATIONAL_TABLE_NAMES,
     ...SCHEMA_REGISTRY_TABLE_NAMES,
-    ...NON_PORTABLE_TABLE_NAMES,
+    ...METADATA_NON_PORTABLE_TABLE_NAMES,
     MIGRATION_TABLE_NAME,
   ].sort();
   const actual = tables.rows.map((row) => row.table_name);
