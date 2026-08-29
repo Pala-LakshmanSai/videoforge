@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "e088b6a223bedf60d00c640ef34c164b122717f6",
+  "audited_code_commit": "062f5ce2ee7de094a259566a6a800273f1866005",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.final-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-29T01:12:06.000Z",
+  "observed_at": "2026-08-29T01:16:55.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -113,7 +113,7 @@
     "The release-source successor may add only this readiness record and the canonical materialization-seed facts before resealing; application and deployment bytes remain those audited at audited_code_commit.",
     "The immediately previous authority was durably consumed once and failed safely at the first release-tag absence check because Apple Git reports a missing exact ref as exit 128 without --quiet; cleanup completed with zero provider mutation, zero GPU use, zero spend, and no tag, credential, deployment, endpoint, or publication creation. That authority is non-reusable.",
     "The repaired publication path and executor evidence validator require the exact codex/serverless-v2-roadmap-v4 branch and reject the stale unsuffixed branch while preserving non-force fast-forward and tree-byte proof.",
-    "The Git portability repair uses show-ref --verify --quiet for stable absence status and rebinds the executor, approval validator, and durable orchestration state contract to the repaired source.",
+    "The Git portability repair uses show-ref --verify --quiet for stable absence status and rebinds the executor, approval validator, durable orchestration state contract, and approval component manifest to the repaired source.",
     "The canonical full verify is intentionally blocked only by the stale active candidate descriptor and component bindings that this evidence successor permits resealing; 111 focused adapter, executor, and authority tests passed with only the stale successor-candidate test excluded until resealing, and closure plus NO_ACTION gates passed."
   ]
 }
