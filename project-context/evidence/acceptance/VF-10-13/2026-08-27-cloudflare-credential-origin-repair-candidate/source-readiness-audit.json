@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "e794b18231b1af6c6fbbd7cd8ba111b4a67f09a8",
+  "audited_code_commit": "e088b6a223bedf60d00c640ef34c164b122717f6",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.final-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-28T18:34:14.000Z",
+  "observed_at": "2026-08-29T01:12:06.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -17,7 +17,7 @@
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
     "entry_count": 643,
-    "sha256": "sha256:289cb00a9cfee45e697ecdf06719cfc79b1b04c41b12c01ca6c5bdf7b4760b85",
+    "sha256": "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb",
     "exact": true
   },
   "production_origin": {
@@ -27,7 +27,7 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:289cb00a9cfee45e697ecdf06719cfc79b1b04c41b12c01ca6c5bdf7b4760b85"
+    "sha256": "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb"
   },
   "validation": {
     "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
@@ -36,7 +36,7 @@
     "package_test_files_passed": 104,
     "package_tests_passed": 1256,
     "package_tests_skipped": 1,
-    "focused_release_script_tests_passed": 110,
+    "focused_release_script_tests_passed": 111,
     "control_plane_activation_tests_passed": 14,
     "soulx_tests_passed": 37,
     "independent_source_audit_result": "PASS_READY_TO_RESEAL",
@@ -111,8 +111,9 @@
   "notes": [
     "This record contains no credentials or raw protected values.",
     "The release-source successor may add only this readiness record and the canonical materialization-seed facts before resealing; application and deployment bytes remain those audited at audited_code_commit.",
-    "The immediately previous approval failed safely during provider-free seed construction because the canonical envelope-signing key ID was not bound to the full-live UUID; no authority, credentials, provider calls, mutations, GPU use, or spend occurred, and that approval is non-reusable.",
+    "The immediately previous authority was durably consumed once and failed safely at the first release-tag absence check because Apple Git reports a missing exact ref as exit 128 without --quiet; cleanup completed with zero provider mutation, zero GPU use, zero spend, and no tag, credential, deployment, endpoint, or publication creation. That authority is non-reusable.",
     "The repaired publication path and executor evidence validator require the exact codex/serverless-v2-roadmap-v4 branch and reject the stale unsuffixed branch while preserving non-force fast-forward and tree-byte proof.",
-    "The canonical full verify is intentionally blocked only by the stale active candidate descriptor and component bindings that this evidence successor permits resealing; focused source, package, SQL, SoulX, closure, and NO_ACTION gates passed."
+    "The Git portability repair uses show-ref --verify --quiet for stable absence status and rebinds the executor, approval validator, and durable orchestration state contract to the repaired source.",
+    "The canonical full verify is intentionally blocked only by the stale active candidate descriptor and component bindings that this evidence successor permits resealing; 111 focused adapter, executor, and authority tests passed with only the stale successor-candidate test excluded until resealing, and closure plus NO_ACTION gates passed."
   ]
 }
