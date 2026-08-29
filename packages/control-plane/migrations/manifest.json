@@ -276,6 +276,12 @@
       "name": "hosted_full_live_cleanup_recovery",
       "filename": "0046_hosted_full_live_cleanup_recovery.sql",
       "sha256": "sha256:d98e020a52a1820db811f5c9a679651c1169000ebe28c1d00b35e04c003ba33b"
+    },
+    {
+      "version": 47,
+      "name": "hosted_invite_code_redemption",
+      "filename": "0047_hosted_invite_code_redemption.sql",
+      "sha256": "sha256:d9840c7033b823a7f9a03e13d7213c50b81d40c7f89423f6c6f4ecc7e8e8649a"
     }
   ]
 }

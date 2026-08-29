@@ -137,7 +137,7 @@ test("retained 0045 upgrades through 0046 and replays old disabled/cleanup evide
     await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
     const executor = new PGliteExecutor(database);
     const migrations = await sources();
-    assert.equal(migrations.length, 46);
+    assert.equal(migrations.length, 47);
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations(
         version integer PRIMARY KEY,name text NOT NULL,filename text NOT NULL UNIQUE,
@@ -149,7 +149,7 @@ test("retained 0045 upgrades through 0046 and replays old disabled/cleanup evide
         .count,
       45,
     );
-    await applyRange(executor, migrations.slice(45));
+    await applyRange(executor, migrations.slice(45, 46));
     assert.equal(
       (await executor.query("SELECT max(version)::int version FROM videoforge_schema_migrations"))
         .rows[0].version,

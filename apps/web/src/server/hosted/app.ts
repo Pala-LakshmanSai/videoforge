@@ -1,3 +1,5 @@
+import { SharedAdmissionRepository } from "@videoforge/control-plane";
+
 import { createHostedAuth, type HostedExecutionContext } from "./auth";
 import {
   configuredHostedRuntimeConfiguration,
@@ -42,6 +44,10 @@ import {
   type V213ResolvedRenderManifestReadDependencies,
 } from "./v213-resolved-render-manifest-route";
 import { createV213WorkerLiveAcceptanceExecute } from "./v213-worker-live-execution";
+import {
+  handleHostedInviteRedemption,
+  HOSTED_INVITE_REDEMPTION_PATH,
+} from "./invite-redemption";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -1130,6 +1136,23 @@ export async function handleHostedRequest(
     return json({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }, 503);
   }
   const url = new URL(request.url);
+  if (url.pathname === HOSTED_INVITE_REDEMPTION_PATH) {
+    const pool = createNeonPool(config.neon.databaseUrl);
+    try {
+      const repository = new SharedAdmissionRepository(createNeonExecutor(pool));
+      return await handleHostedInviteRedemption(request, {
+        publicOrigin: config.publicOrigin,
+        sessionToken: async (candidate) => {
+          const session = await hostedSession(candidate, config, pool, executionContext);
+          return typeof session?.session?.token === "string" ? session.session.token : null;
+        },
+        redeem: (sessionToken, verifierSha256) =>
+          repository.redeemHostedInvite({ sessionToken, verifierSha256 }),
+      });
+    } finally {
+      await pool.end();
+    }
+  }
   const resolvedRenderManifest = await handleV213ResolvedRenderManifestRequest(
     request,
     environment,

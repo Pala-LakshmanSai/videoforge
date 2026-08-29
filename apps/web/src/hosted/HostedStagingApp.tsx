@@ -12,6 +12,10 @@ interface HostedStatus {
   readonly authentication: readonly ("GOOGLE" | "EMAIL_PASSWORD")[];
 }
 
+interface HostedInviteProblem {
+  readonly error?: { readonly code?: string };
+}
+
 type HostedAccess =
   | { readonly state: "SIGNED_OUT" }
   | { readonly state: "INVITE_REQUIRED" }
@@ -32,6 +36,8 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [redeemingInvite, setRedeemingInvite] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [status, setStatus] = useState<HostedStatus | null>(null);
 
@@ -101,6 +107,51 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
     }
   }
 
+  async function redeemInvite() {
+    const presentedCode = inviteCode;
+    setInviteCode("");
+    setMessage(null);
+    setRedeemingInvite(true);
+    try {
+      const response = await fetch("/api/v2/invite/redemption", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { accept: "application/json", "content-type": "application/json" },
+        body: JSON.stringify({
+          schema_version: "videoforge-hosted-invite-redemption/v1",
+          invite_code: presentedCode,
+        }),
+      });
+      if (response.ok) {
+        await refresh();
+        return;
+      }
+      if (response.status === 401) {
+        await refresh();
+        return;
+      }
+      const body = (await response.json().catch(() => ({}))) as HostedInviteProblem;
+      const code = body.error?.code;
+      setMessage(
+        code === "INVITE_ALREADY_USED"
+          ? "That invitation code was already used."
+          : code === "INVITE_REVOKED"
+            ? "That invitation code was revoked."
+            : code === "INVITE_EXPIRED"
+              ? "That invitation code expired."
+              : code === "INVITE_EMAIL_MISMATCH"
+                ? "That invitation code belongs to a different Google account."
+                : code === "EMAIL_VERIFICATION_REQUIRED"
+                  ? "Google must verify this email before admission."
+                  : "That invitation code is invalid.",
+      );
+    } catch {
+      setMessage("Invitation redemption is unavailable. No local fallback was used.");
+    } finally {
+      setRedeemingInvite(false);
+    }
+  }
+
   if (loading)
     return (
       <main className="hosted-stage">
@@ -117,12 +168,32 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
       <main className="hosted-stage">
         <section>
           <p>V2-06 private staging</p>
-          <h1>Invite required</h1>
-          <p>This signed-in account does not have access to VideoForge.</p>
-          <p>Ask for an invitation, or sign out and use a different invited account.</p>
-          <button type="button" onClick={() => void signOut()}>
-            Sign out
-          </button>
+          <h1>Enter your invitation code</h1>
+          <p>The code must match this signed-in, verified Google account.</p>
+          <label>
+            Invitation code
+            <input
+              type="password"
+              autoComplete="one-time-code"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              value={inviteCode}
+              onChange={(event) => setInviteCode(event.target.value)}
+            />
+          </label>
+          <div>
+            <button
+              type="button"
+              disabled={inviteCode.length === 0 || redeemingInvite}
+              onClick={() => void redeemInvite()}
+            >
+              {redeemingInvite ? "Checking…" : "Redeem invitation"}
+            </button>
+            <button type="button" onClick={() => void signOut()}>
+              Sign out
+            </button>
+          </div>
           {message ? <p role="status">{message}</p> : null}
         </section>
       </main>

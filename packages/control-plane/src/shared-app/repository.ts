@@ -59,6 +59,42 @@ export interface SharedAdmissionResult {
   readonly workspaceId: string;
 }
 
+export type HostedInviteRedemptionOutcome =
+  | "ADMITTED"
+  | "RETURNING"
+  | "AUTHENTICATION_REQUIRED"
+  | "EMAIL_VERIFICATION_REQUIRED"
+  | "AUTH_METHOD_UNSUPPORTED"
+  | "INVITE_ALREADY_USED"
+  | "INVITE_EMAIL_MISMATCH"
+  | "INVITE_EXPIRED"
+  | "INVITE_INVALID"
+  | "INVITE_REVOKED";
+
+export interface RedeemHostedInviteCommand {
+  /** Trusted Better Auth session token. Never serialize this value into errors or evidence. */
+  readonly sessionToken: string;
+  /** SHA-256 of the user-presented verifier. The raw verifier must not cross this boundary. */
+  readonly verifierSha256: `sha256:${string}`;
+}
+
+interface HostedInviteRedemptionRow extends Record<string, unknown> {
+  readonly outcome: HostedInviteRedemptionOutcome;
+}
+
+const HOSTED_INVITE_REDEMPTION_OUTCOMES = new Set<HostedInviteRedemptionOutcome>([
+  "ADMITTED",
+  "RETURNING",
+  "AUTHENTICATION_REQUIRED",
+  "EMAIL_VERIFICATION_REQUIRED",
+  "AUTH_METHOD_UNSUPPORTED",
+  "INVITE_ALREADY_USED",
+  "INVITE_EMAIL_MISMATCH",
+  "INVITE_EXPIRED",
+  "INVITE_INVALID",
+  "INVITE_REVOKED",
+]);
+
 interface AdmissionRow extends Record<string, unknown> {
   readonly id: string;
   readonly normalized_email: string;
@@ -124,6 +160,28 @@ export class SharedAdmissionRepository {
        ) VALUES ($1, $2, $3, 'ACTIVE', $4, NULL, NULL, 1, $5)`,
       [command.inviteId, command.verifierSha256, intended, command.expiresAt, command.createdAt],
     );
+  }
+
+  async redeemHostedInvite(
+    command: RedeemHostedInviteCommand,
+  ): Promise<HostedInviteRedemptionOutcome> {
+    if (!/^sha256:[0-9a-f]{64}$/u.test(command.verifierSha256)) {
+      throw new SharedAdmissionError("INVITE_INVALID", "Invite code is invalid.");
+    }
+    const result = await this.database.query<HostedInviteRedemptionRow>(
+      `SELECT outcome
+         FROM public.videoforge_redeem_hosted_invite($1, $2)`,
+      [command.sessionToken, command.verifierSha256],
+    );
+    const outcome = result.rows[0]?.outcome;
+    if (
+      result.rows.length !== 1 ||
+      outcome === undefined ||
+      !HOSTED_INVITE_REDEMPTION_OUTCOMES.has(outcome)
+    ) {
+      throw new Error("Hosted invite redemption returned an invalid outcome.");
+    }
+    return outcome;
   }
 
   async redeemInvite(command: RedeemInviteCommand): Promise<SharedAdmissionResult> {
