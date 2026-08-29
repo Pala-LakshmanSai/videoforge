@@ -2,18 +2,37 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
+  ArrowRight,
   Check,
   Download,
   FileAudio,
   Images,
   RefreshCw,
   ShieldCheck,
+  Upload,
   UsersRound,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
-import { Badge, Button, EmptyState, Metric, Panel } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Disclosure,
+  EmptyState,
+  Metric,
+  Panel,
+  ProgressBar,
+} from "../components/ui";
+
+const MAX_VOICEOVER_BYTES = 1_073_741_824;
+const MAX_AVATAR_BYTES = 20 * 1024 * 1024;
+const MAX_STYLE_REFERENCE_BYTES = 20 * 1024 * 1024;
+const MAX_STYLE_REFERENCES = 8;
+const MIN_STYLE_REFERENCES = 3;
+const DEFAULT_SPEND_CAP_USD = "1.00";
+const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
+const VOICEOVER_TYPES = new Set(["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"]);
 
 export interface CatalogResponse {
   readonly avatars: readonly {
@@ -21,12 +40,23 @@ export interface CatalogResponse {
     version_id: string;
     name: string;
     version_number: number;
+    state?: string;
+    status?: string;
+    thumbnail_url?: string | null;
+    profile_hash?: string | null;
+    compatibility?: string | null;
+    rights_status?: string | null;
   }[];
   readonly styles: readonly {
     style_id: string;
     version_id: string;
     name: string;
     version_number: number;
+    state?: string;
+    status?: string;
+    cover_url?: string | null;
+    profile_hash?: string | null;
+    reference_count?: number;
   }[];
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
   readonly gpu_transport: "DISABLED_UNQUALIFIED";
@@ -43,6 +73,11 @@ export interface CatalogResponse {
       readonly provider_free_groundwork_commits: readonly string[];
       readonly missing_gates: readonly string[];
     }[];
+  };
+  readonly project_defaults?: {
+    readonly generation_mode?: string;
+    readonly spend_cap_usd?: number;
+    readonly user_seed?: number | null;
   };
 }
 
@@ -144,6 +179,88 @@ interface HostedAttempt {
   readonly output_checksum_sha256: string | null;
   readonly approved_at: string | null;
   readonly preview_url: string | null;
+  readonly error_code?: string | null;
+  readonly error_message?: string | null;
+  readonly retry_of_attempt_id?: string | null;
+  readonly asset_id?: string | null;
+  readonly progress_percent?: number | null;
+  readonly queue_position?: number | null;
+  readonly timing?: HostedTiming | null;
+  readonly cost?: HostedCost | null;
+}
+
+interface HostedTiming {
+  readonly queue_wait_ms?: number | null;
+  readonly initialization_ms?: number | null;
+  readonly model_ready_ms?: number | null;
+  readonly inference_ms?: number | null;
+  readonly upload_ms?: number | null;
+  readonly render_ms?: number | null;
+  readonly end_to_end_ms?: number | null;
+}
+
+interface HostedCost {
+  readonly projected_usd?: number | null;
+  readonly settled_usd?: number | null;
+  readonly cap_usd?: number | null;
+  readonly billed_seconds?: number | null;
+  readonly provider?: string | null;
+}
+
+interface HostedQueueSnapshot {
+  readonly position?: number | null;
+  readonly ahead?: number | null;
+  readonly total?: number | null;
+  readonly status?: string | null;
+  readonly estimated_wait_ms?: number | null;
+  readonly fair_rotation?: string | null;
+}
+
+interface HostedStage {
+  readonly id?: string;
+  readonly name: string;
+  readonly status: string;
+  readonly progress_percent?: number | null;
+  readonly started_at?: string | null;
+  readonly completed_at?: string | null;
+  readonly detail?: string | null;
+  readonly eta_ms?: number | null;
+}
+
+interface HostedScaleToZero {
+  readonly state: string;
+  readonly worker_count?: number | null;
+  readonly observed_at?: string | null;
+  readonly evidence_id?: string | null;
+  readonly detail?: string | null;
+}
+
+interface HostedQualityFlag {
+  readonly id?: string;
+  readonly asset_id?: string | null;
+  readonly category: string;
+  readonly severity?: string | null;
+  readonly status: string;
+  readonly message: string;
+  readonly retryable?: boolean;
+  readonly replacement_allowed?: boolean;
+}
+
+interface HostedContactSheetItem {
+  readonly id?: string;
+  readonly asset_id?: string | null;
+  readonly image_url: string;
+  readonly label?: string | null;
+  readonly start_ms?: number | null;
+  readonly end_ms?: number | null;
+  readonly shot_role?: string | null;
+}
+
+interface HostedReviewSnapshot {
+  readonly contact_sheet?: readonly HostedContactSheetItem[];
+  readonly quality_flags?: readonly HostedQualityFlag[];
+  readonly manifest_url?: string | null;
+  readonly download_url?: string | null;
 }
 
 interface ProjectDetailResponse {
@@ -165,6 +282,15 @@ interface ProjectDetailResponse {
     readonly failed_tasks: number | string;
     readonly stage: "WAITING_FOR_GPU_QUALIFICATION" | "READY_FOR_RENDER" | "FAILED";
   };
+  readonly queue?: HostedQueueSnapshot | null;
+  readonly stages?: readonly HostedStage[];
+  readonly timing?: HostedTiming | null;
+  readonly cost?: HostedCost | null;
+  readonly scale_to_zero?: HostedScaleToZero | null;
+  readonly review?: HostedReviewSnapshot | null;
+  readonly contact_sheet?: readonly HostedContactSheetItem[];
+  readonly quality_flags?: readonly HostedQualityFlag[];
+  readonly manifest_url?: string | null;
 }
 
 interface HostedUsageResponse {
@@ -176,6 +302,65 @@ interface HostedUsageResponse {
   readonly personal_worker_seconds: number;
   readonly retained_bytes: number;
   readonly storage_policy: string;
+  readonly as_of?: string | null;
+  readonly fixed_recurring_usd?: number | null;
+  readonly projects?: readonly {
+    readonly project_id: string;
+    readonly title: string;
+    readonly attempts?: number;
+    readonly projected_usd?: number | null;
+    readonly settled_usd?: number | null;
+    readonly worker_seconds?: number | null;
+    readonly queue_wait_ms?: number | null;
+    readonly end_to_end_ms?: number | null;
+  }[];
+  readonly lanes?: readonly {
+    readonly lane: string;
+    readonly projected_usd?: number | null;
+    readonly settled_usd?: number | null;
+    readonly billed_seconds?: number | null;
+  }[];
+}
+
+interface HostedPreflightResponse {
+  readonly ok?: boolean;
+  readonly ready?: boolean;
+  readonly blockers?: readonly {
+    readonly code?: string;
+    readonly message: string;
+    readonly severity?: string;
+  }[];
+  readonly estimate?: {
+    readonly projected_usd?: number | null;
+    readonly minimum_usd?: number | null;
+    readonly maximum_usd?: number | null;
+    readonly cap_usd?: number | null;
+    readonly detail?: string | null;
+  } | null;
+  readonly revision_id?: string | null;
+}
+
+interface HostedUploadDescriptor {
+  readonly url: string;
+  readonly requiredHeaders?: Readonly<Record<string, string>>;
+  readonly asset_id?: string;
+}
+
+interface HostedPresetMutationResponse {
+  readonly id?: string;
+  readonly profile_id?: string;
+  readonly style_id?: string;
+  readonly project_id?: string;
+  readonly version_id?: string;
+  readonly state?: string;
+  readonly upload?: HostedUploadDescriptor | null;
+  readonly uploads?: readonly HostedUploadDescriptor[];
+  readonly version?: number;
+  readonly profile?: Record<string, unknown> | null;
+  readonly profile_hash?: string | null;
+  readonly thumbnail_url?: string | null;
+  readonly cover_url?: string | null;
+  readonly summary?: string | null;
 }
 
 const FILE_ACCESS_HINT =
@@ -306,6 +491,141 @@ export async function audioDurationMs(file: File): Promise<number> {
   }
 }
 
+function formatUsd(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `$${value.toFixed(2)}`
+    : "Not reported";
+}
+
+function formatMilliseconds(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "Not reported";
+  const seconds = Math.round(value / 1_000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return `${minutes}m ${String(remainder).padStart(2, "0")}s`;
+}
+
+function formatTimestamp(value: string | null | undefined): string {
+  if (!value) return "Not reported";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Not reported" : date.toLocaleString();
+}
+
+function normalizedStatus(value: string | null | undefined): string {
+  return (value ?? "NOT_REPORTED").replaceAll("_", " ");
+}
+
+function statusTone(
+  value: string | null | undefined,
+): "neutral" | "success" | "warning" | "danger" | "info" {
+  const status = (value ?? "").toUpperCase();
+  if (
+    ["SUCCEEDED", "COMPLETE", "COMPLETED", "READY", "PUBLISHED", "APPROVED", "PASSED"].includes(
+      status,
+    )
+  )
+    return "success";
+  if (["FAILED", "BLOCKED", "REJECTED", "ERROR"].includes(status)) return "danger";
+  if (["WAITING", "QUEUED", "RUNNING", "IN_PROGRESS", "REVIEW_REQUIRED"].includes(status))
+    return "warning";
+  return "info";
+}
+
+function preflightReady(value: HostedPreflightResponse | null): boolean {
+  return value?.ready === true || value?.ok === true;
+}
+
+function preflightBlockers(value: HostedPreflightResponse | null): readonly string[] {
+  return (value?.blockers ?? []).map((blocker) =>
+    blocker.code ? `${blocker.code}: ${blocker.message}` : blocker.message,
+  );
+}
+
+async function imageDimensions(file: File): Promise<{ width: number; height: number }> {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = url;
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Image dimensions could not be read."));
+    });
+    if (!image.naturalWidth || !image.naturalHeight)
+      throw new Error("Image dimensions could not be read.");
+    return { width: image.naturalWidth, height: image.naturalHeight };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function putHostedUpload(upload: HostedUploadDescriptor, file: File): Promise<void> {
+  const headers = Object.fromEntries(
+    Object.entries(upload.requiredHeaders ?? {}).filter(
+      ([key]) => key.toLowerCase() !== "content-length",
+    ),
+  );
+  const result = await bounded(
+    fetch(upload.url, { method: "PUT", headers, body: file }),
+    "Private upload timed out. Retry this step.",
+  );
+  if (!result.ok) throw new Error(`Private upload failed (HTTP ${result.status}).`);
+}
+
+function presetVersionId(
+  item: CatalogResponse["avatars"][number] | CatalogResponse["styles"][number],
+) {
+  return item.version_id;
+}
+
+function presetState(item: CatalogResponse["avatars"][number] | CatalogResponse["styles"][number]) {
+  return item.status ?? item.state ?? "READY";
+}
+
+const HUMAN_PIPELINE_STAGES = [
+  "Prepare",
+  "Transcribe",
+  "Plan",
+  "Write image prompts",
+  "Generate images",
+  "Generate avatar",
+  "Assemble",
+  "Technical check",
+  "Review",
+] as const;
+
+function fallbackHostedStages(
+  asr: HostedAttempt | undefined,
+  render: HostedAttempt | undefined,
+  generation: ProjectDetailResponse["generation"],
+): readonly HostedStage[] {
+  const asrStatus = asr?.state === "SUCCEEDED" ? "COMPLETE" : asr ? asr.state : "NOT_STARTED";
+  const planStatus = generation
+    ? "COMPLETE"
+    : asr?.state === "SUCCEEDED"
+      ? "PERSISTENCE_UNAVAILABLE"
+      : "WAITING";
+  const renderStatus =
+    render?.state ?? (generation ? normalizedStatus(generation.stage) : "WAITING");
+  return HUMAN_PIPELINE_STAGES.map((name) => ({
+    name,
+    status:
+      name === "Transcribe"
+        ? asrStatus
+        : name === "Plan"
+          ? planStatus
+          : name === "Review"
+            ? render?.state === "SUCCEEDED"
+              ? "REVIEW_REQUIRED"
+              : "WAITING"
+            : name === "Technical check" || name === "Assemble"
+              ? renderStatus
+              : "NOT_REPORTED",
+    detail: "Durable stage detail was not returned by the hosted service.",
+  }));
+}
+
 export function HostedCreateProjectScreen() {
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
@@ -315,31 +635,95 @@ export function HostedCreateProjectScreen() {
   const [avatarVersionId, setAvatarVersionId] = useState("");
   const [styleVersionId, setStyleVersionId] = useState("");
   const [voiceover, setVoiceover] = useState<File | null>(null);
+  const [extraPromptKeywords, setExtraPromptKeywords] = useState("");
+  const [applyExtraPromptKeywords, setApplyExtraPromptKeywords] = useState(false);
+  const [userSeed, setUserSeed] = useState("");
+  const [spendCapUsd, setSpendCapUsd] = useState(DEFAULT_SPEND_CAP_USD);
+  const [voiceoverMeta, setVoiceoverMeta] = useState<{
+    readonly contentType: string;
+    readonly checksumSha256: string;
+    readonly durationMs: number;
+  } | null>(null);
+  const [preflightResult, setPreflightResult] = useState<HostedPreflightResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const canGenerate = Boolean(
-    title.trim() &&
-      avatarVersionId &&
-      styleVersionId &&
-      voiceover &&
-      catalog.data?.media_worker_state === "ONLINE",
+  const contentTypeForVoiceover = (file: File): string => {
+    if (file.type === "audio/aac") return "audio/mp4";
+    if (file.type) return file.type;
+    if (/\.wav$/iu.test(file.name)) return "audio/wav";
+    if (/\.flac$/iu.test(file.name)) return "audio/flac";
+    if (/\.mp3$/iu.test(file.name)) return "audio/mpeg";
+    if (/\.(m4a|aac)$/iu.test(file.name)) return "audio/mp4";
+    return "";
+  };
+  const cap = Number(spendCapUsd);
+  const capValid = Number.isFinite(cap) && cap >= 0.1;
+  const keywordsValid = extraPromptKeywords.length <= 500;
+  const canPreflight = Boolean(
+    title.trim() && avatarVersionId && styleVersionId && voiceover && capValid && keywordsValid,
   );
-  const submit = useMutation({
+  const preflightMutation = useMutation({
     mutationFn: async () => {
       if (!voiceover) throw new Error("Choose a voiceover first.");
-      setError(null);
-      const checksum = await bounded(
+      const contentType = contentTypeForVoiceover(voiceover);
+      if (!VOICEOVER_TYPES.has(contentType))
+        throw new Error("Use WAV, FLAC, MP3, M4A, or AAC audio.");
+      if (voiceover.size > MAX_VOICEOVER_BYTES) throw new Error("Voiceover must be at most 1 GB.");
+      const checksumSha256 = await bounded(
         sha256(voiceover),
         "Voiceover checksum timed out. Choose the file again and retry.",
         15_000,
       );
       const durationMs = await bounded(
         audioDurationMs(voiceover),
-        "Voiceover duration timed out. Choose a valid WAV, FLAC, MP3, or M4A file and retry.",
+        "Voiceover duration timed out. Choose a valid WAV, FLAC, MP3, M4A, or AAC file and retry.",
         15_000,
       );
-      const contentType = voiceover.type || "audio/wav";
-      if (!["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"].includes(contentType))
-        throw new Error("Use WAV, FLAC, MP3, or M4A audio.");
+      const result = await bounded(
+        readJson<HostedPreflightResponse>("/api/v2/hosted/projects/preflight", {
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-project-preflight/v1",
+            title: title.trim(),
+            avatar_profile_version_id: avatarVersionId,
+            image_style_version_id: styleVersionId,
+            extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
+            apply_extra_prompt_keywords: applyExtraPromptKeywords,
+            user_seed: userSeed.trim() ? Number(userSeed) : null,
+            spend_cap_usd: cap,
+            voiceover: {
+              filename: voiceover.name,
+              content_type: contentType,
+              content_length: voiceover.size,
+              checksum_sha256: checksumSha256,
+              duration_ms: durationMs,
+            },
+          }),
+        }),
+        "Hosted preflight timed out. Retry the readiness check.",
+      );
+      return { result, contentType, checksumSha256, durationMs };
+    },
+    onSuccess: ({ result, contentType, checksumSha256, durationMs }) => {
+      setVoiceoverMeta({ contentType, checksumSha256, durationMs });
+      setPreflightResult(result);
+      setError(null);
+    },
+    onError: (value) => {
+      setPreflightResult(null);
+      setError(value instanceof Error ? value.message : "Hosted preflight failed.");
+    },
+  });
+  const submit = useMutation({
+    mutationFn: async () => {
+      if (!voiceover) throw new Error("Choose a voiceover first.");
+      if (!preflightReady(preflightResult))
+        throw new Error("Run a successful readiness check before generating.");
+      setError(null);
+      const metadata =
+        voiceoverMeta ??
+        (() => {
+          throw new Error("Run the readiness check again before generating.");
+        })();
       const idempotencyKey = `browser-project-${crypto.randomUUID()}`;
       const created = await bounded(
         readJson<{
@@ -353,16 +737,20 @@ export function HostedCreateProjectScreen() {
           method: "POST",
           headers: { "idempotency-key": idempotencyKey },
           body: JSON.stringify({
-            schema_version: "videoforge-hosted-project-create/v1",
+            schema_version: HOSTED_CREATE_SCHEMA,
             title: title.trim(),
             avatar_profile_version_id: avatarVersionId,
             image_style_version_id: styleVersionId,
+            extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
+            apply_extra_prompt_keywords: applyExtraPromptKeywords,
+            user_seed: userSeed.trim() ? Number(userSeed) : null,
+            spend_cap_usd: cap,
             voiceover: {
               filename: voiceover.name,
-              content_type: contentType,
+              content_type: metadata.contentType,
               content_length: voiceover.size,
-              checksum_sha256: checksum,
-              duration_ms: durationMs,
+              checksum_sha256: metadata.checksumSha256,
+              duration_ms: metadata.durationMs,
             },
           }),
         }),
@@ -434,9 +822,9 @@ export function HostedCreateProjectScreen() {
   return (
     <>
       <PageHeader
-        eyebrow="Private hosted staging"
+        eyebrow="Private hosted generation"
         title="Create Project"
-        description="Your computer performs transcription and rendering."
+        description="Review the exact inputs, cap, and measured readiness before generating once."
       />
       {catalog.data.media_worker_state !== "ONLINE" ? (
         <div className="notice" role="status">
@@ -451,26 +839,49 @@ export function HostedCreateProjectScreen() {
             <input
               value={title}
               maxLength={240}
-              onChange={(event) => setTitle(event.target.value)}
+              onChange={(event) => {
+                setTitle(event.target.value);
+                setPreflightResult(null);
+              }}
             />
           </label>
           <label className="field">
             <span>Final English voiceover</span>
             <input
+              aria-label="Final English voiceover"
               type="file"
               accept="audio/wav,audio/flac,audio/mpeg,audio/mp4,.wav,.flac,.mp3,.m4a"
               onChange={(event) => {
                 const selected = event.target.files?.[0] ?? null;
+                setPreflightResult(null);
+                setVoiceoverMeta(null);
+                if (!selected) {
+                  setVoiceover(null);
+                  setError(FILE_ACCESS_HINT);
+                  return;
+                }
+                if (selected.size > MAX_VOICEOVER_BYTES) {
+                  setVoiceover(null);
+                  setError("Voiceover must be at most 1 GB.");
+                  return;
+                }
                 setVoiceover(selected);
-                setError(selected ? null : FILE_ACCESS_HINT);
+                setError(null);
               }}
             />
+            <small>
+              WAV, MP3, M4A/AAC, or FLAC · 10 seconds–60 minutes · at most 1 GB
+              {voiceover ? ` · ${(voiceover.size / 1_000_000).toFixed(1)} MB selected` : ""}
+            </small>
           </label>
           <label className="field">
             <span>Avatar Profile</span>
             <select
               value={avatarVersionId}
-              onChange={(event) => setAvatarVersionId(event.target.value)}
+              onChange={(event) => {
+                setAvatarVersionId(event.target.value);
+                setPreflightResult(null);
+              }}
             >
               <option value="">Choose a ready avatar</option>
               {catalog.data.avatars.map((avatar) => (
@@ -484,7 +895,10 @@ export function HostedCreateProjectScreen() {
             <span>Image Style</span>
             <select
               value={styleVersionId}
-              onChange={(event) => setStyleVersionId(event.target.value)}
+              onChange={(event) => {
+                setStyleVersionId(event.target.value);
+                setPreflightResult(null);
+              }}
             >
               <option value="">Choose a published style</option>
               {catalog.data.styles.map((style) => (
@@ -494,6 +908,69 @@ export function HostedCreateProjectScreen() {
               ))}
             </select>
           </label>
+          <label className="toggle-row">
+            <span>
+              <strong>Use extra image-prompt keywords</strong>
+              <small>
+                Applied to image prompts only; the exact toggle is pinned into the revision.
+              </small>
+            </span>
+            <input
+              type="checkbox"
+              checked={applyExtraPromptKeywords}
+              onChange={(event) => {
+                setApplyExtraPromptKeywords(event.target.checked);
+                setPreflightResult(null);
+              }}
+            />
+          </label>
+          {applyExtraPromptKeywords ? (
+            <label className="field">
+              <span>Extra prompt keywords</span>
+              <textarea
+                value={extraPromptKeywords}
+                maxLength={500}
+                rows={3}
+                onChange={(event) => {
+                  setExtraPromptKeywords(event.target.value);
+                  setPreflightResult(null);
+                }}
+                placeholder="natural light, tactile materials"
+              />
+              <small>{extraPromptKeywords.length}/500 characters</small>
+            </label>
+          ) : null}
+          <div className="grid grid-2">
+            <label className="field">
+              <span>Spend cap (USD)</span>
+              <input
+                inputMode="decimal"
+                type="number"
+                min="0.1"
+                step="0.01"
+                value={spendCapUsd}
+                onChange={(event) => {
+                  setSpendCapUsd(event.target.value);
+                  setPreflightResult(null);
+                }}
+              />
+              <small>Finite cap reserved before provider dispatch.</small>
+            </label>
+            <label className="field">
+              <span>User seed (optional)</span>
+              <input
+                inputMode="numeric"
+                type="number"
+                value={userSeed}
+                onChange={(event) => {
+                  setUserSeed(event.target.value);
+                  setPreflightResult(null);
+                }}
+                placeholder="Deterministic variation"
+              />
+              <small>Leave blank for the workspace default.</small>
+            </label>
+          </div>
         </Panel>
         <Panel eyebrow="Readiness" heading="Generation check">
           <p>
@@ -524,12 +1001,76 @@ export function HostedCreateProjectScreen() {
           {catalog.data.styles.length === 0 ? (
             <p className="validation validation-danger">Publish an Image Style first.</p>
           ) : null}
+          {preflightResult ? (
+            <div
+              className={
+                preflightReady(preflightResult)
+                  ? "validation validation-success"
+                  : "validation validation-danger"
+              }
+            >
+              <strong>
+                {preflightReady(preflightResult) ? "Ready to generate" : "Generation blocked"}
+              </strong>
+              {preflightResult.estimate ? (
+                <span>
+                  {" "}
+                  Projected {formatUsd(preflightResult.estimate.projected_usd)}
+                  {preflightResult.estimate.minimum_usd !== undefined ||
+                  preflightResult.estimate.maximum_usd !== undefined
+                    ? ` · range ${formatUsd(preflightResult.estimate.minimum_usd)}–${formatUsd(preflightResult.estimate.maximum_usd)}`
+                    : ""}
+                </span>
+              ) : (
+                <span> Estimate not reported.</span>
+              )}
+            </div>
+          ) : null}
+          {preflightBlockers(preflightResult).length > 0 ? (
+            <div className="validation validation-danger">
+              <strong>Resolve these blockers:</strong>
+              <ul>
+                {preflightBlockers(preflightResult).map((blocker) => (
+                  <li key={blocker}>{blocker}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {!capValid ? (
+            <p className="validation validation-danger">
+              Enter a finite spend cap of at least $0.10.
+            </p>
+          ) : null}
+          {!keywordsValid ? (
+            <p className="validation validation-danger">
+              Extra prompt keywords must be at most 500 characters.
+            </p>
+          ) : null}
+          {voiceoverMeta ? (
+            <p className="helper">
+              Verified locally: {formatMilliseconds(voiceoverMeta.durationMs)} ·{" "}
+              {voiceoverMeta.contentType} · {voiceoverMeta.checksumSha256}
+            </p>
+          ) : null}
           <Button
-            busy={submit.isPending}
-            disabled={!canGenerate || submit.isPending}
-            onClick={() => submit.mutate()}
+            busy={preflightMutation.isPending || submit.isPending}
+            disabled={
+              (!canPreflight && !preflightReady(preflightResult)) ||
+              preflightMutation.isPending ||
+              submit.isPending ||
+              (preflightReady(preflightResult) && catalog.data.media_worker_state !== "ONLINE")
+            }
+            onClick={() => {
+              if (preflightReady(preflightResult)) submit.mutate();
+              else preflightMutation.mutate();
+            }}
           >
-            <FileAudio size={16} /> Create and transcribe
+            {preflightReady(preflightResult) ? <FileAudio size={16} /> : <Check size={16} />}
+            {preflightReady(preflightResult)
+              ? "Generate video"
+              : catalog.data.media_worker_state === "ONLINE"
+                ? "Check estimate & readiness"
+                : "Create and transcribe"}
           </Button>
         </Panel>
       </div>
@@ -545,9 +1086,8 @@ export function HostedCreateProjectScreen() {
 type HostedPresetHubKind = "avatars" | "styles";
 
 /**
- * The hosted catalog is deliberately smaller than the fixture catalog: it exposes only the
- * tenant-owned, generation-ready ids needed by the hosted project flow. Keeping the hosted hub
- * read-only avoids accidentally routing staging users through fixture-only mutation APIs.
+ * The hosted catalog exposes tenant-owned immutable versions and routes creation through the
+ * dedicated preset wizard; project creation never accepts a per-project upload.
  */
 function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const catalog = useQuery({
@@ -591,21 +1131,34 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         eyebrow="Private hosted staging"
         title={title}
         description={`Only ${itemLabel}s owned by this account can be used for generation.`}
+        actions={
+          <Link className="button button-primary" to={isAvatar ? "/avatars/new" : "/styles/new"}>
+            <Upload size={16} /> New {itemLabel}
+          </Link>
+        }
       />
       <div className="notice" role="status">
-        <strong>Hosted catalog is read-only.</strong> Generation uses the exact tenant-owned,
-        approved version shown here; fixture-only creation routes are not available in staging.
+        <strong>Tenant-private immutable versions.</strong> New source uploads are validated,
+        reviewed, and approved before they become selectable by a project.
       </div>
       <Panel eyebrow="Tenant-private catalog" heading={`Ready ${itemLabel}s`}>
         {items.length === 0 ? (
           <EmptyState
             icon={<Icon />}
             title={`No ready ${itemLabel}s yet`}
-            body={`This account has no tenant-owned ${itemLabel} fixture available. An activation owner must provision and approve the bounded V2-06 fixture before a project can be generated.`}
+            body={`This account has no ready ${itemLabel} yet. Create one here and complete its private review before generation. If hosted creation is not enabled for this account, an activation owner must provision a bounded fixture.`}
             action={
-              <Link className="button button-secondary" to="/settings">
-                Open Settings
-              </Link>
+              <div className="cluster">
+                <Link
+                  className="button button-primary"
+                  to={isAvatar ? "/avatars/new" : "/styles/new"}
+                >
+                  Create {itemLabel}
+                </Link>
+                <Link className="button button-secondary" to="/settings">
+                  Open Settings
+                </Link>
+              </div>
             }
           />
         ) : (
@@ -617,8 +1170,19 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
                   <small>
                     Tenant-owned · version {item.version_number} · {item.version_id}
                   </small>
+                  {item.profile_hash ? <small>Profile hash · {item.profile_hash}</small> : null}
                 </div>
-                <Badge tone="success">{isAvatar ? "READY" : "PUBLISHED"}</Badge>
+                <div className="cluster">
+                  <Badge tone={statusTone(presetState(item))}>
+                    {normalizedStatus(presetState(item))}
+                  </Badge>
+                  <a
+                    className="button button-ghost"
+                    href={`${isAvatar ? "/avatars/new" : "/styles/new"}?parentId=${encodeURIComponent(presetVersionId(item))}`}
+                  >
+                    New version
+                  </a>
+                </div>
               </article>
             ))}
           </div>
@@ -677,6 +1241,558 @@ export function HostedPresetCreationUnavailableScreen({ kind }: { kind: HostedPr
   );
 }
 
+export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind }) {
+  const isAvatar = kind === "avatars";
+  const title = isAvatar ? "New avatar" : "New image style";
+  const itemLabel = isAvatar ? "avatar" : "style";
+  const params = new URLSearchParams(window.location.search);
+  const returnTo = params.get("returnTo") || (isAvatar ? "/avatars" : "/styles");
+  const parentId = params.get("parentId");
+  const [step, setStep] = useState(1);
+  const [name, setName] = useState("");
+  const [avatarSource, setAvatarSource] = useState<{
+    readonly file: File;
+    readonly objectUrl: string;
+    readonly width: number;
+    readonly height: number;
+    readonly checksum: string;
+  } | null>(null);
+  const [styleSources, setStyleSources] = useState<
+    readonly {
+      readonly file: File;
+      readonly objectUrl: string;
+      readonly checksum: string;
+    }[]
+  >([]);
+  const [rights, setRights] = useState(false);
+  const [likeness, setLikeness] = useState(false);
+  const [disclosure, setDisclosure] = useState(false);
+  const [profileNotes, setProfileNotes] = useState("");
+  const [created, setCreated] = useState<HostedPresetMutationResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const catalog = useQuery({
+    queryKey: ["hosted-project-catalog"],
+    queryFn: readHostedCatalog,
+  });
+  const items = catalog.data ? (isAvatar ? catalog.data.avatars : catalog.data.styles) : [];
+  const duplicateName = items.some(
+    (item) => item.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
+  );
+
+  useEffect(
+    () => () => {
+      if (avatarSource) URL.revokeObjectURL(avatarSource.objectUrl);
+      for (const source of styleSources) URL.revokeObjectURL(source.objectUrl);
+    },
+    [avatarSource, styleSources],
+  );
+
+  function cancel() {
+    window.location.assign(returnTo);
+  }
+
+  async function chooseAvatar(file?: File) {
+    if (!file) return;
+    setError(null);
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError("Avatar source must be at most 20 MB.");
+      return;
+    }
+    try {
+      const dimensions = await imageDimensions(file);
+      if (dimensions.width < 512 || dimensions.height < 512)
+        throw new Error("Avatar source must be at least 512×512 pixels.");
+      const checksum = await bounded(sha256(file), "Avatar checksum timed out. Try again.", 15_000);
+      if (avatarSource) URL.revokeObjectURL(avatarSource.objectUrl);
+      setAvatarSource({
+        file,
+        objectUrl: URL.createObjectURL(file),
+        ...dimensions,
+        checksum,
+      });
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Avatar source validation failed.");
+    }
+  }
+
+  async function chooseStyleSources(selected: FileList | null) {
+    setError(null);
+    for (const source of styleSources) URL.revokeObjectURL(source.objectUrl);
+    setStyleSources([]);
+    const files = Array.from(selected ?? []);
+    if (files.length < MIN_STYLE_REFERENCES || files.length > MAX_STYLE_REFERENCES) {
+      if (files.length > 0)
+        setError(`Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} reference images.`);
+      return;
+    }
+    const oversized = files.find((file) => file.size > MAX_STYLE_REFERENCE_BYTES);
+    if (oversized) {
+      setError("Each style reference must be at most 20 MB.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const checksums = await Promise.all(
+        files.map((file) =>
+          bounded(sha256(file), "Style reference checksum timed out. Try again.", 15_000),
+        ),
+      );
+      setStyleSources(
+        files.map((file, index) => ({
+          file,
+          checksum: checksums[index]!,
+          objectUrl: URL.createObjectURL(file),
+        })),
+      );
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Style reference validation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function resourceId(value: HostedPresetMutationResponse): string {
+    const id = value.id ?? value.profile_id ?? value.style_id ?? value.version_id;
+    if (!id) throw new Error(`Hosted ${itemLabel} response did not include an id.`);
+    return id;
+  }
+
+  async function createDraft() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (!name.trim()) throw new Error(`Enter a ${itemLabel} name.`);
+      if (duplicateName) throw new Error(`Use a unique ${itemLabel} name.`);
+      if (isAvatar && !avatarSource) throw new Error("Choose one private avatar source.");
+      if (!isAvatar && styleSources.length < MIN_STYLE_REFERENCES)
+        throw new Error(
+          `Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} private references.`,
+        );
+      const body = isAvatar
+        ? {
+            schema_version: "videoforge-hosted-avatar-create/v1",
+            name: name.trim(),
+            parent_profile_id: parentId,
+            source: {
+              filename: avatarSource!.file.name,
+              content_type: avatarSource!.file.type || "image/png",
+              content_length: avatarSource!.file.size,
+              checksum_sha256: avatarSource!.checksum,
+              width: avatarSource!.width,
+              height: avatarSource!.height,
+            },
+            rights_attested: rights,
+            likeness_animation_consent: likeness,
+          }
+        : {
+            schema_version: "videoforge-hosted-style-create/v1",
+            name: name.trim(),
+            parent_style_id: parentId,
+            references: styleSources.map((source, index) => ({
+              filename: source.file.name,
+              content_type: source.file.type || "image/png",
+              content_length: source.file.size,
+              checksum_sha256: source.checksum,
+              order_index: index,
+            })),
+            rights_attested: rights,
+            processing_disclosure_acknowledged: disclosure,
+          };
+      const endpoint = isAvatar ? "/api/v2/hosted/avatars" : "/api/v2/hosted/styles";
+      const draft = await readJson<HostedPresetMutationResponse>(endpoint, {
+        method: "POST",
+        headers: { "idempotency-key": `hosted-${kind}-create-${crypto.randomUUID()}` },
+        body: JSON.stringify(body),
+      });
+      const uploads = draft.uploads ?? (draft.upload ? [draft.upload] : []);
+      if (isAvatar && uploads[0] && avatarSource)
+        await putHostedUpload(uploads[0], avatarSource.file);
+      if (!isAvatar) {
+        if (uploads.length > 0 && uploads.length !== styleSources.length)
+          throw new Error(
+            "Hosted style upload instructions did not match the selected references.",
+          );
+        for (const [index, upload] of uploads.entries()) {
+          const source = styleSources[index];
+          if (source) await putHostedUpload(upload, source.file);
+        }
+      }
+      const id = resourceId(draft);
+      const committed = await readJson<HostedPresetMutationResponse>(
+        `${endpoint}/${encodeURIComponent(id)}/commit`,
+        { method: "POST", body: "{}" },
+      );
+      setCreated({ ...draft, ...committed });
+      setStep(3);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : `Hosted ${itemLabel} could not be saved.`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approveAvatar() {
+    if (!created || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const id = resourceId(created);
+      await readJson(`/api/v2/hosted/avatars/${encodeURIComponent(id)}/approve`, {
+        method: "POST",
+        body: JSON.stringify({
+          schema_version: "videoforge-hosted-avatar-approval/v1",
+          rights_attested: rights,
+          likeness_animation_consent: likeness,
+        }),
+      });
+      await catalog.refetch();
+      window.location.assign(returnTo);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Avatar approval failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function analyzeStyle() {
+    if (!created || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const id = resourceId(created);
+      const analyzed = await readJson<HostedPresetMutationResponse>(
+        `/api/v2/hosted/styles/${encodeURIComponent(id)}/analyze`,
+        {
+          method: "POST",
+          body: JSON.stringify({ schema_version: "videoforge-hosted-style-analysis/v1" }),
+        },
+      );
+      setCreated({ ...created, ...analyzed });
+      setStep(4);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Style analysis failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function publishStyle() {
+    if (!created || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const id = resourceId(created);
+      const candidateProfile = created.profile
+        ? { ...created.profile, review_notes: profileNotes.trim() }
+        : undefined;
+      await readJson(`/api/v2/hosted/styles/${encodeURIComponent(id)}/publish`, {
+        method: "POST",
+        body: JSON.stringify({
+          schema_version: "videoforge-hosted-style-publish/v1",
+          rights_attested: rights,
+          processing_disclosure_acknowledged: disclosure,
+          candidate_profile: candidateProfile,
+        }),
+      });
+      await catalog.refetch();
+      window.location.assign(returnTo);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "Style publication failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const profileSummary =
+    (typeof created?.summary === "string" && created.summary) ||
+    (typeof created?.profile?.summary === "string" && created.profile.summary) ||
+    "No analysis summary was returned; publication remains blocked until review data is available.";
+
+  return (
+    <>
+      <PageHeader
+        eyebrow={`${title} · step ${step} of ${isAvatar ? 3 : 4}`}
+        title={title}
+        description={
+          parentId
+            ? `Create an immutable new version from ${parentId}. Existing project pins remain unchanged.`
+            : `Upload, review, and approve a private reusable ${itemLabel}.`
+        }
+        actions={
+          <Button variant="ghost" disabled={busy} onClick={cancel}>
+            Cancel
+          </Button>
+        }
+      />
+      <Panel
+        eyebrow="Tenant-private source workflow"
+        heading={
+          step === 1
+            ? "Name and upload"
+            : step === 2
+              ? "Technical review"
+              : isAvatar
+                ? "Rights and likeness approval"
+                : step === 3
+                  ? "Analyze references"
+                  : "Review and publish"
+        }
+      >
+        {step === 1 ? (
+          <div className="stack">
+            <label className="field">
+              <span>{isAvatar ? "Avatar Profile name" : "Image Style name"}</span>
+              <input
+                value={name}
+                maxLength={120}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={isAvatar ? "Maya — studio presenter" : "Grounded documentary"}
+              />
+            </label>
+            {isAvatar ? (
+              <label className="dropzone">
+                <input
+                  aria-label="Upload avatar source"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={busy}
+                  onChange={(event) => void chooseAvatar(event.target.files?.[0])}
+                />
+                {avatarSource ? (
+                  <img src={avatarSource.objectUrl} alt="Selected avatar source" />
+                ) : (
+                  <Upload size={27} />
+                )}
+                <span>
+                  <strong>{avatarSource?.file.name ?? "Choose one private centered source"}</strong>
+                  {avatarSource
+                    ? `${avatarSource.width}×${avatarSource.height} · checksum verified`
+                    : "JPEG, PNG, or WebP · at least 512×512 · 20 MB max"}
+                </span>
+              </label>
+            ) : (
+              <label className="dropzone">
+                <input
+                  aria-label="Upload style references"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  disabled={busy}
+                  onChange={(event) => void chooseStyleSources(event.target.files)}
+                />
+                <Images size={27} />
+                <span>
+                  <strong>
+                    {styleSources.length > 0
+                      ? `${styleSources.length} references selected`
+                      : "Choose private style references"}
+                  </strong>
+                  {"JPEG, PNG, or WebP · 3–8 references · 20 MB each"}
+                </span>
+              </label>
+            )}
+            {duplicateName ? (
+              <div className="validation validation-danger">Use a unique {itemLabel} name.</div>
+            ) : null}
+            <Button
+              disabled={
+                !name.trim() ||
+                duplicateName ||
+                (isAvatar ? !avatarSource : styleSources.length < MIN_STYLE_REFERENCES)
+              }
+              onClick={() => setStep(2)}
+            >
+              Review source <ArrowRight size={16} />
+            </Button>
+          </div>
+        ) : null}
+        {step === 2 ? (
+          <div className="stack">
+            {isAvatar && avatarSource ? (
+              <img
+                className="avatar-source-preview"
+                src={avatarSource.objectUrl}
+                alt="Avatar source preview"
+              />
+            ) : null}
+            {!isAvatar ? (
+              <div className="card-grid style-card-grid">
+                {styleSources.map((source) => (
+                  <img key={source.checksum} src={source.objectUrl} alt={source.file.name} />
+                ))}
+              </div>
+            ) : null}
+            <div className="validation validation-success">
+              <Check size={16} /> File signatures, browser decode, dimensions, and checksums passed.
+            </div>
+            <div className="notice notice-warning">
+              <strong>Manual review required.</strong> Confirm that the source is centered, usable,
+              and free of unsupported text, logos, or watermarks. VideoForge does not infer rights
+              or likeness from pixels.
+            </div>
+            <Button variant="ghost" disabled={busy} onClick={() => setStep(1)}>
+              Back
+            </Button>
+            <Button disabled={busy} onClick={() => setStep(3)}>
+              Continue to approval <ArrowRight size={16} />
+            </Button>
+          </div>
+        ) : null}
+        {step === 3 && isAvatar ? (
+          <div className="stack">
+            <label className="toggle-row">
+              <span>
+                <strong>Image-use rights</strong>
+                <small>
+                  I own, license, or otherwise have a documented basis to use this source.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                checked={rights}
+                onChange={(event) => setRights(event.target.checked)}
+              />
+            </label>
+            <label className="toggle-row">
+              <span>
+                <strong>Likeness animation consent</strong>
+                <small>I have the right and consent to animate the depicted likeness.</small>
+              </span>
+              <input
+                type="checkbox"
+                checked={likeness}
+                onChange={(event) => setLikeness(event.target.checked)}
+              />
+            </label>
+            <Disclosure summary="What is saved">
+              <p className="helper">
+                Only the tenant-private source lineage, checksums, approved version, and
+                compatibility evidence are retained.
+              </p>
+            </Disclosure>
+            <Button variant="ghost" disabled={busy} onClick={() => setStep(2)}>
+              Back
+            </Button>
+            <Button
+              busy={busy}
+              disabled={!rights || !likeness || !created}
+              onClick={() => void approveAvatar()}
+            >
+              <ShieldCheck size={16} /> Approve and add to Avatar Hub
+            </Button>
+            {!created ? (
+              <Button variant="secondary" busy={busy} onClick={() => void createDraft()}>
+                Save private draft
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {step === 3 && !isAvatar ? (
+          <div className="stack">
+            <div className="notice">
+              <strong>References are uploaded privately before analysis.</strong> Analysis runs once
+              for this immutable draft version and never during ordinary video generation.
+            </div>
+            <label className="toggle-row">
+              <span>
+                <strong>Image-use rights</strong>
+                <small>
+                  I own, license, or otherwise have a documented basis to use these references.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                checked={rights}
+                onChange={(event) => setRights(event.target.checked)}
+              />
+            </label>
+            <label className="toggle-row">
+              <span>
+                <strong>Processing disclosure</strong>
+                <small>
+                  I understand normalized references are processed to derive this style profile.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                checked={disclosure}
+                onChange={(event) => setDisclosure(event.target.checked)}
+              />
+            </label>
+            <Button variant="ghost" disabled={busy} onClick={() => setStep(2)}>
+              Back
+            </Button>
+            {!created ? (
+              <Button
+                busy={busy}
+                disabled={!rights || !disclosure}
+                onClick={() => void createDraft()}
+              >
+                Upload and prepare analysis <ArrowRight size={16} />
+              </Button>
+            ) : (
+              <Button busy={busy} onClick={() => void analyzeStyle()}>
+                Analyze this draft once <ArrowRight size={16} />
+              </Button>
+            )}
+          </div>
+        ) : null}
+        {step === 4 && !isAvatar ? (
+          <div className="stack">
+            <div className="validation validation-success">
+              <Check size={16} /> Exact draft analysis returned for review.
+            </div>
+            <p>{profileSummary}</p>
+            {created?.profile_hash ? <small>Profile hash · {created.profile_hash}</small> : null}
+            <label className="field">
+              <span>Review notes (optional)</span>
+              <textarea
+                rows={3}
+                value={profileNotes}
+                onChange={(event) => setProfileNotes(event.target.value)}
+                placeholder="Keep natural practical light and tactile material detail."
+              />
+            </label>
+            <label className="toggle-row">
+              <span>
+                <strong>Confirm rights and disclosure</strong>
+                <small>
+                  Publish only after reviewing the generated profile and reference handling.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                checked={rights && disclosure}
+                onChange={(event) => {
+                  setRights(event.target.checked);
+                  setDisclosure(event.target.checked);
+                }}
+              />
+            </label>
+            <Button variant="ghost" disabled={busy} onClick={() => setStep(3)}>
+              Back
+            </Button>
+            <Button
+              busy={busy}
+              disabled={!rights || !disclosure || !created?.profile}
+              onClick={() => void publishStyle()}
+            >
+              <ShieldCheck size={16} /> Publish immutable style version
+            </Button>
+          </div>
+        ) : null}
+      </Panel>
+      {error ? (
+        <div className="validation validation-danger" role="alert">
+          {error}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -725,6 +1841,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       readJson(`/api/v2/cpu-attempts/${attemptId}`, { method: "POST", body: "{}" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
+  const retry = useMutation({
+    mutationFn: ({ attemptId, assetId }: { attemptId: string; assetId?: string | null }) =>
+      readJson(`/api/v2/hosted/projects/${projectId}/retry`, {
+        method: "POST",
+        body: JSON.stringify({ attempt_id: attemptId, asset_id: assetId ?? null }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
   if (query.isPending)
     return (
       <Panel eyebrow="Hosted project" heading="Loading progress">
@@ -744,6 +1868,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       />
     );
+  const stages = query.data.stages?.length
+    ? query.data.stages
+    : fallbackHostedStages(asr, render, query.data.generation);
+  const timing = query.data.timing;
+  const cost = query.data.cost;
+  const queue = query.data.queue;
+  const scaleToZero = query.data.scale_to_zero;
   return (
     <>
       <PageHeader
@@ -769,8 +1900,70 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           value={String(query.data.attempts.length)}
           detail="ASR and render"
         />
+        <Metric
+          label="Queue position"
+          value={queue?.position ?? "Not reported"}
+          detail={
+            queue?.total ? `${queue.total} private entries` : "fair rotation detail unavailable"
+          }
+        />
+        <Metric
+          label="ETA"
+          value={formatMilliseconds(queue?.estimated_wait_ms)}
+          detail={queue?.fair_rotation ?? "durable estimate only"}
+        />
+        <Metric
+          label="Projected cost"
+          value={formatUsd(cost?.projected_usd)}
+          detail={cost?.cap_usd === undefined ? "not reported" : `cap ${formatUsd(cost.cap_usd)}`}
+        />
+        <Metric
+          label="Settled cost"
+          value={formatUsd(cost?.settled_usd)}
+          detail="provider receipt"
+        />
         <Metric label="GPU" value="Disabled" detail="V2-06 firewall" />
       </div>
+      <Panel eyebrow="Queue and cost truth" heading="Durable operating details">
+        <div className="detail-facts">
+          <span>
+            <small>Queue</small>
+            <strong>
+              {queue?.status ? normalizedStatus(queue.status) : "Not reported"}
+              {queue?.ahead !== undefined && queue.ahead !== null ? ` · ${queue.ahead} ahead` : ""}
+            </strong>
+          </span>
+          <span>
+            <small>Queue wait</small>
+            <strong>{formatMilliseconds(timing?.queue_wait_ms)}</strong>
+          </span>
+          <span>
+            <small>Initialization / model ready</small>
+            <strong>
+              {formatMilliseconds(timing?.initialization_ms)} /{" "}
+              {formatMilliseconds(timing?.model_ready_ms)}
+            </strong>
+          </span>
+          <span>
+            <small>Inference / upload</small>
+            <strong>
+              {formatMilliseconds(timing?.inference_ms)} / {formatMilliseconds(timing?.upload_ms)}
+            </strong>
+          </span>
+          <span>
+            <small>End to end</small>
+            <strong>{formatMilliseconds(timing?.end_to_end_ms)}</strong>
+          </span>
+          <span>
+            <small>Billed seconds</small>
+            <strong>
+              {cost?.billed_seconds === undefined || cost.billed_seconds === null
+                ? "Not reported"
+                : `${cost.billed_seconds}s`}
+            </strong>
+          </span>
+        </div>
+      </Panel>
       <Panel eyebrow="Exact attempts" heading="Progress">
         <div className="entity-list">
           {query.data.attempts.map((attempt) => (
@@ -780,6 +1973,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   {attempt.kind === "ASR" ? "Transcribe voiceover" : "Render final video"}
                 </strong>
                 <small>{attempt.id}</small>
+                {attempt.error_message ? <small>{attempt.error_message}</small> : null}
+                {attempt.timing ? (
+                  <small>
+                    Queue {formatMilliseconds(attempt.timing.queue_wait_ms)} · end to end{" "}
+                    {formatMilliseconds(attempt.timing.end_to_end_ms)}
+                  </small>
+                ) : null}
               </div>
               <Badge
                 tone={
@@ -804,34 +2004,54 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   {attempt.state === "CANCEL_REQUESTED" ? "Settle cancellation" : "Cancel"}
                 </Button>
               ) : null}
+              {attempt.progress_percent !== undefined && attempt.progress_percent !== null ? (
+                <div className="attempt-progress">
+                  <ProgressBar
+                    value={attempt.progress_percent}
+                    label={`${attempt.kind} progress`}
+                  />
+                  <small>{Math.round(attempt.progress_percent)}%</small>
+                </div>
+              ) : null}
+              {attempt.state === "FAILED" ? (
+                <Button
+                  variant="secondary"
+                  busy={retry.isPending && retry.variables?.attemptId === attempt.id}
+                  onClick={() => retry.mutate({ attemptId: attempt.id, assetId: attempt.asset_id })}
+                >
+                  Retry this stage
+                </Button>
+              ) : null}
             </article>
           ))}
         </div>
       </Panel>
       <Panel eyebrow="Hosted pipeline" heading="Generation stages">
         <div className="entity-list">
-          <article className="entity-row">
-            <div>
-              <strong>Transcription</strong>
-              <small>Private word timing and exact source/model lineage</small>
-            </div>
-            <Badge tone={asr?.state === "SUCCEEDED" ? "success" : "info"}>
-              {asr?.state === "SUCCEEDED" ? "COMPLETE" : asr ? asr.state : "NOT STARTED"}
-            </Badge>
-          </article>
-          <article className="entity-row">
-            <div>
-              <strong>Deterministic planning</strong>
-              <small>scheduler-v2 timeline and tenant-owned generation tasks</small>
-            </div>
-            <Badge tone={query.data.generation ? "success" : "info"}>
-              {query.data.generation
-                ? "COMPLETE"
-                : asr?.state === "SUCCEEDED"
-                  ? "PERSISTENCE UNAVAILABLE"
-                  : "WAITING FOR TRANSCRIPTION"}
-            </Badge>
-          </article>
+          {stages.map((stage) => (
+            <article className="entity-row" key={stage.id ?? stage.name}>
+              <div>
+                <strong>{stage.name}</strong>
+                <small>{stage.detail ?? "Durable stage detail was not returned."}</small>
+                {stage.started_at || stage.completed_at ? (
+                  <small>
+                    Started {formatTimestamp(stage.started_at)} · completed{" "}
+                    {formatTimestamp(stage.completed_at)}
+                  </small>
+                ) : null}
+                {stage.progress_percent !== undefined && stage.progress_percent !== null ? (
+                  <div className="attempt-progress">
+                    <ProgressBar value={stage.progress_percent} label={`${stage.name} progress`} />
+                    <small>{Math.round(stage.progress_percent)}%</small>
+                  </div>
+                ) : null}
+              </div>
+              <Badge tone={statusTone(stage.status)}>{normalizedStatus(stage.status)}</Badge>
+              {stage.eta_ms !== undefined && stage.eta_ms !== null ? (
+                <small>ETA {formatMilliseconds(stage.eta_ms)}</small>
+              ) : null}
+            </article>
+          ))}
           {query.data.gpu_readiness.lanes.map((lane) => (
             <article className="entity-row" key={lane.lane}>
               <div>
@@ -862,6 +2082,33 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </article>
         </div>
       </Panel>
+      <Panel eyebrow="Compute lifecycle" heading="Scale-to-zero evidence">
+        {scaleToZero ? (
+          <div className="detail-facts">
+            <span>
+              <small>State</small>
+              <strong>{normalizedStatus(scaleToZero.state)}</strong>
+            </span>
+            <span>
+              <small>Workers observed</small>
+              <strong>{scaleToZero.worker_count ?? "Not reported"}</strong>
+            </span>
+            <span>
+              <small>Observed at</small>
+              <strong>{formatTimestamp(scaleToZero.observed_at)}</strong>
+            </span>
+            <span>
+              <small>Evidence</small>
+              <strong>{scaleToZero.evidence_id ?? "Not reported"}</strong>
+            </span>
+          </div>
+        ) : (
+          <p className="helper">
+            Scale-to-zero evidence will appear after the worker reports a durable terminal
+            observation. No worker count is inferred from a healthy process.
+          </p>
+        )}
+      </Panel>
       {!asr ? (
         <div className="notice" role="status">
           <strong>Project is ready for durable transcription.</strong>
@@ -887,6 +2134,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
+        </div>
+      ) : null}
+      {retry.isError ? (
+        <div className="validation validation-danger" role="alert">
+          {retry.error.message}
         </div>
       ) : null}
       <Button variant="secondary" onClick={() => void query.refetch()}>
@@ -917,6 +2169,19 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
+  const retry = useMutation({
+    mutationFn: ({ attemptId, assetId }: { attemptId: string; assetId?: string | null }) =>
+      readJson(`/api/v2/hosted/projects/${projectId}/retry`, {
+        method: "POST",
+        body: JSON.stringify({ attempt_id: attemptId, asset_id: assetId ?? null }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
+  const review = query.data?.review;
+  const contactSheet = review?.contact_sheet ?? query.data?.contact_sheet ?? [];
+  const qualityFlags = review?.quality_flags ?? query.data?.quality_flags ?? [];
+  const manifestUrl = review?.manifest_url ?? query.data?.manifest_url ?? null;
+  const downloadUrl = review?.download_url ?? candidate?.preview_url ?? null;
   if (query.isPending)
     return (
       <Panel eyebrow="Review" heading="Loading candidate">
@@ -964,17 +2229,98 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
           <Badge tone={candidate.approved_at ? "success" : "warning"}>
             {candidate.approved_at ? "APPROVED" : "REVIEW NEEDED"}
           </Badge>
+          {candidate.approved_at && downloadUrl ? (
+            <a
+              className="button button-secondary"
+              href={downloadUrl}
+              download="videoforge-output.mp4"
+            >
+              <Download size={16} /> Download MP4
+            </a>
+          ) : (
+            <Button variant="secondary" disabled>
+              <Download size={16} /> Download after approval
+            </Button>
+          )}
+        </div>
+      </Panel>
+      <Panel eyebrow="Chronological review" heading="Contact sheet">
+        {contactSheet.length > 0 ? (
+          <div className="card-grid style-card-grid">
+            {contactSheet.map((item, index) => (
+              <figure key={item.id ?? item.asset_id ?? `${item.image_url}-${index}`}>
+                <img src={item.image_url} alt={item.label ?? `Generated asset ${index + 1}`} />
+                <figcaption>
+                  {item.label ?? item.shot_role ?? `Asset ${index + 1}`}
+                  {item.start_ms !== undefined && item.start_ms !== null
+                    ? ` · ${formatMilliseconds(item.start_ms)}–${formatMilliseconds(item.end_ms)}`
+                    : ""}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        ) : (
+          <p className="helper">
+            No chronological contact-sheet evidence was returned for this candidate.
+          </p>
+        )}
+      </Panel>
+      <Panel eyebrow="Quality gate" heading="Review flags">
+        {qualityFlags.length > 0 ? (
+          <div className="entity-list">
+            {qualityFlags.map((flag, index) => (
+              <article className="entity-row" key={flag.id ?? `${flag.category}-${index}`}>
+                <div>
+                  <strong>{flag.category}</strong>
+                  <small>{flag.message}</small>
+                  {flag.asset_id ? <small>Asset · {flag.asset_id}</small> : null}
+                </div>
+                <Badge tone={statusTone(flag.status)}>{normalizedStatus(flag.status)}</Badge>
+                {flag.retryable && !candidate.approved_at ? (
+                  <Button
+                    variant="secondary"
+                    busy={retry.isPending && retry.variables?.assetId === flag.asset_id}
+                    onClick={() =>
+                      retry.mutate({ attemptId: candidate.id, assetId: flag.asset_id })
+                    }
+                  >
+                    Retry this asset
+                  </Button>
+                ) : null}
+                {flag.replacement_allowed ? (
+                  <small>Replacement requires an authorized source upload.</small>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="helper">
+            No quality flags were returned. This does not substitute for subjective human review.
+          </p>
+        )}
+      </Panel>
+      <Panel eyebrow="Provenance" heading="Download evidence">
+        {manifestUrl && candidate.approved_at ? (
           <a
             className="button button-secondary"
-            href={candidate.preview_url}
-            download="videoforge-output.mp4"
+            href={manifestUrl}
+            download="videoforge-provenance.json"
           >
-            <Download size={16} /> Download MP4
+            <Download size={16} /> Download provenance manifest
           </a>
-        </div>
+        ) : (
+          <p className="helper">
+            The manifest becomes available as a private download after explicit approval.
+          </p>
+        )}
       </Panel>
       {approve.isError ? (
         <div className="validation validation-danger">{approve.error.message}</div>
+      ) : null}
+      {retry.isError ? (
+        <div className="validation validation-danger" role="alert">
+          {retry.error.message}
+        </div>
       ) : null}
     </>
   );
@@ -1026,6 +2372,57 @@ export function HostedUsageScreen() {
         <Metric label="Succeeded" value={String(query.data.succeeded)} detail="durable" />
         <Metric label="Failed" value={String(query.data.failed)} detail="no hidden estimate" />
       </div>
+      <Panel eyebrow="Measured economics" heading="Project and lane detail">
+        {query.data.as_of ? (
+          <p className="helper">As of {formatTimestamp(query.data.as_of)}.</p>
+        ) : null}
+        {query.data.fixed_recurring_usd !== undefined && query.data.fixed_recurring_usd !== null ? (
+          <div className="notice">
+            Fixed retained-volume cost: {formatUsd(query.data.fixed_recurring_usd)} separately from
+            per-video spend.
+          </div>
+        ) : null}
+        {query.data.projects?.length ? (
+          <div className="entity-list">
+            {query.data.projects.map((project) => (
+              <article className="entity-row" key={project.project_id}>
+                <div>
+                  <strong>{project.title}</strong>
+                  <small>
+                    {project.project_id} · {project.attempts ?? 0} attempts
+                  </small>
+                </div>
+                <span>
+                  <small>Projected</small> {formatUsd(project.projected_usd)}
+                </span>
+                <span>
+                  <small>Settled</small> {formatUsd(project.settled_usd)}
+                </span>
+                <span>
+                  <small>Queue / end-to-end</small> {formatMilliseconds(project.queue_wait_ms)} /{" "}
+                  {formatMilliseconds(project.end_to_end_ms)}
+                </span>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="helper">Per-project timing and cost records were not returned.</p>
+        )}
+        {query.data.lanes?.length ? (
+          <Disclosure summary="Lane breakdown">
+            <div className="entity-list">
+              {query.data.lanes.map((lane) => (
+                <article className="entity-row" key={lane.lane}>
+                  <strong>{lane.lane}</strong>
+                  <span>Projected {formatUsd(lane.projected_usd)}</span>
+                  <span>Settled {formatUsd(lane.settled_usd)}</span>
+                  <span>{lane.billed_seconds ?? "Not reported"} billed seconds</span>
+                </article>
+              ))}
+            </div>
+          </Disclosure>
+        ) : null}
+      </Panel>
     </>
   );
 }

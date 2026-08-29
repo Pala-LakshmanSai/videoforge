@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
-import { HostedPresetCreationUnavailableScreen } from "../hosted/HostedProductScreens";
+import { HostedPresetCreationScreen } from "../hosted/HostedProductScreens";
 import { isHostedProviderMode } from "../hosted/provider-mode";
 import { AvatarHubScreen } from "../screens";
 
@@ -9,7 +9,7 @@ function AvatarRoute() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   if (pathname.endsWith("/new")) {
     return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
-      <HostedPresetCreationUnavailableScreen kind="avatars" />
+      <HostedPresetCreationScreen kind="avatars" />
     ) : (
       <Outlet />
     );
