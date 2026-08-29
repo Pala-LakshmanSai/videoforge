@@ -4,84 +4,42 @@ import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  EXACT_BOOTSTRAP_PARTIAL_CLEANUP_POLICY,
+  EXACT_CRASH_SAFE_CLEANUP_POLICY,
+  EXACT_DURABLE_BILLING_POLICY,
+  EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY,
+  EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  EXACT_INTERNAL_MATERIALIZATION_POLICY,
+  EXACT_OPERATION_IDS,
+  EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
+  EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXACT_PREQUALIFICATION_BRIDGE_POLICY,
+  EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
+  EXACT_TRUSTED_TIME_POLICY,
+  EXACT_V3_RELEASE_COMPONENTS,
+  EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
+  EXACT_WORKFLOW_START_AUTHORITY_POLICY,
+} from "../../../../../deploy/v2-13/validate-full-live-approval.mjs";
+import { validateStaticReleaseDescriptorFile } from "../../../../../deploy/v2-13/full-live-orchestration-authority.mjs";
+
 const ROOT = path.resolve(fileURLToPath(new URL("../../../../..", import.meta.url)));
 const DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PROPOSAL_PATH = path.join(DIRECTORY, "combined-live-proposal.json");
 const AUDIT_PATH = path.join(DIRECTORY, "source-readiness-audit.json");
 const READ_ONLY_PREFLIGHT_PATH = path.join(DIRECTORY, "read-only-preflight.json");
 const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json");
-const TERMINAL_ARCHIVE = "protected-inputs/v2-13/history/v2-13-full-live-20260829-052951z-6852970d";
-const DESCRIPTOR_PATH = path.join(ROOT, TERMINAL_ARCHIVE, "static-release-descriptor.json");
-const PROTECTED_INPUT_PATH = path.join(ROOT, TERMINAL_ARCHIVE, "materialization-seed-input.json");
-const TERMINAL_STATE_PATH = path.join(ROOT, TERMINAL_ARCHIVE, "full-live-state.json");
+const DESCRIPTOR_PATH = path.join(ROOT, "protected-inputs/v2-13/static-release-descriptor.json");
+const PROTECTED_INPUT_PATH = path.join(ROOT, "protected-inputs/v2-13/materialization-seed-input.json");
 const RELEASE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
-const EXECUTION_CONTROL_COMMIT = "62e361e15de53369910e60226f27859b5b5a7f08";
-const PROPOSAL_RECORD_COMMIT = "1ba62090c763cb4993cd5f9806e63c6629be1997";
-const PROPOSAL_SHA256 = "sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce";
-const AUDITED_CODE_COMMIT = "735a43f9c13976f59c7457e3674382a691d81437";
-const FACTS_SHA256 = "sha256:1b09f8246046de1c94eaf993c13a08f4916f5801aa6c38d22b948a4315bee92c";
-const AUDIT_SHA256 = "sha256:70bdfdb8110a8f16e52dd24613496706d3efa1f6f43bb5542c2032e2d22583bb";
-const DESCRIPTOR_SHA256 = "sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df";
-const DESCRIPTOR_BYTES_SHA256 = "sha256:99d167b1137646a622f92d7ba72754fef37bf51cdda0111f990d15aa8be9cb01";
-const PROTECTED_INPUT_SHA256 = "sha256:5bd197624e8b9496e2a88d262858447342f21aaf11be1581825050aa1b6b1518";
-const FULL_LIVE_AUTHORITY_ID = "e6eff3f9-f0fe-48b6-a638-56a42a0f30bd";
-const CONSUMED_AUTHORITY_ID = "v2-13-full-live-20260829-052951z-6852970d";
-const TERMINAL_STATE_SHA256 = "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9";
+const EXECUTION_CONTROL_COMMIT = "6b098e594f760644274ca0fc04fb73fd6256b925";
+const AUDITED_CODE_COMMIT = "6610674e00f5608011318024da3072c54060ae3f";
+const FACTS_SHA256 = "sha256:46d9a471792f0e18f44308fa8699b129eec743f3bd5f3570d8dfdab6abb70b57";
+const AUDIT_SHA256 = "sha256:23d566b52dc042601e4aa915b3cc0104a399703e32ccb6ee1219ec99600f9066";
+const DESCRIPTOR_SHA256 = "sha256:0786041d9cff06fa848c3d3f39b35dddc95e867424e8f4071e51f8002b0d0807";
+const PROTECTED_INPUT_SHA256 = "sha256:2c6b83e44814776566ba13c4eb0d2fd08cf9d76f9772f47f4315d677ec9d5d6a";
+const FULL_LIVE_AUTHORITY_ID = "a03edc8f-817f-4579-8bce-28b3447ce30f";
 const TAG = "videoforge-v2-13-release-20260826-v3";
-// Historical terminal validation must remain reproducible after a successor reseals the live
-// validator. These are the exact predecessor and execution-control bytes approved for this
-// consumed attempt; never import their mutable successor constants from the current validator.
-const HISTORICAL_PREDECESSOR_RELEASE_ATTEMPT = Object.freeze({
-  authority_id: "v2-13-full-live-20260829-022710z-62a9ebb2",
-  authority_record_commit: "7e43a289a58b7ab0805f019fcfe82d0efa2c2848",
-  proposal_sha256: "sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6",
-  terminal_state_sha256: "sha256:1dbf573b408507cbe4eecb813e0e6ec5564153f96183a3329d5fd06b5342969b",
-  terminal_state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
-  terminal: "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED",
-  failure_code: "APPROVAL_BRANCH_READBACK",
-  exact_tag_name: TAG,
-  exact_tag_target_commit: RELEASE_SOURCE_COMMIT,
-  tag_create_result_sha256: "sha256:29d68b30b0f866fb40a32de97f6a08f6e27799790822a3bfb7409704cd9df5fc",
-  tag_push_result_sha256: "sha256:f71b313cebd5080cb72cc48731ef48992d0987a37cf7d245b180a765c9f3036b",
-  tag_readback_result_sha256: "sha256:e2f8d0a1a471423ac43c5031f65ff052a334eb29e9b6f922f569dcd9287c43ad",
-});
-const HISTORICAL_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
-  approval_validator: Object.freeze({
-    path: "deploy/v2-13/validate-full-live-approval.mjs",
-    source_commit_tree_binding: Object.freeze({
-      mode: "EXTERNAL_GIT_COMMIT_TREE_ENTRY",
-      commit_field: "source.execution_control.commit",
-      tree_entry_path: "deploy/v2-13/validate-full-live-approval.mjs",
-      verification: "GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256",
-      embedded_current_file_sha256: false,
-      self_hash_forbidden: true,
-    }),
-  }),
-  full_live_adapters: Object.freeze({
-    path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:3d7e6f2dfb320b2fe4f2f36a17bcd8b53b39ad8f271e0c60928ec7d6069033e0",
-  }),
-  full_live_executor: Object.freeze({
-    path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:d3c642c9a5a80a419acb6d5b6f9a842b9fa2fca40bbdb330ad141032f019bb1c",
-  }),
-  guarded_activation: Object.freeze({
-    path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:7522808e31aa83d92bd5d8bcdc768438ba11ce5cd69f6fd8be45e0671148fa85",
-  }),
-  materialization_seed_builder: Object.freeze({
-    path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:51c6f167f0681ed1287f72d1d60a6524e7d912302c3b2ca1e1d380ce20a3d2ea",
-  }),
-  orchestration_authority: Object.freeze({
-    path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:81fb706019a2255a220e23fde21ea137016139617d4357f160cc715b141b52af",
-  }),
-  source_closure_manifest: Object.freeze({
-    path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:4d348ad85f803ad36ea3c3e3df54dfb601af45e308bfd55282c1d9ed1340433b",
-  }),
-});
 const EXACT_OAUTH_SCOPES = [
   "account:read", "agent-memory:write", "ai-search:run", "ai-search:write", "ai:write",
   "artifacts:write", "browser:write", "challenge-widgets.write", "cloudchamber:write",
@@ -113,17 +71,178 @@ const { bytes: proposalBytes, value: proposal } = await readJson(PROPOSAL_PATH, 
 const { bytes: auditBytes, value: audit } = await readJson(AUDIT_PATH, "AUDIT");
 const { value: readOnlyPreflight } = await readJson(READ_ONLY_PREFLIGHT_PATH, "READ_ONLY_PREFLIGHT");
 const { bytes: factsBytes, value: facts } = await readJson(FACTS_PATH, "FACTS");
-const { bytes: terminalStateBytes, value: terminalState } = await readJson(TERMINAL_STATE_PATH, "TERMINAL_STATE");
+const HISTORICAL_PROPOSAL_SHA256 =
+  "sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce";
+const HISTORICAL_AUDIT_SHA256 =
+  "sha256:70bdfdb8110a8f16e52dd24613496706d3efa1f6f43bb5542c2032e2d22583bb";
+const HISTORICAL_FACTS_SHA256 =
+  "sha256:1b09f8246046de1c94eaf993c13a08f4916f5801aa6c38d22b948a4315bee92c";
+if (
+  sha256(auditBytes) === HISTORICAL_AUDIT_SHA256 &&
+  sha256(factsBytes) === HISTORICAL_FACTS_SHA256
+) {
+  const historicalProposal = JSON.parse(
+    gitBytes(
+      "1ba62090c763cb4993cd5f9806e63c6629be1997",
+      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+    ).toString("utf8"),
+  );
+  const historicalRouteReadback =
+    proposal.source?.pending_source_contract?.route_readbacks?.pre_mutation;
+  assert(
+    JSON.stringify(historicalRouteReadback) ===
+      JSON.stringify(historicalProposal.source.pending_source_contract.route_readbacks.pre_mutation),
+    "ROUTE_READBACK_CONTRACT",
+  );
+  const historicalCloudflareScope = proposal.requested_scope?.cloudflare_credential_scope;
+  assert(
+    historicalCloudflareScope?.cloudflare_api_token_environment_export_authorized === false &&
+      historicalCloudflareScope?.raw_api_token_file_authorized === false &&
+      JSON.stringify(historicalCloudflareScope?.oauth_scopes) ===
+        JSON.stringify(EXACT_OAUTH_SCOPES),
+    "CLOUDFLARE_OAUTH_SCOPE",
+  );
+  const historicalCloudflareGraph =
+    proposal.exact_execution_graph?.cloudflare_credential_origin_policy?.oauth_authentication;
+  assert(
+    historicalCloudflareGraph?.protected_config_reader === "readWranglerOAuthCredential" &&
+      JSON.stringify(historicalCloudflareGraph?.oauth_scopes) ===
+        JSON.stringify(EXACT_OAUTH_SCOPES),
+    "CLOUDFLARE_GRAPH",
+  );
+  assert(
+    proposal.requested_scope?.google_oauth_web_client_scope?.authorized_redirect_uri_count === 1,
+    "GOOGLE_OAUTH_SCOPE",
+  );
+  assert(
+    proposal.requested_scope?.r2_s3_credential_scope?.new_r2_bucket_authorized === false,
+    "R2_S3_SCOPE",
+  );
+  assert(
+    proposal.exact_execution_graph?.internal_materialization_policy
+      ?.materialization_seed_sha256_verified_after_restart_or_recovery === true,
+    "MATERIALIZATION_SEED_OUTER_BINDING",
+  );
+  assert(
+    proposal.supersession?.superseded_authority_record_sha256 ===
+      historicalProposal.supersession.superseded_authority_record_sha256,
+    "SUPERSESSION_AUTHORITY_RECORD",
+  );
+  assert(
+    proposal.exact_execution_graph?.credential_scope_policy?.google_oauth
+      ?.authorized_operation ===
+      "READBACK_EXACTLY_ONE_PREEXISTING_PROTECTED_GOOGLE_OAUTH_WEB_CLIENT",
+    "CREDENTIAL_GRAPH_GOOGLE",
+  );
+  assert(
+    proposal.approval_request?.requested_r2_s3_scope ===
+      historicalProposal.approval_request.requested_r2_s3_scope,
+    "APPROVAL_SCOPE_BOUND",
+  );
+  const historicalDbPolicy =
+    historicalProposal.exact_execution_graph.prequalification_database_bootstrap_policy;
+  const historicalBridge =
+    historicalProposal.exact_execution_graph.prequalification_bridge_policy;
+  const actualDbPolicy =
+    proposal.exact_execution_graph?.prequalification_database_bootstrap_policy;
+  const actualBridge = proposal.exact_execution_graph?.prequalification_bridge_policy;
+  assert(
+    JSON.stringify(actualDbPolicy?.post_bootstrap_receipt_verifier) ===
+      JSON.stringify(historicalDbPolicy.post_bootstrap_receipt_verifier),
+    "PREQUALIFICATION_RECEIPT_VERIFIER",
+  );
+  assert(
+    JSON.stringify(actualBridge?.receipt_gate) ===
+      JSON.stringify(historicalBridge.receipt_gate),
+    "PREQUALIFICATION_RECEIPT_GATE",
+  );
+  assert(
+    JSON.stringify(actualBridge?.executor_receipt_gate) ===
+      JSON.stringify(historicalBridge.executor_receipt_gate),
+    "PREQUALIFICATION_EXECUTOR_RECEIPT_GATE",
+  );
+  assert(
+    JSON.stringify(actualBridge?.operator_only_preflight?.fresh_child_forbidden_database_inputs) ===
+      JSON.stringify(
+        historicalBridge.operator_only_preflight.fresh_child_forbidden_database_inputs,
+      ),
+    "PREQUALIFICATION_FRESH_CHILD_SEAM",
+  );
+  assert(
+    proposal.requested_scope?.retention?.mage_volume_id_sha256 === MAGE_VOLUME_ID_SHA256 &&
+      proposal.requested_scope?.retention?.soulx_volume_id_sha256 === SOULX_VOLUME_ID_SHA256,
+    "RETENTION_SCOPE",
+  );
+  assert(
+    JSON.stringify(readOnlyPreflight.runpod?.retained_volumes) ===
+      JSON.stringify([
+        { id_sha256: SOULX_VOLUME_ID_SHA256, size_gb: 50, region: "EU-RO-1" },
+        { id_sha256: MAGE_VOLUME_ID_SHA256, size_gb: 50, region: "EU-RO-1" },
+      ]),
+    "READ_ONLY_PREFLIGHT_RUNPOD",
+  );
+  assert(sha256(proposalBytes) === HISTORICAL_PROPOSAL_SHA256, "HISTORICAL_PROPOSAL_SHA256");
+  const historicalArchive = path.join(
+    ROOT,
+    "protected-inputs/v2-13/history/v2-13-full-live-20260829-052951z-6852970d",
+  );
+  const { bytes: historicalTerminalBytes, value: historicalTerminal } = await readJson(
+    path.join(historicalArchive, "full-live-state.json"),
+    "HISTORICAL_TERMINAL",
+  );
+  const { bytes: historicalDescriptorBytes, value: historicalDescriptor } = await readJson(
+    path.join(historicalArchive, "static-release-descriptor.json"),
+    "HISTORICAL_DESCRIPTOR",
+  );
+  assert(
+    sha256(auditBytes) === HISTORICAL_AUDIT_SHA256 &&
+      sha256(factsBytes) === HISTORICAL_FACTS_SHA256 &&
+      sha256(historicalTerminalBytes) ===
+        "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9" &&
+      sha256(historicalDescriptorBytes) ===
+        "sha256:99d167b1137646a622f92d7ba72754fef37bf51cdda0111f990d15aa8be9cb01" &&
+      sha256(await readFile(path.join(historicalArchive, "materialization-seed-input.json"))) ===
+        "sha256:5bd197624e8b9496e2a88d262858447342f21aaf11be1581825050aa1b6b1518",
+    "HISTORICAL_ARCHIVE_HASH",
+  );
+  assert(
+    proposal.source?.execution_control?.commit ===
+      "62e361e15de53369910e60226f27859b5b5a7f08" &&
+      proposal.source?.release_source_commit === RELEASE_SOURCE_COMMIT &&
+      facts.full_live_authority_id === "e6eff3f9-f0fe-48b6-a638-56a42a0f30bd" &&
+      historicalDescriptor.descriptorSha256 ===
+        "sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df" &&
+      historicalTerminal.authority_id ===
+        "v2-13-full-live-20260829-052951z-6852970d" &&
+      historicalTerminal.state ===
+        "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY" &&
+      historicalTerminal.terminal ===
+        "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED" &&
+      historicalTerminal.no_redispatch === true,
+    "HISTORICAL_ARCHIVE_CONTRACT",
+  );
+  process.stdout.write(
+    `${JSON.stringify({
+      schema_version: "videoforge.v2-13-terminal-candidate-validation/v1",
+      status: "PASS_TERMINAL_ARCHIVE_REPRODUCIBLE",
+      state: historicalTerminal.state,
+      authority: historicalTerminal.authority_id,
+      superseded_authority_id: historicalTerminal.authority_id,
+      superseded_proposal_sha256: HISTORICAL_PROPOSAL_SHA256,
+      reusable: false,
+      no_redispatch: true,
+      terminal_state_sha256:
+        "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9",
+      external_calls: 0,
+      mutations: 0,
+      gpu_use: 0,
+      spend_usd: 0,
+    })}\n`,
+  );
+  process.exit(0);
+}
 assert(sha256(auditBytes) === AUDIT_SHA256, "AUDIT_SHA256");
 assert(sha256(factsBytes) === FACTS_SHA256, "FACTS_SHA256");
-assert(sha256(terminalStateBytes) === TERMINAL_STATE_SHA256, "TERMINAL_STATE_SHA256");
-assert(
-  terminalState.authority_id === CONSUMED_AUTHORITY_ID &&
-    terminalState.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY" &&
-    terminalState.terminal === "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED" &&
-    terminalState.no_redispatch === true,
-  "TERMINAL_STATE_CONTRACT",
-);
 assert(
   audit.schema_version === "videoforge.v2-13-full-live-source-readiness-audit/v1" &&
     audit.audited_code_commit === AUDITED_CODE_COMMIT &&
@@ -131,7 +250,7 @@ assert(
     audit.evidence_class === "INDEPENDENT_RELEASE_AUDIT" &&
     audit.fixture_or_fake_transport_used === false &&
     audit.external_calls === 0 && audit.provider_mutations === 0 && audit.gpu_use === 0 && audit.spend_usd === 0 &&
-    audit.source_closure?.sha256 === HISTORICAL_V4_EXECUTION_CONTROL_COMPONENTS.source_closure_manifest.sha256,
+    audit.source_closure?.sha256 === EXACT_V4_EXECUTION_CONTROL_COMPONENTS.source_closure_manifest.sha256,
   "AUDIT_CONTRACT",
 );
 assert(
@@ -142,12 +261,35 @@ assert(
   "FACTS_CONTRACT",
 );
 assert(sha256(await readFile(PROTECTED_INPUT_PATH)) === PROTECTED_INPUT_SHA256, "PROTECTED_INPUT");
-const { bytes: descriptorBytes, value: descriptor } = await readJson(DESCRIPTOR_PATH, "DESCRIPTOR");
+validateStaticReleaseDescriptorFile({ path: DESCRIPTOR_PATH, expectedSha256: DESCRIPTOR_SHA256, expectedSourceCommit: RELEASE_SOURCE_COMMIT });
+const { value: descriptor } = await readJson(DESCRIPTOR_PATH, "DESCRIPTOR");
+const workflowRegistrationEvidence = {
+  schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v1",
+  repository: "Pala-LakshmanSai/videoforge",
+  default_branch: "main",
+  default_branch_commit: "c24d37e164d3fcf93c04d53a1e8f06ab972c5d46",
+  workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+  workflow_file: "avatar-primary-serverless-image.yml",
+  workflow_name: "avatar-primary-serverless-image",
+  release_source_commit: RELEASE_SOURCE_COMMIT,
+  release_source_workflow_sha256:
+    "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
+  default_branch_workflow_sha256:
+    "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
+  registration_state: "REGISTERED_EXACT_DEFAULT_BRANCH",
+  materialized: true,
+  bound_to_release_source: true,
+  evidence_sha256:
+    "sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42",
+};
 assert(
-  sha256(descriptorBytes) === DESCRIPTOR_BYTES_SHA256 &&
-    descriptor.sourceCommit === RELEASE_SOURCE_COMMIT &&
-    descriptor.descriptorSha256 === DESCRIPTOR_SHA256,
-  "DESCRIPTOR_CONTRACT",
+  JSON.stringify(Object.fromEntries(Object.entries(descriptor.workflowRegistrationEvidence).sort())) ===
+    JSON.stringify(Object.fromEntries(Object.entries(workflowRegistrationEvidence).sort())) &&
+    JSON.stringify(Object.fromEntries(Object.entries(proposal.sealing?.workflow_registration_evidence ?? {}).sort())) ===
+      JSON.stringify(Object.fromEntries(Object.entries(workflowRegistrationEvidence).sort())) &&
+    JSON.stringify(Object.fromEntries(Object.entries(proposal.requested_scope?.workflow_registration_evidence ?? {}).sort())) ===
+      JSON.stringify(Object.fromEntries(Object.entries(workflowRegistrationEvidence).sort())),
+  "WORKFLOW_REGISTRATION_EVIDENCE",
 );
 
 assert(
@@ -159,22 +301,10 @@ assert(
     proposal.source?.execution_control?.commit === EXECUTION_CONTROL_COMMIT,
   "PROPOSAL_IDENTITY",
 );
+assert(JSON.stringify(proposal.source.exact_release_components) === JSON.stringify(EXACT_V3_RELEASE_COMPONENTS), "IMMUTABLE_PAYLOAD_COMPONENTS");
+assert(JSON.stringify(proposal.source.execution_control.exact_components) === JSON.stringify(EXACT_V4_EXECUTION_CONTROL_COMPONENTS), "EXECUTION_CONTROL_COMPONENTS");
 assert(
-  Object.values(proposal.source.exact_release_components).every(
-    (component) =>
-      component !== null &&
-      typeof component === "object" &&
-      typeof component.path === "string" &&
-      !component.path.startsWith("/") &&
-      !component.path.split("/").includes("..") &&
-      (typeof component.sha256 === "string" ||
-        component.source_commit_tree_binding?.mode === "EXTERNAL_GIT_COMMIT_TREE_ENTRY"),
-  ),
-  "IMMUTABLE_PAYLOAD_COMPONENTS",
-);
-assert(JSON.stringify(proposal.source.execution_control.exact_components) === JSON.stringify(HISTORICAL_V4_EXECUTION_CONTROL_COMPONENTS), "EXECUTION_CONTROL_COMPONENTS");
-assert(
-  JSON.stringify(proposal.supersession?.predecessor_release_attempt) === JSON.stringify(HISTORICAL_PREDECESSOR_RELEASE_ATTEMPT) &&
+  JSON.stringify(proposal.supersession?.predecessor_release_attempt) === JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) &&
     proposal.supersession?.prior_approval_reusable === false && proposal.supersession?.fresh_exact_approval_required === true,
   "PREDECESSOR_BINDING",
 );
@@ -231,7 +361,7 @@ assert(
 );
 assert(
   proposal.supersession.superseded_authority_record_sha256 ===
-    "sha256:80cdb32dcfb6128ad4c21aa40de0e95e60e3dd8506c32d6cba0c6357c5fd8d9e",
+    "sha256:387efb67c2494e3a4d3827832a8f6dbf362a60865b42c8dc0663ff548189d65d",
   "SUPERSESSION_AUTHORITY_RECORD",
 );
 assert(
@@ -245,23 +375,28 @@ assert(
   "APPROVAL_SCOPE_BOUND",
 );
 const dbBootstrap = proposal.exact_execution_graph.prequalification_database_bootstrap_policy;
-const bridgePolicy = proposal.exact_execution_graph.prequalification_bridge_policy;
 assert(
-  dbBootstrap.post_bootstrap_receipt_verifier?.verifies_exact_operator_acl === true,
+  JSON.stringify(dbBootstrap.post_bootstrap_receipt_verifier) ===
+    JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.post_bootstrap_receipt_verifier),
   "PREQUALIFICATION_RECEIPT_VERIFIER",
 );
+const bridgePolicy = proposal.exact_execution_graph.prequalification_bridge_policy;
 assert(
-  bridgePolicy.receipt_gate?.verifier_function === "verifyPrequalificationDatabaseReceipt",
+  JSON.stringify(bridgePolicy.receipt_gate) ===
+    JSON.stringify(EXACT_PREQUALIFICATION_BRIDGE_POLICY.receipt_gate),
   "PREQUALIFICATION_RECEIPT_GATE",
 );
 assert(
-  bridgePolicy.executor_receipt_gate?.restart_preflight?.repeat_receipt_verifier === true,
+  JSON.stringify(bridgePolicy.executor_receipt_gate) ===
+    JSON.stringify(EXACT_PREQUALIFICATION_BRIDGE_POLICY.executor_receipt_gate),
   "PREQUALIFICATION_EXECUTOR_RECEIPT_GATE",
 );
 assert(
-  JSON.stringify(
-    bridgePolicy.operator_only_preflight?.fresh_child_forbidden_database_inputs,
-  ) === JSON.stringify(["ownerDatabaseUrl", "runtimeDatabaseUrl", "reconcilerDatabaseUrl"]),
+  JSON.stringify(bridgePolicy.operator_only_preflight.fresh_child_forbidden_database_inputs) ===
+    JSON.stringify(
+      EXACT_PREQUALIFICATION_BRIDGE_POLICY.operator_only_preflight
+        .fresh_child_forbidden_database_inputs,
+    ),
   "PREQUALIFICATION_FRESH_CHILD_SEAM",
 );
 const retention = proposal.requested_scope.retention;
@@ -279,27 +414,30 @@ assert(
   "READ_ONLY_PREFLIGHT_RUNPOD",
 );
 
-for (const [name, component] of Object.entries(proposal.source.exact_release_components)) {
+for (const [name, component] of Object.entries(EXACT_V3_RELEASE_COMPONENTS)) {
   if (typeof component.sha256 === "string") assert(sha256(gitBytes(RELEASE_SOURCE_COMMIT, component.path)) === component.sha256, `PAYLOAD:${name}`);
 }
-for (const [name, component] of Object.entries(HISTORICAL_V4_EXECUTION_CONTROL_COMPONENTS)) {
+for (const [name, component] of Object.entries(EXACT_V4_EXECUTION_CONTROL_COMPONENTS)) {
   const componentBytes = gitBytes(EXECUTION_CONTROL_COMMIT, component.path);
   if (name !== "approval_validator") assert(sha256(componentBytes) === component.sha256, `CONTROL:${name}`);
 }
-assert(
-  gitBytes(EXECUTION_CONTROL_COMMIT, "deploy/v2-13/validate-full-live-approval.mjs").length > 0 &&
-    HISTORICAL_V4_EXECUTION_CONTROL_COMPONENTS.approval_validator.source_commit_tree_binding
-      .tree_entry_path === "deploy/v2-13/validate-full-live-approval.mjs",
-  "CONTROL:approval_validator",
-);
+assert(sha256(gitBytes(EXECUTION_CONTROL_COMMIT, "deploy/v2-13/validate-full-live-approval.mjs")) === sha256(await readFile(path.join(ROOT, "deploy/v2-13/validate-full-live-approval.mjs"))), "CONTROL:approval_validator");
 
 const policies = proposal.exact_execution_graph;
-assert(
-  Array.isArray(policies.ordered_operation_ids) &&
-    policies.ordered_operation_ids.length === 26 &&
-    new Set(policies.ordered_operation_ids).size === 26,
-  "OPERATIONS",
-);
+for (const [actual, expected, code] of [
+  [policies.ordered_operation_ids, EXACT_OPERATION_IDS, "OPERATIONS"],
+  [policies.image_workflow_verification_policy, EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY, "IMAGE_POLICY"],
+  [policies.predecessor_mage_reconciliation_policy, EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY, "MAGE_RECONCILIATION_POLICY"],
+  [policies.internal_materialization_policy, EXACT_INTERNAL_MATERIALIZATION_POLICY, "MATERIALIZATION_POLICY"],
+  [policies.trusted_time_policy, EXACT_TRUSTED_TIME_POLICY, "TIME_POLICY"],
+  [policies.prequalification_database_bootstrap_policy, EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY, "DB_POLICY"],
+  [policies.workflow_start_authority_policy, EXACT_WORKFLOW_START_AUTHORITY_POLICY, "WORKFLOW_POLICY"],
+  [policies.early_no_database_cleanup_policy, EXACT_EARLY_NO_DATABASE_CLEANUP_POLICY, "EARLY_CLEANUP_POLICY"],
+  [policies.bootstrap_partial_cleanup_policy, EXACT_BOOTSTRAP_PARTIAL_CLEANUP_POLICY, "BOOTSTRAP_CLEANUP_POLICY"],
+  [policies.crash_safe_cleanup_policy, EXACT_CRASH_SAFE_CLEANUP_POLICY, "CRASH_POLICY"],
+  [policies.durable_billing_policy, EXACT_DURABLE_BILLING_POLICY, "BILLING_POLICY"],
+  [policies.prequalification_bridge_policy, EXACT_PREQUALIFICATION_BRIDGE_POLICY, "BRIDGE_POLICY"],
+]) assert(JSON.stringify(actual) === JSON.stringify(expected), code);
 assert(policies.operation_order_is_closed_and_non_reorderable === true && policies.missing_extra_or_repeated_operation_is_a_hard_stop === true, "CLOSED_GRAPH");
 
 const scope = proposal.requested_scope;
@@ -332,19 +470,21 @@ assert(
   "STOP_CONDITIONS",
 );
 
-assert(git("rev-parse", `${PROPOSAL_RECORD_COMMIT}^`) === EXECUTION_CONTROL_COMMIT, "PROPOSAL_RECORD_PARENT");
-const proposalRecordPaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", PROPOSAL_RECORD_COMMIT)
-  .split("\n")
-  .filter(Boolean)
-  .sort();
-assert(JSON.stringify(proposalRecordPaths) === JSON.stringify([
-  "project-context/00_START_HERE.md",
-  "project-context/CURRENT_STATE.yaml",
-  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
-  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
-  "project-context/tasks/VF-10-13.md",
-]), "PROPOSAL_RECORD_PATHS");
-const head = PROPOSAL_RECORD_COMMIT;
+const head = git("rev-parse", "HEAD");
+if (head !== EXECUTION_CONTROL_COMMIT) {
+  assert(git("rev-parse", `${head}^`) === EXECUTION_CONTROL_COMMIT, "PROPOSAL_RECORD_PARENT");
+  const proposalRecordPaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", head)
+    .split("\n")
+    .filter(Boolean)
+    .sort();
+  assert(JSON.stringify(proposalRecordPaths) === JSON.stringify([
+    "project-context/00_START_HERE.md",
+    "project-context/CURRENT_STATE.yaml",
+    "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+    "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
+    "project-context/tasks/VF-10-13.md",
+  ]), "PROPOSAL_RECORD_PATHS");
+}
 assert(git("rev-parse", `${EXECUTION_CONTROL_COMMIT}^`) === AUDITED_CODE_COMMIT, "EVIDENCE_PARENT");
 const evidencePaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", EXECUTION_CONTROL_COMMIT).split("\n").filter(Boolean).sort();
 assert(JSON.stringify(evidencePaths) === JSON.stringify([
@@ -354,26 +494,23 @@ assert(JSON.stringify(evidencePaths) === JSON.stringify([
 for (const name of ["user-approval.json", "approved-authority.json"])
   await access(path.join(DIRECTORY, name)).then(() => assert(false, `ACTIVE_${name}`), () => true);
 
-assert(
-  proposal.exact_execution_graph.ordered_operation_ids.length === 26,
-  "HISTORICAL_EXECUTOR_GRAPH",
-);
-assert(sha256(proposalBytes) === PROPOSAL_SHA256, "PROPOSAL_SHA256");
+const executor = JSON.parse(execFileSync(process.execPath, [path.join(ROOT, "deploy/v2-13/full-live-executor.mjs")], { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
+assert(executor.state === "NO_ACTION" && executor.ordered_operations?.length === 26 && executor.external_calls === 0 && executor.mutations === 0 && executor.gpu_use === 0 && executor.spend_usd === 0, "EXECUTOR_NO_ACTION");
 
 process.stdout.write(`${JSON.stringify({
-  schema_version: "videoforge.v2-13-terminal-candidate-validation/v1",
-  status: "PASS_TERMINAL_ARCHIVE_REPRODUCIBLE",
-  state: terminalState.state,
-  authority: CONSUMED_AUTHORITY_ID,
-  reusable: false,
-  no_redispatch: true,
+  schema_version: "videoforge.v2-13-successor-candidate-validation/v1",
+  status:
+    head === EXECUTION_CONTROL_COMMIT
+      ? "PASS_BLOCKED_UNSEALED"
+      : "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  state: "PASS_PENDING_FRESH_EXACT_APPROVAL",
+  authority: "ABSENT",
   superseded_authority_id: proposal.supersession.superseded_authority_id,
   superseded_proposal_sha256: proposal.supersession.supersedes_proposal_sha256,
   proposal_sha256: sha256(proposalBytes),
-  terminal_state_sha256: TERMINAL_STATE_SHA256,
   release_source_commit: RELEASE_SOURCE_COMMIT,
   execution_control_commit: EXECUTION_CONTROL_COMMIT,
-  predecessor_terminal_state_sha256: HISTORICAL_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256,
+  predecessor_terminal_state_sha256: EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256,
   external_calls: 0,
   mutations: 0,
   gpu_use: 0,

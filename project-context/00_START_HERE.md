@@ -4,6 +4,13 @@
 
 ### New-chat launch point — 2026-08-28
 
+- Fresh full-live successor proposal `sha256:37c463bc2f38d26c801b139aab63cd2138d6d70b2605cf6d6e1f761dd87789f3`
+  is sealed against execution-control evidence commit
+  `6b098e594f760644274ca0fc04fb73fd6256b925` and immutable release source
+  `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. It preserves the exact closed
+  26-operation graph and all caps, performs predecessor-bound Mage readback with no redispatch,
+  and binds repaired GitHub `main` workflow registration. No approval or live authority exists;
+  credential access, provider mutation, GPU use, and spend remain unauthorized.
 - Final pre-execution audit stopped proposal `sha256:41e7646f…486d6` before protected authority
   materialization or consumption because GitHub now returns HTTP 404 to unauthenticated
   `HEAD /rate_limit`. Provider-free repair `c35075a776ebf16dfd51a832cd4326239b5d7e7b` uses the
@@ -59,9 +66,9 @@
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:1b09f8246046de1c94eaf993c13a08f4916f5801aa6c38d22b948a4315bee92c` and UUID
-  `e6eff3f9-f0fe-48b6-a638-56a42a0f30bd`, plus protected static descriptor self-hash
-  `sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df`.
+  `sha256:46d9a471792f0e18f44308fa8699b129eec743f3bd5f3570d8dfdab6abb70b57` and UUID
+  `a03edc8f-817f-4579-8bce-28b3447ce30f`, plus protected static descriptor self-hash
+  `sha256:0786041d9cff06fa848c3d3f39b35dddc95e867424e8f4071e51f8002b0d0807`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
