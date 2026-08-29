@@ -4,6 +4,13 @@
 
 ### New-chat launch point — 2026-08-28
 
+- Final pre-execution audit stopped proposal `sha256:41e7646f…486d6` before protected authority
+  materialization or consumption because GitHub now returns HTTP 404 to unauthenticated
+  `HEAD /rate_limit`. Provider-free repair `c35075a776ebf16dfd51a832cd4326239b5d7e7b` uses the
+  GitHub API root instead; a real credential-free CA-verified call returned HTTP 200 with one Date
+  header and focused tests pass 34/34. The prior proposal/approval/authority are invalidated and
+  non-reusable after this validator-byte change. No GitHub mutation, credential-value access, GPU
+  use, or spend occurred. Reseal and obtain fresh exact approval.
 - Provider-free repair commit `31a19d33ce4233533c7be140c52c94de2d6a5bd1` closes the
   default-branch publication design gap with one atomic GitHub GraphQL
   `createCommitOnBranch(expectedHeadOid)` mutation. It can add only the exact release-source SoulX
