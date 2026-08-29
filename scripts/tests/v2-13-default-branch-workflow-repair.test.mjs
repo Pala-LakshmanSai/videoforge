@@ -18,12 +18,14 @@ import test from "node:test";
 
 import {
   AUTHORITY_SCHEMA,
+  GRAPHQL_CREATE_COMMIT_QUERY,
   MUTATION_INTENT_STATE,
   REGISTRATION_EVIDENCE_SCHEMA,
   RESULT_SCHEMA,
   VALIDATION_SCHEMA,
   canonicalTreeEntriesSha256,
   consumeRepairAuthorityFile,
+  createGraphqlCommitRequest,
   executeDefaultBranchWorkflowRepair,
   planDefaultBranchWorkflowRepair,
   readAuthenticatedTrustedTime,
@@ -87,6 +89,7 @@ function makeFixture({ id = "test0001", mechanism = "FAST_FORWARD" } = {}) {
   const baseSha = sha("a");
   const resultSha = sha("b");
   const treeSha = sha("e");
+  const baseTreeSha = sha("2");
   const blobSha = sha("c");
   const releaseSha = sha("f");
   const headSha = sha("d");
@@ -109,7 +112,10 @@ function makeFixture({ id = "test0001", mechanism = "FAST_FORWARD" } = {}) {
     },
     operation: {
       id: "repair-default-branch-workflow-once",
-      action: "FAST_FORWARD_OR_PROTECTED_BRANCH_WORKFLOW_REPAIR",
+      action:
+        mechanism === "GRAPHQL_CREATE_COMMIT"
+          ? "GRAPHQL_CREATE_EXACT_DEFAULT_BRANCH_WORKFLOW"
+          : "FAST_FORWARD_OR_PROTECTED_BRANCH_WORKFLOW_REPAIR",
       single_use: true,
     },
     target: {
@@ -123,7 +129,9 @@ function makeFixture({ id = "test0001", mechanism = "FAST_FORWARD" } = {}) {
         blob_sha256: sha256(workflowBytes),
       },
       resulting: {
-        commit_sha: mechanism === "PROTECTED_BRANCH" ? null : resultSha,
+        commit_sha: ["PROTECTED_BRANCH", "GRAPHQL_CREATE_COMMIT"].includes(mechanism)
+          ? null
+          : resultSha,
         tree_sha: treeSha,
         tree_entries_sha256: canonicalTreeEntriesSha256(treeEntries),
         parent_commit_shas: mechanism === "PROTECTED_BRANCH" ? null : [baseSha],
@@ -152,21 +160,45 @@ function makeFixture({ id = "test0001", mechanism = "FAST_FORWARD" } = {}) {
             pull_request_base_sha: baseSha,
             merge_method: "merge",
           }
-        : {
-            type: "FAST_FORWARD",
-            force: false,
-            delete: false,
-            tags: false,
-            secrets: false,
-            dispatch: false,
-            fallback: false,
-            replay: false,
-          },
+        : mechanism === "GRAPHQL_CREATE_COMMIT"
+          ? {
+              type: "GRAPHQL_CREATE_COMMIT",
+              graphql_mutation: "createCommitOnBranch",
+              expected_head_oid: baseSha,
+              additions_count: 1,
+              deletions_count: 0,
+              create_only: true,
+              commit_message: { headline: "Publish exact SoulX workflow on default branch" },
+              request_sha256: hash("0"),
+              force: false,
+              delete: false,
+              tags: false,
+              secrets: false,
+              dispatch: false,
+              fallback: false,
+              replay: false,
+            }
+          : {
+              type: "FAST_FORWARD",
+              force: false,
+              delete: false,
+              tags: false,
+              secrets: false,
+              dispatch: false,
+              fallback: false,
+              replay: false,
+            },
     issued_at: "2026-08-29T04:00:00.000Z",
     expires_at: "2026-08-30T04:00:00.000Z",
     consumed_at: null,
     execution_id: null,
   };
+  if (mechanism === "GRAPHQL_CREATE_COMMIT")
+    authority.mechanism.request_sha256 = createGraphqlCommitRequest(
+      authority.target,
+      authority.mechanism,
+      workflowBytes,
+    ).request_sha256;
   const lineageBase = {
     proposal_path: "project-context/evidence/repair/proposal.json",
     proposal_sha256: hash("5"),
@@ -208,11 +240,38 @@ function makeFixture({ id = "test0001", mechanism = "FAST_FORWARD" } = {}) {
     encoding: "base64",
     content: workflowBytes.toString("base64"),
   };
-  const runner = async (command, args) => {
-    state.calls.push({ command, args: [...args] });
+  const runner = async (command, args, options = {}) => {
+    state.calls.push({ command, args: [...args], options });
     assert.equal(command, "gh");
     assert.equal(args[0], "api");
     const endpoint = args.find((arg) => arg.startsWith("repos/"));
+    if (args[1] === "graphql") {
+      state.mutated = true;
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          data: {
+            createCommitOnBranch: {
+              commit: {
+                oid: resultSha,
+                messageHeadline: authority.mechanism.commit_message?.headline,
+                tree: { oid: treeSha },
+                parents: {
+                  totalCount: 1,
+                  pageInfo: { hasNextPage: false },
+                  nodes: [{ oid: baseSha }],
+                },
+              },
+              ref: {
+                prefix: "refs/heads/",
+                name: "main",
+                target: { oid: resultSha },
+              },
+            },
+          },
+        }),
+      };
+    }
     if (args.includes("--method") && args.includes("PATCH")) {
       state.mutated = true;
       return {
@@ -244,10 +303,25 @@ function makeFixture({ id = "test0001", mechanism = "FAST_FORWARD" } = {}) {
         status: 0,
         stdout: JSON.stringify({
           sha: resultSha,
+          message: authority.mechanism.commit_message?.headline,
           tree: { sha: treeSha },
           parents: (authority.target.resulting.parent_commit_shas ?? [baseSha, headSha]).map(
             (shaValue) => ({ sha: shaValue }),
           ),
+        }),
+      };
+    if (endpoint === `repos/acme/videoforge/git/commits/${baseSha}`)
+      return {
+        status: 0,
+        stdout: JSON.stringify({ sha: baseSha, tree: { sha: baseTreeSha }, parents: [] }),
+      };
+    if (endpoint === `repos/acme/videoforge/git/trees/${baseTreeSha}?recursive=1`)
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          sha: baseTreeSha,
+          truncated: false,
+          tree: [{ mode: "100644", path: "README.md", sha: sha("1"), type: "blob" }],
         }),
       };
     if (endpoint === `repos/acme/videoforge/git/trees/${treeSha}?recursive=1`)
@@ -288,6 +362,26 @@ function makeFixture({ id = "test0001", mechanism = "FAST_FORWARD" } = {}) {
     terminalRecordFile: join(sidecarDir, "terminal-record.json"),
     registrationEvidenceFile: join(sidecarDir, "registration-evidence.json"),
   };
+}
+
+function rebindAuthority(authority) {
+  const lineage = { ...authority.lineage };
+  delete lineage.lineage_sha256;
+  authority.validation.authority_binding_sha256 = sha256(
+    Buffer.from(
+      `${canonicalJson({
+        schema_version: authority.schema_version,
+        authority_id: authority.authority_id,
+        operation: authority.operation,
+        lineage,
+        target: authority.target,
+        mechanism: authority.mechanism,
+        issued_at: authority.issued_at,
+        expires_at: authority.expires_at,
+      })}\n`,
+    ),
+  );
+  return authority;
 }
 
 function executeFixture(fixture, options = {}) {
@@ -367,7 +461,7 @@ test("external Git trust root binds exact proposal approval validator bytes and 
     const fixture = makeFixture({ id: "trustroot0001" });
     fixture.authority.target.release_source_commit = releaseCommit;
     const proposal = {
-      schema_version: "videoforge.v2-13-default-branch-workflow-repair-proposal/v1",
+      schema_version: "videoforge.v2-13-default-branch-workflow-repair-proposal/v2",
       authority_schema: fixture.authority.schema_version,
       authority_id: fixture.authority.authority_id,
       operation: "repair-default-branch-workflow-once",
@@ -381,7 +475,7 @@ test("external Git trust root binds exact proposal approval validator bytes and 
     writeFileSync(join(repository, proposalPath), proposalBytes);
     const proposalCommit = commit("proposal");
     const approval = {
-      schema_version: "videoforge.v2-13-default-branch-workflow-repair-approval/v1",
+      schema_version: "videoforge.v2-13-default-branch-workflow-repair-approval/v2",
       approved: true,
       authority_schema: fixture.authority.schema_version,
       authority_id: fixture.authority.authority_id,
@@ -690,6 +784,319 @@ test("protected-branch execution uses only an exact open PR merge and no direct 
         arg === "repos/acme/videoforge/actions/workflows/avatar-primary-serverless-image.yml",
     ),
     true,
+  );
+});
+
+test("GraphQL createCommitOnBranch uses exact CAS, one addition, and a dynamic commit", async () => {
+  const fixture = makeFixture({ id: "graphqlsuccess0001", mechanism: "GRAPHQL_CREATE_COMMIT" });
+  const result = await executeFixture(fixture);
+  assert.equal(result.state, "REPAIR_COMPLETE");
+  assert.equal(result.mechanism, "GRAPHQL_CREATE_COMMIT");
+  assert.equal(result.resulting_commit_sha, fixture.resultSha);
+  assert.equal(result.resulting_tree_sha, fixture.treeSha);
+  assert.equal(result.mutations, 1);
+  const mutations = fixture.state.calls.filter((call) => call.args[1] === "graphql");
+  assert.equal(mutations.length, 1);
+  assert.deepEqual(mutations[0].args, ["api", "graphql", "--input", "-"]);
+  const request = JSON.parse(mutations[0].options.input);
+  assert.equal(request.query, GRAPHQL_CREATE_COMMIT_QUERY);
+  assert.deepEqual(Object.keys(request.variables.input).sort(), [
+    "branch",
+    "expectedHeadOid",
+    "fileChanges",
+    "message",
+  ]);
+  assert.deepEqual(request.variables.input.branch, {
+    repositoryNameWithOwner: "acme/videoforge",
+    branchName: "main",
+  });
+  assert.equal(request.variables.input.expectedHeadOid, fixture.baseSha);
+  assert.equal(request.variables.input.fileChanges.additions.length, 1);
+  assert.equal(
+    request.variables.input.fileChanges.additions[0].path,
+    ".github/workflows/avatar-primary-serverless-image.yml",
+  );
+  assert.equal("deletions" in request.variables.input.fileChanges, false);
+  assert.equal("author" in request.variables.input, false);
+  assert.equal("committer" in request.variables.input, false);
+  assert.equal(
+    sha256(Buffer.from(mutations[0].options.input)),
+    fixture.authority.mechanism.request_sha256,
+  );
+  assert.equal(
+    fixture.state.calls.some((call) => call.args.includes("PATCH") || call.args.includes("PUT")),
+    false,
+  );
+});
+
+test("GraphQL mechanism schema rejects extra additions, deletion capability, and head mismatch", () => {
+  for (const mutate of [
+    (authority) => {
+      authority.mechanism.additions_count = 2;
+    },
+    (authority) => {
+      authority.mechanism.deletions_count = 1;
+    },
+    (authority) => {
+      authority.mechanism.expected_head_oid = sha("9");
+    },
+    (authority) => {
+      authority.mechanism.commit_message.body = "not representable";
+    },
+  ]) {
+    const { authority } = makeFixture({
+      id: `graphqlunsafe${Math.random().toString(16).slice(2)}`,
+      mechanism: "GRAPHQL_CREATE_COMMIT",
+    });
+    mutate(authority);
+    rebindAuthority(authority);
+    assert.throws(
+      () => validateRepairAuthority(authority, { now: fixedNow }),
+      /AUTHORITY_INVALID/u,
+    );
+  }
+});
+
+test("GraphQL create-only preflight rejects an existing workflow before mutation", async () => {
+  const fixture = makeFixture({ id: "graphqlpresent0001", mechanism: "GRAPHQL_CREATE_COMMIT" });
+  const runner = async (command, args, options) => {
+    const response = await fixture.runner(command, args, options);
+    if (args.some((arg) => arg.includes("git/trees/2222222222222222222222222222222222222222"))) {
+      const tree = JSON.parse(response.stdout);
+      tree.tree.push({
+        mode: "100644",
+        path: fixture.workflowPath,
+        sha: fixture.authority.target.workflow.blob_sha1,
+        type: "blob",
+      });
+      return { ...response, stdout: JSON.stringify(tree) };
+    }
+    return response;
+  };
+  await assert.rejects(
+    executeFixture(fixture, { runCommand: runner }),
+    /WORKFLOW_ALREADY_PRESENT_ON_DEFAULT_BRANCH/u,
+  );
+  assert.equal(
+    fixture.state.calls.some((call) => call.args[1] === "graphql"),
+    false,
+  );
+});
+
+test("GraphQL source-byte drift and truncated base tree stop before mutation", async () => {
+  for (const mode of ["source-drift", "truncated-tree"]) {
+    const fixture = makeFixture({
+      id: `graphqlpreflight${mode.replaceAll("-", "")}`,
+      mechanism: "GRAPHQL_CREATE_COMMIT",
+    });
+    const runner = async (command, args, options) => {
+      const response = await fixture.runner(command, args, options);
+      if (mode === "source-drift" && args.some((arg) => arg.includes("contents/"))) {
+        const content = JSON.parse(response.stdout);
+        content.content = Buffer.from("name: drifted\n", "utf8").toString("base64");
+        return { ...response, stdout: JSON.stringify(content) };
+      }
+      if (
+        mode === "truncated-tree" &&
+        args.some((arg) => arg.includes("git/trees/2222222222222222222222222222222222222222"))
+      ) {
+        const tree = JSON.parse(response.stdout);
+        tree.truncated = true;
+        return { ...response, stdout: JSON.stringify(tree) };
+      }
+      return response;
+    };
+    await assert.rejects(
+      executeFixture(fixture, { runCommand: runner }),
+      /WORKFLOW_BLOB_DRIFT|BASE_TREE_READBACK_AMBIGUOUS/u,
+    );
+    assert.equal(
+      fixture.state.calls.some((call) => call.args[1] === "graphql"),
+      false,
+    );
+  }
+});
+
+test("GraphQL request hash drift stops before mutation", async () => {
+  const fixture = makeFixture({
+    id: "graphqlrequestdrift0001",
+    mechanism: "GRAPHQL_CREATE_COMMIT",
+  });
+  fixture.authority.mechanism.request_sha256 = hash("9");
+  rebindAuthority(fixture.authority);
+  await assert.rejects(executeFixture(fixture), /GRAPHQL_CREATE_COMMIT_REQUEST_DRIFT/u);
+  assert.equal(
+    fixture.state.calls.some((call) => call.args[1] === "graphql"),
+    false,
+  );
+});
+
+test("GraphQL CAS rejection is ACK_UNKNOWN and never retried", async () => {
+  const fixture = makeFixture({ id: "graphqlcas0001", mechanism: "GRAPHQL_CREATE_COMMIT" });
+  const runner = async (command, args, options) => {
+    if (args[1] === "graphql") {
+      fixture.state.calls.push({ command, args: [...args], options });
+      return { status: 1, stdout: "", stderr: "expectedHeadOid mismatch" };
+    }
+    return fixture.runner(command, args, options);
+  };
+  await assert.rejects(
+    executeFixture(fixture, { runCommand: runner }),
+    /ACK_UNKNOWN_READBACK_ONLY_NO_REPLAY/u,
+  );
+  const terminal = JSON.parse(readFileSync(fixture.terminalRecordFile, "utf8"));
+  assert.equal(terminal.state, "ACK_UNKNOWN");
+  assert.equal(terminal.resulting_commit_sha, null);
+  assert.equal(terminal.mutation_request_sha256, fixture.authority.mechanism.request_sha256);
+  fixture.state.calls.length = 0;
+  await assert.rejects(
+    reconcileDefaultBranchWorkflowRepair({
+      terminalRecordFile: fixture.terminalRecordFile,
+      runCommand: fixture.runner,
+    }),
+    /RECONCILIATION_RESULT_UNRESOLVED/u,
+  );
+  assert.equal(
+    fixture.state.calls.some((call) => call.args[1] === "graphql"),
+    false,
+  );
+});
+
+test("GraphQL durable INTENT reconciles an accepted mutation after response loss", async () => {
+  const fixture = makeFixture({ id: "graphqllostack0001", mechanism: "GRAPHQL_CREATE_COMMIT" });
+  const runner = async (command, args, options) => {
+    if (args[1] === "graphql") {
+      const intent = JSON.parse(readFileSync(fixture.terminalRecordFile, "utf8"));
+      assert.equal(intent.state, MUTATION_INTENT_STATE);
+      assert.equal(intent.mutation_request_sha256, fixture.authority.mechanism.request_sha256);
+      fixture.state.calls.push({ command, args: [...args], options });
+      fixture.state.mutated = true;
+      throw new Error("simulated lost GraphQL response");
+    }
+    return fixture.runner(command, args, options);
+  };
+  await assert.rejects(
+    executeFixture(fixture, { runCommand: runner }),
+    /ACK_UNKNOWN_READBACK_ONLY_NO_REPLAY/u,
+  );
+  const terminal = JSON.parse(readFileSync(fixture.terminalRecordFile, "utf8"));
+  assert.equal(terminal.resulting_commit_sha, null);
+  assert.deepEqual(terminal.target.resulting.parent_commit_shas, [fixture.baseSha]);
+  fixture.state.calls.length = 0;
+  const reconciled = await reconcileDefaultBranchWorkflowRepair({
+    terminalRecordFile: fixture.terminalRecordFile,
+    runCommand: fixture.runner,
+  });
+  assert.equal(reconciled.state, "RECONCILIATION_CONFIRMED");
+  assert.equal(reconciled.resulting_commit_sha, fixture.resultSha);
+  assert.equal(
+    fixture.state.calls.some((call) => call.args[1] === "graphql"),
+    false,
+  );
+  assert.equal(
+    fixture.state.calls.some((call) => call.args.includes("PATCH") || call.args.includes("PUT")),
+    false,
+  );
+});
+
+test("GraphQL wrong tree ACK fails closed into readback-only recovery", async () => {
+  const fixture = makeFixture({ id: "graphqlwrongtree0001", mechanism: "GRAPHQL_CREATE_COMMIT" });
+  const runner = async (command, args, options) => {
+    const response = await fixture.runner(command, args, options);
+    if (args[1] === "graphql") {
+      const payload = JSON.parse(response.stdout);
+      payload.data.createCommitOnBranch.commit.tree.oid = sha("9");
+      return { ...response, stdout: JSON.stringify(payload) };
+    }
+    return response;
+  };
+  await assert.rejects(
+    executeFixture(fixture, { runCommand: runner }),
+    /ACK_UNKNOWN_READBACK_ONLY_NO_REPLAY/u,
+  );
+  const terminal = JSON.parse(readFileSync(fixture.terminalRecordFile, "utf8"));
+  assert.equal(terminal.state, "ACK_UNKNOWN");
+  assert.equal(terminal.resulting_commit_sha, null);
+});
+
+test("GraphQL commit-message drift fails closed in ACK and reconciliation readback", async () => {
+  const ackFixture = makeFixture({
+    id: "graphqlwrongmessageack0001",
+    mechanism: "GRAPHQL_CREATE_COMMIT",
+  });
+  const ackRunner = async (command, args, options) => {
+    const response = await ackFixture.runner(command, args, options);
+    if (args[1] === "graphql") {
+      const payload = JSON.parse(response.stdout);
+      payload.data.createCommitOnBranch.commit.messageHeadline = "Different commit message";
+      return { ...response, stdout: JSON.stringify(payload) };
+    }
+    return response;
+  };
+  await assert.rejects(
+    executeFixture(ackFixture, { runCommand: ackRunner }),
+    /ACK_UNKNOWN_READBACK_ONLY_NO_REPLAY/u,
+  );
+
+  const reconcileFixture = makeFixture({
+    id: "graphqlwrongmessagereconcile0001",
+    mechanism: "GRAPHQL_CREATE_COMMIT",
+  });
+  const lostAckRunner = async (command, args, options) => {
+    if (args[1] === "graphql") {
+      reconcileFixture.state.calls.push({ command, args: [...args], options });
+      reconcileFixture.state.mutated = true;
+      throw new Error("simulated lost GraphQL response");
+    }
+    return reconcileFixture.runner(command, args, options);
+  };
+  await assert.rejects(
+    executeFixture(reconcileFixture, { runCommand: lostAckRunner }),
+    /ACK_UNKNOWN_READBACK_ONLY_NO_REPLAY/u,
+  );
+  reconcileFixture.state.calls.length = 0;
+  const driftRunner = async (command, args, options) => {
+    const response = await reconcileFixture.runner(command, args, options);
+    if (args.some((arg) => arg.includes(`git/commits/${reconcileFixture.resultSha}`))) {
+      const commit = JSON.parse(response.stdout);
+      commit.message = "Different commit message";
+      return { ...response, stdout: JSON.stringify(commit) };
+    }
+    return response;
+  };
+  await assert.rejects(
+    reconcileDefaultBranchWorkflowRepair({
+      terminalRecordFile: reconcileFixture.terminalRecordFile,
+      runCommand: driftRunner,
+    }),
+    /RESULT_COMMIT_MESSAGE_DRIFT/u,
+  );
+  assert.equal(
+    reconcileFixture.state.calls.some((call) => call.args[1] === "graphql"),
+    false,
+  );
+});
+
+test("GraphQL error payload is ACK_UNKNOWN and cannot expose a second mutation path", async () => {
+  const fixture = makeFixture({ id: "graphqlerrors0001", mechanism: "GRAPHQL_CREATE_COMMIT" });
+  const runner = async (command, args, options) => {
+    if (args[1] === "graphql") {
+      fixture.state.calls.push({ command, args: [...args], options });
+      return {
+        status: 0,
+        stdout: JSON.stringify({ errors: [{ message: "repository rule rejected commit" }] }),
+      };
+    }
+    return fixture.runner(command, args, options);
+  };
+  await assert.rejects(
+    executeFixture(fixture, { runCommand: runner }),
+    /ACK_UNKNOWN_READBACK_ONLY_NO_REPLAY/u,
+  );
+  assert.equal(fixture.state.calls.filter((call) => call.args[1] === "graphql").length, 1);
+  assert.equal(
+    fixture.state.calls.some((call) => call.args.includes("PATCH") || call.args.includes("PUT")),
+    false,
   );
 });
 
