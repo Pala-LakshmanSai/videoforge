@@ -467,6 +467,48 @@ function activeProposalFixture() {
   return repairExactPolicyFixture(activeProposal);
 }
 
+function v4ApprovalFixture() {
+  const proposal = activeProposalFixture();
+  const proposalBytes = Buffer.from(`${JSON.stringify(proposal, null, 2)}\n`);
+  const proposalSha256 = hash(proposalBytes);
+  const proposalRecordCommit = "e".repeat(40);
+  const approval = JSON.parse(v3Fixture().approvalBytes);
+  approval.schema_version = "videoforge.v2-13-full-live-user-approval/v3";
+  approval.authority_id = "v2-13-v4-test-authority-0001";
+  approval.full_live_authority_id =
+    proposal.requested_scope.materialization_seed_facts.full_live_authority_id;
+  approval.proposal = {
+    path: proposal.source.proposal_path,
+    sha256: proposalSha256,
+    proposal_record_commit: proposalRecordCommit,
+    release_source_commit: proposal.source.release_source_commit,
+    execution_control_commit: proposal.source.execution_control.commit,
+  };
+  approval.approval.immutable_github_release_ref = {
+    creation_authorized: false,
+    exact_tag_name: proposal.immutable_github_release_ref_request.exact_tag_name,
+    exact_target_commit: proposal.immutable_github_release_ref_request.exact_target_commit,
+    tag_kind: "LIGHTWEIGHT",
+    maximum_new_refs: 0,
+    force_update_authorized: false,
+    delete_or_retarget_authorized: false,
+    other_ref_creation_authorized: false,
+    predecessor_bound_reconciliation_only: true,
+    successor_tag_mutation_authorized: false,
+  };
+  approval.static_release_descriptor = structuredClone(
+    proposal.requested_scope.static_release_descriptor,
+  );
+  approval.statement = `I approve ${proposalSha256} at ${proposalRecordCommit}, execution control ${proposal.source.execution_control.commit}, predecessor terminal ${proposal.supersession.predecessor_release_attempt.terminal_state_sha256}, with USD 17.50, USD 7 per month, no fallback, readback-only tag videoforge-v2-13-release-20260826-v3, and roles videoforge_hosted_operator, videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
+  return {
+    approvalBytes: Buffer.from(`${JSON.stringify(approval, null, 2)}\n`),
+    proposal,
+    proposalBytes,
+    proposalRecordCommit,
+    proposalSha256,
+  };
+}
+
 function freshStateFixture() {
   return withApprovalValidatorReleaseTree(readFileSync(approvalValidatorPath), (releaseCommit) => {
     const fixture = v3Fixture({ releaseSourceCommit: releaseCommit });
@@ -552,6 +594,19 @@ test("exact full-live approval schema binds proposal, caps, GPU, retention, and 
     Object.values(result.phaseCapsUsd).reduce((sum, value) => sum + value, 0),
     17.5,
   );
+});
+
+test("V4 approval authorizes predecessor-bound tag reconciliation with zero successor refs", () => {
+  const fixture = v4ApprovalFixture();
+  const result = validateFullLiveUserApproval({
+    proposalBytes: fixture.proposalBytes,
+    approvalBytes: fixture.approvalBytes,
+    expectedProposalSha256: fixture.proposalSha256,
+    expectedProposalRecordCommit: fixture.proposalRecordCommit,
+    expectedReleaseSourceCommit: fixture.proposal.source.release_source_commit,
+  });
+  assert.equal(result.proposalSchema, "videoforge.v2-13-full-live-completion-proposal/v4");
+  assert.equal(result.executionControlCommit, fixture.proposal.source.execution_control.commit);
 });
 
 test("approval rejects a Serverless Flex rate above the exact current snapshot", () => {

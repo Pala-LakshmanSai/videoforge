@@ -1626,17 +1626,21 @@ function validateFullLiveUserApproval({
     const approvedRef = approved.immutable_github_release_ref;
     const requestedDatabase = proposal.requested_scope?.database;
     const approvedDatabase = approved.database_roles;
+    const approvedRefKeys = [
+      "creation_authorized",
+      "exact_tag_name",
+      "exact_target_commit",
+      "tag_kind",
+      "maximum_new_refs",
+      "force_update_authorized",
+      "delete_or_retarget_authorized",
+      "other_ref_creation_authorized",
+      ...(isV4
+        ? ["predecessor_bound_reconciliation_only", "successor_tag_mutation_authorized"]
+        : []),
+    ];
     if (
-      !exactKeys(approvedRef, [
-        "creation_authorized",
-        "exact_tag_name",
-        "exact_target_commit",
-        "tag_kind",
-        "maximum_new_refs",
-        "force_update_authorized",
-        "delete_or_retarget_authorized",
-        "other_ref_creation_authorized",
-      ]) ||
+      !exactKeys(approvedRef, approvedRefKeys) ||
       !exactKeys(approvedDatabase, [
         "exact_operator_role",
         "exact_runtime_role",
@@ -1653,18 +1657,25 @@ function validateFullLiveUserApproval({
       requestedRef?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
       requestedRef.exact_target_commit !== expectedReleaseSourceCommit ||
       requestedRef.tag_kind !== "LIGHTWEIGHT" ||
-      requestedRef.maximum_new_refs !== 1 ||
+      requestedRef.maximum_new_refs !== (isV4 ? 0 : 1) ||
       requestedRef.force_update_authorized !== false ||
       requestedRef.delete_or_retarget_authorized !== false ||
       requestedRef.other_ref_creation_authorized !== false ||
-      approvedRef?.creation_authorized !== true ||
+      (isV4 &&
+        (requestedRef.creation_requested !== false ||
+          requestedRef.predecessor_bound_reconciliation_only !== true ||
+          requestedRef.successor_tag_mutation_authorized !== false)) ||
+      approvedRef?.creation_authorized !== !isV4 ||
       approvedRef.exact_tag_name !== requestedRef.exact_tag_name ||
       approvedRef.exact_target_commit !== requestedRef.exact_target_commit ||
       approvedRef.tag_kind !== "LIGHTWEIGHT" ||
-      approvedRef.maximum_new_refs !== 1 ||
+      approvedRef.maximum_new_refs !== (isV4 ? 0 : 1) ||
       approvedRef.force_update_authorized !== false ||
       approvedRef.delete_or_retarget_authorized !== false ||
-      approvedRef.other_ref_creation_authorized !== false
+      approvedRef.other_ref_creation_authorized !== false ||
+      (isV4 &&
+        (approvedRef.predecessor_bound_reconciliation_only !== true ||
+          approvedRef.successor_tag_mutation_authorized !== false))
     )
       fail("IMMUTABLE_RELEASE_REF");
     if (
