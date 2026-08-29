@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "062f5ce2ee7de094a259566a6a800273f1866005",
+  "audited_code_commit": "87566144f0f1a128124df80014010eff83eefb2b",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.final-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-29T01:16:55.000Z",
+  "observed_at": "2026-08-29T03:52:42.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -17,7 +17,7 @@
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
     "entry_count": 643,
-    "sha256": "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb",
+    "sha256": "sha256:b3e6f0114a5890a016dbcb331e7e521d606140d6e8aeca3fab07c0416e2be391",
     "exact": true
   },
   "production_origin": {
@@ -27,16 +27,16 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb"
+    "sha256": "sha256:b3e6f0114a5890a016dbcb331e7e521d606140d6e8aeca3fab07c0416e2be391"
   },
   "validation": {
     "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
     "full_verify_passed": false,
-    "full_verify_expected_boundary": "STALE_ACTIVE_CANDIDATE_DESCRIPTOR_AND_EXACT_RELEASE_COMPONENTS_PENDING_RESEAL",
+    "full_verify_expected_boundary": "STALE_ACTIVE_V3_CANDIDATE_PENDING_V4_RESEAL",
     "package_test_files_passed": 104,
     "package_tests_passed": 1256,
     "package_tests_skipped": 1,
-    "focused_release_script_tests_passed": 111,
+    "focused_release_script_tests_passed": 166,
     "control_plane_activation_tests_passed": 14,
     "soulx_tests_passed": 37,
     "independent_source_audit_result": "PASS_READY_TO_RESEAL",
@@ -110,10 +110,12 @@
   },
   "notes": [
     "This record contains no credentials or raw protected values.",
-    "The release-source successor may add only this readiness record and the canonical materialization-seed facts before resealing; application and deployment bytes remain those audited at audited_code_commit.",
-    "The immediately previous authority was durably consumed once and failed safely at the first release-tag absence check because Apple Git reports a missing exact ref as exit 128 without --quiet; cleanup completed with zero provider mutation, zero GPU use, zero spend, and no tag, credential, deployment, endpoint, or publication creation. That authority is non-reusable.",
-    "The repaired publication path and executor evidence validator require the exact codex/serverless-v2-roadmap-v4 branch and reject the stale unsuffixed branch while preserving non-force fast-forward and tree-byte proof.",
-    "The Git portability repair uses show-ref --verify --quiet for stable absence status and rebinds the executor, approval validator, durable orchestration state contract, and approval component manifest to the repaired source.",
-    "The canonical full verify is intentionally blocked only by the stale active candidate descriptor and component bindings that this evidence successor permits resealing; 111 focused adapter, executor, and authority tests passed with only the stale successor-candidate test excluded until resealing, and closure plus NO_ACTION gates passed."
+    "The immutable release payload and exact lightweight tag remain bound to 15af5e20ce3c80eb61d5d1e807a87e8840ed9685; only execution-control source and evidence advance for this successor.",
+    "The immediately previous authority was durably consumed once and stopped at APPROVAL_BRANCH_READBACK after creating, pushing, and verifying the exact tag. Cleanup completed with zero Pods, workers, queues, GPU use, finite execution spend, database credentials, secrets, deployments, images, or endpoints; only the two approved volumes remain.",
+    "The successor binds the predecessor terminal-state hash and all three settled tag result hashes, performs zero tag mutation, and hard-stops if the exact remote tag is absent or mismatched.",
+    "The repaired approval publication accepts an absent exact v4 branch, skips merge-base only for exact absence, uses a normal non-force push, and requires exact remote equality.",
+    "V3 payload contracts remain backward compatible while seven V4 execution-control components are separately commit-tree-bound. Guarded activation runs only from the successor control commit, rejects predecessor authority replay, and proves every non-control closure byte equals the immutable payload.",
+    "The fresh independent five-suite audit passed 166 of 166 selected tests after excluding only the stale active V3 candidate lifecycle gate pending this V4 reseal. Context validation, exact commit diff checks, and canonical executor NO_ACTION all passed with zero external calls, mutation, GPU use, or spend.",
+    "The successor authority identifier is proven distinct from the exact predecessor in both approval validation and outer authority validation before durable single-use consumption; guarded activation repeats the check as defense in depth."
   ]
 }
