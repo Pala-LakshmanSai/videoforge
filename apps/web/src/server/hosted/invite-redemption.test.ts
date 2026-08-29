@@ -1,12 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  handleHostedInviteRedemption,
-  HOSTED_INVITE_REDEMPTION_SCHEMA,
-} from "./invite-redemption";
+import { handleHostedInviteRedemption, HOSTED_INVITE_REDEMPTION_SCHEMA } from "./invite-redemption";
 
 const ORIGIN = "https://videoforge.example.test";
 const SESSION = "session-token-that-is-never-returned";
+const allowRateLimit = async () => true;
 
 function request(body: unknown, origin = ORIGIN): Request {
   return new Request(`${ORIGIN}/api/v2/invite/redemption`, {
@@ -30,6 +28,7 @@ describe("hosted invite redemption route", () => {
     const response = await handleHostedInviteRedemption(request(body(), "https://evil.test"), {
       publicOrigin: ORIGIN,
       sessionToken,
+      consumeRateLimit: allowRateLimit,
       redeem,
     });
 
@@ -45,6 +44,7 @@ describe("hosted invite redemption route", () => {
     const response = await handleHostedInviteRedemption(request(body()), {
       publicOrigin: ORIGIN,
       sessionToken: async () => SESSION,
+      consumeRateLimit: allowRateLimit,
       redeem,
     });
 
@@ -61,7 +61,12 @@ describe("hosted invite redemption route", () => {
     const redeem = vi.fn(async () => "ADMITTED" as const);
     const malformed = await handleHostedInviteRedemption(
       request({ schema_version: HOSTED_INVITE_REDEMPTION_SCHEMA, invite_code: " short " }),
-      { publicOrigin: ORIGIN, sessionToken: async () => SESSION, redeem },
+      {
+        publicOrigin: ORIGIN,
+        sessionToken: async () => SESSION,
+        consumeRateLimit: allowRateLimit,
+        redeem,
+      },
     );
     expect(malformed.status).toBe(400);
     expect(redeem).not.toHaveBeenCalled();
@@ -69,6 +74,7 @@ describe("hosted invite redemption route", () => {
     const unauthenticated = await handleHostedInviteRedemption(request(body()), {
       publicOrigin: ORIGIN,
       sessionToken: async () => null,
+      consumeRateLimit: allowRateLimit,
       redeem,
     });
     expect(unauthenticated.status).toBe(401);
@@ -85,10 +91,25 @@ describe("hosted invite redemption route", () => {
     const response = await handleHostedInviteRedemption(request(body()), {
       publicOrigin: ORIGIN,
       sessionToken: async () => SESSION,
+      consumeRateLimit: allowRateLimit,
       redeem: async () => outcome,
     });
 
     expect(response.status).toBe(expectedStatus);
     expect(await response.json()).toEqual({ error: { code: outcome, retryable: false } });
+  });
+
+  it("fails closed before verifier processing when the invite rate limit is exhausted", async () => {
+    const redeem = vi.fn(async () => "ADMITTED" as const);
+    const response = await handleHostedInviteRedemption(request(body()), {
+      publicOrigin: ORIGIN,
+      sessionToken: async () => SESSION,
+      consumeRateLimit: async () => false,
+      redeem,
+    });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("600");
+    expect(redeem).not.toHaveBeenCalled();
   });
 });

@@ -18,7 +18,10 @@ const testState = vi.hoisted(() => {
       revision_state: "DRAFT",
     },
   ];
+  const rateLimitRows = [{ allowed: true }];
   const query = vi.fn(async (sql: string) => {
+    if (sql.includes("videoforge_consume_hosted_rate_limit"))
+      return { rows: rateLimitRows, affectedRows: 1 };
     if (sql.includes("videoforge_hosted_session_scope"))
       return { rows: scopeRows, affectedRows: 1 };
     if (sql.includes("FROM projects AS project")) return { rows: projectRows, affectedRows: 1 };
@@ -29,7 +32,7 @@ const testState = vi.hoisted(() => {
     work({ execute: vi.fn(), query }),
   );
   const executor = { execute: vi.fn(), query, transaction };
-  return { scopeRows, projectRows, query, pool, executor };
+  return { scopeRows, projectRows, rateLimitRows, query, pool, executor };
 });
 
 vi.mock("./auth", () => ({
@@ -130,22 +133,23 @@ describe("hosted product route contract", () => {
     `/api/v2/hosted/styles/${PRESET_ID}/analyze`,
     `/api/v2/hosted/styles/${PRESET_ID}/publish`,
     `/api/v2/hosted/projects/${PROJECT_ID}/retry`,
-  ])("fails closed for an unqualified write capability before database access: %s", async (path) => {
-    testState.query.mockClear();
-    const result = await handleHostedProductRequest(
-      request(path, "POST", { unexpected: true }),
-      environment,
-      config,
-      executionContext,
-    );
-    expect(result?.status).toBe(409);
-    await expect(errorCode(result)).resolves.toBe(
-      path.endsWith("/retry")
-        ? "TARGETED_RETRY_NOT_QUALIFIED"
-        : "PRESET_CREATION_NOT_QUALIFIED",
-    );
-    expect(testState.query).not.toHaveBeenCalled();
-  });
+  ])(
+    "fails closed for an unqualified write capability before database access: %s",
+    async (path) => {
+      testState.query.mockClear();
+      const result = await handleHostedProductRequest(
+        request(path, "POST", { unexpected: true }),
+        environment,
+        config,
+        executionContext,
+      );
+      expect(result?.status).toBe(409);
+      await expect(errorCode(result)).resolves.toBe(
+        path.endsWith("/retry") ? "TARGETED_RETRY_NOT_QUALIFIED" : "PRESET_CREATION_NOT_QUALIFIED",
+      );
+      expect(testState.query).not.toHaveBeenCalled();
+    },
+  );
 
   it("fails closed at the tenant admission seam", async () => {
     testState.scopeRows.length = 0;
@@ -164,6 +168,26 @@ describe("hosted product route contract", () => {
     });
   });
 
+  it("fails closed before tenant data access when the hosted rate limit is exhausted", async () => {
+    testState.query.mockClear();
+    testState.rateLimitRows[0]!.allowed = false;
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/projects/${PROJECT_ID}/manifest`, "GET"),
+      environment,
+      config,
+      executionContext,
+    );
+    expect(result?.status).toBe(429);
+    expect(result?.headers.get("retry-after")).toBe("60");
+    await expect(errorCode(result)).resolves.toBe("HOSTED_RATE_LIMITED");
+    expect(
+      testState.query.mock.calls.some(([sql]) =>
+        String(sql).includes("videoforge_hosted_session_scope"),
+      ),
+    ).toBe(false);
+    testState.rateLimitRows[0]!.allowed = true;
+  });
+
   it("keeps provenance manifest unavailable until an approved render exists", async () => {
     const result = await handleHostedProductRequest(
       request(`/api/v2/hosted/projects/${PROJECT_ID}/manifest`, "GET"),
@@ -178,6 +202,7 @@ describe("hosted product route contract", () => {
   it("preserves SYSTEM preset materialization and global queue contract in source", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     expect(source).toContain("await materializeSystemAvatar(transaction, scope, avatarSource)");
+    expect(source).toContain("videoforge_read_system_avatar_version_assets($1)");
     expect(source).toContain("await materializeSystemStyle(transaction, scope, styleSource)");
     const createStart = source.indexOf("async function createProject(");
     const createEnd = source.indexOf("async function commitProject(", createStart);

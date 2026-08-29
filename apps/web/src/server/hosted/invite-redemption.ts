@@ -5,12 +5,12 @@ import {
 } from "@videoforge/control-plane";
 
 export const HOSTED_INVITE_REDEMPTION_PATH = "/api/v2/invite/redemption";
-export const HOSTED_INVITE_REDEMPTION_SCHEMA =
-  "videoforge-hosted-invite-redemption/v1" as const;
+export const HOSTED_INVITE_REDEMPTION_SCHEMA = "videoforge-hosted-invite-redemption/v1" as const;
 
 export interface HostedInviteRedemptionDependencies {
   readonly publicOrigin: string;
   readonly sessionToken: (request: Request) => Promise<string | null>;
+  readonly consumeRateLimit: (sessionToken: string) => Promise<boolean>;
   /** Accepts only the safe hash. Implementations must never receive or retain the raw verifier. */
   readonly redeem: (
     sessionToken: string,
@@ -69,6 +69,21 @@ export async function handleHostedInviteRedemption(
 
   const sessionToken = await dependencies.sessionToken(request);
   if (sessionToken === null) return problem("AUTHENTICATION_REQUIRED", 401);
+  if (!(await dependencies.consumeRateLimit(sessionToken))) {
+    return Response.json(
+      { error: { code: "HOSTED_RATE_LIMITED", retryable: true } },
+      {
+        status: 429,
+        headers: {
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "retry-after": "600",
+          "x-content-type-options": "nosniff",
+          "x-videoforge-runtime": "hosted-v2-06",
+        },
+      },
+    );
+  }
 
   let rawBody: unknown;
   try {

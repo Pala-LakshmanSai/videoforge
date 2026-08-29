@@ -44,10 +44,7 @@ import {
   type V213ResolvedRenderManifestReadDependencies,
 } from "./v213-resolved-render-manifest-route";
 import { createV213WorkerLiveAcceptanceExecute } from "./v213-worker-live-execution";
-import {
-  handleHostedInviteRedemption,
-  HOSTED_INVITE_REDEMPTION_PATH,
-} from "./invite-redemption";
+import { handleHostedInviteRedemption, HOSTED_INVITE_REDEMPTION_PATH } from "./invite-redemption";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -1145,6 +1142,13 @@ export async function handleHostedRequest(
         sessionToken: async (candidate) => {
           const session = await hostedSession(candidate, config, pool, executionContext);
           return typeof session?.session?.token === "string" ? session.session.token : null;
+        },
+        consumeRateLimit: async (sessionToken) => {
+          const result = await pool.query<{ allowed: boolean }>(
+            `SELECT videoforge_consume_hosted_rate_limit($1, 'invite_redeem') AS allowed`,
+            [sessionToken],
+          );
+          return result.rows[0]?.allowed === true;
         },
         redeem: (sessionToken, verifierSha256) =>
           repository.redeemHostedInvite({ sessionToken, verifierSha256 }),

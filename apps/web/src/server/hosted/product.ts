@@ -16,10 +16,7 @@ import {
   hostedVoiceoverArtifactProbe,
   validateHostedVoiceover,
 } from "./audio-validation";
-import {
-  hostedGpuReadinessForConfiguration,
-  type HostedGpuReadiness,
-} from "./gpu-readiness";
+import { hostedGpuReadinessForConfiguration, type HostedGpuReadiness } from "./gpu-readiness";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
 import { canonicalJson } from "./submission";
@@ -152,6 +149,22 @@ function response(value: unknown, status = 200): Response {
   });
 }
 
+function rateLimitedResponse(): Response {
+  return Response.json(
+    { error: { code: "HOSTED_RATE_LIMITED", retryable: true } },
+    {
+      status: 429,
+      headers: {
+        "cache-control": "no-store",
+        "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+        "retry-after": "60",
+        "x-content-type-options": "nosniff",
+        "x-videoforge-runtime": "hosted-v2-06",
+      },
+    },
+  );
+}
+
 function unavailableHostedCapability(code: string): Response {
   return response(
     {
@@ -181,6 +194,12 @@ async function sessionScope(
     headers: request.headers,
   });
   if (!session?.user?.id) return response({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+  const rateLimitOperation = hostedRateLimitOperation(request);
+  const rateLimit = await pool.query<{ allowed: boolean }>(
+    `SELECT videoforge_consume_hosted_rate_limit($1, $2) AS allowed`,
+    [session.session.token, rateLimitOperation],
+  );
+  if (rateLimit.rows[0]?.allowed !== true) return rateLimitedResponse();
   const result = await pool.query<HostedScope>(
     `SELECT user_id, account_id, workspace_id
        FROM videoforge_hosted_session_scope($1)`,
@@ -189,6 +208,23 @@ async function sessionScope(
   const scope = result.rows[0];
   if (!scope) return response({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
   return scope;
+}
+
+function hostedRateLimitOperation(
+  request: Request,
+): "hosted_read" | "project_create" | "project_commit" | "project_review" | "hosted_mutation" {
+  const path = new URL(request.url).pathname;
+  if (request.method === "GET" || path === "/api/v2/hosted/projects/preflight") {
+    return "hosted_read";
+  }
+  if (path === "/api/v2/hosted/projects") return "project_create";
+  if (/^\/api\/v2\/hosted\/projects\/[0-9a-f-]+\/commit$/u.test(path)) {
+    return "project_commit";
+  }
+  if (/^\/api\/v2\/hosted\/projects\/[0-9a-f-]+\/review$/u.test(path)) {
+    return "project_review";
+  }
+  return "hosted_mutation";
 }
 
 function parseCreate(value: unknown): ProjectCreateInput | null {
@@ -776,8 +812,9 @@ async function cloneSystemAsset(
       `SELECT id, binary_sha256
          FROM assets
         WHERE account_id = $1 AND workspace_id = $2 AND object_key = $3
+          AND binary_sha256 = $4
         LIMIT 1`,
-      [scope.account_id, scope.workspace_id, objectKey],
+      [scope.account_id, scope.workspace_id, objectKey, checksum],
     );
     if (objectKeyMatch.rows[0]) {
       return { id: rowString(objectKeyMatch.rows[0], "id"), checksum };
@@ -837,16 +874,36 @@ async function materializeSystemAvatar(
   );
   if (existing.rows[0]) return existing.rows[0];
 
-  const originalSourceResult = await transaction.query<HostedPresetRow>(
-    `SELECT * FROM assets WHERE id = $1 LIMIT 1`,
-    [typeof source.original_asset_id === "string" ? source.original_asset_id : ""],
+  const snapshotResult = await transaction.query<HostedPresetRow>(
+    `SELECT * FROM videoforge_read_system_avatar_version_assets($1)`,
+    [sourceVersionId],
   );
-  const originalSource = originalSourceResult.rows[0] ?? source;
-  const runtimeSourceResult = await transaction.query<HostedPresetRow>(
-    `SELECT * FROM assets WHERE id = $1 LIMIT 1`,
-    [typeof source.runtime_source_asset_id === "string" ? source.runtime_source_asset_id : ""],
-  );
-  const runtimeSource = runtimeSourceResult.rows[0] ?? originalSource;
+  const snapshot = snapshotResult.rows[0];
+  if (!snapshot) throw new Error("System avatar asset snapshot is unavailable");
+  const originalSource: HostedPresetRow = {
+    id: snapshot.original_asset_id,
+    kind: "AVATAR_ORIGINAL",
+    object_key: snapshot.original_object_key,
+    binary_sha256: snapshot.original_binary_sha256,
+    content_type: snapshot.original_content_type,
+    byte_size: snapshot.original_byte_size,
+    width_px: snapshot.original_width_px,
+    height_px: snapshot.original_height_px,
+    duration_ms: snapshot.original_duration_ms,
+    metadata: snapshot.original_metadata,
+  };
+  const runtimeSource: HostedPresetRow = {
+    id: snapshot.runtime_source_asset_id,
+    kind: "AVATAR_RUNTIME",
+    object_key: snapshot.runtime_object_key,
+    binary_sha256: snapshot.runtime_binary_sha256,
+    content_type: snapshot.runtime_content_type,
+    byte_size: snapshot.runtime_byte_size,
+    width_px: snapshot.runtime_width_px,
+    height_px: snapshot.runtime_height_px,
+    duration_ms: snapshot.runtime_duration_ms,
+    metadata: snapshot.runtime_metadata,
+  };
   const original = await cloneSystemAsset(
     transaction,
     scope,
@@ -874,7 +931,8 @@ async function materializeSystemAvatar(
      ON CONFLICT (account_id, workspace_id, id) DO NOTHING`,
     [profileId, scope.account_id, scope.workspace_id, profileName, scope.user_id],
   );
-  const payload = plainRecord(source.profile_payload) ?? {
+  const payload = {
+    ...(plainRecord(source.profile_payload) ?? {}),
     schema_version: "avatar-profile-version/v1",
     source_asset_id: original.id,
     source_sha256: original.checksum,
@@ -2547,9 +2605,7 @@ type HostedPreflightBlocker = {
   readonly severity: "BLOCKING" | "ADVISORY";
 };
 
-export function hostedGpuProductState(
-  readiness: Pick<HostedGpuReadiness, "dispatch_available">,
-): {
+export function hostedGpuProductState(readiness: Pick<HostedGpuReadiness, "dispatch_available">): {
   readonly projectedUsd: 0 | null;
   readonly pendingState: "READY_FOR_GPU_DISPATCH" | "WAITING_FOR_GPU_QUALIFICATION";
   readonly estimateDetail: string;
