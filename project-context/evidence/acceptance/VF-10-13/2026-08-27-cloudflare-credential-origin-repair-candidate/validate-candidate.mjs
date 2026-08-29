@@ -32,10 +32,10 @@ const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13
 const DESCRIPTOR_PATH = path.join(ROOT, "protected-inputs/v2-13/static-release-descriptor.json");
 const PROTECTED_INPUT_PATH = path.join(ROOT, "protected-inputs/v2-13/materialization-seed-input.json");
 const RELEASE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
-const EXECUTION_CONTROL_COMMIT = "ab3ce68cd8d56b7cb9ec4f64a8ff31853ae4ee51";
-const AUDITED_CODE_COMMIT = "5ed4fbbef0abf889155abdfb56efcdf006100c73";
-const FACTS_SHA256 = "sha256:7a237f5996ce44a345ff91788bfa065a7735f711a4e9e1de8cb331d423bd5c10";
-const AUDIT_SHA256 = "sha256:3d8dbc092531a41fc61f950738dd5f4ead82586d431d0a2daead98174a797b0b";
+const EXECUTION_CONTROL_COMMIT = "beedab7a8a9b7d9716b0305ad54febb4a980e60b";
+const AUDITED_CODE_COMMIT = "84b0760456e7450917407696cea6d23333ee1f42";
+const FACTS_SHA256 = "sha256:868068e242b7cdcc10ea90ac6c06df8c25a8038fbf6ad844fc62437b057e04ae";
+const AUDIT_SHA256 = "sha256:351b6fe8af4db8720562d5a75d484000e07902e328ed40119330ebe829b5cbf0";
 const DESCRIPTOR_SHA256 = "sha256:197ba94ef9694f3cfb4b7dab7da21cfda473bb0f49d66cae3a9ee4e5d7338051";
 const PROTECTED_INPUT_SHA256 = "sha256:2c6b83e44814776566ba13c4eb0d2fd08cf9d76f9772f47f4315d677ec9d5d6a";
 const FULL_LIVE_AUTHORITY_ID = "a03edc8f-817f-4579-8bce-28b3447ce30f";
@@ -454,16 +454,16 @@ assert(
   requestedDatabase.prequalification_database_bootstrap_operator_function_signature_count === 45 &&
     JSON.stringify(requestedDatabase.exact_operator_function_signatures) ===
       JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures) &&
-    requestedDatabase.prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count === 46 &&
-    requestedDatabase.prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count === 46 &&
+    requestedDatabase.prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count === 48 &&
+    requestedDatabase.prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count === 48 &&
     JSON.stringify(requestedDatabase.prequalification_database_bootstrap_recovery_mode_ledger_before_count) ===
       JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.recovery_mode_ledger_before_count) &&
-    requestedDatabase.prequalification_database_bootstrap_recovery_mode_final_ledger_count === 46 &&
+    requestedDatabase.prequalification_database_bootstrap_recovery_mode_final_ledger_count === 48 &&
     JSON.stringify(requestedDatabase.exact_recoverable_prefix_counts) ===
-      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46]) &&
+      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]) &&
     JSON.stringify(requestedDatabase.exact_migrations_to_apply) ===
-      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46]),
-  "REQUESTED_DATABASE_LEDGER46_BINDING",
+      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]),
+  "REQUESTED_DATABASE_LEDGER48_BINDING",
 );
 const ref = proposal.immutable_github_release_ref_request;
 assert(

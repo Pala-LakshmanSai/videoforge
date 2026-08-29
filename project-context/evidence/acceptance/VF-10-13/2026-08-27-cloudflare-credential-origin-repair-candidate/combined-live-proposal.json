@@ -24,7 +24,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:7a237f5996ce44a345ff91788bfa065a7735f711a4e9e1de8cb331d423bd5c10"
+      "sha256": "sha256:868068e242b7cdcc10ea90ac6c06df8c25a8038fbf6ad844fc62437b057e04ae"
     },
     "workflow_registration_evidence": {
       "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
@@ -94,7 +94,7 @@
     "future_approval_record_basename": "user-approval.json",
     "future_authority_record_basename": "approved-authority.json",
     "execution_control": {
-      "commit": "ab3ce68cd8d56b7cb9ec4f64a8ff31853ae4ee51",
+      "commit": "beedab7a8a9b7d9716b0305ad54febb4a980e60b",
       "exact_components": {
         "approval_validator": {
           "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -121,15 +121,15 @@
         },
         "full_live_adapters": {
           "path": "deploy/v2-13/full-live-adapters.mjs",
-          "sha256": "sha256:c4f0f4867bb7c19207c7cbe334261f7208949d5906347bc15e1a2fd04b2de4ff"
+          "sha256": "sha256:5ca80cb1699da9ed6d67045feed18516d41466b0eda957882247d82a1c4e4de6"
         },
         "full_live_executor": {
           "path": "deploy/v2-13/full-live-executor.mjs",
-          "sha256": "sha256:4841a7036d4e6b90953d0f6a7c688725ece0e55e8e2ced08ab734fb4772b64e9"
+          "sha256": "sha256:0ef10e5d5ee2fd86f18181be2003f42eb731d52d698057afb2753a2392605dd3"
         },
         "guarded_activation": {
           "path": "deploy/v2-13/guarded-activation.mjs",
-          "sha256": "sha256:f760505d3fdabfe8540cfc836304d70e4da8a1c76516474ffffbdef14cc4b0b3"
+          "sha256": "sha256:82200aad43ff1d04b7b6021c41dd27fe5381aa34c00d080fe2ce51c0ede91fc2"
         },
         "hosted_live_production_adapters": {
           "path": "apps/web/src/server/hosted/v213-live-production-adapters.ts",
@@ -141,15 +141,23 @@
         },
         "materialization_seed_builder": {
           "path": "deploy/v2-13/build-materialization-seed.mjs",
-          "sha256": "sha256:078370a000ceec314fac64c950a56f63df9e12e864bd5c2d32a14e8d8c688ffa"
+          "sha256": "sha256:f122e09b6700c9c5bb52b439f357458d65c03c64dabf451e6b50e70c1921ed09"
         },
         "migration_0046": {
           "path": "packages/control-plane/migrations/0046_hosted_full_live_cleanup_recovery.sql",
           "sha256": "sha256:d98e020a52a1820db811f5c9a679651c1169000ebe28c1d00b35e04c003ba33b"
         },
+        "migration_0047": {
+          "path": "packages/control-plane/migrations/0047_hosted_invite_code_redemption.sql",
+          "sha256": "sha256:d9840c7033b823a7f9a03e13d7213c50b81d40c7f89423f6c6f4ecc7e8e8649a"
+        },
+        "migration_0048": {
+          "path": "packages/control-plane/migrations/0048_hosted_system_avatar_asset_snapshot_reader.sql",
+          "sha256": "sha256:8181d1c050690a8e15ce5cef7473a5caa872d5f868b18f059574dbd4fcbdc82d"
+        },
         "migration_manifest": {
           "path": "packages/control-plane/migrations/manifest.json",
-          "sha256": "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d"
+          "sha256": "sha256:bd177cfbbbd8df8ff84be752247a12da8dcf10ed9f3e5026c4e7aaaaf7a3d31c"
         },
         "operator_grants": {
           "path": "deploy/v2-13/neon-full-live-operator-grants.sql",
@@ -157,7 +165,7 @@
         },
         "orchestration_authority": {
           "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-          "sha256": "sha256:ece3944222fec17946c7f1fb031b2d79d2e9a72bdc3a01558298705e95f55210"
+          "sha256": "sha256:0fac8c04e9b0d524371ba4efaf8d114f026925a9f5bbcd966f7db62e0cc3bcdc"
         },
         "promotion": {
           "path": "deploy/v2-13/promote-qualified-production.mjs",
@@ -165,7 +173,11 @@
         },
         "reconciler_grants": {
           "path": "deploy/v2-13/neon-pair-reconciler-grants.sql",
-          "sha256": "sha256:0ae991d90b8b21761fe132ce6ea543a5716c0fa4b294429466df73c51bfebdaf"
+          "sha256": "sha256:e17712c53374db8d20927f31ffb29cd422710bf400e2deb40e4eec2aef1beebe"
+        },
+        "runtime_grants": {
+          "path": "deploy/v2-06/neon-runtime-grants.sql",
+          "sha256": "sha256:6696c0e4879d97061db9ce11b546045fcdddc878bcd9817737fce5070c108536"
         },
         "runpod_dual_lane_transport": {
           "path": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
@@ -173,7 +185,7 @@
         },
         "source_closure_manifest": {
           "path": "deploy/v2-13/full-live-source-closure.json",
-          "sha256": "sha256:bc18e7f87c01759ccca1f28519d95c6b7ee563a7b8d08f650c3de0ea2dba4f12"
+          "sha256": "sha256:58b1703372c68409267926a53dd70ba80cbcb5454eda9ece341719905555fa23"
         },
         "typescript_cli_bridge": {
           "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -816,9 +828,11 @@
         42,
         43,
         44,
-        45
+        45,
+        46,
+        47
       ],
-      "reject_ledger_drift_or_count_above_46": true,
+      "reject_ledger_drift_or_count_above_48": true,
       "pgcrypto_then_exact_migrations": [
         37,
         38,
@@ -829,7 +843,9 @@
         43,
         44,
         45,
-        46
+        46,
+        47,
+        48
       ],
       "each_migration_requires_advisory_lock_and_single_transaction": true,
       "owner_connection_uses_only_protected_pg_service_and_pgpass": true,
@@ -845,7 +861,7 @@
       "database_role_credential_bundle_schema": "videoforge.v213-database-role-credential-bundle/v1",
       "database_role_credential_bundle_path": "database-role-credentials.json",
       "database_role_credentials_absent_before_consumed_bootstrap": true,
-      "database_role_credentials_materialized_after_migration_prefix_commit_count": 46,
+      "database_role_credentials_materialized_after_migration_prefix_commit_count": 48,
       "database_role_credentials_exact_roles": [
         "videoforge_hosted_operator",
         "videoforge_hosted_runtime",
@@ -910,7 +926,7 @@
       "operator_role_contract": "LOGIN_NOINHERIT_HARDENED_NO_MEMBERSHIPS_OWNERSHIP_OR_TABLE_ACL",
       "grants": "EXACT_OPERATOR_FUNCTION_ONLY",
       "exact_readback": [
-        "46-row-ledger",
+        "48-row-ledger",
         "pgcrypto",
         "operator-role-flags",
         "no-role-memberships",
@@ -1002,9 +1018,9 @@
       "receipt_parent_directory_mode": "0700",
       "receipt_secret_free": true,
       "receipt_replay_requires_exact_all_fields": true,
-      "receipt_final_ledger_count": 46,
+      "receipt_final_ledger_count": 48,
       "receipt_recovery_mode_count_binding": {
-        "FRESH_36_TO_46": 36,
+        "FRESH_36_TO_48": 36,
         "RESUME_EXACT_PREFIX": [
           37,
           38,
@@ -1014,9 +1030,11 @@
           42,
           43,
           44,
-          45
+          45,
+          46,
+          47
         ],
-        "VERIFIED_EXISTING_46": 46
+        "VERIFIED_EXISTING_48": 48
       },
       "receipt_replay_cas_required": true,
       "operator_grants_sql_path": "deploy/v2-13/neon-full-live-operator-grants.sql",
@@ -1073,7 +1091,7 @@
         "generated_inside_consumed_bootstrap": true,
         "exact_hash_persisted_in_bootstrap_receipt": true,
         "exact_hash_in_static_seed": null,
-        "value_read_after_migration_prefix_commit_count": 46,
+        "value_read_after_migration_prefix_commit_count": 48,
         "value_read_forbidden_before_migration_prefix_commit": true,
         "used_for_role_creation_or_recovery_only_after_migrations": true,
         "password_never_in_argv_or_logs": true
@@ -1092,7 +1110,7 @@
       "operator_verification_transition": {
         "state_field": "operator_role_verified",
         "initial_value": false,
-        "set_true_only_after": "SETTLED_TERMINAL_BOOTSTRAP_RESULT_AND_EXACT_RECEIPT_LEDGER46_OPERATOR_ACL_READBACK",
+        "set_true_only_after": "SETTLED_TERMINAL_BOOTSTRAP_RESULT_AND_EXACT_RECEIPT_LEDGER47_OPERATOR_ACL_READBACK",
         "restart_source": "SETTLED_TERMINAL_BOOTSTRAP_RESULT_ONLY",
         "role_presence_or_preflight_is_not_sufficient": true,
         "monotonic": true,
@@ -1146,12 +1164,12 @@
         "videoforge_verify_v213_jit_artifact(jsonb)"
       ],
       "recovery_modes": [
-        "FRESH_36_TO_46",
+        "FRESH_36_TO_48",
         "RESUME_EXACT_PREFIX",
-        "VERIFIED_EXISTING_46"
+        "VERIFIED_EXISTING_48"
       ],
       "recovery_mode_ledger_before_count": {
-        "FRESH_36_TO_46": 36,
+        "FRESH_36_TO_48": 36,
         "RESUME_EXACT_PREFIX": [
           37,
           38,
@@ -1161,11 +1179,13 @@
           42,
           43,
           44,
-          45
+          45,
+          46,
+          47
         ],
-        "VERIFIED_EXISTING_46": 46
+        "VERIFIED_EXISTING_48": 48
       },
-      "recovery_mode_final_ledger_count": 46,
+      "recovery_mode_final_ledger_count": 48,
       "output_name": "prequalification_database_bootstrap_sha256",
       "runpod_calls": 0,
       "cloudflare_calls": 0,
@@ -1208,11 +1228,11 @@
           "operator_database_url_hash",
           "runtime_database_url_hash",
           "reconciler_database_url_hash",
-          "ledger46",
+          "ledger48",
           "pgcrypto",
           "exact_operator_acl"
         ],
-        "verifies_final_ledger_count": 46,
+        "verifies_final_ledger_count": 48,
         "verifies_pgcrypto": true,
         "verifies_exact_operator_acl": true,
         "verify_before_every_post_bootstrap_non_early_cleanup_operation": true,
@@ -1522,7 +1542,7 @@
         "require_prior_result_and_file_hash_match": true,
         "verifier_disable_override_authorized": false,
         "cas_before_owner_service_and_pass_read": true,
-        "verify_ledger46_pgcrypto_and_exact_operator_acl": true,
+        "verify_ledger48_pgcrypto_and_exact_operator_acl": true,
         "cas_precedes_all_production_operator_runpod_and_application_secret_reads": true,
         "before_every_post_bootstrap_non_early_cleanup_operation": true,
         "bootstrap_operation_exempt": true,
@@ -1804,7 +1824,7 @@
       "owner_database_role_absence_readback_required": true,
       "operator_runtime_and_reconciler_roles_must_all_be_absent": true,
       "owner_database_mutation_forbidden": true,
-      "exact_ledger46_required_when_final_or_staged_credential_bundle_exists": true,
+      "exact_ledger48_required_when_final_or_staged_credential_bundle_exists": true,
       "canonical_bundle_must_bind_current_authority_and_owner_database_identity": true,
       "final_database_url_copies_must_byte_match_canonical_final_or_staged_bundle": true,
       "incomplete_current_authority_database_url_stages_may_be_deleted_after_role_absence_proof": true,
@@ -1863,7 +1883,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:7a237f5996ce44a345ff91788bfa065a7735f711a4e9e1de8cb331d423bd5c10"
+      "sha256": "sha256:868068e242b7cdcc10ea90ac6c06df8c25a8038fbf6ad844fc62437b057e04ae"
     }
   },
   "requested_scope": {
@@ -2115,7 +2135,7 @@
       "prequalification_database_bootstrap_credential_bundle_schema": "videoforge.v213-database-role-credential-bundle/v1",
       "prequalification_database_bootstrap_credential_bundle_path": "database-role-credentials.json",
       "prequalification_database_bootstrap_credentials_absent_before_consumed_bootstrap": true,
-      "prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count": 46,
+      "prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count": 48,
       "prequalification_database_bootstrap_credential_roles": [
         "videoforge_hosted_operator",
         "videoforge_hosted_runtime",
@@ -2137,7 +2157,7 @@
         "worker-operator-bearer",
         "workflow-callback-secret"
       ],
-      "prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count": 46,
+      "prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count": 48,
       "prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit": true,
       "prequalification_database_bootstrap_phase": "bootstrap_prequalification_database",
       "prequalification_database_bootstrap_phase_cap_usd": 0,
@@ -2145,7 +2165,7 @@
       "prequalification_database_bootstrap_receipt_hash_field": "prequalification_database_bootstrap_sha256",
       "prequalification_database_bootstrap_receipt_replay_cas_required": true,
       "prequalification_database_bootstrap_recovery_mode_ledger_before_count": {
-        "FRESH_36_TO_46": 36,
+        "FRESH_36_TO_48": 36,
         "RESUME_EXACT_PREFIX": [
           37,
           38,
@@ -2155,11 +2175,13 @@
           42,
           43,
           44,
-          45
+          45,
+          46,
+          47
         ],
-        "VERIFIED_EXISTING_46": 46
+        "VERIFIED_EXISTING_48": 48
       },
-      "prequalification_database_bootstrap_recovery_mode_final_ledger_count": 46,
+      "prequalification_database_bootstrap_recovery_mode_final_ledger_count": 48,
       "exact_operator_function_signatures": [
         "videoforge_claim_v213_bridge_command(jsonb)",
         "videoforge_claim_v213_cleanup_bridge_command(jsonb)",
@@ -2218,7 +2240,8 @@
         43,
         44,
         45,
-        46
+        46,
+        47
       ],
       "exact_migrations_to_apply": [
         37,
@@ -2230,7 +2253,9 @@
         43,
         44,
         45,
-        46
+        46,
+        47,
+        48
       ]
     },
     "cloudflare_creation_allowlist": [
@@ -2283,7 +2308,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:7a237f5996ce44a345ff91788bfa065a7735f711a4e9e1de8cb331d423bd5c10"
+      "sha256": "sha256:868068e242b7cdcc10ea90ac6c06df8c25a8038fbf6ad844fc62437b057e04ae"
     },
     "workflow_registration_evidence": {
       "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
@@ -2358,10 +2383,10 @@
       "order": 6,
       "phase": "bootstrap_prequalification_database",
       "operations": [
-        "before any RunPod, Cloudflare, application-secret, GPU, or paid operation, accept only exact fresh migration ledger prefix 36, an exact recoverable prefix 37 through 45, or exact terminal VERIFIED_EXISTING_46; reject every other ledger state",
+        "before any RunPod, Cloudflare, application-secret, GPU, or paid operation, accept only exact fresh migration ledger prefix 36, an exact recoverable prefix 37 through 47, or exact terminal VERIFIED_EXISTING_48; reject every other ledger state",
         "using only the protected owner pg_service and pgpass, create pgcrypto and apply exact migrations 0037 through 0046 under an advisory lock with each migration in one transaction",
         "after migrations, create or exactly recover only videoforge_hosted_operator from the protected operator DSN, apply only the exact operator function grants, and keep videoforge_hosted_runtime and videoforge_hosted_reconciler absent",
-        "read back the exact 46-row ledger, pgcrypto, hardened LOGIN NOINHERIT operator flags, no memberships, ownership, or table ACL, and exact function ACL; emit only videoforge.v213-prequalification-database-bootstrap-result/v1 and its prequalification_database_bootstrap_sha256",
+        "read back the exact 48-row ledger, pgcrypto, hardened LOGIN NOINHERIT operator flags, no memberships, ownership, or table ACL, and exact function ACL; emit only videoforge.v213-prequalification-database-bootstrap-result/v3 and its prequalification_database_bootstrap_sha256",
         "on failure roll back the current migration transaction and allow only idempotent exact-prefix resume before RunPod; never destructively restore or guess"
       ]
     },
