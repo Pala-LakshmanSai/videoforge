@@ -130,9 +130,23 @@ describe("hosted browser security boundaries", () => {
 describe("hosted product journey", () => {
   it("accepts only the exact closed-world hosted GPU readiness payload", () => {
     expect(isFailClosedGpuReadiness(gpuReadiness)).toBe(true);
+    expect(
+      isFailClosedGpuReadiness({
+        ...gpuReadiness,
+        gpu_transport: "QUALIFIED_EXACT",
+        provider_calls_authorized: true,
+        dispatch_available: true,
+        lanes: gpuReadiness.lanes.map((lane) => ({
+          ...lane,
+          qualification: "QUALIFIED_EXACT",
+          missing_gates: [],
+        })),
+      }),
+    ).toBe(true);
 
     const variants: unknown[] = [
       { ...gpuReadiness, dispatch_available: true },
+      { ...gpuReadiness, gpu_transport: "QUALIFIED_EXACT" },
       { ...gpuReadiness, extra: "unexpected" },
       { ...gpuReadiness, schema_version: "videoforge-hosted-gpu-readiness/v0" },
       { ...gpuReadiness, lanes: [...gpuReadiness.lanes].reverse() },

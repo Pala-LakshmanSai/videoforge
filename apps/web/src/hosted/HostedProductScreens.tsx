@@ -77,16 +77,16 @@ export interface CatalogResponse {
     reference_count?: number;
   }[];
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
-  readonly gpu_transport: "DISABLED_UNQUALIFIED";
+  readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: {
     readonly schema_version: "videoforge-hosted-gpu-readiness/v1";
-    readonly gpu_transport: "DISABLED_UNQUALIFIED";
-    readonly provider_calls_authorized: false;
-    readonly dispatch_available: false;
+    readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
+    readonly provider_calls_authorized: boolean;
+    readonly dispatch_available: boolean;
     readonly lanes: readonly {
       readonly lane: "MAGE_IMAGE" | "SOULX_AVATAR";
       readonly checkpoint: "V2-07" | "V2-08";
-      readonly qualification: "NOT_QUALIFIED";
+      readonly qualification: "NOT_QUALIFIED" | "QUALIFIED_EXACT";
       readonly visual_approval: "NOT_APPLICABLE" | "APPROVED_EXACT_FULL_AND_SPLIT";
       readonly provider_free_groundwork_commits: readonly string[];
       readonly missing_gates: readonly string[];
@@ -149,38 +149,56 @@ export function isFailClosedGpuReadiness(
   if (
     !hasExactKeys(readiness, GPU_READINESS_KEYS) ||
     readiness.schema_version !== "videoforge-hosted-gpu-readiness/v1" ||
-    readiness.gpu_transport !== "DISABLED_UNQUALIFIED" ||
-    readiness.provider_calls_authorized !== false ||
-    readiness.dispatch_available !== false ||
+    !["DISABLED_UNQUALIFIED", "QUALIFIED_EXACT"].includes(
+      readiness.gpu_transport ?? "",
+    ) ||
     !Array.isArray(readiness.lanes) ||
     readiness.lanes.length !== 2
   ) {
     return false;
   }
   const [mage, soulx] = readiness.lanes;
-  return Boolean(
+  const lanesExact = Boolean(
     mage &&
       hasExactKeys(mage, GPU_LANE_KEYS) &&
       mage.lane === "MAGE_IMAGE" &&
       mage.checkpoint === "V2-07" &&
-      mage.qualification === "NOT_QUALIFIED" &&
       mage.visual_approval === "NOT_APPLICABLE" &&
       isExactStringArray(mage.provider_free_groundwork_commits, MAGE_GROUNDWORK_COMMITS) &&
-      isExactStringArray(mage.missing_gates, MAGE_MISSING_GATES) &&
       soulx &&
       hasExactKeys(soulx, GPU_LANE_KEYS) &&
       soulx.lane === "SOULX_AVATAR" &&
       soulx.checkpoint === "V2-08" &&
-      soulx.qualification === "NOT_QUALIFIED" &&
       soulx.visual_approval === "APPROVED_EXACT_FULL_AND_SPLIT" &&
-      isExactStringArray(soulx.provider_free_groundwork_commits, SOULX_GROUNDWORK_COMMITS) &&
-      isExactStringArray(soulx.missing_gates, SOULX_MISSING_GATES),
+      isExactStringArray(soulx.provider_free_groundwork_commits, SOULX_GROUNDWORK_COMMITS),
+  );
+  if (!lanesExact || !mage || !soulx) return false;
+  if (readiness.gpu_transport === "QUALIFIED_EXACT") {
+    return (
+      readiness.provider_calls_authorized === true &&
+      readiness.dispatch_available === true &&
+      mage.qualification === "QUALIFIED_EXACT" &&
+      soulx.qualification === "QUALIFIED_EXACT" &&
+      isExactStringArray(mage.missing_gates, []) &&
+      isExactStringArray(soulx.missing_gates, [])
+    );
+  }
+  return (
+    readiness.provider_calls_authorized === false &&
+    readiness.dispatch_available === false &&
+    mage.qualification === "NOT_QUALIFIED" &&
+    soulx.qualification === "NOT_QUALIFIED" &&
+    isExactStringArray(mage.missing_gates, MAGE_MISSING_GATES) &&
+    isExactStringArray(soulx.missing_gates, SOULX_MISSING_GATES)
   );
 }
 
 async function readHostedCatalog(): Promise<CatalogResponse> {
   const catalog = await readJson<CatalogResponse>("/api/v2/hosted/project-catalog");
-  if (!isFailClosedGpuReadiness(catalog.gpu_readiness)) {
+  if (
+    !isFailClosedGpuReadiness(catalog.gpu_readiness) ||
+    catalog.gpu_transport !== catalog.gpu_readiness.gpu_transport
+  ) {
     throw new Error("Hosted GPU readiness is unavailable.");
   }
   return catalog;
@@ -290,7 +308,7 @@ interface ProjectDetailResponse {
     revision_state: string;
   };
   readonly attempts: readonly HostedAttempt[];
-  readonly gpu_transport: "DISABLED_UNQUALIFIED";
+  readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: CatalogResponse["gpu_readiness"];
   readonly generation: null | {
     readonly id: string;
