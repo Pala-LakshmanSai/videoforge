@@ -1,0 +1,49 @@
+{
+  "schema_version": "videoforge.v2-13-default-branch-workflow-repair-execution-evidence/v1",
+  "status": "PASS_EXACT_SINGLE_MUTATION_RECONCILED",
+  "authority_id": "v2-13-default-branch-repair-20260829-120719z-graphql",
+  "proposal_sha256": "sha256:ccbaf6db77805271a6bb1897e9091913c378d7ce6c541243a1b47769fa1dfaca",
+  "proposal_record_commit": "96b64e5f18e6cd37a0bb1151d357a1336809eaf9",
+  "approval_record_commit": "7c5fe426bc4f8fcd2e6a836523869a389221bbba",
+  "authority_record_commit": "3bd9f147223cd7b968543e72a3305518e88b2515",
+  "authority_consumed": true,
+  "authority_use_count": 1,
+  "consumed_at": "2026-08-29T12:18:26.000Z",
+  "operation": "createCommitOnBranch",
+  "mutations": 1,
+  "retries": 0,
+  "replays": 0,
+  "workflow_dispatches": 0,
+  "credential_source": "existing gh-cli-auth",
+  "credential_values_read": 0,
+  "credential_values_exposed": 0,
+  "gpu_operations": 0,
+  "spend_usd": 0,
+  "result": {
+    "repository": "Pala-LakshmanSai/videoforge",
+    "branch": "main",
+    "prior_commit": "6a71c39de3aa9533bf18d70e0bc620fa0d11559e",
+    "commit": "c24d37e164d3fcf93c04d53a1e8f06ab972c5d46",
+    "tree": "7e14c1008620f1930ae2c5a0e76c69ecf4e9e5aa",
+    "workflow_path": ".github/workflows/avatar-primary-serverless-image.yml",
+    "workflow_blob_sha1": "70f6c434dbb6a73011d7e004c61ddd8d409e74d1",
+    "workflow_blob_sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
+    "workflow_registration_id": 345299384,
+    "workflow_registration_state": "active"
+  },
+  "readback_reconciliation": {
+    "mode": "READBACK_ONLY_RECONCILIATION",
+    "status": "RECONCILIATION_CONFIRMED",
+    "mutations": 0,
+    "source_terminal_record_sha256": "sha256:57985fce997a9b63990852cb65114cf134f47b0ebe22261d76d8dcedafaafa98",
+    "registration_evidence_sha256": "sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42",
+    "reconciliation_record_sha256": "sha256:ca23e04f186b7a53c29aef450fd8a9b35b0b094d07bc51a12444af38eadfa954"
+  },
+  "protected_raw_file_sha256": {
+    "consumed_authority": "sha256:4591859118c23d7b8253b7228c9147b04006ac304e1cfdc9b25c0f160a290056",
+    "terminal_record": "sha256:9ce11712010332cd5690e218e78a48096dea71c31f9a06cda673970e97ca7472",
+    "registration_evidence": "sha256:8440c8fafe11be59303a03691a44b676ef1d794c8808ce1e05af5eb2561c9e66",
+    "reconciliation_record": "sha256:532dc019def5b28551d53228f36752a5973ffdb4016c23d955a15b73af3e18ad"
+  },
+  "next_boundary": "RESEAL_DISTINCT_FULL_LIVE_SUCCESSOR_AND_OBTAIN_FRESH_EXACT_APPROVAL"
+}
