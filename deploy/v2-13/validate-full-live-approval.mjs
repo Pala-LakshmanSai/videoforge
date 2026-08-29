@@ -198,11 +198,11 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   backup_metadata_snapshot: Object.freeze({
     path: "packages/control-plane/src/backup/metadata-snapshot.ts",
-    sha256: "sha256:46bd0e6c3d49563e1831d58ca8ec07ab0f83b572157146a373b2c13e4bd7652c",
+    sha256: "sha256:29f344ff71c5f402746d60b7e9cd61d540a6c4b3b4ac9676c93e2d74e214571c",
   }),
   database_vocabulary: Object.freeze({
     path: "packages/control-plane/src/database/vocabulary.ts",
-    sha256: "sha256:1db0c1e67d663458be759d12f5445e63a64f186a0779dd91714e5b91859a8e04",
+    sha256: "sha256:1a4689fe2951a3b665a5d4d9617020fb1a50488136298d03a453d507849016fd",
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
@@ -210,7 +210,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:cbc2440f21249674b44422423b1e4a7abbafd744a81209824c5f6ea63c956996",
+    sha256: "sha256:1f3a836de42d2dd08a9b8e024c0865979b83ee333eec164e4dd72c598bfe60c3",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
@@ -254,7 +254,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:d24fe8cb867f183483bed996aced36609a7009c2e954256c72b1920614ebfa95",
+    sha256: "sha256:6c85b2cea75760ae7e3c0220c710ae7fab8ce6ce15e97562327b739a90b7e967",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -262,7 +262,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   reconciler_grants: Object.freeze({
     path: "deploy/v2-13/neon-pair-reconciler-grants.sql",
-    sha256: "sha256:e17712c53374db8d20927f31ffb29cd422710bf400e2deb40e4eec2aef1beebe",
+    sha256: "sha256:5409fe4fa78d92950ec6fb4225c28534b75d029d766c7bdf4ac63c1f9738bac2",
   }),
   runtime_grants: Object.freeze({
     path: "deploy/v2-06/neon-runtime-grants.sql",
@@ -274,7 +274,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:20e87ee1f6c7cdf77f02f8e5ba3eda76e911b92079bac7ec8bcb29c87df34b40",
+    sha256: "sha256:c6ea6e41abbf71da29c8c2302039f25cac75f1c5aee45f70b713eba0ebd4c15b",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
