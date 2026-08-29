@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "eac19d7d56076bf473e19df163d3c3a2935b7862",
+  "audited_code_commit": "9c6923c1fc8cb3e21ab8a16dac6866a9534620c1",
   "audit_result": "PASS_READY_TO_BIND",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.successor-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-29T17:56:17.000Z",
+  "observed_at": "2026-08-29T18:51:49.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -36,11 +36,11 @@
     },
     "full_live_orchestration_authority": {
       "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-      "sha256": "sha256:6c85b2cea75760ae7e3c0220c710ae7fab8ce6ce15e97562327b739a90b7e967"
+      "sha256": "sha256:fa11cc6fb145c94075e988ec5d423504e00549f731ab38078290e2c636ca070f"
     },
     "approval_validator": {
       "path": "deploy/v2-13/validate-full-live-approval.mjs",
-      "sha256": "sha256:d41d6babdecbb4cefa2d491cf29de1fd9a2401bbd4c24dc4739f4122f1f33167"
+      "sha256": "sha256:d19c0719a9534603a2c123434d3627665b2f52ecb4757596ad2895c74b36fe1c"
     },
     "migration_0049": {
       "path": "packages/control-plane/migrations/0049_hosted_full_live_promotion_lineage.sql",
@@ -54,8 +54,12 @@
     "package_test_files_passed": 2,
     "package_tests_passed": 51,
     "package_tests_skipped": 0,
-    "focused_release_script_tests_passed": 91,
+    "focused_release_script_tests_passed": 92,
     "focused_release_adapter_tests_passed": 56,
+    "stale_lock_stress_runs": 12,
+    "stale_lock_contenders_per_run": 6,
+    "stale_lock_stress_passed": true,
+    "stale_lock_cleanup_debris_observed": false,
     "control_plane_activation_tests_passed": 3,
     "hosted_pair_gate_test_files_passed": 2,
     "hosted_pair_gate_tests_passed": 15,
@@ -156,9 +160,10 @@
     "The successor binds the exact predecessor terminal archive and performs zero tag mutation. Mage operation 5 is predecessor-bound readback and reconciliation of workflow run 33236590768 and its immutable evidence; operation 6 re-verifies that exact result without workflow redispatch.",
     "Default-branch repair authority v2-13-default-branch-repair-20260829-120719z-graphql was consumed exactly once at zero spend. GitHub main is c24d37e164d3fcf93c04d53a1e8f06ab972c5d46, and the exact release-source SoulX workflow is registered active with hash-bound evidence sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42.",
     "V3 payload contracts remain backward compatible while 19 V4 execution-control components are separately commit-tree-bound. Guarded activation runs only from the successor control commit, rejects predecessor authority replay, and proves every non-control closure byte equals the immutable payload.",
-    "The focused executor and authority checks pass 91 of 91 at clean audited source commit eac19d7d56076bf473e19df163d3c3a2935b7862; release adapter checks pass 56 of 56, formatted hosted and audio checks pass 51 of 51, invite migration checks pass 3 of 3, and hosted pair/configuration gate checks pass 15 of 15. Exact commit and closure checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-bind gate.",
-    "Audited source eac19d7d56076bf473e19df163d3c3a2935b7862 binds all 649 closure entries, the 49-row migration manifest, executor, orchestration authority, and externally tree-bound approval validator without changing the immutable release payload or lightweight tag. The four reseal changes are source-controlled and hash-bound with no semantic drift outside the migration-0049 closure update.",
+    "The focused executor and authority checks pass 92 of 92 at clean audited source commit 9c6923c1fc8cb3e21ab8a16dac6866a9534620c1; release adapter checks pass 56 of 56, formatted hosted and audio checks pass 51 of 51, invite migration checks pass 3 of 3, and hosted pair/configuration gate checks pass 15 of 15. Exact commit and closure checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-bind gate.",
+    "Audited source 9c6923c1fc8cb3e21ab8a16dac6866a9534620c1 binds all 649 closure entries, the 49-row migration manifest, executor, orchestration authority, and externally tree-bound approval validator without changing the immutable release payload or lightweight tag. The stale-lock authority repair and its component reseal are source-controlled and hash-bound with no provider or spend activity.",
     "The exact migration-0049 component is sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31. Hosted pair composition requires the exact 13-row 0037-0049 ledger, fails closed with MIGRATION_LEDGER_0037_0049_INVALID on drift, and remains DISABLED_UNQUALIFIED until qualified transport truth is present; focused composition and configuration-qualified tests prove the current gate.",
+    "The stale state-lock repair was stress-tested across 12 clean runs with 6 synchronized contenders per run: exactly one winner, all other contenders fail closed, and no lock or candidate debris remains. This is provider-free evidence only; no authority was consumed and no provider, GPU, credential, or spend action occurred.",
     "The successor authority identifier is proven distinct from the exact predecessor in both approval validation and outer authority validation before durable single-use consumption; guarded activation repeats the check as defense in depth."
   ]
 }
