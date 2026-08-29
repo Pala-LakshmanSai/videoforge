@@ -254,7 +254,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:6c85b2cea75760ae7e3c0220c710ae7fab8ce6ce15e97562327b739a90b7e967",
+    sha256: "sha256:02b3dd051a9586867af1c5e5738cbea8ce2e0e7181a6db260def232989f76ff6",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
