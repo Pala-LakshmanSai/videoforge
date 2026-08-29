@@ -57,7 +57,7 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:99cde95e368660b01bc90ea770a0f916e53cedae2532f5602f7019004aac6bab",
+    "sha256:19256a5a9872203ed29062360a0f962374c5f37a254b9591bd48fa7af701ea20",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
@@ -73,7 +73,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:289cb00a9cfee45e697ecdf06719cfc79b1b04c41b12c01ca6c5bdf7b4760b85",
+    "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")

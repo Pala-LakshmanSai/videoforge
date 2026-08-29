@@ -35,12 +35,12 @@ const EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING = Object.freeze({
 const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:7b58010e15790218608fcb9f0df7eecf6155e5fd10bf11ea8dc6b5a5cfb6b000",
+    sha256: "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910",
     sole_canonical_live_mutation_path: true,
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:99cde95e368660b01bc90ea770a0f916e53cedae2532f5602f7019004aac6bab",
+    sha256: "sha256:19256a5a9872203ed29062360a0f962374c5f37a254b9591bd48fa7af701ea20",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -136,7 +136,7 @@ const EXACT_V3_RELEASE_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:289cb00a9cfee45e697ecdf06719cfc79b1b04c41b12c01ca6c5bdf7b4760b85",
+    sha256: "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb",
   }),
   approval_validator: Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",

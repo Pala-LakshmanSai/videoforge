@@ -1310,7 +1310,7 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      "sha256:7b58010e15790218608fcb9f0df7eecf6155e5fd10bf11ea8dc6b5a5cfb6b000" ||
+      "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910" ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
     state.static_release_descriptor_path.startsWith("/") ||
