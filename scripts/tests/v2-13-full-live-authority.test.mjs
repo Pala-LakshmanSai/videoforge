@@ -1973,13 +1973,41 @@ test("trusted lineage rejects rename, merge, and extra-path proposal histories",
 });
 
 test("consumed successor candidate remains reproducible from its terminal archive", () => {
-  const output = execFileSync(
-    "node",
-    [
-      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
-    ],
-    { encoding: "utf8" },
+  const historicalCommit = "1ba62090c763cb4993cd5f9806e63c6629be1997";
+  const candidatePath =
+    "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate";
+  const temporaryDirectory = mkdtempSync(
+    join("project-context/evidence/acceptance/VF-10-13", ".tmp-terminal-candidate-"),
   );
+  const historicalBytes = (relativePath) =>
+    execFileSync("git", ["show", `${historicalCommit}:${relativePath}`], {
+      encoding: "buffer",
+    });
+  let output;
+  try {
+    const validator = readFileSync(join(candidatePath, "validate-candidate.mjs"), "utf8").replace(
+      'const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json");',
+      'const FACTS_PATH = path.join(DIRECTORY, "materialization-seed-facts.json");',
+    );
+    writeFileSync(join(temporaryDirectory, "validate-candidate.mjs"), validator);
+    for (const name of [
+      "combined-live-proposal.json",
+      "source-readiness-audit.json",
+      "read-only-preflight.json",
+    ])
+      writeFileSync(join(temporaryDirectory, name), historicalBytes(`${candidatePath}/${name}`));
+    writeFileSync(
+      join(temporaryDirectory, "materialization-seed-facts.json"),
+      historicalBytes(
+        "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
+      ),
+    );
+    output = execFileSync("node", [join(temporaryDirectory, "validate-candidate.mjs")], {
+      encoding: "utf8",
+    });
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
   const result = JSON.parse(output);
   assert.equal(result.status, "PASS_TERMINAL_ARCHIVE_REPRODUCIBLE");
   assert.equal(result.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");

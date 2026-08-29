@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -11,6 +11,19 @@ const sourceDirectory = path.join(
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate",
 );
 const validatorName = "validate-candidate.mjs";
+const historicalRecordCommit = "1ba62090c763cb4993cd5f9806e63c6629be1997";
+const factsPath = "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json";
+const candidatePath =
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate";
+
+function historicalBytes(relativePath) {
+  const result = spawnSync("git", ["show", `${historicalRecordCommit}:${relativePath}`], {
+    cwd: root,
+    encoding: "buffer",
+  });
+  assert.equal(result.status, 0, result.stderr?.toString("utf8"));
+  return result.stdout;
+}
 
 async function runMutation(mutateProposal, mutatePreflight = () => {}) {
   const directory = await mkdtemp(
@@ -18,10 +31,10 @@ async function runMutation(mutateProposal, mutatePreflight = () => {}) {
   );
   try {
     const proposal = JSON.parse(
-      await readFile(path.join(sourceDirectory, "combined-live-proposal.json"), "utf8"),
+      historicalBytes(`${candidatePath}/combined-live-proposal.json`).toString("utf8"),
     );
     const preflight = JSON.parse(
-      await readFile(path.join(sourceDirectory, "read-only-preflight.json"), "utf8"),
+      historicalBytes(`${candidatePath}/read-only-preflight.json`).toString("utf8"),
     );
     mutateProposal(proposal);
     mutatePreflight(preflight);
@@ -29,10 +42,18 @@ async function runMutation(mutateProposal, mutatePreflight = () => {}) {
       path.join(directory, "combined-live-proposal.json"),
       `${JSON.stringify(proposal, null, 2)}\n`,
     );
-    await cp(path.join(sourceDirectory, validatorName), path.join(directory, validatorName));
-    await cp(
-      path.join(sourceDirectory, "source-readiness-audit.json"),
+    const validator = (await readFile(path.join(sourceDirectory, validatorName), "utf8")).replace(
+      'const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json");',
+      'const FACTS_PATH = path.join(DIRECTORY, "materialization-seed-facts.json");',
+    );
+    await writeFile(path.join(directory, validatorName), validator);
+    await writeFile(
       path.join(directory, "source-readiness-audit.json"),
+      historicalBytes(`${candidatePath}/source-readiness-audit.json`),
+    );
+    await writeFile(
+      path.join(directory, "materialization-seed-facts.json"),
+      historicalBytes(factsPath),
     );
     await writeFile(
       path.join(directory, "read-only-preflight.json"),

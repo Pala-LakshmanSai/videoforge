@@ -8,7 +8,7 @@ import { createGithubVerificationAdapters } from "../../deploy/v2-13/full-live-a
 
 const SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
 const TAG = "videoforge-v2-13-release-20260826-v3";
-const REPOSITORY = "pala-lakshmansai/videoforge-mage-v2-07";
+const REPOSITORY = "pala-lakshmansai/videoforge-soulx-serverless-v2-08";
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const commandResult = (stdout = "") => ({ status: 0, stdout, stderr: "" });
 
@@ -34,8 +34,8 @@ const manifestBytes = Buffer.from(JSON.stringify(manifest));
 const manifestDigest = hash(manifestBytes);
 const evidence = {
   schema_version: "videoforge-image-deployability/v1",
-  checkpoint: "V2-07",
-  lane: "mage_image",
+  checkpoint: "V2-08",
+  lane: "soulx_avatar",
   source_commit: SOURCE_COMMIT,
   platform: "linux/amd64",
   registry_repository: REPOSITORY,
@@ -46,9 +46,8 @@ const evidence = {
   qualification_status: "REQUIRES_FRESH_LIVE_REQUALIFICATION",
   prior_qualification_reused: false,
   immutable_image: `ghcr.io/${REPOSITORY}@${manifestDigest}`,
-  manifest_digest: manifestDigest,
-  config_digest: configDigest,
-  layer_digest: layerDigests.at(-1),
+  image_digest: manifestDigest,
+  local_image_id: configDigest,
   model_volume: "/runpod-volume",
   model_download_performed: false,
   provider_endpoint_mutation_performed: false,
@@ -102,14 +101,14 @@ function fixture({ manifestStatus = 200, manifestBody = manifestBytes, isCancell
         JSON.stringify({
           databaseId: 11,
           headSha: SOURCE_COMMIT,
-          workflowName: "mage-image",
+          workflowName: "avatar-primary-serverless-image",
           status: "completed",
           conclusion: "success",
         }),
       );
     const directory = args.at(-1);
     writeFileSync(
-      resolve(directory, "mage-serverless-v2-07.json"),
+      resolve(directory, "soulx-serverless-v2-08.json"),
       `${JSON.stringify(evidence)}\n`,
     );
     return commandResult();
@@ -125,11 +124,11 @@ function fixture({ manifestStatus = 200, manifestBody = manifestBytes, isCancell
   return { adapters, fetchCalls };
 }
 
-const prior = new Map([["mage-image-workflow-dispatch", { runId: "11" }]]);
+const prior = new Map([["soulx-image-workflow-dispatch", { runId: "11" }]]);
 
 test("tagged v1 evidence performs mandatory anonymous GET readback of manifest, config, and every ordered layer", async () => {
   const { adapters, fetchCalls } = fixture();
-  const result = await adapters["mage-image-workflow-verification"]({}, state, prior);
+  const result = await adapters["soulx-image-workflow-verification"]({}, state, prior);
   assert.equal(result.imageDigest, manifestDigest);
   assert.equal(result.publicManifestSha256, manifestDigest);
   assert.equal(result.publicAllBlobsVerified, true);
@@ -137,7 +136,7 @@ test("tagged v1 evidence performs mandatory anonymous GET readback of manifest, 
   assert.equal(fetchCalls.length, 5);
   assert.match(
     fetchCalls[0].url,
-    /scope=repository%3Apala-lakshmansai%2Fvideoforge-mage-v2-07%3Apull/u,
+    /scope=repository%3Apala-lakshmansai%2Fvideoforge-soulx-serverless-v2-08%3Apull/u,
   );
   assert.equal(fetchCalls[1].url, `https://ghcr.io/v2/${REPOSITORY}/manifests/${manifestDigest}`);
   assert.deepEqual(
@@ -150,7 +149,7 @@ for (const status of [401, 404]) {
   test(`tagged v1 anonymous manifest readback fails closed on HTTP ${status}`, async () => {
     const { adapters } = fixture({ manifestStatus: status });
     await assert.rejects(
-      adapters["mage-image-workflow-verification"]({}, state, prior),
+      adapters["soulx-image-workflow-verification"]({}, state, prior),
       new RegExp(`ANONYMOUS_GHCR_MANIFEST_HTTP:${status}`, "u"),
     );
   });
@@ -159,7 +158,7 @@ for (const status of [401, 404]) {
 test("tagged v1 anonymous readback rejects manifest content drift", async () => {
   const { adapters } = fixture({ manifestBody: Buffer.from(`${manifestBytes} `) });
   await assert.rejects(
-    adapters["mage-image-workflow-verification"]({}, state, prior),
+    adapters["soulx-image-workflow-verification"]({}, state, prior),
     /ANONYMOUS_GHCR_BODY_DIGEST/u,
   );
 });
@@ -173,7 +172,7 @@ test("tagged v1 anonymous readback aborts an in-flight token wait on cancellatio
   const { adapters } = fixture({ isCancelled: () => cancelled });
   const original = globalThis.fetch;
   void original;
-  const verification = adapters["mage-image-workflow-verification"]({}, state, prior);
+  const verification = adapters["soulx-image-workflow-verification"]({}, state, prior);
   // The fixture token fetch normally resolves immediately; cancellation at the first provider
   // boundary must still be observed before any manifest GET can start.
   tokenStarted?.();
