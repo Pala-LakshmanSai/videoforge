@@ -11,20 +11,32 @@ const APPROVAL_SCHEMA_V1 = "videoforge.v2-13-full-live-user-approval/v1";
 const APPROVAL_SCHEMA_V2 = "videoforge.v2-13-full-live-user-approval/v2";
 const APPROVAL_SCHEMA_V3 = "videoforge.v2-13-full-live-user-approval/v3";
 const EXACT_PREDECESSOR_RELEASE_ATTEMPT = Object.freeze({
-  authority_id: "v2-13-full-live-20260829-022710z-62a9ebb2",
-  authority_record_commit: "7e43a289a58b7ab0805f019fcfe82d0efa2c2848",
-  proposal_sha256: "sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6",
-  terminal_state_sha256: "sha256:1dbf573b408507cbe4eecb813e0e6ec5564153f96183a3329d5fd06b5342969b",
+  authority_id: "v2-13-full-live-20260829-052951z-6852970d",
+  authority_record_commit: "13f9a96ff62d192a892d3e7bc778d5d8c368d72d",
+  proposal_sha256: "sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce",
+  terminal_state_sha256: "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9",
   terminal_state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
   terminal: "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED",
-  failure_code: "APPROVAL_BRANCH_READBACK",
+  failure_boundary: "OPERATION_EXECUTION",
+  failure_code: "FULL_LIVE_OPERATION_FAILED",
   exact_tag_name: "videoforge-v2-13-release-20260826-v3",
   exact_tag_target_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
   tag_create_result_sha256:
-    "sha256:29d68b30b0f866fb40a32de97f6a08f6e27799790822a3bfb7409704cd9df5fc",
-  tag_push_result_sha256: "sha256:f71b313cebd5080cb72cc48731ef48992d0987a37cf7d245b180a765c9f3036b",
+    "sha256:9bd704cc89e5e5bfd511204a9fc716ac61f646d2b5cfe2708f40dc360ff05fc6",
+  tag_push_result_sha256: "sha256:a1be0e2f54ed9bd7f1b7aa6b5fd343ceb86765685a7e732297f4890f273ef6c5",
   tag_readback_result_sha256:
-    "sha256:e2f8d0a1a471423ac43c5031f65ff052a334eb29e9b6f922f569dcd9287c43ad",
+    "sha256:b5d0d2580b92a42fef169b7605e702eeb693e67ca1d4f41681bff478ab806c35",
+  mage_workflow_run_id: "33236590768",
+  mage_workflow_dispatch_result_sha256:
+    "sha256:5d00a6673c8f714c764898a52c5098bee07be3b8d88ef03f8bdec7028a68494f",
+  mage_workflow_verification_result_sha256:
+    "sha256:4f96db35939e769827bfc833bb7337809b453e6c91f42502479e5ea042623a20",
+  mage_image_digest: "sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a",
+  mage_evidence_sha256: "sha256:9883ab7a174d2ca7de330220b568a1a2f8bf89688286d8e1dbb260bc74c52129",
+  mage_public_manifest_sha256:
+    "sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a",
+  mage_workflow_conclusion: "success",
+  mage_public_all_blobs_verified: true,
 });
 
 function assertDistinctV4SuccessorAuthority(proposalSchema, authorityId, predecessor) {
@@ -182,11 +194,11 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:711d9fd5b99bb4e3278c85d22265a2cbae845bfa17bbd34ee1fad2c653076cab",
+    sha256: "sha256:c4f0f4867bb7c19207c7cbe334261f7208949d5906347bc15e1a2fd04b2de4ff",
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:1ad3b725ef7204e3310383ccb52b9ce526e66313ee50c2e045200b6aadf4d805",
+    sha256: "sha256:f7315af7ecedfa45ef4c069eac79f0f24283b87c46694d2a7e2e6a053e632cb5",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
@@ -198,11 +210,11 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:133a5ab3a205e8f117ae43baef5e5b9916d82345d5d2281b4be24953317aeba5",
+    sha256: "sha256:1462382fc3d76f89f606d7f08f94cd811ba665ed36bc5ddcb5a23292f5418186",
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:8fad8a4356513caa1d9540c6b3166add91d84887f36f3e4a6fb4bb2e95436532",
+    sha256: "sha256:1633d08e35fddab384d48c90afa0dc9416203836b310a02da15e01d23daa2486",
   }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({
@@ -271,6 +283,26 @@ const EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY = Object.freeze({
   verifier_dispatch_authorized: false,
   redispatch_authorized: false,
   timeout_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
+});
+const EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY = Object.freeze({
+  operation_id_preserved: "mage-image-workflow-dispatch",
+  operation_semantics: "PREDECESSOR_BOUND_READBACK_RECONCILIATION_ONLY",
+  exact_predecessor_run_id_field: "supersession.predecessor_release_attempt.mage_workflow_run_id",
+  exact_predecessor_digest_field: "supersession.predecessor_release_attempt.mage_image_digest",
+  exact_predecessor_evidence_field: "supersession.predecessor_release_attempt.mage_evidence_sha256",
+  exact_predecessor_dispatch_result_field:
+    "supersession.predecessor_release_attempt.mage_workflow_dispatch_result_sha256",
+  exact_predecessor_verification_result_field:
+    "supersession.predecessor_release_attempt.mage_workflow_verification_result_sha256",
+  fresh_default_branch_dual_workflow_readback_required: true,
+  exact_run_completed_success_readback_required: true,
+  workflow_dispatch_authorized: false,
+  mutation_authorized: false,
+  redispatch_authorized: false,
+  verification_operation_id_preserved: "mage-image-workflow-verification",
+  verification_must_redownload_and_rehash_exact_predecessor_evidence: true,
+  verification_must_reverify_exact_predecessor_public_manifest: true,
+  drift_transition: "OUTER_CLEANUP_ONLY_NO_RETRY",
 });
 const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
   writer: "FULL_LIVE_EXECUTOR_PLUS_AUTHORITY_BOUND_POST_CONSUMPTION_OPERATOR",
@@ -513,9 +545,9 @@ const EXACT_INTERNAL_MATERIALIZATION_POLICY = Object.freeze({
 });
 const EXACT_TRUSTED_TIME_POLICY = Object.freeze({
   credential_free_command:
-    "curl --disable --silent --show-error --head --proto =https --tlsv1.2 --connect-timeout 5 --max-time 10 https://api.github.com/rate_limit",
+    "curl --disable --silent --show-error --head --proto =https --tlsv1.2 --connect-timeout 5 --max-time 10 https://api.github.com/",
   curl_disable_is_first_argument: true,
-  exact_url: "https://api.github.com/rate_limit",
+  exact_url: "https://api.github.com/",
   request_method: "HEAD",
   transport_authentication: "SYSTEM_CA_VERIFIED_HTTPS_TLS_MINIMUM_1_2",
   credential_environment_or_authorization_header_allowed: false,
@@ -1424,6 +1456,10 @@ function validateFullLiveUserApproval({
       proposal.exact_execution_graph?.missing_extra_or_repeated_operation_is_a_hard_stop !== true ||
       JSON.stringify(proposal.exact_execution_graph?.image_workflow_verification_policy) !==
         JSON.stringify(EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY) ||
+      (isV4
+        ? JSON.stringify(proposal.exact_execution_graph?.predecessor_mage_reconciliation_policy) !==
+          JSON.stringify(EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY)
+        : proposal.exact_execution_graph?.predecessor_mage_reconciliation_policy !== undefined) ||
       JSON.stringify(proposal.exact_execution_graph?.internal_materialization_policy) !==
         JSON.stringify(EXACT_INTERNAL_MATERIALIZATION_POLICY) ||
       JSON.stringify(proposal.exact_execution_graph?.trusted_time_policy) !==
@@ -1880,6 +1916,7 @@ export {
   EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
+  EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,

@@ -48,6 +48,8 @@ import {
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
   EXACT_OPERATION_IDS,
+  EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
+  EXACT_PREDECESSOR_RELEASE_ATTEMPT,
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_V3_RELEASE_COMPONENTS,
@@ -261,6 +263,11 @@ function repairExactPolicyFixture(proposal) {
   proposal.exact_execution_graph.image_workflow_verification_policy = structuredClone(
     EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   );
+  if (proposal.schema_version === "videoforge.v2-13-full-live-completion-proposal/v4")
+    proposal.exact_execution_graph.predecessor_mage_reconciliation_policy = structuredClone(
+      EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
+    );
+  else delete proposal.exact_execution_graph.predecessor_mage_reconciliation_policy;
   proposal.exact_execution_graph.trusted_time_policy = structuredClone(EXACT_TRUSTED_TIME_POLICY);
   proposal.exact_execution_graph.workflow_start_authority_policy = structuredClone(
     EXACT_WORKFLOW_START_AUTHORITY_POLICY,
@@ -497,6 +504,9 @@ function activeProposalFixture() {
     ),
   );
   repairExactPolicyFixture(activeProposal);
+  activeProposal.supersession.predecessor_release_attempt = structuredClone(
+    EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  );
   activeProposal.requested_scope.database = repairExactDatabaseScope(
     activeProposal.requested_scope.database,
   );
@@ -643,6 +653,45 @@ test("V4 approval authorizes predecessor-bound tag reconciliation with zero succ
   });
   assert.equal(result.proposalSchema, "videoforge.v2-13-full-live-completion-proposal/v4");
   assert.equal(result.executionControlCommit, fixture.proposal.source.execution_control.commit);
+});
+
+test("V4 successor preserves Mage operation IDs while forbidding predecessor redispatch", () => {
+  const { proposal } = v4ApprovalFixture();
+  assert.deepEqual(
+    proposal.exact_execution_graph.predecessor_mage_reconciliation_policy,
+    EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
+  );
+  assert.deepEqual(proposal.exact_execution_graph.ordered_operation_ids.slice(4, 6), [
+    "mage-image-workflow-dispatch",
+    "mage-image-workflow-verification",
+  ]);
+  assert.equal(
+    proposal.exact_execution_graph.predecessor_mage_reconciliation_policy
+      .workflow_dispatch_authorized,
+    false,
+  );
+  assert.equal(
+    proposal.exact_execution_graph.predecessor_mage_reconciliation_policy.redispatch_authorized,
+    false,
+  );
+
+  const drifted = structuredClone(proposal);
+  drifted.exact_execution_graph.predecessor_mage_reconciliation_policy.workflow_dispatch_authorized = true;
+  const proposalBytes = Buffer.from(`${JSON.stringify(drifted, null, 2)}\n`);
+  const approval = JSON.parse(v4ApprovalFixture().approvalBytes);
+  approval.proposal.sha256 = hash(proposalBytes);
+  approval.statement = approval.statement.replace(/sha256:[0-9a-f]{64}/u, hash(proposalBytes));
+  assert.throws(
+    () =>
+      validateFullLiveUserApproval({
+        proposalBytes,
+        approvalBytes: Buffer.from(`${JSON.stringify(approval, null, 2)}\n`),
+        expectedProposalSha256: hash(proposalBytes),
+        expectedProposalRecordCommit: approval.proposal.proposal_record_commit,
+        expectedReleaseSourceCommit: drifted.source.release_source_commit,
+      }),
+    /V3_SUPERSESSION_OR_AUTHORITY/u,
+  );
 });
 
 test("approval rejects a Serverless Flex rate above the exact current snapshot", () => {

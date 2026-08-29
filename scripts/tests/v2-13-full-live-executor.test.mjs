@@ -376,25 +376,61 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
     });
   if (operation.id.endsWith("image-workflow-dispatch")) {
     const freshWorkflowReadback = freshWorkflowReadbackFixture(state);
-    Object.assign(result, {
-      runId: operation.id.startsWith("mage") ? "1001" : "1002",
-      headSha: state.release_source_commit,
-      dispatchAccepted: true,
-      freshWorkflowReadback,
-      freshWorkflowReadbackSha256: freshWorkflowReadback.proofSha256,
-      workflowRegistrationEvidenceSha256: state.soulx_workflow_registration_evidence_sha256,
-    });
+    Object.assign(
+      result,
+      operation.id === "mage-image-workflow-dispatch"
+        ? {
+            runId: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id,
+            headSha: state.release_source_commit,
+            dispatchAccepted: false,
+            reconciledExistingExact: true,
+            mutationPerformed: false,
+            predecessorAuthorityId: EXACT_PREDECESSOR_RELEASE_ATTEMPT.authority_id,
+            predecessorTerminalStateSha256: EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256,
+            predecessorDispatchResultSha256:
+              EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_dispatch_result_sha256,
+            predecessorVerificationResultSha256:
+              EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_verification_result_sha256,
+            imageDigest: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_image_digest,
+            evidenceSha256: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_evidence_sha256,
+            publicManifestSha256: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_public_manifest_sha256,
+            conclusion: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_conclusion,
+            freshWorkflowReadback,
+            freshWorkflowReadbackSha256: freshWorkflowReadback.proofSha256,
+            workflowRegistrationEvidenceSha256: state.soulx_workflow_registration_evidence_sha256,
+          }
+        : {
+            runId: "1002",
+            headSha: state.release_source_commit,
+            dispatchAccepted: true,
+            freshWorkflowReadback,
+            freshWorkflowReadbackSha256: freshWorkflowReadback.proofSha256,
+            workflowRegistrationEvidenceSha256: state.soulx_workflow_registration_evidence_sha256,
+          },
+    );
   }
   if (operation.id.endsWith("image-workflow-verification")) {
     const dispatchId = operation.id.replace("verification", "dispatch");
     Object.assign(result, {
       runId: priorResults.get(dispatchId).runId,
       headSha: state.release_source_commit,
-      imageDigest: proof("3"),
-      evidenceSha256: proof("4"),
-      publicManifestSha256: proof("5"),
+      imageDigest:
+        operation.id === "mage-image-workflow-verification"
+          ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_image_digest
+          : proof("3"),
+      evidenceSha256:
+        operation.id === "mage-image-workflow-verification"
+          ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_evidence_sha256
+          : proof("4"),
+      publicManifestSha256:
+        operation.id === "mage-image-workflow-verification"
+          ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_public_manifest_sha256
+          : proof("5"),
       publicAllBlobsVerified: true,
       conclusion: "success",
+      ...(operation.id === "mage-image-workflow-verification"
+        ? { predecessorReverified: true, dispatchPerformed: false }
+        : {}),
     });
   }
   if (operation.id === "fresh-live-preflight")
@@ -943,6 +979,7 @@ test("workflow dispatch result durably binds the full canonical fresh dual-workf
   const registration = workflowRegistrationEvidenceFixture();
   const state = {
     release_source_commit: "a".repeat(40),
+    predecessor_release_attempt: EXACT_PREDECESSOR_RELEASE_ATTEMPT,
     soulx_workflow_registration_evidence: registration,
     soulx_workflow_registration_evidence_sha256: registration.evidence_sha256,
   };
@@ -950,6 +987,10 @@ test("workflow dispatch result durably binds the full canonical fresh dual-workf
   assert.equal(assertResult(operation, accepted, state, new Map()), accepted);
 
   const tampered = [
+    { ...accepted, dispatchAccepted: true },
+    { ...accepted, mutationPerformed: true },
+    { ...accepted, runId: "1001" },
+    { ...accepted, evidenceSha256: proof("9") },
     { ...accepted, freshWorkflowReadback: undefined },
     {
       ...accepted,
@@ -980,7 +1021,35 @@ test("workflow dispatch result durably binds the full canonical fresh dual-workf
   for (const result of tampered)
     assert.throws(
       () => assertResult(operation, result, state, new Map()),
-      /WORKFLOW_FRESH_READBACK/u,
+      /WORKFLOW_(?:FRESH_READBACK|DISPATCH_READBACK)/u,
+    );
+});
+
+test("Mage verification result must rebind the exact predecessor digest and evidence", () => {
+  const dispatchOperation = OPERATIONS.find(({ id }) => id === "mage-image-workflow-dispatch");
+  const verificationOperation = OPERATIONS.find(
+    ({ id }) => id === "mage-image-workflow-verification",
+  );
+  const registration = workflowRegistrationEvidenceFixture();
+  const state = {
+    release_source_commit: "a".repeat(40),
+    predecessor_release_attempt: EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+    soulx_workflow_registration_evidence: registration,
+    soulx_workflow_registration_evidence_sha256: registration.evidence_sha256,
+  };
+  const dispatch = fakeResult(dispatchOperation, state, new Map());
+  const results = new Map([[dispatchOperation.id, dispatch]]);
+  const verified = fakeResult(verificationOperation, state, results);
+  assert.equal(assertResult(verificationOperation, verified, state, results), verified);
+  for (const drift of [
+    { imageDigest: proof("9") },
+    { evidenceSha256: proof("9") },
+    { predecessorReverified: false },
+    { dispatchPerformed: true },
+  ])
+    assert.throws(
+      () => assertResult(verificationOperation, { ...verified, ...drift }, state, results),
+      /WORKFLOW_EVIDENCE_READBACK/u,
     );
 });
 

@@ -65,6 +65,7 @@ import {
   MEDIA_WORKER_RELEASE_TARGET_COMMIT,
 } from "../../deploy/v2-13/media-worker-release-readback.mjs";
 import { materializationSeedFixture } from "./fixtures/v2-13-materialization-seed.mjs";
+import { EXACT_PREDECESSOR_RELEASE_ATTEMPT } from "../../deploy/v2-13/validate-full-live-approval.mjs";
 
 const sourceCommit = "4".repeat(40);
 const state = {
@@ -112,6 +113,7 @@ const soulxWorkflowRegistrationEvidenceFixture = (overrides = {}) => {
 };
 const stateWithSoulxWorkflowRegistration = (evidence) => ({
   ...state,
+  predecessor_release_attempt: EXACT_PREDECESSOR_RELEASE_ATTEMPT,
   static_release_descriptor_schema_version: "videoforge.v213-static-release-descriptor/v2",
   soulx_workflow_registration_evidence_sha256: evidence.evidence_sha256,
   soulx_workflow_registration_evidence: evidence,
@@ -139,6 +141,19 @@ function workflowDispatchRunner({
       listCalls += 1;
       return result(0, JSON.stringify(listCalls === 1 ? [] : newRuns));
     }
+    if (args[0] === "run" && args[1] === "view")
+      return result(
+        0,
+        JSON.stringify(
+          newRuns[0] ?? {
+            databaseId: Number(EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id),
+            headSha: sourceCommit,
+            workflowName,
+            status: "completed",
+            conclusion: "success",
+          },
+        ),
+      );
     if (args[0] === "workflow") return result(0);
     const endpoint = args.at(-1);
     if (endpoint === "repos/Pala-LakshmanSai/videoforge")
@@ -859,13 +874,14 @@ test("approval publication creates the absent exact v4 branch without force", as
   assert.equal(replies.length, 0);
 });
 
-test("GitHub workflow dispatch is single-shot and binds the one new exact-head run", async () => {
+test("Mage workflow operation reconciles the exact predecessor run without redispatch", async () => {
   const evidence = soulxWorkflowRegistrationEvidenceFixture();
   const newRun = {
-    databaseId: 11,
+    databaseId: Number(EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id),
     headSha: sourceCommit,
     workflowName: "mage-image",
-    status: "queued",
+    status: "completed",
+    conclusion: "success",
   };
   const fixture = workflowDispatchRunner({
     evidence,
@@ -881,25 +897,23 @@ test("GitHub workflow dispatch is single-shot and binds the one new exact-head r
     {},
     stateWithSoulxWorkflowRegistration(evidence),
   );
-  assert.equal(dispatched.runId, "11");
+  assert.equal(dispatched.runId, EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id);
+  assert.equal(dispatched.dispatchAccepted, false);
+  assert.equal(dispatched.reconciledExistingExact, true);
+  assert.equal(dispatched.mutationPerformed, false);
+  assert.equal(dispatched.imageDigest, EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_image_digest);
+  assert.equal(dispatched.evidenceSha256, EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_evidence_sha256);
   assert.equal(
     fixture.calls.filter(([command, args]) => command === "gh" && args[0] === "workflow").length,
-    1,
+    0,
   );
-  assert.deepEqual(fixture.calls.find(([, args]) => args[0] === "workflow")[1], [
-    "workflow",
+  assert.deepEqual(fixture.calls.find(([, args]) => args[0] === "run" && args[1] === "view")[1], [
     "run",
-    "mage-image.yml",
-    "--ref",
-    TAG,
-    "--field",
-    "publish=true",
+    "view",
+    EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id,
+    "--json",
+    "databaseId,headSha,workflowName,status,conclusion",
   ]);
-  const dispatchIndex = fixture.calls.findIndex(([, args]) => args[0] === "workflow");
-  assert.match(
-    fixture.calls[dispatchIndex - 1][1].at(-1),
-    /avatar-primary-serverless-image\.yml\?ref=4444444444444444444444444444444444444444$/u,
-  );
   assert.equal(
     fixture.calls.filter(([, args]) => args.at(-1)?.includes("actions/workflows/")).length,
     2,
@@ -1099,7 +1113,7 @@ test("trusted time uses credential-free bounded HTTPS and one exact Date header"
         "5",
         "--max-time",
         "10",
-        "https://api.github.com/rate_limit",
+        "https://api.github.com/",
       ]);
       return result(0, "HTTP/2 200\r\ndate: Wed, 26 Aug 2026 12:00:00 GMT\r\n\r\n");
     },
@@ -1180,10 +1194,10 @@ test("GitHub verification binds exact successful run and immutable deployability
   const anonymousProof = {
     schema_version: "videoforge-anonymous-ghcr-publication-proof/v1",
     registry: "ghcr.io",
-    repository: "pala-lakshmansai/videoforge-mage-v2-07",
+    repository: "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
     authentication: "GHCR_ANONYMOUS_PULL_TOKEN",
     workflow_repository: "Pala-LakshmanSai/videoforge",
-    workflow_name: "mage-image",
+    workflow_name: "avatar-primary-serverless-image",
     workflow_ref: `refs/tags/${TAG}`,
     workflow_commit: sourceCommit,
     workflow_run_id: "11",
@@ -1226,10 +1240,10 @@ test("GitHub verification binds exact successful run and immutable deployability
   anonymousProof.proof_sha256 = hash(Buffer.from(canonicalJson(anonymousProof)));
   const evidence = {
     schema_version: "videoforge-image-deployability/v2",
-    checkpoint: "V2-07",
-    lane: "mage_image",
+    checkpoint: "V2-08",
+    lane: "soulx_avatar",
     source_commit: sourceCommit,
-    registry_repository: "pala-lakshmansai/videoforge-mage-v2-07",
+    registry_repository: "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
     publication_requested: true,
     published: true,
     publication_state: "PUBLISHED_NEW_DIGEST",
@@ -1240,8 +1254,8 @@ test("GitHub verification binds exact successful run and immutable deployability
     model_volume: "/runpod-volume",
     model_download_performed: false,
     provider_endpoint_mutation_performed: false,
-    immutable_image: `ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@${digest}`,
-    manifest_digest: digest,
+    immutable_image: `ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@${digest}`,
+    image_digest: digest,
     config_digest: configDigest,
     layer_digest: layerDigest,
     anonymous_publication_proof: anonymousProof,
@@ -1260,7 +1274,7 @@ test("GitHub verification binds exact successful run and immutable deployability
           JSON.stringify({
             databaseId: 11,
             headSha: sourceCommit,
-            workflowName: "mage-image",
+            workflowName: "avatar-primary-serverless-image",
             status,
             conclusion: status === "completed" ? "success" : null,
           }),
@@ -1268,14 +1282,14 @@ test("GitHub verification binds exact successful run and immutable deployability
       }
       const directory = args.at(-1);
       writeFileSync(
-        resolve(directory, "mage-serverless-v2-07.json"),
+        resolve(directory, "soulx-serverless-v2-08.json"),
         `${JSON.stringify(evidence)}\n`,
       );
       return result(0);
     },
   });
-  const prior = new Map([["mage-image-workflow-dispatch", { runId: "11" }]]);
-  const verified = await adapters["mage-image-workflow-verification"]({}, state, prior);
+  const prior = new Map([["soulx-image-workflow-dispatch", { runId: "11" }]]);
+  const verified = await adapters["soulx-image-workflow-verification"]({}, state, prior);
   assert.equal(verified.imageDigest, digest);
   assert.equal(viewCalls, 3);
   assert.equal(verified.publicAllBlobsVerified, true);
@@ -1297,19 +1311,40 @@ test("GitHub verification never redispatches and fails closed on bounded termina
         JSON.stringify({
           databaseId: 11,
           headSha: sourceCommit,
-          workflowName: "mage-image",
+          workflowName: "avatar-primary-serverless-image",
           status: "in_progress",
           conclusion: null,
         }),
       );
     },
   });
-  const prior = new Map([["mage-image-workflow-dispatch", { runId: "11" }]]);
+  const prior = new Map([["soulx-image-workflow-dispatch", { runId: "11" }]]);
   await assert.rejects(
-    adapters["mage-image-workflow-verification"]({}, state, prior),
+    adapters["soulx-image-workflow-verification"]({}, state, prior),
     /WORKFLOW_RUN_TERMINAL_TIMEOUT/u,
   );
   assert.equal(calls, 2);
+});
+
+test("Mage verification accepts only the exact predecessor run before any provider read", async () => {
+  const calls = [];
+  const adapters = createGithubVerificationAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: (command, args) => {
+      calls.push([command, args]);
+      return result(0, "{}");
+    },
+  });
+  await assert.rejects(
+    adapters["mage-image-workflow-verification"](
+      {},
+      { ...state, predecessor_release_attempt: EXACT_PREDECESSOR_RELEASE_ATTEMPT },
+      new Map([["mage-image-workflow-dispatch", { runId: "11" }]]),
+    ),
+    /MAGE_PREDECESSOR_RUN_BINDING/u,
+  );
+  assert.deepEqual(calls, []);
 });
 
 test("GitHub verification enforces one monotonic 1800000ms deadline across subprocess time", async () => {
@@ -1332,16 +1367,16 @@ test("GitHub verification enforces one monotonic 1800000ms deadline across subpr
         JSON.stringify({
           databaseId: 11,
           headSha: sourceCommit,
-          workflowName: "mage-image",
+          workflowName: "avatar-primary-serverless-image",
           status: "in_progress",
           conclusion: null,
         }),
       );
     },
   });
-  const prior = new Map([["mage-image-workflow-dispatch", { runId: "11" }]]);
+  const prior = new Map([["soulx-image-workflow-dispatch", { runId: "11" }]]);
   await assert.rejects(
-    adapters["mage-image-workflow-verification"]({}, state, prior),
+    adapters["soulx-image-workflow-verification"]({}, state, prior),
     /WORKFLOW_RUN_TERMINAL_TIMEOUT/u,
   );
   assert.ok(timeoutSeen > 0 && timeoutSeen <= 60_000);

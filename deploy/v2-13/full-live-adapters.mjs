@@ -35,6 +35,7 @@ import {
   WRANGLER_OAUTH_CONFIG_ENV,
 } from "./guarded-activation.mjs";
 import { validateMaterializationSeedShape } from "./full-live-orchestration-authority.mjs";
+import { EXACT_PREDECESSOR_RELEASE_ATTEMPT } from "./validate-full-live-approval.mjs";
 import {
   MEDIA_WORKER_RELEASE_HTML_URL,
   MEDIA_WORKER_RELEASE_MANIFEST,
@@ -634,7 +635,7 @@ function readAuthenticatedGithubTime({
     "5",
     "--max-time",
     "10",
-    "https://api.github.com/rate_limit",
+    "https://api.github.com/",
   ];
   let lastError;
   for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
@@ -1036,6 +1037,76 @@ function createGithubDispatchAdapters(options = {}) {
     fail("GITHUB_POLL_BOUND");
   if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 0 || pollIntervalMs > 10_000)
     fail("GITHUB_POLL_INTERVAL");
+  const reconcilePredecessorMage = async (state) => {
+    const tag = state.release_ref?.exact_tag_name;
+    const headSha = state.release_source_commit;
+    if (
+      state.release_ref?.state !== "VERIFIED_EXACT_REMOTE" ||
+      tag !== TAG ||
+      !COMMIT.test(headSha)
+    )
+      fail("WORKFLOW_RELEASE_REF");
+    const candidate = state?.soulx_workflow_registration_evidence;
+    if (candidate === undefined || candidate === null) fail("SOULX_WORKFLOW_REGISTRATION_REQUIRED");
+    const soulxRegistration = validateSoulxWorkflowRegistrationEvidence(candidate, state);
+    if (
+      JSON.stringify(state.predecessor_release_attempt) !==
+      JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT)
+    )
+      fail("MAGE_PREDECESSOR_RELEASE_BINDING");
+    const freshWorkflowReadback = verifyFreshDefaultBranchWorkflowRegistration({
+      run,
+      state,
+      soulxRegistration,
+    });
+    if (!HASH.test(freshWorkflowReadback?.proofSha256 ?? "")) fail("WORKFLOW_FRESH_READBACK_PROOF");
+    const runId = EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id;
+    let runRecord;
+    try {
+      runRecord = JSON.parse(
+        exactCommand(run, "gh", [
+          "run",
+          "view",
+          runId,
+          "--json",
+          "databaseId,headSha,workflowName,status,conclusion",
+        ]).stdout,
+      );
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("V2_13_FULL_LIVE_ADAPTER_"))
+        throw error;
+      fail("MAGE_PREDECESSOR_RUN_JSON");
+    }
+    if (
+      String(runRecord?.databaseId) !== runId ||
+      runRecord.headSha !== headSha ||
+      runRecord.workflowName !== "mage-image" ||
+      runRecord.status !== "completed" ||
+      runRecord.conclusion !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_conclusion
+    )
+      fail("MAGE_PREDECESSOR_RUN_READBACK");
+    return {
+      actualUsd: 0,
+      runId,
+      headSha,
+      dispatchAccepted: false,
+      reconciledExistingExact: true,
+      mutationPerformed: false,
+      predecessorAuthorityId: EXACT_PREDECESSOR_RELEASE_ATTEMPT.authority_id,
+      predecessorTerminalStateSha256: EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256,
+      predecessorDispatchResultSha256:
+        EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_dispatch_result_sha256,
+      predecessorVerificationResultSha256:
+        EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_verification_result_sha256,
+      imageDigest: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_image_digest,
+      evidenceSha256: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_evidence_sha256,
+      publicManifestSha256: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_public_manifest_sha256,
+      conclusion: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_conclusion,
+      freshWorkflowReadback: structuredClone(freshWorkflowReadback),
+      freshWorkflowReadbackSha256: freshWorkflowReadback.proofSha256,
+      workflowRegistrationEvidenceSha256: soulxRegistration.evidence_sha256,
+    };
+  };
   const dispatch = async ({ state, workflowFile, workflowName, fields }) => {
     const tag = state.release_ref?.exact_tag_name;
     const headSha = state.release_source_commit;
@@ -1096,13 +1167,7 @@ function createGithubDispatchAdapters(options = {}) {
   };
 
   return Object.freeze({
-    "mage-image-workflow-dispatch": async (_operation, state) =>
-      dispatch({
-        state,
-        workflowFile: "mage-image.yml",
-        workflowName: "mage-image",
-        fields: [["publish", "true"]],
-      }),
+    "mage-image-workflow-dispatch": async (_operation, state) => reconcilePredecessorMage(state),
     "soulx-image-workflow-dispatch": async (_operation, state) =>
       dispatch({
         state,
@@ -1844,6 +1909,13 @@ function createGithubVerificationAdapters({
         const dispatchId = operationId.replace("verification", "dispatch");
         const runId = priorResults.get(dispatchId)?.runId;
         if (!/^[1-9][0-9]*$/u.test(runId ?? "")) fail("WORKFLOW_RUN_ID");
+        if (
+          operationId === "mage-image-workflow-verification" &&
+          (JSON.stringify(state.predecessor_release_attempt) !==
+            JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) ||
+            runId !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id)
+        )
+          fail("MAGE_PREDECESSOR_RUN_BINDING");
         let runRecord;
         for (let poll = 0; poll < maximumPolls; poll += 1) {
           if (isCancelled()) fail("WORKFLOW_VERIFICATION_CANCELLED");
@@ -1907,6 +1979,7 @@ function createGithubVerificationAdapters({
             fail("WORKFLOW_EVIDENCE_JSON");
           }
           const digest = evidence?.[expected.digestKey];
+          const evidenceSha256 = sha256(evidenceBytes);
           if (
             ![IMAGE_DEPLOYABILITY_V1_SCHEMA, IMAGE_DEPLOYABILITY_SCHEMA].includes(
               evidence?.schema_version,
@@ -1931,6 +2004,15 @@ function createGithubVerificationAdapters({
             evidence.immutable_image !== `ghcr.io/${expected.repository}@${digest}`
           )
             fail("WORKFLOW_EVIDENCE_CONTRACT");
+          if (
+            operationId === "mage-image-workflow-verification" &&
+            (JSON.stringify(state.predecessor_release_attempt) !==
+              JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) ||
+              runId !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id ||
+              digest !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_image_digest ||
+              evidenceSha256 !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_evidence_sha256)
+          )
+            fail("MAGE_PREDECESSOR_EVIDENCE_BINDING");
           const anonymousProof =
             evidence.schema_version === IMAGE_DEPLOYABILITY_SCHEMA
               ? validateAnonymousGhcrPublicationProof(evidence.anonymous_publication_proof, {
@@ -1955,11 +2037,14 @@ function createGithubVerificationAdapters({
             runId,
             headSha: state.release_source_commit,
             imageDigest: digest,
-            evidenceSha256: sha256(evidenceBytes),
+            evidenceSha256,
             publicManifestSha256: digest,
             publicAllBlobsVerified: true,
             anonymousPublicationProofSha256: anonymousProof.proof_sha256,
             conclusion: "success",
+            ...(operationId === "mage-image-workflow-verification"
+              ? { predecessorReverified: true, dispatchPerformed: false }
+              : {}),
           };
         } finally {
           rmSync(directory, { recursive: true, force: true });

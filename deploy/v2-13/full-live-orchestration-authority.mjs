@@ -1328,7 +1328,7 @@ function readAuthenticatedTrustedTime() {
       "5",
       "--max-time",
       "10",
-      "https://api.github.com/rate_limit",
+      "https://api.github.com/",
     ],
     {
       cwd: ROOT,
@@ -1449,7 +1449,7 @@ function validateState(state) {
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
       (isV3State
-        ? "sha256:1ad3b725ef7204e3310383ccb52b9ce526e66313ee50c2e045200b6aadf4d805"
+        ? "sha256:f7315af7ecedfa45ef4c069eac79f0f24283b87c46694d2a7e2e6a053e632cb5"
         : "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910") ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||

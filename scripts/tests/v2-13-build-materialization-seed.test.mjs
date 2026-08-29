@@ -37,6 +37,8 @@ import {
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
   EXACT_INTERNAL_MATERIALIZATION_POLICY,
   EXACT_OPERATION_IDS,
+  EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
+  EXACT_PREDECESSOR_RELEASE_ATTEMPT,
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
@@ -280,6 +282,14 @@ function harness({
     ["workflow_start_authority_policy", EXACT_WORKFLOW_START_AUTHORITY_POLICY],
   ])
     proposal.exact_execution_graph[key] = structuredClone(value);
+  if (isV4Proposal) {
+    proposal.exact_execution_graph.predecessor_mage_reconciliation_policy = structuredClone(
+      EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
+    );
+    proposal.supersession.predecessor_release_attempt = structuredClone(
+      EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+    );
+  } else delete proposal.exact_execution_graph.predecessor_mage_reconciliation_policy;
   const database = proposal.requested_scope.database;
   const bootstrap = EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY;
   database.prequalification_database_bootstrap_operator_function_signature_count =

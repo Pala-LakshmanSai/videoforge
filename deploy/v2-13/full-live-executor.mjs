@@ -50,7 +50,10 @@ import {
   verifyPrequalificationDatabaseReceipt,
   verifyMaterializationChainFile,
 } from "./full-live-adapters.mjs";
-import { EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR } from "./validate-full-live-approval.mjs";
+import {
+  EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
+} from "./validate-full-live-approval.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const EXECUTOR_PATH = "deploy/v2-13/full-live-executor.mjs";
@@ -104,7 +107,7 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:711d9fd5b99bb4e3278c85d22265a2cbae845bfa17bbd34ee1fad2c653076cab",
+    "sha256:c4f0f4867bb7c19207c7cbe334261f7208949d5906347bc15e1a2fd04b2de4ff",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
   "deploy/v2-13/guarded-activation.mjs":
@@ -120,7 +123,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:8fad8a4356513caa1d9540c6b3166add91d84887f36f3e4a6fb4bb2e95436532",
+    "sha256:1633d08e35fddab384d48c90afa0dc9416203836b310a02da15e01d23daa2486",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -1123,10 +1126,30 @@ export function assertResult(
   }
   if (operation.id.endsWith("image-workflow-dispatch")) {
     validateFreshWorkflowReadbackResult(result, state);
+    const mageReconciliation = operation.id === "mage-image-workflow-dispatch";
     if (
       !/^[1-9][0-9]*$/u.test(String(result.runId ?? "")) ||
       result.headSha !== state.release_source_commit ||
-      result.dispatchAccepted !== true
+      (mageReconciliation &&
+        (JSON.stringify(state.predecessor_release_attempt) !==
+          JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) ||
+          result.runId !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id ||
+          result.dispatchAccepted !== false ||
+          result.reconciledExistingExact !== true ||
+          result.mutationPerformed !== false ||
+          result.predecessorAuthorityId !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.authority_id ||
+          result.predecessorTerminalStateSha256 !==
+            EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256 ||
+          result.predecessorDispatchResultSha256 !==
+            EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_dispatch_result_sha256 ||
+          result.predecessorVerificationResultSha256 !==
+            EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_verification_result_sha256 ||
+          result.imageDigest !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_image_digest ||
+          result.evidenceSha256 !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_evidence_sha256 ||
+          result.publicManifestSha256 !==
+            EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_public_manifest_sha256 ||
+          result.conclusion !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_conclusion)) ||
+      (!mageReconciliation && result.dispatchAccepted !== true)
     )
       fail("WORKFLOW_DISPATCH_READBACK", operation.id);
   }
@@ -1140,7 +1163,15 @@ export function assertResult(
       !HASH.test(result.evidenceSha256 ?? "") ||
       !HASH.test(result.publicManifestSha256 ?? "") ||
       result.publicAllBlobsVerified !== true ||
-      result.conclusion !== "success"
+      result.conclusion !== "success" ||
+      (operation.id === "mage-image-workflow-verification" &&
+        (result.runId !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id ||
+          result.imageDigest !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_image_digest ||
+          result.evidenceSha256 !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_evidence_sha256 ||
+          result.publicManifestSha256 !==
+            EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_public_manifest_sha256 ||
+          result.predecessorReverified !== true ||
+          result.dispatchPerformed !== false))
     )
       fail("WORKFLOW_EVIDENCE_READBACK", operation.id);
   }
