@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { createHash } from "node:crypto";
 
 import { describe, expect, it, vi } from "vitest";
@@ -5,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { HostedR2BucketBinding } from "../hosted/configuration.js";
 import {
   buildV213SoulXQualificationWav,
+  createV213DirectR2Bucket,
   createV213DirectQualificationMaterializer,
   type V213QualificationProtectedInputDescriptor,
   type V213QualificationProtectedInputDescriptors,
@@ -244,6 +247,115 @@ describe("V2-13 direct protected qualification materializer", () => {
     expect(view.getInt16(44, true)).toBe(view.getInt16(46, true));
     expect(view.getInt16(46, true)).toBe(view.getInt16(48, true));
     expect(view.getInt16(44 + 120_000 * 2, true)).toBe(0);
+  });
+
+  describe("direct R2 bounded reads", () => {
+    const config = {
+      accountId: "a".repeat(32),
+      bucketName: "videoforge-private",
+      accessKeyId: "A".repeat(24),
+      secretAccessKey: "S".repeat(40),
+    };
+    const objectKey = ".videoforge/private/fixture.bin";
+    type RangedBucket = HostedR2BucketBinding & {
+      get(
+        key: string,
+        options?: { readonly range?: { readonly offset: number; readonly length: number } },
+      ): ReturnType<HostedR2BucketBinding["get"]>;
+    };
+    const rangedGet = (
+      bucket: HostedR2BucketBinding,
+      key: string,
+      options?: { readonly range?: { readonly offset: number; readonly length: number } },
+    ) => (bucket as RangedBucket).get(key, options);
+
+    it("sends a signed bounded Range and returns the full object size", async () => {
+      const requests: Request[] = [];
+      const bytes = Uint8Array.from([3, 4, 5]);
+      const fetchPort = vi.fn(async (input: RequestInfo | URL) => {
+        const request = input instanceof Request ? input : new Request(input);
+        requests.push(request);
+        return new Response(bytes, {
+          status: 206,
+          headers: {
+            "content-length": "3",
+            "content-range": "bytes 2-4/10",
+            "content-type": "application/octet-stream",
+          },
+        });
+      });
+      const bucket = createV213DirectR2Bucket({ config, fetch: fetchPort });
+      const object = await rangedGet(bucket, objectKey, { range: { offset: 2, length: 3 } });
+
+      expect(object?.size).toBe(10);
+      expect(requests[0]?.headers.get("range")).toBe("bytes=2-4");
+      await expect(object?.arrayBuffer()).resolves.toEqual(bytes.buffer);
+    });
+
+    it.each([
+      { range: { offset: -1, length: 1 } },
+      { range: { offset: 0, length: 0 } },
+      { range: { offset: 0, length: 16 * 1024 * 1024 + 1 } },
+      { range: { offset: 1, length: 2 }, extra: true },
+    ])("rejects malformed bounded range %#", async (options) => {
+      const fetchPort = vi.fn();
+      const bucket = createV213DirectR2Bucket({ config, fetch: fetchPort });
+      await expect(rangedGet(bucket, objectKey, options)).rejects.toThrow(
+        "V213_QUALIFICATION_R2_RANGE_INVALID",
+      );
+      expect(fetchPort).not.toHaveBeenCalled();
+    });
+
+    it("rejects range status, Content-Range, and body-length drift", async () => {
+      const responses = [
+        new Response(new Uint8Array([3, 4, 5]), {
+          status: 200,
+          headers: { "content-length": "3", "content-range": "bytes 2-4/10" },
+        }),
+        new Response(new Uint8Array([3, 4, 5]), {
+          status: 206,
+          headers: { "content-length": "3", "content-range": "bytes 1-3/10" },
+        }),
+        new Response(new Uint8Array([3, 4]), {
+          status: 206,
+          headers: { "content-length": "3", "content-range": "bytes 2-4/10" },
+        }),
+      ];
+      for (const [index, expected] of [
+        "V213_QUALIFICATION_R2_GET_REJECTED",
+        "V213_QUALIFICATION_R2_GET_READBACK_DRIFT",
+        "V213_QUALIFICATION_R2_GET_READBACK_DRIFT",
+      ].entries()) {
+        const fetchPort = vi.fn(async () => responses[index]!);
+        const bucket = createV213DirectR2Bucket({ config, fetch: fetchPort });
+        const objectPromise = rangedGet(bucket, objectKey, { range: { offset: 2, length: 3 } });
+        if (index < 2) {
+          await expect(objectPromise).rejects.toThrow(expected);
+        } else {
+          const object = await objectPromise;
+          await expect(object?.arrayBuffer()).rejects.toThrow(expected);
+        }
+      }
+    });
+
+    it("preserves the full GET 200 path", async () => {
+      const bytes = Uint8Array.from([7, 8, 9, 10]);
+      const requests: Request[] = [];
+      const fetchPort = vi.fn(async (input: RequestInfo | URL) => {
+        const request = input instanceof Request ? input : new Request(input);
+        requests.push(request);
+        return new Response(bytes, {
+          status: 200,
+          headers: { "content-length": "4", "content-type": "application/octet-stream" },
+        });
+      });
+      const bucket = createV213DirectR2Bucket({ config, fetch: fetchPort });
+      const object = await bucket.get(objectKey);
+
+      expect(object?.size).toBe(4);
+      expect(requests[0]?.headers.get("range")).toBeNull();
+      await expect(object?.arrayBuffer()).resolves.toEqual(bytes.buffer);
+    });
   });
 
   it("materializes SoulX only after protected rehash, R2 CAS, HMAC, persist, and readback", async () => {

@@ -27,6 +27,11 @@ const ACCESS_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]{15,255}$/u;
 const SECRET_KEY = /^[\u0021-\u007e]{32,512}$/u;
 const MAX_OBJECT_BYTES = 16 * 1024 * 1024;
 
+interface V213DirectR2Range {
+  readonly offset: number;
+  readonly length: number;
+}
+
 export interface V213QualificationProtectedInputDescriptor {
   readonly path: string;
   readonly sha256: `sha256:${string}`;
@@ -278,6 +283,40 @@ export function createV213DirectR2Bucket(input: {
       },
     };
   };
+  const exactRange = (value: unknown): V213DirectR2Range | null => {
+    if (value === undefined) return null;
+    if (
+      !value ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
+      !exactKeys(value, ["range"])
+    ) {
+      throw new Error("V213_QUALIFICATION_R2_RANGE_INVALID");
+    }
+    const range = (value as { readonly range?: unknown }).range;
+    if (
+      !range ||
+      typeof range !== "object" ||
+      Array.isArray(range) ||
+      !exactKeys(range, ["offset", "length"])
+    ) {
+      throw new Error("V213_QUALIFICATION_R2_RANGE_INVALID");
+    }
+    const { offset, length } = range as { readonly offset?: unknown; readonly length?: unknown };
+    if (
+      typeof offset !== "number" ||
+      typeof length !== "number" ||
+      !Number.isSafeInteger(offset) ||
+      !Number.isSafeInteger(length) ||
+      offset < 0 ||
+      length < 1 ||
+      offset > MAX_OBJECT_BYTES - 1 ||
+      length > MAX_OBJECT_BYTES - offset
+    ) {
+      throw new Error("V213_QUALIFICATION_R2_RANGE_INVALID");
+    }
+    return { offset, length };
+  };
   const binding: HostedR2BucketBinding = {
     async head(key: string) {
       const response = await send(key, { method: "HEAD" });
@@ -285,9 +324,54 @@ export function createV213DirectR2Bucket(input: {
       if (response.status !== 200) throw new Error("V213_QUALIFICATION_R2_HEAD_REJECTED");
       return metadata(response);
     },
-    async get(key: string) {
-      const response = await send(key, { method: "GET" });
+    async get(key: string, options?: unknown) {
+      const range = exactRange(options);
+      const response = await send(
+        key,
+        range
+          ? {
+              method: "GET",
+              headers: {
+                Range: `bytes=${range.offset}-${range.offset + range.length - 1}`,
+              },
+            }
+          : { method: "GET" },
+      );
       if (response.status === 404) return null;
+      if (range) {
+        if (response.status !== 206) throw new Error("V213_QUALIFICATION_R2_GET_REJECTED");
+        const contentLength = Number(response.headers.get("content-length"));
+        const contentRange = /^bytes ([0-9]+)-([0-9]+)\/([0-9]+)$/u.exec(
+          response.headers.get("content-range") ?? "",
+        );
+        const start = contentRange ? Number(contentRange[1]) : NaN;
+        const end = contentRange ? Number(contentRange[2]) : NaN;
+        const total = contentRange ? Number(contentRange[3]) : NaN;
+        if (
+          !Number.isSafeInteger(contentLength) ||
+          contentLength !== range.length ||
+          !contentRange ||
+          !Number.isSafeInteger(start) ||
+          !Number.isSafeInteger(end) ||
+          !Number.isSafeInteger(total) ||
+          start !== range.offset ||
+          end !== range.offset + range.length - 1 ||
+          total < end + 1 ||
+          total > MAX_OBJECT_BYTES
+        ) {
+          throw new Error("V213_QUALIFICATION_R2_GET_READBACK_DRIFT");
+        }
+        return {
+          size: total,
+          httpMetadata: { contentType: response.headers.get("content-type") ?? undefined },
+          arrayBuffer: async () => {
+            const bytes = await response.arrayBuffer();
+            if (bytes.byteLength !== range.length || bytes.byteLength > MAX_OBJECT_BYTES)
+              throw new Error("V213_QUALIFICATION_R2_GET_READBACK_DRIFT");
+            return bytes;
+          },
+        };
+      }
       if (response.status !== 200) throw new Error("V213_QUALIFICATION_R2_GET_REJECTED");
       const observed = metadata(response);
       return {
