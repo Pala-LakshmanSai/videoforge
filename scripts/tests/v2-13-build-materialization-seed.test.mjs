@@ -593,10 +593,7 @@ function harness({
   });
   const factsBytes = encode(facts, factsPretty);
   const factsBinding = {
-    commit_field:
-      isV4Proposal
-        ? "source.execution_control.commit"
-        : "source.release_source_commit",
+    commit_field: isV4Proposal ? "source.execution_control.commit" : "source.release_source_commit",
     full_live_authority_id: fullLiveAuthorityId,
     path: FACTS_PATH,
     sha256: sha256(factsBytes),

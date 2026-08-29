@@ -755,10 +755,7 @@ test("V4 consume binds the protected descriptor to the immutable release payload
     source,
     /validateStaticReleaseDescriptorFile\(\{[\s\S]*?expectedSourceCommit:\s*validated\.releaseSourceCommit,[\s\S]*?\}\);/u,
   );
-  assert.doesNotMatch(
-    source,
-    /expectedSourceCommit:\s*validated\.executionControlCommit\s*\?\?/u,
-  );
+  assert.doesNotMatch(source, /expectedSourceCommit:\s*validated\.executionControlCommit\s*\?\?/u);
 });
 
 test("protected static release descriptor rejects newline self-hash and exact-key or source drift", () => {

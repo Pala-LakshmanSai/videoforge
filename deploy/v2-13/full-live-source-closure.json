@@ -1035,7 +1035,7 @@
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:16810736d4f1050ee5b5607c206d75727c94619684748cab86a61356b73feb97"
+      "sha256": "sha256:3d7e6f2dfb320b2fe4f2f36a17bcd8b53b39ad8f271e0c60928ec7d6069033e0"
     },
     {
       "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",

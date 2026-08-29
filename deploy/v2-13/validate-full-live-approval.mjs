@@ -22,17 +22,13 @@ const EXACT_PREDECESSOR_RELEASE_ATTEMPT = Object.freeze({
   exact_tag_target_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
   tag_create_result_sha256:
     "sha256:29d68b30b0f866fb40a32de97f6a08f6e27799790822a3bfb7409704cd9df5fc",
-  tag_push_result_sha256:
-    "sha256:f71b313cebd5080cb72cc48731ef48992d0987a37cf7d245b180a765c9f3036b",
+  tag_push_result_sha256: "sha256:f71b313cebd5080cb72cc48731ef48992d0987a37cf7d245b180a765c9f3036b",
   tag_readback_result_sha256:
     "sha256:e2f8d0a1a471423ac43c5031f65ff052a334eb29e9b6f922f569dcd9287c43ad",
 });
 
 function assertDistinctV4SuccessorAuthority(proposalSchema, authorityId, predecessor) {
-  if (
-    proposalSchema === PROPOSAL_SCHEMA_V4 &&
-    authorityId === predecessor?.authority_id
-  )
+  if (proposalSchema === PROPOSAL_SCHEMA_V4 && authorityId === predecessor?.authority_id)
     fail("SUCCESSOR_AUTHORITY_REPLAY");
   return true;
 }
@@ -186,11 +182,11 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:16810736d4f1050ee5b5607c206d75727c94619684748cab86a61356b73feb97",
+    sha256: "sha256:3d7e6f2dfb320b2fe4f2f36a17bcd8b53b39ad8f271e0c60928ec7d6069033e0",
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:f24184bf7d11106d310c49da3ca29061adf7692d57db169f802aa8994d13e0e4",
+    sha256: "sha256:d3c642c9a5a80a419acb6d5b6f9a842b9fa2fca40bbdb330ad141032f019bb1c",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
@@ -202,11 +198,11 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:98c2501f77848e5cdc45605d6d9df8079a269a8562abaa334c5c52728f15722e",
+    sha256: "sha256:81fb706019a2255a220e23fde21ea137016139617d4357f160cc715b141b52af",
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:29abe43e9cd1df0fa56bba6b0fa283b1476e7a18ddbe0fe34642e46d65bfe347",
+    sha256: "sha256:4d348ad85f803ad36ea3c3e3df54dfb601af45e308bfd55282c1d9ed1340433b",
   }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({
@@ -1847,9 +1843,7 @@ function validateFullLiveUserApproval({
     executionControlCommit: isV4
       ? proposal.source.execution_control.commit
       : expectedReleaseSourceCommit,
-    executionControlComponents: isV4
-      ? proposal.source.execution_control.exact_components
-      : null,
+    executionControlComponents: isV4 ? proposal.source.execution_control.exact_components : null,
     predecessorReleaseAttempt: isV4 ? EXACT_PREDECESSOR_RELEASE_ATTEMPT : null,
     approvalValidatorSourceBinding: isV4
       ? EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING

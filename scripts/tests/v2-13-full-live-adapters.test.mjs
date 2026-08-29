@@ -549,7 +549,10 @@ test("git release push performs zero mutation when the predecessor tag is alread
   assert.equal(reconciled.pushPerformed, false);
   assert.equal(reconciled.reconciledExistingExact, true);
   assert.equal(reconciled.forceUsed, false);
-  assert.equal(calls.some(([, args]) => args[0] === "push"), false);
+  assert.equal(
+    calls.some(([, args]) => args[0] === "push"),
+    false,
+  );
   assert.equal(replies.length, 0);
 });
 
@@ -561,7 +564,6 @@ test("git release adapter rejects mismatched local or remote tags", async () => 
   const replies = [result(1), result(0, `${"5".repeat(40)}\trefs/tags/${TAG}\n`)];
   const remote = createGitReleaseAdapters({ run: () => replies.shift() });
   await assert.rejects(remote["release-tag-create"]({}, state), /REMOTE_TAG_READBACK/u);
-
 });
 
 test("git release adapter reconciles the exact predecessor tag without retarget or force", async () => {
@@ -569,10 +571,7 @@ test("git release adapter reconciles the exact predecessor tag without retarget 
     ...state,
     release_ref: { ...state.release_ref, state: "AUTHORIZED_PENDING_RECONCILIATION" },
   };
-  const exactReplies = [
-    result(1),
-    result(0, `${sourceCommit}\trefs/tags/${TAG}\n`),
-  ];
+  const exactReplies = [result(1), result(0, `${sourceCommit}\trefs/tags/${TAG}\n`)];
   const calls = [];
   const exactRemote = createGitReleaseAdapters({
     run: (command, args) => {
@@ -585,7 +584,10 @@ test("git release adapter reconciles the exact predecessor tag without retarget 
   assert.equal(reconciled.verifiedExistingExact, true);
   assert.equal(reconciled.exactTagReady, true);
   assert.equal(reconciled.mutationPerformed, false);
-  assert.equal(calls.some(([, args]) => args[0] === "tag"), false);
+  assert.equal(
+    calls.some(([, args]) => args[0] === "tag"),
+    false,
+  );
   assert.equal(exactReplies.length, 0);
 });
 
@@ -606,7 +608,10 @@ test("predecessor reconciliation hard-stops when the exact remote tag is absent"
     adapters["release-tag-create"]({}, reconciliationState),
     /PREDECESSOR_REMOTE_TAG_ABSENT/u,
   );
-  assert.equal(calls.some(([, args]) => ["tag", "push"].includes(args[0])), false);
+  assert.equal(
+    calls.some(([, args]) => ["tag", "push"].includes(args[0])),
+    false,
+  );
 });
 
 test("approval publication pushes the exact authority-record commit with FF and tree-byte proof", async () => {
@@ -741,8 +746,14 @@ test("approval publication creates the absent exact v4 branch without force", as
   const published = await adapters["approval-commit-push"]({}, publicationState);
   assert.equal(published.priorBranchState, "ABSENT_CREATED");
   assert.equal(published.exactRemoteReadback, true);
-  assert.equal(calls.some(([, args]) => args[0] === "merge-base"), false);
-  assert.equal(calls.some(([, args]) => args.some((arg) => arg.includes("--force"))), false);
+  assert.equal(
+    calls.some(([, args]) => args[0] === "merge-base"),
+    false,
+  );
+  assert.equal(
+    calls.some(([, args]) => args.some((arg) => arg.includes("--force"))),
+    false,
+  );
   assert.equal(replies.length, 0);
 });
 

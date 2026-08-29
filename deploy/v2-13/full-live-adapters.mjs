@@ -133,10 +133,8 @@ const DATABASE_ROLE_CREDENTIAL_BUNDLE_SCHEMA = "videoforge.v213-database-role-cr
 const DATABASE_ROLE_CREDENTIAL_BUNDLE_NAME = "database-role-credentials.json";
 const DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA =
   "videoforge.v213-database-role-credential-cleanup/v1";
-const OUTER_CONSUMPTION_SCHEMA_V2 =
-  "videoforge.v2-13-full-live-orchestration-consumption/v2";
-const OUTER_CONSUMPTION_SCHEMA_V3 =
-  "videoforge.v2-13-full-live-orchestration-consumption/v3";
+const OUTER_CONSUMPTION_SCHEMA_V2 = "videoforge.v2-13-full-live-orchestration-consumption/v2";
+const OUTER_CONSUMPTION_SCHEMA_V3 = "videoforge.v2-13-full-live-orchestration-consumption/v3";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_RUNTIME_ROLE = "videoforge_hosted_runtime";
 const PREQUALIFICATION_RECONCILER_ROLE = "videoforge_hosted_reconciler";
@@ -489,10 +487,7 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
       );
       if (local.stdout !== "") fail("LOCAL_TAG_PROBE_OUTPUT");
       if (local.status === 0) {
-        const localReadback = exactCommand(run, "git", [
-          "rev-parse",
-          `refs/tags/${tag}^{commit}`,
-        ]);
+        const localReadback = exactCommand(run, "git", ["rev-parse", `refs/tags/${tag}^{commit}`]);
         if (localReadback.stdout.trim() !== target) fail("LOCAL_TAG_COLLISION");
       }
       const remote = exactCommand(run, "git", [
