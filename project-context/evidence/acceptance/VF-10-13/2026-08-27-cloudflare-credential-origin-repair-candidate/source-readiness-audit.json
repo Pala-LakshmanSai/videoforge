@@ -2,7 +2,7 @@
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
   "audited_code_commit": "9c6923c1fc8cb3e21ab8a16dac6866a9534620c1",
-  "audit_result": "PASS_READY_TO_BIND",
+  "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.successor-source-audit",
   "fixture_or_fake_transport_used": false,
@@ -50,7 +50,7 @@
   "validation": {
     "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
     "full_verify_passed": false,
-    "full_verify_expected_boundary": "POST_BIND_CANONICAL_VERIFY_REQUIRED",
+    "full_verify_expected_boundary": "POST_RESEAL_CANONICAL_VERIFY_REQUIRED",
     "package_test_files_passed": 2,
     "package_tests_passed": 51,
     "package_tests_skipped": 0,
@@ -65,7 +65,7 @@
     "hosted_pair_gate_tests_passed": 15,
     "hosted_pair_gate_tests_skipped": 0,
     "soulx_tests_passed": 0,
-    "independent_source_audit_result": "PASS_READY_TO_BIND",
+    "independent_source_audit_result": "PASS_READY_TO_RESEAL",
     "canonical_executor_state": "NO_ACTION"
   },
   "audit_facts": {
@@ -113,25 +113,6 @@
         "p1Count": 0,
         "secretLogScanPassed": true,
         "ssrfPathUploadPassed": true
-      }
-    },
-    "migration_0049_and_hosted_pair_gate": {
-      "claims": [
-        "exact_49_row_migration_manifest",
-        "migration_0049_component_hash_bound",
-        "exact_0037_to_0049_hosted_pair_ledger",
-        "hosted_pair_ledger_drift_rejected",
-        "unqualified_transport_fails_closed"
-      ],
-      "metrics": {
-        "migrationManifestEntryCount": 49,
-        "migration0049Sha256": "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31",
-        "hostedPairMigrationRange": [37, 49],
-        "hostedPairMigrationCount": 13,
-        "hostedPairMigration49Sha256": "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31",
-        "hostedPairLedgerInvalidReason": "MIGRATION_LEDGER_0037_0049_INVALID",
-        "unqualifiedTransportState": "DISABLED_UNQUALIFIED",
-        "qualifiedExactGateState": "READY"
       }
     },
     "production_transport_real": {
