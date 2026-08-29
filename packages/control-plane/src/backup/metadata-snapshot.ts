@@ -14,12 +14,9 @@ const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 const MAX_SERIALIZED_SNAPSHOT_BYTES = 128 * 1_024 * 1_024;
 const MAX_SECRET_SCAN_NODES = 1_000_000;
 
-// Migration 0048 adds the hosted auth throttle table. It contains Better Auth identity-linked
-// counters and remains outside portable metadata snapshots alongside the other auth tables.
-const METADATA_NON_PORTABLE_TABLE_NAMES = Object.freeze([
-  ...NON_PORTABLE_TABLE_NAMES,
-  "hosted_auth_rate_limits",
-] as const);
+// Better Auth identity-linked rows, including hosted auth throttle counters, remain outside
+// portable metadata snapshots alongside the other auth tables.
+const METADATA_NON_PORTABLE_TABLE_NAMES = Object.freeze([...NON_PORTABLE_TABLE_NAMES] as const);
 
 /**
  * Migration 0018 seeds the reserved SYSTEM and LEGACY scope rows into every database, so they are

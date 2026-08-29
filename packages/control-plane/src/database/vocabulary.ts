@@ -180,6 +180,7 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "hosted_auth_sessions",
   "hosted_auth_verifications",
   "hosted_auth_links",
+  "hosted_auth_rate_limits",
   "hosted_dispatch_token_vault",
   "hosted_full_live_stage_handoff_escrow",
   "hosted_full_live_qualification_materializations",

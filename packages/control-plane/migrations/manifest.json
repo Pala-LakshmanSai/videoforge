@@ -288,6 +288,12 @@
       "name": "hosted_system_avatar_asset_snapshot_reader",
       "filename": "0048_hosted_system_avatar_asset_snapshot_reader.sql",
       "sha256": "sha256:8181d1c050690a8e15ce5cef7473a5caa872d5f868b18f059574dbd4fcbdc82d"
+    },
+    {
+      "version": 49,
+      "name": "hosted_full_live_promotion_lineage",
+      "filename": "0049_hosted_full_live_promotion_lineage.sql",
+      "sha256": "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31"
     }
   ]
 }
