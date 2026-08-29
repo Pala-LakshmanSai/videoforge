@@ -177,23 +177,27 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:4f8f9f035d8ba2ee0d36c37dd2155add7f9a1931423b989dde14e74ab336f809",
+    sha256: "sha256:16810736d4f1050ee5b5607c206d75727c94619684748cab86a61356b73feb97",
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:762b8bd4e6ead059d0054473353467380259dfe322f1239672a277f4efe5b1f3",
+    sha256: "sha256:7463ecf7439f6b636e165d8ba8a4e96c5803df56ba0c08c5140c688801e25f44",
+  }),
+  guarded_activation: Object.freeze({
+    path: "deploy/v2-13/guarded-activation.mjs",
+    sha256: "sha256:7522808e31aa83d92bd5d8bcdc768438ba11ce5cd69f6fd8be45e0671148fa85",
   }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:1e7f282a0a7e924a43aa39f330ad5ce907d1999bc8096bbd025baea01c8d497f",
+    sha256: "sha256:0d4c4d55f2b6b2f1ba88d4b7182928605edf5bc9a79e803dd65d3058449fd883",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:3359c9c45e24a400c9f0d93bded961e8df1ff2223322829108717568f69ea9ab",
+    sha256: "sha256:1845fbd0c8958804338ea0f52515c32ccc0d5414d0e8ff3113fdbe9fb4d1dcbe",
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:9eef569614b90eb4ea8b2b7cb2540c39b7ed8bbc238b31ded4b7ce4062e12686",
+    sha256: "sha256:b3e6f0114a5890a016dbcb331e7e521d606140d6e8aeca3fab07c0416e2be391",
   }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({

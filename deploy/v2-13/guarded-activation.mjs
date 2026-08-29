@@ -994,15 +994,20 @@ function prevalidate(args) {
   const authority = validateAuthority(
     JSON.parse(readFileSync(resolve(args.get("activation-record")), "utf8")),
   );
-  validateAuthoritySourceFiles(
+  const validated = validateAuthoritySourceFiles(
     authority,
     resolve(args.get("proposal-file")),
     resolve(args.get("user-approval-file")),
   );
   const head = git("rev-parse", "HEAD");
-  if (head !== authority.release.commit) fail("authority commit is not exact HEAD");
+  const expectedHead =
+    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
+      ? validated.executionControlCommit
+      : authority.release.commit;
+  if (head !== expectedHead) fail("authority execution commit is not exact HEAD");
   if (git("status", "--porcelain=v1", "--untracked-files=all") !== "")
     fail("working tree must be completely clean before activation");
+  assertV4PayloadEquivalence(validated);
   const crop = authority.soulx_crop_approval;
   for (const path of [crop.approval_path, crop.candidate_path]) {
     if (git("hash-object", path) !== git("rev-parse", `HEAD:${path}`))
@@ -1110,23 +1115,75 @@ function validateAuthoritySourceFiles(authority, proposalPath, approvalPath) {
   )
     fail("user approval identity or time does not match activation authority");
   assertFullLiveActivationBinding(authority, validated);
+  const expectedProposalParent =
+    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
+      ? validated.executionControlCommit
+      : validated.releaseSourceCommit;
   if (
-    git("rev-parse", `${validated.proposalRecordCommit}^`) !== validated.releaseSourceCommit ||
+    git("rev-parse", `${validated.proposalRecordCommit}^`) !== expectedProposalParent ||
     git("hash-object", proposalPath) !==
       git("rev-parse", `${validated.proposalRecordCommit}:${authority.authority.proposal_path}`)
   )
     fail("proposal commit or release-source lineage is not exact");
-  return true;
+  return validated;
 }
 
 function assertFullLiveActivationBinding(authority, validated) {
-  if (validated.proposalSchema !== "videoforge.v2-13-full-live-completion-proposal/v3")
+  if (
+    ![
+      "videoforge.v2-13-full-live-completion-proposal/v3",
+      "videoforge.v2-13-full-live-completion-proposal/v4",
+    ].includes(validated.proposalSchema)
+  )
     fail("superseded full-live proposal approval cannot authorize guarded activation");
   if (
     authority.database.runtime_role !== validated.exactRuntimeRole ||
     authority.database.reconciler_role !== validated.exactReconcilerRole
   )
     fail("database roles do not match the exact approved V3 role pins");
+  if (
+    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4" &&
+    (validated.executionControlCommit === validated.releaseSourceCommit ||
+      validated.authorityId === validated.predecessorReleaseAttempt?.authority_id)
+  )
+    fail("successor execution control or authority identity replays the predecessor");
+  return true;
+}
+
+function assertV4PayloadEquivalence(validated) {
+  if (validated.proposalSchema !== "videoforge.v2-13-full-live-completion-proposal/v4") return true;
+  const components = validated.executionControlComponents;
+  const closurePath = components?.source_closure_manifest?.path;
+  if (typeof closurePath !== "string") fail("V4 source closure binding is absent");
+  let closure;
+  try {
+    closure = JSON.parse(readFileSync(resolve(ROOT, closurePath), "utf8"));
+  } catch {
+    fail("V4 source closure is not valid JSON");
+  }
+  if (
+    closure?.schema_version !== "videoforge.v2-13-full-live-source-closure/v1" ||
+    !Array.isArray(closure.entries)
+  )
+    fail("V4 source closure contract drifted");
+  const controlPaths = new Set(Object.values(components).map((component) => component.path));
+  for (const entry of closure.entries) {
+    if (
+      typeof entry?.path !== "string" ||
+      entry.path === "" ||
+      entry.path.startsWith("/") ||
+      entry.path.split("/").includes("..") ||
+      !HASH.test(entry.sha256 ?? "") ||
+      sha256(readFileSync(resolve(ROOT, entry.path))) !== entry.sha256
+    )
+      fail("V4 source closure bytes drifted");
+    if (
+      !controlPaths.has(entry.path) &&
+      git("hash-object", entry.path) !==
+        git("rev-parse", `${validated.releaseSourceCommit}:${entry.path}`)
+    )
+      fail("V4 non-control payload differs from the immutable release source");
+  }
   return true;
 }
 
@@ -2829,6 +2886,7 @@ export {
   safeEnvironment,
   validateSoulxApprovalRecords,
   validateAuthoritySourceFiles,
+  assertV4PayloadEquivalence,
   validateAbsentInventoryReadbacks,
   validateAuthority,
   WORKFLOW_INVENTORY_PATH,

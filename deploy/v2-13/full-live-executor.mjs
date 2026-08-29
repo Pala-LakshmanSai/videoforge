@@ -57,11 +57,11 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:4f8f9f035d8ba2ee0d36c37dd2155add7f9a1931423b989dde14e74ab336f809",
+    "sha256:16810736d4f1050ee5b5607c206d75727c94619684748cab86a61356b73feb97",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:b5be2bb99a151e82129f685b083ae78db2395f46e0dbf3ff62822fb20f1cc5e8",
+    "sha256:7522808e31aa83d92bd5d8bcdc768438ba11ce5cd69f6fd8be45e0671148fa85",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
     "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
@@ -73,7 +73,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:9eef569614b90eb4ea8b2b7cb2540c39b7ed8bbc238b31ded4b7ce4062e12686",
+    "sha256:b3e6f0114a5890a016dbcb331e7e521d606140d6e8aeca3fab07c0416e2be391",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -415,7 +415,7 @@ export function assertResult(
       result.exactTagReady !== true ||
       result.targetCommit !== state.release_ref.exact_target_commit ||
       (state.release_ref.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" &&
-        result.mutationPerformed !== false)
+        (result.created !== false || result.mutationPerformed !== false))
     )
       fail("RELEASE_REF_CREATE", operation.id);
   }
@@ -425,7 +425,7 @@ export function assertResult(
       result.targetCommit !== state.release_ref.exact_target_commit ||
       typeof result.pushPerformed !== "boolean" ||
       (state.release_ref.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" &&
-        result.mutationPerformed !== false) ||
+        (result.pushPerformed !== false || result.mutationPerformed !== false)) ||
       result.forceUsed !== false
     )
       fail("RELEASE_REF_PUSH", operation.id);

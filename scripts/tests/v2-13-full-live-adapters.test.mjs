@@ -1055,6 +1055,39 @@ test("guarded adapter calls the existing executor once and authenticates its dur
   assert.equal(calls, 1);
   assert.equal(value.executedOnce, true);
   assert.match(value.evidenceSha256, /^sha256:[0-9a-f]{64}$/u);
+
+  const executionControlCommit = "5".repeat(40);
+  const v4Adapter = createGuardedActivationAdapter({
+    environment,
+    readEvidence: () => evidence,
+    preflight: () => true,
+    prepareSource: (targetCommit) => {
+      assert.equal(targetCommit, executionControlCommit);
+      return { root: "/isolated-release-source", cleanup: () => {} };
+    },
+    run: (command, args) => {
+      assert.equal(command, process.execPath);
+      assert.equal(args[0], "/isolated-release-source/deploy/v2-13/guarded-activation.mjs");
+      return result(
+        0,
+        JSON.stringify({
+          schema_version: "videoforge-v2-13-guarded-activation-result/v1",
+          state: "DISABLED_UNQUALIFIED",
+          commit: sourceCommit,
+        }),
+      );
+    },
+  });
+  const v4Value = await v4Adapter(
+    {},
+    {
+      ...state,
+      schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v3",
+      execution_control_commit: executionControlCommit,
+      release_ref: { ...state.release_ref, mode: "PREDECESSOR_BOUND_RECONCILIATION_ONLY" },
+    },
+  );
+  assert.equal(v4Value.executedOnce, true);
 });
 
 test("promotion hashes closed dry-output bytes, independent of Wrangler stdout", () => {

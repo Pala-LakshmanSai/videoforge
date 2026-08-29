@@ -21,6 +21,7 @@ import {
   initialConsumptionRecord,
   writeExclusive,
 } from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
+import { EXACT_PREDECESSOR_RELEASE_ATTEMPT } from "../../deploy/v2-13/validate-full-live-approval.mjs";
 
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
@@ -105,6 +106,9 @@ function stateFixture() {
     approvalRecordPath: "evidence/user-approval.json",
     authorityRecordPath: "evidence/approved-authority.json",
     releaseSourceCommit: "a".repeat(40),
+    executionControlCommit: "d".repeat(40),
+    proposalSchema: "videoforge.v2-13-full-live-completion-proposal/v4",
+    predecessorReleaseAttempt: EXACT_PREDECESSOR_RELEASE_ATTEMPT,
     fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
     approvedAt: "2026-08-26T00:00:00.000Z",
     expiresAt: "2026-08-27T00:00:00.000Z",
@@ -177,14 +181,21 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
     Object.assign(result, {
       tagName: state.release_ref.exact_tag_name,
       targetCommit: state.release_ref.exact_target_commit,
+      mutationPerformed: false,
     });
   if (operation.id === "release-tag-create")
-    Object.assign(result, { exactTagReady: true, targetCommit: state.release_source_commit });
+    Object.assign(result, {
+      exactTagReady: true,
+      targetCommit: state.release_source_commit,
+      created: false,
+      mutationPerformed: false,
+    });
   if (operation.id === "release-tag-push")
     Object.assign(result, {
       tagName: state.release_ref.exact_tag_name,
       targetCommit: state.release_source_commit,
-      pushPerformed: true,
+      pushPerformed: false,
+      mutationPerformed: false,
       forceUsed: false,
     });
   if (operation.id === "approval-commit-push")

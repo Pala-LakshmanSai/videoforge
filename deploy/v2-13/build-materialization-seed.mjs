@@ -538,7 +538,9 @@ function validateProposal(proposal, proposalPath) {
   const workflowNames =
     proposal.exact_execution_graph?.cloudflare_credential_origin_policy?.worker_and_workflow_absence
       ?.workflow_names;
-  const builderSource = proposal.source.exact_release_components?.materialization_seed_builder;
+  const builderSource = isV4
+    ? executionControlComponents?.materialization_seed_builder
+    : proposal.source.exact_release_components?.materialization_seed_builder;
   const envelopeSchemaSource =
     proposal.source.exact_release_components?.materialization_seed_envelope_schema;
   const qualificationCaseSource =
@@ -586,7 +588,8 @@ function validateProposal(proposal, proposalPath) {
     !exactKeys(builderSource, ["path", "sha256"]) ||
     builderSource.path !== BUILDER_PATH ||
     !HASH.test(builderSource.sha256 ?? "") ||
-    pending.release_component_sha256s?.materialization_seed_builder !== builderSource.sha256 ||
+    (!isV4 &&
+      pending.release_component_sha256s?.materialization_seed_builder !== builderSource.sha256) ||
     !exactKeys(envelopeSchemaSource, ["path", "sha256"]) ||
     envelopeSchemaSource.path !== ENVELOPE_SCHEMA_PATH ||
     !HASH.test(envelopeSchemaSource.sha256 ?? "") ||
@@ -625,6 +628,7 @@ function validateProposal(proposal, proposalPath) {
           "approval_validator",
           "full_live_adapters",
           "full_live_executor",
+          "guarded_activation",
           "materialization_seed_builder",
           "orchestration_authority",
           "source_closure_manifest",
@@ -771,7 +775,9 @@ function validateSourceEvidence(
     "SOURCE_READINESS",
   ).value;
   const readinessFacts = readiness?.audit_facts;
-  const sourceClosure = proposal?.source?.exact_release_components?.source_closure_manifest;
+  const sourceClosure =
+    binding.executionControlComponents?.source_closure_manifest ??
+    proposal?.source?.exact_release_components?.source_closure_manifest;
   const readinessObservedAt = Date.parse(readiness?.observed_at ?? "");
   if (
     readiness?.schema_version !== "videoforge.v2-13-full-live-source-readiness-audit/v1" ||
@@ -843,7 +849,9 @@ function validateSourceEvidence(
       auditedCodeCommit: readiness.audited_code_commit,
       closure,
       factsPath: binding.factsBinding.path,
-      releaseSourceCommit: binding.sourceCommit,
+      releaseSourceCommit: binding.executionControlComponents
+        ? binding.executionControlCommit
+        : binding.sourceCommit,
       sourceReadinessPath: facts.source_evidence.source_readiness.path,
     });
   } catch (error) {

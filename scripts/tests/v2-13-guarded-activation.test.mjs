@@ -313,6 +313,38 @@ test("guarded activation binds exact V3 runtime and reconciler roles", () => {
   );
 });
 
+test("guarded activation accepts only a distinct V4 successor authority and control commit", () => {
+  const value = authority();
+  value.database.runtime_role = "videoforge_hosted_runtime";
+  value.database.reconciler_role = "videoforge_hosted_reconciler";
+  const validated = {
+    proposalSchema: "videoforge.v2-13-full-live-completion-proposal/v4",
+    exactRuntimeRole: "videoforge_hosted_runtime",
+    exactReconcilerRole: "videoforge_hosted_reconciler",
+    releaseSourceCommit: "a".repeat(40),
+    executionControlCommit: "b".repeat(40),
+    authorityId: "v2-13-successor-authority",
+    predecessorReleaseAttempt: { authority_id: "v2-13-predecessor-authority" },
+  };
+  assert.equal(assertFullLiveActivationBinding(value, validated), true);
+  assert.throws(
+    () =>
+      assertFullLiveActivationBinding(value, {
+        ...validated,
+        executionControlCommit: validated.releaseSourceCommit,
+      }),
+    /replays the predecessor/u,
+  );
+  assert.throws(
+    () =>
+      assertFullLiveActivationBinding(value, {
+        ...validated,
+        authorityId: validated.predecessorReleaseAttempt.authority_id,
+      }),
+    /replays the predecessor/u,
+  );
+});
+
 test("authority source paths and approval schema fail closed", () => {
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v2-13-authority-sources-"));
   chmodSync(directory, 0o700);

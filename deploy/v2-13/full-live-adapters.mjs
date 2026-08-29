@@ -133,7 +133,10 @@ const DATABASE_ROLE_CREDENTIAL_BUNDLE_SCHEMA = "videoforge.v213-database-role-cr
 const DATABASE_ROLE_CREDENTIAL_BUNDLE_NAME = "database-role-credentials.json";
 const DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA =
   "videoforge.v213-database-role-credential-cleanup/v1";
-const OUTER_CONSUMPTION_SCHEMA = "videoforge.v2-13-full-live-orchestration-consumption/v2";
+const OUTER_CONSUMPTION_SCHEMA_V2 =
+  "videoforge.v2-13-full-live-orchestration-consumption/v2";
+const OUTER_CONSUMPTION_SCHEMA_V3 =
+  "videoforge.v2-13-full-live-orchestration-consumption/v3";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_RUNTIME_ROLE = "videoforge_hosted_runtime";
 const PREQUALIFICATION_RECONCILER_ROLE = "videoforge_hosted_reconciler";
@@ -917,7 +920,12 @@ function createGuardedActivationAdapter({
         fail("GUARDED_PREQUALIFICATION_RECEIPT");
     }
     preflight({ environment, state });
-    const source = prepareSource(state.release_source_commit);
+    const activationSourceCommit =
+      state.schema_version === OUTER_CONSUMPTION_SCHEMA_V3
+        ? state.execution_control_commit
+        : state.release_source_commit;
+    if (!COMMIT.test(activationSourceCommit ?? "")) fail("GUARDED_ACTIVATION_SOURCE_COMMIT");
+    const source = prepareSource(activationSourceCommit);
     if (
       source === null ||
       typeof source !== "object" ||
@@ -2497,9 +2505,16 @@ function prequalificationPath(environment) {
 }
 
 function assertConsumedDatabaseBootstrapInvocation(context, state, outerStateSha256) {
+  const releaseMode = state?.release_ref?.mode ?? "LEGACY_SINGLE_CREATION";
+  const expectedSchema =
+    releaseMode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY"
+      ? OUTER_CONSUMPTION_SCHEMA_V3
+      : releaseMode === "LEGACY_SINGLE_CREATION"
+        ? OUTER_CONSUMPTION_SCHEMA_V2
+        : null;
   if (
     context?.operationId !== "bootstrap-prequalification-database" ||
-    state?.schema_version !== OUTER_CONSUMPTION_SCHEMA ||
+    state?.schema_version !== expectedSchema ||
     state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" ||
     typeof state.authority_id !== "string" ||
     state.authority_id === "" ||
