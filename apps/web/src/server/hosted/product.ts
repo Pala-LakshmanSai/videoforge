@@ -1,4 +1,5 @@
 import { createHostedAuth, type HostedExecutionContext } from "./auth";
+import type { SqlExecutor } from "@videoforge/control-plane";
 import type {
   HostedNeonPool,
   HostedRuntimeConfiguration,
@@ -291,6 +292,2032 @@ function parseRenderHandoff(value: unknown): string | null {
   const record = value as Record<string, unknown>;
   if (Object.keys(record).length !== 1 || typeof record.asr_attempt_id !== "string") return null;
   return UUID.test(record.asr_attempt_id) ? record.asr_attempt_id : null;
+}
+
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_PRESET_SOURCE_BYTES = 20 * 1024 * 1024;
+
+interface HostedAvatarCreateInput {
+  readonly name: string;
+  readonly parentId: string | null;
+  readonly source: {
+    readonly filename: string;
+    readonly contentType: string;
+    readonly contentLength: number;
+    readonly checksumSha256: string;
+    readonly width: number;
+    readonly height: number;
+  };
+  readonly rightsAttested: boolean;
+  readonly likenessAnimationConsent: boolean;
+}
+
+interface HostedStyleReferenceInput {
+  readonly filename: string;
+  readonly contentType: string;
+  readonly contentLength: number;
+  readonly checksumSha256: string;
+  readonly orderIndex: number;
+}
+
+interface HostedStyleCreateInput {
+  readonly name: string;
+  readonly parentId: string | null;
+  readonly references: readonly HostedStyleReferenceInput[];
+  readonly rightsAttested: boolean;
+  readonly processingDisclosureAcknowledged: boolean;
+}
+
+function plainRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function exactKeys(record: Record<string, unknown>, expected: readonly string[]): boolean {
+  const actual = Object.keys(record).sort();
+  const sorted = [...expected].sort();
+  return actual.length === sorted.length && actual.every((key, index) => key === sorted[index]);
+}
+
+function optionalUuid(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  if (typeof value === "string" && UUID.test(value)) return value;
+  return undefined;
+}
+
+function parseAvatarCreate(value: unknown): HostedAvatarCreateInput | null {
+  const record = plainRecord(value);
+  if (
+    !record ||
+    !exactKeys(record, [
+      "schema_version",
+      "name",
+      "parent_profile_id",
+      "source",
+      "rights_attested",
+      "likeness_animation_consent",
+    ]) ||
+    record.schema_version !== "videoforge-hosted-avatar-create/v1" ||
+    typeof record.name !== "string" ||
+    record.name !== record.name.trim() ||
+    record.name.length < 1 ||
+    record.name.length > 160 ||
+    typeof record.rights_attested !== "boolean" ||
+    typeof record.likeness_animation_consent !== "boolean"
+  ) {
+    return null;
+  }
+  const parentId = optionalUuid(record.parent_profile_id);
+  const source = plainRecord(record.source);
+  const contentLength = source?.content_length;
+  const width = source?.width;
+  const height = source?.height;
+  if (
+    parentId === undefined ||
+    !source ||
+    !exactKeys(source, [
+      "filename",
+      "content_type",
+      "content_length",
+      "checksum_sha256",
+      "width",
+      "height",
+    ]) ||
+    typeof source.filename !== "string" ||
+    !validFilename(source.filename) ||
+    typeof source.content_type !== "string" ||
+    !IMAGE_TYPES.has(source.content_type) ||
+    typeof contentLength !== "number" ||
+    !Number.isSafeInteger(contentLength) ||
+    contentLength < 1 ||
+    contentLength > MAX_PRESET_SOURCE_BYTES ||
+    typeof source.checksum_sha256 !== "string" ||
+    !SHA256.test(source.checksum_sha256) ||
+    typeof width !== "number" ||
+    !Number.isSafeInteger(width) ||
+    width < 512 ||
+    width > 16_384 ||
+    typeof height !== "number" ||
+    !Number.isSafeInteger(height) ||
+    height < 512 ||
+    height > 16_384
+  ) {
+    return null;
+  }
+  return {
+    name: record.name,
+    parentId,
+    source: {
+      filename: source.filename,
+      contentType: source.content_type,
+      contentLength,
+      checksumSha256: source.checksum_sha256,
+      width,
+      height,
+    },
+    rightsAttested: record.rights_attested,
+    likenessAnimationConsent: record.likeness_animation_consent,
+  };
+}
+
+function parseStyleCreate(value: unknown): HostedStyleCreateInput | null {
+  const record = plainRecord(value);
+  if (
+    !record ||
+    !exactKeys(record, [
+      "schema_version",
+      "name",
+      "parent_style_id",
+      "references",
+      "rights_attested",
+      "processing_disclosure_acknowledged",
+    ]) ||
+    record.schema_version !== "videoforge-hosted-style-create/v1" ||
+    typeof record.name !== "string" ||
+    record.name !== record.name.trim() ||
+    record.name.length < 1 ||
+    record.name.length > 160 ||
+    typeof record.rights_attested !== "boolean" ||
+    typeof record.processing_disclosure_acknowledged !== "boolean" ||
+    !Array.isArray(record.references) ||
+    record.references.length < 3 ||
+    record.references.length > 8
+  ) {
+    return null;
+  }
+  const parentId = optionalUuid(record.parent_style_id);
+  if (parentId === undefined) return null;
+  const references: HostedStyleReferenceInput[] = [];
+  for (const rawReference of record.references) {
+    const reference = plainRecord(rawReference);
+    const contentLength = reference?.content_length;
+    const orderIndex = reference?.order_index;
+    if (
+      !reference ||
+      !exactKeys(reference, [
+        "filename",
+        "content_type",
+        "content_length",
+        "checksum_sha256",
+        "order_index",
+      ]) ||
+      typeof reference.filename !== "string" ||
+      !validFilename(reference.filename) ||
+      typeof reference.content_type !== "string" ||
+      !IMAGE_TYPES.has(reference.content_type) ||
+      typeof contentLength !== "number" ||
+      !Number.isSafeInteger(contentLength) ||
+      contentLength < 1 ||
+      contentLength > MAX_PRESET_SOURCE_BYTES ||
+      typeof reference.checksum_sha256 !== "string" ||
+      !SHA256.test(reference.checksum_sha256) ||
+      typeof orderIndex !== "number" ||
+      !Number.isSafeInteger(orderIndex) ||
+      orderIndex < 0 ||
+      orderIndex > 7
+    ) {
+      return null;
+    }
+    references.push({
+      filename: reference.filename,
+      contentType: reference.content_type,
+      contentLength,
+      checksumSha256: reference.checksum_sha256,
+      orderIndex,
+    });
+  }
+  const order = references.map((reference) => reference.orderIndex).sort((a, b) => a - b);
+  if (order.some((value, index) => value !== index)) return null;
+  return {
+    name: record.name,
+    parentId,
+    references,
+    rightsAttested: record.rights_attested,
+    processingDisclosureAcknowledged: record.processing_disclosure_acknowledged,
+  };
+}
+
+function parseEmptyObject(value: unknown): boolean {
+  const record = plainRecord(value);
+  return record !== null && Object.keys(record).length === 0;
+}
+
+function parseAvatarApproval(value: unknown): { rights: boolean; likeness: boolean } | null {
+  const record = plainRecord(value);
+  if (
+    !record ||
+    !exactKeys(record, ["schema_version", "rights_attested", "likeness_animation_consent"]) ||
+    record.schema_version !== "videoforge-hosted-avatar-approval/v1" ||
+    record.rights_attested !== true ||
+    record.likeness_animation_consent !== true
+  ) {
+    return null;
+  }
+  return { rights: true, likeness: true };
+}
+
+function parseStyleAnalysis(value: unknown): boolean {
+  const record = plainRecord(value);
+  return (
+    record !== null &&
+    exactKeys(record, ["schema_version"]) &&
+    record.schema_version === "videoforge-hosted-style-analysis/v1"
+  );
+}
+
+function parseStylePublish(
+  value: unknown,
+): { rights: boolean; disclosure: boolean; candidate: Record<string, unknown> | null } | null {
+  const record = plainRecord(value);
+  if (
+    !record ||
+    !exactKeys(record, [
+      "schema_version",
+      "rights_attested",
+      "processing_disclosure_acknowledged",
+      "candidate_profile",
+    ]) ||
+    record.schema_version !== "videoforge-hosted-style-publish/v1" ||
+    record.rights_attested !== true ||
+    record.processing_disclosure_acknowledged !== true ||
+    (record.candidate_profile !== undefined &&
+      record.candidate_profile !== null &&
+      plainRecord(record.candidate_profile) === null)
+  ) {
+    return null;
+  }
+  return {
+    rights: true,
+    disclosure: true,
+    candidate: plainRecord(record.candidate_profile),
+  };
+}
+
+function parseRetry(value: unknown): { attemptId: string; assetId: string | null } | null {
+  const record = plainRecord(value);
+  if (
+    !record ||
+    !exactKeys(record, ["attempt_id", "asset_id"]) ||
+    typeof record.attempt_id !== "string" ||
+    !UUID.test(record.attempt_id) ||
+    (record.asset_id !== null &&
+      (typeof record.asset_id !== "string" || !UUID.test(record.asset_id)))
+  ) {
+    return null;
+  }
+  return { attemptId: record.attempt_id, assetId: record.asset_id };
+}
+
+function uuidFromDigest(digest: string): string {
+  const bytes = digest.slice("sha256:".length).slice(0, 32).split("");
+  bytes[12] = "4";
+  bytes[16] = ["8", "9", "a", "b"][Number.parseInt(bytes[16]!, 16) % 4]!;
+  return `${bytes.slice(0, 8).join("")}-${bytes.slice(8, 12).join("")}-${bytes
+    .slice(12, 16)
+    .join("")}-${bytes.slice(16, 20).join("")}-${bytes.slice(20).join("")}`;
+}
+
+async function stableHostedUuid(namespace: string): Promise<string> {
+  return uuidFromDigest(await sha256(namespace));
+}
+
+function avatarProfilePayload(input: {
+  readonly assetId: string;
+  readonly checksumSha256: string;
+  readonly contentType: string;
+  readonly contentLength: number;
+  readonly width: number;
+  readonly height: number;
+  readonly userId: string;
+  readonly now: string;
+}): Record<string, unknown> {
+  return {
+    schema_version: "avatar-profile-version/v1",
+    source_asset_id: input.assetId,
+    source_sha256: input.checksumSha256,
+    source_media: {
+      mime_type: input.contentType,
+      width: input.width,
+      height: input.height,
+      bytes: input.contentLength,
+    },
+    runtime_source_asset_id: input.assetId,
+    runtime_source_sha256: input.checksumSha256,
+    thumbnail_asset_id: input.assetId,
+    thumbnail_sha256: input.checksumSha256,
+    source_preparation_version: "hosted-avatar-source-pass-through-v1",
+    source_validation_profile_version: "hosted-avatar-source-validation-v1",
+    framing_confirmation: {
+      one_primary_presenter: true,
+      horizontally_centered: true,
+      direct_to_camera_suitable: true,
+      confirmed_by_user_id: input.userId,
+      confirmed_at: input.now,
+    },
+    rights_basis: "OTHER_DOCUMENTED_BASIS",
+    rights_attested_by_user_id: input.userId,
+    rights_attested_at: input.now,
+    avatar_generation_consent: true,
+    likeness_animation_rights_attested: true,
+    likeness_attested_by_user_id: input.userId,
+    likeness_attested_at: input.now,
+  };
+}
+
+function hostedStyleProfile(name: string, aliases: readonly string[]): Record<string, unknown> {
+  return {
+    schema_version: "image-style-profile/v1",
+    summary: `${name}: grounded observational documentary frames with natural light, believable texture, and restrained camera language.`,
+    visual_profile: {
+      medium_family: "authentic documentary photography",
+      realism:
+        "Photorealistic and physically believable; never glossy, illustrated, or synthetic-looking.",
+      subject_treatment:
+        "Candid people and literal physical evidence, without staged poses or copied identities.",
+      camera_language:
+        "Observational eye-level camera with practical working angles and restrained handheld plausibility.",
+      image_framing:
+        "Useful 16:9 context with crop-safe primary evidence for the required slow image zoom.",
+      shot_scale_preferences: [
+        "environmental wide",
+        "human medium",
+        "hands and action",
+        "object detail",
+      ],
+      lighting: "Natural available light with plausible shadows and slightly uneven exposure.",
+      color: {
+        descriptors: ["earthy", "true-to-life", "restrained saturation"],
+        approximate_hex: ["#1F3B45", "#B6805E"],
+      },
+      contrast_and_exposure:
+        "Soft natural contrast with recoverable highlights and believable shadow detail.",
+      depth_of_field:
+        "Natural lens depth with enough environmental context to understand the action.",
+      texture_and_grain:
+        "Tactile material detail with restrained sensor softness and no plastic finish.",
+      human_rendering:
+        "Natural skin, anatomy, hands, clothing, expressions, and ordinary imperfections.",
+      environment_and_material_detail:
+        "Specific tools, surfaces, clothing, and lived-in context support the narration.",
+      imperfection_profile: ["uneven exposure", "ordinary clutter", "worn materials"],
+      mood: ["observational", "grounded", "credible"],
+      continuity_rules: [
+        "Preserve era, geography, weather, clothing, tools, and materials across adjacent scenes.",
+      ],
+      must_include: ["literal narration-relevant evidence", "believable practical lighting"],
+      must_avoid: [
+        "captions",
+        "text overlays",
+        "watermarks",
+        "logos",
+        "glossy commercial polish",
+        "AI look",
+      ],
+      flexible_properties: ["weather when narration permits", "shot scale", "minor grain"],
+    },
+    prompt_profile: {
+      planner_guidance:
+        "Use literal documentary evidence and preserve factual continuity. Hard cuts only.",
+      positive_suffix:
+        "authentic observational documentary photography, candid, natural practical light, realistic texture, physically believable, no AI look",
+      negative_suffix:
+        "illustration, CGI, glossy advertising, staged pose, captions, text, logos, watermark, impossible anatomy",
+      full_image_guidance:
+        "Compose 16:9 with primary evidence in the center-safe area for a slow smooth zoom.",
+      split_image_guidance:
+        "Compose for an 8:9 right panel with clear centered evidence and no text.",
+    },
+    analysis: {
+      analysis_kind: "MANUAL",
+      overall_confidence: 1,
+      trait_evidence: [],
+      uncertain_fields: [],
+      outlier_reference_aliases: [],
+      content_leakage_warnings: [
+        `Profile uses only normalized aliases: ${aliases.join(", ")}.`,
+        "Never reproduce identities, locations, brands, captions, or watermarks from references.",
+      ],
+    },
+  };
+}
+
+type HostedPresetRow = Record<string, unknown>;
+
+function rowString(row: HostedPresetRow, key: string): string {
+  const value = row[key];
+  if (typeof value !== "string" || value.length === 0)
+    throw new Error(`Missing preset field ${key}`);
+  return value;
+}
+
+function sqlValue(value: unknown): string | number | boolean | Date | Uint8Array | null {
+  if (value === null || value === undefined) return null;
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value instanceof Date ||
+    value instanceof Uint8Array
+  ) {
+    return value;
+  }
+  return null;
+}
+
+async function cloneSystemAsset(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  source: HostedPresetRow,
+  namespace: string,
+): Promise<{ readonly id: string; readonly checksum: string }> {
+  const sourceId = rowString(source, "id");
+  const checksum = rowString(source, "binary_sha256");
+  const existing = await transaction.query<HostedPresetRow>(
+    `SELECT id, binary_sha256
+       FROM assets
+      WHERE account_id = $1 AND workspace_id = $2
+        AND metadata ->> 'system_source_asset_id' = $3
+        AND binary_sha256 = $4
+      LIMIT 1`,
+    [scope.account_id, scope.workspace_id, sourceId, checksum],
+  );
+  if (existing.rows[0]) {
+    return { id: rowString(existing.rows[0], "id"), checksum };
+  }
+  const objectKey = typeof source.object_key === "string" ? source.object_key : null;
+  if (objectKey) {
+    const objectKeyMatch = await transaction.query<HostedPresetRow>(
+      `SELECT id, binary_sha256
+         FROM assets
+        WHERE account_id = $1 AND workspace_id = $2 AND object_key = $3
+        LIMIT 1`,
+      [scope.account_id, scope.workspace_id, objectKey],
+    );
+    if (objectKeyMatch.rows[0]) {
+      return { id: rowString(objectKeyMatch.rows[0], "id"), checksum };
+    }
+  }
+  const id = await stableHostedUuid(namespace);
+  await transaction.query(
+    `INSERT INTO assets (
+       id, account_id, workspace_id, kind, state, object_key, binary_sha256,
+       content_type, byte_size, width_px, height_px, duration_ms, metadata, verified_at
+     ) VALUES ($1,$2,$3,$4,'VERIFIED',$5,$6,$7,$8,$9,$10,$11,$12::jsonb,now())
+     ON CONFLICT (account_id, workspace_id, id) DO NOTHING`,
+    [
+      id,
+      scope.account_id,
+      scope.workspace_id,
+      typeof source.kind === "string" ? source.kind : "OTHER",
+      objectKey,
+      checksum,
+      sqlValue(source.content_type),
+      sqlValue(source.byte_size),
+      sqlValue(source.width_px),
+      sqlValue(source.height_px),
+      sqlValue(source.duration_ms),
+      JSON.stringify({
+        system_source_asset_id: sourceId,
+        system_source_scope: "SYSTEM",
+        materialization: "hosted-system-preset-snapshot-v1",
+      }),
+    ],
+  );
+  return { id, checksum };
+}
+
+async function materializeSystemAvatar(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  source: HostedPresetRow,
+): Promise<HostedPresetRow> {
+  const sourceVersionId = rowString(source, "version_id");
+  const sourceHash = rowString(source, "profile_hash");
+  const existing = await transaction.query<HostedPresetRow>(
+    `SELECT profile.id AS profile_id, profile.name AS profile_name,
+            version.id AS version_id, version.profile_hash,
+            version.runtime_source_asset_id, version.runtime_source_binary_sha256,
+            version.source_preparation_profile, version.source_validation_profile
+       FROM avatar_profiles AS profile
+       JOIN avatar_profile_versions AS version
+         ON version.account_id = profile.account_id
+        AND version.workspace_id = profile.workspace_id
+        AND version.profile_id = profile.id
+      WHERE profile.account_id = $1 AND profile.workspace_id = $2
+        AND profile.scope_kind = 'WORKSPACE' AND profile.status = 'ACTIVE'
+        AND version.state = 'READY' AND version.profile_hash = $3
+      ORDER BY version.version_number DESC LIMIT 1`,
+    [scope.account_id, scope.workspace_id, sourceHash],
+  );
+  if (existing.rows[0]) return existing.rows[0];
+
+  const originalSourceResult = await transaction.query<HostedPresetRow>(
+    `SELECT * FROM assets WHERE id = $1 LIMIT 1`,
+    [typeof source.original_asset_id === "string" ? source.original_asset_id : ""],
+  );
+  const originalSource = originalSourceResult.rows[0] ?? source;
+  const runtimeSourceResult = await transaction.query<HostedPresetRow>(
+    `SELECT * FROM assets WHERE id = $1 LIMIT 1`,
+    [typeof source.runtime_source_asset_id === "string" ? source.runtime_source_asset_id : ""],
+  );
+  const runtimeSource = runtimeSourceResult.rows[0] ?? originalSource;
+  const original = await cloneSystemAsset(
+    transaction,
+    scope,
+    originalSource,
+    `system-avatar:${scope.account_id}:${sourceVersionId}:original`,
+  );
+  const runtime = await cloneSystemAsset(
+    transaction,
+    scope,
+    runtimeSource,
+    `system-avatar:${scope.account_id}:${sourceVersionId}:runtime`,
+  );
+  const profileId = await stableHostedUuid(
+    `system-avatar:${scope.account_id}:${sourceVersionId}:profile`,
+  );
+  const versionId = await stableHostedUuid(
+    `system-avatar:${scope.account_id}:${sourceVersionId}:version`,
+  );
+  const sourceName = rowString(source, "profile_name");
+  const profileName = `${sourceName.slice(0, 145)} (system copy)`;
+  await transaction.query(
+    `INSERT INTO avatar_profiles (
+       id, account_id, workspace_id, name, normalized_name, status, created_by_user_id
+     ) VALUES ($1,$2,$3,$4,lower($4),'ACTIVE',$5)
+     ON CONFLICT (account_id, workspace_id, id) DO NOTHING`,
+    [profileId, scope.account_id, scope.workspace_id, profileName, scope.user_id],
+  );
+  const payload = plainRecord(source.profile_payload) ?? {
+    schema_version: "avatar-profile-version/v1",
+    source_asset_id: original.id,
+    source_sha256: original.checksum,
+    runtime_source_asset_id: runtime.id,
+    runtime_source_sha256: runtime.checksum,
+  };
+  await transaction.query(
+    `INSERT INTO avatar_profile_versions (
+       id, account_id, workspace_id, profile_id, version_number, state,
+       scope_kind, profile_contract_name, profile_contract_version, profile_payload,
+       profile_hash, original_asset_id, runtime_source_asset_id,
+       runtime_source_binary_sha256, source_preparation_profile,
+       source_validation_profile, rights_attested_by_user_id,
+       likeness_attested_by_user_id, ready_at
+     ) VALUES ($1,$2,$3,$4,1,'READY','WORKSPACE',$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13,$14,$14,now())
+     ON CONFLICT (account_id, workspace_id, id) DO NOTHING`,
+    [
+      versionId,
+      scope.account_id,
+      scope.workspace_id,
+      profileId,
+      typeof source.profile_contract_name === "string"
+        ? source.profile_contract_name
+        : "avatar-profile",
+      typeof source.profile_contract_version === "string" ? source.profile_contract_version : "v1",
+      JSON.stringify(payload),
+      sourceHash,
+      original.id,
+      runtime.id,
+      runtime.checksum,
+      typeof source.source_preparation_profile === "string"
+        ? source.source_preparation_profile
+        : "hosted-system-preset-source-v1",
+      typeof source.source_validation_profile === "string"
+        ? source.source_validation_profile
+        : "hosted-system-preset-validation-v1",
+      scope.user_id,
+    ],
+  );
+  await transaction.query(
+    `INSERT INTO avatar_profile_assets (
+       id, account_id, workspace_id, profile_id, version_id, asset_id, role, binary_sha256
+     ) VALUES ($1,$2,$3,$4,$5,$6,'ORIGINAL',$7)
+     ON CONFLICT (account_id, workspace_id, id) DO NOTHING`,
+    [
+      await stableHostedUuid(`system-avatar:${scope.account_id}:${sourceVersionId}:asset-original`),
+      scope.account_id,
+      scope.workspace_id,
+      profileId,
+      versionId,
+      original.id,
+      original.checksum,
+    ],
+  );
+  await transaction.query(
+    `INSERT INTO avatar_profile_assets (
+       id, account_id, workspace_id, profile_id, version_id, asset_id, role, binary_sha256
+     ) VALUES ($1,$2,$3,$4,$5,$6,'RUNTIME',$7)
+     ON CONFLICT (account_id, workspace_id, id) DO NOTHING`,
+    [
+      await stableHostedUuid(`system-avatar:${scope.account_id}:${sourceVersionId}:asset-runtime`),
+      scope.account_id,
+      scope.workspace_id,
+      profileId,
+      versionId,
+      runtime.id,
+      runtime.checksum,
+    ],
+  );
+  await transaction.query(
+    `UPDATE avatar_profiles SET active_version_id = $3, updated_at = now()
+      WHERE account_id = $1 AND workspace_id = $2 AND id = $4`,
+    [scope.account_id, scope.workspace_id, versionId, profileId],
+  );
+  return {
+    profile_id: profileId,
+    profile_name: profileName,
+    version_id: versionId,
+    profile_hash: sourceHash,
+    runtime_source_asset_id: runtime.id,
+    runtime_source_binary_sha256: runtime.checksum,
+    source_preparation_profile:
+      typeof source.source_preparation_profile === "string"
+        ? source.source_preparation_profile
+        : "hosted-system-preset-source-v1",
+    source_validation_profile:
+      typeof source.source_validation_profile === "string"
+        ? source.source_validation_profile
+        : "hosted-system-preset-validation-v1",
+  };
+}
+
+async function materializeSystemStyle(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  source: HostedPresetRow,
+): Promise<HostedPresetRow> {
+  const sourceVersionId = rowString(source, "version_id");
+  const sourceHash = rowString(source, "style_profile_hash");
+  const existing = await transaction.query<HostedPresetRow>(
+    `SELECT style.id AS style_id, version.id AS version_id, version.style_profile_hash
+       FROM image_styles AS style
+       JOIN image_style_versions AS version
+         ON version.account_id = style.account_id
+        AND version.workspace_id = style.workspace_id
+        AND version.style_id = style.id
+      WHERE style.account_id = $1 AND style.workspace_id = $2
+        AND style.scope_kind = 'WORKSPACE' AND style.status = 'ACTIVE'
+        AND version.state = 'PUBLISHED' AND version.style_profile_hash = $3
+      ORDER BY version.version_number DESC LIMIT 1`,
+    [scope.account_id, scope.workspace_id, sourceHash],
+  );
+  if (existing.rows[0]) return existing.rows[0];
+  const styleId = await stableHostedUuid(
+    `system-style:${scope.account_id}:${sourceVersionId}:style`,
+  );
+  const versionId = await stableHostedUuid(
+    `system-style:${scope.account_id}:${sourceVersionId}:version`,
+  );
+  const sourceName = rowString(source, "style_name");
+  const styleName = `${sourceName.slice(0, 145)} (system copy)`;
+  await transaction.query(
+    `INSERT INTO image_styles (
+       id, account_id, workspace_id, scope_kind, created_by_user_id,
+       name, normalized_name, status
+     ) VALUES ($1,$2,$3,'WORKSPACE',$4,$5,lower($5),'ACTIVE')
+     ON CONFLICT (account_id, workspace_id, id) DO NOTHING`,
+    [styleId, scope.account_id, scope.workspace_id, scope.user_id, styleName],
+  );
+  const payload = plainRecord(source.profile_payload);
+  if (!payload) throw new Error("SYSTEM_STYLE_PROFILE_MISSING");
+  await transaction.query(
+    `INSERT INTO image_style_versions (
+       id, account_id, workspace_id, style_id, version_number, state,
+       scope_kind, profile_contract_name, profile_contract_version, profile_payload,
+       style_profile_hash, analyzer_request_hash, analyzer_model_snapshot,
+       disclosure_attested_by_user_id, published_at
+     ) VALUES ($1,$2,$3,$4,1,'PUBLISHED','WORKSPACE',$5,$6,$7::jsonb,$8,$9,$10,$11,now())
+     ON CONFLICT (account_id, workspace_id, id) DO NOTHING`,
+    [
+      versionId,
+      scope.account_id,
+      scope.workspace_id,
+      styleId,
+      typeof source.profile_contract_name === "string"
+        ? source.profile_contract_name
+        : "image-style-profile",
+      typeof source.profile_contract_version === "string" ? source.profile_contract_version : "v1",
+      JSON.stringify(payload),
+      sourceHash,
+      sqlValue(source.analyzer_request_hash),
+      typeof source.analyzer_model_snapshot === "string"
+        ? source.analyzer_model_snapshot
+        : "hosted-system-preset-v1",
+      scope.user_id,
+    ],
+  );
+  await transaction.query(
+    `UPDATE image_styles SET active_version_id = $3, updated_at = now()
+      WHERE account_id = $1 AND workspace_id = $2 AND id = $4`,
+    [scope.account_id, scope.workspace_id, versionId, styleId],
+  );
+  return { style_id: styleId, version_id: versionId, style_profile_hash: sourceHash };
+}
+
+async function resolveProjectPresets(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  avatarVersionId: string,
+  styleVersionId: string,
+): Promise<{ readonly avatar: HostedPresetRow; readonly style: HostedPresetRow } | null> {
+  const avatar = await transaction.query<HostedPresetRow>(
+    `SELECT profile.id AS profile_id, profile.name AS profile_name,
+            profile.scope_kind, version.id AS version_id, version.profile_hash,
+            version.profile_payload, version.original_asset_id,
+            version.runtime_source_asset_id, version.runtime_source_binary_sha256,
+            version.source_preparation_profile, version.source_validation_profile
+       FROM avatar_profiles AS profile
+       JOIN avatar_profile_versions AS version
+         ON version.account_id = profile.account_id
+        AND version.workspace_id = profile.workspace_id
+        AND version.profile_id = profile.id
+        AND version.scope_kind = profile.scope_kind
+      WHERE version.id = $3 AND profile.status = 'ACTIVE' AND version.state = 'READY'
+        AND (
+          (profile.account_id = $1 AND profile.workspace_id = $2 AND profile.scope_kind = 'WORKSPACE')
+          OR (profile.scope_kind = 'SYSTEM')
+        )
+      ORDER BY CASE WHEN profile.account_id = $1 AND profile.workspace_id = $2 THEN 0 ELSE 1 END
+      LIMIT 1`,
+    [scope.account_id, scope.workspace_id, avatarVersionId],
+  );
+  const style = await transaction.query<HostedPresetRow>(
+    `SELECT style.id AS style_id, style.name AS style_name, style.scope_kind,
+            version.id AS version_id, version.style_profile_hash,
+            version.profile_contract_name, version.profile_contract_version,
+            version.profile_payload, version.analyzer_request_hash,
+            version.analyzer_model_snapshot
+       FROM image_styles AS style
+       JOIN image_style_versions AS version
+         ON version.account_id = style.account_id
+        AND version.workspace_id = style.workspace_id
+        AND version.style_id = style.id
+        AND version.scope_kind = style.scope_kind
+      WHERE version.id = $3 AND style.status = 'ACTIVE' AND version.state = 'PUBLISHED'
+        AND (
+          (style.account_id = $1 AND style.workspace_id = $2 AND style.scope_kind = 'WORKSPACE')
+          OR (style.scope_kind = 'SYSTEM')
+        )
+      ORDER BY CASE WHEN style.account_id = $1 AND style.workspace_id = $2 THEN 0 ELSE 1 END
+      LIMIT 1`,
+    [scope.account_id, scope.workspace_id, styleVersionId],
+  );
+  const avatarSource = avatar.rows[0];
+  const styleSource = style.rows[0];
+  if (!avatarSource || !styleSource) return null;
+  return {
+    avatar:
+      avatarSource.scope_kind === "SYSTEM"
+        ? await materializeSystemAvatar(transaction, scope, avatarSource)
+        : avatarSource,
+    style:
+      styleSource.scope_kind === "SYSTEM"
+        ? await materializeSystemStyle(transaction, scope, styleSource)
+        : styleSource,
+  };
+}
+
+async function parseHostedJson(request: Request, code: string): Promise<unknown | Response> {
+  try {
+    return await request.json();
+  } catch {
+    return response({ error: { code } }, 400);
+  }
+}
+
+function hostedUploadKey(
+  scope: HostedScope,
+  kind: "avatar" | "style",
+  id: string,
+  versionId: string,
+  role: string,
+): string {
+  return `tenant/${scope.account_id}/workspace/${scope.workspace_id}/${kind}-profile/${id}/version/${versionId}/${role}`;
+}
+
+async function resolveParentAvatar(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  parentId: string | null,
+): Promise<{
+  readonly profileId: string;
+  readonly profileName: string;
+  readonly system: boolean;
+} | null> {
+  if (!parentId) return null;
+  const result = await transaction.query<HostedPresetRow>(
+    `SELECT profile.id AS profile_id, profile.name AS profile_name, profile.scope_kind
+       FROM avatar_profiles AS profile
+       LEFT JOIN avatar_profile_versions AS version
+         ON version.account_id = profile.account_id
+        AND version.workspace_id = profile.workspace_id
+        AND version.profile_id = profile.id
+      WHERE (profile.id = $3 OR version.id = $3)
+        AND profile.status = 'ACTIVE'
+        AND (
+          (profile.account_id = $1 AND profile.workspace_id = $2 AND profile.scope_kind = 'WORKSPACE')
+          OR profile.scope_kind = 'SYSTEM'
+        )
+      ORDER BY CASE WHEN profile.account_id = $1 AND profile.workspace_id = $2 THEN 0 ELSE 1 END
+      LIMIT 1`,
+    [scope.account_id, scope.workspace_id, parentId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    profileId: rowString(row, "profile_id"),
+    profileName: rowString(row, "profile_name"),
+    system: row.scope_kind === "SYSTEM",
+  };
+}
+
+async function resolveParentStyle(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  parentId: string | null,
+): Promise<{
+  readonly styleId: string;
+  readonly styleName: string;
+  readonly system: boolean;
+} | null> {
+  if (!parentId) return null;
+  const result = await transaction.query<HostedPresetRow>(
+    `SELECT style.id AS style_id, style.name AS style_name, style.scope_kind
+       FROM image_styles AS style
+       LEFT JOIN image_style_versions AS version
+         ON version.account_id = style.account_id
+        AND version.workspace_id = style.workspace_id
+        AND version.style_id = style.id
+      WHERE (style.id = $3 OR version.id = $3)
+        AND style.status = 'ACTIVE'
+        AND (
+          (style.account_id = $1 AND style.workspace_id = $2 AND style.scope_kind = 'WORKSPACE')
+          OR style.scope_kind = 'SYSTEM'
+        )
+      ORDER BY CASE WHEN style.account_id = $1 AND style.workspace_id = $2 THEN 0 ELSE 1 END
+      LIMIT 1`,
+    [scope.account_id, scope.workspace_id, parentId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    styleId: rowString(row, "style_id"),
+    styleName: rowString(row, "style_name"),
+    system: row.scope_kind === "SYSTEM",
+  };
+}
+
+async function avatarCreate(
+  request: Request,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const idempotencyKey = request.headers.get("idempotency-key") ?? "";
+  if (!IDEMPOTENCY.test(idempotencyKey))
+    return response({ error: { code: "AVATAR_IDEMPOTENCY_REQUIRED" } }, 400);
+  const raw = await parseHostedJson(request, "AVATAR_CREATE_REJECTED");
+  if (raw instanceof Response) return raw;
+  const input = parseAvatarCreate(raw);
+  if (!input) return response({ error: { code: "AVATAR_CREATE_REJECTED" } }, 400);
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const requestHash = await sha256(canonicalJson(raw));
+    const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const replay = await transaction.query<HostedPresetRow>(
+        `SELECT profile.id AS profile_id, profile.name AS profile_name,
+                version.id AS version_id, version.version_number, version.state,
+                asset.object_key, asset.content_type, asset.byte_size AS content_length,
+                asset.binary_sha256 AS checksum_sha256
+           FROM avatar_profile_versions AS version
+           JOIN avatar_profiles AS profile
+             ON profile.account_id = version.account_id
+            AND profile.workspace_id = version.workspace_id
+            AND profile.id = version.profile_id
+           JOIN avatar_profile_assets AS link
+             ON link.account_id = version.account_id
+            AND link.workspace_id = version.workspace_id
+            AND link.version_id = version.id AND link.role = 'ORIGINAL'
+           JOIN assets AS asset
+             ON asset.account_id = link.account_id
+            AND asset.workspace_id = link.workspace_id AND asset.id = link.asset_id
+          WHERE version.account_id = $1 AND version.workspace_id = $2
+            AND asset.metadata ->> 'hosted_request_idempotency_key' = $3
+          ORDER BY version.created_at DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, idempotencyKey],
+      );
+      if (replay.rows[0]) return replay.rows[0];
+      const parent = await resolveParentAvatar(transaction, scope, input.parentId);
+      if (input.parentId && !parent) throw new Error("AVATAR_PARENT_NOT_FOUND");
+      const systemParent = parent?.system === true;
+      const profileId =
+        parent && !systemParent
+          ? parent.profileId
+          : await stableHostedUuid(
+              `hosted-avatar:${scope.account_id}:${idempotencyKey}:${requestHash}:profile`,
+            );
+      const versionId = await stableHostedUuid(
+        `hosted-avatar:${scope.account_id}:${idempotencyKey}:${requestHash}:version`,
+      );
+      const profileName = parent && !systemParent ? parent.profileName : input.name;
+      const profileExists = await transaction.query<HostedPresetRow>(
+        `SELECT id FROM avatar_profiles
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+        [scope.account_id, scope.workspace_id, profileId],
+      );
+      if (!profileExists.rows[0]) {
+        await transaction.query(
+          `INSERT INTO avatar_profiles (
+             id, account_id, workspace_id, scope_kind, name, normalized_name,
+             status, created_by_user_id
+           ) VALUES ($1,$2,$3,'WORKSPACE',$4,lower($4),'ACTIVE',$5)`,
+          [profileId, scope.account_id, scope.workspace_id, profileName, scope.user_id],
+        );
+      }
+      const number = await transaction.query<{ version_number: number | string }>(
+        `SELECT COALESCE(max(version_number), 0) + 1 AS version_number
+           FROM avatar_profile_versions
+          WHERE account_id = $1 AND workspace_id = $2 AND profile_id = $3`,
+        [scope.account_id, scope.workspace_id, profileId],
+      );
+      const versionNumber = Number(number.rows[0]?.version_number ?? 1);
+      const assetId = await stableHostedUuid(
+        `hosted-avatar:${scope.account_id}:${idempotencyKey}:${requestHash}:asset`,
+      );
+      const objectKey = hostedUploadKey(scope, "avatar", profileId, versionId, "original/source");
+      await transaction.query(
+        `INSERT INTO assets (
+           id, account_id, workspace_id, kind, state, object_key, binary_sha256,
+           content_type, byte_size, width_px, height_px, metadata
+         ) VALUES ($1,$2,$3,'AVATAR_ORIGINAL','UPLOADING',$4,$5,$6,$7,$8,$9,$10::jsonb)`,
+        [
+          assetId,
+          scope.account_id,
+          scope.workspace_id,
+          objectKey,
+          input.source.checksumSha256,
+          input.source.contentType,
+          input.source.contentLength,
+          input.source.width,
+          input.source.height,
+          JSON.stringify({
+            filename: input.source.filename,
+            hosted_request_idempotency_key: idempotencyKey,
+            request_sha256: requestHash,
+          }),
+        ],
+      );
+      await transaction.query(
+        `INSERT INTO avatar_profile_versions (
+           id, account_id, workspace_id, profile_id, version_number, state, scope_kind,
+           original_asset_id
+         ) VALUES ($1,$2,$3,$4,$5,'DRAFT','WORKSPACE',$6)`,
+        [versionId, scope.account_id, scope.workspace_id, profileId, versionNumber, assetId],
+      );
+      await transaction.query(
+        `INSERT INTO avatar_profile_assets (
+           id, account_id, workspace_id, profile_id, version_id, asset_id, role, binary_sha256
+         ) VALUES ($1,$2,$3,$4,$5,$6,'ORIGINAL',$7)`,
+        [
+          await stableHostedUuid(
+            `hosted-avatar:${scope.account_id}:${idempotencyKey}:${requestHash}:link`,
+          ),
+          scope.account_id,
+          scope.workspace_id,
+          profileId,
+          versionId,
+          assetId,
+          input.source.checksumSha256,
+        ],
+      );
+      return {
+        profile_id: profileId,
+        profile_name: profileName,
+        version_id: versionId,
+        version_number: versionNumber,
+        state: "DRAFT",
+        object_key: objectKey,
+        content_type: input.source.contentType,
+        content_length: input.source.contentLength,
+        checksum_sha256: input.source.checksumSha256,
+      };
+    });
+    const upload = await new HostedR2Signer(config.r2).sign({
+      method: "PUT",
+      objectKey: rowString(prepared, "object_key"),
+      contentType: rowString(prepared, "content_type"),
+      contentLength: Number(prepared.content_length),
+      checksumSha256: rowString(prepared, "checksum_sha256"),
+      lifetimeSeconds: 900,
+    });
+    return response(
+      {
+        schema_version: "videoforge-hosted-avatar-create-response/v1",
+        profile_id: rowString(prepared, "profile_id"),
+        profile_name: rowString(prepared, "profile_name"),
+        version_id: rowString(prepared, "version_id"),
+        version_number: Number(prepared.version_number),
+        state: prepared.state,
+        uploads: [upload],
+        provider_calls_authorized: false,
+      },
+      201,
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === "AVATAR_PARENT_NOT_FOUND")
+      return response({ error: { code: error.message } }, 404);
+    if (postgresCode(error) === "23505")
+      return response({ error: { code: "AVATAR_NAME_OR_VERSION_CONFLICT" } }, 409);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+async function avatarCommit(
+  request: Request,
+  profileOrVersionId: string,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(profileOrVersionId)) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const raw = await parseHostedJson(request, "AVATAR_COMMIT_REJECTED");
+  if (raw instanceof Response) return raw;
+  if (!parseEmptyObject(raw)) return response({ error: { code: "AVATAR_COMMIT_REJECTED" } }, 400);
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const pending = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `SELECT profile.id AS profile_id, version.id AS version_id, version.state,
+                asset.object_key, asset.content_type, asset.byte_size AS content_length,
+                asset.binary_sha256 AS checksum_sha256
+           FROM avatar_profiles AS profile
+           JOIN avatar_profile_versions AS version
+             ON version.account_id = profile.account_id
+            AND version.workspace_id = profile.workspace_id AND version.profile_id = profile.id
+           JOIN avatar_profile_assets AS link
+             ON link.account_id = version.account_id
+            AND link.workspace_id = version.workspace_id
+            AND link.version_id = version.id AND link.role = 'ORIGINAL'
+           JOIN assets AS asset
+             ON asset.account_id = link.account_id
+            AND asset.workspace_id = link.workspace_id AND asset.id = link.asset_id
+          WHERE profile.account_id = $1 AND profile.workspace_id = $2
+            AND profile.scope_kind = 'WORKSPACE'
+            AND (profile.id = $3 OR version.id = $3)
+          ORDER BY version.version_number DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, profileOrVersionId],
+      );
+      return result.rows[0];
+    });
+    if (!pending) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
+    if (pending.state === "READY" && !pending.object_key)
+      return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
+    const object = await bucket.head(rowString(pending, "object_key"));
+    if (
+      !object ||
+      object.size !== Number(pending.content_length) ||
+      object.httpMetadata?.contentType !== pending.content_type ||
+      checksumFromR2(object.checksums?.sha256) !== pending.checksum_sha256
+    ) {
+      return response({ error: { code: "AVATAR_SOURCE_NOT_VERIFIED" } }, 409);
+    }
+    const committed = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `UPDATE assets AS asset
+            SET state = 'VERIFIED', verified_at = COALESCE(asset.verified_at, now())
+           FROM avatar_profile_assets AS link
+          WHERE link.account_id = $1 AND link.workspace_id = $2
+            AND link.version_id = $3 AND link.role = 'ORIGINAL'
+            AND asset.account_id = link.account_id AND asset.workspace_id = link.workspace_id
+            AND asset.id = link.asset_id
+          RETURNING link.profile_id, link.version_id, asset.binary_sha256`,
+        [scope.account_id, scope.workspace_id, rowString(pending, "version_id")],
+      );
+      await transaction.query(
+        `UPDATE avatar_profile_versions
+            SET state = CASE WHEN state = 'READY' THEN state ELSE 'NEEDS_REVIEW' END,
+                updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3
+            AND state IN ('DRAFT','UPLOADING','NEEDS_REVIEW','READY')`,
+        [scope.account_id, scope.workspace_id, rowString(pending, "version_id")],
+      );
+      return result.rows[0] ?? pending;
+    });
+    return response({
+      schema_version: "videoforge-hosted-avatar-commit-response/v1",
+      profile_id: rowString(committed, "profile_id"),
+      version_id: rowString(committed, "version_id"),
+      state: pending.state === "READY" ? "READY" : "NEEDS_REVIEW",
+      uploads: [],
+      provider_calls_authorized: false,
+    });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function avatarApprove(
+  request: Request,
+  profileOrVersionId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(profileOrVersionId)) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const raw = await parseHostedJson(request, "AVATAR_APPROVAL_REJECTED");
+  if (raw instanceof Response) return raw;
+  if (!parseAvatarApproval(raw))
+    return response({ error: { code: "AVATAR_APPROVAL_REJECTED" } }, 400);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const approved = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `SELECT profile.id AS profile_id, profile.name AS profile_name,
+                version.id AS version_id, version.state, version.profile_hash,
+                asset.id AS asset_id, asset.binary_sha256, asset.content_type,
+                asset.byte_size, asset.width_px, asset.height_px
+           FROM avatar_profiles AS profile
+           JOIN avatar_profile_versions AS version
+             ON version.account_id = profile.account_id
+            AND version.workspace_id = profile.workspace_id AND version.profile_id = profile.id
+           JOIN avatar_profile_assets AS link
+             ON link.account_id = version.account_id
+            AND link.workspace_id = version.workspace_id AND link.version_id = version.id
+            AND link.role = 'ORIGINAL'
+           JOIN assets AS asset
+             ON asset.account_id = link.account_id
+            AND asset.workspace_id = link.workspace_id AND asset.id = link.asset_id
+          WHERE profile.account_id = $1 AND profile.workspace_id = $2
+            AND profile.scope_kind = 'WORKSPACE'
+            AND (profile.id = $3 OR version.id = $3)
+          ORDER BY version.version_number DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, profileOrVersionId],
+      );
+      const target = result.rows[0];
+      if (!target) return null;
+      if (target.state === "READY") return target;
+      if (target.state !== "NEEDS_REVIEW" || target.binary_sha256 === null)
+        throw new Error("AVATAR_SOURCE_NOT_COMMITTED");
+      const now = new Date().toISOString();
+      const payload = avatarProfilePayload({
+        assetId: rowString(target, "asset_id"),
+        checksumSha256: rowString(target, "binary_sha256"),
+        contentType: rowString(target, "content_type"),
+        contentLength: Number(target.byte_size),
+        width: Number(target.width_px),
+        height: Number(target.height_px),
+        userId: scope.user_id,
+        now,
+      });
+      const profileHash = await sha256(canonicalJson(payload));
+      await transaction.query(
+        `UPDATE avatar_profile_versions
+            SET state = 'READY', profile_contract_name = 'avatar-profile',
+                profile_contract_version = 'v1', profile_payload = $4::jsonb,
+                profile_hash = $5, original_asset_id = $6, runtime_source_asset_id = $6,
+                runtime_source_binary_sha256 = $7,
+                source_preparation_profile = 'hosted-avatar-source-pass-through-v1',
+                source_validation_profile = 'hosted-avatar-source-validation-v1',
+                rights_attested_by_user_id = $8, likeness_attested_by_user_id = $8,
+                ready_at = now(), updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          rowString(target, "version_id"),
+          JSON.stringify(payload),
+          profileHash,
+          rowString(target, "asset_id"),
+          rowString(target, "binary_sha256"),
+          scope.user_id,
+        ],
+      );
+      await transaction.query(
+        `UPDATE avatar_profiles SET active_version_id = $3, updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $4`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          rowString(target, "version_id"),
+          rowString(target, "profile_id"),
+        ],
+      );
+      return { ...target, profile_hash: profileHash };
+    });
+    if (!approved) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
+    return response({
+      schema_version: "videoforge-hosted-avatar-approval-response/v1",
+      profile_id: rowString(approved, "profile_id"),
+      version_id: rowString(approved, "version_id"),
+      state: "READY",
+      profile_hash: rowString(approved, "profile_hash"),
+      provider_calls_authorized: false,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "AVATAR_SOURCE_NOT_COMMITTED")
+      return response({ error: { code: error.message } }, 409);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+async function styleCreate(
+  request: Request,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const idempotencyKey = request.headers.get("idempotency-key") ?? "";
+  if (!IDEMPOTENCY.test(idempotencyKey))
+    return response({ error: { code: "STYLE_IDEMPOTENCY_REQUIRED" } }, 400);
+  const raw = await parseHostedJson(request, "STYLE_CREATE_REJECTED");
+  if (raw instanceof Response) return raw;
+  const input = parseStyleCreate(raw);
+  if (!input) return response({ error: { code: "STYLE_CREATE_REJECTED" } }, 400);
+  if (!input.rightsAttested) return response({ error: { code: "STYLE_RIGHTS_REQUIRED" } }, 400);
+  if (!input.processingDisclosureAcknowledged)
+    return response({ error: { code: "STYLE_DISCLOSURE_REQUIRED" } }, 400);
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const requestHash = await sha256(canonicalJson(raw));
+    const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const replay = await transaction.query<HostedPresetRow>(
+        `SELECT style.id AS style_id, style.name AS style_name,
+                version.id AS version_id, version.version_number, version.state,
+                jsonb_agg(jsonb_build_object(
+                  'order_index', reference.reference_order - 1,
+                  'object_key', original.object_key,
+                  'content_type', original.content_type,
+                  'content_length', original.byte_size,
+                  'checksum_sha256', original.binary_sha256
+                ) ORDER BY reference.reference_order) AS uploads
+           FROM image_style_versions AS version
+           JOIN image_styles AS style
+             ON style.account_id = version.account_id
+            AND style.workspace_id = version.workspace_id AND style.id = version.style_id
+           JOIN image_style_references AS reference
+             ON reference.account_id = version.account_id
+            AND reference.workspace_id = version.workspace_id AND reference.version_id = version.id
+           JOIN assets AS original
+             ON original.account_id = reference.account_id
+            AND original.workspace_id = reference.workspace_id AND original.id = reference.original_asset_id
+          WHERE version.account_id = $1 AND version.workspace_id = $2
+            AND original.metadata ->> 'hosted_request_idempotency_key' = $3
+          GROUP BY style.id, style.name, version.id, version.version_number, version.state
+          ORDER BY version.created_at DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, idempotencyKey],
+      );
+      if (replay.rows[0]) return replay.rows[0];
+      const parent = await resolveParentStyle(transaction, scope, input.parentId);
+      if (input.parentId && !parent) throw new Error("STYLE_PARENT_NOT_FOUND");
+      const systemParent = parent?.system === true;
+      const styleId =
+        parent && !systemParent
+          ? parent.styleId
+          : await stableHostedUuid(
+              `hosted-style:${scope.account_id}:${idempotencyKey}:${requestHash}:style`,
+            );
+      const versionId = await stableHostedUuid(
+        `hosted-style:${scope.account_id}:${idempotencyKey}:${requestHash}:version`,
+      );
+      const styleName = parent && !systemParent ? parent.styleName : input.name;
+      const styleExists = await transaction.query<HostedPresetRow>(
+        `SELECT id FROM image_styles
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+        [scope.account_id, scope.workspace_id, styleId],
+      );
+      if (!styleExists.rows[0]) {
+        await transaction.query(
+          `INSERT INTO image_styles (
+             id, account_id, workspace_id, scope_kind, created_by_user_id,
+             name, normalized_name, status
+           ) VALUES ($1,$2,$3,'WORKSPACE',$4,$5,lower($5),'ACTIVE')`,
+          [styleId, scope.account_id, scope.workspace_id, scope.user_id, styleName],
+        );
+      }
+      const number = await transaction.query<{ version_number: number | string }>(
+        `SELECT COALESCE(max(version_number), 0) + 1 AS version_number
+           FROM image_style_versions
+          WHERE account_id = $1 AND workspace_id = $2 AND style_id = $3`,
+        [scope.account_id, scope.workspace_id, styleId],
+      );
+      const versionNumber = Number(number.rows[0]?.version_number ?? 1);
+      await transaction.query(
+        `INSERT INTO image_style_versions (
+           id, account_id, workspace_id, style_id, version_number, state, scope_kind,
+           disclosure_attested_by_user_id
+         ) VALUES ($1,$2,$3,$4,$5,'DRAFT','WORKSPACE',$6)`,
+        [versionId, scope.account_id, scope.workspace_id, styleId, versionNumber, scope.user_id],
+      );
+      const uploadRows: HostedPresetRow[] = [];
+      for (const reference of input.references) {
+        const suffix = String(reference.orderIndex + 1).padStart(2, "0");
+        const originalAssetId = await stableHostedUuid(
+          `hosted-style:${scope.account_id}:${idempotencyKey}:${requestHash}:original:${reference.orderIndex}`,
+        );
+        const normalizedAssetId = await stableHostedUuid(
+          `hosted-style:${scope.account_id}:${idempotencyKey}:${requestHash}:normalized:${reference.orderIndex}`,
+        );
+        const originalKey = hostedUploadKey(
+          scope,
+          "style",
+          styleId,
+          versionId,
+          `original/reference-${suffix}`,
+        );
+        const normalizedKey = hostedUploadKey(
+          scope,
+          "style",
+          styleId,
+          versionId,
+          `normalized/reference-${suffix}`,
+        );
+        const metadata = JSON.stringify({
+          filename: reference.filename,
+          hosted_request_idempotency_key: idempotencyKey,
+          request_sha256: requestHash,
+          order_index: reference.orderIndex,
+        });
+        await transaction.query(
+          `INSERT INTO assets (
+             id, account_id, workspace_id, kind, state, object_key, binary_sha256,
+             content_type, byte_size, metadata
+           ) VALUES ($1,$2,$3,'STYLE_REFERENCE_ORIGINAL','UPLOADING',$4,$5,$6,$7,$8::jsonb)`,
+          [
+            originalAssetId,
+            scope.account_id,
+            scope.workspace_id,
+            originalKey,
+            reference.checksumSha256,
+            reference.contentType,
+            reference.contentLength,
+            metadata,
+          ],
+        );
+        await transaction.query(
+          `INSERT INTO assets (
+             id, account_id, workspace_id, kind, state, object_key, binary_sha256,
+             content_type, byte_size, metadata
+           ) VALUES ($1,$2,$3,'STYLE_REFERENCE_NORMALIZED','UPLOADING',$4,$5,$6,$7,$8::jsonb)`,
+          [
+            normalizedAssetId,
+            scope.account_id,
+            scope.workspace_id,
+            normalizedKey,
+            reference.checksumSha256,
+            reference.contentType,
+            reference.contentLength,
+            metadata,
+          ],
+        );
+        await transaction.query(
+          `INSERT INTO image_style_references (
+             id, account_id, workspace_id, style_id, version_id, normalized_asset_id,
+             original_asset_id, reference_order, rights_attested_by_user_id,
+             rights_basis, rights_basis_note, rights_attested_at, original_retention_policy
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'OTHER_DOCUMENTED_BASIS',
+                     'Hosted user rights attestation',now(),'RETAIN')`,
+          [
+            await stableHostedUuid(
+              `hosted-style:${scope.account_id}:${idempotencyKey}:${requestHash}:reference:${reference.orderIndex}`,
+            ),
+            scope.account_id,
+            scope.workspace_id,
+            styleId,
+            versionId,
+            normalizedAssetId,
+            originalAssetId,
+            reference.orderIndex + 1,
+            scope.user_id,
+          ],
+        );
+        uploadRows.push({
+          object_key: originalKey,
+          content_type: reference.contentType,
+          content_length: reference.contentLength,
+          checksum_sha256: reference.checksumSha256,
+        });
+      }
+      return {
+        style_id: styleId,
+        style_name: styleName,
+        version_id: versionId,
+        version_number: versionNumber,
+        state: "DRAFT",
+        uploads: uploadRows,
+      };
+    });
+    const uploads = Array.isArray(prepared.uploads)
+      ? (prepared.uploads as Record<string, unknown>[]).map((item) => item)
+      : [];
+    const ports = [];
+    for (const item of uploads) {
+      const objectKey = rowString(item, "object_key");
+      ports.push(
+        await new HostedR2Signer(config.r2).sign({
+          method: "PUT",
+          objectKey,
+          contentType: rowString(item, "content_type"),
+          contentLength: Number(item.content_length),
+          checksumSha256: rowString(item, "checksum_sha256"),
+          lifetimeSeconds: 900,
+        }),
+      );
+    }
+    return response(
+      {
+        schema_version: "videoforge-hosted-style-create-response/v1",
+        style_id: rowString(prepared, "style_id"),
+        style_name: rowString(prepared, "style_name"),
+        version_id: rowString(prepared, "version_id"),
+        version_number: Number(prepared.version_number),
+        state: prepared.state,
+        uploads: ports,
+        provider_calls_authorized: false,
+      },
+      201,
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === "STYLE_PARENT_NOT_FOUND")
+      return response({ error: { code: error.message } }, 404);
+    if (postgresCode(error) === "23505")
+      return response({ error: { code: "STYLE_NAME_OR_VERSION_CONFLICT" } }, 409);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+async function styleCommit(
+  request: Request,
+  styleOrVersionId: string,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const raw = await parseHostedJson(request, "STYLE_COMMIT_REJECTED");
+  if (raw instanceof Response) return raw;
+  if (!parseEmptyObject(raw)) return response({ error: { code: "STYLE_COMMIT_REJECTED" } }, 400);
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const pending = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `SELECT style.id AS style_id, version.id AS version_id, version.state,
+                reference.reference_order, original.object_key AS original_object_key,
+                original.content_type AS original_content_type,
+                original.byte_size AS original_content_length,
+                original.binary_sha256 AS original_checksum,
+                normalized.object_key AS normalized_object_key,
+                normalized.content_type AS normalized_content_type,
+                normalized.byte_size AS normalized_content_length,
+                normalized.binary_sha256 AS normalized_checksum,
+                reference.original_asset_id, reference.normalized_asset_id
+           FROM image_styles AS style
+           JOIN image_style_versions AS version
+             ON version.account_id = style.account_id
+            AND version.workspace_id = style.workspace_id AND version.style_id = style.id
+           JOIN image_style_references AS reference
+             ON reference.account_id = version.account_id
+            AND reference.workspace_id = version.workspace_id AND reference.version_id = version.id
+           JOIN assets AS original
+             ON original.account_id = reference.account_id
+            AND original.workspace_id = reference.workspace_id AND original.id = reference.original_asset_id
+           JOIN assets AS normalized
+             ON normalized.account_id = reference.account_id
+            AND normalized.workspace_id = reference.workspace_id AND normalized.id = reference.normalized_asset_id
+          WHERE style.account_id = $1 AND style.workspace_id = $2
+            AND style.scope_kind = 'WORKSPACE' AND (style.id = $3 OR version.id = $3)
+            AND version.id = (
+              SELECT candidate.id
+                FROM image_style_versions AS candidate
+               WHERE candidate.account_id = style.account_id
+                 AND candidate.workspace_id = style.workspace_id
+                 AND candidate.style_id = style.id
+                 AND (style.id = $3 OR candidate.id = $3)
+               ORDER BY candidate.version_number DESC
+               LIMIT 1
+            )
+          ORDER BY reference.reference_order`,
+        [scope.account_id, scope.workspace_id, styleOrVersionId],
+      );
+      return result.rows;
+    });
+    if (pending.length === 0) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+    const first = pending[0]!;
+    if (first.state !== "PUBLISHED") {
+      for (const reference of pending) {
+        const object = await bucket.head(rowString(reference, "original_object_key"));
+        if (
+          !object ||
+          object.size !== Number(reference.original_content_length) ||
+          object.httpMetadata?.contentType !== reference.original_content_type ||
+          checksumFromR2(object.checksums?.sha256) !== reference.original_checksum
+        ) {
+          return response({ error: { code: "STYLE_REFERENCE_NOT_VERIFIED" } }, 409);
+        }
+        const original = await bucket.get(rowString(reference, "original_object_key"));
+        if (!original) return response({ error: { code: "STYLE_REFERENCE_NOT_VERIFIED" } }, 409);
+        await bucket.put(
+          rowString(reference, "normalized_object_key"),
+          await original.arrayBuffer(),
+          {
+            httpMetadata: { contentType: rowString(reference, "normalized_content_type") },
+          },
+        );
+        const normalized = await bucket.head(rowString(reference, "normalized_object_key"));
+        if (
+          !normalized ||
+          normalized.size !== Number(reference.normalized_content_length) ||
+          normalized.httpMetadata?.contentType !== reference.normalized_content_type ||
+          checksumFromR2(normalized.checksums?.sha256) !== reference.normalized_checksum
+        ) {
+          return response({ error: { code: "STYLE_NORMALIZED_NOT_VERIFIED" } }, 409);
+        }
+      }
+      await createNeonExecutor(pool).transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1, $2, true)", [
+          "videoforge.account_id",
+          scope.account_id,
+        ]);
+        for (const reference of pending) {
+          await transaction.query(
+            `UPDATE assets
+                SET state = 'VERIFIED', verified_at = COALESCE(verified_at, now())
+              WHERE account_id = $1 AND workspace_id = $2 AND id IN ($3,$4)`,
+            [
+              scope.account_id,
+              scope.workspace_id,
+              rowString(reference, "original_asset_id"),
+              rowString(reference, "normalized_asset_id"),
+            ],
+          );
+        }
+      });
+    }
+    return response({
+      schema_version: "videoforge-hosted-style-commit-response/v1",
+      style_id: rowString(first, "style_id"),
+      version_id: rowString(first, "version_id"),
+      state: first.state === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
+      uploads: [],
+      provider_calls_authorized: false,
+    });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function styleAnalyze(
+  request: Request,
+  styleOrVersionId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const raw = await parseHostedJson(request, "STYLE_ANALYSIS_REJECTED");
+  if (raw instanceof Response) return raw;
+  if (!parseStyleAnalysis(raw))
+    return response({ error: { code: "STYLE_ANALYSIS_REJECTED" } }, 400);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const analyzed = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `SELECT style.id AS style_id, style.name AS style_name, version.id AS version_id,
+                version.state, version.profile_payload, version.style_profile_hash,
+                COALESCE(jsonb_agg(jsonb_build_object(
+                  'order_index', reference.reference_order,
+                  'checksum_sha256', normalized.binary_sha256
+                ) ORDER BY reference.reference_order) FILTER (WHERE reference.id IS NOT NULL), '[]'::jsonb) AS references
+           FROM image_styles AS style
+           JOIN image_style_versions AS version
+             ON version.account_id = style.account_id
+            AND version.workspace_id = style.workspace_id AND version.style_id = style.id
+           LEFT JOIN image_style_references AS reference
+             ON reference.account_id = version.account_id
+            AND reference.workspace_id = version.workspace_id AND reference.version_id = version.id
+           LEFT JOIN assets AS normalized
+             ON normalized.account_id = reference.account_id
+            AND normalized.workspace_id = reference.workspace_id AND normalized.id = reference.normalized_asset_id
+          WHERE style.account_id = $1 AND style.workspace_id = $2
+            AND style.scope_kind = 'WORKSPACE' AND (style.id = $3 OR version.id = $3)
+          GROUP BY style.id, style.name, version.id, version.state, version.profile_payload, version.style_profile_hash,
+                   version.version_number
+          ORDER BY version.version_number DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, styleOrVersionId],
+      );
+      const target = result.rows[0];
+      if (!target) return null;
+      if (target.state === "NEEDS_REVIEW" || target.state === "PUBLISHED") return target;
+      if (target.state !== "DRAFT") throw new Error("STYLE_NOT_ANALYZABLE");
+      const references = Array.isArray(target.references) ? target.references : [];
+      if (references.length < 3) throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
+      const profile = hostedStyleProfile(
+        rowString(target, "style_name"),
+        references.map((_, index) => `ref_${String(index + 1).padStart(2, "0")}`),
+      );
+      const profileHash = await sha256(canonicalJson(profile));
+      const requestHash = await sha256(
+        canonicalJson({ version_id: target.version_id, references }),
+      );
+      await transaction.query(
+        `UPDATE image_style_versions
+            SET state = 'NEEDS_REVIEW', profile_contract_name = 'image-style-profile',
+                profile_contract_version = 'v1', profile_payload = $4::jsonb,
+                style_profile_hash = $5, analyzer_request_hash = $6,
+                analyzer_model_snapshot = 'hosted-provider-free-deterministic-v1',
+                disclosure_attested_by_user_id = $7, updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          rowString(target, "version_id"),
+          JSON.stringify(profile),
+          profileHash,
+          requestHash,
+          scope.user_id,
+        ],
+      );
+      return { ...target, state: "NEEDS_REVIEW", profile, profile_hash: profileHash };
+    });
+    if (!analyzed) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+    if (analyzed instanceof Response) return analyzed;
+    const profile = plainRecord(analyzed.profile) ?? plainRecord(analyzed.profile_payload);
+    return response({
+      schema_version: "videoforge-hosted-style-analysis-response/v1",
+      style_id: rowString(analyzed, "style_id"),
+      version_id: rowString(analyzed, "version_id"),
+      state: analyzed.state,
+      profile,
+      profile_hash: analyzed.profile_hash ?? analyzed.style_profile_hash ?? null,
+      summary: profile?.summary ?? null,
+      provider_calls_authorized: false,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "STYLE_NOT_ANALYZABLE")
+      return response({ error: { code: error.message } }, 409);
+    if (error instanceof Error && error.message === "STYLE_REFERENCES_NOT_COMMITTED")
+      return response({ error: { code: error.message } }, 409);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+async function stylePublish(
+  request: Request,
+  styleOrVersionId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const raw = await parseHostedJson(request, "STYLE_PUBLISH_REJECTED");
+  if (raw instanceof Response) return raw;
+  const input = parseStylePublish(raw);
+  if (!input) return response({ error: { code: "STYLE_PUBLISH_REJECTED" } }, 400);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const published = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `SELECT style.id AS style_id, version.id AS version_id, version.state,
+                version.profile_payload, version.style_profile_hash
+           FROM image_styles AS style
+           JOIN image_style_versions AS version
+             ON version.account_id = style.account_id
+            AND version.workspace_id = style.workspace_id AND version.style_id = style.id
+          WHERE style.account_id = $1 AND style.workspace_id = $2
+            AND style.scope_kind = 'WORKSPACE' AND (style.id = $3 OR version.id = $3)
+          ORDER BY version.version_number DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, styleOrVersionId],
+      );
+      const target = result.rows[0];
+      if (!target) return null;
+      if (target.state === "PUBLISHED") return target;
+      if (target.state !== "NEEDS_REVIEW") throw new Error("STYLE_NOT_PUBLISHABLE");
+      const stored = plainRecord(target.profile_payload);
+      if (!stored || !target.style_profile_hash) throw new Error("STYLE_PROFILE_MISSING");
+      if (input.candidate) {
+        const candidate = { ...input.candidate };
+        delete candidate.review_notes;
+        if (canonicalJson(candidate) !== canonicalJson(stored))
+          throw new Error("STYLE_PROFILE_MISMATCH");
+      }
+      await transaction.query(
+        `UPDATE image_style_versions
+            SET state = 'PUBLISHED', disclosure_attested_by_user_id = $4,
+                published_at = now(), updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+        [scope.account_id, scope.workspace_id, rowString(target, "version_id"), scope.user_id],
+      );
+      await transaction.query(
+        `UPDATE image_styles SET active_version_id = $3, updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $4`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          rowString(target, "version_id"),
+          rowString(target, "style_id"),
+        ],
+      );
+      return target;
+    });
+    if (!published) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+    return response({
+      schema_version: "videoforge-hosted-style-publish-response/v1",
+      style_id: rowString(published, "style_id"),
+      version_id: rowString(published, "version_id"),
+      state: "PUBLISHED",
+      profile_hash: rowString(published, "style_profile_hash"),
+      provider_calls_authorized: false,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      ["STYLE_NOT_PUBLISHABLE", "STYLE_PROFILE_MISSING", "STYLE_PROFILE_MISMATCH"].includes(
+        error.message,
+      )
+    )
+      return response({ error: { code: error.message } }, 409);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+async function retryProjectAttempt(
+  request: Request,
+  projectId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const raw = await parseHostedJson(request, "RETRY_REJECTED");
+  if (raw instanceof Response) return raw;
+  const input = parseRetry(raw);
+  if (!input) return response({ error: { code: "RETRY_REJECTED" } }, 400);
+  if (input.assetId !== null)
+    return response({ error: { code: "RETRY_ASSET_REPLACEMENT_REQUIRED" } }, 409);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const retried = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `SELECT attempt.id AS attempt_id, attempt.lane, attempt.attempt_ordinal,
+                attempt.state AS attempt_state, attempt.task_id,
+                task.state AS task_state, task.version AS task_version,
+                request.id AS generation_request_id, request.state AS request_state,
+                request.attempt_ordinal AS request_attempt_ordinal,
+                request.version AS request_version
+           FROM serverless_attempts AS attempt
+           JOIN generation_tasks AS task
+             ON task.account_id = attempt.account_id
+            AND task.workspace_id = attempt.workspace_id AND task.id = attempt.task_id
+           JOIN generation_requests AS request
+             ON request.account_id = attempt.account_id
+            AND request.workspace_id = attempt.workspace_id
+            AND request.id = attempt.generation_request_id
+          WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
+            AND attempt.project_id = $3 AND attempt.id = $4
+            AND attempt.state = 'RETRYABLE_FAILED'
+            AND attempt.attempt_ordinal < 3
+            AND request.state IN ('FAILED','RETRY_WAIT')
+            AND task.state IN ('FAILED','RETRY_WAIT')
+          FOR UPDATE OF attempt, task, request`,
+        [scope.account_id, scope.workspace_id, projectId, input.attemptId],
+      );
+      const target = result.rows[0];
+      if (!target) return null;
+      await transaction.query(
+        `UPDATE generation_requests
+            SET state = 'RETRY_WAIT', attempt_ordinal = attempt_ordinal + 1,
+                terminal_at = NULL, admitted_at = NULL, version = version + 1,
+                updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3
+            AND state IN ('FAILED','RETRY_WAIT')`,
+        [scope.account_id, scope.workspace_id, rowString(target, "generation_request_id")],
+      );
+      await transaction.query(
+        `UPDATE generation_tasks
+            SET state = 'RETRY_WAIT', finished_at = NULL, version = version + 1,
+                updated_at = now()
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3
+            AND state IN ('FAILED','RETRY_WAIT')`,
+        [scope.account_id, scope.workspace_id, rowString(target, "task_id")],
+      );
+      return target;
+    });
+    if (!retried) return response({ error: { code: "RETRY_NOT_ALLOWED" } }, 409);
+    return response({
+      schema_version: "videoforge-hosted-retry/v1",
+      project_id: projectId,
+      attempt_id: rowString(retried, "attempt_id"),
+      lane: retried.lane,
+      state: "RETRY_WAIT",
+      replacement_allowed: true,
+      redispatch: false,
+      provider_calls_authorized: false,
+    });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function projectManifest(
+  request: Request,
+  projectId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const data = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const project = await transaction.query<HostedPresetRow>(
+        `SELECT project.id, project.name AS title, revision.id AS revision_id,
+                revision.status AS revision_state, revision.revision_config_hash AS config_hash,
+                revision.revision_config_payload AS config_payload,
+                revision.avatar_profile_id, revision.avatar_profile_version_id,
+                revision.avatar_profile_hash, revision.image_style_id,
+                revision.image_style_version_id, revision.style_profile_hash,
+                revision.voiceover_asset_id, revision.voiceover_binary_sha256,
+                review.render_attempt_id, review.output_checksum_sha256,
+                review.approved_by_user_id, review.approved_at,
+                attempt.request_sha256, attempt.state AS attempt_state,
+                attempt.replay_count, attempt.submitted_at, attempt.terminal_at,
+                authority.object_key, authority.content_type,
+                authority.issued_content_length AS content_length,
+                authority.issued_checksum_sha256 AS checksum_sha256
+           FROM projects AS project
+           JOIN project_revisions AS revision
+             ON revision.account_id = project.account_id
+            AND revision.workspace_id = project.workspace_id AND revision.project_id = project.id
+           LEFT JOIN hosted_project_reviews AS review
+             ON review.account_id = project.account_id
+            AND review.workspace_id = project.workspace_id AND review.project_id = project.id
+           LEFT JOIN hosted_cpu_job_attempts AS attempt
+             ON attempt.account_id = review.account_id
+            AND attempt.workspace_id = review.workspace_id AND attempt.id = review.render_attempt_id
+           LEFT JOIN hosted_cpu_upload_authorities AS authority
+             ON authority.account_id = attempt.account_id
+            AND authority.workspace_id = attempt.workspace_id AND authority.attempt_id = attempt.id
+            AND authority.source = 'PRIMARY_RESULT_OUTPUT' AND authority.issued_at IS NOT NULL
+          WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
+          ORDER BY revision.revision_number DESC, review.approved_at DESC NULLS LAST
+          LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      return project.rows[0] ?? null;
+    });
+    if (!data) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    if (!data.render_attempt_id || !data.object_key || data.attempt_state !== "SUCCEEDED")
+      return response({ error: { code: "PROJECT_APPROVAL_REQUIRED" } }, 409);
+    const manifest = {
+      schema_version: "videoforge-hosted-provenance-manifest/v1",
+      project: {
+        id: data.id,
+        title: data.title,
+        revision_id: data.revision_id,
+        revision_state: data.revision_state,
+      },
+      revision: {
+        config_hash: data.config_hash,
+        config_payload: data.config_payload,
+        avatar_profile_id: data.avatar_profile_id,
+        avatar_profile_version_id: data.avatar_profile_version_id,
+        avatar_profile_hash: data.avatar_profile_hash,
+        image_style_id: data.image_style_id,
+        image_style_version_id: data.image_style_version_id,
+        style_profile_hash: data.style_profile_hash,
+        voiceover_asset_id: data.voiceover_asset_id,
+        voiceover_sha256: data.voiceover_binary_sha256,
+      },
+      creative_approval: {
+        state: "APPROVED",
+        render_attempt_id: data.render_attempt_id,
+        approved_by_user_id: data.approved_by_user_id,
+        approved_at: timestampOrNull(data.approved_at),
+        output_checksum_sha256: data.output_checksum_sha256,
+      },
+      final_output: {
+        attempt_id: data.render_attempt_id,
+        object_key: data.object_key,
+        content_type: data.content_type,
+        content_length: Number(data.content_length),
+        checksum_sha256: data.checksum_sha256,
+      },
+      execution: {
+        kind: "RENDER",
+        state: data.attempt_state,
+        request_sha256: data.request_sha256,
+        replay_count: Number(data.replay_count ?? 0),
+        submitted_at: timestampOrNull(data.submitted_at),
+        terminal_at: timestampOrNull(data.terminal_at),
+      },
+      cost: { provider: "personal-worker", projected_usd: 0, settled_usd: 0 },
+      guarantees: {
+        approval_required: true,
+        provider_exactly_once_execution_claimed: false,
+        provider_exactly_once_billing_claimed: false,
+      },
+    };
+    return new Response(JSON.stringify(manifest), {
+      status: 200,
+      headers: {
+        "cache-control": "no-store",
+        "content-disposition": 'attachment; filename="videoforge-provenance.json"',
+        "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+        "content-type": "application/json; charset=utf-8",
+        "x-content-type-options": "nosniff",
+        "x-videoforge-runtime": "hosted-v2-06",
+      },
+    });
+  } finally {
+    await pool.end();
+  }
 }
 
 function checksumFromR2(value?: ArrayBuffer): string | null {
@@ -615,32 +2642,17 @@ async function createProject(
           throw new Error("PROJECT_IDEMPOTENCY_CONFLICT");
         return replay;
       }
-      const avatar = await transaction.query<Record<string, unknown>>(
-        `SELECT profile.id AS profile_id, profile.name AS profile_name,
-                version.id AS version_id, version.profile_hash,
-                version.runtime_source_asset_id, version.runtime_source_binary_sha256,
-                version.source_preparation_profile, version.source_validation_profile
-           FROM avatar_profiles AS profile
-           JOIN avatar_profile_versions AS version
-             ON version.account_id = profile.account_id
-            AND version.workspace_id = profile.workspace_id
-            AND version.profile_id = profile.id
-          WHERE profile.account_id = $1 AND profile.workspace_id = $2
-            AND version.id = $3 AND profile.status = 'ACTIVE' AND version.state = 'READY'`,
-        [scope.account_id, scope.workspace_id, input.avatarVersionId],
+      const resolved = await resolveProjectPresets(
+        transaction,
+        scope,
+        input.avatarVersionId,
+        input.styleVersionId,
       );
-      const style = await transaction.query<Record<string, unknown>>(
-        `SELECT style.id AS style_id, version.id AS version_id, version.style_profile_hash
-           FROM image_styles AS style
-           JOIN image_style_versions AS version
-             ON version.account_id = style.account_id
-            AND version.workspace_id = style.workspace_id
-            AND version.style_id = style.id
-          WHERE style.account_id = $1 AND style.workspace_id = $2
-            AND version.id = $3 AND style.status = 'ACTIVE' AND version.state = 'PUBLISHED'`,
-        [scope.account_id, scope.workspace_id, input.styleVersionId],
-      );
-      if (!avatar.rows[0] || !style.rows[0]) throw new Error("PROJECT_PRESET_NOT_READY");
+      if (!resolved) throw new Error("PROJECT_PRESET_NOT_READY");
+      // Keep the existing revision writer shape while allowing SYSTEM catalog versions to be
+      // materialized into tenant-owned snapshots by resolveProjectPresets.
+      const avatar = resolved.avatar;
+      const style = resolved.style;
       const projectId = crypto.randomUUID();
       const revisionId = crypto.randomUUID();
       const assetId = crypto.randomUUID();
@@ -656,16 +2668,16 @@ async function createProject(
         title: input.title,
         voiceoverAssetId: assetId,
         voiceoverSha256: input.voiceover.checksumSha256,
-        avatarProfileId: String(avatar.rows[0].profile_id),
-        avatarProfileVersionId: input.avatarVersionId,
-        avatarDisplayName: String(avatar.rows[0].profile_name),
-        avatarProfileHash: String(avatar.rows[0].profile_hash),
-        avatarRuntimeSourceAssetId: String(avatar.rows[0].runtime_source_asset_id),
-        avatarRuntimeSourceSha256: String(avatar.rows[0].runtime_source_binary_sha256),
-        avatarSourcePreparationVersion: String(avatar.rows[0].source_preparation_profile),
-        avatarSourceValidationProfileVersion: String(avatar.rows[0].source_validation_profile),
-        imageStyleVersionId: input.styleVersionId,
-        styleProfileHash: String(style.rows[0].style_profile_hash),
+        avatarProfileId: rowString(avatar, "profile_id"),
+        avatarProfileVersionId: rowString(avatar, "version_id"),
+        avatarDisplayName: rowString(avatar, "profile_name"),
+        avatarProfileHash: rowString(avatar, "profile_hash"),
+        avatarRuntimeSourceAssetId: rowString(avatar, "runtime_source_asset_id"),
+        avatarRuntimeSourceSha256: rowString(avatar, "runtime_source_binary_sha256"),
+        avatarSourcePreparationVersion: rowString(avatar, "source_preparation_profile"),
+        avatarSourceValidationProfileVersion: rowString(avatar, "source_validation_profile"),
+        imageStyleVersionId: rowString(style, "version_id"),
+        styleProfileHash: rowString(style, "style_profile_hash"),
         schedulerSeed,
         optionalScript: input.optionalScript,
         extraPromptKeywords: input.extraPromptKeywords,
@@ -722,16 +2734,16 @@ async function createProject(
           input.title,
           assetId,
           input.voiceover.checksumSha256,
-          String(avatar.rows[0].profile_id),
-          String(avatar.rows[0].version_id),
-          String(avatar.rows[0].profile_hash),
-          String(avatar.rows[0].runtime_source_asset_id),
-          String(avatar.rows[0].runtime_source_binary_sha256),
-          String(avatar.rows[0].source_preparation_profile),
-          String(avatar.rows[0].source_validation_profile),
-          String(style.rows[0].style_id),
-          String(style.rows[0].version_id),
-          String(style.rows[0].style_profile_hash),
+          rowString(avatar, "profile_id"),
+          rowString(avatar, "version_id"),
+          rowString(avatar, "profile_hash"),
+          rowString(avatar, "runtime_source_asset_id"),
+          rowString(avatar, "runtime_source_binary_sha256"),
+          rowString(avatar, "source_preparation_profile"),
+          rowString(avatar, "source_validation_profile"),
+          rowString(style, "style_id"),
+          rowString(style, "version_id"),
+          rowString(style, "style_profile_hash"),
           input.extraPromptKeywords,
           input.applyExtraPromptKeywords,
           input.generationMode,
@@ -1483,14 +3495,10 @@ async function projectDetail(
         `SELECT request.id, request.state, request.queue_order, request.available_at,
                 request.admitted_at, request.terminal_at,
                 (SELECT count(*) FROM generation_requests AS ahead
-                  WHERE ahead.account_id = request.account_id
-                    AND ahead.workspace_id = request.workspace_id
-                    AND ahead.state IN ('WAITING','ADMITTED','ACTIVE','RETRY_WAIT')
+                  WHERE ahead.state IN ('WAITING','ADMITTED','ACTIVE','RETRY_WAIT')
                     AND ahead.queue_order < request.queue_order) AS ahead,
                 (SELECT count(*) FROM generation_requests AS total
-                  WHERE total.account_id = request.account_id
-                    AND total.workspace_id = request.workspace_id
-                    AND total.state IN ('WAITING','ADMITTED','ACTIVE','RETRY_WAIT')) AS total
+                  WHERE total.state IN ('WAITING','ADMITTED','ACTIVE','RETRY_WAIT')) AS total
            FROM generation_requests AS request
           WHERE request.account_id = $1 AND request.workspace_id = $2
             AND request.project_id = $3
@@ -1873,6 +3881,7 @@ async function projectDetail(
     );
     let downloadUrl: string | null = null;
     const reviewRow = detail.review as Record<string, unknown> | null;
+    const manifestUrl = reviewRow ? `/api/v2/hosted/projects/${projectId}/manifest` : null;
     if (reviewRow) {
       const approvedAttempt = attempts.find(
         (value) => value.id === reviewRow.render_attempt_id && value.preview_url,
@@ -1933,12 +3942,12 @@ async function projectDetail(
       review: {
         contact_sheet: sheet,
         quality_flags: qualityFlags,
-        manifest_url: `/api/v2/hosted/projects/${projectId}/manifest`,
+        manifest_url: manifestUrl,
         download_url: downloadUrl,
       },
       contact_sheet: sheet,
       quality_flags: qualityFlags,
-      manifest_url: `/api/v2/hosted/projects/${projectId}/manifest`,
+      manifest_url: manifestUrl,
     });
   } finally {
     await pool.end();
@@ -2078,6 +4087,27 @@ export async function handleHostedProductRequest(
   const url = new URL(request.url);
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/project-catalog")
     return catalog(request, config, executionContext);
+  if (request.method === "POST" && url.pathname === "/api/v2/hosted/avatars")
+    return avatarCreate(request, environment, config, executionContext);
+  const avatarCommitPath = /^\/api\/v2\/hosted\/avatars\/([0-9a-f-]+)\/commit$/u.exec(url.pathname);
+  if (request.method === "POST" && avatarCommitPath)
+    return avatarCommit(request, avatarCommitPath[1]!, environment, config, executionContext);
+  const avatarApprovePath = /^\/api\/v2\/hosted\/avatars\/([0-9a-f-]+)\/approve$/u.exec(
+    url.pathname,
+  );
+  if (request.method === "POST" && avatarApprovePath)
+    return avatarApprove(request, avatarApprovePath[1]!, config, executionContext);
+  if (request.method === "POST" && url.pathname === "/api/v2/hosted/styles")
+    return styleCreate(request, environment, config, executionContext);
+  const styleCommitPath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/commit$/u.exec(url.pathname);
+  if (request.method === "POST" && styleCommitPath)
+    return styleCommit(request, styleCommitPath[1]!, environment, config, executionContext);
+  const styleAnalyzePath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/analyze$/u.exec(url.pathname);
+  if (request.method === "POST" && styleAnalyzePath)
+    return styleAnalyze(request, styleAnalyzePath[1]!, config, executionContext);
+  const stylePublishPath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/publish$/u.exec(url.pathname);
+  if (request.method === "POST" && stylePublishPath)
+    return stylePublish(request, stylePublishPath[1]!, config, executionContext);
   if (request.method === "POST" && url.pathname === "/api/v2/hosted/projects/preflight")
     return projectPreflight(request, config, executionContext);
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/projects")
@@ -2095,9 +4125,15 @@ export async function handleHostedProductRequest(
   const asr = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/asr$/u.exec(url.pathname);
   if (request.method === "POST" && asr)
     return asrHandoff(request, asr[1]!, config, executionContext);
+  const retry = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/retry$/u.exec(url.pathname);
+  if (request.method === "POST" && retry)
+    return retryProjectAttempt(request, retry[1]!, config, executionContext);
   const review = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/review$/u.exec(url.pathname);
   if (request.method === "POST" && review)
     return approveReview(request, review[1]!, config, executionContext);
+  const manifest = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/manifest$/u.exec(url.pathname);
+  if (request.method === "GET" && manifest)
+    return projectManifest(request, manifest[1]!, config, executionContext);
   const detail = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)$/u.exec(url.pathname);
   if (request.method === "GET" && detail)
     return projectDetail(request, detail[1]!, environment, config, executionContext);
