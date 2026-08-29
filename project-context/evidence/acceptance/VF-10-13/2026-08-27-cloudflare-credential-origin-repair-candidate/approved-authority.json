@@ -1,0 +1,107 @@
+{
+  "schema_version": "videoforge.v2-13-full-live-approved-authority/v1",
+  "checkpoint_range": ["V2-07", "V2-08", "V2-09", "V2-10", "V2-11", "V2-12", "V2-13"],
+  "task_id": "VF-10-13",
+  "authority_id": "v2-13-full-live-20260829-052951z-6852970d",
+  "full_live_authority_id": "e6eff3f9-f0fe-48b6-a638-56a42a0f30bd",
+  "status": "APPROVED_UNCONSUMED_PENDING_FRESH_EXECUTION_INPUTS",
+  "approved_at": "2026-08-29T05:29:51Z",
+  "expires_at": "2026-08-30T05:29:51Z",
+  "single_use": true,
+  "consumed": false,
+  "consumed_at": null,
+  "authority_record_commit": null,
+  "materialization_seed_sha256": "sha256:80d9b9e325ff095d0fc171744dabecb49c150f85200943325b17c13acaf2498a",
+  "static_release_descriptor": {
+    "path": "protected-inputs/v2-13/static-release-descriptor.json",
+    "sha256": "sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df"
+  },
+  "lineage": {
+    "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+    "proposal_sha256": "sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce",
+    "proposal_record_commit": "1ba62090c763cb4993cd5f9806e63c6629be1997",
+    "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "user_approval_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/user-approval.json",
+    "user_approval_sha256": "sha256:8238dac11edc954a56bba37885871e8cb2873cf279831903728ca8982dec3f15",
+    "authority_record_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/approved-authority.json"
+  },
+  "combined_execution_authority": {
+    "execute_authorized": true,
+    "credential_access_authorized": true,
+    "database_mutation_authorized": true,
+    "cloudflare_secret_mutation_authorized": true,
+    "deployment_authorized": true,
+    "provider_calls_authorized": true,
+    "provider_mutations_authorized": true,
+    "gpu_use_authorized": true,
+    "external_runpod_spend_authorized": true,
+    "maximum_cumulative_finite_runpod_spend_usd": 17.5,
+    "redispatch_authorized": false,
+    "new_volume_authorized": false,
+    "new_paid_retained_resource_authorized": false,
+    "recurring_plan_change_authorized": false
+  },
+  "phase_caps_usd": {
+    "mage_qualification": 4.5,
+    "soulx_qualification": 1,
+    "v2_09_short_hosted_project": 2,
+    "v2_10_operator_free_ranga_pilot": 2,
+    "v2_11_two_concurrent_owned_projects": 4,
+    "v2_12_long_output": 2,
+    "v2_13_final_two_lane_smoke": 2
+  },
+  "gpu_and_rate": {
+    "exact_offering": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "minimum_availability_at_each_mutation_boundary": "LOW-or-better",
+    "maximum_serverless_flex_rate_usd_per_gpu_hour": 1.116,
+    "fallback_allowed": false,
+    "fresh_rate_catalog_inventory_and_billing_required": true
+  },
+  "github_release_ref": {
+    "required_for_workflow_dispatch": true,
+    "exact_target_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
+    "ref_creation_authorized_by_approved_proposal": false,
+    "status": "AUTHORIZED_EXACT_SINGLE_REF_PENDING_RECONCILIATION",
+    "successor_tag_mutation_authorized": false,
+    "predecessor_terminal_state_sha256": "sha256:1dbf573b408507cbe4eecb813e0e6ec5564153f96183a3329d5fd06b5342969b",
+    "predecessor_authority_id": "v2-13-full-live-20260829-022710z-62a9ebb2",
+    "external_action_taken": false
+  },
+  "outer_orchestration": {
+    "approval_schema_validator_path": "deploy/v2-13/validate-full-live-approval.mjs",
+    "approval_schema_validator_sha256": "sha256:f434b7dcbb1c7427c04e076c7961e13860ffd4be6851aa53aa2a423812b4ca2d",
+    "orchestration_tool_path": "deploy/v2-13/full-live-orchestration-authority.mjs",
+    "orchestration_tool_sha256": "sha256:81fb706019a2255a220e23fde21ea137016139617d4357f160cc715b141b52af",
+    "full_live_executor_path": "deploy/v2-13/full-live-executor.mjs",
+    "full_live_executor_sha256": "sha256:d3c642c9a5a80a419acb6d5b6f9a842b9fa2fca40bbdb330ad141032f019bb1c",
+    "guarded_activation_path": "deploy/v2-13/guarded-activation.mjs",
+    "guarded_activation_sha256": "sha256:7522808e31aa83d92bd5d8bcdc768438ba11ce5cd69f6fd8be45e0671148fa85",
+    "consumption_record_created": false,
+    "consumption_record_sha256": null,
+    "consumption_required_before_credentials_or_external_calls": true,
+    "state_updates_require_exact_prior_state_sha256_and_exclusive_lock": true,
+    "phase_order_caps_cumulative_cap_and_no_redispatch_enforced": true
+  },
+  "retained_volume_consent": {
+    "authorized": true,
+    "retain_only_same_two_exact_volumes": true,
+    "mage_volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "soulx_volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "size_gb_each": 50,
+    "region": "EU-RO-1",
+    "combined_recurring_usd_per_month": 7,
+    "recurring_charge_separate_from_finite_cap": true,
+    "resize_move_replace_or_add_authorized": false
+  },
+  "provider_free_recording": {
+    "credentials_accessed": false,
+    "external_calls": 0,
+    "provider_mutations": 0,
+    "gpu_use": 0,
+    "runpod_spend_usd": 0,
+    "guarded_child_authority_created": false,
+    "authority_consumed": false
+  }
+}
