@@ -54,6 +54,7 @@ import {
   EXACT_WORKFLOW_START_AUTHORITY_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
   EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
+  assertDistinctV4SuccessorAuthority,
   validateFullLiveUserApproval,
 } from "../../deploy/v2-13/validate-full-live-approval.mjs";
 import { materializationSeedFixture } from "./fixtures/v2-13-materialization-seed.mjs";
@@ -507,6 +508,35 @@ function authorizeExactCleanupSafetyWork(state, { settle = true } = {}) {
       });
   }
 }
+
+test("V4 successor authority identity is distinct before outer consumption", () => {
+  const predecessor = { authority_id: "v2-13-predecessor-authority" };
+  assert.equal(
+    assertDistinctV4SuccessorAuthority(
+      "videoforge.v2-13-full-live-completion-proposal/v4",
+      "v2-13-successor-authority",
+      predecessor,
+    ),
+    true,
+  );
+  assert.throws(
+    () =>
+      assertDistinctV4SuccessorAuthority(
+        "videoforge.v2-13-full-live-completion-proposal/v4",
+        predecessor.authority_id,
+        predecessor,
+      ),
+    /SUCCESSOR_AUTHORITY_REPLAY/u,
+  );
+  assert.equal(
+    assertDistinctV4SuccessorAuthority(
+      "videoforge.v2-13-full-live-completion-proposal/v3",
+      predecessor.authority_id,
+      predecessor,
+    ),
+    true,
+  );
+});
 
 test("exact full-live approval schema binds proposal, caps, GPU, retention, and expiry", () => {
   const result = validateFullLiveUserApproval({

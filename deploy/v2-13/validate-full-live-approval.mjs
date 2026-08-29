@@ -27,6 +27,15 @@ const EXACT_PREDECESSOR_RELEASE_ATTEMPT = Object.freeze({
   tag_readback_result_sha256:
     "sha256:e2f8d0a1a471423ac43c5031f65ff052a334eb29e9b6f922f569dcd9287c43ad",
 });
+
+function assertDistinctV4SuccessorAuthority(proposalSchema, authorityId, predecessor) {
+  if (
+    proposalSchema === PROPOSAL_SCHEMA_V4 &&
+    authorityId === predecessor?.authority_id
+  )
+    fail("SUCCESSOR_AUTHORITY_REPLAY");
+  return true;
+}
 const EXPECTED_SERVERLESS_FLEX_RATE_SOURCE = Object.freeze({
   provider: "RunPod",
   product: "SERVERLESS_FLEX",
@@ -193,7 +202,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:1845fbd0c8958804338ea0f52515c32ccc0d5414d0e8ff3113fdbe9fb4d1dcbe",
+    sha256: "sha256:737c43f0610a7e5304ceb40a6a91b6eac7b72c9a11ad6b948a0ce11a1c167745",
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
@@ -1813,6 +1822,11 @@ function validateFullLiveUserApproval({
       !approval.statement.includes(EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256))
   )
     fail("STATEMENT_EXECUTION_CONTROL_OR_PREDECESSOR");
+  assertDistinctV4SuccessorAuthority(
+    proposal.schema_version,
+    approval.authority_id,
+    EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  );
   return Object.freeze({
     authorityId: approval.authority_id,
     fullLiveAuthorityId: isModern ? approval.full_live_authority_id : null,
@@ -1864,5 +1878,6 @@ export {
   EXPECTED_SERVERLESS_FLEX_RATE_SOURCE,
   EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
   EXPECTED_PHASE_CAPS,
+  assertDistinctV4SuccessorAuthority,
   validateFullLiveUserApproval,
 };

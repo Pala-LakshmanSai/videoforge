@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import {
   EXACT_PREDECESSOR_RELEASE_ATTEMPT,
   EXPECTED_PHASE_CAPS,
+  assertDistinctV4SuccessorAuthority,
   validateFullLiveUserApproval,
 } from "./validate-full-live-approval.mjs";
 import {
@@ -1117,6 +1118,11 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
   });
   const reconcilesExistingTag =
     validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4";
+  assertDistinctV4SuccessorAuthority(
+    validated.proposalSchema,
+    validated.authorityId,
+    validated.predecessorReleaseAttempt,
+  );
   if (
     authority.authority_id !== validated.authorityId ||
     authority.full_live_authority_id !== validated.fullLiveAuthorityId ||
