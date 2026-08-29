@@ -1,0 +1,75 @@
+{
+  "schema_version": "videoforge.v2-13-full-live-terminal-execution/v1",
+  "observed_at": "2026-08-29T05:43:18Z",
+  "authority_id": "v2-13-full-live-20260829-052951z-6852970d",
+  "authority_status": "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+  "reusable": false,
+  "lineage": {
+    "proposal_sha256": "sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce",
+    "proposal_record_commit": "1ba62090c763cb4993cd5f9806e63c6629be1997",
+    "authority_record_commit": "13f9a96ff62d192a892d3e7bc778d5d8c368d72d",
+    "authority_sha256": "sha256:387efb67c2494e3a4d3827832a8f6dbf362a60865b42c8dc0663ff548189d65d",
+    "approval_sha256": "sha256:8238dac11edc954a56bba37885871e8cb2873cf279831903728ca8982dec3f15",
+    "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "execution_control_commit": "62e361e15de53369910e60226f27859b5b5a7f08"
+  },
+  "terminal_state": {
+    "path": "protected-inputs/v2-13/history/v2-13-full-live-20260829-052951z-6852970d/full-live-state.json",
+    "sha256": "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9",
+    "state": "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+    "terminal": "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED",
+    "failure_boundary": "OPERATION_EXECUTION",
+    "failure_code": "FULL_LIVE_OPERATION_FAILED",
+    "no_redispatch": true
+  },
+  "completed_publication": {
+    "release_tag": "videoforge-v2-13-release-20260826-v3",
+    "release_tag_target": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "release_tag_state": "VERIFIED_EXACT_REMOTE",
+    "release_tag_mode": "PREDECESSOR_BOUND_RECONCILIATION_ONLY",
+    "tag_mutation_performed": false,
+    "approval_branch": "codex/serverless-v2-roadmap-v4",
+    "approval_branch_commit": "13f9a96ff62d192a892d3e7bc778d5d8c368d72d",
+    "approval_branch_exact_remote_readback": true,
+    "mage_workflow_run_id": "33236590768",
+    "mage_workflow_conclusion": "success",
+    "mage_image_digest": "sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a"
+  },
+  "stop": {
+    "operation": "soulx-image-workflow-dispatch",
+    "operation_state": "AUTHORIZED_ONCE_NOT_REDISPATCHABLE",
+    "dispatch_settled": false,
+    "soulx_workflow_run_found_for_release_source": false,
+    "diagnosis": "GitHub Actions workflow dispatch lookup returned HTTP 404 because avatar-primary-serverless-image.yml is absent from default branch main at 6a71c39de3aa9533bf18d70e0bc620fa0d11559e, although it exists in the immutable release source.",
+    "diagnosis_kind": "READ_ONLY_POST_TERMINAL_INFERENCE",
+    "replay_or_redispatch_authorized": false
+  },
+  "credential_and_compute_state": {
+    "database_role_credentials_created": 0,
+    "internal_production_secrets_created": 0,
+    "database_bootstrap_started": false,
+    "runpod_work_dispatched": false,
+    "gpu_use": false,
+    "attempt_reserved_usd": 0,
+    "attempt_settled_usd": 0
+  },
+  "cleanup": {
+    "zero_worker_proof_sha256": "sha256:f081f617dde44e000c152979fda1ecfd777843187afa1d5c3b950be9355e404c",
+    "billing_proof_sha256": "sha256:e661b38d789df7a19a0f1ecb04c9eeb9dcd168ad1f4f1faf46754edfab38c301",
+    "resource_reconciliation_sha256": "sha256:9ef05568f7baff1284b9268f729e9219ee659089c010517fc29f841d9b087508",
+    "max_one_restoration_sha256": "sha256:dc19fea9527a5730be0907e06405fb7aead0509d711bb998c077ba77880af1c0",
+    "stable_zero_worker_reads": 3,
+    "running_pods": 0,
+    "active_workers": 0,
+    "queued_jobs": 0,
+    "production_endpoints": 0,
+    "only_same_two_approved_volumes_retained": true,
+    "retained_volume_count": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "billing_reads_stable": true,
+    "cumulative_provider_billing_readback_usd": 2.214659276913153
+  },
+  "production_state": "DISABLED_UNQUALIFIED",
+  "next_boundary": "Provider-free repair must make the exact SoulX workflow dispatchable from the GitHub default branch, receive independent audit, reseal a new source-bound proposal, and obtain fresh exact approval. This authority cannot be replayed or extended."
+}

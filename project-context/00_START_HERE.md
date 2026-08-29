@@ -4,12 +4,21 @@
 
 ### New-chat launch point — 2026-08-28
 
-- The immutable provider-free release payload and exact lightweight tag remain bound to
-  `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. Independently audited successor execution control is
-  bound to `62e361e15de53369910e60226f27859b5b5a7f08`. Fresh sealed V4 26-operation proposal
-  `sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce` binds both commits and the
-  exact predecessor terminal attempt; its proposal-record commit remains null/pending until the
-  exact five-path commit exists, followed by independent record audit and fresh exact approval.
+- V4 proposal `sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce`
+  at proposal record `1ba62090c763cb4993cd5f9806e63c6629be1997` was approved and consumed once under
+  authority `v2-13-full-live-20260829-052951z-6852970d`. Exact tag readback and approval-branch
+  publication passed without tag mutation. Mage image workflow run `33236590768` succeeded and
+  published digest `sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a`.
+  The run then stopped closed at the one-time SoulX workflow dispatch boundary before a SoulX run
+  existed. Read-only diagnosis found the workflow file absent from GitHub default branch `main`, so
+  GitHub returned HTTP 404 even though the file exists at immutable release source `15af5e2`.
+- Cleanup is complete and the authority is terminal/non-reusable: three stable reads prove zero Pods,
+  workers, queues, endpoints, and templates; only the same two approved volumes remain; billing is
+  stable; attempt reserved and settled spend are `$0`; no database role or internal secret was
+  created. Terminal result is
+  `project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/terminal-soulx-dispatch-execution.json`;
+  protected state is archived under
+  `protected-inputs/v2-13/history/v2-13-full-live-20260829-052951z-6852970d/`.
 - Proposal `sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23`
   at record `2dd4c2056c974c7d0f2548b3c81a2bd6ddf2cf19` received exact approval, but a final
   pre-materialization probe found that its V4 approval validator still required legacy one-tag
@@ -43,9 +52,9 @@
   part of the next task. Commit `e31e275a767bd9a098f4b94c078b50136d5b998b` makes the historical
   reuse-result validator distinguish its immutable old receipt hash from the exact completed rotation
   successor/current receipt, closing the temporal-path alias without changing either historical record.
-- Production remains `DISABLED_UNQUALIFIED`. No current full-live authority, provider call,
-  credential read, GPU use, spend, database role/secret, Cloudflare Worker/Workflow, immutable
-  Mage/SoulX image, endpoint, or live acceptance exists.
+- Production remains `DISABLED_UNQUALIFIED`. The immutable Mage image exists, but no SoulX image,
+  database role/secret, Cloudflare production deployment, endpoint, GPU qualification, or live
+  acceptance exists. No current full-live authority or spend authority exists.
 - The last sealed read-only preflight proved zero temporary compute and bound the completed credential receipt,
   exact account-derived 404 HTML route, same two retained 50 GB EU-RO-1 volumes, and the official
   Serverless Flex rate of `$0.00031/second` (`$1.116/GPU-hour`) separately from the `$0.74/hour`

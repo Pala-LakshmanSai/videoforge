@@ -4,7 +4,7 @@ updated_at: "2026-08-28"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_successor_proposal_pending_fresh_exact_user_approval
+current_milestone: v2_13_soulx_default_branch_dispatch_repair
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -87,7 +87,7 @@ two_track_execution:
 provider_free_product_progress:
   full_live_execution_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
   full_live_execution_source_status: FRESH_INDEPENDENTLY_AUDITED_PROVIDER_FREE_RELEASE_SOURCE
-  full_live_execution_source_note: "Release source commit 15af5e2 is the evidence-only successor of repaired and independently audited code 062f5ce and carries the exact 26-operation V2-13 release graph plus corrected authority-derived envelope key evidence. Its canonical executor remains NO_ACTION; no provider calls, credential reads, mutations, GPU use, spend, or deployment are authorized."
+  full_live_execution_source_note: "Release source commit 15af5e2 carried the consumed 26-operation V2-13 graph. Its exact tag was reconciled without mutation and immutable Mage publication succeeded, but the single-use run stopped at SoulX workflow dispatch because that workflow is absent from GitHub default branch main. Cleanup is complete at zero attempt spend; the authority is terminal and no further provider, credential, GPU, or deployment action is authorized."
   full_live_executor_sha256: "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910"
   full_live_source_component_hashes:
     full_live_executor: "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910"
@@ -127,12 +127,23 @@ provider_free_product_progress:
   full_live_migration_0045_sha256: "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b"
   prior_v2_13_proposal_status: SUPERSEDED_UNCONSUMED_NO_MUTATION_SOURCE_LINEAGE_REPAIR_REQUIRED
   prior_v2_13_proposal_sha256: "sha256:b5bc0fe550f79230d92d1e47d5be639e094f6a73853243c15c6eaa0f92d24762"
-  fresh_v2_13_proposal_status: PENDING_FRESH_EXACT_USER_APPROVAL
+  fresh_v2_13_proposal_status: CONSUMED_TERMINAL_SOULX_WORKFLOW_DISPATCH_FAILED_CLEANUP_COMPLETE_NO_RETRY
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json"
   fresh_v2_13_proposal_sha256: "sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce"
-  fresh_v2_13_proposal_record_commit: null
-  fresh_v2_13_approval_record_materialized: false
-  fresh_v2_13_authority_materialized: false
+  fresh_v2_13_proposal_record_commit: "1ba62090c763cb4993cd5f9806e63c6629be1997"
+  fresh_v2_13_approval_record_materialized: true
+  fresh_v2_13_authority_materialized: true
+  fresh_v2_13_authority_id: v2-13-full-live-20260829-052951z-6852970d
+  fresh_v2_13_authority_record_commit: "13f9a96ff62d192a892d3e7bc778d5d8c368d72d"
+  fresh_v2_13_terminal_state_sha256: "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9"
+  fresh_v2_13_terminal_result_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/terminal-soulx-dispatch-execution.json"
+  fresh_v2_13_execution_status: CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY
+  fresh_v2_13_execution_blocker: SOULX_WORKFLOW_ABSENT_FROM_GITHUB_DEFAULT_BRANCH
+  fresh_v2_13_attempt_reserved_usd: 0
+  fresh_v2_13_attempt_settled_usd: 0
+  fresh_v2_13_database_role_credentials_created: 0
+  fresh_v2_13_internal_production_secrets_created: 0
+  fresh_v2_13_mage_image_digest: "sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a"
   prior_v2_13_full_live_execution:
     proposal_sha256: "sha256:14116dc666a9699e4569537cd01b1af5c205ec29e0ebd5b69fa33bd1e8e23e46"
     proposal_record_commit: "634c48752b72b8ed9cbe3e5f71ffd4fb4feaf70f"
@@ -4487,8 +4498,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-13
-  milestone: v2_13_successor_proposal_pending_fresh_exact_user_approval
-  status: pending_fresh_exact_user_approval
+  milestone: v2_13_soulx_default_branch_dispatch_repair
+  status: terminal_cleanup_complete_requires_provider_free_repair_and_fresh_approval
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: no_current_full_live_authority_consumed_credential_authorities_non_reusable
   task_stage: provider_free_product_execution
@@ -4497,7 +4508,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Commit and independently audit exact V4 26-operation proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce against immutable payload 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 and execution control 62e361e15de53369910e60226f27859b5b5a7f08, then request fresh exact approval before serial qualification, deployment, acceptance, drain, billing proof, and final certification."
+  goal: "Provider-free repair the SoulX workflow publication boundary so the exact workflow exists on GitHub default branch before dispatch, independently audit and reseal a new successor, then request fresh exact approval. Authority v2-13-full-live-20260829-052951z-6852970d is terminal and cannot be replayed or redispatched."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4518,7 +4529,7 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "All predecessor and credential authorities remain consumed and non-reusable. Immediate predecessor v2-13-full-live-20260829-022710z-62a9ebb2 created, pushed, and verified the exact tag at immutable payload 15af5e20ce3c80eb61d5d1e807a87e8840ed9685, then stopped at APPROVAL_BRANCH_READBACK and completed zero-compute, zero-credential, zero-deployment, zero-GPU, zero-finite-spend cleanup. Successor execution control 62e361e15de53369910e60226f27859b5b5a7f08 is independently audited. Fresh V4 proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce performs zero tag mutation and awaits its exact five-path proposal record, independent audit, and fresh approval. Facts sha256:1b09f8246046de1c94eaf993c13a08f4916f5801aa6c38d22b948a4315bee92c and descriptor self-hash sha256:62a3af33f8ecf33d5f4dcbddd827d0c8f983d34ca599b3654742e0bd89c7d4df are exact. No credential read, provider mutation, retry, replay, redispatch, GPU use, or spend is currently authorized."
+  authority_note: "Authority v2-13-full-live-20260829-052951z-6852970d consumed proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce once. Exact predecessor-bound tag reconciliation used no tag mutation; Mage image publication succeeded at digest sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a. SoulX dispatch stopped before settlement because the workflow is absent from default branch main. Cleanup proved zero compute, stable billing, only the two approved volumes, and zero attempt spend; no database credential or internal secret was created. The authority is terminal and non-reusable. No retry, replay, redispatch, credential access, provider mutation, GPU use, or spend is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce"
