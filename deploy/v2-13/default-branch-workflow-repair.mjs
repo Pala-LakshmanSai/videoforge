@@ -44,6 +44,7 @@ export const RESULT_SCHEMA = "videoforge.v2-13-default-branch-workflow-repair-re
 export const REPAIR_OPERATION_ID = "repair-default-branch-workflow-once";
 export const CONFIRMATION = "EXECUTE_V2_13_DEFAULT_BRANCH_WORKFLOW_REPAIR_ONCE";
 export const NO_ACTION_STATE = "NO_ACTION";
+export const MUTATION_INTENT_STATE = "INTENT";
 export const REGISTRATION_EVIDENCE_SCHEMA =
   "videoforge.v213-soulx-workflow-registration-evidence/v1";
 
@@ -561,6 +562,12 @@ export function verifyRepairAuthorityTrustRoot(
     lineage.authority_record_path,
     "TRUST_ROOT_AUTHORITY_RECORD_MISSING",
   );
+  let runtimeValidatorBytes;
+  try {
+    runtimeValidatorBytes = readFileSync(fileURLToPath(import.meta.url));
+  } catch {
+    fail("TRUST_ROOT_RUNTIME_VALIDATOR_READ_FAILED");
+  }
   let protectedAuthorityBytes;
   try {
     protectedAuthorityBytes = readFileSync(resolve(authorityFile));
@@ -574,6 +581,8 @@ export function verifyRepairAuthorityTrustRoot(
     Buffer.compare(authorityRecordBytes, protectedAuthorityBytes) !== 0
   )
     fail("TRUST_ROOT_BYTES_DRIFT");
+  if (Buffer.compare(runtimeValidatorBytes, validatorBytes) !== 0)
+    fail("TRUST_ROOT_RUNTIME_VALIDATOR_DRIFT");
 
   const proposal = parseTrustedJson(proposalBytes, "TRUST_ROOT_PROPOSAL_JSON_INVALID");
   const approval = parseTrustedJson(approvalBytes, "TRUST_ROOT_APPROVAL_JSON_INVALID");
@@ -597,11 +606,30 @@ export function verifyRepairAuthorityTrustRoot(
   )
     fail("TRUST_ROOT_APPROVAL_BINDING_INVALID");
 
+  const commitParents = (commit) => {
+    const tokens = gitRead(
+      runGit,
+      repositoryRoot,
+      ["rev-list", "--parents", "-n", "1", commit],
+      "TRUST_ROOT_LINEAGE_INVALID",
+    )
+      .toString("utf8")
+      .trim()
+      .split(/\s+/u)
+      .filter(Boolean);
+    if (
+      tokens.length < 2 ||
+      tokens[0] !== commit ||
+      tokens.slice(1).some((parent) => !SHA1.test(parent))
+    )
+      fail("TRUST_ROOT_LINEAGE_INVALID");
+    return tokens.slice(1);
+  };
   const changedPaths = (commit) =>
     gitRead(
       runGit,
       repositoryRoot,
-      ["diff-tree", "--no-commit-id", "--name-only", "-r", commit],
+      ["diff-tree", "--no-commit-id", "--no-ext-diff", "--no-renames", "--name-only", "-r", commit],
       "TRUST_ROOT_CHANGED_PATHS_INVALID",
     )
       .toString("utf8")
@@ -609,12 +637,29 @@ export function verifyRepairAuthorityTrustRoot(
       .split("\n")
       .filter(Boolean)
       .sort();
-  if (
-    JSON.stringify(changedPaths(lineage.approval_record_commit)) !==
-      JSON.stringify([lineage.approval_path]) ||
-    JSON.stringify(changedPaths(recordCommit)) !== JSON.stringify([lineage.authority_record_path])
-  )
-    fail("TRUST_ROOT_RECORD_COMMIT_NOT_EXCLUSIVE");
+  const recordLineage = [
+    {
+      commit: lineage.proposal_record_commit,
+      expectedParent: lineage.execution_control_commit,
+      expectedPath: lineage.proposal_path,
+    },
+    {
+      commit: lineage.approval_record_commit,
+      expectedParent: lineage.proposal_record_commit,
+      expectedPath: lineage.approval_path,
+    },
+    {
+      commit: recordCommit,
+      expectedParent: lineage.approval_record_commit,
+      expectedPath: lineage.authority_record_path,
+    },
+  ];
+  for (const { commit, expectedParent, expectedPath } of recordLineage) {
+    const parents = commitParents(commit);
+    if (parents.length !== 1 || parents[0] !== expectedParent) fail("TRUST_ROOT_LINEAGE_INVALID");
+    if (JSON.stringify(changedPaths(commit)) !== JSON.stringify([expectedPath]))
+      fail("TRUST_ROOT_RECORD_COMMIT_NOT_EXCLUSIVE");
+  }
   return { authorityRecordCommit: recordCommit };
 }
 
@@ -1049,18 +1094,20 @@ function assertSidecarPathAvailable(path, code) {
   }
 }
 
-function writeAckUnknownRecord({
+function terminalRecordValue({
   path,
   consumed,
   target,
   mechanism,
+  state = ACK_UNKNOWN_STATE,
+  mutationStarted = true,
   resultingCommitSha = null,
   priorBytesSha256 = null,
   authorityRecordCommit = null,
 }) {
   const base = {
     schema_version: RESULT_SCHEMA,
-    state: ACK_UNKNOWN_STATE,
+    state,
     mode: READBACK_ONLY_MODE,
     operation: REPAIR_OPERATION_ID,
     authority_id: consumed.authority_id,
@@ -1071,7 +1118,7 @@ function writeAckUnknownRecord({
     expected_default_branch_sha: target.default_branch_sha,
     expected_resulting_tree_sha: target.resulting.tree_sha,
     resulting_commit_sha: resultingCommitSha,
-    mutation_started: true,
+    mutation_started: mutationStarted,
     no_retry: true,
     no_replay: true,
     no_fallback: true,
@@ -1110,7 +1157,79 @@ function writeAckUnknownRecord({
     ...base,
     terminal_record_sha256: sha256(Buffer.from(`${canonicalJson(base)}\n`)),
   };
+  return { path, record };
+}
+
+function writeMutationIntentRecord({
+  path,
+  consumed,
+  target,
+  mechanism,
+  resultingCommitSha,
+  priorBytesSha256,
+  authorityRecordCommit,
+}) {
+  const { record } = terminalRecordValue({
+    path,
+    consumed,
+    target,
+    mechanism,
+    state: MUTATION_INTENT_STATE,
+    mutationStarted: false,
+    resultingCommitSha,
+    priorBytesSha256,
+    authorityRecordCommit,
+  });
   return durableJsonWrite(path, record, "TERMINAL_RECORD");
+}
+
+function writeAckUnknownRecord({
+  path,
+  consumed,
+  target,
+  mechanism,
+  resultingCommitSha = null,
+  priorBytesSha256 = null,
+  authorityRecordCommit = null,
+}) {
+  const intentResultingCommitSha =
+    mechanism.type === "PROTECTED_BRANCH" ? target.resulting.commit_sha : resultingCommitSha;
+  const { record: expectedIntent } = terminalRecordValue({
+    path,
+    consumed,
+    target,
+    mechanism,
+    state: MUTATION_INTENT_STATE,
+    mutationStarted: false,
+    resultingCommitSha: intentResultingCommitSha,
+    priorBytesSha256,
+    authorityRecordCommit,
+  });
+  const { record } = terminalRecordValue({
+    path,
+    consumed,
+    target,
+    mechanism,
+    state: ACK_UNKNOWN_STATE,
+    mutationStarted: true,
+    resultingCommitSha,
+    priorBytesSha256,
+    authorityRecordCommit,
+  });
+  let current;
+  try {
+    current = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    fail("TERMINAL_INTENT_MISSING");
+  }
+  if (
+    !isObject(current) ||
+    current.state !== MUTATION_INTENT_STATE ||
+    canonicalJson(current) !== canonicalJson(expectedIntent)
+  )
+    fail("TERMINAL_INTENT_DRIFT");
+  replaceDurably(path, Buffer.from(`${JSON.stringify(record, null, 2)}\n`), "TERMINAL_RECORD");
+  return sha256(Buffer.from(`${JSON.stringify(record, null, 2)}\n`));
 }
 
 function targetEndpoint(target, commitSha = target.resulting.commit_sha) {
@@ -1543,6 +1662,21 @@ export async function executeDefaultBranchWorkflowRepair({
     }
     assertAuthorityTimeWindow(candidate, new Date(secondTrustedRecord.iso));
 
+    // Persist the one-shot mutation intent before entering PATCH/PUT. A hard
+    // process crash can occur after the provider accepts the request but before
+    // JavaScript receives a response; the durable intent is then the only legal
+    // restart anchor. Reconciliation consumes no authority and never replays
+    // this mutation.
+    writeMutationIntentRecord({
+      path: terminalPath,
+      consumed,
+      target,
+      mechanism: consumed.mechanism,
+      resultingCommitSha,
+      priorBytesSha256: consumedInfo.priorBytesSha256,
+      authorityRecordCommit: trustedAuthorityRecordCommit,
+    });
+
     let mutationResponse;
     if (consumed.mechanism.type === "FAST_FORWARD") {
       mutationStarted = true;
@@ -1735,9 +1869,9 @@ export async function reconcileDefaultBranchWorkflowRepair({
       "terminal_record_sha256",
     ]) ||
     record.schema_version !== RESULT_SCHEMA ||
-    record.state !== ACK_UNKNOWN_STATE ||
+    ![ACK_UNKNOWN_STATE, MUTATION_INTENT_STATE].includes(record.state) ||
     record.mode !== READBACK_ONLY_MODE ||
-    record.mutation_started !== true ||
+    record.mutation_started !== (record.state === ACK_UNKNOWN_STATE) ||
     record.no_retry !== true ||
     record.no_replay !== true ||
     record.no_fallback !== true ||
@@ -1783,29 +1917,36 @@ export async function reconcileDefaultBranchWorkflowRepair({
     return runCommand(...args);
   };
   let resultingCommitSha = target.resulting.commit_sha;
+  // Every intent/ACK_UNKNOWN restart begins with a fresh, readback-only ref
+  // observation. The base SHA is an unresolved outcome, never permission to
+  // replay the consumed PATCH/PUT. A fast-forward that landed on any other
+  // commit is drift; a protected merge binds its dynamic result to this ref.
+  const repository = await runJson(
+    countedRunCommand,
+    [apiPath(target.repository, "")],
+    "RECONCILIATION_REPOSITORY",
+  );
+  assertRepositoryReadback(repository, target);
+  const ref = await runJson(
+    countedRunCommand,
+    [apiPath(target.repository, `git/ref/heads/${target.default_branch_name}`)],
+    "RECONCILIATION_DEFAULT_BRANCH",
+  );
+  if (
+    !isObject(ref) ||
+    ref.ref !== `refs/heads/${target.default_branch_name}` ||
+    ref.object?.type !== "commit" ||
+    !SHA1.test(ref.object?.sha ?? "")
+  )
+    fail("RECONCILIATION_RESULT_UNRESOLVED");
+  if (ref.object.sha === target.default_branch_sha) fail("RECONCILIATION_RESULT_UNRESOLVED");
+  if (mechanism.type === "FAST_FORWARD" && ref.object.sha !== resultingCommitSha)
+    fail("RECONCILIATION_RESULT_DRIFT");
   if (!SHA1.test(resultingCommitSha ?? "")) {
     if (mechanism.type !== "PROTECTED_BRANCH") fail("TERMINAL_RECORD_COMMIT_UNBOUND");
     // If the merge response itself was lost, bind the unknown result to the
-    // observed default-branch ref.  This is readback only; the base SHA is an
+    // observed default-branch ref. This is readback only; the base SHA is an
     // unresolved outcome, never a reason to retry the merge.
-    const repository = await runJson(
-      countedRunCommand,
-      [apiPath(target.repository, "")],
-      "RECONCILIATION_REPOSITORY",
-    );
-    assertRepositoryReadback(repository, target);
-    const ref = await runJson(
-      countedRunCommand,
-      [apiPath(target.repository, `git/ref/heads/${target.default_branch_name}`)],
-      "RECONCILIATION_DEFAULT_BRANCH",
-    );
-    if (
-      !isObject(ref) ||
-      ref.ref !== `refs/heads/${target.default_branch_name}` ||
-      ref.object?.type !== "commit" ||
-      ref.object?.sha === target.default_branch_sha
-    )
-      fail("RECONCILIATION_RESULT_UNRESOLVED");
     resultingCommitSha = ref.object.sha;
   }
   const final = await readFinalRemoteState({

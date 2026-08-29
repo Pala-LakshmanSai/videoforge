@@ -61,7 +61,13 @@ test("cleanup receipt intent durably distinguishes no attempt from ACK_UNKNOWN",
     assert.match(claim, new RegExp(operation, "u"));
   assert.match(claim, /'intentState','NO_ATTEMPT'/u);
   assert.match(claim, /'intentState','ACK_UNKNOWN'/u);
-  assert.match(claim, /cleanup receipt intent replay drift/u);
+  assert.match(claim, /Return it before inspecting the fresh document at all/u);
+  assert.doesNotMatch(claim, /cleanup receipt intent replay drift/u);
+  assert.ok(
+    claim.indexOf("SELECT * INTO existing FROM public.hosted_full_live_cleanup_receipt_intents") <
+      claim.indexOf("IF jsonb_typeof(document)"),
+    "existing intent must be returned before validating fresh provider evidence/document",
+  );
   assert.doesNotMatch(claim, /hosted_full_live_materialization_challenges/u);
   assert.match(claim, /hosted_full_live_authorities/u);
   assert.match(claim, /videoforge_v213_jit_sha256\(document->'summary'\)/u);

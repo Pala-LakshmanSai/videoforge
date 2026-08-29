@@ -18,6 +18,7 @@ import test from "node:test";
 
 import {
   AUTHORITY_SCHEMA,
+  MUTATION_INTENT_STATE,
   REGISTRATION_EVIDENCE_SCHEMA,
   RESULT_SCHEMA,
   VALIDATION_SCHEMA,
@@ -354,7 +355,9 @@ test("external Git trust root binds exact proposal approval validator bytes and 
     writeFileSync(join(repository, "release.txt"), "release\n");
     const releaseCommit = commit("release");
 
-    const validatorBytes = Buffer.from("export const validator = true;\n");
+    // The trust-root verifier must execute the exact validator bytes it
+    // authenticated from the immutable commit, not merely a same-shaped API.
+    const validatorBytes = readFileSync(script);
     writeFileSync(
       join(repository, "deploy/v2-13/default-branch-workflow-repair.mjs"),
       validatorBytes,
@@ -440,6 +443,50 @@ test("external Git trust root binds exact proposal approval validator bytes and 
         runGit,
       }),
       { authorityRecordCommit },
+    );
+
+    // The proposal, approval, and authority records are each an exact
+    // one-parent/one-path commit. A direct child of the approval commit that
+    // adds an unrelated path must not be accepted as an authority record.
+    git("checkout", "-q", approvalCommit);
+    writeFileSync(join(repository, "authority-record.json"), authorityBytes);
+    writeFileSync(join(repository, "unrelated.txt"), "unrelated\n");
+    git("add", "authority-record.json", "unrelated.txt");
+    git("commit", "-q", "-m", "authority record with unrelated path");
+    const extraPathAuthorityCommit = git("rev-parse", "HEAD");
+    writeFileSync(authorityFile, authorityBytes, { mode: 0o600 });
+    assert.throws(
+      () =>
+        verifyRepairAuthorityTrustRoot(fixture.authority, {
+          authorityFile,
+          authorityRecordCommit: extraPathAuthorityCommit,
+          root: repository,
+          runGit,
+        }),
+      /TRUST_ROOT_RECORD_COMMIT_NOT_EXCLUSIVE/u,
+    );
+
+    // A merge commit can expose the expected bytes while hiding an unrelated
+    // parent. Its first-parent-looking ancestry is not sufficient authority.
+    git("checkout", "-q", approvalCommit);
+    git("checkout", "-q", "-b", "repair-merge-side");
+    writeFileSync(join(repository, "authority-record.json"), authorityBytes);
+    git("add", "authority-record.json");
+    git("commit", "-q", "-m", "authority record side");
+    const mergeSideCommit = git("rev-parse", "HEAD");
+    git("checkout", "-q", approvalCommit);
+    git("merge", "--no-ff", "-q", mergeSideCommit, "-m", "authority record merge");
+    const mergeAuthorityCommit = git("rev-parse", "HEAD");
+    writeFileSync(authorityFile, authorityBytes, { mode: 0o600 });
+    assert.throws(
+      () =>
+        verifyRepairAuthorityTrustRoot(fixture.authority, {
+          authorityFile,
+          authorityRecordCommit: mergeAuthorityCommit,
+          root: repository,
+          runGit,
+        }),
+      /TRUST_ROOT_LINEAGE_INVALID/u,
     );
 
     const forged = structuredClone(fixture.authority);
@@ -1046,6 +1093,48 @@ test("post-mutation failures persist opaque ACK_UNKNOWN and reconcile without mu
     durableReconciliation.reconciliation_record_sha256,
     sha256(Buffer.from(`${canonicalJson(unsignedReconciliation)}\n`)),
   );
+  assert.equal(
+    fixture.state.calls.some((call) => call.args.includes("PATCH") || call.args.includes("PUT")),
+    false,
+  );
+});
+
+test("mutation intent is durable before PATCH and an intent restart reconciles without replay", async () => {
+  const fixture = makeFixture({ id: "intentrestart0001" });
+  const lostRunner = async (command, args) => {
+    if (args.includes("PATCH")) {
+      const intent = JSON.parse(readFileSync(fixture.terminalRecordFile, "utf8"));
+      assert.equal(intent.state, MUTATION_INTENT_STATE);
+      assert.equal(intent.mutation_started, false);
+      // The provider accepted the request, but the process loses its ACK.
+      fixture.state.mutated = true;
+      throw new Error("simulated process crash after mutation intent");
+    }
+    return fixture.runner(command, args);
+  };
+  await assert.rejects(
+    executeFixture(fixture, { runCommand: lostRunner }),
+    /ACK_UNKNOWN_READBACK_ONLY_NO_REPLAY/u,
+  );
+
+  // Model a hard process exit after the durable INTENT write: the restart sees
+  // only the intent, while the authority remains consumed and the branch has
+  // already advanced. Reconciliation must be read-only and must not PATCH/PUT.
+  const acknowledged = JSON.parse(readFileSync(fixture.terminalRecordFile, "utf8"));
+  const intent = { ...acknowledged, state: MUTATION_INTENT_STATE, mutation_started: false };
+  delete intent.terminal_record_sha256;
+  intent.terminal_record_sha256 = sha256(Buffer.from(`${canonicalJson(intent)}\n`));
+  writeFileSync(fixture.terminalRecordFile, `${JSON.stringify(intent, null, 2)}\n`, {
+    mode: 0o600,
+  });
+  fixture.state.calls.length = 0;
+
+  const reconciled = await reconcileDefaultBranchWorkflowRepair({
+    terminalRecordFile: fixture.terminalRecordFile,
+    runCommand: fixture.runner,
+  });
+  assert.equal(reconciled.state, "RECONCILIATION_CONFIRMED");
+  assert.equal(reconciled.mutations, 0);
   assert.equal(
     fixture.state.calls.some((call) => call.args.includes("PATCH") || call.args.includes("PUT")),
     false,

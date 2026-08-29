@@ -182,15 +182,15 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:16b127071ff70590fa577837db32b364f7c224fca48456e8f7bb9924272a7cba",
+    sha256: "sha256:711d9fd5b99bb4e3278c85d22265a2cbae845bfa17bbd34ee1fad2c653076cab",
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:b2e4decce3a69faa9abc517f0c8777a492e90f3f06b081971af01fb4132ffc46",
+    sha256: "sha256:1ad3b725ef7204e3310383ccb52b9ce526e66313ee50c2e045200b6aadf4d805",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:a1cf8ece7ffad213550c79db246eb4e3b187928ff38273cbce4a3c0e87b6689d",
+    sha256: "sha256:f760505d3fdabfe8540cfc836304d70e4da8a1c76516474ffffbdef14cc4b0b3",
   }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
@@ -198,11 +198,11 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:484e4ab87d9b7ff7998300b466c2f38c7ddf30bcfddbeb87c78510e9ac1db653",
+    sha256: "sha256:133a5ab3a205e8f117ae43baef5e5b9916d82345d5d2281b4be24953317aeba5",
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:2da9f49b28adb6d46cbd2594eef59a22080b386d60672a82c98049b1ef941809",
+    sha256: "sha256:8fad8a4356513caa1d9540c6b3166add91d84887f36f3e4a6fb4bb2e95436532",
   }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({
@@ -649,7 +649,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
     "no-table-acl",
     "exact-operator-function-acl",
   ]),
-  exact_operator_function_signature_count: 44,
+  exact_operator_function_signature_count: 45,
   exact_operator_function_signature_namespace: "public",
   exact_operator_function_signature_canonicalization:
     "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
@@ -820,6 +820,7 @@ const EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY = Object.freeze({
   }),
   exact_operator_function_signatures: Object.freeze([
     "videoforge_claim_v213_bridge_command(jsonb)",
+    "videoforge_claim_v213_cleanup_bridge_command(jsonb)",
     "videoforge_claim_v213_cleanup_receipt_intent(jsonb)",
     "videoforge_claim_v213_operation(jsonb)",
     "videoforge_claim_v213_qualification_materialization(jsonb)",

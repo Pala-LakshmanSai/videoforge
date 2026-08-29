@@ -19,6 +19,8 @@ import {
   authorizeCleanupWork,
   authorizeReleaseCertification,
   authorizeWork,
+  acquireExecutionLease,
+  assertExecutionLease,
   beginPhase,
   completeCleanupOnly,
   completePhase,
@@ -27,6 +29,7 @@ import {
   recordCleanupProof,
   recordSettledResult,
   recordVerifiedReleaseRef,
+  releaseExecutionLease,
   settleWork,
   settleCleanupWork,
   settleReleaseCertification,
@@ -101,23 +104,23 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:16b127071ff70590fa577837db32b364f7c224fca48456e8f7bb9924272a7cba",
+    "sha256:711d9fd5b99bb4e3278c85d22265a2cbae845bfa17bbd34ee1fad2c653076cab",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:a1cf8ece7ffad213550c79db246eb4e3b187928ff38273cbce4a3c0e87b6689d",
+    "sha256:f760505d3fdabfe8540cfc836304d70e4da8a1c76516474ffffbdef14cc4b0b3",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:9f844e9b03adb4db2a3ff9200f1fb8faabc2ce5907fa95af98a2ba061d042a71",
+    "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
     "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b",
   "deploy/v2-13/neon-full-live-operator-grants.sql":
-    "sha256:c0f5e521dba2478001db24027ef48f4f01ec3888bf4885eef862f4d8b214b613",
+    "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5",
   "packages/control-plane/migrations/manifest.json":
-    "sha256:9dfcc91da2ea46a7dfa0e299a92616a5b6f6255bf20efc0d1cf457fdfe78fac3",
+    "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:2da9f49b28adb6d46cbd2594eef59a22080b386d60672a82c98049b1ef941809",
+    "sha256:8fad8a4356513caa1d9540c6b3166add91d84887f36f3e4a6fb4bb2e95436532",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -1428,14 +1431,15 @@ export function assertResult(
   return result;
 }
 
-function stateMutation(statePath, currentSha256, operation) {
-  const updated = updateState(statePath, currentSha256, operation);
+function stateMutationRaw(statePath, currentSha256, operation, executionLease = null) {
+  const updated = updateState(statePath, currentSha256, operation, executionLease);
   return { state: updated.state, sha256: updated.sha256 };
 }
 
 async function executeFullLive({
   statePath,
   expectedStateSha256,
+  executionLeasePath,
   runOperation,
   runCleanupOperation,
   runEarlyCleanupOperation,
@@ -1481,108 +1485,78 @@ async function executeFullLive({
     typeof verifyPrequalificationReceipt !== "function"
   )
     fail("PREQUALIFICATION_RECEIPT_VERIFIER_CONTRACT");
-  let current = { state: null, sha256: expectedStateSha256 };
-  const results = new Map();
-  // A settled bootstrap receipt is the durable boundary proving the operator role/ACL.  Do not
-  // infer that boundary from whether the initial preflight happened: bootstrap can fail after
-  // preflight, and a restarted process must derive it from settled work only.
-  let operatorRoleVerified = false;
-  const first = OPERATIONS[0];
-  if (!first) fail("EMPTY_GRAPH");
-  current = stateMutation(statePath, current.sha256, (state) => {
-    validateState(state);
-    if (
-      state.full_live_executor_path !== EXECUTOR_PATH ||
-      state.full_live_executor_sha256 !== EXECUTOR_SHA256
-    )
-      fail("EXECUTOR_SOURCE_DRIFT");
-    return state;
+  const executionLease = acquireExecutionLease({
+    statePath,
+    leasePath: executionLeasePath,
+    expectedStateSha256,
   });
-  operatorRoleVerified = current.state.operator_role_verified === true;
-  if (
-    [
-      "CONSUMED_SINGLE_EXECUTION_COMPLETE",
-      "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
-    ].includes(current.state.state)
-  )
-    fail("NOT_IN_PROGRESS");
-
-  let failureBoundary = FAILURE_BOUNDARIES.initialStaticReleaseDescriptor;
-  const enterFailureCleanup = (error, fallbackCode) => {
-    const boundary = FAILURE_BOUNDARY.test(failureBoundary)
-      ? failureBoundary
-      : "UNCLASSIFIED_FAILURE_BOUNDARY";
-    const code = boundedFailureCode(error, fallbackCode);
-    current = stateMutation(statePath, current.sha256, (state) =>
-      enterCleanupOnly(state, {
-        failureBoundary: boundary,
-        failureCode: code,
-        eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
-      }),
-    );
-    results.set("failure", {
-      failure_boundary: boundary,
-      failure_code: code,
-    });
-  };
-  let cancellationRecord = null;
-  const operationCancellation = new AbortController();
-  const requestOperationCancellation = () => {
-    if (!operationCancellation.signal.aborted)
-      operationCancellation.abort(new Error("V2_13_FULL_LIVE_EXECUTOR_CANCELLATION_REQUESTED"));
-  };
-  cancellationSignal?.addEventListener("abort", requestOperationCancellation, { once: true });
-  if (cancellationSignal?.aborted === true) requestOperationCancellation();
-  const checkCancellation = () => {
-    if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
-      const requested =
-        operationCancellation.signal.aborted === true ||
-        cancellationSignal?.aborted === true ||
-        isCancelled(structuredClone(current.state));
-      if (!requested) return;
-      requestOperationCancellation();
-      failureBoundary = FAILURE_BOUNDARIES.cancellation;
-      cancellationRecord ??= recordCancellation(structuredClone(current.state));
+  try {
+    const stateMutation = (path, currentSha256, operation) =>
+      stateMutationRaw(path, currentSha256, operation, executionLease);
+    let current = { state: null, sha256: expectedStateSha256 };
+    const results = new Map();
+    // A settled bootstrap receipt is the durable boundary proving the operator role/ACL.  Do not
+    // infer that boundary from whether the initial preflight happened: bootstrap can fail after
+    // preflight, and a restarted process must derive it from settled work only.
+    let operatorRoleVerified = false;
+    const first = OPERATIONS[0];
+    if (!first) fail("EMPTY_GRAPH");
+    current = stateMutation(statePath, current.sha256, (state) => {
+      validateState(state);
       if (
-        cancellationRecord !== null &&
-        cancellationRecord !== undefined &&
-        (!HASH.test(cancellationRecord.recordSha256 ?? "") ||
-          cancellationRecord.authorityId !== current.state.authority_id ||
-          cancellationRecord.fullLiveAuthorityId !== current.state.full_live_authority_id)
+        state.full_live_executor_path !== EXECUTOR_PATH ||
+        state.full_live_executor_sha256 !== EXECUTOR_SHA256
       )
-        fail("CANCELLATION_RECORD_BINDING");
-      fail("CANCELLATION_REQUESTED");
-    }
-  };
-  const awaitCancellable = async (operation) => {
-    checkCancellation();
-    const pending = Promise.resolve().then(operation);
-    let polledError = null;
-    const poll = setInterval(() => {
-      if (polledError !== null) return;
-      try {
-        checkCancellation();
-      } catch (error) {
-        polledError = error;
+        fail("EXECUTOR_SOURCE_DRIFT");
+      return state;
+    });
+    operatorRoleVerified = current.state.operator_role_verified === true;
+    if (
+      [
+        "CONSUMED_SINGLE_EXECUTION_COMPLETE",
+        "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+      ].includes(current.state.state)
+    )
+      fail("NOT_IN_PROGRESS");
+
+    let failureBoundary = FAILURE_BOUNDARIES.initialStaticReleaseDescriptor;
+    const enterFailureCleanup = (error, fallbackCode) => {
+      const boundary = FAILURE_BOUNDARY.test(failureBoundary)
+        ? failureBoundary
+        : "UNCLASSIFIED_FAILURE_BOUNDARY";
+      const code = boundedFailureCode(error, fallbackCode);
+      current = stateMutation(statePath, current.sha256, (state) =>
+        enterCleanupOnly(state, {
+          failureBoundary: boundary,
+          failureCode: code,
+          eventId: eventId(state.authority_id, "cleanup-entry", "failed"),
+        }),
+      );
+      results.set("failure", {
+        failure_boundary: boundary,
+        failure_code: code,
+      });
+    };
+    let cancellationRecord = null;
+    const operationCancellation = new AbortController();
+    const requestOperationCancellation = () => {
+      if (!operationCancellation.signal.aborted)
+        operationCancellation.abort(new Error("V2_13_FULL_LIVE_EXECUTOR_CANCELLATION_REQUESTED"));
+    };
+    cancellationSignal?.addEventListener("abort", requestOperationCancellation, { once: true });
+    if (cancellationSignal?.aborted === true) requestOperationCancellation();
+    const checkCancellation = () => {
+      // The whole-execution lease is checked at every cooperative boundary, including the poll
+      // running while an adapter is in flight.  A stale takeover must never allow the old process
+      // to continue into settlement or cleanup after its ownership has been lost.
+      assertExecutionLease(executionLease);
+      if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
+        const requested =
+          operationCancellation.signal.aborted === true ||
+          cancellationSignal?.aborted === true ||
+          isCancelled(structuredClone(current.state));
+        if (!requested) return;
         requestOperationCancellation();
-      }
-    }, 25);
-    try {
-      // The shared signal gives cooperative adapters and child-process wrappers an immediate abort
-      // request.  Never race past `pending`, though: cleanup must not overlap an adapter that is
-      // still capable of provider or database effects.  Once it settles, the cancellation check
-      // discards any normal result and moves the durable state to cleanup-only.
-      const value = await pending;
-      if (polledError !== null) throw polledError;
-      checkCancellation();
-      return value;
-    } catch (error) {
-      // Cancellation outranks an abort-shaped child error, but only after that child has actually
-      // terminated and its promise has settled.
-      if (
-        current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
-        (operationCancellation.signal.aborted === true || cancellationSignal?.aborted === true)
-      ) {
         failureBoundary = FAILURE_BOUNDARIES.cancellation;
         cancellationRecord ??= recordCancellation(structuredClone(current.state));
         if (
@@ -1595,768 +1569,824 @@ async function executeFullLive({
           fail("CANCELLATION_RECORD_BINDING");
         fail("CANCELLATION_REQUESTED");
       }
+    };
+    const awaitCancellable = async (operation) => {
       checkCancellation();
-      throw error;
-    } finally {
-      clearInterval(poll);
-    }
-  };
-  const normalCancellationContext = () =>
-    Object.freeze({
-      cancellationSignal: operationCancellation.signal,
-      cancellationCheck: checkCancellation,
-      cancellationRecordSha256: cancellationRecord?.recordSha256 ?? null,
-    });
-
-  const verifySeed = async (context = {}) => {
-    const staticBoundary = context.localCertification
-      ? FAILURE_BOUNDARIES.certificationStaticReleaseDescriptor
-      : context.operationId
-        ? FAILURE_BOUNDARIES.operationStaticReleaseDescriptor
-        : FAILURE_BOUNDARIES.initialStaticReleaseDescriptor;
-    const seedBoundary = context.localCertification
-      ? FAILURE_BOUNDARIES.certificationMaterializationSeed
-      : context.operationId
-        ? FAILURE_BOUNDARIES.operationMaterializationSeed
-        : FAILURE_BOUNDARIES.initialMaterializationSeed;
-    failureBoundary = staticBoundary;
-    const descriptor = await awaitCancellable(() =>
-      verifyStaticReleaseDescriptor(
-        structuredClone(current.state),
-        current.sha256,
-        structuredClone(context),
-      ),
-    );
-    if (descriptor === false)
-      fail("STATIC_RELEASE_DESCRIPTOR_VERIFICATION", context.operationId ?? "");
-    failureBoundary = seedBoundary;
-    const result = await awaitCancellable(() =>
-      verifyMaterializationSeed(
-        structuredClone(current.state),
-        current.sha256,
-        structuredClone(context),
-      ),
-    );
-    if (result === false) fail("MATERIALIZATION_SEED_VERIFICATION", context.operationId ?? "");
-  };
-  if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") {
-    try {
-      checkCancellation();
-      await verifySeed({
-        restart: current.state.current_phase_index > 0,
-        recovery: false,
-      });
-    } catch (error) {
-      if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") throw error;
-      enterFailureCleanup(error, "FULL_LIVE_OPERATION_FAILED");
-    }
-  }
-
-  const begin = (phase) => {
-    current = stateMutation(statePath, current.sha256, (state) => beginPhase(state, phase));
-  };
-  const complete = (phase) => {
-    current = stateMutation(statePath, current.sha256, (state) => completePhase(state, phase));
-  };
-
-  const workIdFor = (operation, state = current.state) =>
-    `${state.authority_id}:${operation.id}`.toLowerCase();
-  const workFor = (operation, state = current.state) =>
-    state.phases[operation.phase]?.work?.[workIdFor(operation, state)];
-  const isSettled = (operation, state = current.state) =>
-    workFor(operation, state)?.state === "SETTLED_TERMINAL";
-
-  const durableResult = (value) => {
-    if (value === null || typeof value !== "object" || Array.isArray(value))
-      fail("RESULT_CONTRACT");
-    try {
-      const parsed = JSON.parse(JSON.stringify(value));
-      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
-        fail("RESULT_CONTRACT");
-      return parsed;
-    } catch {
-      fail("RESULT_NOT_SERIALIZABLE");
-    }
-  };
-
-  const checkTrustedTime = async (boundary = FAILURE_BOUNDARIES.preOperationTrustedTime) => {
-    checkCancellation();
-    failureBoundary = boundary;
-    const trustedIso = await awaitCancellable(() => trustedTime(structuredClone(current.state)));
-    checkCancellation();
-    const trustedMs = Date.parse(trustedIso ?? "");
-    if (
-      Number.isNaN(trustedMs) ||
-      trustedMs < Date.parse(current.state.approved_at) ||
-      trustedMs > Date.parse(current.state.expires_at)
-    )
-      fail("TRUSTED_TIME_EXPIRED_OR_FORGED");
-    return new Date(trustedMs).toISOString();
-  };
-
-  let earlyCleanupFailure = false;
-
-  const verifyChainAtBoundary = async (operation, boundary) => {
-    if (chainVerifier === undefined) return;
-    await awaitCancellable(() =>
-      chainVerifier(structuredClone(current.state), new Map(results), {
-        operation: structuredClone(operation),
-        boundary,
-        outerStateSha256: current.sha256,
-        settledResultSha256:
-          current.state.phases[operation.phase]?.work?.[workIdFor(operation)]
-            ?.settled_result_sha256,
-        earlyFailure:
-          current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
-          canUseEarlyCleanup(current.state),
-      }),
-    );
-  };
-
-  // Rebuild the in-memory predecessor map in graph order before any resumed adapter is called.
-  // Settled work is terminal: a missing durable result is a hard stop, never a reason to invoke
-  // the adapter again. A deployment may provide a separate read-only result store for states
-  // written by an older executor that did not embed the result, but it must return the exact
-  // operation result and is persisted back through the state CAS below.
-  const hydrateSettledResults = async () => {
-    for (const operation of OPERATIONS) {
-      checkCancellation();
-      const existing = workFor(operation);
-      if (existing?.state !== "SETTLED_TERMINAL") continue;
-      failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
-      let prior = existing.settled_result;
-      if (prior === undefined && loadSettledResult !== undefined) {
-        prior = await awaitCancellable(() =>
-          loadSettledResult({
-            operation: structuredClone(operation),
-            state: structuredClone(current.state),
-            workId: workIdFor(operation),
-            work: structuredClone(existing),
-            outerStateSha256: current.sha256,
-          }),
-        );
+      const pending = Promise.resolve().then(operation);
+      let polledError = null;
+      const poll = setInterval(() => {
+        if (polledError !== null) return;
+        try {
+          checkCancellation();
+        } catch (error) {
+          polledError = error;
+          requestOperationCancellation();
+        }
+      }, 25);
+      try {
+        // The shared signal gives cooperative adapters and child-process wrappers an immediate abort
+        // request.  Never race past `pending`, though: cleanup must not overlap an adapter that is
+        // still capable of provider or database effects.  Once it settles, the cancellation check
+        // discards any normal result and moves the durable state to cleanup-only.
+        const value = await pending;
+        if (polledError !== null) throw polledError;
         checkCancellation();
-        prior = durableResult(prior);
-        const loaded = assertResult(operation, prior, current.state, results);
-        current = stateMutation(statePath, current.sha256, (state) =>
-          recordSettledResult(state, {
-            phaseName: operation.phase,
-            workId: workIdFor(operation),
-            result: loaded,
-          }),
-        );
-        prior = loaded;
+        return value;
+      } catch (error) {
+        // Cancellation outranks an abort-shaped child error, but only after that child has actually
+        // terminated and its promise has settled.
+        if (
+          current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
+          (operationCancellation.signal.aborted === true || cancellationSignal?.aborted === true)
+        ) {
+          failureBoundary = FAILURE_BOUNDARIES.cancellation;
+          cancellationRecord ??= recordCancellation(structuredClone(current.state));
+          if (
+            cancellationRecord !== null &&
+            cancellationRecord !== undefined &&
+            (!HASH.test(cancellationRecord.recordSha256 ?? "") ||
+              cancellationRecord.authorityId !== current.state.authority_id ||
+              cancellationRecord.fullLiveAuthorityId !== current.state.full_live_authority_id)
+          )
+            fail("CANCELLATION_RECORD_BINDING");
+          fail("CANCELLATION_REQUESTED");
+        }
+        checkCancellation();
+        throw error;
+      } finally {
+        clearInterval(poll);
       }
-      if (prior === undefined) fail("SETTLED_RESULT_UNAVAILABLE", operation.id);
-      const result = assertResult(operation, durableResult(prior), current.state, results);
-      if (
-        operation.id === "bootstrap-prequalification-database" &&
-        current.state.operator_role_verified !== true
-      ) {
-        current = stateMutation(statePath, current.sha256, (state) =>
-          recordSettledResult(state, {
-            phaseName: operation.phase,
-            workId: workIdFor(operation),
-            result,
-          }),
-        );
-      }
-      results.set(operation.id, result);
-      operatorRoleVerified = current.state.operator_role_verified === true;
-      failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
-      await verifyChainAtBoundary(operation, "hydrated");
-    }
-  };
-
-  const runOne = async (operation) => {
-    checkCancellation();
-    const workId = workIdFor(operation);
-    const existing = workFor(operation);
-    const cleanupSafetyRecovery =
-      current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
-      CLEANUP_SAFETY_OPERATION_IDS.has(operation.id);
-    // A missing or drifted protected seed is itself a cleanup trigger. Once the durable state is
-    // cleanup-only, do not let the same failed normal-input verifier prevent the four closed
-    // safety operations from draining and proving provider state. Their adapters have separate
-    // cleanup-only contracts and may not resume normal or paid work.
-    if (!cleanupSafetyRecovery)
-      await verifySeed({
-        operationId: operation.id,
-        resumed: existing !== undefined,
-        recovery: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+    };
+    const normalCancellationContext = () =>
+      Object.freeze({
+        cancellationSignal: operationCancellation.signal,
+        cancellationCheck: checkCancellation,
+        cancellationRecordSha256: cancellationRecord?.recordSha256 ?? null,
       });
-    checkCancellation();
-    if (existing?.state === "SETTLED_TERMINAL") {
-      failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
-      let prior = results.get(operation.id) ?? existing.settled_result;
-      if (prior === undefined && loadSettledResult !== undefined) {
-        prior = await awaitCancellable(() =>
-          loadSettledResult({
-            operation: structuredClone(operation),
-            state: structuredClone(current.state),
-            workId,
-            work: structuredClone(existing),
-            outerStateSha256: current.sha256,
-          }),
-        );
-        prior = durableResult(prior);
-        const loaded = assertResult(operation, prior, current.state, results);
-        current = stateMutation(statePath, current.sha256, (state) =>
-          recordSettledResult(state, { phaseName: operation.phase, workId, result: loaded }),
-        );
-        prior = loaded;
-      }
-      if (prior === undefined) fail("SETTLED_RESULT_UNAVAILABLE", operation.id);
-      const result = assertResult(operation, durableResult(prior), current.state, results);
-      if (
-        operation.id === "bootstrap-prequalification-database" &&
-        current.state.operator_role_verified !== true
-      ) {
-        current = stateMutation(statePath, current.sha256, (state) =>
-          recordSettledResult(state, { phaseName: operation.phase, workId, result }),
-        );
-      }
-      results.set(operation.id, result);
-      operatorRoleVerified = current.state.operator_role_verified === true;
-      failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
-      await verifyChainAtBoundary(operation, "settled");
-      return result;
-    }
-    if (existing?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE") {
-      if (
-        operation.id === "bootstrap-prequalification-database" &&
-        current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS"
-      ) {
-        const authorizedOuterStateSha256 = current.sha256;
-        failureBoundary = FAILURE_BOUNDARIES.bootstrapReconciliation;
-        const raw = await awaitCancellable(() =>
-          runOperation(
-            operation,
-            structuredClone(current.state),
-            new Map(results),
-            authorizedOuterStateSha256,
-            {
-              operationId: operation.id,
-              cleanupOnly: false,
-              earlyFailure: false,
-              endpointFree: false,
-              operatorRoleVerified: false,
-              resumed: true,
-              authorizedUnsettled: true,
-              reconciliationOnly: true,
-              providerDispatchForbidden: true,
-              ...normalCancellationContext(),
-            },
-          ),
-        );
-        failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
-        const result = assertResult(operation, durableResult(raw), current.state, results, {
-          authorizedOuterStateSha256,
+
+    const verifySeed = async (context = {}) => {
+      const staticBoundary = context.localCertification
+        ? FAILURE_BOUNDARIES.certificationStaticReleaseDescriptor
+        : context.operationId
+          ? FAILURE_BOUNDARIES.operationStaticReleaseDescriptor
+          : FAILURE_BOUNDARIES.initialStaticReleaseDescriptor;
+      const seedBoundary = context.localCertification
+        ? FAILURE_BOUNDARIES.certificationMaterializationSeed
+        : context.operationId
+          ? FAILURE_BOUNDARIES.operationMaterializationSeed
+          : FAILURE_BOUNDARIES.initialMaterializationSeed;
+      failureBoundary = staticBoundary;
+      const descriptor = await awaitCancellable(() =>
+        verifyStaticReleaseDescriptor(
+          structuredClone(current.state),
+          current.sha256,
+          structuredClone(context),
+        ),
+      );
+      if (descriptor === false)
+        fail("STATIC_RELEASE_DESCRIPTOR_VERIFICATION", context.operationId ?? "");
+      failureBoundary = seedBoundary;
+      const result = await awaitCancellable(() =>
+        verifyMaterializationSeed(
+          structuredClone(current.state),
+          current.sha256,
+          structuredClone(context),
+        ),
+      );
+      if (result === false) fail("MATERIALIZATION_SEED_VERIFICATION", context.operationId ?? "");
+    };
+    if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") {
+      try {
+        checkCancellation();
+        await verifySeed({
+          restart: current.state.current_phase_index > 0,
+          recovery: false,
         });
+      } catch (error) {
+        if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") throw error;
+        enterFailureCleanup(error, "FULL_LIVE_OPERATION_FAILED");
+      }
+    }
+
+    const begin = (phase) => {
+      current = stateMutation(statePath, current.sha256, (state) => beginPhase(state, phase));
+    };
+    const complete = (phase) => {
+      current = stateMutation(statePath, current.sha256, (state) => completePhase(state, phase));
+    };
+
+    const workIdFor = (operation, state = current.state) =>
+      `${state.authority_id}:${operation.id}`.toLowerCase();
+    const workFor = (operation, state = current.state) =>
+      state.phases[operation.phase]?.work?.[workIdFor(operation, state)];
+    const isSettled = (operation, state = current.state) =>
+      workFor(operation, state)?.state === "SETTLED_TERMINAL";
+
+    const durableResult = (value) => {
+      if (value === null || typeof value !== "object" || Array.isArray(value))
+        fail("RESULT_CONTRACT");
+      try {
+        const parsed = JSON.parse(JSON.stringify(value));
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+          fail("RESULT_CONTRACT");
+        return parsed;
+      } catch {
+        fail("RESULT_NOT_SERIALIZABLE");
+      }
+    };
+
+    const checkTrustedTime = async (boundary = FAILURE_BOUNDARIES.preOperationTrustedTime) => {
+      checkCancellation();
+      failureBoundary = boundary;
+      const trustedIso = await awaitCancellable(() => trustedTime(structuredClone(current.state)));
+      checkCancellation();
+      const trustedMs = Date.parse(trustedIso ?? "");
+      if (
+        Number.isNaN(trustedMs) ||
+        trustedMs < Date.parse(current.state.approved_at) ||
+        trustedMs > Date.parse(current.state.expires_at)
+      )
+        fail("TRUSTED_TIME_EXPIRED_OR_FORGED");
+      return new Date(trustedMs).toISOString();
+    };
+
+    let earlyCleanupFailure = false;
+
+    const verifyChainAtBoundary = async (operation, boundary) => {
+      if (chainVerifier === undefined) return;
+      await awaitCancellable(() =>
+        chainVerifier(structuredClone(current.state), new Map(results), {
+          operation: structuredClone(operation),
+          boundary,
+          outerStateSha256: current.sha256,
+          settledResultSha256:
+            current.state.phases[operation.phase]?.work?.[workIdFor(operation)]
+              ?.settled_result_sha256,
+          earlyFailure:
+            current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
+            canUseEarlyCleanup(current.state),
+        }),
+      );
+    };
+
+    // Rebuild the in-memory predecessor map in graph order before any resumed adapter is called.
+    // Settled work is terminal: a missing durable result is a hard stop, never a reason to invoke
+    // the adapter again. A deployment may provide a separate read-only result store for states
+    // written by an older executor that did not embed the result, but it must return the exact
+    // operation result and is persisted back through the state CAS below.
+    const hydrateSettledResults = async () => {
+      for (const operation of OPERATIONS) {
+        checkCancellation();
+        const existing = workFor(operation);
+        if (existing?.state !== "SETTLED_TERMINAL") continue;
+        failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
+        let prior = existing.settled_result;
+        if (prior === undefined && loadSettledResult !== undefined) {
+          prior = await awaitCancellable(() =>
+            loadSettledResult({
+              operation: structuredClone(operation),
+              state: structuredClone(current.state),
+              workId: workIdFor(operation),
+              work: structuredClone(existing),
+              outerStateSha256: current.sha256,
+            }),
+          );
+          checkCancellation();
+          prior = durableResult(prior);
+          const loaded = assertResult(operation, prior, current.state, results);
+          current = stateMutation(statePath, current.sha256, (state) =>
+            recordSettledResult(state, {
+              phaseName: operation.phase,
+              workId: workIdFor(operation),
+              result: loaded,
+            }),
+          );
+          prior = loaded;
+        }
+        if (prior === undefined) fail("SETTLED_RESULT_UNAVAILABLE", operation.id);
+        const result = assertResult(operation, durableResult(prior), current.state, results);
+        if (
+          operation.id === "bootstrap-prequalification-database" &&
+          current.state.operator_role_verified !== true
+        ) {
+          current = stateMutation(statePath, current.sha256, (state) =>
+            recordSettledResult(state, {
+              phaseName: operation.phase,
+              workId: workIdFor(operation),
+              result,
+            }),
+          );
+        }
+        results.set(operation.id, result);
+        operatorRoleVerified = current.state.operator_role_verified === true;
+        failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
+        await verifyChainAtBoundary(operation, "hydrated");
+      }
+    };
+
+    const runOne = async (operation) => {
+      checkCancellation();
+      const workId = workIdFor(operation);
+      const existing = workFor(operation);
+      const cleanupSafetyRecovery =
+        current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" &&
+        CLEANUP_SAFETY_OPERATION_IDS.has(operation.id);
+      // A missing or drifted protected seed is itself a cleanup trigger. Once the durable state is
+      // cleanup-only, do not let the same failed normal-input verifier prevent the four closed
+      // safety operations from draining and proving provider state. Their adapters have separate
+      // cleanup-only contracts and may not resume normal or paid work.
+      if (!cleanupSafetyRecovery)
+        await verifySeed({
+          operationId: operation.id,
+          resumed: existing !== undefined,
+          recovery: current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY",
+        });
+      checkCancellation();
+      if (existing?.state === "SETTLED_TERMINAL") {
+        failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
+        let prior = results.get(operation.id) ?? existing.settled_result;
+        if (prior === undefined && loadSettledResult !== undefined) {
+          prior = await awaitCancellable(() =>
+            loadSettledResult({
+              operation: structuredClone(operation),
+              state: structuredClone(current.state),
+              workId,
+              work: structuredClone(existing),
+              outerStateSha256: current.sha256,
+            }),
+          );
+          prior = durableResult(prior);
+          const loaded = assertResult(operation, prior, current.state, results);
+          current = stateMutation(statePath, current.sha256, (state) =>
+            recordSettledResult(state, { phaseName: operation.phase, workId, result: loaded }),
+          );
+          prior = loaded;
+        }
+        if (prior === undefined) fail("SETTLED_RESULT_UNAVAILABLE", operation.id);
+        const result = assertResult(operation, durableResult(prior), current.state, results);
+        if (
+          operation.id === "bootstrap-prequalification-database" &&
+          current.state.operator_role_verified !== true
+        ) {
+          current = stateMutation(statePath, current.sha256, (state) =>
+            recordSettledResult(state, { phaseName: operation.phase, workId, result }),
+          );
+        }
+        results.set(operation.id, result);
+        operatorRoleVerified = current.state.operator_role_verified === true;
+        failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
+        await verifyChainAtBoundary(operation, "settled");
+        return result;
+      }
+      if (existing?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE") {
+        if (
+          operation.id === "bootstrap-prequalification-database" &&
+          current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS"
+        ) {
+          const authorizedOuterStateSha256 = current.sha256;
+          failureBoundary = FAILURE_BOUNDARIES.bootstrapReconciliation;
+          const raw = await awaitCancellable(() =>
+            runOperation(
+              operation,
+              structuredClone(current.state),
+              new Map(results),
+              authorizedOuterStateSha256,
+              {
+                operationId: operation.id,
+                cleanupOnly: false,
+                earlyFailure: false,
+                endpointFree: false,
+                operatorRoleVerified: false,
+                resumed: true,
+                authorizedUnsettled: true,
+                reconciliationOnly: true,
+                providerDispatchForbidden: true,
+                ...normalCancellationContext(),
+              },
+            ),
+          );
+          failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
+          const result = assertResult(operation, durableResult(raw), current.state, results, {
+            authorizedOuterStateSha256,
+          });
+          current = stateMutation(statePath, current.sha256, (state) =>
+            settleWork(state, {
+              phaseName: operation.phase,
+              workId,
+              actualUsd: result.actualUsd,
+              eventId: eventId(state.authority_id, operation.id, "reconciled"),
+              result,
+            }),
+          );
+          results.set(operation.id, result);
+          operatorRoleVerified = current.state.operator_role_verified === true;
+          failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
+          await verifyChainAtBoundary(operation, "bootstrap-reconciled");
+          return result;
+        }
+        if (
+          current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" ||
+          !CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)
+        )
+          fail("REDISPATCH_FORBIDDEN", operation.id);
+        // A cleanup transport gap is not permission to repeat paid/live work. It is permission only
+        // to reconcile the already-authorized safety operation through idempotent cleanup/readback.
+        const earlyCleanup = canUseEarlyCleanup(current.state);
+        const cleanupMode = cleanupModeFor(current.state);
+        const runner =
+          earlyCleanup && runEarlyCleanupOperation !== undefined
+            ? runEarlyCleanupOperation
+            : (runCleanupOperation ?? runOperation);
+        failureBoundary = FAILURE_BOUNDARIES.operationExecution;
+        const raw = await runner(
+          operation,
+          structuredClone(current.state),
+          new Map(results),
+          current.sha256,
+          {
+            operationId: operation.id,
+            cleanupOnly: true,
+            earlyFailure: earlyCleanup,
+            endpointFree: earlyCleanup,
+            cleanupMode,
+            operatorRoleVerified,
+            resumed: true,
+            authorizedUnsettled: true,
+            reconciliationOnly: true,
+            providerDispatchForbidden: true,
+          },
+        );
+        assertExecutionLease(executionLease);
+        failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
+        const result = assertResult(operation, durableResult(raw), current.state, results);
+        failureBoundary = FAILURE_BOUNDARIES.operationAuthorization;
         current = stateMutation(statePath, current.sha256, (state) =>
-          settleWork(state, {
-            phaseName: operation.phase,
+          settleCleanupWork(state, {
             workId,
-            actualUsd: result.actualUsd,
             eventId: eventId(state.authority_id, operation.id, "reconciled"),
             result,
           }),
         );
         results.set(operation.id, result);
-        operatorRoleVerified = current.state.operator_role_verified === true;
         failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
-        await verifyChainAtBoundary(operation, "bootstrap-reconciled");
+        await verifyChainAtBoundary(operation, "cleanup-reconciled");
         return result;
       }
-      if (
-        current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY" ||
-        !CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)
-      )
-        fail("REDISPATCH_FORBIDDEN", operation.id);
-      // A cleanup transport gap is not permission to repeat paid/live work. It is permission only
-      // to reconcile the already-authorized safety operation through idempotent cleanup/readback.
-      const earlyCleanup = canUseEarlyCleanup(current.state);
-      const cleanupMode = cleanupModeFor(current.state);
+      if (operation.id === RELEASE_CERTIFICATION_OPERATION_ID) {
+        failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
+        certificationPredecessorEvidence(results);
+      }
+      let mutationAdmission;
+      let mutationAdmissionOuterStateSha256;
+      if (RUNPOD_MUTATION_OPERATION_IDS.has(operation.id)) {
+        if (readMutationAdmission === undefined)
+          fail("PER_MUTATION_RUNPOD_ADMISSION_READER_REQUIRED", operation.id);
+        failureBoundary = FAILURE_BOUNDARIES.perMutationAdmission;
+        const admissionTrustedTime = await checkTrustedTime(
+          FAILURE_BOUNDARIES.perMutationAdmission,
+        );
+        mutationAdmissionOuterStateSha256 = current.sha256;
+        mutationAdmission = await awaitCancellable(() =>
+          readFreshRunPodMutationAdmission({
+            readMutationAdmission,
+            operation,
+            state: current.state,
+            results,
+            outerStateSha256: mutationAdmissionOuterStateSha256,
+            trustedTime: admissionTrustedTime,
+          }),
+        );
+        checkCancellation();
+      }
+      failureBoundary = FAILURE_BOUNDARIES.operationAuthorization;
+      checkCancellation();
+      current = stateMutation(statePath, current.sha256, (state) => {
+        const event = eventId(
+          state.authority_id,
+          operation.id,
+          mutationAdmission === undefined
+            ? "reserved"
+            : `reserved-${mutationAdmission.proofSha256.slice("sha256:".length)}`,
+        );
+        if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
+          return authorizeCleanupWork(state, { workId, eventId: event });
+        return authorizeWork(state, {
+          phaseName: operation.phase,
+          workId,
+          reservationUsd: operation.reserveUsd,
+          eventId: event,
+        });
+      });
+      // The reservation is durably written before this call. An ambiguous exit therefore leaves a
+      // non-redispatchable work ID and can proceed only to cleanup.
+      const cleanupOnly = current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY";
+      const earlyCleanup = cleanupOnly && canUseEarlyCleanup(current.state);
       const runner =
         earlyCleanup && runEarlyCleanupOperation !== undefined
           ? runEarlyCleanupOperation
-          : (runCleanupOperation ?? runOperation);
+          : cleanupOnly && runCleanupOperation !== undefined
+            ? runCleanupOperation
+            : runOperation;
+      const executionContext = {
+        operationId: operation.id,
+        cleanupOnly,
+        earlyFailure: earlyCleanup,
+        endpointFree: earlyCleanup,
+        providerDispatchForbidden: earlyCleanup,
+        cleanupMode: cleanupOnly ? cleanupModeFor(current.state) : undefined,
+        operatorRoleVerified,
+        resumed: existing !== undefined,
+        mutationAdmission,
+        mutationAdmissionOuterStateSha256,
+        ...(cleanupOnly ? {} : normalCancellationContext()),
+      };
+      const authorizedOuterStateSha256 = current.sha256;
       failureBoundary = FAILURE_BOUNDARIES.operationExecution;
-      const raw = await runner(
-        operation,
-        structuredClone(current.state),
-        new Map(results),
-        current.sha256,
-        {
-          operationId: operation.id,
-          cleanupOnly: true,
-          earlyFailure: earlyCleanup,
-          endpointFree: earlyCleanup,
-          cleanupMode,
-          operatorRoleVerified,
-          resumed: true,
-          authorizedUnsettled: true,
-          reconciliationOnly: true,
-          providerDispatchForbidden: true,
-        },
-      );
+      const invoke = () =>
+        runner(
+          operation,
+          structuredClone(current.state),
+          new Map(results),
+          authorizedOuterStateSha256,
+          executionContext,
+        );
+      const raw = cleanupOnly ? await invoke() : await awaitCancellable(invoke);
+      assertExecutionLease(executionLease);
       failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
-      const result = assertResult(operation, durableResult(raw), current.state, results);
-      failureBoundary = FAILURE_BOUNDARIES.operationAuthorization;
-      current = stateMutation(statePath, current.sha256, (state) =>
-        settleCleanupWork(state, {
-          workId,
-          eventId: eventId(state.authority_id, operation.id, "reconciled"),
-          result,
-        }),
+      const result = assertResult(
+        operation,
+        durableResult(raw),
+        current.state,
+        results,
+        operation.id === "bootstrap-prequalification-database" || mutationAdmission !== undefined
+          ? { authorizedOuterStateSha256, mutationAdmission }
+          : undefined,
       );
+      if (operation.id === "release-tag-readback") {
+        current = stateMutation(statePath, current.sha256, (state) =>
+          recordVerifiedReleaseRef(state, {
+            tagName: result.tagName,
+            targetCommit: result.targetCommit,
+            eventId: eventId(state.authority_id, operation.id, "verified"),
+          }),
+        );
+      }
+      current = stateMutation(statePath, current.sha256, (state) => {
+        const event = eventId(state.authority_id, operation.id, "settled");
+        if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
+          return settleCleanupWork(state, { workId, eventId: event, result });
+        return settleWork(state, {
+          phaseName: operation.phase,
+          workId,
+          actualUsd: result.actualUsd,
+          eventId: event,
+          result,
+        });
+      });
+      operatorRoleVerified = current.state.operator_role_verified === true;
       results.set(operation.id, result);
       failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
-      await verifyChainAtBoundary(operation, "cleanup-reconciled");
-      return result;
-    }
-    if (operation.id === RELEASE_CERTIFICATION_OPERATION_ID) {
-      failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
-      certificationPredecessorEvidence(results);
-    }
-    let mutationAdmission;
-    let mutationAdmissionOuterStateSha256;
-    if (RUNPOD_MUTATION_OPERATION_IDS.has(operation.id)) {
-      if (readMutationAdmission === undefined)
-        fail("PER_MUTATION_RUNPOD_ADMISSION_READER_REQUIRED", operation.id);
-      failureBoundary = FAILURE_BOUNDARIES.perMutationAdmission;
-      const admissionTrustedTime = await checkTrustedTime(FAILURE_BOUNDARIES.perMutationAdmission);
-      mutationAdmissionOuterStateSha256 = current.sha256;
-      mutationAdmission = await awaitCancellable(() =>
-        readFreshRunPodMutationAdmission({
-          readMutationAdmission,
-          operation,
-          state: current.state,
-          results,
-          outerStateSha256: mutationAdmissionOuterStateSha256,
-          trustedTime: admissionTrustedTime,
-        }),
-      );
+      await verifyChainAtBoundary(operation, "settled");
       checkCancellation();
-    }
-    failureBoundary = FAILURE_BOUNDARIES.operationAuthorization;
-    checkCancellation();
-    current = stateMutation(statePath, current.sha256, (state) => {
-      const event = eventId(
-        state.authority_id,
-        operation.id,
-        mutationAdmission === undefined
-          ? "reserved"
-          : `reserved-${mutationAdmission.proofSha256.slice("sha256:".length)}`,
-      );
-      if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
-        return authorizeCleanupWork(state, { workId, eventId: event });
-      return authorizeWork(state, {
-        phaseName: operation.phase,
-        workId,
-        reservationUsd: operation.reserveUsd,
-        eventId: event,
-      });
-    });
-    // The reservation is durably written before this call. An ambiguous exit therefore leaves a
-    // non-redispatchable work ID and can proceed only to cleanup.
-    const cleanupOnly = current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY";
-    const earlyCleanup = cleanupOnly && canUseEarlyCleanup(current.state);
-    const runner =
-      earlyCleanup && runEarlyCleanupOperation !== undefined
-        ? runEarlyCleanupOperation
-        : cleanupOnly && runCleanupOperation !== undefined
-          ? runCleanupOperation
-          : runOperation;
-    const executionContext = {
-      operationId: operation.id,
-      cleanupOnly,
-      earlyFailure: earlyCleanup,
-      endpointFree: earlyCleanup,
-      providerDispatchForbidden: earlyCleanup,
-      cleanupMode: cleanupOnly ? cleanupModeFor(current.state) : undefined,
-      operatorRoleVerified,
-      resumed: existing !== undefined,
-      mutationAdmission,
-      mutationAdmissionOuterStateSha256,
-      ...(cleanupOnly ? {} : normalCancellationContext()),
+      return result;
     };
-    const authorizedOuterStateSha256 = current.sha256;
-    failureBoundary = FAILURE_BOUNDARIES.operationExecution;
-    const invoke = () =>
-      runner(
-        operation,
-        structuredClone(current.state),
-        new Map(results),
-        authorizedOuterStateSha256,
-        executionContext,
-      );
-    const raw = cleanupOnly ? await invoke() : await awaitCancellable(invoke);
-    failureBoundary = FAILURE_BOUNDARIES.operationResultValidation;
-    const result = assertResult(
-      operation,
-      durableResult(raw),
-      current.state,
-      results,
-      operation.id === "bootstrap-prequalification-database" || mutationAdmission !== undefined
-        ? { authorizedOuterStateSha256, mutationAdmission }
-        : undefined,
-    );
-    if (operation.id === "release-tag-readback") {
-      current = stateMutation(statePath, current.sha256, (state) =>
-        recordVerifiedReleaseRef(state, {
-          tagName: result.tagName,
-          targetCommit: result.targetCommit,
-          eventId: eventId(state.authority_id, operation.id, "verified"),
-        }),
-      );
-    }
-    current = stateMutation(statePath, current.sha256, (state) => {
-      const event = eventId(state.authority_id, operation.id, "settled");
-      if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
-        return settleCleanupWork(state, { workId, eventId: event, result });
-      return settleWork(state, {
-        phaseName: operation.phase,
-        workId,
-        actualUsd: result.actualUsd,
-        eventId: event,
-        result,
-      });
-    });
-    operatorRoleVerified = current.state.operator_role_verified === true;
-    results.set(operation.id, result);
-    failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
-    await verifyChainAtBoundary(operation, "settled");
-    checkCancellation();
-    return result;
-  };
 
-  let cleanupPreflightDone = false;
-  const runCleanupPreflight = async () => {
-    if (cleanupPreflightDone) return;
-    earlyCleanupFailure = canUseEarlyCleanup(current.state);
-    const cleanupMode = cleanupModeFor(current.state);
-    if (preflight !== undefined && !earlyCleanupFailure) {
-      failureBoundary = FAILURE_BOUNDARIES.cleanupPreflight;
-      const mode = {
-        cleanupOnly: true,
-        earlyFailure: earlyCleanupFailure,
-        endpointFree: earlyCleanupFailure,
-        providerDispatchForbidden: earlyCleanupFailure,
-        cleanupMode,
-        operatorRoleVerified,
-        bootstrapOnly: false,
-        operatorOnly: true,
-        initial: true,
-        staged: false,
-        requireEndpointSecrets: false,
-      };
-      if (verifyPrequalificationReceipt !== undefined)
-        await verifyPrequalificationReceipt(
-          structuredClone(current.state),
-          current.sha256,
-          mode,
-          new Map(results),
-        );
-      await preflight(structuredClone(current.state), current.sha256, mode, new Map(results));
-    }
-    cleanupPreflightDone = true;
-  };
+    let cleanupPreflightDone = false;
+    const runCleanupPreflight = async () => {
+      if (cleanupPreflightDone) return;
+      earlyCleanupFailure = canUseEarlyCleanup(current.state);
+      const cleanupMode = cleanupModeFor(current.state);
+      if (preflight !== undefined && !earlyCleanupFailure) {
+        failureBoundary = FAILURE_BOUNDARIES.cleanupPreflight;
+        const mode = {
+          cleanupOnly: true,
+          earlyFailure: earlyCleanupFailure,
+          endpointFree: earlyCleanupFailure,
+          providerDispatchForbidden: earlyCleanupFailure,
+          cleanupMode,
+          operatorRoleVerified,
+          bootstrapOnly: false,
+          operatorOnly: true,
+          initial: true,
+          staged: false,
+          requireEndpointSecrets: false,
+        };
+        if (verifyPrequalificationReceipt !== undefined) assertExecutionLease(executionLease);
+        if (verifyPrequalificationReceipt !== undefined)
+          await verifyPrequalificationReceipt(
+            structuredClone(current.state),
+            current.sha256,
+            mode,
+            new Map(results),
+          );
+        assertExecutionLease(executionLease);
+        await preflight(structuredClone(current.state), current.sha256, mode, new Map(results));
+        assertExecutionLease(executionLease);
+      }
+      cleanupPreflightDone = true;
+    };
 
-  const resumedCleanupOnly = current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY";
-  if (resumedCleanupOnly) {
-    // Hydrate before selecting the cleanup seam.  A restart must not widen a cleanup-only child
-    // merely because its in-memory predecessor map started empty.
-    await hydrateSettledResults();
-    earlyCleanupFailure = canUseEarlyCleanup(current.state);
-  }
-  if (!resumedCleanupOnly) {
-    const bootstrapAtEntry = OPERATIONS.find(
-      (operation) => operation.id === "bootstrap-prequalification-database",
-    );
-    // A process that starts from an already-authorized bootstrap is itself the single allowed
-    // reconciliation attempt. If that readback fails, enter cleanup-only instead of issuing a
-    // duplicate provider-free database read in the same resumed process.
-    let sameProcessBootstrapReconciliationAttempted =
-      bootstrapAtEntry !== undefined &&
-      workFor(bootstrapAtEntry)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE";
-    while (true) {
-      try {
-        failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
-        await hydrateSettledResults();
-        if (
-          OPERATIONS.filter((operation) => CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)).some(
-            (operation) => workFor(operation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE",
+    const resumedCleanupOnly = current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY";
+    if (resumedCleanupOnly) {
+      // Hydrate before selecting the cleanup seam.  A restart must not widen a cleanup-only child
+      // merely because its in-memory predecessor map started empty.
+      await hydrateSettledResults();
+      earlyCleanupFailure = canUseEarlyCleanup(current.state);
+    }
+    if (!resumedCleanupOnly) {
+      const bootstrapAtEntry = OPERATIONS.find(
+        (operation) => operation.id === "bootstrap-prequalification-database",
+      );
+      // A process that starts from an already-authorized bootstrap is itself the single allowed
+      // reconciliation attempt. If that readback fails, enter cleanup-only instead of issuing a
+      // duplicate provider-free database read in the same resumed process.
+      let sameProcessBootstrapReconciliationAttempted =
+        bootstrapAtEntry !== undefined &&
+        workFor(bootstrapAtEntry)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE";
+      while (true) {
+        try {
+          failureBoundary = FAILURE_BOUNDARIES.settledResultHydration;
+          await hydrateSettledResults();
+          if (
+            OPERATIONS.filter((operation) => CLEANUP_SAFETY_OPERATION_IDS.has(operation.id)).some(
+              (operation) => workFor(operation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE",
+            )
           )
-        )
-          fail("AUTHORIZED_CLEANUP_WORK_AMBIGUOUS");
-        if (preflight !== undefined) {
-          checkCancellation();
-          failureBoundary = FAILURE_BOUNDARIES.initialPreflight;
-          const bootstrapOperation = OPERATIONS.find(
+            fail("AUTHORIZED_CLEANUP_WORK_AMBIGUOUS");
+          if (preflight !== undefined) {
+            checkCancellation();
+            failureBoundary = FAILURE_BOUNDARIES.initialPreflight;
+            const bootstrapOperation = OPERATIONS.find(
+              (operation) => operation.id === "bootstrap-prequalification-database",
+            );
+            const bootstrapReconciliation =
+              bootstrapOperation !== undefined &&
+              workFor(bootstrapOperation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE";
+            await awaitCancellable(() =>
+              preflight(
+                structuredClone(current.state),
+                current.sha256,
+                {
+                  cleanupOnly: false,
+                  earlyFailure: false,
+                  endpointFree: false,
+                  operatorRoleVerified,
+                  bootstrapOnly: true,
+                  bootstrapReconciliation,
+                  operatorOnly: false,
+                  initial: true,
+                  staged: false,
+                  requireEndpointSecrets: false,
+                  ...normalCancellationContext(),
+                },
+                new Map(results),
+              ),
+            );
+            checkCancellation();
+          }
+          const normalPhases = [
+            ...new Set(
+              OPERATIONS.filter(
+                (operation) => operation.phase !== "cleanup_and_reconciliation",
+              ).map((operation) => operation.phase),
+            ),
+          ];
+          for (const phaseName of normalPhases) {
+            const phase = current.state.phases[phaseName];
+            if (phase?.state === "COMPLETE") continue;
+            const expectedPhaseIndex = PHASES.findIndex(([name]) => name === phaseName);
+            if (
+              expectedPhaseIndex < 0 ||
+              current.state.current_phase_index !== expectedPhaseIndex ||
+              !phase
+            )
+              fail("PHASE_ORDER");
+            if (phase.state === "PENDING") {
+              // The trusted clock must be checked before even the local phase reservation/mutation.
+              // A stale/forged clock therefore leaves the phase with no work history and enters the
+              // existing cleanup-only seam without authorizing the first operation.
+              await checkTrustedTime(FAILURE_BOUNDARIES.phaseMutationTrustedTime);
+              begin(phaseName);
+            } else if (phase.state !== "ACTIVE") fail("PHASE_ORDER");
+            for (const operation of OPERATIONS.filter((item) => item.phase === phaseName)) {
+              if (!isSettled(operation))
+                await checkTrustedTime(FAILURE_BOUNDARIES.preOperationTrustedTime);
+              await runOne(operation);
+              if (operation.id === "fresh-live-preflight" && preflight !== undefined) {
+                await checkTrustedTime(FAILURE_BOUNDARIES.preOperationTrustedTime);
+                failureBoundary = FAILURE_BOUNDARIES.stagedPreflight;
+                await awaitCancellable(() =>
+                  preflight(
+                    structuredClone(current.state),
+                    current.sha256,
+                    {
+                      cleanupOnly: false,
+                      earlyFailure: false,
+                      endpointFree: false,
+                      operatorRoleVerified,
+                      bootstrapOnly: false,
+                      operatorOnly: false,
+                      initial: false,
+                      staged: true,
+                      requireEndpointSecrets: false,
+                      ...normalCancellationContext(),
+                    },
+                    new Map(results),
+                  ),
+                );
+                checkCancellation();
+              }
+            }
+            if (current.state.phases[phaseName].state === "ACTIVE") {
+              await checkTrustedTime(FAILURE_BOUNDARIES.phaseMutationTrustedTime);
+              complete(phaseName);
+            }
+          }
+          const cleanupPhase = current.state.phases.cleanup_and_reconciliation;
+          if (cleanupPhase.state === "PENDING") begin("cleanup_and_reconciliation");
+          else if (cleanupPhase.state !== "ACTIVE") fail("PHASE_ORDER");
+          break;
+        } catch (caught) {
+          let error = caught;
+          const bootstrap = OPERATIONS.find(
             (operation) => operation.id === "bootstrap-prequalification-database",
           );
-          const bootstrapReconciliation =
-            bootstrapOperation !== undefined &&
-            workFor(bootstrapOperation)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE";
-          await awaitCancellable(() =>
-            preflight(
+          if (
+            !sameProcessBootstrapReconciliationAttempted &&
+            bootstrap !== undefined &&
+            current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
+            workFor(bootstrap)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE"
+          ) {
+            sameProcessBootstrapReconciliationAttempted = true;
+            try {
+              // A thrown psql result can be a lost acknowledgement after the one transaction that
+              // creates the operator role and exact grants. Re-enter only the bootstrap's explicit
+              // provider-free, readback-only reconciliation before making cleanup-only irreversible.
+              await runOne(bootstrap);
+              continue;
+            } catch (reconciliationError) {
+              error = reconciliationError;
+              failureBoundary = FAILURE_BOUNDARIES.bootstrapReconciliation;
+            }
+          }
+          if (
+            current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
+            (cancellationSignal?.aborted === true || isCancelled(structuredClone(current.state)))
+          ) {
+            try {
+              checkCancellation();
+            } catch (cancellationError) {
+              error = cancellationError;
+            }
+          }
+          if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
+            earlyCleanupFailure = canUseEarlyCleanup(current.state);
+            enterFailureCleanup(error, "FULL_LIVE_OPERATION_FAILED");
+            break;
+          }
+          throw error;
+        }
+      }
+    }
+
+    // A hard crash can leave an authorized cleanup safety work item while the outer state still says
+    // in-progress. Once that ambiguity is forced into cleanup-only above, run the same protected
+    // cleanup preflight as an ordinary cleanup-only restart before any reconciliation call.
+    if (current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
+      await runCleanupPreflight();
+
+    try {
+      const cleanupOperations = OPERATIONS.filter(
+        (item) =>
+          item.phase === "cleanup_and_reconciliation" &&
+          item.id !== RELEASE_CERTIFICATION_OPERATION_ID,
+      );
+      for (const operation of cleanupOperations) await runOne(operation);
+
+      failureBoundary = FAILURE_BOUNDARIES.cleanupProof;
+      const { zero, billing, resources, maxOne } = cleanupProofEvidence(results, {
+        requireQualifiedProductionCleanup: promotionAttemptRecorded(current.state),
+      });
+      // The aggregate proof is permanently scoped to the four safety operations. Certification is a
+      // separate transport-free, zero-spend state transition, so a bad local certification result can
+      // never strand drain, billing, or retained-resource closure.
+      if (current.state.cleanup_proof === null) {
+        current = stateMutation(statePath, current.sha256, (state) =>
+          recordCleanupProof(state, {
+            zeroWorkerProofSha256: zero.proofSha256,
+            billingProofSha256: billing.proofSha256,
+            resourceProofSha256: resources.proofSha256,
+            maxOneProofSha256: maxOne.proofSha256,
+            eventId: eventId(state.authority_id, "cleanup-proof", "verified"),
+          }),
+        );
+      } else if (
+        current.state.cleanup_proof.zero_worker_proof_sha256 !== zero.proofSha256 ||
+        current.state.cleanup_proof.billing_proof_sha256 !== billing.proofSha256 ||
+        current.state.cleanup_proof.resource_reconciliation_sha256 !== resources.proofSha256 ||
+        current.state.cleanup_proof.max_one_restoration_sha256 !== maxOne.proofSha256
+      ) {
+        fail("CLEANUP_PROOF_RESULT_DRIFT");
+      }
+
+      if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") {
+        const certification = OPERATIONS.find(
+          ({ id }) => id === RELEASE_CERTIFICATION_OPERATION_ID,
+        );
+        if (!certification) fail("RELEASE_CERTIFICATION_OPERATION_MISSING");
+        const certificationWorkId =
+          `${current.state.authority_id}:${certification.id}`.toLowerCase();
+        if (current.state.release_certification?.state !== "SETTLED_TERMINAL") {
+          const reconciling =
+            current.state.release_certification?.state === "AUTHORIZED_ONCE_RECONCILIATION_ONLY";
+          await verifySeed({
+            operationId: certification.id,
+            resumed: reconciling,
+            recovery: false,
+            localCertification: true,
+            reconciliationOnly: reconciling,
+          });
+          failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
+          certificationPredecessorEvidence(results);
+          if (!reconciling) {
+            // No seed, provider, database, or other work may occur between this authenticated time
+            // read and the durable one-use authorization for the certification call.
+            await checkTrustedTime(FAILURE_BOUNDARIES.certificationTrustedTime);
+            failureBoundary = FAILURE_BOUNDARIES.certificationAuthorization;
+            current = stateMutation(statePath, current.sha256, (state) =>
+              authorizeReleaseCertification(state, {
+                workId: certificationWorkId,
+                eventId: `${certificationWorkId}:authorized`,
+              }),
+            );
+          }
+          failureBoundary = FAILURE_BOUNDARIES.certificationExecution;
+          const raw = await awaitCancellable(() =>
+            runOperation(
+              certification,
               structuredClone(current.state),
+              new Map(results),
               current.sha256,
               {
+                operationId: certification.id,
                 cleanupOnly: false,
                 earlyFailure: false,
                 endpointFree: false,
                 operatorRoleVerified,
-                bootstrapOnly: true,
-                bootstrapReconciliation,
-                operatorOnly: false,
-                initial: true,
-                staged: false,
-                requireEndpointSecrets: false,
+                resumed: reconciling,
+                localCertification: true,
+                providerDispatchForbidden: true,
+                authorizedUnsettled: reconciling,
+                reconciliationOnly: reconciling,
+                persistenceForbidden: reconciling,
+                dispatchForbidden: reconciling,
                 ...normalCancellationContext(),
               },
-              new Map(results),
             ),
           );
-          checkCancellation();
-        }
-        const normalPhases = [
-          ...new Set(
-            OPERATIONS.filter((operation) => operation.phase !== "cleanup_and_reconciliation").map(
-              (operation) => operation.phase,
-            ),
-          ),
-        ];
-        for (const phaseName of normalPhases) {
-          const phase = current.state.phases[phaseName];
-          if (phase?.state === "COMPLETE") continue;
-          const expectedPhaseIndex = PHASES.findIndex(([name]) => name === phaseName);
-          if (
-            expectedPhaseIndex < 0 ||
-            current.state.current_phase_index !== expectedPhaseIndex ||
-            !phase
-          )
-            fail("PHASE_ORDER");
-          if (phase.state === "PENDING") {
-            // The trusted clock must be checked before even the local phase reservation/mutation.
-            // A stale/forged clock therefore leaves the phase with no work history and enters the
-            // existing cleanup-only seam without authorizing the first operation.
-            await checkTrustedTime(FAILURE_BOUNDARIES.phaseMutationTrustedTime);
-            begin(phaseName);
-          } else if (phase.state !== "ACTIVE") fail("PHASE_ORDER");
-          for (const operation of OPERATIONS.filter((item) => item.phase === phaseName)) {
-            if (!isSettled(operation))
-              await checkTrustedTime(FAILURE_BOUNDARIES.preOperationTrustedTime);
-            await runOne(operation);
-            if (operation.id === "fresh-live-preflight" && preflight !== undefined) {
-              await checkTrustedTime(FAILURE_BOUNDARIES.preOperationTrustedTime);
-              failureBoundary = FAILURE_BOUNDARIES.stagedPreflight;
-              await awaitCancellable(() =>
-                preflight(
-                  structuredClone(current.state),
-                  current.sha256,
-                  {
-                    cleanupOnly: false,
-                    earlyFailure: false,
-                    endpointFree: false,
-                    operatorRoleVerified,
-                    bootstrapOnly: false,
-                    operatorOnly: false,
-                    initial: false,
-                    staged: true,
-                    requireEndpointSecrets: false,
-                    ...normalCancellationContext(),
-                  },
-                  new Map(results),
-                ),
-              );
-              checkCancellation();
-            }
-          }
-          if (current.state.phases[phaseName].state === "ACTIVE") {
-            await checkTrustedTime(FAILURE_BOUNDARIES.phaseMutationTrustedTime);
-            complete(phaseName);
-          }
-        }
-        const cleanupPhase = current.state.phases.cleanup_and_reconciliation;
-        if (cleanupPhase.state === "PENDING") begin("cleanup_and_reconciliation");
-        else if (cleanupPhase.state !== "ACTIVE") fail("PHASE_ORDER");
-        break;
-      } catch (caught) {
-        let error = caught;
-        const bootstrap = OPERATIONS.find(
-          (operation) => operation.id === "bootstrap-prequalification-database",
-        );
-        if (
-          !sameProcessBootstrapReconciliationAttempted &&
-          bootstrap !== undefined &&
-          current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
-          workFor(bootstrap)?.state === "AUTHORIZED_ONCE_NOT_REDISPATCHABLE"
-        ) {
-          sameProcessBootstrapReconciliationAttempted = true;
-          try {
-            // A thrown psql result can be a lost acknowledgement after the one transaction that
-            // creates the operator role and exact grants. Re-enter only the bootstrap's explicit
-            // provider-free, readback-only reconciliation before making cleanup-only irreversible.
-            await runOne(bootstrap);
-            continue;
-          } catch (reconciliationError) {
-            error = reconciliationError;
-            failureBoundary = FAILURE_BOUNDARIES.bootstrapReconciliation;
-          }
-        }
-        if (
-          current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS" &&
-          (cancellationSignal?.aborted === true || isCancelled(structuredClone(current.state)))
-        ) {
-          try {
-            checkCancellation();
-          } catch (cancellationError) {
-            error = cancellationError;
-          }
-        }
-        if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
-          earlyCleanupFailure = canUseEarlyCleanup(current.state);
-          enterFailureCleanup(error, "FULL_LIVE_OPERATION_FAILED");
-          break;
-        }
-        throw error;
-      }
-    }
-  }
-
-  // A hard crash can leave an authorized cleanup safety work item while the outer state still says
-  // in-progress. Once that ambiguity is forced into cleanup-only above, run the same protected
-  // cleanup preflight as an ordinary cleanup-only restart before any reconciliation call.
-  if (current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") await runCleanupPreflight();
-
-  try {
-    const cleanupOperations = OPERATIONS.filter(
-      (item) =>
-        item.phase === "cleanup_and_reconciliation" &&
-        item.id !== RELEASE_CERTIFICATION_OPERATION_ID,
-    );
-    for (const operation of cleanupOperations) await runOne(operation);
-
-    failureBoundary = FAILURE_BOUNDARIES.cleanupProof;
-    const { zero, billing, resources, maxOne } = cleanupProofEvidence(results, {
-      requireQualifiedProductionCleanup: promotionAttemptRecorded(current.state),
-    });
-    // The aggregate proof is permanently scoped to the four safety operations. Certification is a
-    // separate transport-free, zero-spend state transition, so a bad local certification result can
-    // never strand drain, billing, or retained-resource closure.
-    if (current.state.cleanup_proof === null) {
-      current = stateMutation(statePath, current.sha256, (state) =>
-        recordCleanupProof(state, {
-          zeroWorkerProofSha256: zero.proofSha256,
-          billingProofSha256: billing.proofSha256,
-          resourceProofSha256: resources.proofSha256,
-          maxOneProofSha256: maxOne.proofSha256,
-          eventId: eventId(state.authority_id, "cleanup-proof", "verified"),
-        }),
-      );
-    } else if (
-      current.state.cleanup_proof.zero_worker_proof_sha256 !== zero.proofSha256 ||
-      current.state.cleanup_proof.billing_proof_sha256 !== billing.proofSha256 ||
-      current.state.cleanup_proof.resource_reconciliation_sha256 !== resources.proofSha256 ||
-      current.state.cleanup_proof.max_one_restoration_sha256 !== maxOne.proofSha256
-    ) {
-      fail("CLEANUP_PROOF_RESULT_DRIFT");
-    }
-
-    if (current.state.state !== "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY") {
-      const certification = OPERATIONS.find(({ id }) => id === RELEASE_CERTIFICATION_OPERATION_ID);
-      if (!certification) fail("RELEASE_CERTIFICATION_OPERATION_MISSING");
-      const certificationWorkId = `${current.state.authority_id}:${certification.id}`.toLowerCase();
-      if (current.state.release_certification?.state !== "SETTLED_TERMINAL") {
-        const reconciling =
-          current.state.release_certification?.state === "AUTHORIZED_ONCE_RECONCILIATION_ONLY";
-        await verifySeed({
-          operationId: certification.id,
-          resumed: reconciling,
-          recovery: false,
-          localCertification: true,
-          reconciliationOnly: reconciling,
-        });
-        failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
-        certificationPredecessorEvidence(results);
-        if (!reconciling) {
-          // No seed, provider, database, or other work may occur between this authenticated time
-          // read and the durable one-use authorization for the certification call.
-          await checkTrustedTime(FAILURE_BOUNDARIES.certificationTrustedTime);
-          failureBoundary = FAILURE_BOUNDARIES.certificationAuthorization;
+          failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
+          const result = assertResult(certification, durableResult(raw), current.state, results);
           current = stateMutation(statePath, current.sha256, (state) =>
-            authorizeReleaseCertification(state, {
+            settleReleaseCertification(state, {
               workId: certificationWorkId,
-              eventId: `${certificationWorkId}:authorized`,
+              result,
+              eventId: `${certificationWorkId}:settled`,
             }),
           );
-        }
-        failureBoundary = FAILURE_BOUNDARIES.certificationExecution;
-        const raw = await awaitCancellable(() =>
-          runOperation(
+          results.set(certification.id, result);
+          failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
+          await verifyChainAtBoundary(certification, "certified");
+        } else {
+          const result = assertResult(
             certification,
-            structuredClone(current.state),
-            new Map(results),
-            current.sha256,
-            {
-              operationId: certification.id,
-              cleanupOnly: false,
-              earlyFailure: false,
-              endpointFree: false,
-              operatorRoleVerified,
-              resumed: reconciling,
-              localCertification: true,
-              providerDispatchForbidden: true,
-              authorizedUnsettled: reconciling,
-              reconciliationOnly: reconciling,
-              persistenceForbidden: reconciling,
-              dispatchForbidden: reconciling,
-              ...normalCancellationContext(),
-            },
-          ),
-        );
-        failureBoundary = FAILURE_BOUNDARIES.certificationResultValidation;
-        const result = assertResult(certification, durableResult(raw), current.state, results);
-        current = stateMutation(statePath, current.sha256, (state) =>
-          settleReleaseCertification(state, {
-            workId: certificationWorkId,
-            result,
-            eventId: `${certificationWorkId}:settled`,
-          }),
-        );
-        results.set(certification.id, result);
-        failureBoundary = FAILURE_BOUNDARIES.materializationChainVerification;
-        await verifyChainAtBoundary(certification, "certified");
-      } else {
-        const result = assertResult(
-          certification,
-          durableResult(current.state.release_certification.settled_result),
-          current.state,
-          results,
-        );
-        results.set(certification.id, result);
+            durableResult(current.state.release_certification.settled_result),
+            current.state,
+            results,
+          );
+          results.set(certification.id, result);
+        }
       }
+      current = stateMutation(statePath, current.sha256, (state) => {
+        if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
+          return completeCleanupOnly(state);
+        return completePhase(state, "cleanup_and_reconciliation");
+      });
+    } catch (error) {
+      if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
+        enterFailureCleanup(error, "FULL_LIVE_CLEANUP_FAILED");
+      }
+      throw error;
     }
-    current = stateMutation(statePath, current.sha256, (state) => {
-      if (state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_ONLY")
-        return completeCleanupOnly(state);
-      return completePhase(state, "cleanup_and_reconciliation");
-    });
-  } catch (error) {
-    if (current.state.state === "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS") {
-      enterFailureCleanup(error, "FULL_LIVE_CLEANUP_FAILED");
-    }
-    throw error;
+    return {
+      ...current,
+      results,
+      failed:
+        results.has("failure") ||
+        current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+    };
+  } finally {
+    releaseExecutionLease(executionLease);
   }
-  return {
-    ...current,
-    results,
-    failed:
-      results.has("failure") ||
-      current.state.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
-  };
 }
 
 function parseArgs(argv) {

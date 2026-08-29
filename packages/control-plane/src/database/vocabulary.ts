@@ -92,6 +92,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "hosted_full_live_operation_events",
   "hosted_full_live_bridge_command_events",
   "hosted_full_live_cleanup_receipt_intents",
+  "hosted_full_live_cleanup_command_identities",
   "hosted_full_live_workflow_start_authorities",
   "hosted_full_live_workflow_start_claims",
   "hosted_full_live_workflow_start_results",

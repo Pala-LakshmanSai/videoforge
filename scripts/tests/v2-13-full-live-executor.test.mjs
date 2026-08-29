@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -19,8 +19,12 @@ import {
   validateFullLiveSourceClosure,
 } from "../../deploy/v2-13/full-live-executor.mjs";
 import {
+  acquireExecutionLease,
+  executionLeasePathFor,
   enterCleanupOnly,
   initialConsumptionRecord,
+  releaseExecutionLease,
+  updateState,
   writeExclusive,
 } from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
 import { EXACT_PREDECESSOR_RELEASE_ATTEMPT } from "../../deploy/v2-13/validate-full-live-approval.mjs";
@@ -511,6 +515,183 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
   }
   return result;
 }
+
+test("one whole-execution lease spans an in-flight adapter and blocks forced cleanup", async () => {
+  const fixture = stateFixture();
+  const leasePath = executionLeasePathFor(fixture.path);
+  let first;
+  let releaseAdapter;
+  let adapterStarted;
+  const adapterStartedPromise = new Promise((resolve) => {
+    adapterStarted = resolve;
+  });
+  const adapterReleasePromise = new Promise((resolve) => {
+    releaseAdapter = resolve;
+  });
+  let concurrentCalls = 0;
+  try {
+    first = executeFullLive({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+      runOperation: async (operation, state, priorResults) => {
+        if (operation.id === "release-tag-create") {
+          adapterStarted();
+          await adapterReleasePromise;
+        }
+        return fakeResult(operation, state, priorResults);
+      },
+    });
+    await adapterStartedPromise;
+    assert.equal(existsSync(leasePath), true);
+
+    await assert.rejects(
+      executeFullLive({
+        statePath: fixture.path,
+        expectedStateSha256: hash(readFileSync(fixture.path)),
+        runOperation: async () => {
+          concurrentCalls += 1;
+          return {};
+        },
+      }),
+      /EXECUTION_LEASE_HELD/u,
+    );
+    assert.equal(concurrentCalls, 0);
+    assert.throws(
+      () => updateState(fixture.path, hash(readFileSync(fixture.path)), (state) => state),
+      /EXECUTION_LEASE_ACTIVE/u,
+    );
+
+    releaseAdapter();
+    const completed = await first;
+    assert.equal(completed.state.state, "CONSUMED_SINGLE_EXECUTION_COMPLETE");
+    assert.equal(existsSync(leasePath), false);
+  } finally {
+    releaseAdapter?.();
+    if (first !== undefined) await first.catch(() => undefined);
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("a lease may be taken over only after the recorded process identity is dead", () => {
+  const fixture = stateFixture();
+  const leasePath = executionLeasePathFor(fixture.path);
+  try {
+    writeFileSync(
+      leasePath,
+      `${JSON.stringify({
+        schema_version: "videoforge.v213-full-live-execution-lease/v1",
+        authority_id: "v2-13-stale-execution-lease",
+        full_live_authority_id: "22222222-2222-4222-8222-222222222222",
+        pid: 2147483647,
+        process_start_sha256: proof("e"),
+        expected_state_sha256: fixture.sha256,
+      })}\n`,
+      { mode: 0o600, flag: "wx" },
+    );
+    const lease = acquireExecutionLease({
+      statePath: fixture.path,
+      leasePath,
+      expectedStateSha256: fixture.sha256,
+    });
+    assert.equal(lease.pid, process.pid);
+    assert.equal(lease.authority_id, "v2-13-test-executor-0001");
+    assert.equal(existsSync(leasePath), true);
+    releaseExecutionLease(lease);
+    assert.equal(existsSync(leasePath), false);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("execution leases are canonical and bind every state mutation to its target authority", () => {
+  const fixture = stateFixture();
+  const leasePath = executionLeasePathFor(fixture.path);
+  try {
+    assert.throws(
+      () =>
+        acquireExecutionLease({
+          statePath: fixture.path,
+          leasePath: join(fixture.directory, "custom.execution-lease"),
+          expectedStateSha256: fixture.sha256,
+        }),
+      /EXECUTION_LEASE_PATH/u,
+    );
+    const lease = acquireExecutionLease({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+    });
+    assert.equal(lease.path, leasePath);
+    assert.throws(
+      () =>
+        updateState(fixture.path, fixture.sha256, (state) => state, {
+          ...lease,
+          path: join(fixture.directory, "foreign.execution-lease"),
+        }),
+      /EXECUTION_LEASE_BINDING/u,
+    );
+    assert.throws(
+      () =>
+        updateState(fixture.path, fixture.sha256, (state) => state, {
+          ...lease,
+          authority_id: "v2-13-foreign-execution-lease",
+        }),
+      /EXECUTION_LEASE_BINDING|EXECUTION_LEASE_LOST/u,
+    );
+    releaseExecutionLease(lease);
+    assert.equal(existsSync(leasePath), false);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("an orphaned candidate cannot wedge canonical lease acquisition", () => {
+  const fixture = stateFixture();
+  const leasePath = executionLeasePathFor(fixture.path);
+  const candidatePath = `${leasePath}.candidate-orphaned`;
+  try {
+    writeFileSync(candidatePath, "", { mode: 0o600, flag: "wx" });
+    const lease = acquireExecutionLease({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+    });
+    assert.equal(lease.path, leasePath);
+    assert.equal(existsSync(leasePath), true);
+    releaseExecutionLease(lease);
+    assert.equal(existsSync(leasePath), false);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("empty or truncated canonical lease recovery remains fail-closed until debris is removed", () => {
+  const fixture = stateFixture();
+  const leasePath = executionLeasePathFor(fixture.path);
+  try {
+    for (const malformed of [
+      "",
+      '{"schema_version":"videoforge.v213-full-live-execution-lease/v1"',
+    ]) {
+      writeFileSync(leasePath, malformed, { mode: 0o600, flag: "wx" });
+      assert.throws(
+        () =>
+          acquireExecutionLease({
+            statePath: fixture.path,
+            expectedStateSha256: fixture.sha256,
+          }),
+        /EXECUTION_LEASE_DRIFT/u,
+      );
+      rmSync(leasePath, { force: true });
+    }
+    const lease = acquireExecutionLease({
+      statePath: fixture.path,
+      expectedStateSha256: fixture.sha256,
+    });
+    releaseExecutionLease(lease);
+    assert.equal(existsSync(leasePath), false);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
 
 function bootstrapPartialCleanupResult(operation, state, priorResults) {
   const result = fakeResult(operation, state, priorResults);

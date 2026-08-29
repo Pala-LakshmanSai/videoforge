@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   closeSync,
   existsSync,
   fsyncSync,
+  linkSync,
   lstatSync,
   openSync,
   readFileSync,
   renameSync,
   rmSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -35,6 +37,8 @@ const AUTHORITY_ID = /^v2-13-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
+const EXECUTION_LEASE_SCHEMA = "videoforge.v213-full-live-execution-lease/v1";
+const EXECUTION_LEASE_SUFFIX = ".execution-lease";
 // Failure diagnostics are deliberately opaque, bounded tokens.  They may be written to the
 // durable outer state and therefore must never contain a path, provider identifier, secret, or
 // exception text.  The executor maps trusted internal errors onto this shape before calling
@@ -1445,7 +1449,7 @@ function validateState(state) {
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
       (isV3State
-        ? "sha256:b2e4decce3a69faa9abc517f0c8777a492e90f3f06b081971af01fb4132ffc46"
+        ? "sha256:1ad3b725ef7204e3310383ccb52b9ce526e66313ee50c2e045200b6aadf4d805"
         : "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910") ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
@@ -2124,17 +2128,239 @@ function fsyncDirectory(path) {
   }
 }
 
+let localProcessStartIdentity = null;
+
 function processStartIdentity(pid) {
+  if (pid === process.pid && localProcessStartIdentity !== null) return localProcessStartIdentity;
   try {
     const output = execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       timeout: 2_000,
     }).trim();
-    return output === "" ? null : sha256(Buffer.from(`${pid}\0${output}`));
+    const identity = output === "" ? null : sha256(Buffer.from(`${pid}\0${output}`));
+    if (pid === process.pid && identity !== null) localProcessStartIdentity = identity;
+    return identity;
   } catch {
     return null;
   }
+}
+
+function executionLeasePathFor(statePath) {
+  if (typeof statePath !== "string" || statePath === "" || statePath.includes("\0"))
+    fail("EXECUTION_LEASE_PATH");
+  return `${statePath}${EXECUTION_LEASE_SUFFIX}`;
+}
+
+function leaseArgument(pathOrLease, maybeLease) {
+  if (typeof pathOrLease === "string") return { leasePath: pathOrLease, lease: maybeLease };
+  if (
+    pathOrLease !== null &&
+    typeof pathOrLease === "object" &&
+    !Array.isArray(pathOrLease) &&
+    typeof pathOrLease.path === "string"
+  )
+    return { leasePath: pathOrLease.path, lease: pathOrLease };
+  fail("EXECUTION_LEASE_ARGUMENTS");
+}
+
+function validateExecutionLeaseRecord(value) {
+  if (
+    !exactObjectKeys(value, [
+      "authority_id",
+      "expected_state_sha256",
+      "full_live_authority_id",
+      "pid",
+      "process_start_sha256",
+      "schema_version",
+    ]) ||
+    value.schema_version !== EXECUTION_LEASE_SCHEMA ||
+    !AUTHORITY_ID.test(value.authority_id ?? "") ||
+    !UUID.test(value.full_live_authority_id ?? "") ||
+    !Number.isSafeInteger(value.pid) ||
+    value.pid < 1 ||
+    !HASH.test(value.expected_state_sha256 ?? "") ||
+    !HASH.test(value.process_start_sha256 ?? "")
+  )
+    fail("EXECUTION_LEASE_DRIFT");
+  return value;
+}
+
+function readExecutionLease(leasePath) {
+  if (typeof leasePath !== "string" || leasePath === "" || leasePath.includes("\0"))
+    fail("EXECUTION_LEASE_PATH");
+  exactPath(dirname(leasePath), "directory", 0o700, "STATE_DIRECTORY");
+  exactPath(leasePath, "file", 0o600, "EXECUTION_LEASE");
+  let value;
+  try {
+    value = JSON.parse(readFileSync(leasePath, "utf8"));
+  } catch {
+    fail("EXECUTION_LEASE_DRIFT");
+  }
+  return validateExecutionLeaseRecord(value);
+}
+
+function sameExecutionLeaseRecord(left, right) {
+  return (
+    left?.schema_version === right?.schema_version &&
+    left?.authority_id === right?.authority_id &&
+    left?.full_live_authority_id === right?.full_live_authority_id &&
+    left?.pid === right?.pid &&
+    left?.process_start_sha256 === right?.process_start_sha256 &&
+    left?.expected_state_sha256 === right?.expected_state_sha256
+  );
+}
+
+function assertExecutionLeaseTarget(lease, statePath, state) {
+  if (
+    lease === null ||
+    typeof lease !== "object" ||
+    typeof lease.statePath !== "string" ||
+    lease.statePath !== statePath ||
+    lease.path !== executionLeasePathFor(statePath) ||
+    lease.authority_id !== state?.authority_id ||
+    lease.full_live_authority_id !== state?.full_live_authority_id
+  )
+    fail("EXECUTION_LEASE_BINDING");
+  assertExecutionLease(lease);
+}
+
+function originalLeaseProcessIsDead(existing) {
+  const observed = processStartIdentity(existing.pid);
+  if (observed === existing.process_start_sha256) fail("EXECUTION_LEASE_HELD");
+  // A different start identity proves that the exact recorded process is gone even when the PID
+  // has already been reused.  A missing identity is ambiguous until the kernel confirms ESRCH;
+  // ps failure alone must never permit takeover of a live process.
+  if (observed !== null) return;
+  try {
+    process.kill(existing.pid, 0);
+  } catch (error) {
+    if (error?.code === "ESRCH") return;
+    fail("EXECUTION_LEASE_PROCESS_IDENTITY");
+  }
+  fail("EXECUTION_LEASE_HELD");
+}
+
+function acquireExecutionLease({
+  statePath,
+  leasePath = executionLeasePathFor(statePath),
+  expectedStateSha256,
+} = {}) {
+  if (
+    typeof statePath !== "string" ||
+    statePath === "" ||
+    statePath.includes("\0") ||
+    typeof leasePath !== "string" ||
+    leasePath === "" ||
+    leasePath.includes("\0") ||
+    !HASH.test(expectedStateSha256 ?? "")
+  )
+    fail("EXECUTION_LEASE_ARGUMENTS");
+  if (leasePath !== executionLeasePathFor(statePath)) fail("EXECUTION_LEASE_PATH");
+  exactPath(dirname(statePath), "directory", 0o700, "STATE_DIRECTORY");
+  exactPath(statePath, "file", 0o600, "STATE_FILE");
+  exactPath(dirname(leasePath), "directory", 0o700, "STATE_DIRECTORY");
+  const stateBytes = readFileSync(statePath);
+  if (sha256(stateBytes) !== expectedStateSha256) fail("EXECUTION_LEASE_STATE_SHA256");
+  const state = parse(stateBytes, "STATE");
+  if (
+    !AUTHORITY_ID.test(state.authority_id ?? "") ||
+    !UUID.test(state.full_live_authority_id ?? "")
+  )
+    fail("EXECUTION_LEASE_STATE");
+  const processStartSha256 = processStartIdentity(process.pid);
+  if (!HASH.test(processStartSha256 ?? "")) fail("EXECUTION_LEASE_PROCESS_IDENTITY");
+  const record = {
+    schema_version: EXECUTION_LEASE_SCHEMA,
+    authority_id: state.authority_id,
+    full_live_authority_id: state.full_live_authority_id,
+    pid: process.pid,
+    process_start_sha256: processStartSha256,
+    expected_state_sha256: expectedStateSha256,
+  };
+  validateExecutionLeaseRecord(record);
+
+  while (true) {
+    const candidatePath = `${leasePath}.candidate-${process.pid}-${processStartSha256.slice(7)}-${randomBytes(8).toString("hex")}`;
+    let candidateCreated = false;
+    try {
+      const descriptor = openSync(candidatePath, "wx", 0o600);
+      candidateCreated = true;
+      try {
+        writeFileSync(descriptor, `${JSON.stringify(record)}\n`);
+        fsyncSync(descriptor);
+      } finally {
+        closeSync(descriptor);
+      }
+      exactPath(candidatePath, "file", 0o600, "EXECUTION_LEASE_CANDIDATE");
+      fsyncDirectory(dirname(leasePath));
+      // The canonical name is claimed only by linking an already complete, fsynced candidate.
+      // link(2) is exclusive here: it fails with EEXIST and can never expose an empty record.
+      linkSync(candidatePath, leasePath);
+      fsyncDirectory(dirname(leasePath));
+      return { path: leasePath, statePath, ...record };
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+    } finally {
+      if (candidateCreated) {
+        try {
+          unlinkSync(candidatePath);
+          fsyncDirectory(dirname(leasePath));
+        } catch {
+          // If the candidate was linked, the canonical lease is complete and authoritative; an
+          // orphaned candidate is harmless and must not trigger removal of the canonical winner.
+        }
+      }
+    }
+
+    const existing = readExecutionLease(leasePath);
+    originalLeaseProcessIsDead(existing);
+    // Re-read after process identity verification.  A concurrent stale-takeover winner may have
+    // installed a fresh live lease in the meantime; never rename that newer holder's record.
+    const confirmed = readExecutionLease(leasePath);
+    if (!sameExecutionLeaseRecord(existing, confirmed)) fail("EXECUTION_LEASE_HELD");
+    const stalePath = `${leasePath}.stale-${existing.pid}-${existing.process_start_sha256.slice(7)}-${process.pid}-${processStartSha256.slice(7)}`;
+    try {
+      renameSync(leasePath, stalePath);
+    } catch {
+      fail("EXECUTION_LEASE_HELD");
+    }
+    exactPath(stalePath, "file", 0o600, "EXECUTION_LEASE_STALE");
+    unlinkSync(stalePath);
+    fsyncDirectory(dirname(leasePath));
+  }
+}
+
+function assertExecutionLease(pathOrLease, maybeLease) {
+  const { leasePath, lease } = leaseArgument(pathOrLease, maybeLease);
+  if (
+    lease === null ||
+    typeof lease !== "object" ||
+    typeof lease.statePath !== "string" ||
+    lease.path !== executionLeasePathFor(lease.statePath) ||
+    lease.pid !== process.pid ||
+    !HASH.test(lease.process_start_sha256 ?? "")
+  )
+    fail("EXECUTION_LEASE_OWNER");
+  if (processStartIdentity(process.pid) !== lease.process_start_sha256)
+    fail("EXECUTION_LEASE_PROCESS_IDENTITY");
+  const current = readExecutionLease(leasePath);
+  if (!sameExecutionLeaseRecord(current, lease)) fail("EXECUTION_LEASE_LOST");
+  return true;
+}
+
+function releaseExecutionLease(pathOrLease, maybeLease) {
+  const { leasePath, lease } = leaseArgument(pathOrLease, maybeLease);
+  assertExecutionLease(leasePath, lease);
+  const metadata = lstatSync(leasePath);
+  exactPath(leasePath, "file", 0o600, "EXECUTION_LEASE");
+  const confirmed = readExecutionLease(leasePath);
+  if (!sameExecutionLeaseRecord(confirmed, lease)) fail("EXECUTION_LEASE_LOST");
+  const currentMetadata = lstatSync(leasePath);
+  if (metadata.dev !== currentMetadata.dev || metadata.ino !== currentMetadata.ino)
+    fail("EXECUTION_LEASE_LOST");
+  unlinkSync(leasePath);
+  fsyncDirectory(dirname(leasePath));
 }
 
 function acquireStateLock(lockPath, expectedSha256) {
@@ -2184,15 +2410,29 @@ function acquireStateLock(lockPath, expectedSha256) {
   acquireStateLock(lockPath, expectedSha256);
 }
 
-function updateState(path, expectedSha256, operation) {
+function updateState(path, expectedSha256, operation, executionLease = null) {
   exactPath(dirname(path), "directory", 0o700, "STATE_DIRECTORY");
   exactPath(path, "file", 0o600, "STATE_FILE");
+  const currentBytes = readFileSync(path);
+  if (sha256(currentBytes) !== expectedSha256) fail("STATE_SHA256");
+  const currentState = parse(currentBytes, "STATE");
+  const wholeExecutionLeasePath = executionLeasePathFor(path);
+  if (executionLease === null || executionLease === undefined) {
+    if (existsSync(wholeExecutionLeasePath)) {
+      exactPath(wholeExecutionLeasePath, "file", 0o600, "EXECUTION_LEASE");
+      fail("EXECUTION_LEASE_ACTIVE");
+    }
+  } else {
+    assertExecutionLeaseTarget(executionLease, path, currentState);
+  }
   const lockPath = `${path}.lock`;
   acquireStateLock(lockPath, expectedSha256);
   try {
     const bytes = readFileSync(path);
     if (sha256(bytes) !== expectedSha256) fail("STATE_SHA256");
     const next = operation(parse(bytes, "STATE"));
+    if (executionLease !== null && executionLease !== undefined)
+      assertExecutionLeaseTarget(executionLease, path, next);
     const temporary = `${path}.next`;
     const nextBytes = Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
     if (existsSync(temporary)) {
@@ -2211,6 +2451,8 @@ function updateState(path, expectedSha256, operation) {
     renameSync(temporary, path);
     fsyncDirectory(dirname(path));
     exactPath(path, "file", 0o600, "STATE_FILE");
+    if (executionLease !== null && executionLease !== undefined)
+      assertExecutionLeaseTarget(executionLease, path, JSON.parse(readFileSync(path, "utf8")));
     return { state: next, sha256: sha256(readFileSync(path)) };
   } finally {
     rmSync(lockPath, { force: true });
@@ -2472,9 +2714,11 @@ async function main() {
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await main();
 
 export {
+  acquireExecutionLease,
   authorizeCleanupWork,
   authorizeReleaseCertification,
   authorizeWork,
+  assertExecutionLease,
   beginPhase,
   completeCleanupOnly,
   completePhase,
@@ -2490,6 +2734,7 @@ export {
   recordCleanupProof,
   recordSettledResult,
   recordVerifiedReleaseRef,
+  releaseExecutionLease,
   settleWork,
   settleCleanupWork,
   settleReleaseCertification,
@@ -2502,5 +2747,7 @@ export {
   validateAuthorityRecordCommit,
   validateState,
   readAuthenticatedTrustedTime,
+  executionLeasePathFor,
+  processStartIdentity,
   writeExclusive,
 };

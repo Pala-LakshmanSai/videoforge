@@ -746,6 +746,9 @@ export interface V213SqlCleanupReceiptFinalizationResult extends Record<string, 
   readonly operationId: V213CleanupReceiptOperation;
   readonly providerCleanupEvidenceSha256: Sha256;
   readonly receiptArtifactSha256: Sha256;
+  /** The append-only receipt document that supplied the durable hashes. On a resumed cleanup this
+   * is the original observation, not the current provider readback. */
+  readonly receiptDocument: Readonly<Record<string, unknown>>;
   readonly releaseFactMaterializationSha256: Sha256 | null;
   readonly readbackOnly: boolean;
 }
@@ -789,7 +792,7 @@ export function createV213SqlCleanupReceiptFinalizer(input: {
       typeof request.failureCleanup !== "boolean"
     )
       throw new Error("V213_CLEANUP_RECEIPT_FINALIZATION_REQUEST_INVALID");
-    const document = Object.freeze({
+    const currentDocument = Object.freeze({
       schemaVersion: "videoforge.v213-current-run-cleanup-receipt/v1",
       fullLiveAuthorityId: request.fullLiveAuthorityId,
       operationId: request.operationId,
@@ -797,17 +800,7 @@ export function createV213SqlCleanupReceiptFinalizer(input: {
       providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
       summary: Object.freeze({ ...summary }),
     });
-    const receiptArtifactSha256 = canonicalSha256(document);
-    const intentDocument = Object.freeze({
-      schemaVersion: "videoforge.v213-cleanup-receipt-intent/v1",
-      fullLiveAuthorityId: request.fullLiveAuthorityId,
-      operationId: request.operationId,
-      outerStateSha256: request.outerStateSha256,
-      providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
-      receiptArtifactSha256,
-      receiptDocument: document,
-    });
-    const expectedIntentSha256 = canonicalSha256(intentDocument);
+    const currentReceiptArtifactSha256 = canonicalSha256(currentDocument);
     const boundary = async (
       name: V213CleanupReceiptPersistenceBoundary,
       state: V213CleanupReceiptIntentState | null,
@@ -822,21 +815,59 @@ export function createV213SqlCleanupReceiptFinalizer(input: {
           operationId: request.operationId,
           outerStateSha256: request.outerStateSha256,
           providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
-          receiptArtifactSha256,
-          document,
+          receiptArtifactSha256: currentReceiptArtifactSha256,
+          document: currentDocument,
         },
       ),
       "V213_CLEANUP_RECEIPT_INTENT_INVALID",
     );
-    exactKeys(
-      intent,
-      ["intentSha256", "intentState", "receiptArtifactSha256"],
-      "V213_CLEANUP_RECEIPT_INTENT_INVALID",
-    );
+    const intentKeys = Object.keys(intent).sort().join(",");
+    const legacyIntentKeys = "intentSha256,intentState,receiptArtifactSha256";
+    const boundIntentKeys =
+      "intentSha256,intentState,outerStateSha256,providerCleanupEvidenceSha256,receiptArtifactSha256,receiptDocument";
+    if (intentKeys !== legacyIntentKeys && intentKeys !== boundIntentKeys)
+      throw new Error("V213_CLEANUP_RECEIPT_INTENT_INVALID");
     if (
       !["NO_ATTEMPT", "ACK_UNKNOWN"].includes(String(intent.intentState)) ||
+      !SHA256.test(String(intent.receiptArtifactSha256))
+    )
+      throw new Error("V213_CLEANUP_RECEIPT_INTENT_INVALID");
+    const document =
+      intentKeys === boundIntentKeys
+        ? Object.freeze(record(intent.receiptDocument, "V213_CLEANUP_RECEIPT_INTENT_INVALID"))
+        : currentDocument;
+    const receiptArtifactSha256 = intent.receiptArtifactSha256 as Sha256;
+    const providerCleanupEvidenceSha256 =
+      intentKeys === boundIntentKeys
+        ? (intent.providerCleanupEvidenceSha256 as Sha256)
+        : request.providerCleanupEvidenceSha256;
+    if (
+      !SHA256.test(String(providerCleanupEvidenceSha256)) ||
+      !SHA256.test(String(document.outerStateSha256 ?? "")) ||
+      document.schemaVersion !== "videoforge.v213-current-run-cleanup-receipt/v1" ||
+      document.fullLiveAuthorityId !== request.fullLiveAuthorityId ||
+      document.operationId !== request.operationId ||
+      document.providerCleanupEvidenceSha256 !== providerCleanupEvidenceSha256 ||
+      document.providerCleanupEvidenceSha256 !==
+        canonicalSha256(record(document.summary, "V213_CLEANUP_RECEIPT_SUMMARY_INVALID")) ||
+      canonicalSha256(document) !== receiptArtifactSha256
+    )
+      throw new Error("V213_CLEANUP_RECEIPT_INTENT_INVALID");
+    const intentDocument = Object.freeze({
+      schemaVersion: "videoforge.v213-cleanup-receipt-intent/v1",
+      fullLiveAuthorityId: request.fullLiveAuthorityId,
+      operationId: request.operationId,
+      outerStateSha256: document.outerStateSha256,
+      providerCleanupEvidenceSha256,
+      receiptArtifactSha256,
+      receiptDocument: document,
+    });
+    const expectedIntentSha256 = canonicalSha256(intentDocument);
+    if (
       intent.intentSha256 !== expectedIntentSha256 ||
-      intent.receiptArtifactSha256 !== receiptArtifactSha256
+      (intentKeys === boundIntentKeys && intent.outerStateSha256 !== document.outerStateSha256) ||
+      (intentKeys === boundIntentKeys &&
+        intent.providerCleanupEvidenceSha256 !== providerCleanupEvidenceSha256)
     )
       throw new Error("V213_CLEANUP_RECEIPT_INTENT_INVALID");
     const intentState = intent.intentState as V213CleanupReceiptIntentState;
@@ -903,8 +934,9 @@ export function createV213SqlCleanupReceiptFinalizer(input: {
       schemaVersion: "videoforge.v213-cleanup-receipt-finalization-result/v1",
       fullLiveAuthorityId: request.fullLiveAuthorityId,
       operationId: request.operationId,
-      providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
+      providerCleanupEvidenceSha256,
       receiptArtifactSha256,
+      receiptDocument: document,
       releaseFactMaterializationSha256,
       readbackOnly: request.readbackOnly,
     });

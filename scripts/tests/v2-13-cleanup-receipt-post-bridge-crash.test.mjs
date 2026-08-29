@@ -55,11 +55,13 @@ function fixture() {
   return { directory, inputPath };
 }
 
-function adapterFactory(inputPath, { failReceiptOnce = new Set() } = {}) {
+function adapterFactory(inputPath, { failReceiptOnce = new Set(), driftOnRecovery = false } = {}) {
   const providerAttempts = new Map();
   const providerMutations = new Map();
   const receiptAttempts = new Map();
   const durableProviderResults = new Map();
+  const durableReceiptDocuments = new Map();
+  const providerReadbacks = new Map();
   const adapters = createTypeScriptBridgeAdapters({
     environment: { VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE: inputPath },
     expectedCliSha256: hash(
@@ -95,18 +97,42 @@ function adapterFactory(inputPath, { failReceiptOnce = new Set() } = {}) {
         if (!reconciliationOnly)
           providerMutations.set(operation, (providerMutations.get(operation) ?? 0) + 1);
       }
-      return durable;
+      const summary =
+        driftOnRecovery && reconciliationOnly
+          ? { ...durable.summary, checkedAt: "2026-08-29T00:00:01.000Z" }
+          : durable.summary;
+      const readback =
+        summary === durable.summary
+          ? durable
+          : {
+              ...durable,
+              evidenceSha256: hash(Buffer.from(canonicalJson(summary))),
+              summary,
+            };
+      providerReadbacks.set(operation, readback);
+      return readback;
     },
     spawnCleanupReceipt: async ({ request }) => {
       const operation = request.operationId;
       receiptAttempts.set(operation, (receiptAttempts.get(operation) ?? 0) + 1);
+      const currentReceiptDocument = {
+        schemaVersion: "videoforge.v213-current-run-cleanup-receipt/v1",
+        fullLiveAuthorityId: request.fullLiveAuthorityId,
+        operationId: operation,
+        outerStateSha256: request.outerStateSha256,
+        providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
+        summary: request.summary,
+      };
+      const receiptDocument = durableReceiptDocuments.get(operation) ?? currentReceiptDocument;
+      durableReceiptDocuments.set(operation, receiptDocument);
       if (failReceiptOnce.delete(operation)) throw new Error(`POST_BRIDGE_CRASH:${operation}`);
       return {
         schemaVersion: "videoforge.v213-cleanup-receipt-finalization-result/v1",
         fullLiveAuthorityId: request.fullLiveAuthorityId,
         operationId: operation,
-        providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
-        receiptArtifactSha256: hash(Buffer.from(canonicalJson({ operation, receipt: true }))),
+        providerCleanupEvidenceSha256: receiptDocument.providerCleanupEvidenceSha256,
+        receiptArtifactSha256: hash(Buffer.from(canonicalJson(receiptDocument))),
+        receiptDocument,
         releaseFactMaterializationSha256: request.failureCleanup
           ? null
           : hash(Buffer.from(canonicalJson({ operation, facts: true }))),
@@ -114,7 +140,13 @@ function adapterFactory(inputPath, { failReceiptOnce = new Set() } = {}) {
       };
     },
   });
-  return { adapters, providerAttempts, providerMutations, receiptAttempts };
+  return {
+    adapters,
+    providerAttempts,
+    providerMutations,
+    receiptAttempts,
+    providerReadbacks,
+  };
 }
 
 const state = Object.freeze({ expires_at: "2099-01-01T00:00:00.000Z" });
@@ -156,6 +188,35 @@ test("all four post-authorization recoveries can certify provider readback with 
       assert.equal(runtime.providerMutations.get(operation) ?? 0, 0);
       assert.equal(runtime.receiptAttempts.get(operation), 1);
     }
+  } finally {
+    rmSync(files.directory, { recursive: true, force: true });
+  }
+});
+
+test("receipt resume keeps the durable cleanup summary when provider checkedAt and hash drift", async () => {
+  const files = fixture();
+  const operation = "reconcile-exact-resources";
+  try {
+    const runtime = adapterFactory(files.inputPath, {
+      failReceiptOnce: new Set([operation]),
+      driftOnRecovery: true,
+    });
+    await assert.rejects(
+      runtime.adapters[operation]({}, state, new Map(), outer),
+      new RegExp(`POST_BRIDGE_CRASH:${operation}`, "u"),
+    );
+    const recovered = await runtime.adapters[operation](recovery, state, new Map(), outer);
+    const currentProviderReadback = runtime.providerReadbacks.get(operation);
+    assert.equal(currentProviderReadback.summary.checkedAt, "2026-08-29T00:00:01.000Z");
+    assert.notEqual(
+      currentProviderReadback.evidenceSha256,
+      hash(Buffer.from(canonicalJson(OPERATIONS[operation]))),
+    );
+    assert.deepEqual(recovered.bridgeSummary, OPERATIONS[operation]);
+    assert.equal(recovered.onlyApprovedRetainedVolumes, true);
+    assert.equal(runtime.providerAttempts.get(operation), 2);
+    assert.equal(runtime.providerMutations.get(operation), 1);
+    assert.equal(runtime.receiptAttempts.get(operation), 2);
   } finally {
     rmSync(files.directory, { recursive: true, force: true });
   }

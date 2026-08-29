@@ -3764,6 +3764,15 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
   try {
     const requests = [];
     const cleanupReceiptRequests = [];
+    const receiptDocument = (request) => ({
+      schemaVersion: "videoforge.v213-current-run-cleanup-receipt/v1",
+      fullLiveAuthorityId: request.fullLiveAuthorityId,
+      operationId: request.operationId,
+      outerStateSha256: request.outerStateSha256,
+      providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
+      summary: request.summary,
+    });
+    const receiptArtifact = (request) => hash(Buffer.from(canonicalJson(receiptDocument(request))));
     const adapters = createTypeScriptBridgeAdapters({
       environment: { VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE: inputPath },
       // Exercise the cleanup request contract while the sealed release pin intentionally remains
@@ -3793,14 +3802,14 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
       },
       spawnCleanupReceipt: async ({ request }) => {
         cleanupReceiptRequests.push(request);
+        const document = receiptDocument(request);
         return {
           schemaVersion: "videoforge.v213-cleanup-receipt-finalization-result/v1",
           fullLiveAuthorityId: request.fullLiveAuthorityId,
           operationId: request.operationId,
           providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
-          receiptArtifactSha256: hash(
-            Buffer.from(canonicalJson({ operationId: request.operationId, receipt: true })),
-          ),
+          receiptArtifactSha256: receiptArtifact(request),
+          receiptDocument: document,
           releaseFactMaterializationSha256: hash(
             Buffer.from(canonicalJson({ operationId: request.operationId, facts: true })),
           ),
@@ -3814,13 +3823,7 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
       outputs.push(await adapters[command]({}, state, prior, `sha256:${"a".repeat(64)}`));
     assert.equal(
       outputs.every(
-        (output, index) =>
-          output.proofSha256 ===
-          hash(
-            Buffer.from(
-              canonicalJson({ operationId: Object.keys(summaries)[index], receipt: true }),
-            ),
-          ),
+        (output, index) => output.proofSha256 === receiptArtifact(cleanupReceiptRequests[index]),
       ),
       true,
     );
@@ -3849,10 +3852,7 @@ test("protected cleanup bridge returns the exact four outer proof contracts with
       `sha256:${"b".repeat(64)}`,
     );
     assert.equal(cleanupReceiptRequests.at(-1).readbackOnly, true);
-    assert.equal(
-      recovered.proofSha256,
-      hash(Buffer.from(canonicalJson({ operationId: "prove-zero-workers", receipt: true }))),
-    );
+    assert.equal(recovered.proofSha256, receiptArtifact(cleanupReceiptRequests.at(-1)));
     assert.equal(outputs[0].bothEndpointsMaxWorkersOne, true);
     assert.equal(outputs[1].zeroWorkers, true);
     assert.equal(outputs[2].withinCumulativeCap, true);

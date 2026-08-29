@@ -305,6 +305,16 @@ export interface V213FullLiveCommandResult {
   readonly summary: JsonValue;
 }
 
+export interface V213FullLiveJournalClaimResult {
+  readonly action: "EXECUTE" | "RECONCILE";
+  /** False means this was a strict readback with no durable bridge identity/row to mutate. */
+  readonly bridgeRowPresent?: boolean;
+  readonly identityRecorded?: boolean;
+  readonly identitySha256?: `sha256:${string}`;
+  readonly originalOuterStateSha256?: `sha256:${string}`;
+  readonly requestSha256?: `sha256:${string}`;
+}
+
 export interface V213FullLiveJournal {
   claim(input: {
     readonly operationId: string;
@@ -312,9 +322,10 @@ export interface V213FullLiveJournal {
     readonly kind: "create" | "readback" | "dispatch" | "status" | "cancel" | "delete";
     readonly requestSha256: `sha256:${string}`;
     readonly resourceKey: string;
+    readonly outerStateSha256?: `sha256:${string}`;
+    readonly readbackOnly?: boolean;
   }): Promise<
-    | { readonly action: "EXECUTE" }
-    | { readonly action: "RECONCILE" }
+    | V213FullLiveJournalClaimResult
     | { readonly action: "DONE"; readonly result: V213FullLiveCommandResult }
   >;
   ambiguous(operationId: string): Promise<void>;
@@ -490,6 +501,8 @@ interface V213CleanupInput {
   readonly authorizedUnsettled: boolean;
   readonly reconciliationOnly: boolean;
   readonly providerDispatchForbidden: boolean;
+  /** Candidate outer state supplied by the executor; SQL recovery binds to the first value. */
+  readonly outerStateSha256?: `sha256:${string}`;
   readonly qualifiedProductionCleanup?: V213QualifiedProductionCleanupProof;
   readonly retainedLanes: readonly Readonly<{
     lane: "mage" | "soulx";
@@ -1521,7 +1534,11 @@ function exactCleanupInput(value: unknown): V213CleanupInput {
     ![
       "authorizedUnsettled,billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,providerDispatchForbidden,reconciliationOnly,retainedLanes,schemaVersion,totalCapUsd",
       "authorizedUnsettled,billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,providerDispatchForbidden,qualifiedProductionCleanup,reconciliationOnly,retainedLanes,schemaVersion,totalCapUsd",
+      "authorizedUnsettled,billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,outerStateSha256,providerDispatchForbidden,reconciliationOnly,retainedLanes,schemaVersion,totalCapUsd",
+      "authorizedUnsettled,billingBaselineMode,billingBaselineUsd,fullLiveAuthorityId,outerStateSha256,providerDispatchForbidden,qualifiedProductionCleanup,reconciliationOnly,retainedLanes,schemaVersion,totalCapUsd",
     ].includes(Object.keys(item).sort().join(",")) ||
+    (item.outerStateSha256 !== undefined &&
+      (typeof item.outerStateSha256 !== "string" || !SHA256.test(item.outerStateSha256))) ||
     (qualifiedProductionCleanup !== undefined &&
       qualifiedProductionCleanup.fullLiveAuthorityId !== item.fullLiveAuthorityId)
   )
@@ -1763,6 +1780,29 @@ const kindFor = (
   return "dispatch";
 };
 
+const CLEANUP_RECOVERY_FIELDS = Object.freeze([
+  "authorizedUnsettled",
+  "cleanupOnly",
+  "failureCleanup",
+  "outerStateSha256",
+  "providerDispatchForbidden",
+  "readbackOnly",
+  "reconciliationOnly",
+  "resumed",
+] as const);
+
+/** Cleanup recovery controls describe the current execution path, not the command authorization.
+ * Keep them (and the current executor outer hash) outside the durable bridge request identity. */
+function cleanupLogicalRequest(request: V213FullLiveCommandRequest): JsonValue {
+  if (!CLEANUP_COMMANDS.has(request.command)) return request as unknown as JsonValue;
+  const input = object(request.input);
+  if (input === null) return request as unknown as JsonValue;
+  const sanitizedInput = Object.fromEntries(
+    Object.entries(input).filter(([key]) => !CLEANUP_RECOVERY_FIELDS.includes(key as never)),
+  );
+  return { ...request, input: sanitizedInput } as unknown as JsonValue;
+}
+
 export async function executeV213FullLiveCommand(
   requestValue: unknown,
   runtime: V213FullLiveBridgeRuntime,
@@ -1775,7 +1815,12 @@ export async function executeV213FullLiveCommand(
     requestInput.providerDispatchForbidden === true;
   if (cleanupReadbackOnly && !CLEANUP_COMMANDS.has(request.command))
     fail("PROVIDER_DISPATCH_FENCE_SCOPE_INVALID");
-  const requestSha256 = sha256(request as unknown as JsonValue);
+  const cleanupOuterStateSha256 =
+    typeof requestInput?.outerStateSha256 === "string" && SHA256.test(requestInput.outerStateSha256)
+      ? (requestInput.outerStateSha256 as `sha256:${string}`)
+      : undefined;
+  const requestSha256 = sha256(cleanupLogicalRequest(request));
+  const unjournaledRecovery = new Set<string>();
   const claim = await atV213CancellationBoundary(runtime.cancellation, () =>
     runtime.journal.claim({
       operationId: request.commandId,
@@ -1783,14 +1828,27 @@ export async function executeV213FullLiveCommand(
       kind: kindFor(request.command),
       requestSha256,
       resourceKey: `v213:${request.command}:${request.commandId}`,
+      ...(CLEANUP_COMMANDS.has(request.command) &&
+      (cleanupOuterStateSha256 !== undefined || cleanupReadbackOnly)
+        ? { outerStateSha256: cleanupOuterStateSha256, readbackOnly: cleanupReadbackOnly }
+        : {}),
     }),
   );
   if (claim.action === "DONE") return claim.result;
+  if (claim.bridgeRowPresent === false || claim.identityRecorded === false)
+    unjournaledRecovery.add(request.commandId);
   if (claim.action === "EXECUTE" && cleanupReadbackOnly) fail("PROVIDER_REDISPATCH_FORBIDDEN");
   if (claim.action === "RECONCILE" && !cleanupReadbackOnly) fail("AMBIGUOUS_REDISPATCH_FORBIDDEN");
+  const effectiveRequest =
+    CLEANUP_COMMANDS.has(request.command) && claim.originalOuterStateSha256 !== undefined
+      ? ({
+          ...request,
+          input: { ...requestInput, outerStateSha256: claim.originalOuterStateSha256 },
+        } as V213FullLiveCommandRequest)
+      : request;
   try {
     const handled = await atV213CancellationBoundary(runtime.cancellation, () =>
-      runtime.handlers[request.command](request),
+      runtime.handlers[request.command](effectiveRequest),
     );
     if (!SHA256.test(handled.evidenceSha256) || handled.summary === undefined)
       fail("HANDLER_RESULT_INVALID");
@@ -1802,12 +1860,13 @@ export async function executeV213FullLiveCommand(
       evidenceSha256: handled.evidenceSha256,
       summary: redactV213Output(handled.summary, runtime.protectedValues),
     });
-    await atV213CancellationBoundary(runtime.cancellation, () =>
-      runtime.journal.complete(request.commandId, result),
-    );
+    if (!unjournaledRecovery.has(request.commandId))
+      await atV213CancellationBoundary(runtime.cancellation, () =>
+        runtime.journal.complete(request.commandId, result),
+      );
     return result;
   } catch (error) {
-    if (claim.action === "EXECUTE") {
+    if (claim.action === "EXECUTE" && !unjournaledRecovery.has(request.commandId)) {
       try {
         await runtime.journal.ambiguous(request.commandId);
       } catch {
@@ -1854,6 +1913,7 @@ export function redactV213Output(
 export function createV213SqlCommandJournal(
   database: TransactionalSqlExecutor,
 ): V213FullLiveJournal {
+  const strictReadbackOperations = new Set<string>();
   const journal: V213FullLiveJournal = {
     async claim(input: {
       readonly operationId: string;
@@ -1861,17 +1921,40 @@ export function createV213SqlCommandJournal(
       readonly kind: "create" | "readback" | "dispatch" | "status" | "cancel" | "delete";
       readonly requestSha256: `sha256:${string}`;
       readonly resourceKey: string;
+      readonly outerStateSha256?: `sha256:${string}`;
+      readonly readbackOnly?: boolean;
     }) {
+      const cleanupIdentityClaim =
+        input.outerStateSha256 !== undefined || input.readbackOnly === true;
+      if (
+        cleanupIdentityClaim &&
+        (!SHA256.test(input.outerStateSha256 ?? "") || typeof input.readbackOnly !== "boolean")
+      )
+        fail("JOURNAL_CLEANUP_IDENTITY_INVALID");
       const result = await database.query<{ value: unknown }>(
-        "SELECT public.videoforge_claim_v213_bridge_command($1::jsonb) value",
+        cleanupIdentityClaim
+          ? "SELECT public.videoforge_claim_v213_cleanup_bridge_command($1::jsonb) value"
+          : "SELECT public.videoforge_claim_v213_bridge_command($1::jsonb) value",
         [
-          JSON.stringify({
-            operationId: input.operationId,
-            stageAuthorityId: input.stageAuthorityId,
-            kind: input.kind,
-            requestSha256: input.requestSha256,
-            resourceKey: input.resourceKey,
-          }),
+          JSON.stringify(
+            cleanupIdentityClaim
+              ? {
+                  operationId: input.operationId,
+                  stageAuthorityId: input.stageAuthorityId,
+                  kind: input.kind,
+                  requestSha256: input.requestSha256,
+                  resourceKey: input.resourceKey,
+                  outerStateSha256: input.outerStateSha256,
+                  readbackOnly: input.readbackOnly,
+                }
+              : {
+                  operationId: input.operationId,
+                  stageAuthorityId: input.stageAuthorityId,
+                  kind: input.kind,
+                  requestSha256: input.requestSha256,
+                  resourceKey: input.resourceKey,
+                },
+          ),
         ],
       );
       const value = object(result.rows[0]?.value);
@@ -1895,14 +1978,45 @@ export function createV213SqlCommandJournal(
           result: prior as unknown as V213FullLiveCommandResult,
         };
       }
+      if (cleanupIdentityClaim) {
+        if (
+          typeof value?.bridgeRowPresent !== "boolean" ||
+          typeof value?.identityRecorded !== "boolean" ||
+          (value.originalOuterStateSha256 !== undefined &&
+            !SHA256.test(String(value.originalOuterStateSha256))) ||
+          (value.identitySha256 !== undefined && !SHA256.test(String(value.identitySha256))) ||
+          (value.requestSha256 !== undefined && !SHA256.test(String(value.requestSha256)))
+        )
+          fail("JOURNAL_CLAIM_INVALID");
+        if (value.bridgeRowPresent === false || value.identityRecorded === false)
+          strictReadbackOperations.add(input.operationId);
+        return {
+          action: value.action as "EXECUTE" | "RECONCILE",
+          bridgeRowPresent: value.bridgeRowPresent,
+          identityRecorded: value.identityRecorded,
+          ...(value.identitySha256 === undefined
+            ? {}
+            : { identitySha256: value.identitySha256 as `sha256:${string}` }),
+          ...(value.originalOuterStateSha256 === undefined
+            ? {}
+            : {
+                originalOuterStateSha256: value.originalOuterStateSha256 as `sha256:${string}`,
+              }),
+          ...(value.requestSha256 === undefined
+            ? {}
+            : { requestSha256: value.requestSha256 as `sha256:${string}` }),
+        };
+      }
       return { action: value?.action as "EXECUTE" | "RECONCILE" };
     },
     async ambiguous(operationId: string) {
+      if (strictReadbackOperations.has(operationId)) return;
       await database.query("SELECT public.videoforge_transition_v213_bridge_command($1::jsonb)", [
         JSON.stringify({ operationId, to: "ACK_UNKNOWN" }),
       ]);
     },
     async complete(operationId: string, result: V213FullLiveCommandResult) {
+      if (strictReadbackOperations.has(operationId)) return;
       await database.query("SELECT public.videoforge_transition_v213_bridge_command($1::jsonb)", [
         JSON.stringify({
           operationId,

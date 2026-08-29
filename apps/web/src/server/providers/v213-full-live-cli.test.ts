@@ -1387,7 +1387,22 @@ describe("V2-13 full-live TypeScript bridge", () => {
       fullLiveAuthorityId,
       operationId: "prove-zero-workers" as const,
       providerCleanupEvidenceSha256: unsigned.providerCleanupEvidenceSha256,
-      receiptArtifactSha256: canonicalSha256({ receipt: "cleanup" }),
+      receiptArtifactSha256: canonicalSha256({
+        schemaVersion: "videoforge.v213-current-run-cleanup-receipt/v1",
+        fullLiveAuthorityId,
+        operationId: "prove-zero-workers",
+        outerStateSha256: unsigned.outerStateSha256,
+        providerCleanupEvidenceSha256: unsigned.providerCleanupEvidenceSha256,
+        summary,
+      }),
+      receiptDocument: {
+        schemaVersion: "videoforge.v213-current-run-cleanup-receipt/v1",
+        fullLiveAuthorityId,
+        operationId: "prove-zero-workers" as const,
+        outerStateSha256: unsigned.outerStateSha256,
+        providerCleanupEvidenceSha256: unsigned.providerCleanupEvidenceSha256,
+        summary,
+      },
       releaseFactMaterializationSha256: canonicalSha256({ materialization: "cleanup" }),
       readbackOnly: true,
     };

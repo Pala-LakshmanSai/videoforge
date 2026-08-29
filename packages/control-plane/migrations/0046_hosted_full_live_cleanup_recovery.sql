@@ -32,25 +32,51 @@ CREATE TABLE public.hosted_full_live_cleanup_receipt_intents (
   PRIMARY KEY(full_live_authority_id,operation_id)
 );
 
+-- Cleanup bridge claims are authorized once, before a provider call is allowed to begin.  The
+-- immutable 0045 bridge row intentionally stores only the command request identity; this additive
+-- row also binds that identity to the outer authorization state.  Recovery controls are never
+-- stored here, so a cleanup-only restart cannot turn its flags/current state hash into a new claim.
+CREATE TABLE public.hosted_full_live_cleanup_command_identities (
+  operation_id text PRIMARY KEY CHECK(operation_id ~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$'),
+  full_live_authority_id uuid NOT NULL REFERENCES public.hosted_full_live_authorities(id),
+  stage_authority_id uuid NOT NULL,
+  kind text NOT NULL CHECK(kind IN ('create','readback','dispatch','status','cancel','delete')),
+  request_sha256 text NOT NULL CHECK(request_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  resource_key text NOT NULL CHECK(length(resource_key) BETWEEN 1 AND 240),
+  outer_state_sha256 text NOT NULL CHECK(outer_state_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  identity_document jsonb NOT NULL CHECK(jsonb_typeof(identity_document)='object'),
+  identity_sha256 text NOT NULL UNIQUE CHECK(identity_sha256 ~ '^sha256:[0-9a-f]{64}$'),
+  created_at timestamptz NOT NULL DEFAULT transaction_timestamp(),
+  UNIQUE(full_live_authority_id,operation_id)
+);
+
 CREATE TRIGGER hosted_full_live_disabled_promotion_closures_append_only
   BEFORE UPDATE OR DELETE ON public.hosted_full_live_disabled_promotion_closures
   FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
 CREATE TRIGGER hosted_full_live_cleanup_receipt_intents_append_only
   BEFORE UPDATE OR DELETE ON public.hosted_full_live_cleanup_receipt_intents
   FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
+CREATE TRIGGER hosted_full_live_cleanup_command_identities_append_only
+  BEFORE UPDATE OR DELETE ON public.hosted_full_live_cleanup_command_identities
+  FOR EACH ROW EXECUTE FUNCTION public.videoforge_vnext_append_only();
 
 ALTER TABLE public.hosted_full_live_disabled_promotion_closures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hosted_full_live_disabled_promotion_closures FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.hosted_full_live_cleanup_receipt_intents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hosted_full_live_cleanup_receipt_intents FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.hosted_full_live_cleanup_command_identities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hosted_full_live_cleanup_command_identities FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY hosted_full_live_disabled_promotion_closures_owner_only
   ON public.hosted_full_live_disabled_promotion_closures USING(false) WITH CHECK(false);
 CREATE POLICY hosted_full_live_cleanup_receipt_intents_owner_only
   ON public.hosted_full_live_cleanup_receipt_intents USING(false) WITH CHECK(false);
+CREATE POLICY hosted_full_live_cleanup_command_identities_owner_only
+  ON public.hosted_full_live_cleanup_command_identities USING(false) WITH CHECK(false);
 
 REVOKE ALL ON TABLE public.hosted_full_live_disabled_promotion_closures FROM PUBLIC;
 REVOKE ALL ON TABLE public.hosted_full_live_cleanup_receipt_intents FROM PUBLIC;
+REVOKE ALL ON TABLE public.hosted_full_live_cleanup_command_identities FROM PUBLIC;
 
 -- Promotion and activation take this same advisory lock. Once the append-only disabled closure is
 -- present, a later activation insert is permanently forbidden rather than racing the closure.
@@ -149,11 +175,125 @@ $$;
 REVOKE ALL ON FUNCTION public.videoforge_record_v213_disabled_promotion_closure(uuid,jsonb)
   FROM PUBLIC;
 
+-- This wrapper is deliberately additive: it calls the immutable 0045 claim only for an initial
+-- authorization or when a durable bridge row is already present.  A readback-only recovery with
+-- no bridge row returns RECONCILE without inserting/transitioning anything, which is the strict
+-- no-redispatch behavior required after an uncertain child boundary.
+CREATE FUNCTION public.videoforge_claim_v213_cleanup_bridge_command(supplied jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE
+  claimed_authority_id uuid; latest public.hosted_full_live_bridge_command_events%ROWTYPE;
+  existing public.hosted_full_live_cleanup_command_identities%ROWTYPE;
+  claim jsonb; identity_document jsonb; identity_hash text; command_id text;
+  readback_only boolean; bridge_present boolean;
+BEGIN
+  IF jsonb_typeof(supplied)<>'object'
+     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(supplied) key)
+       IS DISTINCT FROM ARRAY['kind','operationId','outerStateSha256','readbackOnly',
+         'requestSha256','resourceKey','stageAuthorityId']::text[]
+     OR supplied->>'operationId' !~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$'
+     OR supplied->>'stageAuthorityId' !~
+       '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+     OR supplied->>'kind' NOT IN ('create','readback','dispatch','status','cancel','delete')
+     OR supplied->>'requestSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR supplied->>'resourceKey' IS NULL OR length(supplied->>'resourceKey') NOT BETWEEN 1 AND 240
+     OR supplied->>'outerStateSha256' !~ '^sha256:[0-9a-f]{64}$'
+     OR jsonb_typeof(supplied->'readbackOnly')<>'boolean' THEN
+    RAISE EXCEPTION 'V213 cleanup bridge command invalid' USING ERRCODE='23514';
+  END IF;
+  claimed_authority_id:=(supplied->>'stageAuthorityId')::uuid;
+  readback_only:=(supplied->>'readbackOnly')::boolean;
+  command_id:=supplied->>'operationId';
+  -- Keep this relation identical to the immutable 0045 cleanup scope check.  The command ID is
+  -- intentionally not trusted as the operation selector; resourceKey/kind are checked together.
+  IF supplied->>'resourceKey' IS DISTINCT FROM
+       ('v213:'||CASE supplied->>'kind'
+          WHEN 'cancel' THEN 'restore-endpoints-max-one'
+          WHEN 'readback' THEN 'read-settled-billing'
+          WHEN 'status' THEN CASE
+            WHEN supplied->>'resourceKey'= 'v213:prove-zero-workers:'||command_id
+              THEN 'prove-zero-workers'
+            ELSE 'reconcile-exact-resources'
+          END
+          ELSE '__not_cleanup__'
+        END||':'||command_id) THEN
+    RAISE EXCEPTION 'V213 cleanup bridge command scope invalid' USING ERRCODE='42501';
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.hosted_full_live_authorities authority
+      WHERE authority.id=claimed_authority_id) THEN
+    RAISE EXCEPTION 'V213 cleanup bridge command authority unavailable' USING ERRCODE='42501';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(command_id,49));
+  SELECT * INTO existing FROM public.hosted_full_live_cleanup_command_identities identity
+    WHERE identity.operation_id=command_id;
+  IF existing.operation_id IS NOT NULL THEN
+    IF existing.full_live_authority_id<>claimed_authority_id
+       OR existing.stage_authority_id<>claimed_authority_id
+       OR existing.kind<>supplied->>'kind'
+       OR existing.request_sha256<>supplied->>'requestSha256'
+       OR existing.resource_key<>supplied->>'resourceKey'
+       OR (NOT readback_only AND existing.outer_state_sha256<>supplied->>'outerStateSha256') THEN
+      RAISE EXCEPTION 'V213 cleanup bridge command replay drift' USING ERRCODE='23505';
+    END IF;
+    SELECT * INTO latest FROM public.hosted_full_live_bridge_command_events event
+      WHERE event.operation_id=command_id ORDER BY sequence DESC LIMIT 1;
+    IF latest.operation_id IS NULL THEN
+      RETURN jsonb_build_object('action','RECONCILE','bridgeRowPresent',false,
+        'identityRecorded',true,'identitySha256',existing.identity_sha256,
+        'originalOuterStateSha256',existing.outer_state_sha256,
+        'requestSha256',existing.request_sha256);
+    END IF;
+    claim:=public.videoforge_claim_v213_bridge_command(jsonb_build_object(
+      'operationId',command_id,'stageAuthorityId',existing.stage_authority_id::text,
+      'kind',existing.kind,'requestSha256',existing.request_sha256,
+      'resourceKey',existing.resource_key));
+    RETURN claim||jsonb_build_object('bridgeRowPresent',true,'identityRecorded',true,
+      'identitySha256',existing.identity_sha256,
+      'originalOuterStateSha256',existing.outer_state_sha256,
+      'requestSha256',existing.request_sha256);
+  END IF;
+  -- Recovery cannot manufacture an authorization identity.  Even if an old bridge row happens to
+  -- exist, leave it untouched and make the caller perform only its provider readback.
+  IF readback_only THEN
+    SELECT * INTO latest FROM public.hosted_full_live_bridge_command_events event
+      WHERE event.operation_id=command_id ORDER BY sequence DESC LIMIT 1;
+    RETURN jsonb_build_object('action','RECONCILE','bridgeRowPresent',latest.operation_id IS NOT NULL,
+      'identityRecorded',false);
+  END IF;
+  identity_document:=jsonb_build_object(
+    'schemaVersion','videoforge.v213-cleanup-command-identity/v1',
+    'operationId',command_id,
+    'fullLiveAuthorityId',claimed_authority_id::text,
+    'stageAuthorityId',claimed_authority_id::text,
+    'kind',supplied->>'kind',
+    'requestSha256',supplied->>'requestSha256',
+    'resourceKey',supplied->>'resourceKey',
+    'outerStateSha256',supplied->>'outerStateSha256');
+  identity_hash:=public.videoforge_v213_jit_sha256(identity_document);
+  INSERT INTO public.hosted_full_live_cleanup_command_identities(
+    operation_id,full_live_authority_id,stage_authority_id,kind,request_sha256,resource_key,
+    outer_state_sha256,identity_document,identity_sha256)
+  VALUES(command_id,claimed_authority_id,claimed_authority_id,supplied->>'kind',
+    supplied->>'requestSha256',supplied->>'resourceKey',supplied->>'outerStateSha256',
+    identity_document,identity_hash);
+  claim:=public.videoforge_claim_v213_bridge_command(jsonb_build_object(
+    'operationId',command_id,'stageAuthorityId',claimed_authority_id::text,
+    'kind',supplied->>'kind','requestSha256',supplied->>'requestSha256',
+    'resourceKey',supplied->>'resourceKey'));
+  RETURN claim||jsonb_build_object('bridgeRowPresent',true,'identityRecorded',true,
+    'identitySha256',identity_hash,'originalOuterStateSha256',supplied->>'outerStateSha256',
+    'requestSha256',supplied->>'requestSha256');
+END;
+$$;
+REVOKE ALL ON FUNCTION public.videoforge_claim_v213_cleanup_bridge_command(jsonb) FROM PUBLIC;
+
 -- The authority row is the failure-safe root. It remains valid for cleanup receipt persistence
 -- after expiry and before promotion, activation, or success-only materialization facts exist.
 CREATE FUNCTION public.videoforge_claim_v213_cleanup_receipt_intent(supplied jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
 DECLARE full_authority uuid; document jsonb:=supplied->'document'; intent_document jsonb;
+  effective_document jsonb; effective_artifact text; current_artifact text; cleanup_identity
+    public.hosted_full_live_cleanup_command_identities%ROWTYPE;
   intent_hash text; existing public.hosted_full_live_cleanup_receipt_intents%ROWTYPE;
   existing_receipt public.hosted_full_live_operation_receipts%ROWTYPE;
 BEGIN
@@ -167,8 +307,33 @@ BEGIN
        'read-settled-billing','reconcile-exact-resources')
      OR supplied->>'outerStateSha256' !~ '^sha256:[0-9a-f]{64}$'
      OR supplied->>'providerCleanupEvidenceSha256' !~ '^sha256:[0-9a-f]{64}$'
-     OR supplied->>'receiptArtifactSha256' !~ '^sha256:[0-9a-f]{64}$'
-     OR jsonb_typeof(document)<>'object'
+     OR supplied->>'receiptArtifactSha256' !~ '^sha256:[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'V213 cleanup receipt intent invalid' USING ERRCODE='23514';
+  END IF;
+  full_authority:=(supplied->>'fullLiveAuthorityId')::uuid;
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    full_authority::text||':'||(supplied->>'operationId'),451));
+  IF NOT EXISTS(SELECT 1 FROM public.hosted_full_live_authorities authority
+       WHERE authority.id=full_authority) THEN
+    RAISE EXCEPTION 'V213 cleanup receipt intent authority unavailable' USING ERRCODE='42501';
+  END IF;
+  -- A receipt intent is keyed by the original authority and cleanup operation. Once that
+  -- append-only row exists, a restarted readback may contain a new provider timestamp, evidence
+  -- hash, artifact hash, or outer-state snapshot; none of those current observations can replace
+  -- the durable intent. Return it before inspecting the fresh document at all.
+  SELECT * INTO existing FROM public.hosted_full_live_cleanup_receipt_intents row
+   WHERE row.full_live_authority_id=full_authority
+     AND row.operation_id=supplied->>'operationId';
+  IF existing.operation_id IS NOT NULL THEN
+    RETURN jsonb_build_object('intentSha256',existing.intent_sha256,
+      'intentState','ACK_UNKNOWN','receiptArtifactSha256',existing.receipt_artifact_sha256,
+      'outerStateSha256',existing.outer_state_sha256,
+      'providerCleanupEvidenceSha256',existing.provider_cleanup_evidence_sha256,
+      'receiptDocument',existing.intent_document->'receiptDocument');
+  END IF;
+  -- The remaining validation applies only to a first claim. It binds the newly persisted intent
+  -- to the evidence/document observed before any uncertain boundary.
+  IF jsonb_typeof(document)<>'object'
      OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(document) key)
        IS DISTINCT FROM ARRAY['fullLiveAuthorityId','operationId','outerStateSha256',
          'providerCleanupEvidenceSha256','schemaVersion','summary']::text[]
@@ -180,58 +345,53 @@ BEGIN
         supplied->>'providerCleanupEvidenceSha256'
      OR jsonb_typeof(document->'summary')<>'object'
      OR supplied->>'providerCleanupEvidenceSha256'<>
-        public.videoforge_v213_jit_sha256(document->'summary')
-     OR supplied->>'receiptArtifactSha256'<>
-        public.videoforge_v213_jit_sha256(document) THEN
+        public.videoforge_v213_jit_sha256(document->'summary') THEN
     RAISE EXCEPTION 'V213 cleanup receipt intent invalid' USING ERRCODE='23514';
   END IF;
-  full_authority:=(supplied->>'fullLiveAuthorityId')::uuid;
-  PERFORM pg_advisory_xact_lock(hashtextextended(
-    full_authority::text||':'||(supplied->>'operationId'),451));
-  IF NOT EXISTS(SELECT 1 FROM public.hosted_full_live_authorities authority
-       WHERE authority.id=full_authority) THEN
-    RAISE EXCEPTION 'V213 cleanup receipt intent authority unavailable' USING ERRCODE='42501';
+  -- A restarted cleanup command may observe a different outer state after the executor has
+  -- entered CLEANUP_ONLY.  Bind the receipt to the original command authorization when its
+  -- additive identity row is present; recovery flags/current outer state are not receipt identity.
+  SELECT * INTO cleanup_identity FROM public.hosted_full_live_cleanup_command_identities identity
+    WHERE identity.operation_id='v213:'||full_authority::text||':'||(supplied->>'operationId');
+  current_artifact:=public.videoforge_v213_jit_sha256(document);
+  IF cleanup_identity.operation_id IS NOT NULL THEN
+    effective_document:=document||jsonb_build_object(
+      'outerStateSha256',cleanup_identity.outer_state_sha256);
+  ELSE
+    effective_document:=document;
+    IF supplied->>'receiptArtifactSha256'<>current_artifact THEN
+      RAISE EXCEPTION 'V213 cleanup receipt intent invalid' USING ERRCODE='23514';
+    END IF;
   END IF;
+  effective_artifact:=public.videoforge_v213_jit_sha256(effective_document);
   intent_document:=jsonb_build_object(
     'schemaVersion','videoforge.v213-cleanup-receipt-intent/v1',
     'fullLiveAuthorityId',supplied->>'fullLiveAuthorityId',
     'operationId',supplied->>'operationId',
-    'outerStateSha256',supplied->>'outerStateSha256',
+    'outerStateSha256',effective_document->>'outerStateSha256',
     'providerCleanupEvidenceSha256',supplied->>'providerCleanupEvidenceSha256',
-    'receiptArtifactSha256',supplied->>'receiptArtifactSha256',
-    'receiptDocument',document);
+    'receiptArtifactSha256',effective_artifact,
+    'receiptDocument',effective_document);
   intent_hash:=public.videoforge_v213_jit_sha256(intent_document);
-  SELECT * INTO existing FROM public.hosted_full_live_cleanup_receipt_intents row
-   WHERE row.full_live_authority_id=full_authority
-     AND row.operation_id=supplied->>'operationId';
-  IF existing.operation_id IS NOT NULL THEN
-    IF existing.outer_state_sha256<>supplied->>'outerStateSha256'
-       OR existing.provider_cleanup_evidence_sha256<>
-          supplied->>'providerCleanupEvidenceSha256'
-       OR existing.receipt_artifact_sha256<>supplied->>'receiptArtifactSha256'
-       OR existing.intent_document IS DISTINCT FROM intent_document
-       OR existing.intent_sha256<>intent_hash THEN
-      RAISE EXCEPTION 'V213 cleanup receipt intent replay drift' USING ERRCODE='23505';
-    END IF;
-    RETURN jsonb_build_object('intentSha256',existing.intent_sha256,
-      'intentState','ACK_UNKNOWN','receiptArtifactSha256',existing.receipt_artifact_sha256);
-  END IF;
   SELECT * INTO existing_receipt FROM public.hosted_full_live_operation_receipts receipt
    WHERE receipt.full_live_authority_id=full_authority
      AND receipt.operation_id=supplied->>'operationId';
   IF existing_receipt.operation_id IS NOT NULL AND (
-       existing_receipt.artifact_sha256<>supplied->>'receiptArtifactSha256'
-       OR existing_receipt.receipt_document IS DISTINCT FROM document) THEN
+       existing_receipt.artifact_sha256<>effective_artifact
+       OR existing_receipt.receipt_document IS DISTINCT FROM effective_document) THEN
     RAISE EXCEPTION 'V213 cleanup receipt intent existing receipt drift' USING ERRCODE='23505';
   END IF;
   INSERT INTO public.hosted_full_live_cleanup_receipt_intents(
     full_live_authority_id,operation_id,outer_state_sha256,
     provider_cleanup_evidence_sha256,receipt_artifact_sha256,intent_document,intent_sha256)
-  VALUES(full_authority,supplied->>'operationId',supplied->>'outerStateSha256',
-    supplied->>'providerCleanupEvidenceSha256',supplied->>'receiptArtifactSha256',
+  VALUES(full_authority,supplied->>'operationId',effective_document->>'outerStateSha256',
+    supplied->>'providerCleanupEvidenceSha256',effective_artifact,
     intent_document,intent_hash);
   RETURN jsonb_build_object('intentSha256',intent_hash,'intentState','NO_ATTEMPT',
-    'receiptArtifactSha256',supplied->>'receiptArtifactSha256');
+    'receiptArtifactSha256',effective_artifact,
+    'outerStateSha256',effective_document->>'outerStateSha256',
+    'providerCleanupEvidenceSha256',supplied->>'providerCleanupEvidenceSha256',
+    'receiptDocument',effective_document);
 END;
 $$;
 REVOKE ALL ON FUNCTION public.videoforge_claim_v213_cleanup_receipt_intent(jsonb) FROM PUBLIC;

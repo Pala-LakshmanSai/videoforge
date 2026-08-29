@@ -151,7 +151,7 @@ const BRIDGE_LOADER_SOURCE_SHA256 =
   "sha256:0b1c5b86192772fe9257710e739959cee5947c11ae1f93b61abfaa9b80c6def1";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
 const BRIDGE_CLI_SOURCE_SHA256 =
-  "sha256:9f844e9b03adb4db2a3ff9200f1fb8faabc2ce5907fa95af98a2ba061d042a71";
+  "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af";
 const PREQUALIFICATION_MIGRATION_MANIFEST_PATH = "packages/control-plane/migrations/manifest.json";
 const PREQUALIFICATION_OPERATOR_GRANTS_PATH = "deploy/v2-13/neon-full-live-operator-grants.sql";
 const PREQUALIFICATION_MIGRATION_MANIFEST_SHA256 = sha256(
@@ -208,6 +208,7 @@ const PREQUALIFICATION_LEDGER_PREFIX_COUNTS = Object.freeze([
 ]);
 const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_claim_v213_bridge_command(jsonb)",
+  "videoforge_claim_v213_cleanup_bridge_command(jsonb)",
   "videoforge_claim_v213_cleanup_receipt_intent(jsonb)",
   "videoforge_claim_v213_operation(jsonb)",
   "videoforge_claim_v213_qualification_materialization(jsonb)",
@@ -9145,6 +9146,16 @@ function preflightGuardedActivationInputs({ environment = process.env, state }) 
 }
 
 function exactCleanupReceiptFinalizationResult(value, request) {
+  const durableDocument = value?.receiptDocument;
+  const durableSummary = durableDocument?.summary;
+  const currentDocument = {
+    schemaVersion: "videoforge.v213-current-run-cleanup-receipt/v1",
+    fullLiveAuthorityId: request.fullLiveAuthorityId,
+    operationId: request.operationId,
+    outerStateSha256: request.outerStateSha256,
+    providerCleanupEvidenceSha256: request.providerCleanupEvidenceSha256,
+    summary: request.summary,
+  };
   if (
     !exactObjectKeys(value, [
       "fullLiveAuthorityId",
@@ -9152,15 +9163,37 @@ function exactCleanupReceiptFinalizationResult(value, request) {
       "providerCleanupEvidenceSha256",
       "readbackOnly",
       "receiptArtifactSha256",
+      "receiptDocument",
       "releaseFactMaterializationSha256",
       "schemaVersion",
     ]) ||
     value.schemaVersion !== "videoforge.v213-cleanup-receipt-finalization-result/v1" ||
     value.fullLiveAuthorityId !== request.fullLiveAuthorityId ||
     value.operationId !== request.operationId ||
-    value.providerCleanupEvidenceSha256 !== request.providerCleanupEvidenceSha256 ||
     value.readbackOnly !== request.readbackOnly ||
     !HASH.test(value.receiptArtifactSha256 ?? "") ||
+    !exactObjectKeys(durableDocument, [
+      "fullLiveAuthorityId",
+      "operationId",
+      "outerStateSha256",
+      "providerCleanupEvidenceSha256",
+      "schemaVersion",
+      "summary",
+    ]) ||
+    durableDocument.schemaVersion !== "videoforge.v213-current-run-cleanup-receipt/v1" ||
+    durableDocument.fullLiveAuthorityId !== request.fullLiveAuthorityId ||
+    durableDocument.operationId !== request.operationId ||
+    !HASH.test(durableDocument.outerStateSha256 ?? "") ||
+    !HASH.test(durableDocument.providerCleanupEvidenceSha256 ?? "") ||
+    durableSummary === null ||
+    typeof durableSummary !== "object" ||
+    Array.isArray(durableSummary) ||
+    value.providerCleanupEvidenceSha256 !== durableDocument.providerCleanupEvidenceSha256 ||
+    canonicalSha256(durableSummary) !== durableDocument.providerCleanupEvidenceSha256 ||
+    canonicalSha256(durableDocument) !== value.receiptArtifactSha256 ||
+    (!request.readbackOnly &&
+      (value.providerCleanupEvidenceSha256 !== request.providerCleanupEvidenceSha256 ||
+        canonicalSha256(durableDocument) !== canonicalSha256(currentDocument))) ||
     (request.failureCleanup
       ? value.releaseFactMaterializationSha256 !== null
       : !HASH.test(value.releaseFactMaterializationSha256 ?? ""))
@@ -9236,11 +9269,19 @@ function createTypeScriptBridgeAdapters({
         context?.providerDispatchForbidden !== true;
       if (cleanup !== null && !cleanupInitial && !cleanupReconciliation)
         fail("BRIDGE_CLEANUP_EXECUTION_CONTEXT", command);
+      // The executor may pass the original post-authorization outer state on restart.  Keep this
+      // binding in the command input for the SQL journal; recovery flags/current state remain
+      // outside its logical request identity and migration 0046 returns the first durable value.
+      const cleanupAuthorizationOuterStateSha256 =
+        context?.authorizedOuterStateSha256 ??
+        context?.cleanupAuthorizationOuterStateSha256 ??
+        outerStateSha256;
       let cleanupRequestInput =
         cleanup === null
           ? null
           : Object.freeze({
               ...cleanup,
+              outerStateSha256: cleanupAuthorizationOuterStateSha256,
               authorizedUnsettled: cleanupReconciliation,
               reconciliationOnly: cleanupReconciliation,
               providerDispatchForbidden: cleanupReconciliation,
@@ -9398,6 +9439,7 @@ function createTypeScriptBridgeAdapters({
       )
         fail("PROMOTION_CLEANUP_PROOF_READBACK", command);
       let durableEvidenceSha256 = result.evidenceSha256;
+      let durableSummary = summary;
       if (cleanup !== null) {
         if (canonicalSha256(summary) !== result.evidenceSha256)
           fail("CLEANUP_RECEIPT_PROVIDER_EVIDENCE_DRIFT", command);
@@ -9406,7 +9448,8 @@ function createTypeScriptBridgeAdapters({
           schemaVersion: CLEANUP_RECEIPT_REQUEST_SCHEMA,
           fullLiveAuthorityId: cleanup.fullLiveAuthorityId,
           operationId: command,
-          outerStateSha256,
+          outerStateSha256:
+            cleanupRequestInput?.outerStateSha256 ?? cleanupAuthorizationOuterStateSha256,
           providerCleanupEvidenceSha256: result.evidenceSha256,
           summary,
           readbackOnly: cleanupReconciliation,
@@ -9426,20 +9469,28 @@ function createTypeScriptBridgeAdapters({
           cleanupReceiptRequest,
         );
         durableEvidenceSha256 = finalized.receiptArtifactSha256;
+        durableSummary = finalized.receiptDocument.summary;
       }
-      const base = { actualUsd: 0, evidenceSha256: durableEvidenceSha256, bridgeSummary: summary };
+      const outputSummary = cleanup !== null ? durableSummary : summary;
+      const base = {
+        actualUsd: 0,
+        evidenceSha256: durableEvidenceSha256,
+        bridgeSummary: outputSummary,
+      };
       if (command === "fresh-live-preflight")
         return {
           ...base,
-          exactGpu: summary.admission?.gpu,
-          region: summary.admission?.region,
-          availability: summary.admission?.availability,
-          flexUsdPerGpuHour: summary.admission?.flexRateUsdPerGpuHour,
+          exactGpu: outputSummary.admission?.gpu,
+          region: outputSummary.admission?.region,
+          availability: outputSummary.admission?.availability,
+          flexUsdPerGpuHour: outputSummary.admission?.flexRateUsdPerGpuHour,
           noFallback: true,
-          inventorySha256: sha256(Buffer.from(JSON.stringify(summary.admission))),
+          inventorySha256: sha256(Buffer.from(JSON.stringify(outputSummary.admission))),
           billingBaselineSha256: sha256(
             Buffer.from(
-              JSON.stringify({ cumulativeBillingUsd: summary.admission?.cumulativeBillingUsd }),
+              JSON.stringify({
+                cumulativeBillingUsd: outputSummary.admission?.cumulativeBillingUsd,
+              }),
             ),
           ),
         };
@@ -9451,17 +9502,17 @@ function createTypeScriptBridgeAdapters({
             : priorResults.get("mage-live-qualification")?.bridgeSummary?.billingAfterUsd;
         return {
           ...base,
-          actualUsd: Number(summary.billingAfterUsd) - Number(before),
-          qualified: summary.qualified === true,
+          actualUsd: Number(outputSummary.billingAfterUsd) - Number(before),
+          qualified: outputSummary.qualified === true,
           deploymentSha256:
             command === "mage-live-qualification"
               ? production.dualLaneInput.mage.deploymentSha256
               : production.dualLaneInput.soulx.deploymentSha256,
-          zeroWorkersAfter: summary.zeroWorkersAfter === true,
+          zeroWorkersAfter: outputSummary.zeroWorkersAfter === true,
         };
       }
       if (command === "create-exact-max-one-endpoints") {
-        const productionDeployments = summary.result?.production ?? {};
+        const productionDeployments = outputSummary.result?.production ?? {};
         const deployments = Object.values(productionDeployments);
         return {
           ...base,
@@ -9475,32 +9526,37 @@ function createTypeScriptBridgeAdapters({
         };
       }
       if (command.startsWith("v2-")) {
-        if (summary.terminal !== true || summary.zeroWorkersAfter !== true)
+        if (outputSummary.terminal !== true || outputSummary.zeroWorkersAfter !== true)
           fail("BRIDGE_ACCEPTANCE_NOT_TERMINAL", command);
-        return { ...base, actualUsd: summary.settledCostUsd, accepted: true, ...summary };
+        return {
+          ...base,
+          actualUsd: outputSummary.settledCostUsd,
+          accepted: true,
+          ...outputSummary,
+        };
       }
       if (command === "restore-endpoints-max-one")
         return {
           ...base,
           proofSha256: durableEvidenceSha256,
-          productionCleanupState: summary.productionCleanupState,
-          productionResourcesAbsent: summary.productionResourcesAbsent,
-          retainedProductionEndpoints: summary.retainedProductionEndpoints,
-          bothEndpointsMaxWorkersOne: summary.bothEndpointsMaxWorkersOne === true,
+          productionCleanupState: outputSummary.productionCleanupState,
+          productionResourcesAbsent: outputSummary.productionResourcesAbsent,
+          retainedProductionEndpoints: outputSummary.retainedProductionEndpoints,
+          bothEndpointsMaxWorkersOne: outputSummary.bothEndpointsMaxWorkersOne === true,
         };
       if (command === "prove-zero-workers")
         return {
           ...base,
           proofSha256: durableEvidenceSha256,
-          zeroWorkers: summary.zeroWorkers === true,
-          stableReads: summary.reads?.length,
+          zeroWorkers: outputSummary.zeroWorkers === true,
+          stableReads: outputSummary.reads?.length,
         };
       if (command === "read-settled-billing")
         return {
           ...base,
           proofSha256: durableEvidenceSha256,
-          withinCumulativeCap: summary.withinCumulativeCap === true,
-          cumulativeUsd: summary.cumulativeBillingUsd,
+          withinCumulativeCap: outputSummary.withinCumulativeCap === true,
+          cumulativeUsd: outputSummary.cumulativeBillingUsd,
         };
       if (command === "reconcile-exact-resources") {
         const proofSha256 =
@@ -9513,7 +9569,7 @@ function createTypeScriptBridgeAdapters({
         return {
           ...base,
           proofSha256,
-          onlyApprovedRetainedVolumes: summary.onlyApprovedRetainedVolumes === true,
+          onlyApprovedRetainedVolumes: outputSummary.onlyApprovedRetainedVolumes === true,
           ...(localDatabaseCredentialCleanup === null ? {} : { localDatabaseCredentialCleanup }),
         };
       }

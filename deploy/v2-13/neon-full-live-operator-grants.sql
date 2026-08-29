@@ -50,6 +50,7 @@ GRANT EXECUTE ON FUNCTION public.videoforge_record_v213_stage_authority(uuid,jso
   public.videoforge_claim_v213_operation(jsonb),
   public.videoforge_transition_v213_operation(jsonb),
   public.videoforge_claim_v213_bridge_command(jsonb),
+  public.videoforge_claim_v213_cleanup_bridge_command(jsonb),
   public.videoforge_transition_v213_bridge_command(jsonb),
   public.videoforge_record_v213_receipt_verification_key(text,text),
   public.videoforge_publish_v213_qualified_deployments(jsonb),
@@ -115,6 +116,7 @@ public_default_functions AS (
 ),
 expected_functions(oid,signature) AS (VALUES
   ('public.videoforge_claim_v213_bridge_command(jsonb)'::regprocedure::oid,'videoforge_claim_v213_bridge_command(jsonb)'),
+  ('public.videoforge_claim_v213_cleanup_bridge_command(jsonb)'::regprocedure::oid,'videoforge_claim_v213_cleanup_bridge_command(jsonb)'),
   ('public.videoforge_claim_v213_cleanup_receipt_intent(jsonb)'::regprocedure::oid,'videoforge_claim_v213_cleanup_receipt_intent(jsonb)'),
   ('public.videoforge_claim_v213_operation(jsonb)'::regprocedure::oid,'videoforge_claim_v213_operation(jsonb)'),
   ('public.videoforge_claim_v213_stage_authority(jsonb)'::regprocedure::oid,'videoforge_claim_v213_stage_authority(jsonb)'),

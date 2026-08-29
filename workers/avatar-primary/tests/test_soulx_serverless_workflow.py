@@ -269,9 +269,12 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
         anonymous = self.source.index("Prove anonymous public pull visibility")
         self.assertLess(logout, anonymous)
         self.assertIn("anonymous_public_pull=passed", self.source)
-        self.assertIn(".config.digest, .layers[].digest", self.source)
+        self.assertIn('(.config | ["config", "0", .digest', self.source)
+        self.assertIn("(.layers | to_entries[]", self.source)
         self.assertIn('test "$public_digest" = "$SOULX_IMAGE_DIGEST"', self.source)
-        self.assertIn("curl -sS -L -o /dev/null -w '%{http_code}' -I", self.source)
+        self.assertIn('test "$observed_digest" = "$blob"', self.source)
+        self.assertIn('test "$observed_size" = "$declared_size"', self.source)
+        self.assertIn('"all_blobs_verified": True', self.source)
 
     def test_credentials_are_not_printed_or_retained(self) -> None:
         self.assertIn("GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}", self.source)
@@ -293,9 +296,11 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
 
     def test_record_is_artifact_backed_and_disclaims_provider_mutation(self) -> None:
         for field in (
-            '"schema_version": "videoforge-image-deployability/v1"',
+            '"schema_version": "videoforge-image-deployability/v2"',
             '"immutable_image":',
             '"image_digest":',
+            '"config_digest":',
+            '"anonymous_publication_proof":',
             '"dockerfile_sha256":',
             '"requirements_sha256":',
             '"source_sha256":',

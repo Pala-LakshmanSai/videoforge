@@ -491,7 +491,7 @@
     },
     {
       "path": "apps/web/src/server/hosted/v213-live-production-adapters.ts",
-      "sha256": "sha256:be35e36c9259b9450d249c5886d376d7f1e71081205b328cc7be7ca1bd8f9b1e"
+      "sha256": "sha256:99d47a21ff0c32eeb0bad59652c9530355f9c9124e9db96799c216dc88b953d9"
     },
     {
       "path": "apps/web/src/server/hosted/v213-operator-workflow.ts",
@@ -755,7 +755,7 @@
     },
     {
       "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-      "sha256": "sha256:9f844e9b03adb4db2a3ff9200f1fb8faabc2ce5907fa95af98a2ba061d042a71"
+      "sha256": "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af"
     },
     {
       "path": "apps/web/src/server/providers/v213-provenance-receipt.ts",
@@ -1035,7 +1035,7 @@
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:16b127071ff70590fa577837db32b364f7c224fca48456e8f7bb9924272a7cba"
+      "sha256": "sha256:711d9fd5b99bb4e3278c85d22265a2cbae845bfa17bbd34ee1fad2c653076cab"
     },
     {
       "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",
@@ -1055,7 +1055,7 @@
     },
     {
       "path": "deploy/v2-13/guarded-activation.mjs",
-      "sha256": "sha256:a1cf8ece7ffad213550c79db246eb4e3b187928ff38273cbce4a3c0e87b6689d"
+      "sha256": "sha256:f760505d3fdabfe8540cfc836304d70e4da8a1c76516474ffffbdef14cc4b0b3"
     },
     {
       "path": "deploy/v2-13/media-worker-release-readback.mjs",
@@ -1063,7 +1063,7 @@
     },
     {
       "path": "deploy/v2-13/neon-full-live-operator-grants.sql",
-      "sha256": "sha256:c0f5e521dba2478001db24027ef48f4f01ec3888bf4885eef862f4d8b214b613"
+      "sha256": "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5"
     },
     {
       "path": "deploy/v2-13/neon-pair-reconciler-grants.sql",
@@ -1843,11 +1843,11 @@
     },
     {
       "path": "packages/control-plane/migrations/0046_hosted_full_live_cleanup_recovery.sql",
-      "sha256": "sha256:c8e54e98561c7590208bd80831ea9a853477a4a8999d7ee244244b16d778c809"
+      "sha256": "sha256:d98e020a52a1820db811f5c9a679651c1169000ebe28c1d00b35e04c003ba33b"
     },
     {
       "path": "packages/control-plane/migrations/manifest.json",
-      "sha256": "sha256:9dfcc91da2ea46a7dfa0e299a92616a5b6f6255bf20efc0d1cf457fdfe78fac3"
+      "sha256": "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d"
     },
     {
       "path": "packages/control-plane/package.json",
@@ -1923,7 +1923,7 @@
     },
     {
       "path": "packages/control-plane/src/backup/metadata-snapshot.ts",
-      "sha256": "sha256:d86690c8d45746e4f8255c5ba9968351c9de38c3a6e76b7c6394311087ab0309"
+      "sha256": "sha256:46bd0e6c3d49563e1831d58ca8ec07ab0f83b572157146a373b2c13e4bd7652c"
     },
     {
       "path": "packages/control-plane/src/database/index.ts",
@@ -1939,7 +1939,7 @@
     },
     {
       "path": "packages/control-plane/src/database/vocabulary.ts",
-      "sha256": "sha256:385d14488a57b44d74569e96b5116484e89b6cb30aa028855e8cb69f1fbc1a4c"
+      "sha256": "sha256:1db0c1e67d663458be759d12f5445e63a64f186a0779dd91714e5b91859a8e04"
     },
     {
       "path": "packages/control-plane/src/global-session/index.ts",

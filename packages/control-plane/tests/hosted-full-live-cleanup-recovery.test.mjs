@@ -312,3 +312,203 @@ test("retained 0045 upgrades through 0046 and replays old disabled/cleanup evide
     await database.close();
   }
 });
+
+test("0046 keeps cleanup bridge and receipt identity across restart for every safety operation", async () => {
+  const database = new PGlite({ extensions: { pgcrypto } });
+  try {
+    await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+    const executor = new PGliteExecutor(database);
+    const migrations = await sources();
+    await executor.execute(
+      `CREATE TABLE public.videoforge_schema_migrations(
+        version integer PRIMARY KEY,name text NOT NULL,filename text NOT NULL UNIQUE,
+        sha256 text NOT NULL,applied_at timestamptz NOT NULL DEFAULT now())`,
+    );
+    await applyRange(executor, migrations);
+
+    const fullLiveAuthorityId = uuid(46020);
+    const authority = await authorityDocument(executor, "cleanup-restart");
+    await executor.query(
+      "SELECT * FROM videoforge_record_hosted_full_live_authority($1::uuid,$2::jsonb)",
+      [fullLiveAuthorityId, JSON.stringify(authority)],
+    );
+    const operations = [
+      ["restore-endpoints-max-one", "cancel"],
+      ["prove-zero-workers", "status"],
+      ["read-settled-billing", "readback"],
+      ["reconcile-exact-resources", "status"],
+    ];
+    for (const [operationId, kind] of operations) {
+      const commandId = `v213:${fullLiveAuthorityId}:${operationId}`;
+      const logicalRequestSha256 = sha256(`cleanup-logical-${operationId}`);
+      const initialOuterStateSha256 = sha256(`cleanup-outer-initial-${operationId}`);
+      const resourceKey = `v213:${operationId}:${commandId}`;
+      const initial = (
+        await executor.query(
+          "SELECT videoforge_claim_v213_cleanup_bridge_command($1::jsonb) claim",
+          [
+            JSON.stringify({
+              operationId: commandId,
+              stageAuthorityId: fullLiveAuthorityId,
+              kind,
+              requestSha256: logicalRequestSha256,
+              resourceKey,
+              outerStateSha256: initialOuterStateSha256,
+              readbackOnly: false,
+            }),
+          ],
+        )
+      ).rows[0].claim;
+      assert.deepEqual(initial, {
+        action: "EXECUTE",
+        bridgeRowPresent: true,
+        identityRecorded: true,
+        identitySha256: initial.identitySha256,
+        originalOuterStateSha256: initialOuterStateSha256,
+        requestSha256: logicalRequestSha256,
+      });
+      await executor.query("SELECT videoforge_transition_v213_bridge_command($1::jsonb)", [
+        JSON.stringify({ operationId: commandId, to: "ACK_UNKNOWN" }),
+      ]);
+      const restarted = (
+        await executor.query(
+          "SELECT videoforge_claim_v213_cleanup_bridge_command($1::jsonb) claim",
+          [
+            JSON.stringify({
+              operationId: commandId,
+              stageAuthorityId: fullLiveAuthorityId,
+              kind,
+              requestSha256: logicalRequestSha256,
+              resourceKey,
+              outerStateSha256: sha256(`cleanup-outer-restart-${operationId}`),
+              readbackOnly: true,
+            }),
+          ],
+        )
+      ).rows[0].claim;
+      assert.deepEqual(restarted, {
+        action: "RECONCILE",
+        bridgeRowPresent: true,
+        identityRecorded: true,
+        identitySha256: initial.identitySha256,
+        originalOuterStateSha256: initialOuterStateSha256,
+        requestSha256: logicalRequestSha256,
+      });
+    }
+    assert.equal(
+      (
+        await executor.query(
+          "SELECT count(*)::int count FROM hosted_full_live_cleanup_command_identities WHERE full_live_authority_id=$1",
+          [fullLiveAuthorityId],
+        )
+      ).rows[0].count,
+      4,
+    );
+    assert.equal(
+      (
+        await executor.query(
+          "SELECT count(*)::int count FROM hosted_full_live_bridge_command_events WHERE full_live_authority_id=$1",
+          [fullLiveAuthorityId],
+        )
+      ).rows[0].count,
+      8,
+    );
+
+    const noBridgeCommandId = `v213:${fullLiveAuthorityId}:no-bridge-recovery`;
+    const noBridge = (
+      await executor.query("SELECT videoforge_claim_v213_cleanup_bridge_command($1::jsonb) claim", [
+        JSON.stringify({
+          operationId: noBridgeCommandId,
+          stageAuthorityId: fullLiveAuthorityId,
+          kind: "status",
+          requestSha256: sha256("no-bridge-logical"),
+          resourceKey: `v213:reconcile-exact-resources:${noBridgeCommandId}`,
+          outerStateSha256: sha256("no-bridge-outer"),
+          readbackOnly: true,
+        }),
+      ])
+    ).rows[0].claim;
+    assert.deepEqual(noBridge, {
+      action: "RECONCILE",
+      bridgeRowPresent: false,
+      identityRecorded: false,
+    });
+    assert.equal(
+      (
+        await executor.query(
+          "SELECT count(*)::int count FROM hosted_full_live_bridge_command_events WHERE operation_id=$1",
+          [noBridgeCommandId],
+        )
+      ).rows[0].count,
+      0,
+    );
+
+    const receiptOperation = "reconcile-exact-resources";
+    const summary = { operationId: receiptOperation, readback: "stable" };
+    const evidenceSha256 = await jsonHash(executor, summary);
+    const initialOuterStateSha256 = sha256("cleanup-outer-initial-reconcile-exact-resources");
+    const initialDocument = {
+      schemaVersion: "videoforge.v213-current-run-cleanup-receipt/v1",
+      fullLiveAuthorityId,
+      operationId: receiptOperation,
+      outerStateSha256: initialOuterStateSha256,
+      providerCleanupEvidenceSha256: evidenceSha256,
+      summary,
+    };
+    const initialReceipt = (
+      await executor.query("SELECT videoforge_claim_v213_cleanup_receipt_intent($1::jsonb) claim", [
+        JSON.stringify({
+          fullLiveAuthorityId,
+          operationId: receiptOperation,
+          outerStateSha256: initialOuterStateSha256,
+          providerCleanupEvidenceSha256: evidenceSha256,
+          receiptArtifactSha256: await jsonHash(executor, initialDocument),
+          document: initialDocument,
+        }),
+      ])
+    ).rows[0].claim;
+    assert.equal(initialReceipt.intentState, "NO_ATTEMPT");
+    const restartSummary = {
+      operationId: receiptOperation,
+      readback: "restart",
+      observedAt: "2026-08-29T00:00:01.000Z",
+    };
+    const restartEvidenceSha256 = await jsonHash(executor, restartSummary);
+    const restartDocument = {
+      ...initialDocument,
+      outerStateSha256: sha256("cleanup-outer-restart-reconcile-exact-resources"),
+      providerCleanupEvidenceSha256: restartEvidenceSha256,
+      summary: restartSummary,
+    };
+    const restartArtifactSha256 = await jsonHash(executor, restartDocument);
+    const restartedReceipt = (
+      await executor.query("SELECT videoforge_claim_v213_cleanup_receipt_intent($1::jsonb) claim", [
+        JSON.stringify({
+          fullLiveAuthorityId,
+          operationId: receiptOperation,
+          outerStateSha256: restartDocument.outerStateSha256,
+          providerCleanupEvidenceSha256: restartEvidenceSha256,
+          receiptArtifactSha256: restartArtifactSha256,
+          document: restartDocument,
+        }),
+      ])
+    ).rows[0].claim;
+    assert.equal(restartedReceipt.intentState, "ACK_UNKNOWN");
+    assert.equal(restartedReceipt.outerStateSha256, initialOuterStateSha256);
+    assert.equal(restartedReceipt.providerCleanupEvidenceSha256, evidenceSha256);
+    assert.deepEqual(restartedReceipt.receiptDocument, initialDocument);
+    assert.equal(restartedReceipt.receiptArtifactSha256, initialReceipt.receiptArtifactSha256);
+    assert.equal(
+      (
+        await executor.query(
+          `SELECT count(*)::int count FROM hosted_full_live_cleanup_receipt_intents
+           WHERE full_live_authority_id=$1 AND operation_id=$2`,
+          [fullLiveAuthorityId, receiptOperation],
+        )
+      ).rows[0].count,
+      1,
+    );
+  } finally {
+    await database.close();
+  }
+});

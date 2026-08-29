@@ -78,6 +78,7 @@ const PREQUALIFICATION_OPERATOR_FUNCTIONS = Object.freeze([
   "videoforge_claim_v213_operation(jsonb)",
   "videoforge_transition_v213_operation(jsonb)",
   "videoforge_claim_v213_bridge_command(jsonb)",
+  "videoforge_claim_v213_cleanup_bridge_command(jsonb)",
   "videoforge_transition_v213_bridge_command(jsonb)",
   "videoforge_record_v213_receipt_verification_key(text,text)",
   "videoforge_publish_v213_qualified_deployments(jsonb)",
