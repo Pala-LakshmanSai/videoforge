@@ -2038,7 +2038,7 @@
       "exact_reconciler_role": "videoforge_hosted_reconciler",
       "roles_must_be_fresh_absent_distinct_login_noinherit_hardened": true,
       "pgcrypto_required": true,
-      "prequalification_database_bootstrap_operator_function_signature_count": 42,
+      "prequalification_database_bootstrap_operator_function_signature_count": 45,
       "prequalification_database_bootstrap_operator_function_signature_namespace": "public",
       "prequalification_database_bootstrap_operator_function_signature_canonicalization": "FUNCTION_NAME_PLUS_FORMAT_TYPE_IDENTITY_ARGUMENTS_WITH_TIMESTAMPTZ_NORMALIZATION",
       "prequalification_database_bootstrap_operator_acl_comparison": "OID_SET_SORTED_EXACT_ALLOWLIST",
@@ -2067,7 +2067,7 @@
       "prequalification_database_bootstrap_credential_bundle_schema": "videoforge.v213-database-role-credential-bundle/v1",
       "prequalification_database_bootstrap_credential_bundle_path": "database-role-credentials.json",
       "prequalification_database_bootstrap_credentials_absent_before_consumed_bootstrap": true,
-      "prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count": 45,
+      "prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count": 46,
       "prequalification_database_bootstrap_credential_roles": [
         "videoforge_hosted_operator",
         "videoforge_hosted_runtime",
@@ -2089,7 +2089,7 @@
         "worker-operator-bearer",
         "workflow-callback-secret"
       ],
-      "prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count": 45,
+      "prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count": 46,
       "prequalification_database_bootstrap_operator_dsn_value_read_forbidden_before_migration_prefix_commit": true,
       "prequalification_database_bootstrap_phase": "bootstrap_prequalification_database",
       "prequalification_database_bootstrap_phase_cap_usd": 0,
@@ -2097,7 +2097,7 @@
       "prequalification_database_bootstrap_receipt_hash_field": "prequalification_database_bootstrap_sha256",
       "prequalification_database_bootstrap_receipt_replay_cas_required": true,
       "prequalification_database_bootstrap_recovery_mode_ledger_before_count": {
-        "FRESH_36_TO_45": 36,
+        "FRESH_36_TO_46": 36,
         "RESUME_EXACT_PREFIX": [
           37,
           38,
@@ -2106,13 +2106,16 @@
           41,
           42,
           43,
-          44
+          44,
+          45
         ],
-        "VERIFIED_EXISTING_45": 45
+        "VERIFIED_EXISTING_46": 46
       },
-      "prequalification_database_bootstrap_recovery_mode_final_ledger_count": 45,
+      "prequalification_database_bootstrap_recovery_mode_final_ledger_count": 46,
       "exact_operator_function_signatures": [
         "videoforge_claim_v213_bridge_command(jsonb)",
+        "videoforge_claim_v213_cleanup_bridge_command(jsonb)",
+        "videoforge_claim_v213_cleanup_receipt_intent(jsonb)",
         "videoforge_claim_v213_operation(jsonb)",
         "videoforge_claim_v213_qualification_materialization(jsonb)",
         "videoforge_claim_v213_stage_authority(jsonb)",
@@ -2143,6 +2146,7 @@
         "videoforge_record_v213_acceptance_authority(jsonb)",
         "videoforge_record_v213_cloudflare_activation(uuid,jsonb)",
         "videoforge_record_v213_cloudflare_rollback(uuid,jsonb)",
+        "videoforge_record_v213_disabled_promotion_closure(uuid,jsonb)",
         "videoforge_record_v213_operation_receipt(jsonb)",
         "videoforge_record_v213_receipt_verification_key(text,text)",
         "videoforge_record_v213_signed_evidence(jsonb)",
@@ -2165,7 +2169,8 @@
         42,
         43,
         44,
-        45
+        45,
+        46
       ],
       "exact_migrations_to_apply": [
         37,
@@ -2176,7 +2181,8 @@
         42,
         43,
         44,
-        45
+        45,
+        46
       ]
     },
     "cloudflare_creation_allowlist": [
@@ -2305,9 +2311,9 @@
       "phase": "bootstrap_prequalification_database",
       "operations": [
         "before any RunPod, Cloudflare, application-secret, GPU, or paid operation, accept only exact migration ledger prefix 36 or an exact recoverable prefix 37 through 45; reject drift or a longer ledger",
-        "using only the protected owner pg_service and pgpass, create pgcrypto and apply exact migrations 0037 through 0045 under an advisory lock with each migration in one transaction",
+        "using only the protected owner pg_service and pgpass, create pgcrypto and apply exact migrations 0037 through 0046 under an advisory lock with each migration in one transaction",
         "after migrations, create or exactly recover only videoforge_hosted_operator from the protected operator DSN, apply only the exact operator function grants, and keep videoforge_hosted_runtime and videoforge_hosted_reconciler absent",
-        "read back the exact 45-row ledger, pgcrypto, hardened LOGIN NOINHERIT operator flags, no memberships, ownership, or table ACL, and exact function ACL; emit only videoforge.v213-prequalification-database-bootstrap-result/v1 and its prequalification_database_bootstrap_sha256",
+        "read back the exact 46-row ledger, pgcrypto, hardened LOGIN NOINHERIT operator flags, no memberships, ownership, or table ACL, and exact function ACL; emit only videoforge.v213-prequalification-database-bootstrap-result/v1 and its prequalification_database_bootstrap_sha256",
         "on failure roll back the current migration transaction and allow only idempotent exact-prefix resume before RunPod; never destructively restore or guess"
       ]
     },
@@ -2317,7 +2323,7 @@
       "operations": [
         "repeat exact RunPod account, three-read zero-compute inventory, both retained-volume identities, catalog, RTX4090 EU-RO-1 LOW-or-better availability, official Serverless Flex rate USD 0.00031/second (USD 1.116/GPU-hour) and reject any higher rate, cumulative billing, and local-disk checks",
         "using only the protected Wrangler OAuth config at the receipt-bound native path identity, repeat the authenticated exact Cloudflare account and workers.dev subdomain readback, derive the exact production origin, prove the production Worker and both Workflows absent, require the exact pre-mutation route to be HTTP 404 text/html; charset=UTF-8 with body length 19984 and SHA-256 sha256:2000e6b28a1517ba1268e1649cd3163326ef839492edfdba31e8959830580976 (not 503 JSON), and repeat explicit page=1&per_page=100 complete Workflow inventory, existing R2, signer, and secret-state checks",
-        "consume and reverify the exact prequalification database bootstrap receipt, exact ledger prefix 45, exact operator function-only ACL, and continued absence of videoforge_hosted_runtime and videoforge_hosted_reconciler",
+        "consume and reverify the exact prequalification database bootstrap receipt, exact ledger prefix 46, exact operator function-only ACL, and continued absence of videoforge_hosted_runtime and videoforge_hosted_reconciler",
         "stop before mutation on any drift or unresolved exact input; no fallback"
       ]
     },
@@ -2338,7 +2344,7 @@
         "derive endpoint identities and deployment snapshots only from the exact max-one result; atomically materialize the final production-secrets record and exact four guarded endpoint secret files, hash-chain all seven outputs, and rebind all 22 guarded secret hashes before activation materialization",
         "validate the protected materialization seed with strict nested seed-hash binding: every nested hash must bind its exact canonical value, missing or extra nested hashes are a hard stop, and no future endpoint, deployment, or credential value may appear",
         "invoke the guarded child exactly once with GPU=false and external-spend-cap USD 0",
-        "consume and verify the prefix-45/operator bootstrap receipt and CAS before any application, Cloudflare, runtime, reconciler, or production-secret read; without reapplying pgcrypto, migrations, or operator grants, create/read back the exact secret-free disabled Cloudflare quarantine at the authenticated account-derived origin, provision only the exact fresh roles videoforge_hosted_runtime and videoforge_hosted_reconciler with exact grants/readbacks, then provision 22 exact allowlisted secrets and final disabled deployment",
+        "consume and verify the prefix-46/operator bootstrap receipt and CAS before any application, Cloudflare, runtime, reconciler, or production-secret read; without reapplying pgcrypto, migrations, or operator grants, create/read back the exact secret-free disabled Cloudflare quarantine at the authenticated account-derived origin, provision only the exact fresh roles videoforge_hosted_runtime and videoforge_hosted_reconciler with exact grants/readbacks, then provision 22 exact allowlisted secrets and final disabled deployment",
         "promote exactly once only from the current consumed database authority, both durable qualification PASS records, both exact max-one endpoint deployments, and exact disabled Cloudflare readback; require the post-quarantine route to be HTTP 200 application/json DISABLED_UNQUALIFIED, then require atomic enabled-config and qualified route readback to be HTTP 200 QUALIFIED_EXACT or roll back to the disabled quarantine",
         "read back exactly one receipt-bound protected Google OAuth WEB client with one callback only at the final production origin and exactly one receipt-bound protected least-privilege R2 S3 credential bound only to the authenticated account and existing bucket; the completed credential authority is consumed and non-reusable; only the exact post-consumption three database role credential values and ten internal production secret values inside the consumed bootstrap may be created, while Google OAuth and R2 creation or rotation, RunPod credential creation or rotation, and every other credential creation or rotation are forbidden",
         "record-workflow-start-authority exactly once after promotion by calling videoforge_record_v213_workflow_start_authority(uuid,uuid,text,timestamptz) with phase cap USD 0; on an ambiguous result enter cleanup-only and reconcile before any retry",

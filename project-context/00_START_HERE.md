@@ -4,7 +4,7 @@
 
 ### New-chat launch point — 2026-08-28
 
-- Fresh full-live successor proposal `sha256:37c463bc2f38d26c801b139aab63cd2138d6d70b2605cf6d6e1f761dd87789f3`
+- Fresh full-live successor proposal `sha256:ad9c48e18abe1ff0d2deaea4d57291a5394ca26fd9c5c5707ea3bb012b32c6e3`
   is sealed against execution-control evidence commit
   `6b098e594f760644274ca0fc04fb73fd6256b925` and immutable release source
   `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. It preserves the exact closed

@@ -449,6 +449,22 @@ assert(
     scope.new_volumes === 0 && scope.new_paid_retained_resources === 0 && scope.plan_change_authorized === false,
   "SCOPE",
 );
+const requestedDatabase = scope.database;
+assert(
+  requestedDatabase.prequalification_database_bootstrap_operator_function_signature_count === 45 &&
+    JSON.stringify(requestedDatabase.exact_operator_function_signatures) ===
+      JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_operator_function_signatures) &&
+    requestedDatabase.prequalification_database_bootstrap_credentials_materialized_after_migration_prefix_commit_count === 46 &&
+    requestedDatabase.prequalification_database_bootstrap_operator_dsn_value_read_after_migration_prefix_commit_count === 46 &&
+    JSON.stringify(requestedDatabase.prequalification_database_bootstrap_recovery_mode_ledger_before_count) ===
+      JSON.stringify(EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.recovery_mode_ledger_before_count) &&
+    requestedDatabase.prequalification_database_bootstrap_recovery_mode_final_ledger_count === 46 &&
+    JSON.stringify(requestedDatabase.exact_recoverable_prefix_counts) ===
+      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46]) &&
+    JSON.stringify(requestedDatabase.exact_migrations_to_apply) ===
+      JSON.stringify([37, 38, 39, 40, 41, 42, 43, 44, 45, 46]),
+  "REQUESTED_DATABASE_LEDGER46_BINDING",
+);
 const ref = proposal.immutable_github_release_ref_request;
 assert(
   ref?.creation_requested === false && ref?.exact_tag_name === TAG && ref?.exact_target_commit === RELEASE_SOURCE_COMMIT &&
@@ -472,18 +488,35 @@ assert(
 
 const head = git("rev-parse", "HEAD");
 if (head !== EXECUTION_CONTROL_COMMIT) {
-  assert(git("rev-parse", `${head}^`) === EXECUTION_CONTROL_COMMIT, "PROPOSAL_RECORD_PARENT");
-  const proposalRecordPaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", head)
-    .split("\n")
-    .filter(Boolean)
-    .sort();
-  assert(JSON.stringify(proposalRecordPaths) === JSON.stringify([
+  const allowedProposalRecordPaths = new Set([
     "project-context/00_START_HERE.md",
     "project-context/CURRENT_STATE.yaml",
     "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
     "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
     "project-context/tasks/VF-10-13.md",
-  ]), "PROPOSAL_RECORD_PATHS");
+  ]);
+  const proposalRecordCommits = git(
+    "rev-list",
+    "--first-parent",
+    "--reverse",
+    `${EXECUTION_CONTROL_COMMIT}..${head}`,
+  )
+    .split("\n")
+    .filter(Boolean);
+  assert(proposalRecordCommits.length > 0, "PROPOSAL_RECORD_CHAIN");
+  let parent = EXECUTION_CONTROL_COMMIT;
+  for (const commit of proposalRecordCommits) {
+    assert(git("rev-parse", `${commit}^`) === parent, "PROPOSAL_RECORD_PARENT");
+    const proposalRecordPaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", commit)
+      .split("\n")
+      .filter(Boolean);
+    assert(
+      proposalRecordPaths.length > 0 &&
+        proposalRecordPaths.every((relativePath) => allowedProposalRecordPaths.has(relativePath)),
+      "PROPOSAL_RECORD_PATHS",
+    );
+    parent = commit;
+  }
 }
 assert(git("rev-parse", `${EXECUTION_CONTROL_COMMIT}^`) === AUDITED_CODE_COMMIT, "EVIDENCE_PARENT");
 const evidencePaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", EXECUTION_CONTROL_COMMIT).split("\n").filter(Boolean).sort();
