@@ -4,22 +4,19 @@
 
 ### New-chat launch point — 2026-08-28
 
-- The current provider-free release source is
-  `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`, an evidence-only child of independently audited
-  source `c1e51ac5155d72383e3475e35c1e4868f0770473`. Fresh sealed 26-operation proposal
-  `sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6` is bound to this
-  source; its proposal-record commit remains null/pending until the exact five-path commit exists,
-  followed by independent record audit and fresh exact approval. It supersedes proposal
-  `sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19` at proposal-record
-  commit `4b8a6ef83772fea44701129154ae4d69833498eb`, bound to source
-  `3c77fc97b6acb6907b9e9c7a4f4bd26495d02842`.
-- The superseded proposal was explicitly approved and its authority was durably consumed once.
-  Execution stopped at the first release-tag absence check because Apple Git returned exit 128 for
-  a missing ref without `--quiet`. Cleanup completed with zero provider mutation, GPU use, or spend;
-  no tag, credential, database role, secret, deployment, image, endpoint, or acceptance was created.
-  Authority `v2-13-full-live-20260829-005250z-dd78e1e6` is permanently non-reusable, and its exact
-  terminal protected state is archived under
-  `protected-inputs/v2-13/history/v2-13-full-live-20260829-005250z-dd78e1e6/`.
+- The immutable provider-free release payload and exact lightweight tag remain bound to
+  `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. Independently audited successor execution control is
+  bound to `67e5624ed8ba2c2596c42ce6839703f6c46263df`. Fresh sealed V4 26-operation proposal
+  `sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23` binds both commits and the
+  exact predecessor terminal attempt; its proposal-record commit remains null/pending until the
+  exact five-path commit exists, followed by independent record audit and fresh exact approval.
+- The immediate predecessor authority `v2-13-full-live-20260829-022710z-62a9ebb2` was consumed once.
+  It created, pushed, and verified the exact tag at the immutable payload, then stopped at
+  `APPROVAL_BRANCH_READBACK`. Cleanup completed with zero Pods, workers, queues, GPU use, finite
+  execution spend, database credentials, secrets, deployments, images, or endpoints. It is
+  permanently non-reusable and archived under
+  `protected-inputs/v2-13/history/v2-13-full-live-20260829-022710z-62a9ebb2/`. The successor performs
+  zero tag mutation and stops if the exact existing tag is absent or mismatched.
 - The earlier exact approval was materialized once under authority
   `v2-13-full-live-20260828-133545z-14116dc6` (authority record commit
   `545bdff48913738072824ed04614944f5e1eb4c7`) and failed at initial preflight before normal operation authorization with PREQUALIFICATION_DATABASE_CREDENTIAL_RESERVED_PATH_DIRECTORY.
@@ -31,9 +28,9 @@
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:948e16d1cfb16e00ef59f55480f1f9b223377d58c8e9f4c228fda32d1a6c6adc` and UUID
-  `6d6e03b1-6826-4952-9146-e0cb8a841f59`, plus protected static descriptor self-hash
-  `sha256:aa1f19557170dfd62bb83a976de43941bad695709a3a9116d5eef9891686a16b`.
+  `sha256:b1b1f75e85115fef1805c43805428d43b4dd607f638e470e0d466b9d80f2b769` and UUID
+  `33d3218d-ac46-4881-a3b0-81c09205662e`, plus protected static descriptor self-hash
+  `sha256:704d2e92ffa6861069676942f25d981dfdd484f5cbbeb6b77dec633dea820f41`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is

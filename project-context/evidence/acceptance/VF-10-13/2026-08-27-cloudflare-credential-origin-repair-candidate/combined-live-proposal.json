@@ -1,5 +1,5 @@
 {
-  "schema_version": "videoforge.v2-13-full-live-completion-proposal/v3",
+  "schema_version": "videoforge.v2-13-full-live-completion-proposal/v4",
   "checkpoint_range": [
     "V2-07",
     "V2-08",
@@ -18,30 +18,44 @@
     "required_next_action": "obtain fresh exact user approval of this sealed 26-operation proposal and static release descriptor before any authority record, credential access, provider call, mutation, GPU use, or spend",
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:aa1f19557170dfd62bb83a976de43941bad695709a3a9116d5eef9891686a16b"
+      "sha256": "sha256:704d2e92ffa6861069676942f25d981dfdd484f5cbbeb6b77dec633dea820f41"
     },
     "materialization_seed_facts": {
-      "commit_field": "source.release_source_commit",
-      "full_live_authority_id": "6d6e03b1-6826-4952-9146-e0cb8a841f59",
+      "commit_field": "source.execution_control.commit",
+      "full_live_authority_id": "33d3218d-ac46-4881-a3b0-81c09205662e",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:948e16d1cfb16e00ef59f55480f1f9b223377d58c8e9f4c228fda32d1a6c6adc"
+      "sha256": "sha256:b1b1f75e85115fef1805c43805428d43b4dd607f638e470e0d466b9d80f2b769"
     }
   },
   "supersession": {
-    "supersedes_proposal_sha256": "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19",
-    "supersedes_proposal_record_commit": "4b8a6ef83772fea44701129154ae4d69833498eb",
+    "supersedes_proposal_sha256": "sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6",
+    "supersedes_proposal_record_commit": "3d3302e48b0d17782cc5e6bc382400c091cf6e04",
     "superseded_exact_user_approval_received_in_current_task": true,
     "superseded_approval_record_materialized": true,
-    "superseded_approval_record_path": "git:4a72471002d774b5643a0ad6d4726b3657b24a00:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/user-approval.json",
-    "superseded_approval_record_sha256": "sha256:3bf884a5049df796cedaf7b1f5ea88a0c6389d169435c5b0865d952cc35fb00b",
+    "superseded_approval_record_path": "git:7e43a289a58b7ab0805f019fcfe82d0efa2c2848:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/user-approval.json",
+    "superseded_approval_record_sha256": "sha256:f5a21e349a686918eece1c0643ec3171afec7f1b85f25a841799beb9ba8e5c83",
     "superseded_authority_materialized": true,
-    "superseded_authority_id": "v2-13-full-live-20260829-005250z-dd78e1e6",
-    "superseded_authority_record_path": "git:4a72471002d774b5643a0ad6d4726b3657b24a00:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/approved-authority.json",
-    "superseded_authority_record_sha256": "sha256:a8e6615b34c89ea71134499a4b28b8d8f753a1e00a54d7173683b171db25e617",
-    "supersession_reason": "APPLE_GIT_SHOW_REF_MISSING_EXIT_128_PORTABILITY_REPAIR",
+    "superseded_authority_id": "v2-13-full-live-20260829-022710z-62a9ebb2",
+    "superseded_authority_record_path": "git:7e43a289a58b7ab0805f019fcfe82d0efa2c2848:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/approved-authority.json",
+    "superseded_authority_record_sha256": "sha256:80cdb32dcfb6128ad4c21aa40de0e95e60e3dd8506c32d6cba0c6357c5fd8d9e",
+    "supersession_reason": "PREDECESSOR_TAG_COMPLETE_APPROVAL_BRANCH_READBACK_FAILED_NO_REPLAY_CONTROL_REPAIR",
     "superseded_authority_state": "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY_ZERO_SPEND_NO_PROVIDER_MUTATION",
     "prior_approval_reusable": false,
-    "fresh_exact_approval_required": true
+    "fresh_exact_approval_required": true,
+    "predecessor_release_attempt": {
+      "authority_id": "v2-13-full-live-20260829-022710z-62a9ebb2",
+      "authority_record_commit": "7e43a289a58b7ab0805f019fcfe82d0efa2c2848",
+      "proposal_sha256": "sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6",
+      "terminal_state_sha256": "sha256:1dbf573b408507cbe4eecb813e0e6ec5564153f96183a3329d5fd06b5342969b",
+      "terminal_state": "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+      "terminal": "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED",
+      "failure_code": "APPROVAL_BRANCH_READBACK",
+      "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
+      "exact_tag_target_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+      "tag_create_result_sha256": "sha256:29d68b30b0f866fb40a32de97f6a08f6e27799790822a3bfb7409704cd9df5fc",
+      "tag_push_result_sha256": "sha256:f71b313cebd5080cb72cc48731ef48992d0987a37cf7d245b180a765c9f3036b",
+      "tag_readback_result_sha256": "sha256:e2f8d0a1a471423ac43c5031f65ff052a334eb29e9b6f922f569dcd9287c43ad"
+    }
   },
   "source": {
     "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
@@ -54,6 +68,46 @@
     "proposal_path": "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
     "future_approval_record_basename": "user-approval.json",
     "future_authority_record_basename": "approved-authority.json",
+    "execution_control": {
+      "commit": "67e5624ed8ba2c2596c42ce6839703f6c46263df",
+      "exact_components": {
+        "approval_validator": {
+          "path": "deploy/v2-13/validate-full-live-approval.mjs",
+          "source_commit_tree_binding": {
+            "mode": "EXTERNAL_GIT_COMMIT_TREE_ENTRY",
+            "commit_field": "source.execution_control.commit",
+            "tree_entry_path": "deploy/v2-13/validate-full-live-approval.mjs",
+            "verification": "GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256",
+            "embedded_current_file_sha256": false,
+            "self_hash_forbidden": true
+          }
+        },
+        "full_live_adapters": {
+          "path": "deploy/v2-13/full-live-adapters.mjs",
+        "sha256": "sha256:3d7e6f2dfb320b2fe4f2f36a17bcd8b53b39ad8f271e0c60928ec7d6069033e0"
+        },
+        "full_live_executor": {
+          "path": "deploy/v2-13/full-live-executor.mjs",
+        "sha256": "sha256:d3c642c9a5a80a419acb6d5b6f9a842b9fa2fca40bbdb330ad141032f019bb1c"
+        },
+        "guarded_activation": {
+          "path": "deploy/v2-13/guarded-activation.mjs",
+          "sha256": "sha256:7522808e31aa83d92bd5d8bcdc768438ba11ce5cd69f6fd8be45e0671148fa85"
+        },
+        "materialization_seed_builder": {
+          "path": "deploy/v2-13/build-materialization-seed.mjs",
+        "sha256": "sha256:51c6f167f0681ed1287f72d1d60a6524e7d912302c3b2ca1e1d380ce20a3d2ea"
+        },
+        "orchestration_authority": {
+          "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
+        "sha256": "sha256:81fb706019a2255a220e23fde21ea137016139617d4357f160cc715b141b52af"
+        },
+        "source_closure_manifest": {
+          "path": "deploy/v2-13/full-live-source-closure.json",
+        "sha256": "sha256:4d348ad85f803ad36ea3c3e3df54dfb601af45e308bfd55282c1d9ed1340433b"
+        }
+      }
+    },
     "exact_release_components": {
       "full_live_executor": {
         "path": "deploy/v2-13/full-live-executor.mjs",
@@ -1685,25 +1739,27 @@
     }
   },
   "immutable_github_release_ref_request": {
-    "creation_requested": true,
+    "creation_requested": false,
     "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
     "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
       "exact_target_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
     "tag_kind": "LIGHTWEIGHT",
-    "maximum_new_refs": 1,
+    "maximum_new_refs": 0,
     "force_update_authorized": false,
     "delete_or_retarget_authorized": false,
     "other_ref_creation_authorized": false,
     "remote": "origin",
     "required_preconditions": [
-      "fresh exact approval of this v3 proposal and a committed exact authority record",
+      "fresh exact approval of this v4 predecessor-bound proposal and a committed exact authority record",
       "outer single-use authority consumed locally before credential access or external action",
-      "remote exact tag absence proved immediately before creation",
+      "remote exact tag presence and exact immutable target proved without mutation",
       "final source worker commit and all component hashes are independently audited and bound before reseal"
     ],
-      "exact_mutation": "create one lightweight tag locally at 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 and push refs/tags/videoforge-v2-13-release-20260826-v3:refs/tags/videoforge-v2-13-release-20260826-v3 without force",
+      "exact_mutation": "none; reconcile the predecessor-created lightweight tag by exact local and remote readback only, with no create, push, retarget, delete, force, replay, or redispatch",
       "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to 15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
-    "stop_on_presence_collision_or_drift": true
+    "stop_on_presence_collision_or_drift": true,
+    "predecessor_bound_reconciliation_only": true,
+    "successor_tag_mutation_authorized": false
   },
   "requested_scope": {
     "maximum_cumulative_finite_runpod_spend_usd": 17.5,
@@ -2110,13 +2166,13 @@
     "plan_change_authorized": false,
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:aa1f19557170dfd62bb83a976de43941bad695709a3a9116d5eef9891686a16b"
+      "sha256": "sha256:704d2e92ffa6861069676942f25d981dfdd484f5cbbeb6b77dec633dea820f41"
     },
     "materialization_seed_facts": {
-      "commit_field": "source.release_source_commit",
-      "full_live_authority_id": "6d6e03b1-6826-4952-9146-e0cb8a841f59",
+      "commit_field": "source.execution_control.commit",
+      "full_live_authority_id": "33d3218d-ac46-4881-a3b0-81c09205662e",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:948e16d1cfb16e00ef59f55480f1f9b223377d58c8e9f4c228fda32d1a6c6adc"
+      "sha256": "sha256:b1b1f75e85115fef1805c43805428d43b4dd607f638e470e0d466b9d80f2b769"
     }
   },
   "ordered_operations": [
@@ -2125,8 +2181,8 @@
       "phase": "seal_revised_candidate",
       "operations": [
         "this sealed source-bound/audited candidate authorizes no authority record, credential access, provider call, mutation, GPU use, or spend until its exact proposal bytes are committed and freshly approved",
-        "commit this exact v3 proposal and validator as a proposal-only candidate on codex/serverless-v2-roadmap-v4, then obtain fresh exact user approval of those committed bytes",
-        "obtain fresh exact user approval of the final proposal sha256, proposal commit, USD 17.50 cap, seven phase caps, GPU/rate/region/no-fallback scope, separate USD 7/month retention, exact tag mutation, exact database role names, post-consumption creation of exactly three database role credential values and exactly ten internal production secret values inside the consumed bootstrap, and readback of the completed receipt-bound protected Google OAuth and R2 credentials; Google OAuth and R2 creation or rotation, RunPod credential creation or rotation, and every other credential creation or rotation are forbidden",
+        "commit this exact v4 proposal and validator as a proposal-only candidate on codex/serverless-v2-roadmap-v4, then obtain fresh exact user approval of those committed bytes",
+        "obtain fresh exact user approval of the final proposal sha256, proposal commit, immutable payload commit, execution-control commit, exact predecessor terminal binding, USD 17.50 cap, seven phase caps, GPU/rate/region/no-fallback scope, separate USD 7/month retention, zero tag mutation, exact database role names, post-consumption creation of exactly three database role credential values and exactly ten internal production secret values inside the consumed bootstrap, and readback of the completed receipt-bound protected Google OAuth and R2 credentials; Google OAuth and R2 creation or rotation, RunPod credential creation or rotation, and every other credential creation or rotation are forbidden",
         "commit the exact approval, unconsumed authority, schema validator, and outer single-use orchestration tooling locally; do not perform an external action before all receive independent GO"
       ]
     },
@@ -2141,12 +2197,12 @@
     },
     {
       "order": 3,
-      "phase": "create_and_verify_exact_release_tag",
+      "phase": "reconcile_and_verify_exact_release_tag",
       "operations": [
-        "prove refs/tags/videoforge-v2-13-release-20260826-v3 is absent remotely and locally immediately before mutation",
-        "create exactly one lightweight tag videoforge-v2-13-release-20260826-v3 at the final independently audited source commit and push it to origin without force",
-        "read back the exact remote tag and require it resolves only to the final independently audited source commit; stop on collision, ambiguity, retarget, or drift",
-        "do not create, update, force, delete, or retarget any other Git ref"
+        "prove refs/tags/videoforge-v2-13-release-20260826-v3 exists locally and remotely at the immutable payload commit before continuing",
+        "perform zero tag creation, push, update, force, delete, retarget, replay, or redispatch in the successor",
+        "read back the exact remote tag and require it resolves only to the immutable payload commit; stop on absence, ambiguity, retarget, or drift",
+        "do not create, update, force, delete, or retarget any Git ref"
       ]
     },
     {
@@ -2242,8 +2298,8 @@
     }
   ],
   "stop_conditions": [
-    "fresh exact v3 approval and authority are absent, stale, mismatched, expired, consumed, or not independently audited",
-    "the exact release tag exists before mutation, cannot be created once without force, does not read back to the final source commit, or any other Git ref mutation would be required",
+    "fresh exact v4 approval and successor authority are absent, stale, mismatched, expired, consumed, reuse the predecessor authority identity, or are not independently audited",
+    "the exact predecessor-created release tag is absent, mismatched locally or remotely, or any create, push, retarget, delete, force, replay, redispatch, or other Git tag mutation would be required",
     "the exact approval branch commit cannot be pushed without force or remote equality cannot be proved",
     "source, proposal, approval, authority, tool, workflow-run, image, model, account, volume, endpoint, template, Worker, Workflow, R2, route, config, OAuth scope, Google project/client, R2 credential scope, secret-set, database ledger, exact role, ACL, RLS, GPU, region, rate, billing, cap, or inventory drift or uncertainty",
     "RTX4090 EU-RO-1 is below LOW availability or official Serverless Flex exceeds USD 1.116/GPU-hour (USD 0.00031/second) at any mutation boundary; no fallback",
@@ -2256,7 +2312,7 @@
     "user cancellation"
   ],
   "approval_request": {
-    "requested_exact_action": "Approve this exact source-bound 26-operation v3 proposal, static release descriptor, and materialization-seed facts for one single-use ordered execution: one immutable release tag, post-consumption creation of exactly three database role credential values and exactly ten internal production secret values inside the consumed bootstrap, completed receipt-bound protected Google OAuth and R2 readback, paid V2-13 smoke, exact four-operation cleanup, then separate zero-spend DB-only 15-gate certification; Google/R2 remain receipt-bound copies, RunPod remains a protected copied value, and all other credential creation, rotation, redispatch, fallback, or any extra provider mutation is forbidden.",
+    "requested_exact_action": "Approve this exact immutable-payload and execution-control-bound 26-operation v4 successor proposal, static release descriptor, and materialization-seed facts for one single-use ordered execution: reconcile the predecessor-created immutable release tag with zero tag mutation, post-consumption creation of exactly three database role credential values and exactly ten internal production secret values inside the consumed bootstrap, completed receipt-bound protected Google OAuth and R2 readback, paid V2-13 smoke, exact four-operation cleanup, then separate zero-spend DB-only 15-gate certification; Google/R2 remain receipt-bound copies, RunPod remains a protected copied value, and all other credential creation, rotation, replay, redispatch, fallback, or extra provider mutation is forbidden.",
     "requested_maximum_cumulative_finite_runpod_spend_usd": 17.5,
     "requested_exact_phase_caps_usd": [
       4.5,
@@ -2269,7 +2325,7 @@
     ],
     "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, official Serverless Flex USD 0.00031/second (USD 1.116/GPU-hour) maximum, reject above, no fallback",
     "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
-    "requested_exact_git_ref_mutation": "Create and push only lightweight tag videoforge-v2-13-release-20260826-v3 to 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 without force, then prove exact remote readback",
+    "requested_exact_git_ref_mutation": "No tag mutation; require the existing lightweight tag videoforge-v2-13-release-20260826-v3 to resolve locally and remotely to 15af5e20ce3c80eb61d5d1e807a87e8840ed9685, otherwise stop cleanup-only",
     "requested_exact_database_roles": [
       "videoforge_hosted_operator",
       "videoforge_hosted_runtime",

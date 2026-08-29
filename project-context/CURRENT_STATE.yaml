@@ -27,7 +27,7 @@ current_goal_boundary:
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
   provider_free_product_action: "The exact rotation/normalization authority was consumed once and completed. It added one same-client Google secret, secured and hash-read it before disabling only the exposed old secret, and normalized only the two local R2 files. Preserve the exact resources/files and secret-free receipt; the authority is non-reusable. No further credential, provider, R2, RunPod, GPU, spend, retry, or redispatch action is authorized under this boundary."
-  note: "Release source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 is an evidence-only child of independently audited source c1e51ac5155d72383e3475e35c1e4868f0770473. Fresh exact 26-operation proposal sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6 is sealed against this source; its proposal-record commit remains null/pending until the exact five-path commit exists. It supersedes proposal sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19 at proposal-record commit 4b8a6ef83772fea44701129154ae4d69833498eb, bound to source 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842. That authority was consumed once and stopped at the first release-tag absence check; cleanup completed with zero provider mutation, GPU use, or spend and no created release resources. It is non-reusable. Fresh exact approval is required."
+  note: "Immutable release payload and exact tag remain at 15af5e20ce3c80eb61d5d1e807a87e8840ed9685. Independently audited successor execution control is 67e5624ed8ba2c2596c42ce6839703f6c46263df. Fresh exact V4 proposal sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23 binds both plus the terminal predecessor attempt. The predecessor authority was consumed once, created/pushed/read back the exact tag, stopped at APPROVAL_BRANCH_READBACK, and completed cleanup with zero compute, credentials, secrets, deployment, GPU use, or finite spend. It is non-reusable. The successor performs zero tag mutation and requires fresh exact approval."
 
 new_chat_handoff:
   status: PENDING_FRESH_EXACT_USER_APPROVAL
@@ -46,7 +46,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Commit and independently audit fresh exact proposal sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6 against release source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685, then request one fresh exact user approval. Its proposal-record commit remains null/pending until the exact five-path commit exists; no credential read, provider mutation, GPU use, or spend is authorized."
+  next_action: "Commit and independently audit exact V4 proposal sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23 against payload 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 and execution control 67e5624ed8ba2c2596c42ce6839703f6c46263df, then request one fresh exact user approval. No credential read, provider mutation, GPU use, or spend is authorized."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -119,7 +119,7 @@ provider_free_product_progress:
     approval_validator: SOURCE_COMMIT_TREE_BOUND_NO_SELF_HASH
   approval_validator_source_binding:
     mode: EXTERNAL_GIT_COMMIT_TREE_ENTRY
-    commit_field: source.release_source_commit
+    commit_field: source.execution_control.commit
     tree_entry_path: deploy/v2-13/validate-full-live-approval.mjs
     verification: GIT_SHOW_EXACT_COMMIT_PATH_THEN_SHA256
     embedded_current_file_sha256: false
@@ -129,7 +129,7 @@ provider_free_product_progress:
   prior_v2_13_proposal_sha256: "sha256:b5bc0fe550f79230d92d1e47d5be639e094f6a73853243c15c6eaa0f92d24762"
   fresh_v2_13_proposal_status: PENDING_FRESH_EXACT_USER_APPROVAL
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json"
-  fresh_v2_13_proposal_sha256: "sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6"
+  fresh_v2_13_proposal_sha256: "sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23"
   fresh_v2_13_proposal_record_commit: null
   fresh_v2_13_approval_record_materialized: false
   fresh_v2_13_authority_materialized: false
@@ -157,8 +157,8 @@ provider_free_product_progress:
     resource_reconciliation_proof_sha256: "sha256:28c4dd6a61b680556e7c512b53b05c323f3f73d3d31889882b37d09cf5377b0b"
     max_one_restoration_proof_sha256: "sha256:dc19fea9527a5730be0907e06405fb7aead0509d711bb998c077ba77880af1c0"
   fresh_v2_13_materialization_seed_facts_path: "evidence/acceptance/VF-10-13/materialization-seed-facts.json"
-  fresh_v2_13_materialization_seed_facts_sha256: "sha256:948e16d1cfb16e00ef59f55480f1f9b223377d58c8e9f4c228fda32d1a6c6adc"
-  fresh_v2_13_materialization_seed_facts_uuid: "6d6e03b1-6826-4952-9146-e0cb8a841f59"
+  fresh_v2_13_materialization_seed_facts_sha256: "sha256:b1b1f75e85115fef1805c43805428d43b4dd607f638e470e0d466b9d80f2b769"
+  fresh_v2_13_materialization_seed_facts_uuid: "33d3218d-ac46-4881-a3b0-81c09205662e"
   superseded_v2_13_full_live_execution:
     proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
     proposal_record_commit: "4b8a6ef83772fea44701129154ae4d69833498eb"
@@ -183,7 +183,7 @@ provider_free_product_progress:
   fresh_v2_13_blocked_draft_sha256: null
   fresh_v2_13_candidate_validator_sha256: null
   fresh_v2_13_static_release_descriptor_path: "protected-inputs/v2-13/static-release-descriptor.json"
-  fresh_v2_13_static_release_descriptor_sha256: "sha256:aa1f19557170dfd62bb83a976de43941bad695709a3a9116d5eef9891686a16b"
+  fresh_v2_13_static_release_descriptor_sha256: "sha256:704d2e92ffa6861069676942f25d981dfdd484f5cbbeb6b77dec633dea820f41"
   fresh_v2_13_read_only_preflight_path: null
   fresh_v2_13_read_only_preflight_sha256: null
   credential_bootstrap_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/combined-credential-bootstrap-proposal.json"
@@ -4497,7 +4497,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Commit and independently audit fresh exact 26-operation proposal sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6 against release source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685, then request one fresh exact user approval before serial qualification, deployment, acceptance, drain, billing proof, and final certification."
+  goal: "Commit and independently audit exact V4 26-operation proposal sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23 against immutable payload 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 and execution control 67e5624ed8ba2c2596c42ce6839703f6c46263df, then request fresh exact approval before serial qualification, deployment, acceptance, drain, billing proof, and final certification."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4518,10 +4518,10 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Attempt64 and credential authorities remain consumed/non-reusable. Full-live proposal sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19 at 4b8a6ef83772fea44701129154ae4d69833498eb was approved and consumed once under authority v2-13-full-live-20260829-005250z-dd78e1e6; it stopped at release-tag-create before provider mutation, credential creation, GPU use, or spend, and completed cleanup with exact zero-worker, settled-billing, resource, and max-one proofs. Current release source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 contains the Git portability repair and independently audited successor facts. Fresh proposal sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6 is sealed; its proposal-record commit remains null/pending. Materialization facts sha256:948e16d1cfb16e00ef59f55480f1f9b223377d58c8e9f4c228fda32d1a6c6adc and static descriptor self-hash sha256:aa1f19557170dfd62bb83a976de43941bad695709a3a9116d5eef9891686a16b are exact. Preserve resources/files; no credential read, provider/R2 mutation, retry, redispatch, rollback, disablement, GPU use, or spend is currently authorized."
+  authority_note: "All predecessor and credential authorities remain consumed and non-reusable. Immediate predecessor v2-13-full-live-20260829-022710z-62a9ebb2 created, pushed, and verified the exact tag at immutable payload 15af5e20ce3c80eb61d5d1e807a87e8840ed9685, then stopped at APPROVAL_BRANCH_READBACK and completed zero-compute, zero-credential, zero-deployment, zero-GPU, zero-finite-spend cleanup. Successor execution control 67e5624ed8ba2c2596c42ce6839703f6c46263df is independently audited. Fresh V4 proposal sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23 performs zero tag mutation and awaits its exact five-path proposal record, independent audit, and fresh approval. Facts sha256:b1b1f75e85115fef1805c43805428d43b4dd607f638e470e0d466b9d80f2b769 and descriptor self-hash sha256:704d2e92ffa6861069676942f25d981dfdd484f5cbbeb6b77dec633dea820f41 are exact. No credential read, provider mutation, retry, replay, redispatch, GPU use, or spend is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:62a9ebb284b9e117f29077c84a213a051376914eb54a797dc746b81cea1f29c6"
+  successor_proposal_sha256: "sha256:73a43aace3312827019bdfa30c27df05b25a8efd918bb36715be1efa6797ad23"
   superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
   superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
