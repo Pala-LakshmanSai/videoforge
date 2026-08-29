@@ -500,7 +500,7 @@ const materializationChainFixture = (authorityId, outerStateSha256) => {
   return { schema_version: "videoforge.v213-full-live-materialization-chain/v1", entries };
 };
 
-test("git release adapters require absence, create one lightweight tag, push non-force, and read it back", async () => {
+test("git release adapters create an absent lightweight tag, push non-force, and read it back", async () => {
   const calls = [];
   const replies = [
     result(1),
@@ -508,6 +508,7 @@ test("git release adapters require absence, create one lightweight tag, push non
     result(0),
     result(0, `${sourceCommit}\n`),
     result(0, `${sourceCommit}\n`),
+    result(0, ""),
     result(0, "ok\n"),
     result(0, `${sourceCommit}\trefs/tags/${TAG}\n`),
   ];
@@ -517,11 +518,13 @@ test("git release adapters require absence, create one lightweight tag, push non
       return replies.shift();
     },
   });
-  assert.equal((await adapters["release-tag-create"]({}, state)).created, true);
+  const created = await adapters["release-tag-create"]({}, state);
+  assert.equal(created.created, true);
+  assert.equal(created.exactTagReady, true);
   assert.equal((await adapters["release-tag-push"]({}, state)).forceUsed, false);
   assert.equal((await adapters["release-tag-readback"]({}, state)).targetCommit, sourceCommit);
   assert.deepEqual(calls[0][1], ["show-ref", "--verify", "--quiet", `refs/tags/${TAG}`]);
-  assert.deepEqual(calls[5][1], [
+  assert.deepEqual(calls[6][1], [
     "push",
     "--porcelain",
     "origin",
@@ -530,19 +533,50 @@ test("git release adapters require absence, create one lightweight tag, push non
   assert.equal(replies.length, 0);
 });
 
-test("git release adapter rejects either local or remote tag collision before creation", async () => {
-  const local = createGitReleaseAdapters({
-    run: () => result(0, `${sourceCommit} refs/tags/${TAG}\n`),
+test("git release push performs zero mutation when the predecessor tag is already exact", async () => {
+  const calls = [];
+  const replies = [
+    result(0, `${sourceCommit}\n`),
+    result(0, `${sourceCommit}\trefs/tags/${TAG}\n`),
+  ];
+  const adapters = createGitReleaseAdapters({
+    run: (command, args) => {
+      calls.push([command, args]);
+      return replies.shift();
+    },
   });
-  await assert.rejects(local["release-tag-create"]({}, state), /LOCAL_TAG_ALREADY_EXISTS/u);
+  const reconciled = await adapters["release-tag-push"]({}, state);
+  assert.equal(reconciled.pushPerformed, false);
+  assert.equal(reconciled.reconciledExistingExact, true);
+  assert.equal(reconciled.forceUsed, false);
+  assert.equal(calls.some(([, args]) => args[0] === "push"), false);
+  assert.equal(replies.length, 0);
+});
+
+test("git release adapter rejects mismatched local or remote tags", async () => {
+  const localReplies = [result(0), result(0, `${"5".repeat(40)}\n`)];
+  const local = createGitReleaseAdapters({ run: () => localReplies.shift() });
+  await assert.rejects(local["release-tag-create"]({}, state), /LOCAL_TAG_COLLISION/u);
 
   const replies = [result(1), result(0, `${"5".repeat(40)}\trefs/tags/${TAG}\n`)];
   const remote = createGitReleaseAdapters({ run: () => replies.shift() });
   await assert.rejects(remote["release-tag-create"]({}, state), /REMOTE_TAG_READBACK/u);
 
-  const exactReplies = [result(1), result(0, `${sourceCommit}\trefs/tags/${TAG}\n`)];
+});
+
+test("git release adapter reconciles the exact predecessor tag without retarget or force", async () => {
+  const exactReplies = [
+    result(1),
+    result(0, `${sourceCommit}\trefs/tags/${TAG}\n`),
+    result(0),
+    result(0, `${sourceCommit}\n`),
+  ];
   const exactRemote = createGitReleaseAdapters({ run: () => exactReplies.shift() });
-  await assert.rejects(exactRemote["release-tag-create"]({}, state), /REMOTE_TAG_ALREADY_EXISTS/u);
+  const reconciled = await exactRemote["release-tag-create"]({}, state);
+  assert.equal(reconciled.created, true);
+  assert.equal(reconciled.verifiedExistingExact, true);
+  assert.equal(reconciled.exactTagReady, true);
+  assert.equal(exactReplies.length, 0);
 });
 
 test("approval publication pushes the exact authority-record commit with FF and tree-byte proof", async () => {
@@ -642,6 +676,44 @@ test("approval publication rejects a readback from the stale v3 branch", async (
     calls.some(([, args]) => args[0] === "push"),
     false,
   );
+});
+
+test("approval publication creates the absent exact v4 branch without force", async () => {
+  const approval = '{"approval":true}\n';
+  const authority = '{"authority":true}\n';
+  const proposalCommit = "2".repeat(40);
+  const authorityCommit = "3".repeat(40);
+  const publicationState = {
+    ...state,
+    proposal_record_commit: proposalCommit,
+    authority_record_commit: authorityCommit,
+    approval_record_path: "evidence/user-approval.json",
+    authority_record_path: "evidence/approved-authority.json",
+    approval_sha256: hash(approval),
+    authority_sha256: hash(authority),
+  };
+  const replies = [
+    result(0, "commit\n"),
+    result(0, `${proposalCommit}\n`),
+    result(0, approval),
+    result(0, authority),
+    result(0, ""),
+    result(0, "ok\n"),
+    result(0, `${authorityCommit}\trefs/heads/codex/serverless-v2-roadmap-v4\n`),
+  ];
+  const calls = [];
+  const adapters = createGitReleaseAdapters({
+    run: (command, args) => {
+      calls.push([command, args]);
+      return replies.shift();
+    },
+  });
+  const published = await adapters["approval-commit-push"]({}, publicationState);
+  assert.equal(published.priorBranchState, "ABSENT_CREATED");
+  assert.equal(published.exactRemoteReadback, true);
+  assert.equal(calls.some(([, args]) => args[0] === "merge-base"), false);
+  assert.equal(calls.some(([, args]) => args.some((arg) => arg.includes("--force"))), false);
+  assert.equal(replies.length, 0);
 });
 
 test("GitHub workflow dispatch is single-shot and binds the one new exact-head run", async () => {

@@ -179,11 +179,12 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       targetCommit: state.release_ref.exact_target_commit,
     });
   if (operation.id === "release-tag-create")
-    Object.assign(result, { created: true, targetCommit: state.release_source_commit });
+    Object.assign(result, { exactTagReady: true, targetCommit: state.release_source_commit });
   if (operation.id === "release-tag-push")
     Object.assign(result, {
       tagName: state.release_ref.exact_tag_name,
       targetCommit: state.release_source_commit,
+      pushPerformed: true,
       forceUsed: false,
     });
   if (operation.id === "approval-commit-push")

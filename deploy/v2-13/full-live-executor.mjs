@@ -57,7 +57,7 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:19256a5a9872203ed29062360a0f962374c5f37a254b9591bd48fa7af701ea20",
+    "sha256:ec0e2d4e9937c237c8863ff030a045c92fa6fda552fb61134631561856339629",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
   "deploy/v2-13/guarded-activation.mjs":
@@ -73,7 +73,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb",
+    "sha256:406b1b59d9f969477d4f1cd108e8ae86f4ae1bac287891af274b9089f4bd2885",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -411,13 +411,14 @@ export function assertResult(
     fail("RESULT_COST", operation.id);
 
   if (operation.id === "release-tag-create") {
-    if (result.created !== true || result.targetCommit !== state.release_source_commit)
+    if (result.exactTagReady !== true || result.targetCommit !== state.release_source_commit)
       fail("RELEASE_REF_CREATE", operation.id);
   }
   if (operation.id === "release-tag-push") {
     if (
       result.tagName !== state.release_ref.exact_tag_name ||
       result.targetCommit !== state.release_source_commit ||
+      typeof result.pushPerformed !== "boolean" ||
       result.forceUsed !== false
     )
       fail("RELEASE_REF_PUSH", operation.id);

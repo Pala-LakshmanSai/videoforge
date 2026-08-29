@@ -481,18 +481,32 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
         ["show-ref", "--verify", "--quiet", `refs/tags/${tag}`],
         [0, 1],
       );
-      if (local.status !== 1 || local.stdout !== "") fail("LOCAL_TAG_ALREADY_EXISTS");
+      if (local.stdout !== "") fail("LOCAL_TAG_PROBE_OUTPUT");
+      if (local.status === 0) {
+        const localReadback = exactCommand(run, "git", [
+          "rev-parse",
+          `refs/tags/${tag}^{commit}`,
+        ]);
+        if (localReadback.stdout.trim() !== target) fail("LOCAL_TAG_COLLISION");
+      }
       const remote = exactCommand(run, "git", [
         "ls-remote",
         "--refs",
         "origin",
         `refs/tags/${tag}`,
       ]);
-      if (exactRemoteTag(remote.stdout, tag, target, true)) fail("REMOTE_TAG_ALREADY_EXISTS");
-      exactCommand(run, "git", ["tag", tag, target]);
+      const remoteAlreadyExact = exactRemoteTag(remote.stdout, tag, target, true);
+      const created = local.status === 1;
+      if (created) exactCommand(run, "git", ["tag", tag, target]);
       const readback = exactCommand(run, "git", ["rev-parse", `refs/tags/${tag}^{commit}`]);
       if (readback.stdout.trim() !== target) fail("LOCAL_TAG_CREATE_READBACK");
-      return { actualUsd: 0, created: true, targetCommit: target };
+      return {
+        actualUsd: 0,
+        created,
+        verifiedExistingExact: local.status === 0 || remoteAlreadyExact,
+        exactTagReady: true,
+        targetCommit: target,
+      };
     },
     "release-tag-push": async (_operation, state) => {
       const tag = state.release_ref?.exact_tag_name;
@@ -500,13 +514,28 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
       if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
       const local = exactCommand(run, "git", ["rev-parse", `refs/tags/${tag}^{commit}`]);
       if (local.stdout.trim() !== target) fail("LOCAL_TAG_PUSH_READBACK");
-      exactCommand(run, "git", [
-        "push",
-        "--porcelain",
+      const remote = exactCommand(run, "git", [
+        "ls-remote",
+        "--refs",
         "origin",
-        `refs/tags/${tag}:refs/tags/${tag}`,
+        `refs/tags/${tag}`,
       ]);
-      return { actualUsd: 0, tagName: tag, targetCommit: target, forceUsed: false };
+      const alreadyExact = exactRemoteTag(remote.stdout, tag, target, true);
+      if (!alreadyExact)
+        exactCommand(run, "git", [
+          "push",
+          "--porcelain",
+          "origin",
+          `refs/tags/${tag}:refs/tags/${tag}`,
+        ]);
+      return {
+        actualUsd: 0,
+        tagName: tag,
+        targetCommit: target,
+        pushPerformed: !alreadyExact,
+        reconciledExistingExact: alreadyExact,
+        forceUsed: false,
+      };
     },
     "release-tag-readback": async (_operation, state) => {
       const tag = state.release_ref?.exact_tag_name;
@@ -549,10 +578,15 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
         "origin",
         `refs/heads/${APPROVAL_BRANCH}`,
       ]).stdout.trim();
-      if (!/^[0-9a-f]{40}\trefs\/heads\/codex\/serverless-v2-roadmap-v4$/u.test(remoteBefore))
+      if (
+        remoteBefore !== "" &&
+        !/^[0-9a-f]{40}\trefs\/heads\/codex\/serverless-v2-roadmap-v4$/u.test(remoteBefore)
+      )
         fail("APPROVAL_BRANCH_READBACK");
-      const remoteCommit = remoteBefore.slice(0, 40);
-      exactCommand(run, "git", ["merge-base", "--is-ancestor", remoteCommit, commit]);
+      if (remoteBefore !== "") {
+        const remoteCommit = remoteBefore.slice(0, 40);
+        exactCommand(run, "git", ["merge-base", "--is-ancestor", remoteCommit, commit]);
+      }
       exactCommand(run, "git", [
         "push",
         "--porcelain",
@@ -567,7 +601,13 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
       ]);
       if (readback.stdout.trim() !== `${commit}\trefs/heads/${APPROVAL_BRANCH}`)
         fail("APPROVAL_COMMIT_REMOTE_READBACK");
-      return { actualUsd: 0, commit, branch: APPROVAL_BRANCH, exactRemoteReadback: true };
+      return {
+        actualUsd: 0,
+        commit,
+        branch: APPROVAL_BRANCH,
+        priorBranchState: remoteBefore === "" ? "ABSENT_CREATED" : "EXISTING_FAST_FORWARD",
+        exactRemoteReadback: true,
+      };
     },
   });
 }
