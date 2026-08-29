@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { hostedGpuReadiness } from "./gpu-readiness";
+import { hostedGpuReadiness, hostedGpuReadinessForConfiguration } from "./gpu-readiness";
 
 describe("hosted GPU readiness", () => {
   it("reports the exact fail-closed Mage and SoulX groundwork state", () => {
@@ -44,5 +44,28 @@ describe("hosted GPU readiness", () => {
     expect(Object.values(readiness).every((value) => typeof value !== "function")).toBe(true);
     expect(Object.isFrozen(readiness)).toBe(true);
     expect(Object.isFrozen(readiness.lanes)).toBe(true);
+  });
+
+  it("projects qualified truth only from an already verified qualified configuration", () => {
+    expect(
+      hostedGpuReadinessForConfiguration({
+        gpuTransport: "QUALIFIED_EXACT",
+        gpuActivation: { evidence: "verified-upstream" },
+      }),
+    ).toMatchObject({
+      gpu_transport: "QUALIFIED_EXACT",
+      provider_calls_authorized: true,
+      dispatch_available: true,
+      lanes: [
+        { lane: "MAGE_IMAGE", qualification: "QUALIFIED_EXACT", missing_gates: [] },
+        { lane: "SOULX_AVATAR", qualification: "QUALIFIED_EXACT", missing_gates: [] },
+      ],
+    });
+    expect(
+      hostedGpuReadinessForConfiguration({
+        gpuTransport: "QUALIFIED_EXACT",
+        gpuActivation: null,
+      }),
+    ).toBe(hostedGpuReadiness());
   });
 });
