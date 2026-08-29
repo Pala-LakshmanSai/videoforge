@@ -1,0 +1,75 @@
+{
+  "schema_version": "videoforge.v2-13-default-branch-workflow-repair-proposal/v2",
+  "authority_schema": "videoforge.v2-13-default-branch-workflow-repair-authority/v2",
+  "authority_id": "v2-13-default-branch-repair-20260829-113453z-graphql",
+  "operation": "repair-default-branch-workflow-once",
+  "target": {
+    "repository": "Pala-LakshmanSai/videoforge",
+    "default_branch_name": "main",
+    "default_branch_sha": "6a71c39de3aa9533bf18d70e0bc620fa0d11559e",
+    "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "workflow": {
+      "path": ".github/workflows/avatar-primary-serverless-image.yml",
+      "blob_sha1": "70f6c434dbb6a73011d7e004c61ddd8d409e74d1",
+      "blob_sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da"
+    },
+    "resulting": {
+      "commit_sha": null,
+      "tree_sha": "7e14c1008620f1930ae2c5a0e76c69ecf4e9e5aa",
+      "tree_entries_sha256": "sha256:af29613822e787a02b031fa960897c543c5425b76bb88d056eecb50069ca9115",
+      "parent_commit_shas": [
+        "6a71c39de3aa9533bf18d70e0bc620fa0d11559e"
+      ]
+    },
+    "workflow_registration": {
+      "name": "avatar-primary-serverless-image",
+      "path": ".github/workflows/avatar-primary-serverless-image.yml",
+      "state": "active"
+    }
+  },
+  "mechanism": {
+    "type": "GRAPHQL_CREATE_COMMIT",
+    "graphql_mutation": "createCommitOnBranch",
+    "expected_head_oid": "6a71c39de3aa9533bf18d70e0bc620fa0d11559e",
+    "additions_count": 1,
+    "deletions_count": 0,
+    "create_only": true,
+    "commit_message": {
+      "headline": "Publish exact SoulX workflow on default branch"
+    },
+    "request_sha256": "sha256:bc1d9810d7696f4bbfe1bb857f425ffbe44538f290e0d254e4549b7bda4e9914",
+    "force": false,
+    "delete": false,
+    "tags": false,
+    "secrets": false,
+    "dispatch": false,
+    "fallback": false,
+    "replay": false
+  },
+  "authorization_scope": {
+    "single_use": true,
+    "github_mutations": 1,
+    "github_mutation": "createCommitOnBranch",
+    "credential_source": "existing gh-cli-auth",
+    "credential_values_read": false,
+    "credential_values_exposed": false,
+    "workflow_dispatches": 0,
+    "tag_mutations": 0,
+    "secret_mutations": 0,
+    "provider_mutations_other_than_github": 0,
+    "gpu_operations": 0,
+    "spend_usd": 0,
+    "retry": false,
+    "replay": false,
+    "fallback": false
+  },
+  "stop_conditions": [
+    "repository, branch, expected head, release-source workflow, expected tree, or request drift",
+    "workflow path already present on the exact expected default-branch head",
+    "authority, trusted-time, proposal, approval, validator, or Git lineage drift",
+    "GraphQL acknowledgement ambiguity; enter readback-only reconciliation with no replay",
+    "post-mutation ref, parent, tree, workflow bytes, commit message, or workflow registration drift"
+  ],
+  "issued_at": "2026-08-29T11:34:53.000Z",
+  "expires_at": "2026-08-30T11:34:53.000Z"
+}
