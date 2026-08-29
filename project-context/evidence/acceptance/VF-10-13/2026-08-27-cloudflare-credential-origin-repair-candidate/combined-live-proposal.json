@@ -24,7 +24,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:868068e242b7cdcc10ea90ac6c06df8c25a8038fbf6ad844fc62437b057e04ae"
+      "sha256": "sha256:71dfc0ed081f6fd9ceaa52d88149504f9cf62f7073679f77bda8a2f05d27debf"
     },
     "workflow_registration_evidence": {
       "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
@@ -94,7 +94,7 @@
     "future_approval_record_basename": "user-approval.json",
     "future_authority_record_basename": "approved-authority.json",
     "execution_control": {
-      "commit": "beedab7a8a9b7d9716b0305ad54febb4a980e60b",
+      "commit": "b0d13ba9829cd8612ff5273125aa4512789c83fb",
       "exact_components": {
         "approval_validator": {
           "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -125,7 +125,7 @@
         },
         "full_live_executor": {
           "path": "deploy/v2-13/full-live-executor.mjs",
-          "sha256": "sha256:0ef10e5d5ee2fd86f18181be2003f42eb731d52d698057afb2753a2392605dd3"
+          "sha256": "sha256:8024f0b001c5d9d6fbec9942a36a0f04f59b545e14b547fb8cec9d8fc5abc9a8"
         },
         "guarded_activation": {
           "path": "deploy/v2-13/guarded-activation.mjs",
@@ -165,7 +165,7 @@
         },
         "orchestration_authority": {
           "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-          "sha256": "sha256:0fac8c04e9b0d524371ba4efaf8d114f026925a9f5bbcd966f7db62e0cc3bcdc"
+          "sha256": "sha256:d24fe8cb867f183483bed996aced36609a7009c2e954256c72b1920614ebfa95"
         },
         "promotion": {
           "path": "deploy/v2-13/promote-qualified-production.mjs",
@@ -185,7 +185,7 @@
         },
         "source_closure_manifest": {
           "path": "deploy/v2-13/full-live-source-closure.json",
-          "sha256": "sha256:58b1703372c68409267926a53dd70ba80cbcb5454eda9ece341719905555fa23"
+          "sha256": "sha256:20e87ee1f6c7cdf77f02f8e5ba3eda76e911b92079bac7ec8bcb29c87df34b40"
         },
         "typescript_cli_bridge": {
           "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
@@ -1883,7 +1883,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:868068e242b7cdcc10ea90ac6c06df8c25a8038fbf6ad844fc62437b057e04ae"
+      "sha256": "sha256:71dfc0ed081f6fd9ceaa52d88149504f9cf62f7073679f77bda8a2f05d27debf"
     }
   },
   "requested_scope": {
@@ -2308,7 +2308,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:868068e242b7cdcc10ea90ac6c06df8c25a8038fbf6ad844fc62437b057e04ae"
+      "sha256": "sha256:71dfc0ed081f6fd9ceaa52d88149504f9cf62f7073679f77bda8a2f05d27debf"
     },
     "workflow_registration_evidence": {
       "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
