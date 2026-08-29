@@ -11,7 +11,12 @@ import {
   HostedCanonicalTimingPersistenceError,
 } from "./generation-persistence";
 import { sha256 } from "./crypto";
-import { hostedGpuReadiness } from "./gpu-readiness";
+import {
+  HostedAudioValidationError,
+  hostedVoiceoverArtifactProbe,
+  validateHostedVoiceover,
+} from "./audio-validation";
+import { hostedGpuReadinessForConfiguration } from "./gpu-readiness";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
 import { canonicalJson } from "./submission";
@@ -19,7 +24,7 @@ import { canonicalJson } from "./submission";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const IDEMPOTENCY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,159}$/u;
-const VOICEOVER_TYPES = new Set(["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"]);
+const VOICEOVER_TYPES = new Set(["audio/wav"]);
 const GENERATION_MODES = new Set(["LOWEST_COST", "BALANCED", "FASTER"]);
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_SPEND_CAP_USD = 2;
@@ -2452,13 +2457,14 @@ async function catalog(
       profile_hash: row.style_profile_hash ?? null,
       reference_count: 0,
     }));
+    const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     return response({
       schema_version: "videoforge-hosted-project-catalog/v1",
       avatars: avatarRows,
       styles: styleRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
-      gpu_transport: "DISABLED_UNQUALIFIED",
-      gpu_readiness: hostedGpuReadiness(),
+      gpu_transport: gpuReadiness.gpu_transport,
+      gpu_readiness: gpuReadiness,
     });
   } finally {
     await pool.end();
@@ -2557,33 +2563,36 @@ async function projectPreflight(
         severity: "BLOCKING",
       });
     }
-    // This is a truthful warning, not an authorization. The current release remains fail-closed
-    // for GPU dispatch while the qualification records are incomplete.
-    blockers.push({
-      code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED",
-      message: "GPU lanes are not qualified; the estimate excludes provider GPU spend.",
-      severity: "ADVISORY",
-    });
+    const gpuReadiness = hostedGpuReadinessForConfiguration(config);
+    if (!gpuReadiness.dispatch_available) {
+      blockers.push({
+        code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED",
+        message: "GPU lanes are not qualified; the estimate excludes provider GPU spend.",
+        severity: "ADVISORY",
+      });
+    }
     const cap = input.spendCapUsd;
     const ok = blockers.every((blocker) => blocker.severity !== "BLOCKING");
+    const projectedUsd = gpuReadiness.dispatch_available ? cap : 0;
     return response({
       schema_version: "videoforge-hosted-project-preflight/v1",
       ok,
       ready: ok,
       estimate: {
-        projected_usd: 0,
+        projected_usd: projectedUsd,
         minimum_usd: 0,
         maximum_usd: cap,
         cap_usd: cap,
-        detail:
-          "Provider-free personal-worker estimate. GPU provider cost is not projected while transport is DISABLED_UNQUALIFIED.",
+        detail: gpuReadiness.dispatch_available
+          ? "Conservative GPU reservation ceiling. Settled provider cost can be lower and never exceeds the selected cap."
+          : "Provider-free personal-worker estimate. GPU provider cost is not projected while transport is DISABLED_UNQUALIFIED.",
         voiceover_bytes: input.voiceover.contentLength,
         duration_ms: input.voiceover.durationMs,
         generation_mode: input.generationMode,
       },
       blockers,
-      gpu_transport: "DISABLED_UNQUALIFIED",
-      provider_calls_authorized: false,
+      gpu_transport: gpuReadiness.gpu_transport,
+      provider_calls_authorized: gpuReadiness.provider_calls_authorized,
     });
   } finally {
     await pool.end();
@@ -2909,6 +2918,9 @@ async function commitProject(
     const replay = pending.state === "READY";
     if (!replay && new Date(String(pending.expires_at)).getTime() <= Date.now())
       return response({ error: { code: "VOICEOVER_UPLOAD_EXPIRED" } }, 409);
+    let validationProbe: unknown = {
+      source: "PERSISTED_AUTHORITATIVE_VALIDATION",
+    };
     if (!replay) {
       const object = await bucket.head(String(pending.object_key));
       if (
@@ -2918,6 +2930,29 @@ async function commitProject(
         checksumFromR2(object.checksums?.sha256) !== pending.checksum_sha256
       ) {
         return response({ error: { code: "VOICEOVER_UPLOAD_NOT_VERIFIED" } }, 409);
+      }
+      try {
+        const validation = await validateHostedVoiceover({
+          declaredContentLength: Number(pending.content_length),
+          declaredContentType: String(pending.content_type),
+          declaredDurationMs: Number(pending.duration_ms),
+          reader: {
+            size: object.size,
+            read: async (offset, length) => {
+              const ranged = await bucket.get(String(pending.object_key), {
+                range: { offset, length },
+              });
+              if (!ranged)
+                throw new Error("Voiceover object disappeared during authoritative validation.");
+              return ranged.arrayBuffer();
+            },
+          },
+        });
+        validationProbe = hostedVoiceoverArtifactProbe(validation);
+      } catch (error) {
+        if (error instanceof HostedAudioValidationError)
+          return response({ error: { code: error.code, message: error.message } }, 409);
+        throw error;
       }
     }
     const committedAt = new Date().toISOString();
@@ -2932,7 +2967,7 @@ async function commitProject(
       content_type: pending.content_type,
       content_length: Number(pending.content_length),
       checksum_sha256: pending.checksum_sha256,
-      probe: { source: "R2_HEAD_CHECKSUM" },
+      probe: validationProbe,
       retention_class: "PROJECT",
       retain_until: null,
       committed_at: committedAt,
@@ -3908,12 +3943,13 @@ async function projectDetail(
         ).url;
       }
     }
+    const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     return response({
       schema_version: "videoforge-hosted-project-detail/v1",
       project: detail.project,
       attempts,
-      gpu_transport: "DISABLED_UNQUALIFIED",
-      gpu_readiness: hostedGpuReadiness(),
+      gpu_transport: gpuReadiness.gpu_transport,
+      gpu_readiness: gpuReadiness,
       generation:
         detail.generation === null
           ? null

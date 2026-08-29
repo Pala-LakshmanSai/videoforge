@@ -20,7 +20,10 @@ export interface HostedR2BucketBinding {
     readonly httpMetadata?: { readonly contentType?: string };
     readonly checksums?: { readonly sha256?: ArrayBuffer };
   } | null>;
-  get(key: string): Promise<{
+  get(
+    key: string,
+    options?: { readonly range?: { readonly offset: number; readonly length: number } },
+  ): Promise<{
     readonly size: number;
     readonly httpMetadata?: { readonly contentType?: string };
     arrayBuffer(): Promise<ArrayBuffer>;
