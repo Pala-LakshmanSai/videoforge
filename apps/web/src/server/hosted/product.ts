@@ -19,6 +19,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const IDEMPOTENCY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,159}$/u;
 const VOICEOVER_TYPES = new Set(["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4"]);
+const GENERATION_MODES = new Set(["LOWEST_COST", "BALANCED", "FASTER"]);
+const MAX_VOICEOVER_BYTES = 1_073_741_824;
+const MAX_SPEND_CAP_USD = 2;
+const MAX_EXTRA_PROMPT_KEYWORDS = 500;
+const MAX_OPTIONAL_SCRIPT = 100_000;
 // Migration 0002 requires every revision budget to be at least $0.10. This is only the
 // persisted revision ceiling; V2-06 personal-worker execution remains provider-free at $0.
 const PERSONAL_WORKER_MINIMUM_COST_MICRO_USD = 100_000;
@@ -43,6 +48,12 @@ interface ProjectCreateInput {
   readonly title: string;
   readonly avatarVersionId: string;
   readonly styleVersionId: string;
+  readonly optionalScript: string | null;
+  readonly extraPromptKeywords: string | null;
+  readonly applyExtraPromptKeywords: boolean;
+  readonly generationMode: "LOWEST_COST" | "BALANCED" | "FASTER";
+  readonly spendCapUsd: number;
+  readonly userSeed: number | null;
   readonly voiceover: {
     readonly filename: string;
     readonly contentType: string;
@@ -69,7 +80,16 @@ export function hostedRevisionConfigV2(input: {
   readonly imageStyleVersionId: string;
   readonly styleProfileHash: string;
   readonly schedulerSeed: number;
+  readonly optionalScript?: string | null;
+  readonly extraPromptKeywords?: string | null;
+  readonly applyExtraPromptKeywords?: boolean;
+  readonly generationMode?: "LOWEST_COST" | "BALANCED" | "FASTER";
+  readonly spendCapUsd?: number;
 }) {
+  const extraPromptKeywords = input.extraPromptKeywords ?? null;
+  const applyExtraPromptKeywords = input.applyExtraPromptKeywords ?? false;
+  const generationMode = input.generationMode ?? "LOWEST_COST";
+  const spendCapUsd = input.spendCapUsd ?? PERSONAL_WORKER_MINIMUM_COST_MICRO_USD / 1_000_000;
   return {
     schema_version: "project-revision-config/v2" as const,
     project_id: input.projectId,
@@ -89,19 +109,19 @@ export function hostedRevisionConfigV2(input: {
       compatibility_state_at_preflight: "UNTESTED" as const,
       compatibility_evidence: null,
     },
-    optional_script: null,
+    optional_script: input.optionalScript ?? null,
     image_style_version_id: input.imageStyleVersionId,
     style_profile_hash: input.styleProfileHash,
-    extra_prompt_keywords: "",
-    apply_extra_prompt_keywords: false,
-    generation_mode: "LOWEST_COST" as const,
+    extra_prompt_keywords: extraPromptKeywords,
+    apply_extra_prompt_keywords: applyExtraPromptKeywords,
+    generation_mode: generationMode,
     execution_profiles: {
       image_media_profile_id: "serverless-mage-image-v1",
       avatar_primary_profile_id: "serverless-soulx-flashhead-pro-v1",
       avatar_repair_profile_id: null,
       avatar_quality_profile_id: null,
     },
-    spend_cap_usd: PERSONAL_WORKER_MINIMUM_COST_MICRO_USD / 1_000_000,
+    spend_cap_usd: spendCapUsd,
     scheduler_version: "scheduler-v2",
     scheduler_seed: input.schedulerSeed,
     prompt_writer_version: "scene-prompt-writer-v1",
@@ -148,10 +168,37 @@ async function sessionScope(
 function parseCreate(value: unknown): ProjectCreateInput | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
+  const keys = new Set(Object.keys(record));
+  const legacyKeys = [
+    "avatar_profile_version_id",
+    "image_style_version_id",
+    "schema_version",
+    "title",
+    "voiceover",
+  ];
+  const v2Keys = [
+    ...legacyKeys,
+    "apply_extra_prompt_keywords",
+    "extra_prompt_keywords",
+    "generation_mode",
+    "optional_script",
+    "spend_cap_usd",
+    "user_seed",
+  ];
+  const schemaVersion = record.schema_version;
   if (
-    Object.keys(record).sort().join(",") !==
-      "avatar_profile_version_id,image_style_version_id,schema_version,title,voiceover" ||
-    record.schema_version !== "videoforge-hosted-project-create/v1" ||
+    schemaVersion !== "videoforge-hosted-project-create/v1" &&
+    schemaVersion !== "videoforge-hosted-project-create/v2" &&
+    schemaVersion !== "videoforge-hosted-project-preflight/v1"
+  )
+    return null;
+  if (
+    (schemaVersion === "videoforge-hosted-project-create/v1" &&
+      (keys.size !== legacyKeys.length || legacyKeys.some((key) => !keys.has(key)))) ||
+    (schemaVersion !== "videoforge-hosted-project-create/v1" &&
+      (keys.size < legacyKeys.length ||
+        keys.size > v2Keys.length ||
+        [...keys].some((key) => !v2Keys.includes(key)))) ||
     typeof record.title !== "string" ||
     record.title !== record.title.trim() ||
     record.title.length < 1 ||
@@ -176,7 +223,7 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     !VOICEOVER_TYPES.has(voiceover.content_type) ||
     !Number.isSafeInteger(voiceover.content_length) ||
     Number(voiceover.content_length) < 1 ||
-    Number(voiceover.content_length) > 512 * 1024 * 1024 ||
+    Number(voiceover.content_length) > MAX_VOICEOVER_BYTES ||
     typeof voiceover.checksum_sha256 !== "string" ||
     !SHA256.test(voiceover.checksum_sha256) ||
     !Number.isSafeInteger(voiceover.duration_ms) ||
@@ -185,10 +232,50 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
   ) {
     return null;
   }
+  const optionalScript = record.optional_script;
+  const extraPromptKeywords = record.extra_prompt_keywords;
+  const applyExtraPromptKeywords = record.apply_extra_prompt_keywords;
+  const generationMode = record.generation_mode;
+  const spendCapUsd = record.spend_cap_usd;
+  const userSeed = record.user_seed;
+  if (
+    (optionalScript !== undefined &&
+      optionalScript !== null &&
+      (typeof optionalScript !== "string" || optionalScript.length > MAX_OPTIONAL_SCRIPT)) ||
+    (extraPromptKeywords !== undefined &&
+      extraPromptKeywords !== null &&
+      (typeof extraPromptKeywords !== "string" ||
+        extraPromptKeywords.length > MAX_EXTRA_PROMPT_KEYWORDS)) ||
+    (applyExtraPromptKeywords !== undefined && typeof applyExtraPromptKeywords !== "boolean") ||
+    (generationMode !== undefined &&
+      (typeof generationMode !== "string" || !GENERATION_MODES.has(generationMode))) ||
+    (spendCapUsd !== undefined &&
+      (typeof spendCapUsd !== "number" ||
+        !Number.isFinite(spendCapUsd) ||
+        spendCapUsd < PERSONAL_WORKER_MINIMUM_COST_MICRO_USD / 1_000_000 ||
+        spendCapUsd > MAX_SPEND_CAP_USD)) ||
+    (userSeed !== undefined &&
+      userSeed !== null &&
+      (typeof userSeed !== "number" ||
+        !Number.isSafeInteger(userSeed) ||
+        Number(userSeed) < 0 ||
+        Number(userSeed) > 4_294_967_295)) ||
+    (applyExtraPromptKeywords === true &&
+      (typeof extraPromptKeywords !== "string" || !/\S/u.test(extraPromptKeywords)))
+  ) {
+    return null;
+  }
   return {
     title: record.title,
     avatarVersionId: record.avatar_profile_version_id,
     styleVersionId: record.image_style_version_id,
+    optionalScript: typeof optionalScript === "string" ? optionalScript : null,
+    extraPromptKeywords: typeof extraPromptKeywords === "string" ? extraPromptKeywords : null,
+    applyExtraPromptKeywords: applyExtraPromptKeywords === true,
+    generationMode:
+      generationMode === "BALANCED" || generationMode === "FASTER" ? generationMode : "LOWEST_COST",
+    spendCapUsd: typeof spendCapUsd === "number" ? spendCapUsd : 0.1,
+    userSeed: typeof userSeed === "number" ? userSeed : null,
     voiceover: {
       filename: voiceover.filename,
       contentType: voiceover.content_type,
@@ -226,6 +313,50 @@ function postgresCode(error: unknown): string | null {
   return typeof error.code === "string" ? error.code : null;
 }
 
+function numberOrNull(value: unknown): number | null {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function timestampOrNull(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function elapsedMs(start: unknown, end: unknown): number | null {
+  const startAt = start === null || start === undefined ? null : new Date(String(start)).getTime();
+  const endAt = end === null || end === undefined ? null : new Date(String(end)).getTime();
+  if (startAt === null || endAt === null || !Number.isFinite(startAt) || !Number.isFinite(endAt))
+    return null;
+  return Math.max(0, endAt - startAt);
+}
+
+function hostedProgressPercent(completed: unknown, total: unknown): number | null {
+  const done = numberOrNull(completed);
+  const count = numberOrNull(total);
+  if (done === null || count === null || count <= 0) return null;
+  return Math.min(100, Math.max(0, Math.round((done / count) * 100)));
+}
+
+function hostedTiming(input: {
+  readonly createdAt?: unknown;
+  readonly submittedAt?: unknown;
+  readonly terminalAt?: unknown;
+  readonly preparedAt?: unknown;
+  readonly renderStartedAt?: unknown;
+}): Record<string, number | null> {
+  return {
+    queue_wait_ms: elapsedMs(input.createdAt, input.submittedAt),
+    initialization_ms: elapsedMs(input.submittedAt, input.preparedAt),
+    model_ready_ms: null,
+    inference_ms: elapsedMs(input.renderStartedAt ?? input.submittedAt, input.terminalAt),
+    upload_ms: null,
+    render_ms: elapsedMs(input.renderStartedAt ?? input.submittedAt, input.terminalAt),
+    end_to_end_ms: elapsedMs(input.createdAt, input.terminalAt),
+  };
+}
+
 async function catalog(
   request: Request,
   config: HostedRuntimeConfiguration,
@@ -242,26 +373,30 @@ async function catalog(
       ]);
       const avatars = await transaction.query(
         `SELECT profile.id AS profile_id, version.id AS version_id, profile.name,
-                version.version_number
+                version.version_number, version.state, profile.status,
+                version.profile_hash, profile.scope_kind
            FROM avatar_profiles AS profile
            JOIN avatar_profile_versions AS version
              ON version.account_id = profile.account_id
             AND version.workspace_id = profile.workspace_id
             AND version.profile_id = profile.id
-          WHERE profile.account_id = $1 AND profile.workspace_id = $2
+          WHERE ((profile.account_id = $1 AND profile.workspace_id = $2)
+                  OR profile.scope_kind = 'SYSTEM')
             AND profile.status = 'ACTIVE' AND version.state = 'READY'
           ORDER BY profile.name, version.version_number DESC`,
         [scope.account_id, scope.workspace_id],
       );
       const styles = await transaction.query(
         `SELECT style.id AS style_id, version.id AS version_id, style.name,
-                version.version_number
+                version.version_number, version.state, style.status,
+                version.style_profile_hash, style.scope_kind
            FROM image_styles AS style
            JOIN image_style_versions AS version
              ON version.account_id = style.account_id
             AND version.workspace_id = style.workspace_id
             AND version.style_id = style.id
-          WHERE style.account_id = $1 AND style.workspace_id = $2
+          WHERE ((style.account_id = $1 AND style.workspace_id = $2)
+                  OR style.scope_kind = 'SYSTEM')
             AND style.status = 'ACTIVE' AND version.state = 'PUBLISHED'
           ORDER BY style.name, version.version_number DESC`,
         [scope.account_id, scope.workspace_id],
@@ -278,13 +413,150 @@ async function catalog(
         workers: Number(workers.rows[0]?.count ?? 0),
       };
     });
+    const avatarRows = (data.avatars as Record<string, unknown>[]).map((row) => ({
+      ...row,
+      thumbnail_url: null,
+      profile_hash: row.profile_hash ?? null,
+      rights_status: row.scope_kind === "SYSTEM" ? "SYSTEM_OWNED" : "ATTESTED",
+    }));
+    const styleRows = (data.styles as Record<string, unknown>[]).map((row) => ({
+      ...row,
+      cover_url: null,
+      profile_hash: row.style_profile_hash ?? null,
+      reference_count: 0,
+    }));
     return response({
       schema_version: "videoforge-hosted-project-catalog/v1",
-      avatars: data.avatars,
-      styles: data.styles,
+      avatars: avatarRows,
+      styles: styleRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
       gpu_transport: "DISABLED_UNQUALIFIED",
       gpu_readiness: hostedGpuReadiness(),
+    });
+  } finally {
+    await pool.end();
+  }
+}
+
+type HostedPreflightBlocker = {
+  readonly code: string;
+  readonly message: string;
+  readonly severity: "BLOCKING" | "ADVISORY";
+};
+
+async function projectPreflight(
+  request: Request,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return response({ error: { code: "PROJECT_PREFLIGHT_REJECTED" } }, 400);
+  }
+  const input = parseCreate(raw);
+  if (!input) return response({ error: { code: "PROJECT_PREFLIGHT_REJECTED" } }, 400);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const facts = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const [avatar, style, workers] = await Promise.all([
+        transaction.query(
+          `SELECT 1
+             FROM avatar_profiles AS profile
+             JOIN avatar_profile_versions AS version
+               ON version.account_id = profile.account_id
+              AND version.workspace_id = profile.workspace_id
+              AND version.profile_id = profile.id
+            WHERE ((profile.account_id = $1 AND profile.workspace_id = $2)
+                    OR profile.scope_kind = 'SYSTEM')
+              AND profile.status = 'ACTIVE' AND version.id = $3 AND version.state = 'READY'
+            LIMIT 1`,
+          [scope.account_id, scope.workspace_id, input.avatarVersionId],
+        ),
+        transaction.query(
+          `SELECT 1
+             FROM image_styles AS style
+             JOIN image_style_versions AS version
+               ON version.account_id = style.account_id
+              AND version.workspace_id = style.workspace_id
+              AND version.style_id = style.id
+            WHERE ((style.account_id = $1 AND style.workspace_id = $2)
+                    OR style.scope_kind = 'SYSTEM')
+              AND style.status = 'ACTIVE' AND version.id = $3 AND version.state = 'PUBLISHED'
+            LIMIT 1`,
+          [scope.account_id, scope.workspace_id, input.styleVersionId],
+        ),
+        transaction.query<{ count: string | number }>(
+          `SELECT count(*) AS count FROM media_worker_devices
+            WHERE account_id = $1 AND workspace_id = $2
+              AND status IN ('ONLINE', 'BUSY')`,
+          [scope.account_id, scope.workspace_id],
+        ),
+      ]);
+      return {
+        avatarReady: avatar.rows.length > 0,
+        styleReady: style.rows.length > 0,
+        workers: Number(workers.rows[0]?.count ?? 0),
+      };
+    });
+    const blockers: HostedPreflightBlocker[] = [];
+    if (!facts.avatarReady) {
+      blockers.push({
+        code: "AVATAR_PROFILE_NOT_READY",
+        message: "Choose an active Avatar Profile version in READY state.",
+        severity: "BLOCKING",
+      });
+    }
+    if (!facts.styleReady) {
+      blockers.push({
+        code: "IMAGE_STYLE_NOT_PUBLISHED",
+        message: "Choose an active Image Style version in PUBLISHED state.",
+        severity: "BLOCKING",
+      });
+    }
+    if (facts.workers < 1) {
+      blockers.push({
+        code: "MEDIA_WORKER_OFFLINE",
+        message: "Connect your personal media worker before generating.",
+        severity: "BLOCKING",
+      });
+    }
+    // This is a truthful warning, not an authorization. The current release remains fail-closed
+    // for GPU dispatch while the qualification records are incomplete.
+    blockers.push({
+      code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED",
+      message: "GPU lanes are not qualified; the estimate excludes provider GPU spend.",
+      severity: "ADVISORY",
+    });
+    const cap = input.spendCapUsd;
+    const ok = blockers.every((blocker) => blocker.severity !== "BLOCKING");
+    return response({
+      schema_version: "videoforge-hosted-project-preflight/v1",
+      ok,
+      ready: ok,
+      estimate: {
+        projected_usd: 0,
+        minimum_usd: 0,
+        maximum_usd: cap,
+        cap_usd: cap,
+        detail:
+          "Provider-free personal-worker estimate. GPU provider cost is not projected while transport is DISABLED_UNQUALIFIED.",
+        voiceover_bytes: input.voiceover.contentLength,
+        duration_ms: input.voiceover.durationMs,
+        generation_mode: input.generationMode,
+      },
+      blockers,
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      provider_calls_authorized: false,
     });
   } finally {
     await pool.end();
@@ -377,7 +649,7 @@ async function createProject(
       const objectKey =
         `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${projectId}` +
         `/revision/${revisionId}/lane/input/job/browser-upload/artifact/voiceover`;
-      const schedulerSeed = Math.floor(Math.random() * 2_147_483_647);
+      const schedulerSeed = input.userSeed ?? Math.floor(Math.random() * 4_294_967_296);
       const revisionPayload = hostedRevisionConfigV2({
         projectId,
         projectRevisionId: revisionId,
@@ -395,6 +667,11 @@ async function createProject(
         imageStyleVersionId: input.styleVersionId,
         styleProfileHash: String(style.rows[0].style_profile_hash),
         schedulerSeed,
+        optionalScript: input.optionalScript,
+        extraPromptKeywords: input.extraPromptKeywords,
+        applyExtraPromptKeywords: input.applyExtraPromptKeywords,
+        generationMode: input.generationMode,
+        spendCapUsd: input.spendCapUsd,
       });
       const revisionHash = await sha256(canonicalJson(revisionPayload));
       await transaction.query(
@@ -435,8 +712,8 @@ async function createProject(
            created_by_user_id
          ) VALUES (
            $1,$2,$3,1,'DRAFT',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
-           'UNTESTED',NULL,NULL,$14,$15,$16,'',false,'LOWEST_COST',$17,$18,
-           'project-revision-config','v2',$19::jsonb,$20,$21
+           'UNTESTED',NULL,NULL,$14,$15,$16,$17,$18,$19,$20,$21,
+           'project-revision-config','v2',$22::jsonb,$23,$24
          )`,
         [
           revisionId,
@@ -455,7 +732,10 @@ async function createProject(
           String(style.rows[0].style_id),
           String(style.rows[0].version_id),
           String(style.rows[0].style_profile_hash),
-          PERSONAL_WORKER_MINIMUM_COST_MICRO_USD,
+          input.extraPromptKeywords,
+          input.applyExtraPromptKeywords,
+          input.generationMode,
+          Math.round(input.spendCapUsd * 1_000_000),
           schedulerSeed,
           JSON.stringify(revisionPayload),
           revisionHash,
@@ -466,6 +746,20 @@ async function createProject(
         revisionId,
         assetId,
       ]);
+      if (input.optionalScript !== null) {
+        await transaction.query(
+          `INSERT INTO project_inputs (
+             id, workspace_id, project_id, kind, state, asset_id, idempotency_key, optional_script
+           ) VALUES ($1,$2,$3,'OPTIONAL_SCRIPT','UPLOADED',NULL,$4,$5)`,
+          [
+            crypto.randomUUID(),
+            scope.workspace_id,
+            projectId,
+            `project-${projectId}-optional-script-v1`,
+            input.optionalScript,
+          ],
+        );
+      }
       await transaction.query(
         `INSERT INTO artifact_reservations (
            id, account_id, workspace_id, project_id, project_revision_id, asset_id,
@@ -1040,6 +1334,77 @@ async function projects(
   }
 }
 
+type HostedContactSheetItem = {
+  readonly id: string;
+  readonly asset_id: null;
+  readonly image_url: string;
+  readonly label: string;
+  readonly start_ms: null;
+  readonly end_ms: null;
+  readonly shot_role: string;
+};
+
+async function contactSheet(
+  outputs: readonly Record<string, unknown>[],
+  bucket: HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"],
+  signer: HostedR2Signer,
+): Promise<readonly HostedContactSheetItem[]> {
+  if (!bucket) return [];
+  const items: HostedContactSheetItem[] = [];
+  for (const output of outputs) {
+    if (!Array.isArray(output.artifacts)) continue;
+    for (const rawArtifact of output.artifacts) {
+      if (!rawArtifact || typeof rawArtifact !== "object" || items.length >= 96) continue;
+      const artifact = rawArtifact as Record<string, unknown>;
+      const objectKey = artifact.object_key;
+      const checksum = artifact.checksum_sha256;
+      const contentLength = numberOrNull(artifact.content_length);
+      const itemId = artifact.item_id;
+      if (
+        typeof objectKey !== "string" ||
+        typeof checksum !== "string" ||
+        !SHA256.test(checksum) ||
+        contentLength === null ||
+        !Number.isSafeInteger(contentLength) ||
+        contentLength < 1 ||
+        typeof itemId !== "string"
+      ) {
+        continue;
+      }
+      const object = await bucket.head(objectKey);
+      const contentType = object?.httpMetadata?.contentType;
+      if (
+        !object ||
+        object.size !== contentLength ||
+        typeof contentType !== "string" ||
+        !contentType.startsWith("image/") ||
+        checksumFromR2(object.checksums?.sha256) !== checksum
+      ) {
+        continue;
+      }
+      const port = await signer.sign({
+        method: "GET",
+        objectKey,
+        contentType,
+        contentLength,
+        checksumSha256: checksum,
+        lifetimeSeconds: 300,
+      });
+      items.push({
+        id: itemId,
+        asset_id: null,
+        image_url: port.url,
+        label: itemId,
+        start_ms: null,
+        end_ms: null,
+        shot_role: String(output.lane ?? "IMAGE"),
+      });
+    }
+    if (items.length >= 96) break;
+  }
+  return items;
+}
+
 async function projectDetail(
   request: Request,
   projectId: string,
@@ -1070,7 +1435,10 @@ async function projectDetail(
       );
       const attempts = await transaction.query(
         `SELECT attempt.id, attempt.kind, attempt.state, attempt.version, attempt.created_at,
-                attempt.updated_at, attempt.terminal_at, attempt.result_checksum_sha256,
+                attempt.updated_at, attempt.submitted_at, attempt.terminal_at,
+                attempt.result_checksum_sha256, attempt.result_content_length,
+                attempt.result_object_key, attempt.result_content_type,
+                attempt.replay_count,
                 authority.object_key, authority.content_type,
                 authority.issued_content_length AS content_length,
                 authority.issued_checksum_sha256 AS output_checksum_sha256,
@@ -1111,15 +1479,158 @@ async function projectDetail(
           ORDER BY plan.plan_sequence DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
       );
+      const queue = await transaction.query(
+        `SELECT request.id, request.state, request.queue_order, request.available_at,
+                request.admitted_at, request.terminal_at,
+                (SELECT count(*) FROM generation_requests AS ahead
+                  WHERE ahead.account_id = request.account_id
+                    AND ahead.workspace_id = request.workspace_id
+                    AND ahead.state IN ('WAITING','ADMITTED','ACTIVE','RETRY_WAIT')
+                    AND ahead.queue_order < request.queue_order) AS ahead,
+                (SELECT count(*) FROM generation_requests AS total
+                  WHERE total.account_id = request.account_id
+                    AND total.workspace_id = request.workspace_id
+                    AND total.state IN ('WAITING','ADMITTED','ACTIVE','RETRY_WAIT')) AS total
+           FROM generation_requests AS request
+          WHERE request.account_id = $1 AND request.workspace_id = $2
+            AND request.project_id = $3
+          ORDER BY request.created_at DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      const runtime = await transaction.query(
+        `SELECT runtime.id, runtime.stage, runtime.admitted_at, runtime.prepared_at,
+                runtime.terminal_at, runtime.terminal_reason, runtime.updated_at,
+                COALESCE(
+                  jsonb_agg(jsonb_build_object(
+                    'id', lane.id, 'lane', lane.lane, 'state', lane.state,
+                    'planned_item_count', lane.planned_item_count,
+                    'accepted_item_count', lane.accepted_item_count,
+                    'attempt_ordinal', lane.attempt_ordinal,
+                    'max_attempt_ordinal', lane.max_attempt_ordinal,
+                    'current_attempt_id', lane.current_attempt_id,
+                    'items_manifest_sha256', lane.items_manifest_sha256,
+                    'updated_at', lane.updated_at
+                  ) ORDER BY lane.lane) FILTER (WHERE lane.id IS NOT NULL),
+                  '[]'::jsonb
+                ) AS lanes
+           FROM video_runtime_states AS runtime
+           LEFT JOIN video_runtime_lane_states AS lane
+             ON lane.account_id = runtime.account_id
+            AND lane.workspace_id = runtime.workspace_id
+            AND lane.runtime_id = runtime.id
+          WHERE runtime.account_id = $1 AND runtime.workspace_id = $2
+            AND runtime.project_id = $3
+          GROUP BY runtime.id, runtime.stage, runtime.admitted_at, runtime.prepared_at,
+                   runtime.terminal_at, runtime.terminal_reason, runtime.updated_at,
+                   runtime.created_at
+          ORDER BY runtime.created_at DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      const serverlessAttempts = await transaction.query(
+        `SELECT attempt.id, attempt.lane, attempt.state, attempt.attempt_ordinal,
+                attempt.item_count, attempt.created_at, attempt.submitted_at,
+                attempt.terminal_at, attempt.updated_at,
+                progress.provider_status, progress.attempt_state,
+                progress.items_completed, progress.items_total,
+                progress.observed_at AS progress_observed_at,
+                ledger.estimated_usd, ledger.reserved_usd, ledger.reported_usd,
+                ledger.settled_usd, ledger.possible_duplicate_usd
+           FROM serverless_attempts AS attempt
+           LEFT JOIN LATERAL (
+             SELECT event.provider_status, event.attempt_state,
+                    event.items_completed, event.items_total, event.observed_at
+               FROM serverless_progress_events AS event
+              WHERE event.account_id = attempt.account_id
+                AND event.workspace_id = attempt.workspace_id
+                AND event.attempt_id = attempt.id
+              ORDER BY event.sequence DESC LIMIT 1
+           ) AS progress ON true
+           LEFT JOIN serverless_cost_ledgers AS ledger
+             ON ledger.account_id = attempt.account_id
+            AND ledger.workspace_id = attempt.workspace_id
+            AND ledger.attempt_id = attempt.id
+          WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
+            AND attempt.project_id = $3
+          ORDER BY attempt.created_at`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      const serverlessOutputs = await transaction.query(
+        `SELECT output.attempt_id, output.lane, output.artifacts, output.accepted_at
+           FROM serverless_output_receipts AS output
+          WHERE output.account_id = $1 AND output.workspace_id = $2
+            AND output.project_revision_id = $3
+            AND output.acceptance = 'ACCEPTED_CANONICAL'
+          ORDER BY output.accepted_at, output.attempt_id`,
+        [scope.account_id, scope.workspace_id, String(project.rows[0]?.revision_id ?? "")],
+      );
+      const cost = await transaction.query(
+        `SELECT revision.maximum_cost_micro_usd,
+                COALESCE(sum(ledger.estimated_usd), 0) AS estimated_usd,
+                COALESCE(sum(ledger.reserved_usd), 0) AS reserved_usd,
+                COALESCE(sum(ledger.reported_usd), 0) AS reported_usd,
+                COALESCE(sum(ledger.settled_usd), 0) AS settled_usd,
+                COALESCE(sum(ledger.possible_duplicate_usd), 0) AS possible_duplicate_usd
+           FROM project_revisions AS revision
+           LEFT JOIN serverless_attempts AS attempt
+             ON attempt.account_id = revision.account_id
+            AND attempt.workspace_id = revision.workspace_id
+            AND attempt.project_revision_id = revision.id
+           LEFT JOIN serverless_cost_ledgers AS ledger
+             ON ledger.account_id = attempt.account_id
+            AND ledger.workspace_id = attempt.workspace_id
+            AND ledger.attempt_id = attempt.id
+          WHERE revision.account_id = $1 AND revision.workspace_id = $2
+            AND revision.project_id = $3
+          GROUP BY revision.maximum_cost_micro_usd`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      const zeroWorkers = await transaction.query(
+        `SELECT count(*) AS evidence_count, max(observed_at) AS observed_at,
+                max(generation_request_id) AS generation_request_id
+           FROM hosted_pair_zero_worker_observations AS zero
+           JOIN generation_requests AS request
+             ON request.account_id = zero.account_id
+            AND request.workspace_id = zero.workspace_id
+            AND request.id = zero.generation_request_id
+          WHERE zero.account_id = $1 AND zero.workspace_id = $2
+            AND request.project_id = $3`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      const failedTasks = await transaction.query(
+        `SELECT task.id, task.task_key, task.lane, task.state, task.updated_at
+           FROM generation_tasks AS task
+          WHERE task.account_id = $1 AND task.workspace_id = $2
+            AND task.project_revision_id = $3
+            AND task.state IN ('FAILED','BLOCKED','RETRY_WAIT')
+          ORDER BY task.updated_at DESC`,
+        [scope.account_id, scope.workspace_id, String(project.rows[0]?.revision_id ?? "")],
+      );
+      const review = await transaction.query(
+        `SELECT review.render_attempt_id, review.output_checksum_sha256,
+                review.approved_by_user_id, review.approved_at
+           FROM hosted_project_reviews AS review
+          WHERE review.account_id = $1 AND review.workspace_id = $2
+            AND review.project_id = $3
+          ORDER BY review.approved_at DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
       return {
         project: project.rows[0],
         attempts: attempts.rows,
         generation: generation.rows[0] ?? null,
+        queue: queue.rows[0] ?? null,
+        runtime: runtime.rows[0] ?? null,
+        serverlessAttempts: serverlessAttempts.rows,
+        serverlessOutputs: serverlessOutputs.rows,
+        cost: cost.rows[0] ?? null,
+        zeroWorkers: zeroWorkers.rows[0] ?? null,
+        failedTasks: failedTasks.rows,
+        review: review.rows[0] ?? null,
       };
     });
     if (!detail.project) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
     const signer = new HostedR2Signer(config.r2);
-    const attempts = [];
+    const attempts = [] as Record<string, unknown>[];
     for (const value of detail.attempts as Record<string, unknown>[]) {
       let previewUrl: string | null = null;
       if (
@@ -1145,12 +1656,248 @@ async function projectDetail(
               contentLength: Number(value.content_length),
               checksumSha256: value.output_checksum_sha256,
               lifetimeSeconds: 300,
-              downloadFilename: "videoforge-output.mp4",
             })
           ).url;
         }
       }
-      attempts.push({ ...value, preview_url: previewUrl });
+      attempts.push({
+        ...value,
+        submitted_at: timestampOrNull(value.submitted_at),
+        terminal_at: timestampOrNull(value.terminal_at),
+        preview_url: previewUrl,
+        progress_percent:
+          value.kind === "ASR"
+            ? value.state === "SUCCEEDED"
+              ? 100
+              : value.state === "RUNNING"
+                ? 50
+                : 0
+            : null,
+        queue_position: null,
+        timing: hostedTiming({
+          createdAt: value.created_at,
+          submittedAt: value.submitted_at,
+          terminalAt: value.terminal_at,
+        }),
+        cost: {
+          projected_usd: 0,
+          settled_usd: 0,
+          cap_usd: null,
+          billed_seconds: null,
+          provider: "personal-worker",
+        },
+      });
+    }
+    const serverlessAttempts = detail.serverlessAttempts as Record<string, unknown>[];
+    const serverlessByLane = new Map<string, Record<string, unknown>>();
+    for (const attempt of serverlessAttempts) {
+      serverlessByLane.set(String(attempt.lane), attempt);
+      const progressPercent = hostedProgressPercent(
+        attempt.items_completed,
+        attempt.items_total ?? attempt.item_count,
+      );
+      attempts.push({
+        ...attempt,
+        kind: String(attempt.lane).toUpperCase(),
+        progress_percent: progressPercent,
+        queue_position: null,
+        preview_url: null,
+        timing: hostedTiming({
+          createdAt: attempt.created_at,
+          submittedAt: attempt.submitted_at,
+          terminalAt: attempt.terminal_at,
+        }),
+        cost: {
+          projected_usd: numberOrNull(attempt.estimated_usd),
+          settled_usd: numberOrNull(attempt.settled_usd),
+          cap_usd: null,
+          billed_seconds: null,
+          provider: "runpod",
+        },
+      });
+    }
+    const runtime = (detail.runtime ?? null) as Record<string, unknown> | null;
+    const runtimeLanes = Array.isArray(runtime?.lanes)
+      ? (runtime?.lanes as Record<string, unknown>[])
+      : [];
+    const laneState = (lane: string): Record<string, unknown> | null =>
+      runtimeLanes.find((value) => value.lane === lane) ?? serverlessByLane.get(lane) ?? null;
+    const laneProgress = (lane: string): number | null => {
+      const value = laneState(lane);
+      if (!value) return null;
+      if (value.accepted_item_count !== undefined)
+        return hostedProgressPercent(value.accepted_item_count, value.planned_item_count);
+      return hostedProgressPercent(value.items_completed, value.items_total ?? value.item_count);
+    };
+    const asr = (detail.attempts as Record<string, unknown>[]).find(
+      (value) => value.kind === "ASR",
+    );
+    const render = (detail.attempts as Record<string, unknown>[]).find(
+      (value) => value.kind === "RENDER",
+    );
+    const stages = [
+      {
+        id: "transcription",
+        name: "Transcription",
+        status: String(asr?.state ?? "WAITING"),
+        progress_percent: asr?.state === "SUCCEEDED" ? 100 : asr ? 50 : 0,
+        started_at: timestampOrNull(asr?.submitted_at),
+        completed_at: timestampOrNull(asr?.terminal_at),
+        detail: "Private voiceover transcription on the connected media worker.",
+        eta_ms: null,
+      },
+      {
+        id: "planning",
+        name: "Deterministic planning",
+        status: detail.generation ? "COMPLETE" : "WAITING",
+        progress_percent: detail.generation ? 100 : 0,
+        started_at: null,
+        completed_at: null,
+        detail: "Tenant-owned transcript and timeline plan.",
+        eta_ms: null,
+      },
+      {
+        id: "image-generation",
+        name: "Image generation",
+        status: String(laneState("mage_image")?.state ?? "WAITING_FOR_GPU_QUALIFICATION"),
+        progress_percent: laneProgress("mage_image"),
+        started_at: timestampOrNull(laneState("mage_image")?.created_at),
+        completed_at: timestampOrNull(laneState("mage_image")?.terminal_at),
+        detail: "Exact image lane state and accepted item count.",
+        eta_ms: null,
+      },
+      {
+        id: "avatar-generation",
+        name: "Avatar generation",
+        status: String(laneState("soulx_avatar")?.state ?? "WAITING_FOR_GPU_QUALIFICATION"),
+        progress_percent: laneProgress("soulx_avatar"),
+        started_at: timestampOrNull(laneState("soulx_avatar")?.created_at),
+        completed_at: timestampOrNull(laneState("soulx_avatar")?.terminal_at),
+        detail: "Exact avatar lane state and accepted item count.",
+        eta_ms: null,
+      },
+      {
+        id: "render",
+        name: "Final render",
+        status: String(render?.state ?? "WAITING"),
+        progress_percent: render ? (render.state === "SUCCEEDED" ? 100 : 50) : 0,
+        started_at: timestampOrNull(render?.submitted_at),
+        completed_at: timestampOrNull(render?.terminal_at),
+        detail: "Final MP4 is available only after checksum verification and review approval.",
+        eta_ms: null,
+      },
+    ];
+    const queueRow = detail.queue as Record<string, unknown> | null;
+    const queue = queueRow
+      ? {
+          position: numberOrNull(queueRow.ahead) === null ? null : Number(queueRow.ahead) + 1,
+          ahead: numberOrNull(queueRow.ahead),
+          total: numberOrNull(queueRow.total),
+          status: queueRow.state ?? null,
+          estimated_wait_ms: null,
+          fair_rotation: "DETERMINISTIC_ACCOUNT_ROTATION",
+        }
+      : null;
+    const costRow = detail.cost as Record<string, unknown> | null;
+    const projectedCost = costRow
+      ? Math.max(
+          numberOrNull(costRow.estimated_usd) ?? 0,
+          numberOrNull(costRow.reserved_usd) ?? 0,
+          numberOrNull(costRow.reported_usd) ?? 0,
+        ) + (numberOrNull(costRow.possible_duplicate_usd) ?? 0)
+      : 0;
+    const settledCost = costRow ? (numberOrNull(costRow.settled_usd) ?? 0) : 0;
+    const capCost = costRow
+      ? (numberOrNull(costRow.maximum_cost_micro_usd) ?? 0) / 1_000_000
+      : null;
+    const timingRows = [...(detail.attempts as Record<string, unknown>[]), ...serverlessAttempts];
+    const createdAt = timingRows
+      .map((value) => new Date(String(value.created_at)).getTime())
+      .filter(Number.isFinite)
+      .sort((left, right) => left - right)[0];
+    const terminalAt = timingRows
+      .map((value) => (value.terminal_at ? new Date(String(value.terminal_at)).getTime() : NaN))
+      .filter(Number.isFinite)
+      .sort((left, right) => right - left)[0];
+    const timing = {
+      queue_wait_ms: elapsedMs(createdAt, queueRow?.admitted_at ?? timingRows[0]?.submitted_at),
+      initialization_ms: elapsedMs(runtime?.admitted_at, runtime?.prepared_at),
+      model_ready_ms: null,
+      inference_ms: elapsedMs(render?.submitted_at, render?.terminal_at),
+      upload_ms: null,
+      render_ms: elapsedMs(render?.submitted_at, render?.terminal_at),
+      end_to_end_ms: elapsedMs(createdAt, terminalAt),
+    };
+    const zeroWorkerRow = detail.zeroWorkers as Record<string, unknown> | null;
+    const zeroWorkerCount = numberOrNull(zeroWorkerRow?.evidence_count) ?? 0;
+    const scaleToZero = {
+      state: zeroWorkerCount >= 2 ? "PROVEN_ZERO_WORKERS" : "NOT_PROVEN",
+      worker_count: zeroWorkerCount >= 2 ? 0 : null,
+      observed_at: timestampOrNull(zeroWorkerRow?.observed_at),
+      evidence_id: zeroWorkerCount >= 2 ? String(zeroWorkerRow?.generation_request_id ?? "") : null,
+      detail:
+        zeroWorkerCount >= 2
+          ? "Both qualified lanes have exact zero-worker and zero-queued-job observations."
+          : "No current two-lane zero-worker proof is persisted for this project.",
+    };
+    const qualityFlags = [
+      ...(detail.failedTasks as Record<string, unknown>[]).map((task) => ({
+        id: String(task.id),
+        asset_id: null,
+        category: String(task.lane ?? "GENERATION"),
+        severity: "ERROR",
+        status: String(task.state),
+        message: `Generation task ${String(task.task_key)} is ${String(task.state)}.`,
+        retryable: task.state === "RETRY_WAIT",
+        replacement_allowed: task.state === "RETRY_WAIT",
+      })),
+      ...serverlessAttempts
+        .filter((attempt) =>
+          ["RETRYABLE_FAILED", "PERMANENT_FAILED"].includes(String(attempt.state)),
+        )
+        .map((attempt) => ({
+          id: String(attempt.id),
+          asset_id: null,
+          category: String(attempt.lane),
+          severity: "ERROR",
+          status: String(attempt.state),
+          message: `The ${String(attempt.lane)} lane attempt is ${String(attempt.state)}.`,
+          retryable: attempt.state === "RETRYABLE_FAILED",
+          replacement_allowed: attempt.state === "RETRYABLE_FAILED",
+        })),
+    ];
+    const sheet = await contactSheet(
+      detail.serverlessOutputs as Record<string, unknown>[],
+      environment.PRIVATE_ARTIFACTS,
+      signer,
+    );
+    let downloadUrl: string | null = null;
+    const reviewRow = detail.review as Record<string, unknown> | null;
+    if (reviewRow) {
+      const approvedAttempt = attempts.find(
+        (value) => value.id === reviewRow.render_attempt_id && value.preview_url,
+      );
+      const outputObjectKey = approvedAttempt?.object_key;
+      const outputLength = numberOrNull(approvedAttempt?.content_length);
+      const outputChecksum = approvedAttempt?.output_checksum_sha256;
+      if (
+        typeof outputObjectKey === "string" &&
+        outputLength !== null &&
+        typeof outputChecksum === "string" &&
+        SHA256.test(outputChecksum)
+      ) {
+        downloadUrl = (
+          await signer.sign({
+            method: "GET",
+            objectKey: outputObjectKey,
+            contentType: "video/mp4",
+            contentLength: outputLength,
+            checksumSha256: outputChecksum,
+            lifetimeSeconds: 300,
+            downloadFilename: "videoforge-output.mp4",
+          })
+        ).url;
+      }
     }
     return response({
       schema_version: "videoforge-hosted-project-detail/v1",
@@ -1172,6 +1919,26 @@ async function projectDetail(
                     ? "READY_FOR_RENDER"
                     : "WAITING_FOR_GPU_QUALIFICATION",
             },
+      queue,
+      stages,
+      timing,
+      cost: {
+        projected_usd: projectedCost,
+        settled_usd: settledCost,
+        cap_usd: capCost,
+        billed_seconds: null,
+        provider: serverlessAttempts.length > 0 ? "runpod" : "personal-worker",
+      },
+      scale_to_zero: scaleToZero,
+      review: {
+        contact_sheet: sheet,
+        quality_flags: qualityFlags,
+        manifest_url: `/api/v2/hosted/projects/${projectId}/manifest`,
+        download_url: downloadUrl,
+      },
+      contact_sheet: sheet,
+      quality_flags: qualityFlags,
+      manifest_url: `/api/v2/hosted/projects/${projectId}/manifest`,
     });
   } finally {
     await pool.end();
@@ -1311,6 +2078,8 @@ export async function handleHostedProductRequest(
   const url = new URL(request.url);
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/project-catalog")
     return catalog(request, config, executionContext);
+  if (request.method === "POST" && url.pathname === "/api/v2/hosted/projects/preflight")
+    return projectPreflight(request, config, executionContext);
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/projects")
     return projects(request, config, executionContext);
   if (request.method === "POST" && url.pathname === "/api/v2/hosted/projects")
