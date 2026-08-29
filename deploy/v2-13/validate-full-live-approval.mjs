@@ -192,29 +192,77 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
     path: "deploy/v2-13/validate-full-live-approval.mjs",
     source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
   }),
+  avatar_primary_workflow: Object.freeze({
+    path: ".github/workflows/avatar-primary-serverless-image.yml",
+    sha256: "sha256:cd07aeeb794b1e897194f2fc950c7bd999349d571d240c50d60f6eb40f1c597d",
+  }),
+  backup_metadata_snapshot: Object.freeze({
+    path: "packages/control-plane/src/backup/metadata-snapshot.ts",
+    sha256: "sha256:46bd0e6c3d49563e1831d58ca8ec07ab0f83b572157146a373b2c13e4bd7652c",
+  }),
+  database_vocabulary: Object.freeze({
+    path: "packages/control-plane/src/database/vocabulary.ts",
+    sha256: "sha256:1db0c1e67d663458be759d12f5445e63a64f186a0779dd91714e5b91859a8e04",
+  }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
     sha256: "sha256:c4f0f4867bb7c19207c7cbe334261f7208949d5906347bc15e1a2fd04b2de4ff",
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:f7315af7ecedfa45ef4c069eac79f0f24283b87c46694d2a7e2e6a053e632cb5",
+    sha256: "sha256:4841a7036d4e6b90953d0f6a7c688725ece0e55e8e2ced08ab734fb4772b64e9",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
     sha256: "sha256:f760505d3fdabfe8540cfc836304d70e4da8a1c76516474ffffbdef14cc4b0b3",
   }),
+  hosted_live_production_adapters: Object.freeze({
+    path: "apps/web/src/server/hosted/v213-live-production-adapters.ts",
+    sha256: "sha256:99d47a21ff0c32eeb0bad59652c9530355f9c9124e9db96799c216dc88b953d9",
+  }),
+  mage_workflow: Object.freeze({
+    path: ".github/workflows/mage-image.yml",
+    sha256: "sha256:b6b0f99099a16fb46f181bd1b07314267c9ae7ad6b62d5b5f7436fdb4f5c5697",
+  }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:2ca8828018bdc7300eedf7598d165efc9e0ba9796e6110affc15bf2c6b51d122",
+    sha256: "sha256:078370a000ceec314fac64c950a56f63df9e12e864bd5c2d32a14e8d8c688ffa",
+  }),
+  migration_0046: Object.freeze({
+    path: "packages/control-plane/migrations/0046_hosted_full_live_cleanup_recovery.sql",
+    sha256: "sha256:d98e020a52a1820db811f5c9a679651c1169000ebe28c1d00b35e04c003ba33b",
+  }),
+  migration_manifest: Object.freeze({
+    path: "packages/control-plane/migrations/manifest.json",
+    sha256: "sha256:5338d39705264979f364ad04241c6c7c38d3d6ad7acacf7992fe2a680d01052d",
+  }),
+  operator_grants: Object.freeze({
+    path: "deploy/v2-13/neon-full-live-operator-grants.sql",
+    sha256: "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5",
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
     sha256: "sha256:1462382fc3d76f89f606d7f08f94cd811ba665ed36bc5ddcb5a23292f5418186",
   }),
+  promotion: Object.freeze({
+    path: "deploy/v2-13/promote-qualified-production.mjs",
+    sha256: "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
+  }),
+  reconciler_grants: Object.freeze({
+    path: "deploy/v2-13/neon-pair-reconciler-grants.sql",
+    sha256: "sha256:0ae991d90b8b21761fe132ce6ea543a5716c0fa4b294429466df73c51bfebdaf",
+  }),
+  runpod_dual_lane_transport: Object.freeze({
+    path: "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
+    sha256: "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2",
+  }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:1633d08e35fddab384d48c90afa0dc9416203836b310a02da15e01d23daa2486",
+    sha256: "sha256:bc18e7f87c01759ccca1f28519d95c6b7ee563a7b8d08f650c3de0ea2dba4f12",
+  }),
+  typescript_cli_bridge: Object.freeze({
+    path: "apps/web/src/server/providers/v213-full-live-cli.ts",
+    sha256: "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af",
   }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({

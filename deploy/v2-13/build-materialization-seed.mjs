@@ -29,6 +29,7 @@ const MAGE_CASE_VALIDATOR_PATH =
   "workers/image-media/src/videoforge_image_media/mage_production.py";
 const SOULX_CASE_VALIDATOR_PATH = "workers/avatar-primary/soulx_serverless.py";
 const APPROVAL_VALIDATOR_PATH = "deploy/v2-13/validate-full-live-approval.mjs";
+const MIGRATION_MANIFEST_PATH = "packages/control-plane/migrations/manifest.json";
 const PROPOSAL_PATH =
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
 const FACTS_SCHEMA = "videoforge.v213-materialization-seed-facts/v1";
@@ -603,6 +604,9 @@ function validateProposal(proposal, proposalPath) {
   const approvalValidator = isV4
     ? executionControlComponents?.approval_validator
     : proposal.source.exact_release_components?.approval_validator;
+  const migrationManifestSource = isV4
+    ? executionControlComponents?.migration_manifest
+    : proposal.source.exact_release_components?.migration_manifest;
   if (
     requested.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     requested.phase_caps_usd?.mage_qualification !== 4.5 ||
@@ -666,17 +670,34 @@ function validateProposal(proposal, proposalPath) {
     approvalValidator?.source_commit_tree_binding?.tree_entry_path !== APPROVAL_VALIDATOR_PATH ||
     approvalValidator.source_commit_tree_binding.commit_field !==
       (isV4 ? "source.execution_control.commit" : "source.release_source_commit") ||
+    !exactKeys(migrationManifestSource, ["path", "sha256"]) ||
+    migrationManifestSource.path !== MIGRATION_MANIFEST_PATH ||
+    !HASH.test(migrationManifestSource.sha256 ?? "") ||
+    (!isV4 &&
+      pending.release_component_sha256s?.migration_manifest !== migrationManifestSource.sha256) ||
     !COMMIT.test(executionControlCommit ?? "") ||
     (isV4 &&
       (!exactKeys(executionControl, ["commit", "exact_components"]) ||
         !exactKeys(executionControlComponents, [
           "approval_validator",
+          "avatar_primary_workflow",
+          "backup_metadata_snapshot",
+          "database_vocabulary",
           "full_live_adapters",
           "full_live_executor",
           "guarded_activation",
+          "hosted_live_production_adapters",
+          "mage_workflow",
           "materialization_seed_builder",
+          "migration_0046",
+          "migration_manifest",
+          "operator_grants",
           "orchestration_authority",
+          "promotion",
+          "reconciler_grants",
+          "runpod_dual_lane_transport",
           "source_closure_manifest",
+          "typescript_cli_bridge",
         ]) ||
         Object.values(executionControlComponents).some(
           (component) =>
@@ -691,6 +712,7 @@ function validateProposal(proposal, proposalPath) {
     envelopeSchemaSource,
     mageCaseGenerator,
     mageCaseValidator,
+    migrationManifestSource,
     productionConfigValidator,
     qualificationCaseSource,
     soulxCaseGenerator,
@@ -720,11 +742,13 @@ function deterministicProductionSecretKeyId(fullLiveAuthorityId, purpose) {
   return `v213-${purpose}-${sha256(Buffer.from(`${fullLiveAuthorityId}\0${purpose}`)).slice(7, 31)}`;
 }
 
-function migrationLedgerSha256(proposal, readSourceFile) {
-  const binding = proposal?.source?.exact_release_components?.migration_manifest;
+function migrationLedgerSha256(proposal, proposalBinding, readSourceFile) {
+  const binding =
+    proposalBinding.executionControlComponents?.migration_manifest ??
+    proposal?.source?.exact_release_components?.migration_manifest;
   if (
     !exactKeys(binding, ["path", "sha256"]) ||
-    binding.path !== "packages/control-plane/migrations/manifest.json" ||
+    binding.path !== MIGRATION_MANIFEST_PATH ||
     !HASH.test(binding.sha256 ?? "")
   )
     fail("MIGRATION_MANIFEST_BINDING");
@@ -989,6 +1013,7 @@ function buildV213MaterializationSeed({
       binding.soulxCaseGenerator.path,
       binding.mageCaseValidator.path,
       binding.soulxCaseValidator.path,
+      binding.migrationManifestSource.path,
     ],
   );
   const descriptorBytes = Buffer.from(staticReleaseDescriptorBytes);
@@ -1001,7 +1026,7 @@ function buildV213MaterializationSeed({
     sourceEvidence,
   );
   const cropApproval = soulxCropApproval(facts, readSourceFile);
-  const ledgerSha256 = migrationLedgerSha256(proposal, readSourceFile);
+  const ledgerSha256 = migrationLedgerSha256(proposal, binding, readSourceFile);
   const fullLiveAuthorityId = facts.full_live_authority_id;
   const envelopeSigningKeyId = deterministicProductionSecretKeyId(fullLiveAuthorityId, "envelope");
   if (protectedInput.qualification.envelope_signing_key_id !== envelopeSigningKeyId)
@@ -1755,6 +1780,34 @@ function writeV213MaterializationSeed({
     );
     if (name !== "approval_validator" && sha256(bytes) !== component.sha256)
       fail("EXECUTION_CONTROL_SOURCE_HASH");
+  }
+  if (binding.executionControlComponents) {
+    const sourceClosureRef = binding.executionControlComponents.source_closure_manifest;
+    const sourceClosureBytes = gitShow(
+      repositoryRoot,
+      executionControlCommit,
+      sourceClosureRef.path,
+      "EXECUTION_CONTROL_SOURCE_CLOSURE",
+    );
+    if (sha256(sourceClosureBytes) !== sourceClosureRef.sha256)
+      fail("EXECUTION_CONTROL_SOURCE_CLOSURE_HASH");
+    const sourceClosure = parseJson(sourceClosureBytes, "EXECUTION_CONTROL_SOURCE_CLOSURE");
+    if (
+      sourceClosure?.schema_version !== "videoforge.v2-13-full-live-source-closure/v1" ||
+      !Array.isArray(sourceClosure.entries) ||
+      sourceClosure.entries.length === 0
+    )
+      fail("EXECUTION_CONTROL_SOURCE_CLOSURE_CONTRACT");
+    assertSourceClosureOrder(sourceClosure.entries);
+    for (const entry of sourceClosure.entries) {
+      if (
+        !exactKeys(entry, ["path", "sha256"]) ||
+        !HASH.test(entry.sha256 ?? "") ||
+        sourcePath(entry.path, "EXECUTION_CONTROL_SOURCE_CLOSURE_PATH") !== entry.path
+      )
+        fail("EXECUTION_CONTROL_SOURCE_CLOSURE_CONTRACT");
+      executionControlPaths.add(entry.path);
+    }
   }
   executionControlPaths.add(binding.factsBinding.path);
   const readSourceFile = (path) =>

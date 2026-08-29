@@ -42,6 +42,7 @@ import {
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
+  EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
   EXACT_WORKFLOW_START_AUTHORITY_POLICY,
 } from "../../deploy/v2-13/validate-full-live-approval.mjs";
 
@@ -262,6 +263,9 @@ function harness({
   }
   const isV4Proposal = proposal.schema_version === V4_PROPOSAL_SCHEMA;
   if (isV4Proposal) {
+    proposal.source.execution_control.exact_components = structuredClone(
+      EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
+    );
     proposal.source.execution_control.exact_components.approval_validator.source_commit_tree_binding.commit_field =
       "source.execution_control.commit";
   }
@@ -419,6 +423,10 @@ function harness({
     sha256: builderSha256,
   };
   if (isV4Proposal) {
+    proposal.source.execution_control.exact_components.migration_manifest = {
+      path: migrationManifestPath,
+      sha256: sha256(migrationManifestBytes),
+    };
     proposal.source.execution_control.exact_components.materialization_seed_builder = {
       path: BUILDER_PATH,
       sha256: builderSha256,
@@ -552,6 +560,10 @@ function harness({
     soulxValidatorPath,
     mageGeneratorPath,
     soulxGeneratorPath,
+    migrationManifestPath,
+    ...migrationManifest.migrations.map(
+      (migration) => `packages/control-plane/migrations/${migration.filename}`,
+    ),
   ]
     .map((path) => ({ path, sha256: sha256(readSource(path)) }))
     .sort((left, right) => left.path.localeCompare(right.path));
