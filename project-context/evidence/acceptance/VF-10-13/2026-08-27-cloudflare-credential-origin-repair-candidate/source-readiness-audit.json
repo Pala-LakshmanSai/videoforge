@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "5772a3eb975e1b7d3cc69c703007d46bcf613abf",
-  "audit_result": "PASS_READY_TO_RESEAL",
+  "audited_code_commit": "eac19d7d56076bf473e19df163d3c3a2935b7862",
+  "audit_result": "PASS_READY_TO_BIND",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.successor-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-29T17:04:58.000Z",
+  "observed_at": "2026-08-29T17:56:17.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -16,8 +16,8 @@
   "spend_usd": 0,
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "entry_count": 648,
-    "sha256": "sha256:20e87ee1f6c7cdf77f02f8e5ba3eda76e911b92079bac7ec8bcb29c87df34b40",
+    "entry_count": 649,
+    "sha256": "sha256:c6ea6e41abbf71da29c8c2302039f25cac75f1c5aee45f70b713eba0ebd4c15b",
     "exact": true
   },
   "production_origin": {
@@ -27,19 +27,41 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:20e87ee1f6c7cdf77f02f8e5ba3eda76e911b92079bac7ec8bcb29c87df34b40"
+    "sha256": "sha256:c6ea6e41abbf71da29c8c2302039f25cac75f1c5aee45f70b713eba0ebd4c15b"
+  },
+  "source_components": {
+    "full_live_executor": {
+      "path": "deploy/v2-13/full-live-executor.mjs",
+      "sha256": "sha256:1f3a836de42d2dd08a9b8e024c0865979b83ee333eec164e4dd72c598bfe60c3"
+    },
+    "full_live_orchestration_authority": {
+      "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
+      "sha256": "sha256:6c85b2cea75760ae7e3c0220c710ae7fab8ce6ce15e97562327b739a90b7e967"
+    },
+    "approval_validator": {
+      "path": "deploy/v2-13/validate-full-live-approval.mjs",
+      "sha256": "sha256:d41d6babdecbb4cefa2d491cf29de1fd9a2401bbd4c24dc4739f4122f1f33167"
+    },
+    "migration_0049": {
+      "path": "packages/control-plane/migrations/0049_hosted_full_live_promotion_lineage.sql",
+      "sha256": "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31"
+    }
   },
   "validation": {
     "full_verify_command": "CI=1 TURBO_FORCE=true pnpm verify",
     "full_verify_passed": false,
-    "full_verify_expected_boundary": "POST_RESEAL_CANONICAL_VERIFY_REQUIRED",
+    "full_verify_expected_boundary": "POST_BIND_CANONICAL_VERIFY_REQUIRED",
     "package_test_files_passed": 2,
     "package_tests_passed": 51,
     "package_tests_skipped": 0,
     "focused_release_script_tests_passed": 91,
+    "focused_release_adapter_tests_passed": 56,
     "control_plane_activation_tests_passed": 3,
+    "hosted_pair_gate_test_files_passed": 2,
+    "hosted_pair_gate_tests_passed": 15,
+    "hosted_pair_gate_tests_skipped": 0,
     "soulx_tests_passed": 0,
-    "independent_source_audit_result": "PASS_READY_TO_RESEAL",
+    "independent_source_audit_result": "PASS_READY_TO_BIND",
     "canonical_executor_state": "NO_ACTION"
   },
   "audit_facts": {
@@ -89,6 +111,25 @@
         "ssrfPathUploadPassed": true
       }
     },
+    "migration_0049_and_hosted_pair_gate": {
+      "claims": [
+        "exact_49_row_migration_manifest",
+        "migration_0049_component_hash_bound",
+        "exact_0037_to_0049_hosted_pair_ledger",
+        "hosted_pair_ledger_drift_rejected",
+        "unqualified_transport_fails_closed"
+      ],
+      "metrics": {
+        "migrationManifestEntryCount": 49,
+        "migration0049Sha256": "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31",
+        "hostedPairMigrationRange": [37, 49],
+        "hostedPairMigrationCount": 13,
+        "hostedPairMigration49Sha256": "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31",
+        "hostedPairLedgerInvalidReason": "MIGRATION_LEDGER_0037_0049_INVALID",
+        "unqualifiedTransportState": "DISABLED_UNQUALIFIED",
+        "qualifiedExactGateState": "READY"
+      }
+    },
     "production_transport_real": {
       "claims": [
         "hosted_client_api_truth",
@@ -115,8 +156,9 @@
     "The successor binds the exact predecessor terminal archive and performs zero tag mutation. Mage operation 5 is predecessor-bound readback and reconciliation of workflow run 33236590768 and its immutable evidence; operation 6 re-verifies that exact result without workflow redispatch.",
     "Default-branch repair authority v2-13-default-branch-repair-20260829-120719z-graphql was consumed exactly once at zero spend. GitHub main is c24d37e164d3fcf93c04d53a1e8f06ab972c5d46, and the exact release-source SoulX workflow is registered active with hash-bound evidence sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42.",
     "V3 payload contracts remain backward compatible while 19 V4 execution-control components are separately commit-tree-bound. Guarded activation runs only from the successor control commit, rejects predecessor authority replay, and proves every non-control closure byte equals the immutable payload.",
-    "The focused executor and authority checks pass 91 of 91 at clean audited source commit 5772a3eb975e1b7d3cc69c703007d46bcf613abf; formatted hosted and audio checks pass 51 of 51, and invite migration checks pass 3 of 3. Exact commit and closure checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-reseal gate.",
-    "Audited source 5772a3eb975e1b7d3cc69c703007d46bcf613abf binds all 648 closure entries, the 48-row migration manifest, executor, orchestration authority, and externally tree-bound approval validator without changing the immutable release payload or lightweight tag. All seven mechanical source changes equal repository-configured Prettier output with no semantic drift.",
+    "The focused executor and authority checks pass 91 of 91 at clean audited source commit eac19d7d56076bf473e19df163d3c3a2935b7862; release adapter checks pass 56 of 56, formatted hosted and audio checks pass 51 of 51, invite migration checks pass 3 of 3, and hosted pair/configuration gate checks pass 15 of 15. Exact commit and closure checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-bind gate.",
+    "Audited source eac19d7d56076bf473e19df163d3c3a2935b7862 binds all 649 closure entries, the 49-row migration manifest, executor, orchestration authority, and externally tree-bound approval validator without changing the immutable release payload or lightweight tag. The four reseal changes are source-controlled and hash-bound with no semantic drift outside the migration-0049 closure update.",
+    "The exact migration-0049 component is sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31. Hosted pair composition requires the exact 13-row 0037-0049 ledger, fails closed with MIGRATION_LEDGER_0037_0049_INVALID on drift, and remains DISABLED_UNQUALIFIED until qualified transport truth is present; focused composition and configuration-qualified tests prove the current gate.",
     "The successor authority identifier is proven distinct from the exact predecessor in both approval validation and outer authority validation before durable single-use consumption; guarded activation repeats the check as defense in depth."
   ]
 }
