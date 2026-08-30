@@ -42,6 +42,7 @@ const EXACT_FILES = Object.freeze([
   "deploy/v2-13/generate-soulx-qualification-cases.d.mts",
   "deploy/v2-13/generate-soulx-qualification-cases.mjs",
   "deploy/v2-13/guarded-activation.mjs",
+  "deploy/v2-13/launch-full-live.mjs",
   "deploy/v2-13/media-worker-release-readback.mjs",
   "deploy/v2-13/neon-full-live-operator-grants.sql",
   "deploy/v2-13/neon-pair-reconciler-grants.sql",

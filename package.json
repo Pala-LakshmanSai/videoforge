@@ -31,6 +31,7 @@
     "doctor": "node scripts/doctor.mjs",
     "deploy:v2-13-production": "node deploy/v2-13/deploy-production.mjs",
     "invite:v2-06": "node deploy/v2-06/create-invite.mjs",
+    "launch:v2-13-full-live": "node deploy/v2-13/launch-full-live.mjs",
     "render:v2-13-production-config": "node deploy/v2-13/render-production-config.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
