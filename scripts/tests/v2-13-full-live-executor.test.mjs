@@ -27,7 +27,10 @@ import {
   updateState,
   writeExclusive,
 } from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
-import { EXACT_PREDECESSOR_RELEASE_ATTEMPT } from "../../deploy/v2-13/validate-full-live-approval.mjs";
+import {
+  EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
+} from "../../deploy/v2-13/validate-full-live-approval.mjs";
 
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
@@ -59,7 +62,34 @@ const workflowRegistrationEvidenceFixture = (sourceCommit = "a".repeat(40)) => {
   return { ...unsigned, evidence_sha256: hash(Buffer.from(canonicalJson(unsigned))) };
 };
 
+const successorWorkflowRegistrationEvidenceFixture = () => {
+  const unsigned = {
+    schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v2",
+    repository: "Pala-LakshmanSai/videoforge",
+    default_branch: "main",
+    default_branch_commit: "5".repeat(40),
+    workflow_id: 345299384,
+    workflow_file: "avatar-primary-serverless-image.yml",
+    workflow_name: "avatar-primary-serverless-image",
+    workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+    workflow_state: "active",
+    default_branch_workflow_sha256:
+      "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
+    release_source_commit: "417e84d4f021699337e9bd411753777d689728d7",
+    release_source_workflow_sha256:
+      "sha256:9d6f37d1369b4b50de8053efb252b39c8728a51e578593ddafcfc9f02aa28ac2",
+    default_branch_matches_release_source: false,
+    registration_state: "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND",
+    materialized: true,
+    default_branch_registration_only: true,
+  };
+  return { ...unsigned, evidence_sha256: hash(Buffer.from(canonicalJson(unsigned))) };
+};
+
 const freshWorkflowReadbackFixture = (state) => {
+  const successor =
+    state.soulx_workflow_registration_evidence.schema_version ===
+    "videoforge.v213-soulx-workflow-registration-evidence/v2";
   const unsigned = {
     schemaVersion: "videoforge.v213-fresh-default-branch-workflow-readback/v2",
     repository: "Pala-LakshmanSai/videoforge",
@@ -71,8 +101,12 @@ const freshWorkflowReadbackFixture = (state) => {
         workflowId: 101,
         workflowFile: "mage-image.yml",
         workflowName: "mage-image",
-        defaultBranchWorkflowSha256: proof("4"),
-        releaseSourceWorkflowSha256: proof("5"),
+        defaultBranchWorkflowSha256: successor
+          ? "sha256:0dceaee45ea3408683ab04bf4f80aba9175364c79b6e5a774cf576f80a9a9bf3"
+          : proof("4"),
+        releaseSourceWorkflowSha256: successor
+          ? "sha256:b6b0f99099a16fb46f181bd1b07314267c9ae7ad6b62d5b5f7436fdb4f5c5697"
+          : proof("5"),
         defaultBranchMatchesReleaseSource: false,
       },
       {
@@ -83,7 +117,7 @@ const freshWorkflowReadbackFixture = (state) => {
           state.soulx_workflow_registration_evidence.default_branch_workflow_sha256,
         releaseSourceWorkflowSha256:
           state.soulx_workflow_registration_evidence.release_source_workflow_sha256,
-        defaultBranchMatchesReleaseSource: true,
+        defaultBranchMatchesReleaseSource: successor ? false : true,
       },
     ],
     bothWorkflowsRegisteredActive: true,
@@ -388,7 +422,10 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
       operation.id === "mage-image-workflow-dispatch"
         ? {
             runId: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id,
-            headSha: state.release_source_commit,
+            headSha:
+              state.schema_version === "videoforge.v2-13-full-live-orchestration-consumption/v4"
+                ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit
+                : state.release_source_commit,
             dispatchAccepted: false,
             reconciledExistingExact: true,
             mutationPerformed: false,
@@ -420,7 +457,11 @@ function fakeResult(operation, state, priorResults, authorizedOuterStateSha256) 
     const dispatchId = operation.id.replace("verification", "dispatch");
     Object.assign(result, {
       runId: priorResults.get(dispatchId).runId,
-      headSha: state.release_source_commit,
+      headSha:
+        operation.id === "mage-image-workflow-verification" &&
+        state.schema_version === "videoforge.v2-13-full-live-orchestration-consumption/v4"
+          ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit
+          : state.release_source_commit,
       imageDigest:
         operation.id === "mage-image-workflow-verification"
           ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_image_digest
@@ -1030,6 +1071,48 @@ test("workflow dispatch result durably binds the full canonical fresh dual-workf
       () => assertResult(operation, result, state, new Map()),
       /WORKFLOW_(?:FRESH_READBACK|DISPATCH_READBACK)/u,
     );
+});
+
+test("successor dispatch keeps Mage on the predecessor head and SoulX on the new release head", () => {
+  const registration = successorWorkflowRegistrationEvidenceFixture();
+  const state = {
+    schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v4",
+    static_release_descriptor_schema_version: "videoforge.v213-static-release-descriptor/v3",
+    release_source_commit: "417e84d4f021699337e9bd411753777d689728d7",
+    predecessor_release_attempt: EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+    terminal_failed_successor_attempt: EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
+    soulx_workflow_registration_evidence: registration,
+    soulx_workflow_registration_evidence_sha256: registration.evidence_sha256,
+  };
+  const mageOperation = OPERATIONS.find(({ id }) => id === "mage-image-workflow-dispatch");
+  const soulxOperation = OPERATIONS.find(({ id }) => id === "soulx-image-workflow-dispatch");
+  const mage = fakeResult(mageOperation, state, new Map());
+  const soulx = fakeResult(soulxOperation, state, new Map());
+
+  assert.equal(mage.headSha, EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit);
+  assert.equal(soulx.headSha, state.release_source_commit);
+  assert.equal(assertResult(mageOperation, mage, state, new Map()), mage);
+  assert.equal(assertResult(soulxOperation, soulx, state, new Map()), soulx);
+  assert.throws(
+    () =>
+      assertResult(
+        mageOperation,
+        { ...mage, headSha: state.release_source_commit },
+        state,
+        new Map(),
+      ),
+    /WORKFLOW_DISPATCH_READBACK/u,
+  );
+  assert.throws(
+    () =>
+      assertResult(
+        soulxOperation,
+        { ...soulx, runId: EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT.soulx_workflow_run_id },
+        state,
+        new Map(),
+      ),
+    /WORKFLOW_DISPATCH_READBACK/u,
+  );
 });
 
 test("Mage verification result must rebind the exact predecessor digest and evidence", () => {

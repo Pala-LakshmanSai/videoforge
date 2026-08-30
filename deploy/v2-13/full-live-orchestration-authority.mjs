@@ -20,7 +20,13 @@ import { fileURLToPath } from "node:url";
 
 import {
   EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
   EXPECTED_PHASE_CAPS,
+  PROPOSAL_SCHEMA_V4,
+  PROPOSAL_SCHEMA_V5,
+  SUCCESSOR_RELEASE_MODE,
+  SUCCESSOR_RELEASE_SOURCE_COMMIT,
+  SUCCESSOR_RELEASE_TAG,
   assertDistinctV4SuccessorAuthority,
   validateFullLiveUserApproval,
 } from "./validate-full-live-approval.mjs";
@@ -48,6 +54,8 @@ const FAILURE_BOUNDARY = /^[A-Z][A-Z0-9_]{7,127}$/u;
 const FAILURE_CODE = /^[A-Z][A-Z0-9_]{7,127}$/u;
 const RUNPOD_ACCOUNT_ID_SHA256 =
   "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
+const PREDECESSOR_MAGE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
+const SUCCESSOR_SOULX_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
 const EXACT_DATABASE_IDENTITY = Object.freeze({
   database: "neondb",
   host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
@@ -59,9 +67,12 @@ const MATERIALIZATION_SEED_ENV = "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE";
 const STATIC_RELEASE_DESCRIPTOR_ENV = "VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE";
 const STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1 = "videoforge.v213-static-release-descriptor/v1";
 const STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2 = "videoforge.v213-static-release-descriptor/v2";
-const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA =
+const STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3 = "videoforge.v213-static-release-descriptor/v3";
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V1 =
   "videoforge.v213-soulx-workflow-registration-evidence/v1";
-const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS = Object.freeze([
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2 =
+  "videoforge.v213-soulx-workflow-registration-evidence/v2";
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS_V1 = Object.freeze([
   "schema_version",
   "repository",
   "default_branch",
@@ -75,6 +86,25 @@ const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS = Object.freeze([
   "registration_state",
   "materialized",
   "bound_to_release_source",
+  "evidence_sha256",
+]);
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS_V2 = Object.freeze([
+  "schema_version",
+  "repository",
+  "default_branch",
+  "default_branch_commit",
+  "workflow_id",
+  "workflow_file",
+  "workflow_name",
+  "workflow_path",
+  "workflow_state",
+  "default_branch_workflow_sha256",
+  "release_source_commit",
+  "release_source_workflow_sha256",
+  "default_branch_matches_release_source",
+  "registration_state",
+  "materialized",
+  "default_branch_registration_only",
   "evidence_sha256",
 ]);
 const MATERIALIZATION_PRODUCTION_INPUT_VALIDATOR_PATH =
@@ -222,16 +252,34 @@ const exactObjectKeys = (value, keys) =>
   !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
 const exactEmptyObject = (value) => exactObjectKeys(value, []);
-const hasForbiddenSeedKey = (value, forbidden) =>
+const hasForbiddenSeedKey = (value, forbidden, allowSuccessorLaneSources = false, path = []) =>
   value !== null &&
   typeof value === "object" &&
-  Object.entries(value).some(
-    ([key, nested]) => forbidden.has(key.toLowerCase()) || hasForbiddenSeedKey(nested, forbidden),
-  );
+  Object.entries(value).some(([key, nested]) => {
+    const isAllowedSuccessorLaneSource =
+      allowSuccessorLaneSources &&
+      key === "sourceCommit" &&
+      path.length === 3 &&
+      path[0] === "production_input_base" &&
+      path[1] === "dualLaneInput" &&
+      ["mage", "soulx"].includes(path[2]);
+    return (
+      (forbidden.has(key.toLowerCase()) && !isAllowedSuccessorLaneSource) ||
+      hasForbiddenSeedKey(nested, forbidden, allowSuccessorLaneSources, [...path, key])
+    );
+  });
 
-const validStaticSeedLane = (value, lane, retained) =>
-  exactObjectKeys(value, ["lane", "volumeIdSha256", "volumeManifestSha256"]) &&
+const validStaticSeedLane = (value, lane, retained, successor) =>
+  exactObjectKeys(value, [
+    "lane",
+    ...(successor ? ["sourceCommit"] : []),
+    "volumeIdSha256",
+    "volumeManifestSha256",
+  ]) &&
   value.lane === lane &&
+  (!successor ||
+    value.sourceCommit ===
+      (lane === "mage" ? PREDECESSOR_MAGE_SOURCE_COMMIT : SUCCESSOR_SOULX_SOURCE_COMMIT)) &&
   value.volumeIdSha256 === retained.volumeIdSha256 &&
   value.volumeManifestSha256 === retained.volumeManifestSha256;
 
@@ -376,7 +424,7 @@ function deterministicProductionSecretKeyId(fullLiveAuthorityId, purpose) {
   return `v213-${purpose}-${sha256(Buffer.from(`${fullLiveAuthorityId}\0${purpose}`)).slice(7, 31)}`;
 }
 
-function validateStaticDualLaneInput(value, fullLiveAuthorityId) {
+function validateStaticDualLaneInput(value, fullLiveAuthorityId, successor) {
   if (
     !exactObjectKeys(value, [
       "accountIdSha256",
@@ -397,8 +445,8 @@ function validateStaticDualLaneInput(value, fullLiveAuthorityId) {
     !COMMAND_ID.test(value.envelopeSigningKeyId ?? "") ||
     value.envelopeSigningKeyId !==
       deterministicProductionSecretKeyId(fullLiveAuthorityId, "envelope") ||
-    !validStaticSeedLane(value.mage, "mage", EXACT_RETAINED_LANES.mage) ||
-    !validStaticSeedLane(value.soulx, "soulx", EXACT_RETAINED_LANES.soulx) ||
+    !validStaticSeedLane(value.mage, "mage", EXACT_RETAINED_LANES.mage, successor) ||
+    !validStaticSeedLane(value.soulx, "soulx", EXACT_RETAINED_LANES.soulx, successor) ||
     !validateQualificationCaseDescriptor(value.qualificationCaseDescriptor) ||
     value.qualificationEnvelopeSchemaSha256 !==
       value.qualificationCaseDescriptor.envelopeSchema.sha256 ||
@@ -723,7 +771,7 @@ function validatePromotionRecordBase(value) {
  * Validate the complete nested static seed contract before the one-shot authority is consumed.
  * This is also reused by the materializer, keeping the outer and first-use boundaries identical.
  */
-function validateMaterializationSeedShape(value) {
+function validateMaterializationSeedShape(value, expectedReleaseSourceCommit) {
   const forbiddenFutureKeys = new Set(
     MATERIALIZATION_SEED_FORBIDDEN_FUTURE_KEYS.map((key) => key.toLowerCase()),
   );
@@ -737,13 +785,19 @@ function validateMaterializationSeedShape(value) {
     );
   const production = value?.production_input_base;
   const lanes = production?.dualLaneInput;
+  const hasSuccessorLaneSources =
+    Object.hasOwn(lanes?.mage ?? {}, "sourceCommit") ||
+    Object.hasOwn(lanes?.soulx ?? {}, "sourceCommit");
+  const sourceCommitShapeMatches = hasSuccessorLaneSources
+    ? expectedReleaseSourceCommit === undefined ||
+      expectedReleaseSourceCommit === SUCCESSOR_RELEASE_SOURCE_COMMIT
+    : expectedReleaseSourceCommit === undefined ||
+      expectedReleaseSourceCommit !== SUCCESSOR_RELEASE_SOURCE_COMMIT;
   const dynamicSeedValues = [
     lanes?.mage?.publicImage,
     lanes?.mage?.deploymentSha256,
-    lanes?.mage?.sourceCommit,
     lanes?.soulx?.publicImage,
     lanes?.soulx?.deploymentSha256,
-    lanes?.soulx?.sourceCommit,
     value?.activation_record_base?.release?.production_config_activation_sha256,
     value?.activation_record_base?.release?.media_worker_release_manifest_sha256,
     value?.activation_record_base?.gates?.mage_qualification_sha256,
@@ -770,7 +824,8 @@ function validateMaterializationSeedShape(value) {
     value.static_only === true &&
     value.future_output_hashes_present === false &&
     exactObjectKeys(value, MATERIALIZATION_SEED_TOP_LEVEL_KEYS) &&
-    !hasForbiddenSeedKey(value, forbiddenFutureKeys) &&
+    sourceCommitShapeMatches &&
+    !hasForbiddenSeedKey(value, forbiddenFutureKeys, hasSuccessorLaneSources) &&
     !hasForbiddenCommandSelector(value.production_input_base?.commandPayloads) &&
     exactObjectKeys(production, [
       "authorityDocument",
@@ -782,7 +837,7 @@ function validateMaterializationSeedShape(value) {
     production.schemaVersion === "videoforge.v213-full-live-outer-input/v1" &&
     UUID.test(production.fullLiveAuthorityId ?? "") &&
     exactEmptyObject(production.authorityDocument) &&
-    validateStaticDualLaneInput(lanes, production.fullLiveAuthorityId) &&
+    validateStaticDualLaneInput(lanes, production.fullLiveAuthorityId, hasSuccessorLaneSources) &&
     exactEmptyObject(production.commandPayloads) &&
     validateActivationRecordBase(value.activation_record_base, production.fullLiveAuthorityId) &&
     validateConfigActivationBase(value.config_activation_base) &&
@@ -826,7 +881,12 @@ function validateMaterializationSeedShape(value) {
  * the exact canonical JSON hash and protected file seam so a restart cannot silently read a
  * different seed.  This function deliberately does not inspect credentials or call a provider.
  */
-function validateMaterializationSeedFile({ path, expectedSha256, expectedFullLiveAuthorityId }) {
+function validateMaterializationSeedFile({
+  path,
+  expectedSha256,
+  expectedFullLiveAuthorityId,
+  expectedReleaseSourceCommit,
+}) {
   if (
     !HASH.test(expectedSha256 ?? "") ||
     typeof path !== "string" ||
@@ -860,7 +920,8 @@ function validateMaterializationSeedFile({ path, expectedSha256, expectedFullLiv
   } catch {
     fail("MATERIALIZATION_SEED_JSON");
   }
-  if (!validateMaterializationSeedShape(value)) fail("MATERIALIZATION_SEED_CONTRACT");
+  if (!validateMaterializationSeedShape(value, expectedReleaseSourceCommit))
+    fail("MATERIALIZATION_SEED_CONTRACT");
   if (
     expectedFullLiveAuthorityId !== undefined &&
     (value.production_input_base.fullLiveAuthorityId !== expectedFullLiveAuthorityId ||
@@ -996,11 +1057,16 @@ const STATIC_RELEASE_DESCRIPTOR_GATES = Object.freeze(
 );
 
 function validateWorkflowRegistrationEvidence(value, expectedSourceCommit, code) {
+  const isV1 = value?.schema_version === SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V1;
+  const isV2 = value?.schema_version === SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2;
+  const expectedKeys = isV2
+    ? SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS_V2
+    : SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS_V1;
   const unsigned = { ...value };
   delete unsigned.evidence_sha256;
   if (
-    !exactObjectKeys(value, SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS) ||
-    value.schema_version !== SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA ||
+    (!isV1 && !isV2) ||
+    !exactObjectKeys(value, expectedKeys) ||
     value.repository !== "Pala-LakshmanSai/videoforge" ||
     value.default_branch !== "main" ||
     !/^[0-9a-f]{40}$/u.test(value.default_branch_commit ?? "") ||
@@ -1010,10 +1076,20 @@ function validateWorkflowRegistrationEvidence(value, expectedSourceCommit, code)
     !HASH.test(value.default_branch_workflow_sha256 ?? "") ||
     value.release_source_commit !== expectedSourceCommit ||
     !HASH.test(value.release_source_workflow_sha256 ?? "") ||
-    value.default_branch_workflow_sha256 !== value.release_source_workflow_sha256 ||
-    value.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
     value.materialized !== true ||
-    value.bound_to_release_source !== true ||
+    (isV1 &&
+      (value.default_branch_workflow_sha256 !== value.release_source_workflow_sha256 ||
+        value.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
+        value.bound_to_release_source !== true)) ||
+    (isV2 &&
+      (expectedSourceCommit !== SUCCESSOR_RELEASE_SOURCE_COMMIT ||
+        !Number.isSafeInteger(value.workflow_id) ||
+        value.workflow_id < 1 ||
+        value.workflow_state !== "active" ||
+        value.default_branch_matches_release_source !==
+          (value.default_branch_workflow_sha256 === value.release_source_workflow_sha256) ||
+        value.registration_state !== "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND" ||
+        value.default_branch_registration_only !== true)) ||
     sha256(Buffer.from(canonicalJson(unsigned))) !== value.evidence_sha256
   )
     fail(code);
@@ -1053,6 +1129,7 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
   )
     fail("STATIC_RELEASE_DESCRIPTOR_MODE_OR_TYPE");
   const isV2 = value?.schemaVersion === STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2;
+  const isV3 = value?.schemaVersion === STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3;
   if (
     !exactObjectKeys(value, [
       "auditFacts",
@@ -1061,11 +1138,13 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
       "productionUrlSha256",
       "schemaVersion",
       "sourceCommit",
-      ...(isV2 ? ["workflowRegistrationEvidence"] : []),
+      ...(isV2 || isV3 ? ["workflowRegistrationEvidence"] : []),
     ]) ||
-    ![STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1, STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2].includes(
-      value.schemaVersion,
-    ) ||
+    ![
+      STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1,
+      STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2,
+      STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3,
+    ].includes(value.schemaVersion) ||
     value.sourceCommit !== expectedSourceCommit ||
     !HASH.test(value.productionUrlSha256 ?? "") ||
     !HASH.test(value.contractBundleSha256 ?? "") ||
@@ -1074,7 +1153,7 @@ function validateStaticReleaseDescriptorFile({ path, expectedSha256, expectedSou
     !exactObjectKeys(value.auditFacts, STATIC_RELEASE_DESCRIPTOR_GATES)
   )
     fail("STATIC_RELEASE_DESCRIPTOR_CONTRACT");
-  if (isV2) {
+  if (isV2 || isV3) {
     validateWorkflowRegistrationEvidence(
       value.workflowRegistrationEvidence,
       expectedSourceCommit,
@@ -1179,8 +1258,11 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     expectedProposalRecordCommit: authority.lineage?.proposal_record_commit,
     expectedReleaseSourceCommit: authority.lineage?.release_source_commit,
   });
-  const reconcilesExistingTag =
-    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4";
+  const reconcilesExistingTag = validated.proposalSchema === PROPOSAL_SCHEMA_V4;
+  const createsSuccessorTag = validated.proposalSchema === PROPOSAL_SCHEMA_V5;
+  const expectedTag = createsSuccessorTag
+    ? SUCCESSOR_RELEASE_TAG
+    : "videoforge-v2-13-release-20260826-v3";
   assertDistinctV4SuccessorAuthority(
     validated.proposalSchema,
     validated.authorityId,
@@ -1196,7 +1278,8 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
     authority.expires_at !== validated.expiresAt ||
     ![
       "videoforge.v2-13-full-live-completion-proposal/v3",
-      "videoforge.v2-13-full-live-completion-proposal/v4",
+      PROPOSAL_SCHEMA_V4,
+      PROPOSAL_SCHEMA_V5,
     ].includes(validated.proposalSchema) ||
     authority.github_release_ref?.status !==
       (reconcilesExistingTag
@@ -1206,13 +1289,18 @@ function validateOuterAuthority({ proposalBytes, approvalBytes, authorityBytes }
       !reconcilesExistingTag ||
     (reconcilesExistingTag &&
       authority.github_release_ref?.successor_tag_mutation_authorized !== false) ||
-    authority.github_release_ref?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
+    (createsSuccessorTag &&
+      authority.github_release_ref?.successor_tag_mutation_authorized !== true) ||
+    authority.github_release_ref?.exact_tag_name !== expectedTag ||
     authority.github_release_ref?.exact_target_commit !== validated.releaseSourceCommit ||
     (reconcilesExistingTag &&
       (authority.github_release_ref?.predecessor_terminal_state_sha256 !==
         validated.predecessorReleaseAttempt?.terminal_state_sha256 ||
         authority.github_release_ref?.predecessor_authority_id !==
           validated.predecessorReleaseAttempt?.authority_id)) ||
+    (createsSuccessorTag &&
+      JSON.stringify(authority.terminal_failed_successor_attempt) !==
+        JSON.stringify(EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT)) ||
     authority.github_release_ref?.external_action_taken !== false
   )
     fail("AUTHORITY_LINEAGE");
@@ -1351,13 +1439,18 @@ function readAuthenticatedTrustedTime() {
 }
 
 function initialConsumptionRecord(authority, authorityBytes, validated, staticReleaseDescriptor) {
-  const workflowRegistrationEvidence =
-    staticReleaseDescriptor?.schemaVersion === STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2
-      ? staticReleaseDescriptor.workflowRegistrationEvidence
-      : undefined;
+  const workflowRegistrationEvidence = [
+    STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2,
+    STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3,
+  ].includes(staticReleaseDescriptor?.schemaVersion)
+    ? staticReleaseDescriptor.workflowRegistrationEvidence
+    : undefined;
+  const isV5 = validated.proposalSchema === PROPOSAL_SCHEMA_V5;
+  const isV4 = validated.proposalSchema === PROPOSAL_SCHEMA_V4;
   return {
-    schema_version:
-      validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
+    schema_version: isV5
+      ? "videoforge.v2-13-full-live-orchestration-consumption/v4"
+      : isV4
         ? "videoforge.v2-13-full-live-orchestration-consumption/v3"
         : "videoforge.v2-13-full-live-orchestration-consumption/v2",
     authority_id: authority.authority_id,
@@ -1403,19 +1496,23 @@ function initialConsumptionRecord(authority, authorityBytes, validated, staticRe
     event_ids: [],
     work_ids: [],
     release_ref: {
-      exact_tag_name: "videoforge-v2-13-release-20260826-v3",
+      exact_tag_name: isV5 ? SUCCESSOR_RELEASE_TAG : "videoforge-v2-13-release-20260826-v3",
       exact_target_commit: validated.releaseSourceCommit,
-      state:
-        validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
-          ? "AUTHORIZED_PENDING_RECONCILIATION"
-          : "AUTHORIZED_PENDING_CREATION",
-      mode:
-        validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
-          ? "PREDECESSOR_BOUND_RECONCILIATION_ONLY"
+      state: isV4 ? "AUTHORIZED_PENDING_RECONCILIATION" : "AUTHORIZED_PENDING_CREATION",
+      mode: isV4
+        ? "PREDECESSOR_BOUND_RECONCILIATION_ONLY"
+        : isV5
+          ? SUCCESSOR_RELEASE_MODE
           : "LEGACY_SINGLE_CREATION",
       verification_event_id: null,
     },
     predecessor_release_attempt: validated.predecessorReleaseAttempt ?? null,
+    ...(isV5
+      ? {
+          terminal_failed_successor_attempt:
+            validated.terminalFailedSuccessorAttempt ?? EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
+        }
+      : {}),
     cleanup_proof: null,
     release_certification: null,
     terminal: null,
@@ -1425,15 +1522,18 @@ function initialConsumptionRecord(authority, authorityBytes, validated, staticRe
 function validateState(state) {
   const isV3State =
     state?.schema_version === "videoforge.v2-13-full-live-orchestration-consumption/v3";
+  const isV4State =
+    state?.schema_version === "videoforge.v2-13-full-live-orchestration-consumption/v4";
   const isV2State =
     state?.schema_version === "videoforge.v2-13-full-live-orchestration-consumption/v2";
   const executionControlCommit = state.execution_control_commit ?? state.release_source_commit;
   const releaseMode = state.release_ref?.mode ?? "LEGACY_SINGLE_CREATION";
   const predecessorReleaseAttempt = state.predecessor_release_attempt ?? null;
+  const terminalFailedSuccessorAttempt = state.terminal_failed_successor_attempt ?? null;
   const staticReleaseDescriptorSchemaVersion =
     state.static_release_descriptor_schema_version ?? STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1;
   if (
-    (!isV2State && !isV3State) ||
+    (!isV2State && !isV3State && !isV4State) ||
     !AUTHORITY_ID.test(state.authority_id ?? "") ||
     !UUID.test(state.full_live_authority_id ?? "") ||
     !HASH.test(state.authority_sha256 ?? "") ||
@@ -1449,8 +1549,8 @@ function validateState(state) {
     state.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
-      (isV3State
-        ? "sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93"
+      (isV3State || isV4State
+        ? "sha256:31235a0359e8c25ff196a7c718988a0facb7da1eca2ffa8646adc575621ea22d"
         : "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910") ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||
@@ -1458,9 +1558,12 @@ function validateState(state) {
     state.static_release_descriptor_path.split("/").includes("..") ||
     !state.static_release_descriptor_path.endsWith(".json") ||
     !HASH.test(state.static_release_descriptor_sha256 ?? "") ||
-    ![STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1, STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2].includes(
-      staticReleaseDescriptorSchemaVersion,
-    ) ||
+    ![
+      STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1,
+      STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2,
+      STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3,
+    ].includes(staticReleaseDescriptorSchemaVersion) ||
+    (isV4State && staticReleaseDescriptorSchemaVersion !== STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3) ||
     state.no_redispatch !== true ||
     typeof state.operator_role_verified !== "boolean" ||
     !Object.hasOwn(state, "failure_boundary") ||
@@ -1534,7 +1637,9 @@ function validateState(state) {
   if (
     (workflowRegistrationEvidence === undefined) !==
       (workflowRegistrationEvidenceSha256 === undefined) ||
-    (staticReleaseDescriptorSchemaVersion === STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2) !==
+    [STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2, STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3].includes(
+      staticReleaseDescriptorSchemaVersion,
+    ) !==
       (workflowRegistrationEvidence !== undefined) ||
     (workflowRegistrationEvidence !== undefined &&
       (!HASH.test(workflowRegistrationEvidenceSha256 ?? "") ||
@@ -1577,9 +1682,15 @@ function validateState(state) {
     new Set(state.event_ids).size !== state.event_ids.length ||
     new Set(state.work_ids).size !== state.work_ids.length ||
     JSON.stringify([...actualWorkIds].sort()) !== JSON.stringify([...state.work_ids].sort()) ||
-    state.release_ref?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
+    state.release_ref?.exact_tag_name !==
+      (isV4State ? SUCCESSOR_RELEASE_TAG : "videoforge-v2-13-release-20260826-v3") ||
     !/^[0-9a-f]{40}$/u.test(state.release_ref?.exact_target_commit ?? "") ||
     state.release_ref.exact_target_commit !== state.release_source_commit ||
+    (isV4State && state.release_source_commit !== SUCCESSOR_RELEASE_SOURCE_COMMIT) ||
+    (isV4State &&
+      JSON.stringify(terminalFailedSuccessorAttempt) !==
+        JSON.stringify(EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT)) ||
+    (!isV4State && terminalFailedSuccessorAttempt !== null) ||
     ![
       "AUTHORIZED_PENDING_CREATION",
       "AUTHORIZED_PENDING_RECONCILIATION",
@@ -1596,14 +1707,30 @@ function validateState(state) {
         !["AUTHORIZED_PENDING_RECONCILIATION", "VERIFIED_EXACT_REMOTE"].includes(
           state.release_ref.state,
         ))) ||
-    (releaseMode === "LEGACY_SINGLE_CREATION" &&
-      (isV3State ||
-        executionControlCommit !== state.release_source_commit ||
-        predecessorReleaseAttempt !== null ||
+    (releaseMode === SUCCESSOR_RELEASE_MODE &&
+      (!isV4State ||
+        executionControlCommit === state.release_source_commit ||
+        JSON.stringify(predecessorReleaseAttempt) !==
+          JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) ||
+        JSON.stringify(terminalFailedSuccessorAttempt) !==
+          JSON.stringify(EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT) ||
         !["AUTHORIZED_PENDING_CREATION", "VERIFIED_EXACT_REMOTE"].includes(
           state.release_ref.state,
         ))) ||
-    !["PREDECESSOR_BOUND_RECONCILIATION_ONLY", "LEGACY_SINGLE_CREATION"].includes(releaseMode)
+    (releaseMode === "LEGACY_SINGLE_CREATION" &&
+      (isV3State ||
+        isV4State ||
+        executionControlCommit !== state.release_source_commit ||
+        predecessorReleaseAttempt !== null ||
+        terminalFailedSuccessorAttempt !== null ||
+        !["AUTHORIZED_PENDING_CREATION", "VERIFIED_EXACT_REMOTE"].includes(
+          state.release_ref.state,
+        ))) ||
+    ![
+      "PREDECESSOR_BOUND_RECONCILIATION_ONLY",
+      "LEGACY_SINGLE_CREATION",
+      SUCCESSOR_RELEASE_MODE,
+    ].includes(releaseMode)
   )
     fail("PREDECESSOR_RELEASE_ATTEMPT");
   if (
@@ -2703,6 +2830,7 @@ async function main() {
       path: process.env[MATERIALIZATION_SEED_ENV],
       expectedSha256: authority.materialization_seed_sha256,
       expectedFullLiveAuthorityId: authority.full_live_authority_id,
+      expectedReleaseSourceCommit: validated.releaseSourceCommit,
     });
     if (args.has("trusted-iso")) fail("CALLER_TRUSTED_TIME_FORBIDDEN");
     assertTrustedTime(validated.approvedAt, validated.expiresAt, readAuthenticatedTrustedTime());
@@ -2811,6 +2939,11 @@ export {
   FAILURE_BOUNDARY,
   FAILURE_CODE,
   PHASES,
+  STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1,
+  STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2,
+  STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3,
+  SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V1,
+  SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2,
   recordCleanupProof,
   recordSettledResult,
   recordVerifiedReleaseRef,

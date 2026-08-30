@@ -34,6 +34,7 @@ import {
   trustedCommitLineage,
   updateState,
   validateMaterializationSeedFile,
+  validateMaterializationSeedShape,
   validateOuterAuthority,
   validateStaticReleaseDescriptorFile,
   validateState,
@@ -51,13 +52,19 @@ import {
   EXACT_OPERATION_IDS,
   EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
   EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_V3_RELEASE_COMPONENTS,
   EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
+  EXACT_V5_RELEASE_COMPONENTS,
   EXACT_WORKFLOW_START_AUTHORITY_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
   EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
+  PROPOSAL_SCHEMA_V5,
+  SUCCESSOR_RELEASE_MODE,
+  SUCCESSOR_RELEASE_SOURCE_COMMIT,
+  SUCCESSOR_RELEASE_TAG,
   assertDistinctV4SuccessorAuthority,
   validateFullLiveUserApproval,
 } from "../../deploy/v2-13/validate-full-live-approval.mjs";
@@ -105,6 +112,29 @@ function workflowRegistrationEvidenceFixture(sourceCommit = "a".repeat(40)) {
     registration_state: "REGISTERED_EXACT_DEFAULT_BRANCH",
     materialized: true,
     bound_to_release_source: true,
+  };
+  return { ...unsigned, evidence_sha256: hash(Buffer.from(canonicalJson(unsigned))) };
+}
+
+function successorWorkflowRegistrationEvidenceFixture(overrides = {}) {
+  const unsigned = {
+    schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v2",
+    repository: "Pala-LakshmanSai/videoforge",
+    default_branch: "main",
+    default_branch_commit: "9".repeat(40),
+    workflow_id: 102,
+    workflow_file: "avatar-primary-serverless-image.yml",
+    workflow_name: "avatar-primary-serverless-image",
+    workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+    workflow_state: "active",
+    default_branch_workflow_sha256: hash(Buffer.from("successor SoulX main workflow\n")),
+    release_source_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    release_source_workflow_sha256: hash(Buffer.from("successor SoulX release workflow\n")),
+    default_branch_matches_release_source: false,
+    registration_state: "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND",
+    materialized: true,
+    default_branch_registration_only: true,
+    ...overrides,
   };
   return { ...unsigned, evidence_sha256: hash(Buffer.from(canonicalJson(unsigned))) };
 }
@@ -197,7 +227,9 @@ function staticReleaseDescriptorFixture(
     sourceCommit,
     ...(schemaVersion === "videoforge.v213-static-release-descriptor/v2"
       ? { workflowRegistrationEvidence: workflowRegistrationEvidenceFixture(sourceCommit) }
-      : {}),
+      : schemaVersion === "videoforge.v213-static-release-descriptor/v3"
+        ? { workflowRegistrationEvidence: successorWorkflowRegistrationEvidenceFixture() }
+        : {}),
   };
   return {
     ...unsigned,
@@ -556,6 +588,61 @@ function v4ApprovalFixture() {
   };
 }
 
+function v5ApprovalFixture() {
+  const predecessor = v4ApprovalFixture();
+  const proposal = structuredClone(predecessor.proposal);
+  proposal.schema_version = PROPOSAL_SCHEMA_V5;
+  proposal.source.release_source_commit = SUCCESSOR_RELEASE_SOURCE_COMMIT;
+  proposal.source.exact_release_components = structuredClone(EXACT_V5_RELEASE_COMPONENTS);
+  proposal.immutable_github_release_ref_request = {
+    ...proposal.immutable_github_release_ref_request,
+    creation_requested: true,
+    exact_tag_name: SUCCESSOR_RELEASE_TAG,
+    exact_target_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    maximum_new_refs: 1,
+    predecessor_bound_reconciliation_only: false,
+    successor_tag_mutation_authorized: true,
+  };
+  proposal.supersession.terminal_failed_successor_attempt = structuredClone(
+    EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
+  );
+  const proposalBytes = Buffer.from(`${JSON.stringify(proposal, null, 2)}\n`);
+  const proposalSha256 = hash(proposalBytes);
+  const proposalRecordCommit = "d".repeat(40);
+  const approval = JSON.parse(predecessor.approvalBytes);
+  approval.authority_id = "v2-13-v5-test-authority-0001";
+  approval.proposal = {
+    path: proposal.source.proposal_path,
+    sha256: proposalSha256,
+    proposal_record_commit: proposalRecordCommit,
+    release_source_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    execution_control_commit: proposal.source.execution_control.commit,
+  };
+  approval.approval.immutable_github_release_ref = {
+    creation_authorized: true,
+    exact_tag_name: SUCCESSOR_RELEASE_TAG,
+    exact_target_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    tag_kind: "LIGHTWEIGHT",
+    maximum_new_refs: 1,
+    force_update_authorized: false,
+    delete_or_retarget_authorized: false,
+    other_ref_creation_authorized: false,
+    predecessor_bound_reconciliation_only: false,
+    successor_tag_mutation_authorized: true,
+  };
+  approval.static_release_descriptor = structuredClone(
+    proposal.requested_scope.static_release_descriptor,
+  );
+  approval.statement = `I approve ${proposalSha256} at ${proposalRecordCommit}, execution control ${proposal.source.execution_control.commit}, predecessor terminal ${EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256}, prior failed successor terminal ${EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT.terminal_state_sha256}, with USD 17.50, USD 7 per month, no fallback, create immutable tag ${SUCCESSOR_RELEASE_TAG}, and roles videoforge_hosted_operator, videoforge_hosted_runtime and videoforge_hosted_reconciler.`;
+  return {
+    approvalBytes: Buffer.from(`${JSON.stringify(approval, null, 2)}\n`),
+    proposal,
+    proposalBytes,
+    proposalRecordCommit,
+    proposalSha256,
+  };
+}
+
 function freshStateFixture() {
   return withApprovalValidatorReleaseTree(readFileSync(approvalValidatorPath), (releaseCommit) => {
     const fixture = v3Fixture({ releaseSourceCommit: releaseCommit });
@@ -693,6 +780,81 @@ test("V4 successor preserves Mage operation IDs while forbidding predecessor red
       }),
     /V3_SUPERSESSION_OR_AUTHORITY/u,
   );
+});
+
+test("V5 approval creates only the repaired immutable successor tag and retains prior Mage facts", () => {
+  const fixture = v5ApprovalFixture();
+  const result = validateFullLiveUserApproval({
+    proposalBytes: fixture.proposalBytes,
+    approvalBytes: fixture.approvalBytes,
+    expectedProposalSha256: fixture.proposalSha256,
+    expectedProposalRecordCommit: fixture.proposalRecordCommit,
+    expectedReleaseSourceCommit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+  });
+  assert.equal(result.proposalSchema, PROPOSAL_SCHEMA_V5);
+  assert.equal(result.releaseSourceCommit, SUCCESSOR_RELEASE_SOURCE_COMMIT);
+  assert.equal(result.executionControlCommit, fixture.proposal.source.execution_control.commit);
+  assert.deepEqual(result.predecessorReleaseAttempt, EXACT_PREDECESSOR_RELEASE_ATTEMPT);
+  assert.deepEqual(result.terminalFailedSuccessorAttempt, EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT);
+  assert.deepEqual(fixture.proposal.source.exact_release_components, EXACT_V5_RELEASE_COMPONENTS);
+});
+
+test("V5 consumption uses a distinct successor-creation mode and descriptor v3 evidence", () => {
+  const fixture = v5ApprovalFixture();
+  const validated = validateFullLiveUserApproval({
+    proposalBytes: fixture.proposalBytes,
+    approvalBytes: fixture.approvalBytes,
+    expectedProposalSha256: fixture.proposalSha256,
+    expectedProposalRecordCommit: fixture.proposalRecordCommit,
+    expectedReleaseSourceCommit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+  });
+  const authority = {
+    authority_id: "v2-13-v5-test-authority-0001",
+    full_live_authority_id:
+      fixture.proposal.requested_scope.materialization_seed_facts.full_live_authority_id,
+    outer_orchestration: {
+      full_live_executor_path: "deploy/v2-13/full-live-executor.mjs",
+      full_live_executor_sha256: EXACT_V4_EXECUTION_CONTROL_COMPONENTS.full_live_executor.sha256,
+    },
+    materialization_seed_sha256: proof("a"),
+  };
+  const descriptor = staticReleaseDescriptorFixture(
+    SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    "videoforge.v213-static-release-descriptor/v3",
+  );
+  const state = initialConsumptionRecord(
+    authority,
+    Buffer.from("authority bytes\n"),
+    {
+      ...validated,
+      authorityRecordCommit: "e".repeat(40),
+      approvalRecordPath: "project-context/evidence/acceptance/VF-10-13/test/user-approval.json",
+      authorityRecordPath:
+        "project-context/evidence/acceptance/VF-10-13/test/approved-authority.json",
+    },
+    descriptor,
+  );
+  assert.equal(state.schema_version, "videoforge.v2-13-full-live-orchestration-consumption/v4");
+  assert.equal(state.release_ref.exact_tag_name, SUCCESSOR_RELEASE_TAG);
+  assert.equal(state.release_ref.mode, SUCCESSOR_RELEASE_MODE);
+  assert.equal(state.release_ref.state, "AUTHORIZED_PENDING_CREATION");
+  assert.equal(
+    state.static_release_descriptor_schema_version,
+    "videoforge.v213-static-release-descriptor/v3",
+  );
+  assert.deepEqual(
+    state.soulx_workflow_registration_evidence,
+    descriptor.workflowRegistrationEvidence,
+  );
+  assert.deepEqual(
+    state.terminal_failed_successor_attempt,
+    EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
+  );
+  state.full_live_executor_sha256 = EXACT_V4_EXECUTION_CONTROL_COMPONENTS.full_live_executor.sha256;
+  assert.doesNotThrow(() => validateState(state));
+  const drifted = structuredClone(state);
+  drifted.release_ref.mode = "LEGACY_SINGLE_CREATION";
+  assert.throws(() => validateState(drifted), /PREDECESSOR_RELEASE_ATTEMPT/u);
 });
 
 test("approval rejects a Serverless Flex rate above the exact current snapshot", () => {
@@ -928,6 +1090,44 @@ test("descriptor v2 consumption durably copies and hash-binds exact repair evide
     drifted.soulx_workflow_registration_evidence.default_branch_commit = "c".repeat(40);
     assert.throws(() => validateState(drifted), /WORKFLOW_REGISTRATION_STATE_BINDING/u);
   });
+});
+
+test("protected static release descriptor v3 accepts only successor workflow evidence v2", () => {
+  const directory = mkdtempSync(join(tmpdir(), "videoforge-v213-static-release-successor-"));
+  chmodSync(directory, 0o700);
+  const descriptorPath = join(directory, "static-release-descriptor.json");
+  const descriptor = staticReleaseDescriptorFixture(
+    SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    "videoforge.v213-static-release-descriptor/v3",
+  );
+  writeStaticReleaseDescriptor(descriptorPath, descriptor);
+  try {
+    assert.deepEqual(
+      validateStaticReleaseDescriptorFile({
+        path: descriptorPath,
+        expectedSha256: descriptor.descriptorSha256,
+        expectedSourceCommit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+      }),
+      descriptor,
+    );
+    const drifted = structuredClone(descriptor);
+    drifted.workflowRegistrationEvidence.default_branch_matches_release_source = true;
+    const unsigned = { ...drifted };
+    delete unsigned.descriptorSha256;
+    drifted.descriptorSha256 = hash(Buffer.from(canonicalJson(unsigned)));
+    writeStaticReleaseDescriptor(descriptorPath, drifted);
+    assert.throws(
+      () =>
+        validateStaticReleaseDescriptorFile({
+          path: descriptorPath,
+          expectedSha256: drifted.descriptorSha256,
+          expectedSourceCommit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+        }),
+      /STATIC_RELEASE_DESCRIPTOR_WORKFLOW_REGISTRATION/u,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("historical descriptor v1 state remains validation-compatible without the new schema field", () => {
@@ -1193,6 +1393,33 @@ test("protected materialization seed binding requires mode-0600 bytes and exact 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("v5 materialization seeds admit only the exact split lane source commits", () => {
+  const legacy = materializationSeedFixture();
+  assert.equal(validateMaterializationSeedShape(legacy), true);
+  assert.equal(validateMaterializationSeedShape(legacy, "a".repeat(40)), true);
+
+  const successor = structuredClone(legacy);
+  successor.production_input_base.dualLaneInput.mage.sourceCommit =
+    "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
+  successor.production_input_base.dualLaneInput.soulx.sourceCommit =
+    SUCCESSOR_RELEASE_SOURCE_COMMIT;
+  assert.equal(validateMaterializationSeedShape(successor), true);
+  assert.equal(validateMaterializationSeedShape(successor, SUCCESSOR_RELEASE_SOURCE_COMMIT), true);
+  assert.equal(validateMaterializationSeedShape(successor, "a".repeat(40)), false);
+
+  const wrongSoulx = structuredClone(successor);
+  wrongSoulx.production_input_base.dualLaneInput.soulx.sourceCommit = "b".repeat(40);
+  assert.equal(validateMaterializationSeedShape(wrongSoulx), false);
+
+  const partial = structuredClone(successor);
+  delete partial.production_input_base.dualLaneInput.mage.sourceCommit;
+  assert.equal(validateMaterializationSeedShape(partial), false);
+
+  const nestedFuture = structuredClone(legacy);
+  nestedFuture.promotion_record_base.sourceCommit = "c".repeat(40);
+  assert.equal(validateMaterializationSeedShape(nestedFuture), false);
 });
 
 test("V3 proposal mutation matrix rejects sealing, source-pin, and operation-order drift", () => {
@@ -2077,15 +2304,10 @@ test("consumed successor candidate remains reproducible from its terminal archiv
     result.terminal_state_sha256,
     "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9",
   );
-  const activeProposal = JSON.parse(
-    readFileSync(
-      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
-    ),
-  );
-  assert.equal(result.superseded_authority_id, activeProposal.supersession.superseded_authority_id);
+  assert.equal(result.superseded_authority_id, result.authority);
   assert.equal(
     result.superseded_proposal_sha256,
-    activeProposal.supersession.supersedes_proposal_sha256,
+    hash(historicalBytes(`${candidatePath}/combined-live-proposal.json`)),
   );
 });
 

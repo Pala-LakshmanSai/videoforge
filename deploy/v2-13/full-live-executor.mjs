@@ -52,6 +52,7 @@ import {
 } from "./full-live-adapters.mjs";
 import {
   EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
   EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
 } from "./validate-full-live-approval.mjs";
 
@@ -107,13 +108,13 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8",
+    "sha256:f05a3d90f88bcce1d3ab9aca07013497f73fd0cc61b3af298034dce1f7d618d0",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
   "deploy/v2-13/guarded-activation.mjs":
-    "sha256:b6c40dce89b03f64d3aa0088254c3bfb840b61ae70b59d433ab6f2081745c261",
+    "sha256:e0be9e39607c8aed3646fc8acb1f8c34413565fe5d50915790a69f9165d6eb36",
   "apps/web/src/server/providers/v213-full-live-cli.ts":
-    "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af",
+    "sha256:9298c774d939dcd9a53f565b08f673c27fff7576360a3c69eea00dcf1473b3c0",
   "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts":
     "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2",
   "packages/control-plane/migrations/0045_hosted_full_live_activation.sql":
@@ -123,7 +124,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:0b394a979958ed9fb6d389f37152681297b85c3e86339f373ada15b266bae0dd",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78",
+    "sha256:b941da144d1ac1a5938e02866e01ea55738df81f4623c85ea553cf18ea001dda",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -577,6 +578,9 @@ const canonicalSha256 = (value) =>
 
 function validateFreshWorkflowReadbackResult(result, state) {
   const proof = result?.freshWorkflowReadback;
+  const successorWorkflowRegistration =
+    state.soulx_workflow_registration_evidence?.schema_version ===
+    "videoforge.v213-soulx-workflow-registration-evidence/v2";
   if (
     !exactKeys(proof, [
       "defaultBranch",
@@ -630,7 +634,7 @@ function validateFreshWorkflowReadbackResult(result, state) {
     proof.workflows[0].workflowId === proof.workflows[1].workflowId ||
     proof.defaultBranchCommit !==
       state.soulx_workflow_registration_evidence?.default_branch_commit ||
-    proof.workflows[1].defaultBranchMatchesReleaseSource !== true ||
+    proof.workflows[1].defaultBranchMatchesReleaseSource !== !successorWorkflowRegistration ||
     proof.workflows[1].defaultBranchWorkflowSha256 !==
       state.soulx_workflow_registration_evidence?.default_branch_workflow_sha256 ||
     proof.workflows[1].releaseSourceWorkflowSha256 !==
@@ -1143,9 +1147,16 @@ export function assertResult(
   if (operation.id.endsWith("image-workflow-dispatch")) {
     validateFreshWorkflowReadbackResult(result, state);
     const mageReconciliation = operation.id === "mage-image-workflow-dispatch";
+    const successorWorkflowRegistration =
+      state.soulx_workflow_registration_evidence?.schema_version ===
+      "videoforge.v213-soulx-workflow-registration-evidence/v2";
+    const expectedHeadSha =
+      mageReconciliation && successorWorkflowRegistration
+        ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit
+        : state.release_source_commit;
     if (
       !/^[1-9][0-9]*$/u.test(String(result.runId ?? "")) ||
-      result.headSha !== state.release_source_commit ||
+      result.headSha !== expectedHeadSha ||
       (mageReconciliation &&
         (JSON.stringify(state.predecessor_release_attempt) !==
           JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) ||
@@ -1165,16 +1176,27 @@ export function assertResult(
           result.publicManifestSha256 !==
             EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_public_manifest_sha256 ||
           result.conclusion !== EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_conclusion)) ||
-      (!mageReconciliation && result.dispatchAccepted !== true)
+      (!mageReconciliation &&
+        (result.dispatchAccepted !== true ||
+          (successorWorkflowRegistration &&
+            result.runId === EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT.soulx_workflow_run_id)))
     )
       fail("WORKFLOW_DISPATCH_READBACK", operation.id);
   }
   if (operation.id.endsWith("image-workflow-verification")) {
     const dispatchId = operation.id.replace("verification", "dispatch");
     const dispatch = results.get(dispatchId);
+    const mageReconciliation = operation.id === "mage-image-workflow-verification";
+    const successorWorkflowRegistration =
+      state.soulx_workflow_registration_evidence?.schema_version ===
+      "videoforge.v213-soulx-workflow-registration-evidence/v2";
+    const expectedHeadSha =
+      mageReconciliation && successorWorkflowRegistration
+        ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit
+        : state.release_source_commit;
     if (
       result.runId !== dispatch?.runId ||
-      result.headSha !== state.release_source_commit ||
+      result.headSha !== expectedHeadSha ||
       !HASH.test(result.imageDigest ?? "") ||
       !HASH.test(result.evidenceSha256 ?? "") ||
       !HASH.test(result.publicManifestSha256 ?? "") ||

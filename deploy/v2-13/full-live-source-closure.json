@@ -7,7 +7,7 @@
     },
     {
       "path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "sha256": "sha256:cd07aeeb794b1e897194f2fc950c7bd999349d571d240c50d60f6eb40f1c597d"
+      "sha256": "sha256:9d6f37d1369b4b50de8053efb252b39c8728a51e578593ddafcfc9f02aa28ac2"
     },
     {
       "path": ".github/workflows/avatar-quality-image.yml",
@@ -763,7 +763,7 @@
     },
     {
       "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-      "sha256": "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af"
+      "sha256": "sha256:9298c774d939dcd9a53f565b08f673c27fff7576360a3c69eea00dcf1473b3c0"
     },
     {
       "path": "apps/web/src/server/providers/v213-provenance-receipt.ts",
@@ -1039,11 +1039,11 @@
     },
     {
       "path": "deploy/v2-13/build-materialization-seed.mjs",
-      "sha256": "sha256:ee0bd4d9a4afa6d0bc1851a043763b23c0e8788446377cf087dda7dfab8572ea"
+      "sha256": "sha256:ae61156b811a3f93d26b3d10db35f4d180f2040f8c82fa91b570d3f35603e286"
     },
     {
       "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8"
+      "sha256": "sha256:f05a3d90f88bcce1d3ab9aca07013497f73fd0cc61b3af298034dce1f7d618d0"
     },
     {
       "path": "deploy/v2-13/generate-mage-qualification-case.d.mts",
@@ -1063,7 +1063,7 @@
     },
     {
       "path": "deploy/v2-13/guarded-activation.mjs",
-      "sha256": "sha256:b6c40dce89b03f64d3aa0088254c3bfb840b61ae70b59d433ab6f2081745c261"
+      "sha256": "sha256:e0be9e39607c8aed3646fc8acb1f8c34413565fe5d50915790a69f9165d6eb36"
     },
     {
       "path": "deploy/v2-13/media-worker-release-readback.mjs",
@@ -2379,7 +2379,7 @@
     },
     {
       "path": "workers/avatar-primary/Dockerfile.serverless",
-      "sha256": "sha256:348661d34da0ada76ad0740a3be13a42b3843c4ad6ad12c394c6c9a50ced4ab0"
+      "sha256": "sha256:466fc38dfa828d74d26a74024ceadd9ed679ac766b328fb72f7dd2d07ae90613"
     },
     {
       "path": "workers/avatar-primary/prepare_soulx_volume.py",

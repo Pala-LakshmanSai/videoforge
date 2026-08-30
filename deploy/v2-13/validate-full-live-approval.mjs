@@ -7,9 +7,13 @@ const HASH = /^sha256:[0-9a-f]{64}$/u;
 const PROPOSAL_SCHEMA_V2 = "videoforge.v2-13-full-live-completion-proposal/v2";
 const PROPOSAL_SCHEMA_V3 = "videoforge.v2-13-full-live-completion-proposal/v3";
 const PROPOSAL_SCHEMA_V4 = "videoforge.v2-13-full-live-completion-proposal/v4";
+const PROPOSAL_SCHEMA_V5 = "videoforge.v2-13-full-live-completion-proposal/v5";
 const APPROVAL_SCHEMA_V1 = "videoforge.v2-13-full-live-user-approval/v1";
 const APPROVAL_SCHEMA_V2 = "videoforge.v2-13-full-live-user-approval/v2";
 const APPROVAL_SCHEMA_V3 = "videoforge.v2-13-full-live-user-approval/v3";
+const SUCCESSOR_RELEASE_TAG = "videoforge-v2-13-release-20260830-v5";
+const SUCCESSOR_RELEASE_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
+const SUCCESSOR_RELEASE_MODE = "SUCCESSOR_TAG_CREATION";
 const EXACT_PREDECESSOR_RELEASE_ATTEMPT = Object.freeze({
   authority_id: "v2-13-full-live-20260829-052951z-6852970d",
   authority_record_commit: "13f9a96ff62d192a892d3e7bc778d5d8c368d72d",
@@ -38,9 +42,45 @@ const EXACT_PREDECESSOR_RELEASE_ATTEMPT = Object.freeze({
   mage_workflow_conclusion: "success",
   mage_public_all_blobs_verified: true,
 });
+// This is the prior successor attempt that reached a terminal SoulX image-build failure.  It is
+// retained as a separate fact for the v5 successor lineage; it must never be substituted for the
+// independently verified predecessor Mage readback above.
+const EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT = Object.freeze({
+  authority_id: "v2-13-full-live-20260830-021108z-d3bfbb40",
+  authority_record_commit: "4e199ca114bfd9d5850c616fc4a237214f6c9ae5",
+  proposal_sha256: "sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d",
+  proposal_record_commit: "c2b90f8a6f443978ef013ef6daed4750f4e2e2ec",
+  approval_sha256: "sha256:9926d14ff50659bd421fa60bb882cc0249a37aa044acf7c3c4a1af2a3b806c46",
+  authority_sha256: "sha256:4e45de5838c53064e68aed1700b39aa26e8545f7e723df5baa98e0d4e2c546bb",
+  terminal_state_sha256: "sha256:76e52ec7a273cda26ec1c87ba473f060927d85218560ccef3ee8f0a045aa064e",
+  terminal_state: "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+  terminal: "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED",
+  failure_boundary: "OPERATION_EXECUTION",
+  failure_code: "WORKFLOW_RUN_TERMINAL_FAILURE",
+  failure_operation_id: "soulx-image-workflow-verification",
+  release_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+  mage_workflow_run_id: "33236590768",
+  mage_redispatch_performed: false,
+  mage_predecessor_verified: true,
+  soulx_workflow_dispatch_performed: true,
+  soulx_workflow_run_id: "33287914248",
+  soulx_workflow_attempt: 1,
+  soulx_workflow_conclusion: "failure",
+  database_bootstrap_performed: false,
+  production_activation_performed: false,
+  runpod_work_dispatched: false,
+  gpu_use: false,
+  attempt_reserved_usd: 0,
+  attempt_settled_usd: 0,
+  authority_reusable: false,
+  production_state: "DISABLED_UNQUALIFIED",
+});
 
 function assertDistinctV4SuccessorAuthority(proposalSchema, authorityId, predecessor) {
-  if (proposalSchema === PROPOSAL_SCHEMA_V4 && authorityId === predecessor?.authority_id)
+  if (
+    [PROPOSAL_SCHEMA_V4, PROPOSAL_SCHEMA_V5].includes(proposalSchema) &&
+    authorityId === predecessor?.authority_id
+  )
     fail("SUCCESSOR_AUTHORITY_REPLAY");
   return true;
 }
@@ -194,7 +234,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   avatar_primary_workflow: Object.freeze({
     path: ".github/workflows/avatar-primary-serverless-image.yml",
-    sha256: "sha256:cd07aeeb794b1e897194f2fc950c7bd999349d571d240c50d60f6eb40f1c597d",
+    sha256: "sha256:9d6f37d1369b4b50de8053efb252b39c8728a51e578593ddafcfc9f02aa28ac2",
   }),
   backup_metadata_snapshot: Object.freeze({
     path: "packages/control-plane/src/backup/metadata-snapshot.ts",
@@ -206,15 +246,15 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_adapters: Object.freeze({
     path: "deploy/v2-13/full-live-adapters.mjs",
-    sha256: "sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8",
+    sha256: "sha256:f05a3d90f88bcce1d3ab9aca07013497f73fd0cc61b3af298034dce1f7d618d0",
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93",
+    sha256: "sha256:31235a0359e8c25ff196a7c718988a0facb7da1eca2ffa8646adc575621ea22d",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
-    sha256: "sha256:b6c40dce89b03f64d3aa0088254c3bfb840b61ae70b59d433ab6f2081745c261",
+    sha256: "sha256:e0be9e39607c8aed3646fc8acb1f8c34413565fe5d50915790a69f9165d6eb36",
   }),
   hosted_live_production_adapters: Object.freeze({
     path: "apps/web/src/server/hosted/v213-live-production-adapters.ts",
@@ -226,7 +266,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   materialization_seed_builder: Object.freeze({
     path: "deploy/v2-13/build-materialization-seed.mjs",
-    sha256: "sha256:ee0bd4d9a4afa6d0bc1851a043763b23c0e8788446377cf087dda7dfab8572ea",
+    sha256: "sha256:ae61156b811a3f93d26b3d10db35f4d180f2040f8c82fa91b570d3f35603e286",
   }),
   migration_0046: Object.freeze({
     path: "packages/control-plane/migrations/0046_hosted_full_live_cleanup_recovery.sql",
@@ -254,7 +294,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:83b9c68cd45c182e154e5e7604f84f6db660036c3ba64e630bd0a3f54cb92405",
+    sha256: "sha256:1a92a2d6bc6ac1e9a571531cbfd2da0e677e27d8842e64d5c75a76c042ffca7c",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -274,11 +314,74 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78",
+    sha256: "sha256:b941da144d1ac1a5938e02866e01ea55738df81f4623c85ea553cf18ea001dda",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",
+    sha256: "sha256:9298c774d939dcd9a53f565b08f673c27fff7576360a3c69eea00dcf1473b3c0",
+  }),
+});
+// The v5 release source is the immutable 417e84d tree.  Keep the established component map
+// shape, but bind every changed entry to the bytes that actually exist in that tree.  Later
+// control-plane reseal changes belong in the distinct execution-control map above, never by
+// relabeling the release-source bytes.
+const EXACT_V5_RELEASE_COMPONENTS = Object.freeze({
+  ...EXACT_V3_RELEASE_COMPONENTS,
+  full_live_executor: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.full_live_executor,
+    sha256: "sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93",
+  }),
+  full_live_adapters: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.full_live_adapters,
+    sha256: "sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8",
+  }),
+  promotion: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.promotion,
+    sha256: "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
+  }),
+  guarded_activation: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.guarded_activation,
+    sha256: "sha256:b6c40dce89b03f64d3aa0088254c3bfb840b61ae70b59d433ab6f2081745c261",
+  }),
+  orchestration_authority: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.orchestration_authority,
+    sha256: "sha256:83b9c68cd45c182e154e5e7604f84f6db660036c3ba64e630bd0a3f54cb92405",
+  }),
+  typescript_cli_bridge: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.typescript_cli_bridge,
     sha256: "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af",
+  }),
+  runpod_dual_lane_transport: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.runpod_dual_lane_transport,
+    sha256: "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2",
+  }),
+  direct_qualification_materializer: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.direct_qualification_materializer,
+    sha256: "sha256:a12d9d063b6d85b67ca715ac8b5eb2c27c15dfa389ee1d3c963bb3317f242d37",
+  }),
+  materialization_seed_builder: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.materialization_seed_builder,
+    sha256: "sha256:ee0bd4d9a4afa6d0bc1851a043763b23c0e8788446377cf087dda7dfab8572ea",
+  }),
+  operator_grants: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.operator_grants,
+    sha256: "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5",
+  }),
+  reconciler_grants: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.reconciler_grants,
+    sha256: "sha256:5409fe4fa78d92950ec6fb4225c28534b75d029d766c7bdf4ac63c1f9738bac2",
+  }),
+  runtime_grants: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.runtime_grants,
+    sha256: "sha256:6696c0e4879d97061db9ce11b546045fcdddc878bcd9817737fce5070c108536",
+  }),
+  migration_manifest: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.migration_manifest,
+    sha256: "sha256:0b394a979958ed9fb6d389f37152681297b85c3e86339f373ada15b266bae0dd",
+  }),
+  source_closure_manifest: Object.freeze({
+    ...EXACT_V3_RELEASE_COMPONENTS.source_closure_manifest,
+    sha256: "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78",
   }),
 });
 const EXPECTED_PHASE_CAPS = Object.freeze({
@@ -1448,26 +1551,31 @@ function validateFullLiveUserApproval({
   const proposal = parse(proposalBytes, "PROPOSAL");
   const approval = parse(approvalBytes, "APPROVAL");
   const isV4 = proposal.schema_version === PROPOSAL_SCHEMA_V4;
-  const isModern = proposal.schema_version === PROPOSAL_SCHEMA_V3 || isV4;
-  const expectedReleaseComponents = EXACT_V3_RELEASE_COMPONENTS;
+  const isV5 = proposal.schema_version === PROPOSAL_SCHEMA_V5;
+  const isSuccessor = isV4 || isV5;
+  const isModern = proposal.schema_version === PROPOSAL_SCHEMA_V3 || isSuccessor;
+  const expectedReleaseComponents = isV5
+    ? EXACT_V5_RELEASE_COMPONENTS
+    : EXACT_V3_RELEASE_COMPONENTS;
   const requestedStaticReleaseDescriptor = proposal.requested_scope?.static_release_descriptor;
   const sealedStaticReleaseDescriptor = proposal.sealing?.static_release_descriptor;
   const requestedMaterializationSeedFacts = proposal.requested_scope?.materialization_seed_facts;
   const sealedMaterializationSeedFacts = proposal.sealing?.materialization_seed_facts;
   if (
-    ![PROPOSAL_SCHEMA_V2, PROPOSAL_SCHEMA_V3, PROPOSAL_SCHEMA_V4].includes(
+    ![PROPOSAL_SCHEMA_V2, PROPOSAL_SCHEMA_V3, PROPOSAL_SCHEMA_V4, PROPOSAL_SCHEMA_V5].includes(
       proposal.schema_version,
     ) ||
     proposal.task_id !== "VF-10-13" ||
     proposal.proposal_status !== "PENDING_FRESH_EXACT_USER_APPROVAL" ||
     proposal.source?.release_source_commit !== expectedReleaseSourceCommit ||
+    (isV5 && expectedReleaseSourceCommit !== SUCCESSOR_RELEASE_SOURCE_COMMIT) ||
     proposal.source?.proposal_record_commit !== null ||
     proposal.requested_scope?.maximum_cumulative_finite_runpod_spend_usd !== 17.5 ||
     JSON.stringify(proposal.requested_scope?.phase_caps_usd) !== JSON.stringify(EXPECTED_PHASE_CAPS)
   )
     fail("PROPOSAL_CONTRACT");
   if (
-    isV4 &&
+    isSuccessor &&
     (!COMMIT.test(proposal.source?.execution_control?.commit ?? "") ||
       proposal.source.execution_control.commit === expectedReleaseSourceCommit ||
       !exactKeys(proposal.source.execution_control, ["commit", "exact_components"]) ||
@@ -1479,7 +1587,10 @@ function validateFullLiveUserApproval({
           source_commit_tree_binding: EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
         }) ||
       JSON.stringify(proposal.supersession?.predecessor_release_attempt) !==
-        JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT))
+        JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) ||
+      (isV5 &&
+        JSON.stringify(proposal.supersession?.terminal_failed_successor_attempt) !==
+          JSON.stringify(EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT)))
   )
     fail("EXECUTION_CONTROL_OR_PREDECESSOR_BINDING");
   if (
@@ -1508,11 +1619,11 @@ function validateFullLiveUserApproval({
         JSON.stringify(sealedStaticReleaseDescriptor) ||
       !exactMaterializationSeedFacts(
         requestedMaterializationSeedFacts,
-        isV4 ? "source.execution_control.commit" : "source.release_source_commit",
+        isSuccessor ? "source.execution_control.commit" : "source.release_source_commit",
       ) ||
       !exactMaterializationSeedFacts(
         sealedMaterializationSeedFacts,
-        isV4 ? "source.execution_control.commit" : "source.release_source_commit",
+        isSuccessor ? "source.execution_control.commit" : "source.release_source_commit",
       ) ||
       JSON.stringify(requestedMaterializationSeedFacts) !==
         JSON.stringify(sealedMaterializationSeedFacts) ||
@@ -1522,7 +1633,7 @@ function validateFullLiveUserApproval({
       proposal.exact_execution_graph?.missing_extra_or_repeated_operation_is_a_hard_stop !== true ||
       JSON.stringify(proposal.exact_execution_graph?.image_workflow_verification_policy) !==
         JSON.stringify(EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY) ||
-      (isV4
+      (isSuccessor
         ? JSON.stringify(proposal.exact_execution_graph?.predecessor_mage_reconciliation_policy) !==
           JSON.stringify(EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY)
         : proposal.exact_execution_graph?.predecessor_mage_reconciliation_policy !== undefined) ||
@@ -1569,7 +1680,7 @@ function validateFullLiveUserApproval({
       "statement",
     ]) ||
     approval.schema_version !==
-      (isV4 ? APPROVAL_SCHEMA_V3 : isModern ? APPROVAL_SCHEMA_V2 : APPROVAL_SCHEMA_V1) ||
+      (isSuccessor ? APPROVAL_SCHEMA_V3 : isModern ? APPROVAL_SCHEMA_V2 : APPROVAL_SCHEMA_V1) ||
     approval.task_id !== "VF-10-13" ||
     JSON.stringify(approval.checkpoint_range) !== JSON.stringify(CHECKPOINT_RANGE) ||
     approval.approval_source !== "explicit_user_approval_in_current_codex_task" ||
@@ -1584,7 +1695,7 @@ function validateFullLiveUserApproval({
       "sha256",
       "proposal_record_commit",
       "release_source_commit",
-      ...(isV4 ? ["execution_control_commit"] : []),
+      ...(isSuccessor ? ["execution_control_commit"] : []),
     ]) ||
     (isModern && !exactStaticReleaseDescriptor(approval.static_release_descriptor)) ||
     !exactKeys(approval.approval, [
@@ -1666,7 +1777,7 @@ function validateFullLiveUserApproval({
     approval.proposal?.sha256 !== expectedProposalSha256 ||
     approval.proposal?.proposal_record_commit !== expectedProposalRecordCommit ||
     approval.proposal?.release_source_commit !== expectedReleaseSourceCommit ||
-    (isV4 &&
+    (isSuccessor &&
       approval.proposal?.execution_control_commit !== proposal.source.execution_control.commit) ||
     approval.proposal?.path !== proposal.source.proposal_path
   )
@@ -1742,7 +1853,7 @@ function validateFullLiveUserApproval({
       "force_update_authorized",
       "delete_or_retarget_authorized",
       "other_ref_creation_authorized",
-      ...(isV4
+      ...(isSuccessor
         ? ["predecessor_bound_reconciliation_only", "successor_tag_mutation_authorized"]
         : []),
     ];
@@ -1760,11 +1871,13 @@ function validateFullLiveUserApproval({
       ])
     )
       fail("V3_NESTED_SCHEMA");
+    const expectedTag = isV5 ? SUCCESSOR_RELEASE_TAG : "videoforge-v2-13-release-20260826-v3";
+    const expectedMaximumNewRefs = isV4 ? 0 : 1;
     if (
-      requestedRef?.exact_tag_name !== "videoforge-v2-13-release-20260826-v3" ||
+      requestedRef?.exact_tag_name !== expectedTag ||
       requestedRef.exact_target_commit !== expectedReleaseSourceCommit ||
       requestedRef.tag_kind !== "LIGHTWEIGHT" ||
-      requestedRef.maximum_new_refs !== (isV4 ? 0 : 1) ||
+      requestedRef.maximum_new_refs !== expectedMaximumNewRefs ||
       requestedRef.force_update_authorized !== false ||
       requestedRef.delete_or_retarget_authorized !== false ||
       requestedRef.other_ref_creation_authorized !== false ||
@@ -1772,17 +1885,24 @@ function validateFullLiveUserApproval({
         (requestedRef.creation_requested !== false ||
           requestedRef.predecessor_bound_reconciliation_only !== true ||
           requestedRef.successor_tag_mutation_authorized !== false)) ||
+      (isV5 &&
+        (requestedRef.creation_requested !== true ||
+          requestedRef.predecessor_bound_reconciliation_only !== false ||
+          requestedRef.successor_tag_mutation_authorized !== true)) ||
       approvedRef?.creation_authorized !== !isV4 ||
       approvedRef.exact_tag_name !== requestedRef.exact_tag_name ||
       approvedRef.exact_target_commit !== requestedRef.exact_target_commit ||
       approvedRef.tag_kind !== "LIGHTWEIGHT" ||
-      approvedRef.maximum_new_refs !== (isV4 ? 0 : 1) ||
+      approvedRef.maximum_new_refs !== expectedMaximumNewRefs ||
       approvedRef.force_update_authorized !== false ||
       approvedRef.delete_or_retarget_authorized !== false ||
       approvedRef.other_ref_creation_authorized !== false ||
       (isV4 &&
         (approvedRef.predecessor_bound_reconciliation_only !== true ||
-          approvedRef.successor_tag_mutation_authorized !== false))
+          approvedRef.successor_tag_mutation_authorized !== false)) ||
+      (isV5 &&
+        (approvedRef.predecessor_bound_reconciliation_only !== false ||
+          approvedRef.successor_tag_mutation_authorized !== true))
     )
       fail("IMMUTABLE_RELEASE_REF");
     if (
@@ -1930,16 +2050,22 @@ function validateFullLiveUserApproval({
     !approval.statement.includes("USD 7 per month") ||
     !approval.statement.includes("no fallback") ||
     (isModern &&
-      (!approval.statement.includes("videoforge-v2-13-release-20260826-v3") ||
+      (!(isV5
+        ? approval.statement.includes(SUCCESSOR_RELEASE_TAG)
+        : approval.statement.includes("videoforge-v2-13-release-20260826-v3")) ||
         !approval.statement.includes("videoforge_hosted_operator") ||
         !approval.statement.includes("videoforge_hosted_runtime") ||
         !approval.statement.includes("videoforge_hosted_reconciler")))
   )
     fail("STATEMENT");
   if (
-    isV4 &&
+    isSuccessor &&
     (!approval.statement.includes(proposal.source.execution_control.commit) ||
-      !approval.statement.includes(EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256))
+      !approval.statement.includes(EXACT_PREDECESSOR_RELEASE_ATTEMPT.terminal_state_sha256) ||
+      (isV5 &&
+        !approval.statement.includes(
+          EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT.terminal_state_sha256,
+        )))
   )
     fail("STATEMENT_EXECUTION_CONTROL_OR_PREDECESSOR");
   assertDistinctV4SuccessorAuthority(
@@ -1958,12 +2084,15 @@ function validateFullLiveUserApproval({
     staticReleaseDescriptorSha256: isModern ? requestedStaticReleaseDescriptor.sha256 : null,
     proposalRecordCommit: expectedProposalRecordCommit,
     releaseSourceCommit: expectedReleaseSourceCommit,
-    executionControlCommit: isV4
+    executionControlCommit: isSuccessor
       ? proposal.source.execution_control.commit
       : expectedReleaseSourceCommit,
-    executionControlComponents: isV4 ? proposal.source.execution_control.exact_components : null,
-    predecessorReleaseAttempt: isV4 ? EXACT_PREDECESSOR_RELEASE_ATTEMPT : null,
-    approvalValidatorSourceBinding: isV4
+    executionControlComponents: isSuccessor
+      ? proposal.source.execution_control.exact_components
+      : null,
+    predecessorReleaseAttempt: isSuccessor ? EXACT_PREDECESSOR_RELEASE_ATTEMPT : null,
+    terminalFailedSuccessorAttempt: isV5 ? EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT : null,
+    approvalValidatorSourceBinding: isSuccessor
       ? EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING
       : EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
     maximumCumulativeFiniteRunpodSpendUsd: 17.5,
@@ -1979,6 +2108,7 @@ export {
   EXACT_APPROVAL_VALIDATOR_SOURCE_BINDING,
   EXACT_APPROVAL_VALIDATOR_EXECUTION_CONTROL_BINDING,
   EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
   EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
   EXACT_CLOUDFLARE_SECRET_NAMES,
   EXACT_IMAGE_WORKFLOW_VERIFICATION_POLICY,
@@ -1993,10 +2123,16 @@ export {
   EXACT_DURABLE_BILLING_POLICY,
   EXACT_OPERATION_IDS,
   EXACT_V3_RELEASE_COMPONENTS,
+  EXACT_V5_RELEASE_COMPONENTS,
   EXACT_TRUSTED_TIME_POLICY,
   EXPECTED_SERVERLESS_FLEX_RATE_SOURCE,
   EXPECTED_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
   EXPECTED_PHASE_CAPS,
+  PROPOSAL_SCHEMA_V4,
+  PROPOSAL_SCHEMA_V5,
+  SUCCESSOR_RELEASE_MODE,
+  SUCCESSOR_RELEASE_SOURCE_COMMIT,
+  SUCCESSOR_RELEASE_TAG,
   assertDistinctV4SuccessorAuthority,
   validateFullLiveUserApproval,
 };
