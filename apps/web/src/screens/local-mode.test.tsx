@@ -31,6 +31,7 @@ vi.mock("../lib/api", () => ({
 
 vi.mock("../lib/scenario", () => ({
   currentScenario: () => "happy_generating",
+  withScenario: (path: string) => `${path}?fixture=happy_generating`,
 }));
 
 function renderWithQueryClient(node: ReactNode) {

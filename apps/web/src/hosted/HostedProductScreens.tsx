@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ImageStyleHubVersionResponse } from "@videoforge/contracts/image-style-hub";
 import { PageHeader } from "../components/PageHeader";
 import {
   Badge,
@@ -24,6 +25,7 @@ import {
   Panel,
   ProgressBar,
 } from "../components/ui";
+import type { NormalizedStyleReference } from "../lib/media-validation";
 
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_AVATAR_BYTES = 20 * 1024 * 1024;
@@ -396,6 +398,38 @@ interface HostedPresetMutationResponse {
   readonly thumbnail_url?: string | null;
   readonly cover_url?: string | null;
   readonly summary?: string | null;
+}
+
+export interface FixtureStyleCreationAdapter {
+  readonly returnTo: string;
+  listStyles(): Promise<CatalogResponse["styles"]>;
+  normalize(file: File): Promise<NormalizedStyleReference>;
+  createAndRegister(
+    name: string,
+    sources: readonly NormalizedStyleReference[],
+  ): Promise<ImageStyleHubVersionResponse>;
+  analyze(value: ImageStyleHubVersionResponse): Promise<ImageStyleHubVersionResponse>;
+  publish(value: ImageStyleHubVersionResponse): Promise<ImageStyleHubVersionResponse>;
+}
+
+function fixtureStyleResponse(value: ImageStyleHubVersionResponse): HostedPresetMutationResponse {
+  const visual = value.profile?.visual_profile;
+  return {
+    id: value.style_id,
+    style_id: value.style_id,
+    version_id: value.version_id,
+    state: value.state,
+    profile: value.profile as unknown as Record<string, unknown> | null,
+    profile_hash: value.profile_hash,
+    summary: visual
+      ? [
+          visual.medium_family,
+          visual.lighting,
+          visual.color.descriptors.join(", "),
+          visual.texture_and_grain,
+        ].join(" · ")
+      : null,
+  };
 }
 
 const FILE_ACCESS_HINT =
@@ -1439,15 +1473,20 @@ export function HostedPresetCreationUnavailableScreen({ kind }: { kind: HostedPr
   );
 }
 
-export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind }) {
+export function HostedPresetCreationScreen({
+  kind,
+  fixtureStyleAdapter,
+}: {
+  kind: HostedPresetHubKind;
+  fixtureStyleAdapter?: FixtureStyleCreationAdapter;
+}) {
   const isAvatar = kind === "avatars";
+  const fixtureBackend = Boolean(fixtureStyleAdapter);
   const title = isAvatar ? "New avatar" : "New image style";
   const itemLabel = isAvatar ? "avatar" : "style";
   const params = new URLSearchParams(window.location.search);
-  const returnTo = normalizeHostedReturnTo(
-    params.get("returnTo"),
-    isAvatar ? "/avatars" : "/styles",
-  );
+  const defaultReturnTo = fixtureStyleAdapter?.returnTo ?? (isAvatar ? "/avatars" : "/styles");
+  const returnTo = normalizeHostedReturnTo(params.get("returnTo"), defaultReturnTo);
   const parentId = params.get("parentId");
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
@@ -1463,6 +1502,7 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
       readonly file: File;
       readonly objectUrl: string;
       readonly checksum: string;
+      readonly normalized?: NormalizedStyleReference;
     }[]
   >([]);
   const [rights, setRights] = useState(false);
@@ -1470,11 +1510,16 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
   const [disclosure, setDisclosure] = useState(false);
   const [profileNotes, setProfileNotes] = useState("");
   const [created, setCreated] = useState<HostedPresetMutationResponse | null>(null);
+  const [fixtureStyleVersion, setFixtureStyleVersion] =
+    useState<ImageStyleHubVersionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const catalog = useQuery({
-    queryKey: ["hosted-project-catalog"],
-    queryFn: readHostedCatalog,
+    queryKey: fixtureBackend ? ["fixture-preset-catalog", kind] : ["hosted-project-catalog"],
+    queryFn: async () => {
+      if (!fixtureBackend) return readHostedCatalog();
+      return { avatars: [], styles: await fixtureStyleAdapter!.listStyles() };
+    },
   });
   const items = catalog.data ? (isAvatar ? catalog.data.avatars : catalog.data.styles) : [];
   const duplicateName = items.some(
@@ -1538,18 +1583,36 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
     }
     setBusy(true);
     try {
-      const checksums = await Promise.all(
-        files.map((file) =>
-          bounded(hostedFileSha256(file), "Style reference checksum timed out. Try again.", 15_000),
-        ),
-      );
-      setStyleSources(
-        files.map((file, index) => ({
-          file,
-          checksum: checksums[index]!,
-          objectUrl: URL.createObjectURL(file),
-        })),
-      );
+      if (fixtureBackend) {
+        const normalized = await Promise.all(
+          files.map((file) => fixtureStyleAdapter!.normalize(file)),
+        );
+        setStyleSources(
+          files.map((file, index) => ({
+            file,
+            checksum: normalized[index]!.normalized.checksum,
+            objectUrl: normalized[index]!.objectUrl,
+            normalized: normalized[index]!,
+          })),
+        );
+      } else {
+        const checksums = await Promise.all(
+          files.map((file) =>
+            bounded(
+              hostedFileSha256(file),
+              "Style reference checksum timed out. Try again.",
+              15_000,
+            ),
+          ),
+        );
+        setStyleSources(
+          files.map((file, index) => ({
+            file,
+            checksum: checksums[index]!,
+            objectUrl: URL.createObjectURL(file),
+          })),
+        );
+      }
     } catch (value) {
       setError(value instanceof Error ? value.message : "Style reference validation failed.");
     } finally {
@@ -1575,6 +1638,19 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
         throw new Error(
           `Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} private references.`,
         );
+      if (fixtureBackend) {
+        if (isAvatar) throw new Error("Fixture avatar creation is not available in this adapter.");
+        if (styleSources.some((source) => !source.normalized))
+          throw new Error("Reference normalization is incomplete. Choose the files again.");
+        const fixture = await fixtureStyleAdapter!.createAndRegister(
+          name.trim(),
+          styleSources.map((source) => source.normalized!),
+        );
+        setFixtureStyleVersion(fixture);
+        setCreated(fixtureStyleResponse(fixture));
+        setStep(3);
+        return;
+      }
       const body = isAvatar
         ? {
             schema_version: "videoforge-hosted-avatar-create/v1",
@@ -1666,6 +1742,15 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
     setBusy(true);
     setError(null);
     try {
+      if (fixtureBackend) {
+        if (!fixtureStyleVersion)
+          throw new Error("The prepared style draft is unavailable. Start this style again.");
+        const analyzed = await fixtureStyleAdapter!.analyze(fixtureStyleVersion);
+        setFixtureStyleVersion(analyzed);
+        setCreated(fixtureStyleResponse(analyzed));
+        setStep(4);
+        return;
+      }
       const id = resourceId(created);
       const analyzed = await readJson<HostedPresetMutationResponse>(
         `/api/v2/hosted/styles/${encodeURIComponent(id)}/analyze`,
@@ -1688,6 +1773,16 @@ export function HostedPresetCreationScreen({ kind }: { kind: HostedPresetHubKind
     setBusy(true);
     setError(null);
     try {
+      if (fixtureBackend) {
+        if (!fixtureStyleVersion?.profile)
+          throw new Error("Analyze and review this exact draft before publication.");
+        const published = await fixtureStyleAdapter!.publish(fixtureStyleVersion);
+        setFixtureStyleVersion(published);
+        setCreated(fixtureStyleResponse(published));
+        await catalog.refetch();
+        window.location.assign(returnTo);
+        return;
+      }
       const id = resourceId(created);
       const candidateProfile = created.profile
         ? { ...created.profile, review_notes: profileNotes.trim() }
