@@ -30,6 +30,9 @@ test("migration activation fails closed without the pgcrypto prerequisite for 00
   const source = readFileSync("deploy/v2-06/apply-migrations-and-grants.mjs", "utf8");
   assert.match(source, /FROM pg_extension WHERE extname = 'pgcrypto'/u);
   assert.match(source, /gen_random_bytes and pgp_sym_encrypt\/decrypt/u);
+  assert.match(source, /JOIN pg_extension AS e ON e\.oid = d\.refobjid/u);
+  assert.match(source, /d\.deptype = 'e'/u);
+  assert.match(source, /provider-managed primitives, not application capabilities/u);
 });
 
 test("V2-06 CORS verifier accepts Wrangler's exact policy output", () => {

@@ -394,7 +394,7 @@ const main = async () => {
   if (schemaPrivileges !== "true\tfalse") fail("runtime schema privileges are not USAGE-only");
   const runtimeFunctions = (
     await query(
-      `SELECT p.oid::regprocedure::text FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND has_function_privilege(${safeLiteral(runtimeRole)}, p.oid, 'EXECUTE') ORDER BY p.oid::regprocedure::text`,
+      `SELECT p.oid::regprocedure::text FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND has_function_privilege(${safeLiteral(runtimeRole)}, p.oid, 'EXECUTE') AND NOT EXISTS (SELECT 1 FROM pg_depend AS d JOIN pg_extension AS e ON e.oid = d.refobjid WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e') ORDER BY p.oid::regprocedure::text`,
       environment,
     )
   )
@@ -402,8 +402,12 @@ const main = async () => {
     .filter(Boolean);
   if (JSON.stringify(runtimeFunctions) !== JSON.stringify(EXPECTED_RUNTIME_FUNCTIONS))
     fail("runtime function grants do not exactly match the least-privilege allowlist");
+  // Neon owns pgcrypto's extension members and retains their standard PUBLIC execute ACL. They
+  // are provider-managed primitives, not application capabilities; audit application-owned
+  // public functions separately so the runtime allowlist remains exact without claiming ownership
+  // of extension ACLs that the migration role cannot revoke.
   const publicFunctions = await query(
-    "SELECT p.oid::regprocedure::text FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND has_function_privilege('public', p.oid, 'EXECUTE') ORDER BY p.oid::regprocedure::text",
+    "SELECT p.oid::regprocedure::text FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND has_function_privilege('public', p.oid, 'EXECUTE') AND NOT EXISTS (SELECT 1 FROM pg_depend AS d JOIN pg_extension AS e ON e.oid = d.refobjid WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e') ORDER BY p.oid::regprocedure::text",
     environment,
   );
   if (publicFunctions)

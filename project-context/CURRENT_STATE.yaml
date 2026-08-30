@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: SOURCE_GREEN_PENDING_FRESH_EXACT_DEPLOYMENT_APPROVAL
+  status: DATABASE_GREEN_DEPLOYMENT_REAPPROVAL_REQUIRED_AFTER_TOOLING_REPAIR
   implementation_commit: "79423f8c6fe92b7faaa45a07f7f72f62b1b602d4"
   deployment_candidate: CURRENT_CLEAN_GIT_HEAD
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
@@ -83,12 +83,13 @@ hosted_beta_user_walkthrough:
   gpu_use_authorized: false
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
-  database_preflight: "READ_ONLY_LEDGER_36_OF_49_PGCRYPTO_ABSENT"
+  database_preflight: "LIVE_LEDGER_49_OF_49_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
     - "Image-style analysis is clearly labeled provider-free simulation so the walkthrough cannot mistake it for a Gemini, DeepSeek, or GPU provider result."
+    - "Neon now has pgcrypto and the exact 49-row migration chain; deployment verification excludes provider-owned pgcrypto extension functions while still requiring an exact application-function allowlist and zero PUBLIC application functions."
   current_step: SIGN_IN_AND_INVITE_REDEMPTION
   remaining_steps:
     - SIGN_IN_AND_INVITE_REDEMPTION
