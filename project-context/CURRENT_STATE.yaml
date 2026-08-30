@@ -71,12 +71,13 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_2_PRESET_HUB_UI_REPAIR_DEPLOYED_AWAITING_USER_VISUAL_CONFIRMATION
-  implementation_commit: "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
+  status: LIVE_STEP_2_CATALOG_PERMISSION_REPAIR_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
+  implementation_commit: "6fb8a8a55850b157a7fb99dd86e4a74d7ffa6ce1"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
     - "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
-  deployment_candidate: CONSUMED_BY_DEPLOYMENT
+    - "6fb8a8a55850b157a7fb99dd86e4a74d7ffa6ce1"
+  deployment_candidate: PENDING_FRESH_EXACT_USER_APPROVAL
   deployed_source_commit: "ea82beaafe2d53479ae1cfca66b71e3500642259"
   cloudflare_worker_version_id: "133f1c86-6738-4436-bf66-4673d52bd752"
   deployed_config_sha256: "sha256:2c1127b0ac86a591db23182d4ce079885c8bc14f2a6d0188c3955ba232e9c524"
@@ -97,7 +98,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "DEPLOYED_STATUS_EXACT_SOURCE_PASS_AWAITING_USER_AUTHENTICATED_HUB_REFRESH"
+  live_browser_verification: "FAIL_CATALOG_500_RUNTIME_ROLE_REFERENCE_TABLE_NOT_GRANTED_REPAIR_SOURCE_GREEN_AWAITING_DEPLOYMENT"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
@@ -107,6 +108,7 @@ hosted_beta_user_walkthrough:
     - "Live staging now clears stale VideoForge sessions before Google account selection, validates tenant responses, unmounts private screens during focus/visibility revalidation, and keeps uninvited authenticated identities outside tenant scope. Existing admitted accounts and data remain intact."
     - "The deployed hosted preset-hub repair reuses the approved fixture card, search, media, and details UI; removes raw hashes, IDs, staging jargon, and redundant engineering panels; prefers the real avatar thumbnail; and uses a deliberate style cover when a published style has no references."
     - "The deployed hosted access repair keeps the admitted product page mounted during focus and visibility revalidation, eliminating the full-page checking flash; a real rejection or validation failure still unmounts private content fail-closed."
+    - "Authenticated Chrome found the first hub deployment's catalog count query touched image_style_references, which the least-privilege runtime role cannot read. Repair 6fb8a8a5 removes that unnecessary query, keeps the deliberate no-reference style cover, and restores the catalog without a database grant or mutation."
   current_step: AVATAR_CREATION_AND_APPROVAL
   remaining_steps:
     - AVATAR_CREATION_AND_APPROVAL
@@ -119,7 +121,7 @@ hosted_beta_user_walkthrough:
     - ACCOUNT_ISOLATION_DELETION_AND_LOGOUT
   release_boundary: "This is a private hosted-beta deployment only. Production activation, V2-07 through V2-13 live qualification, provider calls, RunPod operations, GPU use, and C1/C2 resealing remain blocked."
   validations:
-    hosted_preset_focused_unit: "PASS_52_OF_52_UI_AND_SERVER"
+    hosted_preset_focused_unit: "PASS_65_OF_65_UI_ACCESS_AND_SERVER"
     hosted_focus_revalidation_unit: "PASS_12_OF_12"
     hosted_web_typecheck: PASS
     hosted_changed_file_eslint: PASS
