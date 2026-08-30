@@ -56,7 +56,9 @@ import { parseService, validateServiceFile } from "../v2-06/validate-pg-service.
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const TAG = "videoforge-v2-13-release-20260826-v3";
 const SUCCESSOR_TAG = "videoforge-v2-13-release-20260830-v5";
+const PREDECESSOR_RELEASE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
 const SUCCESSOR_RELEASE_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
+const SUCCESSOR_RELEASE_MODE = "SUCCESSOR_TAG_CREATION";
 const APPROVAL_BRANCH = "codex/serverless-v2-roadmap-v4";
 const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
@@ -218,6 +220,7 @@ const DATABASE_ROLE_CREDENTIAL_CLEANUP_SCHEMA =
   "videoforge.v213-database-role-credential-cleanup/v1";
 const OUTER_CONSUMPTION_SCHEMA_V2 = "videoforge.v2-13-full-live-orchestration-consumption/v2";
 const OUTER_CONSUMPTION_SCHEMA_V3 = "videoforge.v2-13-full-live-orchestration-consumption/v3";
+const OUTER_CONSUMPTION_SCHEMA_V4 = "videoforge.v2-13-full-live-orchestration-consumption/v4";
 const PREQUALIFICATION_OPERATOR_ROLE = "videoforge_hosted_operator";
 const PREQUALIFICATION_RUNTIME_ROLE = "videoforge_hosted_runtime";
 const PREQUALIFICATION_RECONCILER_ROLE = "videoforge_hosted_reconciler";
@@ -2182,10 +2185,12 @@ function createGuardedActivationAdapter({
         fail("GUARDED_PREQUALIFICATION_RECEIPT");
     }
     preflight({ environment, state });
-    const activationSourceCommit =
-      state.schema_version === OUTER_CONSUMPTION_SCHEMA_V3
-        ? state.execution_control_commit
-        : state.release_source_commit;
+    const activationSourceCommit = [
+      OUTER_CONSUMPTION_SCHEMA_V3,
+      OUTER_CONSUMPTION_SCHEMA_V4,
+    ].includes(state.schema_version)
+      ? state.execution_control_commit
+      : state.release_source_commit;
     if (!COMMIT.test(activationSourceCommit ?? "")) fail("GUARDED_ACTIVATION_SOURCE_COMMIT");
     const source = prepareSource(activationSourceCommit);
     if (
@@ -4739,9 +4744,11 @@ function assertConsumedDatabaseBootstrapInvocation(context, state, outerStateSha
   const expectedSchema =
     releaseMode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY"
       ? OUTER_CONSUMPTION_SCHEMA_V3
-      : releaseMode === "LEGACY_SINGLE_CREATION"
-        ? OUTER_CONSUMPTION_SCHEMA_V2
-        : null;
+      : releaseMode === SUCCESSOR_RELEASE_MODE
+        ? OUTER_CONSUMPTION_SCHEMA_V4
+        : releaseMode === "LEGACY_SINGLE_CREATION"
+          ? OUTER_CONSUMPTION_SCHEMA_V2
+          : null;
   if (
     context?.operationId !== "bootstrap-prequalification-database" ||
     state?.schema_version !== expectedSchema ||
@@ -6855,6 +6862,7 @@ const V213_POST_CONSUMPTION_FACT_KEYS = Object.freeze([
 ]);
 const V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1 = "videoforge.v213-static-release-descriptor/v1";
 const V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2 = "videoforge.v213-static-release-descriptor/v2";
+const V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3 = "videoforge.v213-static-release-descriptor/v3";
 const V213_STATIC_RELEASE_GATE_POLICY = Object.freeze({
   operations_runbooks_ready: Object.freeze({
     claims: Object.freeze([
@@ -6945,6 +6953,7 @@ const V213_STATIC_RELEASE_GATES = Object.freeze(Object.keys(V213_STATIC_RELEASE_
 
 function exactStaticReleaseDescriptor(value, expectedSourceCommit, expectedSha256) {
   const isV2 = value?.schemaVersion === V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2;
+  const isV3 = value?.schemaVersion === V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3;
   if (
     !exactObjectKeys(value, [
       "auditFacts",
@@ -6953,11 +6962,13 @@ function exactStaticReleaseDescriptor(value, expectedSourceCommit, expectedSha25
       "productionUrlSha256",
       "schemaVersion",
       "sourceCommit",
-      ...(isV2 ? ["workflowRegistrationEvidence"] : []),
+      ...(isV2 || isV3 ? ["workflowRegistrationEvidence"] : []),
     ]) ||
-    ![V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1, V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2].includes(
-      value.schemaVersion,
-    ) ||
+    ![
+      V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1,
+      V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2,
+      V213_STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3,
+    ].includes(value.schemaVersion) ||
     value.sourceCommit !== expectedSourceCommit ||
     !HASH.test(value.productionUrlSha256 ?? "") ||
     !HASH.test(value.contractBundleSha256 ?? "") ||
@@ -6966,11 +6977,19 @@ function exactStaticReleaseDescriptor(value, expectedSourceCommit, expectedSha25
     !exactObjectKeys(value.auditFacts, V213_STATIC_RELEASE_GATES)
   )
     fail("STATIC_RELEASE_DESCRIPTOR_CONTRACT");
-  if (isV2)
+  if (isV2 || isV3) {
+    if (
+      value.workflowRegistrationEvidence?.schema_version !==
+      (isV3
+        ? SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2
+        : SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V1)
+    )
+      fail("STATIC_RELEASE_DESCRIPTOR_WORKFLOW_VERSION");
     exactSoulxWorkflowRegistrationEvidence(
       value.workflowRegistrationEvidence,
       expectedSourceCommit,
     );
+  }
   for (const gate of V213_STATIC_RELEASE_GATES) {
     const fact = value.auditFacts[gate];
     const policy = V213_STATIC_RELEASE_GATE_POLICY[gate];
@@ -8171,7 +8190,14 @@ function createProtectedInputMaterializer({
         ["mage", mage, "pala-lakshmansai/videoforge-mage-v2-07"],
         ["soulx", soulx, "pala-lakshmansai/videoforge-soulx-serverless-v2-08"],
       ]) {
-        production.dualLaneInput[lane].sourceCommit = state.release_source_commit;
+        const expectedSourceCommit =
+          state.schema_version === OUTER_CONSUMPTION_SCHEMA_V4 && lane === "mage"
+            ? PREDECESSOR_RELEASE_SOURCE_COMMIT
+            : state.release_source_commit;
+        const staticSourceCommit = production.dualLaneInput[lane].sourceCommit;
+        if (staticSourceCommit !== undefined && staticSourceCommit !== expectedSourceCommit)
+          fail("MATERIALIZATION_LANE_SOURCE_LINEAGE");
+        production.dualLaneInput[lane].sourceCommit = expectedSourceCommit;
         production.dualLaneInput[lane].publicImage = `ghcr.io/${repository}@${receipt.imageDigest}`;
         production.dualLaneInput[lane].deploymentSha256 = receipt.evidenceSha256;
       }
@@ -9505,7 +9531,10 @@ function createTypeScriptBridgeAdapters({
       }
       if (
         production !== null &&
-        (production.dualLaneInput?.mage?.sourceCommit !== state.release_source_commit ||
+        (production.dualLaneInput?.mage?.sourceCommit !==
+          (state.schema_version === OUTER_CONSUMPTION_SCHEMA_V4
+            ? PREDECESSOR_RELEASE_SOURCE_COMMIT
+            : state.release_source_commit) ||
           production.dualLaneInput?.soulx?.sourceCommit !== state.release_source_commit)
       )
         fail("BRIDGE_SOURCE_LINEAGE");

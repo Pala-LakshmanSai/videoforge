@@ -299,7 +299,11 @@ const preEndpointSecrets = () => ({
   pairProviderProofKeyId: "proof-key",
 });
 
-const staticReleaseDescriptorFixture = () => {
+const staticReleaseDescriptorFixture = ({
+  schemaVersion = "videoforge.v213-static-release-descriptor/v1",
+  descriptorSourceCommit = sourceCommit,
+  workflowRegistrationEvidence,
+} = {}) => {
   const fact = (gate, claims, metrics) => ({
     gate,
     sourceEvidenceSha256: hash(Buffer.from(`static-source-${gate}`)),
@@ -312,8 +316,8 @@ const staticReleaseDescriptorFixture = () => {
     metrics,
   });
   const unsigned = {
-    schemaVersion: "videoforge.v213-static-release-descriptor/v1",
-    sourceCommit,
+    schemaVersion,
+    sourceCommit: descriptorSourceCommit,
     productionUrlSha256: hash(Buffer.from("production-url")),
     contractBundleSha256: hash(Buffer.from("contract-bundle")),
     auditFacts: {
@@ -381,6 +385,7 @@ const staticReleaseDescriptorFixture = () => {
         },
       ),
     },
+    ...(workflowRegistrationEvidence === undefined ? {} : { workflowRegistrationEvidence }),
   };
   return { ...unsigned, descriptorSha256: hash(Buffer.from(canonicalJson(unsigned))) };
 };
@@ -1841,6 +1846,48 @@ test("guarded adapter calls the existing executor once and authenticates its dur
     },
   );
   assert.equal(v4Value.executedOnce, true);
+
+  const v5Evidence = Buffer.from(
+    `${JSON.stringify({
+      ...JSON.parse(evidence.toString("utf8")),
+      commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    })}\n`,
+  );
+  const v5Adapter = createGuardedActivationAdapter({
+    environment,
+    readEvidence: () => v5Evidence,
+    preflight: () => true,
+    prepareSource: (targetCommit) => {
+      assert.equal(targetCommit, executionControlCommit);
+      return { root: "/isolated-release-source", cleanup: () => {} };
+    },
+    run: () =>
+      result(
+        0,
+        JSON.stringify({
+          schema_version: "videoforge-v2-13-guarded-activation-result/v1",
+          state: "DISABLED_UNQUALIFIED",
+          commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+        }),
+      ),
+  });
+  const v5Value = await v5Adapter(
+    {},
+    {
+      ...successorStateWithSoulxWorkflowRegistration(
+        successorSoulxWorkflowRegistrationEvidenceFixture(),
+      ),
+      schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v4",
+      execution_control_commit: executionControlCommit,
+      release_ref: {
+        ...successorStateWithSoulxWorkflowRegistration(
+          successorSoulxWorkflowRegistrationEvidenceFixture(),
+        ).release_ref,
+        mode: "SUCCESSOR_TAG_CREATION",
+      },
+    },
+  );
+  assert.equal(v5Value.executedOnce, true);
 });
 
 test("promotion hashes closed dry-output bytes, independent of Wrangler stdout", () => {
@@ -2468,6 +2515,85 @@ test("post-consumption producer signs an app selection, reads DB facts, then wri
         .commandPayloads,
       {},
     );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("post-consumption producer accepts descriptor v3 only with registration evidence v2", async () => {
+  const evidence = successorSoulxWorkflowRegistrationEvidenceFixture();
+  const descriptor = staticReleaseDescriptorFixture({
+    schemaVersion: "videoforge.v213-static-release-descriptor/v3",
+    descriptorSourceCommit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    workflowRegistrationEvidence: evidence,
+  });
+  const fixture = workflowMaterializationFixture();
+  fixture.staticReleaseDescriptor = descriptor;
+  fixture.materializationState = {
+    ...fixture.materializationState,
+    ...successorStateWithSoulxWorkflowRegistration(evidence),
+    schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v4",
+    execution_control_commit: "6".repeat(40),
+    release_ref: {
+      ...successorStateWithSoulxWorkflowRegistration(evidence).release_ref,
+      mode: "SUCCESSOR_TAG_CREATION",
+    },
+    static_release_descriptor_sha256: descriptor.descriptorSha256,
+  };
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-v3-descriptor-test-"));
+  chmodSync(directory, 0o700);
+  const environment = producerEnvironment(fixture, directory);
+  let descriptorRecords = 0;
+  const producer = createPostConsumptionMaterializationProducer({
+    environment,
+    cumulativeLedgerSha256: hash(Buffer.from("successor-ledger")),
+    recordStaticReleaseDescriptor: async ({ descriptorSha256 }) => {
+      descriptorRecords += 1;
+      return { descriptorSha256 };
+    },
+    issueChallenge: async () => {
+      throw new Error("intentional stop after descriptor validation");
+    },
+  });
+  try {
+    await assert.rejects(
+      producer({
+        operation: { id: "record-workflow-start-authority" },
+        state: fixture.materializationState,
+        outerStateSha256: fixture.outerStateSha256,
+      }),
+      /POST_CONSUMPTION_CHALLENGE_AMBIGUOUS/u,
+    );
+    assert.equal(descriptorRecords, 1);
+
+    const mismatched = staticReleaseDescriptorFixture({
+      schemaVersion: "videoforge.v213-static-release-descriptor/v3",
+      descriptorSourceCommit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+      workflowRegistrationEvidence: soulxWorkflowRegistrationEvidenceFixture({
+        release_source_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+      }),
+    });
+    writeFileSync(
+      environment.VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE,
+      `${canonicalJson(mismatched)}\n`,
+      { mode: 0o600 },
+    );
+    const productionPath = environment.VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE;
+    const production = JSON.parse(readFileSync(productionPath, "utf8"));
+    production.authorityDocument.staticReleaseDescriptorSha256 = mismatched.descriptorSha256;
+    writeFileSync(productionPath, `${canonicalJson(production)}\n`, { mode: 0o600 });
+    await assert.rejects(
+      producer({
+        operation: { id: "record-workflow-start-authority" },
+        state: {
+          ...fixture.materializationState,
+          static_release_descriptor_sha256: mismatched.descriptorSha256,
+        },
+        outerStateSha256: fixture.outerStateSha256,
+      }),
+      /STATIC_RELEASE_DESCRIPTOR_WORKFLOW_VERSION/u,
+    );
+    assert.equal(descriptorRecords, 1);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -4138,6 +4264,87 @@ test("protected TypeScript bridge chains only opaque qualification hashes across
   }
 });
 
+test("successor bridge preserves the exact Mage predecessor and SoulX successor lineage", async () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "v213-successor-bridge-lineage-test-"));
+  chmodSync(directory, 0o700);
+  const inputPath = resolve(directory, "production-input.json");
+  const production = {
+    schemaVersion: "videoforge.v213-full-live-outer-input/v1",
+    fullLiveAuthorityId: "11111111-1111-4111-8111-111111111111",
+    authorityDocument: { exact: true },
+    dualLaneInput: {
+      mage: {
+        sourceCommit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+        deploymentSha256: `sha256:${"1".repeat(64)}`,
+      },
+      soulx: {
+        sourceCommit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+        deploymentSha256: `sha256:${"2".repeat(64)}`,
+      },
+    },
+    commandPayloads: {},
+  };
+  writeFileSync(inputPath, `${canonicalJson(production)}\n`, { mode: 0o600 });
+  let dispatches = 0;
+  const adapters = createTypeScriptBridgeAdapters({
+    environment: { VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: inputPath },
+    expectedCliSha256: hash(
+      readFileSync(resolve(process.cwd(), "apps/web/src/server/providers/v213-full-live-cli.ts")),
+    ),
+    expectedTransportSha256: hash(
+      readFileSync(
+        resolve(process.cwd(), "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts"),
+      ),
+    ),
+    spawnBridge: async ({ request }) => {
+      dispatches += 1;
+      return {
+        schemaVersion: "videoforge.v213-full-live-command-result/v1",
+        commandId: request.commandId,
+        command: request.command,
+        state: "TERMINAL",
+        evidenceSha256: `sha256:${"3".repeat(64)}`,
+        summary: {
+          handoffSha256: `sha256:${"3".repeat(64)}`,
+          billingAfterUsd: 10.5,
+          qualified: true,
+          zeroWorkersAfter: true,
+        },
+      };
+    },
+  });
+  const successorState = {
+    ...successorStateWithSoulxWorkflowRegistration(
+      successorSoulxWorkflowRegistrationEvidenceFixture(),
+    ),
+    schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v4",
+    authority_id: "v2-13-successor-bridge-lineage",
+    full_live_authority_id: production.fullLiveAuthorityId,
+  };
+  const prior = new Map([
+    ["fresh-live-preflight", { bridgeSummary: { admission: { cumulativeBillingUsd: 10 } } }],
+  ]);
+  try {
+    await adapters["mage-live-qualification"](
+      {},
+      successorState,
+      prior,
+      `sha256:${"4".repeat(64)}`,
+    );
+    assert.equal(dispatches, 1);
+
+    production.dualLaneInput.mage.sourceCommit = SUCCESSOR_RELEASE_SOURCE_COMMIT;
+    writeFileSync(inputPath, `${canonicalJson(production)}\n`, { mode: 0o600 });
+    await assert.rejects(
+      adapters["mage-live-qualification"]({}, successorState, prior, `sha256:${"5".repeat(64)}`),
+      /BRIDGE_SOURCE_LINEAGE/u,
+    );
+    assert.equal(dispatches, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("protected cleanup bridge returns the exact four outer proof contracts without prior deployments", async () => {
   const directory = mkdtempSync(resolve(tmpdir(), "v213-cleanup-adapter-test-"));
   chmodSync(directory, 0o700);
@@ -5104,4 +5311,23 @@ test("production-secret bootstrap rejects pre-consumption invocation before prot
     /PREQUALIFICATION_CONSUMED_AUTHORITY_REQUIRED/u,
   );
   assert.deepEqual(reads, []);
+});
+
+test("production-secret bootstrap admits the exact successor consumption state before inputs", async () => {
+  const adapter = createPrequalificationDatabaseBootstrapAdapter({ environment: {} });
+  await assert.rejects(
+    adapter(
+      { operationId: "bootstrap-prequalification-database" },
+      {
+        schema_version: "videoforge.v2-13-full-live-orchestration-consumption/v4",
+        release_ref: { mode: "SUCCESSOR_TAG_CREATION" },
+        state: "CONSUMED_SINGLE_EXECUTION_IN_PROGRESS",
+        authority_id: "v2-13-successor-bootstrap-authority",
+        full_live_authority_id: "11111111-1111-4111-8111-111111111111",
+      },
+      new Map(),
+      hash(Buffer.from("successor-outer-state")),
+    ),
+    /PREQUALIFICATION_MATERIALIZATION_SEED/u,
+  );
 });
