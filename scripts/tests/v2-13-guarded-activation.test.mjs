@@ -313,7 +313,7 @@ test("guarded activation binds exact V3 runtime and reconciler roles", () => {
   );
 });
 
-test("guarded activation accepts only a distinct V4 successor authority and control commit", () => {
+test("guarded activation accepts only distinct V4/V5 successor authority and lane lineage", () => {
   const value = authority();
   value.database.runtime_role = "videoforge_hosted_runtime";
   value.database.reconciler_role = "videoforge_hosted_reconciler";
@@ -342,6 +342,31 @@ test("guarded activation accepts only a distinct V4 successor authority and cont
         authorityId: validated.predecessorReleaseAttempt.authority_id,
       }),
     /replays the predecessor/u,
+  );
+  const v5 = {
+    ...validated,
+    proposalSchema: "videoforge.v2-13-full-live-completion-proposal/v5",
+    releaseSourceCommit: "417e84d4f021699337e9bd411753777d689728d7",
+    predecessorReleaseAttempt: {
+      ...validated.predecessorReleaseAttempt,
+      exact_tag_target_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    },
+  };
+  assert.equal(assertFullLiveActivationBinding(value, v5), true);
+  assert.throws(
+    () => assertFullLiveActivationBinding(value, { ...v5, releaseSourceCommit: "c".repeat(40) }),
+    /V5 successor lane source lineage is not exact/u,
+  );
+  assert.throws(
+    () =>
+      assertFullLiveActivationBinding(value, {
+        ...v5,
+        predecessorReleaseAttempt: {
+          ...v5.predecessorReleaseAttempt,
+          exact_tag_target_commit: "d".repeat(40),
+        },
+      }),
+    /V5 successor lane source lineage is not exact/u,
   );
 });
 

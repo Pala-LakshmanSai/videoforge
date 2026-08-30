@@ -45,6 +45,8 @@ const SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
 ]);
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const PREDECESSOR_MAGE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
+const SUCCESSOR_SOULX_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
 const EXACT_DATABASE_IDENTITY = Object.freeze({
   database: "neondb",
   host: "ep-sparkling-dew-azjhkwg6-pooler.c-3.ap-southeast-1.aws.neon.tech",
@@ -1001,10 +1003,12 @@ function prevalidate(args) {
     resolve(args.get("user-approval-file")),
   );
   const head = git("rev-parse", "HEAD");
-  const expectedHead =
-    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
-      ? validated.executionControlCommit
-      : authority.release.commit;
+  const expectedHead = [
+    "videoforge.v2-13-full-live-completion-proposal/v4",
+    "videoforge.v2-13-full-live-completion-proposal/v5",
+  ].includes(validated.proposalSchema)
+    ? validated.executionControlCommit
+    : authority.release.commit;
   if (head !== expectedHead) fail("authority execution commit is not exact HEAD");
   if (git("status", "--porcelain=v1", "--untracked-files=all") !== "")
     fail("working tree must be completely clean before activation");
@@ -1116,10 +1120,12 @@ function validateAuthoritySourceFiles(authority, proposalPath, approvalPath) {
   )
     fail("user approval identity or time does not match activation authority");
   assertFullLiveActivationBinding(authority, validated);
-  const expectedProposalParent =
-    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4"
-      ? validated.executionControlCommit
-      : validated.releaseSourceCommit;
+  const expectedProposalParent = [
+    "videoforge.v2-13-full-live-completion-proposal/v4",
+    "videoforge.v2-13-full-live-completion-proposal/v5",
+  ].includes(validated.proposalSchema)
+    ? validated.executionControlCommit
+    : validated.releaseSourceCommit;
   if (
     git("rev-parse", `${validated.proposalRecordCommit}^`) !== expectedProposalParent ||
     git("hash-object", proposalPath) !==
@@ -1134,6 +1140,7 @@ function assertFullLiveActivationBinding(authority, validated) {
     ![
       "videoforge.v2-13-full-live-completion-proposal/v3",
       "videoforge.v2-13-full-live-completion-proposal/v4",
+      "videoforge.v2-13-full-live-completion-proposal/v5",
     ].includes(validated.proposalSchema)
   )
     fail("superseded full-live proposal approval cannot authorize guarded activation");
@@ -1143,16 +1150,32 @@ function assertFullLiveActivationBinding(authority, validated) {
   )
     fail("database roles do not match the exact approved V3 role pins");
   if (
-    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v4" &&
+    [
+      "videoforge.v2-13-full-live-completion-proposal/v4",
+      "videoforge.v2-13-full-live-completion-proposal/v5",
+    ].includes(validated.proposalSchema) &&
     (validated.executionControlCommit === validated.releaseSourceCommit ||
       validated.authorityId === validated.predecessorReleaseAttempt?.authority_id)
   )
     fail("successor execution control or authority identity replays the predecessor");
+  if (
+    validated.proposalSchema === "videoforge.v2-13-full-live-completion-proposal/v5" &&
+    (validated.releaseSourceCommit !== SUCCESSOR_SOULX_SOURCE_COMMIT ||
+      validated.predecessorReleaseAttempt?.exact_tag_target_commit !==
+        PREDECESSOR_MAGE_SOURCE_COMMIT)
+  )
+    fail("V5 successor lane source lineage is not exact");
   return true;
 }
 
 function assertV4PayloadEquivalence(validated) {
-  if (validated.proposalSchema !== "videoforge.v2-13-full-live-completion-proposal/v4") return true;
+  if (
+    ![
+      "videoforge.v2-13-full-live-completion-proposal/v4",
+      "videoforge.v2-13-full-live-completion-proposal/v5",
+    ].includes(validated.proposalSchema)
+  )
+    return true;
   const components = validated.executionControlComponents;
   const closurePath = components?.source_closure_manifest?.path;
   if (typeof closurePath !== "string") fail("V4 source closure binding is absent");

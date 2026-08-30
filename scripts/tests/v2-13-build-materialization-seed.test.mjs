@@ -64,6 +64,9 @@ const APPROVAL_VALIDATOR_PATH = "deploy/v2-13/validate-full-live-approval.mjs";
 const CLOSURE_PATH = "deploy/v2-13/full-live-source-closure.json";
 const V3_PROPOSAL_SCHEMA = "videoforge.v2-13-full-live-completion-proposal/v3";
 const V4_PROPOSAL_SCHEMA = "videoforge.v2-13-full-live-completion-proposal/v4";
+const V5_PROPOSAL_SCHEMA = "videoforge.v2-13-full-live-completion-proposal/v5";
+const PREDECESSOR_MAGE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
+const SUCCESSOR_SOULX_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
 const envelopeKeys = [
   "mage",
@@ -189,6 +192,31 @@ function workflowRegistrationEvidence(sourceCommit, overrides = {}) {
   return { ...unsigned, evidence_sha256: sha256(Buffer.from(canonicalJson(unsigned))) };
 }
 
+function workflowRegistrationEvidenceV2(sourceCommit, overrides = {}) {
+  const defaultBranchWorkflowSha256 = sha256(Buffer.from("active main SoulX workflow\n"));
+  const releaseSourceWorkflowSha256 = sha256(Buffer.from("successor release SoulX workflow\n"));
+  const unsigned = {
+    schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v2",
+    repository: "Pala-LakshmanSai/videoforge",
+    default_branch: "main",
+    default_branch_commit: "9".repeat(40),
+    workflow_id: 102,
+    workflow_file: "avatar-primary-serverless-image.yml",
+    workflow_name: "avatar-primary-serverless-image",
+    workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+    workflow_state: "active",
+    default_branch_workflow_sha256: defaultBranchWorkflowSha256,
+    release_source_commit: sourceCommit,
+    release_source_workflow_sha256: releaseSourceWorkflowSha256,
+    default_branch_matches_release_source: false,
+    registration_state: "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND",
+    materialized: true,
+    default_branch_registration_only: true,
+    ...overrides,
+  };
+  return { ...unsigned, evidence_sha256: sha256(Buffer.from(canonicalJson(unsigned))) };
+}
+
 function sourceReader(commit) {
   return (path) =>
     execFileSync("git", ["show", `${commit}:${path}`], {
@@ -259,10 +287,18 @@ function harness({
   const proposal = JSON.parse(readFileSync(new URL(PROPOSAL_PATH, ROOT)));
   if (proposalSchema !== undefined) {
     proposal.schema_version = proposalSchema;
-    if (proposalSchema !== V4_PROPOSAL_SCHEMA) delete proposal.source.execution_control;
+    if (![V4_PROPOSAL_SCHEMA, V5_PROPOSAL_SCHEMA].includes(proposalSchema))
+      delete proposal.source.execution_control;
   }
-  const isV4Proposal = proposal.schema_version === V4_PROPOSAL_SCHEMA;
-  if (isV4Proposal) {
+  if (proposal.schema_version === V5_PROPOSAL_SCHEMA)
+    Object.assign(
+      proposal,
+      replaceDeep(proposal, PREDECESSOR_MAGE_SOURCE_COMMIT, SUCCESSOR_SOULX_SOURCE_COMMIT),
+    );
+  const isExecutionControlProposal = [V4_PROPOSAL_SCHEMA, V5_PROPOSAL_SCHEMA].includes(
+    proposal.schema_version,
+  );
+  if (isExecutionControlProposal) {
     proposal.source.execution_control.exact_components = structuredClone(
       EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
     );
@@ -286,7 +322,7 @@ function harness({
     ["workflow_start_authority_policy", EXACT_WORKFLOW_START_AUTHORITY_POLICY],
   ])
     proposal.exact_execution_graph[key] = structuredClone(value);
-  if (isV4Proposal) {
+  if (isExecutionControlProposal) {
     proposal.exact_execution_graph.predecessor_mage_reconciliation_policy = structuredClone(
       EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
     );
@@ -422,7 +458,7 @@ function harness({
     path: BUILDER_PATH,
     sha256: builderSha256,
   };
-  if (isV4Proposal) {
+  if (isExecutionControlProposal) {
     proposal.source.execution_control.exact_components.migration_manifest = {
       path: migrationManifestPath,
       sha256: sha256(migrationManifestBytes),
@@ -575,7 +611,7 @@ function harness({
   proposal.source.exact_release_components.source_closure_manifest = ref(CLOSURE_PATH);
   proposal.source.pending_source_contract.release_component_sha256s.source_closure_manifest =
     sha256(closureBytes);
-  if (isV4Proposal) {
+  if (isExecutionControlProposal) {
     proposal.source.execution_control.exact_components.source_closure_manifest = ref(CLOSURE_PATH);
   }
   const auditFacts = staticReleaseDescriptorAuditFacts();
@@ -653,7 +689,9 @@ function harness({
   });
   const factsBytes = encode(facts, factsPretty);
   const factsBinding = {
-    commit_field: isV4Proposal ? "source.execution_control.commit" : "source.release_source_commit",
+    commit_field: isExecutionControlProposal
+      ? "source.execution_control.commit"
+      : "source.release_source_commit",
     full_live_authority_id: fullLiveAuthorityId,
     path: FACTS_PATH,
     sha256: sha256(factsBytes),
@@ -694,7 +732,7 @@ function harness({
         assert.equal(input.auditedCodeCommit, "7c1f6c255cd8355295be93621e9347abe0442646");
         assert.equal(
           input.releaseSourceCommit,
-          isV4Proposal
+          isExecutionControlProposal
             ? proposal.source.execution_control.commit
             : proposal.source.release_source_commit,
         );
@@ -1020,6 +1058,48 @@ test("descriptor v2 embeds exact hash-bound repair evidence while v1 remains bui
         descriptor.sourceCommit,
       );
       descriptor.workflowRegistrationEvidence.default_branch_commit = "8".repeat(40);
+      return descriptor;
+    },
+  });
+  assert.throws(
+    () => buildV213MaterializationSeed(forged.arguments),
+    /STATIC_DESCRIPTOR_WORKFLOW_REGISTRATION/u,
+  );
+});
+
+test("proposal v5 materializes descriptor v3 and distinct exact Mage and SoulX source commits", () => {
+  const v5 = harness({
+    proposalSchema: V5_PROPOSAL_SCHEMA,
+    descriptorTransform(descriptor) {
+      descriptor.schemaVersion = "videoforge.v213-static-release-descriptor/v3";
+      descriptor.workflowRegistrationEvidence = workflowRegistrationEvidenceV2(
+        descriptor.sourceCommit,
+      );
+      return descriptor;
+    },
+  });
+  const built = buildV213MaterializationSeed(v5.arguments);
+  assert.equal(
+    built.seed.production_input_base.dualLaneInput.mage.sourceCommit,
+    PREDECESSOR_MAGE_SOURCE_COMMIT,
+  );
+  assert.equal(
+    built.seed.production_input_base.dualLaneInput.soulx.sourceCommit,
+    SUCCESSOR_SOULX_SOURCE_COMMIT,
+  );
+  assert.notEqual(
+    built.seed.production_input_base.dualLaneInput.mage.sourceCommit,
+    built.seed.production_input_base.dualLaneInput.soulx.sourceCommit,
+  );
+
+  const forged = harness({
+    proposalSchema: V5_PROPOSAL_SCHEMA,
+    descriptorTransform(descriptor) {
+      descriptor.schemaVersion = "videoforge.v213-static-release-descriptor/v3";
+      descriptor.workflowRegistrationEvidence = workflowRegistrationEvidenceV2(
+        descriptor.sourceCommit,
+        { workflow_id: 0 },
+      );
       return descriptor;
     },
   });

@@ -35,6 +35,8 @@ const PROPOSAL_PATH =
 const FACTS_SCHEMA = "videoforge.v213-materialization-seed-facts/v1";
 const PROTECTED_INPUT_SCHEMA = "videoforge.v213-materialization-seed-protected-input/v1";
 const SEED_SCHEMA = "videoforge.v213-full-live-materialization-seed/v1";
+const PREDECESSOR_MAGE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
+const SUCCESSOR_SOULX_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
 const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -447,6 +449,7 @@ const STATIC_RELEASE_GATES = Object.freeze(Object.keys(STATIC_RELEASE_GATE_POLIC
 
 function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEvidence) {
   const isV2 = value?.schemaVersion === "videoforge.v213-static-release-descriptor/v2";
+  const isV3 = value?.schemaVersion === "videoforge.v213-static-release-descriptor/v3";
   if (
     !exactKeys(value, [
       "auditFacts",
@@ -455,11 +458,12 @@ function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEv
       "productionUrlSha256",
       "schemaVersion",
       "sourceCommit",
-      ...(isV2 ? ["workflowRegistrationEvidence"] : []),
+      ...(isV2 || isV3 ? ["workflowRegistrationEvidence"] : []),
     ]) ||
     ![
       "videoforge.v213-static-release-descriptor/v1",
       "videoforge.v213-static-release-descriptor/v2",
+      "videoforge.v213-static-release-descriptor/v3",
     ].includes(value.schemaVersion) ||
     value.sourceCommit !== sourceCommit ||
     value.descriptorSha256 !== expectedSha256 ||
@@ -468,28 +472,52 @@ function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEv
     !exactKeys(value.auditFacts, STATIC_RELEASE_GATES)
   )
     fail("STATIC_DESCRIPTOR_CONTRACT");
-  if (isV2) {
+  if (isV2 || isV3) {
     const evidence = value.workflowRegistrationEvidence;
     const unsignedEvidence = { ...evidence };
     delete unsignedEvidence.evidence_sha256;
+    const evidenceKeys = isV3
+      ? [
+          "schema_version",
+          "repository",
+          "default_branch",
+          "default_branch_commit",
+          "workflow_id",
+          "workflow_file",
+          "workflow_name",
+          "workflow_path",
+          "workflow_state",
+          "default_branch_workflow_sha256",
+          "release_source_commit",
+          "release_source_workflow_sha256",
+          "default_branch_matches_release_source",
+          "registration_state",
+          "materialized",
+          "default_branch_registration_only",
+          "evidence_sha256",
+        ]
+      : [
+          "schema_version",
+          "repository",
+          "default_branch",
+          "default_branch_commit",
+          "workflow_file",
+          "workflow_name",
+          "workflow_path",
+          "default_branch_workflow_sha256",
+          "release_source_commit",
+          "release_source_workflow_sha256",
+          "registration_state",
+          "materialized",
+          "bound_to_release_source",
+          "evidence_sha256",
+        ];
     if (
-      !exactKeys(evidence, [
-        "schema_version",
-        "repository",
-        "default_branch",
-        "default_branch_commit",
-        "workflow_file",
-        "workflow_name",
-        "workflow_path",
-        "default_branch_workflow_sha256",
-        "release_source_commit",
-        "release_source_workflow_sha256",
-        "registration_state",
-        "materialized",
-        "bound_to_release_source",
-        "evidence_sha256",
-      ]) ||
-      evidence.schema_version !== "videoforge.v213-soulx-workflow-registration-evidence/v1" ||
+      !exactKeys(evidence, evidenceKeys) ||
+      evidence.schema_version !==
+        (isV3
+          ? "videoforge.v213-soulx-workflow-registration-evidence/v2"
+          : "videoforge.v213-soulx-workflow-registration-evidence/v1") ||
       evidence.repository !== "Pala-LakshmanSai/videoforge" ||
       evidence.default_branch !== "main" ||
       !/^[0-9a-f]{40}$/u.test(evidence.default_branch_commit ?? "") ||
@@ -499,10 +527,19 @@ function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEv
       !HASH.test(evidence.default_branch_workflow_sha256 ?? "") ||
       evidence.release_source_commit !== sourceCommit ||
       !HASH.test(evidence.release_source_workflow_sha256 ?? "") ||
-      evidence.default_branch_workflow_sha256 !== evidence.release_source_workflow_sha256 ||
-      evidence.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
       evidence.materialized !== true ||
-      evidence.bound_to_release_source !== true ||
+      (isV2 &&
+        (evidence.default_branch_workflow_sha256 !== evidence.release_source_workflow_sha256 ||
+          evidence.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
+          evidence.bound_to_release_source !== true)) ||
+      (isV3 &&
+        (!Number.isSafeInteger(evidence.workflow_id) ||
+          evidence.workflow_id < 1 ||
+          evidence.workflow_state !== "active" ||
+          evidence.default_branch_matches_release_source !==
+            (evidence.default_branch_workflow_sha256 === evidence.release_source_workflow_sha256) ||
+          evidence.registration_state !== "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND" ||
+          evidence.default_branch_registration_only !== true)) ||
       sha256(Buffer.from(canonicalJson(unsignedEvidence))) !== evidence.evidence_sha256
     )
       fail("STATIC_DESCRIPTOR_WORKFLOW_REGISTRATION");
@@ -555,17 +592,20 @@ function validateDescriptor(value, bytes, expectedSha256, sourceCommit, sourceEv
 function validateProposal(proposal, proposalPath) {
   const sourceCommit = proposal?.source?.release_source_commit;
   const isV4 = proposal?.schema_version === "videoforge.v2-13-full-live-completion-proposal/v4";
+  const isV5 = proposal?.schema_version === "videoforge.v2-13-full-live-completion-proposal/v5";
+  const isExecutionControl = isV4 || isV5;
   const executionControl = proposal?.source?.execution_control;
-  const executionControlCommit = isV4 ? executionControl?.commit : sourceCommit;
-  const executionControlComponents = isV4 ? executionControl?.exact_components : null;
+  const executionControlCommit = isExecutionControl ? executionControl?.commit : sourceCommit;
+  const executionControlComponents = isExecutionControl ? executionControl?.exact_components : null;
   const factsBinding = proposal?.sealing?.materialization_seed_facts;
   if (
     proposal?.source?.proposal_path !== proposalPath ||
     proposalPath !== PROPOSAL_PATH ||
     !COMMIT.test(sourceCommit ?? "") ||
+    (isV5 && sourceCommit !== SUCCESSOR_SOULX_SOURCE_COMMIT) ||
     !exactKeys(factsBinding, ["commit_field", "full_live_authority_id", "path", "sha256"]) ||
     factsBinding.commit_field !==
-      (isV4 ? "source.execution_control.commit" : "source.release_source_commit") ||
+      (isExecutionControl ? "source.execution_control.commit" : "source.release_source_commit") ||
     !UUID.test(factsBinding.full_live_authority_id ?? "") ||
     !HASH.test(factsBinding.sha256 ?? "") ||
     !sameJson(factsBinding, proposal?.requested_scope?.materialization_seed_facts)
@@ -584,7 +624,7 @@ function validateProposal(proposal, proposalPath) {
   const workflowNames =
     proposal.exact_execution_graph?.cloudflare_credential_origin_policy?.worker_and_workflow_absence
       ?.workflow_names;
-  const builderSource = isV4
+  const builderSource = isExecutionControl
     ? executionControlComponents?.materialization_seed_builder
     : proposal.source.exact_release_components?.materialization_seed_builder;
   const envelopeSchemaSource =
@@ -601,10 +641,10 @@ function validateProposal(proposal, proposalPath) {
     proposal.source.exact_release_components?.materialization_seed_soulx_case_validator;
   const productionConfigValidator =
     proposal.source.exact_release_components?.production_config_validator;
-  const approvalValidator = isV4
+  const approvalValidator = isExecutionControl
     ? executionControlComponents?.approval_validator
     : proposal.source.exact_release_components?.approval_validator;
-  const migrationManifestSource = isV4
+  const migrationManifestSource = isExecutionControl
     ? executionControlComponents?.migration_manifest
     : proposal.source.exact_release_components?.migration_manifest;
   if (
@@ -637,7 +677,7 @@ function validateProposal(proposal, proposalPath) {
     !exactKeys(builderSource, ["path", "sha256"]) ||
     builderSource.path !== BUILDER_PATH ||
     !HASH.test(builderSource.sha256 ?? "") ||
-    (!isV4 &&
+    (!isExecutionControl &&
       pending.release_component_sha256s?.materialization_seed_builder !== builderSource.sha256) ||
     !exactKeys(envelopeSchemaSource, ["path", "sha256"]) ||
     envelopeSchemaSource.path !== ENVELOPE_SCHEMA_PATH ||
@@ -669,14 +709,14 @@ function validateProposal(proposal, proposalPath) {
     approvalValidator?.path !== APPROVAL_VALIDATOR_PATH ||
     approvalValidator?.source_commit_tree_binding?.tree_entry_path !== APPROVAL_VALIDATOR_PATH ||
     approvalValidator.source_commit_tree_binding.commit_field !==
-      (isV4 ? "source.execution_control.commit" : "source.release_source_commit") ||
+      (isExecutionControl ? "source.execution_control.commit" : "source.release_source_commit") ||
     !exactKeys(migrationManifestSource, ["path", "sha256"]) ||
     migrationManifestSource.path !== MIGRATION_MANIFEST_PATH ||
     !HASH.test(migrationManifestSource.sha256 ?? "") ||
-    (!isV4 &&
+    (!isExecutionControl &&
       pending.release_component_sha256s?.migration_manifest !== migrationManifestSource.sha256) ||
     !COMMIT.test(executionControlCommit ?? "") ||
-    (isV4 &&
+    (isExecutionControl &&
       (!exactKeys(executionControl, ["commit", "exact_components"]) ||
         !exactKeys(executionControlComponents, [
           "approval_validator",
@@ -729,6 +769,8 @@ function validateProposal(proposal, proposalPath) {
     publicOrigin: origin.public_origin,
     r2BucketName: r2.bucket_name,
     sourceCommit,
+    isExecutionControl,
+    isV5,
     subdomain: origin.workers_dev_subdomain,
     workerName: origin.worker_name,
     workflowName: workflowNames[0],
@@ -1022,6 +1064,8 @@ function buildV213MaterializationSeed({
   );
   const descriptorBytes = Buffer.from(staticReleaseDescriptorBytes);
   const descriptor = parseJson(descriptorBytes, "STATIC_DESCRIPTOR", { canonical: true });
+  if (binding.isV5 && descriptor.schemaVersion !== "videoforge.v213-static-release-descriptor/v3")
+    fail("STATIC_DESCRIPTOR_PROPOSAL_VERSION");
   validateDescriptor(
     descriptor,
     descriptorBytes,
@@ -1054,11 +1098,13 @@ function buildV213MaterializationSeed({
         accountIdSha256: RUNPOD_ACCOUNT_ID_SHA256,
         mage: {
           lane: "mage",
+          ...(binding.isV5 ? { sourceCommit: PREDECESSOR_MAGE_SOURCE_COMMIT } : {}),
           volumeIdSha256: RETAINED_LANES.mage.volumeIdSha256,
           volumeManifestSha256: RETAINED_LANES.mage.volumeManifestSha256,
         },
         soulx: {
           lane: "soulx",
+          ...(binding.isV5 ? { sourceCommit: SUCCESSOR_SOULX_SOURCE_COMMIT } : {}),
           volumeIdSha256: RETAINED_LANES.soulx.volumeIdSha256,
           volumeManifestSha256: RETAINED_LANES.soulx.volumeManifestSha256,
         },
