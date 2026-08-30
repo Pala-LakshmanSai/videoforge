@@ -164,6 +164,15 @@ interface Invite {
   consumed: boolean;
 }
 
+interface IssuedFixtureInvite {
+  readonly codeHash: string;
+  readonly credentials: {
+    readonly code: string;
+    readonly emailPassword: string;
+    readonly googleAssertion: string;
+  };
+}
+
 interface MutableState {
   admissions: Map<string, Admission>;
   sessionAdmissions: Map<string, Admission>;
@@ -288,6 +297,8 @@ export class SharedAppFixtureStore {
   #state: MutableState;
   readonly #persistence: SharedAppPersistence;
   readonly #artifacts: ProviderFreeArtifactRuntime;
+  /** Raw fixture values stay process-local; the durable snapshot stores hashes only. */
+  readonly #issuedInviteCredentials = new Map<string, IssuedFixtureInvite>();
   #orchestrator: ProviderFreeMvpOrchestrator;
   #asyncMutationTail: Promise<void> = Promise.resolve();
   #pendingAsyncMutations = 0;
@@ -308,6 +319,7 @@ export class SharedAppFixtureStore {
       this.#state = SharedAppFixtureStore.empty();
       this.#orchestrator = new ProviderFreeMvpOrchestrator(this.#state.orchestration);
     });
+    this.#issuedInviteCredentials.clear();
   }
 
   static empty(): MutableState {
@@ -379,23 +391,32 @@ export class SharedAppFixtureStore {
   }> {
     return this.commitAsync(async () => {
       const email = normalizedEmail(intendedEmail);
-      if ([...this.#state.invites.values()].some((invite) => invite.email === email)) {
-        throw new SharedFixtureError(
-          "INVITE_EMAIL_EXISTS",
-          409,
-          "One unique invite already exists for this email.",
-        );
-      }
+      const existing = [...this.#state.invites.values()].filter((invite) => invite.email === email);
+      const reusable = existing.find((invite) => {
+        const cached = this.#issuedInviteCredentials.get(email);
+        return !invite.consumed && cached?.codeHash === invite.codeHash;
+      });
+      if (reusable !== undefined) return this.#issuedInviteCredentials.get(email)!.credentials;
+
       const raw = `vf_${crypto.randomUUID()}_${crypto.randomUUID()}`;
       const emailPassword = `vf_pw_${crypto.randomUUID()}`;
       const googleAssertion = `vf_google_${crypto.randomUUID()}_${crypto.randomUUID()}`;
       const codeHash = await hash(raw);
-      this.#state.invites.set(codeHash, {
+      const invite: Invite = {
         email,
         codeHash,
         emailPasswordHash: await hash(emailPassword),
         googleAssertionHash: await hash(googleAssertion),
         consumed: false,
+      };
+      // Rotate the one fixture invite in place. This repairs a persisted invite left by a prior
+      // one-click attempt while preserving the max-one row invariant; production invite records
+      // are handled by the hosted repository and never reach this fixture store.
+      for (const prior of existing) this.#state.invites.delete(prior.codeHash);
+      this.#state.invites.set(codeHash, invite);
+      this.#issuedInviteCredentials.set(email, {
+        codeHash,
+        credentials: { code: raw, emailPassword, googleAssertion },
       });
       return { code: raw, emailPassword, googleAssertion };
     });
@@ -466,29 +487,52 @@ export class SharedAppFixtureStore {
           );
         }
       }
+      const codeHash = input.inviteCode ? await hash(input.inviteCode) : null;
+      const invite = codeHash === null ? undefined : this.#state.invites.get(codeHash);
       const existing = this.#state.admissions.get(email);
       if (existing) {
-        if (existing.method !== input.method) {
+        const expectedCredentialHash =
+          invite === undefined
+            ? null
+            : input.method === "EMAIL_PASSWORD"
+              ? invite.emailPasswordHash
+              : invite.googleAssertionHash;
+        const validReentryInvite =
+          invite !== undefined &&
+          !invite.consumed &&
+          invite.email === email &&
+          presentedCredentialHash === expectedCredentialHash;
+        if (!validReentryInvite && existing.method !== input.method) {
           throw new SharedFixtureError(
             "AUTH_IDENTITY_CONFLICT",
             409,
             "Use the login method already bound to this email.",
           );
         }
-        if (existing.credentialHash !== presentedCredentialHash) {
+        if (!validReentryInvite && existing.credentialHash !== presentedCredentialHash) {
           throw new SharedFixtureError(
             "AUTH_CREDENTIAL_INVALID",
             403,
             "Fixture credential is invalid.",
           );
         }
-        this.#state.sessionAdmissions.set(input.sessionId, existing);
-        return { outcome: "RETURNING", email, rights: "EQUAL", tenant: existing.tenant };
+        const admitted = validReentryInvite
+          ? Object.freeze({
+              ...existing,
+              method: input.method,
+              credentialHash: presentedCredentialHash,
+            })
+          : existing;
+        if (validReentryInvite) {
+          invite.consumed = true;
+          this.#state.admissions.set(email, admitted);
+        }
+        this.#state.sessionAdmissions.set(input.sessionId, admitted);
+        return { outcome: "RETURNING", email, rights: "EQUAL", tenant: admitted.tenant };
       }
       if (!input.inviteCode) {
         throw new SharedFixtureError("INVITE_REQUIRED", 403, "A one-time invite code is required.");
       }
-      const invite = this.#state.invites.get(await hash(input.inviteCode));
       if (!invite) throw new SharedFixtureError("INVITE_INVALID", 403, "Invite code is invalid.");
       if (invite.consumed)
         throw new SharedFixtureError("INVITE_ALREADY_USED", 409, "Invite code was already used.");

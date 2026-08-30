@@ -6,6 +6,7 @@ import { AccessGate } from "./AccessGate";
 
 afterEach(() => {
   cleanup();
+  window.sessionStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -32,7 +33,7 @@ const deniedAccess: FixtureAccessState = {
 };
 
 describe("AccessGate", () => {
-  it("signs in with one local action without exposing fixture secrets", async () => {
+  it("uses a Google-only two-step fixture flow without exposing fixture secrets", async () => {
     const onContinue = vi.fn();
     const fetch = vi
       .fn()
@@ -72,25 +73,44 @@ describe("AccessGate", () => {
 
     expect(screen.getByRole("heading", { name: "Enter VideoForge" })).toBeVisible();
     expect(screen.getByRole("note")).toHaveTextContent(
-      "No email, Google, or external request will be sent.",
+      "Google sign-in is simulated locally. No request leaves this computer.",
     );
+    expect(screen.getByText(/VideoForge Studio is invite-only\./)).toBeVisible();
+    expect(screen.queryByLabelText("Selected invited account")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Synthetic verified email")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Email password fixture")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("One-time invite code")).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Email" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Google" })).not.toBeChecked();
-    const action = screen.getByRole("button", { name: "Continue with Email" });
+    expect(screen.queryByRole("radiogroup", { name: "Sign-in method" })).not.toBeInTheDocument();
+    const action = screen.getByRole("button", { name: "Continue with Google" });
     expect(action).toBeEnabled();
     action.focus();
     expect(action).toHaveFocus();
     fireEvent.click(action);
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
     expect(fetch.mock.calls[0]?.[0]).toBe("/api/dev/shared-app/invites");
+    expect(onContinue).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Google verified");
+    const finish = screen.getByRole("button", { name: "Finish invitation" });
+    expect(finish).toBeEnabled();
+    fireEvent.click(finish);
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     expect(fetch.mock.calls[1]?.[0]).toBe("/api/v2/auth/fixture?fixture=invite_sign_in");
+    const body = JSON.parse((fetch.mock.calls[1]?.[1] as RequestInit).body as string) as Record<
+      string,
+      unknown
+    >;
+    expect(body).toMatchObject({
+      method: "GOOGLE",
+      email: "lakshman.fixture@example.invalid",
+      googleAccountEmail: "lakshman.fixture@example.invalid",
+      googleAssertion: "vf_google_fixture_assertion_for_test",
+      inviteCode: "vf_one_time_secret_for_test",
+    });
+    expect(body).not.toHaveProperty("emailPassword");
     await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
   });
 
-  it("uses the selected Google fixture method through the same one-click action", async () => {
+  it("resumes a pending fixture invitation in the same browser", async () => {
     const onContinue = vi.fn();
     const fetch = vi
       .fn()
@@ -128,9 +148,28 @@ describe("AccessGate", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("radio", { name: "Google" }));
-    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Finish invitation" })).toBeVisible(),
+    );
+    expect(fetch).toHaveBeenCalledOnce();
+
+    cleanup();
+    render(
+      <AccessGate
+        access={invitedAccess}
+        enabled
+        scenario="invite_sign_in"
+        onContinue={onContinue}
+        onTryAnotherAccount={vi.fn()}
+        onScenarioChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Finish invitation" })).toBeVisible(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Finish invitation" }));
     await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
 
     const body = JSON.parse((fetch.mock.calls[1]?.[1] as RequestInit).body as string) as Record<
@@ -172,13 +211,13 @@ describe("AccessGate", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Email" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(
         "The local fixture invite could not be created.",
       ),
     );
-    expect(screen.getByRole("button", { name: "Continue with Email" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
     expect(fetch).toHaveBeenCalledOnce();
   });
 

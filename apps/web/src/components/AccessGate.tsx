@@ -3,16 +3,14 @@ import {
   ArrowRight,
   ChevronDown,
   Check,
-  Chrome,
   Clapperboard,
   LockKeyhole,
-  Mail,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { api } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 import { scenarioIds, type FixtureAccessState, type ScenarioId } from "../lib/types";
 import { AppSelect } from "./ui";
 import "./AccessGate.css";
@@ -81,6 +79,63 @@ export interface AccessGateProps extends FixturePickerProps {
   onTryAnotherAccount: () => void;
 }
 
+type IssuedFixtureInvite = Awaited<ReturnType<typeof api.issueFixtureInvite>>;
+type FixtureInvite = Pick<IssuedFixtureInvite, "code" | "googleAssertion">;
+
+const FIXTURE_INVITE_STORAGE_PREFIX = "videoforge.fixture-invite.v1:";
+
+function fixtureInviteStorageKey(email: string): string {
+  return `${FIXTURE_INVITE_STORAGE_PREFIX}${email.trim().toLocaleLowerCase()}`;
+}
+
+function isFixtureInvite(value: unknown): value is FixtureInvite {
+  if (value === null || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return ["code", "googleAssertion"].every(
+    (key) => typeof candidate[key] === "string" && candidate[key],
+  );
+}
+
+function readFixtureInvite(email: string): FixtureInvite | null {
+  if (!email || typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(fixtureInviteStorageKey(email));
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isFixtureInvite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeFixtureInvite(email: string, invite: FixtureInvite): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(fixtureInviteStorageKey(email), JSON.stringify(invite));
+  } catch {
+    // Storage is best-effort; the current screen still holds the invite in memory.
+  }
+}
+
+function clearFixtureInvite(email: string): void {
+  if (!email || typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(fixtureInviteStorageKey(email));
+  } catch {
+    // Storage is best-effort; successful authentication still completes normally.
+  }
+}
+
+function authErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.code === "INVITE_EMAIL_EXISTS") {
+    return "This invitation is already in progress. Retry from the same browser to finish it, or restart the local fixture session.";
+  }
+  if (error instanceof ApiError && error.code === "INVITE_ALREADY_USED") {
+    return "This invitation was already used. Retry access to continue with the signed-in Google account.";
+  }
+  return error instanceof Error ? error.message : "Fixture sign-in failed.";
+}
+
 export function AccessGate({
   access,
   onContinue,
@@ -89,40 +144,74 @@ export function AccessGate({
 }: AccessGateProps) {
   const denied = access.state === "DENIED";
   const account = access.selectedAccount;
-  const [method, setMethod] = useState<"EMAIL_PASSWORD" | "GOOGLE">("EMAIL_PASSWORD");
   const [authError, setAuthError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [invite, setInvite] = useState<FixtureInvite | null>(null);
   const email = account?.email ?? "";
 
   useEffect(() => {
-    setMethod("EMAIL_PASSWORD");
+    setInvite(readFixtureInvite(email));
     setAuthError(null);
   }, [email, fixturePickerProps.scenario]);
 
-  async function authenticate() {
+  async function beginGoogleSignIn() {
     if (!email) {
       setAuthError("No invited fixture account is selected.");
+      return;
+    }
+
+    const existing = readFixtureInvite(email);
+    if (existing) {
+      setInvite(existing);
       return;
     }
 
     setPending(true);
     setAuthError(null);
     try {
-      const invite = await api.issueFixtureInvite(email);
+      const issued = await api.issueFixtureInvite(email);
+      const safeInvite: FixtureInvite = {
+        code: issued.code,
+        googleAssertion: issued.googleAssertion,
+      };
+      storeFixtureInvite(email, safeInvite);
+      setInvite(safeInvite);
+    } catch (error) {
+      setAuthError(authErrorMessage(error));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function finishInvitation() {
+    if (!email) {
+      setAuthError("No invited fixture account is selected.");
+      return;
+    }
+    const issued = invite ?? readFixtureInvite(email);
+    if (!issued) {
+      setAuthError("Start with Google to prepare the invitation.");
+      return;
+    }
+
+    setPending(true);
+    setAuthError(null);
+    try {
       await api.authenticateFixture(
         {
-          method,
+          method: "GOOGLE",
           email,
-          emailPassword: method === "EMAIL_PASSWORD" ? invite.emailPassword : undefined,
-          googleAccountEmail: method === "GOOGLE" ? email : undefined,
-          googleAssertion: method === "GOOGLE" ? invite.googleAssertion : undefined,
-          inviteCode: invite.code,
+          googleAccountEmail: email,
+          googleAssertion: issued.googleAssertion,
+          inviteCode: issued.code,
         },
         fixturePickerProps.scenario,
       );
+      clearFixtureInvite(email);
+      setInvite(null);
       onContinue();
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Fixture sign-in failed.");
+      setAuthError(authErrorMessage(error));
     } finally {
       setPending(false);
     }
@@ -171,10 +260,10 @@ export function AccessGate({
           <p className="access-lead">
             {denied
               ? `${account?.email ?? "This account"} cannot access ${access.workspaceName}.`
-              : `Continue to ${access.workspaceName} with the selected invited account.`}
+              : `${access.workspaceName} is invite-only. Use the Google account that received the invitation.`}
           </p>
 
-          {account ? (
+          {denied && account ? (
             <div className="access-account" aria-label="Selected invited account">
               <span className="access-account-avatar" aria-hidden="true">
                 <UserRound size={21} />
@@ -200,71 +289,30 @@ export function AccessGate({
               </span>
             </div>
           ) : (
-            <div className="access-sign-in" aria-label="Provider-free authentication fixture">
-              <fieldset className="access-methods">
-                <legend>Choose sign-in method</legend>
-                <div
-                  className="access-method-options"
-                  role="radiogroup"
-                  aria-label="Sign-in method"
-                >
-                  <label
-                    className={`access-method ${method === "EMAIL_PASSWORD" ? "selected" : ""}`}
-                  >
-                    <input
-                      type="radio"
-                      name="fixture-sign-in-method"
-                      value="EMAIL_PASSWORD"
-                      checked={method === "EMAIL_PASSWORD"}
-                      onChange={() => setMethod("EMAIL_PASSWORD")}
-                      aria-label="Email"
-                    />
-                    <span className="access-method-icon" aria-hidden="true">
-                      <Mail size={17} />
-                    </span>
-                    <span className="access-method-copy">
-                      <strong>Email</strong>
-                      <small>Local fixture</small>
-                    </span>
-                    <span className="access-method-check" aria-hidden="true">
-                      {method === "EMAIL_PASSWORD" ? <Check size={15} /> : null}
-                    </span>
-                  </label>
-                  <label className={`access-method ${method === "GOOGLE" ? "selected" : ""}`}>
-                    <input
-                      type="radio"
-                      name="fixture-sign-in-method"
-                      value="GOOGLE"
-                      checked={method === "GOOGLE"}
-                      onChange={() => setMethod("GOOGLE")}
-                      aria-label="Google"
-                    />
-                    <span
-                      className="access-method-icon access-method-icon-google"
-                      aria-hidden="true"
-                    >
-                      <Chrome size={17} />
-                    </span>
-                    <span className="access-method-copy">
-                      <strong>Google</strong>
-                      <small>Simulated locally</small>
-                    </span>
-                    <span className="access-method-check" aria-hidden="true">
-                      {method === "GOOGLE" ? <Check size={15} /> : null}
-                    </span>
-                  </label>
-                </div>
-              </fieldset>
-
+            <div className="access-sign-in" aria-label="Google sign-in">
               <div className="access-local-note" id="access-local-note" role="note">
                 <span className="access-local-note-icon" aria-hidden="true">
                   <ShieldCheck size={17} />
                 </span>
                 <span>
                   <strong>Fixture mode · $0 spend</strong>
-                  <small>No email, Google, or external request will be sent.</small>
+                  <small>
+                    Google sign-in is simulated locally. No request leaves this computer.
+                  </small>
                 </span>
               </div>
+
+              {invite ? (
+                <div className="access-local-note" role="status">
+                  <span className="access-local-note-icon" aria-hidden="true">
+                    <Check size={17} />
+                  </span>
+                  <span>
+                    <strong>Google verified</strong>
+                    <small>Your one-time invitation is ready to finish.</small>
+                  </span>
+                </div>
+              ) : null}
 
               {authError ? (
                 <div className="access-blocker" role="alert">
@@ -279,14 +327,22 @@ export function AccessGate({
             className={`access-primary-action ${denied ? "access-secondary-action" : ""}`}
             type="button"
             disabled={pending || (!denied && !email)}
-            onClick={denied ? onTryAnotherAccount : () => void authenticate()}
+            onClick={
+              denied
+                ? onTryAnotherAccount
+                : invite
+                  ? () => void finishInvitation()
+                  : () => void beginGoogleSignIn()
+            }
           >
             <span>
               {denied
                 ? "Try another account"
                 : pending
                   ? "Signing you in…"
-                  : `Continue with ${method === "EMAIL_PASSWORD" ? "Email" : "Google"}`}
+                  : invite
+                    ? "Finish invitation"
+                    : "Continue with Google"}
             </span>
             <ArrowRight size={19} aria-hidden="true" />
           </button>
@@ -294,21 +350,18 @@ export function AccessGate({
           <p className="access-action-help">
             {denied
               ? "Use an invited account to enter this workspace."
-              : "One click creates and redeems your local invite."}
+              : invite
+                ? "Confirm once to enter your workspace."
+                : "Use the Google account that received this invite."}
           </p>
 
-          <div className="access-footnote">
-            {denied ? (
+          {denied ? (
+            <div className="access-footnote">
               <p>
                 Workspace admin: <a href={`mailto:${access.adminContact}`}>{access.adminContact}</a>
               </p>
-            ) : (
-              <p>
-                <Aperture size={14} aria-hidden="true" />
-                Local fixture sign-in · nothing leaves this computer
-              </p>
-            )}
-          </div>
+            </div>
+          ) : null}
         </section>
       </div>
     </AccessFrame>

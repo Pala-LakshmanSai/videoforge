@@ -115,6 +115,89 @@ describe("shared fixture admission", () => {
       }),
     ).rejects.toThrowError(/already used/);
   });
+
+  it("reuses one pending invite for duplicate clicks and rotates one invite for returning fixture identities", async () => {
+    const persistence = new MemorySharedAppPersistence();
+    const store = new SharedAppFixtureStore(persistence);
+    const email = "retry@example.test";
+    const [first, duplicate] = await Promise.all([
+      store.issueInvite(email),
+      store.issueInvite(email),
+    ]);
+    expect(duplicate).toEqual(first);
+    expect(JSON.parse(store.exportSnapshot()).invites).toHaveLength(1);
+    expect(persistence.read()).not.toContain(first.code);
+    expect(persistence.read()).not.toContain(first.emailPassword);
+    expect(persistence.read()).not.toContain(first.googleAssertion);
+
+    await expect(
+      store.authenticate({
+        sessionId: "retry-first",
+        method: "EMAIL_PASSWORD",
+        email,
+        emailPassword: first.emailPassword,
+        inviteCode: first.code,
+      }),
+    ).resolves.toMatchObject({ outcome: "ADMITTED" });
+
+    const reissued = await store.issueInvite(email);
+    expect(reissued.code).not.toBe(first.code);
+    expect(JSON.parse(store.exportSnapshot()).invites).toHaveLength(1);
+    await expect(
+      store.authenticate({
+        sessionId: "retry-returning",
+        method: "EMAIL_PASSWORD",
+        email,
+        emailPassword: reissued.emailPassword,
+        inviteCode: reissued.code,
+      }),
+    ).resolves.toMatchObject({ outcome: "RETURNING" });
+    await expect(
+      store.authenticate({
+        sessionId: "retry-returning-again",
+        method: "EMAIL_PASSWORD",
+        email,
+        emailPassword: reissued.emailPassword,
+      }),
+    ).resolves.toMatchObject({ outcome: "RETURNING" });
+  });
+
+  it("binds a newly issued fixture invite before allowing a bootstrap identity to switch methods", async () => {
+    const store = new SharedAppFixtureStore();
+    const email = "bootstrap@example.test";
+    store.seedAdmittedSession("bootstrap-existing", email);
+    const issued = await store.issueInvite(email);
+
+    await expect(
+      store.authenticate({
+        sessionId: "bootstrap-google",
+        method: "GOOGLE",
+        email,
+        googleAccountEmail: email,
+        googleAssertion: issued.googleAssertion,
+        inviteCode: issued.code,
+      }),
+    ).resolves.toMatchObject({ outcome: "RETURNING" });
+
+    await expect(
+      store.authenticate({
+        sessionId: "bootstrap-wrong-method",
+        method: "EMAIL_PASSWORD",
+        email,
+        emailPassword: issued.emailPassword,
+      }),
+    ).rejects.toThrowError(/login method already bound/);
+    await expect(
+      store.authenticate({
+        sessionId: "bootstrap-wrong-code",
+        method: "GOOGLE",
+        email,
+        googleAccountEmail: email,
+        googleAssertion: "vf_google_wrong_fixture_assertion",
+        inviteCode: issued.code,
+      }),
+    ).rejects.toThrowError(/invalid/);
+  });
 });
 
 describe("shared fixture fair two-slot queue", () => {
