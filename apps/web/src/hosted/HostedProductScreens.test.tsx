@@ -528,7 +528,28 @@ describe("hosted product journey", () => {
     renderHosted(<HostedPresetCreationScreen kind="styles" />);
 
     expect(screen.getByRole("heading", { name: "New image style" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Style name")).toHaveClass("input", "preset-name-input");
     expect(screen.getByLabelText("Upload style references")).toBeInTheDocument();
+    expect(screen.getByText("Add a name and reference images to continue.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(document.querySelector(".preset-create-panel")).toBeInTheDocument();
+  });
+
+  it("renders a readable, guided avatar creation form", () => {
+    vi.stubEnv("VITE_VIDEOFORGE_PROVIDER_MODE", "staging");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ styles: [], avatars: [] })),
+    );
+
+    renderHosted(<HostedPresetCreationScreen kind="avatars" />);
+
+    const nameInput = screen.getByLabelText("Avatar name");
+    expect(nameInput).toHaveClass("input", "preset-name-input");
+    fireEvent.change(nameInput, { target: { value: "Studio presenter" } });
+    expect(nameInput).toHaveValue("Studio presenter");
+    expect(screen.getByText("Choose a photo to continue.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   });
 
   it("blocks generation until the account-owned personal worker is online", async () => {

@@ -1682,6 +1682,7 @@ export function HostedPresetCreationScreen({
   const [rights, setRights] = useState(false);
   const [likeness, setLikeness] = useState(false);
   const [disclosure, setDisclosure] = useState(false);
+  const [profileReviewed, setProfileReviewed] = useState(false);
   const [profileNotes, setProfileNotes] = useState("");
   const [created, setCreated] = useState<HostedPresetMutationResponse | null>(null);
   const [fixtureStyleVersion, setFixtureStyleVersion] =
@@ -1699,6 +1700,21 @@ export function HostedPresetCreationScreen({
   const duplicateName = items.some(
     (item) => item.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
   );
+  const hasRequiredSource = isAvatar
+    ? Boolean(avatarSource)
+    : styleSources.length >= MIN_STYLE_REFERENCES;
+  const stepOneReady = Boolean(name.trim()) && !duplicateName && hasRequiredSource && !busy;
+  const stepOneHint = duplicateName
+    ? `Choose a different ${itemLabel} name.`
+    : !name.trim() && !hasRequiredSource
+      ? `Add a name and ${isAvatar ? "photo" : "reference images"} to continue.`
+      : !name.trim()
+        ? `Add a ${itemLabel} name to continue.`
+        : !hasRequiredSource
+          ? isAvatar
+            ? "Choose a photo to continue."
+            : `Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} reference images to continue.`
+          : "Ready to review."
 
   useEffect(
     () => () => {
@@ -1719,6 +1735,7 @@ export function HostedPresetCreationScreen({
       setError("Avatar source must be at most 20 MB.");
       return;
     }
+    setBusy(true);
     try {
       const dimensions = await imageDimensions(file);
       if (dimensions.width < 512 || dimensions.height < 512)
@@ -1737,6 +1754,8 @@ export function HostedPresetCreationScreen({
       });
     } catch (value) {
       setError(value instanceof Error ? value.message : "Avatar source validation failed.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -2001,10 +2020,12 @@ export function HostedPresetCreationScreen({
         }
       />
       <Panel
-        eyebrow="Tenant-private source workflow"
+        className="preset-create-panel"
         heading={
           step === 1
-            ? "Name and upload"
+            ? isAvatar
+              ? "Add your avatar"
+              : "Build your image style"
             : step === 2
               ? "Technical review"
               : isAvatar
@@ -2015,18 +2036,28 @@ export function HostedPresetCreationScreen({
         }
       >
         {step === 1 ? (
-          <div className="stack">
-            <label className="field">
-              <span>{isAvatar ? "Avatar Profile name" : "Image Style name"}</span>
+          <div className="stack preset-create-form">
+            <div className="field">
+              <label className="field-label" htmlFor={`preset-name-${kind}`}>
+                {isAvatar ? "Avatar name" : "Style name"}
+              </label>
               <input
+                id={`preset-name-${kind}`}
+                className="input preset-name-input"
                 value={name}
                 maxLength={120}
+                autoComplete="off"
                 onChange={(event) => setName(event.target.value)}
                 placeholder={isAvatar ? "Maya — studio presenter" : "Grounded documentary"}
               />
-            </label>
+              <small>
+                {isAvatar
+                  ? "This is how it will appear in your Avatar Hub."
+                  : "This is how it will appear in Image Styles."}
+              </small>
+            </div>
             {isAvatar ? (
-              <label className="dropzone">
+              <label className="dropzone preset-source-dropzone">
                 <input
                   aria-label="Upload avatar source"
                   type="file"
@@ -2040,14 +2071,14 @@ export function HostedPresetCreationScreen({
                   <Upload size={27} />
                 )}
                 <span>
-                  <strong>{avatarSource?.file.name ?? "Choose one private centered source"}</strong>
+                  <strong>{avatarSource?.file.name ?? "Choose a clear front-facing photo"}</strong>
                   {avatarSource
-                    ? `${avatarSource.width}×${avatarSource.height} · checksum verified`
-                    : "JPEG, PNG, or WebP · at least 512×512 · 20 MB max"}
+                    ? `${avatarSource.width}×${avatarSource.height} · ready to review`
+                    : "JPG, PNG or WebP · at least 512×512 · max 20 MB"}
                 </span>
               </label>
             ) : (
-              <label className="dropzone">
+              <label className="dropzone preset-source-dropzone">
                 <input
                   aria-label="Upload style references"
                   type="file"
@@ -2061,24 +2092,29 @@ export function HostedPresetCreationScreen({
                   <strong>
                     {styleSources.length > 0
                       ? `${styleSources.length} references selected`
-                      : "Choose private style references"}
+                      : "Choose 3–8 reference images"}
                   </strong>
-                  {"JPEG, PNG, or WebP · 3–8 references · 20 MB each"}
+                  {styleSources.length > 0
+                    ? "Ready to review — choose again to replace them"
+                    : "Use images with a consistent look · max 20 MB each"}
                 </span>
               </label>
             )}
-            {duplicateName ? (
-              <div className="validation validation-danger">Use a unique {itemLabel} name.</div>
-            ) : null}
-            <Button
-              disabled={
-                !name.trim() ||
-                duplicateName ||
-                (isAvatar ? !avatarSource : styleSources.length < MIN_STYLE_REFERENCES)
-              }
-              onClick={() => setStep(2)}
+            <div
+              className={`preset-step-hint ${
+                duplicateName
+                  ? "preset-step-hint-danger"
+                  : stepOneReady
+                    ? "preset-step-hint-ready"
+                    : ""
+              }`}
+              aria-live="polite"
             >
-              Review source <ArrowRight size={16} />
+              {stepOneReady ? <Check size={16} /> : null}
+              {stepOneHint}
+            </div>
+            <Button disabled={!stepOneReady} onClick={() => setStep(2)}>
+              Continue <ArrowRight size={16} />
             </Button>
           </div>
         ) : null}
@@ -2094,23 +2130,33 @@ export function HostedPresetCreationScreen({
             {!isAvatar ? (
               <div className="card-grid style-card-grid">
                 {styleSources.map((source) => (
-                  <img key={source.checksum} src={source.objectUrl} alt={source.file.name} />
+                  <img
+                    className="style-source-preview"
+                    key={source.checksum}
+                    src={source.objectUrl}
+                    alt={source.file.name}
+                  />
                 ))}
               </div>
             ) : null}
             <div className="validation validation-success">
-              <Check size={16} /> File signatures, browser decode, dimensions, and checksums passed.
+              <Check size={16} />
+              {isAvatar
+                ? "Photo decoded successfully and passed the size check."
+                : "Reference files selected and checksums verified."}
             </div>
             <div className="notice notice-warning">
-              <strong>Manual review required.</strong> Confirm that the source is centered, usable,
-              and free of unsupported text, logos, or watermarks. VideoForge does not infer rights
-              or likeness from pixels.
+              <strong>Check before continuing.</strong>{" "}
+              {isAvatar
+                ? "Make sure the presenter is clear, front-facing, and free of text, logos, or watermarks."
+                : "Make sure the references share a consistent visual look and contain no text, logos, or watermarks."}
             </div>
             <Button variant="ghost" disabled={busy} onClick={() => setStep(1)}>
               Back
             </Button>
             <Button disabled={busy} onClick={() => setStep(3)}>
-              Continue to approval <ArrowRight size={16} />
+              {isAvatar ? "Continue to approval" : "Continue to analysis"}{" "}
+              <ArrowRight size={16} />
             </Button>
           </div>
         ) : null}
@@ -2149,18 +2195,19 @@ export function HostedPresetCreationScreen({
             <Button variant="ghost" disabled={busy} onClick={() => setStep(2)}>
               Back
             </Button>
-            <Button
-              busy={busy}
-              disabled={!rights || !likeness || !created}
-              onClick={() => void approveAvatar()}
-            >
-              <ShieldCheck size={16} /> Approve and add to Avatar Hub
-            </Button>
             {!created ? (
-              <Button variant="secondary" busy={busy} onClick={() => void createDraft()}>
-                Save private draft
+              <Button
+                busy={busy}
+                disabled={!rights || !likeness}
+                onClick={() => void createDraft()}
+              >
+                Save and continue <ArrowRight size={16} />
               </Button>
-            ) : null}
+            ) : (
+              <Button busy={busy} onClick={() => void approveAvatar()}>
+                <ShieldCheck size={16} /> Approve and add to Avatar Hub
+              </Button>
+            )}
           </div>
         ) : null}
         {step === 3 && !isAvatar ? (
@@ -2168,11 +2215,11 @@ export function HostedPresetCreationScreen({
             <div className={hostedBeta ? "notice notice-warning" : "notice"}>
               <strong>
                 {hostedBeta
-                  ? "Private beta uses provider-free analysis."
+                  ? "Private beta preview"
                   : "References are uploaded privately before analysis."}
               </strong>{" "}
               {hostedBeta
-                ? "References use the hosted Neon/R2 path, but no Gemini, DeepSeek, or other provider request is made. The extracted profile is simulated for workflow testing."
+                ? "This step uses a simulated style analysis and makes no external AI request."
                 : "Analysis runs once for this immutable draft version and never during ordinary video generation."}
             </div>
             <label className="toggle-row">
@@ -2228,30 +2275,28 @@ export function HostedPresetCreationScreen({
                 : "Exact draft analysis returned for review."}
             </div>
             <p>{profileSummary}</p>
-            {created?.profile_hash ? <small>Profile hash · {created.profile_hash}</small> : null}
-            <label className="field">
-              <span>Review notes (optional)</span>
+            <div className="field">
+              <label className="field-label" htmlFor="style-review-notes">
+                Review notes (optional)
+              </label>
               <textarea
+                id="style-review-notes"
+                className="textarea"
                 rows={3}
                 value={profileNotes}
                 onChange={(event) => setProfileNotes(event.target.value)}
                 placeholder="Keep natural practical light and tactile material detail."
               />
-            </label>
+            </div>
             <label className="toggle-row">
               <span>
-                <strong>Confirm rights and disclosure</strong>
-                <small>
-                  Publish only after reviewing the generated profile and reference handling.
-                </small>
+                <strong>Profile reviewed</strong>
+                <small>I reviewed this style profile and it matches the look I want.</small>
               </span>
               <input
                 type="checkbox"
-                checked={rights && disclosure}
-                onChange={(event) => {
-                  setRights(event.target.checked);
-                  setDisclosure(event.target.checked);
-                }}
+                checked={profileReviewed}
+                onChange={(event) => setProfileReviewed(event.target.checked)}
               />
             </label>
             <Button variant="ghost" disabled={busy} onClick={() => setStep(3)}>
@@ -2259,7 +2304,7 @@ export function HostedPresetCreationScreen({
             </Button>
             <Button
               busy={busy}
-              disabled={!rights || !disclosure || !created?.profile}
+              disabled={!rights || !disclosure || !profileReviewed || !created?.profile}
               onClick={() => void publishStyle()}
             >
               <ShieldCheck size={16} /> Publish immutable style version
