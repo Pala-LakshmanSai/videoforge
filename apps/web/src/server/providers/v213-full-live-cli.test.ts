@@ -48,6 +48,8 @@ import { v213EvidenceKeyId } from "../hosted/v213-live-production-adapters.js";
 import { V213_QUALIFICATION_CASE_DESCRIPTORS } from "./v213-dual-lane-live.js";
 
 const HASH = `sha256:${"a".repeat(64)}` as const;
+const PREDECESSOR_MAGE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
+const SUCCESSOR_SOULX_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
 
 describe("V2-13 resolved render manifest reader", () => {
   const document = Object.freeze({
@@ -227,6 +229,34 @@ function prequalificationRequest(): V213FullLiveCommandRequest {
           sourceCommit: "1".repeat(40),
           maximumCumulativeSpendUsd: 17.5,
           singleUse: true,
+        },
+      },
+    },
+  } as never;
+}
+
+function splitLineagePrequalificationRequest(): V213FullLiveCommandRequest {
+  const base = prequalificationRequest();
+  const input = base.input as {
+    dualLaneInput: {
+      mage: Record<string, unknown>;
+      soulx: Record<string, unknown>;
+    };
+    commandPayload: { authorityDocument: Record<string, unknown> };
+  };
+  return {
+    ...base,
+    input: {
+      ...input,
+      dualLaneInput: {
+        ...input.dualLaneInput,
+        mage: { ...input.dualLaneInput.mage, sourceCommit: PREDECESSOR_MAGE_SOURCE_COMMIT },
+        soulx: { ...input.dualLaneInput.soulx, sourceCommit: SUCCESSOR_SOULX_SOURCE_COMMIT },
+      },
+      commandPayload: {
+        authorityDocument: {
+          ...input.commandPayload.authorityDocument,
+          sourceCommit: SUCCESSOR_SOULX_SOURCE_COMMIT,
         },
       },
     },
@@ -1082,6 +1112,78 @@ describe("V2-13 full-live TypeScript bridge", () => {
     await expect(runtime.handlers["mage-live-qualification"](inputs.request)).rejects.toEqual(
       expect.objectContaining({ code: "PREQUALIFICATION_COMMAND_NOT_ALLOWED" }),
     );
+  });
+
+  it("accepts the exact v5 split source lineage and binds preflight to SoulX", async () => {
+    const request = splitLineagePrequalificationRequest();
+    const database = {
+      query: vi.fn(),
+      transaction: vi.fn(),
+    };
+    const createOperatorDatabase = vi.fn(() => database as never);
+    const inputs = {
+      request,
+      runpodApiKey: "r".repeat(32),
+      operatorDatabaseUrl:
+        "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+    } as const;
+    const runtime = await createV213PrequalificationRuntime(inputs, {
+      fetch: vi.fn(),
+      now: () => new Date("2026-08-26T00:00:00.000Z"),
+      sleep: vi.fn(),
+      createOperatorDatabase,
+    });
+    expect(createOperatorDatabase).toHaveBeenCalledOnce();
+    expect(database.query).not.toHaveBeenCalled();
+
+    const drifted = splitLineagePrequalificationRequest();
+    const driftedInput = drifted.input as {
+      commandPayload: { authorityDocument: Record<string, unknown> };
+    };
+    driftedInput.commandPayload.authorityDocument.sourceCommit = "1".repeat(40);
+    const driftedRuntime = await createV213PrequalificationRuntime(
+      {
+        ...inputs,
+        request: drifted,
+      },
+      {
+        fetch: vi.fn(),
+        now: () => new Date("2026-08-26T00:00:00.000Z"),
+        sleep: vi.fn(),
+        createOperatorDatabase,
+      },
+    );
+    await expect(driftedRuntime.handlers["fresh-live-preflight"](drifted)).rejects.toEqual(
+      expect.objectContaining({ code: "FULL_LIVE_AUTHORITY_INPUT_DRIFT" }),
+    );
+    expect(runtime.protectedValues).toEqual([inputs.runpodApiKey, inputs.operatorDatabaseUrl]);
+    expect(database.query).not.toHaveBeenCalled();
+  });
+
+  it("rejects a v5 lane source drift before opening the operator database", async () => {
+    const request = splitLineagePrequalificationRequest();
+    const input = request.input as {
+      dualLaneInput: { soulx: Record<string, unknown> };
+    };
+    input.dualLaneInput.soulx.sourceCommit = "1".repeat(40);
+    const createOperatorDatabase = vi.fn();
+    await expect(
+      createV213PrequalificationRuntime(
+        {
+          request,
+          runpodApiKey: "r".repeat(32),
+          operatorDatabaseUrl:
+            "postgresql://videoforge_hosted_operator:password@fixture.example.test/videoforge?sslmode=require&channel_binding=require",
+        },
+        {
+          fetch: vi.fn(),
+          now: () => new Date("2026-08-26T00:00:00.000Z"),
+          sleep: vi.fn(),
+          createOperatorDatabase,
+        },
+      ),
+    ).rejects.toEqual(expect.objectContaining({ code: "PREQUALIFICATION_INPUT_INVALID" }));
+    expect(createOperatorDatabase).not.toHaveBeenCalled();
   });
 
   it("uses an operator-only prequalification descriptor and rejects full-input widening", () => {

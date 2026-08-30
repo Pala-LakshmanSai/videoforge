@@ -117,6 +117,8 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const COMMAND_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,190}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
+const PREDECESSOR_MAGE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
+const SUCCESSOR_SOULX_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
 const OPERATOR_DATABASE_ROLE = "videoforge_hosted_operator";
 const V213_RELEASE_CERTIFICATION_REQUEST_SCHEMA =
   "videoforge.v213-local-release-certification-request/v1" as const;
@@ -2116,7 +2118,10 @@ interface V213PrequalificationCommandInput {
   readonly schemaVersion: "videoforge.v213-full-live-prequalification-input/v1";
   readonly outerStateSha256: `sha256:${string}`;
   readonly fullLiveAuthorityId: string;
-  readonly dualLaneInput: V213PrequalificationInput;
+  readonly dualLaneInput: V213PrequalificationInput & {
+    readonly mage: V213PrequalificationInput["mage"] & { readonly sourceCommit?: string };
+    readonly soulx: V213PrequalificationInput["soulx"] & { readonly sourceCommit?: string };
+  };
   readonly commandPayload: Readonly<{
     readonly authorityDocument: Readonly<Record<string, unknown>>;
   }>;
@@ -2128,6 +2133,14 @@ function exactPrequalificationInput(value: JsonValue): V213PrequalificationComma
   const mage = object(dual?.mage);
   const soulx = object(dual?.soulx);
   const payload = object(item?.commandPayload);
+  const hasSuccessorLaneSources =
+    mage !== null &&
+    soulx !== null &&
+    Object.hasOwn(mage, "sourceCommit") &&
+    Object.hasOwn(soulx, "sourceCommit");
+  const laneKeys = hasSuccessorLaneSources
+    ? "lane,sourceCommit,volumeIdSha256,volumeManifestSha256"
+    : "lane,volumeIdSha256,volumeManifestSha256";
   if (
     item?.schemaVersion !== "videoforge.v213-full-live-prequalification-input/v1" ||
     Object.keys(item).sort().join(",") !==
@@ -2157,10 +2170,13 @@ function exactPrequalificationInput(value: JsonValue): V213PrequalificationComma
     !validQualificationStaticBindings(dual) ||
     mage === null ||
     soulx === null ||
-    Object.keys(mage).sort().join(",") !== "lane,volumeIdSha256,volumeManifestSha256" ||
-    Object.keys(soulx).sort().join(",") !== "lane,volumeIdSha256,volumeManifestSha256" ||
+    Object.keys(mage).sort().join(",") !== laneKeys ||
+    Object.keys(soulx).sort().join(",") !== laneKeys ||
     mage.lane !== "mage" ||
     soulx.lane !== "soulx" ||
+    (hasSuccessorLaneSources &&
+      (mage.sourceCommit !== PREDECESSOR_MAGE_SOURCE_COMMIT ||
+        soulx.sourceCommit !== SUCCESSOR_SOULX_SOURCE_COMMIT)) ||
     ![
       mage.volumeIdSha256,
       mage.volumeManifestSha256,
@@ -3653,6 +3669,8 @@ export async function createV213PrequalificationRuntime(
     if (
       typeof authorityDocument.sourceCommit !== "string" ||
       !/^[0-9a-f]{40}$/u.test(authorityDocument.sourceCommit) ||
+      (typeof dualLaneInput.soulx.sourceCommit === "string" &&
+        authorityDocument.sourceCommit !== dualLaneInput.soulx.sourceCommit) ||
       authorityDocument.maximumCumulativeSpendUsd !== 17.5 ||
       authorityDocument.singleUse !== true
     )
@@ -3772,11 +3790,15 @@ export async function createV213ProductionRuntime(
         inputs.qualification.r2.bucketName !== dualLaneInput.qualificationR2.bucketName
       )
         fail("QUALIFICATION_JIT_R2_BINDING_DRIFT");
+      const qualificationLane =
+        inputs.request.command === "soulx-live-qualification"
+          ? dualLaneInput.soulx
+          : dualLaneInput.mage;
       return createV213DirectQualificationMaterializer({
         fullLiveAuthorityId: production.fullLiveAuthorityId,
         operationId: inputs.request.command,
         outerStateSha256: production.outerStateSha256,
-        sourceCommit: dualLaneInput.mage.sourceCommit,
+        sourceCommit: qualificationLane.sourceCommit,
         sourceRefs: dualLaneInput.qualificationSourceRefs,
         protectedInputDescriptors: dualLaneInput.qualificationProtectedInputDescriptors,
         protectedSourceBytes: inputs.qualification.sourceBytes,
@@ -3856,7 +3878,6 @@ export async function createV213ProductionRuntime(
         ["authorityDocument"],
       );
       if (
-        authorityDocument.sourceCommit !== dualLaneInput.mage.sourceCommit ||
         authorityDocument.sourceCommit !== dualLaneInput.soulx.sourceCommit ||
         authorityDocument.maximumCumulativeSpendUsd !== 17.5 ||
         authorityDocument.singleUse !== true
