@@ -23,6 +23,8 @@ const testState = vi.hoisted(() => {
     rows: Record<string, unknown>[];
     error: unknown;
   } = { rows: [], error: null };
+  const avatarDraftRows: Record<string, unknown>[] = [];
+  const styleDraftRows: Record<string, unknown>[] = [];
   const query = vi.fn(async (sql: string) => {
     if (sql.includes("videoforge_consume_hosted_rate_limit"))
       return { rows: rateLimitRows, affectedRows: 1 };
@@ -32,6 +34,12 @@ const testState = vi.hoisted(() => {
       if (archiveState.error) throw archiveState.error;
       return { rows: archiveState.rows, affectedRows: archiveState.rows.length };
     }
+    if (sql.includes("version.state NOT IN ('READY','ABANDONED')") || sql.includes("version.state NOT IN ('PUBLISHED','ABANDONED')")) {
+      if (sql.includes("FROM avatar_profiles AS profile"))
+        return { rows: avatarDraftRows, affectedRows: avatarDraftRows.length };
+      if (sql.includes("FROM image_styles AS style"))
+        return { rows: styleDraftRows, affectedRows: styleDraftRows.length };
+    }
     if (sql.includes("FROM projects AS project")) return { rows: projectRows, affectedRows: 1 };
     return { rows: [], affectedRows: 0 };
   });
@@ -40,7 +48,17 @@ const testState = vi.hoisted(() => {
     work({ execute: vi.fn(), query }),
   );
   const executor = { execute: vi.fn(), query, transaction };
-  return { scopeRows, projectRows, rateLimitRows, archiveState, query, pool, executor };
+  return {
+    scopeRows,
+    projectRows,
+    rateLimitRows,
+    archiveState,
+    avatarDraftRows,
+    styleDraftRows,
+    query,
+    pool,
+    executor,
+  };
 });
 
 vi.mock("./auth", () => ({
@@ -62,6 +80,7 @@ vi.mock("./neon", () => ({
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import {
   handleHostedProductRequest,
+  hostedAvatarConflictProblem,
   hostedGpuProductState,
   hostedStyleConflictProblem,
 } from "./product";
@@ -108,17 +127,28 @@ async function errorCode(result: Response | null): Promise<string | null> {
 }
 
 describe("hosted product route contract", () => {
+  it("maps avatar uniqueness conflicts to safe Hub recovery", () => {
+    expect(hostedAvatarConflictProblem("avatar_profiles_active_name_uq")).toEqual({
+      code: "AVATAR_NAME_CONFLICT",
+      message: "That avatar name is already in use. Open Avatar Hub to continue or remove it.",
+    });
+    expect(hostedAvatarConflictProblem("avatar_profile_versions_open_draft_uq")).toMatchObject({
+      code: "AVATAR_VERSION_CONFLICT",
+    });
+    expect(hostedAvatarConflictProblem(null)).toMatchObject({ code: "AVATAR_SAVE_CONFLICT" });
+  });
+
   it("maps style uniqueness conflicts to safe user-facing recovery", () => {
     expect(hostedStyleConflictProblem("image_styles_active_name_uq")).toEqual({
       code: "STYLE_NAME_CONFLICT",
-      message: "That style name is already in use. Choose a different name.",
+      message: "That style name is already in use. Open Image Styles to continue or remove it.",
     });
     expect(hostedStyleConflictProblem("image_style_versions_open_draft_uq")).toMatchObject({
       code: "STYLE_VERSION_CONFLICT",
     });
     expect(hostedStyleConflictProblem(null)).toMatchObject({ code: "STYLE_SAVE_CONFLICT" });
   });
-  it("loads the preset catalog without requiring private style-reference table access", async () => {
+  it("loads the preset catalog with separate unfinished-preset projections", async () => {
     testState.query.mockClear();
 
     const result = await handleHostedProductRequest(
@@ -129,9 +159,92 @@ describe("hosted product route contract", () => {
     );
 
     expect(result?.status).toBe(200);
-    expect(
-      testState.query.mock.calls.some(([sql]) => String(sql).includes("image_style_references")),
-    ).toBe(false);
+    expect(testState.query.mock.calls.some(([sql]) => String(sql).includes("image_styles"))).toBe(
+      true,
+    );
+  });
+
+  it("returns active tenant drafts separately so they can be resumed without becoming project presets", async () => {
+    testState.query.mockClear();
+    testState.avatarDraftRows.splice(0, testState.avatarDraftRows.length, {
+      profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      version_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      name: "Private presenter",
+      version_number: "1",
+      state: "NEEDS_REVIEW",
+      created_at: "2026-08-30T10:00:00.000Z",
+      updated_at: "2026-08-30T10:01:00.000Z",
+      rights_attested: true,
+      likeness_animation_consent: true,
+      source_verified: true,
+    });
+    testState.styleDraftRows.splice(0, testState.styleDraftRows.length, {
+      style_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      version_id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      name: "Private documentary",
+      version_number: "1",
+      state: "NEEDS_REVIEW",
+      reference_count: "7",
+      rights_attested: true,
+      processing_disclosure_acknowledged: true,
+      original_retention_policy: "RETAIN",
+      analysis_cost_micro_usd: "1200",
+      references_verified: true,
+      created_at: "2026-08-30T10:00:00.000Z",
+      updated_at: "2026-08-30T10:01:00.000Z",
+      profile_payload: { summary: "Natural light and restrained texture." },
+    });
+
+    const result = await handleHostedProductRequest(
+      request("/api/v2/hosted/project-catalog", "GET"),
+      environment,
+      stagingConfig,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(200);
+    await expect(result?.json()).resolves.toMatchObject({
+      avatars: [],
+      styles: [],
+      avatar_drafts: [
+        expect.objectContaining({
+          profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          version_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          state: "NEEDS_REVIEW",
+          rights_attested: true,
+          likeness_animation_consent: true,
+          source_verified: true,
+        }),
+      ],
+      style_drafts: [
+        expect.objectContaining({
+          style_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          version_id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+          state: "NEEDS_REVIEW",
+          reference_count: 7,
+          rights_attested: true,
+          processing_disclosure_acknowledged: true,
+          original_retention_policy: "RETAIN",
+          analysis_cost_usd: 0.0012,
+          references_verified: true,
+          summary: "Natural light and restrained texture.",
+          profile: { summary: "Natural light and restrained texture." },
+        }),
+      ],
+    });
+    const draftSql = testState.query.mock.calls
+      .map(([sql]) => String(sql))
+      .filter((sql) => sql.includes("version.state NOT IN"));
+    expect(draftSql).toHaveLength(2);
+    for (const sql of draftSql) {
+      expect(sql).toMatch(/account_id = \$1/u);
+      expect(sql).toMatch(/workspace_id = \$2/u);
+      expect(sql).toContain("scope_kind = 'WORKSPACE'");
+      expect(sql).toContain("status = 'ACTIVE'");
+    }
+
+    testState.avatarDraftRows.length = 0;
+    testState.styleDraftRows.length = 0;
   });
 
   it("resolves an avatar preview without requiring private avatar-link table access", async () => {

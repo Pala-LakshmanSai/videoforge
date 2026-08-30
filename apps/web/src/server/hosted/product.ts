@@ -1485,7 +1485,7 @@ async function avatarCreate(
     if (error instanceof Error && error.message === "AVATAR_PARENT_NOT_FOUND")
       return response({ error: { code: error.message } }, 404);
     if (postgresCode(error) === "23505")
-      return response({ error: { code: "AVATAR_NAME_OR_VERSION_CONFLICT" } }, 409);
+      return response({ error: hostedAvatarConflictProblem(postgresConstraint(error)) }, 409);
     throw error;
   } finally {
     await pool.end();
@@ -3030,7 +3030,7 @@ export function hostedStyleConflictProblem(constraint: string | null): {
   if (constraint === "image_styles_active_name_uq")
     return {
       code: "STYLE_NAME_CONFLICT",
-      message: "That style name is already in use. Choose a different name.",
+      message: "That style name is already in use. Open Image Styles to continue or remove it.",
     };
   if (
     constraint === "image_style_versions_open_draft_uq" ||
@@ -3044,6 +3044,30 @@ export function hostedStyleConflictProblem(constraint: string | null): {
   return {
     code: "STYLE_SAVE_CONFLICT",
     message: "Style could not be saved. Refresh Image Styles and try again.",
+  };
+}
+
+export function hostedAvatarConflictProblem(constraint: string | null): {
+  readonly code: string;
+  readonly message: string;
+} {
+  if (constraint === "avatar_profiles_active_name_uq")
+    return {
+      code: "AVATAR_NAME_CONFLICT",
+      message: "That avatar name is already in use. Open Avatar Hub to continue or remove it.",
+    };
+  if (
+    constraint === "avatar_profile_versions_open_draft_uq" ||
+    constraint === "avatar_profile_versions_workspace_id_profile_id_version_number_key"
+  )
+    return {
+      code: "AVATAR_VERSION_CONFLICT",
+      message:
+        "This avatar changed while it was open. Refresh Avatar Hub and continue from the latest version.",
+    };
+  return {
+    code: "AVATAR_SAVE_CONFLICT",
+    message: "Avatar could not be saved. Refresh Avatar Hub and try again.",
   };
 }
 
@@ -3135,6 +3159,105 @@ async function catalog(
           ORDER BY style.name, version.version_number DESC`,
         [scope.account_id, scope.workspace_id],
       );
+      const avatarDrafts = await transaction.query(
+        `SELECT profile.id AS profile_id, version.id AS version_id, profile.name,
+                version.version_number, version.state, version.created_at, version.updated_at,
+                (version.rights_attested_by_user_id IS NOT NULL) AS rights_attested,
+                (version.likeness_attested_by_user_id IS NOT NULL) AS likeness_animation_consent,
+                (source.state = 'VERIFIED') AS source_verified
+           FROM avatar_profiles AS profile
+           JOIN avatar_profile_versions AS version
+             ON version.account_id = profile.account_id
+            AND version.workspace_id = profile.workspace_id
+            AND version.profile_id = profile.id
+            AND version.scope_kind = profile.scope_kind
+           LEFT JOIN assets AS source
+             ON source.account_id = version.account_id
+            AND source.workspace_id = version.workspace_id
+            AND source.id = version.original_asset_id
+          WHERE profile.account_id = $1 AND profile.workspace_id = $2
+            AND profile.scope_kind = 'WORKSPACE' AND profile.status = 'ACTIVE'
+            AND version.scope_kind = 'WORKSPACE'
+            AND version.state NOT IN ('READY','ABANDONED')
+            AND version.id = (
+              SELECT candidate.id
+                FROM avatar_profile_versions AS candidate
+               WHERE candidate.account_id = profile.account_id
+                 AND candidate.workspace_id = profile.workspace_id
+                 AND candidate.profile_id = profile.id
+                 AND candidate.scope_kind = 'WORKSPACE'
+                 AND candidate.state NOT IN ('READY','ABANDONED')
+               ORDER BY candidate.version_number DESC, candidate.updated_at DESC
+               LIMIT 1
+            )
+          ORDER BY version.updated_at DESC, profile.name`,
+        [scope.account_id, scope.workspace_id],
+      );
+      const styleDrafts = await transaction.query(
+        `SELECT style.id AS style_id, version.id AS version_id, style.name,
+                version.version_number, version.state, version.created_at, version.updated_at,
+                count(reference.id)::int AS reference_count,
+                (version.disclosure_attested_by_user_id IS NOT NULL) AS processing_disclosure_acknowledged,
+                COALESCE(bool_and(reference.rights_attested_by_user_id IS NOT NULL), false) AS rights_attested,
+                CASE
+                  WHEN count(reference.id) >= 3
+                   AND bool_and(original.state = 'VERIFIED' AND normalized.state = 'VERIFIED')
+                  THEN true ELSE false
+                END AS references_verified,
+                CASE
+                  WHEN count(reference.id) = 0 THEN NULL
+                  WHEN bool_and(reference.original_retention_policy = 'RETAIN') THEN 'RETAIN'
+                  WHEN bool_and(reference.original_retention_policy = 'DELETE_AFTER_ANALYSIS') THEN 'DELETE_AFTER_ANALYSIS'
+                  ELSE NULL
+                END AS original_retention_policy,
+                (
+                  SELECT max(run.reported_cost_micro_usd)
+                    FROM hosted_style_analysis_runs AS run
+                   WHERE run.account_id = version.account_id
+                     AND run.workspace_id = version.workspace_id
+                     AND run.style_version_id = version.id
+                     AND run.state = 'SUCCEEDED'
+                ) AS analysis_cost_micro_usd,
+                CASE WHEN version.state = 'NEEDS_REVIEW' THEN version.profile_payload ELSE NULL END AS profile_payload
+           FROM image_styles AS style
+           JOIN image_style_versions AS version
+             ON version.account_id = style.account_id
+            AND version.workspace_id = style.workspace_id
+            AND version.style_id = style.id
+            AND version.scope_kind = style.scope_kind
+           LEFT JOIN image_style_references AS reference
+            ON reference.account_id = version.account_id
+            AND reference.workspace_id = version.workspace_id
+            AND reference.version_id = version.id
+            AND reference.deleted_at IS NULL
+           LEFT JOIN assets AS original
+             ON original.account_id = reference.account_id
+            AND original.workspace_id = reference.workspace_id
+            AND original.id = reference.original_asset_id
+           LEFT JOIN assets AS normalized
+             ON normalized.account_id = reference.account_id
+            AND normalized.workspace_id = reference.workspace_id
+            AND normalized.id = reference.normalized_asset_id
+          WHERE style.account_id = $1 AND style.workspace_id = $2
+            AND style.scope_kind = 'WORKSPACE' AND style.status = 'ACTIVE'
+            AND version.scope_kind = 'WORKSPACE'
+            AND version.state NOT IN ('PUBLISHED','ABANDONED')
+            AND version.id = (
+              SELECT candidate.id
+                FROM image_style_versions AS candidate
+               WHERE candidate.account_id = style.account_id
+                 AND candidate.workspace_id = style.workspace_id
+                 AND candidate.style_id = style.id
+                 AND candidate.scope_kind = 'WORKSPACE'
+                 AND candidate.state NOT IN ('PUBLISHED','ABANDONED')
+               ORDER BY candidate.version_number DESC, candidate.updated_at DESC
+               LIMIT 1
+            )
+          GROUP BY style.id, version.id, style.name, version.version_number,
+                   version.state, version.created_at, version.updated_at, version.profile_payload
+          ORDER BY version.updated_at DESC, style.name`,
+        [scope.account_id, scope.workspace_id],
+      );
       const workers = await transaction.query<{ count: string | number }>(
         `SELECT count(*) AS count FROM media_worker_devices
           WHERE account_id = $1 AND workspace_id = $2
@@ -3144,6 +3267,8 @@ async function catalog(
       return {
         avatars: avatars.rows,
         styles: styles.rows,
+        avatar_drafts: avatarDrafts.rows,
+        style_drafts: styleDrafts.rows,
         workers: Number(workers.rows[0]?.count ?? 0),
       };
     });
@@ -3159,11 +3284,54 @@ async function catalog(
       profile_hash: row.style_profile_hash ?? null,
       reference_count: 0,
     }));
+    const avatarDraftRows = (data.avatar_drafts as Record<string, unknown>[]).map((row) => ({
+      profile_id: rowString(row, "profile_id"),
+      version_id: rowString(row, "version_id"),
+      name: rowString(row, "name"),
+      version_number: Number(row.version_number),
+      state: rowString(row, "state"),
+      created_at: timestampOrNull(row.created_at),
+      updated_at: timestampOrNull(row.updated_at),
+      rights_attested: row.rights_attested === true,
+      likeness_animation_consent: row.likeness_animation_consent === true,
+      source_verified: row.source_verified === true,
+    }));
+    const styleDraftRows = (data.style_drafts as Record<string, unknown>[]).map((row) => {
+      const profile = plainRecord(row.profile_payload);
+      return {
+        style_id: rowString(row, "style_id"),
+        version_id: rowString(row, "version_id"),
+        name: rowString(row, "name"),
+        version_number: Number(row.version_number),
+        state: rowString(row, "state"),
+        reference_count: Number(row.reference_count ?? 0),
+        created_at: timestampOrNull(row.created_at),
+        updated_at: timestampOrNull(row.updated_at),
+        rights_attested: row.rights_attested === true,
+        processing_disclosure_acknowledged: row.processing_disclosure_acknowledged === true,
+        references_verified: row.references_verified === true,
+        original_retention_policy:
+          typeof row.original_retention_policy === "string"
+            ? row.original_retention_policy
+            : null,
+        analysis_cost_usd:
+          numberOrNull(row.analysis_cost_micro_usd) === null
+            ? null
+            : numberOrNull(row.analysis_cost_micro_usd)! / 1_000_000,
+        profile: row.state === "NEEDS_REVIEW" ? profile : null,
+        summary:
+          row.state === "NEEDS_REVIEW" && typeof profile?.summary === "string"
+            ? profile.summary
+            : null,
+      };
+    });
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     return response({
       schema_version: "videoforge-hosted-project-catalog/v1",
       avatars: avatarRows,
       styles: styleRows,
+      avatar_drafts: avatarDraftRows,
+      style_drafts: styleDraftRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
@@ -3216,9 +3384,10 @@ async function hostedPresetPreview(
                 AND style.workspace_id = version.workspace_id
                 AND style.id = version.style_id
                JOIN image_style_references AS reference
-                 ON reference.account_id = version.account_id
+                ON reference.account_id = version.account_id
                 AND reference.workspace_id = version.workspace_id
                 AND reference.version_id = version.id
+                AND reference.deleted_at IS NULL
                JOIN assets AS asset
                  ON asset.account_id = reference.account_id
                 AND asset.workspace_id = reference.workspace_id

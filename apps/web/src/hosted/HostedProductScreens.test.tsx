@@ -440,6 +440,156 @@ describe("hosted product journey", () => {
     expect(screen.queryByText(/References \(0\)/u)).not.toBeInTheDocument();
   });
 
+  it("shows unfinished avatar and style drafts with friendly resume and remove actions", async () => {
+    let removedStyle = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/api/v2/hosted/project-catalog")) {
+        return Response.json({
+          avatars: [],
+          avatar_drafts: [
+            {
+              profile_id: "draft-avatar-profile-id",
+              version_id: "draft-avatar-version-id",
+              name: "Saved presenter",
+              version_number: 1,
+              state: "NEEDS_REVIEW",
+              scope_kind: "WORKSPACE",
+              profile_hash: "sha256:private-avatar-draft",
+            },
+            {
+              profile_id: "incomplete-avatar-profile-id",
+              version_id: "incomplete-avatar-version-id",
+              name: "Incomplete upload",
+              version_number: 1,
+              state: "DRAFT",
+              scope_kind: "WORKSPACE",
+              source_verified: false,
+            },
+          ],
+          styles: [],
+          style_drafts: removedStyle
+            ? []
+            : [
+                {
+                  style_id: "draft-style-id",
+                  version_id: "draft-style-version-id",
+                  name: "Will Carter",
+                  version_number: 1,
+                  state: "DRAFT",
+                  scope_kind: "WORKSPACE",
+                  reference_count: 7,
+                  references_verified: true,
+                  profile_hash: "sha256:private-style-draft",
+                },
+                {
+                  style_id: "analyzing-style-id",
+                  version_id: "analyzing-style-version-id",
+                  name: "Analysis running",
+                  version_number: 1,
+                  state: "ANALYZING",
+                  scope_kind: "WORKSPACE",
+                },
+                {
+                  style_id: "failed-style-id",
+                  version_id: "failed-style-version-id",
+                  name: "Failed style",
+                  version_number: 1,
+                  state: "FAILED",
+                  scope_kind: "WORKSPACE",
+                },
+              ],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        });
+      }
+      if (init?.method === "DELETE") {
+        expect(path).toBe("/api/v2/hosted/styles/draft-style-version-id");
+        removedStyle = true;
+        return Response.json({ state: "ARCHIVED" });
+      }
+      throw new Error(`Unexpected hosted request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderHosted(
+      <>
+        <HostedAvatarHubScreen />
+        <HostedStylesHubScreen />
+      </>,
+    );
+
+    expect(await screen.findByText("Saved presenter")).toBeInTheDocument();
+    expect(await screen.findByText("Will Carter")).toBeInTheDocument();
+    expect(screen.getByText("Unfinished avatars")).toBeInTheDocument();
+    expect(screen.getByText("Unfinished styles")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Continue setup" })).toHaveLength(2);
+    expect(screen.getByText("The photo upload did not finish. Remove this draft and start again.")).toBeInTheDocument();
+    expect(screen.getByText("Analysis is in progress. We will update this style when it finishes.")).toBeInTheDocument();
+    expect(screen.getByText("This style could not be completed. Remove it and start again with new references.")).toBeInTheDocument();
+    const styleResumeLink = screen
+      .getAllByRole("link", { name: "Continue setup" })
+      .find((link) => link.getAttribute("href")?.startsWith("/styles/new"));
+    expect(styleResumeLink).toHaveAttribute(
+      "href",
+      "/styles/new?resumeVersionId=draft-style-version-id&returnTo=%2Fstyles",
+    );
+    expect(screen.queryByText(/draft-(?:style|avatar)-(?:id|version-id)|sha256:/u)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove style" })[0]!);
+    await waitFor(() => expect(screen.queryByText("Will Carter")).not.toBeInTheDocument());
+  });
+
+  it.each([
+    ["DRAFT", "Analyze references"],
+    ["NEEDS_REVIEW", "Review and publish"],
+  ] as const)("resumes a saved style in the correct wizard step (%s)", async (state, heading) => {
+    window.history.replaceState({}, "", `/styles/new?resumeVersionId=resume-style-version`);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [],
+          styles: [],
+          style_drafts: [
+            {
+              style_id: "resume-style-id",
+              version_id: "resume-style-version",
+              name: "Saved documentary",
+              version_number: 2,
+              state,
+              scope_kind: "WORKSPACE",
+              reference_count: 4,
+              references_verified: true,
+              rights_attested: true,
+              processing_disclosure_acknowledged: true,
+              original_retention_policy: "RETAIN",
+              profile:
+                state === "NEEDS_REVIEW"
+                  ? { summary: "Natural available light and tactile detail." }
+                  : null,
+            },
+          ],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      ),
+    );
+    renderHosted(<HostedPresetCreationScreen kind="styles" />);
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(screen.getByText("Continuing “Saved documentary”")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Upload style references")).not.toBeInTheDocument();
+    if (state === "DRAFT") {
+      expect(screen.getByRole("button", { name: "Analyze this draft once" })).toBeEnabled();
+    } else {
+      expect(screen.getByRole("button", { name: "Publish immutable style version" })).toBeDisabled();
+    }
+    window.history.replaceState({}, "", "/");
+  });
+
   it("confirms removal for workspace avatars and hides it for system avatars", async () => {
     let removed = false;
     let resolveDelete: (response: Response) => void = () => undefined;

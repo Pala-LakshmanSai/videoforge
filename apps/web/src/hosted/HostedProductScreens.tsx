@@ -81,6 +81,8 @@ export interface CatalogResponse {
     rights_status?: string | null;
     scope_kind?: "WORKSPACE" | "SYSTEM";
   }[];
+  /** Workspace-owned versions that still need source upload, review, or approval. */
+  readonly avatar_drafts?: readonly HostedAvatarDraft[];
   readonly styles: readonly {
     style_id: string;
     version_id: string;
@@ -93,6 +95,8 @@ export interface CatalogResponse {
     reference_count?: number;
     scope_kind?: "WORKSPACE" | "SYSTEM";
   }[];
+  /** Workspace-owned style versions that are not published yet. */
+  readonly style_drafts?: readonly HostedStyleDraft[];
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
   readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: {
@@ -114,6 +118,43 @@ export interface CatalogResponse {
     readonly spend_cap_usd?: number;
     readonly user_seed?: number | null;
   };
+}
+
+interface HostedAvatarDraft {
+  readonly profile_id: string;
+  readonly version_id: string;
+  readonly name: string;
+  readonly version_number: number;
+  readonly state?: string;
+  readonly status?: string;
+  readonly thumbnail_url?: string | null;
+  readonly profile_hash?: string | null;
+  readonly compatibility?: string | null;
+  readonly rights_status?: string | null;
+  readonly scope_kind?: "WORKSPACE";
+  readonly source_verified?: boolean;
+  readonly rights_attested?: boolean;
+  readonly likeness_animation_consent?: boolean;
+}
+
+interface HostedStyleDraft {
+  readonly style_id: string;
+  readonly version_id: string;
+  readonly name: string;
+  readonly version_number: number;
+  readonly state?: string;
+  readonly status?: string;
+  readonly cover_url?: string | null;
+  readonly profile_hash?: string | null;
+  readonly reference_count?: number;
+  readonly scope_kind?: "WORKSPACE";
+  readonly references_verified?: boolean;
+  readonly profile?: Record<string, unknown> | null;
+  readonly summary?: string | null;
+  readonly analysis_cost_usd?: number | null;
+  readonly rights_attested?: boolean;
+  readonly processing_disclosure_acknowledged?: boolean;
+  readonly original_retention_policy?: string | null;
 }
 
 const GPU_READINESS_KEYS = [
@@ -418,6 +459,51 @@ interface HostedPresetMutationResponse {
   readonly cover_url?: string | null;
   readonly summary?: string | null;
   readonly analysis_cost_usd?: number | null;
+}
+
+function hostedDraftResponse(
+  draft: HostedAvatarDraft | HostedStyleDraft,
+): HostedPresetMutationResponse {
+  const isAvatar = "profile_id" in draft;
+  return {
+    // Resume with the exact version, so a later published version can never be selected by
+    // an id-only style endpoint.
+    id: draft.version_id,
+    profile_id: isAvatar ? draft.profile_id : undefined,
+    style_id: !isAvatar ? draft.style_id : undefined,
+    version_id: draft.version_id,
+    version: draft.version_number,
+    state: draft.state,
+    profile_hash: draft.profile_hash ?? null,
+    profile: !isAvatar ? (draft.profile ?? null) : null,
+    summary: !isAvatar ? (draft.summary ?? null) : null,
+    analysis_cost_usd: !isAvatar ? (draft.analysis_cost_usd ?? null) : null,
+  };
+}
+
+function hostedPresetResumeHref(kind: HostedPresetHubKind, versionId: string): string {
+  const query = new URLSearchParams({
+    resumeVersionId: versionId,
+    returnTo: kind === "avatars" ? "/avatars" : "/styles",
+  });
+  return `${kind === "avatars" ? "/avatars/new" : "/styles/new"}?${query.toString()}`;
+}
+
+function hostedDraftIsResumable(
+  kind: HostedPresetHubKind,
+  draft: {
+    readonly state?: string;
+    readonly status?: string;
+    readonly references_verified?: boolean;
+  },
+): boolean {
+  const state = presetState(draft);
+  if (state === "NEEDS_REVIEW") return true;
+  return (
+    kind === "styles" &&
+    state === "DRAFT" &&
+    draft.references_verified === true
+  );
 }
 
 export interface FixtureStyleCreationAdapter {
@@ -876,8 +962,54 @@ export function normalizeHostedReturnTo(
   );
 }
 
-function presetState(item: CatalogResponse["avatars"][number] | CatalogResponse["styles"][number]) {
+function presetState(item: { readonly state?: string; readonly status?: string }) {
   return item.state ?? item.status ?? "READY";
+}
+
+function unfinishedPresetLabel(value: string): string {
+  switch (value) {
+    case "NEEDS_REVIEW":
+      return "Ready to review";
+    case "ANALYZING":
+      return "Analysis in progress";
+    case "FAILED":
+      return "Needs attention";
+    case "DRAFT":
+      return "Ready to continue";
+    default:
+      return "Setup incomplete";
+  }
+}
+
+function unfinishedPresetDescription(
+  kind: HostedPresetHubKind,
+  state: string,
+  referenceCount: number,
+  resumable: boolean,
+): string {
+  if (kind === "avatars") {
+    if (state === "ANALYZING") return "Approval is being reconciled. We will update this avatar when it finishes.";
+    if (state === "FAILED") return "This avatar could not be completed. Remove it and start again with a new photo.";
+    if (state === "DRAFT" && !resumable)
+      return "The photo upload did not finish. Remove this draft and start again.";
+    return state === "NEEDS_REVIEW"
+      ? "Your photo is saved. Continue to review and approve this avatar."
+      : "Your photo is saved. Continue setup to review and approve this avatar.";
+  }
+  if (state === "NEEDS_REVIEW") {
+    return "Your style profile is ready. Continue to review and publish it.";
+  }
+  if (state === "ANALYZING") {
+    return "Analysis is in progress. We will update this style when it finishes.";
+  }
+  if (state === "FAILED") {
+    return "This style could not be completed. Remove it and start again with new references.";
+  }
+  if (state === "DRAFT" && !resumable)
+    return "The reference uploads did not finish. Remove this draft and start again.";
+  return referenceCount > 0
+    ? `${referenceCount} references saved. Continue setup to analyze and publish this style.`
+    : "Your style is saved. Continue setup to add references and publish it.";
 }
 
 const HUMAN_PIPELINE_STAGES = [
@@ -1445,7 +1577,18 @@ interface HostedPresetDeleteInput {
   readonly id: string;
 }
 
-/** The invited release exposes only immutable presets that are already ready. */
+type HostedPresetCatalogItem =
+  | CatalogResponse["avatars"][number]
+  | CatalogResponse["styles"][number]
+  | HostedAvatarDraft
+  | HostedStyleDraft;
+
+interface HostedPresetHubItem {
+  readonly item: HostedPresetCatalogItem;
+  readonly draft: boolean;
+}
+
+/** Show ready presets and saved workspace drafts without mixing drafts into project selectors. */
 function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const [search, setSearch] = useState("");
   const catalog = useQuery({
@@ -1453,7 +1596,20 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
     queryFn: readHostedCatalog,
   });
   const isAvatar = kind === "avatars";
-  const items = catalog.data ? (isAvatar ? catalog.data.avatars : catalog.data.styles) : [];
+  const publishedItems: readonly HostedPresetCatalogItem[] = catalog.data
+    ? isAvatar
+      ? catalog.data.avatars
+      : catalog.data.styles
+    : [];
+  const draftItems: readonly HostedPresetCatalogItem[] = catalog.data
+    ? isAvatar
+      ? catalog.data.avatar_drafts ?? []
+      : catalog.data.style_drafts ?? []
+    : [];
+  const allItems: readonly HostedPresetHubItem[] = [
+    ...publishedItems.map((item) => ({ item, draft: false as const })),
+    ...draftItems.map((item) => ({ item, draft: true as const })),
+  ];
   const title = isAvatar ? "Avatar Hub" : "Image Styles";
   const itemLabel = isAvatar ? "avatar" : "style";
   const Icon = isAvatar ? UsersRound : Images;
@@ -1470,9 +1626,223 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
       await catalog.refetch();
     },
   });
-  const visibleItems = items.filter((item) =>
+  const visibleItems = allItems.filter(({ item }) =>
     item.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  const visibleDraftItems = visibleItems.filter(({ draft }) => draft);
+  const visiblePublishedItems = visibleItems.filter(({ draft }) => !draft);
+
+  function renderCard({ item, draft }: HostedPresetHubItem) {
+    const state = presetState(item);
+    const healthy = !draft && (isAvatar ? state === "READY" : state === "PUBLISHED");
+    const resumable =
+      draft && ("profile_id" in item || "style_id" in item)
+        ? hostedDraftIsResumable(kind, item)
+        : false;
+    const resourceId = draft
+      ? item.version_id
+      : isAvatar && "profile_id" in item
+        ? item.profile_id
+        : !isAvatar && "style_id" in item
+          ? item.style_id
+          : item.version_id;
+    const systemOwned =
+      item.scope_kind === "SYSTEM" ||
+      ("rights_status" in item && item.rights_status === "SYSTEM_OWNED");
+    const imageUrl =
+      isAvatar && "thumbnail_url" in item
+        ? item.thumbnail_url
+        : !isAvatar && "cover_url" in item
+          ? item.cover_url
+          : null;
+    const referenceCount = !isAvatar && "reference_count" in item ? (item.reference_count ?? 0) : 0;
+    const media = (
+      <div className={isAvatar ? "avatar-card-media" : "style-card-media"}>
+        {imageUrl ? (
+          <PresetImage
+            src={imageUrl}
+            alt={`${item.name} ${isAvatar ? "presenter" : "cover"}`}
+          />
+        ) : (
+          <span
+            className={`preset-image-fallback ${isAvatar ? "hosted-avatar-placeholder" : "hosted-style-placeholder"}`}
+            role="img"
+            aria-label={`${item.name} ${isAvatar ? "presenter" : "cover"} unavailable`}
+          >
+            <Icon aria-hidden="true" />
+          </span>
+        )}
+        {!healthy ? (
+          <Badge tone={draft ? statusTone(state) : statusTone(state)}>
+            {draft ? unfinishedPresetLabel(state) : normalizedStatus(state)}
+          </Badge>
+        ) : null}
+      </div>
+    );
+
+    if (draft) {
+      return (
+        <article
+          className={`entity-card ${isAvatar ? "avatar-card" : "style-card"} preset-draft-card`}
+          key={item.version_id}
+        >
+          {media}
+          <div className="entity-card-body">
+            <div className="entity-title-row">
+              <h3>{item.name}</h3>
+            </div>
+            <p className="preset-draft-description">
+              {unfinishedPresetDescription(kind, state, referenceCount, resumable)}
+            </p>
+            <div className="preset-draft-actions">
+              {resumable ? (
+                <a
+                  className="button button-primary"
+                  href={hostedPresetResumeHref(kind, item.version_id)}
+                >
+                  Continue setup <ArrowRight size={16} aria-hidden="true" />
+                </a>
+              ) : null}
+              {!systemOwned ? (
+                <Button
+                  className="preset-remove-button"
+                  variant="danger"
+                  busy={deletePreset.isPending && deletePreset.variables?.id === resourceId}
+                  disabled={deletePreset.isPending}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Remove this ${itemLabel} from your ${isAvatar ? "Avatar Hub" : "Image Styles"}? Existing projects will keep their pinned version.`,
+                      )
+                    )
+                      return;
+                    deletePreset.mutate({ kind, id: resourceId });
+                  }}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                  {deletePreset.isPending && deletePreset.variables?.id === resourceId
+                    ? `Removing ${itemLabel}…`
+                    : `Remove ${itemLabel}`}
+                </Button>
+              ) : null}
+            </div>
+            {deletePreset.isError && deletePreset.variables?.id === resourceId ? (
+              <div className="validation validation-danger" role="alert">
+                {deletePreset.error instanceof Error
+                  ? deletePreset.error.message
+                  : `This ${itemLabel} could not be removed right now.`}
+              </div>
+            ) : null}
+          </div>
+        </article>
+      );
+    }
+
+    return (
+      <article
+        className={`entity-card ${isAvatar ? "avatar-card" : "style-card"}`}
+        key={item.version_id}
+      >
+        {media}
+        <div className="entity-card-body">
+          <div className="entity-title-row">
+            <h3>{item.name}</h3>
+          </div>
+        </div>
+        <DetailsSheet
+          title={item.name}
+          description={
+            isAvatar
+              ? "Ready to use"
+              : referenceCount > 0
+                ? `Published · ${referenceCount} references`
+                : "Published"
+          }
+          trigger={
+            <button className="entity-details-trigger" type="button">
+              <strong>
+                {isAvatar || referenceCount === 0 ? "Details" : `References (${referenceCount})`}
+              </strong>
+              <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          }
+        >
+          {isAvatar ? (
+            <>
+              {imageUrl ? (
+                <div className="avatar-crop-grid">
+                  <figure>
+                    <PresetImage src={imageUrl} alt={`${item.name} full avatar crop`} />
+                    <figcaption>Full frame</figcaption>
+                  </figure>
+                  <figure className="split-crop">
+                    <PresetImage src={imageUrl} alt={`${item.name} split avatar crop`} />
+                    <figcaption>Split crop</figcaption>
+                  </figure>
+                </div>
+              ) : null}
+              <div className="detail-facts">
+                <span>
+                  <small>Ready to use</small>
+                  <strong>Ready</strong>
+                </span>
+                <span>
+                  <small>Rights &amp; consent</small>
+                  <strong>
+                    {"rights_status" in item && item.rights_status === "ATTESTED"
+                      ? "Attested"
+                      : "Included"}
+                  </strong>
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="detail-facts">
+              <span>
+                <small>Status</small>
+                <strong>Published</strong>
+              </span>
+              <span>
+                <small>Reference images</small>
+                <strong>{referenceCount}</strong>
+              </span>
+            </div>
+          )}
+          {!systemOwned ? (
+            <div className="preset-detail-actions">
+              <Button
+                className="preset-remove-button"
+                variant="danger"
+                busy={deletePreset.isPending && deletePreset.variables?.id === resourceId}
+                disabled={deletePreset.isPending}
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      `Remove this ${itemLabel} from your ${isAvatar ? "Avatar Hub" : "Image Styles"}? Existing projects will keep their pinned version.`,
+                    )
+                  )
+                    return;
+                  deletePreset.mutate({ kind, id: resourceId });
+                }}
+              >
+                <Trash2 size={16} aria-hidden="true" />
+                {deletePreset.isPending && deletePreset.variables?.id === resourceId
+                  ? `Removing ${itemLabel}…`
+                  : `Remove ${itemLabel}`}
+              </Button>
+              {deletePreset.isError && deletePreset.variables?.id === resourceId ? (
+                <div className="validation validation-danger" role="alert">
+                  {deletePreset.error instanceof Error
+                    ? deletePreset.error.message
+                    : `This ${itemLabel} could not be removed right now.`}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </DetailsSheet>
+      </article>
+    );
+  }
 
   if (catalog.isPending) {
     return (
@@ -1524,7 +1894,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         </label>
       </div>
       <Panel className="hub-panel">
-        {items.length === 0 ? (
+        {allItems.length === 0 ? (
           <EmptyState
             icon={<Icon />}
             title={`No ready ${itemLabel}s yet`}
@@ -1547,155 +1917,27 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
             body="Clear or change the search to see your library."
           />
         ) : (
-          <div className={`card-grid ${isAvatar ? "avatar-card-grid" : "style-card-grid"}`}>
-            {visibleItems.map((item) => {
-              const state = presetState(item);
-              const healthy = isAvatar ? state === "READY" : state === "PUBLISHED";
-              const resourceId =
-                isAvatar && "profile_id" in item
-                  ? item.profile_id
-                  : !isAvatar && "style_id" in item
-                    ? item.style_id
-                    : item.version_id;
-              const systemOwned =
-                item.scope_kind === "SYSTEM" ||
-                ("rights_status" in item && item.rights_status === "SYSTEM_OWNED");
-              const imageUrl =
-                isAvatar && "thumbnail_url" in item
-                  ? item.thumbnail_url
-                  : !isAvatar && "cover_url" in item
-                    ? item.cover_url
-                    : null;
-              const referenceCount =
-                !isAvatar && "reference_count" in item ? (item.reference_count ?? 0) : 0;
-              return (
-                <article
-                  className={`entity-card ${isAvatar ? "avatar-card" : "style-card"}`}
-                  key={item.version_id}
-                >
-                  <div className={isAvatar ? "avatar-card-media" : "style-card-media"}>
-                    {imageUrl ? (
-                      <PresetImage
-                        src={imageUrl}
-                        alt={`${item.name} ${isAvatar ? "presenter" : "cover"}`}
-                      />
-                    ) : (
-                      <span
-                        className={`preset-image-fallback ${isAvatar ? "hosted-avatar-placeholder" : "hosted-style-placeholder"}`}
-                        role="img"
-                        aria-label={`${item.name} ${isAvatar ? "presenter" : "cover"} unavailable`}
-                      >
-                        <Icon aria-hidden="true" />
-                      </span>
-                    )}
-                    {!healthy ? (
-                      <Badge tone={statusTone(state)}>{normalizedStatus(state)}</Badge>
-                    ) : null}
+          <>
+            {visibleDraftItems.length > 0 ? (
+              <section className="hub-drafts-section" aria-labelledby={`${kind}-drafts-heading`}>
+                <header className="hub-section-heading">
+                  <div>
+                    <p className="eyebrow">Finish setup</p>
+                    <h2 id={`${kind}-drafts-heading`}>Unfinished {itemLabel}s</h2>
                   </div>
-                  <div className="entity-card-body">
-                    <div className="entity-title-row">
-                      <h3>{item.name}</h3>
-                    </div>
-                  </div>
-                  <DetailsSheet
-                    title={item.name}
-                    description={
-                      isAvatar
-                        ? "Ready to use"
-                        : referenceCount > 0
-                          ? `Published · ${referenceCount} references`
-                          : "Published"
-                    }
-                    trigger={
-                      <button className="entity-details-trigger" type="button">
-                        <strong>
-                          {isAvatar || referenceCount === 0
-                            ? "Details"
-                            : `References (${referenceCount})`}
-                        </strong>
-                        <ArrowRight size={18} aria-hidden="true" />
-                      </button>
-                    }
-                  >
-                    {isAvatar ? (
-                      <>
-                        {imageUrl ? (
-                          <div className="avatar-crop-grid">
-                            <figure>
-                              <PresetImage src={imageUrl} alt={`${item.name} full avatar crop`} />
-                              <figcaption>Full frame</figcaption>
-                            </figure>
-                            <figure className="split-crop">
-                              <PresetImage src={imageUrl} alt={`${item.name} split avatar crop`} />
-                              <figcaption>Split crop</figcaption>
-                            </figure>
-                          </div>
-                        ) : null}
-                        <div className="detail-facts">
-                          <span>
-                            <small>Ready to use</small>
-                            <strong>{healthy ? "Ready" : normalizedStatus(state)}</strong>
-                          </span>
-                          <span>
-                            <small>Rights &amp; consent</small>
-                            <strong>
-                              {"rights_status" in item && item.rights_status === "ATTESTED"
-                                ? "Attested"
-                                : "Included"}
-                            </strong>
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="detail-facts">
-                        <span>
-                          <small>Status</small>
-                          <strong>{healthy ? "Published" : normalizedStatus(state)}</strong>
-                        </span>
-                        <span>
-                          <small>Reference images</small>
-                          <strong>{referenceCount}</strong>
-                        </span>
-                      </div>
-                    )}
-                    {!systemOwned ? (
-                      <div className="preset-detail-actions">
-                        <Button
-                          className="preset-remove-button"
-                          variant="danger"
-                          busy={
-                            deletePreset.isPending && deletePreset.variables?.id === resourceId
-                          }
-                          disabled={deletePreset.isPending}
-                          onClick={() => {
-                            if (
-                              !window.confirm(
-                                `Remove this ${itemLabel} from your ${isAvatar ? "Avatar Hub" : "Image Styles"}? Existing projects will keep their pinned version.`,
-                              )
-                            )
-                              return;
-                            deletePreset.mutate({ kind, id: resourceId });
-                          }}
-                        >
-                          <Trash2 size={16} aria-hidden="true" />
-                          {deletePreset.isPending && deletePreset.variables?.id === resourceId
-                            ? `Removing ${itemLabel}…`
-                            : `Remove ${itemLabel}`}
-                        </Button>
-                        {deletePreset.isError && deletePreset.variables?.id === resourceId ? (
-                          <div className="validation validation-danger" role="alert">
-                            {deletePreset.error instanceof Error
-                              ? deletePreset.error.message
-                              : `This ${itemLabel} could not be removed right now.`}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </DetailsSheet>
-                </article>
-              );
-            })}
-          </div>
+                  <Badge tone="warning">{visibleDraftItems.length}</Badge>
+                </header>
+                <div className={`card-grid ${isAvatar ? "avatar-card-grid" : "style-card-grid"}`}>
+                  {visibleDraftItems.map(renderCard)}
+                </div>
+              </section>
+            ) : null}
+            {visiblePublishedItems.length > 0 ? (
+              <div className={`card-grid ${isAvatar ? "avatar-card-grid" : "style-card-grid"}`}>
+                {visiblePublishedItems.map(renderCard)}
+              </div>
+            ) : null}
+          </>
         )}
       </Panel>
     </>
@@ -1755,6 +1997,7 @@ export function HostedPresetCreationScreen({
   const defaultReturnTo = fixtureStyleAdapter?.returnTo ?? (isAvatar ? "/avatars" : "/styles");
   const returnTo = normalizeHostedReturnTo(params.get("returnTo"), defaultReturnTo);
   const parentId = params.get("parentId");
+  const resumeVersionId = params.get("resumeVersionId");
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [avatarSource, setAvatarSource] = useState<{
@@ -1784,6 +2027,7 @@ export function HostedPresetCreationScreen({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const createRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
+  const [resumeInitialized, setResumeInitialized] = useState(false);
   const catalog = useQuery({
     queryKey: fixtureBackend ? ["fixture-preset-catalog", kind] : ["hosted-project-catalog"],
     queryFn: async () => {
@@ -1791,16 +2035,40 @@ export function HostedPresetCreationScreen({
       return { avatars: [], styles: await fixtureStyleAdapter!.listStyles() };
     },
   });
+  const catalogValue = catalog.data as Partial<CatalogResponse> | undefined;
   const items = catalog.data ? (isAvatar ? catalog.data.avatars : catalog.data.styles) : [];
-  const duplicateName = items.some(
+  const unfinishedItems = catalogValue
+    ? isAvatar
+      ? catalogValue.avatar_drafts ?? []
+      : catalogValue.style_drafts ?? []
+    : [];
+  const resumedDraft = resumeVersionId
+    ? unfinishedItems.find((item) => item.version_id === resumeVersionId)
+    : undefined;
+  const resumedDraftActive = Boolean(resumeVersionId && created);
+  const matchingDraft = unfinishedItems.find(
+    (item) =>
+      item.version_id !== resumeVersionId &&
+      item.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
+  );
+  const matchingDraftName = Boolean(matchingDraft);
+  const matchingDraftResumable = Boolean(
+    matchingDraft && hostedDraftIsResumable(kind, matchingDraft),
+  );
+  const duplicateReadyName = items.some(
     (item) => item.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
   );
+  const duplicateName = matchingDraftName || duplicateReadyName;
   const hasRequiredSource = isAvatar
     ? Boolean(avatarSource)
     : styleSources.length >= MIN_STYLE_REFERENCES;
   const stepOneReady = Boolean(name.trim()) && !duplicateName && hasRequiredSource && !busy;
-  const stepOneHint = duplicateName
-    ? `Choose a different ${itemLabel} name.`
+  const stepOneHint = matchingDraftName
+    ? matchingDraftResumable
+      ? `This unfinished ${itemLabel} is already in the Hub. Continue setup from there.`
+      : `This unfinished ${itemLabel} is already in the Hub. View it there or remove it before starting another.`
+    : duplicateReadyName
+      ? `Choose a different ${itemLabel} name.`
     : !name.trim() && !hasRequiredSource
       ? `Add a name and ${isAvatar ? "photo" : "reference images"} to continue.`
       : !name.trim()
@@ -1818,6 +2086,48 @@ export function HostedPresetCreationScreen({
     },
     [avatarSource, styleSources],
   );
+
+  useEffect(() => {
+    if (fixtureBackend || !resumeVersionId || !catalog.data || resumeInitialized) return;
+    setResumeInitialized(true);
+    if (!resumedDraft) {
+      setError(
+        `This saved ${itemLabel} is no longer available. Return to ${isAvatar ? "Avatar Hub" : "Image Styles"}.`,
+      );
+      return;
+    }
+    const draftState = presetState(resumedDraft);
+    setName(resumedDraft.name);
+    setCreated(hostedDraftResponse(resumedDraft));
+    if (isAvatar && "profile_id" in resumedDraft) {
+      if (draftState !== "NEEDS_REVIEW") {
+        setError("This avatar upload did not finish. Remove it from Avatar Hub and start again.");
+        setStep(1);
+        return;
+      }
+      setRights(resumedDraft.rights_attested === true);
+      setLikeness(resumedDraft.likeness_animation_consent === true);
+      setStep(3);
+    } else if (!isAvatar && "style_id" in resumedDraft) {
+      if (draftState === "DRAFT" && resumedDraft.references_verified !== true) {
+        setError("These reference uploads did not finish. Remove this style from Image Styles and start again.");
+        setStep(1);
+        return;
+      }
+      setRights(resumedDraft.rights_attested === true);
+      setDisclosure(resumedDraft.processing_disclosure_acknowledged === true);
+      setRetention(resumedDraft.original_retention_policy === "RETAIN");
+      setStep(draftState === "NEEDS_REVIEW" ? 4 : 3);
+    }
+  }, [
+    catalog.data,
+    fixtureBackend,
+    isAvatar,
+    itemLabel,
+    resumeInitialized,
+    resumeVersionId,
+    resumedDraft,
+  ]);
 
   function cancel() {
     window.location.assign(returnTo);
@@ -2024,7 +2334,10 @@ export function HostedPresetCreationScreen({
       const message =
         value instanceof Error ? value.message : `Hosted ${itemLabel} could not be saved.`;
       setError(message);
-      if (!isAvatar && message === "That style name is already in use. Choose a different name.") {
+      if (
+        !isAvatar &&
+        message === "That style name is already in use. Open Image Styles to continue or remove it."
+      ) {
         setStep(1);
         requestAnimationFrame(() => document.querySelector<HTMLInputElement>("#preset-name-styles")?.focus());
       }
@@ -2158,9 +2471,15 @@ export function HostedPresetCreationScreen({
                 ? "Rights and likeness approval"
                 : step === 3
                   ? "Analyze references"
-                  : "Review and publish"
+              : "Review and publish"
         }
       >
+        {resumeVersionId && created ? (
+          <div className="preset-resume-banner" role="status">
+            <strong>Continuing “{name}”</strong>
+            <span>Your saved work is loaded. Continue from the last completed step.</span>
+          </div>
+        ) : null}
         {step === 1 ? (
           <div className="stack preset-create-form">
             <div className="field">
@@ -2239,6 +2558,22 @@ export function HostedPresetCreationScreen({
               {stepOneReady ? <Check size={16} /> : null}
               {stepOneHint}
             </div>
+            {matchingDraft && matchingDraftResumable ? (
+              <a
+                className="button button-secondary preset-duplicate-action"
+                href={hostedPresetResumeHref(kind, matchingDraft.version_id)}
+              >
+                Continue setup <ArrowRight size={16} aria-hidden="true" />
+              </a>
+            ) : null}
+            {matchingDraft && !matchingDraftResumable ? (
+              <a
+                className="button button-secondary preset-duplicate-action"
+                href={isAvatar ? "/avatars" : "/styles"}
+              >
+                View in Hub <ArrowRight size={16} aria-hidden="true" />
+              </a>
+            ) : null}
             <Button disabled={!stepOneReady} onClick={() => setStep(2)}>
               Continue <ArrowRight size={16} />
             </Button>
@@ -2318,8 +2653,12 @@ export function HostedPresetCreationScreen({
                 compatibility evidence are retained.
               </p>
             </Disclosure>
-            <Button variant="ghost" disabled={busy} onClick={() => setStep(2)}>
-              Back
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => (resumedDraftActive ? cancel() : setStep(2))}
+            >
+              {resumedDraftActive ? `Back to ${isAvatar ? "Avatar Hub" : "Image Styles"}` : "Back"}
             </Button>
             {!created ? (
               <Button
@@ -2390,8 +2729,12 @@ export function HostedPresetCreationScreen({
                 onChange={(event) => setDisclosure(event.target.checked)}
               />
             </label>
-            <Button variant="ghost" disabled={busy} onClick={() => setStep(2)}>
-              Back
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => (resumedDraftActive ? cancel() : setStep(2))}
+            >
+              {resumedDraftActive ? "Back to Image Styles" : "Back"}
             </Button>
             {!created ? (
               <Button

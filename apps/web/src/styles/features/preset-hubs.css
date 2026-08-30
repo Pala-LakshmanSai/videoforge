@@ -88,6 +88,28 @@
   backdrop-filter: none;
 }
 
+.hub-drafts-section {
+  margin-bottom: 24px;
+}
+
+.hub-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 14px;
+  padding: 0 2px;
+}
+
+.hub-section-heading h2 {
+  margin: 2px 0 0;
+  font-size: 1.35rem;
+}
+
+.hub-section-heading .eyebrow {
+  margin: 0;
+}
+
 .search-field {
   display: block;
   width: min(416px, 100%);
@@ -220,6 +242,39 @@
 .entity-card-body > p {
   margin-top: 12px;
   line-height: 1.55;
+}
+
+.preset-draft-card {
+  border-color: rgba(232, 177, 84, 0.36);
+  background:
+    linear-gradient(145deg, rgba(50, 39, 72, 0.32), transparent 55%),
+    rgba(8, 10, 24, 0.82);
+}
+
+.preset-draft-card .entity-card-body {
+  padding-bottom: 16px;
+}
+
+.preset-draft-description {
+  min-height: 2.8em;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.preset-draft-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  gap: 9px;
+  margin-top: 15px;
+}
+
+.preset-draft-actions .button {
+  min-height: 42px;
+}
+
+.preset-draft-actions .preset-remove-button {
+  width: auto;
+  padding-inline: 13px;
 }
 
 .entity-details {
@@ -384,6 +439,22 @@
   gap: 18px;
 }
 
+.preset-resume-banner {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(105, 218, 177, 0.35);
+  border-radius: 14px;
+  color: #bdf4df;
+  background: rgba(44, 150, 116, 0.1);
+}
+
+.preset-resume-banner span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .preset-create-form .field-label {
   color: var(--text);
   font-size: 0.92rem;
@@ -453,6 +524,10 @@
 
 .preset-step-hint-danger {
   color: #ff9aab;
+}
+
+.preset-duplicate-action {
+  width: fit-content;
 }
 
 .style-source-preview {
