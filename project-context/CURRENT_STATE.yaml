@@ -71,9 +71,12 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: SOURCE_AND_DATABASE_GREEN_DEPLOYMENT_REAPPROVAL_REQUIRED_AFTER_BUNDLE_REPAIR
+  status: LIVE_STEP_1_SIGN_IN_AND_INVITE_REDEMPTION
   implementation_commit: "79423f8c6fe92b7faaa45a07f7f72f62b1b602d4"
-  deployment_candidate: CURRENT_CLEAN_GIT_HEAD
+  deployment_candidate: CONSUMED_BY_DEPLOYMENT
+  deployed_source_commit: "b3a104f74506c21fa8c8aeb180c6b8a00ae4153d"
+  cloudflare_worker_version_id: "bc739cd5-ea49-4745-adba-b4ec2473fa7e"
+  deployed_config_sha256: "sha256:543e0048ce81c7802ddf9eeba5620db1cbff86109251bb6e4d43565d92e9e3cf"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -87,6 +90,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_49_ROW_BACKUP_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
+  live_browser_verification: "PASS_GOOGLE_ONLY_SIGN_IN_ZERO_CONSOLE_ERRORS"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
