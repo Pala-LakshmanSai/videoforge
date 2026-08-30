@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "639fb78319f18c02eea9ea36e0988099be0cfc4c",
+  "audited_code_commit": "c73eda0e3df3b028b7cbf9e9d176d1b0b5457905",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.successor-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-30T00:09:00.000Z",
+  "observed_at": "2026-08-30T01:55:00.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -17,7 +17,7 @@
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
     "entry_count": 649,
-    "sha256": "sha256:c6ea6e41abbf71da29c8c2302039f25cac75f1c5aee45f70b713eba0ebd4c15b",
+    "sha256": "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78",
     "exact": true
   },
   "production_origin": {
@@ -27,20 +27,20 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:c6ea6e41abbf71da29c8c2302039f25cac75f1c5aee45f70b713eba0ebd4c15b"
+    "sha256": "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78"
   },
   "source_components": {
     "full_live_executor": {
       "path": "deploy/v2-13/full-live-executor.mjs",
-      "sha256": "sha256:1f3a836de42d2dd08a9b8e024c0865979b83ee333eec164e4dd72c598bfe60c3"
+      "sha256": "sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93"
     },
     "full_live_orchestration_authority": {
       "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-      "sha256": "sha256:fa11cc6fb145c94075e988ec5d423504e00549f731ab38078290e2c636ca070f"
+      "sha256": "sha256:83b9c68cd45c182e154e5e7604f84f6db660036c3ba64e630bd0a3f54cb92405"
     },
     "approval_validator": {
       "path": "deploy/v2-13/validate-full-live-approval.mjs",
-      "sha256": "sha256:d19c0719a9534603a2c123434d3627665b2f52ecb4757596ad2895c74b36fe1c"
+      "sha256": "sha256:47a325c0bee0dadfe41270996ad876a11f255b207ff73461e75b4ebf532c062c"
     },
     "migration_0049": {
       "path": "packages/control-plane/migrations/0049_hosted_full_live_promotion_lineage.sql",
@@ -55,7 +55,7 @@
     "package_tests_passed": 51,
     "package_tests_skipped": 0,
     "focused_release_script_tests_passed": 92,
-    "focused_release_adapter_tests_passed": 56,
+    "focused_release_adapter_tests_passed": 57,
     "stale_lock_stress_runs": 12,
     "stale_lock_contenders_per_run": 6,
     "stale_lock_stress_passed": true,
@@ -137,12 +137,12 @@
   "notes": [
     "This record contains no credentials or raw protected values.",
     "The immutable release payload and exact lightweight tag remain bound to 15af5e20ce3c80eb61d5d1e807a87e8840ed9685; only execution-control source and evidence advance for this successor.",
-    "The immediately previous full-live authority was durably consumed once and stopped at the SoulX dispatch boundary after exact tag reconciliation and immutable Mage publication. Cleanup completed with zero Pods, workers, queues, GPU use, finite execution spend, database credentials, secrets, deployments, endpoints, or live acceptance; only the two approved volumes and the immutable Mage image remain.",
-    "The successor binds the exact predecessor terminal archive and performs zero tag mutation. Mage operation 5 is predecessor-bound readback and reconciliation of workflow run 33236590768 and its immutable evidence; operation 6 re-verifies that exact result without workflow redispatch.",
+    "The immediately previous full-live authority v2-13-full-live-20260830-011151z-5cc63415 was consumed once and stopped before workflow dispatch because the adapter incorrectly required the reconciliation-only Mage default-branch bytes to equal the immutable release bytes. Cleanup completed with zero Pods, workers, queues, endpoints, templates, GPU use, attempt spend, database bootstrap, production activation, or live acceptance; only the two approved volumes remain.",
+    "The successor binds the current terminal archive sha256:d2655a24f51cef1c45430cb8b3240dd87aef842fca15f688a382d0174fc17169 and performs zero tag mutation. Mage operation 5 remains predecessor-bound readback of workflow run 33236590768 with no redispatch. The v2 proof records both registered workflows and both release-source hashes, permits the truthful Mage main mismatch, and still requires SoulX main bytes and commit to match the sealed registration evidence before SoulX dispatch.",
     "Default-branch repair authority v2-13-default-branch-repair-20260829-120719z-graphql was consumed exactly once at zero spend. GitHub main is c24d37e164d3fcf93c04d53a1e8f06ab972c5d46, and the exact release-source SoulX workflow is registered active with hash-bound evidence sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42.",
     "V3 payload contracts remain backward compatible while 19 V4 execution-control components are separately commit-tree-bound. Guarded activation runs only from the successor control commit, rejects predecessor authority replay, and proves every non-control closure byte equals the immutable payload.",
-    "The focused executor and authority checks pass 92 of 92 at clean audited source commit 639fb78319f18c02eea9ea36e0988099be0cfc4c; release adapter checks pass 56 of 56, formatted hosted and audio checks pass 51 of 51, invite migration checks pass 3 of 3, and hosted pair/configuration gate checks pass 15 of 15. Exact commit and closure checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-bind gate.",
-    "Audited source 639fb78319f18c02eea9ea36e0988099be0cfc4c binds all 649 closure entries, the 49-row migration manifest, executor, orchestration authority, and externally tree-bound approval validator without changing the immutable release payload or lightweight tag. The stale-lock authority repair and its component reseal are source-controlled and hash-bound with no provider or spend activity.",
+    "The focused executor and authority checks pass 92 of 92 at clean audited source commit c73eda0e3df3b028b7cbf9e9d176d1b0b5457905; release adapter checks pass 57 of 57 and build-seed checks pass 25 of 25. Exact commit, closure, terminal hygiene, and default NO_ACTION checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-bind gate.",
+    "Audited source c73eda0e3df3b028b7cbf9e9d176d1b0b5457905 binds all 649 closure entries, the 49-row migration manifest, executor, orchestration authority, and externally tree-bound approval validator without changing the immutable release payload or lightweight tag. The consumed approval and authority were removed from the active candidate path after their exact bytes and terminal state were archived; the replacement must use a fresh UUID and fresh exact approval.",
     "The exact migration-0049 component is sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31. Hosted pair composition requires the exact 13-row 0037-0049 ledger, fails closed with MIGRATION_LEDGER_0037_0049_INVALID on drift, and remains DISABLED_UNQUALIFIED until qualified transport truth is present; focused composition and configuration-qualified tests prove the current gate.",
     "The stale state-lock repair was stress-tested across 12 clean runs with 6 synchronized contenders per run: exactly one winner, all other contenders fail closed, and no lock or candidate debris remains. This is provider-free evidence only; no authority was consumed and no provider, GPU, credential, or spend action occurred.",
     "The successor authority identifier is proven distinct from the exact predecessor in both approval validation and outer authority validation before durable single-use consumption; guarded activation repeats the check as defense in depth."
