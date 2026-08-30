@@ -396,8 +396,10 @@ DELETE /v2/queue/{generation_request_id}
 
 GET    /v2/avatar-profiles
 POST   /v2/avatar-profiles
+DELETE /v2/avatar-profiles/{profile_id}
 GET    /v2/image-styles
 POST   /v2/image-styles
+DELETE /v2/image-styles/{style_id}
 
 POST   /v2/assets/upload-reservations
 POST   /v2/assets/{asset_id}/complete
@@ -442,6 +444,10 @@ project, and do not become zero when endpoint workers reach zero.
 
 - User voiceovers, source avatars, style references, intermediates, and finals remain tenant-private
   and follow the approved retention policy. Deletion verifies ownership and reference safety.
+- Removing a reusable Avatar or Image Style from its Hub archives the tenant-owned parent so it is
+  unavailable to future project revisions while preserving immutable versions and media required by
+  already-pinned revisions. System presets cannot be removed. Full source erasure is a separate
+  retention action and must state when historical revisions will become non-regenerable.
 - A source used by a queued/running revision cannot be removed. Later erasure may make historical
   revisions non-regenerable and must say so explicitly.
 - Job scratch is ephemeral and removed after each attempt; it is never recovery state.

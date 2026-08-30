@@ -9,6 +9,7 @@ import {
   Images,
   RefreshCw,
   ShieldCheck,
+  Trash2,
   Upload,
   UsersRound,
   X,
@@ -66,6 +67,7 @@ export interface CatalogResponse {
     profile_hash?: string | null;
     compatibility?: string | null;
     rights_status?: string | null;
+    scope_kind?: "WORKSPACE" | "SYSTEM";
   }[];
   readonly styles: readonly {
     style_id: string;
@@ -77,6 +79,7 @@ export interface CatalogResponse {
     cover_url?: string | null;
     profile_hash?: string | null;
     reference_count?: number;
+    scope_kind?: "WORKSPACE" | "SYSTEM";
   }[];
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
   readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
@@ -1342,6 +1345,11 @@ export function HostedCreateProjectScreen() {
 
 type HostedPresetHubKind = "avatars" | "styles";
 
+interface HostedPresetDeleteInput {
+  readonly kind: HostedPresetHubKind;
+  readonly id: string;
+}
+
 /** The invited release exposes only immutable presets that are already ready. */
 function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const [search, setSearch] = useState("");
@@ -1355,6 +1363,18 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const itemLabel = isAvatar ? "avatar" : "style";
   const Icon = isAvatar ? UsersRound : Images;
   const betaCreation = isHostedBetaMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
+  const deletePreset = useMutation({
+    mutationFn: async ({ kind: deleteKind, id }: HostedPresetDeleteInput) => {
+      const resource = deleteKind === "avatars" ? "avatars" : "styles";
+      await readJson<unknown>(`/api/v2/hosted/${resource}/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        body: "{}",
+      });
+    },
+    onSuccess: async () => {
+      await catalog.refetch();
+    },
+  });
   const visibleItems = items.filter((item) =>
     item.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -1436,6 +1456,15 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
             {visibleItems.map((item) => {
               const state = presetState(item);
               const healthy = isAvatar ? state === "READY" : state === "PUBLISHED";
+              const resourceId =
+                isAvatar && "profile_id" in item
+                  ? item.profile_id
+                  : !isAvatar && "style_id" in item
+                    ? item.style_id
+                    : item.version_id;
+              const systemOwned =
+                item.scope_kind === "SYSTEM" ||
+                ("rights_status" in item && item.rights_status === "SYSTEM_OWNED");
               const imageUrl =
                 isAvatar && "thumbnail_url" in item
                   ? item.thumbnail_url
@@ -1534,6 +1563,39 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
                         </span>
                       </div>
                     )}
+                    {!systemOwned ? (
+                      <div className="preset-detail-actions">
+                        <Button
+                          className="preset-remove-button"
+                          variant="danger"
+                          busy={
+                            deletePreset.isPending && deletePreset.variables?.id === resourceId
+                          }
+                          disabled={deletePreset.isPending}
+                          onClick={() => {
+                            if (
+                              !window.confirm(
+                                `Remove this ${itemLabel} from your ${isAvatar ? "Avatar Hub" : "Image Styles"}? Existing projects will keep their pinned version.`,
+                              )
+                            )
+                              return;
+                            deletePreset.mutate({ kind, id: resourceId });
+                          }}
+                        >
+                          <Trash2 size={16} aria-hidden="true" />
+                          {deletePreset.isPending && deletePreset.variables?.id === resourceId
+                            ? `Removing ${itemLabel}…`
+                            : `Remove ${itemLabel}`}
+                        </Button>
+                        {deletePreset.isError && deletePreset.variables?.id === resourceId ? (
+                          <div className="validation validation-danger" role="alert">
+                            {deletePreset.error instanceof Error
+                              ? deletePreset.error.message
+                              : `This ${itemLabel} could not be removed right now.`}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </DetailsSheet>
                 </article>
               );

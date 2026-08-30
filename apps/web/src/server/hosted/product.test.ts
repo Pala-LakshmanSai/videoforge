@@ -19,11 +19,19 @@ const testState = vi.hoisted(() => {
     },
   ];
   const rateLimitRows = [{ allowed: true }];
+  const archiveState: {
+    rows: Record<string, unknown>[];
+    error: unknown;
+  } = { rows: [], error: null };
   const query = vi.fn(async (sql: string) => {
     if (sql.includes("videoforge_consume_hosted_rate_limit"))
       return { rows: rateLimitRows, affectedRows: 1 };
     if (sql.includes("videoforge_hosted_session_scope"))
       return { rows: scopeRows, affectedRows: 1 };
+    if (sql.includes("videoforge_archive_hosted_preset")) {
+      if (archiveState.error) throw archiveState.error;
+      return { rows: archiveState.rows, affectedRows: archiveState.rows.length };
+    }
     if (sql.includes("FROM projects AS project")) return { rows: projectRows, affectedRows: 1 };
     return { rows: [], affectedRows: 0 };
   });
@@ -32,7 +40,7 @@ const testState = vi.hoisted(() => {
     work({ execute: vi.fn(), query }),
   );
   const executor = { execute: vi.fn(), query, transaction };
-  return { scopeRows, projectRows, rateLimitRows, query, pool, executor };
+  return { scopeRows, projectRows, rateLimitRows, archiveState, query, pool, executor };
 });
 
 vi.mock("./auth", () => ({
@@ -72,7 +80,7 @@ const executionContext = { waitUntil: vi.fn() };
 
 function request(
   path: string,
-  method: "GET" | "POST" = "POST",
+  method: "GET" | "POST" | "DELETE" = "POST",
   body: unknown = {},
   sameOrigin = true,
   headers: Record<string, string> = {},
@@ -191,6 +199,90 @@ describe("hosted product route contract", () => {
     },
   );
 
+  it("recognizes hosted avatar and style archive routes before database access", async () => {
+    for (const path of [
+      `/api/v2/hosted/avatars/${PRESET_ID}`,
+      `/api/v2/hosted/styles/${PRESET_ID}`,
+    ]) {
+      testState.query.mockClear();
+      const result = await handleHostedProductRequest(
+        request(path, "DELETE", {}, false),
+        environment,
+        config,
+        executionContext,
+      );
+      expect(result?.status).toBe(403);
+      await expect(errorCode(result)).resolves.toBe("HOSTED_BROWSER_ORIGIN_REJECTED");
+      expect(testState.query).not.toHaveBeenCalled();
+    }
+  });
+
+  it("archives a tenant preset through the exact function and reports retained history", async () => {
+    testState.query.mockClear();
+    testState.archiveState.rows.splice(0, testState.archiveState.rows.length, {
+      preset_kind: "AVATAR",
+      preset_id: PRESET_ID,
+      version_id: "55555555-5555-4555-8555-555555555555",
+      state: "ARCHIVED",
+      referenced_revision_count: "2",
+    });
+    testState.archiveState.error = null;
+
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/avatars/${PRESET_ID}`, "DELETE"),
+      environment,
+      config,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(200);
+    await expect(result?.json()).resolves.toMatchObject({
+      preset_kind: "avatar",
+      preset_id: PRESET_ID,
+      state: "ARCHIVED",
+      in_use: true,
+      referenced_revision_count: 2,
+      media_retention: "PRESERVED",
+      provider_calls_authorized: false,
+    });
+    expect(
+      testState.query.mock.calls.some(([sql]) =>
+        String(sql).includes("videoforge_archive_hosted_preset"),
+      ),
+    ).toBe(true);
+    expect(
+      testState.query.mock.calls.some(([sql]) => /UPDATE\s+avatar_profiles/iu.test(String(sql))),
+    ).toBe(false);
+    testState.archiveState.rows.length = 0;
+  });
+
+  it("returns a kind-specific not-found when the archive capability resolves no row", async () => {
+    testState.archiveState.rows.length = 0;
+    testState.archiveState.error = null;
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/styles/${PRESET_ID}`, "DELETE"),
+      environment,
+      config,
+      executionContext,
+    );
+    expect(result?.status).toBe(404);
+    await expect(errorCode(result)).resolves.toBe("STYLE_NOT_FOUND");
+  });
+
+  it("maps the immutable built-in archive error to a safe conflict", async () => {
+    testState.archiveState.rows.length = 0;
+    testState.archiveState.error = { code: "55000" };
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/avatars/${PRESET_ID}`, "DELETE"),
+      environment,
+      config,
+      executionContext,
+    );
+    expect(result?.status).toBe(409);
+    await expect(errorCode(result)).resolves.toBe("PRESET_IMMUTABLE");
+    testState.archiveState.error = null;
+  });
+
   it("opens preset mutations in staging while keeping provider and GPU transport disabled", async () => {
     testState.query.mockClear();
     const result = await handleHostedProductRequest(
@@ -303,5 +395,31 @@ describe("hosted product route contract", () => {
     expect(retry).toContain("task.state = 'FAILED'");
     expect(retry).not.toContain("request.state IN ('FAILED','RETRY_WAIT')");
     expect(retry).not.toContain("task.state IN ('FAILED','RETRY_WAIT')");
+  });
+
+  it("rechecks and locks active preset parents before hosted preset mutations", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const blocks = [
+      ["avatarCommit", "avatarApprove", "lockActiveAvatarParent"],
+      ["avatarApprove", "styleCreate", "lockActiveAvatarParent"],
+      ["styleCommit", "styleAnalyze", "lockActiveStyleParent"],
+      ["styleAnalyze", "stylePublish", "lockActiveStyleParent"],
+      ["stylePublish", "retryProjectAttempt", "lockActiveStyleParent"],
+    ] as const;
+    const lockHelpers = source.slice(
+      source.indexOf("async function lockActiveAvatarParent("),
+      source.indexOf("async function avatarCreate("),
+    );
+    expect(lockHelpers).toContain("FOR UPDATE");
+    expect(lockHelpers).toMatch(/status = 'ACTIVE'/u);
+    for (const [startName, endName, lockName] of blocks) {
+      const start = source.indexOf(`async function ${startName}(`);
+      const end = source.indexOf(`async function ${endName}(`, start + 1);
+      const block = source.slice(start, end);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(end).toBeGreaterThan(start);
+      expect(block).toContain(lockName);
+      expect(block).toMatch(/status = 'ACTIVE'/u);
+    }
   });
 });

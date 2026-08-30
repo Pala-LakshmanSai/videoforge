@@ -1290,6 +1290,64 @@ async function resolveParentStyle(
   };
 }
 
+async function lockActiveAvatarParent(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  profileOrVersionId: string,
+): Promise<boolean> {
+  const result = await transaction.query<HostedPresetRow>(
+    `SELECT profile.id AS profile_id
+       FROM avatar_profiles AS profile
+      WHERE profile.account_id = $1 AND profile.workspace_id = $2
+        AND profile.scope_kind = 'WORKSPACE'
+        AND profile.status = 'ACTIVE'
+        AND (
+          profile.id = $3
+          OR EXISTS (
+            SELECT 1
+              FROM avatar_profile_versions AS version
+             WHERE version.account_id = profile.account_id
+               AND version.workspace_id = profile.workspace_id
+               AND version.profile_id = profile.id
+               AND version.scope_kind = 'WORKSPACE'
+               AND version.id = $3
+          )
+        )
+      FOR UPDATE`,
+    [scope.account_id, scope.workspace_id, profileOrVersionId],
+  );
+  return result.rows.length > 0;
+}
+
+async function lockActiveStyleParent(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  styleOrVersionId: string,
+): Promise<boolean> {
+  const result = await transaction.query<HostedPresetRow>(
+    `SELECT style.id AS style_id
+       FROM image_styles AS style
+      WHERE style.account_id = $1 AND style.workspace_id = $2
+        AND style.scope_kind = 'WORKSPACE'
+        AND style.status = 'ACTIVE'
+        AND (
+          style.id = $3
+          OR EXISTS (
+            SELECT 1
+              FROM image_style_versions AS version
+             WHERE version.account_id = style.account_id
+               AND version.workspace_id = style.workspace_id
+               AND version.style_id = style.id
+               AND version.scope_kind = 'WORKSPACE'
+               AND version.id = $3
+          )
+        )
+      FOR UPDATE`,
+    [scope.account_id, scope.workspace_id, styleOrVersionId],
+  );
+  return result.rows.length > 0;
+}
+
 async function avatarCreate(
   request: Request,
   environment: HostedRuntimeEnvironment,
@@ -1495,6 +1553,7 @@ async function avatarCommit(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      if (!(await lockActiveAvatarParent(transaction, scope, profileOrVersionId))) return null;
       const result = await transaction.query<HostedPresetRow>(
         `SELECT profile.id AS profile_id, version.id AS version_id, version.state,
                 asset.object_key, asset.content_type, asset.byte_size AS content_length,
@@ -1512,6 +1571,7 @@ async function avatarCommit(
             AND asset.workspace_id = link.workspace_id AND asset.id = link.asset_id
           WHERE profile.account_id = $1 AND profile.workspace_id = $2
             AND profile.scope_kind = 'WORKSPACE'
+            AND profile.status = 'ACTIVE'
             AND (profile.id = $3 OR version.id = $3)
           ORDER BY version.version_number DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, profileOrVersionId],
@@ -1535,10 +1595,17 @@ async function avatarCommit(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      if (!(await lockActiveAvatarParent(transaction, scope, profileOrVersionId))) return null;
       const result = await transaction.query<HostedPresetRow>(
         `UPDATE assets AS asset
             SET state = 'VERIFIED', verified_at = COALESCE(asset.verified_at, now())
            FROM avatar_profile_assets AS link
+           JOIN avatar_profiles AS profile
+             ON profile.account_id = link.account_id
+            AND profile.workspace_id = link.workspace_id
+            AND profile.id = link.profile_id
+            AND profile.scope_kind = 'WORKSPACE'
+            AND profile.status = 'ACTIVE'
           WHERE link.account_id = $1 AND link.workspace_id = $2
             AND link.version_id = $3 AND link.role = 'ORIGINAL'
             AND asset.account_id = link.account_id AND asset.workspace_id = link.workspace_id
@@ -1546,21 +1613,29 @@ async function avatarCommit(
           RETURNING link.profile_id, link.version_id, asset.binary_sha256`,
         [scope.account_id, scope.workspace_id, rowString(pending, "version_id")],
       );
-      await transaction.query(
-        `UPDATE avatar_profile_versions
+      const version = await transaction.query<HostedPresetRow>(
+        `UPDATE avatar_profile_versions AS version
             SET state = CASE WHEN state = 'READY' THEN state ELSE 'NEEDS_REVIEW' END,
                 updated_at = now()
-          WHERE account_id = $1 AND workspace_id = $2 AND id = $3
-            AND state IN ('DRAFT','UPLOADING','NEEDS_REVIEW','READY')`,
+             FROM avatar_profiles AS profile
+            WHERE version.account_id = $1 AND version.workspace_id = $2 AND version.id = $3
+              AND version.state IN ('DRAFT','UPLOADING','NEEDS_REVIEW','READY')
+              AND profile.account_id = version.account_id
+              AND profile.workspace_id = version.workspace_id
+              AND profile.id = version.profile_id
+              AND profile.scope_kind = 'WORKSPACE'
+              AND profile.status = 'ACTIVE'
+          RETURNING version.profile_id, version.id AS version_id, version.state`,
         [scope.account_id, scope.workspace_id, rowString(pending, "version_id")],
       );
-      return result.rows[0] ?? pending;
+      return version.rows[0] ?? result.rows[0] ?? pending;
     });
+    if (!committed) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
     return response({
       schema_version: "videoforge-hosted-avatar-commit-response/v1",
       profile_id: rowString(committed, "profile_id"),
       version_id: rowString(committed, "version_id"),
-      state: pending.state === "READY" ? "READY" : "NEEDS_REVIEW",
+      state: committed.state === "READY" ? "READY" : "NEEDS_REVIEW",
       uploads: [],
       provider_calls_authorized: false,
     });
@@ -1593,6 +1668,7 @@ async function avatarApprove(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      if (!(await lockActiveAvatarParent(transaction, scope, profileOrVersionId))) return null;
       const result = await transaction.query<HostedPresetRow>(
         `SELECT profile.id AS profile_id, profile.name AS profile_name,
                 version.id AS version_id, version.state, version.profile_hash,
@@ -1611,6 +1687,7 @@ async function avatarApprove(
             AND asset.workspace_id = link.workspace_id AND asset.id = link.asset_id
           WHERE profile.account_id = $1 AND profile.workspace_id = $2
             AND profile.scope_kind = 'WORKSPACE'
+            AND profile.status = 'ACTIVE'
             AND (profile.id = $3 OR version.id = $3)
           ORDER BY version.version_number DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, profileOrVersionId],
@@ -1633,7 +1710,7 @@ async function avatarApprove(
       });
       const profileHash = await sha256(canonicalJson(payload));
       await transaction.query(
-        `UPDATE avatar_profile_versions
+        `UPDATE avatar_profile_versions AS version
             SET state = 'READY', profile_contract_name = 'avatar-profile',
                 profile_contract_version = 'v1', profile_payload = $4::jsonb,
                 profile_hash = $5, original_asset_id = $6, runtime_source_asset_id = $6,
@@ -1642,7 +1719,13 @@ async function avatarApprove(
                 source_validation_profile = 'hosted-avatar-source-validation-v1',
                 rights_attested_by_user_id = $8, likeness_attested_by_user_id = $8,
                 ready_at = now(), updated_at = now()
-          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+             FROM avatar_profiles AS profile
+            WHERE version.account_id = $1 AND version.workspace_id = $2 AND version.id = $3
+              AND profile.account_id = version.account_id
+              AND profile.workspace_id = version.workspace_id
+              AND profile.id = version.profile_id
+              AND profile.scope_kind = 'WORKSPACE'
+              AND profile.status = 'ACTIVE'`,
         [
           scope.account_id,
           scope.workspace_id,
@@ -1656,7 +1739,8 @@ async function avatarApprove(
       );
       await transaction.query(
         `UPDATE avatar_profiles SET active_version_id = $3, updated_at = now()
-          WHERE account_id = $1 AND workspace_id = $2 AND id = $4`,
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $4
+            AND scope_kind = 'WORKSPACE' AND status = 'ACTIVE'`,
         [
           scope.account_id,
           scope.workspace_id,
@@ -1974,7 +2058,8 @@ async function styleCommit(
              ON normalized.account_id = reference.account_id
             AND normalized.workspace_id = reference.workspace_id AND normalized.id = reference.normalized_asset_id
           WHERE style.account_id = $1 AND style.workspace_id = $2
-            AND style.scope_kind = 'WORKSPACE' AND (style.id = $3 OR version.id = $3)
+            AND style.scope_kind = 'WORKSPACE' AND style.status = 'ACTIVE'
+            AND (style.id = $3 OR version.id = $3)
             AND version.id = (
               SELECT candidate.id
                 FROM image_style_versions AS candidate
@@ -2022,25 +2107,43 @@ async function styleCommit(
           return response({ error: { code: "STYLE_NORMALIZED_NOT_VERIFIED" } }, 409);
         }
       }
-      await createNeonExecutor(pool).transaction(async (transaction) => {
+      const committed = await createNeonExecutor(pool).transaction(async (transaction) => {
         await transaction.query("SELECT set_config($1, $2, true)", [
           "videoforge.account_id",
           scope.account_id,
         ]);
+        if (!(await lockActiveStyleParent(transaction, scope, styleOrVersionId))) return false;
         for (const reference of pending) {
           await transaction.query(
             `UPDATE assets
                 SET state = 'VERIFIED', verified_at = COALESCE(verified_at, now())
-              WHERE account_id = $1 AND workspace_id = $2 AND id IN ($3,$4)`,
+              WHERE account_id = $1 AND workspace_id = $2 AND id IN ($3,$4)
+                AND EXISTS (
+                  SELECT 1
+                    FROM image_style_references AS reference
+                    JOIN image_styles AS style
+                      ON style.account_id = reference.account_id
+                     AND style.workspace_id = reference.workspace_id
+                     AND style.id = reference.style_id
+                     AND style.scope_kind = 'WORKSPACE'
+                     AND style.status = 'ACTIVE'
+                   WHERE reference.account_id = $1
+                     AND reference.workspace_id = $2
+                     AND reference.version_id = $5
+                     AND (reference.original_asset_id = assets.id OR reference.normalized_asset_id = assets.id)
+                )`,
             [
               scope.account_id,
               scope.workspace_id,
               rowString(reference, "original_asset_id"),
               rowString(reference, "normalized_asset_id"),
+              rowString(reference, "version_id"),
             ],
           );
         }
+        return true;
       });
+      if (committed === false) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
     }
     return response({
       schema_version: "videoforge-hosted-style-commit-response/v1",
@@ -2079,6 +2182,7 @@ async function styleAnalyze(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      if (!(await lockActiveStyleParent(transaction, scope, styleOrVersionId))) return null;
       const result = await transaction.query<HostedPresetRow>(
         `SELECT style.id AS style_id, style.name AS style_name, version.id AS version_id,
                 version.state, version.profile_payload, version.style_profile_hash,
@@ -2097,7 +2201,8 @@ async function styleAnalyze(
              ON normalized.account_id = reference.account_id
             AND normalized.workspace_id = reference.workspace_id AND normalized.id = reference.normalized_asset_id
           WHERE style.account_id = $1 AND style.workspace_id = $2
-            AND style.scope_kind = 'WORKSPACE' AND (style.id = $3 OR version.id = $3)
+            AND style.scope_kind = 'WORKSPACE' AND style.status = 'ACTIVE'
+            AND (style.id = $3 OR version.id = $3)
           GROUP BY style.id, style.name, version.id, version.state, version.profile_payload, version.style_profile_hash,
                    version.version_number
           ORDER BY version.version_number DESC LIMIT 1`,
@@ -2118,13 +2223,19 @@ async function styleAnalyze(
         canonicalJson({ version_id: target.version_id, references }),
       );
       await transaction.query(
-        `UPDATE image_style_versions
+        `UPDATE image_style_versions AS version
             SET state = 'NEEDS_REVIEW', profile_contract_name = 'image-style-profile',
                 profile_contract_version = 'v1', profile_payload = $4::jsonb,
                 style_profile_hash = $5, analyzer_request_hash = $6,
                 analyzer_model_snapshot = 'hosted-provider-free-deterministic-v1',
                 disclosure_attested_by_user_id = $7, updated_at = now()
-          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+             FROM image_styles AS style
+            WHERE version.account_id = $1 AND version.workspace_id = $2 AND version.id = $3
+              AND style.account_id = version.account_id
+              AND style.workspace_id = version.workspace_id
+              AND style.id = version.style_id
+              AND style.scope_kind = 'WORKSPACE'
+              AND style.status = 'ACTIVE'`,
         [
           scope.account_id,
           scope.workspace_id,
@@ -2185,6 +2296,7 @@ async function stylePublish(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      if (!(await lockActiveStyleParent(transaction, scope, styleOrVersionId))) return null;
       const result = await transaction.query<HostedPresetRow>(
         `SELECT style.id AS style_id, version.id AS version_id, version.state,
                 version.profile_payload, version.style_profile_hash
@@ -2193,7 +2305,8 @@ async function stylePublish(
              ON version.account_id = style.account_id
             AND version.workspace_id = style.workspace_id AND version.style_id = style.id
           WHERE style.account_id = $1 AND style.workspace_id = $2
-            AND style.scope_kind = 'WORKSPACE' AND (style.id = $3 OR version.id = $3)
+            AND style.scope_kind = 'WORKSPACE' AND style.status = 'ACTIVE'
+            AND (style.id = $3 OR version.id = $3)
           ORDER BY version.version_number DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, styleOrVersionId],
       );
@@ -2210,15 +2323,22 @@ async function stylePublish(
           throw new Error("STYLE_PROFILE_MISMATCH");
       }
       await transaction.query(
-        `UPDATE image_style_versions
+        `UPDATE image_style_versions AS version
             SET state = 'PUBLISHED', disclosure_attested_by_user_id = $4,
                 published_at = now(), updated_at = now()
-          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+             FROM image_styles AS style
+            WHERE version.account_id = $1 AND version.workspace_id = $2 AND version.id = $3
+              AND style.account_id = version.account_id
+              AND style.workspace_id = version.workspace_id
+              AND style.id = version.style_id
+              AND style.scope_kind = 'WORKSPACE'
+              AND style.status = 'ACTIVE'`,
         [scope.account_id, scope.workspace_id, rowString(target, "version_id"), scope.user_id],
       );
       await transaction.query(
         `UPDATE image_styles SET active_version_id = $3, updated_at = now()
-          WHERE account_id = $1 AND workspace_id = $2 AND id = $4`,
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $4
+            AND scope_kind = 'WORKSPACE' AND status = 'ACTIVE'`,
         [
           scope.account_id,
           scope.workspace_id,
@@ -2711,6 +2831,68 @@ async function hostedPresetPreview(
         "x-content-type-options": "nosniff",
       },
     });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function archiveHostedPreset(
+  request: Request,
+  kind: "AVATAR" | "IMAGE_STYLE",
+  presetId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  const notFoundCode = kind === "AVATAR" ? "AVATAR_NOT_FOUND" : "STYLE_NOT_FOUND";
+  if (!UUID.test(presetId)) return response({ error: { code: notFoundCode } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const archived = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `SELECT preset_kind, preset_id, version_id, state, referenced_revision_count
+           FROM public.videoforge_archive_hosted_preset($1, $2, $3, $4)`,
+        [scope.account_id, scope.workspace_id, kind, presetId],
+      );
+      return result.rows[0] ?? null;
+    });
+
+    if (!archived) return response({ error: { code: notFoundCode } }, 404);
+    const references = Number(archived.referenced_revision_count ?? 0);
+    return response({
+      schema_version: "videoforge-hosted-preset-archive-response/v1",
+      preset_kind: kind === "AVATAR" ? "avatar" : "image_style",
+      preset_id: rowString(archived, "preset_id"),
+      version_id: archived.version_id ?? null,
+      state: rowString(archived, "state"),
+      in_use: Number.isFinite(references) && references > 0,
+      referenced_revision_count: Number.isFinite(references) ? references : 0,
+      media_retention: "PRESERVED",
+      provider_calls_authorized: false,
+    });
+  } catch (error) {
+    if (postgresCode(error) === "55000")
+      return response(
+        {
+          error: {
+            code: "PRESET_IMMUTABLE",
+            message: "Built-in presets cannot be removed.",
+          },
+        },
+        409,
+      );
+    if (postgresCode(error) === "42501") return response({ error: { code: notFoundCode } }, 404);
+    if (postgresCode(error) === "22023")
+      return response({ error: { code: "PRESET_ARCHIVE_REJECTED" } }, 400);
+    throw error;
   } finally {
     await pool.end();
   }
@@ -4389,6 +4571,18 @@ export async function handleHostedProductRequest(
       "style",
       stylePreviewPath[1]!,
       environment,
+      config,
+      executionContext,
+    );
+  const avatarArchivePath = /^\/api\/v2\/hosted\/avatars\/([0-9a-f-]+)$/u.exec(url.pathname);
+  if (request.method === "DELETE" && avatarArchivePath)
+    return archiveHostedPreset(request, "AVATAR", avatarArchivePath[1]!, config, executionContext);
+  const styleArchivePath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)$/u.exec(url.pathname);
+  if (request.method === "DELETE" && styleArchivePath)
+    return archiveHostedPreset(
+      request,
+      "IMAGE_STYLE",
+      styleArchivePath[1]!,
       config,
       executionContext,
     );

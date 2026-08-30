@@ -300,6 +300,12 @@
       "name": "hosted_authentication_before_invite",
       "filename": "0050_hosted_authentication_before_invite.sql",
       "sha256": "sha256:027550e364f6d4bc4c58416156d74165eccf0a2a883cdb6b327cbb5b4665f352"
+    },
+    {
+      "version": 51,
+      "name": "hosted_preset_archive_function",
+      "filename": "0051_hosted_preset_archive_function.sql",
+      "sha256": "sha256:be05cc3a2e95f7e5f8921412316be131fe9df77904d7dac63ea4d77133aef563"
     }
   ]
 }

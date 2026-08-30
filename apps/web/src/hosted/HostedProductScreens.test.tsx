@@ -384,6 +384,132 @@ describe("hosted product journey", () => {
     expect(screen.queryByText(/References \(0\)/u)).not.toBeInTheDocument();
   });
 
+  it("confirms removal for workspace avatars and hides it for system avatars", async () => {
+    let removed = false;
+    let resolveDelete: (response: Response) => void = () => undefined;
+    const pendingDelete = new Promise<Response>((resolve) => {
+      resolveDelete = resolve;
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/api/v2/hosted/project-catalog")) {
+        return Response.json({
+          avatars: removed
+            ? []
+            : [
+                {
+                  profile_id: "workspace-profile",
+                  version_id: "workspace-version",
+                  name: "Workspace presenter",
+                  version_number: 1,
+                  state: "READY",
+                  scope_kind: "WORKSPACE",
+                  thumbnail_url: "/api/v2/hosted/avatars/workspace-version/preview",
+                },
+                {
+                  profile_id: "system-profile",
+                  version_id: "system-version",
+                  name: "Built-in presenter",
+                  version_number: 1,
+                  state: "READY",
+                  scope_kind: "SYSTEM",
+                  rights_status: "SYSTEM_OWNED",
+                },
+              ],
+          styles: [],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        });
+      }
+      if (init?.method === "DELETE") {
+        expect(path).toBe("/api/v2/hosted/avatars/workspace-profile");
+        removed = true;
+        return pendingDelete;
+      }
+      throw new Error(`Unexpected hosted request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderHosted(<HostedAvatarHubScreen />);
+
+    expect(await screen.findByText("Workspace presenter")).toBeInTheDocument();
+    const details = screen.getAllByRole("button", { name: "Details" });
+    expect(details).toHaveLength(2);
+    fireEvent.click(details[0]!);
+    const remove = await screen.findByRole("button", { name: "Remove avatar" });
+    expect(screen.queryByRole("button", { name: "Remove built-in avatar" })).not.toBeInTheDocument();
+
+    fireEvent.click(remove);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(remove);
+    expect(await screen.findByRole("button", { name: /Removing avatar/u })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    resolveDelete(new Response(null, { status: 204 }));
+    await waitFor(() => expect(screen.queryByText("Workspace presenter")).not.toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v2/hosted/avatars/workspace-profile",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("keeps the style details open with an actionable error when removal fails", async () => {
+    let rejectDelete: (reason?: unknown) => void = () => undefined;
+    const pendingDelete = new Promise<Response>((_, reject) => {
+      rejectDelete = reject;
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/api/v2/hosted/project-catalog")) {
+        return Response.json({
+          avatars: [],
+          styles: [
+            {
+              style_id: "workspace-style",
+              version_id: "workspace-style-version",
+              name: "Workspace style",
+              version_number: 1,
+              state: "PUBLISHED",
+              scope_kind: "WORKSPACE",
+              reference_count: 3,
+            },
+          ],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        });
+      }
+      if (init?.method === "DELETE") {
+        expect(path).toBe("/api/v2/hosted/styles/workspace-style");
+        return pendingDelete;
+      }
+      throw new Error(`Unexpected hosted request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderHosted(<HostedStylesHubScreen />);
+
+    expect(await screen.findByText("Workspace style")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "References (3)" }));
+    const remove = await screen.findByRole("button", { name: "Remove style" });
+    fireEvent.click(remove);
+    expect(await screen.findByRole("button", { name: /Removing style/u })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+
+    rejectDelete(new Error("Preset is currently used by a project."));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Preset is currently used by a project.",
+    );
+    expect(screen.getByRole("button", { name: "Remove style" })).toBeInTheDocument();
+  });
+
   it("does not expose fixture-only preset mutation screens in hosted staging", () => {
     renderHosted(<HostedPresetCreationUnavailableScreen kind="styles" />);
 

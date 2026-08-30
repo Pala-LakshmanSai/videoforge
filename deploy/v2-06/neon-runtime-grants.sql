@@ -51,6 +51,11 @@ TO :"runtime_role";
 -- RLS policies call this stable tenant-principal helper while evaluating every tenant row.
 GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id()
 TO :"runtime_role";
+-- Migration 0051 is the only hosted-runtime path for tenant-owned preset removal. It archives the
+-- parent row, keeps immutable versions/media for historical revisions, and refuses SYSTEM built-ins;
+-- the runtime receives no direct preset DELETE capability.
+GRANT EXECUTE ON FUNCTION public.videoforge_archive_hosted_preset(uuid, uuid, text, uuid)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_authorize_hosted_cpu_upload(
   uuid, text, text, text, text, bigint, text, timestamptz
 )
@@ -153,11 +158,17 @@ GRANT SELECT, INSERT, UPDATE ON
   artifact_reservations
 TO :"runtime_role";
 
-GRANT SELECT ON
+-- Hosted preset creation writes only the tenant-owned preset parents/versions and their immutable
+-- asset links.  Keep DELETE unavailable: removal uses the archive SECURITY DEFINER function above.
+GRANT SELECT, INSERT, UPDATE ON
   avatar_profiles,
   avatar_profile_versions,
   image_styles,
   image_style_versions
+TO :"runtime_role";
+GRANT SELECT, INSERT ON
+  avatar_profile_assets,
+  image_style_references
 TO :"runtime_role";
 
 GRANT SELECT ON workspaces TO :"runtime_role";

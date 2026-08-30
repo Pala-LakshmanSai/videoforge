@@ -10,6 +10,10 @@ test("the hosted runtime can append through the exact function but has no direct
   assert.match(source, /GRANT EXECUTE ON FUNCTION public\.videoforge_current_account_id\(\)/u);
   assert.match(
     source,
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_archive_hosted_preset\(uuid, uuid, text, uuid\)\s+TO :"runtime_role";/u,
+  );
+  assert.match(
+    source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_redeem_hosted_invite\(text, text\)\s+TO :"runtime_role";/u,
   );
   assert.match(
@@ -51,6 +55,18 @@ test("the hosted runtime can append through the exact function but has no direct
   assert.doesNotMatch(
     source,
     /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_render_plans\b/iu,
+  );
+  assert.match(
+    source,
+    /GRANT SELECT, INSERT, UPDATE ON\s+avatar_profiles,\s+avatar_profile_versions,\s+image_styles,\s+image_style_versions\s+TO :"runtime_role";/u,
+  );
+  assert.match(
+    source,
+    /GRANT SELECT, INSERT ON\s+avatar_profile_assets,\s+image_style_references\s+TO :"runtime_role";/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /GRANT\s+[^;\n]*DELETE[^;\n]*\bON\s+(?:avatar_profiles|avatar_profile_versions|avatar_profile_assets|image_styles|image_style_versions|image_style_references)\b/iu,
   );
   assert.match(source, /REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";/u);
   assert.match(
