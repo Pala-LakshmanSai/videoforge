@@ -7,6 +7,60 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="#hosted-route">{children}</a>,
 }));
 
+vi.mock("../lib/media-validation", async () => {
+  const actual =
+    await vi.importActual<typeof import("../lib/media-validation")>("../lib/media-validation");
+  const normalizedBytes = new Uint8Array([
+    0x52,
+    0x49,
+    0x46,
+    0x46,
+    0x04,
+    0x00,
+    0x00,
+    0x00,
+    0x57,
+    0x45,
+    0x42,
+    0x50,
+  ]);
+  const normalizedBytesBase64 = btoa(String.fromCharCode(...normalizedBytes));
+  return {
+    ...actual,
+    normalizeImageStyleReference: vi.fn(async (file: File) => {
+      const marker = file.name.includes("one")
+        ? "1"
+        : file.name.includes("two")
+          ? "2"
+          : "3";
+      return {
+        bytesBase64: normalizedBytesBase64,
+        checksum: "sha256:" + "a".repeat(64),
+        clientReferenceId: "test-" + file.name,
+        filename: file.name,
+        height: 512,
+        mediaType: "image/webp" as const,
+        objectUrl: "blob:" + file.name,
+        width: 512,
+        original: {
+          bytesBase64: btoa("source"),
+          checksum: "sha256:" + marker.repeat(64),
+          height: 512,
+          mediaType: "image/png" as const,
+          width: 512,
+        },
+        normalized: {
+          bytesBase64: normalizedBytesBase64,
+          checksum: "sha256:" + "a".repeat(64),
+          height: 512,
+          mediaType: "image/webp" as const,
+          width: 512,
+        },
+      };
+    }),
+  };
+});
+
 import {
   HostedAvatarHubScreen,
   HostedCreateProjectScreen,
@@ -599,7 +653,7 @@ describe("hosted product journey", () => {
     window.history.replaceState({}, "", "/");
   });
 
-  it("verifies a resumed style upload before starting its one analysis", async () => {
+  it("repairs a resumed style with replacement uploads before analysis", async () => {
     window.history.replaceState({}, "", "/styles/new?resumeVersionId=resume-unverified-style");
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
@@ -627,39 +681,118 @@ describe("hosted product journey", () => {
           gpu_readiness: gpuReadiness,
         });
       }
-      if (path.endsWith("/api/v2/hosted/styles/resume-unverified-style/commit")) {
+      if (path.endsWith("/api/v2/hosted/styles/resume-unverified-style/references/retry")) {
+        expect(init?.method).toBe("POST");
+        expect(init?.headers).toMatchObject({ "idempotency-key": expect.any(String) });
+        const body = JSON.parse(String(init?.body));
+        expect(body).toMatchObject({
+          schema_version: "videoforge-hosted-style-reference-replace/v1",
+        });
+        expect(body.references).toHaveLength(3);
+        return Response.json({
+          style_id: "resume-style-id",
+          version_id: "repaired-style-version",
+          state: "DRAFT",
+          uploads: [
+            { url: "https://upload.test/original-1" },
+            { url: "https://upload.test/original-2" },
+            { url: "https://upload.test/original-3" },
+          ],
+          normalized_uploads: [
+            { url: "https://upload.test/normalized-1" },
+            { url: "https://upload.test/normalized-2" },
+            { url: "https://upload.test/normalized-3" },
+          ],
+        });
+      }
+      if (path.endsWith("/api/v2/hosted/styles/repaired-style-version/commit")) {
         expect(init).toMatchObject({ method: "POST", body: "{}" });
         return Response.json({
           style_id: "resume-style-id",
-          version_id: "resume-unverified-style",
+          version_id: "repaired-style-version",
           state: "DRAFT",
         });
       }
-      if (path.endsWith("/api/v2/hosted/styles/resume-unverified-style/analyze")) {
-        expect(init).toMatchObject({ method: "POST" });
-        return Response.json({
-          style_id: "resume-style-id",
-          version_id: "resume-unverified-style",
-          state: "NEEDS_REVIEW",
-          profile: { summary: "Natural light and restrained texture." },
-        });
-      }
-      throw new Error(`Unexpected hosted request: ${path}`);
+      if (init?.method === "PUT") return new Response(null, { status: 200 });
+      throw new Error("Unexpected hosted request: " + path);
     });
     vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: () => undefined,
+    });
     renderHosted(<HostedPresetCreationScreen kind="styles" />);
 
-    expect(await screen.findByRole("heading", { name: "Analyze references" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Verify uploads and analyze once" }));
+    expect(await screen.findByText("Continuing “Will Carter”")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Some saved references could not be verified. Reselect 3–8 images to repair this saved draft.",
+      ),
+    ).toBeInTheDocument();
+    const references = [
+      new File(["reference one"], "reference-one.png", { type: "image/png" }),
+      new File(["reference two"], "reference-two.png", { type: "image/png" }),
+      new File(["reference three"], "reference-three.png", { type: "image/png" }),
+    ];
+    fireEvent.change(screen.getByLabelText("Upload style references"), {
+      target: { files: references },
+    });
+    expect(await screen.findByText("3 references selected")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Review replacement references" }));
+    expect(await screen.findByRole("heading", { name: "Technical review" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Verify replacement references" }));
 
-    expect(await screen.findByRole("heading", { name: "Review and publish" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Analyze references" })).toBeInTheDocument();
     const writePaths = fetchMock.mock.calls
       .filter(([, init]) => init?.method === "POST")
       .map(([input]) => String(input));
     expect(writePaths).toEqual([
-      "/api/v2/hosted/styles/resume-unverified-style/commit",
-      "/api/v2/hosted/styles/resume-unverified-style/analyze",
+      "/api/v2/hosted/styles/resume-unverified-style/references/retry",
+      "/api/v2/hosted/styles/repaired-style-version/commit",
     ]);
+    expect(writePaths.some((path) => path.endsWith("/analyze"))).toBe(false);
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("offers the saved repair path for an unfinished duplicate style", async () => {
+    window.history.replaceState({}, "", "/styles/new");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [],
+          styles: [],
+          style_drafts: [
+            {
+              style_id: "unfinished-style-id",
+              version_id: "unfinished-style-version",
+              name: "Will Carter",
+              version_number: 1,
+              state: "DRAFT",
+              scope_kind: "WORKSPACE",
+              references_verified: false,
+              reference_count: 3,
+            },
+          ],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      ),
+    );
+    renderHosted(<HostedPresetCreationScreen kind="styles" />);
+
+    fireEvent.change(await screen.findByLabelText("Style name"), {
+      target: { value: "Will Carter" },
+    });
+    expect(
+      screen.getByText("This unfinished style is already in the Hub. Continue setup from there."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Continue setup" })).toHaveAttribute(
+      "href",
+      "/styles/new?resumeVersionId=unfinished-style-version&returnTo=%2Fstyles",
+    );
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
     window.history.replaceState({}, "", "/");
   });
 

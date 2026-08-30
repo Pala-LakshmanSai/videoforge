@@ -980,6 +980,7 @@ function unfinishedPresetDescription(
   kind: HostedPresetHubKind,
   state: string,
   referenceCount: number,
+  referencesVerified = true,
 ): string {
   if (kind === "avatars") {
     if (state === "ANALYZING") return "Approval is being reconciled. We will update this avatar when it finishes.";
@@ -999,6 +1000,8 @@ function unfinishedPresetDescription(
   if (state === "FAILED") {
     return "This style could not be completed. Remove it and start again with new references.";
   }
+  if (state === "DRAFT" && !referencesVerified)
+    return "Some saved references could not be verified. Reselect 3–8 images to repair this saved draft.";
   if (state === "DRAFT")
     return referenceCount > 0
       ? `${referenceCount} references are saved. Continue to verify the uploads, then analyze and publish this style.`
@@ -1633,7 +1636,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
     const healthy = !draft && (isAvatar ? state === "READY" : state === "PUBLISHED");
     const resumable =
       draft && ("profile_id" in item || "style_id" in item)
-        ? hostedDraftIsResumable(kind, item)
+        ? hostedDraftIsResumable(kind, item as HostedAvatarDraft | HostedStyleDraft)
         : false;
     const resourceId = draft
       ? item.version_id
@@ -1652,6 +1655,8 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
           ? item.cover_url
           : null;
     const referenceCount = !isAvatar && "reference_count" in item ? (item.reference_count ?? 0) : 0;
+    const referencesVerified =
+      isAvatar || !("references_verified" in item) ? true : item.references_verified === true;
     const media = (
       <div className={isAvatar ? "avatar-card-media" : "style-card-media"}>
         {imageUrl ? (
@@ -1688,7 +1693,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
               <h3>{item.name}</h3>
             </div>
             <p className="preset-draft-description">
-              {unfinishedPresetDescription(kind, state, referenceCount)}
+              {unfinishedPresetDescription(kind, state, referenceCount, referencesVerified)}
             </p>
             <div className="preset-draft-actions">
               {resumable ? (
@@ -2023,7 +2028,9 @@ export function HostedPresetCreationScreen({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const createRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
+  const referenceRetryRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
   const [resumeInitialized, setResumeInitialized] = useState(false);
+  const [repairingReferences, setRepairingReferences] = useState(false);
   const catalog = useQuery({
     queryKey: fixtureBackend ? ["fixture-preset-catalog", kind] : ["hosted-project-catalog"],
     queryFn: async () => {
@@ -2059,7 +2066,11 @@ export function HostedPresetCreationScreen({
     ? Boolean(avatarSource)
     : styleSources.length >= MIN_STYLE_REFERENCES;
   const stepOneReady = Boolean(name.trim()) && !duplicateName && hasRequiredSource && !busy;
-  const stepOneHint = matchingDraftName
+  const stepOneHint = repairingReferences
+    ? hasRequiredSource
+      ? "Replacement references are ready to verify."
+      : `Reselect ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} images to repair this saved draft.`
+    : matchingDraftName
     ? matchingDraftResumable
       ? `This unfinished ${itemLabel} is already in the Hub. Continue setup from there.`
       : `This unfinished ${itemLabel} is already in the Hub. View it there or remove it before starting another.`
@@ -2096,6 +2107,7 @@ export function HostedPresetCreationScreen({
     setName(resumedDraft.name);
     setCreated(hostedDraftResponse(resumedDraft));
     if (isAvatar && "profile_id" in resumedDraft) {
+      setRepairingReferences(false);
       setRights(resumedDraft.rights_attested === true);
       setLikeness(resumedDraft.likeness_animation_consent === true);
       setStep(3);
@@ -2103,6 +2115,12 @@ export function HostedPresetCreationScreen({
       setRights(resumedDraft.rights_attested === true);
       setDisclosure(resumedDraft.processing_disclosure_acknowledged === true);
       setRetention(resumedDraft.original_retention_policy === "RETAIN");
+      if (draftState === "DRAFT" && resumedDraft.references_verified !== true) {
+        setRepairingReferences(true);
+        setStep(1);
+        return;
+      }
+      setRepairingReferences(false);
       setStep(draftState === "NEEDS_REVIEW" ? 4 : 3);
     }
   }, [
@@ -2204,6 +2222,105 @@ export function HostedPresetCreationScreen({
     const id = value.id ?? value.profile_id ?? value.style_id ?? value.version_id;
     if (!id) throw new Error(`Hosted ${itemLabel} response did not include an id.`);
     return id;
+  }
+
+  function styleReferenceRequestBody() {
+    if (styleSources.some((source) => !source.normalized))
+      throw new Error("Reference normalization is incomplete. Choose the images again.");
+    return {
+      schema_version: "videoforge-hosted-style-reference-replace/v1",
+      references: styleSources.map((source, index) => ({
+        filename: source.file.name,
+        content_type: source.file.type || "image/png",
+        content_length: source.file.size,
+        checksum_sha256: source.checksum,
+        normalized_content_length: base64ByteLength(source.normalized!.normalized.bytesBase64),
+        normalized_checksum_sha256: source.normalized!.normalized.checksum,
+        normalized_width: source.normalized!.normalized.width,
+        normalized_height: source.normalized!.normalized.height,
+        order_index: index,
+      })),
+    };
+  }
+
+  async function uploadHostedStyleReferences(draft: HostedPresetMutationResponse): Promise<void> {
+    const uploads = draft.uploads ?? (draft.upload ? [draft.upload] : []);
+    const normalizedUploads = draft.normalized_uploads ?? [];
+    if (uploads.length > 0 && uploads.length !== styleSources.length)
+      throw new Error("Hosted style upload instructions did not match the selected references.");
+    for (const [index, upload] of uploads.entries()) {
+      const source = styleSources[index];
+      if (source) await putHostedUpload(upload, source.file);
+    }
+    if (normalizedUploads.length !== styleSources.length)
+      throw new Error(
+        "Hosted style normalization upload instructions did not match the selected references.",
+      );
+    for (const [index, upload] of normalizedUploads.entries()) {
+      const source = styleSources[index]?.normalized;
+      if (!source) throw new Error("Reference normalization is incomplete.");
+      const binary = atob(source.normalized.bytesBase64);
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      await putHostedUpload(
+        upload,
+        new File([bytes], `reference-${index + 1}.webp`, { type: "image/webp" }),
+      );
+    }
+  }
+
+  async function retryStyleReferences() {
+    if (!created || isAvatar || !resumeVersionId || !repairingReferences || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (styleSources.length < MIN_STYLE_REFERENCES)
+        throw new Error(`Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} private references.`);
+      const body = {
+        schema_version: "videoforge-hosted-style-reference-replace/v1",
+        references: styleReferenceRequestBody().references,
+      };
+      const serializedBody = JSON.stringify(body);
+      if (referenceRetryRequest.current?.body !== serializedBody) {
+        referenceRetryRequest.current = {
+          body: serializedBody,
+          key: `hosted-style-reference-retry-${crypto.randomUUID()}`,
+        };
+      }
+      const targetVersionId = created.version_id ?? resumeVersionId;
+      const replacement = await readJson<HostedPresetMutationResponse>(
+        `/api/v2/hosted/styles/${encodeURIComponent(targetVersionId)}/references/retry`,
+        {
+          method: "POST",
+          headers: { "idempotency-key": referenceRetryRequest.current.key },
+          body: serializedBody,
+        },
+      );
+      setCreated({ ...created, ...replacement });
+      await uploadHostedStyleReferences(replacement);
+      const replacementVersionId = replacement.version_id ?? replacement.id;
+      if (!replacementVersionId)
+        throw new Error("The repaired style draft did not include a version to continue.");
+      const committed = await readJson<HostedPresetMutationResponse>(
+        `/api/v2/hosted/styles/${encodeURIComponent(replacementVersionId)}/commit`,
+        { method: "POST", body: "{}" },
+      );
+      setCreated({
+        ...replacement,
+        ...committed,
+        id: committed.id ?? replacementVersionId,
+        version_id: committed.version_id ?? replacementVersionId,
+      });
+      setRepairingReferences(false);
+      setStep(3);
+    } catch (value) {
+      setError(
+        value instanceof Error
+          ? value.message
+          : "The replacement references could not be saved. Choose the images again.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function createDraft() {
@@ -2377,19 +2494,6 @@ export function HostedPresetCreationScreen({
         return;
       }
       const id = resourceId(created);
-      if (
-        resumedDraftActive &&
-        resumedDraft &&
-        presetState(resumedDraft) === "DRAFT" &&
-        "references_verified" in resumedDraft &&
-        resumedDraft.references_verified !== true
-      ) {
-        const committed = await readJson<HostedPresetMutationResponse>(
-          `/api/v2/hosted/styles/${encodeURIComponent(id)}/commit`,
-          { method: "POST", body: "{}" },
-        );
-        setCreated({ ...created, ...committed });
-      }
       const analyzed = await readJson<HostedPresetMutationResponse>(
         `/api/v2/hosted/styles/${encodeURIComponent(id)}/analyze`,
         {
@@ -2483,7 +2587,11 @@ export function HostedPresetCreationScreen({
         {resumeVersionId && created ? (
           <div className="preset-resume-banner" role="status">
             <strong>Continuing “{name}”</strong>
-            <span>Your saved work is loaded. Continue from the last completed step.</span>
+            <span>
+              {repairingReferences
+                ? "Some saved references could not be verified. Reselect 3–8 images to repair this saved draft."
+                : "Your saved work is loaded. Continue from the last completed step."}
+            </span>
           </div>
         ) : null}
         {step === 1 ? (
@@ -2498,6 +2606,7 @@ export function HostedPresetCreationScreen({
                 value={name}
                 maxLength={120}
                 autoComplete="off"
+                disabled={repairingReferences || busy}
                 onChange={(event) => setName(event.target.value)}
                 placeholder={isAvatar ? "Maya — studio presenter" : "Grounded documentary"}
               />
@@ -2581,7 +2690,8 @@ export function HostedPresetCreationScreen({
               </a>
             ) : null}
             <Button disabled={!stepOneReady} onClick={() => setStep(2)}>
-              Continue <ArrowRight size={16} />
+              {repairingReferences ? "Review replacement references" : "Continue"}{" "}
+              <ArrowRight size={16} />
             </Button>
           </div>
         ) : null}
@@ -2621,8 +2731,17 @@ export function HostedPresetCreationScreen({
             <Button variant="ghost" disabled={busy} onClick={() => setStep(1)}>
               Back
             </Button>
-            <Button disabled={busy} onClick={() => setStep(3)}>
-              {isAvatar ? "Continue to approval" : "Continue to analysis"}{" "}
+            <Button
+              disabled={busy}
+              onClick={() =>
+                repairingReferences ? void retryStyleReferences() : setStep(3)
+              }
+            >
+              {repairingReferences
+                ? "Verify replacement references"
+                : isAvatar
+                  ? "Continue to approval"
+                  : "Continue to analysis"}{" "}
               <ArrowRight size={16} />
             </Button>
           </div>
@@ -2755,12 +2874,7 @@ export function HostedPresetCreationScreen({
               </Button>
             ) : (
               <Button busy={busy} onClick={() => void analyzeStyle()}>
-                {resumedDraft &&
-                presetState(resumedDraft) === "DRAFT" &&
-                "references_verified" in resumedDraft &&
-                resumedDraft.references_verified !== true
-                  ? "Verify uploads and analyze once"
-                  : "Analyze this draft once"}{" "}
+                Analyze this draft once{" "}
                 <ArrowRight size={16} />
               </Button>
             )}

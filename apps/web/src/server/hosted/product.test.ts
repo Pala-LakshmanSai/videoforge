@@ -287,6 +287,7 @@ describe("hosted product route contract", () => {
     `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
     `/api/v2/hosted/avatars/${PRESET_ID}/approve`,
     "/api/v2/hosted/styles",
+    `/api/v2/hosted/styles/${PRESET_ID}/references/retry`,
     `/api/v2/hosted/styles/${PRESET_ID}/commit`,
     `/api/v2/hosted/styles/${PRESET_ID}/analyze`,
     `/api/v2/hosted/styles/${PRESET_ID}/publish`,
@@ -307,6 +308,7 @@ describe("hosted product route contract", () => {
     `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
     `/api/v2/hosted/avatars/${PRESET_ID}/approve`,
     "/api/v2/hosted/styles",
+    `/api/v2/hosted/styles/${PRESET_ID}/references/retry`,
     `/api/v2/hosted/styles/${PRESET_ID}/commit`,
     `/api/v2/hosted/styles/${PRESET_ID}/analyze`,
     `/api/v2/hosted/styles/${PRESET_ID}/publish`,
@@ -323,7 +325,9 @@ describe("hosted product route contract", () => {
       );
       expect(result?.status).toBe(409);
       await expect(errorCode(result)).resolves.toBe(
-        path.endsWith("/retry") ? "TARGETED_RETRY_NOT_QUALIFIED" : "PRESET_CREATION_NOT_QUALIFIED",
+        path.includes("/projects/")
+          ? "TARGETED_RETRY_NOT_QUALIFIED"
+          : "PRESET_CREATION_NOT_QUALIFIED",
       );
       expect(testState.query).not.toHaveBeenCalled();
     },
@@ -552,6 +556,24 @@ describe("hosted product route contract", () => {
       expect(block).toContain(lockName);
       expect(block).toMatch(/status = 'ACTIVE'/u);
     }
+  });
+
+  it("replaces failed style uploads with one locked version and never dispatches analysis", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function styleReferenceReplace(");
+    const end = source.indexOf("async function styleCommit(", start);
+    const replacement = source.slice(start, end);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(replacement).toContain("lockActiveStyleParent");
+    expect(replacement).toContain("target.state !== \"DRAFT\"");
+    expect(replacement).toContain("SET state = 'ABANDONED'");
+    expect(replacement).toContain("VALUES ($1,$2,$3,$4,$5,'DRAFT','WORKSPACE',$6)");
+    expect(replacement).toContain("hosted_reference_replace_idempotency_key");
+    expect(replacement).toContain("request_sha256");
+    expect(replacement).not.toContain("DELETE FROM");
+    expect(replacement).not.toContain("styleAnalyze(");
+    expect(replacement).not.toContain("runware");
   });
 
   it("reconciles every post-dispatch style-analysis persistence failure without redispatch", () => {
