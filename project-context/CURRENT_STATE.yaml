@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_2_PRESET_REMOVE_AND_CREATION_UX_SOURCE_GREEN_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
+  status: LIVE_STEP_2_PRESET_REMOVE_AND_CREATION_UX_DEPLOYED_CHROME_PASS
   implementation_commit: "12cf771b22824fcfe64000cfa245d566f7875a83"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -80,11 +80,11 @@ hosted_beta_user_walkthrough:
     - "43c5b2f664df6a9e0dae91a1223dbd73cddf624e"
     - "f431565b6e31b62493bc2071363fe76ff7a07d47"
     - "12cf771b22824fcfe64000cfa245d566f7875a83"
-  deployment_candidate: PENDING_FRESH_EXACT_USER_APPROVAL
-  deployed_source_commit: "588ad594d43748c6d1bb3ae9fe1bebd3be01b570"
-  cloudflare_worker_version_id: "6b6c399a-8cdf-4496-97d1-853689cca597"
-  deployed_config_sha256: "sha256:f4a95be96d0f116be89b2a3de7ea4804669c0ab284ce48e240b9cca0eedc81f0"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 588ad594d43748c6d1bb3ae9fe1bebd3be01b570 CAP USD 3"
+  deployment_candidate: DEPLOYED_VERIFIED
+  deployed_source_commit: "afbcefda26e2bd76955980d4ae3d5e96dc939cb8"
+  cloudflare_worker_version_id: "b15c9377-af64-4976-8edc-540f60fe1748"
+  deployed_config_sha256: "sha256:160c4d9b03710b16c0b29871c6047a1fc6d9110238b7f9f3f95d36cbc5fc72da"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA afbcefda26e2bd76955980d4ae3d5e96dc939cb8 CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -95,13 +95,13 @@ hosted_beta_user_walkthrough:
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_50_OF_50_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
-  pending_database_migration: "0051_hosted_preset_archive_function"
+  pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_AUTHENTICATED_AVATAR_AND_STYLE_CATALOGS_SIMPLE_HUB_LAYOUT_REAL_512X512_AVATAR_PREVIEW_NO_ACTIVE_BADGE_AND_PAGE_REMAINS_MOUNTED_DURING_REVALIDATION"
+  live_browser_verification: "PASS_AUTHENTICATED_AVATAR_AND_STYLE_CATALOGS_SIMPLE_HUB_LAYOUT_REAL_512X512_AVATAR_PREVIEW_NO_ACTIVE_BADGE_PAGE_REMAINS_MOUNTED_DURING_REVALIDATION_READABLE_AVATAR_AND_STYLE_INPUTS_REMOVE_ACTIONS_VISIBLE"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
@@ -115,6 +115,7 @@ hosted_beta_user_walkthrough:
     - "Authenticated Chrome proved the catalog repair and compact hub layout live, then found avatar preview still touched avatar_profile_assets, another intentionally ungranted link table. Repair 43c5b2f6 resolves the owned thumbnail through already-granted avatar_profiles, avatar_profile_versions, and assets; it also prefers READY/PUBLISHED version state so healthy cards no longer show ACTIVE."
     - "Source f431565b adds Remove inside workspace-owned Avatar and Image Style details, confirmation/loading/error states, tenant-scoped archive-only migration 0051, immutable built-in protection, historical version/media preservation, stale-workflow ACTIVE parent locks, and the exact no-DELETE runtime grants required by hosted preset creation. It is provider-free green and awaits deployment approval."
     - "Source 12cf771b fixes unreadable hosted avatar/style inputs, adds explicit accessible labels, clearer upload guidance and readiness states, bounded responsive form layout, selected-avatar/style preview styling, accurate review copy, and a simpler save/approve/profile-review sequence. Desktop and compact Chromium checks confirm readable typed text."
+    - "Approved source afbcefda is deployed as Worker b15c9377-af64-4976-8edc-540f60fe1748. Live status reports the exact commit, migration 0051 is verified at 51/51 with FORCE RLS and exact no-DELETE grants, authenticated Chrome confirms readable avatar/style inputs, and both workspace preset details expose Remove without deleting walkthrough data."
   current_step: AVATAR_CREATION_AND_APPROVAL
   remaining_steps:
     - AVATAR_CREATION_AND_APPROVAL
@@ -142,6 +143,10 @@ hosted_beta_user_walkthrough:
     hosted_preset_creation_ui_unit: "PASS_31_OF_31"
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
+    hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
+    hosted_preset_creation_ui_live_chrome: "PASS_AVATAR_AND_STYLE_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
+    hosted_preset_remove_live_chrome: "PASS_AVATAR_AND_STYLE_REMOVE_ACTIONS_VISIBLE_NO_DELETE_EXECUTED"
+    hosted_preset_deployed_status: "PASS_COMMIT_AFBCEFDA_WORKER_B15C9377"
     v2_06_deployment_validator: PASS
     auth_database_and_redemption_focused: "PASS_9_OF_9"
     auth_migration_smoke_and_hardening: "PASS_15_OF_15"
