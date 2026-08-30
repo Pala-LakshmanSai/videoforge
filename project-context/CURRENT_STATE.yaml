@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Private hosted-beta authority is active only for approved source de5d7f65, exact Runware Gemini style analysis, and the cumulative USD 3 ceiling. Migration 0052, the Runware secret, and Worker deployment are complete; one real-user style analysis remains. No RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
+  provider_free_product_action: "Approved source 3f41a3c9 is deployed but its unfinished-preset catalog fails closed on an intentionally ungranted analysis-ledger read. Provider-free repair 5f56f322 is green and requires fresh exact deployment approval. No style analysis ran, and no RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: DEPLOYED_STEP_3_RUNWARE_GEMINI_STYLE_ANALYSIS_AWAITING_REAL_USER_PROOF
+  status: DEPLOYED_STEP_3_CATALOG_FAIL_CLOSED_REPAIR_AWAITING_APPROVAL
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -85,11 +85,12 @@ hosted_beta_user_walkthrough:
     - "95ebb6ace81dd96d7ef5caecf8f07d63ba727192"
     - "57a45925900d61178a68bf54d226b7fc47bfb1cf"
     - "824d77da405146d4617fbd93fb27d771baa11fb5"
-  deployment_candidate: UNFINISHED_PRESET_HUB_REPAIR_GREEN_AWAITING_FRESH_EXACT_APPROVAL
-  deployed_source_commit: "de5d7f65dd861408e5d637a0e7c1c9b12cb648f3"
-  cloudflare_worker_version_id: "9ffecf79-c5b8-4c61-9aed-1c7cf7bae523"
-  deployed_config_sha256: "sha256:c9df5c5fa3b7e513a9a98b93c28de57d17cd4945e47da7f634f5bfe67dd9e08b"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA de5d7f65dd861408e5d637a0e7c1c9b12cb648f3 CAP USD 3"
+    - "5f56f3226eab13bf59b8b60692596a6ec7781cfc"
+  deployment_candidate: RUNTIME_GRANT_SAFE_DRAFT_CATALOG_REPAIR_GREEN_AWAITING_FRESH_EXACT_APPROVAL
+  deployed_source_commit: "3f41a3c9eefb9ab846b57b08f53cafbdca2c78e7"
+  cloudflare_worker_version_id: "c41811df-a3f5-460a-9ab0-979bf08b390f"
+  deployed_config_sha256: "sha256:3dcc4d245de5424fc6c0d943e4f5c5ce61af5c225888d478f00cc667231730f9"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 3f41a3c9eefb9ab846b57b08f53cafbdca2c78e7 CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -126,6 +127,7 @@ hosted_beta_user_walkthrough:
     - "Source 57a45925 supersedes the direct-DeepSeek style analyzer with Runware google:gemini@3.1-flash-lite for explicit reference-image analysis only. It sends normalized WebP copies in one strict-schema request, records provider-reported usage and actual cost, preserves the durable $3 no-redispatch guard, and reconciles every post-dispatch persistence failure as UNKNOWN. Runware DeepSeek V4 Flash remains the cheaper text-only scene-prompt writer. No provider call, secret access, remote mutation, migration, deployment, or spend occurred while preparing this source."
     - "Approved source de5d7f65 is deployed as Worker 9ffecf79-c5b8-4c61-9aed-1c7cf7bae523 with config sha256:c9df5c5f. Neon migration/grants verify at 52/52, the Worker secret list is the exact nine-name allowlist including RUNWARE_API_KEY, the one-time local key handoff file was removed, an encrypted post-migration backup was created, and cache-bypassed status reports the exact deployed commit with GPU transport still DISABLED_UNQUALIFIED. No Runware analysis request or provider spend occurred during deployment."
     - "Source 824d77da fixes the hidden-name-reservation trap in both Avatar Hub and Image Styles: every active workspace-owned unfinished preset is shown separately from project-ready presets, safe drafts can continue from persisted state, incomplete/failed/in-progress drafts remain visible with remove/recovery guidance, and duplicate conflicts point back to the Hub. The exact live will carter draft remains intact with seven references. Focused UI/server tests pass 71/71; typecheck, changed-file lint, staging build/quarantine, and diff checks pass. It is not deployed and requires fresh exact source-bound approval."
+    - "Approved source 3f41a3c9 deployed as Worker c41811df, but authenticated Chrome found the new catalog queried hosted_style_analysis_runs, which is intentionally absent from the runtime SELECT grants; the Hub failed closed with HTTP 500. Repair 5f56f322 removes that unnecessary cost lookup and adds a regression assertion that the catalog never touches the analysis ledger. Focused tests remain 71/71 with typecheck/lint/diff checks passing. The deployed source remains fail-closed until this repair receives fresh approval and is deployed; no analysis/provider request or spend occurred."
   current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
@@ -166,6 +168,8 @@ hosted_beta_user_walkthrough:
     hosted_unfinished_preset_hubs_changed_file_eslint: PASS
     hosted_unfinished_preset_hubs_staging_build: PASS_FIXTURE_QUARANTINE
     hosted_unfinished_preset_hubs_deployment: PENDING_FRESH_EXACT_APPROVAL
+    hosted_unfinished_preset_hubs_first_deploy: "FAIL_CLOSED_HTTP_500_RUNTIME_ROLE_DENIED_HOSTED_STYLE_ANALYSIS_RUNS"
+    hosted_unfinished_preset_hubs_runtime_grant_repair: "PASS_NO_ANALYSIS_LEDGER_QUERY_AWAITING_DEPLOYMENT"
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
