@@ -2472,6 +2472,8 @@ async function styleAnalyze(
           providerResult.trusted.styleProfileHash,
         ],
       );
+      const saved = updated.rows[0];
+      if (!saved) throw new Error("STYLE_ANALYSIS_COMPLETION_REJECTED");
       const receipt = await transaction.query<{ finished: boolean }>(
         `SELECT public.videoforge_finish_hosted_style_analysis($1,'SUCCEEDED',$2,$3,$4,$5,$6) AS finished`,
         [
@@ -2484,7 +2486,7 @@ async function styleAnalyze(
         ],
       );
       if (receipt.rows[0]?.finished !== true) throw new Error("STYLE_ANALYSIS_RECEIPT_REJECTED");
-      return updated.rows[0] ?? null;
+      return saved;
     });
     if (!analyzed)
       return response(
