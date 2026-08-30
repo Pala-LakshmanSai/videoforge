@@ -32,7 +32,7 @@ current_goal_boundary:
 fixture_user_walkthrough:
   status: ACTIVE_STEP_3_IMAGE_STYLE_READY
   started_from_commit: "e1462fe7421caae8a5f0a651c90e009e2aecdee4"
-  latest_green_commit: "6b32967d"
+  latest_green_commit: "2b15a0fb"
   stable_url: "http://localhost:4173/?fixture=invite_sign_in"
   provider_mode: fixture
   provider_calls_authorized: false
@@ -45,6 +45,7 @@ fixture_user_walkthrough:
     - "Avatar Hub renders the tenant-checked uploaded portrait instead of the generic 2D stand-in, while live provider compatibility remains truthfully untested."
     - "Avatar Details now keeps only the visual crops, ready-to-use state, rights/consent, and a plain optional-live-test explanation; raw hashes, IDs, profiles, dimensions, and duplicate compatibility facts are hidden."
     - "Fixture sign-in now mirrors the live Google-only invite flow: Continue with Google, first-admission invitation confirmation, and Google-only returning access; duplicate or persisted fixture invites recover idempotently instead of exposing uniqueness errors."
+    - "Image Style creation now uses the same production workflow component in fixture/no-spend mode through an injected local transport; the superseded fixture-only UI was removed, and the production bundle remains free of fixture routing vocabulary."
   current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
@@ -65,6 +66,9 @@ fixture_user_walkthrough:
     google_only_access_gate_unit: "PASS_5_OF_5"
     fixture_invite_reentry_unit: "PASS_12_OF_12"
     fixture_session_reentry_after_acceptance_reset: "PENDING_USER_GOOGLE_AND_AVATAR_REUPLOAD"
+    image_style_production_ui_parity_unit: "PASS_32_OF_32_FOCUSED"
+    image_style_production_bundle_quarantine: "PASS"
+    image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 new_chat_handoff:
   status: FULL_LIVE_SUCCESSOR_SEALED_PENDING_FRESH_EXACT_USER_APPROVAL
