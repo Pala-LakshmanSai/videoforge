@@ -71,12 +71,12 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STEP_1_AUTH_REPAIR_GREEN_AWAITING_EXACT_DEPLOYMENT_APPROVAL
+  status: LIVE_STEP_1_AUTH_REPAIR_DEPLOYED_AWAITING_FRESH_ACCOUNT_WALKTHROUGH
   implementation_commit: "79423f8c6fe92b7faaa45a07f7f72f62b1b602d4"
   deployment_candidate: CONSUMED_BY_DEPLOYMENT
-  deployed_source_commit: "b3a104f74506c21fa8c8aeb180c6b8a00ae4153d"
-  cloudflare_worker_version_id: "bc739cd5-ea49-4745-adba-b4ec2473fa7e"
-  deployed_config_sha256: "sha256:543e0048ce81c7802ddf9eeba5620db1cbff86109251bb6e4d43565d92e9e3cf"
+  deployed_source_commit: "93c575e99d9d4fbe9183596633b77eb6d9eed78f"
+  cloudflare_worker_version_id: "faf18fb8-66b2-42a5-ba99-8c2a2e9a33f5"
+  deployed_config_sha256: "sha256:34fef4b01af336b84e301a00ef314848b8c843b9de0a8bcf99ea7f70fb2867b8"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -86,11 +86,11 @@ hosted_beta_user_walkthrough:
   gpu_use_authorized: false
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
-  database_preflight: "LIVE_LEDGER_49_OF_49_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
-  pending_database_migration: "0050_HOSTED_AUTHENTICATION_BEFORE_INVITE"
+  database_preflight: "LIVE_LEDGER_50_OF_50_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
+  pending_database_migration: NONE
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
-  backup_restore: "PASS_ENCRYPTED_49_ROW_BACKUP_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
+  backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   live_browser_verification: "PASS_GOOGLE_ONLY_SIGN_IN_ZERO_CONSOLE_ERRORS"
@@ -100,7 +100,7 @@ hosted_beta_user_walkthrough:
     - "Image-style analysis is clearly labeled provider-free simulation so the walkthrough cannot mistake it for a Gemini, DeepSeek, or GPU provider result."
     - "Neon now has pgcrypto and the exact 49-row migration chain; deployment verification excludes provider-owned pgcrypto extension functions while still requiring an exact application-function allowlist and zero PUBLIC application functions."
     - "Hosted staging now aliases only the hosted API, excludes the fixture public directory, and removes fixture-only AppShell, Library, and Review branches at compile time; its deployable client passes the production fixture quarantine."
-    - "The source now clears stale VideoForge sessions before Google account selection, validates tenant responses, unmounts private screens during focus/visibility revalidation, and keeps uninvited authenticated identities outside tenant scope. Deployment is still pending."
+    - "Live staging now clears stale VideoForge sessions before Google account selection, validates tenant responses, unmounts private screens during focus/visibility revalidation, and keeps uninvited authenticated identities outside tenant scope. Existing admitted accounts and data remain intact."
   current_step: SIGN_IN_AND_INVITE_REDEMPTION
   remaining_steps:
     - SIGN_IN_AND_INVITE_REDEMPTION
@@ -125,6 +125,10 @@ hosted_beta_user_walkthrough:
     auth_migration_smoke_and_hardening: "PASS_15_OF_15"
     hosted_auth_ui_focused: "PASS_11_OF_11"
     auth_deployment_and_restore_contracts: "PASS_16_OF_16"
+    hosted_auth_repair_deployment: "PASS_COMMIT_93C575E9_WORKER_FAF18FB8"
+    hosted_auth_anonymous_tenant_denial: "PASS_HTTP_401"
+    hosted_auth_live_sign_in_screen: "PASS_CHROME_ENTER_VIDEOFORGE_VISIBLE"
+    hosted_auth_zero_active_provider_workloads: PASS
 
 new_chat_handoff:
   status: FULL_LIVE_SUCCESSOR_SEALED_PENDING_FRESH_EXACT_USER_APPROVAL
