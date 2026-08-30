@@ -8,6 +8,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -24,6 +25,7 @@ import {
   completeCleanupOnly,
   completePhase,
   enterCleanupOnly,
+  FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES,
   initialConsumptionRecord,
   PHASES,
   recordCleanupProof,
@@ -35,6 +37,7 @@ import {
   updateState,
   validateMaterializationSeedFile,
   validateMaterializationSeedShape,
+  validatePreConsumptionProtectedInputs,
   validateOuterAuthority,
   validateStaticReleaseDescriptorFile,
   validateState,
@@ -240,6 +243,124 @@ function staticReleaseDescriptorFixture(
 function writeStaticReleaseDescriptor(path, value) {
   writeFileSync(path, `${canonicalJson(value)}\n`, { mode: 0o600 });
 }
+
+function preConsumptionEnvironmentFixture() {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "videoforge-v213-preconsumption-")));
+  chmodSync(root, 0o700);
+  const authorityId = "v2-13-preconsumption-test-0001";
+  const attempt = join(root, authorityId);
+  const source = join(attempt, "source");
+  const postgres = join(attempt, "postgres-inputs");
+  const secret = join(attempt, "secret-inputs");
+  const artifacts = join(attempt, "artifacts");
+  for (const path of [attempt, source, postgres, secret, artifacts]) {
+    mkdirSync(path, { mode: 0o700 });
+    chmodSync(path, 0o700);
+  }
+  const file = (path) => {
+    writeFileSync(path, "test-only protected bytes\n", { mode: 0o600 });
+    chmodSync(path, 0o600);
+    return path;
+  };
+  file(join(postgres, "owner.pg_service.conf"));
+  file(join(postgres, "owner.pgpass"));
+  const environment = {
+    VIDEOFORGE_V2_13_ACTIVATION_EVIDENCE_OUTPUT: join(artifacts, "activation-evidence.json"),
+    VIDEOFORGE_V2_13_ACTIVATION_RECORD: join(artifacts, "activation-record.json"),
+    VIDEOFORGE_V2_13_CANCELLATION_RECORD_FILE: join(artifacts, "cancellation-record.json"),
+    VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE: join(artifacts, "cleanup-input.json"),
+    VIDEOFORGE_V2_13_CONFIG_ACTIVATION_RECORD: join(artifacts, "config-activation-record.json"),
+    VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE: file(
+      join(source, "credential-bootstrap.json"),
+    ),
+    VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE: join(artifacts, "disabled-config.json"),
+    VIDEOFORGE_V2_13_GOOGLE_CLIENT_ID_FILE: file(join(source, "GOOGLE_CLIENT_ID")),
+    VIDEOFORGE_V2_13_GOOGLE_CLIENT_SECRET_FILE: file(join(source, "GOOGLE_CLIENT_SECRET")),
+    VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE: join(artifacts, "materialization-chain.json"),
+    VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE: file(join(source, "materialization-seed.json")),
+    VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE: join(postgres, "operator.database-url"),
+    VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR: postgres,
+    VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE: join(
+      artifacts,
+      "post-consumption-materialization.json",
+    ),
+    VIDEOFORGE_V2_13_PREQUALIFICATION_DATABASE_BOOTSTRAP_RECEIPT_FILE: join(
+      postgres,
+      "prequalification-database-bootstrap.json",
+    ),
+    VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE: join(artifacts, "production-input.json"),
+    VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE: join(artifacts, "production-secrets.json"),
+    VIDEOFORGE_V2_13_PRODUCTION_SECRET_BOOTSTRAP_FILE: join(
+      artifacts,
+      "production-secret-bootstrap.json",
+    ),
+    VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE: join(artifacts, "promotion-record.json"),
+    VIDEOFORGE_V2_13_PROPOSAL_FILE: file(join(source, "proposal.json")),
+    VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE: file(join(source, "R2_ACCESS_KEY_ID")),
+    VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE: file(join(source, "R2_SECRET_ACCESS_KEY")),
+    VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE: join(postgres, "reconciler.database-url"),
+    VIDEOFORGE_V2_13_RELEASE_MANIFEST_FILE: join(artifacts, "release-manifest.json"),
+    VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE: file(join(source, "RUNPOD_API_KEY")),
+    VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE: join(postgres, "runtime.database-url"),
+    VIDEOFORGE_V2_13_SECRET_INPUT_DIR: secret,
+    VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE: file(
+      join(source, "static-release-descriptor.json"),
+    ),
+    VIDEOFORGE_V2_13_USER_APPROVAL_FILE: file(join(source, "user-approval.json")),
+    VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE: join(artifacts, "worker-operator-bearer"),
+    VIDEOFORGE_V2_13_WORKER_ORIGIN_FILE: join(artifacts, "worker-origin"),
+    VIDEOFORGE_V2_13_WRANGLER_OAUTH_CONFIG_FILE: file(join(source, "wrangler-oauth-config.toml")),
+  };
+  assert.equal(Object.keys(environment).length, FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES.length);
+  return { root, authorityId, statePath: join(attempt, "full-live-state.json"), environment };
+}
+
+test("pre-consumption gate rejects missing RunPod path before state write", () => {
+  const fixture = preConsumptionEnvironmentFixture();
+  try {
+    const environment = { ...fixture.environment };
+    delete environment.VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE;
+    assert.throws(
+      () =>
+        validatePreConsumptionProtectedInputs({
+          environment,
+          authorityId: fixture.authorityId,
+          statePath: fixture.statePath,
+        }),
+      /V2_13_FULL_LIVE_ORCHESTRATION_PROTECTED_INPUT_PATHS/u,
+    );
+    assert.equal(existsSync(fixture.statePath), false);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("pre-consumption gate rejects stale materialization-chain debris before state write", () => {
+  const fixture = preConsumptionEnvironmentFixture();
+  try {
+    assert.doesNotThrow(() =>
+      validatePreConsumptionProtectedInputs({
+        environment: fixture.environment,
+        authorityId: fixture.authorityId,
+        statePath: fixture.statePath,
+      }),
+    );
+    const chainPath = fixture.environment.VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE;
+    writeFileSync(`${chainPath}.lock`, "stale\n", { mode: 0o600 });
+    assert.throws(
+      () =>
+        validatePreConsumptionProtectedInputs({
+          environment: fixture.environment,
+          authorityId: fixture.authorityId,
+          statePath: fixture.statePath,
+        }),
+      /V2_13_FULL_LIVE_ORCHESTRATION_PROTECTED_INPUT_PATHS/u,
+    );
+    assert.equal(existsSync(fixture.statePath), false);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
 
 function withApprovalValidatorReleaseTree(bytes, callback) {
   const repository = mkdtempSync(join(tmpdir(), "videoforge-approval-validator-tree-"));

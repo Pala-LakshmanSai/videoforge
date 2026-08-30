@@ -9,13 +9,15 @@ import {
   linkSync,
   lstatSync,
   openSync,
+  readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -65,6 +67,64 @@ const CONFIRMATION = "CONSUME_EXACT_V2_13_FULL_LIVE_AUTHORITY";
 const MATERIALIZATION_SEED_SCHEMA = "videoforge.v213-full-live-materialization-seed/v1";
 const MATERIALIZATION_SEED_ENV = "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE";
 const STATIC_RELEASE_DESCRIPTOR_ENV = "VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE";
+const FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES = Object.freeze([
+  "VIDEOFORGE_V2_13_ACTIVATION_EVIDENCE_OUTPUT",
+  "VIDEOFORGE_V2_13_ACTIVATION_RECORD",
+  "VIDEOFORGE_V2_13_CANCELLATION_RECORD_FILE",
+  "VIDEOFORGE_V2_13_CLEANUP_INPUT_FILE",
+  "VIDEOFORGE_V2_13_CONFIG_ACTIVATION_RECORD",
+  "VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE",
+  "VIDEOFORGE_V2_13_DISABLED_CONFIG_FILE",
+  "VIDEOFORGE_V2_13_GOOGLE_CLIENT_ID_FILE",
+  "VIDEOFORGE_V2_13_GOOGLE_CLIENT_SECRET_FILE",
+  "VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE",
+  "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE",
+  "VIDEOFORGE_V2_13_OPERATOR_DATABASE_URL_FILE",
+  "VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR",
+  "VIDEOFORGE_V2_13_POST_CONSUMPTION_MATERIALIZATION_FILE",
+  "VIDEOFORGE_V2_13_PREQUALIFICATION_DATABASE_BOOTSTRAP_RECEIPT_FILE",
+  "VIDEOFORGE_V2_13_PRODUCTION_INPUT_FILE",
+  "VIDEOFORGE_V2_13_PRODUCTION_SECRETS_FILE",
+  "VIDEOFORGE_V2_13_PRODUCTION_SECRET_BOOTSTRAP_FILE",
+  "VIDEOFORGE_V2_13_PROMOTION_RECORD_FILE",
+  "VIDEOFORGE_V2_13_PROPOSAL_FILE",
+  "VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE",
+  "VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE",
+  "VIDEOFORGE_V2_13_RECONCILER_DATABASE_URL_FILE",
+  "VIDEOFORGE_V2_13_RELEASE_MANIFEST_FILE",
+  "VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE",
+  "VIDEOFORGE_V2_13_RUNTIME_DATABASE_URL_FILE",
+  "VIDEOFORGE_V2_13_SECRET_INPUT_DIR",
+  "VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE",
+  "VIDEOFORGE_V2_13_USER_APPROVAL_FILE",
+  "VIDEOFORGE_V2_13_WORKER_OPERATOR_BEARER_FILE",
+  "VIDEOFORGE_V2_13_WORKER_ORIGIN_FILE",
+  "VIDEOFORGE_V2_13_WRANGLER_OAUTH_CONFIG_FILE",
+]);
+const FULL_LIVE_PRECONSUMPTION_DIRECTORY_NAMES = Object.freeze([
+  "VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR",
+  "VIDEOFORGE_V2_13_SECRET_INPUT_DIR",
+]);
+const FULL_LIVE_PRECONSUMPTION_FILE_NAMES = Object.freeze([
+  "VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE",
+  "VIDEOFORGE_V2_13_GOOGLE_CLIENT_ID_FILE",
+  "VIDEOFORGE_V2_13_GOOGLE_CLIENT_SECRET_FILE",
+  "VIDEOFORGE_V2_13_MATERIALIZATION_SEED_FILE",
+  "VIDEOFORGE_V2_13_PROPOSAL_FILE",
+  "VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE",
+  "VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE",
+  "VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE",
+  "VIDEOFORGE_V2_13_STATIC_RELEASE_DESCRIPTOR_FILE",
+  "VIDEOFORGE_V2_13_USER_APPROVAL_FILE",
+  "VIDEOFORGE_V2_13_WRANGLER_OAUTH_CONFIG_FILE",
+]);
+const FULL_LIVE_FUTURE_FILE_NAMES = Object.freeze(
+  FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES.filter(
+    (name) =>
+      !FULL_LIVE_PRECONSUMPTION_DIRECTORY_NAMES.includes(name) &&
+      !FULL_LIVE_PRECONSUMPTION_FILE_NAMES.includes(name),
+  ),
+);
 const STATIC_RELEASE_DESCRIPTOR_SCHEMA_V1 = "videoforge.v213-static-release-descriptor/v1";
 const STATIC_RELEASE_DESCRIPTOR_SCHEMA_V2 = "videoforge.v213-static-release-descriptor/v2";
 const STATIC_RELEASE_DESCRIPTOR_SCHEMA_V3 = "videoforge.v213-static-release-descriptor/v3";
@@ -2237,6 +2297,160 @@ function exactPath(path, type, permissions, label) {
     fail(`${label}_MODE_OR_TYPE`);
 }
 
+const FULL_LIVE_PRECONSUMPTION_SCOPED_NAMES = new Set([
+  ...FULL_LIVE_PRECONSUMPTION_DIRECTORY_NAMES,
+  "VIDEOFORGE_V2_13_CREDENTIAL_BOOTSTRAP_RECEIPT_FILE",
+  "VIDEOFORGE_V2_13_GOOGLE_CLIENT_ID_FILE",
+  "VIDEOFORGE_V2_13_GOOGLE_CLIENT_SECRET_FILE",
+  "VIDEOFORGE_V2_13_R2_ACCESS_KEY_ID_FILE",
+  "VIDEOFORGE_V2_13_R2_SECRET_ACCESS_KEY_FILE",
+  "VIDEOFORGE_V2_13_RUNPOD_API_KEY_FILE",
+]);
+
+function protectedPreconsumptionPath(path, { directory = false, present = true, code }) {
+  if (
+    typeof path !== "string" ||
+    path === "" ||
+    !path.startsWith("/") ||
+    path.includes("\0") ||
+    resolve(path) !== path
+  )
+    fail(code);
+  let parent;
+  let canonicalParent;
+  try {
+    parent = lstatSync(dirname(path));
+    canonicalParent = realpathSync(dirname(path));
+  } catch {
+    fail(code);
+  }
+  if (
+    !parent.isDirectory() ||
+    parent.isSymbolicLink() ||
+    (parent.mode & 0o777) !== 0o700 ||
+    canonicalParent !== dirname(path)
+  )
+    fail(code);
+  let metadata;
+  try {
+    metadata = lstatSync(path);
+  } catch (error) {
+    if (error?.code === "ENOENT" && !present) return false;
+    fail(code);
+  }
+  if (!present) fail(code);
+  let canonicalPath;
+  try {
+    canonicalPath = realpathSync(path);
+  } catch {
+    fail(code);
+  }
+  if (
+    metadata.isSymbolicLink() ||
+    (directory ? !metadata.isDirectory() : !metadata.isFile()) ||
+    (!directory && (metadata.mode & 0o777) !== 0o600) ||
+    (directory && (metadata.mode & 0o777) !== 0o700) ||
+    canonicalPath !== path ||
+    (!directory && metadata.nlink !== 1)
+  )
+    fail(code);
+  return true;
+}
+
+function isWithinDirectory(directory, path) {
+  const child = relative(directory, path);
+  return child !== "" && child !== "." && !child.startsWith("..") && !child.startsWith("/");
+}
+
+/**
+ * Validate the complete protected launch shape before consuming the one-shot authority.
+ * This is deliberately metadata-only: secret and database values remain unread until the
+ * post-consumption adapters.  The launcher and executor must use the same closed environment.
+ */
+function validatePreConsumptionProtectedInputs({
+  environment = process.env,
+  authorityId,
+  statePath,
+} = {}) {
+  if (
+    environment === null ||
+    typeof environment !== "object" ||
+    !AUTHORITY_ID.test(authorityId ?? "") ||
+    typeof statePath !== "string"
+  )
+    fail("PROTECTED_INPUT_PATHS");
+  const names = Object.keys(environment)
+    .filter((name) => name.startsWith("VIDEOFORGE_V2_13_"))
+    .sort();
+  if (JSON.stringify(names) !== JSON.stringify([...FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES].sort()))
+    fail("PROTECTED_INPUT_PATHS");
+
+  protectedPreconsumptionPath(statePath, { code: "PROTECTED_INPUT_PATHS", present: false });
+  const stateDirectory = dirname(statePath);
+  if (basename(stateDirectory) !== authorityId) fail("PROTECTED_INPUT_PATHS");
+  for (const suffix of [".lock", ".next", EXECUTION_LEASE_SUFFIX])
+    protectedPreconsumptionPath(`${statePath}${suffix}`, {
+      code: "PROTECTED_INPUT_PATHS",
+      present: false,
+    });
+  const statePrefix = `${basename(statePath)}.`;
+  const stateDebris = readdirSync(stateDirectory).some(
+    (entry) =>
+      entry.startsWith(`${statePrefix}candidate-`) || entry.startsWith(`${statePrefix}stale-`),
+  );
+  if (stateDebris) fail("PROTECTED_INPUT_PATHS");
+
+  const paths = Object.fromEntries(
+    FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES.map((name) => [name, environment[name]]),
+  );
+  for (const name of FULL_LIVE_PRECONSUMPTION_DIRECTORY_NAMES)
+    protectedPreconsumptionPath(paths[name], { directory: true, code: "PROTECTED_INPUT_PATHS" });
+  for (const name of FULL_LIVE_PRECONSUMPTION_FILE_NAMES)
+    protectedPreconsumptionPath(paths[name], { code: "PROTECTED_INPUT_PATHS" });
+  for (const name of FULL_LIVE_FUTURE_FILE_NAMES)
+    protectedPreconsumptionPath(paths[name], { code: "PROTECTED_INPUT_PATHS", present: false });
+
+  const postgresDirectory = paths.VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR;
+  const ownerFiles = ["owner.pg_service.conf", "owner.pgpass"];
+  if (
+    JSON.stringify(readdirSync(postgresDirectory).sort()) !== JSON.stringify(ownerFiles) ||
+    !isWithinDirectory(stateDirectory, postgresDirectory)
+  )
+    fail("PROTECTED_INPUT_PATHS");
+  if (readdirSync(paths.VIDEOFORGE_V2_13_SECRET_INPUT_DIR).length !== 0)
+    fail("PROTECTED_INPUT_PATHS");
+  for (const name of ["VIDEOFORGE_V2_13_POSTGRES_INPUT_DIR", "VIDEOFORGE_V2_13_SECRET_INPUT_DIR"])
+    if (!isWithinDirectory(stateDirectory, paths[name])) fail("PROTECTED_INPUT_PATHS");
+  for (const name of ["owner.pg_service.conf", "owner.pgpass"])
+    protectedPreconsumptionPath(`${postgresDirectory}/${name}`, { code: "PROTECTED_INPUT_PATHS" });
+  for (const name of FULL_LIVE_PRECONSUMPTION_SCOPED_NAMES)
+    if (
+      !FULL_LIVE_PRECONSUMPTION_DIRECTORY_NAMES.includes(name) &&
+      !isWithinDirectory(stateDirectory, paths[name])
+    )
+      fail("PROTECTED_INPUT_PATHS");
+  for (const name of FULL_LIVE_FUTURE_FILE_NAMES)
+    if (!isWithinDirectory(stateDirectory, paths[name])) fail("PROTECTED_INPUT_PATHS");
+
+  const uniquePaths = new Set([
+    statePath,
+    ...FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES.map((name) => resolve(paths[name])),
+  ]);
+  if (uniquePaths.size !== FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES.length + 1)
+    fail("PROTECTED_INPUT_PATHS");
+
+  const chainPath = paths.VIDEOFORGE_V2_13_MATERIALIZATION_CHAIN_FILE;
+  const chainDirectory = dirname(chainPath);
+  const chainName = basename(chainPath).replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const chainDebris = new RegExp(
+    `^(?:${chainName}\\.(?:lock|next)|${chainName}\\..+\\.(?:next|stage)|\\.${chainName}\\..+\\.stage)$`,
+    "u",
+  );
+  if (readdirSync(chainDirectory).some((entry) => chainDebris.test(entry)))
+    fail("PROTECTED_INPUT_PATHS");
+  return Object.freeze({ authorityId, statePath, environmentNames: names });
+}
+
 function writeExclusive(path, value) {
   exactPath(dirname(path), "directory", 0o700, "STATE_DIRECTORY");
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, {
@@ -2847,6 +3061,11 @@ async function main() {
       ),
     );
     const statePath = resolve(args.get("state-file"));
+    validatePreConsumptionProtectedInputs({
+      environment: process.env,
+      authorityId: authority.authority_id,
+      statePath,
+    });
     writeExclusive(statePath, state);
     process.stdout.write(
       `${JSON.stringify({ state_file: statePath, state_sha256: sha256(readFileSync(statePath)), authority_id: authority.authority_id })}\n`,
@@ -2935,6 +3154,7 @@ export {
   initialConsumptionRecord,
   MATERIALIZATION_SEED_ENV,
   MATERIALIZATION_SEED_SCHEMA,
+  FULL_LIVE_PROTECTED_ENVIRONMENT_NAMES,
   STATIC_RELEASE_DESCRIPTOR_ENV,
   FAILURE_BOUNDARY,
   FAILURE_CODE,
@@ -2956,6 +3176,7 @@ export {
   validateOuterAuthority,
   validateMaterializationSeedFile,
   validateMaterializationSeedShape,
+  validatePreConsumptionProtectedInputs,
   validateStaticReleaseDescriptorFile,
   validateAuthorityRecordCommit,
   validateState,
