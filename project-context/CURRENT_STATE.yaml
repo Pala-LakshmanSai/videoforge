@@ -84,6 +84,8 @@ hosted_beta_user_walkthrough:
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_49_OF_49_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
+  backup_restore: "PASS_ENCRYPTED_49_ROW_BACKUP_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
+  deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
