@@ -114,7 +114,7 @@ V2_06_APPROVED_NEON_HOST=$RESTORE_APPROVED_NEON_HOST \
 V2_06_EXPECTED_DATABASE=$RESTORE_TARGET_DATABASE \
 V2_06_EXPECTED_OWNER_ROLE=$RESTORE_EXPECTED_OWNER_ROLE \
 V2_06_RUNTIME_ROLE=$RESTORE_RUNTIME_ROLE \
-  node "$script_dir/apply-migrations-and-grants.mjs" --verify-only --apply-grants
+  node "$script_dir/apply-migrations-and-grants.mjs" --apply-grants
 # The helper derives the current head and every migration checksum from the committed manifest; a
 # numeric max(version) check alone is intentionally not accepted as restore evidence.
 echo "restore drill verified exact disposable target, migration manifest, runtime grants, and FORCE RLS"

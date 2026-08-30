@@ -130,6 +130,15 @@ test("preflight source does not require or expose private input contents", async
   assert.match(source, /remote_mutation: false/u);
 });
 
+test("restore drill reapplies omitted grants before verifying the disposable database", async () => {
+  const source = await readFile(
+    new URL("../../deploy/v2-06/restore-drill.sh", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /apply-migrations-and-grants\.mjs" --apply-grants/u);
+  assert.doesNotMatch(source, /apply-migrations-and-grants\.mjs" --verify-only --apply-grants/u);
+});
+
 test("disposable restore input helper scopes the existing owner credential without printing it", async () => {
   const root = await temporaryDirectory("videoforge-v2-06-restore-inputs-");
   const source = path.join(root, "owner.pgpass");
