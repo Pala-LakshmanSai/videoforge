@@ -40,13 +40,15 @@ test("synthetic invited account enters the queue without an external auth reques
   await page.goto("/?fixture=invite_sign_in");
 
   await expect(page.getByRole("heading", { name: "Enter VideoForge" })).toBeVisible();
-  await expect(page.getByText("Fixture sign-in · no Google request will be sent")).toBeVisible();
+  await expect(page.getByText("No email, Google, or external request will be sent.")).toBeVisible();
+  await expect(page.getByLabel("Synthetic verified email")).toHaveCount(0);
+  await expect(page.getByLabel("Email password fixture")).toHaveCount(0);
+  await expect(page.getByLabel("One-time invite code")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
 
-  const continueButton = page.getByRole("button", { name: "Continue to queue" });
-  await page.getByRole("button", { name: "Create one-time local invite" }).click();
-  await expect(page.getByLabel("One-time invite code")).not.toHaveValue("");
+  const continueButton = page.getByRole("button", { name: "Continue with Email" });
+  await expect(continueButton).toBeEnabled();
   await continueButton.focus();
   await expect(continueButton).toBeFocused();
   await page.keyboard.press("Enter");

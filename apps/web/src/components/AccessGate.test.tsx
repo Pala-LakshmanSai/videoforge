@@ -32,7 +32,7 @@ const deniedAccess: FixtureAccessState = {
 };
 
 describe("AccessGate", () => {
-  it("enters through provider-free invite admission and clears the one-time code", async () => {
+  it("signs in with one local action without exposing fixture secrets", async () => {
     const onContinue = vi.fn();
     const fetch = vi
       .fn()
@@ -71,16 +71,115 @@ describe("AccessGate", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Enter VideoForge" })).toBeVisible();
-    expect(screen.getByText("Fixture sign-in · no Google request will be sent")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Create one-time local invite" }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    const action = screen.getByRole("button", { name: "Continue to queue" });
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "No email, Google, or external request will be sent.",
+    );
+    expect(screen.queryByLabelText("Synthetic verified email")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Email password fixture")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("One-time invite code")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Email" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Google" })).not.toBeChecked();
+    const action = screen.getByRole("button", { name: "Continue with Email" });
+    expect(action).toBeEnabled();
     action.focus();
     expect(action).toHaveFocus();
     fireEvent.click(action);
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(fetch.mock.calls[0]?.[0]).toBe("/api/dev/shared-app/invites");
+    expect(fetch.mock.calls[1]?.[0]).toBe("/api/v2/auth/fixture?fixture=invite_sign_in");
     await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
-    expect(screen.getByLabelText("One-time invite code")).toHaveValue("");
-    expect(screen.getByLabelText("Email password fixture")).toHaveValue("");
+  });
+
+  it("uses the selected Google fixture method through the same one-click action", async () => {
+    const onContinue = vi.fn();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: "vf_one_time_secret_for_google_test",
+            emailPassword: "vf_pw_fixture_value_for_google_test",
+            googleAssertion: "vf_google_fixture_assertion_for_test",
+            shownOnce: true,
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            outcome: "ADMITTED",
+            email: "lakshman.fixture@example.invalid",
+            rights: "EQUAL",
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetch);
+
+    render(
+      <AccessGate
+        access={invitedAccess}
+        enabled
+        scenario="invite_sign_in"
+        onContinue={onContinue}
+        onTryAnotherAccount={vi.fn()}
+        onScenarioChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Google" }));
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+    await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
+
+    const body = JSON.parse((fetch.mock.calls[1]?.[1] as RequestInit).body as string) as Record<
+      string,
+      unknown
+    >;
+    expect(body).toMatchObject({
+      method: "GOOGLE",
+      email: "lakshman.fixture@example.invalid",
+      googleAccountEmail: "lakshman.fixture@example.invalid",
+      googleAssertion: "vf_google_fixture_assertion_for_test",
+      inviteCode: "vf_one_time_secret_for_google_test",
+    });
+  });
+
+  it("surfaces a local invite error without exposing the fixture form", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "FIXTURE_INVITE_FAILED",
+            detail: "The local fixture invite could not be created.",
+            retryable: true,
+          },
+        }),
+        { status: 503 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    render(
+      <AccessGate
+        access={invitedAccess}
+        enabled
+        scenario="invite_sign_in"
+        onContinue={vi.fn()}
+        onTryAnotherAccount={vi.fn()}
+        onScenarioChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Email" }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "The local fixture invite could not be created.",
+      ),
+    );
+    expect(screen.getByRole("button", { name: "Continue with Email" })).toBeEnabled();
+    expect(fetch).toHaveBeenCalledOnce();
   });
 
   it("shows the exact invite blocker without rendering workspace console data", () => {
