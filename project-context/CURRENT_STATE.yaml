@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: SOURCE_STEP_4_PROJECT_CREATION_UX_GREEN_AWAITING_DEPLOY_APPROVAL
+  status: SOURCE_STEP_3_DEEPSEEK_STYLE_ANALYSIS_GREEN_AWAITING_DEPLOY_APPROVAL
   implementation_commit: "4612f4b6f2078425ba181abe0064d80d70a745b6"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -81,6 +81,7 @@ hosted_beta_user_walkthrough:
     - "f431565b6e31b62493bc2071363fe76ff7a07d47"
     - "12cf771b22824fcfe64000cfa245d566f7875a83"
     - "4612f4b6f2078425ba181abe0064d80d70a745b6"
+    - "c2365701cfa94abb1e70a75d4a5b7e23688c215f"
   deployment_candidate: AWAITING_FRESH_EXACT_APPROVAL
   deployed_source_commit: "afbcefda26e2bd76955980d4ae3d5e96dc939cb8"
   cloudflare_worker_version_id: "b15c9377-af64-4976-8edc-540f60fe1748"
@@ -90,13 +91,13 @@ hosted_beta_user_walkthrough:
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
   gpu_transport: DISABLED_UNQUALIFIED
-  provider_analysis: PROVIDER_FREE_DETERMINISTIC
+  provider_analysis: DEPLOYED_PROVIDER_FREE_DETERMINISTIC_SOURCE_DIRECT_DEEPSEEK_READY_NOT_DEPLOYED
   provider_calls_authorized: false
   gpu_use_authorized: false
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_50_OF_50_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
-  pending_database_migration: null
+  pending_database_migration: "0052_hosted_style_analysis_spend_guard.sql"
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
@@ -118,8 +119,10 @@ hosted_beta_user_walkthrough:
     - "Source 12cf771b fixes unreadable hosted avatar/style inputs, adds explicit accessible labels, clearer upload guidance and readiness states, bounded responsive form layout, selected-avatar/style preview styling, accurate review copy, and a simpler save/approve/profile-review sequence. Desktop and compact Chromium checks confirm readable typed text."
     - "Approved source afbcefda is deployed as Worker b15c9377-af64-4976-8edc-540f60fe1748. Live status reports the exact commit, migration 0051 is verified at 51/51 with FORCE RLS and exact no-DELETE grants, authenticated Chrome confirms readable avatar/style inputs, and both workspace preset details expose Remove without deleting walkthrough data."
     - "Source 4612f4b6 replaces the hosted project debug form with a guided Video/Look/Cost flow, styled voiceover upload and inputs, visual preset selectors, automatic selection of sole eligible presets, actionable worker recovery, truthful beta/cost wording, and user-facing blockers while retaining fail-closed readiness validation. Wide and compact Chrome previews have no raw GPU/gate/hash diagnostics or horizontal overflow."
-  current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
+    - "Source c2365701 replaces hosted simulated style analysis with direct deepseek-v4-flash-vision-exp analysis of browser-normalized WebP copies only; originals remain private. It adds strict returned-profile validation, safe duplicate-name recovery, readable errors, explicit processing/retention consent, actual charge display, one durable no-redispatch reservation per style, a fixed $3 global beta ceiling, and migration 0052 least-privilege functions. No provider call, secret access, remote mutation, migration, or spend occurred while preparing this source."
+  current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
+    - IMAGE_STYLE_CREATION_AND_PUBLISHING
     - PROJECT_CREATION_AND_COST_PREFLIGHT
     - VOICEOVER_UPLOAD_AND_VALIDATION
     - PROJECT_SUBMISSION
@@ -144,6 +147,10 @@ hosted_beta_user_walkthrough:
     hosted_project_creation_ui_unit: "PASS_32_OF_32"
     hosted_project_creation_ui_wide_chrome: "PASS_TWO_COLUMN_NO_RAW_DIAGNOSTICS_NO_HORIZONTAL_OVERFLOW"
     hosted_project_creation_ui_compact_chrome: "PASS_SINGLE_COLUMN_NO_RAW_DIAGNOSTICS_NO_HORIZONTAL_OVERFLOW"
+    hosted_deepseek_style_focused_web: "PASS_88_OF_88"
+    hosted_deepseek_style_migration_and_grants: "PASS_5_OF_5"
+    hosted_deepseek_style_pipeline_contract: "PASS_31_OF_31"
+    hosted_deepseek_style_staging_build: PASS
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
