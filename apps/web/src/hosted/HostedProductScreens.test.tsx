@@ -524,8 +524,17 @@ describe("hosted product journey", () => {
     expect(await screen.findByText("Will Carter")).toBeInTheDocument();
     expect(screen.getByText("Unfinished avatars")).toBeInTheDocument();
     expect(screen.getByText("Unfinished styles")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Continue setup" })).toHaveLength(2);
-    expect(screen.getByText("The photo upload did not finish. Remove this draft and start again.")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Continue setup" })).toHaveLength(3);
+    expect(
+      screen.getByText(
+        "Your avatar draft is saved. Continue to verify the photo upload, then approve it.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "7 references are saved. Continue to verify the uploads, then analyze and publish this style.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Analysis is in progress. We will update this style when it finishes.")).toBeInTheDocument();
     expect(screen.getByText("This style could not be completed. Remove it and start again with new references.")).toBeInTheDocument();
     const styleResumeLink = screen
@@ -587,6 +596,70 @@ describe("hosted product journey", () => {
     } else {
       expect(screen.getByRole("button", { name: "Publish immutable style version" })).toBeDisabled();
     }
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("verifies a resumed style upload before starting its one analysis", async () => {
+    window.history.replaceState({}, "", "/styles/new?resumeVersionId=resume-unverified-style");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/api/v2/hosted/project-catalog")) {
+        return Response.json({
+          avatars: [],
+          styles: [],
+          style_drafts: [
+            {
+              style_id: "resume-style-id",
+              version_id: "resume-unverified-style",
+              name: "Will Carter",
+              version_number: 1,
+              state: "DRAFT",
+              scope_kind: "WORKSPACE",
+              reference_count: 7,
+              references_verified: false,
+              rights_attested: true,
+              processing_disclosure_acknowledged: true,
+              original_retention_policy: "RETAIN",
+            },
+          ],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        });
+      }
+      if (path.endsWith("/api/v2/hosted/styles/resume-unverified-style/commit")) {
+        expect(init).toMatchObject({ method: "POST", body: "{}" });
+        return Response.json({
+          style_id: "resume-style-id",
+          version_id: "resume-unverified-style",
+          state: "DRAFT",
+        });
+      }
+      if (path.endsWith("/api/v2/hosted/styles/resume-unverified-style/analyze")) {
+        expect(init).toMatchObject({ method: "POST" });
+        return Response.json({
+          style_id: "resume-style-id",
+          version_id: "resume-unverified-style",
+          state: "NEEDS_REVIEW",
+          profile: { summary: "Natural light and restrained texture." },
+        });
+      }
+      throw new Error(`Unexpected hosted request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedPresetCreationScreen kind="styles" />);
+
+    expect(await screen.findByRole("heading", { name: "Analyze references" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Verify uploads and analyze once" }));
+
+    expect(await screen.findByRole("heading", { name: "Review and publish" })).toBeInTheDocument();
+    const writePaths = fetchMock.mock.calls
+      .filter(([, init]) => init?.method === "POST")
+      .map(([input]) => String(input));
+    expect(writePaths).toEqual([
+      "/api/v2/hosted/styles/resume-unverified-style/commit",
+      "/api/v2/hosted/styles/resume-unverified-style/analyze",
+    ]);
     window.history.replaceState({}, "", "/");
   });
 

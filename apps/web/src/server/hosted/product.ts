@@ -1553,7 +1553,16 @@ async function avatarCommit(
       object.httpMetadata?.contentType !== pending.content_type ||
       checksumFromR2(object.checksums?.sha256) !== pending.checksum_sha256
     ) {
-      return response({ error: { code: "AVATAR_SOURCE_NOT_VERIFIED" } }, 409);
+      return response(
+        {
+          error: {
+            code: "AVATAR_SOURCE_NOT_VERIFIED",
+            message:
+              "The saved photo upload could not be verified. Remove this avatar draft and upload the photo again.",
+          },
+        },
+        409,
+      );
     }
     const committed = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [

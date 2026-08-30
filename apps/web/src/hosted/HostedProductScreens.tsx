@@ -490,7 +490,7 @@ function hostedPresetResumeHref(kind: HostedPresetHubKind, versionId: string): s
 }
 
 function hostedDraftIsResumable(
-  kind: HostedPresetHubKind,
+  _kind: HostedPresetHubKind,
   draft: {
     readonly state?: string;
     readonly status?: string;
@@ -498,12 +498,7 @@ function hostedDraftIsResumable(
   },
 ): boolean {
   const state = presetState(draft);
-  if (state === "NEEDS_REVIEW") return true;
-  return (
-    kind === "styles" &&
-    state === "DRAFT" &&
-    draft.references_verified === true
-  );
+  return state === "NEEDS_REVIEW" || state === "DRAFT";
 }
 
 export interface FixtureStyleCreationAdapter {
@@ -985,13 +980,12 @@ function unfinishedPresetDescription(
   kind: HostedPresetHubKind,
   state: string,
   referenceCount: number,
-  resumable: boolean,
 ): string {
   if (kind === "avatars") {
     if (state === "ANALYZING") return "Approval is being reconciled. We will update this avatar when it finishes.";
     if (state === "FAILED") return "This avatar could not be completed. Remove it and start again with a new photo.";
-    if (state === "DRAFT" && !resumable)
-      return "The photo upload did not finish. Remove this draft and start again.";
+    if (state === "DRAFT")
+      return "Your avatar draft is saved. Continue to verify the photo upload, then approve it.";
     return state === "NEEDS_REVIEW"
       ? "Your photo is saved. Continue to review and approve this avatar."
       : "Your photo is saved. Continue setup to review and approve this avatar.";
@@ -1005,8 +999,10 @@ function unfinishedPresetDescription(
   if (state === "FAILED") {
     return "This style could not be completed. Remove it and start again with new references.";
   }
-  if (state === "DRAFT" && !resumable)
-    return "The reference uploads did not finish. Remove this draft and start again.";
+  if (state === "DRAFT")
+    return referenceCount > 0
+      ? `${referenceCount} references are saved. Continue to verify the uploads, then analyze and publish this style.`
+      : "Your style draft is saved. Continue to verify the uploads, then analyze and publish it.";
   return referenceCount > 0
     ? `${referenceCount} references saved. Continue setup to analyze and publish this style.`
     : "Your style is saved. Continue setup to add references and publish it.";
@@ -1692,7 +1688,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
               <h3>{item.name}</h3>
             </div>
             <p className="preset-draft-description">
-              {unfinishedPresetDescription(kind, state, referenceCount, resumable)}
+              {unfinishedPresetDescription(kind, state, referenceCount)}
             </p>
             <div className="preset-draft-actions">
               {resumable ? (
@@ -2100,20 +2096,10 @@ export function HostedPresetCreationScreen({
     setName(resumedDraft.name);
     setCreated(hostedDraftResponse(resumedDraft));
     if (isAvatar && "profile_id" in resumedDraft) {
-      if (draftState !== "NEEDS_REVIEW") {
-        setError("This avatar upload did not finish. Remove it from Avatar Hub and start again.");
-        setStep(1);
-        return;
-      }
       setRights(resumedDraft.rights_attested === true);
       setLikeness(resumedDraft.likeness_animation_consent === true);
       setStep(3);
     } else if (!isAvatar && "style_id" in resumedDraft) {
-      if (draftState === "DRAFT" && resumedDraft.references_verified !== true) {
-        setError("These reference uploads did not finish. Remove this style from Image Styles and start again.");
-        setStep(1);
-        return;
-      }
       setRights(resumedDraft.rights_attested === true);
       setDisclosure(resumedDraft.processing_disclosure_acknowledged === true);
       setRetention(resumedDraft.original_retention_policy === "RETAIN");
@@ -2352,6 +2338,13 @@ export function HostedPresetCreationScreen({
     setError(null);
     try {
       const id = resourceId(created);
+      if (resumedDraftActive && resumedDraft && presetState(resumedDraft) === "DRAFT") {
+        const committed = await readJson<HostedPresetMutationResponse>(
+          `/api/v2/hosted/avatars/${encodeURIComponent(id)}/commit`,
+          { method: "POST", body: "{}" },
+        );
+        setCreated({ ...created, ...committed });
+      }
       await readJson(`/api/v2/hosted/avatars/${encodeURIComponent(id)}/approve`, {
         method: "POST",
         body: JSON.stringify({
@@ -2384,6 +2377,19 @@ export function HostedPresetCreationScreen({
         return;
       }
       const id = resourceId(created);
+      if (
+        resumedDraftActive &&
+        resumedDraft &&
+        presetState(resumedDraft) === "DRAFT" &&
+        "references_verified" in resumedDraft &&
+        resumedDraft.references_verified !== true
+      ) {
+        const committed = await readJson<HostedPresetMutationResponse>(
+          `/api/v2/hosted/styles/${encodeURIComponent(id)}/commit`,
+          { method: "POST", body: "{}" },
+        );
+        setCreated({ ...created, ...committed });
+      }
       const analyzed = await readJson<HostedPresetMutationResponse>(
         `/api/v2/hosted/styles/${encodeURIComponent(id)}/analyze`,
         {
@@ -2670,7 +2676,10 @@ export function HostedPresetCreationScreen({
               </Button>
             ) : (
               <Button busy={busy} onClick={() => void approveAvatar()}>
-                <ShieldCheck size={16} /> Approve and add to Avatar Hub
+                <ShieldCheck size={16} />
+                {resumedDraft && presetState(resumedDraft) === "DRAFT"
+                  ? "Verify photo and approve"
+                  : "Approve and add to Avatar Hub"}
               </Button>
             )}
           </div>
@@ -2746,7 +2755,13 @@ export function HostedPresetCreationScreen({
               </Button>
             ) : (
               <Button busy={busy} onClick={() => void analyzeStyle()}>
-                Analyze this draft once <ArrowRight size={16} />
+                {resumedDraft &&
+                presetState(resumedDraft) === "DRAFT" &&
+                "references_verified" in resumedDraft &&
+                resumedDraft.references_verified !== true
+                  ? "Verify uploads and analyze once"
+                  : "Analyze this draft once"}{" "}
+                <ArrowRight size={16} />
               </Button>
             )}
           </div>
