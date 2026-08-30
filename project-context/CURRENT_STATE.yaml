@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: DATABASE_GREEN_DEPLOYMENT_REAPPROVAL_REQUIRED_AFTER_TOOLING_REPAIR
+  status: SOURCE_AND_DATABASE_GREEN_DEPLOYMENT_REAPPROVAL_REQUIRED_AFTER_BUNDLE_REPAIR
   implementation_commit: "79423f8c6fe92b7faaa45a07f7f72f62b1b602d4"
   deployment_candidate: CURRENT_CLEAN_GIT_HEAD
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
@@ -92,6 +92,7 @@ hosted_beta_user_walkthrough:
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
     - "Image-style analysis is clearly labeled provider-free simulation so the walkthrough cannot mistake it for a Gemini, DeepSeek, or GPU provider result."
     - "Neon now has pgcrypto and the exact 49-row migration chain; deployment verification excludes provider-owned pgcrypto extension functions while still requiring an exact application-function allowlist and zero PUBLIC application functions."
+    - "Hosted staging now aliases only the hosted API, excludes the fixture public directory, and removes fixture-only AppShell, Library, and Review branches at compile time; its deployable client passes the production fixture quarantine."
   current_step: SIGN_IN_AND_INVITE_REDEMPTION
   remaining_steps:
     - SIGN_IN_AND_INVITE_REDEMPTION
@@ -109,6 +110,7 @@ hosted_beta_user_walkthrough:
     hosted_web_typecheck: PASS
     hosted_changed_file_eslint: PASS
     staging_build: PASS
+    hosted_staging_bundle_quarantine: PASS_NO_FIXTURE_CODE_OR_ASSETS
     production_bundle_fixture_quarantine: PASS
     v2_06_deployment_validator: PASS
 
