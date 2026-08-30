@@ -8,8 +8,11 @@ export interface VerifiedVoiceover {
 }
 
 export interface VerifiedImage {
+  bytesBase64: string;
+  checksum: `sha256:${string}`;
   filename: string;
   height: number;
+  mediaType: "image/jpeg" | "image/png" | "image/webp";
   objectUrl: string;
   width: number;
 }
@@ -277,9 +280,12 @@ export async function buildNormalizedStyleReference(
     throw new Error(`${file.name} could not be normalized to WebP.`);
   }
   return {
+    bytesBase64: bytesToBase64(normalizedBytes),
+    checksum: await sha256(normalizedBytes),
     clientReferenceId,
     filename: file.name,
     height: normalizedDimensions.height,
+    mediaType: "image/webp",
     objectUrl: URL.createObjectURL(normalizedBlob),
     original: {
       bytesBase64: bytesToBase64(originalBytes),
@@ -350,8 +356,8 @@ export async function validateImageFile(
   if (!["jpeg", "jpg", "png", "webp"].includes(extension)) {
     throw new Error(`${file.name} must be JPEG, PNG, or WebP.`);
   }
-  const bytes = await file.arrayBuffer();
-  const container = detectImageContainer(new Uint8Array(bytes.slice(0, 16)));
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const container = detectImageContainer(bytes.subarray(0, 16));
   const expected = extension === "jpg" || extension === "jpeg" ? "JPEG" : extension.toUpperCase();
   if (container !== expected) throw new Error(`${file.name} contents do not match its extension.`);
 
@@ -366,5 +372,13 @@ export async function validateImageFile(
   if (width < minimumDimension || height < minimumDimension) {
     throw new Error(`${file.name} must be at least ${minimumDimension}×${minimumDimension}.`);
   }
-  return { filename: file.name, height, objectUrl: URL.createObjectURL(file), width };
+  return {
+    bytesBase64: bytesToBase64(bytes),
+    checksum: await sha256(bytes),
+    filename: file.name,
+    height,
+    mediaType: imageMediaType(container),
+    objectUrl: URL.createObjectURL(file),
+    width,
+  };
 }

@@ -78,7 +78,13 @@ export function NewAvatarScreen() {
           compatibility: "UNTESTED",
           lifecycle: "ACTIVE",
           version_state: "READY",
-          uploaded_bytes_persisted: false,
+          uploaded_bytes_persisted: true,
+          source: {
+            filename: source.filename,
+            media_type: source.mediaType,
+            checksum: source.checksum,
+            bytes_base64: source.bytesBase64,
+          },
           attestations: { image_use_rights: true, likeness_animation_consent: true },
         },
         scenario,
@@ -278,9 +284,9 @@ export function NewAvatarScreen() {
                 />
               </label>
               <div className="notice">
-                <strong>Optional compatibility testing is not running.</strong> Saving this ready
-                fixture profile costs $0 and makes no model call. Uploaded bytes stay only in this
-                browser page; the Hub uses a labelled owned stand-in thumbnail.
+                <strong>Live compatibility testing is unavailable in fixture mode.</strong> Saving
+                this ready profile stores the validated source in your private fixture session,
+                returns a tenant-checked preview, and costs $0. No provider or model call is made.
               </div>
               <Button variant="ghost" disabled={busy} onClick={() => setStep(2)}>
                 Back
@@ -303,11 +309,11 @@ export function NewAvatarScreen() {
           <div className="detail-facts">
             <span>
               <small>Source</small>
-              <strong>Not persisted by fixture shell</strong>
+              <strong>Validated source retained in private fixture session</strong>
             </span>
             <span>
               <small>Runtime</small>
-              <strong>Owned stand-in thumbnail</strong>
+              <strong>Tenant-checked avatar preview</strong>
             </span>
             <span>
               <small>Consent</small>
@@ -315,7 +321,7 @@ export function NewAvatarScreen() {
             </span>
             <span>
               <small>Compatibility</small>
-              <strong>Explicit state and evidence</strong>
+              <strong>Live test unavailable without provider authority</strong>
             </span>
           </div>
         </Disclosure>

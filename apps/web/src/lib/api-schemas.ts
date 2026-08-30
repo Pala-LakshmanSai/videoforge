@@ -83,6 +83,8 @@ export function parsePrivateFairQueueResponse(value: unknown): PrivateFairQueueS
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
 const PROJECT_VERSION_TOKEN = /^"vf-[A-Za-z0-9._:-]+-v[1-9][0-9]*"$/u;
 const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
+const AVATAR_PREVIEW_PATH =
+  /^\/api\/v1\/avatar-profiles\/[A-Za-z0-9][A-Za-z0-9._:-]*\/versions\/[A-Za-z0-9][A-Za-z0-9._:-]*\/preview$/u;
 const STYLE_FIXTURE_PATH = /^\/fixtures\/styles\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const STYLE_REFERENCE_PREVIEW_PATH =
   /^\/api\/v1\/image-styles\/[A-Za-z0-9._:-]+\/versions\/[A-Za-z0-9._:-]+\/references\/[A-Za-z0-9._:-]+\/preview$/u;
@@ -248,7 +250,10 @@ const avatarSchema = z
     compatibility: z.enum(["UNTESTED", "RUNNING", "PASSED", "FAILED", "STALE", "CANCELLED"]),
     dimensions: z.string(),
     lastUsed: z.string(),
-    thumbnailUrl: z.string().regex(AVATAR_FIXTURE_PATH),
+    thumbnailUrl: z.union([
+      z.string().regex(AVATAR_FIXTURE_PATH),
+      z.string().regex(AVATAR_PREVIEW_PATH),
+    ]),
     profileHash: z.string().regex(SHA256),
     preparationProfile: z.string(),
     validationProfile: z.string(),
@@ -573,7 +578,7 @@ const avatarCreateMutationSchema = z
     avatarProfile: avatarSchema,
     lifecycle: z.object({ profile: z.literal("ACTIVE"), version: z.literal("READY") }).strict(),
     immutableVersion: z.literal(true),
-    uploadedBytesPersisted: z.literal(false),
+    uploadedBytesPersisted: z.literal(true),
     providerCallsAuthorized: z.literal(false),
   })
   .strict();

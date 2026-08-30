@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   boundedImageDimensions,
@@ -8,6 +8,8 @@ import {
   validateImageFile,
   validateVoiceoverFile,
 } from "./media-validation";
+
+afterEach(() => vi.unstubAllGlobals());
 
 function bytes(...values: number[]): Uint8Array {
   return new Uint8Array(values);
@@ -72,6 +74,29 @@ describe("fixture media validation", () => {
     await expect(validateImageFile(file)).rejects.toThrow(
       "renamed.jpg contents do not match its extension.",
     );
+  });
+
+  it("retains validated avatar bytes, media type, and checksum for persistence", async () => {
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn(async () => ({ width: 512, height: 512, close: vi.fn() })),
+    );
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: () => "blob:avatar-source",
+    });
+    const png = bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4);
+    const result = await validateImageFile(fixtureFile("maya.png", "image/png", png));
+
+    expect(result).toMatchObject({
+      bytesBase64: btoa(String.fromCharCode(...png)),
+      filename: "maya.png",
+      mediaType: "image/png",
+      objectUrl: "blob:avatar-source",
+      width: 512,
+      height: 512,
+    });
+    expect(result.checksum).toMatch(/^sha256:[a-f0-9]{64}$/u);
   });
 
   it("bounds style references without upscaling or changing aspect ratio", () => {

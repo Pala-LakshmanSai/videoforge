@@ -60,11 +60,28 @@ export interface FixtureStyleDraft {
   profileHash: `sha256:${string}` | null;
 }
 
+/**
+ * A fixture avatar source is intentionally retained only inside its owning fixture session.
+ * The byte payload never crosses the catalog/bootstrap response boundary; callers receive a
+ * tenant-checked preview URL instead.
+ */
+export interface FixtureAvatarSource {
+  readonly profileId: string;
+  readonly versionId: string;
+  readonly filename: string;
+  readonly mediaType: "image/jpeg" | "image/png" | "image/webp";
+  readonly checksum: `sha256:${string}`;
+  readonly width: number;
+  readonly height: number;
+  readonly bytes: Uint8Array;
+}
+
 export interface FixtureSessionState {
   readonly idempotencyLedger: import("../mutation").IdempotencyLedger;
   readonly runtimeProjects: RuntimeProjects;
   readonly registeredVoiceovers: Map<string, RegisteredVoiceover>;
   readonly createdAvatars: AvatarProfileResponse[];
+  readonly avatarSources: Map<string, FixtureAvatarSource>;
   readonly createdStyles: ImageStyleResponse[];
   readonly styleDrafts: Map<string, FixtureStyleDraft>;
   createdProjectRequest: CreateProjectRequest | null;

@@ -30,7 +30,7 @@ export function registerAccessMiddleware(
     const session = fixtureSessions.resolve(c);
     if (!session.ok) return session.response;
     await next();
-    c.header("cache-control", "no-store");
+    if (!c.res.headers.has("cache-control")) c.header("cache-control", "no-store");
     c.header("x-videoforge-provider-mode", "fixture");
     c.header("x-videoforge-synthetic", "true");
     c.header(FIXTURE_SESSION_HEADER, session.id);

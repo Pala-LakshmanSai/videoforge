@@ -1,8 +1,13 @@
-import { getFixtureScenario, toProjectDetailResponse } from "@videoforge/test-fixtures";
+import {
+  getFixtureScenario,
+  toAvatarProfileResponse,
+  toProjectDetailResponse,
+} from "@videoforge/test-fixtures";
 import { describe, expect, it } from "vitest";
 
 import {
   parseHealthResponse,
+  parseAvatarsResponse,
   parseProjectCreateMutationResponse,
   parseProjectResponse,
   parseVoiceoverRegistrationMutationResponse,
@@ -46,6 +51,30 @@ describe("mutation response validation", () => {
     expect(parseProjectCreateMutationResponse(projectCreateResponse)).toEqual(
       projectCreateResponse,
     );
+  });
+
+  it("accepts only fixture or tenant-checked avatar preview paths", () => {
+    const scenario = getFixtureScenario("avatar_profile_ready");
+    const source = scenario?.snapshot.avatarHub.profiles[0];
+    if (!source) throw new Error("Required avatar fixture is unavailable.");
+    const fixtureProfile = toAvatarProfileResponse(source);
+    const previewProfile = {
+      ...fixtureProfile,
+      thumbnailUrl:
+        "/api/v1/avatar-profiles/avatar_profile_fixture_created_001/versions/avatar_profile_version_fixture_created_001/preview",
+    };
+
+    expect(parseAvatarsResponse([fixtureProfile, previewProfile])).toHaveLength(2);
+    expect(() =>
+      parseAvatarsResponse([
+        { ...fixtureProfile, thumbnailUrl: "https://untrusted.example/avatar.png" },
+      ]),
+    ).toThrow();
+    expect(() =>
+      parseAvatarsResponse([
+        { ...fixtureProfile, thumbnailUrl: "/api/v1/avatar-profiles/profile/preview?fixture=x" },
+      ]),
+    ).toThrow();
   });
 
   it("rejects extra fields and malformed concurrency tokens", () => {

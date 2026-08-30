@@ -60,6 +60,12 @@ const app = createApiApp({
             path.join(WORKSPACE_ROOT, ".videoforge", "shared-app-fixture.json"),
           )
         : undefined,
+    fixtureSessionPersistence:
+      mode === "fixture"
+        ? createNodeSharedAppPersistence(
+            path.join(WORKSPACE_ROOT, ".videoforge", "fixture-avatar-sessions.json"),
+          )
+        : undefined,
     fixtureProviderFreeArtifacts,
     fixtureFairAdmission: fixtureFairAdmission,
     // The V2-05 runtime attaches to the same durable control plane as admission, so admission and

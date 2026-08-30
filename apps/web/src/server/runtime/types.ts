@@ -40,6 +40,7 @@ export interface ApiRuntimeBindings {
   readonly platform: RuntimePlatform;
   readonly fixturePreview?: FixturePreviewBinding;
   readonly fixtureSharedAppPersistence?: SharedAppPersistence;
+  readonly fixtureSessionPersistence?: SharedAppPersistence;
   readonly fixtureProviderFreeArtifacts?: ProviderFreeArtifactRuntime;
   readonly fixtureFairAdmission?: ApplicationFairAdmission;
   readonly fixtureVideoRuntime?: ApplicationVideoRuntime;

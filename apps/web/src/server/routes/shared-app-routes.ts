@@ -102,6 +102,7 @@ export function registerSharedAppRoutes(app: Hono, runtime: FixtureRuntime): voi
       );
     if (runtime.fairAdmission !== undefined) await runtime.fairAdmission.reset();
     runtime.sharedApp.reset();
+    runtime.sessions.resetAll();
     return c.json({ ok: true, providerCallsAuthorized: false, authorizedSpendUsd: 0 });
   });
   app.post("/api/dev/shared-app/invites", async (c) => {

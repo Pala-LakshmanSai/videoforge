@@ -30,8 +30,9 @@ export class FixtureRuntime {
     providerFreeArtifacts?: ProviderFreeArtifactRuntime,
     fairAdmission?: ApplicationFairAdmission,
     videoRuntime?: ApplicationVideoRuntime,
+    sessionPersistence?: SharedAppPersistence,
   ) {
-    this.sessions = new FixtureSessionStore(environment);
+    this.sessions = new FixtureSessionStore(environment, sessionPersistence);
     this.sharedApp = new SharedAppFixtureStore(sharedAppPersistence, providerFreeArtifacts);
     this.fairAdmission = fairAdmission;
     this.videoRuntime = videoRuntime;
@@ -49,7 +50,10 @@ export class FixtureRuntime {
     const session = this.resolveSession(c);
     if (!session.ok) return Promise.resolve(session.response);
     return idempotentMutation(c, session.state.idempotencyLedger, requireVersion, (rawBody) =>
-      handle(rawBody, session.state),
+      Promise.resolve(handle(rawBody, session.state)).then((response) => {
+        this.sessions.persist();
+        return response;
+      }),
     );
   }
 

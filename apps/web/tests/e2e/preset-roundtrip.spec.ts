@@ -31,10 +31,10 @@ interface ProjectDraftSnapshot {
 }
 
 interface CreatedAvatarResponse {
-  avatarProfile: { name: string; versionId: string };
+  avatarProfile: { name: string; thumbnailUrl: string; versionId: string };
   immutableVersion: true;
   providerCallsAuthorized: false;
-  uploadedBytesPersisted: false;
+  uploadedBytesPersisted: true;
 }
 
 interface CreatedStyleResponse {
@@ -356,7 +356,7 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
     },
     immutableVersion: true,
     providerCallsAuthorized: false,
-    uploadedBytesPersisted: false,
+    uploadedBytesPersisted: true,
   });
   await expect(page).toHaveURL(/\/projects\/new\?fixture=project_create_ready$/u);
   const afterAvatar = await readDraft(page);

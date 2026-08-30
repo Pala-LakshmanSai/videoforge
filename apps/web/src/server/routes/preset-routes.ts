@@ -9,6 +9,7 @@ import {
   imageStyleCatalog,
   imageStyleMetadataSchema,
 } from "../domain/preset-service";
+import type { FixtureAvatarSource } from "../domain/models";
 import { fixtureFromRequest } from "../fixture";
 import type { FixtureRuntime } from "../fixture-runtime";
 import {
@@ -17,6 +18,50 @@ import {
 } from "../fixture-session";
 import { readStrictMetadata } from "../mutation";
 import { apiProblem, problemResponse } from "../problem";
+import {
+  fixtureAvatarSourceChecksumMatches,
+  validateFixtureAvatarSource,
+} from "../avatar-source-validation";
+
+export function avatarSourcePreviewPath(profileId: string, versionId: string): string {
+  return `/api/v1/avatar-profiles/${encodeURIComponent(profileId)}/versions/${encodeURIComponent(versionId)}/preview`;
+}
+
+function avatarSourceNotFound(): Response {
+  return problemResponse(
+    apiProblem(
+      "AVATAR_PROFILE_SOURCE_NOT_FOUND",
+      404,
+      "Avatar source was not found",
+      "The requested private avatar source is unavailable in this fixture session.",
+      false,
+    ),
+  );
+}
+
+async function avatarSourceResponse(source: FixtureAvatarSource): Promise<Response> {
+  if (!(await fixtureAvatarSourceChecksumMatches(source))) {
+    return problemResponse(
+      apiProblem(
+        "AVATAR_PROFILE_SOURCE_CORRUPT",
+        500,
+        "Avatar source integrity check failed",
+        "The retained fixture source no longer matches its immutable checksum.",
+        true,
+      ),
+    );
+  }
+  return new Response(source.bytes.slice().buffer as ArrayBuffer, {
+    status: 200,
+    headers: {
+      "content-type": source.mediaType,
+      "content-length": String(source.bytes.byteLength),
+      "cache-control": "private, no-store",
+      "x-content-type-options": "nosniff",
+      etag: `"${source.checksum}"`,
+    },
+  });
+}
 
 export function registerPresetRoutes(app: Hono, runtime: FixtureRuntime): void {
   app.get("/api/v1/avatar-profiles", (c) => {
@@ -25,6 +70,22 @@ export function registerPresetRoutes(app: Hono, runtime: FixtureRuntime): void {
     const session = runtime.resolveSession(c);
     if (!session.ok) return session.response;
     return c.json(avatarCatalog(resolved.scenario, session.state.createdAvatars));
+  });
+
+  app.get("/api/v1/avatar-profiles/:profileId/versions/:versionId/preview", (c) => {
+    const session = runtime.resolveSession(c);
+    if (!session.ok) return session.response;
+    const profile = session.state.createdAvatars.find(
+      (candidate) =>
+        candidate.id === c.req.param("profileId") &&
+        candidate.versionId === c.req.param("versionId"),
+    );
+    if (!profile) return avatarSourceNotFound();
+    const source = session.state.avatarSources.get(profile.versionId);
+    if (!source || source.profileId !== profile.id || source.versionId !== profile.versionId) {
+      return avatarSourceNotFound();
+    }
+    return avatarSourceResponse(source);
   });
 
   app.post("/api/v1/avatar-profiles", (c) =>
@@ -39,6 +100,20 @@ export function registerPresetRoutes(app: Hono, runtime: FixtureRuntime): void {
         "Send strict fixture metadata with an owned same-origin thumbnail and both required attestations. The server derives the immutable profile hash.",
       );
       if (!metadata.ok) return metadata.response;
+      let source;
+      try {
+        source = await validateFixtureAvatarSource(metadata.data);
+      } catch (error) {
+        return problemResponse(
+          apiProblem(
+            "INVALID_AVATAR_PROFILE_SOURCE",
+            422,
+            "Avatar source could not be retained",
+            error instanceof Error ? error.message : "Avatar source validation failed.",
+            false,
+          ),
+        );
+      }
       const duplicate = avatarCatalog(resolved.scenario, state.createdAvatars).some(
         (profile) => profile.name.toLocaleLowerCase() === metadata.data.name.toLocaleLowerCase(),
       );
@@ -67,9 +142,11 @@ export function registerPresetRoutes(app: Hono, runtime: FixtureRuntime): void {
       state.avatarSequence += 1;
       const suffix = String(state.avatarSequence).padStart(3, "0");
       const profileHash = await hashAvatarProfileMetadata(metadata.data);
+      const profileId = `avatar_profile_fixture_created_${suffix}`;
+      const versionId = `avatar_profile_version_fixture_created_${suffix}`;
       const profile: AvatarProfileResponse = {
-        id: `avatar_profile_fixture_created_${suffix}`,
-        versionId: `avatar_profile_version_fixture_created_${suffix}`,
+        id: profileId,
+        versionId,
         name: metadata.data.name,
         initials: metadata.data.name
           .split(/\s+/u)
@@ -84,14 +161,28 @@ export function registerPresetRoutes(app: Hono, runtime: FixtureRuntime): void {
         lastUsed: "Never",
         activeVersion: 1,
         selectedVersion: 1,
-        warning: "Fixture metadata only; uploaded bytes were not persisted",
-        thumbnailUrl: metadata.data.thumbnail_url,
+        warning: source ? null : "Fixture metadata only; uploaded bytes were not persisted",
+        thumbnailUrl: source
+          ? avatarSourcePreviewPath(profileId, versionId)
+          : metadata.data.thumbnail_url,
         profileHash,
         preparationProfile: metadata.data.preparation_profile,
         validationProfile: metadata.data.validation_profile,
         rightsStatus: "ATTESTED",
       };
       state.createdAvatars.push(profile);
+      if (source) {
+        state.avatarSources.set(versionId, {
+          profileId,
+          versionId,
+          filename: source.filename,
+          mediaType: source.mediaType,
+          checksum: source.checksum,
+          width: source.width,
+          height: source.height,
+          bytes: source.bytes.slice(),
+        });
+      }
       return c.json(
         {
           ok: true as const,
@@ -101,7 +192,7 @@ export function registerPresetRoutes(app: Hono, runtime: FixtureRuntime): void {
             version: metadata.data.version_state,
           },
           immutableVersion: true as const,
-          uploadedBytesPersisted: false as const,
+          uploadedBytesPersisted: Boolean(source) as true | false,
           providerCallsAuthorized: false as const,
         },
         201,

@@ -32,7 +32,8 @@ export function AvatarHubScreen() {
     avatar.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
   const localMode = health.data?.mode === "local";
-  const creationAvailable = health.data?.mode === "fixture";
+  const fixtureMode = health.data?.mode === "fixture";
+  const creationAvailable = fixtureMode;
   if (query.isPending) {
     return (
       <Panel eyebrow="Presets" heading="Loading Avatar Hub">
@@ -148,12 +149,14 @@ export function AvatarHubScreen() {
               const attentionStatus =
                 avatar.status !== "READY"
                   ? { label: humanize(avatar.status), tone: statusTone(avatar.status) }
-                  : avatar.compatibility !== "PASSED"
-                    ? {
-                        label: avatarCompatibilityLabel(avatar.compatibility),
-                        tone: statusTone(avatar.compatibility),
-                      }
-                    : null;
+                  : avatar.compatibility === "UNTESTED"
+                    ? { label: "Fixture ready", tone: "success" as const }
+                    : avatar.compatibility !== "PASSED"
+                      ? {
+                          label: avatarCompatibilityLabel(avatar.compatibility),
+                          tone: statusTone(avatar.compatibility),
+                        }
+                      : null;
               return (
                 <article className="entity-card avatar-card" key={avatar.versionId}>
                   <div className="avatar-card-media">
@@ -170,7 +173,7 @@ export function AvatarHubScreen() {
                   </div>
                   <DetailsSheet
                     title={avatar.name}
-                    description={`Version ${avatar.version} · ${avatar.compatibility.toLowerCase()}`}
+                    description={`Version ${avatar.version} · ${avatar.compatibility === "UNTESTED" ? "fixture-ready" : avatar.compatibility.toLowerCase()}`}
                     trigger={
                       <button className="entity-details-trigger" type="button">
                         <strong>Details</strong>
@@ -194,6 +197,19 @@ export function AvatarHubScreen() {
                         <figcaption>Split crop</figcaption>
                       </figure>
                     </div>
+                    {fixtureMode ? (
+                      <div className="detail-section avatar-compatibility-detail" role="status">
+                        <div className="detail-section-heading">
+                          <strong>Live provider compatibility</strong>
+                          <Badge tone="warning">Unavailable</Badge>
+                        </div>
+                        <p>
+                          {avatar.compatibility === "UNTESTED"
+                            ? "This profile is fixture-ready, but live compatibility is untested because no provider authority is active. It is safe to select for the $0 walkthrough; no provider call or spend occurred."
+                            : `The ${avatar.compatibility.toLowerCase()} state is fixture evidence only. Live provider compatibility is unavailable without authority, and no provider call or spend occurred.`}
+                        </p>
+                      </div>
+                    ) : null}
                     <div className="detail-facts">
                       <span>
                         <small>Source</small>
