@@ -71,14 +71,15 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_2_AVATAR_HUB_REPAIRS_DEPLOYED_AWAITING_USER_CONFIRMATION
-  implementation_commit: "588ad594d43748c6d1bb3ae9fe1bebd3be01b570"
+  status: LIVE_STEP_2_PRESET_REMOVE_SOURCE_GREEN_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
+  implementation_commit: "f431565b6e31b62493bc2071363fe76ff7a07d47"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
     - "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
     - "6fb8a8a55850b157a7fb99dd86e4a74d7ffa6ce1"
     - "43c5b2f664df6a9e0dae91a1223dbd73cddf624e"
-  deployment_candidate: CONSUMED_BY_EXACT_APPROVED_DEPLOYMENT
+    - "f431565b6e31b62493bc2071363fe76ff7a07d47"
+  deployment_candidate: PENDING_FRESH_EXACT_USER_APPROVAL
   deployed_source_commit: "588ad594d43748c6d1bb3ae9fe1bebd3be01b570"
   cloudflare_worker_version_id: "6b6c399a-8cdf-4496-97d1-853689cca597"
   deployed_config_sha256: "sha256:f4a95be96d0f116be89b2a3de7ea4804669c0ab284ce48e240b9cca0eedc81f0"
@@ -93,7 +94,7 @@ hosted_beta_user_walkthrough:
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_50_OF_50_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
-  pending_database_migration: NONE
+  pending_database_migration: "0051_hosted_preset_archive_function"
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
@@ -111,6 +112,7 @@ hosted_beta_user_walkthrough:
     - "The deployed hosted access repair keeps the admitted product page mounted during focus and visibility revalidation, eliminating the full-page checking flash; a real rejection or validation failure still unmounts private content fail-closed."
     - "Authenticated Chrome found the first hub deployment's catalog count query touched image_style_references, which the least-privilege runtime role cannot read. Repair 6fb8a8a5 removes that unnecessary query, keeps the deliberate no-reference style cover, and restores the catalog without a database grant or mutation."
     - "Authenticated Chrome proved the catalog repair and compact hub layout live, then found avatar preview still touched avatar_profile_assets, another intentionally ungranted link table. Repair 43c5b2f6 resolves the owned thumbnail through already-granted avatar_profiles, avatar_profile_versions, and assets; it also prefers READY/PUBLISHED version state so healthy cards no longer show ACTIVE."
+    - "Source f431565b adds Remove inside workspace-owned Avatar and Image Style details, confirmation/loading/error states, tenant-scoped archive-only migration 0051, immutable built-in protection, historical version/media preservation, stale-workflow ACTIVE parent locks, and the exact no-DELETE runtime grants required by hosted preset creation. It is provider-free green and awaits deployment approval."
   current_step: AVATAR_CREATION_AND_APPROVAL
   remaining_steps:
     - AVATAR_CREATION_AND_APPROVAL
@@ -130,6 +132,11 @@ hosted_beta_user_walkthrough:
     staging_build: PASS
     hosted_staging_bundle_quarantine: PASS_NO_FIXTURE_CODE_OR_ASSETS
     production_bundle_fixture_quarantine: PASS
+    hosted_preset_remove_ui_and_api: "PASS_61_OF_61"
+    hosted_preset_archive_migration: "PASS_4_OF_4"
+    hosted_preset_runtime_grants: "PASS_1_OF_1_NO_DELETE"
+    hosted_preset_remove_staging_build: PASS
+    hosted_preset_remove_deployment_validation: PASS
     v2_06_deployment_validator: PASS
     auth_database_and_redemption_focused: "PASS_9_OF_9"
     auth_migration_smoke_and_hardening: "PASS_15_OF_15"
