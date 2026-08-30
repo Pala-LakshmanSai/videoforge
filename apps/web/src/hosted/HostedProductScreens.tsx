@@ -31,18 +31,27 @@ import {
 } from "../components/ui";
 import { PresetImage } from "../features/presets/PresetImage";
 import { VisualPresetSelect } from "../features/project-create/VisualPresetSelect";
-import type { NormalizedStyleReference } from "../lib/media-validation";
+import {
+  normalizeImageStyleReference,
+  type NormalizedStyleReference,
+} from "../lib/media-validation";
 import { isHostedBetaMode } from "./provider-mode";
 
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_AVATAR_BYTES = 20 * 1024 * 1024;
 const MAX_STYLE_REFERENCE_BYTES = 20 * 1024 * 1024;
+const MAX_STYLE_ANALYSIS_BYTES = 30 * 1024 * 1024;
 const MAX_STYLE_REFERENCES = 8;
 const MIN_STYLE_REFERENCES = 3;
 const DEFAULT_SPEND_CAP_USD = "1.00";
 const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
 const VOICEOVER_TYPES = new Set(["audio/wav"]);
 export const HOSTED_SHA256_CHUNK_BYTES = 4 * 1024 * 1024;
+
+function base64ByteLength(value: string): number {
+  const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+  return (value.length * 3) / 4 - padding;
+}
 
 const SHA256_INITIAL_STATE = [
   0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
@@ -401,12 +410,14 @@ interface HostedPresetMutationResponse {
   readonly state?: string;
   readonly upload?: HostedUploadDescriptor | null;
   readonly uploads?: readonly HostedUploadDescriptor[];
+  readonly normalized_uploads?: readonly HostedUploadDescriptor[];
   readonly version?: number;
   readonly profile?: Record<string, unknown> | null;
   readonly profile_hash?: string | null;
   readonly thumbnail_url?: string | null;
   readonly cover_url?: string | null;
   readonly summary?: string | null;
+  readonly analysis_cost_usd?: number | null;
 }
 
 export interface FixtureStyleCreationAdapter {
@@ -1738,8 +1749,6 @@ export function HostedPresetCreationScreen({
 }) {
   const isAvatar = kind === "avatars";
   const fixtureBackend = Boolean(fixtureStyleAdapter);
-  const hostedBeta =
-    !fixtureBackend && isHostedBetaMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
   const title = isAvatar ? "New avatar" : "New image style";
   const itemLabel = isAvatar ? "avatar" : "style";
   const params = new URLSearchParams(window.location.search);
@@ -1766,6 +1775,7 @@ export function HostedPresetCreationScreen({
   const [rights, setRights] = useState(false);
   const [likeness, setLikeness] = useState(false);
   const [disclosure, setDisclosure] = useState(false);
+  const [retention, setRetention] = useState(false);
   const [profileReviewed, setProfileReviewed] = useState(false);
   const [profileNotes, setProfileNotes] = useState("");
   const [created, setCreated] = useState<HostedPresetMutationResponse | null>(null);
@@ -1773,6 +1783,7 @@ export function HostedPresetCreationScreen({
     useState<ImageStyleHubVersionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const createRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
   const catalog = useQuery({
     queryKey: fixtureBackend ? ["fixture-preset-catalog", kind] : ["hosted-project-catalog"],
     queryFn: async () => {
@@ -1860,36 +1871,32 @@ export function HostedPresetCreationScreen({
     }
     setBusy(true);
     try {
-      if (fixtureBackend) {
-        const normalized = await Promise.all(
-          files.map((file) => fixtureStyleAdapter!.normalize(file)),
-        );
-        setStyleSources(
-          files.map((file, index) => ({
-            file,
-            checksum: normalized[index]!.normalized.checksum,
-            objectUrl: normalized[index]!.objectUrl,
-            normalized: normalized[index]!,
-          })),
-        );
-      } else {
-        const checksums = await Promise.all(
-          files.map((file) =>
-            bounded(
-              hostedFileSha256(file),
-              "Style reference checksum timed out. Try again.",
-              15_000,
-            ),
-          ),
-        );
-        setStyleSources(
-          files.map((file, index) => ({
-            file,
-            checksum: checksums[index]!,
-            objectUrl: URL.createObjectURL(file),
-          })),
-        );
-      }
+      const normalized = await Promise.all(
+        files.map((file) =>
+          fixtureBackend
+            ? fixtureStyleAdapter!.normalize(file)
+            : bounded(
+                normalizeImageStyleReference(file),
+                `${file.name} normalization timed out. Try again.`,
+                30_000,
+              ),
+        ),
+      );
+      if (
+        normalized.reduce(
+          (sum, source) => sum + base64ByteLength(source.normalized.bytesBase64),
+          0,
+        ) > MAX_STYLE_ANALYSIS_BYTES
+      )
+        throw new Error("Use a smaller reference set (30 MB total after normalization).");
+      setStyleSources(
+        files.map((file, index) => ({
+          file,
+          checksum: normalized[index]!.original.checksum,
+          objectUrl: normalized[index]!.objectUrl,
+          normalized: normalized[index]!,
+        })),
+      );
     } catch (value) {
       setError(value instanceof Error ? value.message : "Style reference validation failed.");
     } finally {
@@ -1953,21 +1960,36 @@ export function HostedPresetCreationScreen({
               content_type: source.file.type || "image/png",
               content_length: source.file.size,
               checksum_sha256: source.checksum,
+              normalized_content_length: base64ByteLength(
+                source.normalized!.normalized.bytesBase64,
+              ),
+              normalized_checksum_sha256: source.normalized!.normalized.checksum,
+              normalized_width: source.normalized!.normalized.width,
+              normalized_height: source.normalized!.normalized.height,
               order_index: index,
             })),
             rights_attested: rights,
             processing_disclosure_acknowledged: disclosure,
+            original_retention_policy: "RETAIN",
           };
       const endpoint = isAvatar ? "/api/v2/hosted/avatars" : "/api/v2/hosted/styles";
+      const serializedBody = JSON.stringify(body);
+      if (createRequest.current?.body !== serializedBody) {
+        createRequest.current = {
+          body: serializedBody,
+          key: `hosted-${kind}-create-${crypto.randomUUID()}`,
+        };
+      }
       const draft = await readJson<HostedPresetMutationResponse>(endpoint, {
         method: "POST",
-        headers: { "idempotency-key": `hosted-${kind}-create-${crypto.randomUUID()}` },
-        body: JSON.stringify(body),
+        headers: { "idempotency-key": createRequest.current.key },
+        body: serializedBody,
       });
       const uploads = draft.uploads ?? (draft.upload ? [draft.upload] : []);
       if (isAvatar && uploads[0] && avatarSource)
         await putHostedUpload(uploads[0], avatarSource.file);
       if (!isAvatar) {
+        const normalizedUploads = draft.normalized_uploads ?? [];
         if (uploads.length > 0 && uploads.length !== styleSources.length)
           throw new Error(
             "Hosted style upload instructions did not match the selected references.",
@@ -1975,6 +1997,20 @@ export function HostedPresetCreationScreen({
         for (const [index, upload] of uploads.entries()) {
           const source = styleSources[index];
           if (source) await putHostedUpload(upload, source.file);
+        }
+        if (normalizedUploads.length !== styleSources.length)
+          throw new Error(
+            "Hosted style normalization upload instructions did not match the selected references.",
+          );
+        for (const [index, upload] of normalizedUploads.entries()) {
+          const source = styleSources[index]?.normalized;
+          if (!source) throw new Error("Reference normalization is incomplete.");
+          const binary = atob(source.normalized.bytesBase64);
+          const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+          await putHostedUpload(
+            upload,
+            new File([bytes], `reference-${index + 1}.webp`, { type: "image/webp" }),
+          );
         }
       }
       const id = resourceId(draft);
@@ -1985,7 +2021,13 @@ export function HostedPresetCreationScreen({
       setCreated({ ...draft, ...committed });
       setStep(3);
     } catch (value) {
-      setError(value instanceof Error ? value.message : `Hosted ${itemLabel} could not be saved.`);
+      const message =
+        value instanceof Error ? value.message : `Hosted ${itemLabel} could not be saved.`;
+      setError(message);
+      if (!isAvatar && message === "That style name is already in use. Choose a different name.") {
+        setStep(1);
+        requestAnimationFrame(() => document.querySelector<HTMLInputElement>("#preset-name-styles")?.focus());
+      }
     } finally {
       setBusy(false);
     }
@@ -2296,16 +2338,30 @@ export function HostedPresetCreationScreen({
         ) : null}
         {step === 3 && !isAvatar ? (
           <div className="stack">
-            <div className={hostedBeta ? "notice notice-warning" : "notice"}>
+            <div className={!fixtureBackend ? "notice notice-warning" : "notice"}>
               <strong>
-                {hostedBeta
-                  ? "Private beta preview"
-                  : "References are uploaded privately before analysis."}
+                {!fixtureBackend ? "DeepSeek image analysis" : "Local fixture analysis"}
               </strong>{" "}
-              {hostedBeta
-                ? "This step uses a simulated style analysis and makes no external AI request."
-                : "Analysis runs once for this immutable draft version and never during ordinary video generation."}
+              {!fixtureBackend
+                ? "Your normalized references will be sent to DeepSeek once to extract reusable visual traits. They are not sent again during video generation. This bounded analysis may incur a small provider charge within the private beta’s $3 total ceiling."
+                : "This walkthrough uses a simulated profile and makes no external AI request."}
             </div>
+            {!fixtureBackend ? (
+              <label className="toggle-row">
+                <span>
+                  <strong>Keep private originals</strong>
+                  <small>
+                    Keep the original uploads and normalized copies until I remove this style.
+                    Originals are never sent to DeepSeek.
+                  </small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={retention}
+                  onChange={(event) => setRetention(event.target.checked)}
+                />
+              </label>
+            ) : null}
             <label className="toggle-row">
               <span>
                 <strong>Image-use rights</strong>
@@ -2323,7 +2379,9 @@ export function HostedPresetCreationScreen({
               <span>
                 <strong>Processing disclosure</strong>
                 <small>
-                  I understand normalized references are processed to derive this style profile.
+                  {fixtureBackend
+                    ? "I understand normalized references are processed locally to derive this style profile."
+                    : "I understand normalized references are sent to DeepSeek to derive this style profile, and provider-side retention follows DeepSeek’s terms."}
                 </small>
               </span>
               <input
@@ -2338,7 +2396,7 @@ export function HostedPresetCreationScreen({
             {!created ? (
               <Button
                 busy={busy}
-                disabled={!rights || !disclosure}
+                disabled={!rights || !disclosure || (!fixtureBackend && !retention)}
                 onClick={() => void createDraft()}
               >
                 Upload and prepare analysis <ArrowRight size={16} />
@@ -2354,11 +2412,17 @@ export function HostedPresetCreationScreen({
           <div className="stack">
             <div className="validation validation-success">
               <Check size={16} />
-              {hostedBeta
-                ? "Provider-free beta profile returned for workflow review."
-                : "Exact draft analysis returned for review."}
+              {fixtureBackend
+                ? "Local fixture profile returned for workflow review."
+                : "DeepSeek analyzed this exact reference set. Review the extracted style before publishing."}
             </div>
             <p>{profileSummary}</p>
+            {!fixtureBackend && typeof created?.analysis_cost_usd === "number" ? (
+              <p className="helper">
+                DeepSeek analysis charge: ${created.analysis_cost_usd.toFixed(6)} · protected by
+                the private beta spend ceiling.
+              </p>
+            ) : null}
             <div className="field">
               <label className="field-label" htmlFor="style-review-notes">
                 Review notes (optional)

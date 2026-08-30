@@ -255,12 +255,15 @@ function inlineProviderSchema(node: unknown): unknown {
   );
 }
 
-export const RUNWARE_GEMINI_STYLE_PROVIDER_SCHEMA = deepFreeze(
+export const IMAGE_STYLE_ANALYZER_PROVIDER_SCHEMA = deepFreeze(
   inlineProviderSchema(canonicalSchemaDocuments.imageStyleAnalyzerOutput) as Record<
     string,
     unknown
   >,
 );
+
+/** Backward-compatible name for the Runware transport that first consumed this shared schema. */
+export const RUNWARE_GEMINI_STYLE_PROVIDER_SCHEMA = IMAGE_STYLE_ANALYZER_PROVIDER_SCHEMA;
 
 if (hash(IMAGE_STYLE_ANALYZER_SYSTEM_PROMPT) !== QUALIFIED_GEMINI_STYLE_SYSTEM_PROMPT_SHA256)
   throw new Error("Qualified Gemini style system prompt drifted.");

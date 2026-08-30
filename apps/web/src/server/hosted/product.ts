@@ -10,7 +10,14 @@ import {
   HostedCanonicalTimingPersistence,
   HostedCanonicalTimingPersistenceError,
 } from "./generation-persistence";
-import { sha256 } from "./crypto";
+import { sha256, sha256Bytes } from "./crypto";
+import {
+  analyzeStyleWithDeepSeek,
+  deepSeekStylePeakCostMicroUsd,
+  DEEPSEEK_STYLE_MAX_INPUT_BYTES,
+  DeepSeekStyleAnalysisError,
+  type DeepSeekStyleImage,
+} from "./deepseek-style-analysis";
 import {
   HostedAudioValidationError,
   hostedVoiceoverArtifactProbe,
@@ -381,6 +388,10 @@ interface HostedStyleReferenceInput {
   readonly contentType: string;
   readonly contentLength: number;
   readonly checksumSha256: string;
+  readonly normalizedContentLength: number;
+  readonly normalizedChecksumSha256: string;
+  readonly normalizedWidth: number;
+  readonly normalizedHeight: number;
   readonly orderIndex: number;
 }
 
@@ -390,6 +401,7 @@ interface HostedStyleCreateInput {
   readonly references: readonly HostedStyleReferenceInput[];
   readonly rightsAttested: boolean;
   readonly processingDisclosureAcknowledged: boolean;
+  readonly originalRetentionPolicy: "RETAIN";
 }
 
 function plainRecord(value: unknown): Record<string, unknown> | null {
@@ -496,6 +508,7 @@ function parseStyleCreate(value: unknown): HostedStyleCreateInput | null {
       "references",
       "rights_attested",
       "processing_disclosure_acknowledged",
+      "original_retention_policy",
     ]) ||
     record.schema_version !== "videoforge-hosted-style-create/v1" ||
     typeof record.name !== "string" ||
@@ -504,6 +517,7 @@ function parseStyleCreate(value: unknown): HostedStyleCreateInput | null {
     record.name.length > 160 ||
     typeof record.rights_attested !== "boolean" ||
     typeof record.processing_disclosure_acknowledged !== "boolean" ||
+    record.original_retention_policy !== "RETAIN" ||
     !Array.isArray(record.references) ||
     record.references.length < 3 ||
     record.references.length > 8
@@ -524,6 +538,10 @@ function parseStyleCreate(value: unknown): HostedStyleCreateInput | null {
         "content_type",
         "content_length",
         "checksum_sha256",
+        "normalized_content_length",
+        "normalized_checksum_sha256",
+        "normalized_width",
+        "normalized_height",
         "order_index",
       ]) ||
       typeof reference.filename !== "string" ||
@@ -536,6 +554,20 @@ function parseStyleCreate(value: unknown): HostedStyleCreateInput | null {
       contentLength > MAX_PRESET_SOURCE_BYTES ||
       typeof reference.checksum_sha256 !== "string" ||
       !SHA256.test(reference.checksum_sha256) ||
+      typeof reference.normalized_content_length !== "number" ||
+      !Number.isSafeInteger(reference.normalized_content_length) ||
+      reference.normalized_content_length < 1 ||
+      reference.normalized_content_length > MAX_PRESET_SOURCE_BYTES ||
+      typeof reference.normalized_checksum_sha256 !== "string" ||
+      !SHA256.test(reference.normalized_checksum_sha256) ||
+      typeof reference.normalized_width !== "number" ||
+      !Number.isSafeInteger(reference.normalized_width) ||
+      reference.normalized_width < 1 ||
+      reference.normalized_width > 1_600 ||
+      typeof reference.normalized_height !== "number" ||
+      !Number.isSafeInteger(reference.normalized_height) ||
+      reference.normalized_height < 1 ||
+      reference.normalized_height > 1_600 ||
       typeof orderIndex !== "number" ||
       !Number.isSafeInteger(orderIndex) ||
       orderIndex < 0 ||
@@ -548,17 +580,27 @@ function parseStyleCreate(value: unknown): HostedStyleCreateInput | null {
       contentType: reference.content_type,
       contentLength,
       checksumSha256: reference.checksum_sha256,
+      normalizedContentLength: reference.normalized_content_length,
+      normalizedChecksumSha256: reference.normalized_checksum_sha256,
+      normalizedWidth: reference.normalized_width,
+      normalizedHeight: reference.normalized_height,
       orderIndex,
     });
   }
   const order = references.map((reference) => reference.orderIndex).sort((a, b) => a - b);
   if (order.some((value, index) => value !== index)) return null;
+  if (
+    references.reduce((total, reference) => total + reference.normalizedContentLength, 0) >
+    DEEPSEEK_STYLE_MAX_INPUT_BYTES
+  )
+    return null;
   return {
     name: record.name,
     parentId,
     references,
     rightsAttested: record.rights_attested,
     processingDisclosureAcknowledged: record.processing_disclosure_acknowledged,
+    originalRetentionPolicy: record.original_retention_policy,
   };
 }
 
@@ -686,83 +728,6 @@ function avatarProfilePayload(input: {
     likeness_animation_rights_attested: true,
     likeness_attested_by_user_id: input.userId,
     likeness_attested_at: input.now,
-  };
-}
-
-function hostedStyleProfile(name: string, aliases: readonly string[]): Record<string, unknown> {
-  return {
-    schema_version: "image-style-profile/v1",
-    summary: `${name}: grounded observational documentary frames with natural light, believable texture, and restrained camera language.`,
-    visual_profile: {
-      medium_family: "authentic documentary photography",
-      realism:
-        "Photorealistic and physically believable; never glossy, illustrated, or synthetic-looking.",
-      subject_treatment:
-        "Candid people and literal physical evidence, without staged poses or copied identities.",
-      camera_language:
-        "Observational eye-level camera with practical working angles and restrained handheld plausibility.",
-      image_framing:
-        "Useful 16:9 context with crop-safe primary evidence for the required slow image zoom.",
-      shot_scale_preferences: [
-        "environmental wide",
-        "human medium",
-        "hands and action",
-        "object detail",
-      ],
-      lighting: "Natural available light with plausible shadows and slightly uneven exposure.",
-      color: {
-        descriptors: ["earthy", "true-to-life", "restrained saturation"],
-        approximate_hex: ["#1F3B45", "#B6805E"],
-      },
-      contrast_and_exposure:
-        "Soft natural contrast with recoverable highlights and believable shadow detail.",
-      depth_of_field:
-        "Natural lens depth with enough environmental context to understand the action.",
-      texture_and_grain:
-        "Tactile material detail with restrained sensor softness and no plastic finish.",
-      human_rendering:
-        "Natural skin, anatomy, hands, clothing, expressions, and ordinary imperfections.",
-      environment_and_material_detail:
-        "Specific tools, surfaces, clothing, and lived-in context support the narration.",
-      imperfection_profile: ["uneven exposure", "ordinary clutter", "worn materials"],
-      mood: ["observational", "grounded", "credible"],
-      continuity_rules: [
-        "Preserve era, geography, weather, clothing, tools, and materials across adjacent scenes.",
-      ],
-      must_include: ["literal narration-relevant evidence", "believable practical lighting"],
-      must_avoid: [
-        "captions",
-        "text overlays",
-        "watermarks",
-        "logos",
-        "glossy commercial polish",
-        "AI look",
-      ],
-      flexible_properties: ["weather when narration permits", "shot scale", "minor grain"],
-    },
-    prompt_profile: {
-      planner_guidance:
-        "Use literal documentary evidence and preserve factual continuity. Hard cuts only.",
-      positive_suffix:
-        "authentic observational documentary photography, candid, natural practical light, realistic texture, physically believable, no AI look",
-      negative_suffix:
-        "illustration, CGI, glossy advertising, staged pose, captions, text, logos, watermark, impossible anatomy",
-      full_image_guidance:
-        "Compose 16:9 with primary evidence in the center-safe area for a slow smooth zoom.",
-      split_image_guidance:
-        "Compose for an 8:9 right panel with clear centered evidence and no text.",
-    },
-    analysis: {
-      analysis_kind: "MANUAL",
-      overall_confidence: 1,
-      trait_evidence: [],
-      uncertain_fields: [],
-      outlier_reference_aliases: [],
-      content_leakage_warnings: [
-        `Profile uses only normalized aliases: ${aliases.join(", ")}.`,
-        "Never reproduce identities, locations, brands, captions, or watermarks from references.",
-      ],
-    },
   };
 }
 
@@ -1780,14 +1745,33 @@ async function styleCreate(
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const idempotencyKey = request.headers.get("idempotency-key") ?? "";
   if (!IDEMPOTENCY.test(idempotencyKey))
-    return response({ error: { code: "STYLE_IDEMPOTENCY_REQUIRED" } }, 400);
+    return response(
+      { error: { code: "STYLE_IDEMPOTENCY_REQUIRED", message: "Start the style again." } },
+      400,
+    );
   const raw = await parseHostedJson(request, "STYLE_CREATE_REJECTED");
   if (raw instanceof Response) return raw;
   const input = parseStyleCreate(raw);
-  if (!input) return response({ error: { code: "STYLE_CREATE_REJECTED" } }, 400);
-  if (!input.rightsAttested) return response({ error: { code: "STYLE_RIGHTS_REQUIRED" } }, 400);
+  if (!input)
+    return response(
+      { error: { code: "STYLE_CREATE_REJECTED", message: "Check the style name and images." } },
+      400,
+    );
+  if (!input.rightsAttested)
+    return response(
+      { error: { code: "STYLE_RIGHTS_REQUIRED", message: "Confirm your right to use these images." } },
+      400,
+    );
   if (!input.processingDisclosureAcknowledged)
-    return response({ error: { code: "STYLE_DISCLOSURE_REQUIRED" } }, 400);
+    return response(
+      {
+        error: {
+          code: "STYLE_DISCLOSURE_REQUIRED",
+          message: "Confirm the image-processing disclosure to continue.",
+        },
+      },
+      400,
+    );
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
   const pool = createNeonPool(config.neon.databaseUrl);
@@ -1803,12 +1787,17 @@ async function styleCreate(
       const replay = await transaction.query<HostedPresetRow>(
         `SELECT style.id AS style_id, style.name AS style_name,
                 version.id AS version_id, version.version_number, version.state,
+                min(original.metadata ->> 'request_sha256') AS request_sha256,
                 jsonb_agg(jsonb_build_object(
                   'order_index', reference.reference_order - 1,
                   'object_key', original.object_key,
                   'content_type', original.content_type,
                   'content_length', original.byte_size,
-                  'checksum_sha256', original.binary_sha256
+                  'checksum_sha256', original.binary_sha256,
+                  'normalized_object_key', normalized.object_key,
+                  'normalized_content_type', normalized.content_type,
+                  'normalized_content_length', normalized.byte_size,
+                  'normalized_checksum_sha256', normalized.binary_sha256
                 ) ORDER BY reference.reference_order) AS uploads
            FROM image_style_versions AS version
            JOIN image_styles AS style
@@ -1820,16 +1809,25 @@ async function styleCreate(
            JOIN assets AS original
              ON original.account_id = reference.account_id
             AND original.workspace_id = reference.workspace_id AND original.id = reference.original_asset_id
+           JOIN assets AS normalized
+             ON normalized.account_id = reference.account_id
+            AND normalized.workspace_id = reference.workspace_id AND normalized.id = reference.normalized_asset_id
           WHERE version.account_id = $1 AND version.workspace_id = $2
             AND original.metadata ->> 'hosted_request_idempotency_key' = $3
           GROUP BY style.id, style.name, version.id, version.version_number, version.state
           ORDER BY version.created_at DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, idempotencyKey],
       );
-      if (replay.rows[0]) return replay.rows[0];
+      if (replay.rows[0]) {
+        if (replay.rows[0].request_sha256 !== requestHash)
+          throw new Error("STYLE_IDEMPOTENCY_CONFLICT");
+        return replay.rows[0];
+      }
       const parent = await resolveParentStyle(transaction, scope, input.parentId);
       if (input.parentId && !parent) throw new Error("STYLE_PARENT_NOT_FOUND");
       const systemParent = parent?.system === true;
+      if (parent && !systemParent && !(await lockActiveStyleParent(transaction, scope, parent.styleId)))
+        throw new Error("STYLE_PARENT_NOT_FOUND");
       const styleId =
         parent && !systemParent
           ? parent.styleId
@@ -1842,7 +1840,8 @@ async function styleCreate(
       const styleName = parent && !systemParent ? parent.styleName : input.name;
       const styleExists = await transaction.query<HostedPresetRow>(
         `SELECT id FROM image_styles
-          WHERE account_id = $1 AND workspace_id = $2 AND id = $3`,
+          WHERE account_id = $1 AND workspace_id = $2 AND id = $3
+            AND scope_kind = 'WORKSPACE' AND status = 'ACTIVE'`,
         [scope.account_id, scope.workspace_id, styleId],
       );
       if (!styleExists.rows[0]) {
@@ -1897,6 +1896,14 @@ async function styleCreate(
           request_sha256: requestHash,
           order_index: reference.orderIndex,
         });
+        const normalizedMetadata = JSON.stringify({
+          hosted_request_idempotency_key: idempotencyKey,
+          request_sha256: requestHash,
+          order_index: reference.orderIndex,
+          width: reference.normalizedWidth,
+          height: reference.normalizedHeight,
+          source: "browser-normalized-webp-v1",
+        });
         await transaction.query(
           `INSERT INTO assets (
              id, account_id, workspace_id, kind, state, object_key, binary_sha256,
@@ -1916,17 +1923,19 @@ async function styleCreate(
         await transaction.query(
           `INSERT INTO assets (
              id, account_id, workspace_id, kind, state, object_key, binary_sha256,
-             content_type, byte_size, metadata
-           ) VALUES ($1,$2,$3,'STYLE_REFERENCE_NORMALIZED','UPLOADING',$4,$5,$6,$7,$8::jsonb)`,
+             content_type, byte_size, width_px, height_px, metadata
+           ) VALUES ($1,$2,$3,'STYLE_REFERENCE_NORMALIZED','UPLOADING',$4,$5,$6,$7,$8,$9,$10::jsonb)`,
           [
             normalizedAssetId,
             scope.account_id,
             scope.workspace_id,
             normalizedKey,
-            reference.checksumSha256,
-            reference.contentType,
-            reference.contentLength,
-            metadata,
+            reference.normalizedChecksumSha256,
+            "image/webp",
+            reference.normalizedContentLength,
+            reference.normalizedWidth,
+            reference.normalizedHeight,
+            normalizedMetadata,
           ],
         );
         await transaction.query(
@@ -1935,7 +1944,7 @@ async function styleCreate(
              original_asset_id, reference_order, rights_attested_by_user_id,
              rights_basis, rights_basis_note, rights_attested_at, original_retention_policy
            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'OTHER_DOCUMENTED_BASIS',
-                     'Hosted user rights attestation',now(),'RETAIN')`,
+                     'Hosted user rights attestation',now(),$10)`,
           [
             await stableHostedUuid(
               `hosted-style:${scope.account_id}:${idempotencyKey}:${requestHash}:reference:${reference.orderIndex}`,
@@ -1948,6 +1957,7 @@ async function styleCreate(
             originalAssetId,
             reference.orderIndex + 1,
             scope.user_id,
+            input.originalRetentionPolicy,
           ],
         );
         uploadRows.push({
@@ -1955,6 +1965,10 @@ async function styleCreate(
           content_type: reference.contentType,
           content_length: reference.contentLength,
           checksum_sha256: reference.checksumSha256,
+          normalized_object_key: normalizedKey,
+          normalized_content_type: "image/webp",
+          normalized_content_length: reference.normalizedContentLength,
+          normalized_checksum_sha256: reference.normalizedChecksumSha256,
         });
       }
       return {
@@ -1970,6 +1984,7 @@ async function styleCreate(
       ? (prepared.uploads as Record<string, unknown>[]).map((item) => item)
       : [];
     const ports = [];
+    const normalizedPorts = [];
     for (const item of uploads) {
       const objectKey = rowString(item, "object_key");
       ports.push(
@@ -1979,6 +1994,16 @@ async function styleCreate(
           contentType: rowString(item, "content_type"),
           contentLength: Number(item.content_length),
           checksumSha256: rowString(item, "checksum_sha256"),
+          lifetimeSeconds: 900,
+        }),
+      );
+      normalizedPorts.push(
+        await new HostedR2Signer(config.r2).sign({
+          method: "PUT",
+          objectKey: rowString(item, "normalized_object_key"),
+          contentType: rowString(item, "normalized_content_type"),
+          contentLength: Number(item.normalized_content_length),
+          checksumSha256: rowString(item, "normalized_checksum_sha256"),
           lifetimeSeconds: 900,
         }),
       );
@@ -1992,15 +2017,34 @@ async function styleCreate(
         version_number: Number(prepared.version_number),
         state: prepared.state,
         uploads: ports,
+        normalized_uploads: normalizedPorts,
         provider_calls_authorized: false,
       },
       201,
     );
   } catch (error) {
     if (error instanceof Error && error.message === "STYLE_PARENT_NOT_FOUND")
-      return response({ error: { code: error.message } }, 404);
+      return response(
+        {
+          error: {
+            code: error.message,
+            message: "The selected style is no longer available. Return to Image Styles and try again.",
+          },
+        },
+        404,
+      );
+    if (error instanceof Error && error.message === "STYLE_IDEMPOTENCY_CONFLICT")
+      return response(
+        {
+          error: {
+            code: error.message,
+            message: "This saved request no longer matches the selected style. Start again.",
+          },
+        },
+        409,
+      );
     if (postgresCode(error) === "23505")
-      return response({ error: { code: "STYLE_NAME_OR_VERSION_CONFLICT" } }, 409);
+      return response({ error: hostedStyleConflictProblem(postgresConstraint(error)) }, 409);
     throw error;
   } finally {
     await pool.end();
@@ -2014,14 +2058,27 @@ async function styleCommit(
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
-  if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+  if (!UUID.test(styleOrVersionId))
+    return response(
+      {
+        error: {
+          code: "STYLE_NOT_FOUND",
+          message: "This style is no longer available. Return to Image Styles and try again.",
+        },
+      },
+      404,
+    );
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   if (!hostedProviderFreePresetCreationEnabled(config))
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "STYLE_COMMIT_REJECTED");
   if (raw instanceof Response) return raw;
-  if (!parseEmptyObject(raw)) return response({ error: { code: "STYLE_COMMIT_REJECTED" } }, 400);
+  if (!parseEmptyObject(raw))
+    return response(
+      { error: { code: "STYLE_COMMIT_REJECTED", message: "The uploads could not be saved." } },
+      400,
+    );
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
   const pool = createNeonPool(config.neon.databaseUrl);
@@ -2075,7 +2132,16 @@ async function styleCommit(
       );
       return result.rows;
     });
-    if (pending.length === 0) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+    if (pending.length === 0)
+      return response(
+        {
+          error: {
+            code: "STYLE_NOT_FOUND",
+            message: "This style is no longer available. Return to Image Styles and try again.",
+          },
+        },
+        404,
+      );
     const first = pending[0]!;
     if (first.state !== "PUBLISHED") {
       for (const reference of pending) {
@@ -2086,17 +2152,16 @@ async function styleCommit(
           object.httpMetadata?.contentType !== reference.original_content_type ||
           checksumFromR2(object.checksums?.sha256) !== reference.original_checksum
         ) {
-          return response({ error: { code: "STYLE_REFERENCE_NOT_VERIFIED" } }, 409);
+          return response(
+            {
+              error: {
+                code: "STYLE_REFERENCE_NOT_VERIFIED",
+                message: "One or more original uploads could not be verified. Choose the images again.",
+              },
+            },
+            409,
+          );
         }
-        const original = await bucket.get(rowString(reference, "original_object_key"));
-        if (!original) return response({ error: { code: "STYLE_REFERENCE_NOT_VERIFIED" } }, 409);
-        await bucket.put(
-          rowString(reference, "normalized_object_key"),
-          await original.arrayBuffer(),
-          {
-            httpMetadata: { contentType: rowString(reference, "normalized_content_type") },
-          },
-        );
         const normalized = await bucket.head(rowString(reference, "normalized_object_key"));
         if (
           !normalized ||
@@ -2104,7 +2169,15 @@ async function styleCommit(
           normalized.httpMetadata?.contentType !== reference.normalized_content_type ||
           checksumFromR2(normalized.checksums?.sha256) !== reference.normalized_checksum
         ) {
-          return response({ error: { code: "STYLE_NORMALIZED_NOT_VERIFIED" } }, 409);
+          return response(
+            {
+              error: {
+                code: "STYLE_NORMALIZED_NOT_VERIFIED",
+                message: "One or more prepared references could not be verified. Choose the images again.",
+              },
+            },
+            409,
+          );
         }
       }
       const committed = await createNeonExecutor(pool).transaction(async (transaction) => {
@@ -2143,7 +2216,16 @@ async function styleCommit(
         }
         return true;
       });
-      if (committed === false) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+      if (committed === false)
+        return response(
+          {
+            error: {
+              code: "STYLE_NOT_FOUND",
+              message: "This style is no longer available. Return to Image Styles and try again.",
+            },
+          },
+          404,
+        );
     }
     return response({
       schema_version: "videoforge-hosted-style-commit-response/v1",
@@ -2161,10 +2243,20 @@ async function styleCommit(
 async function styleAnalyze(
   request: Request,
   styleOrVersionId: string,
+  environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
-  if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+  if (!UUID.test(styleOrVersionId))
+    return response(
+      {
+        error: {
+          code: "STYLE_NOT_FOUND",
+          message: "This style is no longer available. Return to Image Styles and try again.",
+        },
+      },
+      404,
+    );
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   if (!hostedProviderFreePresetCreationEnabled(config))
@@ -2172,12 +2264,30 @@ async function styleAnalyze(
   const raw = await parseHostedJson(request, "STYLE_ANALYSIS_REJECTED");
   if (raw instanceof Response) return raw;
   if (!parseStyleAnalysis(raw))
-    return response({ error: { code: "STYLE_ANALYSIS_REJECTED" } }, 400);
+    return response(
+      { error: { code: "STYLE_ANALYSIS_REJECTED", message: "Confirm the analysis disclosure." } },
+      400,
+    );
+  if (!config.deepseek)
+    return response(
+      {
+        error: {
+          code: "STYLE_ANALYSIS_UNAVAILABLE",
+          message: "Image analysis is temporarily unavailable. Try again shortly.",
+        },
+      },
+      503,
+    );
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
   const pool = createNeonPool(config.neon.databaseUrl);
+  let preparedVersionId: string | null = null;
+  let preparedRunId: string | null = null;
+  let providerMayHaveCharged = false;
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
-    const analyzed = await createNeonExecutor(pool).transaction(async (transaction) => {
+    const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
         scope.account_id,
@@ -2186,9 +2296,16 @@ async function styleAnalyze(
       const result = await transaction.query<HostedPresetRow>(
         `SELECT style.id AS style_id, style.name AS style_name, version.id AS version_id,
                 version.state, version.profile_payload, version.style_profile_hash,
+                version.analyzer_model_snapshot,
                 COALESCE(jsonb_agg(jsonb_build_object(
                   'order_index', reference.reference_order,
-                  'checksum_sha256', normalized.binary_sha256
+                  'checksum_sha256', normalized.binary_sha256,
+                  'object_key', normalized.object_key,
+                  'content_type', normalized.content_type,
+                  'byte_size', normalized.byte_size,
+                  'width', normalized.width_px,
+                  'height', normalized.height_px,
+                  'asset_state', normalized.state
                 ) ORDER BY reference.reference_order) FILTER (WHERE reference.id IS NOT NULL), '[]'::jsonb) AS references
            FROM image_styles AS style
            JOIN image_style_versions AS version
@@ -2204,31 +2321,42 @@ async function styleAnalyze(
             AND style.scope_kind = 'WORKSPACE' AND style.status = 'ACTIVE'
             AND (style.id = $3 OR version.id = $3)
           GROUP BY style.id, style.name, version.id, version.state, version.profile_payload, version.style_profile_hash,
+                   version.analyzer_model_snapshot,
                    version.version_number
           ORDER BY version.version_number DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, styleOrVersionId],
       );
       const target = result.rows[0];
       if (!target) return null;
-      if (target.state === "NEEDS_REVIEW" || target.state === "PUBLISHED") return target;
+      if (target.state === "NEEDS_REVIEW" || target.state === "PUBLISHED")
+        return { ...target, already_analyzed: true };
+      if (target.state === "ANALYZING") throw new Error("STYLE_ANALYSIS_IN_PROGRESS");
       if (target.state !== "DRAFT") throw new Error("STYLE_NOT_ANALYZABLE");
       const references = Array.isArray(target.references) ? target.references : [];
-      if (references.length < 3) throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
-      const profile = hostedStyleProfile(
-        rowString(target, "style_name"),
-        references.map((_, index) => `ref_${String(index + 1).padStart(2, "0")}`),
-      );
-      const profileHash = await sha256(canonicalJson(profile));
+      if (
+        references.length < 3 ||
+        references.some(
+          (reference) => plainRecord(reference)?.asset_state !== "VERIFIED",
+        )
+      )
+        throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
       const requestHash = await sha256(
         canonicalJson({ version_id: target.version_id, references }),
       );
+      const runId = await stableHostedUuid(
+        `hosted-style-analysis:${scope.account_id}:${String(target.version_id)}:${requestHash}`,
+      );
+      const reservation = await transaction.query<HostedPresetRow>(
+        `SELECT * FROM public.videoforge_reserve_hosted_style_analysis($1,$2,$3)`,
+        [rowString(target, "version_id"), requestHash, runId],
+      );
+      if (reservation.rows[0]?.dispatch_allowed !== true)
+        throw new Error("STYLE_ANALYSIS_IN_PROGRESS");
       await transaction.query(
         `UPDATE image_style_versions AS version
-            SET state = 'NEEDS_REVIEW', profile_contract_name = 'image-style-profile',
-                profile_contract_version = 'v1', profile_payload = $4::jsonb,
-                style_profile_hash = $5, analyzer_request_hash = $6,
-                analyzer_model_snapshot = 'hosted-provider-free-deterministic-v1',
-                disclosure_attested_by_user_id = $7, updated_at = now()
+            SET state = 'ANALYZING', analyzer_request_hash = $4,
+                analyzer_model_snapshot = $5,
+                disclosure_attested_by_user_id = $6, updated_at = now()
              FROM image_styles AS style
             WHERE version.account_id = $1 AND version.workspace_id = $2 AND version.id = $3
               AND style.account_id = version.account_id
@@ -2240,32 +2368,256 @@ async function styleAnalyze(
           scope.account_id,
           scope.workspace_id,
           rowString(target, "version_id"),
-          JSON.stringify(profile),
-          profileHash,
           requestHash,
+          "deepseek-v4-flash-vision-exp",
           scope.user_id,
         ],
       );
-      return { ...target, state: "NEEDS_REVIEW", profile, profile_hash: profileHash };
+      return {
+        ...target,
+        state: "ANALYZING",
+        references,
+        request_hash: requestHash,
+        analysis_run_id: runId,
+      };
     });
-    if (!analyzed) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
-    if (analyzed instanceof Response) return analyzed;
-    const profile = plainRecord(analyzed.profile) ?? plainRecord(analyzed.profile_payload);
+    if (!prepared)
+      return response(
+        {
+          error: {
+            code: "STYLE_NOT_FOUND",
+            message: "This style is no longer available. Return to Image Styles and try again.",
+          },
+        },
+        404,
+      );
+    const preparedRow = prepared as HostedPresetRow;
+    preparedVersionId = rowString(preparedRow, "version_id");
+    if (preparedRow.already_analyzed === true) {
+      const profile = plainRecord(preparedRow.profile_payload);
+      return response({
+        schema_version: "videoforge-hosted-style-analysis-response/v1",
+        style_id: rowString(preparedRow, "style_id"),
+        version_id: rowString(preparedRow, "version_id"),
+        state: preparedRow.state,
+        profile,
+        profile_hash: preparedRow.style_profile_hash ?? null,
+        summary: profile?.summary ?? null,
+        provider_calls_authorized: true,
+      });
+    }
+    preparedRunId = rowString(preparedRow, "analysis_run_id");
+
+    const images: DeepSeekStyleImage[] = [];
+    const referenceRows = preparedRow.references as unknown[];
+    const aggregateBytes = referenceRows.reduce<number>((total, rawReference) => {
+      const reference = plainRecord(rawReference);
+      return total + (reference ? Number(reference.byte_size) : Number.NaN);
+    }, 0);
+    if (!Number.isSafeInteger(aggregateBytes) || aggregateBytes > DEEPSEEK_STYLE_MAX_INPUT_BYTES)
+      throw new DeepSeekStyleAnalysisError("REJECTED");
+    for (const [index, rawReference] of referenceRows.entries()) {
+      const reference = plainRecord(rawReference);
+      if (!reference) throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
+      const object = await bucket.get(rowString(reference, "object_key"));
+      if (!object) throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
+      const bytes = new Uint8Array(await object.arrayBuffer());
+      const expected = rowString(reference, "checksum_sha256");
+      const width = Number(reference.width);
+      const height = Number(reference.height);
+      if (bytes.byteLength !== Number(reference.byte_size) || (await sha256Bytes(bytes)) !== expected)
+        throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
+      if (!Number.isSafeInteger(width) || width <= 0 || !Number.isSafeInteger(height) || height <= 0)
+        throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
+      images.push({
+        alias: `ref_${String(index + 1).padStart(2, "0")}`,
+        mimeType: rowString(reference, "content_type") as DeepSeekStyleImage["mimeType"],
+        sha256: expected as DeepSeekStyleImage["sha256"],
+        width,
+        height,
+        bytes,
+      });
+    }
+    providerMayHaveCharged = true;
+    const providerResult = await analyzeStyleWithDeepSeek({
+      apiKey: config.deepseek.apiKey,
+      baseUrl: config.deepseek.baseUrl,
+      images,
+    });
+    const reportedCostMicroUsd = deepSeekStylePeakCostMicroUsd(providerResult.usage);
+    const analyzed = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      if (!(await lockActiveStyleParent(transaction, scope, styleOrVersionId))) return null;
+      const updated = await transaction.query<HostedPresetRow>(
+        `UPDATE image_style_versions AS version
+            SET state = 'NEEDS_REVIEW', profile_contract_name = 'image-style-profile',
+                profile_contract_version = 'v1', profile_payload = $4::jsonb,
+                style_profile_hash = $5, updated_at = now()
+             FROM image_styles AS style
+            WHERE version.account_id = $1 AND version.workspace_id = $2 AND version.id = $3
+              AND version.state = 'ANALYZING'
+              AND style.account_id = version.account_id
+              AND style.workspace_id = version.workspace_id
+              AND style.id = version.style_id
+              AND style.scope_kind = 'WORKSPACE' AND style.status = 'ACTIVE'
+          RETURNING style.id AS style_id, version.id AS version_id, version.state`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          preparedVersionId,
+          JSON.stringify(providerResult.trusted.profile),
+          providerResult.trusted.styleProfileHash,
+        ],
+      );
+      const receipt = await transaction.query<{ finished: boolean }>(
+        `SELECT public.videoforge_finish_hosted_style_analysis($1,'SUCCEEDED',$2,$3,$4,$5,$6) AS finished`,
+        [
+          preparedRunId,
+          providerResult.responseSha256,
+          providerResult.providerRequestId,
+          providerResult.usage.promptTokens,
+          providerResult.usage.completionTokens,
+          reportedCostMicroUsd,
+        ],
+      );
+      if (receipt.rows[0]?.finished !== true) throw new Error("STYLE_ANALYSIS_RECEIPT_REJECTED");
+      return updated.rows[0] ?? null;
+    });
+    if (!analyzed)
+      return response(
+        {
+          error: {
+            code: "STYLE_NOT_FOUND",
+            message: "This style changed before the analysis could be saved. Return to Image Styles and try again.",
+          },
+        },
+        404,
+      );
+    const profile = providerResult.trusted.profile as unknown as Record<string, unknown>;
     return response({
       schema_version: "videoforge-hosted-style-analysis-response/v1",
       style_id: rowString(analyzed, "style_id"),
       version_id: rowString(analyzed, "version_id"),
       state: analyzed.state,
       profile,
-      profile_hash: analyzed.profile_hash ?? analyzed.style_profile_hash ?? null,
+      profile_hash: providerResult.trusted.styleProfileHash,
       summary: profile?.summary ?? null,
-      provider_calls_authorized: false,
+      analysis_cost_usd: reportedCostMicroUsd / 1_000_000,
+      analysis_usage: {
+        prompt_tokens: providerResult.usage.promptTokens,
+        completion_tokens: providerResult.usage.completionTokens,
+      },
+      provider_calls_authorized: true,
     });
   } catch (error) {
+    const definitiveProviderRejection =
+      error instanceof DeepSeekStyleAnalysisError &&
+      (error.code === "REJECTED" || error.code === "UNAVAILABLE");
+    const ambiguous = providerMayHaveCharged && !definitiveProviderRejection;
+    if (preparedRunId) {
+      try {
+        const scope = await sessionScope(request, config, pool, executionContext);
+        if (!(scope instanceof Response)) {
+          await createNeonExecutor(pool).transaction(async (transaction) => {
+            await transaction.query("SELECT set_config($1, $2, true)", [
+              "videoforge.account_id",
+              scope.account_id,
+            ]);
+            await transaction.query(
+              `SELECT public.videoforge_finish_hosted_style_analysis($1,$2,NULL,NULL,0,0,0)`,
+              [preparedRunId, ambiguous ? "UNKNOWN" : "FAILED"],
+            );
+          });
+        }
+      } catch {
+        // The reservation remains charged against the global cap and prevents redispatch.
+      }
+    }
+    if (preparedVersionId && !ambiguous) {
+      try {
+        const scope = await sessionScope(request, config, pool, executionContext);
+        if (!(scope instanceof Response)) {
+          await createNeonExecutor(pool).transaction(async (transaction) => {
+            await transaction.query("SELECT set_config($1, $2, true)", [
+              "videoforge.account_id",
+              scope.account_id,
+            ]);
+            await transaction.query(
+              `UPDATE image_style_versions AS version SET state = 'FAILED', updated_at = now()
+                FROM image_styles AS style
+               WHERE version.account_id = $1 AND version.workspace_id = $2
+                 AND version.id = $3 AND version.state = 'ANALYZING'
+                 AND style.account_id = version.account_id
+                 AND style.workspace_id = version.workspace_id
+                 AND style.id = version.style_id AND style.scope_kind = 'WORKSPACE'`,
+              [scope.account_id, scope.workspace_id, preparedVersionId ?? styleOrVersionId],
+            );
+          });
+        }
+      } catch {
+        // Preserve the original failure as the user-facing error; recovery remains retryable.
+      }
+    }
+    if (error instanceof DeepSeekStyleAnalysisError) {
+      if (error.code === "AMBIGUOUS" || error.code === "INVALID_RESPONSE")
+        return response(
+          {
+            error: {
+              code: "STYLE_ANALYSIS_RECONCILING",
+              message: "The analysis result is being reconciled. Do not retry yet.",
+            },
+          },
+          503,
+        );
+      const message =
+        error.code === "REJECTED"
+          ? "These references could not be analyzed. Use 3–8 JPEG, PNG, or WebP images under 30 MB total."
+          : "DeepSeek image analysis is temporarily unavailable. Try again.";
+      return response({ error: { code: `STYLE_ANALYSIS_${error.code}`, message } }, 502);
+    }
+    if (error instanceof Error && error.message === "STYLE_ANALYSIS_IN_PROGRESS")
+      return response(
+        {
+          error: {
+            code: error.message,
+            message: "This style is already being analyzed. Wait a moment, then try again.",
+          },
+        },
+        409,
+      );
     if (error instanceof Error && error.message === "STYLE_NOT_ANALYZABLE")
-      return response({ error: { code: error.message } }, 409);
+      return response(
+        {
+          error: {
+            code: error.message,
+            message: "This draft cannot be analyzed in its current state. Return to Image Styles and try again.",
+          },
+        },
+        409,
+      );
     if (error instanceof Error && error.message === "STYLE_REFERENCES_NOT_COMMITTED")
-      return response({ error: { code: error.message } }, 409);
+      return response(
+        {
+          error: {
+            code: error.message,
+            message: "One or more reference uploads could not be verified. Choose the images again.",
+          },
+        },
+        409,
+      );
+    if (postgresCode(error) === "54000")
+      return response(
+        {
+          error: {
+            code: "STYLE_ANALYSIS_BETA_CAP_REACHED",
+            message: "The private beta analysis limit has been reached. No provider request was sent.",
+          },
+        },
+        409,
+      );
     throw error;
   } finally {
     await pool.end();
@@ -2278,7 +2630,16 @@ async function stylePublish(
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
-  if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+  if (!UUID.test(styleOrVersionId))
+    return response(
+      {
+        error: {
+          code: "STYLE_NOT_FOUND",
+          message: "This style is no longer available. Return to Image Styles and try again.",
+        },
+      },
+      404,
+    );
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   if (!hostedProviderFreePresetCreationEnabled(config))
@@ -2286,7 +2647,11 @@ async function stylePublish(
   const raw = await parseHostedJson(request, "STYLE_PUBLISH_REJECTED");
   if (raw instanceof Response) return raw;
   const input = parseStylePublish(raw);
-  if (!input) return response({ error: { code: "STYLE_PUBLISH_REJECTED" } }, 400);
+  if (!input)
+    return response(
+      { error: { code: "STYLE_PUBLISH_REJECTED", message: "Review the style before publishing." } },
+      400,
+    );
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
@@ -2348,7 +2713,16 @@ async function stylePublish(
       );
       return target;
     });
-    if (!published) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
+    if (!published)
+      return response(
+        {
+          error: {
+            code: "STYLE_NOT_FOUND",
+            message: "This style is no longer available. Return to Image Styles and try again.",
+          },
+        },
+        404,
+      );
     return response({
       schema_version: "videoforge-hosted-style-publish-response/v1",
       style_id: rowString(published, "style_id"),
@@ -2364,7 +2738,20 @@ async function stylePublish(
         error.message,
       )
     )
-      return response({ error: { code: error.message } }, 409);
+      return response(
+        {
+          error: {
+            code: error.message,
+            message:
+              error.message === "STYLE_NOT_PUBLISHABLE"
+                ? "Analyze and review this style before publishing."
+                : error.message === "STYLE_PROFILE_MISMATCH"
+                  ? "The reviewed style changed. Analyze it again before publishing."
+                  : "The analyzed style profile is unavailable. Analyze it again before publishing.",
+          },
+        },
+        409,
+      );
     throw error;
   } finally {
     await pool.end();
@@ -2630,6 +3017,35 @@ function voiceoverExtension(contentType: string): string {
 function postgresCode(error: unknown): string | null {
   if (!error || typeof error !== "object" || !("code" in error)) return null;
   return typeof error.code === "string" ? error.code : null;
+}
+
+function postgresConstraint(error: unknown): string | null {
+  if (!error || typeof error !== "object" || !("constraint" in error)) return null;
+  return typeof error.constraint === "string" ? error.constraint : null;
+}
+
+export function hostedStyleConflictProblem(constraint: string | null): {
+  readonly code: string;
+  readonly message: string;
+} {
+  if (constraint === "image_styles_active_name_uq")
+    return {
+      code: "STYLE_NAME_CONFLICT",
+      message: "That style name is already in use. Choose a different name.",
+    };
+  if (
+    constraint === "image_style_versions_open_draft_uq" ||
+    constraint === "image_style_versions_workspace_id_style_id_version_number_key"
+  )
+    return {
+      code: "STYLE_VERSION_CONFLICT",
+      message:
+        "This style changed while it was open. Refresh Image Styles and continue from the latest version.",
+    };
+  return {
+    code: "STYLE_SAVE_CONFLICT",
+    message: "Style could not be saved. Refresh Image Styles and try again.",
+  };
 }
 
 function numberOrNull(value: unknown): number | null {
@@ -4603,7 +5019,7 @@ export async function handleHostedProductRequest(
     return styleCommit(request, styleCommitPath[1]!, environment, config, executionContext);
   const styleAnalyzePath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/analyze$/u.exec(url.pathname);
   if (request.method === "POST" && styleAnalyzePath)
-    return styleAnalyze(request, styleAnalyzePath[1]!, config, executionContext);
+    return styleAnalyze(request, styleAnalyzePath[1]!, environment, config, executionContext);
   const stylePublishPath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/publish$/u.exec(url.pathname);
   if (request.method === "POST" && stylePublishPath)
     return stylePublish(request, stylePublishPath[1]!, config, executionContext);

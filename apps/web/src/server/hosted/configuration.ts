@@ -68,6 +68,8 @@ export interface HostedRuntimeEnvironment {
   readonly R2_SECRET_ACCESS_KEY?: string;
   readonly WORKFLOW_CALLBACK_SECRET?: string;
   readonly MEDIA_WORKER_TOKEN_SECRET?: string;
+  /** Direct DeepSeek Vision credential. Optional until hosted style analysis is activated. */
+  readonly DEEPSEEK_API_KEY?: string;
   readonly VIDEOFORGE_V207_AUTHORITY_NONCE?: string;
   /** Paid pair bindings remain optional while production is DISABLED_UNQUALIFIED. They must be
    * configured as secret bindings, never Wrangler vars, before the qualified composition exists. */
@@ -127,6 +129,11 @@ export interface HostedRuntimeConfiguration {
   };
   readonly workflowCallbackSecret: string;
   readonly mediaWorkerTokenSecret: string;
+  readonly deepseek: {
+    readonly apiKey: string;
+    readonly model: "deepseek-v4-flash-vision-exp";
+    readonly baseUrl: "https://api.deepseek.com";
+  } | null;
   toJSON(): {
     readonly schemaVersion: "videoforge-hosted-configuration/v1";
     readonly credentials: "REDACTED";
@@ -443,6 +450,14 @@ export function hostedRuntimeConfiguration(
     mediaWorkerRelease: mediaWorkerRelease(required(source, "MEDIA_WORKER_RELEASE_MANIFEST_JSON")),
     workflowCallbackSecret,
     mediaWorkerTokenSecret,
+    deepseek:
+      typeof source.DEEPSEEK_API_KEY === "string" && source.DEEPSEEK_API_KEY.trim().length > 0
+        ? Object.freeze({
+            apiKey: source.DEEPSEEK_API_KEY.trim(),
+            model: "deepseek-v4-flash-vision-exp" as const,
+            baseUrl: "https://api.deepseek.com" as const,
+          })
+        : null,
     toJSON: () => redacted,
   });
 }

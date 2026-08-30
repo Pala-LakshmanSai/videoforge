@@ -23,6 +23,7 @@ import {
   normalizeHostedReturnTo,
   parseWavDurationMs,
   preflightBlockers,
+  readJson,
 } from "./HostedProductScreens";
 
 function renderHosted(node: ReactNode) {
@@ -70,6 +71,29 @@ const gpuReadiness = {
     },
   ] as const,
 };
+
+describe("hosted product errors", () => {
+  it("shows the safe duplicate-style message instead of its internal code", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            error: {
+              code: "STYLE_NAME_CONFLICT",
+              message: "That style name is already in use. Choose a different name.",
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    await expect(readJson("/api/v2/hosted/styles", { method: "POST", body: "{}" })).rejects.toThrow(
+      "That style name is already in use. Choose a different name.",
+    );
+  });
+});
 
 describe("hosted browser security boundaries", () => {
   const origin = "https://videoforge.example";

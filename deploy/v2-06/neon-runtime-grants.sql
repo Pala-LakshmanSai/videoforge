@@ -56,6 +56,10 @@ TO :"runtime_role";
 -- the runtime receives no direct preset DELETE capability.
 GRANT EXECUTE ON FUNCTION public.videoforge_archive_hosted_preset(uuid, uuid, text, uuid)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_reserve_hosted_style_analysis(uuid, text, uuid)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_style_analysis(uuid, text, text, text, bigint, bigint, bigint)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_authorize_hosted_cpu_upload(
   uuid, text, text, text, text, bigint, text, timestamptz
 )

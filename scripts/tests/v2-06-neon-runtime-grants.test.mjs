@@ -14,6 +14,14 @@ test("the hosted runtime can append through the exact function but has no direct
   );
   assert.match(
     source,
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_reserve_hosted_style_analysis\(uuid, text, uuid\)\s+TO :"runtime_role";/u,
+  );
+  assert.match(
+    source,
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_finish_hosted_style_analysis\(uuid, text, text, text, bigint, bigint, bigint\)\s+TO :"runtime_role";/u,
+  );
+  assert.match(
+    source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_redeem_hosted_invite\(text, text\)\s+TO :"runtime_role";/u,
   );
   assert.match(

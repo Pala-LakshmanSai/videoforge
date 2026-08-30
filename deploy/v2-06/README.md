@@ -109,20 +109,21 @@ node -e '
   if (!fs.statSync(c.main).isFile() || !fs.statSync(c.assets.directory).isDirectory()) process.exit(1);
 ' "$CONFIG"
 
-# Upload exactly the eight required secrets through Wrangler's secret store.  The preflight rejects
+# Upload exactly the nine required secrets through Wrangler's secret store.  The preflight rejects
 # symlinks, empty values, wrong modes, and extra files before any provider mutation.
 SECRET_DIR=/secure/videoforge/v2-06/secrets
 mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
 for name in \
   DATABASE_URL BETTER_AUTH_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
-  R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY WORKFLOW_CALLBACK_SECRET MEDIA_WORKER_TOKEN_SECRET; do
+  R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY WORKFLOW_CALLBACK_SECRET MEDIA_WORKER_TOKEN_SECRET \
+  DEEPSEEK_API_KEY; do
   file="$SECRET_DIR/$name"
   test -f "$file" && test ! -L "$file" && test -s "$file" && test "$(mode_of "$file")" = 600
 done
 for file in "$SECRET_DIR"/*; do
   test -e "$file" || continue
   case "/$(basename "$file")/" in
-    /DATABASE_URL/|/BETTER_AUTH_SECRET/|/GOOGLE_CLIENT_ID/|/GOOGLE_CLIENT_SECRET/|/R2_ACCESS_KEY_ID/|/R2_SECRET_ACCESS_KEY/|/WORKFLOW_CALLBACK_SECRET/|/MEDIA_WORKER_TOKEN_SECRET/) ;;
+    /DATABASE_URL/|/BETTER_AUTH_SECRET/|/GOOGLE_CLIENT_ID/|/GOOGLE_CLIENT_SECRET/|/R2_ACCESS_KEY_ID/|/R2_SECRET_ACCESS_KEY/|/WORKFLOW_CALLBACK_SECRET/|/MEDIA_WORKER_TOKEN_SECRET/|/DEEPSEEK_API_KEY/) ;;
     *) echo "unexpected secret file: $file" >&2; exit 2 ;;
   esac
 done
@@ -141,7 +142,8 @@ for entry in \
   R2_ACCESS_KEY_ID:"$SECRET_DIR/R2_ACCESS_KEY_ID" \
   R2_SECRET_ACCESS_KEY:"$SECRET_DIR/R2_SECRET_ACCESS_KEY" \
   WORKFLOW_CALLBACK_SECRET:"$SECRET_DIR/WORKFLOW_CALLBACK_SECRET" \
-  MEDIA_WORKER_TOKEN_SECRET:"$SECRET_DIR/MEDIA_WORKER_TOKEN_SECRET"; do
+  MEDIA_WORKER_TOKEN_SECRET:"$SECRET_DIR/MEDIA_WORKER_TOKEN_SECRET" \
+  DEEPSEEK_API_KEY:"$SECRET_DIR/DEEPSEEK_API_KEY"; do
   name=${entry%%:*}; file=${entry#*:}
   pnpm --filter @videoforge/web exec wrangler secret put "$name" --config "$CONFIG" <"$file"
 done
@@ -228,7 +230,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 - Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
   ordinary deployment of the intended restored source/config so code and deployment metadata converge;
   rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
-  available. Every migration in the committed manifest (currently through 0043) is additive and
+  available. Every migration in the committed manifest (currently through 0052) is additive and
   retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather

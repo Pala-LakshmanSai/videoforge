@@ -94,6 +94,7 @@ function environment(providerMode: "staging" | "production" = "staging"): Hosted
     R2_SECRET_ACCESS_KEY: "fixture-r2-secret-access-key",
     WORKFLOW_CALLBACK_SECRET: "fixture-workflow-callback-secret-00000000000001",
     MEDIA_WORKER_TOKEN_SECRET: "fixture-media-worker-token-secret-000000000000002",
+    DEEPSEEK_API_KEY: "fixture-deepseek-api-key-00000000000000000003",
   };
 }
 
@@ -163,6 +164,13 @@ describe("V2-06 hosted adapters", () => {
     expect(config.mediaWorkerRelease.windows.trust).toBe("UNSIGNED_BETA");
     expect(config.mediaWorkerRelease.macos.trust).toBe("AD_HOC_BETA");
     expect(config.mediaWorkerRelease.whisperModelSha256).toBe(`sha256:${"d".repeat(64)}`);
+    expect(config.deepseek).toMatchObject({
+      model: "deepseek-v4-flash-vision-exp",
+      baseUrl: "https://api.deepseek.com",
+    });
+    expect(
+      hostedRuntimeConfiguration({ ...source, DEEPSEEK_API_KEY: undefined }).deepseek,
+    ).toBeNull();
     const serialized = JSON.stringify(config);
     expect(JSON.parse(serialized)).toEqual({
       schemaVersion: "videoforge-hosted-configuration/v1",
@@ -179,6 +187,7 @@ describe("V2-06 hosted adapters", () => {
       source.R2_SECRET_ACCESS_KEY,
       source.WORKFLOW_CALLBACK_SECRET,
       source.MEDIA_WORKER_TOKEN_SECRET,
+      source.DEEPSEEK_API_KEY,
     ]) {
       expect(serialized).not.toContain(value);
     }

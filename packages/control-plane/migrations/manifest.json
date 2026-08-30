@@ -306,6 +306,12 @@
       "name": "hosted_preset_archive_function",
       "filename": "0051_hosted_preset_archive_function.sql",
       "sha256": "sha256:be05cc3a2e95f7e5f8921412316be131fe9df77904d7dac63ea4d77133aef563"
+    },
+    {
+      "version": 52,
+      "name": "hosted_style_analysis_spend_guard",
+      "filename": "0052_hosted_style_analysis_spend_guard.sql",
+      "sha256": "sha256:460a4f5c5582db03e28ed04d7cfd728dd0cd8c2ebce328848e7dad99125ca297"
     }
   ]
 }

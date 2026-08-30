@@ -154,8 +154,9 @@ the only persistent applied-state indicator.
   explicit publish. Preview never auto-publishes.
 - Published v1 remains usable while v2 is draft/analyzing. Built-in default cannot be edited,
   deleted, or archived.
-- Plain consent states that normalized references go to Runware and standard processing is not
-  confidential/ZDR; distinguish VideoForge deletion from provider retention.
+- Plain consent states that normalized references go directly to DeepSeek once for explicit style
+  analysis and provider retention follows DeepSeek terms; distinguish VideoForge deletion from
+  provider retention.
 
 ### 8. Library and Usage
 

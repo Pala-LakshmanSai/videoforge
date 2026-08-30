@@ -60,7 +60,11 @@ vi.mock("./neon", () => ({
 }));
 
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
-import { handleHostedProductRequest, hostedGpuProductState } from "./product";
+import {
+  handleHostedProductRequest,
+  hostedGpuProductState,
+  hostedStyleConflictProblem,
+} from "./product";
 
 const ORIGIN = "https://hosted.example.test";
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
@@ -104,6 +108,16 @@ async function errorCode(result: Response | null): Promise<string | null> {
 }
 
 describe("hosted product route contract", () => {
+  it("maps style uniqueness conflicts to safe user-facing recovery", () => {
+    expect(hostedStyleConflictProblem("image_styles_active_name_uq")).toEqual({
+      code: "STYLE_NAME_CONFLICT",
+      message: "That style name is already in use. Choose a different name.",
+    });
+    expect(hostedStyleConflictProblem("image_style_versions_open_draft_uq")).toMatchObject({
+      code: "STYLE_VERSION_CONFLICT",
+    });
+    expect(hostedStyleConflictProblem(null)).toMatchObject({ code: "STYLE_SAVE_CONFLICT" });
+  });
   it("loads the preset catalog without requiring private style-reference table access", async () => {
     testState.query.mockClear();
 
@@ -402,6 +416,7 @@ describe("hosted product route contract", () => {
     const blocks = [
       ["avatarCommit", "avatarApprove", "lockActiveAvatarParent"],
       ["avatarApprove", "styleCreate", "lockActiveAvatarParent"],
+      ["styleCreate", "styleCommit", "lockActiveStyleParent"],
       ["styleCommit", "styleAnalyze", "lockActiveStyleParent"],
       ["styleAnalyze", "stylePublish", "lockActiveStyleParent"],
       ["stylePublish", "retryProjectAttempt", "lockActiveStyleParent"],
