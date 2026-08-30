@@ -30,7 +30,7 @@ current_goal_boundary:
   note: "The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5. Mage remains bound to successful predecessor run 33236590768 at source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 with no redispatch. Failed SoulX run 33287914248 and authority v2-13-full-live-20260830-021108z-d3bfbb40 are terminal and non-reusable. Fresh exact approval is required before tag creation or any live action."
 
 fixture_user_walkthrough:
-  status: ACTIVE_STEP_2_AVATAR_REUPLOAD_READY
+  status: ACTIVE_STEP_3_IMAGE_STYLE_READY
   started_from_commit: "e1462fe7421caae8a5f0a651c90e009e2aecdee4"
   latest_green_commit: "df3686e2"
   stable_url: "http://localhost:4173/?fixture=invite_sign_in"
@@ -43,9 +43,8 @@ fixture_user_walkthrough:
     - "Responsive desktop and compact Chrome sign-in journeys pass with zero external requests."
     - "Fixture avatar uploads now retain their validated source bytes in private mode-0600 per-session storage and survive server restart."
     - "Avatar Hub renders the tenant-checked uploaded portrait instead of the generic 2D stand-in, while live provider compatibility remains truthfully untested."
-  current_step: AVATAR_CREATION_AND_APPROVAL
+  current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
-    - AVATAR_CREATION_AND_APPROVAL
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
     - PROJECT_CREATION_AND_COST_PREFLIGHT
     - VOICEOVER_UPLOAD_AND_VALIDATION
@@ -59,7 +58,7 @@ fixture_user_walkthrough:
     access_gate_chrome: "PASS_4_OF_4_DESKTOP_AND_COMPACT"
     avatar_source_focused_unit: "PASS_28_OF_28"
     avatar_preset_roundtrip_chrome: "PASS_2_OF_2_DESKTOP_AND_COMPACT"
-    avatar_live_user_reupload: "PENDING"
+    avatar_live_user_reupload: "PASS_REAL_PORTRAIT_VISIBLE_FIXTURE_READY"
 
 new_chat_handoff:
   status: FULL_LIVE_SUCCESSOR_SEALED_PENDING_FRESH_EXACT_USER_APPROVAL
