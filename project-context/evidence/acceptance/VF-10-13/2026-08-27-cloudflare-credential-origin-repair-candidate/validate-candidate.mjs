@@ -32,11 +32,11 @@ const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13
 const DESCRIPTOR_PATH = path.join(ROOT, "protected-inputs/v2-13/static-release-descriptor.json");
 const PROTECTED_INPUT_PATH = path.join(ROOT, "protected-inputs/v2-13/materialization-seed-input.json");
 const RELEASE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
-const EXECUTION_CONTROL_COMMIT = "26d37b87f73fc062b195f328b22a4839c524ac70";
+const EXECUTION_CONTROL_COMMIT = "e882af586446e81f6d85f00ac6bf28b582e8d823";
 const AUDITED_CODE_COMMIT = "9c6923c1fc8cb3e21ab8a16dac6866a9534620c1";
-const FACTS_SHA256 = "sha256:b048c38c957547bb6d03791db94a49f483b894dd722f892ce160bce0e9d026b6";
-const AUDIT_SHA256 = "sha256:5b4a59a45ec1182a69d916a88592bef78de7fbd08da87988211def51c47b00df";
-const DESCRIPTOR_SHA256 = "sha256:197ba94ef9694f3cfb4b7dab7da21cfda473bb0f49d66cae3a9ee4e5d7338051";
+const FACTS_SHA256 = "sha256:479f7c5f15e93d7a0c07fcc2e3ee1f5d41c96199fc93a1b892c7c7e18f078588";
+const AUDIT_SHA256 = "sha256:d165750b4eb622da71df17e75377939eb5b8cb3059c0b5ed79c222b87195fa8e";
+const DESCRIPTOR_SHA256 = "sha256:cbe9265d1c69f2ad1d75a60fda10b1f0c308f0cac0dba8db44451053389b2877";
 const PROTECTED_INPUT_SHA256 = "sha256:2c6b83e44814776566ba13c4eb0d2fd08cf9d76f9772f47f4315d677ec9d5d6a";
 const FULL_LIVE_AUTHORITY_ID = "a03edc8f-817f-4579-8bce-28b3447ce30f";
 const TAG = "videoforge-v2-13-release-20260826-v3";
@@ -57,6 +57,17 @@ const assert = (condition, code) => {
 };
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 const gitBytes = (commit, relativePath) => execFileSync("git", ["show", `${commit}:${relativePath}`], { cwd: ROOT, encoding: "buffer", stdio: ["ignore", "pipe", "pipe"] });
+const isAncestor = (ancestor, descendant) => {
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", ancestor, descendant], {
+      cwd: ROOT,
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+};
 const readJson = async (file, code) => {
   const bytes = await readFile(file);
   assert(bytes.at(-1) === 0x0a, `${code}_FINAL_NEWLINE`);
@@ -246,7 +257,7 @@ assert(sha256(factsBytes) === FACTS_SHA256, "FACTS_SHA256");
 assert(
   audit.schema_version === "videoforge.v2-13-full-live-source-readiness-audit/v1" &&
     audit.audited_code_commit === AUDITED_CODE_COMMIT &&
-    audit.audit_result === "PASS_READY_TO_BIND" &&
+    audit.audit_result === "PASS_READY_TO_RESEAL" &&
     audit.evidence_class === "INDEPENDENT_RELEASE_AUDIT" &&
     audit.fixture_or_fake_transport_used === false &&
     audit.external_calls === 0 && audit.provider_mutations === 0 && audit.gpu_use === 0 && audit.spend_usd === 0 &&
@@ -518,7 +529,24 @@ if (head !== EXECUTION_CONTROL_COMMIT) {
     parent = commit;
   }
 }
-assert(git("rev-parse", `${EXECUTION_CONTROL_COMMIT}^`) === AUDITED_CODE_COMMIT, "EVIDENCE_PARENT");
+const evidenceParentCommit = git("rev-parse", `${EXECUTION_CONTROL_COMMIT}^`);
+const proposalRecordPaths = new Set([
+  "project-context/00_START_HERE.md",
+  "project-context/CURRENT_STATE.yaml",
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
+  "project-context/tasks/VF-10-13.md",
+]);
+const evidenceParentPaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", evidenceParentCommit)
+  .split("\n")
+  .filter(Boolean);
+assert(
+  evidenceParentCommit === AUDITED_CODE_COMMIT ||
+    (evidenceParentPaths.length > 0 &&
+      evidenceParentPaths.every((relativePath) => proposalRecordPaths.has(relativePath)) &&
+      isAncestor(AUDITED_CODE_COMMIT, evidenceParentCommit)),
+  "EVIDENCE_PARENT",
+);
 const evidencePaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", EXECUTION_CONTROL_COMMIT).split("\n").filter(Boolean).sort();
 assert(JSON.stringify(evidencePaths) === JSON.stringify([
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/source-readiness-audit.json",

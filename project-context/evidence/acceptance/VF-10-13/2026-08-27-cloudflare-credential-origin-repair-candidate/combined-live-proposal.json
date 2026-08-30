@@ -18,13 +18,13 @@
     "required_next_action": "obtain fresh exact user approval of this sealed 26-operation proposal and static release descriptor before any authority record, credential access, provider call, mutation, GPU use, or spend",
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:197ba94ef9694f3cfb4b7dab7da21cfda473bb0f49d66cae3a9ee4e5d7338051"
+      "sha256": "sha256:cbe9265d1c69f2ad1d75a60fda10b1f0c308f0cac0dba8db44451053389b2877"
     },
     "materialization_seed_facts": {
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:b048c38c957547bb6d03791db94a49f483b894dd722f892ce160bce0e9d026b6"
+      "sha256": "sha256:479f7c5f15e93d7a0c07fcc2e3ee1f5d41c96199fc93a1b892c7c7e18f078588"
     },
     "workflow_registration_evidence": {
       "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
@@ -94,7 +94,7 @@
     "future_approval_record_basename": "user-approval.json",
     "future_authority_record_basename": "approved-authority.json",
     "execution_control": {
-      "commit": "26d37b87f73fc062b195f328b22a4839c524ac70",
+      "commit": "e882af586446e81f6d85f00ac6bf28b582e8d823",
       "exact_components": {
         "approval_validator": {
           "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -1891,7 +1891,7 @@
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:b048c38c957547bb6d03791db94a49f483b894dd722f892ce160bce0e9d026b6"
+      "sha256": "sha256:479f7c5f15e93d7a0c07fcc2e3ee1f5d41c96199fc93a1b892c7c7e18f078588"
     }
   },
   "requested_scope": {
@@ -2313,13 +2313,13 @@
     "plan_change_authorized": false,
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:197ba94ef9694f3cfb4b7dab7da21cfda473bb0f49d66cae3a9ee4e5d7338051"
+      "sha256": "sha256:cbe9265d1c69f2ad1d75a60fda10b1f0c308f0cac0dba8db44451053389b2877"
     },
     "materialization_seed_facts": {
       "commit_field": "source.execution_control.commit",
       "full_live_authority_id": "a03edc8f-817f-4579-8bce-28b3447ce30f",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:b048c38c957547bb6d03791db94a49f483b894dd722f892ce160bce0e9d026b6"
+      "sha256": "sha256:479f7c5f15e93d7a0c07fcc2e3ee1f5d41c96199fc93a1b892c7c7e18f078588"
     },
     "workflow_registration_evidence": {
       "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
