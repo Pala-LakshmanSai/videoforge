@@ -71,18 +71,18 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_2_AVATAR_PREVIEW_PERMISSION_REPAIR_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
-  implementation_commit: "43c5b2f664df6a9e0dae91a1223dbd73cddf624e"
+  status: LIVE_STEP_2_AVATAR_HUB_REPAIRS_DEPLOYED_AWAITING_USER_CONFIRMATION
+  implementation_commit: "588ad594d43748c6d1bb3ae9fe1bebd3be01b570"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
     - "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
     - "6fb8a8a55850b157a7fb99dd86e4a74d7ffa6ce1"
     - "43c5b2f664df6a9e0dae91a1223dbd73cddf624e"
-  deployment_candidate: PENDING_FRESH_EXACT_USER_APPROVAL
-  deployed_source_commit: "ff10fe8a2d49532d5028c748bae4f4eaa5079da2"
-  cloudflare_worker_version_id: "4bc2b25a-472c-4a67-b2bf-ba1686afd993"
-  deployed_config_sha256: "sha256:5e743711fbfb441a6dc320343c8e9172299b44a241084fc1236a3ee474edde3d"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA ff10fe8a2d49532d5028c748bae4f4eaa5079da2 CAP USD 3"
+  deployment_candidate: CONSUMED_BY_EXACT_APPROVED_DEPLOYMENT
+  deployed_source_commit: "588ad594d43748c6d1bb3ae9fe1bebd3be01b570"
+  cloudflare_worker_version_id: "6b6c399a-8cdf-4496-97d1-853689cca597"
+  deployed_config_sha256: "sha256:f4a95be96d0f116be89b2a3de7ea4804669c0ab284ce48e240b9cca0eedc81f0"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 588ad594d43748c6d1bb3ae9fe1bebd3be01b570 CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -99,7 +99,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_CATALOG_AND_SIMPLE_HUB_LAYOUT_FAIL_AVATAR_PREVIEW_500_RUNTIME_ROLE_LINK_TABLE_NOT_GRANTED_REPAIR_SOURCE_GREEN_AWAITING_DEPLOYMENT"
+  live_browser_verification: "PASS_AUTHENTICATED_AVATAR_AND_STYLE_CATALOGS_SIMPLE_HUB_LAYOUT_REAL_512X512_AVATAR_PREVIEW_NO_ACTIVE_BADGE_AND_PAGE_REMAINS_MOUNTED_DURING_REVALIDATION"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
