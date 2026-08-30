@@ -84,7 +84,8 @@ hosted_beta_user_walkthrough:
     - "c2365701cfa94abb1e70a75d4a5b7e23688c215f"
     - "95ebb6ace81dd96d7ef5caecf8f07d63ba727192"
     - "57a45925900d61178a68bf54d226b7fc47bfb1cf"
-  deployment_candidate: DEPLOYED_PRIVATE_HOSTED_BETA
+    - "824d77da405146d4617fbd93fb27d771baa11fb5"
+  deployment_candidate: UNFINISHED_PRESET_HUB_REPAIR_GREEN_AWAITING_FRESH_EXACT_APPROVAL
   deployed_source_commit: "de5d7f65dd861408e5d637a0e7c1c9b12cb648f3"
   cloudflare_worker_version_id: "9ffecf79-c5b8-4c61-9aed-1c7cf7bae523"
   deployed_config_sha256: "sha256:c9df5c5fa3b7e513a9a98b93c28de57d17cd4945e47da7f634f5bfe67dd9e08b"
@@ -124,6 +125,7 @@ hosted_beta_user_walkthrough:
     - "Source 95ebb6ac replaces hosted simulated style analysis with direct deepseek-v4-flash-vision-exp analysis of browser-normalized WebP copies only; originals remain private. It adds strict returned-profile validation, safe duplicate-name recovery, readable errors, explicit processing/retention consent, actual charge display, one durable no-redispatch reservation per style, a fixed $3 global beta ceiling, migration 0052 least-privilege functions, and fail-closed UNKNOWN receipts for every post-dispatch ambiguity. No provider call, secret access, remote mutation, migration, or spend occurred while preparing this source."
     - "Source 57a45925 supersedes the direct-DeepSeek style analyzer with Runware google:gemini@3.1-flash-lite for explicit reference-image analysis only. It sends normalized WebP copies in one strict-schema request, records provider-reported usage and actual cost, preserves the durable $3 no-redispatch guard, and reconciles every post-dispatch persistence failure as UNKNOWN. Runware DeepSeek V4 Flash remains the cheaper text-only scene-prompt writer. No provider call, secret access, remote mutation, migration, deployment, or spend occurred while preparing this source."
     - "Approved source de5d7f65 is deployed as Worker 9ffecf79-c5b8-4c61-9aed-1c7cf7bae523 with config sha256:c9df5c5f. Neon migration/grants verify at 52/52, the Worker secret list is the exact nine-name allowlist including RUNWARE_API_KEY, the one-time local key handoff file was removed, an encrypted post-migration backup was created, and cache-bypassed status reports the exact deployed commit with GPU transport still DISABLED_UNQUALIFIED. No Runware analysis request or provider spend occurred during deployment."
+    - "Source 824d77da fixes the hidden-name-reservation trap in both Avatar Hub and Image Styles: every active workspace-owned unfinished preset is shown separately from project-ready presets, safe drafts can continue from persisted state, incomplete/failed/in-progress drafts remain visible with remove/recovery guidance, and duplicate conflicts point back to the Hub. The exact live will carter draft remains intact with seven references. Focused UI/server tests pass 71/71; typecheck, changed-file lint, staging build/quarantine, and diff checks pass. It is not deployed and requires fresh exact source-bound approval."
   current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
@@ -159,6 +161,11 @@ hosted_beta_user_walkthrough:
     hosted_runware_gemini_secret_allowlist: "PASS_EXACT_9_NAMES"
     hosted_runware_gemini_deployed_status: "PASS_COMMIT_DE5D7F65_WORKER_9FFECF79"
     hosted_runware_gemini_provider_call: PENDING_REAL_USER_STYLE_ANALYSIS
+    hosted_unfinished_preset_hubs_focused: "PASS_71_OF_71_UI_AND_SERVER"
+    hosted_unfinished_preset_hubs_typecheck: PASS
+    hosted_unfinished_preset_hubs_changed_file_eslint: PASS
+    hosted_unfinished_preset_hubs_staging_build: PASS_FIXTURE_QUARANTINE
+    hosted_unfinished_preset_hubs_deployment: PENDING_FRESH_EXACT_APPROVAL
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
