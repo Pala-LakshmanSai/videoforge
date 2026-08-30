@@ -989,7 +989,11 @@ function verifyFreshDefaultBranchWorkflowRegistration({ run, state, soulxRegistr
     );
     const mainSha256 = sha256(mainBytes);
     const releaseSha256 = sha256(releaseBytes);
-    if (Buffer.compare(mainBytes, releaseBytes) !== 0 || mainSha256 !== releaseSha256)
+    const defaultBranchMatchesReleaseSource = Buffer.compare(mainBytes, releaseBytes) === 0;
+    if (
+      expected.file === SOULX_WORKFLOW_REGISTRATION_FILE &&
+      (!defaultBranchMatchesReleaseSource || mainSha256 !== releaseSha256)
+    )
       fail("WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT");
     if (
       expected.file === SOULX_WORKFLOW_REGISTRATION_FILE &&
@@ -1002,17 +1006,20 @@ function verifyFreshDefaultBranchWorkflowRegistration({ run, state, soulxRegistr
       workflowId: registration.id,
       workflowFile: expected.file,
       workflowName: expected.name,
-      workflowSha256: mainSha256,
+      defaultBranchWorkflowSha256: mainSha256,
+      releaseSourceWorkflowSha256: releaseSha256,
+      defaultBranchMatchesReleaseSource,
     });
   }
   const proof = {
-    schemaVersion: "videoforge.v213-fresh-default-branch-workflow-readback/v1",
+    schemaVersion: "videoforge.v213-fresh-default-branch-workflow-readback/v2",
     repository: SOULX_WORKFLOW_REGISTRATION_REPOSITORY,
     defaultBranch: SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH,
     defaultBranchCommit: commit.sha,
     releaseSourceCommit: state.release_source_commit,
     workflows,
-    exactBothRegisteredAndByteIdentical: true,
+    bothWorkflowsRegisteredActive: true,
+    releaseSourceContentsVerified: true,
   };
   return Object.freeze({ ...proof, proofSha256: canonicalSha256(proof) });
 }

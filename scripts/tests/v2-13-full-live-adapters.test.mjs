@@ -993,22 +993,34 @@ test("SoulX workflow dispatch accepts only an exact materialized default-branch 
   );
   assert.deepEqual(
     dispatched.freshWorkflowReadback.workflows.map(
-      ({ workflowFile, workflowName, workflowSha256 }) => ({
+      ({
         workflowFile,
         workflowName,
-        workflowSha256,
+        defaultBranchWorkflowSha256,
+        releaseSourceWorkflowSha256,
+        defaultBranchMatchesReleaseSource,
+      }) => ({
+        workflowFile,
+        workflowName,
+        defaultBranchWorkflowSha256,
+        releaseSourceWorkflowSha256,
+        defaultBranchMatchesReleaseSource,
       }),
     ),
     [
       {
         workflowFile: "mage-image.yml",
         workflowName: "mage-image",
-        workflowSha256: hash(Buffer.from("mage-image workflow\n")),
+        defaultBranchWorkflowSha256: hash(Buffer.from("mage-image workflow\n")),
+        releaseSourceWorkflowSha256: hash(Buffer.from("mage-image workflow\n")),
+        defaultBranchMatchesReleaseSource: true,
       },
       {
         workflowFile: "avatar-primary-serverless-image.yml",
         workflowName: "avatar-primary-serverless-image",
-        workflowSha256: evidence.default_branch_workflow_sha256,
+        defaultBranchWorkflowSha256: evidence.default_branch_workflow_sha256,
+        releaseSourceWorkflowSha256: evidence.release_source_workflow_sha256,
+        defaultBranchMatchesReleaseSource: true,
       },
     ],
   );
@@ -1021,6 +1033,41 @@ test("SoulX workflow dispatch accepts only an exact materialized default-branch 
   assert.equal(
     fixture.calls.filter(([command, args]) => command === "gh" && args[0] === "workflow").length,
     1,
+  );
+});
+
+test("Mage default-branch drift is recorded without blocking predecessor reconciliation", async () => {
+  const evidence = soulxWorkflowRegistrationEvidenceFixture();
+  const fixture = workflowDispatchRunner({
+    evidence,
+    workflowName: "mage-image",
+    newRuns: [],
+    driftWorkflow: "mage-image.yml",
+  });
+  const adapters = createGithubDispatchAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: fixture.run,
+  });
+  const reconciled = await adapters["mage-image-workflow-dispatch"](
+    {},
+    stateWithSoulxWorkflowRegistration(evidence),
+  );
+  const proof = reconciled.freshWorkflowReadback;
+  assert.equal(proof.schemaVersion, "videoforge.v213-fresh-default-branch-workflow-readback/v2");
+  assert.equal(proof.bothWorkflowsRegisteredActive, true);
+  assert.equal(proof.releaseSourceContentsVerified, true);
+  assert.equal(proof.workflows[0].defaultBranchMatchesReleaseSource, false);
+  assert.notEqual(
+    proof.workflows[0].defaultBranchWorkflowSha256,
+    proof.workflows[0].releaseSourceWorkflowSha256,
+  );
+  assert.equal(proof.workflows[1].defaultBranchMatchesReleaseSource, true);
+  assert.equal(reconciled.dispatchAccepted, false);
+  assert.equal(reconciled.reconciledExistingExact, true);
+  assert.equal(
+    fixture.calls.some(([command, args]) => command === "gh" && args[0] === "workflow"),
+    false,
   );
 });
 
@@ -1056,7 +1103,10 @@ test("fresh dual-workflow gate stops before dispatch on moved main missing inact
     [{ defaultBranch: "trunk" }, /WORKFLOW_DEFAULT_BRANCH_DRIFT/u],
     [{ missingWorkflow: "mage-image.yml" }, /COMMAND/u],
     [{ inactiveWorkflow: "avatar-primary-serverless-image.yml" }, /REGISTRATION/u],
-    [{ driftWorkflow: "mage-image.yml" }, /WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT/u],
+    [
+      { driftWorkflow: "avatar-primary-serverless-image.yml" },
+      /WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT/u,
+    ],
     [{ mainCommit: "8".repeat(40) }, /SOULX_WORKFLOW_REGISTRATION_STALE/u],
   ];
   for (const [drift, expected] of cases) {

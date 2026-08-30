@@ -64,7 +64,7 @@ const CONFIRMATION = "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE";
 const APPROVAL_BRANCH = "codex/serverless-v2-roadmap-v4";
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const COMMIT = /^[0-9a-f]{40}$/u;
-const FRESH_WORKFLOW_READBACK_SCHEMA = "videoforge.v213-fresh-default-branch-workflow-readback/v1";
+const FRESH_WORKFLOW_READBACK_SCHEMA = "videoforge.v213-fresh-default-branch-workflow-readback/v2";
 const WORKFLOW_REGISTRATION_REPOSITORY = "Pala-LakshmanSai/videoforge";
 const WORKFLOW_REGISTRATION_DEFAULT_BRANCH = "main";
 const EXACT_DEFAULT_BRANCH_WORKFLOWS = Object.freeze([
@@ -107,7 +107,7 @@ const PREQUALIFICATION_RECOVERY_MODES = new Set([
 ]);
 const SOURCE_PINS = Object.freeze({
   "deploy/v2-13/full-live-adapters.mjs":
-    "sha256:d9d34754aeee8450e6c14ff83c0338a5467ffef35f9567f2f0dd9d05a48cc2c1",
+    "sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8",
   "deploy/v2-13/promote-qualified-production.mjs":
     "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
   "deploy/v2-13/guarded-activation.mjs":
@@ -123,7 +123,7 @@ const SOURCE_PINS = Object.freeze({
   "packages/control-plane/migrations/manifest.json":
     "sha256:0b394a979958ed9fb6d389f37152681297b85c3e86339f373ada15b266bae0dd",
   "deploy/v2-13/full-live-source-closure.json":
-    "sha256:c6ea6e41abbf71da29c8c2302039f25cac75f1c5aee45f70b713eba0ebd4c15b",
+    "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78",
 });
 for (const [path, expected] of Object.entries(SOURCE_PINS)) {
   const actual = `sha256:${createHash("sha256")
@@ -581,9 +581,10 @@ function validateFreshWorkflowReadbackResult(result, state) {
     !exactKeys(proof, [
       "defaultBranch",
       "defaultBranchCommit",
-      "exactBothRegisteredAndByteIdentical",
+      "bothWorkflowsRegisteredActive",
       "proofSha256",
       "releaseSourceCommit",
+      "releaseSourceContentsVerified",
       "repository",
       "schemaVersion",
       "workflows",
@@ -593,7 +594,8 @@ function validateFreshWorkflowReadbackResult(result, state) {
     proof.defaultBranch !== WORKFLOW_REGISTRATION_DEFAULT_BRANCH ||
     !COMMIT.test(proof.defaultBranchCommit ?? "") ||
     proof.releaseSourceCommit !== state.release_source_commit ||
-    proof.exactBothRegisteredAndByteIdentical !== true ||
+    proof.bothWorkflowsRegisteredActive !== true ||
+    proof.releaseSourceContentsVerified !== true ||
     !Array.isArray(proof.workflows) ||
     proof.workflows.length !== EXACT_DEFAULT_BRANCH_WORKFLOWS.length ||
     !HASH.test(proof.proofSha256 ?? "") ||
@@ -604,12 +606,23 @@ function validateFreshWorkflowReadbackResult(result, state) {
   for (const [index, expected] of EXACT_DEFAULT_BRANCH_WORKFLOWS.entries()) {
     const workflow = proof.workflows[index];
     if (
-      !exactKeys(workflow, ["workflowFile", "workflowId", "workflowName", "workflowSha256"]) ||
+      !exactKeys(workflow, [
+        "defaultBranchMatchesReleaseSource",
+        "defaultBranchWorkflowSha256",
+        "releaseSourceWorkflowSha256",
+        "workflowFile",
+        "workflowId",
+        "workflowName",
+      ]) ||
       workflow.workflowFile !== expected.workflowFile ||
       workflow.workflowName !== expected.workflowName ||
       !Number.isSafeInteger(workflow.workflowId) ||
       workflow.workflowId < 1 ||
-      !HASH.test(workflow.workflowSha256 ?? "")
+      !HASH.test(workflow.defaultBranchWorkflowSha256 ?? "") ||
+      !HASH.test(workflow.releaseSourceWorkflowSha256 ?? "") ||
+      typeof workflow.defaultBranchMatchesReleaseSource !== "boolean" ||
+      workflow.defaultBranchMatchesReleaseSource !==
+        (workflow.defaultBranchWorkflowSha256 === workflow.releaseSourceWorkflowSha256)
     )
       fail("WORKFLOW_FRESH_READBACK_WORKFLOW");
   }
@@ -617,8 +630,11 @@ function validateFreshWorkflowReadbackResult(result, state) {
     proof.workflows[0].workflowId === proof.workflows[1].workflowId ||
     proof.defaultBranchCommit !==
       state.soulx_workflow_registration_evidence?.default_branch_commit ||
-    proof.workflows[1].workflowSha256 !==
-      state.soulx_workflow_registration_evidence?.default_branch_workflow_sha256
+    proof.workflows[1].defaultBranchMatchesReleaseSource !== true ||
+    proof.workflows[1].defaultBranchWorkflowSha256 !==
+      state.soulx_workflow_registration_evidence?.default_branch_workflow_sha256 ||
+    proof.workflows[1].releaseSourceWorkflowSha256 !==
+      state.soulx_workflow_registration_evidence?.release_source_workflow_sha256
   )
     fail("WORKFLOW_FRESH_READBACK_REGISTRATION_BINDING");
   const unsigned = { ...proof };

@@ -61,7 +61,7 @@ const workflowRegistrationEvidenceFixture = (sourceCommit = "a".repeat(40)) => {
 
 const freshWorkflowReadbackFixture = (state) => {
   const unsigned = {
-    schemaVersion: "videoforge.v213-fresh-default-branch-workflow-readback/v1",
+    schemaVersion: "videoforge.v213-fresh-default-branch-workflow-readback/v2",
     repository: "Pala-LakshmanSai/videoforge",
     defaultBranch: "main",
     defaultBranchCommit: state.soulx_workflow_registration_evidence.default_branch_commit,
@@ -71,16 +71,23 @@ const freshWorkflowReadbackFixture = (state) => {
         workflowId: 101,
         workflowFile: "mage-image.yml",
         workflowName: "mage-image",
-        workflowSha256: proof("4"),
+        defaultBranchWorkflowSha256: proof("4"),
+        releaseSourceWorkflowSha256: proof("5"),
+        defaultBranchMatchesReleaseSource: false,
       },
       {
         workflowId: 102,
         workflowFile: "avatar-primary-serverless-image.yml",
         workflowName: "avatar-primary-serverless-image",
-        workflowSha256: state.soulx_workflow_registration_evidence.default_branch_workflow_sha256,
+        defaultBranchWorkflowSha256:
+          state.soulx_workflow_registration_evidence.default_branch_workflow_sha256,
+        releaseSourceWorkflowSha256:
+          state.soulx_workflow_registration_evidence.release_source_workflow_sha256,
+        defaultBranchMatchesReleaseSource: true,
       },
     ],
-    exactBothRegisteredAndByteIdentical: true,
+    bothWorkflowsRegisteredActive: true,
+    releaseSourceContentsVerified: true,
   };
   return { ...unsigned, proofSha256: hash(Buffer.from(canonicalJson(unsigned))) };
 };
@@ -1011,7 +1018,7 @@ test("workflow dispatch result durably binds the full canonical fresh dual-workf
       freshWorkflowReadback: {
         ...accepted.freshWorkflowReadback,
         workflows: accepted.freshWorkflowReadback.workflows.map((workflow, index) =>
-          index === 1 ? { ...workflow, workflowSha256: proof("6") } : workflow,
+          index === 1 ? { ...workflow, defaultBranchWorkflowSha256: proof("6") } : workflow,
         ),
       },
     },
