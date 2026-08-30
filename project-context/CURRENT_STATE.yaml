@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_1_SIGN_IN_AND_INVITE_REDEMPTION
+  status: STEP_1_AUTH_REPAIR_GREEN_AWAITING_EXACT_DEPLOYMENT_APPROVAL
   implementation_commit: "79423f8c6fe92b7faaa45a07f7f72f62b1b602d4"
   deployment_candidate: CONSUMED_BY_DEPLOYMENT
   deployed_source_commit: "b3a104f74506c21fa8c8aeb180c6b8a00ae4153d"
@@ -87,6 +87,9 @@ hosted_beta_user_walkthrough:
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_49_OF_49_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
+  pending_database_migration: "0050_HOSTED_AUTHENTICATION_BEFORE_INVITE"
+  auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
+  auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_49_ROW_BACKUP_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
@@ -97,6 +100,7 @@ hosted_beta_user_walkthrough:
     - "Image-style analysis is clearly labeled provider-free simulation so the walkthrough cannot mistake it for a Gemini, DeepSeek, or GPU provider result."
     - "Neon now has pgcrypto and the exact 49-row migration chain; deployment verification excludes provider-owned pgcrypto extension functions while still requiring an exact application-function allowlist and zero PUBLIC application functions."
     - "Hosted staging now aliases only the hosted API, excludes the fixture public directory, and removes fixture-only AppShell, Library, and Review branches at compile time; its deployable client passes the production fixture quarantine."
+    - "The source now clears stale VideoForge sessions before Google account selection, validates tenant responses, unmounts private screens during focus/visibility revalidation, and keeps uninvited authenticated identities outside tenant scope. Deployment is still pending."
   current_step: SIGN_IN_AND_INVITE_REDEMPTION
   remaining_steps:
     - SIGN_IN_AND_INVITE_REDEMPTION
@@ -117,6 +121,10 @@ hosted_beta_user_walkthrough:
     hosted_staging_bundle_quarantine: PASS_NO_FIXTURE_CODE_OR_ASSETS
     production_bundle_fixture_quarantine: PASS
     v2_06_deployment_validator: PASS
+    auth_database_and_redemption_focused: "PASS_9_OF_9"
+    auth_migration_smoke_and_hardening: "PASS_15_OF_15"
+    hosted_auth_ui_focused: "PASS_11_OF_11"
+    auth_deployment_and_restore_contracts: "PASS_16_OF_16"
 
 new_chat_handoff:
   status: FULL_LIVE_SUCCESSOR_SEALED_PENDING_FRESH_EXACT_USER_APPROVAL
