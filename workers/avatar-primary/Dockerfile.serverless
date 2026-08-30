@@ -41,7 +41,15 @@ WORKDIR /opt/videoforge
 
 COPY workers/avatar-primary/requirements.serverless.txt ./requirements.serverless.txt
 RUN python -m pip install --no-cache-dir --requirement requirements.serverless.txt \
-    && python -m pip check \
+    && pip_check_output="$(mktemp)" \
+    && if python -m pip check >"$pip_check_output" 2>&1; then \
+      :; \
+    else \
+      printf '%s\n' 'decord 0.6.0 is not supported on this platform' \
+        | cmp -s - "$pip_check_output"; \
+    fi \
+    && rm -f "$pip_check_output" \
+    && python -c 'import importlib.metadata as metadata; import decord; assert metadata.version("decord") == "0.6.0"' \
     && command -v ffmpeg >/dev/null \
     && test "$(command -v ffprobe)" = /usr/bin/ffprobe \
     && ffprobe -version >/dev/null \

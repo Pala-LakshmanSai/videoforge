@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import types
@@ -113,6 +114,40 @@ class SoulXServerlessImageDefinitionTests(unittest.TestCase):
             "pip install --no-cache-dir --requirement requirements.serverless.txt", self.source
         )
         self.assertIn("python -m pip check", self.source)
+
+    def test_preserves_decord_and_allows_only_its_exact_platform_diagnostic(self) -> None:
+        self.assertNotIn("pip uninstall", self.source)
+        self.assertIn('pip_check_output="$(mktemp)"', self.source)
+        self.assertIn('python -m pip check >"$pip_check_output" 2>&1', self.source)
+        self.assertIn(
+            "printf '%s\\n' 'decord 0.6.0 is not supported on this platform'", self.source
+        )
+        self.assertIn(
+            'cmp -s - "$pip_check_output"',
+            self.source,
+        )
+        self.assertIn(
+            "import decord; assert metadata.version(\"decord\") == \"0.6.0\"", self.source
+        )
+        self.assertNotIn("decord", REQUIREMENTS.read_text(encoding="utf-8"))
+
+    def test_decord_platform_diagnostic_exception_is_byte_exact(self) -> None:
+        expected = b"decord 0.6.0 is not supported on this platform\n"
+        for candidate, accepted in (
+            (expected, True),
+            (expected + b"\n", False),
+            (expected + b"another conflict\n", False),
+        ):
+            with self.subTest(candidate=candidate):
+                with tempfile.NamedTemporaryFile() as expected_file:
+                    expected_file.write(expected)
+                    expected_file.flush()
+                    compared = subprocess.run(
+                        ["cmp", "-s", expected_file.name, "-"],
+                        input=candidate,
+                        check=False,
+                    )
+                self.assertEqual(compared.returncode == 0, accepted)
 
     def test_build_hashes_match_exact_copied_sources(self) -> None:
         expected_paths = {

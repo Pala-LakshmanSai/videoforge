@@ -51,7 +51,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
           test "$(sha256sum workers/avatar-primary/Dockerfile.serverless | awk '{print $1}')" = \
-            "348661d34da0ada76ad0740a3be13a42b3843c4ad6ad12c394c6c9a50ced4ab0"
+            "466fc38dfa828d74d26a74024ceadd9ed679ac766b328fb72f7dd2d07ae90613"
           test "$(sha256sum workers/avatar-primary/requirements.serverless.txt | awk '{print $1}')" = \
             "938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
           expected_sources=(
@@ -122,6 +122,8 @@ jobs:
             "$GITHUB_SHA"
           docker run --rm --entrypoint /bin/sh "$local_image" -c \
             'test ! -e /runpod-volume/soulx-flashhead-pro && test -x /usr/bin/ffprobe'
+          docker run --rm --entrypoint python "$local_image" -c \
+            'import importlib.metadata as metadata; import decord; assert metadata.version("decord") == "0.6.0"'
           docker run --rm --entrypoint python "$local_image" -c \
             'import soulx_serverless; assert callable(soulx_serverless.handler)'
           local_image_id="$(docker image inspect --format='{{.Id}}' "$local_image")"
@@ -497,7 +499,7 @@ jobs:
               "config_digest": anonymous_proof["config"]["digest"] if published else None,
               "anonymous_publication_proof": anonymous_proof,
               "dockerfile_sha256": (
-                  "sha256:348661d34da0ada76ad0740a3be13a42b3843c4ad6ad12c394c6c9a50ced4ab0"
+                  "sha256:466fc38dfa828d74d26a74024ceadd9ed679ac766b328fb72f7dd2d07ae90613"
               ),
               "requirements_sha256": (
                   "sha256:938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
