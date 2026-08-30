@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-29"
+updated_at: "2026-08-30"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -33,7 +33,7 @@ new_chat_handoff:
   status: FULL_LIVE_SUCCESSOR_SEALED_PENDING_FRESH_EXACT_USER_APPROVAL
   starting_point: CURRENT_CLEAN_GIT_HEAD
   independently_audited_full_live_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
-  independently_audited_application_code_commit: "639fb78319f18c02eea9ea36e0988099be0cfc4c"
+  independently_audited_application_code_commit: "c73eda0e3df3b028b7cbf9e9d176d1b0b5457905"
   credential_rotation_result_sha256: "sha256:815258fce0b32ecd8afa6ad1dae0399615c26533c7fd1b1d60ecf4657d567ac6"
   credential_receipt_sha256: "sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab"
   historical_reuse_validation_repair_commit: "e31e275a767bd9a098f4b94c078b50136d5b998b"
@@ -46,7 +46,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Independently audit and obtain fresh exact approval of resealed proposal sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c after its exact five-path proposal-record commit, bound to execution-control commit a2b58c6c1e8c3c0e70fc7188904b425f505199cf and audited application source 639fb78319f18c02eea9ea36e0988099be0cfc4c; the prior approved tuple failed closed before authority materialization, with no credential read, provider mutation, GPU use, or spend."
+  next_action: "Independently audit and obtain fresh exact approval of resealed proposal sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d after its exact five-path proposal-record commit, bound to execution-control commit e804bd7ecc1bf4b807512fa62f33cba2890780a2 and audited application source c73eda0e3df3b028b7cbf9e9d176d1b0b5457905; the consumed 5cc63415 authority stopped before dispatch and is terminal with zero attempt spend."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -169,7 +169,7 @@ provider_free_product_progress:
   prior_v2_13_proposal_sha256: "sha256:b5bc0fe550f79230d92d1e47d5be639e094f6a73853243c15c6eaa0f92d24762"
   fresh_v2_13_proposal_status: PENDING_FRESH_EXACT_USER_APPROVAL
   fresh_v2_13_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json"
-  fresh_v2_13_proposal_sha256: "sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c"
+  fresh_v2_13_proposal_sha256: "sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d"
   fresh_v2_13_proposal_record_commit: null
   fresh_v2_13_approval_record_materialized: false
   fresh_v2_13_authority_materialized: false
@@ -184,6 +184,27 @@ provider_free_product_progress:
   fresh_v2_13_database_role_credentials_created: 0
   fresh_v2_13_internal_production_secrets_created: 0
   fresh_v2_13_mage_image_digest: "sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a"
+  latest_v2_13_full_live_execution:
+    proposal_sha256: "sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c"
+    proposal_record_commit: "f7500d2f7e5a7b4bf12e6ac579e7f08547d364fb"
+    authority_record_commit: "c88cc2c414692e0cc12083f4d1e9ed1c48482d29"
+    authority_id: "v2-13-full-live-20260830-011151z-5cc63415"
+    state: CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY
+    failure_boundary: OPERATION_EXECUTION
+    failure_code: WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT
+    workflow_dispatch_performed: false
+    database_bootstrap_performed: false
+    production_activation_performed: false
+    gpu_use: false
+    attempt_reserved_usd: 0
+    attempt_settled_usd: 0
+    cleanup_state_path: "protected-inputs/v2-13/history/v2-13-full-live-20260830-011151z-5cc63415/full-live-state.json"
+    cleanup_state_sha256: "sha256:d2655a24f51cef1c45430cb8b3240dd87aef842fca15f688a382d0174fc17169"
+    cleanup_terminal: CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED
+    zero_worker_proof_sha256: "sha256:cccde7e63965d2e6e549ae0af741857dc9776a2825b328c1b070e71e9acf8269"
+    billing_proof_sha256: "sha256:e661b38d789df7a19a0f1ecb04c9eeb9dcd168ad1f4f1faf46754edfab38c301"
+    resource_reconciliation_proof_sha256: "sha256:7b1a7a77000e524cc59da84830bed65bd680e7f0ab1f20f42db3e0e34c057740"
+    max_one_restoration_proof_sha256: "sha256:dc19fea9527a5730be0907e06405fb7aead0509d711bb998c077ba77880af1c0"
   prior_v2_13_full_live_execution:
     proposal_sha256: "sha256:14116dc666a9699e4569537cd01b1af5c205ec29e0ebd5b69fa33bd1e8e23e46"
     proposal_record_commit: "634c48752b72b8ed9cbe3e5f71ffd4fb4feaf70f"
@@ -208,8 +229,8 @@ provider_free_product_progress:
     resource_reconciliation_proof_sha256: "sha256:28c4dd6a61b680556e7c512b53b05c323f3f73d3d31889882b37d09cf5377b0b"
     max_one_restoration_proof_sha256: "sha256:dc19fea9527a5730be0907e06405fb7aead0509d711bb998c077ba77880af1c0"
   fresh_v2_13_materialization_seed_facts_path: "evidence/acceptance/VF-10-13/materialization-seed-facts.json"
-  fresh_v2_13_materialization_seed_facts_sha256: "sha256:9d83875ee17bf45d33c520f904e7f124ce7ff0581e456d52bab6de4e32917f18"
-  fresh_v2_13_materialization_seed_facts_uuid: "a03edc8f-817f-4579-8bce-28b3447ce30f"
+  fresh_v2_13_materialization_seed_facts_sha256: "sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88"
+  fresh_v2_13_materialization_seed_facts_uuid: "779b91ec-9fc9-4622-9e37-fefddb93cd2f"
   superseded_v2_13_full_live_execution:
     proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
     proposal_record_commit: "4b8a6ef83772fea44701129154ae4d69833498eb"
@@ -234,7 +255,7 @@ provider_free_product_progress:
   fresh_v2_13_blocked_draft_sha256: null
   fresh_v2_13_candidate_validator_sha256: null
   fresh_v2_13_static_release_descriptor_path: "protected-inputs/v2-13/static-release-descriptor.json"
-  fresh_v2_13_static_release_descriptor_sha256: "sha256:7e0d8492534eb5962feb9cd8b093296399da011831761dff556023c8085194c7"
+  fresh_v2_13_static_release_descriptor_sha256: "sha256:e8d179d126aba0b24e4467518d76433ea5938d6735d91a9887118492c65fb58a"
   fresh_v2_13_read_only_preflight_path: null
   fresh_v2_13_read_only_preflight_sha256: null
   credential_bootstrap_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-bootstrap-candidate/combined-credential-bootstrap-proposal.json"
@@ -325,11 +346,11 @@ provider_free_product_progress:
   credential_bootstrap_reuse_audit_original_attempt_unchanged: true
   credential_bootstrap_reuse_audit_rollback_attempted: false
   fresh_v2_13_audited_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
-  fresh_v2_13_audited_application_code_commit: "639fb78319f18c02eea9ea36e0988099be0cfc4c"
+  fresh_v2_13_audited_application_code_commit: "c73eda0e3df3b028b7cbf9e9d176d1b0b5457905"
   fresh_v2_13_audit_status: PASS_READY_TO_RESEAL
   fresh_v2_13_release_source_commit: "15af5e20ce3c80eb61d5d1e807a87e8840ed9685"
   fresh_v2_13_release_tag: "videoforge-v2-13-release-20260826-v3"
-  next_v2_13_action: "Independently audit and obtain fresh exact approval of resealed proposal sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c at its exact five-path proposal-record commit against execution-control evidence commit a2b58c6c1e8c3c0e70fc7188904b425f505199cf, with audited application source 639fb78319f18c02eea9ea36e0988099be0cfc4c and source-readiness audit sha256:fbae7441432a9e572bac4fbfb92fb43fc6dda2272765bd8002cf1e38eecd4311; the approved 37c463bc tuple failed closed before authority materialization; the consumed predecessor cannot be replayed or redispatched; current credential read, provider mutation, GPU use, and spend authority is zero."
+  next_v2_13_action: "Independently audit and obtain fresh exact approval of resealed proposal sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d at its exact five-path proposal-record commit against execution-control evidence commit e804bd7ecc1bf4b807512fa62f33cba2890780a2, with audited application source c73eda0e3df3b028b7cbf9e9d176d1b0b5457905 and source-readiness audit sha256:f0dc968a7835f968edc8c3f1e7dd2e6bf43625028c05a54dce19bb110986912d; authority v2-13-full-live-20260830-011151z-5cc63415 is terminal and cannot be replayed; current credential read, provider mutation, GPU use, and spend authority is zero."
   strategy_and_certification_ledger_commit: "760b0e4"
   certification_ledger_status: PASS_independently_audited
   certification_ledger_note: "Mage qualification is three gate-local atomic records within 24 hours; release smoke is separate and later. Evidence binds canonical receipts/timing/cost/cleanup content and exact sealed lineage."
@@ -4548,7 +4569,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Obtain fresh exact approval for resealed proposal sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c after its independent proposal-record audit. The approved 37c463bc tuple failed closed before authority materialization; the repair authority and authority v2-13-full-live-20260829-052951z-6852970d are terminal and cannot be replayed or redispatched."
+  goal: "Obtain fresh exact approval for resealed proposal sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d after its independent proposal-record audit. Authority v2-13-full-live-20260830-011151z-5cc63415 is terminal and cannot be replayed; Mage remains readback-only with no redispatch."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -4569,10 +4590,10 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Authority v2-13-full-live-20260829-052951z-6852970d consumed proposal sha256:6852970d91153a5c61fcee5b4f1f8bac717cd6c302538b71dda3ff8dde86b7ce once. Exact predecessor-bound tag reconciliation used no tag mutation; Mage image publication succeeded at digest sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a. SoulX dispatch stopped before settlement because the workflow is absent from default branch main. Cleanup proved zero compute, stable billing, only the two approved volumes, and zero attempt spend; no database credential or internal secret was created. The authority is terminal and non-reusable. No retry, replay, redispatch, credential access, provider mutation, GPU use, or spend is currently authorized."
+  authority_note: "Authority v2-13-full-live-20260830-011151z-5cc63415 consumed proposal sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c once. It stopped before workflow dispatch because the adapter rejected the truthful Mage default-branch mismatch during predecessor-only readback; SoulX remained exact. Cleanup proved zero compute, stable billing, only the two approved volumes, and zero attempt spend. The authority is terminal and non-reusable. No retry, replay, redispatch, credential access, provider mutation, GPU use, or spend is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c"
+  successor_proposal_sha256: "sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d"
   superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
   superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842

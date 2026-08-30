@@ -2,20 +2,28 @@
 
 ## Active handoff — read this section first
 
-### New-chat launch point — 2026-08-29
+### New-chat launch point — 2026-08-30
 
-- Fresh full-live successor proposal `sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c`
+- Fresh full-live successor proposal `sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d`
   is sealed against execution-control evidence commit
-  `a2b58c6c1e8c3c0e70fc7188904b425f505199cf` and immutable release source
+  `e804bd7ecc1bf4b807512fa62f33cba2890780a2` and immutable release source
   `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. The source-readiness audit binds application source
-  commit `639fb78319f18c02eea9ea36e0988099be0cfc4c`, audit
-  `sha256:fbae7441432a9e572bac4fbfb92fb43fc6dda2272765bd8002cf1e38eecd4311`, and materialization
-  facts `sha256:9d83875ee17bf45d33c520f904e7f124ce7ff0581e456d52bab6de4e32917f18`. The V4 control
+  commit `c73eda0e3df3b028b7cbf9e9d176d1b0b5457905`, audit
+  `sha256:f0dc968a7835f968edc8c3f1e7dd2e6bf43625028c05a54dce19bb110986912d`, and materialization
+  facts `sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88`. The V4 control
   commit binds the 49-row runtime migration manifest and all 22 exact execution-control components
   while preserving the immutable 45-row V3 payload. It preserves the exact closed 26-operation graph
   and all caps, performs predecessor-bound Mage readback with no redispatch, and binds repaired GitHub
   `main` workflow registration. No approval or live authority exists;
   credential access, provider mutation, GPU use, and spend remain unauthorized.
+- The immediately prior proposal `sha256:5cc63415…58ea3c` was approved and consumed once under
+  authority `v2-13-full-live-20260830-011151z-5cc63415`. It stopped before workflow dispatch on
+  `WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT`: SoulX remained exact, but the adapter incorrectly required
+  the reconciliation-only Mage workflow on `main` to match the historical release bytes. Repair
+  `c73eda0` records both hashes truthfully, keeps Mage readback-only with no redispatch, and still
+  requires exact sealed SoulX registration before dispatch. Cleanup proved zero compute and `$0`
+  attempt spend; the authority is terminal and archived at
+  `protected-inputs/v2-13/history/v2-13-full-live-20260830-011151z-5cc63415/`.
 - Final pre-execution audit stopped proposal `sha256:41e7646f…486d6` before protected authority
   materialization or consumption because GitHub now returns HTTP 404 to unauthenticated
   `HEAD /rate_limit`. Provider-free repair `c35075a776ebf16dfd51a832cd4326239b5d7e7b` uses the
@@ -71,9 +79,9 @@
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:9d83875ee17bf45d33c520f904e7f124ce7ff0581e456d52bab6de4e32917f18` and UUID
-  `a03edc8f-817f-4579-8bce-28b3447ce30f`, plus protected static descriptor self-hash
-  `sha256:7e0d8492534eb5962feb9cd8b093296399da011831761dff556023c8085194c7`.
+  `sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88` and UUID
+  `779b91ec-9fc9-4622-9e37-fefddb93cd2f`, plus protected static descriptor self-hash
+  `sha256:e8d179d126aba0b24e4467518d76433ea5938d6735d91a9887118492c65fb58a`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is

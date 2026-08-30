@@ -32,13 +32,20 @@ const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13
 const DESCRIPTOR_PATH = path.join(ROOT, "protected-inputs/v2-13/static-release-descriptor.json");
 const PROTECTED_INPUT_PATH = path.join(ROOT, "protected-inputs/v2-13/materialization-seed-input.json");
 const RELEASE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
-const EXECUTION_CONTROL_COMMIT = "a2b58c6c1e8c3c0e70fc7188904b425f505199cf";
-const AUDITED_CODE_COMMIT = "639fb78319f18c02eea9ea36e0988099be0cfc4c";
-const FACTS_SHA256 = "sha256:9d83875ee17bf45d33c520f904e7f124ce7ff0581e456d52bab6de4e32917f18";
-const AUDIT_SHA256 = "sha256:fbae7441432a9e572bac4fbfb92fb43fc6dda2272765bd8002cf1e38eecd4311";
-const DESCRIPTOR_SHA256 = "sha256:7e0d8492534eb5962feb9cd8b093296399da011831761dff556023c8085194c7";
-const PROTECTED_INPUT_SHA256 = "sha256:2c6b83e44814776566ba13c4eb0d2fd08cf9d76f9772f47f4315d677ec9d5d6a";
-const FULL_LIVE_AUTHORITY_ID = "a03edc8f-817f-4579-8bce-28b3447ce30f";
+const EXECUTION_CONTROL_COMMIT = "e804bd7ecc1bf4b807512fa62f33cba2890780a2";
+const AUDITED_CODE_COMMIT = "c73eda0e3df3b028b7cbf9e9d176d1b0b5457905";
+const FACTS_SHA256 = "sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88";
+const AUDIT_SHA256 = "sha256:f0dc968a7835f968edc8c3f1e7dd2e6bf43625028c05a54dce19bb110986912d";
+const DESCRIPTOR_SHA256 = "sha256:e8d179d126aba0b24e4467518d76433ea5938d6735d91a9887118492c65fb58a";
+const PROTECTED_INPUT_SHA256 = "sha256:44d61714a1096a8d0615c2ca47a9311bb21d18fbfe57c798c425b9d7b24ee045";
+const FULL_LIVE_AUTHORITY_ID = "779b91ec-9fc9-4622-9e37-fefddb93cd2f";
+const SUPERSEDED_PROPOSAL_SHA256 =
+  "sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c";
+const SUPERSEDED_PROPOSAL_RECORD_COMMIT = "f7500d2f7e5a7b4bf12e6ac579e7f08547d364fb";
+const SUPERSEDED_AUTHORITY_ID = "v2-13-full-live-20260830-011151z-5cc63415";
+const SUPERSEDED_AUTHORITY_RECORD_COMMIT = "c88cc2c414692e0cc12083f4d1e9ed1c48482d29";
+const SUPERSEDED_TERMINAL_SHA256 =
+  "sha256:d2655a24f51cef1c45430cb8b3240dd87aef842fca15f688a382d0174fc17169";
 const TAG = "videoforge-v2-13-release-20260826-v3";
 const EXACT_OAUTH_SCOPES = [
   "account:read", "agent-memory:write", "ai-search:run", "ai-search:write", "ai:write",
@@ -319,6 +326,38 @@ assert(
     proposal.supersession?.prior_approval_reusable === false && proposal.supersession?.fresh_exact_approval_required === true,
   "PREDECESSOR_BINDING",
 );
+const supersededTerminalPath = path.join(
+  ROOT,
+  "protected-inputs/v2-13/history/v2-13-full-live-20260830-011151z-5cc63415/full-live-state.json",
+);
+const { bytes: supersededTerminalBytes, value: supersededTerminal } = await readJson(
+  supersededTerminalPath,
+  "SUPERSEDED_TERMINAL",
+);
+assert(
+  sha256(supersededTerminalBytes) === SUPERSEDED_TERMINAL_SHA256 &&
+    supersededTerminal.authority_id === SUPERSEDED_AUTHORITY_ID &&
+    supersededTerminal.authority_record_commit === SUPERSEDED_AUTHORITY_RECORD_COMMIT &&
+    supersededTerminal.proposal_sha256 === SUPERSEDED_PROPOSAL_SHA256 &&
+    supersededTerminal.state === "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY" &&
+    supersededTerminal.terminal ===
+      "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED" &&
+    supersededTerminal.failure_boundary === "OPERATION_EXECUTION" &&
+    supersededTerminal.failure_code === "WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT" &&
+    supersededTerminal.total_reserved_usd === 0 &&
+    supersededTerminal.total_settled_usd === 0 &&
+    proposal.supersession?.supersedes_proposal_sha256 === SUPERSEDED_PROPOSAL_SHA256 &&
+    proposal.supersession?.supersedes_proposal_record_commit ===
+      SUPERSEDED_PROPOSAL_RECORD_COMMIT &&
+    proposal.supersession?.superseded_authority_id === SUPERSEDED_AUTHORITY_ID &&
+    proposal.supersession?.superseded_approval_record_path.startsWith(
+      `git:${SUPERSEDED_AUTHORITY_RECORD_COMMIT}:`,
+    ) &&
+    proposal.supersession?.superseded_authority_record_path.startsWith(
+      `git:${SUPERSEDED_AUTHORITY_RECORD_COMMIT}:`,
+    ),
+  "SUPERSEDED_TERMINAL_BINDING",
+);
 const descriptorBinding = { path: "protected-inputs/v2-13/static-release-descriptor.json", sha256: DESCRIPTOR_SHA256 };
 const factsBinding = { commit_field: "source.execution_control.commit", full_live_authority_id: FULL_LIVE_AUTHORITY_ID, path: "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json", sha256: FACTS_SHA256 };
 assert(
@@ -372,7 +411,7 @@ assert(
 );
 assert(
   proposal.supersession.superseded_authority_record_sha256 ===
-    "sha256:387efb67c2494e3a4d3827832a8f6dbf362a60865b42c8dc0663ff548189d65d",
+    "sha256:44850673e198e0c441f9f09b7679753a88408ef0dfb070fdd8bac8ef9aa48cb6",
   "SUPERSESSION_AUTHORITY_RECORD",
 );
 assert(
