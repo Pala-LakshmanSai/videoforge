@@ -71,14 +71,15 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_2_PRESET_REMOVE_SOURCE_GREEN_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
-  implementation_commit: "f431565b6e31b62493bc2071363fe76ff7a07d47"
+  status: LIVE_STEP_2_PRESET_REMOVE_AND_CREATION_UX_SOURCE_GREEN_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
+  implementation_commit: "12cf771b22824fcfe64000cfa245d566f7875a83"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
     - "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
     - "6fb8a8a55850b157a7fb99dd86e4a74d7ffa6ce1"
     - "43c5b2f664df6a9e0dae91a1223dbd73cddf624e"
     - "f431565b6e31b62493bc2071363fe76ff7a07d47"
+    - "12cf771b22824fcfe64000cfa245d566f7875a83"
   deployment_candidate: PENDING_FRESH_EXACT_USER_APPROVAL
   deployed_source_commit: "588ad594d43748c6d1bb3ae9fe1bebd3be01b570"
   cloudflare_worker_version_id: "6b6c399a-8cdf-4496-97d1-853689cca597"
@@ -113,6 +114,7 @@ hosted_beta_user_walkthrough:
     - "Authenticated Chrome found the first hub deployment's catalog count query touched image_style_references, which the least-privilege runtime role cannot read. Repair 6fb8a8a5 removes that unnecessary query, keeps the deliberate no-reference style cover, and restores the catalog without a database grant or mutation."
     - "Authenticated Chrome proved the catalog repair and compact hub layout live, then found avatar preview still touched avatar_profile_assets, another intentionally ungranted link table. Repair 43c5b2f6 resolves the owned thumbnail through already-granted avatar_profiles, avatar_profile_versions, and assets; it also prefers READY/PUBLISHED version state so healthy cards no longer show ACTIVE."
     - "Source f431565b adds Remove inside workspace-owned Avatar and Image Style details, confirmation/loading/error states, tenant-scoped archive-only migration 0051, immutable built-in protection, historical version/media preservation, stale-workflow ACTIVE parent locks, and the exact no-DELETE runtime grants required by hosted preset creation. It is provider-free green and awaits deployment approval."
+    - "Source 12cf771b fixes unreadable hosted avatar/style inputs, adds explicit accessible labels, clearer upload guidance and readiness states, bounded responsive form layout, selected-avatar/style preview styling, accurate review copy, and a simpler save/approve/profile-review sequence. Desktop and compact Chromium checks confirm readable typed text."
   current_step: AVATAR_CREATION_AND_APPROVAL
   remaining_steps:
     - AVATAR_CREATION_AND_APPROVAL
@@ -137,6 +139,9 @@ hosted_beta_user_walkthrough:
     hosted_preset_runtime_grants: "PASS_1_OF_1_NO_DELETE"
     hosted_preset_remove_staging_build: PASS
     hosted_preset_remove_deployment_validation: PASS
+    hosted_preset_creation_ui_unit: "PASS_31_OF_31"
+    hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
+    hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     v2_06_deployment_validator: PASS
     auth_database_and_redemption_focused: "PASS_9_OF_9"
     auth_migration_smoke_and_hardening: "PASS_15_OF_15"
