@@ -1610,7 +1610,7 @@ function validateState(state) {
     state.full_live_executor_path !== "deploy/v2-13/full-live-executor.mjs" ||
     state.full_live_executor_sha256 !==
       (isV3State || isV4State
-        ? "sha256:31235a0359e8c25ff196a7c718988a0facb7da1eca2ffa8646adc575621ea22d"
+        ? "sha256:979f3889e2b1086773756bcfabe0be93e4489f276779ddc01604df993c2d64e8"
         : "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910") ||
     !HASH.test(state.materialization_seed_sha256 ?? "") ||
     typeof state.static_release_descriptor_path !== "string" ||

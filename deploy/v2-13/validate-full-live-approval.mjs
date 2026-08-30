@@ -250,7 +250,11 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   full_live_executor: Object.freeze({
     path: "deploy/v2-13/full-live-executor.mjs",
-    sha256: "sha256:31235a0359e8c25ff196a7c718988a0facb7da1eca2ffa8646adc575621ea22d",
+    sha256: "sha256:979f3889e2b1086773756bcfabe0be93e4489f276779ddc01604df993c2d64e8",
+  }),
+  full_live_launcher: Object.freeze({
+    path: "deploy/v2-13/launch-full-live.mjs",
+    sha256: "sha256:d1ad9272ca71c6d39de303735b65fcac2fd4cbd53b96f1afaa244b8ab9a968f9",
   }),
   guarded_activation: Object.freeze({
     path: "deploy/v2-13/guarded-activation.mjs",
@@ -294,7 +298,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   orchestration_authority: Object.freeze({
     path: "deploy/v2-13/full-live-orchestration-authority.mjs",
-    sha256: "sha256:1a92a2d6bc6ac1e9a571531cbfd2da0e677e27d8842e64d5c75a76c042ffca7c",
+    sha256: "sha256:92f7d4223c934a746fab83c0687803f2692e3b7314072481b21254c22bc3e25f",
   }),
   promotion: Object.freeze({
     path: "deploy/v2-13/promote-qualified-production.mjs",
@@ -314,7 +318,7 @@ const EXACT_V4_EXECUTION_CONTROL_COMPONENTS = Object.freeze({
   }),
   source_closure_manifest: Object.freeze({
     path: "deploy/v2-13/full-live-source-closure.json",
-    sha256: "sha256:b941da144d1ac1a5938e02866e01ea55738df81f4623c85ea553cf18ea001dda",
+    sha256: "sha256:c39a603f90148932a8c4c9e3c95d7e33a4f3a3060cd9a23b500780aca68af5d6",
   }),
   typescript_cli_bridge: Object.freeze({
     path: "apps/web/src/server/providers/v213-full-live-cli.ts",

@@ -1066,6 +1066,10 @@
       "sha256": "sha256:e0be9e39607c8aed3646fc8acb1f8c34413565fe5d50915790a69f9165d6eb36"
     },
     {
+      "path": "deploy/v2-13/launch-full-live.mjs",
+      "sha256": "sha256:d1ad9272ca71c6d39de303735b65fcac2fd4cbd53b96f1afaa244b8ab9a968f9"
+    },
+    {
       "path": "deploy/v2-13/media-worker-release-readback.mjs",
       "sha256": "sha256:933e78b9c9bddeb7681af0f4a397d2352c1253199d6b4d8a3af874aad3c959d7"
     },
@@ -1095,7 +1099,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "sha256:a9bdc198deb3eb3d9bc9542eebffa388414cb915719ffacbff6523b6c7c7057b"
+      "sha256": "sha256:7705c006db0dd41a5e66d0feae34fd53c6e4d6fb55a2f5814868c0fbbd21c994"
     },
     {
       "path": "packages/config/package.json",
