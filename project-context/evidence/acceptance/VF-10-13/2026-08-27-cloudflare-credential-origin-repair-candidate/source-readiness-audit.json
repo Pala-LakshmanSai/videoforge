@@ -1,12 +1,12 @@
 {
   "schema_version": "videoforge.v2-13-full-live-source-readiness-audit/v1",
   "task_id": "VF-10-13",
-  "audited_code_commit": "c73eda0e3df3b028b7cbf9e9d176d1b0b5457905",
+  "audited_code_commit": "cbbb38d173175bc417a98594cec60d1c31c9949e",
   "audit_result": "PASS_READY_TO_RESEAL",
   "evidence_class": "INDEPENDENT_RELEASE_AUDIT",
   "observer_id": "codex.successor-source-audit",
   "fixture_or_fake_transport_used": false,
-  "observed_at": "2026-08-30T01:55:00.000Z",
+  "observed_at": "2026-08-30T03:16:42.000Z",
   "time_source": "LOCAL_PROCESS_UTC_NOT_EXECUTION_AUTHORITY",
   "provider_state_observed": false,
   "credential_accessed": false,
@@ -17,7 +17,7 @@
   "source_closure": {
     "path": "deploy/v2-13/full-live-source-closure.json",
     "entry_count": 649,
-    "sha256": "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78",
+    "sha256": "sha256:b941da144d1ac1a5938e02866e01ea55738df81f4623c85ea553cf18ea001dda",
     "exact": true
   },
   "production_origin": {
@@ -27,24 +27,40 @@
   "contract_bundle": {
     "definition": "CANONICAL_FULL_LIVE_SOURCE_CLOSURE_BYTES",
     "path": "deploy/v2-13/full-live-source-closure.json",
-    "sha256": "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78"
+    "sha256": "sha256:b941da144d1ac1a5938e02866e01ea55738df81f4623c85ea553cf18ea001dda"
   },
   "source_components": {
     "full_live_executor": {
       "path": "deploy/v2-13/full-live-executor.mjs",
-      "sha256": "sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93"
+      "sha256": "sha256:31235a0359e8c25ff196a7c718988a0facb7da1eca2ffa8646adc575621ea22d"
     },
     "full_live_orchestration_authority": {
       "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-      "sha256": "sha256:83b9c68cd45c182e154e5e7604f84f6db660036c3ba64e630bd0a3f54cb92405"
+      "sha256": "sha256:1a92a2d6bc6ac1e9a571531cbfd2da0e677e27d8842e64d5c75a76c042ffca7c"
     },
     "approval_validator": {
       "path": "deploy/v2-13/validate-full-live-approval.mjs",
-      "sha256": "sha256:47a325c0bee0dadfe41270996ad876a11f255b207ff73461e75b4ebf532c062c"
+      "sha256": "sha256:3b0cb71287d693e021ceb90f772d5598ef0d228d3377d796517ce87b3b6d2c93"
     },
     "migration_0049": {
       "path": "packages/control-plane/migrations/0049_hosted_full_live_promotion_lineage.sql",
       "sha256": "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31"
+    },
+    "full_live_adapters": {
+      "path": "deploy/v2-13/full-live-adapters.mjs",
+      "sha256": "sha256:f05a3d90f88bcce1d3ab9aca07013497f73fd0cc61b3af298034dce1f7d618d0"
+    },
+    "guarded_activation": {
+      "path": "deploy/v2-13/guarded-activation.mjs",
+      "sha256": "sha256:e0be9e39607c8aed3646fc8acb1f8c34413565fe5d50915790a69f9165d6eb36"
+    },
+    "typescript_cli_bridge": {
+      "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
+      "sha256": "sha256:9298c774d939dcd9a53f565b08f673c27fff7576360a3c69eea00dcf1473b3c0"
+    },
+    "materialization_seed_builder": {
+      "path": "deploy/v2-13/build-materialization-seed.mjs",
+      "sha256": "sha256:ae61156b811a3f93d26b3d10db35f4d180f2040f8c82fa91b570d3f35603e286"
     }
   },
   "validation": {
@@ -54,8 +70,15 @@
     "package_test_files_passed": 2,
     "package_tests_passed": 51,
     "package_tests_skipped": 0,
-    "focused_release_script_tests_passed": 92,
-    "focused_release_adapter_tests_passed": 57,
+    "focused_release_script_tests_passed": 97,
+    "focused_release_adapter_tests_passed": 66,
+    "focused_build_and_guarded_tests_passed": 52,
+    "focused_cli_tests_passed": 50,
+    "independent_audit_tests_passed": 265,
+    "independent_audit_tests_total": 265,
+    "independent_audit_p0_findings": 0,
+    "independent_audit_p1_findings": 0,
+    "independent_audit_blocking_p2_findings": 0,
     "stale_lock_stress_runs": 12,
     "stale_lock_contenders_per_run": 6,
     "stale_lock_stress_passed": true,
@@ -109,6 +132,7 @@
         "authTenantPassed": true,
         "costAmplificationGuardsPassed": true,
         "legacyRuntimeBundleScanPassed": true,
+        "blockingP2Count": 0,
         "p0Count": 0,
         "p1Count": 0,
         "secretLogScanPassed": true,
@@ -136,15 +160,16 @@
   },
   "notes": [
     "This record contains no credentials or raw protected values.",
-    "The immutable release payload and exact lightweight tag remain bound to 15af5e20ce3c80eb61d5d1e807a87e8840ed9685; only execution-control source and evidence advance for this successor.",
+    "The v5 successor binds exact tag videoforge-v2-13-release-20260830-v5 and release source commit 417e84d4f021699337e9bd411753777d689728d7. Its split lane lineage is intentional: Mage remains predecessor-bound at 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 for readback and reconciliation, while SoulX binds 417e84d4f021699337e9bd411753777d689728d7; no predecessor bytes are relabeled.",
     "The immediately previous full-live authority v2-13-full-live-20260830-011151z-5cc63415 was consumed once and stopped before workflow dispatch because the adapter incorrectly required the reconciliation-only Mage default-branch bytes to equal the immutable release bytes. Cleanup completed with zero Pods, workers, queues, endpoints, templates, GPU use, attempt spend, database bootstrap, production activation, or live acceptance; only the two approved volumes remain.",
     "The successor binds the current terminal archive sha256:d2655a24f51cef1c45430cb8b3240dd87aef842fca15f688a382d0174fc17169 and performs zero tag mutation. Mage operation 5 remains predecessor-bound readback of workflow run 33236590768 with no redispatch. The v2 proof records both registered workflows and both release-source hashes, permits the truthful Mage main mismatch, and still requires SoulX main bytes and commit to match the sealed registration evidence before SoulX dispatch.",
     "Default-branch repair authority v2-13-default-branch-repair-20260829-120719z-graphql was consumed exactly once at zero spend. GitHub main is c24d37e164d3fcf93c04d53a1e8f06ab972c5d46, and the exact release-source SoulX workflow is registered active with hash-bound evidence sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42.",
-    "V3 payload contracts remain backward compatible while 19 V4 execution-control components are separately commit-tree-bound. Guarded activation runs only from the successor control commit, rejects predecessor authority replay, and proves every non-control closure byte equals the immutable payload.",
-    "The focused executor and authority checks pass 92 of 92 at clean audited source commit c73eda0e3df3b028b7cbf9e9d176d1b0b5457905; release adapter checks pass 57 of 57 and build-seed checks pass 25 of 25. Exact commit, closure, terminal hygiene, and default NO_ACTION checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-bind gate.",
-    "Audited source c73eda0e3df3b028b7cbf9e9d176d1b0b5457905 binds all 649 closure entries, the 49-row migration manifest, executor, orchestration authority, and externally tree-bound approval validator without changing the immutable release payload or lightweight tag. The consumed approval and authority were removed from the active candidate path after their exact bytes and terminal state were archived; the replacement must use a fresh UUID and fresh exact approval.",
+    "V3 payload contracts remain backward compatible while 23 V4 execution-control components are separately commit-tree-bound. Guarded activation runs only from the successor control commit, rejects predecessor authority replay, and proves every non-control closure byte equals the immutable payload.",
+    "The independent source audit passes 265 of 265 focused checks with zero P0, P1, or blocking P2 findings: executor and authority 97 of 97, release adapters 66 of 66, build plus guarded activation 52 of 52, and TypeScript CLI bridge 50 of 50. Exact commit, closure, terminal hygiene, and default NO_ACTION checks pass with zero external calls, mutation, GPU use, or spend; canonical full verification remains a required post-reseal gate.",
+    "Audited clean C0 source cbbb38d173175bc417a98594cec60d1c31c9949e binds all 649 closure entries, the 49-row migration manifest, executor sha256:31235a0359e8c25ff196a7c718988a0facb7da1eca2ffa8646adc575621ea22d, orchestration authority sha256:1a92a2d6bc6ac1e9a571531cbfd2da0e677e27d8842e64d5c75a76c042ffca7c, approval validator sha256:3b0cb71287d693e021ceb90f772d5598ef0d228d3377d796517ce87b3b6d2c93, full adapters sha256:f05a3d90f88bcce1d3ab9aca07013497f73fd0cc61b3af298034dce1f7d618d0, guarded activation sha256:e0be9e39607c8aed3646fc8acb1f8c34413565fe5d50915790a69f9165d6eb36, TypeScript CLI bridge sha256:9298c774d939dcd9a53f565b08f673c27fff7576360a3c69eea00dcf1473b3c0, and seed builder sha256:ae61156b811a3f93d26b3d10db35f4d180f2040f8c82fa91b570d3f35603e286. The v5 split release lineage and component reseal are source-controlled; no tag mutation or provider action occurred.",
     "The exact migration-0049 component is sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31. Hosted pair composition requires the exact 13-row 0037-0049 ledger, fails closed with MIGRATION_LEDGER_0037_0049_INVALID on drift, and remains DISABLED_UNQUALIFIED until qualified transport truth is present; focused composition and configuration-qualified tests prove the current gate.",
     "The stale state-lock repair was stress-tested across 12 clean runs with 6 synchronized contenders per run: exactly one winner, all other contenders fail closed, and no lock or candidate debris remains. This is provider-free evidence only; no authority was consumed and no provider, GPU, credential, or spend action occurred.",
+    "The terminal failed successor attempt is separately bound and non-reusable: authority v2-13-full-live-20260830-021108z-d3bfbb40, authority record commit 4e199ca114bfd9d5850c616fc4a237214f6c9ae5, proposal sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d, terminal state sha256:76e52ec7a273cda26ec1c87ba473f060927d85218560ccef3ee8f0a045aa064e, SoulX run 33287914248 attempt 1, failure code WORKFLOW_RUN_TERMINAL_FAILURE. It cannot be retried or redispatched.",
     "The successor authority identifier is proven distinct from the exact predecessor in both approval validation and outer authority validation before durable single-use consumption; guarded activation repeats the check as defense in depth."
   ]
 }
