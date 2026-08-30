@@ -3210,14 +3210,6 @@ async function catalog(
                   WHEN bool_and(reference.original_retention_policy = 'DELETE_AFTER_ANALYSIS') THEN 'DELETE_AFTER_ANALYSIS'
                   ELSE NULL
                 END AS original_retention_policy,
-                (
-                  SELECT max(run.reported_cost_micro_usd)
-                    FROM hosted_style_analysis_runs AS run
-                   WHERE run.account_id = version.account_id
-                     AND run.workspace_id = version.workspace_id
-                     AND run.style_version_id = version.id
-                     AND run.state = 'SUCCEEDED'
-                ) AS analysis_cost_micro_usd,
                 CASE WHEN version.state = 'NEEDS_REVIEW' THEN version.profile_payload ELSE NULL END AS profile_payload
            FROM image_styles AS style
            JOIN image_style_versions AS version
@@ -3314,10 +3306,6 @@ async function catalog(
           typeof row.original_retention_policy === "string"
             ? row.original_retention_policy
             : null,
-        analysis_cost_usd:
-          numberOrNull(row.analysis_cost_micro_usd) === null
-            ? null
-            : numberOrNull(row.analysis_cost_micro_usd)! / 1_000_000,
         profile: row.state === "NEEDS_REVIEW" ? profile : null,
         summary:
           row.state === "NEEDS_REVIEW" && typeof profile?.summary === "string"

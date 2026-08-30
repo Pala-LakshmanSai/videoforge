@@ -162,6 +162,11 @@ describe("hosted product route contract", () => {
     expect(testState.query.mock.calls.some(([sql]) => String(sql).includes("image_styles"))).toBe(
       true,
     );
+    expect(
+      testState.query.mock.calls.some(([sql]) =>
+        String(sql).includes("hosted_style_analysis_runs"),
+      ),
+    ).toBe(false);
   });
 
   it("returns active tenant drafts separately so they can be resumed without becoming project presets", async () => {
@@ -188,7 +193,6 @@ describe("hosted product route contract", () => {
       rights_attested: true,
       processing_disclosure_acknowledged: true,
       original_retention_policy: "RETAIN",
-      analysis_cost_micro_usd: "1200",
       references_verified: true,
       created_at: "2026-08-30T10:00:00.000Z",
       updated_at: "2026-08-30T10:01:00.000Z",
@@ -225,7 +229,6 @@ describe("hosted product route contract", () => {
           rights_attested: true,
           processing_disclosure_acknowledged: true,
           original_retention_policy: "RETAIN",
-          analysis_cost_usd: 0.0012,
           references_verified: true,
           summary: "Natural light and restrained texture.",
           profile: { summary: "Natural light and restrained texture." },
