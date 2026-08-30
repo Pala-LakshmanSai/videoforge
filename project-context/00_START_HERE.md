@@ -4,26 +4,25 @@
 
 ### New-chat launch point — 2026-08-30
 
-- Fresh full-live successor proposal `sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d`
+- Fresh full-live v5 successor proposal `sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444`
   is sealed against execution-control evidence commit
-  `e804bd7ecc1bf4b807512fa62f33cba2890780a2` and immutable release source
-  `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. The source-readiness audit binds application source
-  commit `c73eda0e3df3b028b7cbf9e9d176d1b0b5457905`, audit
-  `sha256:f0dc968a7835f968edc8c3f1e7dd2e6bf43625028c05a54dce19bb110986912d`, and materialization
-  facts `sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88`. The V4 control
-  commit binds the 49-row runtime migration manifest and all 22 exact execution-control components
-  while preserving the immutable 45-row V3 payload. It preserves the exact closed 26-operation graph
-  and all caps, performs predecessor-bound Mage readback with no redispatch, and binds repaired GitHub
-  `main` workflow registration. No approval or live authority exists;
+  `731ee45a9aa2641e1a0b941b3e04e99a686645fb` and SoulX release source
+  `417e84d4f021699337e9bd411753777d689728d7`. The source-readiness audit binds application source
+  commit `cbbb38d173175bc417a98594cec60d1c31c9949e`, audit
+  `sha256:ba3637f2707439a387f2b92427bb75c58f6b1dd421345e16cddb25ffbfa1d5a8`, and materialization
+  facts `sha256:3adee421edb98f921b1a18ca9483157af32801632d9269e3953d7aaf29c23c09`.
+  It preserves the exact closed 26-operation graph and all caps, creates only the new immutable v5
+  tag, performs predecessor-bound Mage run `33236590768` readback with no redispatch, and dispatches
+  only SoulX from the repaired source. Workflow evidence v2 truthfully binds active GitHub `main`
+  registration separately from the new release bytes. No approval or live authority exists;
   credential access, provider mutation, GPU use, and spend remain unauthorized.
-- The immediately prior proposal `sha256:5cc63415…58ea3c` was approved and consumed once under
-  authority `v2-13-full-live-20260830-011151z-5cc63415`. It stopped before workflow dispatch on
-  `WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT`: SoulX remained exact, but the adapter incorrectly required
-  the reconciliation-only Mage workflow on `main` to match the historical release bytes. Repair
-  `c73eda0` records both hashes truthfully, keeps Mage readback-only with no redispatch, and still
-  requires exact sealed SoulX registration before dispatch. Cleanup proved zero compute and `$0`
-  attempt spend; the authority is terminal and archived at
-  `protected-inputs/v2-13/history/v2-13-full-live-20260830-011151z-5cc63415/`.
+- The immediately prior proposal `sha256:d3bfbb40…ab598d` was approved and consumed once under
+  authority `v2-13-full-live-20260830-021108z-d3bfbb40`. Mage was reconciled without redispatch and
+  SoulX run `33287914248` was dispatched once, then failed in its container build because `pip check`
+  treated decord 0.6.0's platform metadata as fatal. Repair source `417e84d` preserves decord and its
+  runtime contract while accepting only that exact diagnostic. Cleanup proved zero compute and `$0`
+  attempt spend; the authority is terminal, cannot be retried or redispatched, and is archived at
+  `protected-inputs/v2-13/history/v2-13-full-live-20260830-021108z-d3bfbb40/`.
 - Final pre-execution audit stopped proposal `sha256:41e7646f…486d6` before protected authority
   materialization or consumption because GitHub now returns HTTP 404 to unauthenticated
   `HEAD /rate_limit`. Provider-free repair `c35075a776ebf16dfd51a832cd4326239b5d7e7b` uses the
@@ -79,9 +78,9 @@
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88` and UUID
-  `779b91ec-9fc9-4622-9e37-fefddb93cd2f`, plus protected static descriptor self-hash
-  `sha256:e8d179d126aba0b24e4467518d76433ea5938d6735d91a9887118492c65fb58a`.
+  `sha256:3adee421edb98f921b1a18ca9483157af32801632d9269e3953d7aaf29c23c09` and UUID
+  `a48680cb-6a46-412b-8531-488d86d374d3`, plus protected static descriptor v3 self-hash
+  `sha256:9f1491160c953a4f75e09fa3ef4ba2574ea139c87db8f3b220eac9b0bde86c6f`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
@@ -119,16 +118,16 @@ sealed volume-manifest, GPU, and region hashes. Release remains blocked until bo
 final two-lane smoke passes, and an independent zero-job/zero-worker drain is proven. No provider
 call, mutation, deployment, GPU use, or spend is currently authorized.
 
-The current provider-free release source is `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`, built from
-source-readiness-audited application source `c1e51ac5155d72383e3475e35c1e4868f0770473`;
+The current provider-free SoulX release source is `417e84d4f021699337e9bd411753777d689728d7`,
+with source-readiness-audited application/control source `cbbb38d173175bc417a98594cec60d1c31c9949e`;
 default entrypoints remain no-op. Its exact audited component pins include executor
-`sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910`, adapters
-`sha256:19256a5a9872203ed29062360a0f962374c5f37a254b9591bd48fa7af701ea20`, orchestration authority
-`sha256:ce4a92127d098392504bd1641d61865d3c94cfb7624de6939fe31157f1199e03`, and source closure
-`sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb`; the approval validator
+`sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93`, adapters
+`sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8`, orchestration authority
+`sha256:83b9c68cd45c182e154e5e7604f84f6db660036c3ba64e630bd0a3f54cb92405`, and source closure
+`sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78`; the approval validator
 is externally bound to the exact release-commit tree entry with no self-hash. It retains the zero-cap
 `bootstrap_prequalification_database` operation after SoulX verification and before
-`fresh-live-preflight`, exact 36-to-45 recovery, protected receipt/CAS and seed gates, strict
+`fresh-live-preflight`, exact 36-to-49 recovery, protected receipt/CAS and seed gates, strict
 credential/origin boundaries, operator-only fresh preflight, and staged full runtime inputs. The
 exact release closure and component hashes are bound by the fresh sealed successor proposal and its
 source-readiness evidence. This is source/test proof only. Production remains

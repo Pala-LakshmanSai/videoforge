@@ -1,5 +1,5 @@
 {
-  "schema_version": "videoforge.v2-13-full-live-completion-proposal/v4",
+  "schema_version": "videoforge.v2-13-full-live-completion-proposal/v5",
   "checkpoint_range": [
     "V2-07",
     "V2-08",
@@ -15,47 +15,50 @@
   "sealing": {
     "sealed_for_exact_user_approval": true,
     "current_bytes_are_approval_ineligible": false,
-    "required_next_action": "obtain fresh exact user approval of this sealed 26-operation proposal and static release descriptor before any authority record, credential access, provider call, mutation, GPU use, or spend",
+    "required_next_action": "obtain fresh exact user approval of this sealed 26-operation v5 proposal, successor tag creation, static release descriptor, and materialization-seed facts before any authority record, credential access, provider call, mutation, GPU use, or spend",
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:e8d179d126aba0b24e4467518d76433ea5938d6735d91a9887118492c65fb58a"
+      "sha256": "sha256:9f1491160c953a4f75e09fa3ef4ba2574ea139c87db8f3b220eac9b0bde86c6f"
     },
     "materialization_seed_facts": {
       "commit_field": "source.execution_control.commit",
-      "full_live_authority_id": "779b91ec-9fc9-4622-9e37-fefddb93cd2f",
+      "full_live_authority_id": "a48680cb-6a46-412b-8531-488d86d374d3",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88"
+      "sha256": "sha256:3adee421edb98f921b1a18ca9483157af32801632d9269e3953d7aaf29c23c09"
     },
     "workflow_registration_evidence": {
-      "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
-      "repository": "Pala-LakshmanSai/videoforge",
       "default_branch": "main",
       "default_branch_commit": "c24d37e164d3fcf93c04d53a1e8f06ab972c5d46",
-      "workflow_path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "workflow_file": "avatar-primary-serverless-image.yml",
-      "workflow_name": "avatar-primary-serverless-image",
-      "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
-      "release_source_workflow_sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
+      "default_branch_matches_release_source": false,
+      "default_branch_registration_only": true,
       "default_branch_workflow_sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
-      "registration_state": "REGISTERED_EXACT_DEFAULT_BRANCH",
+      "evidence_sha256": "sha256:2f3cedd3c7c6e228570e6839c8d62d89823b09d6a8ced4d62171482609f2fc15",
       "materialized": true,
-      "bound_to_release_source": true,
-      "evidence_sha256": "sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42"
+      "registration_state": "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND",
+      "release_source_commit": "417e84d4f021699337e9bd411753777d689728d7",
+      "release_source_workflow_sha256": "sha256:9d6f37d1369b4b50de8053efb252b39c8728a51e578593ddafcfc9f02aa28ac2",
+      "repository": "Pala-LakshmanSai/videoforge",
+      "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v2",
+      "workflow_file": "avatar-primary-serverless-image.yml",
+      "workflow_id": 345299384,
+      "workflow_name": "avatar-primary-serverless-image",
+      "workflow_path": ".github/workflows/avatar-primary-serverless-image.yml",
+      "workflow_state": "active"
     }
   },
   "supersession": {
-    "supersedes_proposal_sha256": "sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c",
-    "supersedes_proposal_record_commit": "f7500d2f7e5a7b4bf12e6ac579e7f08547d364fb",
+    "supersedes_proposal_sha256": "sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d",
+    "supersedes_proposal_record_commit": "c2b90f8a6f443978ef013ef6daed4750f4e2e2ec",
     "superseded_exact_user_approval_received_in_current_task": true,
     "superseded_approval_record_materialized": true,
-    "superseded_approval_record_path": "git:c88cc2c414692e0cc12083f4d1e9ed1c48482d29:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/user-approval.json",
-    "superseded_approval_record_sha256": "sha256:9bd37f0956cf9580e41c3fe4bbfd7751091d8c0cbf36525094a754999166edae",
+    "superseded_approval_record_path": "git:4e199ca114bfd9d5850c616fc4a237214f6c9ae5:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/user-approval.json",
+    "superseded_approval_record_sha256": "sha256:9926d14ff50659bd421fa60bb882cc0249a37aa044acf7c3c4a1af2a3b806c46",
     "superseded_authority_materialized": true,
-    "superseded_authority_id": "v2-13-full-live-20260830-011151z-5cc63415",
-    "superseded_authority_record_path": "git:c88cc2c414692e0cc12083f4d1e9ed1c48482d29:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/approved-authority.json",
-    "superseded_authority_record_sha256": "sha256:44850673e198e0c441f9f09b7679753a88408ef0dfb070fdd8bac8ef9aa48cb6",
-    "supersession_reason": "PREDECESSOR_FULL_LIVE_OPERATION_FAILED_WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT_NO_REDISPATCH",
-    "superseded_authority_state": "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY_ZERO_SPEND_NO_PROVIDER_MUTATION",
+    "superseded_authority_id": "v2-13-full-live-20260830-021108z-d3bfbb40",
+    "superseded_authority_record_path": "git:4e199ca114bfd9d5850c616fc4a237214f6c9ae5:project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/approved-authority.json",
+    "superseded_authority_record_sha256": "sha256:4e45de5838c53064e68aed1700b39aa26e8545f7e723df5baa98e0d4e2c546bb",
+    "supersession_reason": "TERMINAL_SOULX_IMAGE_BUILD_FAILED_DECORD_PLATFORM_DIAGNOSTIC_REPAIRED_NO_RETRY_NO_REDISPATCH",
+    "superseded_authority_state": "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY_ZERO_SPEND_NO_RUNPOD_WORK",
     "prior_approval_reusable": false,
     "fresh_exact_approval_required": true,
     "predecessor_release_attempt": {
@@ -80,11 +83,41 @@
       "mage_public_manifest_sha256": "sha256:2fb91935d142ad44b9dad28d997c5a1c1861067b22ff4c8931d24faf97fd3b3a",
       "mage_workflow_conclusion": "success",
       "mage_public_all_blobs_verified": true
+    },
+    "terminal_failed_successor_attempt": {
+      "authority_id": "v2-13-full-live-20260830-021108z-d3bfbb40",
+      "authority_record_commit": "4e199ca114bfd9d5850c616fc4a237214f6c9ae5",
+      "proposal_sha256": "sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d",
+      "proposal_record_commit": "c2b90f8a6f443978ef013ef6daed4750f4e2e2ec",
+      "approval_sha256": "sha256:9926d14ff50659bd421fa60bb882cc0249a37aa044acf7c3c4a1af2a3b806c46",
+      "authority_sha256": "sha256:4e45de5838c53064e68aed1700b39aa26e8545f7e723df5baa98e0d4e2c546bb",
+      "terminal_state_sha256": "sha256:76e52ec7a273cda26ec1c87ba473f060927d85218560ccef3ee8f0a045aa064e",
+      "terminal_state": "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY",
+      "terminal": "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED",
+      "failure_boundary": "OPERATION_EXECUTION",
+      "failure_code": "WORKFLOW_RUN_TERMINAL_FAILURE",
+      "failure_operation_id": "soulx-image-workflow-verification",
+      "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+      "mage_workflow_run_id": "33236590768",
+      "mage_redispatch_performed": false,
+      "mage_predecessor_verified": true,
+      "soulx_workflow_dispatch_performed": true,
+      "soulx_workflow_run_id": "33287914248",
+      "soulx_workflow_attempt": 1,
+      "soulx_workflow_conclusion": "failure",
+      "database_bootstrap_performed": false,
+      "production_activation_performed": false,
+      "runpod_work_dispatched": false,
+      "gpu_use": false,
+      "attempt_reserved_usd": 0,
+      "attempt_settled_usd": 0,
+      "authority_reusable": false,
+      "production_state": "DISABLED_UNQUALIFIED"
     }
   },
   "source": {
-    "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
-    "repaired_release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "release_source_commit": "417e84d4f021699337e9bd411753777d689728d7",
+    "repaired_release_source_commit": "417e84d4f021699337e9bd411753777d689728d7",
     "proposal_record_commit": null,
     "future_approval_record_commit": null,
     "future_authority_record_commit": null,
@@ -94,7 +127,7 @@
     "future_approval_record_basename": "user-approval.json",
     "future_authority_record_basename": "approved-authority.json",
     "execution_control": {
-      "commit": "e804bd7ecc1bf4b807512fa62f33cba2890780a2",
+      "commit": "731ee45a9aa2641e1a0b941b3e04e99a686645fb",
       "exact_components": {
         "approval_validator": {
           "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -109,7 +142,7 @@
         },
         "avatar_primary_workflow": {
           "path": ".github/workflows/avatar-primary-serverless-image.yml",
-          "sha256": "sha256:cd07aeeb794b1e897194f2fc950c7bd999349d571d240c50d60f6eb40f1c597d"
+          "sha256": "sha256:9d6f37d1369b4b50de8053efb252b39c8728a51e578593ddafcfc9f02aa28ac2"
         },
         "backup_metadata_snapshot": {
           "path": "packages/control-plane/src/backup/metadata-snapshot.ts",
@@ -121,15 +154,15 @@
         },
         "full_live_adapters": {
           "path": "deploy/v2-13/full-live-adapters.mjs",
-      "sha256": "sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8"
+          "sha256": "sha256:f05a3d90f88bcce1d3ab9aca07013497f73fd0cc61b3af298034dce1f7d618d0"
         },
         "full_live_executor": {
           "path": "deploy/v2-13/full-live-executor.mjs",
-      "sha256": "sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93"
+          "sha256": "sha256:31235a0359e8c25ff196a7c718988a0facb7da1eca2ffa8646adc575621ea22d"
         },
         "guarded_activation": {
           "path": "deploy/v2-13/guarded-activation.mjs",
-          "sha256": "sha256:b6c40dce89b03f64d3aa0088254c3bfb840b61ae70b59d433ab6f2081745c261"
+          "sha256": "sha256:e0be9e39607c8aed3646fc8acb1f8c34413565fe5d50915790a69f9165d6eb36"
         },
         "hosted_live_production_adapters": {
           "path": "apps/web/src/server/hosted/v213-live-production-adapters.ts",
@@ -141,7 +174,7 @@
         },
         "materialization_seed_builder": {
           "path": "deploy/v2-13/build-materialization-seed.mjs",
-          "sha256": "sha256:ee0bd4d9a4afa6d0bc1851a043763b23c0e8788446377cf087dda7dfab8572ea"
+          "sha256": "sha256:ae61156b811a3f93d26b3d10db35f4d180f2040f8c82fa91b570d3f35603e286"
         },
         "migration_0046": {
           "path": "packages/control-plane/migrations/0046_hosted_full_live_cleanup_recovery.sql",
@@ -169,7 +202,7 @@
         },
         "orchestration_authority": {
           "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-      "sha256": "sha256:83b9c68cd45c182e154e5e7604f84f6db660036c3ba64e630bd0a3f54cb92405"
+          "sha256": "sha256:1a92a2d6bc6ac1e9a571531cbfd2da0e677e27d8842e64d5c75a76c042ffca7c"
         },
         "promotion": {
           "path": "deploy/v2-13/promote-qualified-production.mjs",
@@ -189,47 +222,47 @@
         },
         "source_closure_manifest": {
           "path": "deploy/v2-13/full-live-source-closure.json",
-      "sha256": "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78"
+          "sha256": "sha256:b941da144d1ac1a5938e02866e01ea55738df81f4623c85ea553cf18ea001dda"
         },
         "typescript_cli_bridge": {
           "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-          "sha256": "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af"
+          "sha256": "sha256:9298c774d939dcd9a53f565b08f673c27fff7576360a3c69eea00dcf1473b3c0"
         }
       }
     },
     "exact_release_components": {
       "full_live_executor": {
         "path": "deploy/v2-13/full-live-executor.mjs",
-        "sha256": "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910",
+        "sha256": "sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93",
         "sole_canonical_live_mutation_path": true
       },
       "full_live_adapters": {
         "path": "deploy/v2-13/full-live-adapters.mjs",
-        "sha256": "sha256:19256a5a9872203ed29062360a0f962374c5f37a254b9591bd48fa7af701ea20"
+        "sha256": "sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8"
       },
       "promotion": {
         "path": "deploy/v2-13/promote-qualified-production.mjs",
-        "sha256": "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2"
+        "sha256": "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba"
       },
       "guarded_activation": {
         "path": "deploy/v2-13/guarded-activation.mjs",
-        "sha256": "sha256:b5be2bb99a151e82129f685b083ae78db2395f46e0dbf3ff62822fb20f1cc5e8"
+        "sha256": "sha256:b6c40dce89b03f64d3aa0088254c3bfb840b61ae70b59d433ab6f2081745c261"
       },
       "orchestration_authority": {
         "path": "deploy/v2-13/full-live-orchestration-authority.mjs",
-        "sha256": "sha256:ce4a92127d098392504bd1641d61865d3c94cfb7624de6939fe31157f1199e03"
+        "sha256": "sha256:83b9c68cd45c182e154e5e7604f84f6db660036c3ba64e630bd0a3f54cb92405"
       },
       "typescript_cli_bridge": {
         "path": "apps/web/src/server/providers/v213-full-live-cli.ts",
-        "sha256": "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0"
+        "sha256": "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af"
       },
       "runpod_dual_lane_transport": {
         "path": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
-        "sha256": "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2"
+        "sha256": "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2"
       },
       "direct_qualification_materializer": {
         "path": "apps/web/src/server/providers/v213-direct-qualification-materializer.ts",
-        "sha256": "sha256:faf895d2c5e72b133090a7d9913d72e86fc5f1c5d2c26f2d583593c2cc3d9baa"
+        "sha256": "sha256:a12d9d063b6d85b67ca715ac8b5eb2c27c15dfa389ee1d3c963bb3317f242d37"
       },
       "hosted_qualification_materializer": {
         "path": "apps/web/src/server/hosted/v213-qualification-materializer.ts",
@@ -237,7 +270,7 @@
       },
       "materialization_seed_builder": {
         "path": "deploy/v2-13/build-materialization-seed.mjs",
-        "sha256": "sha256:61d16bf3e3d8c1e6ae51420930c39e7eb59a5bfe0253e2e04a3b2d36dce984d1"
+        "sha256": "sha256:ee0bd4d9a4afa6d0bc1851a043763b23c0e8788446377cf087dda7dfab8572ea"
       },
       "materialization_seed_envelope_schema": {
         "path": "project-context/evidence/serverless_worker_job_envelope_v3.schema.json",
@@ -273,15 +306,15 @@
       },
       "operator_grants": {
         "path": "deploy/v2-13/neon-full-live-operator-grants.sql",
-        "sha256": "sha256:38c80de06ef6eff67a03be35326150cf742393efc07fd43ea0b30780c28afab6"
+        "sha256": "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5"
       },
       "reconciler_grants": {
         "path": "deploy/v2-13/neon-pair-reconciler-grants.sql",
-        "sha256": "sha256:7d6fc701c5f71c1a3dc09ee08268e4f8caa58e69a85594258ce864aa673b49a7"
+        "sha256": "sha256:5409fe4fa78d92950ec6fb4225c28534b75d029d766c7bdf4ac63c1f9738bac2"
       },
       "runtime_grants": {
         "path": "deploy/v2-06/neon-runtime-grants.sql",
-        "sha256": "sha256:df43df13634319fa97e8f19f4459af5e01c42b8f144f00c8527f5f873ec7085f"
+        "sha256": "sha256:6696c0e4879d97061db9ce11b546045fcdddc878bcd9817737fce5070c108536"
       },
       "materialization_seed_production_input_validator": {
         "path": "deploy/v2-13/validate-materialization-seed-production-input.mts",
@@ -297,11 +330,11 @@
       },
       "migration_manifest": {
         "path": "packages/control-plane/migrations/manifest.json",
-        "sha256": "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47"
+        "sha256": "sha256:0b394a979958ed9fb6d389f37152681297b85c3e86339f373ada15b266bae0dd"
       },
       "source_closure_manifest": {
         "path": "deploy/v2-13/full-live-source-closure.json",
-        "sha256": "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb"
+        "sha256": "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78"
       },
       "approval_validator": {
         "path": "deploy/v2-13/validate-full-live-approval.mjs",
@@ -317,18 +350,18 @@
     },
     "pending_source_contract": {
       "status": "SOURCE_BOUND_AUDITED",
-      "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+      "release_source_commit": "417e84d4f021699337e9bd411753777d689728d7",
       "release_component_sha256s": {
-        "full_live_executor": "sha256:78b590e3b4ca8fe5ca64f8e187e00128141341f2d80361be5cf700507bfad910",
-        "full_live_adapters": "sha256:19256a5a9872203ed29062360a0f962374c5f37a254b9591bd48fa7af701ea20",
-        "promotion": "sha256:2cf4cf6b13c387542a2f3c380d38c519470655aebac237edeca1b2e77f9697d2",
-        "guarded_activation": "sha256:b5be2bb99a151e82129f685b083ae78db2395f46e0dbf3ff62822fb20f1cc5e8",
-        "orchestration_authority": "sha256:ce4a92127d098392504bd1641d61865d3c94cfb7624de6939fe31157f1199e03",
-        "typescript_cli_bridge": "sha256:7fb8b3647dc44d26b0e49c5a0fa206c4e98e4653fbbfe88f990ec0eb6f4890c0",
-        "runpod_dual_lane_transport": "sha256:1982c450b215978528e9688cba62df07f94e014e55e007ec32f0f38500a965c2",
-        "direct_qualification_materializer": "sha256:faf895d2c5e72b133090a7d9913d72e86fc5f1c5d2c26f2d583593c2cc3d9baa",
+        "full_live_executor": "sha256:6736331f2bc26c5d69359080c242821ebfc593883f2c5239d22d23724e347c93",
+        "full_live_adapters": "sha256:79e0954ff710aacd5c16cecc2e649146e8022df71db812d4eaca95bb81ad6ce8",
+        "promotion": "sha256:21fbfa46a01a30ca7d769fb08a20ef46cba523d618c1ba8a898c4a0f2f4defba",
+        "guarded_activation": "sha256:b6c40dce89b03f64d3aa0088254c3bfb840b61ae70b59d433ab6f2081745c261",
+        "orchestration_authority": "sha256:83b9c68cd45c182e154e5e7604f84f6db660036c3ba64e630bd0a3f54cb92405",
+        "typescript_cli_bridge": "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af",
+        "runpod_dual_lane_transport": "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2",
+        "direct_qualification_materializer": "sha256:a12d9d063b6d85b67ca715ac8b5eb2c27c15dfa389ee1d3c963bb3317f242d37",
         "hosted_qualification_materializer": "sha256:663b084d70789e935fb5f26b8807bab45597129773de9e5395f660414e97d0e3",
-        "materialization_seed_builder": "sha256:61d16bf3e3d8c1e6ae51420930c39e7eb59a5bfe0253e2e04a3b2d36dce984d1",
+        "materialization_seed_builder": "sha256:ee0bd4d9a4afa6d0bc1851a043763b23c0e8788446377cf087dda7dfab8572ea",
         "materialization_seed_envelope_schema": "sha256:cce6fab312222b1068ce1764ed6af2387b8f7f0904fd28270c0148cfdde37a28",
         "materialization_seed_qualification_case_source": "sha256:3716aeb1601390b4800f094ecf29823c2f42e25fa64e1b16e3481c5bab2ee8a2",
         "materialization_seed_mage_case_validator": "sha256:6fb66457b5d43168e0a41a5b2040a7d89fc9143b261b221c0c97f424d603c291",
@@ -337,14 +370,14 @@
         "materialization_seed_soulx_case_generator": "sha256:f78bf77c409c8a8b4d43ba91cd3d3d35f239e90a91911f031b67ca160ef64453",
         "media_worker_release_readback": "sha256:933e78b9c9bddeb7681af0f4a397d2352c1253199d6b4d8a3af874aad3c959d7",
         "migration_0045": "sha256:1365c546595f57aaca61950c39f0f52c44986dab2543d21eb60b5773af12929b",
-        "operator_grants": "sha256:38c80de06ef6eff67a03be35326150cf742393efc07fd43ea0b30780c28afab6",
-        "reconciler_grants": "sha256:7d6fc701c5f71c1a3dc09ee08268e4f8caa58e69a85594258ce864aa673b49a7",
-        "runtime_grants": "sha256:df43df13634319fa97e8f19f4459af5e01c42b8f144f00c8527f5f873ec7085f",
+        "operator_grants": "sha256:584bd3878400a51ed3d5f9ad2da38b49adb983e342c810adfa543463c2a276b5",
+        "reconciler_grants": "sha256:5409fe4fa78d92950ec6fb4225c28534b75d029d766c7bdf4ac63c1f9738bac2",
+        "runtime_grants": "sha256:6696c0e4879d97061db9ce11b546045fcdddc878bcd9817737fce5070c108536",
         "materialization_seed_production_input_validator": "sha256:d2d8dc879bb29fbf7df207885b2d604d90f0b3047710fbec9e794afd745f4682",
         "production_config_validator": "sha256:9860d815d101dd25b8a98ef5231df6054a42c9820edabaf6bb871dcaf5fc83f6",
         "pg_service_validator": "sha256:08fce81dcb856d365b9aaa728e16f827fcb07ac4ce027d20feeab3972d246e7e",
-        "migration_manifest": "sha256:43f10592907b027afb870d2beb906e91998319da50f07fca7f64ed310fa1db47",
-        "source_closure_manifest": "sha256:0f8fc9367cc0aa2aec2e4f55a5236de3e828d14dc8e9fb85a8389408141734eb"
+        "migration_manifest": "sha256:0b394a979958ed9fb6d389f37152681297b85c3e86339f373ada15b266bae0dd",
+        "source_closure_manifest": "sha256:74c51f94705f890cd5e347320e5ebc1da583147a0328995063e0a72334c0af78"
       },
       "source_hashes_must_be_bound_before_reseal": false,
       "credential_receipt_binding": {
@@ -1866,32 +1899,32 @@
     }
   },
   "immutable_github_release_ref_request": {
-    "creation_requested": false,
-    "exact_ref": "refs/tags/videoforge-v2-13-release-20260826-v3",
-    "exact_tag_name": "videoforge-v2-13-release-20260826-v3",
-    "exact_target_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "creation_requested": true,
+    "exact_ref": "refs/tags/videoforge-v2-13-release-20260830-v5",
+    "exact_tag_name": "videoforge-v2-13-release-20260830-v5",
+    "exact_target_commit": "417e84d4f021699337e9bd411753777d689728d7",
     "tag_kind": "LIGHTWEIGHT",
-    "maximum_new_refs": 0,
+    "maximum_new_refs": 1,
     "force_update_authorized": false,
     "delete_or_retarget_authorized": false,
     "other_ref_creation_authorized": false,
     "remote": "origin",
     "required_preconditions": [
-      "fresh exact approval of this v4 predecessor-bound proposal and a committed exact authority record",
+      "fresh exact approval of this v5 successor-tag proposal and a committed exact authority record",
       "outer single-use authority consumed locally before credential access or external action",
-      "remote exact tag presence and exact immutable target proved without mutation",
+      "exact tag absence proved locally and remotely before the single creation",
       "final source worker commit and all component hashes are independently audited and bound before reseal"
     ],
-    "exact_mutation": "none; reconcile the predecessor-created lightweight tag by exact local and remote readback only, with no create, push, retarget, delete, force, replay, or redispatch",
-    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260826-v3 resolves exactly and only to 15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
+    "exact_mutation": "create exactly one lightweight tag videoforge-v2-13-release-20260830-v5 at 417e84d4f021699337e9bd411753777d689728d7, push exactly that one new ref once without force, then permit readback only",
+    "required_readback": "remote refs/tags/videoforge-v2-13-release-20260830-v5 resolves exactly and only to 417e84d4f021699337e9bd411753777d689728d7",
     "stop_on_presence_collision_or_drift": true,
-    "predecessor_bound_reconciliation_only": true,
-    "successor_tag_mutation_authorized": false,
+    "predecessor_bound_reconciliation_only": false,
+    "successor_tag_mutation_authorized": true,
     "materialization_seed_facts": {
       "commit_field": "source.execution_control.commit",
-      "full_live_authority_id": "779b91ec-9fc9-4622-9e37-fefddb93cd2f",
+      "full_live_authority_id": "a48680cb-6a46-412b-8531-488d86d374d3",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88"
+      "sha256": "sha256:3adee421edb98f921b1a18ca9483157af32801632d9269e3953d7aaf29c23c09"
     }
   },
   "requested_scope": {
@@ -2313,29 +2346,32 @@
     "plan_change_authorized": false,
     "static_release_descriptor": {
       "path": "protected-inputs/v2-13/static-release-descriptor.json",
-      "sha256": "sha256:e8d179d126aba0b24e4467518d76433ea5938d6735d91a9887118492c65fb58a"
+      "sha256": "sha256:9f1491160c953a4f75e09fa3ef4ba2574ea139c87db8f3b220eac9b0bde86c6f"
     },
     "materialization_seed_facts": {
       "commit_field": "source.execution_control.commit",
-      "full_live_authority_id": "779b91ec-9fc9-4622-9e37-fefddb93cd2f",
+      "full_live_authority_id": "a48680cb-6a46-412b-8531-488d86d374d3",
       "path": "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      "sha256": "sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88"
+      "sha256": "sha256:3adee421edb98f921b1a18ca9483157af32801632d9269e3953d7aaf29c23c09"
     },
     "workflow_registration_evidence": {
-      "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v1",
-      "repository": "Pala-LakshmanSai/videoforge",
       "default_branch": "main",
       "default_branch_commit": "c24d37e164d3fcf93c04d53a1e8f06ab972c5d46",
-      "workflow_path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "workflow_file": "avatar-primary-serverless-image.yml",
-      "workflow_name": "avatar-primary-serverless-image",
-      "release_source_commit": "15af5e20ce3c80eb61d5d1e807a87e8840ed9685",
-      "release_source_workflow_sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
+      "default_branch_matches_release_source": false,
+      "default_branch_registration_only": true,
       "default_branch_workflow_sha256": "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
-      "registration_state": "REGISTERED_EXACT_DEFAULT_BRANCH",
+      "evidence_sha256": "sha256:2f3cedd3c7c6e228570e6839c8d62d89823b09d6a8ced4d62171482609f2fc15",
       "materialized": true,
-      "bound_to_release_source": true,
-      "evidence_sha256": "sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42"
+      "registration_state": "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND",
+      "release_source_commit": "417e84d4f021699337e9bd411753777d689728d7",
+      "release_source_workflow_sha256": "sha256:9d6f37d1369b4b50de8053efb252b39c8728a51e578593ddafcfc9f02aa28ac2",
+      "repository": "Pala-LakshmanSai/videoforge",
+      "schema_version": "videoforge.v213-soulx-workflow-registration-evidence/v2",
+      "workflow_file": "avatar-primary-serverless-image.yml",
+      "workflow_id": 345299384,
+      "workflow_name": "avatar-primary-serverless-image",
+      "workflow_path": ".github/workflows/avatar-primary-serverless-image.yml",
+      "workflow_state": "active"
     }
   },
   "ordered_operations": [
@@ -2343,9 +2379,9 @@
       "order": 1,
       "phase": "seal_revised_candidate",
       "operations": [
-        "this sealed source-bound/audited candidate authorizes no authority record, credential access, provider call, mutation, GPU use, or spend until its exact proposal bytes are committed and freshly approved",
-        "commit this exact v4 proposal and validator as a proposal-only candidate on codex/serverless-v2-roadmap-v4, then obtain fresh exact user approval of those committed bytes",
-        "obtain fresh exact user approval of the final proposal sha256, proposal commit, immutable payload commit, execution-control commit, exact predecessor terminal binding, USD 17.50 cap, seven phase caps, GPU/rate/region/no-fallback scope, separate USD 7/month retention, zero tag mutation, exact database role names, post-consumption creation of exactly three database role credential values and exactly ten internal production secret values inside the consumed bootstrap, and readback of the completed receipt-bound protected Google OAuth and R2 credentials; Google OAuth and R2 creation or rotation, RunPod credential creation or rotation, and every other credential creation or rotation are forbidden",
+        "this sealed source-bound/audited v5 candidate authorizes no authority record, credential access, provider call, mutation, GPU use, or spend until its exact proposal bytes are committed and freshly approved",
+        "commit this exact v5 proposal and validator as a proposal-only candidate on codex/serverless-v2-roadmap-v4, then obtain fresh exact user approval of those committed bytes",
+        "obtain fresh exact user approval of the final proposal sha256, proposal commit, SoulX release source 417e84d4f021699337e9bd411753777d689728d7, execution-control commit 731ee45a9aa2641e1a0b941b3e04e99a686645fb, exact predecessor Mage terminal binding, exact terminal failed SoulX attempt non-reuse, USD 17.50 cap, seven phase caps, GPU/rate/region/no-fallback scope, separate USD 7/month retention, creation of exactly one lightweight tag videoforge-v2-13-release-20260830-v5, exact database role names, post-consumption creation of exactly three database role credential values and exactly ten internal production secret values inside the consumed bootstrap, and readback of the completed receipt-bound protected Google OAuth and R2 credentials; Google OAuth and R2 creation or rotation, RunPod credential creation or rotation, and every other credential creation or rotation are forbidden",
         "commit the exact approval, unconsumed authority, schema validator, and outer single-use orchestration tooling locally; do not perform an external action before all receive independent GO"
       ]
     },
@@ -2360,12 +2396,12 @@
     },
     {
       "order": 3,
-      "phase": "reconcile_and_verify_exact_release_tag",
+      "phase": "create_and_verify_exact_successor_release_tag",
       "operations": [
-        "prove refs/tags/videoforge-v2-13-release-20260826-v3 exists locally and remotely at the immutable payload commit before continuing",
-        "perform zero tag creation, push, update, force, delete, retarget, replay, or redispatch in the successor",
-        "read back the exact remote tag and require it resolves only to the immutable payload commit; stop on absence, ambiguity, retarget, or drift",
-        "do not create, update, force, delete, or retarget any Git ref"
+        "prove refs/tags/videoforge-v2-13-release-20260830-v5 is absent locally and remotely before mutation",
+        "create exactly one lightweight tag videoforge-v2-13-release-20260830-v5 at 417e84d4f021699337e9bd411753777d689728d7 and push exactly that one new ref once without force",
+        "read back the exact remote tag and require it resolves only to the authorized SoulX release source; stop on presence collision, ambiguity, retarget, or drift",
+        "do not create, update, force, delete, or retarget any other Git ref; never retry or replay an ambiguous mutation"
       ]
     },
     {
@@ -2382,12 +2418,12 @@
       "order": 5,
       "phase": "publish_public_lane_images",
       "operations": [
-        "reconcile the exact predecessor Mage workflow run 33236590768 by readback only; perform no Mage workflow dispatch, mutation, retry, replay, or redispatch",
+        "reconcile the exact predecessor Mage workflow run 33236590768 by readback only against source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685; perform no Mage workflow dispatch, mutation, retry, replay, or redispatch",
         "require the exact predecessor Mage run completed successfully and re-bind its exact dispatch result, verification result, immutable digest, evidence hash, and public manifest",
-        "dispatch only avatar-primary-serverless-image.yml for SoulX with publish=true using ref videoforge-v2-13-release-20260826-v3 after exact default-branch workflow registration readback",
+        "dispatch only avatar-primary-serverless-image.yml for SoulX with publish=true using ref videoforge-v2-13-release-20260830-v5 at source 417e84d4f021699337e9bd411753777d689728d7 after exact default-branch workflow registration readback",
         "verify only each previously captured exact run ID with at most 180 reads at 10000 ms intervals inside a 1800000 ms wall bound; accept queued or in_progress only while polling, require completed plus success, and never dispatch or redispatch from verification",
         "stop immediately on completed non-success, run identity drift, authority expiry, or injected cancellation; verification timeout enters outer cleanup-only with no retry",
-        "require every Actions run head SHA equals the exact authorized source commit and prove anonymous public manifest plus every referenced blob before RunPod mutation"
+        "require the SoulX Actions run head SHA equals 417e84d4f021699337e9bd411753777d689728d7, keep Mage head SHA predecessor-bound, and prove anonymous public manifest plus every referenced blob before RunPod mutation"
       ]
     },
     {
@@ -2461,8 +2497,8 @@
     }
   ],
   "stop_conditions": [
-    "fresh exact v4 approval and successor authority are absent, stale, mismatched, expired, consumed, reuse the predecessor authority identity, or are not independently audited",
-    "the exact predecessor-created release tag is absent, mismatched locally or remotely, or any create, push, retarget, delete, force, replay, redispatch, or other Git tag mutation would be required",
+    "fresh exact v5 approval and successor authority are absent, stale, mismatched, expired, consumed, reuse any predecessor authority identity, or are not independently audited",
+    "the exact successor tag videoforge-v2-13-release-20260830-v5 is already present, its authorized single creation or push becomes ambiguous, or any retry, force, retarget, delete, replay, redispatch, second ref, or other Git mutation would be required",
     "the exact approval branch commit cannot be pushed without force or remote equality cannot be proved",
     "source, proposal, approval, authority, tool, workflow-run, image, model, account, volume, endpoint, template, Worker, Workflow, R2, route, config, OAuth scope, Google project/client, R2 credential scope, secret-set, database ledger, exact role, ACL, RLS, GPU, region, rate, billing, cap, or inventory drift or uncertainty",
     "RTX4090 EU-RO-1 is below LOW availability or official Serverless Flex exceeds USD 1.116/GPU-hour (USD 0.00031/second) at any mutation boundary; no fallback",
@@ -2475,7 +2511,7 @@
     "user cancellation"
   ],
   "approval_request": {
-    "requested_exact_action": "Approve this exact immutable-payload and execution-control-bound 26-operation v4 successor proposal, static release descriptor, and materialization-seed facts for one single-use ordered execution: reconcile the predecessor-created immutable release tag with zero tag mutation, post-consumption creation of exactly three database role credential values and exactly ten internal production secret values inside the consumed bootstrap, completed receipt-bound protected Google OAuth and R2 readback, paid V2-13 smoke, exact four-operation cleanup, then separate zero-spend DB-only 15-gate certification; Google/R2 remain receipt-bound copies, RunPod remains a protected copied value, and all other credential creation, rotation, replay, redispatch, fallback, or extra provider mutation is forbidden.",
+    "requested_exact_action": "Approve this exact execution-control-bound 26-operation v5 successor proposal, static release descriptor, and materialization-seed facts for one single-use ordered execution: create exactly one immutable lightweight tag videoforge-v2-13-release-20260830-v5 at SoulX source 417e84d4f021699337e9bd411753777d689728d7; reconcile Mage run 33236590768 from predecessor source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 without redispatch; dispatch SoulX only from the new tag; post-consumption create exactly three database role credential values and exactly ten internal production secret values inside the consumed bootstrap; perform completed receipt-bound protected Google OAuth and R2 readback, paid V2-13 smoke, exact four-operation cleanup, then separate zero-spend DB-only 15-gate certification. The terminal failed SoulX attempt 33287914248 is non-reusable. Google/R2 remain receipt-bound copies, RunPod remains a protected copied value, and all other credential creation, rotation, retry, replay, redispatch, fallback, or extra provider mutation is forbidden.",
     "requested_maximum_cumulative_finite_runpod_spend_usd": 17.5,
     "requested_exact_phase_caps_usd": [
       4.5,
@@ -2488,7 +2524,7 @@
     ],
     "requested_gpu": "NVIDIA GeForce RTX 4090, EU-RO-1, LOW-or-better, official Serverless Flex USD 0.00031/second (USD 1.116/GPU-hour) maximum, reject above, no fallback",
     "requested_separate_retention_consent": "Continue retaining only the same two exact 50 GB EU-RO-1 volumes at USD 7/month total",
-    "requested_exact_git_ref_mutation": "No tag mutation; require the existing lightweight tag videoforge-v2-13-release-20260826-v3 to resolve locally and remotely to 15af5e20ce3c80eb61d5d1e807a87e8840ed9685, otherwise stop cleanup-only",
+    "requested_exact_git_ref_mutation": "Create exactly one lightweight tag videoforge-v2-13-release-20260830-v5 at 417e84d4f021699337e9bd411753777d689728d7, push exactly that one new ref once without force, and require exact local and remote readback; no retry, replay, force, retarget, delete, second ref, or fallback.",
     "requested_exact_database_roles": [
       "videoforge_hosted_operator",
       "videoforge_hosted_runtime",

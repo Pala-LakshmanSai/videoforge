@@ -14,11 +14,12 @@ import {
   EXACT_OPERATION_IDS,
   EXACT_PREDECESSOR_MAGE_RECONCILIATION_POLICY,
   EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
   EXACT_PREQUALIFICATION_BRIDGE_POLICY,
   EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY,
   EXACT_TRUSTED_TIME_POLICY,
-  EXACT_V3_RELEASE_COMPONENTS,
   EXACT_V4_EXECUTION_CONTROL_COMPONENTS,
+  EXACT_V5_RELEASE_COMPONENTS,
   EXACT_WORKFLOW_START_AUTHORITY_POLICY,
 } from "../../../../../deploy/v2-13/validate-full-live-approval.mjs";
 import { validateStaticReleaseDescriptorFile } from "../../../../../deploy/v2-13/full-live-orchestration-authority.mjs";
@@ -31,22 +32,22 @@ const READ_ONLY_PREFLIGHT_PATH = path.join(DIRECTORY, "read-only-preflight.json"
 const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json");
 const DESCRIPTOR_PATH = path.join(ROOT, "protected-inputs/v2-13/static-release-descriptor.json");
 const PROTECTED_INPUT_PATH = path.join(ROOT, "protected-inputs/v2-13/materialization-seed-input.json");
-const RELEASE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
-const EXECUTION_CONTROL_COMMIT = "e804bd7ecc1bf4b807512fa62f33cba2890780a2";
-const AUDITED_CODE_COMMIT = "c73eda0e3df3b028b7cbf9e9d176d1b0b5457905";
-const FACTS_SHA256 = "sha256:e0ff5fdc0953b6bb1d5de9c658c627cb6b2a6660b3bef34f1db87366d33f3a88";
-const AUDIT_SHA256 = "sha256:f0dc968a7835f968edc8c3f1e7dd2e6bf43625028c05a54dce19bb110986912d";
-const DESCRIPTOR_SHA256 = "sha256:e8d179d126aba0b24e4467518d76433ea5938d6735d91a9887118492c65fb58a";
-const PROTECTED_INPUT_SHA256 = "sha256:44d61714a1096a8d0615c2ca47a9311bb21d18fbfe57c798c425b9d7b24ee045";
-const FULL_LIVE_AUTHORITY_ID = "779b91ec-9fc9-4622-9e37-fefddb93cd2f";
+const RELEASE_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
+const EXECUTION_CONTROL_COMMIT = "731ee45a9aa2641e1a0b941b3e04e99a686645fb";
+const AUDITED_CODE_COMMIT = "cbbb38d173175bc417a98594cec60d1c31c9949e";
+const FACTS_SHA256 = "sha256:3adee421edb98f921b1a18ca9483157af32801632d9269e3953d7aaf29c23c09";
+const AUDIT_SHA256 = "sha256:ba3637f2707439a387f2b92427bb75c58f6b1dd421345e16cddb25ffbfa1d5a8";
+const DESCRIPTOR_SHA256 = "sha256:9f1491160c953a4f75e09fa3ef4ba2574ea139c87db8f3b220eac9b0bde86c6f";
+const PROTECTED_INPUT_SHA256 = "sha256:f21111919884a3270e5e98484998f3fecb67741593d716ae4b674ac7ef750b72";
+const FULL_LIVE_AUTHORITY_ID = "a48680cb-6a46-412b-8531-488d86d374d3";
 const SUPERSEDED_PROPOSAL_SHA256 =
-  "sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c";
-const SUPERSEDED_PROPOSAL_RECORD_COMMIT = "f7500d2f7e5a7b4bf12e6ac579e7f08547d364fb";
-const SUPERSEDED_AUTHORITY_ID = "v2-13-full-live-20260830-011151z-5cc63415";
-const SUPERSEDED_AUTHORITY_RECORD_COMMIT = "c88cc2c414692e0cc12083f4d1e9ed1c48482d29";
+  "sha256:d3bfbb4039a894ed469abfa303d3fbc50a7ad7e358de19b730e4229602ab598d";
+const SUPERSEDED_PROPOSAL_RECORD_COMMIT = "c2b90f8a6f443978ef013ef6daed4750f4e2e2ec";
+const SUPERSEDED_AUTHORITY_ID = "v2-13-full-live-20260830-021108z-d3bfbb40";
+const SUPERSEDED_AUTHORITY_RECORD_COMMIT = "4e199ca114bfd9d5850c616fc4a237214f6c9ae5";
 const SUPERSEDED_TERMINAL_SHA256 =
-  "sha256:d2655a24f51cef1c45430cb8b3240dd87aef842fca15f688a382d0174fc17169";
-const TAG = "videoforge-v2-13-release-20260826-v3";
+  "sha256:76e52ec7a273cda26ec1c87ba473f060927d85218560ccef3ee8f0a045aa064e";
+const TAG = "videoforge-v2-13-release-20260830-v5";
 const EXACT_OAUTH_SCOPES = [
   "account:read", "agent-memory:write", "ai-search:run", "ai-search:write", "ai:write",
   "artifacts:write", "browser:write", "challenge-widgets.write", "cloudchamber:write",
@@ -64,17 +65,6 @@ const assert = (condition, code) => {
 };
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 const gitBytes = (commit, relativePath) => execFileSync("git", ["show", `${commit}:${relativePath}`], { cwd: ROOT, encoding: "buffer", stdio: ["ignore", "pipe", "pipe"] });
-const isAncestor = (ancestor, descendant) => {
-  try {
-    execFileSync("git", ["merge-base", "--is-ancestor", ancestor, descendant], {
-      cwd: ROOT,
-      stdio: ["ignore", "ignore", "ignore"],
-    });
-    return true;
-  } catch {
-    return false;
-  }
-};
 const readJson = async (file, code) => {
   const bytes = await readFile(file);
   assert(bytes.at(-1) === 0x0a, `${code}_FINAL_NEWLINE`);
@@ -282,23 +272,26 @@ assert(sha256(await readFile(PROTECTED_INPUT_PATH)) === PROTECTED_INPUT_SHA256, 
 validateStaticReleaseDescriptorFile({ path: DESCRIPTOR_PATH, expectedSha256: DESCRIPTOR_SHA256, expectedSourceCommit: RELEASE_SOURCE_COMMIT });
 const { value: descriptor } = await readJson(DESCRIPTOR_PATH, "DESCRIPTOR");
 const workflowRegistrationEvidence = {
-  schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v1",
+  schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v2",
   repository: "Pala-LakshmanSai/videoforge",
   default_branch: "main",
   default_branch_commit: "c24d37e164d3fcf93c04d53a1e8f06ab972c5d46",
+  workflow_id: 345299384,
   workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
   workflow_file: "avatar-primary-serverless-image.yml",
   workflow_name: "avatar-primary-serverless-image",
+  workflow_state: "active",
   release_source_commit: RELEASE_SOURCE_COMMIT,
   release_source_workflow_sha256:
-    "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
+    "sha256:9d6f37d1369b4b50de8053efb252b39c8728a51e578593ddafcfc9f02aa28ac2",
   default_branch_workflow_sha256:
     "sha256:14b242f63d6afc8bece80acbbb73f1fde6bac9df280f1b9b1d58e8e038a6e8da",
-  registration_state: "REGISTERED_EXACT_DEFAULT_BRANCH",
+  default_branch_matches_release_source: false,
+  registration_state: "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND",
   materialized: true,
-  bound_to_release_source: true,
+  default_branch_registration_only: true,
   evidence_sha256:
-    "sha256:55ebc91d78af1f2979abd0f0bd3e120165930294c8834e4e159bb404e4f5de42",
+    "sha256:2f3cedd3c7c6e228570e6839c8d62d89823b09d6a8ced4d62171482609f2fc15",
 };
 assert(
   JSON.stringify(Object.fromEntries(Object.entries(descriptor.workflowRegistrationEvidence).sort())) ===
@@ -311,7 +304,7 @@ assert(
 );
 
 assert(
-  proposal.schema_version === "videoforge.v2-13-full-live-completion-proposal/v4" &&
+  proposal.schema_version === "videoforge.v2-13-full-live-completion-proposal/v5" &&
     proposal.task_id === "VF-10-13" && proposal.proposal_status === "PENDING_FRESH_EXACT_USER_APPROVAL" &&
     proposal.source?.release_source_commit === RELEASE_SOURCE_COMMIT &&
     proposal.source?.repaired_release_source_commit === RELEASE_SOURCE_COMMIT &&
@@ -319,16 +312,18 @@ assert(
     proposal.source?.execution_control?.commit === EXECUTION_CONTROL_COMMIT,
   "PROPOSAL_IDENTITY",
 );
-assert(JSON.stringify(proposal.source.exact_release_components) === JSON.stringify(EXACT_V3_RELEASE_COMPONENTS), "IMMUTABLE_PAYLOAD_COMPONENTS");
+assert(JSON.stringify(proposal.source.exact_release_components) === JSON.stringify(EXACT_V5_RELEASE_COMPONENTS), "SUCCESSOR_PAYLOAD_COMPONENTS");
 assert(JSON.stringify(proposal.source.execution_control.exact_components) === JSON.stringify(EXACT_V4_EXECUTION_CONTROL_COMPONENTS), "EXECUTION_CONTROL_COMPONENTS");
 assert(
   JSON.stringify(proposal.supersession?.predecessor_release_attempt) === JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT) &&
+    JSON.stringify(proposal.supersession?.terminal_failed_successor_attempt) ===
+      JSON.stringify(EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT) &&
     proposal.supersession?.prior_approval_reusable === false && proposal.supersession?.fresh_exact_approval_required === true,
   "PREDECESSOR_BINDING",
 );
 const supersededTerminalPath = path.join(
   ROOT,
-  "protected-inputs/v2-13/history/v2-13-full-live-20260830-011151z-5cc63415/full-live-state.json",
+  "protected-inputs/v2-13/history/v2-13-full-live-20260830-021108z-d3bfbb40/full-live-state.json",
 );
 const { bytes: supersededTerminalBytes, value: supersededTerminal } = await readJson(
   supersededTerminalPath,
@@ -343,7 +338,7 @@ assert(
     supersededTerminal.terminal ===
       "CLEANUP_PROOFS_RECORDED_ZERO_WORKER_BILLING_RESOURCES_RECONCILED" &&
     supersededTerminal.failure_boundary === "OPERATION_EXECUTION" &&
-    supersededTerminal.failure_code === "WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT" &&
+    supersededTerminal.failure_code === "WORKFLOW_RUN_TERMINAL_FAILURE" &&
     supersededTerminal.total_reserved_usd === 0 &&
     supersededTerminal.total_settled_usd === 0 &&
     proposal.supersession?.supersedes_proposal_sha256 === SUPERSEDED_PROPOSAL_SHA256 &&
@@ -411,7 +406,7 @@ assert(
 );
 assert(
   proposal.supersession.superseded_authority_record_sha256 ===
-    "sha256:44850673e198e0c441f9f09b7679753a88408ef0dfb070fdd8bac8ef9aa48cb6",
+    "sha256:4e45de5838c53064e68aed1700b39aa26e8545f7e723df5baa98e0d4e2c546bb",
   "SUPERSESSION_AUTHORITY_RECORD",
 );
 assert(
@@ -464,7 +459,7 @@ assert(
   "READ_ONLY_PREFLIGHT_RUNPOD",
 );
 
-for (const [name, component] of Object.entries(EXACT_V3_RELEASE_COMPONENTS)) {
+for (const [name, component] of Object.entries(EXACT_V5_RELEASE_COMPONENTS)) {
   if (typeof component.sha256 === "string") assert(sha256(gitBytes(RELEASE_SOURCE_COMMIT, component.path)) === component.sha256, `PAYLOAD:${name}`);
 }
 for (const [name, component] of Object.entries(EXACT_V4_EXECUTION_CONTROL_COMPONENTS)) {
@@ -517,10 +512,10 @@ assert(
 );
 const ref = proposal.immutable_github_release_ref_request;
 assert(
-  ref?.creation_requested === false && ref?.exact_tag_name === TAG && ref?.exact_target_commit === RELEASE_SOURCE_COMMIT &&
-    ref?.maximum_new_refs === 0 && ref?.predecessor_bound_reconciliation_only === true &&
-    ref?.successor_tag_mutation_authorized === false && ref?.force_update_authorized === false && ref?.delete_or_retarget_authorized === false,
-  "TAG_RECONCILIATION",
+  ref?.creation_requested === true && ref?.exact_tag_name === TAG && ref?.exact_target_commit === RELEASE_SOURCE_COMMIT &&
+    ref?.maximum_new_refs === 1 && ref?.predecessor_bound_reconciliation_only === false &&
+    ref?.successor_tag_mutation_authorized === true && ref?.force_update_authorized === false && ref?.delete_or_retarget_authorized === false,
+  "SUCCESSOR_TAG_CREATION",
 );
 assert(
   proposal.authority?.exact_proposal_approved === false && proposal.authority?.execute_authorized === false &&
@@ -530,7 +525,7 @@ assert(
   "NO_ACTIVE_AUTHORITY",
 );
 assert(
-  proposal.stop_conditions.some((item) => item.includes("predecessor-created release tag is absent")) &&
+  proposal.stop_conditions.some((item) => item.includes("successor tag")) &&
     proposal.stop_conditions.some((item) => item.includes("replay")) &&
     proposal.stop_conditions.some((item) => item.includes("drift or uncertainty")),
   "STOP_CONDITIONS",
@@ -568,7 +563,6 @@ if (head !== EXECUTION_CONTROL_COMMIT) {
     parent = commit;
   }
 }
-const evidenceParentCommit = git("rev-parse", `${EXECUTION_CONTROL_COMMIT}^`);
 const proposalRecordPaths = new Set([
   "project-context/00_START_HERE.md",
   "project-context/CURRENT_STATE.yaml",
@@ -576,21 +570,39 @@ const proposalRecordPaths = new Set([
   "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/validate-candidate.mjs",
   "project-context/tasks/VF-10-13.md",
 ]);
-const evidenceParentPaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", evidenceParentCommit)
+const evidencePaths = new Set([
+  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/source-readiness-audit.json",
+  "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
+]);
+const evidenceCommits = git(
+  "rev-list",
+  "--first-parent",
+  "--reverse",
+  `${AUDITED_CODE_COMMIT}..${EXECUTION_CONTROL_COMMIT}`,
+)
   .split("\n")
   .filter(Boolean);
 assert(
-  evidenceParentCommit === AUDITED_CODE_COMMIT ||
-    (evidenceParentPaths.length > 0 &&
-      evidenceParentPaths.every((relativePath) => proposalRecordPaths.has(relativePath)) &&
-      isAncestor(AUDITED_CODE_COMMIT, evidenceParentCommit)),
-  "EVIDENCE_PARENT",
+  JSON.stringify(evidenceCommits) ===
+    JSON.stringify([
+      "e3b6d5aa843c8aede2eef536d62b8543d28e1eaa",
+      "6f0b4df7d2698c907c4c5179ab2a688722f9bd69",
+      EXECUTION_CONTROL_COMMIT,
+    ]),
+  "EVIDENCE_COMMIT_CHAIN",
 );
-const evidencePaths = git("diff-tree", "--no-commit-id", "--name-only", "-r", EXECUTION_CONTROL_COMMIT).split("\n").filter(Boolean).sort();
-assert(JSON.stringify(evidencePaths) === JSON.stringify([
-  "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/source-readiness-audit.json",
-  "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-]), "EVIDENCE_COMMIT_PATHS");
+let evidenceParent = AUDITED_CODE_COMMIT;
+for (const commit of evidenceCommits) {
+  assert(git("rev-parse", `${commit}^`) === evidenceParent, "EVIDENCE_PARENT");
+  const changed = git("diff-tree", "--no-commit-id", "--name-only", "-r", commit)
+    .split("\n")
+    .filter(Boolean);
+  assert(
+    changed.length > 0 && changed.every((relativePath) => evidencePaths.has(relativePath)),
+    "EVIDENCE_COMMIT_PATHS",
+  );
+  evidenceParent = commit;
+}
 for (const name of ["user-approval.json", "approved-authority.json"])
   await access(path.join(DIRECTORY, name)).then(() => assert(false, `ACTIVE_${name}`), () => true);
 
