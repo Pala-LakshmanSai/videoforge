@@ -71,8 +71,8 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_2_PRESET_REMOVE_AND_CREATION_UX_DEPLOYED_CHROME_PASS
-  implementation_commit: "12cf771b22824fcfe64000cfa245d566f7875a83"
+  status: SOURCE_STEP_4_PROJECT_CREATION_UX_GREEN_AWAITING_DEPLOY_APPROVAL
+  implementation_commit: "4612f4b6f2078425ba181abe0064d80d70a745b6"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
     - "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
@@ -80,7 +80,8 @@ hosted_beta_user_walkthrough:
     - "43c5b2f664df6a9e0dae91a1223dbd73cddf624e"
     - "f431565b6e31b62493bc2071363fe76ff7a07d47"
     - "12cf771b22824fcfe64000cfa245d566f7875a83"
-  deployment_candidate: DEPLOYED_VERIFIED
+    - "4612f4b6f2078425ba181abe0064d80d70a745b6"
+  deployment_candidate: AWAITING_FRESH_EXACT_APPROVAL
   deployed_source_commit: "afbcefda26e2bd76955980d4ae3d5e96dc939cb8"
   cloudflare_worker_version_id: "b15c9377-af64-4976-8edc-540f60fe1748"
   deployed_config_sha256: "sha256:160c4d9b03710b16c0b29871c6047a1fc6d9110238b7f9f3f95d36cbc5fc72da"
@@ -116,10 +117,9 @@ hosted_beta_user_walkthrough:
     - "Source f431565b adds Remove inside workspace-owned Avatar and Image Style details, confirmation/loading/error states, tenant-scoped archive-only migration 0051, immutable built-in protection, historical version/media preservation, stale-workflow ACTIVE parent locks, and the exact no-DELETE runtime grants required by hosted preset creation. It is provider-free green and awaits deployment approval."
     - "Source 12cf771b fixes unreadable hosted avatar/style inputs, adds explicit accessible labels, clearer upload guidance and readiness states, bounded responsive form layout, selected-avatar/style preview styling, accurate review copy, and a simpler save/approve/profile-review sequence. Desktop and compact Chromium checks confirm readable typed text."
     - "Approved source afbcefda is deployed as Worker b15c9377-af64-4976-8edc-540f60fe1748. Live status reports the exact commit, migration 0051 is verified at 51/51 with FORCE RLS and exact no-DELETE grants, authenticated Chrome confirms readable avatar/style inputs, and both workspace preset details expose Remove without deleting walkthrough data."
-  current_step: AVATAR_CREATION_AND_APPROVAL
+    - "Source 4612f4b6 replaces the hosted project debug form with a guided Video/Look/Cost flow, styled voiceover upload and inputs, visual preset selectors, automatic selection of sole eligible presets, actionable worker recovery, truthful beta/cost wording, and user-facing blockers while retaining fail-closed readiness validation. Wide and compact Chrome previews have no raw GPU/gate/hash diagnostics or horizontal overflow."
+  current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
   remaining_steps:
-    - AVATAR_CREATION_AND_APPROVAL
-    - IMAGE_STYLE_CREATION_AND_PUBLISHING
     - PROJECT_CREATION_AND_COST_PREFLIGHT
     - VOICEOVER_UPLOAD_AND_VALIDATION
     - PROJECT_SUBMISSION
@@ -141,6 +141,9 @@ hosted_beta_user_walkthrough:
     hosted_preset_remove_staging_build: PASS
     hosted_preset_remove_deployment_validation: PASS
     hosted_preset_creation_ui_unit: "PASS_31_OF_31"
+    hosted_project_creation_ui_unit: "PASS_32_OF_32"
+    hosted_project_creation_ui_wide_chrome: "PASS_TWO_COLUMN_NO_RAW_DIAGNOSTICS_NO_HORIZONTAL_OVERFLOW"
+    hosted_project_creation_ui_compact_chrome: "PASS_SINGLE_COLUMN_NO_RAW_DIAGNOSTICS_NO_HORIZONTAL_OVERFLOW"
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
