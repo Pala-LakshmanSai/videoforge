@@ -14,7 +14,6 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useEffect, useRef, type PropsWithChildren } from "react";
-import { isHostedProviderMode } from "../hosted/provider-mode";
 import { api } from "../lib/api";
 import {
   dockMotionTarget,
@@ -137,7 +136,7 @@ function ProjectCommandTrack({
 export function AppShell({ children }: PropsWithChildren) {
   const dockRef = useRef<HTMLElement>(null);
   const scenario = currentScenario();
-  const hostedBrowser = isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
+  const hostedBrowser = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE !== "fixture";
   const fixtureControlsEnabled = import.meta.env.DEV && !hostedBrowser;
   const path = useRouterState({ select: (state) => state.location.pathname });
   const health = useQuery({

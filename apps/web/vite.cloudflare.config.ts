@@ -22,13 +22,13 @@ export default defineConfig(({ command }) => {
   );
 
   return {
-    // Production serves only bundled application assets. Development/staging retain the owned
-    // fixture gallery, but it must never be copied into the production artifact tree.
-    publicDir: providerMode === "production" ? false : "public",
+    // Hosted staging and production serve only bundled application assets. The owned fixture
+    // gallery and fixture API exist only in local fixture mode.
+    publicDir: providerMode === "fixture" ? "public" : false,
     build: { manifest: true },
     resolve: {
       alias:
-        providerMode === "production"
+        providerMode !== "fixture"
           ? [
               { find: /^\.\.\/lib\/api$/u, replacement: hostedApiPath },
               { find: /^\.\.\/lib\/api-schemas$/u, replacement: hostedApiSchemasPath },
