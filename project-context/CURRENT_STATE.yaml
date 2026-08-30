@@ -71,15 +71,16 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_2_PRESET_HUB_UI_REPAIR_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
+  status: LIVE_STEP_2_PRESET_HUB_UI_REPAIR_DEPLOYED_AWAITING_USER_VISUAL_CONFIRMATION
   implementation_commit: "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
     - "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
-  deployment_candidate: PENDING_FRESH_EXACT_USER_APPROVAL
-  deployed_source_commit: "93c575e99d9d4fbe9183596633b77eb6d9eed78f"
-  cloudflare_worker_version_id: "faf18fb8-66b2-42a5-ba99-8c2a2e9a33f5"
-  deployed_config_sha256: "sha256:34fef4b01af336b84e301a00ef314848b8c843b9de0a8bcf99ea7f70fb2867b8"
+  deployment_candidate: CONSUMED_BY_DEPLOYMENT
+  deployed_source_commit: "ea82beaafe2d53479ae1cfca66b71e3500642259"
+  cloudflare_worker_version_id: "133f1c86-6738-4436-bf66-4673d52bd752"
+  deployed_config_sha256: "sha256:2c1127b0ac86a591db23182d4ce079885c8bc14f2a6d0188c3955ba232e9c524"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA ea82beaafe2d53479ae1cfca66b71e3500642259 CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -96,7 +97,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_GOOGLE_ONLY_SIGN_IN_ZERO_CONSOLE_ERRORS"
+  live_browser_verification: "DEPLOYED_STATUS_EXACT_SOURCE_PASS_AWAITING_USER_AUTHENTICATED_HUB_REFRESH"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
@@ -104,8 +105,8 @@ hosted_beta_user_walkthrough:
     - "Neon now has pgcrypto and the exact 49-row migration chain; deployment verification excludes provider-owned pgcrypto extension functions while still requiring an exact application-function allowlist and zero PUBLIC application functions."
     - "Hosted staging now aliases only the hosted API, excludes the fixture public directory, and removes fixture-only AppShell, Library, and Review branches at compile time; its deployable client passes the production fixture quarantine."
     - "Live staging now clears stale VideoForge sessions before Google account selection, validates tenant responses, unmounts private screens during focus/visibility revalidation, and keeps uninvited authenticated identities outside tenant scope. Existing admitted accounts and data remain intact."
-    - "The pending hosted preset-hub repair reuses the approved fixture card, search, media, and details UI; removes raw hashes, IDs, staging jargon, and redundant engineering panels; prefers the real avatar thumbnail; and uses a deliberate style cover when a published style has no references. It is provider-free source only until separately deployed."
-    - "The pending hosted access repair keeps the admitted product page mounted during focus and visibility revalidation, eliminating the full-page checking flash; a real rejection or validation failure still unmounts private content fail-closed."
+    - "The deployed hosted preset-hub repair reuses the approved fixture card, search, media, and details UI; removes raw hashes, IDs, staging jargon, and redundant engineering panels; prefers the real avatar thumbnail; and uses a deliberate style cover when a published style has no references."
+    - "The deployed hosted access repair keeps the admitted product page mounted during focus and visibility revalidation, eliminating the full-page checking flash; a real rejection or validation failure still unmounts private content fail-closed."
   current_step: AVATAR_CREATION_AND_APPROVAL
   remaining_steps:
     - AVATAR_CREATION_AND_APPROVAL
