@@ -47,6 +47,8 @@ import {
   PREQUALIFICATION_OPERATOR_FUNCTIONS,
   readAuthenticatedGithubTime,
   resolveSourceBoundBridgeLaunch,
+  SUCCESSOR_RELEASE_SOURCE_COMMIT,
+  SUCCESSOR_TAG,
   TAG,
   validateSoulxWorkflowRegistrationEvidence,
   verifyPrequalificationDatabaseReceipt,
@@ -118,6 +120,46 @@ const stateWithSoulxWorkflowRegistration = (evidence) => ({
   soulx_workflow_registration_evidence_sha256: evidence.evidence_sha256,
   soulx_workflow_registration_evidence: evidence,
 });
+const successorSoulxMainBytes = Buffer.from("successor SoulX main workflow\n");
+const successorSoulxReleaseBytes = Buffer.from("successor SoulX release workflow\n");
+const successorSoulxWorkflowRegistrationEvidenceFixture = (overrides = {}) => {
+  const unsigned = {
+    schema_version: "videoforge.v213-soulx-workflow-registration-evidence/v2",
+    repository: "Pala-LakshmanSai/videoforge",
+    default_branch: "main",
+    default_branch_commit: "9".repeat(40),
+    workflow_id: 102,
+    workflow_file: "avatar-primary-serverless-image.yml",
+    workflow_name: "avatar-primary-serverless-image",
+    workflow_path: ".github/workflows/avatar-primary-serverless-image.yml",
+    workflow_state: "active",
+    default_branch_workflow_sha256: hash(successorSoulxMainBytes),
+    release_source_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    release_source_workflow_sha256: hash(successorSoulxReleaseBytes),
+    default_branch_matches_release_source: false,
+    registration_state: "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND",
+    materialized: true,
+    default_branch_registration_only: true,
+    ...overrides,
+  };
+  return {
+    ...unsigned,
+    evidence_sha256: hash(Buffer.from(canonicalJson(unsigned))),
+  };
+};
+const successorStateWithSoulxWorkflowRegistration = (evidence) => ({
+  ...state,
+  release_source_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+  release_ref: {
+    exact_tag_name: SUCCESSOR_TAG,
+    exact_target_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    state: "VERIFIED_EXACT_REMOTE",
+  },
+  predecessor_release_attempt: EXACT_PREDECESSOR_RELEASE_ATTEMPT,
+  static_release_descriptor_schema_version: "videoforge.v213-static-release-descriptor/v3",
+  soulx_workflow_registration_evidence_sha256: evidence.evidence_sha256,
+  soulx_workflow_registration_evidence: evidence,
+});
 
 function workflowDispatchRunner({
   evidence,
@@ -128,6 +170,9 @@ function workflowDispatchRunner({
   missingWorkflow = null,
   inactiveWorkflow = null,
   driftWorkflow = null,
+  mainWorkflowBytes = {},
+  releaseWorkflowBytes = {},
+  workflowIds = {},
 } = {}) {
   const calls = [];
   let listCalls = 0;
@@ -169,7 +214,7 @@ function workflowDispatchRunner({
       return result(
         0,
         JSON.stringify({
-          id: file === "mage-image.yml" ? 101 : 102,
+          id: workflowIds[file] ?? (file === "mage-image.yml" ? 101 : 102),
           name: expectedName,
           path: `.github/workflows/${file}`,
           state: file === inactiveWorkflow ? "disabled_manually" : "active",
@@ -181,18 +226,21 @@ function workflowDispatchRunner({
       const file = decodeURIComponent(content[1]);
       const ref = decodeURIComponent(content[2]);
       const baseBytes = bytes[file];
-      const body =
+      const branchBytes = mainWorkflowBytes[file] ?? baseBytes;
+      const releaseBytes = releaseWorkflowBytes[file] ?? baseBytes;
+      const body = ref === mainCommit ? branchBytes : releaseBytes;
+      const readBytes =
         file === driftWorkflow && ref === mainCommit
-          ? Buffer.concat([baseBytes, Buffer.from("drift")])
-          : baseBytes;
+          ? Buffer.concat([body, Buffer.from("drift")])
+          : body;
       return result(
         0,
         JSON.stringify({
           type: "file",
           encoding: "base64",
-          content: body.toString("base64"),
+          content: readBytes.toString("base64"),
           sha: file === "mage-image.yml" ? "6".repeat(40) : "7".repeat(40),
-          size: body.length,
+          size: readBytes.length,
         }),
       );
     }
@@ -731,6 +779,35 @@ test("predecessor reconciliation hard-stops when the exact remote tag is absent"
   );
 });
 
+test("successor release tag is accepted only at the exact repaired source commit", async () => {
+  const successorState = {
+    ...state,
+    release_source_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    release_ref: {
+      exact_tag_name: SUCCESSOR_TAG,
+      exact_target_commit: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+      state: "VERIFIED_EXACT_REMOTE",
+    },
+  };
+  const adapters = createGitReleaseAdapters({
+    run: () => result(0, `${SUCCESSOR_RELEASE_SOURCE_COMMIT}\trefs/tags/${SUCCESSOR_TAG}\n`),
+  });
+  assert.equal(
+    (await adapters["release-tag-readback"]({}, successorState)).targetCommit,
+    SUCCESSOR_RELEASE_SOURCE_COMMIT,
+  );
+  await assert.rejects(
+    adapters["release-tag-readback"](
+      {},
+      {
+        ...successorState,
+        release_ref: { ...successorState.release_ref, exact_target_commit: "a".repeat(40) },
+      },
+    ),
+    /RELEASE_LINEAGE/u,
+  );
+});
+
 test("approval publication pushes the exact authority-record commit with FF and tree-byte proof", async () => {
   const approval = '{"approval":true}\n';
   const authority = '{"authority":true}\n';
@@ -1036,6 +1113,161 @@ test("SoulX workflow dispatch accepts only an exact materialized default-branch 
   );
 });
 
+test("successor SoulX dispatch accepts exact separate active-main and release-ref workflow bytes", async () => {
+  const evidence = successorSoulxWorkflowRegistrationEvidenceFixture();
+  const successorState = successorStateWithSoulxWorkflowRegistration(evidence);
+  const fixture = workflowDispatchRunner({
+    evidence,
+    workflowName: "avatar-primary-serverless-image",
+    newRuns: [
+      {
+        databaseId: 120,
+        headSha: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+        workflowName: "avatar-primary-serverless-image",
+        status: "queued",
+      },
+    ],
+    mainWorkflowBytes: {
+      "avatar-primary-serverless-image.yml": successorSoulxMainBytes,
+    },
+    releaseWorkflowBytes: {
+      "avatar-primary-serverless-image.yml": successorSoulxReleaseBytes,
+    },
+  });
+  const adapters = createGithubDispatchAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: fixture.run,
+  });
+  const dispatched = await adapters["soulx-image-workflow-dispatch"]({}, successorState);
+  assert.equal(dispatched.runId, "120");
+  assert.equal(dispatched.headSha, SUCCESSOR_RELEASE_SOURCE_COMMIT);
+  const soulxReadback = dispatched.freshWorkflowReadback.workflows[1];
+  assert.equal(soulxReadback.defaultBranchWorkflowSha256, hash(successorSoulxMainBytes));
+  assert.equal(soulxReadback.releaseSourceWorkflowSha256, hash(successorSoulxReleaseBytes));
+  assert.equal(soulxReadback.defaultBranchMatchesReleaseSource, false);
+  assert.deepEqual(
+    fixture.calls.find(([, args]) => args[0] === "workflow" && args[1] === "run")[1].slice(0, 5),
+    ["workflow", "run", "avatar-primary-serverless-image.yml", "--ref", SUCCESSOR_TAG],
+  );
+});
+
+test("successor workflow registration rejects any active-main or release-ref binding drift", async () => {
+  const evidence = successorSoulxWorkflowRegistrationEvidenceFixture();
+  const cases = [
+    { mainWorkflowBytes: { "avatar-primary-serverless-image.yml": Buffer.from("wrong main") } },
+    {
+      releaseWorkflowBytes: {
+        "avatar-primary-serverless-image.yml": Buffer.from("wrong release"),
+      },
+    },
+    { workflowIds: { "avatar-primary-serverless-image.yml": 999 } },
+  ];
+  for (const fixtureOverrides of cases) {
+    const fixture = workflowDispatchRunner({
+      evidence,
+      workflowName: "avatar-primary-serverless-image",
+      newRuns: [],
+      mainWorkflowBytes: {
+        "avatar-primary-serverless-image.yml": successorSoulxMainBytes,
+      },
+      releaseWorkflowBytes: {
+        "avatar-primary-serverless-image.yml": successorSoulxReleaseBytes,
+      },
+      ...fixtureOverrides,
+    });
+    const adapters = createGithubDispatchAdapters({
+      maximumPolls: 1,
+      pollIntervalMs: 0,
+      run: fixture.run,
+    });
+    await assert.rejects(
+      adapters["soulx-image-workflow-dispatch"](
+        {},
+        successorStateWithSoulxWorkflowRegistration(evidence),
+      ),
+      /SOULX_WORKFLOW_REGISTRATION_STALE/u,
+    );
+    assert.equal(
+      fixture.calls.some(([, args]) => args[0] === "workflow" && args[1] === "run"),
+      false,
+    );
+  }
+});
+
+test("successor Mage reconciliation keeps the exact historical head and never redispatches", async () => {
+  const evidence = successorSoulxWorkflowRegistrationEvidenceFixture();
+  const fixture = workflowDispatchRunner({
+    evidence,
+    workflowName: "mage-image",
+    newRuns: [
+      {
+        databaseId: Number(EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id),
+        headSha: EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit,
+        workflowName: "mage-image",
+        status: "completed",
+        conclusion: "success",
+      },
+    ],
+    mainWorkflowBytes: {
+      "avatar-primary-serverless-image.yml": successorSoulxMainBytes,
+    },
+    releaseWorkflowBytes: {
+      "avatar-primary-serverless-image.yml": successorSoulxReleaseBytes,
+    },
+  });
+  const adapters = createGithubDispatchAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: fixture.run,
+  });
+  const reconciled = await adapters["mage-image-workflow-dispatch"](
+    {},
+    successorStateWithSoulxWorkflowRegistration(evidence),
+  );
+  assert.equal(reconciled.headSha, EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit);
+  assert.equal(reconciled.dispatchAccepted, false);
+  assert.equal(
+    fixture.calls.some(([, args]) => args[0] === "workflow" && args[1] === "run"),
+    false,
+  );
+});
+
+test("successor Mage reconciliation rejects a run falsely attributed to the new SoulX source", async () => {
+  const evidence = successorSoulxWorkflowRegistrationEvidenceFixture();
+  const fixture = workflowDispatchRunner({
+    evidence,
+    workflowName: "mage-image",
+    newRuns: [
+      {
+        databaseId: Number(EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id),
+        headSha: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+        workflowName: "mage-image",
+        status: "completed",
+        conclusion: "success",
+      },
+    ],
+    mainWorkflowBytes: {
+      "avatar-primary-serverless-image.yml": successorSoulxMainBytes,
+    },
+    releaseWorkflowBytes: {
+      "avatar-primary-serverless-image.yml": successorSoulxReleaseBytes,
+    },
+  });
+  const adapters = createGithubDispatchAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    run: fixture.run,
+  });
+  await assert.rejects(
+    adapters["mage-image-workflow-dispatch"](
+      {},
+      successorStateWithSoulxWorkflowRegistration(evidence),
+    ),
+    /MAGE_PREDECESSOR_RUN_READBACK/u,
+  );
+});
+
 test("Mage default-branch drift is recorded without blocking predecessor reconciliation", async () => {
   const evidence = soulxWorkflowRegistrationEvidenceFixture();
   const fixture = workflowDispatchRunner({
@@ -1092,7 +1324,7 @@ test("historical descriptor v1 cannot dispatch even when supplied copied registr
         soulx_workflow_registration_evidence_sha256: evidence.evidence_sha256,
       },
     ),
-    /WORKFLOW_REGISTRATION_DESCRIPTOR_V2_REQUIRED/u,
+    /WORKFLOW_REGISTRATION_DESCRIPTOR_VERSION_REQUIRED/u,
   );
   assert.deepEqual(calls, []);
 });
@@ -1395,6 +1627,99 @@ test("Mage verification accepts only the exact predecessor run before any provid
     /MAGE_PREDECESSOR_RUN_BINDING/u,
   );
   assert.deepEqual(calls, []);
+});
+
+test("successor verification assigns the historical head only to Mage and the new head to SoulX", async () => {
+  const evidence = successorSoulxWorkflowRegistrationEvidenceFixture();
+  const successorState = successorStateWithSoulxWorkflowRegistration(evidence);
+  const lanes = [
+    {
+      operationId: "mage-image-workflow-verification",
+      dispatchId: "mage-image-workflow-dispatch",
+      runId: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id,
+      workflowName: "mage-image",
+      headSha: EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit,
+    },
+    {
+      operationId: "soulx-image-workflow-verification",
+      dispatchId: "soulx-image-workflow-dispatch",
+      runId: "33290000000",
+      workflowName: "avatar-primary-serverless-image",
+      headSha: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+    },
+  ];
+  for (const lane of lanes) {
+    const calls = [];
+    const adapters = createGithubVerificationAdapters({
+      maximumPolls: 1,
+      pollIntervalMs: 0,
+      trustedTime: async () => "2026-08-26T12:00:00Z",
+      run: (_command, args) => {
+        calls.push(args);
+        if (args[1] === "view")
+          return result(
+            0,
+            JSON.stringify({
+              databaseId: Number(lane.runId),
+              headSha: lane.headSha,
+              workflowName: lane.workflowName,
+              status: "completed",
+              conclusion: "success",
+            }),
+          );
+        return result(1, "", "bounded artifact stop");
+      },
+    });
+    await assert.rejects(
+      adapters[lane.operationId](
+        {},
+        successorState,
+        new Map([[lane.dispatchId, { runId: lane.runId }]]),
+      ),
+      /V2_13_FULL_LIVE_ADAPTER_COMMAND/u,
+    );
+    assert.equal(
+      calls.some((args) => args[1] === "download"),
+      true,
+    );
+  }
+
+  const wrongMageCalls = [];
+  const wrongMage = createGithubVerificationAdapters({
+    maximumPolls: 1,
+    pollIntervalMs: 0,
+    trustedTime: async () => "2026-08-26T12:00:00Z",
+    run: (_command, args) => {
+      wrongMageCalls.push(args);
+      return result(
+        0,
+        JSON.stringify({
+          databaseId: Number(EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id),
+          headSha: SUCCESSOR_RELEASE_SOURCE_COMMIT,
+          workflowName: "mage-image",
+          status: "completed",
+          conclusion: "success",
+        }),
+      );
+    },
+  });
+  await assert.rejects(
+    wrongMage["mage-image-workflow-verification"](
+      {},
+      successorState,
+      new Map([
+        [
+          "mage-image-workflow-dispatch",
+          { runId: EXACT_PREDECESSOR_RELEASE_ATTEMPT.mage_workflow_run_id },
+        ],
+      ]),
+    ),
+    /WORKFLOW_RUN_READBACK/u,
+  );
+  assert.equal(
+    wrongMageCalls.some((args) => args[1] === "download"),
+    false,
+  );
 });
 
 test("GitHub verification enforces one monotonic 1800000ms deadline across subprocess time", async () => {

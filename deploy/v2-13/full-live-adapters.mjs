@@ -55,6 +55,8 @@ import { parseService, validateServiceFile } from "../v2-06/validate-pg-service.
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const TAG = "videoforge-v2-13-release-20260826-v3";
+const SUCCESSOR_TAG = "videoforge-v2-13-release-20260830-v5";
+const SUCCESSOR_RELEASE_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
 const APPROVAL_BRANCH = "codex/serverless-v2-roadmap-v4";
 const COMMIT = /^[0-9a-f]{40}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
@@ -90,14 +92,16 @@ const RUNPOD_RETAINED_LANES = Object.freeze([
     volumeManifestSha256: "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
   }),
 ]);
-const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA =
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V1 =
   "videoforge.v213-soulx-workflow-registration-evidence/v1";
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2 =
+  "videoforge.v213-soulx-workflow-registration-evidence/v2";
 const SOULX_WORKFLOW_REGISTRATION_REPOSITORY = "Pala-LakshmanSai/videoforge";
 const SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH = "main";
 const SOULX_WORKFLOW_REGISTRATION_FILE = "avatar-primary-serverless-image.yml";
 const SOULX_WORKFLOW_REGISTRATION_PATH = `.github/workflows/${SOULX_WORKFLOW_REGISTRATION_FILE}`;
 const SOULX_WORKFLOW_REGISTRATION_NAME = "avatar-primary-serverless-image";
-const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS = Object.freeze([
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS_V1 = Object.freeze([
   "schema_version",
   "repository",
   "default_branch",
@@ -111,6 +115,25 @@ const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS = Object.freeze([
   "registration_state",
   "materialized",
   "bound_to_release_source",
+  "evidence_sha256",
+]);
+const SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS_V2 = Object.freeze([
+  "schema_version",
+  "repository",
+  "default_branch",
+  "default_branch_commit",
+  "workflow_id",
+  "workflow_file",
+  "workflow_name",
+  "workflow_path",
+  "workflow_state",
+  "default_branch_workflow_sha256",
+  "release_source_commit",
+  "release_source_workflow_sha256",
+  "default_branch_matches_release_source",
+  "registration_state",
+  "materialized",
+  "default_branch_registration_only",
   "evidence_sha256",
 ]);
 const EXACT_DATABASE_IDENTITY = Object.freeze({
@@ -658,12 +681,19 @@ function readAuthenticatedGithubTime({
   throw lastError;
 }
 
+function exactReleaseTag(tag, target) {
+  return (
+    (tag === TAG && COMMIT.test(target ?? "")) ||
+    (tag === SUCCESSOR_TAG && target === SUCCESSOR_RELEASE_SOURCE_COMMIT)
+  );
+}
+
 function createGitReleaseAdapters({ run = productionCommand } = {}) {
   return Object.freeze({
     "release-tag-create": async (_operation, state) => {
       const tag = state.release_ref?.exact_tag_name;
       const target = state.release_ref?.exact_target_commit;
-      if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
+      if (!exactReleaseTag(tag, target)) fail("RELEASE_LINEAGE");
       const reconciliationOnly =
         state.release_ref?.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" ||
         state.release_ref?.state === "AUTHORIZED_PENDING_RECONCILIATION";
@@ -712,7 +742,7 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
     "release-tag-push": async (_operation, state) => {
       const tag = state.release_ref?.exact_tag_name;
       const target = state.release_ref?.exact_target_commit;
-      if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
+      if (!exactReleaseTag(tag, target)) fail("RELEASE_LINEAGE");
       const reconciliationOnly =
         state.release_ref?.mode === "PREDECESSOR_BOUND_RECONCILIATION_ONLY" ||
         state.release_ref?.state === "AUTHORIZED_PENDING_RECONCILIATION";
@@ -748,7 +778,7 @@ function createGitReleaseAdapters({ run = productionCommand } = {}) {
     "release-tag-readback": async (_operation, state) => {
       const tag = state.release_ref?.exact_tag_name;
       const target = state.release_ref?.exact_target_commit;
-      if (tag !== TAG || !COMMIT.test(target ?? "")) fail("RELEASE_LINEAGE");
+      if (!exactReleaseTag(tag, target)) fail("RELEASE_LINEAGE");
       const remote = exactCommand(run, "git", [
         "ls-remote",
         "--refs",
@@ -848,13 +878,17 @@ function parseRuns(bytes, workflow, headSha) {
  * bytes; it deliberately performs no GitHub or other provider read.
  */
 function exactSoulxWorkflowRegistrationEvidence(value, releaseSourceCommit) {
+  const isV1 = value?.schema_version === SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V1;
+  const isV2 = value?.schema_version === SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2;
+  const expectedKeys = isV2
+    ? SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS_V2
+    : SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS_V1;
   if (
     value === null ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    JSON.stringify(Object.keys(value).sort()) !==
-      JSON.stringify(SOULX_WORKFLOW_REGISTRATION_EVIDENCE_KEYS.slice().sort()) ||
-    value.schema_version !== SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA ||
+    (!isV1 && !isV2) ||
+    JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expectedKeys.slice().sort()) ||
     value.repository !== SOULX_WORKFLOW_REGISTRATION_REPOSITORY ||
     value.default_branch !== SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH ||
     !COMMIT.test(value.default_branch_commit ?? "") ||
@@ -864,10 +898,20 @@ function exactSoulxWorkflowRegistrationEvidence(value, releaseSourceCommit) {
     !HASH.test(value.default_branch_workflow_sha256 ?? "") ||
     value.release_source_commit !== releaseSourceCommit ||
     !HASH.test(value.release_source_workflow_sha256 ?? "") ||
-    value.default_branch_workflow_sha256 !== value.release_source_workflow_sha256 ||
-    value.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
     value.materialized !== true ||
-    value.bound_to_release_source !== true ||
+    (isV1 &&
+      (value.default_branch_workflow_sha256 !== value.release_source_workflow_sha256 ||
+        value.registration_state !== "REGISTERED_EXACT_DEFAULT_BRANCH" ||
+        value.bound_to_release_source !== true)) ||
+    (isV2 &&
+      (releaseSourceCommit !== SUCCESSOR_RELEASE_SOURCE_COMMIT ||
+        !Number.isSafeInteger(value.workflow_id) ||
+        value.workflow_id < 1 ||
+        value.workflow_state !== "active" ||
+        value.default_branch_matches_release_source !==
+          (value.default_branch_workflow_sha256 === value.release_source_workflow_sha256) ||
+        value.registration_state !== "REGISTERED_ACTIVE_DEFAULT_BRANCH_RELEASE_REF_BOUND" ||
+        value.default_branch_registration_only !== true)) ||
     !HASH.test(value.evidence_sha256 ?? "")
   )
     fail("SOULX_WORKFLOW_REGISTRATION_EVIDENCE_CONTRACT");
@@ -879,14 +923,18 @@ function exactSoulxWorkflowRegistrationEvidence(value, releaseSourceCommit) {
 }
 
 function validateSoulxWorkflowRegistrationEvidence(value, state) {
+  const isV2 = value?.schema_version === SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2;
   if (
     state?.static_release_descriptor_schema_version !==
-    "videoforge.v213-static-release-descriptor/v2"
+    (isV2
+      ? "videoforge.v213-static-release-descriptor/v3"
+      : "videoforge.v213-static-release-descriptor/v2")
   )
-    fail("WORKFLOW_REGISTRATION_DESCRIPTOR_V2_REQUIRED");
+    fail("WORKFLOW_REGISTRATION_DESCRIPTOR_VERSION_REQUIRED");
   exactSoulxWorkflowRegistrationEvidence(value, state?.release_source_commit);
+  const expectedTag = isV2 ? SUCCESSOR_TAG : TAG;
   if (
-    state?.release_ref?.exact_tag_name !== TAG ||
+    state?.release_ref?.exact_tag_name !== expectedTag ||
     state?.release_ref?.exact_target_commit !== state?.release_source_commit
   )
     fail("SOULX_WORKFLOW_REGISTRATION_RELEASE_BINDING");
@@ -941,6 +989,7 @@ function githubContentBytes(value, code) {
 }
 
 function verifyFreshDefaultBranchWorkflowRegistration({ run, state, soulxRegistration }) {
+  const isV2 = soulxRegistration.schema_version === SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2;
   const repositoryEndpoint = `repos/${SOULX_WORKFLOW_REGISTRATION_REPOSITORY}`;
   const repository = exactGithubJson(run, repositoryEndpoint, "WORKFLOW_DEFAULT_BRANCH_REPOSITORY");
   if (repository?.default_branch !== SOULX_WORKFLOW_REGISTRATION_DEFAULT_BRANCH)
@@ -992,14 +1041,20 @@ function verifyFreshDefaultBranchWorkflowRegistration({ run, state, soulxRegistr
     const defaultBranchMatchesReleaseSource = Buffer.compare(mainBytes, releaseBytes) === 0;
     if (
       expected.file === SOULX_WORKFLOW_REGISTRATION_FILE &&
+      !isV2 &&
       (!defaultBranchMatchesReleaseSource || mainSha256 !== releaseSha256)
     )
       fail("WORKFLOW_DEFAULT_BRANCH_RELEASE_DRIFT");
     if (
       expected.file === SOULX_WORKFLOW_REGISTRATION_FILE &&
       (commit.sha !== soulxRegistration.default_branch_commit ||
+        (isV2 && registration.id !== soulxRegistration.workflow_id) ||
+        (isV2 && registration.state !== soulxRegistration.workflow_state) ||
         mainSha256 !== soulxRegistration.default_branch_workflow_sha256 ||
-        releaseSha256 !== soulxRegistration.release_source_workflow_sha256)
+        releaseSha256 !== soulxRegistration.release_source_workflow_sha256 ||
+        (isV2 &&
+          defaultBranchMatchesReleaseSource !==
+            soulxRegistration.default_branch_matches_release_source))
     )
       fail("SOULX_WORKFLOW_REGISTRATION_STALE");
     workflows.push({
@@ -1046,16 +1101,21 @@ function createGithubDispatchAdapters(options = {}) {
     fail("GITHUB_POLL_INTERVAL");
   const reconcilePredecessorMage = async (state) => {
     const tag = state.release_ref?.exact_tag_name;
-    const headSha = state.release_source_commit;
-    if (
-      state.release_ref?.state !== "VERIFIED_EXACT_REMOTE" ||
-      tag !== TAG ||
-      !COMMIT.test(headSha)
-    )
-      fail("WORKFLOW_RELEASE_REF");
     const candidate = state?.soulx_workflow_registration_evidence;
     if (candidate === undefined || candidate === null) fail("SOULX_WORKFLOW_REGISTRATION_REQUIRED");
     const soulxRegistration = validateSoulxWorkflowRegistrationEvidence(candidate, state);
+    const isV2 =
+      soulxRegistration.schema_version === SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2;
+    const expectedTag = isV2 ? SUCCESSOR_TAG : TAG;
+    const headSha = isV2
+      ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit
+      : state.release_source_commit;
+    if (
+      state.release_ref?.state !== "VERIFIED_EXACT_REMOTE" ||
+      tag !== expectedTag ||
+      !COMMIT.test(headSha)
+    )
+      fail("WORKFLOW_RELEASE_REF");
     if (
       JSON.stringify(state.predecessor_release_attempt) !==
       JSON.stringify(EXACT_PREDECESSOR_RELEASE_ATTEMPT)
@@ -1117,15 +1177,19 @@ function createGithubDispatchAdapters(options = {}) {
   const dispatch = async ({ state, workflowFile, workflowName, fields }) => {
     const tag = state.release_ref?.exact_tag_name;
     const headSha = state.release_source_commit;
-    if (
-      state.release_ref?.state !== "VERIFIED_EXACT_REMOTE" ||
-      tag !== TAG ||
-      !COMMIT.test(headSha)
-    )
-      fail("WORKFLOW_RELEASE_REF");
     const candidate = state?.soulx_workflow_registration_evidence;
     if (candidate === undefined || candidate === null) fail("SOULX_WORKFLOW_REGISTRATION_REQUIRED");
     const soulxRegistration = validateSoulxWorkflowRegistrationEvidence(candidate, state);
+    const expectedTag =
+      soulxRegistration.schema_version === SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2
+        ? SUCCESSOR_TAG
+        : TAG;
+    if (
+      state.release_ref?.state !== "VERIFIED_EXACT_REMOTE" ||
+      tag !== expectedTag ||
+      !COMMIT.test(headSha)
+    )
+      fail("WORKFLOW_RELEASE_REF");
     const listArgs = [
       "run",
       "list",
@@ -1907,6 +1971,32 @@ function createGithubVerificationAdapters({
     Object.entries(WORKFLOW_EVIDENCE).map(([operationId, expected]) => [
       operationId,
       async (_operation, state, priorResults) => {
+        const successorWorkflowRegistration =
+          state?.soulx_workflow_registration_evidence?.schema_version ===
+          SOULX_WORKFLOW_REGISTRATION_EVIDENCE_SCHEMA_V2;
+        if (successorWorkflowRegistration)
+          validateSoulxWorkflowRegistrationEvidence(
+            state.soulx_workflow_registration_evidence,
+            state,
+          );
+        const predecessorMage = operationId === "mage-image-workflow-verification";
+        const workflowSourceCommit =
+          successorWorkflowRegistration && predecessorMage
+            ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_target_commit
+            : state.release_source_commit;
+        const workflowTag =
+          successorWorkflowRegistration && predecessorMage
+            ? EXACT_PREDECESSOR_RELEASE_ATTEMPT.exact_tag_name
+            : state?.release_ref?.exact_tag_name;
+        const workflowState = {
+          ...state,
+          release_source_commit: workflowSourceCommit,
+          release_ref: {
+            ...state?.release_ref,
+            exact_tag_name: workflowTag,
+            exact_target_commit: workflowSourceCommit,
+          },
+        };
         const deadline = deadlineNow() + wallTimeoutMs;
         const remaining = () => {
           const value = Math.floor(deadline - deadlineNow());
@@ -1951,7 +2041,7 @@ function createGithubVerificationAdapters({
           }
           if (
             String(runRecord?.databaseId) !== runId ||
-            runRecord.headSha !== state.release_source_commit ||
+            runRecord.headSha !== workflowSourceCommit ||
             runRecord.workflowName !== expected.workflowName ||
             !["queued", "in_progress", "completed"].includes(runRecord.status)
           )
@@ -1993,7 +2083,7 @@ function createGithubVerificationAdapters({
             ) ||
             evidence.checkpoint !== expected.checkpoint ||
             evidence.lane !== expected.lane ||
-            evidence.source_commit !== state.release_source_commit ||
+            evidence.source_commit !== workflowSourceCommit ||
             evidence.registry_repository !== expected.repository ||
             evidence.publication_requested !== true ||
             evidence.published !== true ||
@@ -2025,14 +2115,14 @@ function createGithubVerificationAdapters({
               ? validateAnonymousGhcrPublicationProof(evidence.anonymous_publication_proof, {
                   evidence,
                   expected,
-                  state,
+                  state: workflowState,
                   runId,
                 })
               : await verifyTaggedV1AnonymousGhcrReadback({
                   fetch,
                   evidence,
                   expected,
-                  state,
+                  state: workflowState,
                   runId,
                   trustedTime,
                   remaining,
@@ -2042,7 +2132,7 @@ function createGithubVerificationAdapters({
           return {
             actualUsd: 0,
             runId,
-            headSha: state.release_source_commit,
+            headSha: workflowSourceCommit,
             imageDigest: digest,
             evidenceSha256,
             publicManifestSha256: digest,
@@ -10000,4 +10090,6 @@ export {
   readAuthenticatedGithubTime,
   exactRemoteTag,
   TAG,
+  SUCCESSOR_TAG,
+  SUCCESSOR_RELEASE_SOURCE_COMMIT,
 };
