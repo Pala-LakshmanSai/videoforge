@@ -112,6 +112,25 @@ describe("hosted product route contract", () => {
     ).toBe(false);
   });
 
+  it("resolves an avatar preview without requiring private avatar-link table access", async () => {
+    testState.query.mockClear();
+    const previewEnvironment = {
+      PRIVATE_ARTIFACTS: { get: vi.fn() },
+    } as unknown as HostedRuntimeEnvironment;
+
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/avatars/${PRESET_ID}/preview`, "GET"),
+      previewEnvironment,
+      stagingConfig,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(404);
+    expect(
+      testState.query.mock.calls.some(([sql]) => String(sql).includes("avatar_profile_assets")),
+    ).toBe(false);
+  });
+
   it("reports qualified work as dispatch-ready without inventing a GPU estimate", () => {
     expect(hostedGpuProductState({ dispatch_available: true })).toStrictEqual({
       projectedUsd: null,

@@ -845,7 +845,7 @@ export function normalizeHostedReturnTo(
 }
 
 function presetState(item: CatalogResponse["avatars"][number] | CatalogResponse["styles"][number]) {
-  return item.status ?? item.state ?? "READY";
+  return item.state ?? item.status ?? "READY";
 }
 
 const HUMAN_PIPELINE_STAGES = [

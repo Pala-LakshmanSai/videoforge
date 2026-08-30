@@ -2666,17 +2666,13 @@ async function hostedPresetPreview(
                  ON profile.account_id = version.account_id
                 AND profile.workspace_id = version.workspace_id
                 AND profile.id = version.profile_id
-               JOIN avatar_profile_assets AS link
-                 ON link.account_id = version.account_id
-                AND link.workspace_id = version.workspace_id
-                AND link.version_id = version.id AND link.role IN ('THUMBNAIL','ORIGINAL')
                JOIN assets AS asset
-                 ON asset.account_id = link.account_id
-                AND asset.workspace_id = link.workspace_id AND asset.id = link.asset_id
+                 ON asset.account_id = version.account_id
+                AND asset.workspace_id = version.workspace_id
+                AND asset.id = COALESCE(profile.thumbnail_asset_id, version.original_asset_id)
               WHERE version.id = $3 AND version.state = 'READY'
                 AND ((version.account_id = $1 AND version.workspace_id = $2)
                      OR version.scope_kind = 'SYSTEM')
-              ORDER BY CASE link.role WHEN 'THUMBNAIL' THEN 0 ELSE 1 END
               LIMIT 1`
           : `SELECT asset.object_key, asset.content_type
                FROM image_style_versions AS version

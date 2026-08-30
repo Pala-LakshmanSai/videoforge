@@ -269,6 +269,7 @@ describe("hosted product journey", () => {
             name: "Owner",
             version_number: 1,
             state: "READY",
+            status: "ACTIVE",
             thumbnail_url: "/api/v2/hosted/avatars/a1/preview",
             profile_hash: "sha256:private-avatar-hash",
             rights_status: "ATTESTED",
@@ -281,6 +282,7 @@ describe("hosted product journey", () => {
             name: "Documentary",
             version_number: 1,
             state: "PUBLISHED",
+            status: "ACTIVE",
             cover_url: "/api/v2/hosted/styles/sv1/preview",
             profile_hash: "sha256:private-style-hash",
             reference_count: 3,
@@ -317,6 +319,7 @@ describe("hosted product journey", () => {
     expect(screen.queryByText(/Use this catalog in a project/u)).not.toBeInTheDocument();
     expect(screen.queryByText(/sha256:private/u)).not.toBeInTheDocument();
     expect(screen.queryByText(/a1|sv1/u)).not.toBeInTheDocument();
+    expect(screen.queryByText("ACTIVE")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(
       fetchMock.mock.calls.every(([input]) =>
