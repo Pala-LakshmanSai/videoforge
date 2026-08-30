@@ -30,9 +30,9 @@ current_goal_boundary:
   note: "The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5. Mage remains bound to successful predecessor run 33236590768 at source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 with no redispatch. Failed SoulX run 33287914248 and authority v2-13-full-live-20260830-021108z-d3bfbb40 are terminal and non-reusable. Fresh exact approval is required before tag creation or any live action."
 
 fixture_user_walkthrough:
-  status: ACTIVE_STEP_3_IMAGE_STYLE_READY
+  status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
   started_from_commit: "e1462fe7421caae8a5f0a651c90e009e2aecdee4"
-  latest_green_commit: "2b15a0fb"
+  latest_green_commit: "b7152f19"
   stable_url: "http://localhost:4173/?fixture=invite_sign_in"
   provider_mode: fixture
   provider_calls_authorized: false
@@ -55,7 +55,7 @@ fixture_user_walkthrough:
     - PROGRESS_QUEUE_ETA_AND_COSTS
     - REVIEW_TARGETED_RETRY_MANIFEST_AND_DOWNLOAD
     - ACCOUNT_ISOLATION_DELETION_AND_LOGOUT
-  release_boundary: "Product behavior is intentionally changing. Do not reseal C1/C2, request approval, activate production, or perform provider/GPU/spend work until the complete fixture journey passes and one final product-freeze audit is prepared."
+  release_boundary: "Fixture walkthrough stopped after the user requested a production-shaped hosted walkthrough. Retain fixture repairs as provider-free regression coverage; do not treat them as hosted acceptance."
   validations:
     access_gate_unit: "PASS_5_OF_5"
     access_gate_chrome: "PASS_4_OF_4_DESKTOP_AND_COMPACT"
@@ -69,6 +69,45 @@ fixture_user_walkthrough:
     image_style_production_ui_parity_unit: "PASS_32_OF_32_FOCUSED"
     image_style_production_bundle_quarantine: "PASS"
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
+
+hosted_beta_user_walkthrough:
+  status: SOURCE_GREEN_PENDING_FRESH_EXACT_DEPLOYMENT_APPROVAL
+  implementation_commit: "79423f8c6fe92b7faaa45a07f7f72f62b1b602d4"
+  deployment_candidate: CURRENT_CLEAN_GIT_HEAD
+  stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
+  provider_mode: staging
+  hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
+  gpu_transport: DISABLED_UNQUALIFIED
+  provider_analysis: PROVIDER_FREE_DETERMINISTIC
+  provider_calls_authorized: false
+  gpu_use_authorized: false
+  external_spend_authorized_usd: 0
+  remote_mutation_authorized: false
+  database_preflight: "READ_ONLY_LEDGER_36_OF_49_PGCRYPTO_ABSENT"
+  cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
+  fixed_blockers:
+    - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
+    - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
+    - "Image-style analysis is clearly labeled provider-free simulation so the walkthrough cannot mistake it for a Gemini, DeepSeek, or GPU provider result."
+  current_step: SIGN_IN_AND_INVITE_REDEMPTION
+  remaining_steps:
+    - SIGN_IN_AND_INVITE_REDEMPTION
+    - AVATAR_CREATION_AND_APPROVAL
+    - IMAGE_STYLE_CREATION_AND_PUBLISHING
+    - PROJECT_CREATION_AND_COST_PREFLIGHT
+    - VOICEOVER_UPLOAD_AND_VALIDATION
+    - PROJECT_SUBMISSION
+    - PROGRESS_QUEUE_ETA_AND_COSTS
+    - REVIEW_TARGETED_RETRY_MANIFEST_AND_DOWNLOAD
+    - ACCOUNT_ISOLATION_DELETION_AND_LOGOUT
+  release_boundary: "This is a private hosted-beta deployment only. Production activation, V2-07 through V2-13 live qualification, provider calls, RunPod operations, GPU use, and C1/C2 resealing remain blocked."
+  validations:
+    hosted_preset_focused_unit: "PASS_54_OF_54"
+    hosted_web_typecheck: PASS
+    hosted_changed_file_eslint: PASS
+    staging_build: PASS
+    production_bundle_fixture_quarantine: PASS
+    v2_06_deployment_validator: PASS
 
 new_chat_handoff:
   status: FULL_LIVE_SUCCESSOR_SEALED_PENDING_FRESH_EXACT_USER_APPROVAL
